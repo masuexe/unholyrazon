@@ -1,0 +1,106 @@
+// This is a copy of MM8BDM v6b COLOTRNS
+// Any area with the following line
+//$UH
+// Means that area is edited for UH
+
+#library "colotrans"
+#include "zcommon.acs"
+#include "8bdmlib.acs"
+
+script "core_synccolors" ENTER
+{
+	delay(1);
+
+    //Syncs Player colors
+    for(int i = 0; i < ServerMax; i++) 
+	{
+        if(!PlayerInGame(i)) continue;
+
+		SetActivatorToPlayer(i);
+		Thing_SetTranslation(0, -1);
+    }
+}
+
+script "core_synccolors_respawn" RESPAWN
+{
+	ACS_NamedExecuteAlways("core_synccolors", 0);
+}
+
+//Color Translation script
+script "core_weaponcolor" (int weap, int weapSound, int teamweap) 
+{
+	// timer check here helps a bug in Offline Skirmish, see Celebi for details
+	if(CheckInventory("NoWeaponSwitchSound")==0 && Timer() > 0) {
+		switch (weapSound) { //$UH
+			default:
+				break;
+			case 0:
+				LocalAmbientSound("core_snd/Menu",127); // Play weapon switch noise //$UH //menu/cursor
+				break;
+			case 1:
+				LocalAmbientSound("Qwant/MenuXD",127); //$UH //Qwant/SwapMove
+				break;
+			case 2:
+				LocalAmbientSound("WilyWar/Menu",127); //$UH
+				break;
+			case 3:
+				LocalAmbientSound("misc/gravitywarn",127); // Play weapon switch noise //$UH menu/cursor
+				break;
+			case 4:
+				LocalAmbientSound("GNT/PotionCollect",127); // Play weapon switch noise //$UH menu/cursor
+				break;
+		}
+	}
+
+	if((CheckInventory("NoWeaponTranslation")>0 && weap != CLR_ICEDEATH) || weap == CLR_PREVCOLOR)
+		terminate;
+	
+	if(teamweap == TCLR_NONE){teamweap = TCLR_DEFAULT;}
+
+	if((IsTeamGame || (Timer() <= 0 && ACS_NamedExecuteWithResult("core_checkmode", 1) == 1)) && CheckInventory("NoTeamTranslation")==0)
+	// it seems redundant to do this, but it fixes an edge case on round start
+	{
+		if(PlayerTeam() >= 0 && PlayerTeam() <= 3) {
+			weap = teamweap + PlayerTeam();
+		}
+	}
+	
+	Thing_SetTranslation(0, weap);
+}
+
+script "core_chargecolor" (int weap, int teamweap)
+{
+	ACS_NamedExecuteWithResult("core_weaponcolor", weap, CLRF_SILENT, teamweap);
+}
+
+script "uh_forceweaponcolor" (int weap) //$UH
+{
+	Thing_SetTranslation(0, weap);
+}
+
+// The script below returns -1 for legacy reasons. Older versions of that script returned a translation ID.
+// Now it just automatically sets the translation itself, but it should return something that preserves the
+// changed translation, hence -1. This bodge doesn't work too well online with reconnecting clients, so 
+// the script should no longer be nested within Thing_SetTranslation. [Trill]
+
+// Copy the translation of target on server-side.
+Script "core_copytranslation" (void)
+{
+	int o = ActivatorTid();
+	int u = UniqueTID();
+	
+	Thing_ChangeTID(0,u);
+	SetActivator(0,AAPTR_TARGET);
+	
+	Thing_SetTranslation(u, -1);
+	
+	Thing_ChangeTID(u,o);
+
+	SetResultValue(-1);
+}
+
+// Copy the translation of target on client-side.
+script "core_copytranslation_client" (void) CLIENTSIDE 
+{
+	ACS_NamedExecuteWithResult("core_copytranslation");
+}
