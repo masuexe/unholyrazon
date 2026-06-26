@@ -54,7 +54,7 @@ ClassBase0 (MM8BDM core)
       → MegaManU / BusterExpert
 ```
 
-The `actors/player/classbase/customslots/` directory (referenced by `classbase2_custompain.txt`) **does not yet exist** — slot chain is a stub. Add new slot files there when extending the hierarchy.
+The `actors/player/classbase/customslots/` directory (referenced by `classbase2_custompain.txt`) does not exist in this mod — the `_classbaseslot.txt` and its 50 slot files resolve from the base game v6b PK3. The mod only needs to provide `classbase2_custompain.txt` (which overrides the base game's version) and the `ClassBase_U*.dec` files it includes.
 
 ## ACS
 
