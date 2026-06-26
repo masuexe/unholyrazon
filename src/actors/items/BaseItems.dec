@@ -1,0 +1,131 @@
+actor InfiniteItemTesting_F : UOnceX{}
+
+Actor PowerInvUseAll_F : PowerUp
+{//Prevents InvUseAll from using items at the same time (WishingStar)
+Powerup.Duration 2
+}
+
+Actor BasicDroppedItem : CustomInventory
+{
++DONTGIB
+scale 2.0
+}
+
+Actor UnholyItem : BasicDroppedItem
+{
+inventory.amount 1
+inventory.maxamount 99
+inventory.pickupmessage "\cdSuddenly Placeholder!"
+inventory.icon "C_I_00D"
+inventory.PickupSound "items/UnholyPickup"//"item/1up"
+Inventory.UseSound ""
++INVBAR
+states
+{
+Spawn:
+6N00 D 5
+loop
+Use:
+TNT1 A 0
+TNT1 A 0 //A_LOG("Use")
+TNT1 A 0 A_JumpIfInventory("UsingTimeStopperU",1,"TimeStop")
+TNT1 A 0 A_JumpIf(1,"UseX")
+TNT1 A 0 A_JumpIf(1,"UseX")//But why?
+TNT1 A 0 A_JumpIf(1,"UseX")
+TNT1 A 0 A_JumpIf(1,"UseX")
+TNT1 A 0 A_JumpIf(1,"UseX")
+goto UseX
+UseX://Wierd note, for online, both Use/UseX are displayed for clients but only Use is shown for the server.
+TNT1 A 0 //A_LOG("UseX")
+stop
+End:
+TNT1 A 0 A_JumpIfInventory("InfiniteItemTesting_F",1,"TimeStop")
+stop
+TimeStop:
+TNT1 A 0
+fail
+}
+}
+
+
+actor UH_ShootableItemList
+{
+damagefactor "MagicSpecialist", 0.0
+damagefactor "WindDemoneye", 0.0 damagefactor "WindDemoneyeFling", 0.0
+damagefactor "FlashingDemonEye", 0.0
+damagefactor "SpringEye", 0.0
+damagefactor "KillerBoxFling", 0.0
+damagefactor "MoneyBaitCash", 0.0
+damagefactor "StepAsideFling", 0.0
+damagefactor "ThunderTankStun", 0.0 damagefactor "ThunderTankStunB", 0.0
+damagefactor "WaspBomb", 0.0 damagefactor "WaspBombB", 0.0
+damagefactor "LoliBalloon", 0.0
+damagefactor "GothicBalloon", 0.0
+damagefactor "DarkmanToy", 0.0
+damagefactor "DemonToyIce", 0.0
+damagefactor "GiveUpHope", 0.0
+damagefactor "RubberBand", 1.0
+damagefactor "OnFire", 0.0 damagefactor "OnFireB", 0.0
+damagefactor "Solitaire", 0.0 damagefactor "SolitaireB", 0.0
+damagefactor "BluntRocket", 0.0 damagefactor "BluntRocketB", 0.0
+damagefactor "SharpRocket", 0.0 damagefactor "SharpRocketB", 0.0
+damagefactor "MeteorItem", 1.0
+damagefactor "UnholyWater", 0.0 damagefactor "UnholyWaterB", 0.0
+damagefactor "Ztar", 0.0 damagefactor "ZtarB", 0.0
+damagefactor "BrickMine", 0.0
+damagefactor "UnholyBook", 1.0
+damagefactor "ContrabandItem2", 0.0
+damagefactor "WhackSpell", 36.0
+
+damagefactor "YouDieUnit", 0.0
+damagefactor "SuperGiveUpHope", 0.0
+damagefactor "Football", 0.0
+damagefactor "HackyCoffee", 0.0
+damagefactor "BEESItem", 0.0 damagefactor "BEESItemB", 0.0
+damagefactor "WishingStar", 1.0
+damagefactor "InvincibleCandy", 0.0 damagefactor "InvincibleCandyB", 0.0
+damagefactor "MoneyBombCash", 0.0
+damagefactor "Thumbtack", 1.0
+
+damagefactor "GoldenWasp", 0.0
+damagefactor "MountainDew", 0.0
+
+damagefactor "RandomPony", 0.0 damagefactor "RandomPonyB", 0.0
+damagefactor "DeadlyFireArm", 0.0 damagefactor "DeadlyFireArmB", 0.0
+damagefactor "UnholyInsurance", 0.0
+damagefactor "CarpetBomb", 0.0 damagefactor "CarpetBombB", 0.0
+damagefactor "HogWash", 0.0
+}
+
+#include "actors/Items/ItemListPandora.dec"
+// #include "actors/Items/ItemListMystic.dec"
+// #include "actors/Items/ItemListToW.dec"
+// #include "actors/Items/ItemListBarmy.dec"
+// #include "actors/Items/ITEMSProtection.dec"
+// #include "actors/Items/AutoItemList.dec"
+
+
+actor DropItemsOnDeath_P : CustomInventory
+{
+states
+{
+Pickup:
+//TNT1 A 0 A_PlaySoundEx("EDDYTHING","Weapon")
+
+TNT1 A 0 A_JumpIfInventory("SpawnTeleFragFlag",1,"TheEnd")
+TNT1 A 0 A_JumpIfInventory("UnholyItem",1,"TheEnd")
+TNT1 A 0 ACS_NamedExecuteAlways("UH_DropItemsOnDeath",0)//ACS of A_DropItem + A_TakeInventory
+goto TheEnd
+
+//TNT1 A 0 A_DropInventory("FagCapItem")
+//TNT1 AAAAA 0 A_DropInventory("PandoraBoxItem")//Works but requires multiple calls
+//TNT1 A 0 A_DropInventory("PandoraBoxItem",99)//Does not work yet
+//TNT1 A 0 A_DropItem("PandoraBoxItem",9999)//Works, but ALWAYS drops X amount (9999)
+goto TheEnd
+
+TheEnd:
+TNT1 A 0
+TNT1 A 0
+stop
+}
+}
