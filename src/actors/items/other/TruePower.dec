@@ -1,3 +1,8 @@
+actor PowerTruePowerWeapon : PowerWeaponLevel2
+{
+Powerup.Duration 0x7FFFFFFC
+}
+
 Actor TruePowerItem : CustomInventory
 {
 DropItem "TruePowerItem"
@@ -176,4 +181,219 @@ actor PowerTimeCheat : PowerSpeed
 Speed 1.5//1.0
 Powerup.Duration 0x7FFFFFFE
 //Powerup.Color "55 00 55", 0.4
+}
+
+
+
+actor ShinySparkleFlag : UOnce {}
+
+
+//  7
+// 8 6
+//1   5
+// 2 4
+//  3
+
+actor ShinySparkleFlash : BasicExplosion
+{
+States
+{
+Spawn:
+S1:
+ZS_Y ABACDFFEECDDDCEE 1
+stop
+S2:
+ZS_Y ZZZABBDCCCDHHECCDHEEEH 1
+stop
+S3:
+ZS_Y ZZZZZZZZAABDDCCEFFECCDHHEE 1
+stop
+S4:
+ZS_Y ZZZZZZZZZZZZBAAADDCEEFFDCCCDFE 1
+stop
+S5:
+ZS_Y ZZZZZZZZZZZZZZZZBBAACDDDCEEHDCCEHHHE 1
+stop
+S6:
+ZS_Y ZZZZZZZZZZZZZZZZZZZZZZBBACCDDEEEHDDCEEHH 1
+stop
+S7:
+ZS_Y ZZZZZZZZZZZZZZZZZZZZZZZZZZABBACCDHHEECDDDCEH 1
+stop
+S8:
+ZS_Y ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZAABBDCCCDHHECDDHEH 1
+stop
+}
+}
+
+actor ShinySparkleItem : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0
+//TNT1 A 0 A_PlaySoundEx("","Voice")
+TNT1 A 0 A_JumpIfInventory("ShinySparkleFlag",1,"No")
+TNT1 A 0 A_GiveInventory("ShinySparkleFlag",1)
+TNT1 A 0 A_SpawnItemEx("ShinySparkleStartF_H",0,0,28,0,0,0,0,1)
+TNT1 A 0 A_SpawnItemEx("ShinySparkleHelper")
+stop
+No:
+TNT1 A 0
+stop
+}
+}
+
+actor ShinySparkleStartFX : BasicClientSide
+{
++MISSILE
++DONTBLAST
++FORCEXYBILLBOARD
++BRIGHT
+Speed 30
+States
+{
+Spawn:
+ZS_Y STUTSTUTSTUTSTUT 1
+stop
+}
+}
+
+
+actor ShinySparkleStartF_H : BasicClientSide
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("ShinySparkleStartF_H1",0,0,0,0,0,0,0,1)
+TNT1 A 0 A_SpawnItemEx("ShinySparkleStartF_H2",0,0,0,0,0,0,0,1)
+TNT1 A 0 A_SpawnItemEx("ShinySparkleStartF_H3",0,0,0,0,0,0,0,1)
+TNT1 A 0 A_SpawnItemEx("ShinySparkleStartF_H4",0,0,0,0,0,0,0,1)
+TNT1 A 0 A_SpawnItemEx("ShinySparkleStartF_H5",0,0,0,0,0,0,0,1)
+stop
+}
+}
+actor ShinySparkleStartF_H1 : BasicClientSide
+{
+MeleeRange 30
+Mass 18
+Args 18,10
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("ShinySparkleStartFX",cos(Args[1])*MeleeRange,0, sin(Args[1])*MeleeRange,cos(Args[1]),0, sin(Args[1]),360/Mass*Args[0],1+SXF_MULTIPLYSPEED)//8192
+TNT1 A 0 A_SpawnItemEx("ShinySparkleStartFX",cos(Args[1])*MeleeRange,0,-sin(Args[1])*MeleeRange,cos(Args[1]),0,-sin(Args[1]),360/Mass*Args[0],1+8192)
+TNT1 A 0 A_CountdownArg(0)
+loop
+Death:
+TNT1 A 0
+stop
+}
+}
+actor ShinySparkleStartF_H2 : ShinySparkleStartF_H1
+{
+Mass 15
+Args 15,30
+}
+actor ShinySparkleStartF_H3 : ShinySparkleStartF_H1
+{
+Mass 12
+Args 12,50
+}
+actor ShinySparkleStartF_H4 : ShinySparkleStartF_H1
+{
+Mass 7
+Args 7,70
+}
+actor ShinySparkleStartF_H5 : ShinySparkleStartF_H1
+{
+Mass 1
+Args 1,90
+}
+
+
+
+actor ShinySparkleHelper : BasicHelper
+{
++SERVERSIDEONLY
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 4
+goto Sparkle
+Sparkle:
+TNT1 A 0
+TNT1 A 3 A_GiveToTarget("ShinySparkleHelper_P",1)
+TNT1 A 0 A_JumpIf(CallACS("uh_PointerExists", 2)==0,"Death")
+TNT1 A 0 A_JumpIfInTargetInventory("ShinySparkleFlag",1,"Sparkle")
+stop
+}
+}
+
+actor ShinySparkleHelper_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_CheckFlag(CANTSEEK,"No")
+goto Pickup1
+Pickup1:
+TNT1 A 0 A_SpawnItemEx("ShinySparkleFX",random(16,48),0,Random(16,48),0,0,0,random(45,315),1+32)
+TNT1 A 0 A_SpawnItemEx("ShinySparkleFX1",random(16,48),0,Random(16,48),0,0,0,random(45,315),1+32)
+stop
+No:
+TNT1 A 0
+stop
+}
+}
+
+actor ShinySparkleFX : BasicClientSide
+{
++FORCEXYBILLBOARD
++BRIGHT
+ReactionTime 7
+Renderstyle "Translucent"
+Alpha 0.95
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_Jump(256,1,2,3,4,5,6,7,8,9,"Spawn4","Spawn5","Spawn6")
+Spawn1:
+X_2F ABC 2 A_CountDown
+loop
+Spawn2:
+X_2F DEF 2 A_CountDown
+loop
+Spawn3:
+X_2F XYZ 2 A_CountDown
+loop
+Spawn4:
+X_2F ABC 2
+stop
+Spawn5:
+X_2F DEF 2
+stop
+Spawn6:
+X_2F XYZ 2
+stop
+}
+}
+actor ShinySparkleFX1 : ShinySparkleFX{Scale 1.5}
+
+
+actor ShinySparkleFX2 : ShinySparkleFX
+{
+States
+{
+Spawn4:
+goto Spawn1
+Spawn5:
+goto Spawn2
+Spawn6:
+goto Spawn3
+}
 }

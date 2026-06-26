@@ -189,19 +189,21 @@ script "uh_shinyclassmorpher" (int ClassNum)
 		if(i!=3)
 			StopSound(0,i);
 	}
-	str TheClass;
+	str originalClass, shinyClass;
 
 	if(ClassNum >= 0 && ClassNum <= 1){
-		TheClass = StrParam(s:"S_",s:UH_C_Array[ClassNum][0]);
+		originalClass = UH_C_Array[ClassNum][0];
+		shinyClass = StrParam(s:originalClass, s:"S");
 	}
 	else{
-		TheClass = StrParam(s:"S_",s:GetActorClass(0));
+		originalClass = GetActorClass(0);
+		shinyClass = StrParam(s:originalClass, s:"S");
 	}
 
 	//if(CheckClass(TheClass))
 		//GiveInventory("UH_MorphLMSFix_P",1);
 
-	if(ACS_ExecuteWithResult(975,0)==2)//Is it T/LMS ?
+	if(ACS_NamedExecuteWithResult("core_checkmode", 0)==2)//Is it T/LMS ?
 		GiveInventory("UH_MorphLMSFix_P",1);
 //2+128+256+512 = 898
 //2		MRF_FULLHEALTH
@@ -211,7 +213,8 @@ script "uh_shinyclassmorpher" (int ClassNum)
 //512	MRF_UNDOBYDEATH
 //	if(MorphActor(0, TheClass, "", 0x7fffffff, 898, "ShinySparkleFlash", StrParam(s:TheClass, s:"C"))){
 	delay(1);
-	if(MorphActor(0, TheClass, "", 0x7ffffffc, MRF_FULLHEALTH|MRF_WHENINVULNERABLE|MRF_LOSEACTUALWEAPON|MRF_NEWTIDBEHAVIOUR, "ShinySparkleFlash", "FlashM_GenesisSparkleFX")){
+	if(MorphActor(0, shinyClass, "", 0x7ffffffc, MRF_FULLHEALTH|MRF_WHENINVULNERABLE|MRF_LOSEACTUALWEAPON|MRF_NEWTIDBEHAVIOUR, "ShinySparkleFlash", "FlashM_GenesisSparkleFX")){
+		TakeInventory(StrParam(s:originalClass, s:"_W"), 1);
 		GiveInventory("S_ClassSpawn_P",1);
 		TakeInventory("MorphedFlag",1);
 	}
@@ -301,6 +304,23 @@ script "uh_Health" (int Swap, int HPBoost) //Health related script
 		Case UHEALTH_GET_MAX_RAW://Returns MaxHp
 			SetResultValue(s_h);
 			break;
+	}
+}
+
+script "uh_IsUnderWaterGravity" (void)
+{
+	WaterChecker(ActivatorTID());
+}
+
+//Morphes don't correctly copy gravity changes
+function void WaterChecker (int PlayerID)
+{
+	int Gravy = GetActorProperty(PlayerID, APROP_Gravity);
+	if(CheckActorInventory(PlayerID, "IsUnderWater") >= 1){
+		SetActorProperty(PlayerID, APROP_Gravity, FixedDiv(Gravy, 3.2));
+	}
+	else{
+		SetActorProperty(PlayerID, APROP_Gravity, Gravy);
 	}
 }
 
