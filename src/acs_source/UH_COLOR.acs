@@ -1,0 +1,131 @@
+#library "UH_COLOR"
+#include "zcommon.acs"
+
+#include "dtadd.acs"
+#include "colofunc.acs" // used for RGB translations
+
+//8BDMDEFS.acs
+#define COLOR_LIGHTER 1
+#define COLOR_SECONDARY 2
+#define COLOR_PRIMARY 3
+#define COLOR_DARK 4
+
+/*
+
+ACS_NamedExecuteWithResult("core_weaponcolor", CLR_SWORDMAN, 0, UH_TCLR_DEFAULT)
+...
+*/
+
+script "uh_registerteamcolorscript" OPEN CLIENTSIDE {
+	RegisterTeamColorDef("uh_maketeamcolors");
+}
+
+
+#define TINT_GLXY1 10460
+#define TINT_GLXY2 10464
+#define TINT_GLXY3 10468
+#define TINT_GLXY4 10472
+#define TINT_GLXY5 10476
+#define TINT_GLXY6 10480
+#define TINT_GLXY7 10484
+
+#define UH_TCLR_DEFAULT 10500 // - 10503
+
+#define TINT_TCLR1 10504
+#define TINT_TCLR2 10508
+#define TINT_TCLR3 10512
+
+#define TINT_BBA 10572
+#define TINT_BBA_DEAD 10576
+
+#define TINT_PIRATE 10592
+
+script "uh_maketeamcolors" (int team, int refTeam) CLIENTSIDE {
+	int white = rgbTriplet(255, 255, 255);
+	int black = rgbTriplet(0, 0, 0);
+	int pri = GrabTeamRGBTriplet(refTeam,COLOR_PRIMARY);
+	int pri1 = DTADD_UnpackByte1(pri); int pri2 = DTADD_UnpackByte2(pri); int pri3 = DTADD_UnpackByte3(pri);
+	int sec = GrabTeamRGBTriplet(refTeam,COLOR_SECONDARY);
+	int sec1 = DTADD_UnpackByte1(sec); int sec2 = DTADD_UnpackByte2(sec); int sec3 = DTADD_UnpackByte3(sec);
+	int lit = GrabTeamRGBTriplet(refTeam,COLOR_LIGHTER);
+	int lit1 = DTADD_UnpackByte1(lit); int lit2 = DTADD_UnpackByte2(lit); int lit3 = DTADD_UnpackByte3(lit);
+	int drk = GrabTeamRGBTriplet(refTeam,COLOR_DARK);
+	int drk1 = DTADD_UnpackByte1(drk); int drk2 = DTADD_UnpackByte2(drk); int drk3 = DTADD_UnpackByte3(drk);
+
+	CreateTranslation(
+		DefineTranslation(UH_TCLR_DEFAULT+team),
+		192:192=[sec1,sec2,sec3]:[sec1,sec2,sec3],
+		202:202=[sec1,sec2,sec3]:[sec1,sec2,sec3],
+		204:204=[sec1,sec2,sec3]:[sec1,sec2,sec3],
+		198:198=[pri1,pri2,pri3]:[pri1,pri2,pri3],
+		195:195=[pri1,pri2,pri3]:[pri1,pri2,pri3],
+		199:199=[pri1,pri2,pri3]:[pri1,pri2,pri3],
+		249:249=[drk1,drk2,drk3]:[drk1,drk2,drk3],
+		250:250=[lit1,lit2,lit3]:[lit1,lit2,lit3]
+	);
+
+	CreateTranslation(DefineTranslation(TINT_TCLR1+team),
+		4:4=0:0,
+		192:192=[sec1,sec2,sec3]:[sec1,sec2,sec3],
+		198:198=[pri1,pri2,pri3]:[pri1,pri2,pri3],
+		0:0=0:0
+	);
+	CreateTranslation(DefineTranslation(TINT_TCLR2+team),
+		4:4=[sec1,sec2,sec3]:[sec1,sec2,sec3],
+		192:192=0:0,
+		198:198=[pri1,pri2,pri3]:[pri1,pri2,pri3],
+		0:0=[sec1,sec2,sec3]:[sec1,sec2,sec3]
+	);
+	CreateTranslation(DefineTranslation(TINT_TCLR3+team),
+		4:4=[pri1,pri2,pri3]:[pri1,pri2,pri3],
+		192:192=[sec1,sec2,sec3]:[sec1,sec2,sec3],
+		198:198=0:0,
+		0:0=[pri1,pri2,pri3]:[pri1,pri2,pri3]
+	);
+
+	CreateTranslation(DefineTranslation(TINT_BBA+team),
+		192:192=[sec1,sec2,sec3]:[sec1,sec2,sec3],
+		198:198=[pri1,pri2,pri3]:[pri1,pri2,pri3],
+		161:161=[lit1,lit2,lit3]:[lit1,lit2,lit3]
+	);
+	CreateTranslation(DefineTranslation(TINT_BBA_DEAD+team),
+		213:213=215:215,
+		192:192=[drk1,drk2,drk3]:[drk1,drk2,drk3],
+		198:198=0:0,
+		161:161=[pri1,pri2,pri3]:[pri1,pri2,pri3]
+	);
+
+	CreateTranslation(DefineTranslation(TINT_PIRATE+team),
+		192:192=[sec1,sec2,sec3]:[sec1,sec2,sec3],
+		198:198=[pri1,pri2,pri3]:[pri1,pri2,pri3],
+		56:56=[lit1,lit2,lit3]:[lit1,lit2,lit3]
+	);
+
+	//CreatePlayerTranslationGlow(TINT_TCLR1+team,sec,pri,drk);
+	CreatePlayerTranslation(TINT_GLXY1+team,sec,brightenRGBTriplet(pri,-63));
+	CreatePlayerTranslation(TINT_GLXY2+team,sec,brightenRGBTriplet(pri,-45));
+	CreatePlayerTranslation(TINT_GLXY3+team,sec,brightenRGBTriplet(pri,-27));
+	CreatePlayerTranslation(TINT_GLXY4+team,sec,brightenRGBTriplet(pri,-9));
+	CreatePlayerTranslation(TINT_GLXY5+team,sec,brightenRGBTriplet(pri,9));
+	CreatePlayerTranslation(TINT_GLXY6+team,sec,brightenRGBTriplet(pri,27));
+	CreatePlayerTranslation(TINT_GLXY7+team,sec,brightenRGBTriplet(pri,45));
+
+
+}
+
+
+
+
+#DEFINE POWERFLIGHT 10680
+#DEFINE BURNTDEATH 29001
+
+#DEFINE MEGAMAN_DYE 20000
+#DEFINE BUSTEREXPERT_DYE 20003
+
+Script "uh_translations_deluxe" OPEN CLIENTSIDE
+{
+
+CreateTranslation(BURNTDEATH, 0:255=%[0.175,0,0]:[0.7,0.7,0.7], 0:0=0:0);
+CreateTranslation(BUSTEREXPERT_DYE, 192:192=86:86, 198:198=94:94);
+
+}
