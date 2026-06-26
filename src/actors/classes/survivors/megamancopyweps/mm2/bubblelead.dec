@@ -1,0 +1,96 @@
+actor BubbleLeadWepU_NormalBar : BubbleLeadWep_NormalBar {}
+
+actor BubbleLeadWepU : BaseMM8BDMCustWep replaces BubbleLeadWep
+{
+//$Category MM8BDM-Weapons/Close
+//$Title Bubble Lead
+//$Sprite WEAPD0
+Weapon.AmmoUse 2
+Weapon.AmmoGive 28
+Weapon.SlotNumber 4
+Inventory.Pickupmessage "$PU_BUBBLELEAD"
+Obituary "$OB_BUBBLELEAD"
+Tag "$TAG_BUBBLELEAD"
+weapon.ammotype "BubbleLeadAmmo"
+inventory.icon "BUBBI"
+States
+{
+SpawnLoop:
+WEAP D -1
+loop
+Ready:
+BUBB D 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_BUBBLELEAD)
+BUBB D 12 A_WeaponReady
+BUBB D 0 A_GiveInventory("BubbleLeadAmmo", 1)
+goto Ready+1
+Deselect:
+BUBB D 0
+goto DeselectSwap
+Select:
+BUBB D 0
+goto SelectSwap
+Fire:
+BUBB D 0 A_JumpIfNoAmmo("NoAmmo")
+BUBB D 0 A_PlaySoundEx("weapons/mm2/bubbleleadfire","Weapon")
+BUBB D 0 
+BUBB D 0 A_FireCustomMissile("BubbleLeadSpawnerU",0,1,8,0)//A_SpawnItemEx("BubbleLeadStartU",6,0,0,8,0,8,0,0,0)
+BUBB EFD 4
+BUBB D 0 A_Refire
+goto Ready+1
+NoAmmo:
+BUBB D 12 A_WeaponReady(12)
+BUBB D 0 A_GiveInventory("BubbleLeadAmmo", 1)
+BUBB D 0 A_JumpIfNoAmmo("NoAmmo")
+Goto Ready+1
+}
+}
+
+actor BubbleLeadSpawnerU
+{
+PROJECTILE
++NOINTERACTION
++NOCLIP
+Damage(0)
+Height 1
+Radius 1
+Speed 0
+States
+{
+Spawn:
+TNT1 A 1
+TNT1 A 0 A_SpawnItemEx("BubbleLeadStartU",8,0,-16,8,0,5,0,0,0)
+stop
+}
+}
+
+actor BubbleLeadStartU : BubbleLeadStart
+{
+-NOGRAVITY
++FORCEXYBILLBOARD
+Damage (47)
+DamageType "BubbleLead"
+Obituary "$OB_BUBBLELEAD"
+Height 16
+Radius 20
+States
+{
+Spawn:
+BUBB ABCB 3
+loop
+Death:
+TNT1 A 0 A_JumpIf(z-floorz==0,"Death2")
+TNT1 A 1
+stop
+XDeath:
+TNT1 A 1 A_SpawnItemEx("SoakifyEffect")
+stop
+Death2:
+TNT1 A 1 A_SpawnItemEx("BubbleLeadU",0,0,0,22,0,0,0,0,0)
+stop
+}
+}
+
+actor BubbleLeadU : BubbleLead
+{
+Damage (470)
+}
