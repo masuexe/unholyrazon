@@ -1,3 +1,5 @@
+actor MegaMan_W_NormalBar : NormalBar {Args 192,198}
+
 actor MegaMan_W : BaseMM8BDMWep_UH
 {
 Weapon.AmmoUse 28
@@ -16,14 +18,14 @@ loop
 
 Deselect:
 BUST B 0
-goto DeselectX
+goto DeselectSwap
 Select:
 BUST B 0
-goto SelectX
+goto SelectSwap
 
 Ready:
-BUST B 0 ACS_ExecuteAlways(998,0,0)
-BUST B 0 ACS_ExecuteAlways(991,0,0)
+BUST B 0 ACS_NamedExecuteWithResult("core_weaponcolor", 0)
+BUST B 0 ACS_NamedExecuteWithResult("core_weaponcolor", 0, true)
 Goto Ready2
 Ready2:
 BUST B 0 A_JumpIfInventory("RockNRollAmmo",0,"Ready3")
@@ -82,22 +84,22 @@ Goto Charge1
 
 Charge1:
 CHBU H 0 A_JumpIfInventory("WeaponCharge",28,"Charge2")
-CHBU H 1 ACS_ExecuteAlways(991,0,92)
+CHBU H 1 ACS_NamedExecuteWithResult("core_weaponcolor", 92)
 BUST B 0 A_Refire(1)
 goto Fire2
 BUST B 0 A_JumpIfInventory("WeaponCharge",28,"Charge2")
-BUST B 1 ACS_ExecuteAlways(991,0,0)
+BUST B 1 ACS_NamedExecuteWithResult("core_weaponcolor", 0)
 CHBU H 0 A_Refire("Charge1")
 goto Fire2
 
 Charge2:
-BUST B 1 ACS_ExecuteAlways(991,0,93)
+BUST B 1 ACS_NamedExecuteWithResult("core_weaponcolor", 93)
 CHBU I 0 A_Refire(1)
 goto Fire3
-CHBU I 1 ACS_ExecuteAlways(991,0,94)
+CHBU I 1 ACS_NamedExecuteWithResult("core_weaponcolor", 94)
 CHBU J 0 A_Refire(1)
 goto Fire3
-CHBU J 1 ACS_ExecuteAlways(991,0,0)
+CHBU J 1 ACS_NamedExecuteWithResult("core_weaponcolor", 0)
 BUST B 0 A_Refire("Charge2")
 goto Fire3
 
@@ -133,9 +135,9 @@ ReactionTime 28
 States
 {
 Spawn:
-TNT1 A 17 A_JumpIf(ACS_ExecuteWithResult(U_CHECK_TARGET_OOC)==0,"Death")
-TNT1 A 0 A_JumpIf(CallACS("uh_CheckForRage",2),2)
-TNT1 A 17 A_JumpIf(ACS_ExecuteWithResult(U_CHECK_TARGET_OOC)==0,"Death")
+TNT1 A 17 A_JumpIf(CallACS("uh_PointerExists",2)==0,"Death")
+TNT1 A 0 A_JumpIf(CallACS("core_checkrune",RUNE_RAGE,2),2)
+TNT1 A 17 A_JumpIf(CallACS("uh_PointerExists",2)==0,"Death")
 TNT1 A 0 A_GiveToTarget("RockNRollAmmo",1)
 TNT1 A 0 A_CountDown
 loop
@@ -177,7 +179,7 @@ TNT1 A 0 A_FireCustomMissile("MegaShotU",0,0,8,0)
 goto Reset
 
 Reset2:
-TNT1 A 0 ACS_ExecuteAlways(991,0,0)
+TNT1 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", 0)
 Reset:
 TNT1 A 0 A_TakeInventory("WeaponCharge")
 TNT1 A 0 A_GunFlash(1,1)
@@ -224,16 +226,14 @@ goto Reset2
 }
 
 
-actor MegaShotU
+actor MegaShotU : BasicProjectile
 {
-PROJECTILE
 damagetype "Buster"
 Obituary "$OB_MEGABUSTER"
 Damage (100)//50
 radius 8
 height 8
 Speed 38
-scale 2.5
 States
 {
 Spawn:
