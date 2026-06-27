@@ -1,0 +1,118 @@
+actor GeminiLaserWepU_NormalBar : GeminiLaserWep_NormalBar {}
+
+actor GeminiLaserWepU : BaseMM8BDMCustWep replaces GeminiLaserWep
+{
+Weapon.AmmoUse 2
+Weapon.AmmoGive 28
+Weapon.SlotNumber 2
+Inventory.Pickupmessage "$PU_GEMINILASER"
+Obituary "$OB_GEMINILASER"
+Tag "$TAG_GEMINILASER"
+weapon.ammotype "GeminiLaserAmmo"
+inventory.icon "GEMISI"
+States
+{
+SpawnLoop:
+WEAP M -1
+loop
+Ready:
+BLIZ D 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_GEMINILASER)
+BLIZ D 1 A_WeaponReady
+Goto Ready+1
+Deselect:
+BLIZ D 0
+goto DeselectSwap
+Select:
+BLIZ D 0
+goto SelectSwap
+Fire:
+BLIZ D 0 A_JumpIfNoAmmo("NoAmmo")
+BLIZ D 0 A_PlaySoundEx("weapons/mm3/geminilaserfire","Weapon")
+BLIZ D 0 A_FireCustomMissile("GeminiLaserShooterU",0,1,8,0)
+BLIZ EF 4
+BLIZ D 14
+BLIZ D 0 A_Refire
+Goto Ready+1
+NoAmmo:
+BLIZ D 1 ACS_NamedExecuteAlways("core_noammo",0)
+Goto Ready+1
+}
+}
+
+// Separate spawner to prevent GeminiLaser from *not* having its angle on spawn
+//
+actor GeminiLaserShooterU
+{
+	PROJECTILE
+	Height 0
+	Radius 0
+	+NOINTERACTION
+	+NOCLIP
+	speed 1
+	States
+	{
+	Spawn:
+		TNT1 A 0
+		TNT1 A 0 ACS_NamedExecuteWithResult("core_SetVelPitch",0,0)
+		TNT1 A 1 A_CustomMissile("GeminiLaserFastU",0,0,0,CMF_AIMDIRECTION|CMF_SAVEPITCH,pitch)
+		stop
+	}
+}
+
+actor GeminiLaserFastU : BasicProjectile
+{
+	+HITTARGET
+	+USEBOUNCESTATE
+	+FORCEXYBILLBOARD
+	+BRIGHT
+	WALLBOUNCEFACTOR 0.91
+	BOUNCEFACTOR 0.91
+	Obituary "$OB_GEMINILASER"
+	damagetype "GeminiLaser"
+	damage (300)
+	speed 50
+	Radius 5
+	Height 5
+	States
+	{
+	Spawn:
+		GEMI A 0
+		GEMI A 0 A_SpawnItemEx("GeminiTrail", -0.0*momx, -0.0*momy, -0.0*momz, 0, 0, 0, 0, SXF_ABSOLUTEPOSITION|SXF_WEPFXCOLOR)
+		GEMI A 0 A_SpawnItemEx("GeminiTrail", -0.1*momx, -0.1*momy, -0.1*momz, 0, 0, 0, 0, SXF_ABSOLUTEPOSITION|SXF_WEPFXCOLOR)
+		GEMI A 0 A_SpawnItemEx("GeminiTrail", -0.2*momx, -0.2*momy, -0.2*momz, 0, 0, 0, 0, SXF_ABSOLUTEPOSITION|SXF_WEPFXCOLOR)
+		GEMI A 0 A_SpawnItemEx("GeminiTrail", -0.3*momx, -0.3*momy, -0.3*momz, 0, 0, 0, 0, SXF_ABSOLUTEPOSITION|SXF_WEPFXCOLOR)
+		GEMI A 0 A_SpawnItemEx("GeminiTrail", -0.4*momx, -0.4*momy, -0.4*momz, 0, 0, 0, 0, SXF_ABSOLUTEPOSITION|SXF_WEPFXCOLOR)
+		GEMI A 0 A_SpawnItemEx("GeminiTrail", -0.5*momx, -0.5*momy, -0.5*momz, 0, 0, 0, 0, SXF_ABSOLUTEPOSITION|SXF_WEPFXCOLOR)
+		GEMI A 0 A_SpawnItemEx("GeminiTrail", -0.6*momx, -0.6*momy, -0.6*momz, 0, 0, 0, 0, SXF_ABSOLUTEPOSITION|SXF_WEPFXCOLOR)
+		GEMI A 0 A_SpawnItemEx("GeminiTrail", -0.7*momx, -0.7*momy, -0.7*momz, 0, 0, 0, 0, SXF_ABSOLUTEPOSITION|SXF_WEPFXCOLOR)
+		GEMI A 0 A_SpawnItemEx("GeminiTrail", -0.8*momx, -0.8*momy, -0.8*momz, 0, 0, 0, 0, SXF_ABSOLUTEPOSITION|SXF_WEPFXCOLOR)
+		GEMI A 0 A_SpawnItemEx("GeminiTrail", -0.9*momx, -0.9*momy, -0.9*momz, 0, 0, 0, 0, SXF_ABSOLUTEPOSITION|SXF_WEPFXCOLOR)
+		GEMI A 1
+		loop
+	Death:
+		GEMI A 0 A_SpawnItemEx("GeminiLaserRicochetU", -momx, -momy, -momz, 0, 0, 0, 0, SXF_ABSOLUTEPOSITION|SXF_TRANSFERPITCH)
+		stop
+	XDeath:
+		GEMI A 0 A_SpawnItemEx("GeminiImpact", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS|SXF_WEPFXCOLOR)
+		stop
+	}
+}
+
+// Directly spawning GeminiLaser from the position of GeminiLaserFast would occasionally lead to GeminiLaser dying
+// this is likely due to how fast GeminiLaserFast goes
+// so i need a separate ricochet actor to handle the thing
+//
+actor GeminiLaserRicochetU : GeminiLaserShooter
+{
+	States
+	{
+	Spawn:
+		GEMI AA 0 A_CustomMissile("GeminiLaserU",0,0,0,CMF_AIMDIRECTION,pitch)
+		stop
+	}
+}
+
+actor GeminiLaserU : GeminiLaser
+{
+	damage (300)
+}

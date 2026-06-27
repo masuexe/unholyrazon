@@ -1,0 +1,147 @@
+actor SearchSnakeWepU_NormalBar : SearchSnakeWep_NormalBar {}
+
+actor SearchSnakeWepU : BaseMM8BDMCustWep replaces SearchSnakeWep
+{
+Weapon.AmmoUse 1
+Weapon.AmmoGive 56
+Weapon.SlotNumber 2
+Inventory.Pickupmessage "$PU_SEARCHSNAKE"
+Obituary "$OB_SEARCHSNAKE"
+Tag "$TAG_SEARCHSNAKE"
+weapon.ammotype "SearchSnakeAmmo"
+inventory.icon "SNAKESI"
+States
+{
+SpawnLoop:
+WEAP K -1
+loop
+Ready:
+SNAK I 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_SEARCHSNAKE)
+SNAK I 1 A_WeaponReady
+Goto Ready+1
+Deselect:
+SNAK I 0
+goto DeselectSwap
+Select:
+SNAK I 0
+goto SelectSwap
+Fire:
+SNAK I 0 A_JumpIfNoAmmo("NoAmmo")
+SNAK I 0 A_PlaySoundEx("weapons/mm3/searchsnakefire","Weapon")
+SNAK I 0 A_FireCustomMissile("SearchSnakeStartU",0,1,8,0)//A_SpawnItemEx("SearchSnakeStartU",6,0,0,8,0,8,0,0,0)
+SNAK JK 5
+SNAK I 4
+SNAK I 0 A_Refire
+Goto Ready+1
+NoAmmo:
+SNAK I 1 ACS_NamedExecuteAlways("core_noammo",0)
+Goto Ready+1
+}
+}
+
+
+actor SearchSnakeBaseU : SearchSnakeBase
+{
+Damage (320)
+}
+
+actor SearchSnakeStartU : SearchSnakeBaseU
+{
+Speed 23
+-NOGRAVITY
+States
+{
+Spawn:
+SNAK A 4
+loop
+Death:
+TNT1 A 0 A_SpawnItemEx("SearchSnakeMasterU")
+stop
+XDeath:
+TNT1 A 0
+stop
+}
+}
+
+actor SearchSnakeMasterU : SearchSnakeBaseU
+{
++NOCLIP
++NOINTERACTION
+//reactiontime 10
+reactiontime 100
+states
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SetPitch(PITCH_FORWARD)
+TNT1 A 0 A_SpawnItemEx("SearchSnakeCrawlU",0,0,0,cos(pitch),0,-sin(pitch),0,SXF_SEARCHSNAKESTART,0,CallACS("core_NewUniqueTID"))
+TNT1 A 0 ACS_NamedExecuteWithResult("core_setTIDsPointerToThis",CallACS("core_CurrentUniqueTID"),AAPTR_MASTER)
+TNT1 A 0 ACS_NamedExecuteWithResult("core_ClearUniqueTID",0)
+SpawnLoop:
+SNAK A 1 A_GiveInventory("SearchSnakeMasterFunc",1)
+loop
+CustomState1:
+SNAK A 1 A_ChangeVelocity(15,0,0,CVF_RELATIVE|CVF_REPLACE)
+SpawnForward:
+SNAK AAABBBBA 1 A_GiveInventory("SearchSnakeMasterFunc",1)
+loop
+CustomState2:
+SNAK E 1 A_ChangeVelocity(0,0,-15,CVF_RELATIVE|CVF_REPLACE)
+SpawnDown:
+SNAK EEEFFFFE 1 A_GiveInventory("SearchSnakeMasterFunc",1)
+loop
+CustomState3:
+SNAK C 1 A_ChangeVelocity(0,0,15,CVF_RELATIVE|CVF_REPLACE)
+SpawnUp:
+SNAK CCCDDDDC 1 A_GiveInventory("SearchSnakeMasterFunc",1)
+loop
+Death:
+TNT1 A 0 A_RemoveChildren(true)
+stop
+}
+}
+
+actor SearchSnakeCrawlU : SearchSnakeBaseU
+{
++INVISIBLE
++MOVEWITHSECTOR
++DONTSPLASH
++SERVERSIDEONLY
++NONETID
+var int user_NoTranslation;
+states
+{
+Spawn:
+TNT1 A 0
+BUST A 1 A_GiveInventory("WarpMasterHere",1)
+TNT1 A 0 ACS_NamedExecuteWithResult("core_setpointerpitch",pitch,AAPTR_MASTER)
+TNT1 A 0 A_JumpIf(pitch==PITCH_DOWN,"SpawnD")
+TNT1 A 0 A_SetPitch(pitch+90)
+TNT1 A 0 A_SpawnItemEx("SearchSnakeCrawlU",0,0,0,cos(pitch)*2,0,-sin(pitch)*2,0,SXF_SEARCHSNAKE)
+stop
+SpawnD:
+TNT1 A 0 A_SpawnItemEx("SearchSnakeCrawlU",0,0,0,cos(pitch),0,-sin(pitch),0,SXF_SEARCHSNAKE)
+stop
+Death:
+TNT1 A 0 A_JumpIf(pitch==PITCH_UP,"DeathU")
+TNT1 A 0 A_SetPitch(pitch-90)
+TNT1 A 0 A_SpawnItemEx("SearchSnakeCrawlU",0,0,0,cos(pitch),0,-sin(pitch),0,SXF_SEARCHSNAKE)
+stop
+DeathU:
+TNT1 A 0 A_SpawnItemEx("SearchSnakeCrawlDU",0,0,0,cos(pitch-45),0,-sin(pitch-45),0,SXF_SEARCHSNAKE)
+stop
+XDeath:
+TNT1 A 0 A_RemoveMaster
+stop
+}
+}
+
+actor SearchSnakeCrawlDU : SearchSnakeCrawlU
+{
+states
+{
+Death:
+TNT1 A 0
+goto XDeath
+}
+}
