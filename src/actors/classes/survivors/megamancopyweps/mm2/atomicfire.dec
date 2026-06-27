@@ -1,0 +1,161 @@
+actor AtomicFireWepU_ScriptBar : ScriptBar {}
+
+actor AtomicFireWepU : BaseMM8BDMCustWep replaces AtomicFireWep
+{
+Weapon.AmmoUse 1
+Weapon.AmmoGive 28
+Weapon.SlotNumber 5
+Inventory.Pickupmessage "$PU_ATOMICFIRE"
+Obituary "$OB_ATOMICFIRE"
+weapon.ammotype "AtomicFireAmmo"
+Tag "$TAG_ATOMICFIRE"
+inventory.icon "ATOMI"
++WEAPON.AMMO_OPTIONAL
+Scale 2.0
+States
+{
+SpawnLoop:
+WEAP E -1
+loop
+Ready:
+HEAT G 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_ATOMICFIRE)
+HEAT G 1 A_WeaponReady
+Goto Ready+1
+Deselect:
+HEAT G 0
+goto DeselectSwap
+Select:
+HEAT G 0
+goto SelectSwap
+Altfire:
+HEAT G 0 A_JumpIfNoAmmo("NoAmmo")
+HEAT G 4
+Goto Fire1
+Fire:
+HEAT G 0 A_JumpIfNoAmmo("NoAmmo")
+HEAT G 1
+goto Hold
+Hold:
+HEAT G 0 A_JumpIfNoAmmo("NoAmmo")
+HEAT G 0 A_JumpIfInventory("WeaponCharge",1,"Hold2Start")
+HEAT G 2 A_GiveInventory("WeaponCharge",1) // no rage rune for this one
+HEAT G 0 A_Refire
+Goto Fire1
+Hold2Start:
+HEAT G 0 A_GunFlash("Sound.Heat", GFF_NOEXTCHANGE)//A_PlaySoundEx("weapons/mm2/atomicfirecharge1", "SoundSlot5", 1)
+Hold2:
+HEAT G 0 A_JumpIfInventory("WeaponCharge",35,"Hold3Start")
+HEAT H 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_ATOMICFIRECRG1,TCLR_ATOMICFIRE_CHARGE1)
+HEAT G 0 A_Refire("Hold2.a")
+Goto Fire1
+Hold2.a:
+HEAT G 0 ACS_NamedExecuteWithResult("core_chargecolor",CLR_ATOMICFIRE,TCLR_NONE)
+HEAT G 1 A_GiveInventory("WeaponCharge", 1 + CallACS("core_checkrune", RUNE_RAGE))
+HEAT G 0 A_Refire("Hold2")
+Goto Fire1
+Hold3Start:
+Hold3:
+HEAT G 0 A_JumpIfInventory("WeaponCharge",65,"Hold4Start")
+HEAT I 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_ATOMICFIRECRG2,TCLR_ATOMICFIRE_CHARGE2)
+HEAT G 0 A_Refire("Hold3.a")
+Goto Fire2
+Hold3.a:
+HEAT G 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_ATOMICFIRE,TCLR_NONE)
+HEAT G 0 A_GiveInventory("WeaponCharge", 1 + CallACS("core_checkrune", RUNE_RAGE))
+HEAT G 0 A_Refire("Hold3")
+Goto Fire2
+BotFire:
+HEAT G 0 A_Jump(16, "Fire3")
+HEAT G 0 A_Refire("Hold4")
+Goto Fire3
+Hold4Start:
+Hold4:
+HEAT J 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_ATOMICFIRECRG3,TCLR_ATOMICFIRE_CHARGE3)
+HEAT G 0 A_Refire("Hold4.a")
+Goto Fire3
+Hold4.a:
+HEAT G 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_ATOMICFIRE,TCLR_NONE)
+HEAT G 0 A_JumpIfInventory("IsBot", 1, "BotFire")
+HEAT G 0 A_Refire("Hold4")
+Goto Fire3
+Fire1:
+HEAT G 0 ACS_NamedExecuteWithResult("core_chargecolor",CLR_ATOMICFIRE,TCLR_NONE)
+HEAT G 0 A_TakeInventory("WeaponCharge",500)
+HEAT G 0 A_ClearRefire
+HEAT G 0 A_PlaySoundEx("weapons/mm2/atomicfirefire","Weapon")
+HEAT G 0 A_TakeInventory("AtomicFireAmmo",1,TIF_NOTAKEINFINITE)
+HEAT G 0 A_FireCustomMissile("AtomicFire1U",0,0,8,0)
+HEAT KL 2
+Goto Ready+1
+Fire2:
+HEAT G 0 ACS_NamedExecuteWithResult("core_chargecolor",CLR_ATOMICFIRE,TCLR_NONE)
+HEAT G 0 A_TakeInventory("WeaponCharge",500)
+HEAT G 0 A_ClearRefire
+HEAT G 0 A_PlaySoundEx("weapons/mm2/atomicfirefire","Weapon")
+HEAT G 0 A_JumpIfInventory("AtomicFireAmmo", 5, "Fire2r")
+HEAT G 0 A_TakeInventory("AtomicFireAmmo",5,TIF_NOTAKEINFINITE)
+HEAT G 0 A_FireCustomMissile("AtomicFire1U",0,0,8,0)
+HEAT KL 2
+Goto Ready+1
+Fire2r:
+HEAT G 0 ACS_NamedExecuteWithResult("core_chargecolor",CLR_ATOMICFIRE,TCLR_NONE)
+HEAT G 0 A_TakeInventory("AtomicFireAmmo",5,TIF_NOTAKEINFINITE)
+HEAT G 0 A_FireCustomMissile("AtomicFire2U",0,0,8,0)
+HEAT KL 2
+Goto Ready+1
+Fire3:
+HEAT G 0 ACS_NamedExecuteWithResult("core_chargecolor",CLR_ATOMICFIRE,TCLR_NONE)
+HEAT G 0 A_TakeInventory("WeaponCharge",500)
+HEAT G 0 A_ClearRefire
+HEAT G 0 A_PlaySoundEx("weapons/mm2/atomicfirefire","Weapon")
+HEAT G 0 A_JumpIfInventory("AtomicFireAmmo", 14, "Fire3r")
+HEAT G 0 A_JumpIfInventory("AtomicFireAmmo", 5, "Fire2r")
+HEAT G 0 A_TakeInventory("AtomicFireAmmo",14,TIF_NOTAKEINFINITE)
+HEAT G 0 A_FireCustomMissile("AtomicFire1U",0,0,8,0)
+HEAT KL 3
+HEAT G 3
+Goto Ready+1
+Fire3r:
+HEAT G 0 ACS_NamedExecuteWithResult("core_chargecolor",CLR_ATOMICFIRE,TCLR_NONE)
+HEAT G 0 A_TakeInventory("AtomicFireAmmo",14,TIF_NOTAKEINFINITE)
+HEAT G 0 A_FireCustomMissile("AtomicFire3U",0,0,8,0)
+HEA0 ABCDEF 2
+HEAT G 2
+Goto Ready+1 // 14 frames
+NoAmmo:
+HEAT G 1 ACS_NamedExecuteAlways("core_noammo",0)
+HEAT G 0 A_Refire
+Goto Ready+1
+
+Sound.Heat:
+TNT1 A 0 A_JumpIfInventory("WeaponCharge",65,"Sound.Heat3")
+TNT1 A 0 A_JumpIfInventory("WeaponCharge",35,"Sound.Heat2")
+TNT1 A 4 A_PlaySoundEx("weapons/mm2/atomicfirecharge1", "Weapon", 0)
+TNT1 A 1 A_JumpIfInventory("WeaponCharge",1,"Sound.Heat")
+stop
+Sound.Heat2:
+TNT1 A 4 A_PlaySoundEx("weapons/mm2/atomicfirecharge2", "Weapon", 0)
+TNT1 A 1 A_JumpIfInventory("WeaponCharge",1,"Sound.Heat")
+stop
+Sound.Heat3:
+TNT1 A 4 A_PlaySoundEx("weapons/mm2/atomicfirecharge3", "Weapon", 0)
+TNT1 A 1 A_JumpIfInventory("WeaponCharge",1,"Sound.Heat")
+stop
+}
+}
+
+
+actor AtomicFire1U : AtomicFire1
+{
+damage (160)
+}
+
+actor AtomicFire2U : AtomicFire2
+{
+damage (670)
+}
+
+actor AtomicFire3U : AtomicFire3
+{
+damage (1000)
+}

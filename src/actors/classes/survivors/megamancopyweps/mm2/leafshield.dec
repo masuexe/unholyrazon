@@ -1,0 +1,109 @@
+actor LeafShieldWepU_NormalBar : LeafShieldWep_NormalBar {}
+actor LeafShieldWepU_ScriptBar : ScriptBar {}
+
+actor LeafShieldWepU : BaseMM8BDMCustWep replaces LeafShieldWep
+{
+Weapon.AmmoUse 7
+Weapon.AmmoGive 28
+Weapon.SlotNumber 7
+Inventory.Pickupmessage "$PU_LEAFSHIELD"
+Obituary "$OB_LEAFSHIELD"
+Tag "$TAG_LEAFSHIELD"
+weapon.ammotype "LeafShieldAmmo"
+inventory.icon "LEAFI"
+States
+{
+SpawnLoop:
+WEAP F -1
+loop
+Ready:
+LEAF A 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_LEAFSHIELD)
+LEAF A 1 A_WeaponReady
+Goto Ready+1
+Deselect:
+LEAF A 0 A_GiveInventory("LeafShieldDisable", 1)
+goto DeselectSwap
+Select:
+LEAF A 0
+goto SelectSwap
+Fire:
+LEAF A 0 A_JumpIfInventory("ShieldCheck",1,"ShieldThrow")
+LEAF A 0 A_JumpIfNoAmmo("NoAmmo")
+LEAF A 0 //A_TakeInventory("BasicArmor",9999)
+goto ShieldActivate
+Hold:
+LEAF A 1
+goto Ready+1
+ShieldActivate:
+LEAF A 0 A_TakeInventory("LeafShieldAmmo", 7,TIF_NOTAKEINFINITE)
+LEAF A 0 A_GiveInventory("ShieldCheck",1)
+LEAF BCDEF 1
+LEAF A 0 A_GiveInventory("LeafShieldCharge", 31)
+LEAF A 0 ACS_NamedExecuteWithResult("core_nonshootableplayer", 0, true)
+TNT1 A 0 A_GunFlash("Sound.Leaf", GFF_NOEXTCHANGE)//A_PlaySoundEx("weapons/mm2/leafshieldactive", "Weapon", 1, 0)
+LEAF A 0 A_SpawnItemEx("LeafShieldWarper",0,0,0,0,0,0,0,0)
+LEAF GG 1 A_SpawnItemEx("LeafShieldGuard", 0, 0, 0, momx, momy, momz, 0, SXF_ABSOLUTEMOMENTUM, 0)
+LEAF A 0 A_JumpIfInventory("LeafShieldCounter", 1, "ShieldAttack")
+LEAF HH 1 A_SpawnItemEx("LeafShieldGuard", 0, 0, 0, momx, momy, momz, 0, SXF_ABSOLUTEMOMENTUM, 0)
+LEAF A 0 A_JumpIfInventory("LeafShieldCounter", 1, "ShieldAttack")
+ShieldLoop:
+LEAF A 0 A_WeaponReady
+LEAF A 1 A_SpawnItemEx("LeafShieldGuard", 0, 0, 0, momx, momy, momz, 0, SXF_ABSOLUTEMOMENTUM, 0)
+LEAF A 0 A_JumpIfInventory("LeafShieldCounter", 1, "ShieldAttack")
+LEAF A 0 A_WeaponReady
+LEAF A 1 A_SpawnItemEx("LeafShieldGuard", 0, 0, 0, momx, momy, momz, 0, SXF_ABSOLUTEMOMENTUM, 0)
+LEAF A 0 A_JumpIfInventory("LeafShieldCounter", 1, "ShieldAttack")
+LEAF A 0 A_TakeInventory("LeafShieldCharge", 1)
+LEAF A 0 A_JumpIfInventory("LeafShieldCharge", 1, "ShieldLoop")
+goto ShieldThrow
+ShieldAttack:
+TNT1 A 0 A_StopSoundEx("Weapon")
+LEAF A 0 A_PlaySoundEx("weapons/mm2/leafshieldcounter", "body")
+LEAF A 0 A_GiveInventory("LeafShieldCharge", 32)
+ShieldAttackLoop:
+LEAF A 2 A_FireCustomMissile("LeafShieldCounterShotU", 0, 0, 20, 20)
+LEAF A 0 A_TakeInventory("LeafShieldCharge", 2)
+LEAF A 0 A_JumpIfInventory("LeafShieldCharge", 1, 1)
+goto ShieldThrow
+LEAF A 2 A_FireCustomMissile("LeafShieldCounterShotU", 0, 0, 20, -20)
+LEAF A 0 A_TakeInventory("LeafShieldCharge", 2)
+LEAF A 0 A_JumpIfInventory("LeafShieldCharge", 1, 1)
+goto ShieldThrow
+LEAF A 2 A_FireCustomMissile("LeafShieldCounterShotU", 0, 0, -20, 20)
+LEAF A 0 A_TakeInventory("LeafShieldCharge", 2)
+LEAF A 0 A_JumpIfInventory("LeafShieldCharge", 1, 1)
+goto ShieldThrow
+LEAF A 2 A_FireCustomMissile("LeafShieldCounterShotU", 0, 0, -20, -20)
+LEAF A 0 A_TakeInventory("LeafShieldCharge", 2)
+LEAF A 0 A_JumpIfInventory("LeafShieldCharge", 1, "ShieldAttackLoop")
+goto ShieldThrow
+ShieldThrow:
+LEAF A 0 ACS_NamedExecuteWithResult("core_nonshootableplayer", 0, false)
+LEAF A 0 A_TakeInventory("LeafShieldCharge", 999)
+LEAF I 2
+LEAF JJ 1 // this tricks rage rune into using 3 tics rather than 2 so it doesn't fire too early
+LEAF A 0 A_TakeInventory("ShieldCheck",999)
+LEAF A 0 A_FireCustomMissile("LeafShieldU",0,0,0,0)
+LEAF K 15
+LEAF JI 3
+goto Ready+1
+NoAmmo:
+LEAF A 1 ACS_NamedExecuteAlways("core_noammo",0)
+goto Ready+1
+Sound.Leaf:
+TNT1 A 4 A_PlaySoundEx("weapons/mm2/leafshieldactive", "Weapon", 0)
+TNT1 A 1 A_JumpIfInventory("LeafShieldCharge",1,"Sound.Leaf")
+stop
+}
+}
+
+
+actor LeafShieldU : LeafShield
+{
+damage (270)
+}
+
+actor LeafShieldCounterShotU : LeafShieldCounterShot
+{
+damage (110)
+}
