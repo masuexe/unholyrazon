@@ -1,0 +1,154 @@
+actor RollingCutterWepU_NormalBar : RollingCutterWep_NormalBar {}
+
+actor RollingCutterWepU : BaseMM8BDMCustWep replaces RollingCutterWep
+{
+Weapon.AmmoUse 4
+Weapon.AmmoGive 28
+Weapon.SlotNumber 4
+Inventory.Pickupmessage "$PU_ROLLINGCUTTER"
+Obituary "$OB_ROLLINGCUTTER"
+Tag "$TAG_ROLLINGCUTTER"
+weapon.ammotype "RollingCutterAmmo"
+inventory.icon "RCUTSI"
+States
+{
+SpawnLoop:
+WEA2 F -1
+loop
+Ready:
+BUSH S 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_ROLLINGCUTTER)
+BUSH S 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+BUSH S 1 A_WeaponReady
+Goto Ready+1
+ReadyNoAmmo:
+BUS2 B 1 A_WeaponReady
+Goto Ready+1
+Deselect:
+BUSH S 0 A_GunFlash("ReturnWaitEnd")
+goto DeselectSwap
+Select:
+BUSH S 0
+goto DeselectSwap
+
+ReturnWait:
+TNT1 A 70 A_TakeInventory("RollingCutterFlag",1)
+ReturnWaitEnd:
+TNT1 A 0 A_GiveInventory("RollingCutterFlag",1)
+stop
+
+Fire:
+BUSH S 0 A_JumpIfNoAmmo("NoAmmo")
+BUSH T 0 A_GiveInventory("DespawnOldCutter",1)
+TNT1 A 0 A_GunFlash("ReturnWait")
+BUSH T 2 A_FireCustomMissile("RollingCutterU",0,1,8,0)
+BUSH T 0 A_TakeInventory("DespawnOldCutter",1)
+BUSH UVWXY 2
+Check:
+TNT1 A 1 A_RailWait
+TNT1 A 0 A_JumpIfInventory("RollingCutterFlag",1,"Return")
+loop
+Return:
+TNT1 A 0 A_GunFlash("ReturnWaitEnd")
+TNT1 A 0 A_JumpIfNoAmmo("NoAmmoReturn")
+BUSH Z 2
+BUS2 A 2
+BUSH S 0 A_Refire
+Goto Ready+1
+NoAmmoReturn:
+BUS2 EF 2
+Goto ReadyNoAmmo
+NoAmmo:
+BUS2 B 1 ACS_NamedExecuteAlways("core_noammo",0)
+Goto ReadyNoAmmo
+}
+}
+
+
+actor RollingCutterBaseU : RollingCutterBase
+{
+damage (150)
+}
+
+actor RollingCutterU : RollingCutterBaseU
+{
++DOOMBOUNCE
++SKYEXPLODE
+bouncefactor 1.0
+wallbouncefactor 1.0
++HITTRACER
+States
+{
+Spawn:
+RCUT A 0
+RCUT A 0 A_PlaySound("weapons/mm1/rollingcutterfly")
+RCUT AAAABBBBCCCCDDDD 1 A_GiveInventory("BouncerReflectedCheck",1)
+RCUT A 0 A_PlaySound("weapons/mm1/rollingcutterfly")
+RCUT AAAABBBB 1 A_GiveInventory("BouncerReflectedCheck",1)
+SpawnEnd:
+TNT1 A 0 A_GiveInventory("BouncerReflectedCheck",1)
+TNT1 A 0 A_SpawnItemEx("ReturningCutterMasterU")
+stop
+Death:
+"----" A 4 A_PlaySound("misc/tink")
+goto SpawnEnd
+}
+}
+
+actor ReturningCutterMasterU : RollingCutterBaseU
+{
++NOCLIP
++NOINTERACTION
+reactiontime 350
+states
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("ReturningCutterU",0,0,0,0,0,0,0,0,0,CallACS("core_NewUniqueTID"))
+TNT1 A 0 ACS_NamedExecuteWithResult("core_setTIDsPointerToThis",CallACS("core_CurrentUniqueTID"),AAPTR_MASTER)
+TNT1 A 0 ACS_NamedExecuteWithResult("core_ClearUniqueTID",0)
+RCUT CCCCDDDD 1 A_GiveInventory("ReturningCutterMasterFunc",1)
+SpawnLoop:
+RCUT A 0 A_PlaySound("weapons/mm1/rollingcutterfly")
+RCUT AAAABBBBCCCCDDDD 1 A_GiveInventory("ReturningCutterMasterFunc",1)
+loop
+Death:
+TNT1 A 0 A_RemoveChildren(true)
+stop
+}
+}
+
+
+actor ReturningCutterU : RollingCutterBaseU
+{
++INVISIBLE
+var int user_NoTranslation;
+states
+{
+Spawn:
+TNT1 A 0
+Spawn2:
+BUST A 1 A_GiveInventory("ReturningCutterFunc",1)
+loop
+Death:
+TNT1 A 0 A_SpawnItemEx("ReturningCutter2U",0,0,0,0,0,0,0,SXF_TRANSFERPOINTERS)
+stop
+}
+}
+
+actor ReturningCutter2U : ReturningCutterU
+{
++NOCLIP
++NOINTERACTION
+states
+{
+Spawn:
+TNT1 A 0
+Spawn2:
+BUST A 1 A_GiveInventory("ReturningCutterFunc",1)
+TNT1 A 0 A_SpawnItemEx("ReturningCutterU",0,0,0,0,0,0,0,SXF_TRANSFERPOINTERS)
+stop
+Death:
+TNT1 A 0
+stop
+}
+}

@@ -1,0 +1,95 @@
+actor HyperBombWepU_NormalBar : HyperBombWep_NormalBar {}
+
+actor HyperBombWepU : BaseMM8BDMCustWep replaces HyperBombWep
+{
+//$Category MM8BDM-Weapons/Power
+//$Title Hyper Bomb
+//$Sprite WEAPH0
+Weapon.AmmoUse 2
+Weapon.AmmoGive 28
+Weapon.SlotNumber 5
+Inventory.Pickupmessage "$PU_HYPERBOMB"
+Obituary "$OB_HYPERBOMB"
+Tag "$TAG_HYPERBOMB"
+weapon.ammotype "HyperBombAmmo"
+inventory.icon "BOMBSI"
+States
+{
+SpawnLoop:
+WEAP H -1
+loop
+Ready:
+BOMH A 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_HYPERBOMB)
+BOMH A 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+BOMH A 1 A_WeaponReady
+Goto Ready+2
+ReadyNoAmmo:
+BOMH J 1 A_WeaponReady
+BOMH J 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+Goto Ready+1
+Deselect:
+BOMH A 0
+goto DeselectSwap
+Select:
+BOMH A 0
+goto SelectSwap
+Fire:
+BOMH A 0 A_JumpIfNoAmmo("NoAmmo")
+BOMH A 0 A_PlaySoundEx("weapons/mm1/hyperbombfire","Weapon")
+BOMH A 0 A_FireCustomMissile("HyperBombU",0,1,8,0)
+BOMH BCDEFG 1
+BOMH H 0 A_JumpIfNoAmmo("NoAmmoDelay")
+BOMH HI 2
+BOMH A 13
+BOMH A 0 A_Refire
+Goto Ready+1
+NoAmmoDelay:
+BOMH KL 2
+BOMH J 13
+Goto ReadyNoAmmo
+NoAmmo:
+BOMH J 1 ACS_NamedExecuteAlways("core_noammo",0)
+Goto ReadyNoAmmo
+}
+}
+
+
+actor HyperBombU : HyperBomb
+{
+-NOGRAVITY
++RIPPER
+damage (0)
+damagetype "HyperBomb"
+Obituary "$OB_HYPERBOMB"
+Radius 6
+Height 7
+speed 13
+reactiontime 85
+bouncefactor 0.7
+var int user_TranslateBlackColors;
+States
+{
+Spawn:
+BOMB A 0
+BOMB A 0 ThrustThingZ(0, 12, 0, 1)
+BOMB A 1 A_CountDown
+Goto Spawn+2
+Death:
+BOMB A 0 A_Stop
+BOMB A 0 A_JumpIf(reactiontime == 85, "LightExplode")
+BOMB A 1 A_JumpIf(true, "MaxExplode")
+wait
+LightExplode:
+BOMB A 0 A_PlaySoundEx("weapons/mm1/hyperbombsmallexplode", "Weapon")
+BOMB A 0 A_ChangeFlag("NOGRAVITY",1)
+BOMB A 0 A_Explode(500, 180, 0)
+TNT1 A 35 A_SpawnItemEx("ExplosionEffect2", 0, 0, 0, 0, 0, 0, 0, SXF_WEPFXCOLOR)
+stop
+MaxExplode:
+BOMB A 0 A_PlaySoundEx("weapons/mm1/hyperbombexplode", "Weapon")
+BOMB A 0 A_ChangeFlag("NOGRAVITY",1)
+BOMB A 0 A_Explode(2500, 180, 0)
+TNT1 A 35 A_SpawnItemEx("ExplosionEffect3", 0, 0, 0, 0, 0, 0, 0, SXF_WEPFXCOLOR)
+stop
+}
+}
