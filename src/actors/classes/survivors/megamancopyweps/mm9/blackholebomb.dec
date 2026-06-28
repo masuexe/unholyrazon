@@ -1,0 +1,110 @@
+actor BlackHoleBombWepU_NormalBar : BlackHoleBombWep_NormalBar {}
+actor BlackHoleBombWepU_ScriptBar : ScriptBar {}
+
+actor BlackHoleBombWepU : BaseMM8BDMCustWep replaces BlackHoleBombWep
+{
+Weapon.AmmoUse 4
+Weapon.AmmoGive 28
+Weapon.SlotNumber 6
+Obituary "$OB_BLACKHOLEBOMB"
+Tag "$TAG_BLACKHOLEBOMB"
+Inventory.Pickupmessage "$PU_BLACKHOLEBOMB"
+weapon.ammotype "BlackHoleBombAmmo"
+inventory.icon "BLAKHOLI"
+States
+{
+SpawnLoop:
+BLKH A -1
+loop
+Ready:
+BHUD A 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_BLACKHOLEBOMB)
+BHUD A 1 A_GiveInventory("BlackHoleBomb_Ready_P")//A_WeaponReady
+wait
+Deselect:
+BHUD A 0 A_GiveInventory("BlackHoleBombKill", 1)
+goto DeselectSwap
+Select:
+BHUD A 0
+goto SelectSwap
+Fire:
+BHUD A 0 A_JumpIfInventory("BlackHoleBombExists",1,"Detonate")
+BHUD A 0 A_JumpIfNoAmmo("NoAmmo")
+BHUD A 0 A_GiveInventory("BlackHoleBombU_Fire_P")
+BHUD BC 3
+BHUD A 10
+goto Ready+1
+Detonate:
+BHUD A 0 A_GiveInventory("BlackHoleBombTrigger", 1)
+BHUD DA 3
+goto Ready+1
+NoAmmo:
+BHUD A 1 ACS_NamedExecuteAlways("core_noammo",0)
+Goto Ready+1
+}
+}
+
+actor BlackHoleBombU_Fire_P : CustomInventory
+{
+    States
+    {
+    Pickup:
+		TNT1 A 0 A_TakeInventory("BlackHoleBombAmmo", 4, TIF_NOTAKEINFINITE)
+        TNT1 A 0 A_SpawnItemEx("BlackHoleBombU", 0, 8, 32, cos(-pitch)*10, 0, sin(-pitch)*10, 0, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPITCH)
+        TNT1 A 0 A_JumpIfInventory("PowerSpreadRune", 1, "PickupSpread")
+        stop
+    PickupSpread:
+        TNT1 A 0 A_SpawnItemEx("BlackHoleBombU", -48, 8+32, 32, cos(-pitch)*10, 0, sin(-pitch)*10, 0, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPITCH)
+        TNT1 A 0 A_SpawnItemEx("BlackHoleBombU", -48, 8-32, 32, cos(-pitch)*10, 0, sin(-pitch)*10, 0, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPITCH)
+        stop
+    }
+}
+
+actor BlackHoleBombU : BlackHoleBomb
+{
+States
+{
+Death:
+BLKH B 0 A_StopSound
+BLKH B 0 A_TakeFromTarget("BlackHoleBombExists", 999)
+BLKH B 0 A_JumpIf(reactiontime >= 0, "Dying")
+BLKH B 0 A_JumpIf(reactiontime < 0, "Explode")
+BLKH B 1
+wait
+Explode:
+BLKH B 0 A_StopSound
+BLKH B 0 A_SpawnItemEx("BlackHoleBombExplosionU",0,0,0,0,0,0,0,SXF_TRANSFERTRANSLATION|SXF_NOCHECKPOSITION)
+stop
+}
+}
+
+actor BlackHoleBombExplosionU : BlackHoleBombExplosion
+{
+States
+{
+Spawn:
+BLKH F 0
+BLKH F 0 A_GiveToTarget("BlackHoleBombCooldown", 1)
+BLKH F 0 A_SpawnItemEx("BlackHoleBombFXSpawner", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERTRANSLATION)
+BLKH F 0 A_PlaySoundEx("weapons/mm9/blackholebombexplode", "body", 1)
+BLKH F 0 ACS_NamedExecuteAlways("core_radiuspull", 0, 7, 256)
+BLKH F 0 A_Explode(50,128,0)
+BLKH FFGG 1
+BLKH F 0 ACS_NamedExecuteAlways("core_radiuspull", 0, 7, 256)
+BLKH F 0 A_Explode(50,128,0)
+BLKH HHII 1
+BLKH F 0 ACS_NamedExecuteAlways("core_radiuspull", 0, 7, 256)
+BLKH F 0 A_Explode(50,128,0)
+BLKH JJKK 1
+BLKH F 0 ACS_NamedExecuteAlways("core_radiuspull", 0, 7, 256)
+BLKH F 0 A_Explode(50,128,0)
+BLKH LLMM 1
+BLKH F 0 ACS_NamedExecuteAlways("core_radiuspull", 0, 7, 256)
+BLKH F 0 A_Explode(50,128,0)
+BLKH NNOO 1
+BLKH F 0 ACS_NamedExecuteAlways("core_radiuspull", 0, 7, 256)
+BLKH F 0 A_Explode(50,128,0)
+BLKH PPQQ 1
+BLKH Q 0 A_Countdown
+goto Spawn+3
+}
+}
