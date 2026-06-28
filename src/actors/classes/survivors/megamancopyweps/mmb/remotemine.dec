@@ -1,0 +1,154 @@
+actor RemoteMineWepU_NormalBar : RemoteMineWep_NormalBar {}
+actor RemoteMineWepU_ScriptBar : ScriptBar {}
+
+actor RemoteMineWepU : BaseMM8BDMCustWep replaces RemoteMineWep
+{
+Weapon.AmmoUse 2
+Weapon.AmmoGive 28
+Weapon.SlotNumber 5
+Inventory.Pickupmessage "$PU_REMOTEMINE"
+Obituary "$OB_REMOTEMINE"
+Tag "$TAG_REMOTEMINE"
+weapon.ammotype "RemoteMineAmmo"
+inventory.icon "REMOI"
+States
+{
+SpawnLoop:
+REMI X -1
+loop
+Ready:
+REMB A 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_REMOTEMINE)
+REMB A 1 A_WeaponReady
+Goto Ready+1
+Deselect:
+REMB A 0 A_TakeInventory("WeaponCharge", 9999)
+REMB A 0 A_GiveInventory("RemoteMineFlag", 10)
+goto DeselectSwap
+Select:
+REMB A 0 A_TakeInventory("RemoteMineFlag", 10)
+goto SelectSwap
+Fire:
+REMB A 0 A_JumpIfInventory("WeaponCharge",5,"Boom")
+REMB A 0 A_JumpIfInventory("WeaponCharge",5,"NoBombs")
+REMB A 0 A_JumpIfNoAmmo("NoAmmo")
+REMB A 0 A_PlaySoundEx("weapons/mmb/remoteminefire","Weapon")
+REMB A 0 A_FireCustomMissile("RemoteMineU",0,1,8,0)
+REMB B 5
+REMB C 5
+REMB A 15 A_GiveInventory("WeaponCharge", 1)
+REMB A 0 A_Refire
+Goto Ready+1
+Altfire:
+Boom:
+REMB A 0 A_TakeInventory("WeaponCharge", 999)
+REMB A 0 A_GiveInventory("RemoteMineFlag", 10)
+REMB DA 4
+REMB A 0 A_TakeInventory("RemoteMineFlag", 10)
+goto Ready+1
+NoAmmo:
+NoBombs:
+REMB A 1 ACS_NamedExecuteAlways("core_noammo",0)
+REMB A 0 A_JumpIfInventory("WeaponCharge",1,"Boom")
+Goto Ready+1
+}
+}
+
+
+actor RemoteMineU : RemoteMine
+{
+States
+{
+Spawn:
+REMI A 0
+REMI A 0 ACS_NamedExecuteWithResult("core_SetVelPitch",0,0)
+REMI A 0 A_SetPitch(-pitch)
+SpawnLoop:
+REMI AABBCCDD 2 A_GiveInventory("RemoteMineFlyFunc", 1)
+loop
+Crash:
+XDeath:
+REMI A 0 A_SetUserVar("user_stuck", 1)
+Death:
+REMI A 0 A_JumpIfInTargetInventory("RemoteMineFlag", 10, "Detonate")
+REMI A 0 A_PlaySound("weapons/mmb/remoteminestick")
+REMI A 0 A_JumpIfInventory("MM8BDMPlayer", 1, "PrepTracer", AAPTR_TRACER)
+REMI A 0 A_Stop
+Latch:
+REMI A 0 A_Warp(AAPTR_TRACER,user_x,user_y,user_z,angle,WARPF_COPYINTERPOLATION|WARPF_ABSOLUTEOFFSET|WARPF_ABSOLUTEANGLE)
+REMI A 1 A_JumpIfInTargetInventory("RemoteMineFlag",10,"Detonate")
+REMI A 0 A_Warp(AAPTR_TRACER,user_x,user_y,user_z,angle,WARPF_COPYINTERPOLATION|WARPF_ABSOLUTEOFFSET|WARPF_ABSOLUTEANGLE)
+REMI A 1 A_JumpIfInTargetInventory("RemoteMineFlag",10,"Detonate")
+REMI A 0 A_Warp(AAPTR_TRACER,user_x,user_y,user_z,angle,WARPF_COPYINTERPOLATION|WARPF_ABSOLUTEOFFSET|WARPF_ABSOLUTEANGLE)
+REMI A 1 A_JumpIfInTargetInventory("RemoteMineFlag",10,"Detonate")
+REMI A 0 A_Warp(AAPTR_TRACER,user_x,user_y,user_z,angle,WARPF_COPYINTERPOLATION|WARPF_ABSOLUTEOFFSET|WARPF_ABSOLUTEANGLE)
+REMI E 1 A_JumpIfInTargetInventory("RemoteMineFlag",10,"Detonate")
+REMI A 0 A_Warp(AAPTR_TRACER,user_x,user_y,user_z,angle,WARPF_COPYINTERPOLATION|WARPF_ABSOLUTEOFFSET|WARPF_ABSOLUTEANGLE)
+REMI E 1 A_JumpIfInTargetInventory("RemoteMineFlag",10,"Detonate")
+REMI A 0 A_Warp(AAPTR_TRACER,user_x,user_y,user_z,angle,WARPF_COPYINTERPOLATION|WARPF_ABSOLUTEOFFSET|WARPF_ABSOLUTEANGLE)
+REMI E 1 A_JumpIfInTargetInventory("RemoteMineFlag",10,"Detonate")
+REMI D 0 A_JumpIfInventory("CutterFlag", 100, "Detonate")
+REMI D 0 A_JumpIfInventory("NoRemoteMineLatch", 1, "Detonate", AAPTR_TRACER)
+REMI D 0 A_GiveInventory("CutterFlag", 1)
+REMI B 0 A_JumpIf(ACS_NamedExecuteWithResult("core_targetexists")==0,"Exit")
+REMI B 0 A_JumpIf(user_stuck==0,"Latch")
+REMI B 0 A_JumpIf(ACS_NamedExecuteWithResult("core_targetexists",1)==0,"Exit")
+Goto Latch
+PrepTracer:
+REMI B 0 ACS_NamedExecuteWithResult("core_remotemineoffset")
+WATS B 0 ACS_NamedExecuteWithResult("core_changeClientProperty", APROP_Alpha, 39321, AAPTR_TRACER)
+Goto Latch
+Detonate:
+REMI B 0 A_JumpIf(ACS_NamedExecuteWithResult("core_targetexists")==0,"Exit")
+TNT1 A 0 A_SpawnItemEx("RemoteMineExplosionU")
+stop
+Exit:
+TNT1 A 1
+stop
+}
+}
+
+actor RemoteMineExplosionU : RemoteMineExplosion replaces RemoteMineExplosion
+{
+states
+{
+Spawn:
+REME A 0
+REME A 0 A_Explode(150,100,0)
+REME A 1 A_PlaySoundEx("weapons/mmb/remotemineexplode", "Weapon")
+REME B 1 
+REME A 1
+REME C 1
+REME A 1 A_Explode(150,100,0)
+REME D 1
+REME A 1
+REME F 1
+REME A 1 A_Explode(150,100,0)
+REME G 1
+REME A 1
+REME H 1
+REME A 1 A_Explode(150,100,0)
+REME I 1
+REME A 1
+REME J 1
+REME A 1 A_Explode(150,100,0)
+REME K 1
+REME A 1
+REME L 1
+REME A 1 A_Explode(150,100,0)
+REME M 1
+REME A 1
+REME B 1
+REME A 1 A_Explode(150,100,0)
+REME C 1
+REME A 1
+REME D 1
+REME A 1 A_Explode(150,100,0)
+REME F 1
+REME A 1
+REME G 1
+REME A 1 A_Explode(150,100,0)
+REME H 1
+REME ANAPOPO 1
+stop
+}
+}
