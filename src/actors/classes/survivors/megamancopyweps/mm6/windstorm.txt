@@ -1,0 +1,145 @@
+actor WindStormWep_NormalBar : NormalBar { args 4, 93 }
+
+actor WindStormWep : BaseMM8BDMWep 10071
+{
+//$Category MM8BDM-Weapons/Close
+//$Title Wind Storm
+//$Sprite WEA2V0
+Weapon.AmmoUse 2
+Weapon.AmmoGive 28
+Weapon.SlotNumber 4
+Inventory.Pickupmessage "$PU_WINDSTORM"
+Obituary "$OB_WINDSTORM"
+Tag "$TAG_WINDSTORM"
+weapon.ammotype "WindStormAmmo"
+inventory.icon "WINDSI"
+States
+{
+SpawnLoop:
+WEA2 V -1
+loop
+Ready:
+BUBB D 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_WINDSTORM)
+BUBB D 1 A_WeaponReady
+goto Ready+1
+Deselect:
+BUBB D 0
+goto DeselectSwap
+Select:
+BUBB D 0
+goto SelectSwap
+Fire:
+BUBB D 0 A_JumpIfNoAmmo("NoAmmo")
+BUBB D 0 A_PlaySoundEx("weapons/mm6/windstormfire","Weapon")
+BUBB E 0 A_FireCustomMissile("WindStormStart",0,1,8,0)
+BUBB EF 5
+BUBB D 2
+BUBB D 0 A_Refire
+goto Ready+1
+NoAmmo:
+BUBB D 1 ACS_NamedExecuteAlways("core_noammo",0)
+Goto Ready+1
+}
+}
+
+actor WindStormAmmo : Ammo
+{
+inventory.amount 1
+inventory.maxamount 28
++INVENTORY.IGNORESKILL
+}
+
+actor WindStormStart : BasicProjectile
+{
+-NOGRAVITY
++RIPPER
+Damage (15)
+damagetype "WindStorm"
+Obituary "$OB_WINDSTORM"
+Height 8
+Radius 16
+Speed 25
+var int user_PierceRipper;
+States
+{
+Spawn:
+WINS ABCD 4
+loop
+Death:
+TNT1 A 0 A_JumpIf(z-floorz==0,"Death2")
+TNT1 A 1
+stop
+Death2:
+TNT1 A 0 A_SpawnItemEx("WindStorm",0,0,0,1,0,0,0,SXF_MULTIPLYSPEED,0,CallACS("core_NewUniqueTID"))
+TNT1 A 0 ACS_NamedExecuteWithResult("core_setpointer",AAPTR_MASTER,CallACS("core_CurrentUniqueTID"))
+TNT1 A 0 ACS_NamedExecuteWithResult("core_ClearUniqueTID",0)
+TNT1 A 0 A_GiveToChildren("CopyMastersMaster",1)
+TNT1 A 0 A_RearrangePointers(AAPTR_DEFAULT,AAPTR_NULL,AAPTR_DEFAULT) //clear master
+TNT1 A 1
+stop
+}
+}
+
+actor WindStorm : BasicProjectile
+{
+-NOGRAVITY
++RIPPER
+Damage (0)
+damagetype "WindStorm"
+Obituary "$OB_WINDSTORM"
+Height 16
+Radius 16
+gravity 3.0
++NOEXPLODEFLOOR
++STEPMISSILE
+maxstepheight 24
++BOUNCEONCEILINGS
+BounceCount 1
+speed 20
+reactiontime 50
+var int user_PierceRipper;
+States
+{
+Spawn:
+WINS A 0
+WINS AA 2 A_Explode(15, 48, 0, 0, 48)
+WINS B 0 A_CountDown
+WINS BB 2 A_Explode(15, 48, 0, 0, 48)
+WINS C 0 A_CountDown
+WINS CC 2 A_Explode(15, 48, 0, 0, 48)
+WINS D 0 A_CountDown
+WINS DD 2 A_Explode(15, 48, 0, 0, 48)
+WINS A 0 A_CountDown
+loop
+}
+}
+
+actor WindStormHit : CustomInventory
+{
+    States
+    {
+    Pickup:
+        TNT1 A 0 A_SpawnItemEx("WindStormHitGiver")
+        stop
+    }
+}
+
+actor WindStormHitGiver : BasicWatcher
+{
+    States
+    {
+    Spawn:
+        TNT1 AA 0 A_GiveToTarget("WindStormEffect", 1)
+        stop
+    }
+}
+
+actor WindStormEffect : CustomInventory
+{
+    States
+    {
+    Pickup:
+        TNT1 A 0 ACS_NamedExecuteWithResult("core_knockback", -10, 30, false, AAPTR_TARGET)
+        stop
+    }
+}

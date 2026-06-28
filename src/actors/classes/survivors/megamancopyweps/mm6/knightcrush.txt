@@ -1,0 +1,211 @@
+actor KnightCrushWep_NormalBar : NormalBar { args 87, 198 }
+
+actor KnightCrushWep : BaseMM8BDMWep 10072
+{
+//$Category MM8BDM-Weapons/Close
+//$Title Knight Crush
+//$Sprite WEA2W0
+Weapon.AmmoUse 2
+Weapon.AmmoGive 28
+Weapon.SlotNumber 4
+Inventory.Pickupmessage "$PU_KNIGHTCRUSH"
+Obituary "$OB_KNIGHTCRUSH"
+Tag "$TAG_KNIGHTCRUSH"
+weapon.ammotype "KnightCrushAmmo"
+inventory.icon "KNIGSI"
+States
+{
+SpawnLoop:
+WEA2 W -1
+loop
+Ready:
+KNIG B 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_KNIGHTCRUSH)
+KNIG B 1 A_WeaponReady
+Goto Ready+1
+Deselect:
+KNIG B 0 
+goto DeselectSwap
+Select:
+KNIG B 0
+goto SelectSwap
+AltFire:
+KNIG B 0 A_JumpIfNoAmmo("NoAmmo")
+KNIG B 0 A_PlaySoundEx("weapons/mm6/knightcrushfire","Weapon")
+KNIG B 0 A_FireCustomMissile("KnightCrush",0,1,8,0)
+goto FireEnd
+Fire:
+KNIG B 0 A_JumpIfNoAmmo("NoAmmo")
+KNIG B 0 A_PlaySoundEx("weapons/mm6/knightcrushfire","Weapon")
+KNIG B 0 A_FireCustomMissile("KnightCrush",0,1,8,0)
+KNIG B 0 A_JumpIfNoAmmo("FireEnd")
+KNIG C 0 A_Refire(1) goto FireEnd
+KNIG C 2
+KNIG C 0 A_Refire(1) goto FireEnd+1
+KNIG D 2 
+KNIG D 0 A_Refire(1) goto FireEnd+2
+KNIG D 2
+KNIG D 0 A_Refire(1) goto FireEnd+3
+KNIG C 2
+KNIG C 0 A_Refire("BurstFire") goto BurstEnd
+BurstFire:
+KNIG B 0 A_JumpIfNoAmmo("BurstEnd")
+KNIG B 0 A_PlaySoundEx("weapons/mm6/knightcrushfire","Weapon")
+KNIG B 0 A_FireCustomMissile("KnightCrush",0,1,8,0)
+goto BurstEnd
+FireEnd:
+KNIG CDDD 2
+goto BurstEnd+1
+BurstEnd:
+KNIG D 24
+KNIG D 6
+KNIG C 2
+KNIG B 0 A_Refire
+Goto Ready+1
+NoAmmo:
+KNIG B 1 ACS_NamedExecuteAlways("core_noammo",0)
+Goto Ready+1
+}
+}
+
+actor KnightCrushAmmo : Ammo
+{
+inventory.amount 1
+inventory.maxamount 28
++INVENTORY.IGNORESKILL
+}
+
+actor KnightCrushBase : BasicProjectile
+{
+Radius 10
+Height 10
+damage (9)
+damagetype "KnightCrush"
+Obituary "$OB_KNIGHTCRUSH"
++DONTSPLASH
++RIPPER
+speed 40
+Args 40 //return speed
++FORCEXYBILLBOARD
+}
+
+actor KnightCrush : KnightCrushBase
+{
++HEXENBOUNCE
++SKYEXPLODE
++HITTRACER
+States
+{
+Spawn:
+KNIG A 0
+KNIG AAAAAAAAAAAAAAAAA 1 A_GiveInventory("BouncerReflectedCheck",1)
+TNT1 A 0 A_GiveInventory("BouncerReflectedCheck",1)
+TNT1 A 0 A_SpawnItemEx("ReturningKnightMaster")
+stop
+Death:
+KNIG A 0
+stop
+}
+}
+
+actor ReturningKnightMaster : KnightCrushBase
+{
++NOCLIP
++NOINTERACTION
+reactiontime 350
+states
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("ReturningKnight",0,0,0,0,0,0,0,0,0,CallACS("core_NewUniqueTID"))
+TNT1 A 0 ACS_NamedExecuteWithResult("core_setTIDsPointerToThis",CallACS("core_CurrentUniqueTID"),AAPTR_MASTER)
+TNT1 A 0 ACS_NamedExecuteWithResult("core_ClearUniqueTID",0)
+SpawnLoop:
+KNIG A 1 A_GiveInventory("ReturningKnightMasterFunc",1)
+loop
+Death:
+TNT1 A 0 A_RemoveChildren(true)
+stop
+}
+}
+
+actor ReturningKnightMasterFunc : CustomInventory
+{
+states
+{
+Pickup:
+TNT1 A 0 A_GiveInventory("CountChildrenFunc",1)
+TNT1 A 0 A_JumpIfInventory("ChildCount",1,"Pickup2")
+TNT1 A 0 Thing_Remove(0)
+stop
+Pickup2:
+TNT1 A 0 A_CountDown
+stop
+}
+}
+
+actor ReturningKnight : KnightCrushBase
+{
++INVISIBLE
+var int user_NoTranslation;
+states
+{
+Spawn:
+TNT1 A 0
+Spawn2:
+BUST A 1 A_GiveInventory("ReturningKnightFunc",1)
+loop
+Death:
+TNT1 A 0 A_SpawnItemEx("ReturningKnight2",0,0,0,0,0,0,0,SXF_TRANSFERPOINTERS)
+stop
+XDeath:
+TNT1 A 0 A_RemoveMaster
+stop
+}
+}
+
+actor ReturningKnight2 : ReturningKnight
+{
++NOCLIP
++NOINTERACTION
+states
+{
+Spawn:
+TNT1 A 0
+Spawn2:
+BUST A 1 A_GiveInventory("ReturningKnightFunc",1)
+TNT1 A 0 A_SpawnItemEx("ReturningKnight",0,0,0,0,0,0,0,SXF_TRANSFERPOINTERS)
+stop
+Death:
+TNT1 A 0
+stop
+}
+}
+
+actor ReturningKnightFunc : CustomInventory
+{
+states
+{
+Pickup:
+TNT1 A 0 A_GiveToTarget("AliveCheck",1)
+TNT1 A 0 A_JumpIfInTargetInventory("AliveCheckFlag",1,"Pickup2")
+RemoveThis:
+TNT1 A 0 A_RemoveMaster
+TNT1 A 0 Thing_Remove(0)
+stop
+Pickup2:
+TNT1 A 0 A_JumpIfCloser(60,"RemoveThis")
+TNT1 A 0 A_GiveInventory("HeadTowardsTarget_Arg0",1)
+TNT1 A 0 A_GiveInventory("WarpMasterHere",1)
+stop
+}
+}
+
+//Legacy
+
+actor KnightFlag : Inventory
+{
+inventory.amount 1
+inventory.maxamount 999
+}
+
+actor KnightDouble : Once {}
