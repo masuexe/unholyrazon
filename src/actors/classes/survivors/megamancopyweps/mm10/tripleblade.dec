@@ -1,0 +1,77 @@
+actor TripleBladeWepU_NormalBar : TripleBladeWep_NormalBar {}
+
+actor TripleBladeWepU : BaseMM8BDMCustWep replaces TripleBladeWep
+{
+Weapon.AmmoUse 1
+Weapon.AmmoGive 28
+Weapon.SlotNumber 3
+Obituary "$OB_TRIPLEBLADE"
+Tag "$TAG_TRIPLEBLADE"
+Inventory.Pickupmessage "$PU_TRIPLEBLADE"
+weapon.ammotype "TripleBladeAmmo"
+inventory.icon "BLAWI"
++WEAPON.NOAUTOAIM
+States
+{
+SpawnLoop:
+TRIP A -1
+loop
+Ready:
+TRIP B 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_TRIPLEBLADE)
+TRIP C 1 A_WeaponReady
+Goto Ready+1
+Deselect:
+TRIP C 0
+goto DeselectSwap
+Select:
+TRIP C 0
+goto SelectSwap
+Fire:
+TRIP C 0 A_JumpIfNoAmmo("NoAmmo")
+TRIP C 0 A_PlaySoundEx("weapons/mm10/triplebladefire","Weapon")
+TRIP C 0 A_FireCustomMissile("TripleBladeU",0,1,8,0,0,0)
+TRIP C 0 A_JumpIf(pitch > 270 && pitch < 270+11.25, "Top")
+TRIP C 0 A_JumpIf(pitch > 90-11.25 && pitch < 90, "Bottom")
+goto Center
+Top:
+TRIP C 0 A_FireCustomMissile("TripleBladeRU",180,0,8,0,0,11.25)
+TRIP C 0 A_FireCustomMissile("TripleBladeU",0,0,8,0,0,-11.25)
+goto FireEnd
+Bottom:
+TRIP C 0 A_FireCustomMissile("TripleBladeU",0,0,8,0,0,11.25)
+TRIP C 0 A_FireCustomMissile("TripleBladeRU",180,0,8,0,0,-11.25)
+goto FireEnd
+Center:
+TRIP C 0 A_FireCustomMissile("TripleBladeU",0,0,8,0,0,11.25)
+TRIP C 0 A_FireCustomMissile("TripleBladeU",0,0,8,0,0,-11.25)
+goto FireEnd
+FireEnd:
+TRIP DE 2
+TRIP C 8
+goto Ready+1
+NoAmmo:
+TRIP C 1 ACS_NamedExecuteAlways("core_noammo",0)
+Goto Ready+1
+}
+}
+
+
+actor TripleBladeU : TripleBlade
+{
+damage (50)
+}
+
+actor TripleBladeRU : TripleBladeU
+{
+    States
+    {
+    Spawn:
+        TNT1 A 0
+        TNT1 A 0 A_SetAngle(angle+180)
+        TNT1 A 0 A_JumpIf(momz>0, "90Degrees")
+        TNT1 A 0 A_JumpIf(momz<0, "N90Degrees")
+        TBL1 I 1
+        wait
+    }
+}
+
