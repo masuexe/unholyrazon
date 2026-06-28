@@ -1,0 +1,87 @@
+actor BlackHoleWepU_NormalBar : BlackHoleWep_NormalBar {}
+actor BlackHoleWepU_ScriptBar : ScriptBar {}
+
+actor BlackHoleWepU : BaseMM8BDMCustWep replaces BlackHoleWep
+{
+    Weapon.AmmoUse 7
+    Weapon.AmmoGive 28
+    Weapon.SlotNumber 7
+    Inventory.Pickupmessage "$PU_BLACKHOLE"
+    Obituary "$OB_BLACKHOLE"
+    Tag "$TAG_BLACKHOLE"
+    weapon.ammotype "BlackHoleAmmo"
+    inventory.icon "BHOLWI"
+    States
+    {
+    SpawnLoop:
+        BHOL A -1
+        loop
+    Ready:
+        BHOL I 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_BLACKHOLE)
+        BHOL I 0 A_JumpIfInventory("BlackHoleShieldCheck", 1, "Active")
+        BHOL I 1 A_WeaponReady
+        Goto Ready+1
+    Deselect:
+        BHOL I 0
+        goto DeselectSwap
+    Select:
+        BHOL I 0
+        goto SelectSwap
+    Fire:
+        BHOL I 0 A_JumpIfInventory("IsBot", 1, "BotFire")
+        BHOL I 0 A_JumpIfInventory("BlackHoleShieldCheck", 1, "Detonate")
+        BHOL I 0 A_JumpIfNoAmmo("NoAmmo")
+        BHOL I 0 A_JumpIfInventory("BlackHoleTrigger", 1, "NoAmmo")
+        BHOL LM 1
+        BHOL I 0 A_PlaySoundEx("weapons/mmv/blackholeactivate","Weapon")
+        BHOL I 0 A_SpawnItemEX("BlackHoleSpawnerSync")
+        BHOL NOP 1
+        TNT1 A 2
+        BHOL JK 2
+        BHOL Q 1
+    Active:
+        BHOL Q 1 A_WeaponReady
+        BHOL Q 0 A_JumpIfInventory("BlackHoleShieldCheck", 1, "Active")
+        goto Detonate
+    Detonate:
+        BHOL I 0 A_PlaySoundEx("weapons/mmv/blackholetrigger","Weapon")
+        BHOL I 0 A_SpawnItemEx("BlackHoleTrigger_W")
+        BHOL RRSSSSSSSS 1 A_WeaponReady(WRF_NOFIRE)
+        BHOL RQ 1 A_WeaponReady(WRF_NOFIRE)
+        BHOL IIIIIIIIII 1 A_WeaponReady(WRF_NOFIRE)
+        BHOL I 0 A_ClearRefire
+        goto Ready+1
+    NoAmmo:
+        BHOL I 1 ACS_NamedExecuteAlways("core_noammo",0)
+        Goto Ready+1
+    
+    BotFire:
+        BHOL I 0 A_JumpIfInventory("BlackHoleTrigger", 1, "BotFireBuster")
+        BHOL I 0 A_JumpIfInventory("BlackHoleShieldCheck", 240, "BotFireBuster")
+        goto Fire+1
+    BotFireBuster:
+        BUST B 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_MEGABUSTER)
+        BUST B 0 A_PlaySoundEx("weapons/busters/megabusterfire","SoundSlot6")
+        BUST B 0 A_FireCustomMissile("MegaShot",0,0,8,0)
+        BUST CD 3
+        BUST B 2
+        BUST B 0 A_JumpIfInventory("BlackHoleShieldCheck", 240, 2)
+        BUST B 0 A_JumpIfInventory("BlackHoleTrigger", 1, 2)
+        BUST B 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_BLACKHOLE)
+        BUST B 0 A_Refire
+        goto Ready
+    }
+}
+
+
+actor BlackholeShockWaveFuncU : BlackholeShockWaveFunc replaces BlackholeShockWaveFunc
+{
+    States
+    {
+    Pickup:
+        TNT1 A 0 A_CountDown
+        TNT1 A 0 A_Explode(200, 32, 0, 0, 32)
+        TNT1 A 0 A_GiveInventory("RotateFunc", 1)
+        stop
+    }
+}
