@@ -1,0 +1,88 @@
+actor FlameBlastWepU_NormalBar : FlameBlastWep_NormalBar {}
+
+actor FlameBlastWepU : BaseMM8BDMCustWep replaces FlameBlastWep
+{
+Weapon.AmmoUse 2
+Weapon.AmmoGive 28
+Weapon.SlotNumber 4
+Inventory.Pickupmessage "$PU_FLAMEBLAST"
+Obituary "$OB_FLAMEBLAST"
+Tag "$TAG_FLAMEBLAST"
+weapon.ammotype "FlameBlastAmmo"
+inventory.icon "FLMBSI"
+States
+{
+SpawnLoop:
+WEA2 P -1
+loop
+Ready:
+FLMB P 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_FLAMEBLAST)
+FLMB P 1 A_WeaponReady
+Goto Ready+1
+Deselect:
+FLMB P 0
+goto DeselectSwap
+Select:
+FLMB P 0
+goto SelectSwap
+Fire:
+FLMB P 0 A_JumpIfNoAmmo("NoAmmo")
+FLMB P 0 A_PlaySoundEx("weapons/mm6/flameblastfire","Weapon")
+FLMB P 0 A_FireCustomMissile("FlameBlastU",0,1,8,0)
+FLMB QRP 5
+FLMB P 0 A_Refire
+Goto Ready+1
+NoAmmo:
+FLMB P 1 ACS_NamedExecuteAlways("core_noammo",0)
+Goto Ready+1
+}
+}
+
+
+actor FlameBlastU : FlameBlast
+{
+Damage (400)
+States
+{
+Death:
+FLMB H 0 A_JumpIf(CeilingZ - FloorZ <=48 , "FireCheckOnly")
+FLMB H 0 A_SpawnItemEx("OilPitIgnite",0,0,8)
+FLMB H 0 A_CheckCeiling("Ceiling")
+FLMB H 0 A_JumpIf(Z - CeilingZ > -8, "Ceiling")
+FLMB H 0 A_CheckFloor("Floor")
+FLMB H 0 A_JumpIf(CeilingZ-Z < 8, "Floor")
+Goto Wall
+Wall:
+FLMB H 0 A_SpawnItemEx("FlameWallPillarU",-24,0,0)
+stop
+Ceiling:
+FLMB H 0 A_SpawnItemEx("FlameBlast2U",0,0,-1)
+stop
+Floor:
+FLMB H 0 A_SpawnItemEx("FlamePillarU",0,0,0)
+stop
+FireCheckOnly:
+TNT1 A 0 A_SpawnItemEx("OilPitIgnite",0,0,-16)
+stop
+}
+}
+
+actor FlameBlast2U : FlameBlastU
+{
+States
+{
+Spawn:
+TNT1 A 0
+goto "Super::Spawn+2"
+}
+}
+
+actor FlameWallPillarU : FlameWallPillar
+{
+damage (400)
+}
+
+actor FlamePillarU : FlamePillar
+{
+damage (400)
+}
