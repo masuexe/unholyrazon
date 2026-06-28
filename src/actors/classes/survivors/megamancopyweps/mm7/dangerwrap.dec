@@ -1,0 +1,89 @@
+actor DangerWrapWepU_NormalBar : DangerWrapWep_NormalBar {}
+
+actor DangerWrapWepU : BaseMM8BDMCustWep replaces DangerWrapWep
+{
+Weapon.AmmoUse 2
+Weapon.AmmoGive 28
+Weapon.SlotNumber 5
+Inventory.Pickupmessage "$PU_DANGERWRAP"
+Obituary "$OB_DANGERWRAP"
+Tag "$TAG_DANGERWRAP"
+weapon.ammotype "DangerWrapAmmo"
+inventory.icon "DWRASI"
+States
+{
+SpawnLoop:
+WEA3 L -1
+loop
+Ready:
+DWRA J 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_DANGERWRAP)
+DWRA J 1 A_WeaponReady
+Goto Ready+1
+Deselect:
+DWRA J 0
+goto DeselectSwap
+Select:
+DWRA J 0
+goto SelectSwap
+Fire:
+DWRA J 0 A_JumpIfNoAmmo("NoAmmo")
+DWRA J 0 A_PlaySoundEx("weapons/mm7/dangerwrapfire","Weapon")
+DWRA J 0 A_FireCustomMissile("DangerWrapU",0,1,8,0)
+DWRA KL 6
+DWRA J 13
+DWRA J 0 A_Refire
+Goto Ready+1
+NoAmmo:
+DWRA J 1 ACS_NamedExecuteAlways("core_noammo",0)
+Goto Ready+1
+}
+}
+
+
+actor DangerWrapU : DangerWrap
+{
+States
+{
+Death:
+DWRA G 0 A_SpawnItemEx("SoakifyEffect")
+DWRA G 2 A_ChangeFlag("NOGRAVITY",0)
+TNT1 A 0 A_SetGravity(2)
+DWRA G 1 A_JumpIf(z-floorz==0,"SpawnMine")
+NoMine:
+DWRA GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG 1 A_JumpIf(z-floorz==0,"SpawnMine")
+Crash:
+XDeath:
+DWRA G 0 A_Stop
+DWRA G 0 A_SpawnItemEx("WrapExplosionU", 0, 0, 0, 0, 0, 0, 0, SXF_WEPFXCOLOR)
+stop
+SpawnMine:
+TNT1 A 1 A_SpawnItemEx("DangerWrapMineU")
+stop
+}
+}
+
+actor WrapExplosionU : WrapExplosion
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("weapons/mm7/dangerwrapexplode", "Weapon")
+TNT1 D 0 A_Explode(530, 128, 0)
+TNT1 A 35 A_SpawnItemEx("ExplosionEffect2", 0, 0, 0, 0, 0, 0, 0, SXF_WEPFXCOLOR)
+stop
+}
+}
+
+actor DangerWrapMineU : DangerWrapMine
+{
+damage (10)
+States
+{
+Death:
+TNT1 A 0 A_Stop
+TNT1 A 0 A_ChangeFlag("NOGRAVITY",1)
+TNT1 A 0 A_SpawnItemEx("WrapExplosionU", 0, 0, 0, 0, 0, 0, 0, SXF_WEPFXCOLOR)
+stop
+}
+}

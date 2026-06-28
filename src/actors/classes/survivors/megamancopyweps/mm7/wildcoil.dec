@@ -1,0 +1,149 @@
+actor WildCoilWepU_ScriptBar : ScriptBar {}
+
+actor WildCoilWepU : BaseMM8BDMCustWep replaces WildCoilWep
+{
+Weapon.AmmoUse 2
+Weapon.AmmoGive 30
+Weapon.SlotNumber 4
+Inventory.Pickupmessage "$PU_WILDCOIL"
+Obituary "$OB_WILDCOIL"
+Tag "$TAG_WILDCOIL"
+weapon.ammotype "WildCoilAmmo"
+inventory.icon "WCOISI"
+States
+{
+SpawnLoop:
+WEA3 K -1
+loop
+Ready:
+WCOI A 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_WILDCOIL)
+WCOI A 1 //ACS_NamedExecuteWithResult("core_chargecolor",CLR_WILDCOIL,TCLR_NONE)
+WCOI A 1 A_WeaponReady
+Goto Ready+2
+Deselect:
+WCOI A 0
+goto DeselectSwap
+Select:
+WCOI A 0
+goto SelectSwap
+Fire:
+WCOI A 0 A_JumpIfNoAmmo("NoAmmo")
+WCOI A 1
+goto Hold
+AltFire:
+WCOI A 0 A_JumpIfNoAmmo("NoAmmo")
+WCOI A 3
+goto Fire1
+Hold:
+WCOI A 0 A_JumpIfNoAmmo("NoAmmo")
+WCOI A 0 A_JumpIfInventory("WeaponCharge",4,"Hold2")
+WCOI A 0 A_JumpIfInventory("WeaponCharge",3,"HoldStart")
+WCOI A 2 A_GiveInventory("WeaponCharge",1) // no rage rune for this one
+WCOI A 0 A_Refire
+Goto Fire1
+HoldStart:
+BDAS H 0 ACS_NamedExecuteWithResult("core_wepcharge_rage",1,0) // gives one weapon charge only if rage rune
+WCOI A 0 A_PlaySoundEx("weapons/mm7/wildcoilcharge", "Weapon")
+Goto Hold2
+Hold2:
+WCOI A 0 A_JumpIfInventory("WeaponCharge",23,"Hold3")
+WCOI A 0 A_JumpIfInventory("WeaponCharge",22,"HoldStart2")
+WCOI G 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_WILDCOILCRG1,TCLR_CHARGE1)
+WCOI G 0 A_Refire("Hold2.a")
+Goto Fire1
+Hold2.a:
+WCOI A 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_WILDCOIL,TCLR_NONE)
+WCOI A 0 A_GiveInventory("WeaponCharge", 1 + CallACS("core_checkrune", RUNE_RAGE))
+WCOI G 0 A_Refire("Hold2")
+Goto Fire1
+HoldStart2:
+SAPT A 0 //ACS_NamedExecuteAlways("core_botpause",0)
+NCRU L 0 A_GunFlash("Sound.BusterCharge", GFF_NOEXTCHANGE)
+WCOI A 0 A_GiveInventory("WeaponCharge", 1 + CallACS("core_checkrune", RUNE_RAGE))
+Goto Hold3
+Hold3:
+WCOI H 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_WILDCOILCRG2,TCLR_CHARGE2)
+WCOI H 0 A_Refire("Hold3.a")
+Goto Fire2
+Hold3.a:
+WCOI I 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_WILDCOILCRG3,TCLR_CHARGE3)
+WCOI H 0 A_Refire("Hold3.b")
+Goto Fire2
+Hold3.b:
+WCOI A 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_WILDCOIL,TCLR_NONE)
+WCOI A 0 A_JumpIfInventory("IsBot", 1, "BotFire")
+WCOI H 0 A_Refire("Hold3")
+Goto Fire2
+BotFire:
+WCOI A 0 A_Jump(16, "Fire2")
+WCOI H 0 A_Refire("Hold3")
+Goto Fire2
+Fire1:
+WCOI A 0 ACS_NamedExecuteWithResult("core_chargecolor",CLR_WILDCOIL,TCLR_NONE)
+WCOI A 0 A_StopSoundEx ("SoundSlot5") 
+WCOI A 0 A_TakeInventory("WeaponCharge",500)
+WCOI A 0 A_ClearRefire
+WCOI A 0 A_TakeInventory("WildCoilAmmo",2,TIF_NOTAKEINFINITE)
+WCOI A 0 A_PlaySoundEx("weapons/mm7/wildcoilfire", "Weapon")
+WCOI A 0 A_FireCustomMissile("WildCoilLU",25,0,0,0)
+WCOI A 0 A_FireCustomMissile("WildCoilU",-25,0,0,0)
+WCOI BCDEF 2
+WCOI RS 2
+Goto Ready+1
+Fire2:
+WCOI A 0 ACS_NamedExecuteWithResult("core_chargecolor",CLR_WILDCOIL,TCLR_NONE)
+HEAT G 0 A_TakeInventory("WeaponCharge",500)
+HEAT G 0 A_ClearRefire
+HEAT G 0 A_JumpIfInventory("WildCoilAmmo", 5, "Fire2r")
+goto Fire1+4
+Fire2r:
+WCOI A 0 A_TakeInventory("WildCoilAmmo",5,TIF_NOTAKEINFINITE)
+WCOI A 0 A_PlaySoundEx("weapons/mm7/wildcoilfire2", "Weapon")
+WCOI A 0 A_FireCustomMissile("WildCoil2LU",25,0,0,6)
+WCOI A 0 A_FireCustomMissile("WildCoil2U",-25,0,0,6)
+WCOI A 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_WILDCOIL,CLRF_SILENT)
+WCOI BCDEF 1
+TNT1 A 8
+WCOI RS 2
+Goto Ready+1
+NoAmmo:
+WCOI A 1 ACS_NamedExecuteAlways("core_noammo",0)
+WCOI A 0 A_Refire
+Goto Ready+1
+}
+}
+
+
+actor WildCoilU : WildCoil
+{
+damage (200)
+}
+
+actor WildCoil2U : WildCoil2
+{
+damage (400)
+}
+
+actor WildCoilLU : WildCoilU
+{
+    States
+    {
+    Bounce.Ceiling:
+    Bounce.Floor:
+        WCOI L 0 A_JumpIfInventory("WildCoilFlag",1,"BounceAnim")
+        WCOI L 0 A_SetAngle(angle-50)
+        goto BounceTurned
+    }
+}
+
+actor WildCoil2LU : WildCoil2U
+{
+    States
+    {
+    Bounce.Ceiling:
+    Bounce.Floor:
+        WCOI P 0 A_JumpIfInventory("WildCoilFlag",1,"BounceAnim")
+        WCOI P 0 A_SetAngle(angle-50)
+        goto BounceTurned
+    }
+}
