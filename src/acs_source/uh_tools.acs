@@ -117,6 +117,150 @@ function int Func_FetchInputSign(int input)
 	return 0;
 }
 
+script "uh_GetPointerSpeed" (int P1, int P2, int IncludeZ)
+{
+	SetActivator(0,P1);
+	if(P2 > 0){SetActivator(0,P2);}
+	int Speed = VectorLength(GetActorVelX(0), GetActorVelY(0));
+	if(IncludeZ){Speed = VectorLength(speed, GetActorVelZ(0));}
+	SetResultValue(Speed);
+}
+
+script "uh_FaceMovementDirection" (void)
+{
+	SetActorAngle(0,VectorAngle(GetActorVelX(0),GetActorVelY(0)));
+}
+
+script "uh_FetchPointerAngle" (int Pointer)
+{
+	SetResultValue(GetActorAngle(ACS_NamedExecuteWithResult("core_getptrtid",Pointer)) >> 8);
+}
+script "uh_FetchPointerPitch" (int Pointer)
+{
+	SetResultValue(GetActorPitch(ACS_NamedExecuteWithResult("core_getptrtid",Pointer)));
+}
+
+script "uh_CopyPointerAnglePitch" (int Pointer, int AnglePitch)
+{
+	int Source = ACS_NamedExecuteWithResult("core_getptrtid",Pointer);
+	int P_Pitch = GetActorPitch(Source);
+	int P_Angle = GetActorAngle(Source);
+	Switch(AnglePitch)
+	{
+		Case 0:
+			SetActorPitch(0,P_Pitch);
+			break;
+		Case 1:
+			SetActorPitch(0,P_Pitch);
+			SetActorAngle(0,P_Angle);
+			break;
+		Case 2:
+			SetActorAngle(0,P_Angle);
+			break;
+	}
+}
+
+script "uh_pointerheightfromground" (int Swap)
+{
+	Switch(Swap) {
+		Case 3:
+			SetActivator(0,AAPTR_FRIENDPLAYER);
+			break;
+		Case 2:
+			SetActivator(0,AAPTR_MASTER);
+			break;
+		Case 1:
+			SetActivator(0,AAPTR_TRACER);
+			break;
+		Case 0:
+			SetActivatorToTarget(0);
+			break;
+	}
+	SetResultValue((GetActorZ(0) - GetActorFloorZ (0)) >> 16);
+}
+
+script "uh_getplayervelocity" (int cap, int includez)//Example users Topman/Heatman
+{
+	int x, y, z, speed, result;
+	x = GetActorVelX(0);
+	y = GetActorVelY(0);
+	if(includez){z = GetActorVelZ(0);}else{z = 0;}
+	speed = FixedMul(x, x) + FixedMul(y, y) + FixedMul(z, z);
+
+	result = fixedSqrt(speed)>>16;
+	//Log(i:result);
+	if(result > cap){result = cap;}
+	SetResultValue(result);
+}
+
+script "uh_getfixedangle" (void)//BBA uses this
+{
+	SetResultValue(GetActorAngle(0));
+}
+
+script "uh_FetchVectorAngle" (int Which)
+{
+	Switch(Which){
+		Case 2:
+			SetActivator(0,AAPTR_TARGET);
+			break;
+		Case 4:
+			SetActivator(0,AAPTR_MASTER);
+			break;
+		Case 8:
+			SetActivator(0,AAPTR_TRACER);
+			break;
+	}
+	//Log(s:"GetActorVelX = ",f:GetActorVelX(0),s:" <> GetActorVelY = ",f:GetActorVelY(0));
+	SetResultValue(VectorAngle(GetActorVelX(0), GetActorVelY(0)));
+}
+
+script "uh_TellVectorAngle" (int TheAngle, int TheThrust)
+{
+Log(s:"TheAngle = ",f:TheAngle,s:" Cos >> ",f:cos(TheAngle),s:" Sin >> ",f:sin(TheAngle),s:" FixedMulC >> ",f:FixedMul(cos(TheAngle),TheThrust << 16),s:" FixedMulS >> ",f:FixedMul(sin(TheAngle),TheThrust << 16));
+}
+
+
+Script "uh_GradualAngleTurn" (int currAng, int inputAng, int turnAngLimit, int angMax)
+{
+	setResultValue(Func_AngleWrapAround(currAng, inputAng, turnAngLimit, angMax));
+}
+
+function int Func_AngleWrapAround(int currAng, int inputAng, int turnAngLimit, int angMax)
+{
+	int angleDif = inputAng-currAng;
+	//Log(i:angleDif);
+	int retAng;
+
+	if(angleDif>angMax/2){
+		if((angleDif-angMax)<-turnAngLimit){
+			retAng = currAng-turnAngLimit;
+			if(retAng<0){retAng+=angMax;}
+		}
+		else{retAng = inputAng;}
+	}
+	else if(angleDif<-angMax/2){
+		if((angleDif+angMax)>turnAngLimit){
+			retAng = currAng+turnAngLimit;
+			if(retAng>=angMax){retAng-=angMax;}
+		}
+		else{retAng = inputAng;}
+	}
+	else if(angleDif<-turnAngLimit){
+		retAng = currAng-turnAngLimit;
+		if(retAng<0){retAng+=angMax;}
+	}
+	else if(angleDif>turnAngLimit){
+		retAng = currAng+turnAngLimit;
+		if(retAng>=angMax){retAng-=angMax;}
+	}
+	else{retAng = inputAng;}
+
+	//Log(i:currAng);
+	return retAng;
+}
+
+
 #define MAX_CLASSES_NUM 3
 str UH_C_Array[MAX_CLASSES_NUM+1][5]={
 //Speed notes: 1000->1.000 and 980->0.980
