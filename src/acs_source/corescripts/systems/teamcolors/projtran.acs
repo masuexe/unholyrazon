@@ -1,0 +1,50 @@
+#library "projtran"
+#include "zcommon.acs"
+
+#include "8bdmdefs.acs"
+
+function bool ProjTeamColorCvar(void) {
+	return (ProjTeamColorCvarServer()&&ProjTeamColorCvarClient());
+}
+
+function bool ProjTeamColorCvarClient(void) {
+	return (GetUserCvar(ConsolePlayerNumber(),"mm8bdm_projteamcolor")>0);
+}
+
+function bool ProjTeamColorCvarServer(void) {
+	return (GetCvar("mm8bdm_sv_projteamcolor")>0);
+}
+
+script "core_Set_Projectile_Translation" (int i, int whites, int blacks) CLIENTSIDE {
+	if(ProjTeamColorCvarClient() || i > 6) { //$UH Team translation check
+		Thing_SetTranslation(0,WhitesBlacksOffset(whites,blacks)+i);
+	}
+}
+
+function int WhitesBlacksOffset(int whites, int blacks) {
+	if(whites && blacks) return PCLR_TEAMPROJ_ALL;
+	if(blacks) return PCLR_TEAMPROJ_BLACKS;
+	if(whites) return PCLR_TEAMPROJ_WHITES;
+	return PCLR_TEAMPROJ;
+}
+
+script "core_Check_TranslateWhiteColors" (void) {
+	SetResultValue(CheckForVar("User_TranslateWhiteColors"));
+}
+
+script "core_Check_TranslateBlackColors" (void) {
+	SetResultValue(CheckForVar("User_TranslateBlackColors"));
+}
+
+script "core_Check_NoTranslation" (void) {
+	SetResultValue(CheckForVar("User_NoTranslation"));
+}
+
+function bool CheckForVar(str theVar) {
+	SetUserVariable(0,theVar,1);
+	return (GetUserVariable(0,theVar)==1);
+}
+
+script "core_Check_ProjectileColor_Server" (void) {
+	SetResultValue(ProjTeamColorCvarServer());
+}

@@ -1,0 +1,513 @@
+// Copy of v6b 'TEAMCOL.acs'
+// Any area with the following line
+   //$UH
+// Means that area is edited for UH
+
+#library "teamcol"
+#include "zcommon.acs"
+
+// Handles clientside team color definition as well as projectile team colors, be very careful! [Trill]
+
+#import "8bdt.acs"
+
+#include "dtadd.acs"
+#include "8bdmdefs.acs"
+#include "8bdmefct.acs"
+#include "megapal.acs"
+
+#DEFINE TEAM_COUNT 13 //$UH
+#DEFINE TEAM_NATIVE_COUNT 4 //$UH
+#DEFINE COLORVALS_PER_TEAM 6
+#DEFINE TRANS_PER_TEAM 3
+#DEFINE TEAM_ALLY 4
+#DEFINE TEAM_ENEMY 5
+
+int team_color_input[TEAM_COUNT][COLORVALS_PER_TEAM];
+int team_color_palette[TEAM_COUNT][TRANS_PER_TEAM-1] = { //let's initalize these to be safe
+	{0,0},	{0,0},	{0,0},
+	{0,0},	{0,0},	
+	{0,0},	{0,0},	
+	{0,0},	{0,0},	
+	{0,0},	{0,0},	
+	{0,0},	{0,0},	
+};
+bool ally_enemy_mode = false;
+
+function void InitializeColorData(void) {
+	InitializeTeamColorData();
+	InitializePaletteDataLum();
+}
+
+int team_color_light[TEAM_COUNT][PALETTE_VAL];
+int team_color_light_lum[TEAM_COUNT];
+int team_color_dark[TEAM_COUNT][PALETTE_VAL];
+int team_color_dark_lum[TEAM_COUNT];
+
+int team_color_lighter[TEAM_COUNT][PALETTE_VAL];
+int team_color_darker[TEAM_COUNT][PALETTE_VAL];
+
+function void InitializeTeamColorData(void) {
+	ReadTeamColCVars();
+
+	int a;
+	int b;
+	int c;
+	for(int i = 0; i< TEAM_COUNT; i++) {
+		a = team_color_input[i][0];
+		b = team_color_input[i][1];
+		c = team_color_input[i][2];
+		
+		team_color_light[i][0] = a;
+		team_color_light[i][1] = b;
+		team_color_light[i][2] = c;
+		
+		team_color_light_lum[i] = (a+b+c)/3;
+		
+		team_color_lighter[i][0] = (a+255)/2;
+		team_color_lighter[i][1] = (b+255)/2;
+		team_color_lighter[i][2] = (c+255)/2;
+
+		a = team_color_input[i][3];
+		b = team_color_input[i][4];
+		c = team_color_input[i][5];
+		
+		team_color_dark[i][0] = a;
+		team_color_dark[i][1] = b;
+		team_color_dark[i][2] = c;
+		
+		team_color_dark_lum[i] = (a+b+c)/3;
+		
+		team_color_darker[i][0] = a/4; // a/8;
+		team_color_darker[i][1] = b/4; // b/8;
+		team_color_darker[i][2] = c/4; // c/8;
+	}
+}
+
+function void ReadTeamColCVars(void) {
+	int conP = ConsolePlayerNumber();
+	ally_enemy_mode = GetUserCvar(conP,"mm8bdm_teamcolorswap");
+	ReadTeamColCVars2(conP,"mm8bdm_lightcolor_primary","mm8bdm_lightcolor_secondary",TEAM_LIGHT);
+	ReadTeamColCVars2(conP,"mm8bdm_wilycolor_primary","mm8bdm_wilycolor_secondary",TEAM_WILY);
+	ReadTeamColCVars2(conP,"mm8bdm_cossackcolor_primary","mm8bdm_cossackcolor_secondary",TEAM_COSSACK);
+	ReadTeamColCVars2(conP,"mm8bdm_kingcolor_primary","mm8bdm_kingcolor_secondary",TEAM_KING);
+	ReadTeamColCVars2(conP,"mm8bdm_allycolor_primary","mm8bdm_allycolor_secondary",TEAM_ALLY);
+	ReadTeamColCVars2(conP,"mm8bdm_enemycolor_primary","mm8bdm_enemycolor_secondary",TEAM_ENEMY);
+
+	//$UH
+	///Shiny MegaMan
+	ReadTeamColString(conP, "9b 00 00", "ff 3f 3f", 6);
+	ReadTeamColString(conP, "e0 50 00", "ff 78 30", 7);
+	ReadTeamColString(conP, "c0 70 00", "e8 d0 20", 8);
+	ReadTeamColString(conP, "00 90 00", "80 d0 10", 9);
+	ReadTeamColString(conP, "40 90 c0", "60 d0 e0", 10);
+	ReadTeamColString(conP, "00 58 f8", "38 c0 fc", 11);
+	ReadTeamColString(conP, "80 00 f0", "d8 00 cc", 12);
+}
+
+function void ReadTeamColCVars2(int conP, str primaryVar, str secondaryVar, int teamnum) {
+	int primary = RGBHex2Dec(GetUserCvarString(conP,primaryVar));
+	int secondary = RGBHex2Dec(GetUserCvarString(conP,secondaryVar));
+	team_color_palette[teamnum][0] = PaletteMap(secondary);
+	team_color_input[teamnum][0] = unpackByte1(secondary);
+	team_color_input[teamnum][1] = unpackByte2(secondary);
+	team_color_input[teamnum][2] = unpackByte3(secondary);
+	team_color_palette[teamnum][1] = PaletteMap(primary);
+	team_color_input[teamnum][3] = unpackByte1(primary);
+	team_color_input[teamnum][4] = unpackByte2(primary);
+	team_color_input[teamnum][5] = unpackByte3(primary);
+}
+
+function void ReadTeamColString(int conP, str primaryVar, str secondaryVar, int teamnum) { //$UH
+	int primary = RGBHex2Dec(primaryVar);
+	int secondary = RGBHex2Dec(secondaryVar);
+	team_color_palette[teamnum][0] = PaletteMap(secondary);
+	team_color_input[teamnum][0] = unpackByte1(secondary);
+	team_color_input[teamnum][1] = unpackByte2(secondary);
+	team_color_input[teamnum][2] = unpackByte3(secondary);
+	team_color_palette[teamnum][1] = PaletteMap(primary);
+	team_color_input[teamnum][3] = unpackByte1(primary);
+	team_color_input[teamnum][4] = unpackByte2(primary);
+	team_color_input[teamnum][5] = unpackByte3(primary);
+}
+
+
+int palette_data_lum[PALETTE_SIZE];
+
+function void InitializePaletteDataLum(void) {
+	for(int i = 0; i<PALETTE_SIZE; i++) palette_data_lum[i] = GetPaletteiLum(i);
+}
+
+function int GetPaletteiLum(int i) {
+	int lum = 0;
+	for(int j = 0; j<PALETTE_VAL; j++) lum += palette_data[i][j];
+	return (lum/PALETTE_VAL);
+}
+
+script "core_callteamtranslations_open" OPEN CLIENTSIDE {
+	ACS_NamedExecuteAlways("core_callteamtranslations", 0);
+}
+
+script "core_callteamtranslations_enter" ENTER CLIENTSIDE {
+	if(ConsolePlayerNumber() != PlayerNumber()) {terminate;}
+	ACS_NamedExecuteAlways("core_callteamtranslations", 0);
+}
+
+script "core_callteamtranslations_respawn" RESPAWN CLIENTSIDE {
+	ACS_NamedExecuteAlways("core_callteamtranslations_enter", 0);
+}
+
+script "core_callteamtranslations_disconnect" (int gone) DISCONNECT CLIENTSIDE {
+	if(ConsolePlayerNumber() != gone) {terminate;}
+	ACS_NamedExecuteAlways("core_callteamtranslations", 0);
+}
+
+script "core_callteamtranslations_net" (void) NET CLIENTSIDE {
+	Delay(1);
+	if(ConsolePlayerNumber()!=PlayerNumber()){terminate;}
+	Log(s:"\cvApplied color changes.");
+	ACS_NamedExecuteAlways("core_callteamtranslations_enter", 0);
+}
+
+script "core_callteamtranslations" (void) CLIENTSIDE {
+	InitializeColorData();
+
+	while(Timer() < 2 || MAX_TEAMCOLOR_DEF == 0) {
+		Delay(1);
+	}
+
+	int cpn = ConsolePlayerNumber();
+	bool spectator = PlayerIsSpectator(cpn) == 1;
+	int team = GetPlayerInfo(cpn,PLAYERINFO_TEAM);
+
+	for(int i = 0; i < MAX_TEAMCOLOR_DEF; i++) {
+		for(int j = 0; j < TEAM_NATIVE_COUNT; j++) {
+			if(team == j && ally_enemy_mode && !spectator) {
+				ACS_NamedExecuteAlways(getTeamColorDef(i), 0, j, TEAM_ALLY);
+			} else if (ally_enemy_mode && !spectator) {
+				ACS_NamedExecuteAlways(getTeamColorDef(i), 0, j, TEAM_ENEMY);
+			} else {
+				ACS_NamedExecuteAlways(getTeamColorDef(i), 0, j, j);
+			}
+		}
+		for(int k = TEAM_NATIVE_COUNT + 2; k < TEAM_COUNT; k++) { //$UH
+			ACS_NamedExecuteAlways(getTeamColorDef(i), 0, k, k);
+		}
+	}
+}
+
+#DEFINE MAX_PRESETS 5
+
+script "core_loadcolors" (int preset) NET CLIENTSIDE {
+	Delay(1);
+
+	int cpn = ConsolePlayerNumber();
+	if(ConsolePlayerNumber()!=PlayerNumber()){terminate;}
+
+	int broken_load = false;
+
+	if(preset > 0 && preset < MAX_PRESETS + 1) {
+		int cvarToLoad = 0;
+		str cvar = GetUserCvarString(cpn,StrParam(s:"mm8bdm_colorpreset_", i:preset));
+		for(int i = 0; i < StrLen(cvar); i++) {
+			if (GetChar(cvar, i) == '|') {
+				switch(cvarToLoad) {
+					case 0:
+						SetUserCvarString(cpn, "mm8bdm_lightcolor_primary", StrMid(cvar, i-8, 8));
+						break;
+					case 1:
+						SetUserCvarString(cpn, "mm8bdm_lightcolor_secondary", StrMid(cvar, i-8, 8));
+						break;
+					case 2:
+						SetUserCvarString(cpn, "mm8bdm_wilycolor_primary", StrMid(cvar, i-8, 8));
+						break;
+					case 3:
+						SetUserCvarString(cpn, "mm8bdm_wilycolor_secondary", StrMid(cvar, i-8, 8));
+						break;
+					case 4:
+						SetUserCvarString(cpn, "mm8bdm_cossackcolor_primary", StrMid(cvar, i-8, 8));
+						break;
+					case 5:
+						SetUserCvarString(cpn, "mm8bdm_cossackcolor_secondary", StrMid(cvar, i-8, 8));
+						break;
+					case 6:
+						SetUserCvarString(cpn, "mm8bdm_kingcolor_primary", StrMid(cvar, i-8, 8));
+						break;
+					case 7:
+						SetUserCvarString(cpn, "mm8bdm_kingcolor_secondary", StrMid(cvar, i-8, 8));
+						break;
+					case 8:
+						SetUserCvarString(cpn, "mm8bdm_allycolor_primary", StrMid(cvar, i-8, 8));
+						break;
+					case 9:
+						SetUserCvarString(cpn, "mm8bdm_allycolor_secondary", StrMid(cvar, i-8, 8));
+						break;
+					case 10:
+						SetUserCvarString(cpn, "mm8bdm_enemycolor_primary", StrMid(cvar, i-8, 8));
+						break;
+					case 11:
+						SetUserCvarString(cpn, "mm8bdm_enemycolor_secondary", StrMid(cvar, i-8, 8));
+						break;
+				}
+				cvarToLoad++;
+			} else if ((i + 1) % 3 == 0) {
+				if(GetChar(cvar, i) != ' ') {
+					broken_load = true;
+					break;
+				}
+			} else {
+				if(!isHexValue(GetChar(cvar, i))) {
+					broken_load = true;
+					break;
+				}
+			}
+		}
+	}
+
+	if(preset == 0 || broken_load) {
+		SetUserCvarString(cpn, "mm8bdm_lightcolor_primary", "00 70 E8");
+		SetUserCvarString(cpn, "mm8bdm_lightcolor_secondary", "38 B8 F8");
+		SetUserCvarString(cpn, "mm8bdm_wilycolor_primary", "E0 00 58");
+		SetUserCvarString(cpn, "mm8bdm_wilycolor_secondary", "FF 9B 9B");
+		SetUserCvarString(cpn, "mm8bdm_cossackcolor_primary", "00 A8 00");
+		SetUserCvarString(cpn, "mm8bdm_cossackcolor_secondary", "B8 F8 18");
+		SetUserCvarString(cpn, "mm8bdm_kingcolor_primary", "C0 70 00");
+		SetUserCvarString(cpn, "mm8bdm_kingcolor_secondary", "F8 B8 00");
+
+		SetUserCvarString(cpn, "mm8bdm_allycolor_primary", "00 70 E8");
+		SetUserCvarString(cpn, "mm8bdm_allycolor_secondary", "38 B8 F8");
+		SetUserCvarString(cpn, "mm8bdm_enemycolor_primary", "E0 00 58");
+		SetUserCvarString(cpn, "mm8bdm_enemycolor_secondary", "FF 9B 9B");
+	}
+
+	ACS_NamedExecuteAlways("core_callteamtranslations_enter", 0);
+
+	Delay(1);
+	ConsoleCommand("openmenu 8BDM_ColorOptions");
+}
+
+function bool isHexValue (int ch) {
+	switch(ch) {
+		case '0': return true;
+		case '1': return true;
+		case '2': return true;
+		case '3': return true;
+		case '4': return true;
+		case '5': return true;
+		case '6': return true;
+		case '7': return true;
+		case '8': return true;
+		case '9': return true;
+		case 'a': case 'A': return true;
+		case 'b': case 'B':	return true;
+		case 'c': case 'C':	return true;
+		case 'd': case 'D':	return true;
+		case 'e': case 'E':	return true;
+		case 'f': case 'F':	return true;
+	}
+	return false;
+}
+
+script "core_savecolors" (int preset) NET CLIENTSIDE {
+	Delay(1);
+
+	int cpn = ConsolePlayerNumber();
+	if(cpn!=PlayerNumber()){terminate;}
+
+	if(preset > 0 && preset < MAX_PRESETS + 1) {
+		str newVal = StrParam(
+			s:GetUserCvarString(cpn,"mm8bdm_lightcolor_primary"), s:"|",
+			s:GetUserCvarString(cpn,"mm8bdm_lightcolor_secondary"), s:"|",
+			s:GetUserCvarString(cpn,"mm8bdm_wilycolor_primary"), s:"|",
+			s:GetUserCvarString(cpn,"mm8bdm_wilycolor_secondary"), s:"|",
+			s:GetUserCvarString(cpn,"mm8bdm_cossackcolor_primary"), s:"|",
+			s:GetUserCvarString(cpn,"mm8bdm_cossackcolor_secondary"), s:"|",
+			s:GetUserCvarString(cpn,"mm8bdm_kingcolor_primary"), s:"|",
+			s:GetUserCvarString(cpn,"mm8bdm_kingcolor_secondary"), s:"|",
+			s:GetUserCvarString(cpn,"mm8bdm_allycolor_primary"), s:"|",
+			s:GetUserCvarString(cpn,"mm8bdm_allycolor_secondary"), s:"|",
+			s:GetUserCvarString(cpn,"mm8bdm_enemycolor_primary"), s:"|",
+			s:GetUserCvarString(cpn,"mm8bdm_enemycolor_secondary"), s:"|"
+		);
+
+		SetUserCvarString(cpn,StrParam(s:"mm8bdm_colorpreset_", i:preset),newVal);
+	}
+
+	Delay(1);
+	ConsoleCommand("openmenu 8BDM_ColorOptions");
+}
+
+script "core_resetcolors" (void) NET CLIENTSIDE {
+	Delay(1);
+
+	int cpn = ConsolePlayerNumber();
+	if(cpn!=PlayerNumber()){terminate;}
+
+	Log(s:"\cvReset presets to default.");
+	SetUserCvarString(cpn,"mm8bdm_colorpreset_1_name","Deuteranopia");
+	SetUserCvarString(cpn,"mm8bdm_colorpreset_1","00 70 e8|38 b8 f8|48 a8 10|b8 f8 18|3f 47 2b|db 7b 7b|00 80 88|00 f8 fc|00 70 e8|38 b8 f8|48 a8 10|b8 f8 18|");
+	SetUserCvarString(cpn,"mm8bdm_colorpreset_2_name","Protanopia");
+	SetUserCvarString(cpn,"mm8bdm_colorpreset_2","00 00 a8|00 70 e8|f8 b8 00|d8 f8 78|38 b8 f8|a4 e8 fc|00 40 58|00 88 94|00 00 a7|00 6f e7|f7 b7 00|d7 f7 78|");
+	SetUserCvarString(cpn,"mm8bdm_colorpreset_3_name","Tritanopia");
+	SetUserCvarString(cpn,"mm8bdm_colorpreset_3","00 90 00|a4 e8 fc|e0 00 58|ff 60 b0|50 30 00|88 70 00|70 70 70|ab ab ab|00 90 00|00 f8 fc|e0 00 58|ff 60 b0|");
+	SetUserCvarString(cpn,"mm8bdm_colorpreset_4_name","Veteran");
+	SetUserCvarString(cpn,"mm8bdm_colorpreset_4","00 78 FC|00 F8 FC|D8 28 00|FF BF 9B|E4 5C 10|F8 B8 00|80 00 F0|D0 C8 F8|00 78 FC|00 F8 FC|D8 28 00|FF BF 9B|");
+	SetUserCvarString(cpn,"mm8bdm_colorpreset_5_name","Extraterrestrial");
+	SetUserCvarString(cpn,"mm8bdm_colorpreset_5","00 F8 FC|FF FF FF|44 28 BC|E0 00 58|00 70 E8|00 A8 44|4B 4B 4B|EC B8 44|00 F8 FC|FF FF FF|44 28 BC|E0 00 58|");
+}
+
+// Team bar zone
+Script "core_runteambar_define" OPEN CLIENTSIDE
+{
+	DefineAssistDisplay("core_runteambar");
+}
+
+Script "core_runteambar" (int cam) CLIENTSIDE {
+	int cpn = ConsolePlayerNumber();
+	int team = GetPlayerInfo(cpn,PLAYERINFO_TEAM);
+	if(CheckActorInventory(cam,"LightTeamFlag") > 0) {
+		if(team == TEAM_LIGHT && ally_enemy_mode && PlayerIsSpectator(cpn) != 1) {
+			SetActorInventory(cam,"SBARTeamFlagCyan",team_color_palette[TEAM_ALLY][0] + 1);
+			SetActorInventory(cam,"SBARTeamFlagBlue",team_color_palette[TEAM_ALLY][1] + 1);
+		} else if (ally_enemy_mode && PlayerIsSpectator(cpn) != 1) {
+			SetActorInventory(cam,"SBARTeamFlagCyan",team_color_palette[TEAM_ENEMY][0] + 1);
+			SetActorInventory(cam,"SBARTeamFlagBlue",team_color_palette[TEAM_ENEMY][1] + 1);
+		} else {
+			SetActorInventory(cam,"SBARTeamFlagCyan",team_color_palette[TEAM_LIGHT][0] + 1);
+			SetActorInventory(cam,"SBARTeamFlagBlue",team_color_palette[TEAM_LIGHT][1] + 1);
+		}
+	} else if (CheckActorInventory(cam,"WilyTeamFlag") > 0) {
+		if(team == TEAM_WILY && ally_enemy_mode && PlayerIsSpectator(cpn) != 1) {
+			SetActorInventory(cam,"SBARTeamFlagCyan",team_color_palette[TEAM_ALLY][0] + 1);
+			SetActorInventory(cam,"SBARTeamFlagBlue",team_color_palette[TEAM_ALLY][1] + 1);
+		} else if (ally_enemy_mode && PlayerIsSpectator(cpn) != 1) {
+			SetActorInventory(cam,"SBARTeamFlagCyan",team_color_palette[TEAM_ENEMY][0] + 1);
+			SetActorInventory(cam,"SBARTeamFlagBlue",team_color_palette[TEAM_ENEMY][1] + 1);
+		} else {
+			SetActorInventory(cam,"SBARTeamFlagCyan",team_color_palette[TEAM_WILY][0] + 1);
+			SetActorInventory(cam,"SBARTeamFlagBlue",team_color_palette[TEAM_WILY][1] + 1);
+		}
+	} else if (CheckActorInventory(cam,"CossackTeamFlag") > 0) {
+		if(team == TEAM_COSSACK && ally_enemy_mode && PlayerIsSpectator(cpn) != 1) {
+			SetActorInventory(cam,"SBARTeamFlagCyan",team_color_palette[TEAM_ALLY][0] + 1);
+			SetActorInventory(cam,"SBARTeamFlagBlue",team_color_palette[TEAM_ALLY][1] + 1);
+		} else if (ally_enemy_mode && PlayerIsSpectator(cpn) != 1) {
+			SetActorInventory(cam,"SBARTeamFlagCyan",team_color_palette[TEAM_ENEMY][0] + 1);
+			SetActorInventory(cam,"SBARTeamFlagBlue",team_color_palette[TEAM_ENEMY][1] + 1);
+		} else {
+			SetActorInventory(cam,"SBARTeamFlagCyan",team_color_palette[TEAM_COSSACK][0] + 1);
+			SetActorInventory(cam,"SBARTeamFlagBlue",team_color_palette[TEAM_COSSACK][1] + 1);
+		}
+	} else if (CheckActorInventory(cam,"KingTeamFlag") > 0) {
+		if(team == TEAM_KING && ally_enemy_mode && PlayerIsSpectator(cpn) != 1) {
+			SetActorInventory(cam,"SBARTeamFlagCyan",team_color_palette[TEAM_ALLY][0] + 1);
+			SetActorInventory(cam,"SBARTeamFlagBlue",team_color_palette[TEAM_ALLY][1] + 1);
+		} else if (ally_enemy_mode && PlayerIsSpectator(cpn) != 1) {
+			SetActorInventory(cam,"SBARTeamFlagCyan",team_color_palette[TEAM_ENEMY][0] + 1);
+			SetActorInventory(cam,"SBARTeamFlagBlue",team_color_palette[TEAM_ENEMY][1] + 1);
+		} else {
+			SetActorInventory(cam,"SBARTeamFlagCyan",team_color_palette[TEAM_KING][0] + 1);
+			SetActorInventory(cam,"SBARTeamFlagBlue",team_color_palette[TEAM_KING][1] + 1);
+		}
+	}
+}
+
+// Team color utility zone
+script "core_getteampalette" (int team, int col) CLIENTSIDE {
+	int cpn = ConsolePlayerNumber();
+	if(GetPlayerInfo(cpn, PLAYERINFO_TEAM) < 4 && ally_enemy_mode && PlayerIsSpectator(cpn) != 1) {
+		if(GetPlayerInfo(cpn, PLAYERINFO_TEAM) == team) {
+			team = TEAM_ALLY;
+		} else {
+			team = TEAM_ENEMY;
+		}
+	}
+
+	int result = team_color_palette[team][col];
+	SetResultValue(result);
+}
+
+script "core_getteamRGB" (int team, int type) CLIENTSIDE{
+	int result = rgbTriplet(0,0,0);
+	switch(type)
+		{
+		case COLOR_LIGHTER:
+			result = rgbTriplet(team_color_lighter[team][0],team_color_lighter[team][1],team_color_lighter[team][2]);
+			break;
+		case COLOR_SECONDARY:
+			result = rgbTriplet(team_color_input[team][0],team_color_input[team][1],team_color_input[team][2]);
+			break;
+		case COLOR_PRIMARY:
+			result = rgbTriplet(team_color_input[team][3],team_color_input[team][4],team_color_input[team][5]);
+			break;
+		case COLOR_DARK:
+			result = rgbTriplet(team_color_darker[team][0],team_color_darker[team][1],team_color_darker[team][2]);
+			break;
+		}
+	SetResultValue(result);
+}
+
+// Projectile team color zone
+#DEFINE BLACKEST 0
+#DEFINE WHITEST 255
+
+#DEFINE BLACKISH 15
+#DEFINE WHITISH 240
+
+script "core_defineprojectileteamcolors" (int team, int refTeam) {
+	CreateTTLumRange(PCLR_TEAMPROJ+team, refTeam, BLACKISH, WHITISH);
+	CreateTTLumRange(PCLR_TEAMPROJ_WHITES+team, refTeam, BLACKISH, WHITEST);
+	CreateTTLumRange(PCLR_TEAMPROJ_BLACKS+team, refTeam, BLACKEST, WHITISH);
+	CreateTotalTranslation(PCLR_TEAMPROJ_ALL+team, refTeam);
+}
+
+function void CreateTotalTranslation(int translationid, int team) {
+	FillTotalTranslationArray(team);
+	CreateTotalTranslationFromArray(translationid);
+}
+
+#include "totltran.acs" // CreateTotalTranslationFromArray
+
+function void CreateTTLumRange(int translationid, int team, int darkest, int brightest) {
+	FillTTArrayLumRange(team,darkest,brightest);
+	CreateTotalTranslationFromArray(translationid);
+}
+
+function void FillTotalTranslationArray(int team) {
+	int i;
+	int j;
+	int lum;
+	for(i = 0; i<PALETTE_SIZE; i++) {
+		lum = palette_data_lum[i];
+		for(j = 0; j<PALETTE_VAL; j++) total_tran_array[i][j] = TeamColor(lum,team,j);
+	}
+}
+
+function void FillTTArrayLumRange(int team, int darkest, int brightest) {
+	int i;
+	int j;
+	int lum;
+	for(i = 0; i<PALETTE_SIZE; i++) {
+		lum = palette_data_lum[i];
+		if(lum>=darkest&&lum<=brightest) for(j = 0; j<PALETTE_VAL; j++) total_tran_array[i][j] = TeamColor(lum,team,j);
+		else for(j = 0; j<PALETTE_VAL; j++) total_tran_array[i][j] = lum;
+	}
+}
+
+function int TeamColor(int lum, int team, int rgb) {
+	int lumlight = team_color_light_lum[team];
+	int lumdark = team_color_dark_lum[team];
+
+	if(lum>=lumlight) return GradientFunc(lum, lumlight, team_color_light[team][rgb], 255, team_color_lighter[team][rgb]);
+	if(lum>=lumdark) return GradientFunc(lum, lumdark, team_color_dark[team][rgb], lumlight, team_color_light[team][rgb]);
+	return GradientFunc(lum, 0, team_color_darker[team][rgb], lumdark, team_color_dark[team][rgb]);
+	return 0;
+}
+
+function int GradientFunc(int lum, int lum1, int color1, int lum2, int color2) {
+	int col1Amount = lum2-lum;
+	int col2Amount = lum-lum1;
+	int colRange = col1Amount+col2Amount;
+
+	if(colRange<1) return color1; // this basically only happens when all white is given, so doesn't matter what the result is, it's all white
+	return (col1Amount*color1+col2Amount*color2)/colRange;
+}
