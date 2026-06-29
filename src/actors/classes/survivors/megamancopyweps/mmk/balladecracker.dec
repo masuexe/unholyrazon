@@ -1,0 +1,66 @@
+actor BalladeCrackerWepU_NormalBar : BalladeCrackerWep_NormalBar {}
+
+actor BalladeCrackerWepU : BaseMM8BDMCustWep replaces BalladeCrackerWep
+{
+Weapon.AmmoUse 3
+Weapon.AmmoGive 30
+Weapon.SlotNumber 5
+Inventory.Pickupmessage "$PU_BALLADECRACKER"
+Obituary "$OB_BALLADECRACKER"
+Tag "$TAG_BALLADECRACKER"
+weapon.ammotype "BalladeCrackerAmmo"
+inventory.icon "BALLSI"
+States
+{
+SpawnLoop:
+WEA3 C -1
+loop
+Ready:
+BHND A 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_BALLADECRACKER)
+BHND A 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+BHND A 1 A_WeaponReady
+Goto Ready+1
+ReadyNoAmmo:
+BHND J 1 A_WeaponReady
+BHND J 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+Goto Ready+1
+Deselect:
+BHND A 0
+goto DeselectSwap
+Select:
+BHND A 0
+goto SelectSwap
+Fire:
+BHND A 0 A_JumpIfNoAmmo("NoAmmo")
+BHND A 0 A_PlaySoundEx("weapons/mmk/balladecrackerfire","Weapon")
+BHND A 0 A_FireCustomMissile("BalladeCrackerU",0,1,8,0)
+BHND BCDEFG 2
+BHND H 0 A_JumpIfNoAmmo("NoAmmoDelay")
+BHND HI 2
+BHND A 13
+BHND A 0 A_Refire
+Goto Ready+1
+NoAmmoDelay:
+BHND KL 2
+BHND J 13
+Goto ReadyNoAmmo
+NoAmmo:
+BHND J 1 ACS_NamedExecuteAlways("core_noammo",0)
+Goto ReadyNoAmmo
+}
+}
+
+
+actor BalladeCrackerU : BalladeCracker replaces BalladeCracker
+{
+damage (10)
+States
+{
+Death:
+BALA A 0 A_Stop
+BALA A 0 A_PlaySoundEx("weapons/mmk/balladecrackerexplode", "Weapon")
+BALA A 0 A_Explode(400, 96, 0)
+TNT1 A 35 A_SpawnItemEx("ExplosionEffect2", 0, 0, 0, 0, 0, 0, 0, SXF_WEPFXCOLOR)
+stop
+}
+}

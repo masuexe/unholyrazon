@@ -1,0 +1,130 @@
+//Yes, I know Sakugarne isn't a MMK weapon. But it fit here best. Okay? -Ivory
+actor SakugarneWepU_NormalBar : SakugarneWep_NormalBar {}
+
+actor SakugarneWepU : BaseMM8BDMCustWep replaces SakugarneWep
+{
+Weapon.AmmoUse 2
+Weapon.AmmoGive 28
+Weapon.SlotNumber 4
+Inventory.Pickupmessage "$PU_SAKUGARNE"
+Obituary "$OB_SAKUGARNE"
+Tag "$TAG_SAKUGARNE"
+weapon.ammotype "SakugarneAmmo"
+inventory.icon "SAKUSI"
+States
+{
+SpawnLoop:
+WEA2 Z -1
+loop
+Ready:
+SAKH A 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_SAKUGARNE)
+ReadyReal:
+SAKH A 1 A_WeaponReady
+Goto Ready+1
+Deselect:
+SAKH A 0 A_TakeInventory("SakugarneActive",1)
+goto DeselectSwap
+Select:
+SAKH A 0 A_TakeInventory("SakugarneActive",1)
+goto DeselectSwap
+Altfire:
+SAKH "#" 1 A_JumpIfInventory("SakugarneActive", 1, "Cancel")
+SAKH "#" 1 A_Jump(256, "ReadyReal") 
+Goto ReadyReal
+Cancel:
+SAKH B 1 A_JumpIf(velz<0, "AirCancel")
+SAKH B 0 ThrustThingZ(0,0,0,0)//A_TakeInventory("SakugarneActive", 9999)
+Goto AirCancel
+Fire:
+SAKH A 0 A_JumpIfNoAmmo("NoAmmo")
+SAKH A 0 A_JumpIfInventory("PlayerPropertyNoGravity",1,"NoAmmo")
+SAKH A 0 A_JumpIfInventory("SakugarneActive",1,"AirReady")
+SAKH A 0 A_CheckFloor("FireStart")
+goto ReadyReal
+FireStart:
+SAKH A 0 A_GiveInventory("SakugarneActive",1)
+SAKH A 0 A_Stop
+SAKH A 0 A_PlaySoundEx("weapons/mmk/sakugarneactivate","Weapon")
+SAKH A 0 A_SpawnItemEx("SakugarneWarperStart")
+SAKH A 0 A_SpawnItemEx("SakugarneWarper")
+SAKH AB 4
+SAKH C 0 A_Stop
+SAKH C 0 A_ChangeVelocity(17,0,16, CVF_RELATIVE)
+SAKH C 5
+Goto Air
+Air:
+SAKH C 0 A_JumpIfInventory("PlayerPropertyNoGravity",1,"NoAmmo")
+SAKH C 0
+SAKH C 0 A_SpawnItemEx("SakugarneCrush",0,0,-10,0,0,-32)
+SAKH C 0 ThrustThingZ(0,1,1,1)
+SAKH C 1 A_WeaponReady
+SAKH C 0 A_CheckFloor("Jump")
+loop
+AirReady:
+SAKH C 0 A_JumpIfInventory("PlayerPropertyNoGravity",1,"NoAmmo")
+SAKH C 0 A_SpawnItemEx("SakugarneCrush",0,0,-10,0,0,-32)
+SAKH C 0
+SAKH C 0 ThrustThingZ(0,1,1,1)
+SAKH C 1
+SAKH C 0 A_CheckFloor("Jump2")
+loop
+AirCancel:
+SAKH B 0 A_JumpIfInventory("PlayerPropertyNoGravity",1,"NoAmmo")
+SAKH B 0 A_SpawnItemEx("SakugarneCrush",0,0,-10,0,0,-32)
+SAKH B 0
+SAKH B 0 ThrustThingZ(0,1,1,1)
+SAKH B 1
+SAKH B 0 A_CheckFloor("Jump")
+loop
+Jump:
+SAKH A 0 A_SpawnItemEx("SakugarneDriller",0,0,16)
+SAKH A 0 A_JumpIfNoAmmo("NoAmmo")
+SAKH A 0 A_JumpIfInventory("PlayerPropertyNoGravity",1,"NoAmmo")
+SAKH A 0 A_PlaySoundEx("weapons/mmk/sakugarnebounce","Weapon")
+SAKH A 0 A_Stop
+SAKH A 4
+SAKH A 0 A_Stop
+SAKH B 4
+SAKH B 0 A_Stop
+SAKH A 0 A_ChangeVelocity(17,0,16, CVF_RELATIVE)
+SAKH C 5
+Goto Air
+Jump2:
+SAKH A 0 A_SpawnItemEx("SakugarneDriller",0,0,16)
+SAKH A 0 A_JumpIfNoAmmo("NoAmmo")
+SAKH A 0 A_JumpIfInventory("PlayerPropertyNoGravity",1,"NoAmmo")
+SAKH A 0 A_PlaySoundEx("weapons/mmk/sakugarnebounce","Weapon")
+SAKH A 0 A_Stop
+SAKH A 3
+SAKH A 0 A_Stop
+SAKH B 3
+SAKH B 0 A_Stop
+SAKH A 0 A_ChangeVelocity(20,0,21, CVF_RELATIVE)
+SAKH C 5
+Goto Air
+NoAmmo:
+SAKH A 0 A_TakeInventory("SakugarneActive",1)
+SAKH "#" 1 ACS_NamedExecuteAlways("core_noammo",0)
+goto ReadyReal
+}
+}
+
+actor SakugarneCrushU : SakugarneCrush replaces SakugarneCrush
+{
+damage (270)
+}
+
+actor SakugarneDrillerU : SakugarneDriller replaces SakugarneDriller
+{
+damagetype "Sakugarne"
+Obituary "$OB_SAKUGARNE"
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 AAAAA 0 A_SpawnItemEx("SakugarneDebris",0,0,-14,random(1,5),random(-10,10),random(8,12),random(-5,5), SXF_WEPFXCOLOR)
+TNT1 A 0 A_TakeFromTarget("SakugarneAmmo",2,TIF_NOTAKEINFINITE)
+TNT1 A 4 A_Explode(800,144,0)
+stop
+}
+}
