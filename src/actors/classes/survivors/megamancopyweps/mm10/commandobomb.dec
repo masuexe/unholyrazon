@@ -69,160 +69,20 @@ Goto Ready+1
 }
 
 
-actor CommandoBombU : CommandoBomb
+actor CommandoBombU : CommandoBomb replaces CommandoBomb
 {
 damage (200)
-States
-{
-Death:
-COMM B 0 A_JumpIf(z-floorz<=8,"Death2")
-COMM B 0 A_PlaySoundEx("weapons/mm10/commandobombswitch","Weapon")
-COMM B 0 A_SpawnItemEx("CommandoTrailFX",0,0,0,0,0,0,0,SXF_WEPFXCOLOR)
-DeathLoop:
-COMM C 0 A_JumpIf(z-floorz<=8,"Death2")
-COMM C 0 A_Stop
-COMM C 0 ThrustThingZ(0, 35*4, 1, 0)
-COMM C 2 A_SpawnItemEx("CommandoTrailFX",0,0,0,0,0,0,0,SXF_WEPFXCOLOR)
-loop
-Death2:
-COMM B 0 A_PlaySoundEx("weapons/mm10/commandobombexplosion","Weapon")
-COMM B 0 A_SpawnItemEx("CommandoBombExplosionU", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
-TNT1 A 35 A_SpawnItemEx("CommandoTrailFX",0,0,0,0,0,0,0,SXF_WEPFXCOLOR)
-stop
-}
 }
 
-actor CommandoBombExplosionU : CommandoBombExplosion
-{
-    States
-    {
-    Spawn:
-        TNT1 A 0
-        TNT1 A 0 A_CheckFlag(SOLID, "Migrate", AAPTR_TRACER)
-    Explode:
-        TNT1 A 0 A_SpawnItemEx("CommandoBombWaveTrailU")
-        TNT1 A 0 A_SpawnItemEx("CommandoBombWaveU", 0, 0, 0, 1, 0, 0, 0*45, SXF_MULTIPLYSPEED)
-        TNT1 A 0 A_SpawnItemEx("CommandoBombWaveU", 0, 0, 0, 1, 0, 0, 1*45, SXF_MULTIPLYSPEED)
-        TNT1 A 0 A_SpawnItemEx("CommandoBombWaveU", 0, 0, 0, 1, 0, 0, 2*45, SXF_MULTIPLYSPEED)
-        TNT1 A 0 A_SpawnItemEx("CommandoBombWaveU", 0, 0, 0, 1, 0, 0, 3*45, SXF_MULTIPLYSPEED)
-        TNT1 A 0 A_SpawnItemEx("CommandoBombWaveU", 0, 0, 0, 1, 0, 0, 4*45, SXF_MULTIPLYSPEED)
-        TNT1 A 0 A_SpawnItemEx("CommandoBombWaveU", 0, 0, 0, 1, 0, 0, 5*45, SXF_MULTIPLYSPEED)
-        TNT1 A 0 A_SpawnItemEx("CommandoBombWaveU", 0, 0, 0, 1, 0, 0, 6*45, SXF_MULTIPLYSPEED)
-        TNT1 A 0 A_SpawnItemEx("CommandoBombWaveU", 0, 0, 0, 1, 0, 0, 7*45, SXF_MULTIPLYSPEED)
-        TNT1 A 70
-        stop
-    Migrate:
-        TNT1 A 0 A_Warp(AAPTR_TRACER, 0, 0, -(z-floorz), 0, WARPF_ABSOLUTEANGLE)
-        goto Explode
-    }
-}
-
-actor CommandoWaveballU : CommandoWaveball
-{
-+RIPPER
--NOGRAVITY
-+BRIGHT
-damage (0)
-radius 16
-height 16
-speed 10
-gravity 2.0
-States
-{
-Spawn:
-MMFX C 1
-loop
-Death:
-MMFX CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC 1 A_JumpIf(z-floorz<=8,"Death2")
-MMFX CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC 1 A_JumpIf(z-floorz<=8,"Death2")
-MMFX C 0 A_ChangeFlag(NOGRAVITY, true)
-ForceFall:
-MMFX C 0 ThrustThingZ(0, 5, 1, 1)
-MMFX C 1 A_CheckFloor("Death")
-loop
-Death2:
-TNT1 B 0 A_PlaySoundEx("weapons/mm10/commandobombexplosion","Weapon")
-TNT1 A 15 A_SpawnItemEX("CommandoBombWave",0,0,0,1,0,0,0,SXF_MULTIPLYSPEED)
-stop
-}
-}
-
-actor CommandoBombWaveU : CommandoBombWave
-{
-Obituary "$OB_COMMANDOBOMB"
-damagetype "CommandoBomb"
-+RIPPER
-+STEPMISSILE
-maxstepheight 24
-Speed 15
-Damage (0)
-height 2
-radius 1
-reactiontime 6
-States
-{
-Spawn:
-TNT1 A 1
-Spawn1: 
-TNT1 A 1
-TNT1 A 0 A_JumpIf(z-floorz > 24, "Death")
-TNT1 A 0 A_JumpIf(z-floorz > 0, "WarpToFloor1")
-goto Spawn2
-Spawn2:
-TNT1 A 1
-TNT1 A 0 A_JumpIf(z-floorz > 24, "Death")
-TNT1 A 0 A_JumpIf(reactiontime % 2 == 0, "SpawnFake")
-goto SpawnReal
-SpawnFake:
-TNT1 A 0 A_SpawnItemEx("CommandoBombWaveTrailFake",0,0,0,0,0,0,0,SXF_WEPFXCOLOR)
-goto SpawnEnd
-SpawnReal:
-TNT1 A 0 A_SpawnItemEx("CommandoBombWaveTrailU")
-SpawnEnd:
-TNT1 A 0 A_Countdown
-TNT1 A 0 A_JumpIf(z-floorz > 0, "WarpToFloor2")
-goto Spawn1
-WarpToFloor1:
-TNT1 A 0 A_Warp(AAPTR_DEFAULT, 0, 0, -(z-floorz))
-goto Spawn2
-WarpToFloor2:
-TNT1 A 0 A_Warp(AAPTR_DEFAULT, 0, 0, -(z-floorz))
-goto Spawn1
-Death:
-TNT1 A 0
-stop
-}
-}
-
-actor CommandoBombDamagerAU : CommandoBombDamagerA
+actor CommandoBombDamagerAU : CommandoBombDamagerA replaces CommandoBombDamagerA
 {
 damage (60)
 }
 
-actor CommandoBombDamagerBU : CommandoBombDamagerAU { height 40  }
-actor CommandoBombDamagerCU : CommandoBombDamagerAU { height 75  }
-actor CommandoBombDamagerDU : CommandoBombDamagerAU { height 112 }
+actor CommandoBombDamagerBU : CommandoBombDamagerAU replaces CommandoBombDamagerB { height 40  }
+actor CommandoBombDamagerCU : CommandoBombDamagerAU replaces CommandoBombDamagerC { height 75  }
+actor CommandoBombDamagerDU : CommandoBombDamagerAU replaces CommandoBombDamagerD { height 112 }
 
-actor CommandoBombDamagerXU : CommandoBombDamagerAU { damage (30) }
-actor CommandoBombDamagerYU : CommandoBombDamagerBU { damage (30) }
-actor CommandoBombDamagerZU : CommandoBombDamagerCU { damage (30) }
-
-actor CommandoBombWaveTrailU : CommandoBombWaveU
-{
-    speed 0
-    +FLOORHUGGER
-    +FORCEYBILLBOARD
-    +BRIGHT
-    States
-    {
-    Spawn:
-        ETRA A 1
-        ETRA B 1 A_SpawnItemEx("CommandoBombDamagerYU")
-        ETRA C 1 A_SpawnItemEx("CommandoBombDamagerZU")
-        ETRA D 1 A_SpawnItemEx("CommandoBombDamagerDU")
-        ETRA C 1 A_SpawnItemEx("CommandoBombDamagerCU")
-        ETRA B 1 A_SpawnItemEx("CommandoBombDamagerBU")
-        ETRA A 1 A_SpawnItemEx("CommandoBombDamagerAU")
-        stop
-    }
-}
+actor CommandoBombDamagerXU : CommandoBombDamagerAU replaces CommandoBombDamagerX { damage (30) }
+actor CommandoBombDamagerYU : CommandoBombDamagerBU replaces CommandoBombDamagerY { damage (30) }
+actor CommandoBombDamagerZU : CommandoBombDamagerCU replaces CommandoBombDamagerZ { damage (30) }
