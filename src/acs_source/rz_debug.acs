@@ -2,11 +2,33 @@
 #include "zcommon.acs"
 
 script "rz_debug_MorphMe" (void) {
-	bool res = MorphActor(0, "TrueBusterExpert", "", 0x7ffffffc, 898, "GigaAstroExplode", "TrueBusterExpertC");
+	ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false);
+	bool res = morphActorToBoss(1);
 	if (res) {
 		Log(s:"Morph successful!");
 	}
 	else {
 		Log(s:"Morph failed!");
 	}
+}
+
+function bool morphActorToBoss(int bossNum) {
+	GiveInventory("ThisIsMyMagicBossNumber", bossNum);
+	return MorphActor(0, "TrueBusterExpert", "", 0x7ffffffc, MRF_FULLHEALTH|MRF_WHENINVULNERABLE|MRF_LOSEACTUALWEAPON|MRF_NEWTIDBEHAVIOUR, "GigaAstroExplode", "");
+}
+
+script "rz_debug_checkdeathstate" (void)
+{
+	bool ice = CheckInventory("IceDeathFlag");
+	bool gib = CheckInventory("ExplodeDeathFlag");
+	bool fall = CheckInventory("FallingDeathFlag");
+
+	while (true) {
+		ice = CheckInventory("IceDeathFlag");
+		gib = CheckInventory("ExplodeDeathFlag");
+		fall = CheckInventory("FallingDeathFlag");
+		Log(s:"Ice: ", i:ice, s:" Gib: ", i:gib, s:" Fall: ", i:fall);
+		delay(1);
+	}
+
 }
