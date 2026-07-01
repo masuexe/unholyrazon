@@ -36,7 +36,23 @@ bool survWinWithLMS; //LastManChecker
 #define PLS_BOSS 2
 #define PLS_EYE 6
 int totalPlayersArr[7]; //Array spots; 0 = dead, 1 = survivor, 2 = boss, 6 = demoneye
-int playerLifeStatusArr[65] = {-1}; //-1 = null, 0 = dead, 1 = alive, 2 = boss, 6 = eye
+int playerLifeStatusArr[MAX_PLAYERS+1] = {-1}; //-1 = null, 0 = dead, 1 = alive, 2 = boss, 6 = eye
+
+#define MAX_BOSSES 4
+
+#define BOSSDATA_TID 0
+#define BOSSDATA_NUM 1
+#define BOSSDATA_MORPHED 2
+int bossDataArr[MAX_BOSSES][3];
+//{Boss TID, TheBossNum, MorphSuccess}
+
+#define BOSSHP_HPMEM 0
+#define BOSSHP_CURRHP 1
+#define BOSSHP_ARMORMEM 2
+#define BOSSHP_CURRARMOR 3
+#define BOSSHP_DEATH 4
+int bossHPArr[MAX_BOSSES][5];
+//{HP Mem, Curr HP, Armor Mem, Curr Armor, Death}
 
 str u_MapLevelName;
 str u_MapLevelCode;
@@ -113,13 +129,13 @@ function void playerLifeStatusArr_GatherFunc (void)
 	totalPlayersArr[1] = PlayerCount();
 
 	int P_Total = PlayerCount();
-	for(int i = 0; i < 64; i++){
+	for(int i = 0; i < MAX_PLAYERS; i++){
 		if(PlayerInGame(i)){
-			Log(s:"Player ",i:i,s:" is alive");
+			debugLog(strParam(s: "Player ", i: i, s: " is alive"));
 			playerLifeStatusArr[i] = 1;
 			if(P_Total <= 1){
-				playerLifeStatusArr[64] = i;
-				Log(s:"Done collecting alive players. Max ID = ",i:playerLifeStatusArr[64]);
+				playerLifeStatusArr[MAX_PLAYERS] = i;
+				debugLog(strParam(s: "Done collecting alive players. Max ID = ", i: playerLifeStatusArr[MAX_PLAYERS]));
 				break;
 			}
 			P_Total--;
@@ -174,3 +190,60 @@ function void minus_StrongmanCheckArray (void)
 	}
 }
 
+
+//Check and decide what MultiBoss is possible.
+function void multiBossFunction(bool Reset)
+{
+	multiBossCheck = 1;
+	debugLog(strParam(s: "multiBossCheck = ", i: multiBossCheck));
+}
+
+//Select Bosses
+function void setUpBossSelection_Func (void)
+{
+	int TempBoss;
+	for (int i = 0; i < multiBossCheck; i++) {
+		bossDataArr[i][BOSSDATA_NUM] = 0;
+		debugLog(strParam(s: "UnholyBoss", i: i+1, s: " = ", i: bossDataArr[i][BOSSDATA_NUM]));
+	}
+	//if(Debug_TXT){Log(s:"DEBUG TXT: RareBossChance = ",d:RareBossChance);}
+
+}
+
+//Assigns players as Bosses
+function void setUpPlayerSelection_Func (void)
+{
+	int TempPlayer = 0;
+	bossDataArr[0][BOSSDATA_TID] = 1000; //rngPickCheck(0);
+	TempPlayer = bossDataArr[0][BOSSDATA_TID];
+	debugLog(strParam(s: "Boss ", i: 1, s: " TID = ", i: TempPlayer));
+	playerLifeStatusArr[TempPlayer-1000] = PLS_BOSS;
+}
+
+//Randomly pick a player, if they are not ingame or are in use TID's, pick another random player.
+function int rngPickCheck(int PastCheck)
+{
+	int Check;
+	do {
+		Check = random(1000, playerLifeStatusArr[MAX_PLAYERS]+1000);//1063
+	} while(!PlayerInGame(Check-1000) || CheckActorInventory(Check,"IsDead") ||
+			!checkBossDataTIDFunc(Check,PastCheck));
+
+	return Check;
+}
+
+//Check if TID matches in use Boss TID
+function bool checkBossDataTIDFunc(int TID, int PastCheck)
+{
+	for(int i = 0; i < PastCheck ;i++){
+		if(TID == bossDataArr[i][BOSSDATA_TID]){
+			return false;
+		}
+	}
+	return true;
+}
+
+function int morphMeFunc(int TID, int Boss, str Flash)
+{
+	return MorphActor(TID, mainBossList[Boss][0], "", 0x7ffffffc, MRF_FULLHEALTH|MRF_WHENINVULNERABLE|MRF_LOSEACTUALWEAPON|MRF_NEWTIDBEHAVIOUR, Flash, "");
+}
