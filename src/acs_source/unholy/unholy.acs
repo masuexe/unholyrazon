@@ -1,6 +1,8 @@
 #library "unholy"
 #include "zcommon.acs"
+#include "acsutils.acs"
 #include "uh_lib.acs"
+#include "uh_display_lib.acs"
 
 Script "ub_BasicTLMSEnter" ENTER
 {
@@ -110,7 +112,25 @@ script "ub_StartUpSettings" OPEN//These are start up variables so that they are 
 		rareLMSTime = 9;
 		StartUpVariables = true;
 	}
+	ACS_NamedExecute("ub_RefreshHudMessageLoop", 0);
+	ACS_NamedExecute("uh_BackgroundTimer", 0);
+}
 
+//This is a basic countdown timer, lasts X time. After X time, attempt to end the round.
+script "uh_BackgroundTimer" (void)//OPEN
+{
+	int deathChance = random(1, 4);
+
+	int timeLeft = getCVar("uh_sv_gametimer");
+
+	SetFont("BIGFONT");
+	SetHudSize(640,480,0);
+
+	until (timeLeft < 0 || gameover){
+		HudMessageBold(n:0, s:"\cgTime Left: \c-", d:timeLeft; HUDMSG_FADEOUT|HUDMSG_LOG, 49, CR_YELLOW,320.4, 464.2, 1.8,0.2);
+		Delay(35);
+		timeLeft--;
+	}
 }
 
 
@@ -120,8 +140,7 @@ Script "uh_DemoneyeMorph" (int whoisit, int Bonus)
 
 playerLifeStatusArr_UpdateFunc(PlayerNumber(),6);
 
-TakeInventory("ThisIsMyMagicEyeNumber",9999);//Used for Menu Help/MugShot
-GiveInventory("ThisIsMyMagicEyeNumber",whoisit+Bonus*100);
+setInventory("ThisIsMyMagicEyeNumber", whoisit + Bonus*100); //Used for Menu Help/MugShot
 
 TakeInventory("PowerProtectSurvivor",1);
 TakeInventory("PowerProtectUnholyItem",1);
