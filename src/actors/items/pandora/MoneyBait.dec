@@ -1,0 +1,258 @@
+actor MoneyBaitItem : UnholyItem
+{
+Tag "$TAG_P_BOX09"
+inventory.amount 1
+inventory.pickupmessage "We got to have...MONEY..."
+inventory.icon "PANBOX09"
+States
+{
+Spawn:
+I_BA I 6
+loop
+UseX:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("items/MoneyUse","Item")
+TNT1 A 0 A_FireCustomMissile("MoneyBaitShot",0,0,0,0)
+goto End
+}
+}
+
+actor MoneyBaitShot : BasicProjectile
+{
+Translation "192:192=107:107", "198:198=130:130"
+Damagetype "MoneyBaitCash"
+Obituary "%o won the money, they won all of it."
+-NOGRAVITY
+-RIPPER
++THRUGHOST
++SKYEXPLODE
+Bouncetype Classic
++BOUNCEONWALLS
+-BOUNCEONFLOORS
+-BOUNCEONCEILINGS
+-ALLOWBOUNCEONACTORS
++DONTSPLASH
++STEPMISSILE
+maxstepheight 24
+bouncecount 10
+bouncefactor 0.4
+wallbouncefactor 0.75
+gravity 1.75
+ReactionTime 2
+Damage (0)
+Radius 16
+Height 16
+Speed 25
+Scale 2.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_CountDown
+TNT1 A 1 ThrustThingZ(0,16,0,1)
+TNT1 A 0 A_Jump(16,"SpawnR")
+I_BI A 1 A_CheckFloor("Spawn2")
+wait
+Spawn2:
+I_BI A 1 A_CountDown
+wait
+SpawnR:
+TNT1 A 0 A_GiveInventory("UOnce",1)
+I_BI D 1 A_CheckFloor("SpawnR2")
+wait
+SpawnR2:
+I_BI D 1 A_CountDown
+wait
+Crash:
+XDeath:
+TNT1 A 0 A_JumpIf(Args[2]>0,"DeathFix")
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("items/MoneyUse","Body")
+TNT1 A 0 A_SpawnItemEx("MoneyBaitExplode",0,0,16)
+TNT1 A 1 A_SpawnItemEx("MoneyBaitHelper",0,0,8)
+stop
+DeathFix:
+TNT1 A 0
+TNT1 A 0 A_RearrangePointers(8)
+goto XDeath+1
+Death:
+TNT1 A 0 A_PlaySoundEx("items/MoneyUse","Body")
+TNT1 A 0 A_JumpIfInventory("UOnce",1,"DeathR")
+TNT1 A 1 A_SpawnItemEx("MoneyBaitShot2",0,0,0,0,0,0,0,1)
+stop
+DeathR:
+TNT1 A 1 A_SpawnItemEx("MoneyBaitShotR2",0,0,0,0,0,0,0,1)
+stop
+}
+}
+
+actor MoneyBaitShot2 : MoneyBaitShot
+{
++DONTBLAST
+-BOUNCEONWALLS
++NOEXPLODEFLOOR
+States
+{
+Spawn:
+I_BI A 0
+I_BI A 0 A_SetArg(2,1)
+I_BI A 70 A_RearrangePointers(0,0,2)
+I_BI A 0 A_SpawnItemEx("MoneyBaitShotFX_H",0,0,0,0,0,0,0,1)
+I_BI A 1 A_RearrangePointers(1)
+I_BI A 2100 A_CountDown
+wait
+Death:
+TNT1 A 0
+goto XDeath
+}
+}
+actor MoneyBaitShotR2 : MoneyBaitShot2
+{
+States
+{
+Spawn:
+I_BI D 0
+I_BI D 0 A_SetArg(2,1)
+I_BI D 70 A_RearrangePointers(0,0,2)
+I_BI D 0 A_SpawnItemEx("MoneyBaitShotFX_H",0,0,0,0,0,0,0,1)
+I_BI D 1 A_RearrangePointers(1)
+I_BI D 2100 A_CountDown
+wait
+}
+}
+
+
+actor MoneyBaitShotFX_H : BasicClientSide
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 AAAAA 0 A_SpawnItemEx("MoneyBaitShotFX",0,0,48,frandom(3,5),0,frandom(4,6),random(0,17)*20,32)
+TNT1 AAAAA 0 A_SpawnItemEx("MoneyBaitShotFX",0,0,48,frandom(3,5),0,frandom(4,6),random(0,17)*20,33)
+TNT1 AAAAA 0 A_SpawnItemEx("MoneyBaitShotFX",0,0,48,frandom(3,5),0,frandom(4,6),random(0,17)*20,random(0,1)+32)
+stop
+}
+}
+
+actor MoneyBaitShotFX : BasicClientSide
+{
+Translation "198:198=107:107"
+Scale 1.0
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SetScale(ScaleX+frandom(-0.5,0.5))
+I_BI C 0
+I_BI C random(5,7)
+stop
+}
+}
+
+
+actor MoneyBaitExplode : BasicExplosion
+{
+damagetype "MoneyBaitCash"
+Obituary "%o won the money, they won all of it."
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 2 A_Explode(175,182,0,0,20)
+stop
+}
+}
+
+actor MoneyBaitHelper : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("MoneyBait_MoolaB32")
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,0)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,15)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,30)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,45)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,60)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,75)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,90)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,105)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,120)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,135)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,150)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,165)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,180)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,195)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,210)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,225)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,240)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,255)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,270)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,285)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,300)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,315)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,330)
+TNT1 A 0 A_SpawnItemEx("MoneyBait_Moola",0,0,0,0,0,0,345)
+TNT1 A 2
+stop
+}
+}
+
+actor MoneyBait_Moola : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0
+// TNT1 A 0 A_Jump(1,"Ghost","Joust","Quick")
+// TNT1 A 0 A_Jump(8,"Business","Tank")
+// TNT1 A 0 A_Jump(32,"Kamikaze")
+// TNT1 A 0 A_Jump(128,"Sumo","MLG","Bomber")
+// TNT1 A 0 A_Jump(255,"Plain")
+TNT1 A 0 A_Jump(256,"Plain")
+goto Rich
+Plain:
+TNT1 A 0 A_SpawnItemEx("Plain_Moola",0,0,0,20)
+stop
+Sumo:TNT1 A 0 A_SpawnItemEx("Sumo_Moola",0,0,0,20)stop
+MLG:TNT1 A 0 A_SpawnItemEx("MLG_Moola",0,0,0,20)stop
+Bomber:TNT1 A 0 A_SpawnItemEx("Bomber_Moola",0,0,0,20)stop
+Kamikaze:TNT1 A 0 A_SpawnItemEx("Kamikaze_Moola",0,0,0,20)stop
+Business:TNT1 A 0 A_SpawnItemEx("Business_Moola",0,0,0,20)stop
+Tank:TNT1 A 0 A_SpawnItemEx("Tank_Moola",0,0,0,20)stop
+Ghost:TNT1 A 0 A_SpawnItemEx("Ghost_Moola",0,0,0,20)stop
+Joust:TNT1 A 0 A_SpawnItemEx("Joust_Moola",0,0,0,20)stop
+Quick:TNT1 A 0 A_SpawnItemEx("Quick_Moola",0,0,0,20)stop
+Rich:TNT1 A 0 A_SpawnItemEx("Rich_Moola",0,0,0,20)stop
+}
+}
+
+actor MoneyBait_MoolaB32 : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_Jump(1,"Ghost","Joust","Quick")
+TNT1 A 0 A_Jump(8,"Business","Tank")
+TNT1 A 0 A_Jump(32,"Kamikaze")
+TNT1 A 0 A_Jump(128,"Sumo","MLG","Bomber")
+TNT1 A 0 A_Jump(255,"Plain")
+goto Rich
+Plain:
+TNT1 A 0 A_SpawnItemEx("Plain_MoolaB32",0,0,8)
+stop
+Sumo:TNT1 A 0 A_SpawnItemEx("Sumo_MoolaB32",0,0,8)stop
+MLG:TNT1 A 0 A_SpawnItemEx("MLG_MoolaB32",0,0,8)stop
+Bomber:TNT1 A 0 A_SpawnItemEx("Bomber_MoolaB32",0,0,8)stop
+Kamikaze:TNT1 A 0 A_SpawnItemEx("Kamikaze_MoolaB32",0,0,8)stop
+Business:TNT1 A 0 A_SpawnItemEx("Business_MoolaB32",0,0,8)stop
+Tank:TNT1 A 0 A_SpawnItemEx("Tank_MoolaB32",0,0,8)stop
+Ghost:TNT1 A 0 A_SpawnItemEx("Ghost_MoolaB32",0,0,8)stop
+Joust:TNT1 A 0 A_SpawnItemEx("Joust_MoolaB32",0,0,8)stop
+Quick:TNT1 A 0 A_SpawnItemEx("Quick_MoolaB32",0,0,8)stop
+Rich:TNT1 A 0 A_SpawnItemEx("Rich_MoolaB32",0,0,8)stop
+}
+}
