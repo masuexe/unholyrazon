@@ -1,12 +1,58 @@
-str MainBossList[1] = {
-	"TrueBusterExpert"
+world int	12: MultiB_RNG_Arr[];
+#DEFINE EVENTDATA_MAINEVENT 0
+#DEFINE EVENTDATA_DELAY 1
+#DEFINE EVENTDATA_LASTEVENT 2
+#DEFINE EVENTDATA_FORCED 3
+world int	14: EventDataArr[];//{MainEvent, EventDelay, LastEvent, ForcedEvent}
+world int	15: RareBossChance;
+world int	16: StrongmanCheck[];
+world int	17: HellMarkFrags;
+world int	18: FaggassoFrags;
+
+world int	21: BossEventCounter;
+world int	23: RareLMSRune;
+world bool	26: StartUpVariables;
+world int	33: BossEXCountArray[];
+world int	34: EventEXCountArray[];
+world bool	66: Debug_TXT; // Display DEBUG messages if true.
+
+
+
+bool gameover;
+
+int multiBossCheck;
+
+bool itemMode;
+
+bool standardlmseventlocked; // Formerly isLMS_Active: standard LMS fired or was pre-disabled.
+int rareLMSTime;
+int theLMSDude;
+bool survWinWithLMS; //LastManChecker
+
+// Total max player count overall
+#define MAX_PLAYERS 64
+
+#define PLS_NULL -1
+#define PLS_DEAD 0
+#define PLS_SURVIVOR 1
+#define PLS_BOSS 2
+#define PLS_EYE 6
+int totalPlayersArr[7]; //Array spots; 0 = dead, 1 = survivor, 2 = boss, 6 = demoneye
+int playerLifeStatusArr[65] = {-1}; //-1 = null, 0 = dead, 1 = alive, 2 = boss, 6 = eye
+
+str u_MapLevelName;
+str u_MapLevelCode;
+
+
+str mainBossList[1][2] = {
+	{"TrueBusterExpert", "\cmTrue \cuBusterExpert"},
 };
 
-str MainEyeList[1] = {
+str mainEyeList[1] = {
 	"PlainDemoneye"
 };
 
-str EyeList[32][2]={
+str eyeList[32][2]={
 {"a \ct","Plain"},
 {"a \cq","MLG"},
 {"a \cj","Ghost"},
@@ -40,3 +86,93 @@ str EyeList[32][2]={
 {"a \ci","Fox"},
 {"a \co","Furry"}//You're unable to attack! RUN AWAY!
 };
+
+
+//FFFFFFFFFFFF   FFFFFFFFFFFF
+//FFFFFFFFFFFF   FFFFFFFFFFFF
+//FFFF           FFFF
+//FFFF           FFFF
+//FFFFFFFF       FFFFFFFF
+//FFFFFFFF       FFFFFFFF
+//FFFF           FFFF
+//FFFF           FFFF
+//FFFF           FFFF
+
+function void consoleCommandWithWarn(str command, str warning) {
+	consoleCommand(command);
+	Log(s: "\ci[Unholy] Warning: ", s: warning, s: " (", s: command, s: ")");
+}
+
+function void debugLog(str message) {
+	if (Debug_TXT) {
+		Log(s: "\ca[Unholy] Debug: ", s: message);
+	}
+}
+
+//Marks which player numbers are ingame
+function void playerLifeStatusArr_GatherFunc (void)
+{
+	totalPlayersArr[1] = PlayerCount();
+
+	int P_Total = PlayerCount();
+	for(int i = 0; i < 64; i++){
+		if(PlayerInGame(i)){
+			Log(s:"Player ",i:i,s:" is alive");
+			playerLifeStatusArr[i] = 1;
+			if(P_Total <= 1){
+				playerLifeStatusArr[64] = i;
+				Log(s:"Done collecting alive players. Max ID = ",i:playerLifeStatusArr[64]);
+				break;
+			}
+			P_Total--;
+		}
+	}
+}
+//Updates player status and total players with status
+function void playerLifeStatusArr_UpdateFunc (int TheDude, int NewStatus)
+{
+	totalPlayersArr[playerLifeStatusArr[TheDude]]--;
+	playerLifeStatusArr[TheDude] = NewStatus;
+	totalPlayersArr[NewStatus]++;
+}
+
+//Presets a random number for EX Bosses delay
+function void bossEXCountArr_Setter(int MaxCount, int Ran1, int Ran2)
+{
+	for(int i = 0; i < MaxCount; i++){
+		BossEXCountArray[i] = random(Ran1,Ran2);
+	}
+	//if(Debug_TXT){Log(s:"DEBUG TXT\nBossEXCountArray randomized between values [",i:Ran1,s:"] and [",i:Ran2,s:"]!");}
+}
+
+function void presetStrongmanCheck(int Setter, int HowFar)
+{
+	for(int i = 0; i <= HowFar; i++){
+		StrongmanCheck[i] = Setter;
+	}
+	debugLog(strParam(s: "StrongmanCheck Array set to value ", i: Setter, s: " with a size of ", i: HowFar, s: "."));
+}
+
+function void add_StrongmanCheckArray(int TheNum)
+{
+	for(int i = 0; i <= 99; i++){
+		if(StrongmanCheck[i] == -1){
+			StrongmanCheck[i] = TheNum;
+			if(Debug_TXT){Log(s:"DEBUG TXT\nStrongmanCheck value [",i:i,s:"] set to ",i:TheNum,s:".");}
+			break;
+		}
+	}
+}
+function void minus_StrongmanCheckArray (void)
+{
+	for(int i = 0; i <= 99; i++){
+		if(StrongmanCheck[i] != -1){
+			StrongmanCheck[i] = StrongmanCheck[i+1];
+		}
+		else{
+			if(Debug_TXT){Log(s:"DEBUG TXT\nStrongmanCheck shifted over ",i:i,s:" time(s).");}
+			break;
+		}
+	}
+}
+
