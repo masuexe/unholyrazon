@@ -22,14 +22,15 @@ Script "ub_BasicTLMSRespawn" RESPAWN
 Script "ub_Death_ChangeIsAlive" DEATH
 {
 	if(GetCvar("teamlms")==1){
-		Log(i:PlayerNumber(),s:" is dead!!");
-		
+		debugLog(strParam(i:PlayerNumber(),s:" is dead!!"));
+		playerLifeStatusArr_UpdateFunc(PlayerNumber(),0);
 	}
 }
 Script "ub_Disconnect_ChangeIsAlive" (int PlayerNum) DISCONNECT
 {
 	if(GetCvar("teamlms")==1){
-		Log(i:PlayerNum,s:" has disconnected!!");
+		debugLog(strParam(i:PlayerNum,s:" has disconnected!!"));
+		playerLifeStatusArr_UpdateFunc(PlayerNum,0);
 	}
 }
 
@@ -214,9 +215,62 @@ Script 801 (void)
 
 	giveMeTheFuncExceptBosses("BasicSurvivorItem", 0);
 	SetPlayerProperty(1,0,4);//Allows players to move.
+
+	ACS_NamedExecute("ub_WatchSurvivors",0);
 }
 
+//Script used to end the round for no survivors
+Script "ub_WatchSurvivors" (int SkipACS)//OPEN
+{
 
+	Delay(1);//Important! Otherwise the BossDataArr[][] isn't set correctly from another script!
+
+	// if(!SkipACS){
+	// 	ACS_NamedExecute("ub_BossHealthWatcher",0);
+	// 	ACS_NamedExecute("ub_DemoneyeNumWatcher",0);//Does this fix Boss VS??
+	// 	if(VersusFightEvent){
+	// 		ACS_NamedExecute("ub_ManageBossVsBossEvent",0);
+	// 		terminate;
+	// 	}
+	// 	ACS_NamedExecute("ub_WatchBossesAndEyes",0);
+
+	// 	//ACS_NamedExecute("ub_BossHealthWatcher",0);
+	// 	//ACS_NamedExecute("ub_DemoneyeNumWatcher",0);
+	// }
+
+	while(totalPlayersArr[PLS_SURVIVOR]>=1 && !standardlmseventlocked && !gameover){
+		Delay(1);
+		if(totalPlayersArr[PLS_SURVIVOR]==1){
+			// ACS_NamedExecute("ub_LMS_EventTime",0,random(0,11));
+			debugLog(strParam(s: "Last Man Standing!"));
+			standardlmseventlocked = true;
+		}
+	}
+
+	while(totalPlayersArr[PLS_SURVIVOR]>=1 && !gameover){
+		Delay(1);
+	}
+
+	if(gameover){terminate;}
+
+	Delay(1);
+
+	// ACS_NamedTerminate("ub_WatchBossesAndEyes",0);
+	//PlayMusic_Loss(0);
+	// PlayMusic_LoserNew(-1);
+	// MakeAllPlayersInvun();
+	gameover = true;
+
+	SetFont("BIGFONT");
+	SetHudSize(480,360,0);
+	HudMessageBold(s:"The survivors have been defeated..."; HUDMSG_FADEOUT, 66, CR_RED, 240.4, 54.0, 5.0, 2.0);
+
+	survWinWithLMS = false;
+	Delay(35*9);
+	Exit_Normal(0);
+	Delay(35*6);
+
+}
 
 //Demoneyes + other morphes
 Script "uh_DemoneyeMorph" (int whoisit, int Bonus)
