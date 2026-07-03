@@ -5,15 +5,15 @@
 #include "uh_funclib.acs"
 #include "uh_display_lib.acs"
 
-// Script "ub_BasicTLMSEnter" ENTER
-// {
-// 	if(GetCvar("teamlms")==1){
+Script "ub_BasicTLMSEnter" ENTER
+{
+	if(GetCvar("teamlms")==1){
 
-// 		GiveInventory("PowerSuicideStartProtect",1);
-// 		GiveInventory("ProtectSurvivor",1);
-// 		GiveInventory("ProtectUnholyItem",1);
-// 	}
-// }
+		// GiveInventory("PowerSuicideStartProtect",1);
+		GiveInventory("ProtectSurvivor",1);
+		// GiveInventory("ProtectUnholyItem",1);
+	}
+}
 
 Script "ub_BasicTLMSRespawn" RESPAWN
 {
@@ -272,6 +272,37 @@ Script "ub_WatchSurvivors" (int SkipACS)//OPEN
 	Delay(35*6);
 
 }
+
+Script "uh_BossMorph" (int whoisit, int BaseHP, int AddHP) //Boss messages and HP scripts
+{
+	SetInventory("ThisIsMyMagicBossNumber",whoisit);
+
+	TakeInventory("PowerProtectSurvivor",1);
+	TakeInventory("PowerProtectUnholyItem",1);
+
+
+	if(multiBossCheck >= 2){// && !VersusFightEvent
+		GiveInventory("PowerProtectBoss",1);//If multi boss, protect them from each other.
+	}
+
+	GiveInventory("BAWS",1);
+	GiveInventory("MorphedFlag",1);
+
+
+	//multiBossCheck
+	//This changes the health of the boss based on players and multibosses
+	int MainHealth = BaseHP;
+	If(multiBossCheck) {
+		MainHealth = min(BaseHP+(PlayerCount() * AddHP/multiBossCheck)-AddHP/multiBossCheck, 30000);
+		//if(Debug_TXT) {Print(d:AddHP/multiBossCheck);}
+		SetActorProperty(0, APROP_HEALTH, MainHealth);
+		SetActorProperty(0, APROP_SPAWNHEALTH, MainHealth);
+	}
+	//GiveActorInventory
+	SetInventory("BossSpawnHealthFlag", MainHealth);
+	Delay(1);
+}
+
 
 //Demoneyes + other morphes
 Script "uh_DemoneyeMorph" (int whoisit, int Bonus)
