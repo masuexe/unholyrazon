@@ -124,7 +124,7 @@ function void bossEXCountArr_Setter(int MaxCount, int Ran1, int Ran2)
 	for(int i = 0; i < MaxCount; i++){
 		BossEXCountArray[i] = random(Ran1,Ran2);
 	}
-	//if(Debug_TXT){Log(s:"DEBUG TXT\nBossEXCountArray randomized between values [",i:Ran1,s:"] and [",i:Ran2,s:"]!");}
+	//debugLog(strParam(s:"BossEXCountArray randomized between values [",i:Ran1,s:"] and [",i:Ran2,s:"]!");}
 }
 
 function void presetStrongmanCheck(int Setter, int HowFar)
@@ -140,7 +140,7 @@ function void add_StrongmanCheckArray(int TheNum)
 	for(int i = 0; i <= 99; i++){
 		if(StrongmanCheck[i] == -1){
 			StrongmanCheck[i] = TheNum;
-			if(Debug_TXT){Log(s:"DEBUG TXT\nStrongmanCheck value [",i:i,s:"] set to ",i:TheNum,s:".");}
+			debugLog(strParam(s:"StrongmanCheck value [",i:i,s:"] set to ",i:TheNum,s:"."));
 			break;
 		}
 	}
@@ -152,12 +152,44 @@ function void minus_StrongmanCheckArray (void)
 			StrongmanCheck[i] = StrongmanCheck[i+1];
 		}
 		else{
-			if(Debug_TXT){Log(s:"DEBUG TXT\nStrongmanCheck shifted over ",i:i,s:" time(s).");}
+			debugLog(strParam(s:"StrongmanCheck shifted over ",i:i,s:" time(s)."));
 			break;
 		}
 	}
 }
 
+function void adjustPlayerForceNumArray (int Swapper)
+{
+	int i;
+	Switch(Swapper){
+		Case -1://Minus
+			for(i = 0; i <= 64; i++){
+				if(PlayerForceNum[i] != 0){
+					PlayerForceNum[i] = PlayerForceNum[i+1];
+				}
+				else{
+					debugLog(strParam(s:"PlayerForceNum shifted over ",i:i,s:" time(s)."));
+					break;
+				}
+			}
+			break;
+		Case 0://Reset
+			for(i = 0; i <= 64; i++){
+					PlayerForceNum[i] = 0;
+			}
+			debugLog(strParam(s:"Reset all PlayerForceNum to 0."));
+			break;
+		Default://Add
+			for(i = 0; i <= 64; i++){
+				if(PlayerForceNum[i] == 0){
+					PlayerForceNum[i] = Swapper;
+					debugLog(strParam(s:"PlayerForceNum value [",i:i,s:"] set to ",i:Swapper,s:"."));
+					break;
+				}
+			}
+			break;
+	}
+}
 
 //Check and decide what MultiBoss is possible.
 function void multiBossFunction(bool Reset)
@@ -179,27 +211,92 @@ function void multiBossFunction(bool Reset)
 	debugLog(strParam(s:"multiBossCheck = ",i:multiBossCheck,s:" --- RNG [2][3][4] -> ",i:MultiB_RNG_Arr[2],s:" <> ",i:MultiB_RNG_Arr[3],s:" <> ",i:MultiB_RNG_Arr[4]));
 }
 
+//This checks for specific CVAR numbers for boss selection and returns the BossNum if it matches the check
+function int forceBossChange(str Force, bool TrueRandom)
+{
+	int BossNum = GetCVAR(Force);
+//if(!GetCVAR("UH_NoResetCVars"))
+	SetCVar(Force,-1);
+	if(BossNum != -1 && checkBossList(BossNum)) {
+		BossNum = BossNum;
+		ShowMeTheRCON(StrParam(s:"Boss ",s:StrRight(Force,1)),BossNum);
+	}
+	else {
+		if(TrueRandom || BossNum == -666){BossNum = trueRandomBoss();}
+		else{BossNum = -1;}
+	}
+
+	return BossNum;
+}
+
+//Check if Boss # is even in the list
+function bool checkBossList (int CheckMe)
+{
+	bool Result = true;
+	//Checks for Boss Actor Name, if its nothing, it defaults to Invalid
+	if(StrCmp(MainBossList[CheckMe][0],"Invalid") == 0 || CheckMe < 0 || CheckMe > 1000){
+		Result = false;
+	}
+	return Result;
+}
+
+//NEW#BOSS
+function int trueRandomBoss(void)
+{
+	int RNGPick;
+	// if(randomPercent(5)){RNGPick = random(400,BOSSRNGMAX_400_499);}
+	// else if(randomPercent(1)){RNGPick = random(300,BOSSRNGMAX_300_399);}
+	// else if(randomPercent(15)){RNGPick = 500+RandomBossEX_Int[random(0,BOSSRNGMAX_500_999-1)];}
+	// else if(randomPercent(30)){RNGPick = random(100,BOSSRNGMAX_100_199);}
+	// else {RNGPick = random(0,BOSSRNGMAX_000_099);}
+	RNGPick = random(0,BOSSRNGMAX_000_099);
+	return RNGPick;
+}
+
+
 //Select Bosses
 function void setUpBossSelection_Func (void)
 {
-	int TempBoss;
+	int tempBoss;
 	for (int i = 0; i < multiBossCheck; i++) {
-		bossDataArr[i][BOSSDATA_NUM] = random(0, BOSSRNGMAX_000_099);
+		tempBoss = forceBossChange(strParam(s: "uh_sv_ForcedBoss", i: i+1), false);
+		if (tempBoss != -1) {
+			bossDataArr[i][BOSSDATA_NUM] = TempBoss;
+		}
+		else {
+			bossDataArr[i][BOSSDATA_NUM] = random(0, BOSSRNGMAX_000_099);
+		}
+		
 		debugLog(strParam(s: "UnholyBoss", i: i+1, s: " = ", i: bossDataArr[i][BOSSDATA_NUM]));
 	}
-	//if(Debug_TXT){Log(s:"DEBUG TXT: RareBossChance = ",d:RareBossChance);}
+	//debugLog(strParam(s:"DEBUG TXT: RareBossChance = ",d:RareBossChance);}
 
 }
 
 //Assigns players as Bosses
 function void setUpPlayerSelection_Func (void)
 {
-	int TempPlayer = 0;
+	int tempPlayer = 0;
 	for (int i = 0; i < multiBossCheck; i++) {
-		bossDataArr[i][BOSSDATA_TID] = rngPickCheck(i);
-		TempPlayer = bossDataArr[i][BOSSDATA_TID];
-		debugLog(strParam(s: "Boss ", i: i+1, s: " TID = ", i: TempPlayer));
-		playerLifeStatusArr[TempPlayer-1000] = PLS_BOSS;
+		tempPlayer = checkClearCvar(strParam(s: "uh_sv_ForceBossPlayer", i: i+1), -1);
+		if (tempPlayer >= 0 && tempPlayer <= MAX_PLAYERS) {
+			tempPlayer += 1000;
+		}
+		if(PlayerPickCheck(TempPlayer,i)) { //If above check isn't -1, is a player number, and is in the game
+			bossDataArr[i][BOSSDATA_TID] = tempPlayer;
+			showMeTheRCON(StrParam(s: "Boss-Forced Player ", i: i+1), tempPlayer);
+		}
+		else if(playerPickCheck(PlayerForceNum[0],i)) {//Check if scripts wants a player
+			BossDataArr[i][BOSSDATA_TID] = PlayerForceNum[0];
+			adjustPlayerForceNumArray(-1);
+		}
+		else {//If above never happens, RNG a player as boss
+			BossDataArr[i][BOSSDATA_TID] = rngPickCheck(i);
+		}		
+		tempPlayer = bossDataArr[i][BOSSDATA_TID];
+
+		debugLog(strParam(s: "Boss ", i: i+1, s: " TID = ", i: tempPlayer));
+		playerLifeStatusArr[tempPlayer-1000] = PLS_BOSS;
 	}
 }
 
@@ -213,6 +310,18 @@ function int rngPickCheck(int PastCheck)
 			!checkBossDataTIDFunc(Check,PastCheck));
 
 	return Check;
+}
+//One time check similar to above.
+function bool playerPickCheck(int TID, int PastCheck)
+{
+	if(TID < 1){
+		return false;
+	}
+	else if(PlayerInGame(TID-1000) && !CheckActorInventory(TID,"IsDead") &&
+			TID >= 1000 && TID <= 1063 && checkBossDataTIDFunc(TID,PastCheck)){
+		return true;
+	}
+	return false;
 }
 
 //Check if TID matches in use Boss TID
@@ -229,4 +338,9 @@ function bool checkBossDataTIDFunc(int TID, int PastCheck)
 function int morphMeFunc(int TID, int Boss, str Flash)
 {
 	return MorphActor(TID, mainBossList[Boss][BOSSLIST_ACTORNAME], "", 0x7ffffffc, MRF_FULLHEALTH|MRF_WHENINVULNERABLE|MRF_LOSEACTUALWEAPON|MRF_NEWTIDBEHAVIOUR, Flash, "");
+}
+
+function bool randomPercent(int chance)
+{
+	return (random(1, 100) <= chance);
 }
