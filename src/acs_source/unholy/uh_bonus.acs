@@ -107,6 +107,7 @@ Script "ub_EventManagementACS" (int Perform) //events
 			// 	ACS_Execute(837,0,113);
 			// 	break;
 		}
+		isbonuseventactive = true;
 	}
 }
 
@@ -188,4 +189,58 @@ Script "ub_WhoWonTheRound" (void)
 		FindTID++;
 	}
 	debugLog(strParam(s:"Match was a draw! No winner set."));
+}
+
+
+//Demoneye event script
+Script 851 (int Which)
+{
+	str EyeMorphStr = StrParam(s:EyeList[Which][EYELIST_NAME],s:"_MoolaGiver");
+	str EyeBonusStr = StrParam(s:EyeList[Which][EYELIST_NAME],s:"_EventD_P");
+
+	GiveMeTheFunc(EyeMorphStr,1);
+	GiveMeTheFunc(EyeBonusStr,1);
+
+	if(Which == 2){
+		//SectorColorChange(50,50,50,0);
+		VariableLightChange(160,0);
+		InstantLightChange(160);
+	}
+
+	ACS_NamedExecute("ub_WhoWonTheRound",0);
+	PlayMusic(BonusEventList[Which][BONUS_MUSICLUMP]);
+	Delay(2);
+	MusicCredits(BonusEventList[Which][BONUS_MUSICCREDITS],0);
+	ACS_NamedExecute("uh_DemoneyeEventTextDelay",0,Which,105);
+	Delay(33);
+	While(TotalPlayersArr[PLS_SURVIVOR] > 0){//If player(s) are not morphed, find and attempt to morph them.
+		DemoneyeEventMorphCheckFunc(EyeMorphStr,EyeBonusStr);
+		Delay(70);
+	}
+	debugLog(strParam(s:"Demoneye event script finished!"));
+	
+}
+
+function void DemoneyeEventMorphCheckFunc (str EyeType, str EyePickup)
+{
+	for(int i = 0; i <= PlayerLifeStatusArr[MAX_PLAYERS]; i++){
+		if(PlayerLifeStatusArr[i] == PLS_SURVIVOR){
+			GiveActorInventory(i + 1000,EyeType,1);
+			GiveActorInventory(i + 1000,EyePickup,1);
+		}
+	}
+}
+
+Script "uh_DemoneyeEventTextDelay" (int Which, int DelayTime)
+{
+	SetFont("BIGFONT");
+	AmbientSound(BonusEventList[Which][BONUS_BONUSSOUND],127);
+	SetHudSize(640,480,0);
+	HudMessageBold(s:BonusEventList[Which][BONUS_HUDMESS1]; HUDMSG_FADEOUT, 49, CR_WHITE, 320.4, 432.2, 4.0, 2.0);
+	SetPlayerProperty(1,0,4);
+	if(GetChar(BonusEventList[Which][BONUS_HUDMESS2],0) != 0){
+		Delay(DelayTime);
+		SetFont("SMALLFONT");
+		HudMessageBold(s:BonusEventList[Which][BONUS_HUDMESS2]; HUDMSG_FADEOUT, 66, CR_WHITE, 320.4, 456.2, 1.0, 2.0);
+	}
 }
