@@ -1,0 +1,60 @@
+//This records whatever the current music/code is for possible later use.
+function void MusicSaveFunc(void)
+{
+	savedMusicLump = currentMusicLump;
+	savedMusicCredit = currentMusicCredit;
+}
+function void PlayMusic(str music)//Plays music
+{
+	currentMusicLump = music;
+	SetCVarString("_U_ServTune",music);
+	int len = StrLen(music);//Also checks if music has a space and numbers after it
+	int space = FindSpace(music,len);//If it does, it plays the multi track
+
+	if(space==-1) {
+		SetMusic(music);
+	} else {
+		int len2 = len-space-1;
+		SetMusic(StrLeft(music,space),StringToInt(StrRight(music,len2),len2));
+	}
+}
+//Easy to manage music credits rather than having it listed multiple times in this ACS file.
+function void MusicCredits(str Music, int Display)
+{
+	currentMusicCredit = Music;
+
+	if(Display==0){
+		SetFont("fakefntC");//SMALLFONT
+		HudMessageBold(s:"Music: ",s:Music; HUDMSG_FADEOUT|HUDMSG_LOG, 25, CR_WHITE,0.06, 0.75, 5.0, 3.0);
+	}
+}
+
+Script "ub_PlayVariantMusic" (int TheNum)
+{
+	bool NeedTunes = true;
+
+	if(NeedTunes){
+		PlayMusic(mainBossList[TheNum][BOSSLIST_MUSICLUMP]);
+		MusicCredits(mainBossList[TheNum][BOSSLIST_MUSICCREDITS],0);
+	}
+
+}
+
+function int FindSpace(str String, int length) {
+	for (int i=0; i<length; i++) {
+		if (GetChar(String,i)==' ') {
+			return i;
+		}
+	}
+	return -1;
+}
+
+function int StringToInt(str String, int length) {
+	int result = 0;
+
+	for (int i=0; i<length; i++) {
+		result *= 10;
+		result += (GetChar(String,i)-'0');
+	}
+	return result;
+}
