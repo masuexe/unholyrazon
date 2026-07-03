@@ -231,18 +231,18 @@ Script "ub_WatchSurvivors" (int SkipACS)//OPEN
 
 	Delay(1);//Important! Otherwise the BossDataArr[][] isn't set correctly from another script!
 
-	// if(!SkipACS){
+	if (!SkipACS) {
 	// 	ACS_NamedExecute("ub_BossHealthWatcher",0);
 	// 	ACS_NamedExecute("ub_DemoneyeNumWatcher",0);//Does this fix Boss VS??
 	// 	if(VersusFightEvent){
 	// 		ACS_NamedExecute("ub_ManageBossVsBossEvent",0);
 	// 		terminate;
 	// 	}
-	// 	ACS_NamedExecute("ub_WatchBossesAndEyes",0);
+		ACS_NamedExecute("ub_WatchBossesAndEyes",0);
 
 	// 	//ACS_NamedExecute("ub_BossHealthWatcher",0);
 	// 	//ACS_NamedExecute("ub_DemoneyeNumWatcher",0);
-	// }
+	}
 
 	while(totalPlayersArr[PLS_SURVIVOR]>=1 && !standardlmseventlocked && !gameover){
 		Delay(1);
@@ -261,7 +261,7 @@ Script "ub_WatchSurvivors" (int SkipACS)//OPEN
 
 	Delay(1);
 
-	// ACS_NamedTerminate("ub_WatchBossesAndEyes",0);
+	ACS_NamedTerminate("ub_WatchBossesAndEyes",0);
 	//PlayMusic_Loss(0);
 	PlayMusic_Loser(-1);
 	// MakeAllPlayersInvun();
@@ -276,6 +276,53 @@ Script "ub_WatchSurvivors" (int SkipACS)//OPEN
 	Exit_Normal(0);
 	Delay(35*6);
 
+}
+
+script "ub_WatchBossesAndEyes" (void)//Checks if all bosses are dead
+{
+	int ExtraTimer = Timer();
+	while (totalPlayersArr[PLS_BOSS]>=1 || totalPlayersArr[PLS_EYE]>=1){
+		if(Gameover){terminate;}
+		Delay(2);
+	}
+
+	if(Gameover){terminate;}
+
+	GiveMeTheFunc("PowerProtectSurvivor", -1);
+	GiveMeTheFunc("PowerProtectUnholyItem", -1);
+
+	ACS_NamedTerminate("ub_WatchSurvivors",0);
+	Gameover = true;
+	//Log(i:PlayerInGame(BossDataArr[0][BOSSDATA_TID]-1000));
+
+	SetFont("BIGFONT");
+	SetHudSize(480,360,0);
+
+	if(MultiBossCheck == 1 && !PlayerInGame(BossDataArr[0][BOSSDATA_TID]-1000) && timer() <= 35*7+ExtraTimer){
+		PlayMusic_Win(-2);
+		HudMessageBold(s:"The boss has declined the duel!"; HUDMSG_FADEOUT, 66, CR_GREEN, 240.4, 54.0, 5.0, 2.0);
+		Delay(36*4);
+		Exit_Normal(0);
+		Delay(35);
+		terminate;
+	}
+	//PlayMusic_Win(0);
+	PlayMusic_Winner(-1);
+	HudMessageBold(s:"The survivors are victorious!"; HUDMSG_FADEOUT, 66, CR_GREEN, 240.4, 54.0, 5.0, 2.0);
+
+	if (survWinWithLMS) {
+		HellMarkFrags ++;
+		if (HellMarkFrags >= 10) {
+			AmbientSound("misc/SampiRises",127);
+			HudMessageBold(s:"The Helltatoru knows no limits..."; HUDMSG_FADEOUT, 60, CR_DARKRED, 240.4, 72.0, 5.0, 2.0);
+			ACS_NamedExecuteAlways("ub_InitiateUltraBoss",0,402);
+		}
+		else
+			HudMessageBold(s:"Marks of Helltatoru ",d:HellMarkFrags, s:"/10 collected."; HUDMSG_FADEOUT, 60, CR_DARKRED, 240.4, 72.0, 5.0, 2.0);
+	}
+	Delay(36*10);
+	Exit_Normal(0);
+	Delay(36*6);
 }
 
 Script "uh_BossMorph" (int whoisit, int BaseHP, int AddHP) //Boss messages and HP scripts
