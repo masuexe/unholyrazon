@@ -19,6 +19,20 @@ function void debugLog(str message) {
 	}
 }
 
+function void showMeTheRCON(str Var, int Num){
+	SetFont("fakefntC");//SMALLFONT
+	HudMessageBold(s:"\c[MenuYellow]RCON set ",s:Var,s:" to ",i:Num; HUDMSG_LOG, 447266, CR_WHITE,0.99, 0.99, 6.0);//0.06 0.70
+}
+
+//This gathers a CVAR info, resets to NUM, and returns it.
+function int checkClearCvar(str Check, int Num)
+{
+int Checked = GetCVAR(Check);
+if(Checked!=Num) {debugLog(strParam(s:"CVAR '",s:Check,s:"' was '",i:Checked,s:"' and was set to '",i:Num,s:"'"));}
+SetCVar(Check,Num);
+return Checked;
+}
+
 //Marks which player numbers are ingame
 function void playerLifeStatusArr_GatherFunc (void)
 {
@@ -150,8 +164,19 @@ function void multiBossFunction(bool Reset)
 {
 	multiBossCheck = 1;
 	int plc = playerCount();
-	multiBossCheck = random(1, max(plc / 4, 1));
-	debugLog(strParam(s: "multiBossCheck = ", i: multiBossCheck));
+	int svForce = checkClearCvar("uh_sv_MultiBoss", 0);
+	if (svForce >= 1 && svForce <= MAX_BOSSES) {
+		showMeTheRCON("uh_sv_MultiBoss", svForce);
+		while (plc <= svForce+1) {
+			svForce--;
+		}
+		multiBossCheck = svForce;
+	}
+	else {
+		multiBossCheck = random(1, max(plc / 4, 1));
+	}
+
+	debugLog(strParam(s:"multiBossCheck = ",i:multiBossCheck,s:" --- RNG [2][3][4] -> ",i:MultiB_RNG_Arr[2],s:" <> ",i:MultiB_RNG_Arr[3],s:" <> ",i:MultiB_RNG_Arr[4]));
 }
 
 //Select Bosses
