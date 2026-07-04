@@ -1,0 +1,296 @@
+actor MLGDemoneye_W : BaseUnholyBossWep
+{
+Tag "$TAG_DEye01_W"
+Obituary "%o was punched by %k the \cqMLG Demoneye\c-!"
+States
+{
+Spawn:
+_E01 [ 6
+wait
+
+Ready0:
+_E01 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", MLG_EYE_DYE)
+_E01 A 0 ACS_NamedExecuteWithResult("uh_DemoneyeMorph", 1)
+goto ReadyX
+ReadyX:
+_E01 A 0 A_JumpIfInventory("UnholyBossAmmo100",100,"ReadyTrue")
+_E01 A 2 A_WeaponReady(WRF_NOSECONDARY)
+_E01 A 0 A_GiveInventory("UnholyBossAmmo100",2) //4
+Goto ReadyX
+ReadyTrue:
+_E01 A 0 A_JumpIfInventory("MLG_Pro_Mode",1,"ReadySniper")
+_E01 A 2 A_WeaponReady
+Goto ReadyTrue
+ReadySniper:
+_E01 B 2 A_WeaponReady
+_E01 B 0 A_JumpIfInventory("MLG_Pro_Mode",1,"ReadySniper")
+Goto ReadyX
+//
+//
+//
+Fire:
+_E01 B 0 A_JumpIfInventory("MLG_Pro_Mode",1,"FireSniper")
+_E01 B 0 A_JumpIfInventory("PowerRage_ST",1,"FireHR")
+goto FireH
+BotFire:
+_E01 B 0 A_Jump(9,"FireEnd")
+_E01 B 0 A_Refire("FireH")
+goto FireEnd
+BotFireR:
+_E01 B 0 A_Jump(8,"FireEnd")
+_E01 B 0 A_Refire("FireHR")
+goto FireEnd
+FireH:
+_E01 B 0 A_GiveInventory("UnholyBossAmmo100",1) //
+_E01 B 2 A_GiveInventory("MLGEyeWepCharge",2)//Offset(20,32)
+_E01 B 0 A_JumpIfInventory("IsBot",1,"BotFire")
+_E01 B 0 A_Refire("FireH")
+goto FireEnd
+FireHR:
+_E01 B 0 A_GiveInventory("UnholyBossAmmo100",1) 
+_E01 B 1 A_GiveInventory("MLGEyeWepCharge",3) //3 //2
+_E01 B 0 A_JumpIfInventory("IsBot",1,"BotFireR")
+_E01 B 0 A_Refire("FireHR")
+goto FireEnd
+FireEnd:
+_E01 B 0 A_PlaySoundEx("Contra/C_NORML", "Weapon")
+_E01 B 0 A_GiveInventory("MLG_Punch_P",1)
+
+_E01 BC 2 A_GiveInventory("UnholyBossAmmo100",1) 
+_E01 A 2 Offset(0,112) A_GiveInventory("UnholyBossAmmo100",1) 
+_E01 A 2 Offset(0,92) A_GiveInventory("UnholyBossAmmo100",1) 
+_E01 A 2 Offset(0,72) A_GiveInventory("UnholyBossAmmo100",1) 
+_E01 A 2 Offset(0,52) A_GiveInventory("UnholyBossAmmo100",1) 
+//_E01 B 1 Offset(28,22)
+//_E01 B 1
+//_E01 B 1 Offset(36,12)
+//_E01 B 1 Offset(44,2)
+//_E01 B 1 Offset(52,-8)
+//_E01 B 1 Offset(60,-16)
+//_E01 C 4 Offset(-16,32)
+//_E01 B 0 A_PlaySoundEx("Contra/C_NORML", "Weapon")
+//_E01 B 0 A_FireBullets (0,0,0,25,"MLGPuffThing",FBF_NOFLASH|FBF_NORANDOM|FBF_NORANDOMPUFFZ,1028)
+//_E01 B 0 A_FireCustomMissile("DemoneyePunchingAttack",0,0,8,0)//weapon/mirrordeflect2
+//_E01 BC 2
+//_E01 A 2
+//_E01 A 0 A_Refire
+goto ReadyX
+//
+//
+//
+Altfire:
+_E01 B 0 A_JumpIfInventory("MLG_Pro_Mode",1,"CancelZoomIn")
+_E01 B 0 A_ZoomFactor(2.0)
+_E01 B 1 A_GiveInventory("MLG_Pro_Mode",1)
+_E01 B 4
+_E01 B 0 A_ReFire
+goto ReadyX
+AltHold:
+_E01 B 2 //A_GiveInventory("UnholyBossAmmo200",1)
+_E01 B 0 A_ReFire
+goto ReadyX
+CancelZoomin:
+_E01 B 0 A_ZoomFactor(1.0)
+_E01 B 1 A_TakeInventory("MLG_Pro_Mode",1)
+_E01 B 4
+_E01 B 0 A_ReFire
+goto ReadyX
+
+FireSniper:
+_E01 A 0 A_TakeInventory ("MLG_Pro_Mode", 1)
+_E01 A 0 A_TakeInventory ("UnholyBossAmmo100", 999)
+_E01 A 0 A_ZoomFactor(1.0)
+_E01 A 0 A_PlaySoundEx("weapon/pshot","Weapon") //Better sound plox
+_E01 C 0 A_FireCustomMissile("MLG_Pro_Shot",0,0,0,0) //8
+_E01 C 2 
+_E01 A 2 Offset(0,112)
+_E01 A 2 Offset(0,92)
+_E01 A 2 Offset(0,72)
+_E01 A 2 Offset(0,52)
+_E01 A 2 A_WeaponReady(14) //4
+goto ReadyX
+}
+}
+
+//
+
+actor MLG_Pro_Mode : UOnce {}
+
+actor MLG_Pro_Shot : BasicFastProjectile
+{
+DamageType "MLGeye"
+Obituary "%o was outskilled by %k the \cqMLG Demoneye\c-!"
+Translation "192:192=138:138","198:198=128:128"
++SKYEXPLODE
++EXPLODEONWATER
++DONTBLAST
++BLOODLESSIMPACT
++THRUGHOST
+MissileHeight 6
+MissileType "MLG_Pro_Shot_FX"
+damage (250)
+radius 12
+height 12
+speed 500
+Scale 2.5
+States
+{
+Spawn: 
+TNT1 A 1
+Death:
+8P51 B 0
+8P51 B 0 A_PlaySoundEx("weapon/BNShotHit","SoundSlot5")
+8P51 BCDEF 1
+stop
+}
+}
+
+actor MLG_Pro_Shot_FX : BasicClientSide
+{
+Translation "192:192=138:138","198:198=128:128"
++FORCEXYBILLBOARD
+Alpha 0.85 
+Scale 1.5
+States
+{
+Spawn: //2 tic
+X_BC KLM 1 A_FadeOut(0.065)
+loop
+}
+}
+
+
+//
+
+
+actor MLGEyeWepCharge : Inventory
+{
+inventory.amount 1
+inventory.maxamount 84//42
+}
+
+actor MLGPuffThing : BulletPuff
+{
+Damagetype "MLGeye"
+Obituary "%o was punched by %k the \cqMLG Demoneye\c-!"
++PUFFGETSOWNER
++ALWAYSPUFF
++THRUGHOST
+scale 4.0
++RIPPER
++PUFFONACTORS
++NOGRAVITY
+-RANDOMIZE
++DONTBLAST
+RenderStyle Translucent
+Alpha 0.99
+VSpeed 0
+Mass 77
+States
+{
+Spawn:
+Melee:
+Crash:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("Contra/C_SPING","Weapon")
+//TNT1 A 0 //A_SpawnItemEx("StupidRailOnlineSound")
+MMFX BCDE 2
+stop
+}
+}
+
+actor MLG_Punch_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIfInventory("MLGEyeWepCharge",82,"Fire4")
+TNT1 A 0 A_JumpIfInventory("MLGEyeWepCharge",52,"Fire3")
+TNT1 A 0 A_JumpIfInventory("MLGEyeWepCharge",24,"Fire2")
+goto Fire1
+Fire4:
+TNT1 A 0 A_FireCustomMissile("MLGD_Punch4",0,0,8,0)
+goto End
+Fire3:
+TNT1 A 0 A_FireCustomMissile("MLGD_Punch3",0,0,8,0)
+goto End
+Fire2:
+TNT1 A 0 A_FireCustomMissile("MLGD_Punch2",0,0,8,0)
+goto End
+Fire1:
+TNT1 A 0 A_FireCustomMissile("MLGD_Punch",0,0,8,0)
+goto End
+End:
+TNT1 A 0 A_TakeInventory("MLGEyeWepCharge",99)
+stop
+}
+}
+
+actor MLGD_Punch : BasicProjectile
+{
+Translation "192:192=125:125","198:198=132:132"
+damagetype "MLGeye"
+Obituary "%o was punched by %k the \cqMLG Demoneye\c-!"
+ReactionTime 1
+damage (250)
+Radius 12
+Height 12
+speed 55
+scale 2.5
+States
+{
+Spawn:
+X_7F ABCDE 1
+goto Spawn2
+Spawn2:
+X_7F A 1 A_CountDown
+wait
+Crash:
+XDeath:
+TNT1 A 1
+stop
+Death:
+TNT1 A 1 A_Explode(250,96,0,0,8)
+stop
+}
+}
+
+actor MLGD_Punch2 : MLGD_Punch
+{
+speed 60
+States
+{
+Spawn:
+X_7F ABC 1
+X_7F DE 2
+goto Spawn2
+}
+}
+actor MLGD_Punch3 : MLGD_Punch
+{
+Radius 14
+Height 14
+speed 65
+scale 2.75
+States
+{
+Spawn:
+X_7F AB 1
+X_7F CDE 2
+goto Spawn2
+}
+}
+actor MLGD_Punch4 : MLGD_Punch
+{
+Radius 16
+Height 16
+speed 70
+scale 3.0
+States
+{
+Spawn:
+X_7F A 1
+X_7F BCDE 2
+goto Spawn2
+}
+}
