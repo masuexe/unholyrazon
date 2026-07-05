@@ -238,6 +238,7 @@ Script 801 (void)
 
 	giveMeTheFuncExceptBosses("BasicSurvivorItem", 0);
 	SetPlayerProperty(1,0,4);//Allows players to move.
+	ACS_NamedExecuteWait("ub_BossMorphRetryWait",0,-1);
 
 	ACS_NamedExecute("ub_WatchSurvivors",0);
 	Delay(1);
@@ -246,6 +247,72 @@ Script 801 (void)
 
 	if(!GetCVAR("uh_sv_NoItems")){
 		GiveMeTheFuncExceptBosses("SurvivorBoxItems_P", 1);//Give Items
+	}
+}
+
+Script "ub_BossMorphRetryWait" (int Failure, int Failure2, int Failure3, int Failure4)
+{
+	int i;
+	int MorphRetryCount = 0;
+	while(MorphRetryCount <= 70){
+
+		bool MorphingSuccess = true;
+
+		for(i = 0; i < MultiBossCheck; i++){
+			if(!BossDataArr[i][BOSSDATA_MORPHED])
+				MorphingSuccess = false;
+		}
+		if(MorphingSuccess)
+			break;
+		for(i = 0; i < MultiBossCheck; i++){
+			if(!BossDataArr[i][BOSSDATA_MORPHED])
+				BossDataArr[i][BOSSDATA_MORPHED] = MorphMeFunc(BossDataArr[i][BOSSDATA_TID],BossDataArr[i][BOSSDATA_NUM],"GigaAstroExplode");
+		}
+		Delay(1);
+		MorphRetryCount++;
+	}
+	if(MorphRetryCount >= 70){
+		ACS_Execute(832,0,Failure);
+		//Football Time
+	}
+
+	if(Failure == -1)
+		debugLog(strParam(s:"Boss Morph FINISHED! --- Retry count = ",i:MorphRetryCount));
+	if(Failure == 0)
+		debugLog(strParam(s:"Shadow Morph FINISHED! --- Retry count = ",i:MorphRetryCount));
+}
+
+script 832 (int Jump)
+{
+	bool HailMary = false;
+	Switch(Jump)
+	{
+		Case -1:
+			HailMary = true;
+			break;
+		Case 0:
+			if(Gameover){terminate;}
+
+			for(int i = 0; i < MultiBossCheck; i++)
+				if(ShadowTricksArr[i])
+					if(ThingCount(0,BossDataArr[i][BOSSDATA_TID])==0)
+						HailMary = true;
+
+			break;
+	}
+
+	if(HailMary) {//Log(s:"Special Left!");// Terminate;}
+
+		ACS_NamedTerminate("ub_WatchSurvivors",0);
+		ACS_NamedTerminate("ub_WatchBossesAndEyes",0);
+		SetFont("BIGFONT");
+		HudMessageBold(s:"OH NO, a boss morph failed! ITS TIME FOR \csFOOTBALL\c-!"; HUDMSG_FADEOUT, 51, CR_YELLOW, 320.4, 416.2, 5.0,0.2);//432.2
+		PlayMusic(BonusEventList[13][BONUS_MUSICLUMP]);
+		MusicCredits(BonusEventList[13][BONUS_MUSICCREDITS],0);
+
+		GiveMeTheFunc("TheFootBallItemX", 1);
+
+		standardlmseventlocked = true;
 	}
 }
 
