@@ -1,0 +1,93 @@
+actor PeriwinkleTankItem : UnholyItem
+{
+Tag "$TAG_M_BOX01"
+inventory.pickupmessage "Get Hyped? Periwinkle Tank!"
+inventory.icon "MYSBOX01"
+States
+{
+Spawn:
+I_MA B 6
+loop
+UseX:
+TNT1 A 0 A_PlaySoundEx("items/GoldTank","SoundSlot6")
+UseX_Slient:
+TNT1 A 0 A_JumpIfInventory("PowerDrainRune",1,"UseX2")
+TNT1 A 0 A_GiveInventory("PowerPeriwinkleDrain",1)
+goto UseX2
+UseX2:
+TNT1 A 0 A_GiveInventory("PowerPeriwinkleStrength",1)
+goto End
+}
+}
+actor AutoPeriwinkleTankItem : PeriwinkleTankItem {
+    Inventory.PickupSound ""
+    Inventory.MaxAmount 0
+    +ALWAYSPICKUP
+    States {
+        Pickup:
+            goto UseX
+    }
+}
+actor AutoPeriwinkleTankItemSilent : AutoPeriwinkleTankItem {
+    States {
+        Pickup:
+            goto UseX_Silent
+    }
+}
+actor PeriwinkleTankItemFX : UnholyItemFX {
+    States {
+        Spawn: 
+            I_MA B 0
+            goto Spawn2
+    }
+}
+
+
+actor PeriwinkleStrengthGiver : BasicPowerupGiver
+{
+Powerup.Type "PowerPeriwinkleStrength"
+}
+actor PowerPeriwinkleStrength : PowerDamage
+{
+Powerup.Duration -30
+DamageFactor "Normal", 1.5
+}
+
+actor PeriwinkleDrainGiver : BasicPowerupGiver
+{
+Powerup.Type "PowerPeriwinkleDrain"
+}
+actor PowerPeriwinkleDrain : PowerDrain
+{
+powerup.color purple 0.30
+Powerup.Duration -15
+}
+
+// actor PowerPeriwinkleInvisibilityGiver : PowerApropGiver {}
+// actor PowerPeriwinkleInvisibility : Base_UH_PropertyPower {}
+// actor PowerPeriwinkleInvisibility : PowerInvisibility
+// {
+// //Powerup.Strength 50
+// //renderstyle Stencil
+// //StencilColor Purple
+// Powerup.Mode "Fuzzy"
+// powerup.duration -30
+// }
+
+
+actor DrainRuneChecker_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIfInventory("PowerPeriwinkleDrain",1,"P_Take1")
+goto PickupGive
+P_Take1:
+TNT1 A 0 A_TakeInventory("PowerPeriwinkleDrain")
+goto PickupGive
+PickupGive:
+TNT1 A 0 ACS_NamedExecuteWithResult("uh_runeplayer", 0, true, RUNE_DRAIN)
+stop
+}
+}
+
