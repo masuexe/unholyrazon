@@ -338,7 +338,7 @@ Script "ub_WatchSurvivors" (int SkipACS)//OPEN
 	while(totalPlayersArr[PLS_SURVIVOR]>=1 && !standardlmseventlocked && !gameover){
 		Delay(1);
 		if(totalPlayersArr[PLS_SURVIVOR]==1){
-			// ACS_NamedExecute("ub_LMS_EventTime",0,random(0,11));
+			ACS_NamedExecute("ub_LMS_EventTime",0,random(0,11));
 			debugLog(strParam(s: "Last Man Standing!"));
 			standardlmseventlocked = true;
 		}
@@ -368,6 +368,168 @@ Script "ub_WatchSurvivors" (int SkipACS)//OPEN
 	Delay(35*6);
 
 }
+
+//The LMS script
+script "ub_LMS_EventTime" (int LMSNum, int ForceRare)
+{
+	bool RareItemCheck = false;
+	int TheRuneNumber = -1;
+	int TheRuneNumberX = -1;
+
+	int LMSCount = 0;
+	Until (LMSCount == 64) {//Find the lone survivor!
+		if(PlayerLifeStatusArr[LMSCount]==PLS_SURVIVOR){
+			TheLMSDude = LMSCount+1000;//Record the player number!
+			break;
+		}
+		LMSCount++;
+	}
+
+	Delay(1);
+
+
+	int LMS_Cvar = CheckClearCvar("uh_sv_LMSEvent",-1);
+	if(LMS_Cvar >= 0 && LMS_Cvar <= 11) {
+		LMSNum = LMS_Cvar;
+		ShowMeTheRCON("The LMS Event",LMS_Cvar);
+	}
+	else if(LMSNum <= -1 || LMSNum >= 12){
+		LMSNum = random(0,11);
+	}
+
+	if(RandomPercent(RareLMSRune)){//
+		TheRuneNumber = randomRune(RANDRUNE_RARE);
+		RareLMSRune = 10;
+	}
+	else{
+		TheRuneNumber = randomRune(RANDRUNE_COMMON);
+		RareLMSRune += random(2,6);
+	}
+
+	if(random(RareLMSTime,20)>=20 || ForceRare == 7){
+		RareLMSTime = 0;
+		RareItemCheck = true;
+	}
+	else{
+		RareLMSTime++;
+	}
+
+	if(LMSNum == 9){
+		do {
+			if (RareItemCheck) {
+				TheRuneNumberX = randomRune(RANDRUNE_RARE);
+			}
+			else {
+				TheRuneNumberX = randomRune(RANDRUNE_COMMON);
+			}
+		} while (TheRuneNumber == TheRuneNumberX);
+	}
+
+
+	SetFont("BIGFONT");
+	SetHudSize(640,480,0);
+	
+	str TheRune_Str = StrParam(s:"\c- got a ",s:RuneOfTheDay[TheRuneNumber]);
+	if(LMSNum == 9){
+		TheRune_Str = StrParam(s:TheRune_Str,s:" & ",s:RuneOfTheDay[TheRuneNumberX],s:" Rune!\n");
+	}
+	else{
+		TheRune_Str = StrParam(s:TheRune_Str,s:" Rune!\n");
+	}
+
+	str ItemMessage;
+	if(RareItemCheck){ItemMessage = LMSListArray[LMSNum][1];}
+	else{ItemMessage = LMSListArray[LMSNum][0];}
+
+	HudMessageBold(n:TheLMSDude-999,s:TheRune_Str,s:ItemMessage; HUDMSG_FADEOUT|HUDMSG_LOG, 70, CR_YELLOW, 320.4, 336.2, 1.8,0.2);//396.2
+
+	ACS_NamedExecuteAlways("ub_LMS_EventIconStart",0,LMSNum,RareItemCheck);//4836
+
+	PlayMusic(LMSListArray[LMSNum][LMS_MUSICLUMP]);
+	MusicCredits(LMSListArray[LMSNum][LMS_MUSICCREDITS],0);
+	survWinWithLMS = true;
+
+	while(CheckActorInventory(TheLMSDude,"IsBlessedWithLMSPower") == 0){
+
+		//Failsafe for a player not getting the LMS
+		GiveActorInventory(TheLMSDude,"IsBlessedWithLMSPower",1);
+
+		if(TheRuneNumber == 3 || TheRuneNumberX == 3 && CheckActorInventory(TheLMSDude,"PowerPeriwinkleDrain") >= 1 ) {//Drain
+			TakeActorInventory(TheLMSDude,"PowerPeriwinkleDrain",99);//Prevent Ptanks from conflicting with drain rune!
+		}
+		if(TheRuneNumber == 1 || TheRuneNumberX == 1) {//Resistance
+			GiveActorInventory(TheLMSDude,"AutoHamburgerFoodItem",1);//Force 2000 healing on player
+		}
+
+		GiveActorInventory(TheLMSDude,StrParam(s:RuneOfTheDay[TheRuneNumber],s:"Rune_ST"),1);
+		if(LMSNum == 9){GiveActorInventory(TheLMSDude,StrParam(s:RuneOfTheDay[TheRuneNumberX],s:"Rune_ST"),1);}
+
+		if(TheRuneNumber == 0 || TheRuneNumberX == 0) {//Prosperity
+			GiveActorInventory(TheLMSDude,"AutoSundaeFoodItem",1);
+			if(RandomPercent(15)){GiveActorInventory(TheLMSDude,"MysticBoxItem",1);}
+			else{GiveActorInventory(TheLMSDude,"PandoraBoxItem",2);}
+		}
+
+		Switch (LMSNum)
+		{
+		Case 0:
+			if(RareItemCheck){GiveActorInventory(TheLMSDude,"SuperGUHUItem",1);}
+			else{GiveActorInventory(TheLMSDude,"GUHUItem",1);}
+			break;
+		Case 1:
+			if(RareItemCheck){GiveActorInventory(TheLMSDude,"SuperMysticTankItem",1);GiveActorInventory(TheLMSDude,"PeriwinkleTankItem",1);}
+			else{GiveActorInventory(TheLMSDude,"SuperMysticTankItem",1);}
+			break;
+		Case 2:
+			if(RareItemCheck){GiveActorInventory(TheLMSDude,"MountainDewItem",1);}
+			else{GiveActorInventory(TheLMSDude,"UnholyWaterItem",1);}
+			break;
+		Case 3:
+			if(RareItemCheck){GiveActorInventory(TheLMSDude,"TankOfWondersItem",1);}
+			else{}
+			break;
+		Case 4:
+			if(RareItemCheck){GiveActorInventory(TheLMSDude,"GoldenWaspBombItem",1);}
+			else{GiveActorInventory(TheLMSDude,"WaspBombItem",9);}
+			break;
+		Case 5:
+			if(RareItemCheck){GiveActorInventory(TheLMSDude,"MysticBoxItem",1);}
+			else{GiveActorInventory(TheLMSDude,"PandoraBoxItem",3);}
+			break;
+		Case 6:
+			if(RareItemCheck){GiveActorInventory(TheLMSDude,"BEESItem",3);}
+			else{GiveActorInventory(TheLMSDude,"BluntRocketItem",12);GiveActorInventory(TheLMSDude,"SharpRocketItem",2);}
+			break;
+		Case 7:
+			if(RareItemCheck){GiveActorInventory(TheLMSDude,"SundaeFoodItem",1);GiveActorInventory(TheLMSDude,"HamburgerFoodItem",1);}
+			else{GiveActorInventory(TheLMSDude,"PancakeFoodItem",1);GiveActorInventory(TheLMSDude,"CakeFoodItem",1);GiveActorInventory(TheLMSDude,"HotdogFoodItem",1);}
+			break;
+		Case 8:
+			if(RareItemCheck){GiveActorInventory(TheLMSDude,"TheFootBallItem",1);}
+			else{GiveActorInventory(TheLMSDude,"RubberBandItem",1);}
+			break;
+		Case 9://Bonus Rune
+			break;
+		Case 10:
+			if(RareItemCheck){GiveActorInventory(TheLMSDude,"YouWillDieItem",1);}
+			else{GiveActorInventory(TheLMSDude,"HackyCoffeeItem",1);}
+			break;
+		Case 11:
+			if(RareItemCheck){GiveActorInventory(TheLMSDude,"TruePowerItem",1);}
+			else{GiveActorInventory(TheLMSDude,"UnholyInsuranceItem",1);}
+			break;
+		}
+
+		for(int i = 0; i<35; i++){
+			if(!PlayerInGame(TheLMSDude-1000) || 
+			   CheckActorInventory(TheLMSDude,"IsDead") ||
+			   CheckActorInventory(TheLMSDude,"IsBlessedWithLMSPower"))
+				break;
+			Delay(2);
+		}
+	}//While End
+}
+
 
 script "ub_WatchBossesAndEyes" (void)//Checks if all bosses are dead
 {
@@ -437,8 +599,8 @@ Script "uh_BossMorph" (int whoisit, int BaseHP, int AddHP) //Boss messages and H
 
 	str B_NameStr = MainBossList[whoisit][BOSSLIST_NAME];
 	// int B_Chr0 = GetChar(MainBossList[whoisit][5],0);//Message style
-	// int B_Chr1 = GetChar(MainBossList[whoisit][5],1);//Color
-	// int B_Chr2 = GetChar(MainBossList[whoisit][5],2);//Punctuation...?!
+	// int B_Chrune1 = GetChar(MainBossList[whoisit][5],1);//Color
+	// int B_Chrune2 = GetChar(MainBossList[whoisit][5],2);//Punctuation...?!
 	// str B_MessStr = MainBossList[whoisit][6];//'Custom' Message
 
 
@@ -453,7 +615,7 @@ Script "uh_BossMorph" (int whoisit, int BaseHP, int AddHP) //Boss messages and H
 	//This changes the health of the boss based on players and multibosses
 	int MainHealth = BaseHP;
 	If(multiBossCheck) {
-		MainHealth = min(BaseHP+(PlayerCount() * AddHP/multiBossCheck)-AddHP/multiBossCheck, 30000);
+		MainHealth = min(BaseHP+(PlayerCount() * AddHP/multiBossCheck)-AddHP/multiBossCheck, MAX_HEALTH);
 		//if(Debug_TXT) {Print(d:AddHP/multiBossCheck);}
 		SetActorProperty(0, APROP_HEALTH, MainHealth);
 		SetActorProperty(0, APROP_SPAWNHEALTH, MainHealth);
