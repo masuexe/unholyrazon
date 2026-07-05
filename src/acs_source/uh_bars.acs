@@ -17,6 +17,7 @@ Script "uh_assists_define" OPEN CLIENTSIDE
 {
 	DefineAssistDisplay("uh_assist_General");
 	// DefineAssistDisplay("uh_bar_CopyClassZone");
+	DefineAssistDisplay("uh_assist_SuperGUHUItem");
 }
 
 Script "uh_assist_General" (int cam) CLIENTSIDE
@@ -114,6 +115,47 @@ script "DrawBar_MLGDemoneye_W" (void) {
     DrawCustomBar(CUST_MLGEYE, CheckInventory("MLGEyeWepCharge"), 84);
 	SetInventory("SBARAmmoOffset",1); DrawNormalAmmo();
     DrawBar2Color(4, 110);
+}
+
+
+Script "uh_assist_SuperGUHUItem" (int cam) CLIENTSIDE
+{
+	if(AssistDisplayBar_On()) {
+		SetHudSize(320,200,0);
+		int pos;
+		int x; int y;
+		SetActivator(0,AAPTR_NULL);
+
+		if(CheckActorInventory(cam,"SuperGuhuDoomFlag")>0) {
+			int maxTimer = checkGuhuMaxTimer(cam);
+			pos = Get_And_Inc_AssistBarCount();
+			x = Get_AssistDisplayBar_X(pos);
+			y = Get_AssistDisplayBar_Y(pos);
+
+			BasicImageDisplay("SUPGUHU",Get_And_Inc_AssistDisplayID(),x,y);
+			int timeSec = CheckActorInventory(cam,"SuperGuhuTimer") * 4 - 4;
+			timeSec = timeSec / 35 + (timeSec % 35 > 0);
+			DrawBasicBarAndNumber(
+				"AS_TV_MA","AS_VR_16",
+				"AS_TH_MA","AS_HR_16",
+				x,y,
+				Get_And_Inc_AssistDisplayID(),Get_And_Inc_AssistDisplayID(),Get_And_Inc_AssistDisplayID(),
+				((CheckActorInventory(cam,"SuperGuhuTimer") * 8.0 / maxTimer) + 0.5) >> 16,
+				CheckActorInventory(cam,"AssistNumberFlag")>0,
+				timeSec
+			);
+		}
+	}
+}
+function int checkGuhuMaxTimer(int cam) {
+	if (CheckActorInventory(cam, "SuperGUHUTune1Flag")) {
+		return 405;
+	} else if (CheckActorInventory(cam, "SuperGUHUTune2Flag")) {
+		return 361;
+	} else if (CheckActorInventory(cam, "SuperGUHUTune3Flag")) {
+		return 570;
+	}
+	return 1;
 }
 
 //The FUTURE
