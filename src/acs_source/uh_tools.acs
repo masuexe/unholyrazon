@@ -1,6 +1,8 @@
 #library "uh_tools"
 #include "zcommon.acs"
 
+#define MAX_HEALTH 30000
+
 script "uh_IsBot" (void)
 {
 	SetResultValue(PlayerIsBot(PlayerNumber()) || CheckInventory("IsBot"));
@@ -399,18 +401,15 @@ script "uh_shinyclassmorpher" (int ClassNum)
 #define UHEALTH_GET_INV			0   // CheckInventory("Health")
 #define UHEALTH_GET_MAX			-1  // SpawnHealth
 #define UHEALTH_GET_CURRENT		1
-#define UHEALTH_IS_FULL			2
+#define UHEALTH_IS_FULL			2   // 1=full, 0=can gain
 
 // Modify
-#define UHEALTH_HEAL			6
-#define UHEALTH_HEAL_EXPAND_MAX	7
-#define UHEALTH_HEAL_ADD_MAX	-7
+#define UHEALTH_HEAL			6   // Heal up to max; returns 0 if dead/full, 1 if healed
+#define UHEALTH_HEAL_EXPAND_MAX	7   // 750/1000 > +500 > 1250/1500; always returns 1
+#define UHEALTH_HEAL_ADD_MAX	-7  // 750/1000 > +500 > 1250/1250; always returns 1
 
 // Damage
 #define UHEALTH_DAMAGE_BURN		9
-
-// Legacy / Compatibility
-#define UHEALTH_GET_MAX_RAW		66
 
 script "uh_Health" (int Swap, int HPBoost) //Health related script
 {
@@ -431,38 +430,34 @@ script "uh_Health" (int Swap, int HPBoost) //Health related script
 		Case UHEALTH_GET_CURRENT://Return Health
 			SetResultValue(h);
 			break;
-		Case UHEALTH_IS_FULL://Return false if max health
-			if(h >= s_h)
-				SetResultValue(0);
+		Case UHEALTH_IS_FULL://1=full, 0=can gain
+			SetResultValue(h >= s_h);
 			break;
 
 //HealThing(HPBoost,s_h);
 		Case UHEALTH_HEAL:
 		Case UHEALTH_HEAL_ADD_MAX:
 		Case UHEALTH_HEAL_EXPAND_MAX:
-			if(h <= 0){terminate;}
+			if(h <= 0){ SetResultValue(0); break; }
+			if(Swap == UHEALTH_HEAL && h >= s_h){ SetResultValue(0); break; }
 
-			int HPAdd = min(h + HPBoost, 30000);
-			
-			Switch(Swap){
-				Case UHEALTH_HEAL_ADD_MAX: // 750/1000 > +500 > 1250/1500
-					s_h = min(s_h + HPBoost, 30000);
-					SetActorProperty(0, APROP_SPAWNHEALTH, s_h);
-					break;
-				Case UHEALTH_HEAL_EXPAND_MAX: // 750/1000 > +500 > 1250/1250
-					if(HPAdd > s_h){
-						s_h = HPAdd;
-						SetActorProperty(0, APROP_SPAWNHEALTH, s_h);
-					}
-					break;
-				Default://UHEALTH_HEAL
-					break;
-			
+			if(Swap == UHEALTH_HEAL_ADD_MAX){
+				s_h = min(s_h + HPBoost, MAX_HEALTH);
+				SetActorProperty(0, APROP_SPAWNHEALTH, s_h);
 			}
+			else if(Swap == UHEALTH_HEAL_EXPAND_MAX){
+				int HPAdd = min(h + HPBoost, MAX_HEALTH);
+				if(HPAdd > s_h){
+					s_h = HPAdd;
+					SetActorProperty(0, APROP_SPAWNHEALTH, s_h);
+				}
+			}
+
 			HealThing(HPBoost,s_h);
 			if(CheckInventory("AntiDamageTime") != 300){//Check if AntiDamage is on
 				SetInventory("AntiDamageHealth",PlayerHealth());
 			}
+			SetResultValue(1);
 			break;
 
 		Case UHEALTH_DAMAGE_BURN://Burning damage
@@ -471,9 +466,6 @@ script "uh_Health" (int Swap, int HPBoost) //Health related script
 				break;
 			}
 			SetResultValue(2);
-			break;
-		Case UHEALTH_GET_MAX_RAW://Returns MaxHp
-			SetResultValue(s_h);
 			break;
 	}
 }
