@@ -1,0 +1,226 @@
+actor SuperGUHUItem : UnholyItem
+{
+Tag "$TAG_M_BOX03"
+inventory.pickupmessage "FOR SATAN! DEATH AND BLOOD!"
+inventory.icon "MYSBOX03"
+States
+{
+Spawn:
+I_MA D 6
+loop
+UseX:
+UseX_Slient:
+TNT1 A 0 A_JumpIfInventory("SuperGuhuDoomFlag",1,"UseXWait")
+TNT1 A 0 A_PlaySoundEx("S_Battle/Beep","Item")
+TNT1 A 0 A_GiveInventory("SuperGuhuDoomFlag",1)
+TNT1 A 0 ACS_NamedExecuteAlways("uh_MusicOff",0)
+TNT1 A 0 A_GiveInventory("SuperGuhuRNGTune_P",1)
+TNT1 A 0 A_SpawnItemEx("SuperGuhuTimer_H")
+fail
+UseXWait:
+TNT1 A 0 A_PlaySoundEx("items/YouDie","Item")
+fail
+}
+}
+actor AutoSuperGUHUItem : SuperGUHUItem {
+    Inventory.PickupSound ""
+    Inventory.MaxAmount 0
+    +ALWAYSPICKUP
+    States {
+        Pickup:
+            goto UseX
+    }
+}
+actor AutoSuperGUHUItemSilent : AutoSuperGUHUItem {
+    States {
+        Pickup:
+            goto UseX_Silent
+    }
+}
+actor SuperGUHUItemFX : UnholyItemFX {
+    States {
+        Spawn: 
+            I_MA D 0
+            goto Spawn2
+    }
+}
+
+
+actor SuperGuhuRNGTune_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_Jump(96,"UseX3")
+TNT1 A 0 A_Jump(64,"UseX1")
+TNT1 A 0 A_Jump(48,"UseX2")
+goto UseX0
+UseX0:
+TNT1 A 0 A_SpawnItemEx("SuperGuhuSound_H")
+TNT1 A 0 A_GiveInventory("SuperGuhuTimer",405)
+stop
+UseX1:
+TNT1 A 0 A_SpawnItemEx("SuperGuhuSound_H1")
+TNT1 A 0 A_GiveInventory("SuperGuhuTimer",361)
+stop
+UseX2:
+TNT1 A 0 A_SpawnItemEx("SuperGuhuSound_H2")
+TNT1 A 0 A_GiveInventory("SuperGuhuTimer",570)
+stop
+UseX3:
+TNT1 A 0 A_SpawnItemEx("SuperGuhuSound_H3")
+TNT1 A 0 A_GiveInventory("SuperGuhuTimer",405)
+stop
+}
+}
+
+actor SGEXDItem : CustomInventory//Round Timeout version
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIfInventory("SuperGuhuDoomFlag",1,"No")
+TNT1 A 0 A_GiveInventory("SuperGuhuDoomFlag",2)
+TNT1 A 0 ACS_NamedExecuteAlways("uh_MusicOff",0)
+TNT1 A 0 A_SpawnItemEx("SuperGuhuSound_H2")
+TNT1 A 0 A_GiveInventory("SuperGuhuTimer",575)
+TNT1 A 0 A_SpawnItemEx("SuperGuhuTimer_H")
+fail
+No:
+TNT1 A 0
+stop
+}
+}
+
+actor SuperGuhuTimer : Inventory
+{
+inventory.amount 1
+inventory.maxamount 999
+}
+
+actor SuperGuhuDoomFlag : Inventory
+{
+inventory.amount 1
+inventory.maxamount 2
+}
+
+actor SuperGuhuSound_H : BasicSoundFollow
+{
+PainSound "items/SuperGuhu"
+ReactionTime 420
+}
+actor SuperGuhuSound_H1 : BasicSoundFollow
+{
+PainSound "items/SuperGuhu1"
+ReactionTime 380
+}
+actor SuperGuhuSound_H2 : BasicSoundFollow
+{
+PainSound "items/SuperGuhu2"
+ReactionTime 585
+}
+actor SuperGuhuSound_H3 : BasicSoundFollow
+{
+PainSound "items/SuperGuhu3"
+ReactionTime 420
+}
+
+actor SuperGuhuTimer_H : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0
+goto Timer
+Timer:
+TNT1 A 1 A_TakeFromTarget("SuperGuhuTimer",1)//102 * 4 = 408
+TNT1 A 0 A_GiveToTarget("SuperGuhuAuraTime",1)
+TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2),"DiffuseBomb")
+TNT1 A 0 A_JumpIfInTargetInventory("SuperGuhuTimer",1,"Timer")
+goto TheEnd
+TheEnd:
+TNT1 A 1 A_GiveToTarget("SuperGuhuDeathItem",1)
+TNT1 A 0 A_TakeFromTarget("SuperGuhuTimer")
+stop//408
+DiffuseBomb:
+TNT1 A 1 A_TakeFromTarget("SuperGuhuDoomFlag",999)
+TNT1 A 0 A_TakeFromTarget("SuperGuhuTimer")
+stop
+}
+}
+
+actor SuperGuhuAuraTime : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 AAAA 0 A_SpawnItemEx("SuperGuhuAura",random(16,48),0,random(-10,60),0,0,0,random(0,359),32)
+stop
+}
+}
+
+actor SuperGuhuAura : BasicClientSide
+{
+Alpha 0.75
+Scale 0.5
+States
+{
+Spawn:
+I_MD AAAA 2 bright 
+goto Death
+Death:
+I_MD A 2 bright A_Fadeout(0.25)
+wait
+}
+}
+
+actor SuperGuhuDeathItem : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 //A_PlaySoundEx("item/energyup","Item")
+TNT1 A 0 //A_GiveInventory("AntiInvincibleB",1)
+TNT1 A 0 A_JumpIfInventory("SuperGuhuDoomFlag",2,"Pickup2")
+TNT1 A 0 A_SpawnItemEx("SuperGUHU_Explosion",0,0,28)
+stop
+Pickup2:
+TNT1 A 0 A_SpawnItemEx("SuperGUHU_Explosion2",0,0,28)
+stop
+}
+}
+
+actor SuperGUHU_Explosion : BasicExplosion
+{
+Translation "192:192=176:176","198:198=186:186"
+var int user_S;
+Damagetype "SuperGiveUpHope"
+Obituary "%o had infinite \chFUN."
++FOILINVUL
+Scale 32//7.5
+States
+{
+Spawn:
+X_8B A 0
+X_8B A 0 A_SetUserVar("user_S", CallACS("uh_CheckItemInventory", CIINV_SUPERGUHU, AAPTR_TARGET))
+X_8B A 0 A_TakeFromTarget("SuperGUHUItem",user_S)
+X_8B A 0 A_TakeFromTarget("SuperGuhuDoomFlag",999)
+X_8B A 0 //A_LogInt(user_S)
+X_8B A 0 A_Explode(10000*user_S*(CallACS("uh_checkrune", RUNE_SPREAD, AAPTR_TARGET)*2+1),1004,True,1,128)
+X_8B ABCDEF 2
+stop
+}
+}
+actor SuperGUHU_Explosion2 : SuperGUHU_Explosion
+{
+States
+{
+Spawn:
+X_8B A 0
+X_8B A 0 A_Explode(6999999,1004,True,1,128)
+X_8B ABCDEF 2
+stop
+}
+}
+
+
