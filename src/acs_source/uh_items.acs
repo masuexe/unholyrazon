@@ -1,0 +1,48 @@
+#library "uh_items"
+#include "zcommon.acs"
+
+script "UB_GUHU_SelfDamage" (int Pain, int Type)
+{
+	int TargetTID = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+	str DamageType;
+	if(Pain <= 0)
+		Pain = 1;
+	Switch(Type){
+		Case 1:
+			Pain *= 2500;
+			DamageType = "GiveUpHope";
+			break;
+		Case 2:
+			Pain *= 10000;
+			DamageType = "SuperGiveUpHope";
+			break;
+	}
+/*	if(CheckActorInventory(TargetTID,"RuneDoubleDamage")){Pain*=2;}//StrengthRune
+	if(CheckActorInventory(TargetTID,"PowerStrength_ST")){Pain*=2;}
+	if(CheckActorInventory(TargetTID,"PowerSMTankBuff")){Pain*=2;}
+	if(CheckActorInventory(TargetTID,"PowerPeriwinkleStrength")){Pain = (1.5 * Pain + 0.5) >> 16;}
+	if(CheckActorInventory(TargetTID,"PowerFakeTruePower1")){Pain = (1.25 * Pain + 0.5) >> 16;}
+	if(Pain <= 0)
+		Pain = 0x7FFFFFFF;*/
+	Thing_Damage2(TargetTID,Pain,DamageType);
+}
+
+str u_BossInvStr[3] = 
+{
+"GUHUItem",
+"OnFireItemFlag",
+"SuperGUHUItem",
+};
+#define CIINV_GUHU       0
+#define CIINV_ONFIRE     1
+#define CIINV_SUPERGUHU  2
+script "uh_CheckItemInventory" (int itemType, int who)
+{
+    if (who < 1000 || who > 1063) {
+        SetActivator(0, who);
+        SetResultValue(CheckInventory(u_BossInvStr[itemType]));
+    }
+    else {
+        SetResultValue(CheckActorInventory(who, u_BossInvStr[itemType]));
+    }
+}
