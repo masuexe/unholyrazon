@@ -1,0 +1,121 @@
+#library "uh_corereplace"
+#include "zcommon.acs"
+#include "8bdmdefs.acs"
+
+// Player Rune stacker
+// Makes sure that players receive the rune that core facilities check for
+// Set player to 0 for the activator or specify a player number
+script "uh_runeplayer" (int player, int toggle, int mode) {
+	if (player == 0) { player = PlayerNumber() + 1; } 
+	if (player <= 0 || !SetActivatorToPlayer(player - 1)) { terminate; }
+	
+	str counter;
+	str runePower;
+	switch (mode) {
+		case RUNE_STRENGTH:
+			counter = "PlayerPropertyStrength";
+			runePower = "PowerDoubleDamageRune";
+			break;
+		case RUNE_RAGE:
+			counter = "PlayerPropertyRage";
+			runePower = "PowerDoubleFiringSpeedRune";
+			break;
+		case RUNE_DRAIN:
+			counter = "PlayerPropertyDrain";
+			runePower = "PowerDrainRune";
+			break;
+		case RUNE_SPREAD:
+			counter = "PlayerPropertySpread";
+			runePower = "PowerSpreadRune";
+			break;
+		case RUNE_RESISTANCE:
+			counter = "PlayerPropertyResistance";
+			runePower = "PowerHalfDamageRune";
+			break;
+		case RUNE_REGENERATION:
+			counter = "PlayerPropertyRegeneration";
+			runePower = "PowerRegenerationRune";
+			break;
+		case RUNE_PROSPERITY:
+			counter = "PlayerPropertyProsperity";
+			runePower = "PowerProsperityRune";
+			break;
+		case RUNE_REFLECTION:
+			counter = "PlayerPropertyReflection";
+			runePower = "PowerReflectionRune";
+			break;
+		case RUNE_HIGHJUMP:
+			counter = "PlayerPropertyHighJump";
+			runePower = "PowerHighJumpRune";
+			break;
+		case RUNE_HASTE:
+			counter = "PlayerPropertyHaste";
+			runePower = "PowerSpeed25Rune";
+			break;
+        case RUNE_INFINITEAMMO:
+            counter = "PlayerPropertyInfiniteAmmo";
+            runePower = "PowerInfiniteAmmoRune";
+	}
+	
+	if (toggle >= 1) {
+		if (CheckInventory(counter) <= 0) {
+			GiveInventory(StrParam(s:runePower, s:"Giver"), 1);
+			if (mode == RUNE_REGENERATION) {
+				ACS_NamedExecuteWithResult("core_RegenerationRune");
+			}
+		}
+		GiveInventory(counter, 1);
+	} else if(CheckInventory(counter) > 0) {
+		TakeInventory(counter, 1);
+
+		if (CheckInventory(counter) == 0) {
+			TakeInventory(runePower, 999);
+		}
+	}
+}
+
+// Script to check for specific runes on a pointer
+script "uh_checkrune" (int rune, int ptr) {
+	if (ptr != 0) {
+		SetActivator(0, ptr);
+	}
+
+	str runePower;
+	switch (rune) {
+		case RUNE_STRENGTH:
+			runePower = "PowerDoubleDamageRune";
+			break;
+		case RUNE_RAGE:
+			runePower = "PowerDoubleFiringSpeedRune";
+			break;
+		case RUNE_DRAIN:
+			runePower = "PowerDrainRune";
+			break;
+		case RUNE_SPREAD:
+			runePower = "PowerSpreadRune";
+			break;
+		case RUNE_RESISTANCE:
+			runePower = "PowerHalfDamageRune";
+			break;
+		case RUNE_REGENERATION:
+			runePower = "PowerRegenerationRune";
+			break;
+		case RUNE_PROSPERITY:
+			runePower = "PowerProsperityRune";
+			break;
+		case RUNE_REFLECTION:
+			runePower = "PowerReflectionRune";
+			break;
+		case RUNE_HIGHJUMP:
+			runePower = "PowerHighJumpRune";
+			break;
+		case RUNE_HASTE:
+			runePower = "PowerSpeed25Rune";
+			break;
+        case RUNE_INFINITEAMMO:
+            runePower = "PowerInfiniteAmmoRune";
+            break;
+	}
+
+	SetResultValue(CheckInventory(runePower));
+}
