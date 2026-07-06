@@ -1,5 +1,7 @@
 #library "uh_bosses"
 #include "zcommon.acs"
+#include "8bdmdefs.acs"
+#include "8bdminfo.acs"
 
 script "uhB_countinv_acs" (int Which, int Pointer)
 {
@@ -81,5 +83,71 @@ script "uh_ScreenScare" (int Screen, int HoldTime)
 		int TempY = (ScaryScreenSize[Screen][1]/2)<<16;
 		//ScaryScreen[Screen][2], 0.5
 		HudMessage(s:"A"; HUDMSG_FADEOUT, 666, CR_UNTRANSLATED, TempX+0.4, TempY, HoldTime*0.1, 0.2);
+	}
+}
+
+script "uh_FloorQuakeDamageBoss" (int maxRange, int QuakePower, int Which)
+{
+	int userTID = ActivatorTID();
+	// int userTeam = GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM);
+	int zDist;
+	str TheClass;
+	Switch(Which){
+		Default:
+			terminate;
+			break;
+		Case 1011:
+			TheClass = "IronCurtain";
+			break;
+		Case 1046:
+			TheClass = "GutsBuddy";
+			break;
+		Case 1047:
+			TheClass = "RussianGuts";
+			break;
+		Case 1048:
+			TheClass = "RedeadGuts";
+			break;
+		Case 1050:
+			TheClass = "HalfPressHardman";
+			break;
+		Case 1057:
+			TheClass = "TheCommandoChamp";
+			break;
+		Case 1059:
+			TheClass = "Balrog_Boss";
+			break;
+		Case 1100:
+			TheClass = "HellBot";
+			break;
+		Case 1103:
+			TheClass = "SirAlpha";
+			break;
+		Case 1301:
+			TheClass = "AbePenny";
+			break;
+		Case 1402:
+			TheClass = "FinalSampi";
+			break;
+		Case 1603:
+			TheClass = "SirAlphaEX";
+			break;
+	}
+	str SpawnName = StrParam(s:TheClass,s:"_FloorQuakeSpawn");
+	//Log(s:"maxRange = ",i:maxRange,s:" \\ QuakePower = ",i:QuakePower);
+	// if(QuakePower > 255)
+	// 	Log(s:"\cg[!] WARNING [!] \cduh_FloorQuakeDamageBoss (QuakePower) is too high! Max power is 255!");
+	for(int p = 0;p < MAX_PLAYERS; p++)
+	{
+		if(!PlayerInGame(p)){continue;}
+		// if(IsTeamGame){
+		// 	if(userTeam == GetPlayerInfo(p, PLAYERINFO_TEAM)){continue;}
+		// }
+		if(xyDistance(0, p+1000) < maxRange && zDistance(0, p+1000) >= -32 && zDistance(0, p+1000) <= 32 && userTID != p+1000)
+		{
+			//Log(s:"xyDist = ",i:xyDistance(0, p+1000),s:" \\ zDist = ",i:zDistance(0, p+1000));
+			//SpawnForced(SpawnName,GetActorX(p+1000),GetActorY(p+1000),GetActorZ(p+1000),0,QuakePower);
+			SpawnProjectile(userTID,SpawnName,QuakePower,0,p,0,0);
+		}
 	}
 }
