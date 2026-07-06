@@ -57,3 +57,263 @@ function void Func_DemoneyeNumDisplay(int EyeCount)
 	HudMessage(s:"\c[MenuPurple]",i:EyeCount; 0+Fader, -997, 19, 37.1+X_Aspect, 318.1+Y_Aspect, 0, 1.0, 3.0*Fader);
 
 }
+
+script "ub_BossHealthWatcher" (void) //OPEN
+{
+	SetActivator(0,AAPTR_NULL);
+
+	until(bossSlotAlive[0] || bossSlotAlive[1] || bossSlotAlive[2] || bossSlotAlive[3]){
+		Delay(1);
+	}
+	while(bossSlotAlive[0] || bossSlotAlive[1] || bossSlotAlive[2] || bossSlotAlive[3]){
+
+		Func_BHW_ShowHudMess(false);
+		Delay(1);
+		if(RefreshHudMessage){
+			Func_BHW_ShowHudMess(true);
+			Delay(1);
+		}
+	}
+	debugLog(strParam(s: "ub_BossHealthWatcher FINISHED!"));
+	Func_BHW_ShowHudMess(true);
+}
+
+function void Func_BHW_ShowHudMess (bool Force)
+{
+	for(int i = MultiBossCheck-1; i >= 0; i--){
+		Func_BHW_Checker(i,BossDataArr[i][BOSSDATA_TID],BossDataArr[i][BOSSDATA_NUM],Force);
+	}
+}
+
+function void Func_BHW_Checker(int NumB, int TidOfBoss, int WhichBoss, bool Force)
+{
+	if(PlayerInGame(TidOfBoss-1000) && bossSlotAlive[NumB]){
+		BossHPArr[NumB][BOSSHP_CURRHP] = GetActorProperty(TidOfBoss, APROP_HEALTH);
+		BossHPArr[NumB][BOSSHP_CURRARMOR] = CheckActorInventory(TidOfBoss,"BasicArmor");
+		if(BossHPArr[NumB][BOSSHP_CURRHP] <= 0){//Boss is Dead!
+			if(timer() <= 35*30){BossHPArr[NumB][BOSSHP_DEATH] = 6;}
+			else{BossHPArr[NumB][BOSSHP_DEATH] = 5;}
+			Func_BHW_DeadHudMess(NumB+1,WhichBoss,BossHPArr[NumB][BOSSHP_DEATH]);
+			bossSlotAlive[NumB] = false;
+		}
+		else if(shadowRevealActive && ShadowTricksArr[NumB]){//During Shadow, show Blue
+			Func_BHW_DeadHudMess(NumB+1,WhichBoss,8);
+		}
+		else if(BossHPArr[NumB][BOSSHP_HPMEM] != BossHPArr[NumB][BOSSHP_CURRHP] || BossHPArr[NumB][BOSSHP_CURRARMOR] != BossHPArr[NumB][BOSSHP_ARMORMEM]){
+			BossHPArr[NumB][BOSSHP_HPMEM] = BossHPArr[NumB][BOSSHP_CURRHP];
+			BossHPArr[NumB][BOSSHP_ARMORMEM] = BossHPArr[NumB][BOSSHP_CURRARMOR];
+			Func_BHW_HudMess(NumB+1,WhichBoss,BossHPArr[NumB][BOSSHP_HPMEM],BossHPArr[NumB][BOSSHP_ARMORMEM]);
+		}
+		else if(Force){
+			Func_BHW_HudMess(NumB+1,WhichBoss,BossHPArr[NumB][BOSSHP_HPMEM],BossHPArr[NumB][BOSSHP_ARMORMEM]);
+		}
+	}
+	else if(bossSlotAlive[NumB]){//Boss Spectated!
+		BossHPArr[NumB][BOSSHP_ARMORMEM] = -1;
+		BossHPArr[NumB][BOSSHP_DEATH] = 7;
+		Func_BHW_DeadHudMess(NumB+1,WhichBoss,BossHPArr[NumB][BOSSHP_DEATH]);
+		bossSlotAlive[NumB] = false;
+	}
+	else if(Force){
+		Func_BHW_DeadHudMess(NumB+1,WhichBoss,BossHPArr[NumB][BOSSHP_DEATH]);
+	}
+}
+
+script "ub_BHW_HudClientside" (int TheBoss, int BossNumb, int Health, int Armor) CLIENTSIDE
+{
+	Func_BHW_HudMess2(TheBoss,BossNumb,Health,Armor);
+}
+
+function void Func_BHW_HudMess(int TheBoss, int BossNumb, int Health, int Armor)
+{
+	ACS_NamedExecuteWithResult("ub_BHW_HudClientside",TheBoss,BossNumb,Health,Armor);
+}
+
+function void Func_BHW_HudMess2(int TheBoss, int BossNumb, int Health, int Armor)
+{
+	SetHudSize(640,480,0);//640,512
+	int X_Aspect = GetHudLeft(640)*1.0;
+	int Y_Aspect = GetHudTop(480)*1.0;
+	if(GetScreenWidth() == 640 && GetScreenHeight() == 480){
+		X_Aspect = 0;
+		Y_Aspect = 0;
+	}
+	int AddToY = TheBoss*32.0+Y_Aspect;
+
+	Func_BHW_SetFontMug(BossNumb);
+
+	HudMessage(s:"A"; 0, -1000-TheBoss,-1, 10.1+X_Aspect, 306.1+AddToY, 0,1.0);
+	SetFont("SMALLFONT");
+	HudMessage(s: mainBossList[BossNumb][BOSSLIST_NAME]; 0, -990-TheBoss, -1, 48.1+X_Aspect, 310.1+AddToY, 0, 1.0);
+	HudMessage(s:"\c[UB0HP]",i:Health; 0, -1010-TheBoss,-1, 48.1+X_Aspect, 320.1+AddToY, 0,1.0);
+	if(Armor >= 1){
+		HudMessage(s:"\c[UB0AR]",i:Armor; 0, -1020-TheBoss,-1, 48.1+X_Aspect, 330.1+AddToY, 0,1.0);
+	}
+	else{
+		HudMessage(s:" "; 0, -1020-TheBoss,-1, 48.1+X_Aspect, 330.1+AddToY, 0.1,1.0);
+	}
+}
+
+function void Func_BHW_DeadHudMess(int TheBoss, int BossNumb, int DemiseType)
+{
+	ACS_NamedExecuteWithResult("ub_BHW_DeadHudClientside",TheBoss,BossNumb,DemiseType);
+}
+
+
+script "ub_BHW_DeadHudClientside" (int TheBoss, int BossNumb, int DemiseType) CLIENTSIDE
+{
+	Func_BHW_DeadHudMess2(TheBoss,BossNumb,DemiseType);
+}
+
+function void Func_BHW_SetFontMug(int BossNumb)
+{
+	str FontStr;
+	if(BossNumb >=1000){//Demoneye
+		FontStr = StrParam(s:"EYE_F",i:BossNumb-1000);
+	}
+	else if(BossNumb >=0){//Boss
+		FontStr = StrParam(s:"UFACE",i:BossNumb);
+	}
+	else if(BossNumb < -157){//CBM
+		FontStr = StrParam(s:"C_ICN",i:(BossNumb+100+58)*-1);
+	}
+	else if(BossNumb > -100){//Shiny
+		FontStr = StrParam(s:"C-ICN",i:(BossNumb+1)*-1);
+	}
+	else{//Unholy Class
+		//SetFont(StrParam(s:"C#ICN",i:BossNumb*-1));
+		FontStr = StrParam(s:"C@ICN",i:(BossNumb+100)*-1);
+	}
+	if(CheckFont(FontStr))
+		SetFont(FontStr);
+	else
+		SetFont("NOFAC_0");
+}
+
+function void Func_BHW_DeadHudMess2(int TheBoss, int BossNumb, int DemiseType)
+{
+	SetHudSize(640,480,0);//640,512
+	int X_Aspect = GetHudLeft(640)*1.0;
+	int Y_Aspect = GetHudTop(480)*1.0;
+	if(GetScreenWidth() == 640 && GetScreenHeight() == 480){
+		X_Aspect = 0;
+		Y_Aspect = 0;
+	}
+	int AddToY = TheBoss*32.0+Y_Aspect;
+
+	HudMessage(s:"";0, -1060-TheBoss ,-1,0.99,0.01,1873);//Rage
+
+	Func_BHW_SetFontMug(BossNumb);
+
+	HudMessage(s:"A"; 0, -1000-TheBoss,-1, 10.1+X_Aspect, 306.1+AddToY, 0,1.0);
+	SetFont(StrParam(s:"UFACE0",i:DemiseType*11));//Tint
+	HudMessage(s:"A"; 0, -1010-TheBoss,-1, 10.1+X_Aspect, 306.1+AddToY, 0,1.0);
+	SetFont(StrParam(s:"UFACE00",i:DemiseType));//Icon
+	HudMessage(s:"A"; 0, -1020-TheBoss,-1, 10.1+X_Aspect, 306.1+AddToY, 0,1.0);
+}
+
+script "ub_RageAmmoGiver" (int WhereIsTheAmmo)
+{
+	int act_TID = ActivatorTID();
+	SetActivator(0,AAPTR_NULL);
+	int curr_HP = GetActorProperty(act_TID, APROP_Health);
+	int rage_Max = CheckActorInventory(act_TID,"UnholyPowerLimit_F");
+	if(curr_HP <= 0 || rage_Max <= 0){//Player user_HPTrack
+		terminate;
+	}
+	int old_HP = -1;
+	int diff_HP;
+
+	int boss_Spacing = CheckActorInventory(act_TID,"Is_UH_BossNum");
+	if(boss_Spacing > 4 || CheckActorInventory(act_TID,"UnholyPowerDisableRazzle_F"))
+		boss_Spacing = 0;
+
+	
+	str rage_Name = StrParam(s:"UnholyPower",i:rage_Max);
+
+	bool rage_BoxBool = false;
+	//SetHudSize(640,480,0);//640,512
+	//SetFont("UFACE0RR");
+	while(GetActorProperty(act_TID, APROP_HEALTH) > 0 && CheckActorInventory(act_TID,"UnholyPowerLimit_F") > 0){
+		curr_HP = GetActorProperty(act_TID, APROP_Health);
+		diff_HP = old_HP - curr_HP;
+
+		if(diff_HP > 0){
+			GiveActorInventory(act_TID,rage_Name,diff_HP);
+		}
+		if(old_HP != curr_HP){
+			old_HP = curr_HP;
+		}
+
+		if(boss_Spacing > 0){
+			if(CheckActorInventory(act_TID,rage_Name) >= rage_Max || CheckActorInventory(act_TID,"UnholyPowerDazzle_F")){
+				if(rage_BoxBool){
+					if(RefreshHudMessage){
+						//HudMessageBold(s:"A"; 0, -1060-boss_Spacing,-1, 10.1, 306.1+boss_Spacing*32.0, 0,1.0);
+						Func_BHW_RageHudMess(boss_Spacing);
+					}
+				}
+				else{
+					//HudMessageBold
+					Func_BHW_RageHudMess(boss_Spacing);
+					rage_BoxBool = true;
+				}
+			}
+			else if(rage_BoxBool){
+				HudMessageBold(s:"";0, -1060-boss_Spacing ,-1,0.99,0.01,1873);
+				rage_BoxBool = false;
+			}
+		}
+		//Log(s:"Looping ub_RageAmmoGiver for ",i:rage_Max);
+		Delay(1);
+	}
+	if(rage_BoxBool){//Doesn't work for Spectators
+		HudMessageBold(s:"";0, -1060-boss_Spacing ,-1,0.99,0.01,1873);
+	}
+}
+
+script "ub_BHW_RageHudClientside" (int TheBoss) CLIENTSIDE
+{
+	Func_BHW_RageHudMess2(TheBoss);
+}
+
+function void Func_BHW_RageHudMess(int TheBoss)
+{
+	ACS_NamedExecuteWithResult("ub_BHW_RageHudClientside",TheBoss);
+}
+
+function void Func_BHW_RageHudMess2(int TheBoss)
+{
+	SetHudSize(640,480,0);//640,512
+	int X_Aspect = GetHudLeft(640)*1.0;
+	int Y_Aspect = GetHudTop(480)*1.0;
+	if(GetScreenWidth() == 640 && GetScreenHeight() == 480){
+		X_Aspect = 0;
+		Y_Aspect = 0;
+	}
+	SetFont("UFACE0RR");//X_Aspect
+	HudMessage(s:"A"; 0, -1060-TheBoss,-1, 10.1+X_Aspect, 306.1+TheBoss*32.0+Y_Aspect, 0,1.0);
+}
+
+
+
+script "ub_BHW_TargetHudClientside" (int Duration) CLIENTSIDE
+{
+	Func_BHW_TargetHudMess2(Duration);
+}
+function void Func_BHW_TargetHudMess(int Duration)
+{
+	ACS_NamedExecuteWithResult("ub_BHW_TargetHudClientside",Duration);
+}
+function void Func_BHW_TargetHudMess2(int Duration)
+{
+	SetHudSize(640,480,0);
+	int X_Aspect = GetHudLeft(640)*1.0;
+	int Y_Aspect = GetHudTop(480)*1.0;
+	if(GetScreenWidth() == 640 && GetScreenHeight() == 480){
+		X_Aspect = 0;
+		Y_Aspect = 0;
+	}
+	SetFont("TARGET_");
+	HudMessage(s:"A"; HUDMSG_FADEINOUT, -999,-1, 10.1+X_Aspect, 304.1+32.0-8.0+Y_Aspect,Duration*1.0,1.0,1.0);
+}
