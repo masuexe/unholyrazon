@@ -227,6 +227,10 @@ Script 801 (void)
 	totalPlayersArr[PLS_SURVIVOR] -= multiBossCheck;
 	totalPlayersArr[PLS_BOSS] += multiBossCheck;
 
+	If(shadowFakeoutActive){
+		ACS_NamedExecute("ub_ShadowBossManager",0);
+	}//End of Shadowman
+
 	//Morphing area
 	for(int i = 0; i < multiBossCheck; i++){
 		bossDataArr[i][BOSSDATA_MORPHED] = morphMeFunc(bossDataArr[i][BOSSDATA_TID], bossDataArr[i][BOSSDATA_NUM], "GigaAstroExplode");
@@ -314,6 +318,167 @@ script 832 (int Jump)
 
 		standardlmseventlocked = true;
 	}
+}
+
+script "ub_UnMorphThisTID" (int W)
+{
+	SetActivator(W);
+	GiveInventory("InvulnerableOff_Pickup",1);
+	UnMorphActor(W,1);
+}
+
+Script "ub_TestShadowBoss" (int TID, int BossID)
+{
+	Delay(1);
+	ACS_NamedExecuteAlways("ub_UnMorphThisTID",0,TID);
+	Delay(1);
+	ClearActorInventory(TID);
+	GiveActorInventory(TID,"ShadowPreRoundStart",1);
+	Delay(35*5);
+	GiveActorInventory(TID,"ShadowPreRoundEnd",1);
+	MorphMeFunc(TID,BossID,"GigaAstroExplode");
+}
+
+Script "ub_ShadowBossManager" (void)
+{
+	SetActivator(0,AAPTR_NULL);
+
+	int DelayShad = 0;
+	Until (DelayShad >= 10) {//Bot checks are needed because they can cause crashes through this script.
+		bool NinjaExists = false;
+		for(int i = 0; i < MultiBossCheck; i++){
+			if(ShadowTricksArr[i]){
+				if(ThingCount(0,BossDataArr[i][BOSSDATA_TID])==0 || PlayerIsBot(BossDataArr[i][BOSSDATA_TID]-1000))
+					ShadowTricksArr[i] = false;
+				else
+					NinjaExists = true;
+			}
+		}
+		if(!NinjaExists)
+			terminate;
+		Delay(35*1);
+		DelayShad++;
+	}
+
+
+
+	//If(shadowFakeoutActive){
+	//	GiveActorInventory(669,"PURPLEPOTIONITEM",2);
+	//	ACS_Terminate(836,0);
+	//	////////////shadowFakeoutActive=false;
+	//}
+	//else {
+	//Delay(35*8);}
+	//if(ThingCount(0,666)==0) {Terminate;}//Prevent Shadowman from spawning in multibosses if the leader is dead
+	////////////SetActivator(666);
+
+	//
+	debugLog(strParam(s:"Begin shadow fakeout"));
+
+	MusicSaveFunc();
+	PlayMusic("");
+	MusicCredits("Something is lurking",1);
+
+	AmbientSound("misc/devildeath",127);
+
+	ClearHudMessage(166);//Timer
+	ClearHudMessage(167);//Timer
+	ClearHudMessage(59);//Boss Weapon Info
+
+	shadowRevealActive = true;
+
+	int TempBoss;
+	for(i = 0; i < MultiBossCheck; i++){
+
+		if(ShadowTricksArr[i]){
+			ClearHudMessage(91+i);//Boss Healths
+			ACS_NamedExecuteAlways("ub_UnMorphThisTID",0,BossDataArr[i][BOSSDATA_TID]);
+
+			TempBoss = ForceBossChange(strparam(s:"UB_ShadBoss",i:i+1),false);
+			//ShowMeTheRCON("Shadow Boss",TempBoss);
+			if(TempBoss == -1){
+				if(RandomPercent(5))
+					TempBoss = BossDataArr[i][BOSSDATA_NUM];//No Change
+				// else if(RandomPercent(40))
+				// 	TempBoss = 301;//AbePenny
+				// else if(RandomPercent(55))
+				// 	TempBoss = random(303,305);
+				else
+					TempBoss = TrueRandomBoss();
+			}
+			BossDataArr[i][BOSSDATA_MORPHED] = TempBoss;//Borrow this Array
+		}
+	}
+
+	Delay(1);//Delay needed otherwise unmorph doesn't happen correctly
+
+	for(i = 0; i < MultiBossCheck; i++){
+		if(ShadowTricksArr[i]){
+			ClearActorInventory(BossDataArr[i][BOSSDATA_TID]);
+			GiveActorInventory(BossDataArr[i][BOSSDATA_TID],"ShadowPreRoundStart",1);
+		}
+	}
+
+	Delay(35*2);
+
+	//NEW#BOSS
+	//if(ShadowTricksArr[0] && UnholyBoss1 == 300){ UnholyBoss1 = random(100,BOSSRNGMAX_100_199); }
+
+	//	If(shadowFakeoutActive){
+	//		MusicCredits("Super Mario Sunshine - Shadow Mario (Sped-up)",0);
+	//		PlayMusic("SHADSHAD");
+	//		shadowFakeoutActive = false;
+	//	}
+	//	break;
+
+	//If(shadowFakeoutActive){
+	//	Delay(35*2);
+	//	AmbientSound("items/GoldTank",127);
+	//	GiveActorInventory(669,"PTankItem",1);
+	//	GiveActorInventory(669,"PowerSTank",1);
+	//	GiveActorInventory(669,"SpeedTrailofEnvy",1);
+	//	SetActorProperty(669, APROP_JumpZ, 15.0);
+	//	SetActorProperty(669, APROP_SPEED, 1.25);
+	//	Delay(35*3);
+	//	//shadowFakeoutActive=false;
+	//}
+	//else {Delay(35*5);}
+
+	Delay(35*3);
+	debugLog(strParam(s:"Shadow Delay is over"));
+
+	int ShadowTunesNum = -1;
+
+	for(i = 0; i < MultiBossCheck; i++){
+		if(ShadowTricksArr[i]){
+			if(PlayerInGame(BossDataArr[i][BOSSDATA_TID]-1000)){
+				GiveActorInventory(BossDataArr[i][BOSSDATA_TID],"ShadowPreRoundEnd",1);
+				BossDataArr[i][BOSSDATA_NUM] = BossDataArr[i][BOSSDATA_MORPHED];//Use borrowed Array
+				BossDataArr[i][BOSSDATA_MORPHED] = MorphMeFunc(BossDataArr[i][BOSSDATA_TID],BossDataArr[i][BOSSDATA_NUM],"GigaAstroExplode");
+				if(ShadowTunesNum == -1)
+					ShadowTunesNum = BossDataArr[i][BOSSDATA_NUM];
+			}
+			else{ShadowTricksArr[i] = false;}
+		}
+	}
+
+	if(ShadowTunesNum == -1){
+		PlayMusic(MusicalEventIndex[8][0]);
+		MusicCredits(MusicalEventIndex[8][1],0);
+	}
+	else{
+		ACS_NamedExecute("ub_PlayVariantMusic",0,ShadowTunesNum);
+	}
+
+	Delay(1);
+
+
+	ACS_NamedExecuteWait("ub_BossMorphRetryWait",0,0);
+
+	shadowRevealActive = false;
+	RefreshHudMessage = true;
+	//ACS_Execute(WATCHER_BOSS_HP,0,0);
+
 }
 
 //Script used to end the round for no survivors
