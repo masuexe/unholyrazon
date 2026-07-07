@@ -17,3 +17,83 @@ script "uhC_countinv_acs" (int Which, int Pointer)
 	}
 	SetResultValue(Counter);
 }
+
+Script "uh_RaiderHitSplat" (int Len)// CLIENTSIDE
+{
+	Spawn(StrParam(s:"RS_HitSplat",s:StrRight(GetActorClass(0),Len)),GetActorX(0),GetActorY(0),GetActorZ(0));
+}
+
+Script "uh_raiderhookshot" (int PlayerID, int Vel, int Moving)
+{
+	int myx, myy, myz;
+	int vx, vy, vz, magnitude, nx, ny, nz;
+	int Letgo = false;
+
+	myx = GetActorX(0);
+	myy = GetActorY(0);
+	myz = GetActorZ(0);
+
+	while(!Letgo)
+	{
+		if(Moving > 0){//If the hook is set to move, the positions need to be updated.
+			myx = GetActorX(0);
+			myy = GetActorY(0);
+			myz = GetActorZ(0);
+		}
+		vx = myx - GetActorX(PlayerID);
+		vy = myy - GetActorY(PlayerID);
+		vz = myz - GetActorZ(PlayerID);
+
+		magnitude = magnitudeThree(vx >> 16, vy >> 16, vz >> 16);
+
+		if(magnitude != 0) {
+			nx = vx / magnitude; ny = vy / magnitude; nz = vz / magnitude;
+		}
+		else {
+			nx = 0; ny = 0; nz = 0;
+		}
+
+		//if(xyDistance(PlayerID, 0)>1500){Letgo = true;}
+		//Thing_Stop(0);
+		SetActorVelocity(PlayerID, nx*Vel, ny*Vel, nz*Vel, true, true);
+		TakeActorInventory(PlayerID,"HookshotStamina",2-CheckActorInventory(PlayerID,"PowerEndlessAmmo_ST"));
+
+		Delay(1);
+		if(CheckActorInventory(PlayerID,"RaiderHookRelease_F")||CheckActorInventory(PlayerID,"IsDead")) {Letgo = true;}
+		else if(CheckActorInventory(PlayerID,"HookshotStamina") < 1) {
+			ActivatorSound("S3_K/MetalSpark",127);
+			Letgo = True;
+		}
+	}
+	Delay(1);
+	//GiveActorInventory(PlayerID,"YesGravityPickup",1);
+	//SetPlayerProperty(0,0,0);
+	TakeActorInventory(PlayerID,"RaiderHookedFlag",9);
+	GiveActorInventory(PlayerID,"RaiderHookRelease_F",1);
+}
+function int magnitudeThree(int x, int y, int z)
+{
+	return sqrt8(x*x + y*y + z*z);
+}
+function int sqrt8(int number)
+{
+	if(number <= 3)
+	{
+		if(number > 0)
+		{
+			return 1;
+		}
+		return 0;
+	}
+
+	int oldAns = number >> 1,
+		newAns = (oldAns + number / oldAns) >> 1;
+
+	while(newAns < oldAns)
+	{
+		oldAns = newAns;
+		newAns = (oldAns + number / oldAns) >> 1;
+	}
+
+	return oldAns;
+}
