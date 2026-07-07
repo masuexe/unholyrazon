@@ -18,6 +18,8 @@ script "ub_refreshHudMessageLoop" (void)//OPEN
 	}
 }
 
+#define HELLTIMER_OFFSETX 50.1
+#define HELLTIMER_OFFSETY 309.1
 Script "ub_HellTimerHud" (int TimeLeft) CLIENTSIDE
 {
 	SetHudSize(640,480,0);
@@ -28,11 +30,37 @@ Script "ub_HellTimerHud" (int TimeLeft) CLIENTSIDE
 		Y_Aspect = 0;
 	}
 
-	SetFont(strparam(s:"HELTIMR",i:TimeLeft > 0));
-	HudMessage(s:"A"; 1, 167, -1, 50.1+X_Aspect, 309.1+Y_Aspect, 2.0, 3.0);
-	SetFont("fakefntC");//SMALLFONT
-	HudMessage(i:TimeLeft; HUDMSG_FADEOUT, 166, CR_GOLD+(TimeLeft < 1), 67.1+X_Aspect, 314.1+Y_Aspect, 2.0, 3.0);
+	ACS_NamedExecuteWithResult("uh_DrawTimerHud", TimeLeft, 0);
 }
+
+script "uh_DrawTimerHud" (int timeLeft, int type) CLIENTSIDE {
+	SetHudSize(640, 480, 0);
+	int xAspect = GetHudLeft(640)*1.0;
+	int yAspect = GetHudTop(480)*1.0;
+	if(GetScreenWidth() == 640 && GetScreenHeight() == 480){
+		xAspect = 0;
+		yAspect = 0;
+	}
+	int x, y;
+	int holdTime, alertTime;
+	switch (type) {
+		default:
+			break;
+		case 0:
+			x = 50.1 + xAspect; y = 309.1 + yAspect;
+			holdTime = 2.0; alertTime = 0;
+			break;
+		case 1:
+			x = 300.1; y = 49.1; holdTime = 0;
+			holdTime = 0; alertTime = 60;
+			break;
+	}
+	SetFont(strparam(s: "HELTIMR", i: TimeLeft > 0));
+	HudMessage(s: "A"; HUDMSG_FADEOUT, 167+type*2, -1, x, y, holdTime, 3.0);
+	SetFont("fakefntC");//SMALLFONT
+	HudMessageBold(i: timeLeft; HUDMSG_FADEOUT, 166+type*2, CR_GOLD+(TimeLeft <= alertTime), x+17.0, y+5.0, holdTime, 3.0);
+}
+
 
 Script "ub_DemoneyeNumWatcher" (void)//OPEN
 {
