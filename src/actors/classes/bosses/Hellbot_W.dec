@@ -629,7 +629,7 @@ States
 {
 Spawn:
 X_KC A 0
-X_KC A 0 ACS_ExecuteAlways(259,0,1)
+X_KC A 0 ACS_NamedExecuteAlways("core_targetyawpitch", 0, 1)
 X_KC ABCDAB 1 A_Recoil(2.5)
 X_KC A 0 A_Stop
 X_KC ABCD 2
@@ -863,4 +863,75 @@ actor PowerIStoleTheLight : PowerLightAmp
 {
 Powerup.Duration 1//0x7FFFFFFF
 powerup.color darkred 0.10
+}
+
+
+// actor HellbotPoisonHit : BasicPoisonBase
+// {
+// States
+// {
+// Spawn:
+// TNT1 A 0
+// TNT1 A 0 A_SetUserVar("user_AMOUNT",1)
+// TNT1 A 0 A_SetUserVar("user_HIT", ACS_ExecuteWithResult(257,0))
+// TNT1 A 0 A_TransferPointer(AAPTR_TARGET, AAPTR_DEFAULT, AAPTR_TARGET, AAPTR_TARGET)
+// TNT1 A 0 A_SetUserVar("user_SOURCE", ACS_ExecuteWithResult(257,0))
+// TNT1 A 0 A_JumpIf(ACS_ExecuteWithResult(U_GET_PSN_INV,4,user_HIT,user_SOURCE)>=1,"Death")
+// TNT1 A 0 ACS_ExecuteAlways(U_POISONFOLLOW,0,user_HIT,204,user_SOURCE)
+// Goto DoT
+// DoT:
+// TNT1 A 0 A_SpawnItemEx("HellbotPoisonFX",random(-32,32),random(-32,32),random(0,64),0,0,8)
+// TNT1 A 0 A_JumpIfInventory("Hellbot_PSNFlag",1,"Death1")
+// TNT1 A 1
+// //TNT1 A 0 A_Jump(8,"DoT2")
+// loop
+// DoT2:
+// TNT1 A 0 //A_GiveInventory("HellbotPoisonPickup",1,AAPTR_MASTER)
+// Goto DoT
+// Death1:
+// TNT1 A 0 A_GiveInventory("ForceEndPoisonFlag",1)
+// TNT1 A 0 //A_GiveInventory("AntiInvincibleB",1,AAPTR_TRACER)
+// TNT1 A 0 Thing_Move(0,user_HIT,1)
+// TNT1 A 2 A_SpawnItemEx("HellBotPoisonExplosion",0,0,28)
+// stop
+// }
+// }
+
+actor HellbotPoisonHit : Basic_PainTID_H
+{
+States
+{
+Check:
+TNT1 A 0 A_JumpIf(CallACS("uh_PoisonControl_acs", 6100, PSN_SET_TO, 1) > 0, "DoT")
+stop
+DoT:
+TNT1 A 0 A_GiveInventory("HellbotPoisonFX_P",1,AAPTR_TRACER)
+TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 1 A_JumpIf(!CallACS("uh_PointerExists",8),"Death")
+TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 1 A_JumpIf(!CallACS("uh_PointerExists",8),"Death")
+TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 1 A_JumpIf(!CallACS("uh_PointerExists",8),"Death")
+TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 1 A_JumpIf(!CallACS("uh_PointerExists",8),"Death")
+TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 1 A_JumpIf(!CallACS("uh_PointerExists",8),"Death")
+TNT1 A 0 A_Warp(AAPTR_TRACER,0,0,28,0,WARPF_NOCHECKPOSITION)
+TNT1 A 0 A_SpawnItemEx("HellBotPoisonExplosion")
+TNT1 A 0 A_JumpIf(CallACS("uh_PoisonControl_acs", 6100, PSN_ADJUST, -1) <= 0, "Death")
+loop
+}
+}
+actor HellbotPoisonFX_P : CustomInventory {
+	States {
+		Pickup:
+			TNT1 A 0 A_SpawnItemEx("HellbotPoisonFX_H")
+			stop
+	}
+}
+actor HellbotPoisonFX_H : BasicHelper {
+	reactiontime 175
+	States {
+		Spawn:
+			TNT1 A 0
+			TNT1 A 0 A_Warp(AAPTR_TARGET,0,0,28,0,WARPF_NOCHECKPOSITION)
+			TNT1 A 1 A_SpawnItemEx("HellbotPoisonFX",random(-32,32),random(-32,32),random(0,64),0,0,8)
+			TNT1 A 0 A_Countdown
+			loop
+	}
 }
