@@ -1,0 +1,92 @@
+Script "uh_BossMorph" (int whoisit, int BaseHP, int AddHP) //Boss messages and HP scripts
+{
+	SetInventory("ThisIsMyMagicBossNumber",whoisit);
+
+	TakeInventory("PowerProtectSurvivor",1);
+	TakeInventory("PowerProtectUnholyItem",1);
+
+
+	if(multiBossCheck >= 2){// && !VersusFightEvent
+		GiveInventory("PowerProtectBoss",1);//If multi boss, protect them from each other.
+	}
+
+	GiveInventory("BAWS",1);
+	GiveInventory("MorphedFlag",1);
+
+	ACS_NamedExecuteAlways("ub_RageDisplay",0);
+
+	int HudID = 5;//ID to display the text //-10000
+	int HudOffsetY = 4;//Text Y offset, 384 + Y * 32
+	HudOffsetY *= 32.0;//24.0
+
+	str B_NameStr = MainBossList[whoisit][BOSSLIST_NAME];
+	// int B_Chr0 = GetChar(MainBossList[whoisit][5],0);//Message style
+	// int B_Chrune1 = GetChar(MainBossList[whoisit][5],1);//Color
+	// int B_Chrune2 = GetChar(MainBossList[whoisit][5],2);//Punctuation...?!
+	// str B_MessStr = MainBossList[whoisit][6];//'Custom' Message
+
+
+	str spawnStr = StrParam(n:0, s:" \ckhas been selected to be ", s:B_NameStr, s:"\ck.");
+
+	SetFont("BIGFONT");
+	SetHudSize(640,480,0);
+	HudMessageBold(s: spawnStr; HUDMSG_FADEOUT|HUDMSG_LOG, 50 + HudID, 10, 320.4, 352.2 + HudOffsetY, 1.8,0.2);//384
+
+
+	//multiBossCheck
+	//This changes the health of the boss based on players and multibosses
+	int MainHealth = BaseHP;
+	If(multiBossCheck) {
+		MainHealth = min(BaseHP+(PlayerCount() * AddHP/multiBossCheck)-AddHP/multiBossCheck, MAX_HEALTH);
+		//if(Debug_TXT) {Print(d:AddHP/multiBossCheck);}
+		SetActorProperty(0, APROP_HEALTH, MainHealth);
+		SetActorProperty(0, APROP_SPAWNHEALTH, MainHealth);
+	}
+	//GiveActorInventory
+	SetInventory("BossSpawnHealthFlag", MainHealth);
+	Delay(1);
+}
+
+
+//Demoneyes + other morphes
+Script "uh_DemoneyeMorph" (int whoisit, int Bonus)
+{
+	playerLifeStatusArr_UpdateFunc(PlayerNumber(), PLS_EYE);
+
+	setInventory("ThisIsMyMagicEyeNumber", whoisit + Bonus*100); //Used for Menu Help/MugShot
+
+	TakeInventory("PowerProtectSurvivor",1);
+	TakeInventory("PowerProtectUnholyItem",1);
+
+	GiveInventory("BAWS",1);
+	GiveInventory("MorphedFlag",1);
+	GiveInventory("IsAnEye",1);
+
+	if(Bonus && multiBossCheck >= 2){// && !VersusFightEvent
+		GiveInventory("PowerProtectBoss",1);//If multi boss, protect them from each other.
+	}
+
+	SetFont("SMALLFONT");
+	ClearHudMessage(66);
+	SetHudSize(384,288,0);
+
+	str eyeName;
+	if (getChar(eyeList[whoisit][EYELIST_FLAGS], 0) == 0x41) {
+		eyeName = strParam(s: eyeList[whoisit][EYELIST_PREFIX], s: eyeList[whoisit][EYELIST_NAME], s: "\ck");
+	}
+	else {
+		eyeName = strParam(s: eyeList[whoisit][EYELIST_PREFIX], s: eyeList[whoisit][EYELIST_NAME], s: " \ckDemoneye");
+	}
+	HudMessage(s: "\ckYou are now ", s: eyeName, s: "!"; HUDMSG_FADEOUT, -6001, -1, 192.4, 24.0, 3.0, 2.0);
+	//if(StrCmp(eyeList[whoisit][3],"") != 0) {HudMessage(s:"You aren't really getting paid for this anyways..."; HUDMSG_FADEOUT, 59, CR_RED,0.5, 0.18, 3.0,2.0);}
+
+	if(!isDemoneyeEvent()){
+		SetFont("BIGFONT");
+		SetHudSize(640,480,0);
+		HudMessageBold(n:0, s:" \ckwas paid to become ",s:eyeList[whoisit][EYELIST_PREFIX],s:eyeList[whoisit][EYELIST_NAME],s:" Demoneye\c-!"; HUDMSG_FADEOUT|HUDMSG_LOG, 49, CR_YELLOW,320.4, 464.2, 1.8,0.2);//468.2//0.98 Y
+	}
+}
+
+// script "uh_ChangeTeam" (int team) {
+// 	player_SetTeam(team, true);
+// }
