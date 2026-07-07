@@ -1,0 +1,49 @@
+#library "uh_shared"
+#include "zcommon.acs"
+
+//Contains scripts used by several classes
+
+script "uh_PoisonControl_acs" (int Which, int Style, int Change)
+{
+//	Log(s:"uh_PoisonControl_acs(",i:Which,s:", ",i:Style,s:", ",i:Change,s:")");
+	int SourceTID = ACS_NamedExecuteWithResult("core_getptrtid",2);//Caused the poison
+	int PoisonedTID = ACS_NamedExecuteWithResult("core_getptrtid",8);//Player being poisoned
+	if(SourceTID < 1000 || SourceTID > 1063){//End if not a Player TID
+		SetResultValue(-1);
+		terminate;
+	}
+	SourceTID -= 1000;
+	str TheClass;
+	Switch(Which){
+		Case 17:
+			TheClass = "Raider_Poison";
+			break;
+		Case 8:
+			TheClass = "DrLight_OnFire";
+			break;
+		Case 28:
+			TheClass = "DrWily_OnFire";
+			break;
+	}
+	str SpawnName = StrParam(s:"user_",s:TheClass);//,s:"_OnFire"
+
+	int Result = GetUserArray(PoisonedTID,SpawnName,SourceTID);
+
+//	Log(s:"TID <",i:PoisonedTID,s:"> ",s:SpawnName,s:"[",i:SourceTID,s:"] = ",i:Result);
+	Switch(Style){
+		Default:
+			SetResultValue(-1);
+			break;
+		Case 0://Fetch
+			SetResultValue(Result);
+			break;
+		Case 1://Adjust
+			SetUserArray(PoisonedTID,SpawnName,SourceTID,Result+Change);
+			SetResultValue(Result+Change);
+			break;
+		Case 2://Initial Set
+			SetUserArray(PoisonedTID,SpawnName,SourceTID,Change);
+			SetResultValue(Result <= 0);
+			break;
+	}
+}
