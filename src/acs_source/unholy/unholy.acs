@@ -196,14 +196,62 @@ script "uh_BackgroundTimer" (void)//OPEN
 	int deathChance = random(1, 4);
 
 	int timeLeft = getCVar("uh_sv_gametimer");
-
+	if(TimeLeft>0)
+		TimeLeft += 10;
+	else
+		TimeLeft = -6;
 	SetFont("BIGFONT");
 	SetHudSize(640,480,0);
-
-	until (timeLeft < 0 || gameover){
-		HudMessageBold(n:0, s:"\cgTime Left: \c-", d:timeLeft; HUDMSG_FADEOUT, 49, CR_YELLOW,320.4, 464.2, 1.8,0.2);
+	Until (TimeLeft <= 0 || Gameover) {//Countdown
+		//HudMessageBold(d:TimeLeft; HUDMSG_FADEOUT, 888, CR_DARKGREEN,0.5, 0.10, 3.0,2.0);
+		//Log(d:TimeLeft);
+		if (GetCVar("UE_TimerEnd") != 0) {
+			if(GetCVar("UE_TimerEnd") < 0 || GetCVar("UE_TimerEnd") > 4){
+				CheckClearCvar("UE_TimerEnd",0);
+				HudMessageBold(s:"\cf*NOTICE* \ckThe timer was disabled! \cf*NOTICE*"; HUDMSG_FADEOUT, 610, CR_DARKRED, 320.4, 24.2, 7.0, 2.0);
+			}
+			TimeLeft = -6;
+			break;
+		}
+		if(TimeLeft == 66){
+			HudMessageBold(s:"\cg*WARNING* \crOne minute until time is up! \cg*WARNING*"; HUDMSG_FADEOUT, 610, CR_DARKRED, 320.4, 24.2, 7.0, 2.0);
+		}
 		Delay(35);
-		timeLeft--;
+		TimeLeft--;
+	}
+	While (TimeLeft < 0 && !Gameover) {//If Timer is disabled
+		if (GetCVar("UE_TimerEnd") != 0) {
+			DeathChance = CheckClearCvar("UE_TimerEnd",0);
+			if(DeathChance >= 0 && DeathChance <= 4){
+				AmbientSound("misc/mmpuwarning",127);
+				HudMessageBold(s:"\cg*WARNING* \crThe round was forced to end! \cg*WARNING*"; HUDMSG_FADEOUT, 610, CR_DARKRED, 320.4, 24.2, 7.0, 2.0);
+				Delay(35*6);
+				break;
+			}
+		}
+		Delay(35);
+	}
+	if(Gameover){//Games over, clear messages
+		ClearHudMessageBold(610);
+		terminate;
+	}
+	Switch(DeathChance){
+		Case 1://SuperGuhu
+			GiveMeTheFunc("SGEXDItem",0,1);
+			break;
+		Case 2://Zankokuna
+			ACS_Terminate(822,0);
+			ACS_Execute(822,0);
+			break;
+		Case 3://InstaKill
+			SpawnForced("WishingStar_Help1_Server",0,0,0);
+			break;
+		Case 4://Exe
+			SpawnForced("WishingStar_Help2_Server",0,0,0);
+			break;
+		Case 5://Reset
+			SpawnForced("WishingStar_Help3_Server",0,0,0);
+			break;
 	}
 }
 
