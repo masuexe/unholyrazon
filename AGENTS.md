@@ -138,3 +138,19 @@ ReadyXGive:
 ```
 
 This also applies to implicit cycles formed by `goto`. If `ReadyXGive` does `goto ReadyX` and `ReadyX` starts with 0-tic frames that eventually lead back to `ReadyXGive`, the cycle must include at least one non-zero duration somewhere on that path — typically the `A_WeaponReady` frame serves this purpose.
+
+### `loop` jumps to the nearest state label, not to the parent
+
+`loop` always goes to the **most recent** state label — which is the current state's own label, not the previous state. Use `goto <parent>` to return to the parent ready state.
+
+```cpp
+// WRONG — loops within Give, never calling A_WeaponReady again
+ReadyXGive:
+    8H00 A 1 A_GiveInventory("MyAmmo",4)
+    loop
+
+// CORRECT
+ReadyXGive:
+    8H00 A 1 A_GiveInventory("MyAmmo",4)
+    goto ReadyX
+```
