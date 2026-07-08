@@ -19,14 +19,108 @@ Script "uh_BossMorph" (int whoisit, int BaseHP, int AddHP) //Boss messages and H
 	int HudOffsetY = 4;//Text Y offset, 384 + Y * 32
 	HudOffsetY *= 32.0;//24.0
 
-	str B_NameStr = MainBossList[whoisit][BOSSLIST_NAME];
-	// int B_Chr0 = GetChar(MainBossList[whoisit][5],0);//Message style
-	// int B_Chrune1 = GetChar(MainBossList[whoisit][5],1);//Color
-	// int B_Chrune2 = GetChar(MainBossList[whoisit][5],2);//Punctuation...?!
-	// str B_MessStr = MainBossList[whoisit][6];//'Custom' Message
+	str B_NameStr = MainBossList[whoisit][BOSSLIST_NAME];//'Boss' name
+	int B_Chr0 = GetChar(MainBossList[whoisit][BOSSLIST_SPAWNMSGTYPE],0);//Message style
+	int B_Chr1 = GetChar(MainBossList[whoisit][BOSSLIST_SPAWNMSGTYPE],1);//Color
+	int B_Chr2 = GetChar(MainBossList[whoisit][BOSSLIST_SPAWNMSGTYPE],2);//Punctuation...?!
+	str B_MessStr = MainBossList[whoisit][BOSSLIST_SPAWNMSG];//'Custom' Message
+	
+	//Defaults if nothing defined
+	if(B_Chr1 == 0)
+		B_Chr1 = 'k';
+	if(B_Chr2 == 0)
+		B_Chr2 = '!';
+	//s:"\c",c:B_Chr1,	
 
 
-	str spawnStr = StrParam(n:0, s:" \ckhas been selected to be ", s:B_NameStr, s:"\ck.");
+	str spawnStr;// = StrParam(n:0, s:" \ckhas been selected to be ", s:B_NameStr, s:"\ck.");
+	Switch (B_Chr0)//Bonus things
+	{
+		Default:
+			if(RandomPercent(95))
+				B_Chr0 = -1;
+			break;
+		Case 65:
+		Case 66:
+		Case 67:
+		Case 69:
+		Case 70:
+		Case 81:
+			if(RandomPercent(10))
+				B_Chr0 = -1;
+			break;
+	}
+
+	Switch (B_Chr0)//Bonus things
+	{
+		Default://~=Player 'Has been selected to be' Boss
+			spawnStr = StrParam(n:0, s:" \ckhas been selected to be ", s:B_NameStr, s:"\ck!");
+			break;
+		Case 65://A=Player 'Custom'
+			spawnStr = StrParam(n:0, s:" ", s:B_MessStr);
+			break;
+		Case 66://B=Player 'Custom' Boss
+			spawnStr = StrParam(n:0,s:" \c",c:B_Chr1,s:B_MessStr,s:" ",s:B_NameStr,s:"\c",c:B_Chr1,c:B_Chr2);
+			break;
+		Case 67://C=(Player) Boss 'Custom'
+			spawnStr = StrParam(s:"\c",c:B_Chr1,s:"(",n:0,s:"\c",c:B_Chr1,s:") ",s:B_NameStr,s:" \c",c:B_Chr1,s:B_MessStr,c:B_Chr2);
+			break;
+		Case 69://E='Custom' Boss (Player)
+			spawnStr = StrParam(s:"\c",c:B_Chr1,s:B_MessStr,s:" ",s:B_NameStr,s:"\c",c:B_Chr1,c:B_Chr2,s:" (",n:0,s:"\c",c:B_Chr1,s:")");
+			break;
+		Case 70://F='Custom' (Player)
+			spawnStr = StrParam(s:B_MessStr,s:" \cj(",n:0,s:"\cj)");
+			break;
+		Case 81://Q='Custom'
+			spawnStr = StrParam(s:B_MessStr);
+			break;
+
+		Case -1://Loads of messages
+			Switch(random(0,39)){
+				//Case -1:spawnStr = StrParam(s:"\ckRCON made ", n:0, s:" \ckbe ", s:B_NameStr, s:"\ck!");break;
+				Case 0: spawnStr = StrParam(n:0, s:" \ckhas been selected to be ", s:B_NameStr, s:"\ck.");break;
+				Case 1: spawnStr = StrParam(n:0, s:"\ck is unfortunate enough to be ", s:B_NameStr, s:"\ck.");break;
+				Case 2: spawnStr = StrParam(n:0, s:"\ck was cursed to be ", s:B_NameStr, s:"\ck.");break;
+				Case 3: spawnStr = StrParam(n:0, s:"\ck was doomed to be ", s:B_NameStr, s:"\ck.");break;
+				Case 4: spawnStr = StrParam(n:0, s:"\ck was destined to be ", s:B_NameStr, s:"\ck.");break;
+				Case 5: spawnStr = StrParam(n:0, s:"\ck was replaced with ", s:B_NameStr, s:"\ck.");break;
+				Case 6: spawnStr = StrParam(n:0, s:"\ck was bribed to be ", s:B_NameStr, s:"\ck.");break;
+				Case 7: spawnStr = StrParam(n:0, s:"\ck didn't ask to be ", s:B_NameStr, s:"\ck.");break;//but is forced to.
+				Case 8: spawnStr = StrParam(s:"\ckThe RNG gods made ",n:0, s:"\ck be ", s:B_NameStr, s:"\ck!");break;
+				Case 9: spawnStr = StrParam(n:0, s:"\ck unlocked ", s:B_NameStr, s:"\ck!");break;//applied for a job and ended up as .
+				Case 10:spawnStr = StrParam(n:0, s:"\ck got a new job as ", s:B_NameStr, s:"\ck.");break;//wanted a job, became ... instead
+				Case 11:spawnStr = StrParam(n:0, s:"\ck is now ", s:B_NameStr, s:"\ck!");break;
+				Case 12:spawnStr = StrParam(n:0, s:"\ck drew the short straw to be ", s:B_NameStr, s:"\ck.");break;//is now ... unwillingly
+				Case 13:spawnStr = StrParam(s:"\ckThe Dice made ",n:0, s:"\ck -> ", s:B_NameStr);break;
+				Case 14:spawnStr = StrParam(n:0, s:"\ck critical rolled into ", s:B_NameStr, s:"\ck!");break;//rolled the dice, became
+				Case 15:spawnStr = StrParam(n:0, s:"\ck playerclasses into ", s:B_NameStr, s:"\ck.");break;
+				Case 16:spawnStr = StrParam(n:0, s:"\ck has evolved into ", s:B_NameStr, s:"\ck.");break;
+				Case 17:spawnStr = StrParam(n:0, s:"\ck counterpicks into ", s:B_NameStr, s:"\ck.");break;
+				Case 18:spawnStr = StrParam(n:0, s:"\ck reincarnated as ", s:B_NameStr, s:"\ck.");break;
+				Case 19:spawnStr = StrParam(n:0, s:"\ck ranked up into ", s:B_NameStr, s:"\ck.");break;
+				Case 20:spawnStr = StrParam(n:0, s:"\ck spectated. ", s:B_NameStr, s:"\ck joined the game.");break;//'s loaded dice let them be !
+				Case 21:spawnStr = StrParam(n:0, s:"\ck was sacrificed to summon ", s:B_NameStr, s:"\ck!");break;
+				Case 22:spawnStr = StrParam(n:0, s:"\ck is dead. Long live ", s:B_NameStr, s:"\ck!");break;
+				Case 23:spawnStr = StrParam(n:0, s:"\ck digievolved into ", s:B_NameStr, s:"\ck!");break;
+				Case 24:spawnStr = StrParam(s:"\ckWatch out for ", s:B_NameStr, s:"\ck! (", n:0, s:"\ck)");break;
+				Case 25:spawnStr = StrParam(n:0, s:"\ck got equipped with: ", s:B_NameStr);break;
+				Case 26:spawnStr = StrParam(s:"\ckYou tracked down ", s:B_NameStr, s:"\ck! (", n:0, s:"\ck)");break;
+				Case 27:spawnStr = StrParam(n:0, s:"\ck is ", s:B_NameStr, s:"\ck. Go wild.");break;
+				Case 28:spawnStr = StrParam(s:B_NameStr, s:"\ck's ghost possessed ", n:0, s:"\ck!");break;
+				Case 29:spawnStr = StrParam(n:0, s:"\ck found the ", s:B_NameStr, s:"\ck button!");break;
+				Case 30:spawnStr = StrParam(n:0, s:"\ck bribed the game to be ", s:B_NameStr, s:"\ck!");break;
+				Case 31:spawnStr = StrParam(s:B_NameStr, s:"\ck was ", n:0, s:"\ck all along!");break;
+				Case 32:spawnStr = StrParam(s:"\ckEncountered a wild ", s:B_NameStr, s:"\ck! (", n:0, s:"\ck)");break;
+				Case 33:spawnStr = StrParam(n:0, s:"\ck you're fired. ", s:B_NameStr, s:"\ck, promotion.");break;
+				Case 34:spawnStr = StrParam(n:0, s:"\ck? Never heard of 'em. ~", s:B_NameStr);break;
+				Case 35:spawnStr = StrParam(s:"\ckNo ", n:0, s:"\ck? Isn't that a shame, ", s:B_NameStr, s:"\ck.");break;
+				Case 36:spawnStr = StrParam(s:B_NameStr, s:"\ck found ", n:0, s:"\ck's nuke codes!!");break;
+				Case 37:spawnStr = StrParam(s:"\ck(", n:0, s:"\ck) ", s:B_NameStr, s:"\ck's location was found!");break;
+				Case 38:spawnStr = StrParam(n:0, s:"\ck purchased the ", s:B_NameStr, s:"\ck DLC!");break;
+				Case 39:spawnStr = StrParam(n:0, s:"\ck won the lottery to become ", s:B_NameStr, s:"\ck!");break;
+			}
+			break;
+	}
 
 	SetFont("BIGFONT");
 	SetHudSize(640,480,0);
@@ -315,6 +409,7 @@ Switch(Star)
 			PlayMusic("");
 			MusicCredits(MusicalEventIndex[3][2],1);
 			AmbientSound("classes/SONICEXE0",127);
+			AmbientSound("sonicEXE/Kefka",127);
 			int ExeDeath = 1000;
 			Until (ExeDeath == 1064) {
 				GiveActorInventory(ExeDeath,"AntiInvincible_P",1);
