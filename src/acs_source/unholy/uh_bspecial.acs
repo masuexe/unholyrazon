@@ -234,3 +234,127 @@ Script "uh_StopZankokunaRage" (int Z)//Stop Zankokuna Rage
 			break;
 	}
 }
+
+Script "uh_WishingStar" (int Star, int Extra)//Wishing Star
+{
+Switch(Star)
+	{
+		Case -1:
+			SetResultValue(WishingStarCheck);
+			break;
+		Case 0:
+			WishingStarCheck = true;
+			MusicSaveFunc();
+			PlayMusic("");
+			AmbientSound("items/wishingstar",127);
+			Switch(Extra)
+			{
+				Case 0:
+					MusicCredits(MusicalEventIndex[0][1],1);
+					PrintBold(n:0, s:" has made a wish!");
+				break;
+				Case 1:
+					MusicCredits(MusicalEventIndex[0][2],1);
+					PrintBold(n:0, s:" executed wish\cr.exe\c+!");
+				break;
+				Case 2:
+					MusicCredits(MusicalEventIndex[0][3],1);
+					PrintBold(n:0, s:" has made a \cdwish\c+!");
+				break;
+				Case 66:
+					MusicCredits(MusicalEventIndex[0][4],1);
+					PrintBold(s:"\c[MenuYellow]Delaying has caused a wish?");
+				break;
+			}
+			break;
+
+		Case 1:
+			int StarDeath = 1000;
+			Until (StarDeath == 1064) {
+				if(StarDeath!=Extra){
+					GiveActorInventory(StarDeath,"AntiInvincible_P",1);
+					Thing_Damage2(StarDeath,6000000,"WishingStar");
+				}
+				StarDeath++;
+			}
+			Radius_Quake(9,70,0,150,Extra);
+			AmbientSound("misc/hugequake",127);
+			PlayMusic("*");
+			MusicCredits("Unknown - Stage Default",1);
+			Delay(35*10);
+			WishingStarCheck = false;
+			MusicCredits(savedMusicCredit,1);
+			PlayMusic(savedMusicLump);
+			break;
+		Case 6://Begin the entire EXE event.
+			standardlmseventlocked = true;
+			if(random(0,1)){
+				PlayMusic(MusicalEventIndex[1][0]);
+				MusicCredits(MusicalEventIndex[1][1],1);
+			}
+			else{
+				PlayMusic(MusicalEventIndex[2][0]);
+				MusicCredits(MusicalEventIndex[2][1],1);
+			}
+			Delay(10);
+			int RedR = 241;
+			int GreenG = 220;
+			int BlueB = 220;
+			SectorColorChange(RedR,GreenG,BlueB,0);
+			GiveMeTheFunc("SonicExeWishingStart_P", 1);
+			Delay(35*12);
+			PlayMusic(MusicalEventIndex[3][0]);
+			MusicCredits(MusicalEventIndex[3][1],1);
+			for(int i=0; i<42; i++){
+				SectorColorChange(RedR,GreenG,BlueB,0);
+				RedR-=2; GreenG-=5; BlueB-=5;
+				Delay(10);
+			}
+			AmbientSound(StrParam(s:"classes/SONICEXE",i:random(1,4)),127);
+			Delay(35*4);
+			PlayMusic("");
+			MusicCredits(MusicalEventIndex[3][2],1);
+			AmbientSound("classes/SONICEXE0",127);
+			int ExeDeath = 1000;
+			Until (ExeDeath == 1064) {
+				GiveActorInventory(ExeDeath,"AntiInvincible_P",1);
+				Thing_Damage2(ExeDeath,6000000,"WishingStar");
+				ExeDeath++;
+			}
+			Delay(35*9);
+			for(i=0; i<49; i++){
+				RedR+=2; GreenG+=5; BlueB+=5;
+				SectorColorChange(RedR,GreenG,BlueB,0);
+				Delay(1);
+			}
+			WishingStarCheck = false;
+			MusicCredits(savedMusicCredit,1);
+			PlayMusic(savedMusicLump);
+			break;
+		Case 7://Spec/Death
+			LocalAmbientSound(StrParam(s:"classes/SONICEXE",i:random(1,4)),127);
+			LocalSetMusic("");
+			break;
+		Case 66://Wish Cancel
+			WishingStarCheck = false;
+			AmbientSound("S3_K/Wrong",62);
+			PrintBold(s:"Wish failed!");
+			MusicCredits(savedMusicCredit,1);
+			PlayMusic(savedMusicLump);
+			break;
+		Case 77:
+			AmbientSound("misc/TimeTravel",127);
+			for(int TimeT = 0; TimeT < 64; TimeT++){//Revive everyone who is dead
+				SetDeadSpectator(TimeT,0);
+			}
+			Delay(2);
+			WishingStarCheck = false;
+			ResetMap();
+			break;
+		Case 165://DINODEATH
+			//AmbientSound("misc/hugequake",127);
+			PlayMusic(MusicalEventIndex[9][0]);
+			MusicCredits(MusicalEventIndex[9][1],0);
+			break;
+	}
+}
