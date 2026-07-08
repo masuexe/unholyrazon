@@ -230,6 +230,216 @@ stop
 }
 }
 
+actor AntiInvincible_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIf(Health>0,"InGame")
+stop
+InGame:
+TNT1 A 0 A_GiveInventory("InvulnerableOff_Pickup",1)
+TNT1 A 0 //A_TakeInventory("PowerYellowWizardInvun",1)
+TNT1 A 0 A_ChangeFlag("SHOOTABLE",1)
+TNT1 A 0 A_ChangeFlag("NONSHOOTABLE",0)
+TNT1 A 0 A_ChangeFlag("NORADIUSDMG",0)
+//TNT1 A 0 SetPlayerProperty(0,0,PROP_BUDDHA)//Buddha off
+//TNT1 A 0 A_SpawnItemEx("AntiInvincibleBuddhaFix_H")
+stop
+}
+}
+actor AntiInvincibleBuddha_P : AntiInvincible_P
+{
+States
+{
+InGame:
+TNT1 A 0 SetPlayerProperty(0,0,PROP_BUDDHA)//Buddha off
+TNT1 A 0 A_SpawnItemEx("AntiInvincibleBuddhaFix_H")
+goto AntiInvincible_P::InGame
+}
+}
+
+actor AntiInvincibleBuddhaFix_H : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1
+TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death")
+TNT1 A 0 //A_GiveToTarget("",1)
+TNT1 A 0 A_GiveToTarget("BuddhaRestore_P",1)
+TNT1 A 1
+stop
+}
+}
+
+
+actor BuddhaRestore_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIfInventory("BuddhaFlag",1,1)
+stop
+TNT1 A 0 SetPlayerProperty(0,1,PROP_BUDDHA)//Buddha on
+stop
+}
+}
+
+actor BuddhaOn_P : CustomInventory
+{
+States
+{
+Pickup:
+On:
+TNT1 A 0 A_GiveInventory("BuddhaFlag",1)
+TNT1 A 0 SetPlayerProperty(0,1,PROP_BUDDHA)//Buddha on
+stop
+}
+}
+
+actor BeginAntiDamage_Buddha : BuddhaOn_P
+{
+States
+{
+Pickup:
+TNT1 A 0 ACS_NamedExecuteWithResult("UH_AntiDamageHP",1)//Record Curr HP
+TNT1 A 0 A_GiveInventory("AntiDamageTime",1)
+goto On
+}
+}
+actor BeginUser_Buddha : BuddhaOn_P
+{
+States
+{
+Pickup:
+TNT1 A 0 A_GiveInventory("BuddhaFlagUser",1)
+goto On
+}
+}
+actor BeginItem_Buddha : BuddhaOn_P
+{
+States
+{
+Pickup:
+TNT1 A 0 A_GiveInventory("BuddhaFlagItem",1)
+goto On
+}
+}
+
+actor BuddhaOff_P : CustomInventory
+{
+States
+{
+Pickup:
+Off:
+//TNT1 A 0 A_JumpIfInventory("AntiDamageTime",1,"No")
+//TNT1 A 0 A_JumpIfInventory("BuddhaFlagUser",1,"No")
+//TNT1 A 0 A_JumpIfInventory("BuddhaFlagItem",1,"No")
+TNT1 A 0 A_TakeInventory("BuddhaFlag",1)
+TNT1 A 0 A_JumpIfInventory("BuddhaFlag",1,"No")
+TNT1 A 0 SetPlayerProperty(0,0,PROP_BUDDHA)//Buddha off
+stop
+No:
+TNT1 A 0
+stop
+}
+}
+
+actor StopAntiDamage_Buddha : BuddhaOff_P
+{
+States
+{
+Pickup:
+TNT1 A 0 ACS_NamedExecuteWithResult("UH_AntiDamageHP",0)//Heal
+TNT1 A 0 A_TakeInventory("AntiDamageTime",1)
+//TNT1 A 0 A_JumpIfInventory("AntiDamageTime",1,"No")
+goto Off
+//TNT1 A 0 ACS_NamedExecuteWithResult("UH_AntiDamageHP",1)
+//stop
+}
+}
+actor StopUser_Buddha : BuddhaOff_P
+{
+States
+{
+Pickup:
+TNT1 A 0 A_TakeInventory("BuddhaFlagUser",1)
+goto Off
+}
+}
+actor StopItem_Buddha : BuddhaOff_P
+{
+States
+{
+Pickup:
+TNT1 A 0 A_TakeInventory("BuddhaFlagItem",1)
+goto Off
+}
+}
+
+actor AntiDamageHealth : Inventory { inventory.amount 1 inventory.maxamount 99999 }
+
+actor BuddhaFlag : AntiDamageHealth{}
+actor BuddhaFlagUser : UOnce{}
+actor BuddhaFlagItem : UOnce{}
+actor AntiDamageTime : UOnce{}
+
+actor InvulnerableOn_Pickup : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_GiveInventory("IsInvunFlag",1)
+TNT1 A 0 A_ChangeFlag("INVULNERABLE",1)
+stop
+}
+}
+actor InvulnerableOff_Pickup : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_TakeInventory("IsInvunFlag",9)
+TNT1 A 0 A_ChangeFlag("INVULNERABLE",0)
+stop
+}
+}
+
+actor UnhittableOn_Pickup : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_GiveInventory("IsInvunFlag",1)
+TNT1 A 0 A_GiveInventory("UnhittableProtect",1)
+TNT1 A 0 A_ChangeFlag("NONSHOOTABLE",1)
+TNT1 A 0 A_ChangeFlag("NORADIUSDMG",1)
+stop
+}
+}
+actor UnhittableOff_Pickup : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_TakeInventory("IsInvunFlag",9)
+TNT1 A 0 A_TakeInventory("UnhittableProtect",9)
+TNT1 A 0 A_ChangeFlag("NONSHOOTABLE",0)
+TNT1 A 0 A_ChangeFlag("NORADIUSDMG",0)
+stop
+}
+}
+actor UnhittableProtect : PowerProtection
+{
++INVENTORY.ALWAYSPICKUP
+Powerup.Duration -60
+//Rail attacks can hit you!
+damagefactor "StealthRail", 0.0
+damagefactor "Hawkeye", 0.0
+damagefactor "ShinBanish", 0.0
+}
 
 actor RepulsionC255 : CustomInventory
 {

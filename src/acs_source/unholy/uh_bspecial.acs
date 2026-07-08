@@ -161,3 +161,76 @@ Script "ub_HellTimerMonitor" (void)//HellBot Script
 		if(!ZankoRageCheck){FadeLightChange(255,130);}
 	}
 }
+
+function bool ZHellAllyCheckFunc (int DeadTID)
+{
+	for(int i = 0; i < MultiBossCheck; i++)
+		if(BossDataArr[i][BOSSDATA_TID] == DeadTID)
+			return true;
+	return false;
+}
+
+Script "uh_ZankokunaRage" (void)//Zankokuna rage
+{
+	ZankoRageCheck = true;
+	debugLog(strParam(s:"This TID used Zankokuna rage: ",d:ActivatorTID()));
+
+	MusicSaveFunc();
+	PlayMusic("HELLMUS");
+	MusicCredits("EarthBound - The Place",1);
+
+	FadeLightChange(10,245);
+	Delay(245);
+
+	Delay(35);
+	GiveActorInventory(ActivatorTID(),"InvulnerableOn_Pickup",1);
+	int DeadTID = 1000;
+	Until (DeadTID == 1064) {
+		if (ZHellAllyCheckFunc(DeadTID)) {
+			DeadTID = DeadTID;
+			//debugLog(strParam(s:"IGNORED ",d:DeadTID);
+		}
+		else {
+			GiveActorInventory(DeadTID,"AntiInvincible_P",1);
+			Thing_Damage(DeadTID,6000000,5);
+			//debugLog(strParam(s:"Hurt ",d:DeadTID);
+		}
+		DeadTID++;
+	}
+
+	ACS_NamedTerminate("ub_WatchSurvivors",0);
+	ACS_NamedTerminate("ub_WatchBossesAndEyes",0);
+	Gameover = true;
+	PlayMusic_Loss(2);
+
+	MakeAllPlayersInvun();
+	FadeLightChange(0,210);
+
+	SetHudSize(480,360,0);
+	SetFont("BIGFONT");
+	HudMessageBold(s:"And then...\nthere were none..."; HUDMSG_FADEOUT, 66, CR_RED, 240.4, 54.0, 3.0,2.0);
+	AmbientSound("misc/hugequake",127);
+	Radius_Quake(9,70,0,150,ActivatorTID());
+	SetPlayerProperty(1,1,4);
+	Delay(35*6);
+	Exit_Normal(0);
+	Delay(35*6);
+}
+
+Script "uh_StopZankokunaRage" (int Z)//Stop Zankokuna Rage
+{
+	Switch(Z)
+	{
+		Case 0:
+			if(ZankoRageCheck){SetResultValue(0);}
+			else{SetResultValue(1);}
+			break;
+		Case 1:
+			ZankoRageCheck = false;
+			ACS_Terminate(822,0);
+			PlayMusic(savedMusicLump);
+			MusicCredits(savedMusicCredit,1);
+			InstantLightChange(LightLevelTrack);
+			break;
+	}
+}
