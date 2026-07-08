@@ -99,3 +99,42 @@ Three weapon bases in `actors/inventory/baseweaponedit.txt`:
 - `BaseMM8BDMWep_UH` — UH-specific weapons
 
 All override `DeselectDeath` to check `uh_IsItOnline` for net sync.
+
+## DECORATE gotchas
+
+### Relative offsets ignore standalone state control instructions
+
+In Zandronum DECORATE, relative offsets used by `A_Jump*` functions:
+
+- **include** the state containing the `A_Jump*` call;
+- **exclude** standalone state control instructions (`goto`, `loop`, `wait`, `stop`, `fail`).
+
+This means a relative offset of **1** targets the very next state frame. Standalone control instructions do **not** consume an offset.
+
+```cpp
+ReadyX:
+    8H00 A 0 A_JumpIfInventory("MyAmmo", 200, 2)
+    8H00 A 2 A_WeaponReady                    // offset 1
+    goto ReadyGive                             // not counted
+    8H00 A 2 A_WeaponReady(WRF_ALLOWRELOAD)    // offset 2
+```
+
+Likewise, when a state control instruction appears on the same line as a state frame, it is simply flow control attached to that frame and does not create an additional counted state.
+
+### 0-tic loops are forbidden — they crash Zandronum
+
+Every state loop cycle must contain at least one frame with duration >= 1. A loop where **all** frames in the cycle have duration 0 will execute infinitely in a single tic and crash the game.
+
+```cpp
+// WRONG — crashes
+ReadyXGive:
+    8H00 A 0 A_GiveInventory("UnholyBossAmmo200",4)
+    loop
+
+// CORRECT
+ReadyXGive:
+    8H00 A 1 A_GiveInventory("UnholyBossAmmo200",4)
+    loop
+```
+
+This also applies to implicit cycles formed by `goto`. If `ReadyXGive` does `goto ReadyX` and `ReadyX` starts with 0-tic frames that eventually lead back to `ReadyXGive`, the cycle must include at least one non-zero duration somewhere on that path — typically the `A_WeaponReady` frame serves this purpose.
