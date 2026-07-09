@@ -13,10 +13,52 @@ Script "uh_BossMorph" (int whoisit, int BaseHP, int AddHP) //Boss messages and H
 	GiveInventory("BAWS",1);
 	GiveInventory("MorphedFlag",1);
 
+	int AB_Scale = CheckInventory("ArmorBonusScale_F");
+	if(AB_Scale>=1){
+		GiveInventory("DynamicArmorDosage_F",GetArmorInfo(1));
+
+		if(MultiBossCheck>=1){
+			int ArmorBonus = (PlayerCount()-1)/MultiBossCheck;
+			str ArmorName = StrParam(s:MainBossList[whoisit][0],s:"_BasicArmorBonus_P");
+
+			Until (ArmorBonus <= 0) {
+				GiveInventory("DynamicArmorDosage_F",AB_Scale);
+				GiveInventory(ArmorName,1);
+				ArmorBonus--;
+			}
+		}
+	}
+
+
+	// NamedExecuteClientScript("UH_RainbowHudMessage",PlayerNumber(),whoisit,VersusFightEvent*24);
+
 	ACS_NamedExecuteAlways("ub_RageDisplay",0);
 
 	int HudID = 5;//ID to display the text //-10000
 	int HudOffsetY = 4;//Text Y offset, 384 + Y * 32
+//Sets up boss player name spacing and Face spacing. IE X has been selected to be Y.
+	if(CheckInventory("Is_UH_BossNum")==1){
+		HudID = 1; //-10001
+		if(MultiBossCheck == 4){HudOffsetY = 0;}
+		else if(MultiBossCheck == 3){HudOffsetY = 1;}
+		else if(MultiBossCheck == 2){HudOffsetY = 2;}
+		else if(MultiBossCheck == 1){HudOffsetY = 2;}
+	}
+	else if(CheckInventory("Is_UH_BossNum")==2){
+		HudID = 2; //-10002
+		if(MultiBossCheck == 4){HudOffsetY = 1;}
+		else if(MultiBossCheck == 3){HudOffsetY = 2;}
+		else if(MultiBossCheck == 2){HudOffsetY = 3;}
+	}
+	else if(CheckInventory("Is_UH_BossNum")==3){
+		HudID = 3; //-10003
+		if(MultiBossCheck == 4){HudOffsetY = 2;}
+		else if(MultiBossCheck == 3){HudOffsetY = 3;}
+	}
+	else if(CheckInventory("Is_UH_BossNum")==4){
+		HudID = 4; //-10004
+		HudOffsetY = 3;
+	}
 	HudOffsetY *= 32.0;//24.0
 
 	str B_NameStr = MainBossList[whoisit][BOSSLIST_NAME];//'Boss' name
