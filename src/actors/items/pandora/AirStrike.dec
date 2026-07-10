@@ -1,0 +1,226 @@
+actor AirStrikeItem : UnholyItem
+{
+Tag "$TAG_P_BOX23"
+inventory.amount 1
+inventory.pickupmessage "Oh shit! Air Strike Beacon!"
+inventory.icon "PANBOX23"
+States
+{
+Spawn:
+I_BA W 6
+loop
+UseX:
+TNT1 A 0 A_SpawnItemEx("AirStrikeSound")
+UseX_Silent:
+//TNT1 A 0 A_FireCustomMissile("AirStrikeTarget",0,0,0,0)
+TNT1 A 0 A_GiveInventory("AirStrikeSpawnRNG_P")
+goto End
+}
+}
+actor AutoAirStrikeItem : AirStrikeItem {
+    Inventory.PickupSound ""
+    Inventory.MaxAmount 0
+    +ALWAYSPICKUP
+    States {
+        Pickup:
+            goto UseX
+    }
+}
+actor AutoAirStrikeItemSilent : AutoAirStrikeItem {
+    States {
+        Pickup:
+            goto UseX_Silent
+    }
+}
+actor AirStrikeItemFX : UnholyItemFX {
+    States {
+        Spawn: 
+            I_BA W 0
+            goto Spawn2
+    }
+}
+
+actor AirStrikeSpawnRNG_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIfInventory("PlayerPropertyProsperity",1,2)
+TNT1 A 0 A_Jump(13,"Majora")
+goto Meteor
+TNT1 A 0 A_Jump(128,"Majora")
+goto Meteor
+Meteor:
+//TNT1 A 0 A_FireCustomMissile("AirStrikeTarget",0,0,0,0)
+TNT1 A 0 A_SpawnItemEx("AirStrikeTarget",0,0,32,0,0,0,0,32)
+TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,1)
+stop
+TNT1 A 0 A_SpawnItemEx("AirStrikeTarget_Spread",0,0,80,0,0,0,15,32)
+TNT1 A 0 A_SpawnItemEx("AirStrikeTarget_Spread",0,0,128,0,0,0,-15,32)
+stop
+Majora:
+TNT1 A 0 A_SpawnItemEx("AirStrikeTarget2",0,0,32,0,0,0,0,32)
+TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,1)
+stop
+TNT1 A 0 A_SpawnItemEx("AirStrikeTarget2_Spread",0,0,80,0,0,0,15,32)
+TNT1 A 0 A_SpawnItemEx("AirStrikeTarget2_Spread",0,0,128,0,0,0,-15,32)
+stop
+}
+}
+
+actor AirStrikeSound : BasicSoundFollow
+{
+PainSound "items/AMETEOR"
+ReactionTime 70
+}
+
+Actor AirStrikeTarget : BasicExplosion
+{
+Translation "192:192=81:81","198:198=95:95"
+DeathSound "misc/BombCount"
++FORCEXYBILLBOARD
+ReactionTime 1
+Scale 4.0
+States
+{
+Spawn:
+EVFL R 0
+EVFL RST 4
+EVFL R 0 A_Scream
+EVFL RST 4
+EVFL R 0 A_Scream
+EVFL RST 4
+EVFL R 0 A_Scream
+EVFL RST 4
+EVFL R 0 A_Scream
+EVFL RST 4
+//EVFL R 0 A_Scream
+EVFL R 1 A_CountDown
+wait
+Death:
+EVFL R 0 A_PlaySoundEx("items/AMETEORT","Weapon",0,2)
+EVFL R 0 A_SpawnItemEx("AirStrikeMeteor",0,0,580,0,0,-20)
+EVFL RST 4
+stop
+}
+}
+Actor AirStrikeTarget2 : AirStrikeTarget
+{
+States
+{
+Death:
+EVFL R 0 A_PlaySoundEx("items/AMETEOR_Moon","Weapon",0,2)
+EVFL R 0 A_SpawnItemEx("AirStrikeMeteor2",0,0,580,0,0,-20)
+EVFL RST 4
+stop
+}
+}
+
+Actor AirStrikeTarget_Spread : AirStrikeTarget
+{
+States
+{
+Spawn:
+EVFL R 0
+EVFL RSTRSTRSTRSTRST 4
+EVFL R 0 A_SpawnItemEx("AirStrikeMeteor",0,0,580,0,0,-20)
+EVFL RST 4
+stop
+}
+}
+Actor AirStrikeTarget2_Spread : AirStrikeTarget2
+{
+States
+{
+Spawn:
+EVFL R 0
+EVFL RSTRSTRSTRSTRST 4
+EVFL R 0 A_SpawnItemEx("AirStrikeMeteor2",0,0,580,0,0,-20)
+EVFL RST 4
+stop
+}
+}
+
+Actor AirStrikeMeteor : BasicProjectile
+{
+Translation "4:4=81:81","202:202=86:86","192:192=92:92","198:198=95:95","199:199=3:3"
+Damagetype "MeteorItem"
+Obituary "%o was set up the bomb by %k."
++RIPPER
++NOINTERACTION
++DONTBLAST
++DONTREFLECT
++SKYEXPLODE
++FORCEXYBILLBOARD
+ReactionTime 10
+damage (10000)
+Radius 16
+Height 75
+Speed 0
+Scale 15.0
+States
+{
+Spawn:
+//EVFL Q
+8P29 Q 0
+8P29 QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ 1 A_JumpIf(ceilingz-z>Height, "Spawn2")
+Goto Spawn2
+Spawn2:
+8P29 Q 0 A_ChangeFlag("RIPPER", 0)
+8P29 Q 0 A_ChangeFlag("NOINTERACTION",0)
+8P29 Q 35 A_CountDown
+wait
+
+Death:
+TNT1 A 0 A_PlaySound("misc/hugequake",0,1.0,0,ATTN_NONE)
+TNT1 A 0 A_Explode(10001,9001,1,1,9001)
+TNT1 A 0 Radius_Quake(9,35,0,150,0)
+TNT1 A 40 A_SpawnItemEx("AirStrikeMeteor_H")
+stop
+}
+}
+Actor AirStrikeMeteor2 : AirStrikeMeteor
+{
+damage (30000)
+Scale 14.0
+States
+{
+Spawn:
+I_BP W 0
+I_BP WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW 1 A_JumpIf(ceilingz-z>Height, "Spawn2")
+Spawn2:
+I_BP W 0 A_ChangeFlag("RIPPER", 0)
+I_BP W 0 A_ChangeFlag("NOINTERACTION",0)
+I_BP W 35 A_CountDown
+wait
+}
+}
+
+Actor AirStrikeMeteor_H : BasicClientSide
+{
+Args 3
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("AirStrikeMeteorFX",random(-1000,1000),random(-1000,1000),random(-200,500))
+TNT1 A 1 A_CountDownArg(0)
+loop
+}
+}
+
+Actor AirStrikeMeteorFX : BasicClientSide
+{
+Translation "192:192=81:81","198:198=95:95"
++FORCEXYBILLBOARD
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_Jump(256,1,2,3,4)
+TNT1 AA 1
+X_8B ABCDEF 2
+stop
+}
+}
+
