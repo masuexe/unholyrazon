@@ -2,7 +2,7 @@
 
 ## Project identity
 
-GZDoom/Zandronum `.pk3` mod based on Unholy, targeting MM8BDM-v6b (will switch to v6c when released). TLMS gamemode with new classes, bosses, items.
+GZDoom/Zandronum `.pk3` mod based on Unholy, targeting MM8BDM-v6b (will switch to v6c when released). LMS (Last Man Standing) gamemode with new classes, bosses, items.
 
 ## Build
 
@@ -15,7 +15,7 @@ There is no build tool. The mod is a ZIP file with `.pk3` extension: pack `src/`
 
 ## Entry points (in load order)
 
-| L ump | Purpose |
+| Lump | Purpose |
 |-------|---------|
 | `src/DECORATE` | Actor include root (`#include "actors/UH_Root.dec"`) |
 | `src/KEYCONF` | Player class registration (`clearplayerclasses; addplayerclass ... nomenu`) |
@@ -79,7 +79,7 @@ Compiled `.o` files go in `src/acs/` (gitignored). ACS compilation requires the 
 | `_W` | Weapon actor | `Megaman_W` |
 | `_F` | Inventory flag (unobtrusive marker) | `Weak_F`, `IsRock_F` |
 | `_P` | CustomInventory pickup/giver actor | `UHPainSound_P` |
-| `_Giv` | PowerApropGiver (grants the actual power) | `UH_120_SpeedPowerGiver` |
+| `_PowerGiver` | PowerApropGiver (grants the actual power) | `UH_120_SpeedPowerGiver` |
 
 Player classes registered in `KEYCONF` use `nomenu` (hidden from default player setup).
 
