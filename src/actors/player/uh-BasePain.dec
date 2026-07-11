@@ -398,3 +398,65 @@ Full:TNT1 A 0 ThrustThingZ(0,52,0,1)stop
 Half:TNT1 A 0 ThrustThingZ(0,26,0,1)stop}}
 
 
+actor TimeBenderCamera_F : Inventory {}
+actor IsTimeBended_F : Inventory {}
+actor TimeBenderFreezeDuration : Powerup
+{
+Powerup.Duration 111//131//101 is true duration
+}
+
+actor TimeBenderStart_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_GiveInventory("UH_FrozenPainSound_P")//CBM Weakness sound
+TNT1 A 0 A_JumpIfInventory("TimeBenderFreezeDuration",1,"Reset")
+TNT1 A 0 A_GiveInventory("EternalPainFlag",1)
+TNT1 A 0 A_SpawnItemEx("TimeBenderWatcher_H")
+TNT1 A 0 ACS_NamedExecuteWithResult("core_freezeplayer",0,1)//SetPlayerProperty(0,1,4)
+TNT1 A 0 ACS_NamedExecuteWithResult("uh_TimeBenderCameraLook")
+
+Reset:
+TNT1 A 0 A_GiveInventory("IsTimeBended_F",1)
+TNT1 A 0 A_GiveInventory("TimeBenderFreezeDuration",1)
+stop
+}
+}
+
+actor TimeBenderWatcher_H : BasicWatcher
+{//This watcher is to assist in instances when a class breaks out of the pain state
++SERVERSIDEONLY//Such as the Melee state happening
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1 A_GiveToTarget("TimeBenderPain_P",1)
+TNT1 A 0 A_TakeFromTarget("EternalPainFlag",1)
+Spawn1:
+TNT1 A 0 A_GiveToTarget("TimeBenderPain_P",1)
+TNT1 A 1 A_JumpIf(!CallACS("uh_PointerExists",AAPTR_TARGET),"Death")
+TNT1 A 0 A_JumpIfInTargetInventory("EternalPainFlag",1,"Spawn2")
+TNT1 A 0 A_JumpIfInTargetInventory("TimeBenderFreezeDuration",1,"Spawn1")
+goto Spawn2
+Spawn2:
+TNT1 A 0
+TNT1 A 2 A_GiveToTarget("TimeBenderEnd_P",1)
+stop
+}
+}
+
+actor TimeBenderEnd_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_TakeInventory("TimeBenderFreezeDuration")
+TNT1 A 0 A_JumpIfInventory("IsTimeBended_F",1,2)
+TNT1 A 0 A_TakeInventory("IsTimeBended_F")
+stop
+TNT1 A 0 A_TakeInventory("IsTimeBended_F")
+TNT1 A 0 ACS_NamedExecuteWithResult("core_freezeplayer",0,0)
+stop
+}
+}
