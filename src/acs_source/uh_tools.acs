@@ -303,6 +303,32 @@ script "uh_GetPlayerInfo" (int prop)
 	}
 }
 
+script "uh_IsTracerAllyOrEnemy" (void)
+{
+	int targetTID = ACS_NamedExecuteWithResult("core_getptrtid",2);
+	bool result = 0;
+
+	SetActivator(0, AAPTR_TRACER);
+
+	if(!(ClassifyActor(0) & ACTOR_PLAYER)){//Not a player
+		result = 0;
+	}
+	else{
+		result = -1;//IsFoe
+		if(ACS_NamedExecuteWithResult("core_checkmode",1)==1){//IsTeamGame
+			if(GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM) == GetPlayerInfo(targetTID - 1000, PLAYERINFO_TEAM)){
+				//tracerTeam == targetTeam
+				result = 1;//IsAlly!
+			}
+		}
+		else if(CheckInventory("PowerProtectSurvivor")){
+			result = 1;//IsAlly?
+		}
+	}
+//	Log(s:"uh_IsTracerAllyOrEnemy == ",i:result);
+	SetResultValue(result);
+}
+
 
 
 #define MAX_CLASSES_NUM 3
