@@ -1,3 +1,5 @@
+actor LuckyLassS_W_ScriptBar : ScriptBar {}
+
 actor LuckyLassS_W : BaseMM8BDMWep_UH
 {
 Tag "$TAG_S_LuckyLass_W"
@@ -23,7 +25,7 @@ Ready:
 7H06 A 1 //ACS_NamedExecuteWithResult("core_weaponcolor", S_LUCKYLASS_DYE)
 7H06 A 0 //A_Gunflash
 7H06 A 0 A_GiveInventory("LL_RandomColorPickupStart",1)
-7H06 A 0 A_TakeInventory("LuckyCharge",999)
+7H06 A 0 A_TakeInventory("LuckyCharge")
 goto Ready2
 Ready2:
 "----" "#" 0 A_JumpIfInventory("LL_Color1",1,"Ready2a")
@@ -493,7 +495,7 @@ TNT1 A 0 A_GiveInventory("LuckyEnergyAmmo",2)
 TNT1 A 2 A_GiveInventory("LuckyCharge",1)
 TNT1 A 0 A_JumpIfInventory("LuckyLassFlag",1,"Flash")
 stop
-TNT1 A 0 A_JumpIfInventory("PowerRage_ST",1,2)
+TNT1 A 0 A_JumpIfInventory("PlayerPropertyRage",1,2)
 TNT1 A 0 A_PlaySoundEx("weapon/LuckyLoop","Weapon")//,true)
 TNT1 A 0 A_GiveInventory("LuckyEnergyAmmo",2)
 TNT1 A 2 A_GiveInventory("LuckyCharge",1)
@@ -510,7 +512,7 @@ TNT1 A 0 A_GiveInventory("LuckyEnergyAmmo",2)TNT1 A 2 A_GiveInventory("LuckyChar
 TNT1 A 0 A_GiveInventory("LuckyEnergyAmmo",2)TNT1 A 2 A_GiveInventory("LuckyCharge",1)TNT1 A 0 A_JumpIfInventory("LuckyLassFlag",1,1)stop
 TNT1 A 0 A_GiveInventory("LuckyEnergyAmmo",2)TNT1 A 2 A_GiveInventory("LuckyCharge",1)TNT1 A 0 A_JumpIfInventory("LuckyLassFlag",1,1)stop
 TNT1 A 0 A_GiveInventory("LuckyEnergyAmmo",2)TNT1 A 2 A_GiveInventory("LuckyCharge",1)TNT1 A 0 A_JumpIfInventory("LuckyLassFlag",1,1)stop
-TNT1 A 0 A_GiveInventory("LuckyEnergyAmmo",2)TNT1 A 2 A_GiveInventory("LuckyCharge",1)TNT1 A 0 A_JumpIfInventory("PowerRage_ST",1,2)TNT1 A 0 A_JumpIfInventory("LuckyLassFlag",1,"Flash")stop
+TNT1 A 0 A_GiveInventory("LuckyEnergyAmmo",2)TNT1 A 2 A_GiveInventory("LuckyCharge",1)TNT1 A 0 A_JumpIfInventory("PlayerPropertyRage",1,2)TNT1 A 0 A_JumpIfInventory("LuckyLassFlag",1,"Flash")stop
 TNT1 A 0 A_JumpIfInventory("LuckyLassFlag",1,1)stop
 TNT1 A 0 A_PlaySoundEx("weapon/LuckyLoopR","Weapon")
 TNT1 A 0 A_GiveInventory("LuckyEnergyAmmo",2)TNT1 A 2 A_GiveInventory("LuckyCharge",1)TNT1 A 0 A_JumpIfInventory("LuckyLassFlag",1,1)stop
@@ -600,12 +602,6 @@ actor LuckyLassFlag : UOnce {}
 actor LuckyLassFlag0 : UOnce {}
 actor LuckyLassFlag1 : UOnce {}
 actor LuckyLassFlag2 : UOnce {}
-
-actor LuckyCharge : Inventory
-{
-inventory.amount 1
-inventory.maxamount 103
-}
 
 actor LuckyOverCharge : Inventory
 {
@@ -721,15 +717,6 @@ P__8:TNT1 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", 4008,1)stop
 }
 }
 
-actor LuckyChargingGFX : BasicClientSide
-{
-States
-{
-Spawn:
-CHPO X 5
-stop
-}
-}
 
 actor LuckyLassShot1Pickup : LL_RandomColorPickup
 {
@@ -837,164 +824,3 @@ P_Ripper:TNT1 A 0 A_FireCustomMissile("LuckyLassShotRipper",0,0,8,0)stop
 P_Stun:TNT1 A 0 A_FireCustomMissile("LuckyLassShotStun",0,0,8,0)stop
 }
 }
-
-actor LuckyLassRandomShotBase
-{
-PROJECTILE
-damagetype "LuckyLass"
-+FORCEXYBILLBOARD
-Radius 16
-Height 16
-speed 80
-scale 2.5
-States
-{
-Spawn:
-6P06 ABCD 3
-loop
-Death:
-TMFX ABCD 3
-stop
-}
-}
-
-actor LuckyLassShotBasic : LuckyLassRandomShotBase
-{
-Translation "192:192=4:4","198:198=128:128"
-//damagetype "LuckyPower"
-Obituary "%o was wrecked by %k's Lucky Buster."
-damage (500)
-}
-
-actor LuckyLassShotBlind : LuckyLassRandomShotBase
-{
-Translation "192:192=4:4","198:198=249:249"
-damagetype "LuckyIce"
-Obituary "%o was frozen by %k's Lucky Buster."
-damage (200)
-DeathSound "weapon/centaurflash"
-}
-
-actor LuckyLassShotExplode : LuckyLassRandomShotBase
-{
-Translation "192:192=4:4","198:198=88:88"
-damagetype "LuckyFire"
-Obituary "%o was burnt by %k's Lucky Buster."
-damage (300)
-States
-{
-Death:
-TNT1 A 0 A_Stop
-TNT1 A 0 A_PlaySoundEx("weapon/crackerexplode", "Weapon")
-TNT1 A 0 A_Explode(200,128,0,0,16)
-TNT1 A 0 A_SpawnItemEx("OilPitIgnite",0,0,8)
-TNT1 A 4 A_SpawnItemEx("BasicBoom4FX_ColorX_Dull",0,0,0,0,0,0,0,1+16384)
-stop
-}
-}
-
-actor LuckyLassShotRandom : LuckyLassRandomShotBase
-{
-Translation "192:192=4:4","198:198=216:216"
-//damagetype "LuckyLuck"
-Obituary "%o was blasted by %k's Lucky Buster."
-Damage (random(350,850))
-}
-
-actor LuckyLassShotRipper : LuckyLassRandomShotBase
-{
-Translation "192:192=4:4","198:198=252:252"
-+RIPPER
-Obituary "%o was ripped to shreds by %k's Lucky Buster."
-damage (200)
-}
-
-actor LuckyLassShotStun : LuckyLassRandomShotBase
-{
-Translation "192:192=4:4","198:198=40:40"
-damagetype "LuckyDerp"
-Obituary "%o was stunned by %k's Lucky Buster."
-damage (250)
-}
-
-
-actor LuckyLassAltfireStartSound : BasicSoundFollow
-{
-ReactionTime 45
-States
-{
-TheSound:
-TNT1 A 1 A_PlaySoundEx("weapon/LuckyAltShot","Weapon")
-goto Spawn2
-}
-}
-
-actor LuckyLassAltfireStart : BasicHelper
-{
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 0 A_SpawnItemEx("LuckyLassAltfire",0,0,0,15,0,0)
-TNT1 AA 0 A_SpawnItemEx("LuckyLassAltfire",0,0,0,15,random(-16,16),random(0,8))
-TNT1 AA 0 A_SpawnItemEx("LuckyLassAltfire",0,0,0,15,random(-32,32),random(4,16))
-TNT1 AA 0 A_SpawnItemEx("LuckyLassAltfire",0,0,0,15,random(-64,64),random(8,32))
-stop
-}
-}
-
-actor LuckyLassAltfire
-{
-Translation "192:192=4:4","198:198=199:199"
-PROJECTILE
-damagetype "LuckyFire"
-Obituary "%o touched %k's Lucky Buster and lost the lottery."
-+DONTSPLASH
-+THRUGHOST
-+RIPPER
-+DOOMBOUNCE
-Radius 16
-Height 16
-scale 2.5
-damage (10)
-speed 5
-States
-{
-Spawn:
-6P06 A 0
-6P06 A 0 ACS_ExecuteAlways(259,0,1)
-6P06 AAABBB 1 A_Recoil(2)
-6P06 C 0 A_Stop
-6P06 CD 3
-6P06 D 0 A_Jump(256,"S_Basic","S_Blind","S_Explode","S_Random","S_Ripper","S_Stun")
-
-S_Basic:
-6P06 D 0 A_CustomMissile("LuckyLassShotBasic2",0,0,0,2,-pitch)
-stop
-S_Blind:6P06 D 0 A_CustomMissile("LuckyLassShotBlind2",0,0,0,2,-pitch)stop
-S_Explode:6P06 D 0 A_CustomMissile("LuckyLassShotExplode2",0,0,0,2,-pitch)stop
-S_Random:6P06 D 0 A_CustomMissile("LuckyLassShotRandom2",0,0,0,2,-pitch)stop
-S_Ripper:6P06 D 0 A_CustomMissile("LuckyLassShotRipper2",0,0,0,2,-pitch)stop
-S_Stun:6P06 D 0 A_CustomMissile("LuckyLassShotStun2",0,0,0,2,-pitch)stop
-}
-}
-
-
-
-actor LuckyLassShotBasic2 : LuckyLassShotBasic
-{
-Speed 22
-States
-{
-Spawn:
-6P06 AABBCCDD 1 A_ScaleVelocity(1.05)//A_Recoil(-4)
-loop
-}
-}
-
-actor LuckyLassShotBlind2 : LuckyLassShotBlind{Speed 22 States{Spawn:6P06 AABBCCDD 1 A_ScaleVelocity(1.05)loop}}
-actor LuckyLassShotExplode2 : LuckyLassShotExplode{Speed 22 States{Spawn:6P06 AABBCCDD 1 A_ScaleVelocity(1.05)loop}}
-actor LuckyLassShotRandom2 : LuckyLassShotRandom{Speed 22 States{Spawn:6P06 AABBCCDD 1 A_ScaleVelocity(1.05)loop}}
-actor LuckyLassShotRipper2 : LuckyLassShotRipper{Speed 22 States{Spawn:6P06 AABBCCDD 1 A_ScaleVelocity(1.05)loop}}
-actor LuckyLassShotStun2 : LuckyLassShotStun{Speed 22 States{Spawn:6P06 AABBCCDD 1 A_ScaleVelocity(1.05)loop}}
-
