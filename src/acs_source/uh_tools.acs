@@ -535,9 +535,15 @@ script "uh_istracerplayer" (void)
 	SetResultValue(result);
 }
 
+// Morph resets APROP_Gravity; core_commonwater only re-applies on feet/eyes transitions.
 script "uh_IsUnderWaterGravity" (void)
 {
-	WaterChecker(ActivatorTID());
+	if(PlayerNumber() == -1)
+		terminate;
+	if(CheckInventory("IsUnderWater") || CheckInventory("HasFeetInWater")){
+		ACS_NamedExecuteWithResult("core_watergravity", 0);
+		ACS_NamedExecuteAlways("core_watergravity", 0, 1);
+	}
 }
 
 script "uh_RageAmmoGiver" (int type, int dmg, int dmgType) EVENT {
@@ -547,18 +553,6 @@ script "uh_RageAmmoGiver" (int type, int dmg, int dmgType) EVENT {
 		GiveInventory(rageName, dmg);
 	}
 
-}
-
-//Morphes don't correctly copy gravity changes
-function void WaterChecker (int PlayerID)
-{
-	int Gravy = GetActorProperty(PlayerID, APROP_Gravity);
-	if(CheckActorInventory(PlayerID, "IsUnderWater") >= 1){
-		SetActorProperty(PlayerID, APROP_Gravity, FixedDiv(Gravy, 3.2));
-	}
-	else{
-		SetActorProperty(PlayerID, APROP_Gravity, Gravy);
-	}
 }
 
 function void SetInventory(str item, int amount)
