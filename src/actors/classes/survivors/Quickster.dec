@@ -1,0 +1,161 @@
+actor Quickster : CustWepClassBase
+{
+player.scoreIcon "UMUG_7"
+player.displayname "Quickster"
+player.soundclass "Quickster"
+player.maxhealth 750
+health 750
+player.forwardmove 1.25, 1.25
+player.sidemove 1.25, 1.25
+player.jumpz 15
+player.startitem "UH_BaseFlagPack"
+//+SLIDESONWALLS
+player.startitem "Quickster_W"
+player.startitem "RapidEnergyAmmo", 20
+
+player.startitem "ScrewIceDeathFlag"
+//damagefactor "GeminiLaser", 2.5
+States
+{
+Spawn:
+QUIM A 0
+QUIM B 1
+QUIM A 1
+Goto Spawn+2
+See:
+QUIM BCDE 5
+Goto Spawn
+Missile:
+QUIM FFFFF 1 
+QUIM GGGG 1  
+goto Spawn+2
+ClassPain:
+QUIM H 0
+Goto MegamanPain
+
+ClassDeath:
+QUIM Z 0 
+goto MegamanDeath
+// QUIM Z 0 A_JumpIfInventory("FireDeathFlag",1,"FireQuickWait")
+// QUIM Z 0 A_PlaySound("*death",1)
+// QUIM Z 1 ThrustThingZ(0,70,0,0)
+// QUIM Z 0 A_JumpIfInventory("IceDeathFlag",1,"IceQuickWait")
+// QUIM Z 1 A_SpawnItemEx("QuicksterSonicDeath",0,0,16,momx,momy,20,0,1+8)
+// QUIM Z 0 
+// Goto DeathWait
+
+MegamanIce:
+QUIM Z 1 A_SpawnItemEx("QuicksterSonicDeathIce",0,0,16,momx,momy,20,0,1+8)
+Goto MegamanErase
+FireQuickWait:
+QUIM H 16
+goto ClassDeath+1
+
+Death.Falling:
+QUIM Z 0 A_GiveInventory("FallingFlag",1)
+QUIM Z 0 A_GiveInventory("DeadClassBundle")
+QUIM Z 0 A_PlaySound("*death",1)
+QUIM Z 1 ThrustThingZ(0,70,0,0)
+QUIM Z 1 A_SpawnItemEx("QuicksterSonicDeath",0,0,16,momx,momy,20,0,1+8)
+Goto DeathWait
+
+ClassCorpse:
+QUIM Z 0 A_SpawnItemEx("Corpse_07",0,0,0,momx,momy,momz,0,9)
+Goto MegaDeathEndGib
+}
+}
+
+actor QuicksterSonicDeath : BasicProjectile
+{
+DeathSound "classes/SonicDeath"
+damagetype "Rapid"
+Obituary "$OB_07D1"
+-NOGRAVITY
++DONTSPLASH
++DONTREFLECT
++BOUNCEONWALLS
++BOUNCEONCEILINGS
+BounceFactor 0.01
+WallBounceFactor 1.0
+Damage (100)
+Radius 16
+Height 32
+speed 32
+scale 2.5
+Args 300,218,0
+States
+{
+Spawn:
+6P07 VWXY 3
+loop
+Death:
+TNT1 A 0 A_Explode(Args[0],Args[1],0,0,Args[2])
+TNT1 A 0 A_SpawnItemEx("FakeUnholyDeathFX",0,0,32,0,0,0,random(0,359),1)
+stop
+}
+}
+actor S_QuicksterSonicDeath : QuicksterSonicDeath
+{
+Damage (150)
+Args 450,218,0
+}
+
+actor QuicksterSonicDeathIce : QuicksterSonicDeath
+{
+DeathSound ""
+Damage (200)
+damagetype "ColdShot"
+Obituary "$OB_07D2"
+Args 600,218,0
+States
+{
+Death:
+TNT1 A 0 A_Explode(Args[0],Args[1],0,0,Args[2])
+TNT1 A 0 A_SpawnItemEx("Refrigerate_Freeze",0,0,Height/2)
+TNT1 A 0 A_SpawnItemEx("FrozenDeathFX_UH",0,0,0,0,0,0,random(0,359),1)
+stop
+}
+}
+actor S_QuicksterSonicDeathIce : QuicksterSonicDeathIce
+{
+Damage (300)
+Args 900,218,0
+}
+
+actor QuicksterS : Quickster
+{
+player.scoreIcon "UMUG_S7"
+player.maxhealth 2750
+health 2750
+player.forwardmove 1.35, 1.35
+player.sidemove 1.35, 1.35
+player.jumpz 16
+player.morphweapon "QuicksterS_W"
++NOSKIN
+States
+{
+ClassDeath:
+QUIM Z 0 A_JumpIfInventory("FireDeathFlag",1,"FireQuickWait")
+QUIM Z 0 A_PlaySound("*death",1)
+QUIM Z 1 ThrustThingZ(0,70,0,0)
+QUIM Z 0 A_JumpIfInventory("IceDeathFlag",1,"IceQuickWait")
+QUIM Z 1 A_SpawnItemEx("S_QuicksterSonicDeath",0,0,16,momx,momy,20,0,1+8)
+QUIM Z 0 
+Goto DeathWait
+
+IceQuickWait:
+QUIM Z 1 A_SpawnItemEx("S_QuicksterSonicDeathIce",0,0,16,momx,momy,20,0,1+8)
+Goto DeathWait
+FireQuickWait:
+QUIM H 16
+goto ClassDeath+1
+
+Death.Falling:
+QUIM Z 0 A_GiveInventory("FallingFlag",1)
+QUIM Z 0 A_GiveInventory("DeadClassBundle")
+QUIM Z 0 A_PlaySound("*death",1)
+QUIM Z 1 ThrustThingZ(0,70,0,0)
+QUIM Z 1 A_SpawnItemEx("S_QuicksterSonicDeath",0,0,16,momx,momy,20,0,1+8)
+Goto DeathWait
+}
+}
