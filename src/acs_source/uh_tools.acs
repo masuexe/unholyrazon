@@ -1,7 +1,11 @@
 #library "uh_tools"
 #include "zcommon.acs"
 
+#import "8bdt.acs"
+
 #define MAX_HEALTH 30000
+#define CAPROP_AirJumpZ 64
+#define CAPROP_WallJumpZ 65
 
 script "uh_IsBot" (void)
 {
@@ -414,22 +418,15 @@ script "uh_shinyclassmorpher" (int ClassNum)
 		shinyClass = StrParam(s:originalClass, s:"S");
 	}
 
-	//if(CheckClass(TheClass))
-		//GiveInventory("UH_MorphLMSFix_P",1);
-
 	if(ACS_NamedExecuteWithResult("core_checkmode", 0)==2)//Is it T/LMS ?
 		GiveInventory("UH_MorphLMSFix_P",1);
-//2+128+256+512 = 898
-//2		MRF_FULLHEALTH
-//64	MRF_WHENINVULNERABLE
-//128	MRF_LOSEACTUALWEAPON
-//256	MRF_NEWTIDBEHAVIOUR
-//512	MRF_UNDOBYDEATH
-//	if(MorphActor(0, TheClass, "", 0x7fffffff, 898, "ShinySparkleFlash", StrParam(s:TheClass, s:"C"))){
+
+	ACS_NamedExecuteWithResult("uh_MorphPreReset");
 	delay(1);
 	if(MorphActor(0, shinyClass, "", 0x7ffffffc, MRF_FULLHEALTH|MRF_WHENINVULNERABLE|MRF_LOSEACTUALWEAPON|MRF_NEWTIDBEHAVIOUR, "ShinySparkleFlash", "FlashM_GenesisSparkleFX")){
 		GiveInventory("RemoveWeaponsOfMortals_P", 1);
 		shinyClassMultiWeaponGive();
+		ACS_NamedExecuteWithResult("uh_MorphPostReset", 1);
 		GiveInventory("S_ClassSpawn_P",1);
 		TakeInventory("MorphedFlag",1);
 	}
@@ -544,6 +541,78 @@ script "uh_IsUnderWaterGravity" (void)
 		ACS_NamedExecuteWithResult("core_watergravity", 0);
 		ACS_NamedExecuteAlways("core_watergravity", 0, 1);
 	}
+}
+
+// Rebuild DefaultProperties from current actor (Bearer copy of PUAPROP; avoids core_defineaproppowers spawn-invuln).
+function void DefineDefaultProperties(void)
+{
+	int p = PlayerNumber();
+	if(p < 0)
+		return;
+	for(int i = 0; i < MAX_PROPS; i++){
+		int prop = getPropertyFromIndex(i);
+		if(prop == CAPROP_AirJumpZ){
+			DefaultProperties[p][i] = (CheckInventory("AirJumpZ") * 1.0) + FixedDiv(CheckInventory("AirJumpZDecimal") * 1.0, 10000.0);
+			if(DefaultProperties[p][i] == 0.0)
+				DefaultProperties[p][i] = GetActorProperty(0, APROP_JumpZ);
+			ACS_NamedExecuteWithResult("core_SetCustomActorProperty", 0, CAPROP_AirJumpZ, DefaultProperties[p][i]);
+		}
+		else if(prop == CAPROP_WallJumpZ){
+			DefaultProperties[p][i] = (CheckInventory("WallJumpZ") * 1.0) + FixedDiv(CheckInventory("WallJumpZDecimal") * 1.0, 10000.0);
+			if(DefaultProperties[p][i] == 0.0)
+				DefaultProperties[p][i] = GetActorProperty(0, APROP_JumpZ);
+			ACS_NamedExecuteWithResult("core_SetCustomActorProperty", 0, CAPROP_WallJumpZ, DefaultProperties[p][i]);
+		}
+		else
+			DefaultProperties[p][i] = GetActorProperty(0, prop);
+	}
+}
+
+// Pre-MorphActor: flag sweeps + strip jump-mod inventory (Bearer CTF morph).
+script "uh_MorphPreReset" (void)
+{
+	if(PlayerNumber() == -1)
+		terminate;
+	GiveInventory("UH_MorphFlagReset_P", 1);
+	GiveInventory("Core_MorphFlagReset_P", 1);
+	GiveInventory("Core_MorphFlagReset2_P", 1);
+	TakeInventory("AirJumpZ", 99999);
+	TakeInventory("AirJumpZDecimal", 99999);
+	TakeInventory("WallJumpZ", 99999);
+	TakeInventory("WallJumpZDecimal", 99999);
+}
+
+// Post-MorphActor: redefine defaults → strip PowerAprop → FixMorph → water gravity.
+// arg0 force: 1 = always run; 0 = skip if UH_MorphPipelineDone_F (PowerMorph / Ready re-entry).
+script "uh_MorphPostReset" (int force)
+{
+	if(PlayerNumber() == -1)
+		terminate;
+	if(!force && CheckInventory("UH_MorphPipelineDone_F"))
+		terminate;
+
+	DefineDefaultProperties();
+	GiveInventory("UH_MorphPowerPropReset_P", 1);
+	// No Delay: ACS_NamedExecuteWithResult returns at Delay and leaves the rest async.
+	GiveInventory("UH_FixMorphPower_P", 1);
+	ACS_NamedExecuteAlways("uh_IsUnderWaterGravity", 0);
+	GiveInventory("UH_MorphPipelineDone_F", 1);
+}
+
+script "uh_MorphDemorphReset" (void)
+{
+	if(PlayerNumber() == -1)
+		terminate;
+	GiveInventory("UH_UnMorphSuperFlagReset_P", 1);
+	TakeInventory("BAWS", 1);
+	TakeInventory("MorphedFlag", 1);
+	TakeInventory("IsAnEye", 1);
+	TakeInventory("TruePowerItemFlag", 1);
+	TakeInventory("UH_MorphPipelineDone_F", 1);
+	DefineDefaultProperties();
+	GiveInventory("UH_MorphPowerPropReset_P", 1);
+	GiveInventory("UH_FixMorphPower_P", 1);
+	ACS_NamedExecuteAlways("uh_IsUnderWaterGravity", 0);
 }
 
 script "uh_RageAmmoGiver" (int type, int dmg, int dmgType) EVENT {
