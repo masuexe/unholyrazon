@@ -1,0 +1,122 @@
+actor CloseCombatUnitS_W_NormalBar : NormalBar {args 4, 45}
+
+actor CloseCombatUnitS_W : BaseMM8BDMWep_UH
+{
+Tag "$TAG_S_CloseCombatUnit_W"
+Weapon.AmmoUse 0
+Inventory.Pickupmessage "$PU_11"
+Obituary "$OB_11W"
+weapon.ammotype "MeleeEnergyAmmo"
++WEAPON.NOAUTOAIM
+States
+{
+Spawn:
+7H11 [ 6
+loop
+
+Deselect:
+7H11 A 0 A_GiveInventory("StopShield",1)
+goto DeselectSwap
+Select:
+7H11 A 0 A_TakeInventory("StopShield")
+goto SelectSwap
+
+Ready:
+7H11 A 1 ACS_NamedExecuteWithResult("core_weaponcolor", CLOSECOMBATUNIT_SDYE)
+7H11 A 1 A_TakeInventory("StopShield")
+7H11 A 0 A_GunFlash("Flash",1)
+goto Ready2
+Ready2:
+7H11 A 0 A_JumpIfInventory("MeleeEnergyAmmo",300,"Ready3")
+7H11 A 2 A_WeaponReady(WRF_NOSECONDARY)
+7H11 A 0 A_GiveInventory("MeleeEnergyAmmo",6)
+loop
+Ready3:
+7H11 A 2 A_WeaponReady
+7H11 A 0 A_GiveInventory("MeleeEnergyAmmo",6)
+loop
+
+Flash:
+7H11 ZY 2
+7H11 X 0 A_GiveInventory("CCU_ShieldHitbox_P",1)
+Flash.Idle:
+7H11 X 0 A_SpawnItemEx("CCU_ShieldFX",23,-17,8,momx,momy,momz,0,9)
+7H11 X 1 A_JumpIfInventory("StopShield",1,1)
+loop
+7H11 YZ 2
+stop
+
+
+Fire:
+7H11 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+7H11 A 0 A_GiveInventory("StopShield",1)
+7H11 BC 1
+FireL:
+7H11 C 0 A_PlaySound("weapon/slashclaw",1)
+7H11 D 1 A_FireCustomMissile("S_CCU_MeleeSlash",50,0,-16,0,0,-10)
+7H11 D 1 A_FireCustomMissile("S_CCU_MeleeSlash",25,0,-8,0,0,-5)
+7H11 E 1 A_FireCustomMissile("S_CCU_MeleeSlash",0,0,0,0,0,0)
+7H11 E 1 A_FireCustomMissile("S_CCU_MeleeSlash",-25,0,8,0,0,10)
+7H11 F 2 A_FireCustomMissile("S_CCU_MeleeSlash",-50,0,16,0,0,20)
+TNT1 AA 8 A_GiveInventory("MeleeEnergyAmmo",4)
+TNT1 A 0 A_Refire("FireL")
+FireEnd:
+7H11 G 0 A_TakeInventory("StopShield")
+7H11 G 2 A_GunFlash("Flash",1)
+7H11 H 2
+Goto Ready2
+Altfire:
+7H11 A 0 A_JumpIfInventory("MeleeEnergyAmmo",300,"Altfire1")
+goto Ready2
+Altfire1:
+7H11 H 0 A_GiveInventory("VivifyDelay1",1)
+7H11 H 0 A_Refire("Altfire2")
+goto Altfire2
+Altfire2:
+7H11 H 2 A_WeaponReady(WRF_NOSECONDARY)
+7H11 H 0 A_GiveInventory("S_CCU_Alt_P")
+7H11 H 0 A_JumpIfInventory("MeleeEnergyAmmo",1,"Altfire2")
+goto Ready2
+
+BotFire:
+7H11 A 0 A_JumpIfCloser(356,2)
+7H11 A 0 A_JumpIfInventory("MeleeEnergyAmmo",150,"BotFire2")
+goto BotFire2
+BotFire1:
+7H11 C 0 A_PlaySound("weapon/slashclaw",1)
+7H11 D 1 A_FireCustomMissile("S_CCU_MeleeSlash",50,0,-16,0,0,-10)
+7H11 D 1 A_FireCustomMissile("S_CCU_MeleeSlash",25,0,-8,0,0,-5)
+7H11 E 1 A_FireCustomMissile("S_CCU_MeleeSlash",0,0,0,0,0,0)
+7H11 E 1 A_FireCustomMissile("S_CCU_MeleeSlash",-25,0,8,0,0,10)
+7H11 F 2 A_FireCustomMissile("S_CCU_MeleeSlash",-50,0,16,0,0,20)
+TNT1 AA 8 A_GiveInventory("MeleeEnergyAmmo",random(10,25))
+goto FireEnd
+BotFire2:
+7H11 H 2 A_Jump(5,1)
+goto Altfire2+1
+7H11 H 2 A_PlaySoundEx("taunt/D_11","Voice")
+goto Altfire2+1
+}
+}
+
+actor S_CCU_Alt_P : CCU_Alt_P
+{
+States
+{
+Pickup:
+TNT1 A 0 A_SpawnItemEx("S_CCU_RammingDamage",0,0,32,momx,momy,momz,0,8)
+goto Pickup2
+}
+}
+
+actor S_CCU_MeleeSlash : CCU_MeleeSlash
+{
+Translation "192:192=4:4","198:198=45:45"
+Args 167,88,8
+}
+
+actor S_CCU_RammingDamage : CCU_RammingDamage
+{
+Args 117,102,16
+}
+
