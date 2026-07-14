@@ -5,6 +5,7 @@
 // Player Rune stacker
 // Makes sure that players receive the rune that core facilities check for
 // Set player to 0 for the activator or specify a player number
+//$UH Add Endless Ammo Rune
 script "uh_runeplayer" (int player, int toggle, int mode) {
 	if (player == 0) { player = PlayerNumber() + 1; } 
 	if (player <= 0 || !SetActivatorToPlayer(player - 1)) { terminate; }
@@ -118,4 +119,28 @@ script "uh_checkrune" (int rune, int ptr) {
 	}
 
 	SetResultValue(CheckInventory(runePower));
+}
+
+#define KNK_AIMED 1 << 0//$UH Future core flags?
+#define KNK_ADDZTHRUST 1 << 1//$UH
+script "uh_knockback" (int force, int forcez, int flags, int ptr)//$UH Changes aimed into a flag
+{
+	SetActivatorToTarget(0);//$UH Spawned actors are calling this script
+
+	int pX = ACS_NamedExecuteWithResult("core_getactorx", ptr, 0, true);
+	int pY = ACS_NamedExecuteWithResult("core_getactory", ptr, 0, true);
+    
+	int yaw = VectorAngle(GetActorX(0) - pX, GetActorY(0) - pY) >> 8;
+
+	if(flags & KNK_AIMED) {//$UH
+		int pitch = ACS_NamedExecuteWithResult("core_GetPtrPitch", ptr, 0, true);
+		int heightmul = sin(-pitch);
+		int distmul = cos(pitch);
+
+		ThrustThingZ(0, fixedMul(force, heightmul) * 4, 0, (flags & KNK_ADDZTHRUST));//$UH
+		ThrustThing(yaw, fixedMul(force, distmul), 1, 0);
+	} else {
+		ThrustThingZ(0, forcez, 0, (flags & KNK_ADDZTHRUST));//$UH
+		ThrustThing(yaw, force, 1, 0);
+	}
 }
