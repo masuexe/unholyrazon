@@ -1,0 +1,1136 @@
+actor Qwant_W_ScriptBar : ScriptBar {}
+
+actor Qwant_W : BaseMM8BDMWep_UH
+{
+Weapon.AmmoUse 0
+Weapon.AmmoGive 28
+Obituary "$OB_01W0"
+Tag "$TAG_Qwant_W"
+weapon.ammotype "MyDestinyAmmo"
+weapon.ammotype2 "MoveRelearnAmmo"
++WEAPON.NOAUTOAIM
+States
+{
+Spawn:
+6H01 [ 6
+loop
+
+Deselect:
+6H01 A 0
+goto DeselectSwap
+Select:
+6H01 A 0
+goto SelectSwap
+
+Ready:
+6H01 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", QWANT_DYE,-66)
+Goto ReadyX
+ReadyX:
+6H01 A 4 A_WeaponReady
+6H01 A 0 A_GiveInventory("MoveRelearnAmmo",1) //2; still 50% faster than any other wep but allows for them to be a bit better
+loop
+
+//Fire:
+//6H01 B 0 A_PlaySoundEx("misc/devilfire","Weapon")//PokemonShot
+//6H01 B 0 A_FireCustomMissile("QBall_Poke",0,0)
+Fire:
+6H01 A 0 A_PlaySound("Pokemon/BallThrow",1)
+6H01 A 0 A_GiveInventory("QwantRandomBallItem")
+6H01 BCAA 4 A_GiveInventory("MoveRelearnAmmo",1)
+goto ReadyX
+
+AltFire:
+6H01 A 0 A_PlaySound("Pokemon/BallThrow",1)
+6H01 A 0 A_GiveInventory("Qwant_SuperFire_P")//Qwant_TestFireAll_P
+6H01 CBAAAA 4 A_GiveInventory("MoveRelearnAmmo",1)
+goto ReadyX
+}
+}
+
+actor MyDestinyAmmo : Ammo{inventory.amount 1 inventory.maxamount 28 +INVENTORY.IGNORESKILL}
+
+actor MoveRelearnAmmo : Ammo
+{
+inventory.amount 1
+inventory.maxamount 28
++INVENTORY.IGNORESKILL
+}
+
+actor QwantBallFlag : Inventory
+{
+inventory.amount 1
+inventory.maxamount 50
+}
+
+actor PokemonShot : BasicProjectile
+{
+damagetype "Buster"
+Speed 60
+Damage (50)
+radius 5
+height 5
+scale 2.5
+States
+{
+Spawn:
+TNT1 A 2
+BASB A 1
+goto spawn+1
+Death:
+BASB A 1
+stop
+}
+}
+
+
+actor Qwant_BallDeathFX : BasicClientSide
+{
+Translation "192:192=4:4","198:198=215:215"
++FORCEXYBILLBOARD
++BRIGHT
+States
+{
+Spawn:
+TNT1 A 0
+TMFX OBCH 2
+//MMFX BCDE 2
+stop
+}
+}
+
+//Obituary "$OB_01M0A"
+actor QBall_Poke : BasicProjectile
+{
+damagetype "Pokeball"
+Obituary "%o was caught by %k's Poke Ball."
+-NOGRAVITY
++FORCEXYBILLBOARD
+//+HEXENBOUNCE
++BOUNCEONWALLS
++BOUNCEONFLOORS
++BOUNCEONCEILINGS
+//-ALLOWBOUNCEONACTORS
++SKYEXPLODE
++CANBOUNCEWATER
+//+USESTBOUNCESOUND
+bouncefactor 0.80
+wallbouncefactor 0.80
+BounceSound "Qwant/BallBounce"
+WallBounceSound "Qwant/BallBounce"
+bouncecount 5
+damage (75)//Feb 27 1996
+Radius 14
+Height 26
+speed 35
+scale 2.0
+Args 15
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1 ThrustThingZ(0,Args[0],0,1)
+TNT1 A 0 A_Jump(256,"Spawn2")
+loop
+Spawn2:
+PKB1 ABCD 4
+loop
+Death:
+TNT1 A 0 //A_SetGravity(0.0)
+DeathFX:
+TNT1 A 2 A_SpawnItemEx("Qwant_BallDeathFX",0,0,Height/2,0,0,0,0,32)
+stop
+DeathFX0:
+TNT1 A 0 A_SpawnItemEx("Qwant_BallDeathFX",0,0,Height/2,0,0,0,0,32)
+stop
+}
+}
+
+
+actor QBall_Great : QBall_Poke{
+Obituary "%o was caught by %k's Great Ball."
+damage (95)
+speed 39
+States {
+Spawn2:
+PKB1 EFGH 4
+loop}}
+
+actor QBall_Ultra : QBall_Poke{
+Obituary "%o was caught by %k's Ultra Ball."
+damage (115)
+speed 45
+States {
+Spawn2:
+PKB1 IJKL 4
+loop}}
+
+actor QBall_Master : QBall_Poke
+{
+Obituary "%o was caught by %k's Master Ball."
+//+NOGRAVITY
++SEEKERMISSILE
++SCREENSEEKER
+bouncefactor 1.00
+wallbouncefactor 1.00
+bouncecount 0
+reactiontime 666
+damage (155)
+speed 40
+States
+{
+Spawn:
+PKB1 MMMMNNNNOOOOPPPP 1 A_SeekerMissile(2,10,SMF_LOOK,50,10)
+PKB1 P 0 A_CountDown
+loop
+Death:
+TNT1 A 0 A_SpawnItemEx("QBall_MasterBomb",0,0,Height/2)
+goto DeathFX
+}
+}
+actor QBall_MasterBomb : BasicExplosion_Args
+{
+damagetype "Pokeball"
+Obituary "%o was caught by %k's Master Ball."
+Args 50,98,96
+}
+
+actor QBall_Safari : QBall_Poke{
+-HEXENBOUNCE
++DONTSPLASH
+Obituary "%o was caught by %k's Safari Ball."
+damage (95)
+States {
+Spawn2:
+PKB1 QRST 4
+loop
+Crash:
+goto DeathFX
+stop
+Death:
+TNT1 A 0
+TNT1 A 0 A_CheckFloor("DeathF")
+TNT1 A 0 A_SpawnItemEx("QBall_SafariTrap")
+stop
+DeathF:
+TNT1 A 0 A_SpawnItemEx("QBall_SafariTrapF")
+stop}}
+
+actor QBall_SafariTrap : QBall_Safari{
++NOGRAVITY
+Damage (115)
+ReactionTime 20
+States {
+Spawn:
+PKB1 Q 0 A_CountDown
+PKB1 QRST 4
+loop
+Crash:
+Death:
+goto DeathFX}}
+
+
+actor QBall_SafariTrapF : QBall_SafariTrap{
+ReactionTime 1
+States {
+Spawn:
+PKB1 Y 320 A_CountDown
+loop}}
+
+
+actor QBall_Level : QBall_Poke{
+damage (65)
+speed 25
+Obituary "%o was caught by %k's Level Ball."
+States {
+Spawn2:
+PKB1 UVWX 4
+loop}}
+
+actor QBall_Level1 : QBall_Level{damage (100) speed 35}
+actor QBall_Level2 : QBall_Level{damage (150) speed 45}
+actor QBall_Level3 : QBall_Level{damage (250) speed 55}
+actor QBall_Level4 : QBall_Level{damage (400) speed 65}
+
+actor QBall_Lure : QBall_Poke{
+Obituary "%o was caught by %k's Lure Ball."
+damage (99)
+damagetype "LureBall"
+States {
+Spawn2:
+PKB2 ABCD 4
+loop}}
+
+actor QBall_Moon : QBall_Poke{
+Obituary "%o was caught by %k's Moon Ball."
+damage (99)
+damagetype "MoonBall"
+States {
+Spawn2:
+PKB2 EFGH 4
+loop}}
+
+actor QBall_Friend : QBall_Poke{
+//+FORCEPAIN
+damagetype "FriendBall"
+Damage (50)
+Obituary "%o was caught by %k's FriendBall!"
+States {
+Spawn2:
+PKB2 IJKL 4
+loop}}
+
+actor FriendBallItem : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_PlaySoundEx("Pokemon/Recover","Voice")
+TNT1 A 0 ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, 150)
+stop
+}
+}
+
+actor QBall_Love : QBall_Poke{
+Obituary "%o was caught by %k's Love Ball."
+//Obituary "%o learned this is %k's destiny."
+Damage (200)
+States {
+Spawn2:
+PKB2 MNOP 4
+loop}}
+
+actor QBall_Heavy : QBall_Poke{
+Obituary "%o was caught by %k's Heavy Ball."
+Damage (125)
+bouncefactor 0.85
+wallbouncefactor 0.85
+Gravity 1.25
+bouncecount 7
+States {
+Spawn2:
+PKB2 QRST 4
+loop}}
+
+actor QBall_Fast : QBall_Poke{
+Obituary "%o was caught by %k's Fast Ball."
++NOGRAVITY
+Damage (98)
+States {
+Spawn:
+PKB2 UVWX 4
+loop}}
+
+actor QBall_Sport : QBall_Poke{
+Obituary "%o was caught by %k's Sport Ball."
+Damage (155)
+States {
+Spawn2:
+PKB3 ABCD 4
+loop}}
+
+actor QBall_Premier : QBall_Poke{
+Obituary "%o was caught by %k's Premier Ball."
+bouncefactor 0.85
+wallbouncefactor 0.85
+bouncecount 7
+damage (111)
+States {
+Spawn2:
+PKB3 E 1 A_SpawnItemEx("QBall_PremierFX1")
+PKB3 E 1 A_SpawnItemEx("QBall_PremierFX2")
+PKB3 E 1 A_SpawnItemEx("QBall_PremierFX3")
+PKB3 E 1 A_SpawnItemEx("QBall_PremierFX4")
+PKB3 F 1 A_SpawnItemEx("QBall_PremierFX1")
+PKB3 F 1 A_SpawnItemEx("QBall_PremierFX2")
+PKB3 F 1 A_SpawnItemEx("QBall_PremierFX3")
+PKB3 F 1 A_SpawnItemEx("QBall_PremierFX4")
+PKB3 G 1 A_SpawnItemEx("QBall_PremierFX1")
+PKB3 G 1 A_SpawnItemEx("QBall_PremierFX2")
+PKB3 G 1 A_SpawnItemEx("QBall_PremierFX3")
+PKB3 G 1 A_SpawnItemEx("QBall_PremierFX4")
+PKB3 H 1 A_SpawnItemEx("QBall_PremierFX1")
+PKB3 H 1 A_SpawnItemEx("QBall_PremierFX2")
+PKB3 H 1 A_SpawnItemEx("QBall_PremierFX3")
+PKB3 H 1 A_SpawnItemEx("QBall_PremierFX4")
+loop}}
+
+actor QBall_PremierFX1 : BasicClientSide
+{
+RenderStyle "translucent"
+Alpha 0.80
+Scale 2.0
+States
+{
+Spawn:
+PKB3 ZE 2 A_FadeOut
+wait
+}
+}
+actor QBall_PremierFX2 : QBall_PremierFX1{States{Spawn:PKB3 ZF 2 A_FadeOut wait}}
+actor QBall_PremierFX3 : QBall_PremierFX1{States{Spawn:PKB3 ZG 2 A_FadeOut wait}}
+actor QBall_PremierFX4 : QBall_PremierFX1{States{Spawn:PKB3 ZH 2 A_FadeOut wait}}
+
+actor RepeatBallFlag : Inventory
+{
+inventory.amount 1
+inventory.maxamount 15
+}
+
+actor QBall_Repeat : QBall_Poke{
+Obituary "%o was caught by %k's Repeat Ball."
+damage (95)
+States {
+Spawn2:
+PKB3 IJKL 4
+loop}}
+actor QBall_Repeat2 : QBall_Repeat{damage (105) speed 37}
+actor QBall_Repeat3 : QBall_Repeat{damage (115) speed 39}
+actor QBall_Repeat4 : QBall_Repeat{damage (125) speed 41}
+actor QBall_Repeat5 : QBall_Repeat{damage (140) speed 43}
+actor QBall_Repeat6 : QBall_Repeat{damage (160) speed 45}
+
+actor QBall_Timer : QBall_Poke{
+damage (50+(50-Args[1])*4)
+bouncefactor 0.95
+wallbouncefactor 0.95
+BounceCount 0
+Obituary "%o was caught by %k's Timer Ball."
+Args 15,51
+States {
+Spawn2:
+PKB3 MNOPMNOPMNOPMNOPMNOPMNOPMNOPMNOPMNOPMNOPMNOPMNOPMN 4 A_CountDownArg(1)//50
+goto SpawnL+2
+SpawnL:
+PKB3 MNOP 2
+loop
+}}
+
+actor QBall_Nest : QBall_Poke{
+Obituary "%o was caught by %k's Nest Ball."
+damage (65)
+speed 25
+States {
+Spawn2:
+PKB3 QRST 4
+loop}}
+
+actor QBall_Nest1 : QBall_Nest{damage (100) speed 35}
+actor QBall_Nest2 : QBall_Nest{damage (150) speed 45}
+actor QBall_Nest3 : QBall_Nest{damage (250) speed 55}
+actor QBall_Nest4 : QBall_Nest{damage (400) speed 65}
+
+actor QBall_Net : QBall_Poke{
+Obituary "%o was caught by %k's Net Ball."
+damage (85)
+damagetype "NetBall"
+States {
+Spawn2:
+PKB3 UVWX 4
+loop}}
+
+actor QBall_Dive : QBall_Poke{
+Obituary "%o was caught by %k's Dive Ball."
+damage (85)
+States {
+Spawn2:
+PKB4 ABCD 4
+loop}}
+
+actor QBall_DiveX : QBall_Dive{
++NOGRAVITY
+Speed 50
+Damage (170)
+States {
+Spawn:
+PKB4 ABCD 4
+loop}}
+
+actor QBall_Luxury : QBall_Poke{
+Obituary "%o was caught by %k's Luxury Ball."
+damage (120)
+damagetype "LuxuryBall"
+States {
+Spawn2:
+PKB4 EFGH 4
+loop
+Death:
+TNT1 A 0 A_SpawnItemEx("Refrigerate_Freeze",0,0,Height/2)
+goto DeathFX}}
+
+actor QBall_Heal : QBall_Poke{
+Obituary "%o was caught by %k's Heal Ball."
+damage (100)
+States {
+Spawn2:
+PKB4 IJKL 4
+loop
+Crash:
+TNT1 A 0
+TNT1 A 0 A_GiveToTarget("FriendBallItem",1)
+goto Death}}
+
+actor QBall_Quick : QBall_Poke{
+Obituary "%o was caught by %k's Quick Ball."
+Speed 80
+Damage (103)
+States {
+Spawn2:
+PKB4 MNOP 4 A_ScaleVelocity(0.92)
+loop}}
+
+actor QBall_Dusk : QBall_Poke{
+Obituary "%o was caught by %k's Dusk Ball."
++RIPPER
+Damage(75)
+States {
+Spawn2:
+PKB4 QRST 4
+loop}}
+
+actor QBall_Cherish : QBall_Poke{
++NOGRAVITY
+Obituary "%o was caught by %k's Cherish Ball."
+damage (165)
+Speed 10
+States {
+Spawn:
+PKB4 UVWX 4
+loop}}
+
+actor QBall_Park : QBall_Poke{
+Obituary "%o was caught by %k's Park Ball."
+Damage (110)
+States {
+Spawn2:
+PKB5 ABCD 4
+loop}}
+
+actor QBall_Dream : QBall_Poke{
+Obituary "%o was caught by %k's Dream Ball."
+Damage (90)
+bouncefactor 0.75
+wallbouncefactor 0.75
+Gravity 0.5
+bouncecount 4
+States {
+Spawn2:
+PKB5 EFGH 4
+loop
+Death:
+TNT1 A 0 A_SpawnItemEx("QBall_DreamBomb",0,0,Height/2)
+stop}}
+actor QBall_DreamBomb : BasicExplosion
+{
+Translation "192:192=4:4","198:198=38:38"
+damagetype "Pokeball"
+Obituary "%o was caught by %k's Dream Ball."
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("weapon/napalm",1)
+TNT1 A 0 A_SpawnItemEx("BasicBoom4FX_ColorX",0,0,0,0,0,0,0,1)
+TNT1 A 1 A_Explode(120,138,0,0,16)
+stop
+}
+}
+
+actor QBall_Dark : QBall_Master{
+Obituary "%o was destroyed by %k's Dark Ball."
++NOGRAVITY
+-HEXENBOUNCE
+bouncecount 1
+damage (1000)
+Speed 60
+Scale 3.5
+States {
+Spawn:
+PKB5 I 0
+PKB5 I 0 A_ScaleVelocity(0.1)
+SpawnL:
+PKB5 IIIIJJJJKKKKLLLL 1 A_SeekerMissile(10,30,SMF_LOOK,128,5)
+PKB5 I 0 A_CountDown
+loop
+Death:
+TNT1 A 0 A_SpawnItemEx("QBall_DarkBomb",0,0,Height/2)
+stop}}
+actor QBall_DarkBomb : BasicExplosion
+{
+Translation "192:192=0:0","198:198=249:249"
+damagetype "Pokeball"
+Obituary "%o was destroyed by %k's Dark Ball."
+Scale 3.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("Pokemon/Explosion",1)
+X_8B AABBCCDDEEFF 2 A_Explode(100,238,0)
+stop
+}
+}
+
+
+actor QBall_Beast : QBall_Poke{
+Obituary "%o was caught by %k's Beast Ball."
+Damage (100)
+States {
+Spawn2:
+PKB5 MNOP 4
+loop}}
+
+actor QBall_Strange : QBall_Poke{
+Obituary "%o was caught by %k's Strange Ball."
+Damage (200+random(0,40)*5)
+States {
+Spawn2:
+PKB5 QRST 4
+loop}}
+
+
+actor QBall_PokeArceus : QBall_Poke{
+Obituary "%o was caught by %k's Hisui Poke Ball."
+-BOUNCEONWALLS
+-BOUNCEONFLOORS
+-BOUNCEONCEILINGS
+damage (150)
+States {
+Spawn2:
+PKB6 ABCD 4
+loop}}
+
+actor QBall_GreatArceus : QBall_PokeArceus{
+Obituary "%o was caught by %k's Hisui Great Ball."
+damage (190)
+speed 39
+States {
+Spawn2:
+PKB6 EFGH 4
+loop}}
+
+actor QBall_UltraArceus : QBall_PokeArceus{
+Obituary "%o was caught by %k's Hisui Ultra Ball."
+damage (260)
+speed 45
+States {
+Spawn2:
+PKB6 IJKL 4
+loop}}
+
+
+actor QBall_HeavyArceus : QBall_Poke{
+Obituary "%o was caught by %k's Hisui Heavy Ball."
++USEBOUNCESTATE
+Gravity 1.25
+damage (94)
+speed 30
+Args 24
+States {
+Spawn2:
+PKB6 MNOP 4
+loop
+Bounce.Floor:
+TNT1 A 0 A_SpawnItemEx("QBall_HeavyWave_H")
+BallSlam:
+TNT1 A 0 A_StopSound(2)
+goto DeathFX0}}
+
+actor QBall_Leaden : QBall_HeavyArceus{
+Obituary "%o was caught by %k's Leaden Ball."
+damage (150)
+States {
+Spawn2:
+PKB6 QRST 4
+loop
+Bounce.Floor:
+TNT1 A 0 A_SpawnItemEx("QBall_LeadenWave_H")
+goto BallSlam}}
+
+actor QBall_Gigaton : QBall_HeavyArceus{
+Obituary "%o was caught by %k's Gigaton Ball."
+damage (206)
+States {
+Spawn2:
+PKB6 UVWX 4
+loop
+Bounce.Floor:
+TNT1 A 0 A_SpawnItemEx("QBall_GigatonWave_H")
+goto BallSlam}}
+
+actor QBall_HeavyWave_H : BasicHelper
+{
+Args 20
+States
+{
+Spawn:
+TNT1 A 0
+goto SpawnL
+SpawnL:
+TNT1 A 0 A_SpawnItemEx("QBall_ArceusWave1",0,0,0,25,0,0,Args[0]*18)
+TNT1 A 0 A_CountDownArg(0)
+loop
+Death:
+TNT1 A 0 Radius_Quake(1,5,0,7,0)
+TNT1 A 5 A_PlaySound("Pokemon/Bide",2,1.0,false,0.8)
+stop
+}
+}
+actor QBall_GigatonWave_H : QBall_HeavyWave_H
+{
+States
+{
+Spawn:
+TNT1 A 0
+goto SpawnL
+SpawnL:
+TNT1 A 0 A_SpawnItemEx("QBall_ArceusWave2",0,0,0,26,0,0,Args[0]*18)
+TNT1 A 0 A_CountDownArg(0)
+loop
+}
+}
+actor QBall_LeadenWave_H : QBall_HeavyWave_H
+{
+States
+{
+Spawn:
+TNT1 A 0
+goto SpawnL
+SpawnL:
+TNT1 A 0 A_SpawnItemEx("QBall_ArceusWave3",0,0,0,27,0,0,Args[0]*18)
+TNT1 A 0 A_CountDownArg(0)
+loop
+}
+}
+
+Actor QBall_ArceusWave1 : BasicProjectile
+{
+Translation "192:192=5:5"
+Damagetype "Pokeball"
+Obituary "%o was caught by %k's Hisui Heavy Ball."
++FORCEXYBILLBOARD
++FLOORHUGGER
++NODROPOFF
+MaxDropOffHeight 64
+Damage (30)
+Radius 16
+Height 16
+Speed 30
+Scale 2.0
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1
+X_0E T 6
+TNT1 A 1 A_SpawnItemEx("QBall_ArceusWaveFX",-1*sqrt(momx*momx+momy*momy),0,0,momx,momy,momz,0,1+8)
+stop
+}
+}
+Actor QBall_ArceusWave2 : QBall_ArceusWave1{Damage (40) Obituary "%o was caught by %k's Leaden Ball."}
+Actor QBall_ArceusWave3 : QBall_ArceusWave1{Damage (50) Obituary "%o was caught by %k's Gigaton Ball."}
+
+actor QBall_ArceusWaveFX : BasicClientSide
+{
++FORCEXYBILLBOARD
+Scale 2.0
+States
+{
+Spawn:
+X_0E T 0
+X_0E T 0 A_SetScale(ScaleX,ScaleY-0.25)
+X_0E T 0 A_ScaleVelocity(0.7)
+X_0E T 1 A_FadeOut(0.2)
+loop
+}
+}
+
+
+actor QBall_Feather : QBall_PokeArceus{
+Obituary "%o was caught by %k's Feather Ball."
+Gravity 0.75
+damage (88)
+speed 52
+States {
+Spawn2:
+PKB7 ABCD 4
+loop}}
+
+actor QBall_Wing : QBall_Feather{
+Obituary "%o was caught by %k's Wing Ball."
+damage (110)
+speed 55
+States {
+Spawn2:
+PKB7 EFGH 4
+loop}}
+
+actor QBall_Jet : QBall_Feather{
+Obituary "%o was caught by %k's Jet Ball."
+damage (132)
+speed 58
+States {
+Spawn2:
+PKB7 IJKL 4
+loop}}
+
+actor QBall_Origin : QBall_Master
+{
+Obituary "%o was caught by %k's Origin Ball."
++SEEKERMISSILE
+reactiontime 66
+damage (310)
+States
+{
+Spawn:
+PKB7 MMMMNNNNOOOOPPPP 1 A_SeekerMissile(8,8,SMF_LOOK,64,4)
+PKB7 P 0 A_CountDown
+loop
+Death:
+goto DeathFX
+}
+}
+
+
+
+actor QwantRandomBallItem : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_Jump(4,"Master")
+TNT1 A 0 A_Jump(8,"Strange")
+TNT1 A 0 A_Jump(20,"Net","Luxury","Heal","Quick","Beast")
+TNT1 A 0 A_Jump(42,"Ultra","Repeat","Fast","Timer","Cherish")
+TNT1 A 0 A_Jump(78,"Lure","Moon","Heavy","Nest","Dusk","Dream")
+TNT1 A 0 A_Jump(118,"Great","Level","Premier","Dive","Feather","HeavyArceus")
+TNT1 A 0 A_Jump(188,"Safari","Friend","Love","Sport","Park")
+TNT1 A 0 A_Jump(250,"Poke")
+TNT1 A 0 A_Jump(256,"Dark")
+Poke:
+TNT1 A 0 A_Jump(26,"PokeArceus")
+TNT1 A 0 A_FireCustomMissile("QBall_Poke",0,0)
+stop
+Great:
+TNT1 A 0 A_Jump(26,"GreatArceus")
+TNT1 A 0 A_FireCustomMissile("QBall_Great",0,0)
+stop
+Ultra:
+TNT1 A 0 A_Jump(26,"UltraArceus")
+TNT1 A 0 A_FireCustomMissile("QBall_Ultra",0,0)
+stop
+Master:
+TNT1 A 0 A_Jump(26,"Origin")
+TNT1 A 0 A_FireCustomMissile("QBall_Master",0,0)
+stop
+Safari:
+TNT1 A 0 A_FireCustomMissile("QBall_Safari",0,0)
+stop
+Level:
+TNT1 A 0 A_JumpIfHealthLower(2,8)
+TNT1 A 0 A_JumpIfHealthLower(CallACS("uh_Health", UHEALTH_GET_MAX) * 0.25,6)
+TNT1 A 0 A_JumpIfHealthLower(CallACS("uh_Health", UHEALTH_GET_MAX) * 0.50,4)
+TNT1 A 0 A_JumpIfHealthLower(CallACS("uh_Health", UHEALTH_GET_MAX) * 0.75,2)
+TNT1 A 0 A_FireCustomMissile("QBall_Level4",0,0)
+stop
+TNT1 A 0 A_FireCustomMissile("QBall_Level3",0,0)
+stop
+TNT1 A 0 A_FireCustomMissile("QBall_Level2",0,0)
+stop
+TNT1 A 0 A_FireCustomMissile("QBall_Level1",0,0)
+stop
+TNT1 A 0 A_FireCustomMissile("QBall_Level",0,0)
+stop
+Lure:
+TNT1 A 0 A_FireCustomMissile("QBall_Lure",0,0)
+stop
+Moon:
+TNT1 A 0 A_FireCustomMissile("QBall_Moon",0,0)
+stop
+Friend:
+TNT1 A 0 A_FireCustomMissile("QBall_Friend",0,0)
+stop
+Love:
+TNT1 A 0 A_FireCustomMissile("QBall_Love",0,0)
+stop
+Heavy:
+TNT1 A 0 A_FireCustomMissile("QBall_Heavy",0,0)
+stop
+Fast:
+TNT1 A 0 A_FireCustomMissile("QBall_Fast",0,0)
+stop
+Sport:
+TNT1 A 0 A_FireCustomMissile("QBall_Sport",0,0)
+stop
+Premier:
+TNT1 A 0 A_FireCustomMissile("QBall_Premier",0,0)
+stop
+Repeat:
+TNT1 A 0 A_JumpIfInventory("RepeatBallFlag",15,"Repeat6")
+TNT1 A 0 A_GiveInventory("RepeatBallFlag",1)
+TNT1 A 0 A_JumpIfInventory("RepeatBallFlag",12,"Repeat5")
+TNT1 A 0 A_JumpIfInventory("RepeatBallFlag",9,"Repeat4")
+TNT1 A 0 A_JumpIfInventory("RepeatBallFlag",6,"Repeat3")
+TNT1 A 0 A_JumpIfInventory("RepeatBallFlag",3,"Repeat2")
+TNT1 A 0 A_FireCustomMissile("QBall_Repeat",0,0)
+stop
+Repeat2:
+TNT1 A 0 A_FireCustomMissile("QBall_Repeat2",0,0)
+stop
+Repeat3:
+TNT1 A 0 A_FireCustomMissile("QBall_Repeat3",0,0)
+stop
+Repeat4:
+TNT1 A 0 A_FireCustomMissile("QBall_Repeat4",0,0)
+stop
+Repeat5:
+TNT1 A 0 A_FireCustomMissile("QBall_Repeat5",0,0)
+stop
+Repeat6:
+TNT1 A 0 A_FireCustomMissile("QBall_Repeat6",0,0)
+stop
+Timer:
+TNT1 A 0 A_FireCustomMissile("QBall_Timer",0,0)
+stop
+Nest:
+TNT1 A 0 A_JumpIfHealthLower(2,8)
+TNT1 A 0 A_JumpIfHealthLower(CallACS("uh_Health", UHEALTH_GET_MAX) * 0.25,6)
+TNT1 A 0 A_JumpIfHealthLower(CallACS("uh_Health", UHEALTH_GET_MAX) * 0.50,4)
+TNT1 A 0 A_JumpIfHealthLower(CallACS("uh_Health", UHEALTH_GET_MAX) * 0.75,2)
+TNT1 A 0 A_FireCustomMissile("QBall_Nest",0,0)
+stop
+TNT1 A 0 A_FireCustomMissile("QBall_Nest1",0,0)
+stop
+TNT1 A 0 A_FireCustomMissile("QBall_Nest2",0,0)
+stop
+TNT1 A 0 A_FireCustomMissile("QBall_Nest3",0,0)
+stop
+TNT1 A 0 A_FireCustomMissile("QBall_Nest4",0,0)
+stop
+Net:
+TNT1 A 0 A_FireCustomMissile("QBall_Net",0,0)
+stop
+Dive:
+TNT1 A 0 A_JumpIfInventory("HasFeetInWater",1,2)
+TNT1 A 0 A_FireCustomMissile("QBall_Dive",0,0)
+stop
+TNT1 A 0 A_FireCustomMissile("QBall_DiveX",0,0)
+stop
+Luxury:
+TNT1 A 0 A_FireCustomMissile("QBall_Luxury",0,0)
+stop
+Heal:
+TNT1 A 0 A_FireCustomMissile("QBall_Heal",0,0)
+stop
+Quick:
+TNT1 A 0 A_FireCustomMissile("QBall_Quick",0,0)
+stop
+Dusk:
+TNT1 A 0 A_FireCustomMissile("QBall_Dusk",0,0)
+stop
+Cherish:
+TNT1 A 0 A_FireCustomMissile("QBall_Cherish",0,0)
+stop
+Park:
+TNT1 A 0 A_FireCustomMissile("QBall_Park",0,0)
+stop
+Dream:
+TNT1 A 0 A_FireCustomMissile("QBall_Dream",0,0)
+stop
+Dark:
+TNT1 A 0 A_PlaySound("Pokemon/Detect",1)
+TNT1 A 0 A_FireCustomMissile("QBall_Dark",0,0)
+stop
+Beast:
+TNT1 A 0 A_FireCustomMissile("QBall_Beast",0,0)
+stop
+Strange:
+TNT1 A 0 A_FireCustomMissile("QBall_Strange",0,0)
+stop
+
+PokeArceus:
+TNT1 A 0 A_FireCustomMissile("QBall_PokeArceus",0,0)
+stop
+GreatArceus:
+TNT1 A 0 A_FireCustomMissile("QBall_GreatArceus",0,0)
+stop
+UltraArceus:
+TNT1 A 0 A_FireCustomMissile("QBall_UltraArceus",0,0)
+stop
+HeavyArceus:
+TNT1 A 0 A_Jump(52,4)
+TNT1 A 0 A_Jump(128,2)
+TNT1 A 0 A_FireCustomMissile("QBall_HeavyArceus",0,0)
+stop
+Leaden:
+TNT1 A 0 A_FireCustomMissile("QBall_Leaden",0,0)
+stop
+Gigaton:
+TNT1 A 0 A_FireCustomMissile("QBall_Gigaton",0,0)
+stop
+Feather:
+TNT1 A 0 A_Jump(52,4)
+TNT1 A 0 A_Jump(128,2)
+TNT1 A 0 A_FireCustomMissile("QBall_Feather",0,0)
+stop
+Wing:
+TNT1 A 0 A_FireCustomMissile("QBall_Wing",0,0)
+stop
+Jet:
+TNT1 A 0 A_FireCustomMissile("QBall_Jet",0,0)
+stop
+Origin:
+TNT1 A 0 A_FireCustomMissile("QBall_Origin",0,0)
+stop
+}
+}
+
+
+actor Qwant_SuperFire_P : QwantRandomBallItem
+{
+States
+{
+Pickup:
+TNT1 A 0 A_GiveInventory("QwantBallFlag",1)
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",1,1)
+goto Poke+1
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",2,1)
+goto Great+1
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",3,1)
+goto Ultra+1
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",4,1)
+goto Master+1
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",5,1)
+goto Safari
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",6,1)
+goto Level
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",7,1)
+goto Lure
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",8,1)
+goto Moon
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",9,1)
+goto Friend
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",10,1)
+goto Love
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",11,1)
+goto Heavy
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",12,1)
+goto Fast
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",13,1)
+goto Sport
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",14,1)
+goto Premier
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",15,1)
+goto Repeat
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",16,1)
+goto Timer
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",17,1)
+goto Nest
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",18,1)
+goto Net
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",19,1)
+goto Dive
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",20,1)
+goto Luxury
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",21,1)
+goto Heal
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",22,1)
+goto Quick
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",23,1)
+goto Dusk
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",24,1)
+goto Cherish
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",25,1)
+goto Park
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",26,1)
+goto Dream
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",27,1)
+goto Dark
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",28,1)
+goto Beast
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",29,1)
+goto Strange
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",30,1)
+goto PokeArceus
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",31,1)
+goto GreatArceus
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",32,1)
+goto UltraArceus
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",33,1)
+goto HeavyArceus+2
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",34,1)
+goto Leaden
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",35,1)
+goto Gigaton
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",36,1)
+goto Feather+2
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",37,1)
+goto Wing
+TNT1 A 0 A_JumpIfInventory("QwantBallFlag",38,1)
+goto Jet
+TNT1 A 0 A_TakeInventory("QwantBallFlag")//A_JumpIfInventory("QwantBallFlag",39,1)
+goto Origin
+}
+}
+
+
+actor Qwant_TestFireAll_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_FireCustomMissile("QBall_Poke",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Great",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Ultra",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Master",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Safari",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Level4",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Level3",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Level2",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Level1",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Level",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Lure",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Moon",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Friend",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Love",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Heavy",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Fast",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Sport",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Premier",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Repeat",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Repeat2",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Repeat3",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Repeat4",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Repeat5",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Repeat6",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Timer",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Nest",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Nest1",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Nest2",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Nest3",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Nest4",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Net",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Dive",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_DiveX",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Luxury",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Heal",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Quick",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Dusk",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Cherish",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Park",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Dream",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Dark",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Beast",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Strange",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_PokeArceus",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_GreatArceus",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_UltraArceus",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_HeavyArceus",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Leaden",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Gigaton",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Feather",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Wing",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Jet",0,0)
+TNT1 A 0 A_FireCustomMissile("QBall_Origin",0,0)
+stop
+}
+}
