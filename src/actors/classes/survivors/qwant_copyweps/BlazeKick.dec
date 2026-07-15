@@ -1,0 +1,103 @@
+actor BlazeKickWep : BaseQwantWep
+{
+Obituary "%o was destroyed by %k's \ciBlaze kick\c-."
+Tag "Blaze Kick"
+weapon.ammotype "FireTypeAmmo"
+inventory.icon "PKMNI_Fi"
+States
+{
+Spawn:
+6N01 B 1
+loop
+
+Deselect:
+6H1B G 0
+goto DeselectSwap
+Select:
+6H1B G 0
+goto SelectSwap
+
+Ready:
+6H1B G 0 ACS_NamedExecuteWithResult("core_weaponcolor", Q_FIRE_DYE, CLRF_QWANTMENU)
+goto ReadyX
+ReadyX:
+6H1B G 0 A_JumpIfInventory("FireTypeAmmo",4,"ReadyX2")
+6H1B G 8 A_WeaponReady(WRF_NOPRIMARY)
+6H1B G 0 A_GiveInventory("FireTypeAmmo",1)
+6H1B G 0 A_GiveInventory("MoveRelearnAmmo",1)
+loop
+ReadyX2:
+6H1B G 8 A_WeaponReady
+6H1B G 0 A_GiveInventory("FireTypeAmmo",1)
+6H1B G 0 A_GiveInventory("MoveRelearnAmmo",1)
+loop
+
+Fire:
+6H1B G 0 A_TakeInventory("FireTypeAmmo",2,1)
+6H1B G 0 A_TakeInventory("FireTypeAmmo",2)
+6H1B G 0 A_PlaySound("weapon/atomicfire",1)
+6H1B G 2 A_ChangeVelocity(45,0,momz,3)
+6H1B W 3
+6H1B XXXXXXXX 2 A_FireCustomMissile("Q_BlazeKick",0,0,0,0)
+6H1B X 0 A_GiveInventory("MoveRelearnAmmo",2)
+6H1B W 3
+6H1B G 10 A_GiveInventory("MoveRelearnAmmo",1)
+Goto ReadyX
+}
+}
+
+actor Q_BlazeKick : BasicProjectile
+{
+Translation "192:192=220:220","198:198=176:176"
+//Translation "192:192=4:4","198:198=176:176"
+damagetype "BlazeKick"
+Obituary "%o was destroyed by %k's \ciBlaze Kick\c-."
++BRIGHT
+damage (90)
+Radius 14
+Height 25
+Speed 40
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 2
+Death:
+TNT1 A 0 A_Explode(90,96,0)
+TNT1 AAAAAAAA 0 A_SpawnItemEx("Q_BlazeKick_FX",random(24,32),random(-4,4),random(-3,3),random(-2,-4),random(-4,4),random(-4,4),0,1)
+TNT1 A 0 A_SpawnItemEx("UH_OilPitIgnite",0,0,8)
+TNT1 A 1
+stop
+}
+}
+
+Actor Q_BlazeKick_FX : BasicClientside
+{
++BRIGHT
+Renderstyle "Translucent"
+Alpha 0.8
+Scale 1.5
+Reactiontime 5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_Jump(256,"R","S","T")
+goto R
+R:
+X_9G R 2 A_Countdown
+goto S
+S:
+X_9G S 2 A_Countdown
+goto T
+T:
+X_9G T 2 A_Countdown
+goto R
+Death:
+X_9G UUVV 2 A_Fadeout(0.15)
+stop
+}
+}
+
+//On the off-chance it is needed
+Actor BlazeKickProtect : PowerProtection{powerup.duration 5 Damagefactor "BlazeKick", 0.5}
