@@ -28,17 +28,17 @@ There is no build tool. The mod is a ZIP file with `.pk3` extension: pack `src/`
 
 `DECORATE` → `UH_Root.dec` includes (in order):
 1. `ConstIntList_U.dec` — constants, button bitmasks, dye IDs
-2. `special/BasicActors_U.dec` — base explosions, FX, helpers
+2. `unepic/BasicActors_U.dec` — base explosions, FX, helpers
 3. `player/uh-flags.dec` — property powers (speed/alpha/jump), player flags
 4. `player/uh-flags2.dec` — death handling, crit/frozen/burning death FX
-5. `special/CoreActorReplace.dec` — replaces core teleport fog, MirrorBuster, etc.
-6. `special/GeneralThings_U.dec` — utility inventory, gravity/gameplay flags
-7. `special/General-inator.dec` — damage types, teleport artifacts
+5. `unepic/CoreActorReplace.dec` — replaces core teleport fog, MirrorBuster, etc.
+6. `unepic/GeneralThings_U.dec` — utility inventory, gravity/gameplay flags
+7. `unepic/General-inator.dec` — damage types, teleport artifacts
 8. `player/uh-Weakness.dec` — weakness system, base damage/protection powers
 9. `player/uh-BasePain.dec` — pain recoil, hitstun, knockback
 10. `player/uh-CorePain.dec` — special pain for GravityHold, WindStorm, etc.
 11. `UH_ClassIncludeList.dec` — all class and weapon includes
-12. `special/FixCoreActors.dec` — Rush/stopped/slowed power fixes
+12. `unepic/FixCoreActors.dec` — Rush/stopped/slowed power fixes
 
 Files earlier in the chain cannot reference actors defined later.
 
