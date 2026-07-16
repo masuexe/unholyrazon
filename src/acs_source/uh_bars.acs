@@ -146,12 +146,140 @@ str qwant_ballname[39] = {
 	"Jet Ball",
 	"Origin Ball",
 };
+
+// PKMN_BOX frame: 4px border each side. Gold/Silver text inset: 3px L/R.
+// boxWidth = stringWidth + PAD_L(3) + PAD_R(3) + BORDER_L(4) + BORDER_R(4)
+#define PKMNF7_TEXT_X_OFF 6
+#define PKMNF7_TEXT_Y_OFF 5
+#define PKMNF7_BOX_PAD 14
+#define PKMNF7_BOX_MIN 25
+#define PKMNF7_BOX_MAX 99
+
+int pkmnf7_width[128];
+int pkmnf7_width_ready = 0;
+
+function void InitPkmnf7WidthTable(void)
+{
+	if (pkmnf7_width_ready) {
+		return;
+	}
+	pkmnf7_width_ready = 1;
+	// Advances measured from PKMNFNT7 ("Poke Ball") + fitted to remaining ball names.
+	pkmnf7_width[32] = 4; // space
+	pkmnf7_width[66] = 8; // B
+	pkmnf7_width[67] = 8; // C
+	pkmnf7_width[68] = 8; // D
+	pkmnf7_width[70] = 8; // F
+	pkmnf7_width[71] = 9; // G
+	pkmnf7_width[72] = 7; // H
+	pkmnf7_width[74] = 8; // J
+	pkmnf7_width[76] = 8; // L
+	pkmnf7_width[77] = 9; // M
+	pkmnf7_width[78] = 8; // N
+	pkmnf7_width[79] = 8; // O
+	pkmnf7_width[80] = 8; // P
+	pkmnf7_width[81] = 7; // Q
+	pkmnf7_width[82] = 10; // R
+	pkmnf7_width[83] = 10; // S
+	pkmnf7_width[84] = 7; // T
+	pkmnf7_width[85] = 9; // U
+	pkmnf7_width[87] = 8; // W
+	pkmnf7_width[97] = 7; // a
+	pkmnf7_width[99] = 7; // c
+	pkmnf7_width[100] = 8; // d
+	pkmnf7_width[101] = 7; // e
+	pkmnf7_width[102] = 4; // f
+	pkmnf7_width[103] = 7; // g
+	pkmnf7_width[104] = 6; // h
+	pkmnf7_width[105] = 3; // i
+	pkmnf7_width[107] = 7; // k
+	pkmnf7_width[108] = 2; // l
+	pkmnf7_width[109] = 8; // m
+	pkmnf7_width[110] = 4; // n
+	pkmnf7_width[111] = 7; // o
+	pkmnf7_width[112] = 5; // p
+	pkmnf7_width[114] = 6; // r
+	pkmnf7_width[115] = 7; // s
+	pkmnf7_width[116] = 5; // t
+	pkmnf7_width[117] = 5; // u
+	pkmnf7_width[118] = 5; // v
+	pkmnf7_width[120] = 7; // x
+	pkmnf7_width[121] = 7; // y
+}
+
+function int FontCharWidth(int ch)
+{
+	int w = 0;
+	if (ch >= 0 && ch < 128) {
+		w = pkmnf7_width[ch];
+	}
+	if (w <= 0) {
+		w = 6;
+	}
+	return w;
+}
+
+function int FontStringWidth(str text)
+{
+	int total = 0;
+	int n = StrLen(text);
+	int i = 0;
+	for (; i < n; i++) {
+		total += FontCharWidth(GetChar(text, i));
+	}
+	return total;
+}
+
+function int TextBoxWidth(str text)
+{
+	int w = FontStringWidth(text) + PKMNF7_BOX_PAD;
+	if (w < PKMNF7_BOX_MIN) {
+		w = PKMNF7_BOX_MIN;
+	}
+	if (w > PKMNF7_BOX_MAX) {
+		w = PKMNF7_BOX_MAX;
+	}
+	return w;
+}
+
+function str PkmovName(int width)
+{
+	return StrParam(s:"PKMOV_", i:width);
+}
+
+// Draws PKMOV box + text with Gold/Silver 3px left/right inset inside the frame.
+function void DrawTextInPkmovBox(str text, str fontName, str colorName,
+	int boxId, int boxId2, int textId, int textId2,
+	int boxX1, int boxY1, int boxX2, int boxY2)
+{
+	// *1.0 keeps HudMessage alignment bits (.1 left) when adding pixel offsets.
+	str box = PkmovName(TextBoxWidth(text));
+	AdjustedImageDisplay(box, box, boxId, boxId2, boxX1, boxY1, boxX2, boxY2);
+	AdjustedDrawString(fontName, colorName, text, textId, textId2,
+		boxX1 + PKMNF7_TEXT_X_OFF * 1.0, boxY1 + PKMNF7_TEXT_Y_OFF * 1.0,
+		boxX2 + PKMNF7_TEXT_X_OFF * 1.0, boxY2 + PKMNF7_TEXT_Y_OFF * 1.0);
+}
+
 script "DrawBar_Qwant_W" (void) {
+	int ball = CheckInventory("QwantBallFlag");
 	DrawCustomBar(CUST_QWANT, CheckInventory("MyDestinyAmmo"), 28);
 	SetInventory("SBARAmmoOffset", 1);
     DrawNormalAmmo();
 	DrawBar2Color(138, 130);
+	SetHudSize(320, 200, 0);
+	InitPkmnf7WidthTable();
+	if (ball < 0) {
+		ball = 0;
+	}
+	if (ball > 38) {
+		ball = 38;
+	}
+	DrawTextInPkmovBox(qwant_ballname[ball], "PKMNFNT7", "Crayon4",
+		UH_IMAGE_ID_BASE - 4, UH_IMAGE_ID_BASE - 5,
+		UH_IMAGE_ID_BASE - 6, UH_IMAGE_ID_BASE - 7,
+		0.1, 80.1, 28.1, 162.1);
 }
+
 script "DrawBar_QwantS_W" (void) {
 	DrawBarColor(229, 41);
 }
