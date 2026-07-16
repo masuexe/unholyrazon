@@ -41,6 +41,179 @@
 #define CUST_MLGEYE 250
 #define CUST_TANKEYE 249
 
+// --- Qwant move bars (override core_DrawBar_Run for wep_QwantBar) ---
+#define BARSTYLE_NONE       0
+#define BARSTYLE_SCRIPT     1<<0
+#define BARSTYLE_MUGSHOT    1<<1
+#define BARSTYLE_NORMALBAR  1<<2
+#define BARSTYLE_SECONDBAR  1<<3
+#define BARSTYLE_NORMALAMMO 1<<4
+#define BARSTYLE_SECONDAMMO 1<<5
+#define BARSTYLE_QWANT      1<<6
+
+#define QWANT_TYPE_NORMAL    0
+#define QWANT_TYPE_FIRE      1
+#define QWANT_TYPE_WATER     2
+#define QWANT_TYPE_ELECTRIC  3
+#define QWANT_TYPE_GRASS     4
+#define QWANT_TYPE_ICE       5
+#define QWANT_TYPE_FIGHTING  6
+#define QWANT_TYPE_POISON    7
+#define QWANT_TYPE_GROUND    8
+#define QWANT_TYPE_FLYING    9
+#define QWANT_TYPE_PSYCHIC   10
+#define QWANT_TYPE_BUG       11
+#define QWANT_TYPE_ROCK      12
+#define QWANT_TYPE_GHOST     13
+#define QWANT_TYPE_DRAGON    14
+#define QWANT_TYPE_DARK      15
+#define QWANT_TYPE_STEEL     16
+#define QWANT_TYPE_FAIRY     17
+#define QWANT_TYPE_COUNT     18
+
+#define QWANT_MOVE_BAR2_CYAN 138
+#define QWANT_MOVE_BAR2_BLUE 130
+
+str uh_oldWep;
+int uh_barStyle = BARSTYLE_NONE;
+int uh_mugcyan, uh_mugblue;
+int uh_bar1cyan, uh_bar1blue;
+int uh_bar2cyan, uh_bar2blue;
+int uh_qwantType;
+
+str qwant_type_ammo[18] = {
+	"NormalTypeAmmo",
+	"FireTypeAmmo",
+	"WaterTypeAmmo",
+	"ElectricTypeAmmo",
+	"GrassTypeAmmo",
+	"IceTypeAmmo",
+	"FightingTypeAmmo",
+	"PoisonTypeAmmo",
+	"GroundTypeAmmo",
+	"FlyingTypeAmmo",
+	"PsychicTypeAmmo",
+	"BugTypeAmmo",
+	"RockTypeAmmo",
+	"GhostTypeAmmo",
+	"DragonTypeAmmo",
+	"DarkTypeAmmo",
+	"SteelTypeAmmo",
+	"FairyTypeAmmo",
+};
+
+function int uh_getActorArg(int t, int a)
+{
+	return ACS_NamedExecuteWithResult("core_GetActorArg", t, a);
+}
+
+function int QwantTypeCustSlot(int type)
+{
+	return CUST_QWANT_NORMAL + type;
+}
+
+function int QwantTypeAmmoMax(int type)
+{
+	if (type == QWANT_TYPE_PSYCHIC || type == QWANT_TYPE_DRAGON || type == QWANT_TYPE_FAIRY) {
+		return 56;
+	}
+	return 28;
+}
+
+function str BuildQwantTagKey(str wep)
+{
+	int len = StrLen(wep);
+	if (len >= 3 && !StrCmp(StrRight(wep, 3), "Wep")) {
+		wep = StrLeft(wep, len - 3);
+	}
+	return StrParam(s:"TAG_", s:wep);
+}
+
+// function int uh_getWepBarStyle(str wep)
+// {
+// 	int u = UniqueTID();
+// 	int ret = BARSTYLE_NONE;
+
+// 	if (SpawnForced(StrParam(s:wep, s:"_QwantBar"), 0, 0, 0, u, 0)) {
+// 		ret |= BARSTYLE_QWANT;
+// 		uh_qwantType = uh_getActorArg(u, 0);
+// 		Thing_Remove(u);
+// 	}
+
+// 	if (SpawnForced(StrParam(s:wep, s:"_ScriptBar"), 0, 0, 0, u, 0)) {
+// 		ret |= BARSTYLE_SCRIPT;
+// 		Thing_Remove(u);
+// 	}
+
+// 	if (SpawnForced(StrParam(s:wep, s:"_MugshotColor"), 0, 0, 0, u, 0)) {
+// 		ret |= BARSTYLE_MUGSHOT;
+// 		uh_mugcyan = uh_getActorArg(u, 0);
+// 		uh_mugblue = uh_getActorArg(u, 1);
+// 		Thing_Remove(u);
+// 	}
+
+// 	if (SpawnForced(StrParam(s:wep, s:"_NormalBar"), 0, 0, 0, u, 0)) {
+// 		ret |= BARSTYLE_NORMALBAR;
+// 		uh_bar1cyan = uh_getActorArg(u, 0);
+// 		uh_bar1blue = uh_getActorArg(u, 1);
+// 		Thing_Remove(u);
+// 	} else if (SpawnForced(StrParam(s:wep, s:"_NormalAmmo"), 0, 0, 0, u, 0)) {
+// 		ret |= BARSTYLE_NORMALAMMO;
+// 		Thing_Remove(u);
+// 	}
+
+// 	if (SpawnForced(StrParam(s:wep, s:"_SecondBar"), 0, 0, 0, u, 0)) {
+// 		ret |= BARSTYLE_SECONDBAR;
+// 		uh_bar2cyan = uh_getActorArg(u, 0);
+// 		uh_bar2blue = uh_getActorArg(u, 1);
+// 		Thing_Remove(u);
+// 	} else if (SpawnForced(StrParam(s:wep, s:"_SecondAmmo"), 0, 0, 0, u, 0)) {
+// 		ret |= BARSTYLE_SECONDAMMO;
+// 		Thing_Remove(u);
+// 	}
+
+// 	return ret;
+// }
+
+// function void uh_DrawBarRun(void)
+// {
+// 	str wep = GetWeapon();
+
+// 	if (uh_oldWep != wep) {
+// 		uh_oldWep = wep;
+// 		uh_barStyle = uh_getWepBarStyle(wep);
+// 	}
+
+// 	if (uh_barStyle & BARSTYLE_MUGSHOT) {
+// 		SetMugshotColor(uh_mugcyan, uh_mugblue);
+// 	}
+
+// 	if (uh_barStyle & BARSTYLE_NORMALBAR) {
+// 		DrawBarColor(uh_bar1cyan, uh_bar1blue);
+// 	} else if (uh_barStyle & BARSTYLE_NORMALAMMO) {
+// 		DrawNormalAmmo();
+// 	}
+
+// 	if (uh_barStyle & BARSTYLE_SECONDBAR) {
+// 		DrawBar2Color(uh_bar2cyan, uh_bar2blue);
+// 	} else if (uh_barStyle & BARSTYLE_SECONDAMMO) {
+// 		DrawSecondAmmo();
+// 	}
+
+// 	if (uh_barStyle & BARSTYLE_QWANT) {
+// 		ACS_NamedExecuteWithResult("DrawBar_QwantMove", uh_qwantType);
+// 	} else if (uh_barStyle & BARSTYLE_SCRIPT) {
+// 		ACS_NamedExecuteWithResult(StrParam(s:"DrawBar_", s:wep));
+// 	}
+// }
+
+// // Replaces barhndle's core_DrawBar_Run (mod loads after base).
+// Script "core_DrawBar_Run" (int cam) CLIENTSIDE
+// {
+// 	SetActivator(cam);
+// 	uh_DrawBarRun();
+// }
+
 Script "uh_assists_define" OPEN CLIENTSIDE
 {
 	DefineAssistDisplay("uh_assist_General");
@@ -302,6 +475,32 @@ function void DrawTextInPkmovBox(str text, str fontName, str colorName,
 		boxX2 + PKMNF7_TEXT_X_OFF * 1.0, boxY2 + PKMNF7_TEXT_Y_OFF * 1.0);
 }
 
+script "DrawBar_QwantMove" (int type)
+{
+	if (type < 0) {
+		type = 0;
+	}
+	if (type >= QWANT_TYPE_COUNT) {
+		type = QWANT_TYPE_NORMAL;
+	}
+
+	str ammo = qwant_type_ammo[type];
+	int slot = QwantTypeCustSlot(type);
+	int max = QwantTypeAmmoMax(type);
+	str name = StrParam(l:BuildQwantTagKey(GetWeapon()));
+
+	DrawCustomBar(slot, CheckInventory(ammo), max);
+	SetInventory("SBARAmmoOffset", 1);
+	DrawNormalAmmo();
+	DrawBar2Color(QWANT_MOVE_BAR2_CYAN, QWANT_MOVE_BAR2_BLUE);
+	SetHudSize(320, 200, 0);
+	InitPkmnf7WidthTable();
+	DrawTextInPkmovBox(name, "PKMNFNT7", "Crayon4",
+		UH_IMAGE_ID_BASE - 4, UH_IMAGE_ID_BASE - 5,
+		UH_IMAGE_ID_BASE - 6, UH_IMAGE_ID_BASE - 7,
+		0.1, 80.1, 28.1, 162.1);
+}
+
 script "DrawBar_Qwant_W" (void) {
 	int ball = CheckInventory("QwantBallFlag");
 	DrawCustomBar(CUST_QWANT, CheckInventory("MyDestinyAmmo"), 28);
@@ -323,30 +522,6 @@ script "DrawBar_Qwant_W" (void) {
 }
 script "DrawBar_QwantS_W" (void) {
 	DrawBarColor(229, 41);
-}
-
-script "DrawBar_BlazeKickWep" (void) {
-	DrawCustomBar(CUST_QWANT_FIRE, CheckInventory("FireTypeAmmo"), 28);
-	SetInventory("SBARAmmoOffset", 1);
-    DrawNormalAmmo();
-	DrawBar2Color(138, 130);
-	SetHudSize(320, 200, 0);
-	DrawTextInPkmovBox("Blaze Kick", "PKMNFNT7", "Crayon4",
-		UH_IMAGE_ID_BASE - 4, UH_IMAGE_ID_BASE - 5,
-		UH_IMAGE_ID_BASE - 6, UH_IMAGE_ID_BASE - 7,
-		0.1, 80.1, 28.1, 162.1);
-}
-
-script "DrawBar_BulletSeedWep" (void) {
-	DrawCustomBar(CUST_QWANT_GRASS, CheckInventory("GrassTypeAmmo"), 28);
-	SetInventory("SBARAmmoOffset", 1);
-    DrawNormalAmmo();
-	DrawBar2Color(138, 130);
-	SetHudSize(320, 200, 0);
-	DrawTextInPkmovBox("Bullet Seed", "PKMNFNT7", "Crayon4",
-		UH_IMAGE_ID_BASE - 4, UH_IMAGE_ID_BASE - 5,
-		UH_IMAGE_ID_BASE - 6, UH_IMAGE_ID_BASE - 7,
-		0.1, 80.1, 28.1, 162.1);
 }
 
 script "DrawBar_BusterMistress_W" (void) {

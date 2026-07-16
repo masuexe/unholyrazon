@@ -1,0 +1,109 @@
+#library "barhndle"
+#include "zcommon.acs"
+
+#include "barlib.acs"
+
+Script "core_DrawBar_Run" (int cam) CLIENTSIDE {
+	SetActivator(cam);
+	DrawBarRun();
+}
+
+#define BARSTYLE_NONE       0
+#define BARSTYLE_SCRIPT     1<<0
+#define BARSTYLE_MUGSHOT    1<<1
+#define BARSTYLE_NORMALBAR  1<<2
+#define BARSTYLE_SECONDBAR  1<<3
+#define BARSTYLE_NORMALAMMO 1<<4
+#define BARSTYLE_SECONDAMMO 1<<5
+#define BARSTYLE_QWANT      1<<6  //$UH
+
+str oldWep;
+int barStyle = BARSTYLE_NONE;
+
+int mugcyan, mugblue;
+int bar1cyan, bar1blue;
+int bar2cyan, bar2blue;
+int qwanttype;  //$UH
+
+function void DrawBarRun(void) {
+	str wep = GetWeapon();
+
+	if(oldWep != wep) {
+		oldWep = wep;
+		barStyle = getWepBarStyle(wep);
+	}
+
+	if(barStyle & BARSTYLE_MUGSHOT)
+	{
+		SetMugshotColor(mugcyan, mugblue);
+	}
+
+	if(barStyle & BARSTYLE_NORMALBAR)
+	{
+		DrawBarColor(bar1cyan, bar1blue);
+	} else if (barStyle & BARSTYLE_NORMALAMMO) {
+		DrawNormalAmmo();
+	}
+
+	if(barStyle & BARSTYLE_SECONDBAR)
+	{
+		DrawBar2Color(bar2cyan, bar2blue);
+	} else if (barStyle & BARSTYLE_SECONDAMMO) {
+		DrawSecondAmmo();
+	}
+
+	//$UH
+	if (barStyle & BARSTYLE_QWANT) {
+		ACS_NamedExecuteWithResult("DrawBar_QwantMove", qwanttype);
+	} else if (barStyle & BARSTYLE_SCRIPT) {
+		ACS_NamedExecuteWithResult(StrParam(s:"DrawBar_", s:wep));
+	}
+}
+
+function int getWepBarStyle(str wep) {
+
+	int u = UniqueTID();
+	int ret = BARSTYLE_NONE;
+	//$UH
+	if (SpawnForced(StrParam(s:wep, s:"_QwantBar"), 0, 0, 0, u, 0)) {
+		ret |= BARSTYLE_QWANT;
+		qwanttype = getActorArg(u, 0);
+		Thing_Remove(u);
+	}
+
+	if(SpawnForced(StrParam(s:wep, s:"_ScriptBar"), 0, 0, 0, 0, 0)) {
+		ret |= BARSTYLE_SCRIPT;
+		Thing_Remove(u);
+	}
+
+	if(SpawnForced(StrParam(s:wep, s:"_MugshotColor"), 0, 0, 0, u, 0)) {
+		ret |= BARSTYLE_MUGSHOT;
+		mugcyan = getActorArg(u, 0);
+		mugblue = getActorArg(u, 1);
+		Thing_Remove(u);
+	}
+
+	if(SpawnForced(StrParam(s:wep, s:"_NormalBar"), 0, 0, 0, u, 0)) {
+		ret |= BARSTYLE_NORMALBAR;
+		bar1cyan = getActorArg(u, 0);
+		bar1blue = getActorArg(u, 1);
+		Thing_Remove(u);
+	} else if (SpawnForced(StrParam(s:wep, s:"_NormalAmmo"), 0, 0, 0, u, 0)) {
+		ret |= BARSTYLE_NORMALAMMO;
+		Thing_Remove(u);
+	}
+
+	if(SpawnForced(StrParam(s:wep, s:"_SecondBar"), 0, 0, 0, u, 0)) {
+		ret |= BARSTYLE_SECONDBAR;
+		bar2cyan = getActorArg(u, 0);
+		bar2blue = getActorArg(u, 1);
+		Thing_Remove(u);
+	} else if (SpawnForced(StrParam(s:wep, s:"_SecondAmmo"), 0, 0, 0, u, 0)) {
+		ret |= BARSTYLE_SECONDAMMO;
+		Thing_Remove(u);
+	}
+
+	return ret;
+}
+
+function int getActorArg(int t, int a) { return ACS_NamedExecuteWithResult("core_GetActorArg", t, a); }
