@@ -475,6 +475,39 @@ function void DrawTextInPkmovBox(str text, str fontName, str colorName,
 		boxX2 + PKMNF7_TEXT_X_OFF * 1.0, boxY2 + PKMNF7_TEXT_Y_OFF * 1.0);
 }
 
+str uh_qwant_fill_wep = "";
+str uh_qwant_fill_ammo = "";
+int uh_qwant_fill_max = 0;
+
+// Resolve fill ammo: type table by default; if QwantBar args[1] > 0, Tag is ammo classname.
+function void ResolveQwantFillAmmo(str wep, int type)
+{
+	if (uh_qwant_fill_wep == wep && StrLen(uh_qwant_fill_ammo) > 0) {
+		return;
+	}
+	uh_qwant_fill_wep = wep;
+	uh_qwant_fill_ammo = qwant_type_ammo[type];
+	uh_qwant_fill_max = QwantTypeAmmoMax(type);
+
+	int u = UniqueTID();
+	if (SpawnForced(StrParam(s:wep, s:"_QwantBar"), 0, 0, 0, u, 0)) {
+		int customMax = uh_getActorArg(u, 1);
+		if (customMax > 0) {
+			str tag = GetActorProperty(u, APROP_Nametag);
+			if (StrLen(tag) > 0 && GetChar(tag, 0) != 36) {
+				uh_qwant_fill_ammo = tag;
+				int cap = GetAmmoCapacity(tag);
+				if (cap > 0) {
+					uh_qwant_fill_max = cap;
+				} else {
+					uh_qwant_fill_max = customMax;
+				}
+			}
+		}
+		Thing_Remove(u);
+	}
+}
+
 script "DrawBar_QwantMove" (int type)
 {
 	if (type < 0) {
@@ -484,10 +517,12 @@ script "DrawBar_QwantMove" (int type)
 		type = QWANT_TYPE_NORMAL;
 	}
 
-	str ammo = qwant_type_ammo[type];
+	str wep = GetWeapon();
+	ResolveQwantFillAmmo(wep, type);
+	str ammo = uh_qwant_fill_ammo;
 	int slot = QwantTypeCustSlot(type);
-	int max = QwantTypeAmmoMax(type);
-	str name = StrParam(l:BuildQwantTagKey(GetWeapon()));
+	int max = uh_qwant_fill_max;
+	str name = StrParam(l:BuildQwantTagKey(wep));
 
 	DrawCustomBar(slot, CheckInventory(ammo), max);
 	SetInventory("SBARAmmoOffset", 1);
