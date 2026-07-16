@@ -1,0 +1,102 @@
+actor FlameBurstWep_QwantBar : QwantBar {args 1}
+
+actor FlameBurstWep : BaseQwantWep
+{
+Obituary "%o was blasted by %k's \cgFlame Burst\c-."
+Tag "$TAG_FLAMEBURST"
+weapon.ammotype "FireTypeAmmo"
+inventory.icon "PKMNI_Fi"
+States
+{
+Spawn:
+6N01 B 1
+loop
+
+Deselect:
+PSGU A 0
+goto DeselectSwap
+Select:
+PSGU A 0
+goto SelectSwap
+
+Ready:
+PSGU A 0 ACS_NamedExecuteWithResult("core_weaponcolor", Q_FIRE_DYE, CLRF_QWANTMENU)
+ReadyX:
+PSGU A 0 A_JumpIfInventory("FireTypeAmmo",2,"ReadyX2")
+PSGU A 8 A_WeaponReady(WRF_NOPRIMARY)
+PSGU A 0 A_GiveInventory("FireTypeAmmo",1)
+PSGU A 0 A_GiveInventory("MoveRelearnAmmo",1)
+loop
+ReadyX2:
+PSGU A 8 A_WeaponReady
+PSGU A 0 A_GiveInventory("FireTypeAmmo",1)
+PSGU A 0 A_GiveInventory("MoveRelearnAmmo",1)
+loop
+
+Fire:
+PSGU A 0 A_TakeInventory("FireTypeAmmo",1,1)
+PSGU A 0 A_TakeInventory("FireTypeAmmo",1)
+PSGU A 0 A_PlaySoundEx("Contra/C_FLAME","Weapon")
+PSGU B 3 A_FireCustomMissile("FlameBurst",0,0,8,0)
+PSGU CB 3
+PSGU A 0 A_GiveInventory("MoveRelearnAmmo",1)
+PSGU A 8
+PSGU A 0 A_GiveInventory("MoveRelearnAmmo",1)
+goto ReadyX
+}
+}
+
+actor FlameBurst : BasicProjectile
+{//Flame Shot from Super C
+Translation "192:192=52:52","198:198=225:225"
+damagetype "FlameBurst"
++FORCEXYBILLBOARD
++BRIGHT
++SKYEXPLODE
+Damage (110)
+radius 12
+height 12
+Speed 70
+scale 3.0
+States
+{
+Spawn:
+SCWP DE 1
+loop
+Death:
+TNT1 A 1 
+TNT1 A 0 A_SpawnItemEx("OilPitIgnite",0,0,8)
+TNT1 A 0 A_SpawnItemEx("FlameBurstSplit",0,0,0,10,0,10,45,1+32)
+TNT1 A 0 A_SpawnItemEx("FlameBurstSplit",0,0,0,10,0,10,-45,1+32)
+TNT1 A 0 A_SpawnItemEx("FlameBurstSplit",0,0,0,10,0,10,225,1+32)
+TNT1 A 0 A_SpawnItemEx("FlameBurstSplit",0,0,0,10,0,10,-225,1+32)
+TNT1 A 0 A_SpawnItemEx("FlameBurstSplit",0,0,0,10,0,-10,45,1+32)
+TNT1 A 0 A_SpawnItemEx("FlameBurstSplit",0,0,0,10,0,-10,-45,1+32)
+TNT1 A 0 A_SpawnItemEx("FlameBurstSplit",0,0,0,10,0,-10,225,1+32)
+TNT1 A 0 A_SpawnItemEx("FlameBurstSplit",0,0,0,10,0,-10,-225,1+32)
+stop
+}
+}
+
+actor FlameBurstSplit : BasicProjectile
+{
+damagetype "FlameBurst"
++FORCEXYBILLBOARD
++BRIGHT
++DONTBLAST
+Speed 10
+Damage (25)
+radius 8
+height 8
+scale 2.0
+States
+{
+Spawn:
+SCWP DEDEDEDEDE 1
+Stop
+Death:
+TNT1 A 0 A_SpawnItemEx("OilPitIgnite",0,0,8)
+TNT1 A 1
+stop
+}
+}
