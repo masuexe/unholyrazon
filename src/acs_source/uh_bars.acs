@@ -494,14 +494,15 @@ function void ResolveQwantFillAmmo(str wep, int type)
 		int customMax = uh_getActorArg(u, 1);
 		if (customMax > 0) {
 			str tag = GetActorProperty(u, APROP_Nametag);
+			// Only treat Tag as fill ammo when it is a real Ammo class (cap > 0).
+			// Unset Tag returns the actor classname via APROP_Nametag — must not use that.
+			int tagCap = 0;
 			if (StrLen(tag) > 0 && GetChar(tag, 0) != 36) {
+				tagCap = GetAmmoCapacity(tag);
+			}
+			if (tagCap > 0) {
 				uh_qwant_fill_ammo = tag;
-				int cap = GetAmmoCapacity(tag);
-				if (cap > 0) {
-					uh_qwant_fill_max = cap;
-				} else {
-					uh_qwant_fill_max = customMax;
-				}
+				uh_qwant_fill_max = tagCap;
 			}
 		}
 		Thing_Remove(u);
