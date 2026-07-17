@@ -14,6 +14,7 @@ Unholy Razon is a mod based on [Unholy](https://mm8bdm.net/forum/thread/unholy-c
 - [Unholy](https://mm8bdm.net/forum/thread/unholy-classes-bosses-v8a-in-progress-170): for the original mod
 - [Class Based Modification](https://mm8bdm.net/forum/thread/class-based-modification-v9gh-42): for core code references
 - [ACSUtils](https://acsutils.strangled.net/): for the ACS utility library
+- CBM Gondola Patch: for weapon offset providing references
 - Rebellion Unholy, Saxton Hale: for some ideas
 
 ## TID Notes for Modders
