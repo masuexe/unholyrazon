@@ -1,0 +1,135 @@
+actor NegaTimeStopperWep_ScriptBar : ScriptBar {}
+
+actor NegaTimeStopperWep : BaseNegaManWep {
+  Weapon.AmmoUse 28
+  Weapon.AmmoGive 28
+  Weapon.SlotNumber 3
+  Inventory.Pickupmessage "$PU_02_MM2"
+  Obituary "$OB_TIMESTOPPER"
+  Tag "$TAG_NegaMan_W2f"
+  weapon.ammotype "NegaMM2_Ammo"
+  inventory.icon "NEG_FLAS"
+  States {
+   Spawn:
+    6N02 C 6
+loop
+
+   Deselect:
+    6H02 G 0 A_GiveInventory("NegaMM2_Flag", 2)
+    goto DeselectSwap
+   Select:
+    6H02 G 0 A_TakeInventory("NegaMM2_Flag")
+    goto SelectSwap
+
+   Ready:
+    6H02 G 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_DYE2)
+   ReadyX:
+    6H02 G 0 A_JumpIfInventory("NegaMM2_Flag", 1, "Ready2")
+    6H02 G 0 A_JumpIfNoAmmo("NoAmmo")
+    6H02 G 8 A_WeaponReady
+    6H02 G 0 A_GiveInventory("NegaMM2_Ammo", 1)
+    Goto Ready+3
+   Ready2:
+    6H02 G 2 A_WeaponReady
+    6H02 G 0 A_JumpIfInventory("NegaMM2_Flag", 1, "Ready2")
+    Goto ReadyX
+   ReadyNoAmmo:
+    6H02 G 8 A_WeaponReady(4)
+    6H02 G 0 A_GiveInventory("NegaMM2_Ammo", 1)
+    6H02 G 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+    Goto Ready+2
+
+   Fire:
+    6H02 G 0 A_JumpIfInventory("NegaMM2_Flag", 1, "Fire2")
+    6H02 G 0 A_JumpIfNoAmmo("NoAmmo")
+    6H02 H 0 A_PlaySoundEx("wep_L/mm2/timestopperfire", "Weapon")
+    6H02 H 0 A_SpawnItemEx("NegaTimeStopMarker", 0, 0, 0, 0, 0, 0, 0, 1)
+    6H02 H 0 A_GiveInventory("NegaMM2_Flag", 1)
+    6H02 HI 3
+    6H02 G 3 A_JumpIfInventory("IsBot", 1, "BotFireH")
+    6H02 G 0 A_Refire("FireH")
+    Goto ReadyX
+   FireH:
+    6H02 G 1 A_RailWait
+    6H02 G 0 A_Refire("FireH")
+    Goto ReadyX
+   BotFireH:
+    6H02 G 1 A_Jump(8, "Fire2")
+    6H02 G 0 A_Refire("BotFireH")
+    Goto ReadyX
+
+   Fire2:
+    6H02 G 0
+    // 6H02 H 0 A_TakeInventory("UnSolid",1)
+    // 6H02 H 0 A_ChangeFlag("SOLID",0)
+    6H02 H 0 A_GiveInventory("Nudge",1)
+    6H02 H 0 A_GiveInventory("NegaMM2_Flag", 1)
+    6H02 H 0 A_SpawnItemEx("NegaTimeStopBoom", 0, 0, 28, 0, 0, 0, 0, 1)
+    6H02 H 0 Thing_Move(tid, tid+4400, 1)
+    // 6H02 H 0 A_SpawnItemEx("ResolidifyPlayer_H")
+    6H02 HIG 3
+    goto ReadyX
+
+
+   NoAmmo:
+    6H02 G 1 A_JumpIfInventory("IsBot", 1, "NoAmmo_B")
+    Goto ReadyNoAmmo
+   BotAmmo:
+    6H02 G 0 A_GiveInventory("NegaMM2_Ammo", 28)
+    Goto ReadyX
+  }
+}
+
+actor NegaMM2_Flag : Inventory {inventory.amount 1 inventory.maxamount 2}
+
+actor NegaTimeStopBoom : BasicExplosion {
+  damagetype "NegaTimeSlow"
+  Obituary "$OB_TIMESTOPPER"
+  Args 100, 256, 64
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_PlaySoundEx("wep_L/mm2/timestopperfire", "Weapon")
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("FlashmanSparkleSparkle", random(-256, 256), random(-256, 256), random(-256, 256), 0, 0, 0, 0, 129)
+    TNT1 A 4 A_Explode(Args[0]*(1+CallACS("uh_checkrune", RUNE_SPREAD, 2)*2), Args[1], 0, 0, Args[2])  // 155
+    stop
+  }
+}
+
+actor NegaTimeStopMarker : BasicExplosion {
+  damagetype "NegaTimeSlow"  // TimeStopper
+  Obituary "$OB_TIMESTOPPER"
+  RenderStyle "Translucent"
+  Alpha 0.5
+  Scale 2.5
+  States {
+   Spawn:
+    EMEG G 0
+    EMEG G 0 Thing_Remove(CallACS("core_getptrtid", AAPTR_TARGET)+4400)
+    EMEG G 1 Thing_ChangeTID(0, CallACS("core_getptrtid", AAPTR_TARGET)+4400)
+    goto Spawn2
+   Spawn2:
+    EMEG G 0 A_TakeFromTarget("NegaMM2_Ammo", 1)
+    EMEG G 0 A_SpawnItemEx("FlashmanSparkleSparkle", random(16, 48), 0, Random(16, 48), 0, 0, 0, random(0, 359), 1)
+    EMEG GGGG 1 A_JumpIfInTargetInventory("NegaMM2_Flag", 2, "Death")
+    EMEG G 0 A_SpawnItemEx("FlashmanSparkleSparkle", random(16, 48), 0, Random(16, 48), 0, 0, 0, random(0, 359), 1)
+    EMEG GGGG 1 A_JumpIfInTargetInventory("NegaMM2_Flag", 2, "Death")
+    EMEG G 0 A_SpawnItemEx("FlashmanSparkleSparkle", random(16, 48), 0, Random(16, 48), 0, 0, 0, random(0, 359), 1)
+    EMEG GGGG 1 A_JumpIfInTargetInventory("NegaMM2_Flag", 2, "Death")
+    EMEG G 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death")
+    EMEG G 0 A_SpawnItemEx("FlashmanSparkleSparkle", random(16, 48), 0, Random(16, 48), 0, 0, 0, random(0, 359), 1)
+    EMEG GGGG 1 A_JumpIfInTargetInventory("NegaMM2_Flag", 2, "Death")
+    EMEG G 0 A_SpawnItemEx("FlashmanSparkleSparkle", random(16, 48), 0, Random(16, 48), 0, 0, 0, random(0, 359), 1)
+    EMEG GGGG 1 A_JumpIfInTargetInventory("NegaMM2_Flag", 2, "Death")
+    EMEG G 0 A_SpawnItemEx("FlashmanSparkleSparkle", random(16, 48), 0, Random(16, 48), 0, 0, 0, random(0, 359), 1)
+    EMEG GGGG 1 A_JumpIfInTargetInventory("NegaMM2_Flag", 2, "Death")
+    EMEG G 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death")
+    EMEG G 0 A_JumpIfInTargetInventory("NegaMM2_Ammo", 1, "Spawn2")
+    goto Death
+   Death:
+    TNT1 A 0 A_SpawnItemEx("NegaTimeStopBoom", 0, 0, 28, 0, 0, 0, 0, 1)
+    TNT1 A 0 A_TakeFromTarget("NegaMM2_Flag")
+    TNT1 A 4 A_TakeFromTarget("NegaMM2_Ammo", 10)
+    stop
+  }
+}
