@@ -31,6 +31,8 @@
 	#define CUST_QWANT_STEEL 186
 	#define CUST_QWANT_FAIRY 187
 
+#define CUST_NEGAMAN 188
+
 #define CUST_BUSTERMISTRESS 164
 #define CUST_LUCKYLASS 165
 #define CUST_FROSTBITE 166
@@ -102,11 +104,6 @@ str qwant_type_ammo[18] = {
 	"FairyTypeAmmo",
 };
 
-function int uh_getActorArg(int t, int a)
-{
-	return ACS_NamedExecuteWithResult("core_GetActorArg", t, a);
-}
-
 function int QwantTypeCustSlot(int type)
 {
 	return CUST_QWANT_NORMAL + type;
@@ -128,91 +125,6 @@ function str BuildQwantTagKey(str wep)
 	}
 	return StrParam(s:"TAG_", s:wep);
 }
-
-// function int uh_getWepBarStyle(str wep)
-// {
-// 	int u = UniqueTID();
-// 	int ret = BARSTYLE_NONE;
-
-// 	if (SpawnForced(StrParam(s:wep, s:"_QwantBar"), 0, 0, 0, u, 0)) {
-// 		ret |= BARSTYLE_QWANT;
-// 		uh_qwantType = uh_getActorArg(u, 0);
-// 		Thing_Remove(u);
-// 	}
-
-// 	if (SpawnForced(StrParam(s:wep, s:"_ScriptBar"), 0, 0, 0, u, 0)) {
-// 		ret |= BARSTYLE_SCRIPT;
-// 		Thing_Remove(u);
-// 	}
-
-// 	if (SpawnForced(StrParam(s:wep, s:"_MugshotColor"), 0, 0, 0, u, 0)) {
-// 		ret |= BARSTYLE_MUGSHOT;
-// 		uh_mugcyan = uh_getActorArg(u, 0);
-// 		uh_mugblue = uh_getActorArg(u, 1);
-// 		Thing_Remove(u);
-// 	}
-
-// 	if (SpawnForced(StrParam(s:wep, s:"_NormalBar"), 0, 0, 0, u, 0)) {
-// 		ret |= BARSTYLE_NORMALBAR;
-// 		uh_bar1cyan = uh_getActorArg(u, 0);
-// 		uh_bar1blue = uh_getActorArg(u, 1);
-// 		Thing_Remove(u);
-// 	} else if (SpawnForced(StrParam(s:wep, s:"_NormalAmmo"), 0, 0, 0, u, 0)) {
-// 		ret |= BARSTYLE_NORMALAMMO;
-// 		Thing_Remove(u);
-// 	}
-
-// 	if (SpawnForced(StrParam(s:wep, s:"_SecondBar"), 0, 0, 0, u, 0)) {
-// 		ret |= BARSTYLE_SECONDBAR;
-// 		uh_bar2cyan = uh_getActorArg(u, 0);
-// 		uh_bar2blue = uh_getActorArg(u, 1);
-// 		Thing_Remove(u);
-// 	} else if (SpawnForced(StrParam(s:wep, s:"_SecondAmmo"), 0, 0, 0, u, 0)) {
-// 		ret |= BARSTYLE_SECONDAMMO;
-// 		Thing_Remove(u);
-// 	}
-
-// 	return ret;
-// }
-
-// function void uh_DrawBarRun(void)
-// {
-// 	str wep = GetWeapon();
-
-// 	if (uh_oldWep != wep) {
-// 		uh_oldWep = wep;
-// 		uh_barStyle = uh_getWepBarStyle(wep);
-// 	}
-
-// 	if (uh_barStyle & BARSTYLE_MUGSHOT) {
-// 		SetMugshotColor(uh_mugcyan, uh_mugblue);
-// 	}
-
-// 	if (uh_barStyle & BARSTYLE_NORMALBAR) {
-// 		DrawBarColor(uh_bar1cyan, uh_bar1blue);
-// 	} else if (uh_barStyle & BARSTYLE_NORMALAMMO) {
-// 		DrawNormalAmmo();
-// 	}
-
-// 	if (uh_barStyle & BARSTYLE_SECONDBAR) {
-// 		DrawBar2Color(uh_bar2cyan, uh_bar2blue);
-// 	} else if (uh_barStyle & BARSTYLE_SECONDAMMO) {
-// 		DrawSecondAmmo();
-// 	}
-
-// 	if (uh_barStyle & BARSTYLE_QWANT) {
-// 		ACS_NamedExecuteWithResult("DrawBar_QwantMove", uh_qwantType);
-// 	} else if (uh_barStyle & BARSTYLE_SCRIPT) {
-// 		ACS_NamedExecuteWithResult(StrParam(s:"DrawBar_", s:wep));
-// 	}
-// }
-
-// // Replaces barhndle's core_DrawBar_Run (mod loads after base).
-// Script "core_DrawBar_Run" (int cam) CLIENTSIDE
-// {
-// 	SetActivator(cam);
-// 	uh_DrawBarRun();
-// }
 
 Script "uh_assists_define" OPEN CLIENTSIDE
 {
@@ -491,7 +403,7 @@ function void ResolveQwantFillAmmo(str wep, int type)
 
 	int u = UniqueTID();
 	if (SpawnForced(StrParam(s:wep, s:"_QwantBar"), 0, 0, 0, u, 0)) {
-		int customMax = uh_getActorArg(u, 1);
+		int customMax = ACS_NamedExecuteWithResult("core_GetActorArg", u, 1);
 		if (customMax > 0) {
 			str tag = GetActorProperty(u, APROP_Nametag);
 			// Only treat Tag as fill ammo when it is a real Ammo class (cap > 0).
@@ -558,6 +470,13 @@ script "DrawBar_Qwant_W" (void) {
 }
 script "DrawBar_QwantS_W" (void) {
 	DrawBarColor(229, 41);
+}
+
+script "DrawBar_NegaMan_W" (void) {
+	DrawBarColor(205, 77);
+	DrawCustomBar(CUST_NEGAMAN, CheckInventory("NegaDuckAmmo"), 400);
+	SetInventory("SBARAmmoOffset", 2);
+	DrawSecondAmmo();
 }
 
 script "DrawBar_BusterMistress_W" (void) {
