@@ -76,6 +76,9 @@
 #define QWANT_MOVE_BAR2_CYAN 138
 #define QWANT_MOVE_BAR2_BLUE 130
 
+#define NEGA_MM_AMMO_COUNT 15
+#define NEGA_BAR_BLUE 77
+
 str uh_oldWep;
 int uh_barStyle = BARSTYLE_NONE;
 int uh_mugcyan, uh_mugblue;
@@ -102,6 +105,25 @@ str qwant_type_ammo[18] = {
 	"DarkTypeAmmo",
 	"SteelTypeAmmo",
 	"FairyTypeAmmo",
+};
+
+str nega_mm_ammo[16] = {
+	"NegaDuckAmmo",
+	"NegaMM1_Ammo",
+	"NegaMM2_Ammo",
+	"NegaMM3_Ammo",
+	"NegaMM4_Ammo",
+	"NegaMM5_Ammo",
+	"NegaMM6_Ammo",
+	"NegaMM7_Ammo",
+	"NegaMM8_Ammo",
+	"NegaMM9_Ammo",
+	"NegaMM10_Ammo",
+	"NegaMM11_Ammo",
+	"NegaMMB_Ammo",
+	"NegaMMK_Ammo",
+	"NegaMMV_Ammo",
+	"NegaMMWT_Ammo",
 };
 
 function int QwantTypeCustSlot(int type)
@@ -470,6 +492,54 @@ script "DrawBar_Qwant_W" (void) {
 }
 script "DrawBar_QwantS_W" (void) {
 	DrawBarColor(229, 41);
+}
+
+str uh_nega_fill_wep = "";
+str uh_nega_fill_ammo = "";
+int uh_nega_fill_max = 0;
+
+function void ResolveNegaManFillAmmo(str wep, int ammoId)
+{
+	if (uh_nega_fill_wep == wep && StrLen(uh_nega_fill_ammo) > 0) {
+		return;
+	}
+	uh_nega_fill_wep = wep;
+	uh_nega_fill_ammo = nega_mm_ammo[ammoId];
+	uh_nega_fill_max = 28;
+
+	int u = UniqueTID();
+	if (SpawnForced(StrParam(s:wep, s:"_NegaManBar"), 0, 0, 0, u, 0)) {
+		int customMax = ACS_NamedExecuteWithResult("core_GetActorArg", u, 2);
+		if (customMax > 0) {
+			str tag = GetActorProperty(u, APROP_Nametag);
+			int tagCap = 0;
+			if (StrLen(tag) > 0 && GetChar(tag, 0) != 36) {
+				tagCap = GetAmmoCapacity(tag);
+			}
+			if (tagCap > 0) {
+				uh_nega_fill_ammo = tag;
+				uh_nega_fill_max = tagCap;
+			}
+		}
+		Thing_Remove(u);
+	}
+}
+
+script "DrawBar_NegaManMove" (int ammoId, int cyan)
+{
+	if (ammoId < 0) {
+		ammoId = 0;
+	}
+	if (ammoId >= NEGA_MM_AMMO_COUNT) {
+		ammoId = 0;
+	}
+
+	str wep = GetWeapon();
+	ResolveNegaManFillAmmo(wep, ammoId);
+	DrawBarColorOwned(CheckInventory(uh_nega_fill_ammo), uh_nega_fill_max, cyan, NEGA_BAR_BLUE);
+	DrawCustomBar(CUST_NEGAMAN, CheckInventory("NegaDuckAmmo"), 400);
+	SetInventory("SBARAmmoOffset", 2);
+	DrawSecondAmmo();
 }
 
 script "DrawBar_NegaMan_W" (void) {

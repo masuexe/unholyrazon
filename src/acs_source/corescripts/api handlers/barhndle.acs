@@ -16,6 +16,7 @@ Script "core_DrawBar_Run" (int cam) CLIENTSIDE {
 #define BARSTYLE_NORMALAMMO 1<<4
 #define BARSTYLE_SECONDAMMO 1<<5
 #define BARSTYLE_QWANT      1<<6  //$UH
+#define BARSTYLE_NEGAMAN    1<<7  //$UH
 
 str oldWep;
 int barStyle = BARSTYLE_NONE;
@@ -24,6 +25,8 @@ int mugcyan, mugblue;
 int bar1cyan, bar1blue;
 int bar2cyan, bar2blue;
 int qwanttype;  //$UH
+int negaAmmoId; //$UH
+int negaCyan;   //$UH
 
 function void DrawBarRun(void) {
 	str wep = GetWeapon();
@@ -55,6 +58,8 @@ function void DrawBarRun(void) {
 	//$UH
 	if (barStyle & BARSTYLE_QWANT) {
 		ACS_NamedExecuteWithResult("DrawBar_QwantMove", qwanttype);
+	} else if (barStyle & BARSTYLE_NEGAMAN) {
+		ACS_NamedExecuteWithResult("DrawBar_NegaManMove", negaAmmoId, negaCyan);
 	} else if (barStyle & BARSTYLE_SCRIPT) {
 		ACS_NamedExecuteWithResult(StrParam(s:"DrawBar_", s:wep));
 	}
@@ -68,6 +73,13 @@ function int getWepBarStyle(str wep) {
 	if (SpawnForced(StrParam(s:wep, s:"_QwantBar"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_QWANT;
 		qwanttype = getActorArg(u, 0);
+		Thing_Remove(u);
+	}
+
+	if (SpawnForced(StrParam(s:wep, s:"_NegaManBar"), 0, 0, 0, u, 0)) {
+		ret |= BARSTYLE_NEGAMAN;
+		negaAmmoId = getActorArg(u, 0);
+		negaCyan = getActorArg(u, 1);
 		Thing_Remove(u);
 	}
 
