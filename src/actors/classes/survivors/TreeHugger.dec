@@ -1,0 +1,212 @@
+actor TreeHugger : CustWepClassBase
+{
+player.scoreIcon "UMUG_26"
+player.displayname "TreeHugger"
+player.soundclass "TreeHugger"
+Player.Maxhealth 1400
+health 1400
+player.forwardmove 0.777, 0.777
+player.sidemove 0.777, 0.777
+player.jumpz 10
+Player.StartItem "UH_BaseFlagPack"
+Player.StartItem "TreeHugger_W"
+Player.StartItem "TreeEnergyAmmo", 77
+States
+{
+Spawn:
+1H26 A 0
+1H26 B 1
+1H26 A 1
+Goto Spawn+2
+See:
+1H26 BCDE 5
+Goto Spawn
+Missile:
+1H26 F 5
+1H26 G 4
+goto Spawn+2
+ClassPain: 1H26 H 0
+Goto MegamanPain
+
+ClassDeath:
+MegamanDeath0:
+1H26 H 13 A_JumpIfInventory("CriticalDeath",1,"MegamanGib")
+1H26 H 1 A_SetGravity(0.0)
+1H26 H 0 A_SetTranslucent(0.0,0)
+1H26 H 0 A_PlaySound("Pokemon/Detect",1)
+1H26 H 0 A_SpawnItemEX("FakeTreeHuggerCorpse",0,0,0,0,0,1.00,0,1)
+1H26 H 0 //ACS_NamedExecuteWithResult("UH_SetViewHeight",0)
+1H26 HHHHH 1 A_ChangeVelocity(0,0,3.00,3)
+1H26 H 5
+1H26 H 0 A_ChangeVelocity(0,0,1.00,3)
+Goto MegamanErase
+MegamanCorpse:
+1H26 Z 0 A_SpawnItemEx("Corpse_26",0,0,0,momx,momy,momz,0,9)
+Goto MegamanGib
+}
+}
+
+actor FakeTreeHuggerCorpse : BasicExplosion
+{
+//-MISSILE
+Speed 30
+Scale 2.5
+States
+{
+Spawn:
+1H26 H 0
+
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf",0,-32,0,0,0,1.00,-90,1+SXF_TRANSFERSPECIAL)//32768
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf",0,-32,0,0,0,1.00,180,1+32768)
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf",0,-32,0,0,0,1.00,90,1+32768)
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf",0,-32,0,0,0,1.00,0,1+32768)
+
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf1FX",0,-32,0,0,0,1.00,-90,1)
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf1FX",0,-32,0,0,0,1.00,180,1)
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf1FX",0,-32,0,0,0,1.00,90,1)
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf1FX",0,-32,0,0,0,1.00,0,1)
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf2FX",0,-32,32,0,0,1.00,-90,1)
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf2FX",0,-32,32,0,0,1.00,180,1)
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf2FX",0,-32,32,0,0,1.00,90,1)
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf2FX",0,-32,32,0,0,1.00,0,1)
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf3FX",0,-32,64,0,0,1.00,-90,1)
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf3FX",0,-32,64,0,0,1.00,180,1)
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf3FX",0,-32,64,0,0,1.00,90,1)
+1H26 H 0 A_SpawnItemEX("TreeH_DeathLeaf3FX",0,-32,64,0,0,1.00,0,1)
+
+//1H26 H 0 A_ChangeFlag("MISSILE",1)
+1H26 H 0 A_ChangeVelocity(0,0,1.00,3)//Sync
+Spawn2:
+1H26 HHHHHH 2 A_SpawnItemEx("TreeH_DeathBox",0,0,0,0,0,0,0,32768)
+1H26 H 0 A_FadeOut
+loop
+}
+}
+actor S_FakeTreeHuggerCorpse : FakeTreeHuggerCorpse
+{
+Args 50
+}
+
+actor TreeH_DeathBox : BasicProjectile
+{
+damagetype "LeafSlice"
+Obituary "$OB_26D1"
++DONTSPLASH
++DONTBLAST
++THRUGHOST
++DONTREFLECT
+RenderStyle None
+damage (100+Args[0])
+Radius 18
+Height 58
+States
+{
+Spawn:
+TNT1 A 2
+stop
+}
+}
+
+actor TreeH_DeathLeaf_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_Setangle(angle-15.0)
+TNT1 A 0 A_ChangeVelocity(10,0,momz,3)
+stop
+}
+}
+
+actor TreeH_DeathLeaf : BasicExplosion
+{
+RenderStyle None
+ReactionTime 10
+speed 1
+Scale 2.5
+//Args 0,0
+States
+{
+Spawn:
+TNT1 A 0
+goto Spawn1
+
+SpawnL://Can't do this yet
+6Q26 CDC 1 A_Warp(2,32,0,Args[0],-15,WARPF_USECALLERANGLE|WARPF_NOCHECKPOSITION|WARPF_INTERPOLATE)//4+8+16
+6Q26 D 0 A_SpawnItemEx("TreeH_DeathBoxL")
+6Q26 DCD 1 A_Warp(2,32,0,Args[0],-15,4+8+16)
+6Q26 C 0 A_SpawnItemEx("TreeH_DeathBoxL")
+6Q26 CDC 1 A_Warp(2,32,0,Args[0],-15,4+8+16)
+6Q26 D 0 A_SpawnItemEx("TreeH_DeathBoxL")
+6Q26 DCD 1 A_Warp(2,32,0,Args[0],-15,4+8+16)
+6Q26 C 0 A_SpawnItemEx("TreeH_DeathBoxL")
+6Q26 C 0 A_FadeOut
+//6Q26 C 0 A_JumpIf(Args[1]>0,
+loop
+
+Spawn1:
+6Q26 C 1 //A_Setangle(angle-Args[1])
+6Q26 DCD 1 A_GiveInventory("TreeH_DeathLeaf_P")
+6Q26 C 0 A_SpawnItemEx("TreeH_DeathBoxL",0,0,0,0,0,0,0,32768)
+6Q26 CDC 1 A_GiveInventory("TreeH_DeathLeaf_P")
+6Q26 C 0 A_SpawnItemEx("TreeH_DeathBoxL",0,0,0,0,0,0,0,32768)
+6Q26 DCD 1 A_GiveInventory("TreeH_DeathLeaf_P")
+6Q26 C 0 A_SpawnItemEx("TreeH_DeathBoxL",0,0,0,0,0,0,0,32768)
+6Q26 CDC 1 A_GiveInventory("TreeH_DeathLeaf_P")
+6Q26 C 0 A_CountDown//A_FadeOut
+6Q26 C 0 A_SpawnItemEx("TreeH_DeathBoxL",0,0,0,0,0,0,0,32768)
+goto Spawn1+1
+}
+}
+
+actor TreeH_DeathLeaf1FX : TreeH_DeathLeaf
+{
++CLIENTSIDEONLY
+RenderStyle Normal
+Args 0,20
+States
+{
+Spawn:
+TNT1 A 0
+Spawn2:
+6Q26 C 1 //A_Setangle(angle-Args[1])
+6Q26 DCDCDCDCDCDC 1 A_GiveInventory("TreeH_DeathLeaf_P")
+6Q26 C 0 A_FadeOut
+goto Spawn2+1
+}
+}
+actor TreeH_DeathLeaf2FX : TreeH_DeathLeaf1FX{Args 32,40}
+actor TreeH_DeathLeaf3FX : TreeH_DeathLeaf1FX{Args 64,20}
+
+actor TreeH_DeathBoxL : TreeH_DeathBox
+{
+Obituary "$OB_26D2"
+Damage (77+Args[0]*0.78)
+radius 8
+height 72//8
+}
+
+
+actor Corpse_26:BasicHelper{States{Spawn:TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("Corpse_26_0",0,0,36,momx+random(-2,2),momy+frandom(-1,1),momz+frandom(2,6),0,169)
+TNT1 A 0 A_SpawnItemEx("Corpse_26_1",0,0,30,momx+frandom(-3,3),momy+frandom(-3,3),momz+frandom(1,4),random(-5,5),169)
+TNT1 A 0 A_SpawnItemEx("Corpse_26_2",0,0,28,momx+frandom(-3,3),momy+frandom(-3,3),momz+frandom(1,4),random(-5,5),169)
+TNT1 A 0 A_SpawnItemEx("Corpse_26_3",0,0,28,momx+frandom(-3,3),momy+frandom(-3,3),momz+frandom(1,4),random(-5,5),169)
+TNT1 A 0 A_SpawnItemEx("Corpse_26_4",0,0,6,momx+frandom(-3,3),momy+frandom(-3,3),momz+frandom(1,4),random(-5,5),169)
+TNT1 A 0 A_SpawnItemEx("Corpse_26_5",0,0,6,momx+frandom(-3,3),momy+frandom(-3,3),momz+frandom(1,4),random(-5,5),169)
+stop
+}
+}
+
+actor Corpse_26_0:BaseCorpseFX{States{Spawn:1H26 O 350
+goto Spawn2}}
+actor Corpse_26_1:BaseCorpseFX{States{Spawn:1H26 P 350
+goto Spawn2}}
+actor Corpse_26_2:BaseCorpseFX{States{Spawn:1H26 Q 350
+goto Spawn2}}
+actor Corpse_26_3:BaseCorpseFX{States{Spawn:1H26 R 350
+goto Spawn2}}
+actor Corpse_26_4:BaseCorpseFX{States{Spawn:1H26 S 350
+goto Spawn2}}
+actor Corpse_26_5:BaseCorpseFX{States{Spawn:1H26 T 350
+goto Spawn2}}
