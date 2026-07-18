@@ -1,0 +1,108 @@
+actor NegaSlashClawWep_NegaManBar : NegaManBar {args 7, 111}
+
+actor NegaSlashClawWep : BaseNegaManWep {
+  Weapon.AmmoUse 14
+  Weapon.AmmoGive 28
+  Weapon.SlotNumber 4
+  Inventory.Pickupmessage "$PU_02_MM7"
+  Obituary "$OB_SLASHCLAW"
+  Tag "$TAG_NegaMan_W7f"
+  weapon.ammotype "NegaMM7_Ammo"
+  inventory.icon "NEG_SCLA"
+  States {
+   Spawn:
+    6N02 H 6
+loop
+
+   Deselect:
+    6H02 V 0
+    goto DeselectSwap
+   Select:
+    6H02 V 0
+    goto SelectSwap
+
+   Ready:
+    6H02 V 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_DYE7)
+   ReadyX:
+    6H02 V 0 A_JumpIfNoAmmo("NoAmmo")
+    6H02 V 8 A_WeaponReady  // 2
+    6H02 V 0 A_GiveInventory("NegaMM7_Ammo", 1)
+    Goto Ready+2
+   ReadyNoAmmo:
+    6H02 V 8 A_WeaponReady(4)  // 2
+    6H02 V 0 A_GiveInventory("NegaMM7_Ammo", 1)
+    6H02 V 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+    Goto ReadyX
+
+   Fire:
+    6H02 V 0 A_JumpIfNoAmmo("NoAmmo")
+    6H02 V 0 A_PlaySoundEx("nega/slashclaw", "Weapon")
+    6H02 V 0 A_FireCustomMissile("NegaSlashClaw", 0, 1, 8, 0)
+    6H02 XW 5
+    6H02 V 20
+    6H02 V 0 A_Refire
+    Goto ReadyX
+
+   NoAmmo:
+    6H02 V 1 A_JumpIfInventory("IsBot", 1, "NoAmmo_B")
+    Goto ReadyNoAmmo
+   BotAmmo:
+    6H02 V 0 A_GiveInventory("NegaMM7_Ammo", 28)
+    Goto ReadyX
+  }
+}
+
+actor NegaSlashClaw : BasicProjectile {
+  Translation "192:192=205:205", "198:198=77:77"  // ,"4:4=4:4"
+  damagetype "SlashClaw"
+  Obituary "$OB_SLASHCLAW"
+  +FORCEXYBILLBOARD
+  ReactionTime 3
+  damage (90)  // 100
+  Radius 16
+  Height 20
+  speed 50
+  scale 2.5
+  Args 180, 96, 48
+  States {
+   Spawn:
+    X_7F ABCDE 1
+    X_7F FGHIJ 1
+    X_7F A 0 A_CountDown
+    loop
+   Death:
+    TNT1 A 0 A_PlaySoundEx("wep_L/mm7/slashclawhit", "Weapon")
+    TNT1 A 0 A_GiveInventory("WeaponCharge", 1)
+    TNT1 AAAAA 0 A_SpawnItemEx("NegaSlashClawFX", random(0, 8), 0, random(-8, 24), random(1, 4), 0, random(-2, 4), random(0, 359), 1)
+    TNT1 A 2
+    TNT1 AAAAA 0 A_SpawnItemEx("NegaSlashClawFX", random(0, 8), 0, random(-8, 24), random(1, 4), 0, random(-2, 4), random(0, 359), 1)
+    TNT1 A 2
+    TNT1 AAAAA 0 A_SpawnItemEx("NegaSlashClawFX", random(0, 8), 0, random(-8, 24), random(1, 4), 0, random(-2, 4), random(0, 359), 1)
+    TNT1 A 0 A_JumpIfInventory("WeaponCharge", 7, "Death2")
+    TNT1 A 0 A_PlaySoundEx("wep_L/mm7/slashclawfire", "Body")
+    TNT1 A 2 A_Explode(Args[0], Args[1], 0, 0, Args[2])  // 200
+    goto Death+1
+   Death2:
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("NegaSlashClawFX2", random(8, 24), 0, random(-16, 32), random(4, 10), 0, random(-4, 8), random(0, 359), 1)
+    TNT1 A 0 A_PlaySoundEx("wep_L/mm7/slashclawhit", "Weapon")
+    TNT1 A 2 A_Explode(2*(Args[0]), 1.5*(Args[1]), 0, 0, 1.5*(Args[2]))  // 400
+    stop
+  }
+}
+
+actor NegaSlashClawFX : BasicClientSide {
+  +FORCEXYBILLBOARD
+  Scale 1.0
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SetScale(ScaleX+frandom(-0.25, 0.25))
+    X_7F ABCDE 2
+    stop
+  }
+}
+
+actor NegaSlashClawFX2 : NegaSlashClawFX {
+  Scale 1.5
+}
+

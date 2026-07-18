@@ -1,0 +1,108 @@
+actor NegaSkullBarrierWep_NegaManBar : NegaManBar {args 4, 197}
+
+actor NegaSkullBarrierWep : BaseNegaManWep {
+	Weapon.AmmoUse 1
+	Weapon.AmmoGive 28
+	Weapon.SlotNumber 5
+	Inventory.Pickupmessage "$PU_02_MM4"
+	Obituary "$OB_SKULLBARRIER"
+	Tag "$TAG_NegaMan_W4h"
+	weapon.ammotype "NegaMM4_Ammo"
+	inventory.icon "NEG_SKLB"
+	States {
+	 Spawn:
+	  6N02 E 6
+loop
+
+	 Deselect:
+	  6H02 M 0 A_JumpIfInventory("ShieldCheck", 1, "FireEnd")
+	  goto DeselectSwap
+	 Select:
+	  6H02 M 0
+	  goto SelectSwap
+
+	 Ready:
+	  6H02 M 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_DYE4)
+	 ReadyX:
+	  6H02 M 0 A_JumpIfNoAmmo("NoAmmo")
+	  6H02 M 8 A_WeaponReady
+	  6H02 M 0 A_GiveInventory("NegaMM4_Ammo", 1)
+	  Goto Ready+2
+	 ReadyNoAmmo:
+	  6H02 M 8 A_WeaponReady(4)
+	  6H02 M 0 A_GiveInventory("NegaMM4_Ammo", 1)
+	  6H02 M 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+	  Goto ReadyX
+
+	 Fire:
+	  6H02 M 0 A_JumpIfInventory("ShieldCheck", 1, "FireEnd")
+	  6H02 M 0 A_JumpIfNoAmmo("NoAmmo")
+	  6H02 M 0 A_PlaySoundEx("weapons/mm4/skullbarriercounter", "Weapon")
+	  6H02 M 0 A_GiveInventory("ShieldCheck",1)
+	  6H02 N 3
+	  6H02 O 1 A_TakeInventory("NegaMM4_Ammo", 1)
+	  6H02 O 2 A_SpawnItemEx("NegaSkullBarrierWarper", 0, 0, 28, 0, 0, 0, 0, 1)
+	  goto FireL
+	 FireL:
+	  6H02 OOOO 2 A_GiveInventory("NegaSkullBoost_P")
+	  6H02 O 0 A_TakeInventory("NegaMM4_Ammo", 1, 1)
+	  6H02 O 0 A_JumpIfNoAmmo("FireEnd")
+	  loop
+	 FireEnd:
+	  6H02 N 0 A_TakeInventory("ShieldCheck")
+	  6H02 N 3 A_PlaySoundEx("S3_K/MetalSpark", "Weapon")
+	  6H02 M 3
+goto ReadyX
+
+	 NoAmmo:
+	  6H02 M 1 A_JumpIfInventory("IsBot", 1, "NoAmmo_B")
+	  Goto ReadyNoAmmo
+	 BotAmmo:
+	  6H02 M 0 A_GiveInventory("NegaMM4_Ammo", 28)
+	  Goto ReadyX
+	}
+}
+
+actor NegaSkullBoost_P : CustomInventory {
+	States {
+	 Pickup:
+	  TNT1 A 0 A_WeaponReady
+	  TNT1 A 0 A_FireCustomMissile("NegaSkullDamageU", 0, 0, 0, 0)
+	  TNT1 A 0 A_JumpIf(CallACS("core_CheckFooting"), "Ground")
+	  goto Air
+	 Ground:
+	  TNT1 A 0 A_ChangeVelocity(4, 0, 0, CVF_RELATIVE)
+	  stop
+	 Air:
+	  TNT1 A 0 A_ChangeVelocity(1.5f, 0, 0, CVF_RELATIVE)
+	  stop
+	}
+}
+
+actor NegaSkullDamageU : BasicExplosion {
+	damagetype "SkullBarrier"
+	Obituary "$OB_SKULLBARRIER"
+	Args 40, 96, 16
+	States {
+	 Spawn:
+	  TNT1 A 0
+	  TNT1 A 1 A_Explode(Args[0]*(1+CallACS("uh_checkrune", RUNE_SPREAD, 2)*1), Args[1], 0, 0, Args[2])  // 48,108
+	  stop
+	}
+}
+
+actor NegaSkullBarrierWarper : BasicShieldWarper {
+	+BRIGHT
+	States {
+	 Spawn:
+	  TNT1 A 0
+	  TNT1 A 0 A_GiveInventory("MM8BDMProjSpawnFuncClient",1)
+	  TNT1 A 1
+	  TNT1 A 0 ACS_NamedExecuteAlways("core_shieldwarper", 0)
+	  TNT1 A 0 A_Jump(256, "Shield")
+	  Goto Shield
+	 Shield:
+	  X_4H ABCDEFGH 1 A_Warp(AAPTR_TARGET, 0, 0, 28, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)
+	  loop
+	}
+}

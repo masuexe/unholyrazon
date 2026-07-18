@@ -1,0 +1,142 @@
+actor NegaGravityHoldWep_NegaManBar : NegaManBar {args 5, 239}
+
+actor NegaGravityHoldWep : BaseNegaManWep
+{
+Weapon.AmmoUse 2
+Weapon.AmmoGive 28
+Weapon.SlotNumber 4
+Inventory.Pickupmessage "$PU_02_MM5"
+Obituary "$OB_GRAVITYHOLD"
+Tag "$TAG_NegaMan_W5a"
+weapon.ammotype "NegaMM5_Ammo"
+inventory.icon "NEG_GRAV"
+States
+{
+Spawn:
+6N02 F 6
+loop
+
+Deselect:
+6H02 P 0
+goto DeselectSwap
+Select:
+6H02 P 0
+goto SelectSwap
+
+Ready:
+6H02 P 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_DYE5)
+ReadyX:
+6H02 P 0 A_JumpIfNoAmmo("NoAmmo")
+6H02 P 8 A_WeaponReady
+6H02 P 0 A_GiveInventory("NegaMM5_Ammo",1)
+Goto Ready+2
+ReadyNoAmmo:
+6H02 P 8 A_WeaponReady(4)
+6H02 P 0 A_GiveInventory("NegaMM5_Ammo",1)
+6H02 P 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+Goto ReadyX
+
+Fire:
+6H02 P 0 A_JumpIfNoAmmo("NoAmmo")
+6H02 Q 1
+6H02 R 2 A_PlaySoundEx("weapon/gravityhold","Weapon")
+goto FireL
+FireL:
+6H02 R 0 A_JumpIfNoAmmo("NoAmmo")
+6H02 R 1 A_GiveInventory("NegaGravityHold_P",1)
+6H02 R 0 A_ReFire("FireL")
+goto FireEnd
+FireEnd:
+6H02 Q 2
+6H02 Q 0 A_TakeInventory("NegaGHoldCooldown")
+6H02 Q 0 A_TakeInventory("NegaGHoldCooldownR")
+6H02 Q 3
+6H02 P 5
+Goto ReadyX
+
+NoAmmo:
+6H02 P 1 A_JumpIfInventory("IsBot",1,"NoAmmo_B")
+Goto ReadyNoAmmo
+BotAmmo:
+6H02 P 0 A_GiveInventory("NegaMM5_Ammo",28)
+Goto ReadyX
+}
+}
+
+
+actor NegaGHoldCooldown : PowerSpeed{powerup.duration 20 Speed 1.5}
+actor NegaGHoldCooldownR : PowerSpeed{powerup.duration 10 Speed 2.0}
+
+actor NegaGravityHold_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_SpawnItemEx("NegaGravityHoldHelper",0,0,0,0,0,0,0,1)
+TNT1 A 0 A_JumpIfInventory("PlayerPropertyRage",1,"Pickup2R")
+goto Pickup2
+Pickup2:
+TNT1 A 0 ThrustThingZ(0,3,0,0)
+TNT1 A 0 A_JumpIfInventory("NegaGHoldCooldown",1,"End")
+goto PickupX
+Pickup2R:
+TNT1 A 0 ThrustThingZ(0,5,0,0)
+TNT1 A 0 A_JumpIfInventory("NegaGHoldCooldownR",1,"End")
+goto PickupXR
+
+PickupX:
+TNT1 A 0 A_GiveInventory("NegaGHoldCooldown",1)
+goto PickupFire
+PickupXR:
+TNT1 A 0 A_GiveInventory("NegaGHoldCooldownR",1)
+goto PickupFire
+
+PickupFire:
+TNT1 A 0 A_TakeInventory("NegaMM5_Ammo",2)
+TNT1 A 0 A_SpawnItemEx("NegaGravityHold",0,0,28)
+stop
+
+End:
+TNT1 A 0
+stop
+}
+}
+
+actor NegaGravityHold : BasicExplosion
+{
+Translation "192:192=205:205","198:198=77:77"
+damagetype "Nega_GHold"
+Obituary "$OB_GRAVITYHOLD"
++OLDRADIUSDMG
+Args 100,256,32
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 AAA 0 A_SpawnItemEx("NegaGravityHoldFX",random(-72,72),random(-72,72),random(-48,48),0,0,random(2,3),0,1)
+TNT1 A 4 A_Explode(Args[0]*(1+CallACS("uh_checkrune", RUNE_SPREAD, 2)*2),Args[1],0,0,Args[2])
+stop
+}
+}
+
+actor NegaGravityHoldHelper : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1 A_SpawnItemEx("NegaGravityHoldFX",random(-72,72),random(-72,72),random(-48,48),0,0,random(2,3),0,1)
+stop
+}
+}
+
+actor NegaGravityHoldFX : BasicClientSide
+{
++BRIGHT
+States
+{
+Spawn:
+X_5A A 1 A_Fadeout(0.15)
+wait
+}
+}
