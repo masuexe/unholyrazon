@@ -1,0 +1,132 @@
+actor FlightUnit : CustWepClassBase
+{
+player.scoreIcon "UMUG_18"
+player.displayname "FlightUnit"
+player.soundclass "FlightUnit"
+Player.Maxhealth 950
+health 950
+player.forwardmove 1.1, 1.1
+player.sidemove 1.05, 1.05
+player.jumpz 12.5
+Player.StartItem "UH_BaseFlagPack"
+player.startitem "FlightUnit_W"
+player.startitem "DangerEnergyAmmo", 100
+player.startitem "FlightEnergyAmmo", 50
+
+player.startitem "AirJumpLimit", 2
+States
+{
+Spawn:
+GYRM A 0
+GYRM B 1
+GYRM A 1
+Goto Spawn+2
+See:
+GYRM BCDE 5
+Goto Spawn
+Missile:
+GYRM FFFFF 1
+GYRM GGGG 1
+goto Spawn+2
+ClassPain:
+GYRM H 0
+Goto MegamanPain
+
+ClassDeath:
+GYRM H 0
+goto MegamanDeath
+MegamanDeath0:
+GYRM H 1 A_JumpIfInventory("CriticalDeath",1,"MegamanGib")
+GYRM H 0 A_ChangeFlag("THRUACTORS",1)
+GYRM H 0 A_JumpIf(z-floorz>=120,"ClassDeathLoop")
+GYRM H 0 A_ChangeVelocity(0,0,10)
+ClassDeathLoop:
+GYRM H 1 A_SetAngle(angle-15)
+GYRM H 0 A_JumpIfInventory("ClassDeathFlag",30,"ClassDeathEnd")
+GYRM H 0 A_CheckFloor("ClassDeathEnd")
+GYRM HH 0 A_SpawnItemEx("FlightUnitExplosionFX",random(-40,40),random(-40,40),random(0,40),0,0,0,0,1)
+GYRM H 0 A_GiveInventory("ClassDeathFlag",1)
+loop
+ClassDeathEnd:
+GYRM H 0 A_SpawnItemEx("FlightUnitExplosion",0,0,28,0,0,0,0,1)
+goto MegamanErase
+MegamanCorpse:
+GYRM Z 0 A_SpawnItemEx("Corpse_18",0,0,0,momx,momy,momz,0,9)
+Goto MegamanGib
+}
+}
+actor FlightUnitS : FlightUnit
+{
+player.scoreIcon "UMUG_S18"
+Player.Maxhealth 2950
+health 2950
+player.forwardmove 1.2, 1.2
+player.sidemove 1.15, 1.15
+player.jumpz 13.5
+player.morphweapon "FlightUnitS_W"
++NOSKIN
+States
+{
+ClassDeathEnd:
+GYRM H 0 A_SpawnItemEx("S_FlightUnitExplosion",0,0,28,0,0,0,0,1)
+goto MegamanErase
+}
+}
+
+
+actor FlightUnitExplosionFX : BasicClientSide
+{
+States
+{
+Spawn:
+TMFX A 0
+TMFX A 0 A_SetScale(frandom(2.25,2.75))
+TMFX ABCD 1
+stop
+}
+}
+
+actor FlightUnitExplosion : BasicExplosion
+{
+damagetype "FlightUnit"
+Obituary "$OB_18D"
+Args 350,196,28
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_PlaySound("weapon/drillexplode",1)
+TNT1 AAAAAA 0 A_SpawnItemEx("BasicBoom4FX_ColorX_Tic2",random(-100,100),random(-100,100),random(0,100),0,0,0,0,1)
+TNT1 A 2 A_Explode(Args[0],Args[1],0,0,Args[2])
+stop
+}
+}
+actor S_FlightUnitExplosion : FlightUnitExplosion
+{
+Args 525,196,28
+}
+
+
+actor Corpse_18:BasicHelper{States{Spawn:TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("Corpse_18_0",0,0,36,momx+random(-2,2),momy+frandom(-1,1),momz+frandom(2,6),0,169)
+TNT1 A 0 A_SpawnItemEx("Corpse_18_1",0,0,24,momx+frandom(-3,3),momy+frandom(-3,3),momz+frandom(1,4),random(-5,5),169)
+TNT1 A 0 A_SpawnItemEx("Corpse_18_2",0,0,24,momx+frandom(-3,3),momy+frandom(-3,3),momz+frandom(1,4),random(-5,5),169)
+TNT1 A 0 A_SpawnItemEx("Corpse_18_3",0,0,28,momx+frandom(-3,3),momy+frandom(-3,3),momz+frandom(1,4),random(-5,5),169)
+TNT1 A 0 A_SpawnItemEx("Corpse_18_4",0,0,6,momx+frandom(-3,3),momy+frandom(-3,3),momz+frandom(1,4),random(-5,5),169)
+TNT1 A 0 A_SpawnItemEx("Corpse_18_5",0,0,6,momx+frandom(-3,3),momy+frandom(-3,3),momz+frandom(1,4),random(-5,5),169)
+stop
+}
+}
+
+actor Corpse_18_0:BaseCorpseFX{States{Spawn:1H18 O 350
+goto Spawn2}}
+actor Corpse_18_1:BaseCorpseFX{States{Spawn:1H18 P 350
+goto Spawn2}}
+actor Corpse_18_2:BaseCorpseFX{States{Spawn:1H18 Q 350
+goto Spawn2}}
+actor Corpse_18_3:BaseCorpseFX{States{Spawn:1H18 R 350
+goto Spawn2}}
+actor Corpse_18_4:BaseCorpseFX{States{Spawn:1H18 S 350
+goto Spawn2}}
+actor Corpse_18_5:BaseCorpseFX{States{Spawn:1H18 T 350
+goto Spawn2}}
