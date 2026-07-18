@@ -2,6 +2,7 @@
 #include "zcommon.acs"
 
 //Contains scripts used by several classes
+#define MAX_PLAYERS 64
 
 script "uhS_countinv_acs" (int Which, int Pointer)
 {
@@ -178,4 +179,124 @@ Script "uh_FlashStopperRNG" (int Power, int Dur, int Toggle) CLIENTSIDE
 	CancelFade();
 
 	FadeRange(RC,BC,GC,((1.0)*Power)/100,RC,BC,GC,0.0,((1.0)*Dur)/100);
+}
+
+
+//ZANGIEF
+
+#define GRAB_DISTANCE 100 //how far to position the grabbed away from zangief
+#define GRAB_DISTANCE_LIMIT 100000 //how far away to give up on the grabbed, squared
+
+
+str ZangiefCountItem[3] = 
+{
+"WalrusSlideAngle",
+"ZangiefAngle",
+"SuplexID"
+};
+
+str ZangiefGiveItem[2] = 
+{
+"AntiInvincible",
+// "ShademanGrabRelease_P"
+};
+
+script "uh_ZangiefCountInv" (int Item, int ThePointer)
+{
+	if(ThePointer>0){
+		SetActivator(0,ThePointer);
+	}
+	SetResultValue(CheckInventory(ZangiefCountItem[Item]));
+}
+
+script "uh_ZangiefGiver" (int i, int target)
+{
+	//log(i:i,s:" & ",i:target);
+	if (target==999) { terminate; }
+	GiveActorInventory(target,ZangiefGiveItem[i],1);
+}
+
+script "uh_ZangiefGiveToAll" (int i)
+{
+	for(int j=0; j<MAX_PLAYERS; j++) {
+		if(PlayerInGame(j))GiveActorInventory(1000+j,ZangiefGiveItem[i],1);
+	}
+}
+
+script "uh_ZangiefFaceTarget" (int target)
+{
+	SetResultValue(VectorAngle(getActorX(target) - getActorX(0), getActorY(target) - getActorY(0)) >> 8);
+}
+
+script "uh_ZangiefStartGrab" (int target)
+{
+	if (target==999) { SetResultValue(1); terminate; }
+	int angle = getActorAngle(0);
+	int xDiff = (getActorX(0)+GRAB_DISTANCE*cos(angle)) - getActorX(target);
+	int yDiff = (getActorY(0)+GRAB_DISTANCE*sin(angle)) - getActorY(target);
+	int zDiff = getActorZ(0) - getActorZ(target);
+	
+	int xDiffI = xDiff>>16;
+	int yDiffI = yDiff>>16;
+	int zDiffI = zDiff>>16;
+	
+	if (xDiffI*xDiffI+yDiffI*yDiffI+zDiffI*zDiffI < GRAB_DISTANCE_LIMIT) {
+		SetActorVelocity(target, xDiff, yDiff, zDiff, 0, 0);
+		setResultValue(1);
+	} else {
+		setResultValue(0);
+	}
+}
+
+script "uh_ZangiefGrab" (int pitch, int angle, int Grab_D) //Pitch is given as x/360, Angle is given as x/255
+{
+	int target = ACS_NamedExecuteWithResult("uh_ZangiefCountInv",2)+999;
+	if (target==999) { SetResultValue(1); terminate; }
+	GiveActorInventory(target,"DashingStraitjacket_F",1);
+	angle = angle<<8;
+	pitch = (pitch-360)*1.0/360;
+	int xDiff = (getActorX(0)+fixedMul(Grab_D*cos(angle),cos(pitch))) - getActorX(target);
+	int yDiff = (getActorY(0)+fixedMul(Grab_D*sin(angle),cos(pitch))) - getActorY(target);
+	int zDiff = (getActorZ(0)-Grab_D*sin(pitch)) - getActorZ(target);
+	
+	int xDiffI = xDiff>>16;
+	int yDiffI = yDiff>>16;
+	int zDiffI = zDiff>>16;
+
+	if (xDiffI*xDiffI+yDiffI*yDiffI+zDiffI*zDiffI < GRAB_DISTANCE_LIMIT) {
+		SetActorVelocity(target, xDiff, yDiff, zDiff, 0, 0);
+		setResultValue(1);
+	} else {
+		setResultValue(0);
+	}
+}
+
+script "uh_ZangiefSetThrow" (int target, int force, int zforce)
+{
+	Thing_Stop(target);
+	ThrustThing(GetActorAngle(0) >> 8, force, 1, target);
+	ThrustThingZ(target,zforce,0,0);
+}
+
+script "uh_ZangiefGrabReverse" (int pitch, int angle, int Grab_D)
+{
+	int target = ACS_namedExecuteWithResult("core_getptrtid", AAPTR_TARGET);//ACS_NamedExecuteWithResult("uh_ZangiefCountInv",2,2)+999;
+	SetActivator(0,8);
+	if (target==999) { SetResultValue(1); terminate; }
+	angle = angle<<8;
+	pitch = (pitch-360)*1.0/360;
+	int xDiff = (getActorX(0)+fixedMul(Grab_D*cos(angle),cos(pitch))) - getActorX(target);
+	int yDiff = (getActorY(0)+fixedMul(Grab_D*sin(angle),cos(pitch))) - getActorY(target);
+	int zDiff = (getActorZ(0)-Grab_D*sin(pitch)) - getActorZ(target);
+	
+	int xDiffI = xDiff>>16;
+	int yDiffI = yDiff>>16;
+	int zDiffI = zDiff>>16;
+
+	if (xDiffI*xDiffI+yDiffI*yDiffI+zDiffI*zDiffI < GRAB_DISTANCE_LIMIT) {
+		SetActorVelocity(target, xDiff, yDiff, zDiff, 0, 0);
+		setResultValue(1);
+	} else {
+		setResultValue(0);
+	}
 }
