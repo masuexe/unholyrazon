@@ -1,0 +1,172 @@
+actor NegaSearchSnakeWep_NegaManBar : NegaManBar {args 3, 110}
+
+actor NegaSearchSnakeWep : BaseNegaManWep {
+  Weapon.AmmoUse 2
+  Weapon.AmmoGive 28
+  Weapon.SlotNumber 2
+  Inventory.Pickupmessage "$PU_02_MM3"
+  Obituary "$OB_SEARCHSNAKE"
+  Tag "$TAG_NegaMan_W3f"
+  weapon.ammotype "NegaMM3_Ammo"
+  inventory.icon "NEG_SNAK"
+  States {
+   Spawn:
+    6N02 D 6
+loop
+
+   Deselect:
+    6H02 J 0
+    goto DeselectSwap
+   Select:
+    6H02 J 0
+    goto SelectSwap
+
+   Ready:
+    6H02 J 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_DYE3)
+   ReadyX:
+    6H02 J 0 A_JumpIfNoAmmo("NoAmmo")
+    6H02 J 8 A_WeaponReady
+    6H02 J 0 A_GiveInventory("NegaMM3_Ammo", 1)
+    Goto Ready+2
+   ReadyNoAmmo:
+    6H02 J 8 A_WeaponReady(4)
+    6H02 J 0 A_GiveInventory("NegaMM3_Ammo", 1)
+    6H02 J 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+    Goto ReadyX
+
+   Fire:
+    6H02 J 0 A_JumpIfNoAmmo("NoAmmo")
+    6H02 J 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    6H02 J 0 A_FireCustomMissile("NegaSearchSnakeStart", 0, 1, 8, 0)
+    6H02 KL 5
+    6H02 J 4
+    6H02 J 0 A_Refire
+    Goto ReadyX
+
+   NoAmmo:
+    6H02 J 1 A_JumpIfInventory("IsBot", 1, "NoAmmo_B")
+    Goto ReadyNoAmmo
+   BotAmmo:
+    6H02 J 0 A_GiveInventory("NegaMM3_Ammo", 28)
+    Goto ReadyX
+  }
+}
+
+actor NegaSearchSnakeBase : SearchSnakeBase {
+  Translation "192:192=205:205", "198:198=77:77"
+  Damage (150)
+  Radius 12
+  Height 10
+  Scale 3.0
+}
+
+actor NegaSearchSnakeStart : NegaSearchSnakeBase {
+  Damage (100)
+  Speed 35
+  -NOGRAVITY
+  States {
+   Spawn:
+    X_3F A 0
+    X_3F A 0 ThrustThingZ(0, 20, 0, 1)
+    X_3F AB 4
+    goto Spawn+2
+   Death:
+    TNT1 A 0 A_SpawnItemEx("NegaSearchSnakeMaster")
+    stop
+   XDeath:
+    TNT1 A 0
+    stop
+  }
+}
+
+actor NegaSearchSnakeMaster : NegaSearchSnakeBase {
+  +NOCLIP
+  +NOINTERACTION
+  reactiontime 100
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SetPitch(PITCH_FORWARD)
+    TNT1 A 0 A_SpawnItemEx("NegaSearchSnakeCrawl", 0, 0, 0, cos(pitch), 0, -sin(pitch), 0, SXF_SEARCHSNAKESTART, 0, CallACS("core_NewUniqueTID"))
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_setTIDsPointerToThis", CallACS("core_CurrentUniqueTID"), AAPTR_MASTER)
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_ClearUniqueTID", 0)
+   SpawnLoop:
+    X_3F A 1 A_GiveInventory("SearchSnakeMasterFunc",1)
+    loop
+   CustomState1:
+    X_3F A 1 A_ChangeVelocity(10, 0, 0, CVF_RELATIVE|CVF_REPLACE)
+   SpawnForward:
+    X_3F A 0 A_Jump(2, "HopBig")
+    X_3F AAAB 1 A_GiveInventory("SearchSnakeMasterFunc",1)
+    X_3F A 0 A_Jump(12, "HopSmall")
+    X_3F BBBA 1 A_GiveInventory("SearchSnakeMasterFunc",1)
+    X_3F A 0 A_Jump(24, "HopSmall")
+    goto SpawnForward
+   CustomState2:
+    X_3F E 1 A_ChangeVelocity(0, 0, -10, CVF_RELATIVE|CVF_REPLACE)
+   SpawnDown:
+    X_3F EEEFFFFE 1 A_GiveInventory("SearchSnakeMasterFunc",1)
+    loop
+   CustomState3:
+    X_3F C 1 A_ChangeVelocity(0, 0, 10, CVF_RELATIVE|CVF_REPLACE)
+   SpawnUp:
+    X_3F CCCDDDDC 1 A_GiveInventory("SearchSnakeMasterFunc",1)
+    loop
+   HopForward:
+    X_3F A 0 A_RemoveChildren(true)
+    X_3F A 0 A_SpawnItemEx("NegaSearchSnakeStart", 0, 0, 0, 10, 0, random(2, 5), 0, 0)
+    stop
+   HopSmall:
+    X_3F A 0 A_RemoveChildren(true)
+    X_3F A 0 A_SpawnItemEx("NegaSearchSnakeStart", 0, 0, 0, 10, 0, random(5, 12), 0, 0)
+    stop
+   HopBig:
+    X_3F A 0 A_RemoveChildren(true)
+    X_3F A 0 A_SpawnItemEx("NegaSearchSnakeStart", 0, 0, 0, 10, 0, random(10, 20), 0, 0)
+    stop
+   Death:
+    TNT1 A 0 A_RemoveChildren(true)
+    stop
+  }
+}
+
+actor NegaSearchSnakeCrawl : NegaSearchSnakeBase {
+  +INVISIBLE
+  +MOVEWITHSECTOR
+  +DONTSPLASH
+  +SERVERSIDEONLY
+  +NONETID
+  var int user_NoTranslation;
+  States {
+   Spawn:
+    TNT1 A 0
+    BUST A 1 A_GiveInventory("WarpMasterHere",1)
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_setpointerpitch", pitch, AAPTR_MASTER)
+    TNT1 A 0 A_JumpIf(pitch==PITCH_DOWN, "SpawnD")
+    TNT1 A 0 A_SetPitch(pitch+90)
+    TNT1 A 0 A_SpawnItemEx("NegaSearchSnakeCrawl", 0, 0, 0, cos(pitch)*2, 0, -sin(pitch)*2, 0, SXF_SEARCHSNAKE)
+    stop
+   SpawnD:
+    TNT1 A 0 A_SpawnItemEx("NegaSearchSnakeCrawl", 0, 0, 0, cos(pitch), 0, -sin(pitch), 0, SXF_SEARCHSNAKE)
+    stop
+   Death:
+    TNT1 A 0 A_JumpIf(pitch==PITCH_UP, "DeathU")
+    TNT1 A 0 A_SetPitch(pitch-90)
+    TNT1 A 0 A_SpawnItemEx("NegaSearchSnakeCrawl", 0, 0, 0, cos(pitch), 0, -sin(pitch), 0, SXF_SEARCHSNAKE)
+    stop
+   DeathU:
+    TNT1 A 0 A_SpawnItemEx("NegaSearchSnakeCrawlD", 0, 0, 0, cos(pitch-45), 0, -sin(pitch-45), 0, SXF_SEARCHSNAKE)
+    stop
+   XDeath:
+    TNT1 A 0 A_RemoveMaster
+    stop
+  }
+}
+
+actor NegaSearchSnakeCrawlD : NegaSearchSnakeCrawl {
+  States {
+   Death:
+    TNT1 A 0
+    goto XDeath
+  }
+}
