@@ -1,6 +1,15 @@
 #library "uh_classes"
 #include "zcommon.acs"
 
+bool IsTeamGame = 0;
+int ServerMAX = 32;
+
+script "uc_IsTeamServerMAX_S" OPEN
+{
+	IsTeamGame = ACS_NamedExecuteWithResult("core_checkmode", 1);
+	ServerMAX = GetMaxPlayers();
+}
+
 script "uc_countinv_acs" (int Which, int Pointer)
 {
 	if(Pointer>0){
@@ -154,22 +163,70 @@ Script "uh_raiderhookshot" (int PlayerID, int Vel, int Moving)
 	TakeActorInventory(PlayerID,"RaiderHookedFlag",9);
 	GiveActorInventory(PlayerID,"RaiderHookRelease_F",1);
 }
+
+script "uc_TrapistBombJump" (int thrust, int radius, int zOff, int zThrust)
+{
+	int TargetTID = ACS_NamedExecuteWithResult("core_getptrtid",2);
+	int TargetTeam = GetPlayerInfo(TargetTID-1000, PLAYERINFO_TEAM);
+
+	//Log(i:xyzDistance(0, target));PowerPro
+
+	for (int p = 0; p < ServerMAX; p++)
+	{
+	//Not in game? Skip
+		if (!PlayerInGame(p)) {
+			continue;
+		}
+	//If bomb owner, skip this
+	// 	if (p+1000 != TargetTID) {
+	// 		if (CheckActorInventory(p+1000,"PowerProtectSurvivor")) {
+	// 			continue;
+	// 		}
+	// 	}
+	//Is a team game? //Same Teams? Skip
+		if (IsTeamGame) {
+			if (TargetTeam == GetPlayerInfo(p, PLAYERINFO_TEAM)){
+				continue;
+			}
+		}
+	//Within range and can see each other? Thrust them
+		if (xyzDistance(0, p+1000) <= radius+16 && CheckSight(0,p+1000,CSF_NOBLOCKALL)) {
+			SetResultValue(0);
+			actorPullTrapist(0, p+1000, -thrust, zOff<<16, zThrust);
+			GiveActorInventory(p+1000,"TrapistThrustWeaken",1);
+		}
+	}
+}
+function void actorPullTrapist(int puller, int pullee, int force, int zOff, int zThrust)
+{//Edit from actorPull
+	int angle = VectorAngle((GetActorX(puller))-GetActorX(pullee), (GetActorY(puller))-GetActorY(pullee));
+	int pitch = pitchBetween(puller, pullee, 0, 0, zOff);
+
+	angle = angle >> 8;
+	int horizForce = fixedMul(cos(pitch), force<<16)>>16;
+	int vertiForce = fixedMul(sin(pitch), force<<16)>>16;
+	if(CheckActorInventory(pullee,"TrapistThrustWeaken")){
+		zThrust/=2;
+		vertiForce/=2;
+	}
+	ThrustThing(angle, horizForce, 1, pullee);
+	ThrustThingZ(pullee, vertiForce*(1+(zThrust == 0)*2) + zThrust*4, 0, 1);
+}
+
+
+//Functions
+//Functions
+//Func
+//Func
+//Functions
+//Functions
+//Func
+//Func
+//Func
 function int magnitudeThree(int x, int y, int z)
 {
 	return sqrt8(x*x + y*y + z*z);
 }
-
-
-
-//Functions
-//Functions
-//Func
-//Func
-//Functions
-//Functions
-//Func
-//Func
-//Func
 
 function int max (int m, int n)
 {
