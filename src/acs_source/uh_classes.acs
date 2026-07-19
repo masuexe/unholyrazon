@@ -214,19 +214,78 @@ function void actorPullTrapist(int puller, int pullee, int force, int zOff, int 
 }
 
 
-//Functions
-//Functions
-//Func
-//Func
-//Functions
-//Functions
-//Func
-//Func
-//Func
-function int magnitudeThree(int x, int y, int z)
+script "uc_SamuraiSetUser" (int inputAngle, int inputPitch, int inputLimit)
 {
-	return sqrt8(x*x + y*y + z*z);
+	SetUserVariable(0,"user_wepangle",inputAngle<<16);
+	SetUserVariable(0,"user_weppitch",inputPitch<<16);
+	SetUserVariable(0,"user_wepaimlimit",inputLimit);
+//	Log(f:GetUserVariable(0,"user_wepangle"),s:":user_wepangle:",i:GetUserVariable(0,"user_wepangle"),s:"\n",
+//		f:GetUserVariable(0,"user_weppitch"),s:":user_weppitch:",i:GetUserVariable(0,"user_weppitch"),s:"\n",
+//		f:GetUserVariable(0,"user_wepaimlimit"),s:":user_wepaimlimit:",i:GetUserVariable(0,"user_wepaimlimit"));
+	
 }
+
+script "uc_SamuraiCheckDrag" (int inputAngle, int inputPitch, int inputDiff)
+{
+	inputAngle <<= 16;
+	inputPitch <<= 16;
+	int changeLimit = GetUserVariable(0,"user_wepaimlimit");
+	if(!changeLimit)
+		terminate;//This is for online desync? Is it 3.1 only?
+	int currentAngle = GetUserVariable(0,"user_wepangle");
+	int currentPitch = GetUserVariable(0,"user_weppitch");
+
+	int angleDif = WrapAround(inputAngle - currentAngle);
+	int pitchDif = WrapAround(inputPitch - currentPitch);
+
+	int len = getHypotenuse(angleDif, pitchDif);
+
+	if(getHypotenuse(angleDif, pitchDif*2)>>16>=inputDiff){
+		SetUserVariable(0,"user_wepangle2",FixedDiv(FixedMul(angleDif,changeLimit),len));
+		SetUserVariable(0,"user_weppitch2",FixedDiv(FixedMul(pitchDif,changeLimit),len));
+		SetResultValue(2);
+	}
+	else{
+		SetResultValue(-1);
+	}
+}
+
+str Samurai_user_variables[2] =
+{
+"user_wepangle",
+"user_weppitch"
+};
+
+script "uc_SamuraiAddonUser" (void)
+{
+	//Log(s:"user_wepangle = ",f:GetUserVariable(0,"user_wepangle"),s:" \/ user_wepangle2 = ",f:GetUserVariable(0,"user_wepangle2"));
+	//Log(s:"user_weppitch = ",f:GetUserVariable(0,"user_weppitch"),s:" \/ user_weppitch2 = ",f:GetUserVariable(0,"user_weppitch2"));
+	SetUserVariable(0,"user_wepangle",GetUserVariable(0,"user_wepangle")+GetUserVariable(0,"user_wepangle2"));
+	SetUserVariable(0,"user_weppitch",GetUserVariable(0,"user_weppitch")+GetUserVariable(0,"user_weppitch2"));
+}
+
+script "uc_SamuraiGetUser" (int num)
+{
+	//Log(s:"Var ",i:num,s:": ",f:GetUserVariable(0,Samurai_user_variables[num]));
+	SetResultValue(GetUserVariable(0,Samurai_user_variables[num]));//>>16
+}
+
+script "uc_HandyManPitch" (void)
+{
+	SetResultValue(GetActorPitch(ACS_NamedExecuteWithResult("UH_GetPointerTID",2))>>8);
+}
+
+
+
+//Functions
+//Functions
+//Func
+//Func
+//Functions
+//Functions
+//Func
+//Func
+//Func
 
 function int max (int m, int n)
 {
@@ -298,6 +357,11 @@ function int zdistance (int tid1, int tid2)
 	int z;
 	z = GetActorZ(tid1) - GetActorZ(tid2) >> 16;
 	return z;
+}
+
+function int magnitudeThree(int x, int y, int z)
+{
+	return sqrt8(x*x + y*y + z*z);
 }
 
 function int abs (int x)
