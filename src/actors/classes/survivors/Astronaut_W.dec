@@ -1,0 +1,580 @@
+// TODO: add dust thrust
+
+actor Astronaut_W_ScriptBar : ScriptBar {}
+
+actor Astronaut_W : BaseMM8BDMWep_UH
+{
+Weapon.AmmoUse 0
+Weapon.AmmoGive 0
+Inventory.Pickupmessage "$PU_34"
+Obituary "$OB_34W"
+Tag "$TAG_Astronaut_W"
+weapon.ammotype "AstronautCharging"
+weapon.ammotype2 "MockingAmmo"
++WEAPON.NOAUTOAIM
+States
+{
+Spawn:
+6H34 [ 6
+loop
+
+Deselect:
+6H34 A 0
+goto DeselectSwap
+Select:
+6H34 A 0
+goto SelectSwap
+
+Ready:
+6H34 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", ASTRONAUT_DYE)
+6H34 A 0 A_JumpIf(CallACS("UH_IsBot"),"BotReady")
+goto Ready2
+Ready2:
+6H34 A 2 A_GiveInventory("Astronaut_Ready_P")
+loop
+
+Fire:
+goto Holdin1
+Fire1:
+6H34 D 0 A_GiveInventory("Astronaut_Fire_P1")
+6H34 A 0 A_GunFlash("Flash.Fire1",1)
+6H34 DA 2
+//6H34 A 0 A_ReFire("Holdin1")
+Goto Ready2
+Fire2:
+6H34 D 0 A_GiveInventory("Astronaut_Fire_P2")
+6H34 B 0 A_GunFlash("Flash.Fire2",1)
+6H34 DBDBD 2
+//6H34 A 0 A_ReFire("Holdin1")
+Goto Ready2
+Fire3:
+6H34 D 0 A_GiveInventory("Astronaut_Fire_P3")
+6H34 C 0 A_GunFlash("Flash.Fire3",1)
+6H34 DCDCDCDA 2
+//6H34 A 0 A_ReFire("Holdin1")
+Goto Ready2
+
+Holdin1:
+6H34 A 0 A_GiveInventory("AstronautChargeFlag",1)
+6H34 A 0 A_GunFlash("Flash.Charged1",1)
+Hold1:
+6H34 A 0 A_JumpIfInventory("AstronautCharging",20,"Holdin2")
+6H34 A 1 A_WeaponReady(4|2)
+6H34 A 0 A_ReFire(1)
+goto Fire1
+6H34 D 0 A_JumpIfInventory("AstronautCharging",20,"Holdin2")
+6H34 D 1 A_WeaponReady(4|2)
+6H34 D 0 A_ReFire("Hold1")
+goto Fire1
+Holdin2:
+6H34 B 0 A_GunFlash("Flash.Charged2",1)
+Hold2:
+6H34 B 1 A_JumpIfInventory("AstronautCharging",70,"Holdin3")
+6H34 B 0 A_ReFire(1)
+goto Fire2
+6H34 D 1 A_JumpIfInventory("AstronautCharging",70,"Holdin3")
+6H34 D 0 A_ReFire("Hold2")
+goto Fire2
+Holdin3:
+6H34 C 0 A_GunFlash("Flash.Charged3",1)
+Hold3:
+6H34 C 1 A_RailWait//Prevents FastWeapons 2 crash
+6H34 C 0 A_ReFire(1)
+goto Fire3
+6H34 D 1 A_RailWait
+6H34 D 0 A_ReFire("Hold3")
+goto Fire3
+
+Flash.Fire1:
+6I34 JKLM 1 A_RailWait
+stop
+Flash.Fire2:
+6I34 NOPQ 1 A_RailWait
+stop
+Flash.Fire3:
+6I34 RSTU 1 A_RailWait
+stop
+Flash.Alt1:
+6I34 KLM 1 A_RailWait
+stop
+
+Flash.Charged1:
+TNT1 A 2 A_GiveInventory("Astronaut_Flash_P")
+loop
+Flash.Charged2:
+6I34 ABCB 2 A_GiveInventory("Astronaut_Flash_P")
+loop
+Flash.Charged3:
+6I34 DEFE 2 A_GiveInventory("Astronaut_Flash_P")
+loop
+//6I34 GHIH 2
+
+Altfire_Fire:
+6H34 D 0 A_GiveInventory("Astronaut_Fire_P1")
+goto Altfire_FireH+1
+Altfire_FireH:
+6H34 D 0 A_GiveInventory("Astronaut_Fire_P0")
+6H34 A 0 A_GunFlash("Flash.Alt1",1)
+6H34 D 2
+6H34 A 3
+6H34 A 0 A_ReFire("Altfire_FireH")
+Goto Ready2
+
+AltFire:
+6H34 A 0 A_JumpIfInventory("AstronautChargeFlag",1,"Altfire_Fire")
+//6H34 A 0 A_JumpIfInventory("MockingAmmo",50,"Altfire2")
+//Goto Ready2
+//Altfire2:
+6H34 A 0 A_ChangeFlag("NOGRAVITY",1)
+6H34 A 0 ThrustThingZ(0,4,0,0)
+6H34 A 0 A_TakeInventory("MockingAmmo",8)
+Altfire3:
+
+//6H34 A 0 A_SpawnItemEx("Astronaut_JetFX1",-10,-7,30,0,-2,-10,0,1)
+//6H34 A 0 A_SpawnItemEx("Astronaut_JetFX2",-10,7,30,0,2,-10,0,1)
+
+6H34 A 2 OffSet(9,69)A_GiveInventory("Astronaut_Alt_P")
+6H34 A 0 A_ReFire("Altfire_H")
+AltEnd:
+6H34 A 0 A_ChangeFlag("NOGRAVITY",0)
+6H34 A 2 OffSet(5,53)
+6H34 A 2 OffSet(2,41)
+6H34 A 0 A_ClearReFire
+Goto Ready2
+Altfire_H:
+6H34 A 0 A_JumpIfInventory("MockingAmmo",1,"Altfire3")
+goto AltEnd
+
+BotReady:
+6H34 A 0 //A_ChangeFlag("NOBLOCKMONST",1)
+6H34 A 0 A_WeaponReady(12)
+6H34 A 2 A_Refire("BotFire")
+6H34 A 0 A_GiveInventory("MockingAmmo",3)
+goto BotReady+1
+
+BotPew:
+6H34 D 0 A_JumpIfInventory("AstronautCharging",20,"BotPew2")
+6H34 D 2 A_GiveInventory("Astronaut_Fire_P1")
+6H34 A 2
+Goto BotReady+1
+BotPew2:
+6H34 D 0 A_JumpIfInventory("AstronautCharging",70,"BotPew3")
+6H34 D 0 A_GiveInventory("Astronaut_Fire_P2")
+6H34 DBDBD 2
+Goto BotReady+1
+BotPew3:
+6H34 D 0 A_GiveInventory("Astronaut_Fire_P3")
+6H34 DCDCDCDA 2
+Goto BotReady+1
+
+BotRare:
+6H34 A 0 A_PlaySoundEx("taunt/D_34","Voice")
+6H34 A 0 A_FaceTarget
+6H34 A 0 A_Jump(32,"BotPew3")
+goto BotPew2
+
+BotFire:
+6H34 A 0 A_Jump(16,3)
+6H34 A 0 A_Jump(16,5)
+6H34 A 1 A_Jump(8,"BotRare")
+goto BotPew
+6H34 A 0 A_Jump(16,"BotRare")
+6H34 A 0 A_GiveInventory("AstronautChargeFlag",1)
+6H34 A 0 A_GunFlash("Flash.Charged1",1)
+goto BotHold2
+6H34 A 0 A_ChangeVelocity(momx,momy,10.0,CVF_REPLACE)
+goto BotPew
+
+BotHold2:
+6H34 A 0 A_JumpIfInventory("AstronautCharging",20,"BotHold3")
+6H34 A 0 A_Jump(8,"BotBoost2")
+6H34 A 0 A_Jump(4,2)
+6H34 A 0 A_Jump(2,"BotPew")
+goto BotReFire2
+6H34 A 0 A_Jump(16,2)
+6H34 A 0 A_GiveInventory("AstronautCharging",10)
+goto BotReFire2
+6H34 A 0 A_GiveInventory("AstronautCharging",20)
+goto BotPew
+
+BotHold3:
+6H34 A 0 A_JumpIfInventory("AstronautCharging",70,"BotHold4")
+6H34 A 0 A_Jump(12,3)
+6H34 A 0 A_Jump(2,"BotPew")
+6H34 A 0 A_Jump(12,"BotBoost3")
+goto BotReFire3
+6H34 A 0 A_Jump(24,"BotPew")
+6H34 A 0 A_GiveInventory("AstronautCharging",40)
+goto BotReFire3
+
+BotHold4:
+6H34 A 0 A_Jump(64,"BotPew")
+6H34 A 0 A_Jump(128,"BotBoost3")
+goto BotReFire3
+
+BotReFire2:
+6H34 D 1
+6H34 A 0 A_Refire("BotHold2")
+goto BotPew
+BotReFire3:
+6H34 D 1
+6H34 A 0 A_Refire("BotHold2")
+goto BotPew
+
+BotBoost2:
+6H34 A 0 A_ChangeVelocity(momx,momy,10.0,CVF_REPLACE)
+goto BotReFire2
+BotBoost3:
+6H34 A 0 A_ChangeVelocity(momx,momy,10.0,CVF_REPLACE)
+goto BotReFire3
+}
+}
+
+actor MockingAmmo : Ammo
+{
+inventory.amount 1
+inventory.maxamount 400
++INVENTORY.IGNORESKILL
+}
+
+actor AstronautChargeFlag : Inventory{}
+actor AstronautChargeDelay : Powerup
+{
+Powerup.Duration 17
+}
+
+actor AstronautCharging : Ammo
+{
+inventory.amount 1
+inventory.maxamount 70
++INVENTORY.IGNORESKILL
+}
+
+actor AstronautFlightPower : PowerFlight
+{
+Powerup.Duration 3
+}
+
+actor Astronaut_Ready_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIfInventory("MockingAmmo",50,2)
+TNT1 A 0 A_WeaponReady(WRF_NOSECONDARY)
+goto Ammo
+TNT1 A 0 A_WeaponReady
+goto Ammo
+
+Ammo:
+TNT1 A 0 A_GiveInventory("MockingAmmo",3)
+stop
+}
+}
+
+
+actor Astronaut_Fire_P0 : CustomInventory//Rapid alt
+{
+States
+{
+Pickup:
+TNT1 A 0 A_FireCustomMissile("AstronautLaserPew",0,0,8,0)
+Take:
+TNT1 A 0 A_PlaySound("ToyStory/LaserPew",1)
+TNT1 A 0 A_GiveInventory("MockingAmmo",3)
+stop
+}
+}
+actor Astronaut_Fire_P1 : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_FireCustomMissile("AstronautLaserPew",0,0,8,0)
+Take:
+TNT1 A 0 A_PlaySound("ToyStory/LaserPew",1)
+TNT1 A 0 A_GiveInventory("MockingAmmo",2)
+Take0:
+TNT1 A 0 A_PlaySound("misc/BlankSound",4)
+TNT1 A 0 A_TakeInventory("AstronautChargeDelay")
+TNT1 A 0 A_TakeInventory("AstronautChargeFlag")
+TNT1 A 0 A_TakeInventory("AstronautCharging")
+stop
+}
+}
+actor Astronaut_Fire_P2 : Astronaut_Fire_P1
+{
+States
+{
+Pickup:
+TNT1 A 0 A_FireCustomMissile("AstronautLaserPew2",0,0,8,0)
+Take:
+TNT1 A 0 A_PlaySound("ToyStory/StrongPew",1)
+TNT1 A 0 A_GiveInventory("MockingAmmo",5)
+goto Take0
+}
+}
+actor Astronaut_Fire_P3 : Astronaut_Fire_P1
+{
+States
+{
+Pickup:
+TNT1 A 0 A_FireCustomMissile("AstronautLaserPew3",0,0,8,0)
+Take:
+TNT1 A 0 A_PlaySound("ToyStory/SuperPew",1)
+TNT1 A 0 A_GiveInventory("MockingAmmo",8)
+goto Take0
+}
+}
+
+actor Astronaut_Alt_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_SpawnItemEx("AstronautJetPackDamage",-2,0,32,momx,momy,momz,0,8)
+Take:
+TNT1 A 0 //A_GiveInventory("AstronautFlightPower",1)
+TNT1 A 0 A_TakeInventory("MockingAmmo",5,1)
+TNT1 A 0 A_TakeInventory("MockingAmmo",3)
+TNT1 A 0 A_PlaySound("weapon/spreaddrillhit",4)
+TNT1 A 0 //A_JumpIfInventory("",1,2)
+TNT1 A 0 ThrustThingZ(0,12,0,0)
+TNT1 A 0
+stop
+}
+}
+
+actor Astronaut_Flash_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIfInventory("AstronautChargeDelay",1,3)
+TNT1 A 0 A_GiveInventory("AstronautChargeDelay",1)
+TNT1 A 0 A_PlaySound("ToyStory/LaserCharge",4,0.90)
+TNT1 A 0 A_GiveInventory("MockingAmmo",1)
+TNT1 A 0 A_GiveInventory("AstronautCharging",1)
+stop
+}
+}
+
+
+actor AstronautLaserPew : BasicFastProjectile
+{
+Translation "192:192=171:171","198:198=175:175","0:0=185:185"
+damagetype "Astronaut"
+Obituary "$OB_34M1"
+RenderStyle None
+damage (80)
+Radius 10
+Height 10
+speed 70
+scale 4.0
+Args 8
+States
+{
+Spawn:
+//TNT1 A 2
+TNT1 A 0
+TNT1 A 1 A_SpawnItemEx("AstronautLaserFX3",0,0,0,momx*0.5,momy*0.5,momz*0.5,0,1+8+SXF_TRANSFERSCALE)//16384
+goto SpawnL+6
+//TNT1 A 0 A_Jump(256,1,2,3,4,5,6,7,8)
+SpawnL:
+TNT1 AAAAAA 1 A_SpawnItemEx("AstronautLaserFX1",0,0,0,momx*0.5,momy*0.5,momz*0.5,0,1+8+16384+SXF_TRANSFERSPECIAL)//32768
+TNT1 AA 1 A_SpawnItemEx("AstronautLaserFX2",0,0,0,momx*0.5,momy*0.5,momz*0.5,0,1+8+16384+32768)
+loop
+Death:
+TNT1 A 1
+TNT1 A 2 A_SpawnItemEx("Astronaut_LaserMissFX_H",0,0,0,0,0,0,0,1+16384)
+stop
+Crash:
+XDeath:
+TNT1 A 1
+TNT1 A 2 A_SpawnItemEx("AstronautLaserHitFX_H",0,random(-1,0)*2,random(0,1)*2,0,0,0,0,1+16384)
+stop
+}
+}
+
+actor AstronautLaserHitFX_H : BasicClientSide
+{
+Args 3,4
+States
+{
+Spawn:
+TNT1 A 0 nodelay A_SetScale(ScaleX/1.6)
+TNT1 A 0 A_SpawnItemEx("AstronautLaserHitFX",-1,0,3,0,0,frandom(Args[0],Args[1]),0,1+16384)
+TNT1 A 0 A_SpawnItemEx("AstronautLaserHitFX",-1,0,-3,0,0,frandom(-Args[0],-Args[1]),0,1+16384)
+TNT1 A 0 A_SpawnItemEx("AstronautLaserHitFX",-1,3,0,0,frandom(Args[0],Args[1]),0,0,1+16384)
+TNT1 A 0 A_SpawnItemEx("AstronautLaserHitFX",-1,-3,0,0,frandom(-Args[0],-Args[1]),0,0,1+16384)
+TNT1 A 0 A_SpawnItemEx("AstronautLaserHitFX",-1,2,2,0,cos(45)*frandom(Args[0],Args[1]),cos(45)*frandom(Args[0],Args[1]),0,1+16384)
+TNT1 A 0 A_SpawnItemEx("AstronautLaserHitFX",-1,-2,2,0,cos(45)*frandom(-Args[0],-Args[1]),cos(45)*frandom(Args[0],Args[1]),0,1+16384)
+TNT1 A 0 A_SpawnItemEx("AstronautLaserHitFX",-1,2,-2,0,cos(45)*frandom(Args[0],Args[1]),cos(45)*frandom(-Args[0],-Args[1]),0,1+16384)
+TNT1 A 0 A_SpawnItemEx("AstronautLaserHitFX",-1,-2,-2,0,cos(45)*frandom(-Args[0],-Args[1]),cos(45)*frandom(-Args[0],-Args[1]),0,1+16384)
+TNT1 A 0 //A_SpawnItemEx("AstronautLaserPewHitFX",0,0,0,0,0,0,0,1+16384)
+stop
+}
+}
+actor Astronaut_LaserMissFX_H : BasicClientSide
+{
+States
+{
+Spawn:
+TNT1 A 0 nodelay A_SetScale(ScaleX/1.6)
+TNT1 AAAAAAAA 1 A_SpawnItemEx("Astronaut_LaserMissFX",-1,random(-3,3)*3,-1,0,0,0.5,0,1+16384)
+stop
+}
+}
+
+actor AstronautLaserHitFX : BasicClientSide
+{
++FORCEXYBILLBOARD
++BRIGHT
+States
+{
+Spawn:
+6P34 U 0
+6P34 U 0 A_Jump(256,1,2,3)
+6P34 UUUVVWWXX 1
+stop
+}
+}
+actor Astronaut_LaserMissFX : AstronautLaserHitFX
+{
+States
+{
+Spawn:
+6P34 Q 0
+6P34 QQRRSSTT 1 ThrustThingZ(0,4,0,1)
+stop
+}
+}
+actor AstronautLaserPewHitFX : AstronautLaserHitFX
+{
+States
+{
+Spawn:
+TMFX A 0
+TMFX ABCD 1
+stop
+}
+}
+
+
+actor AstronautLaserPew2 : AstronautLaserPew
+{
+Translation "192:192=214:214","198:198=228:228","0:0=231:231"
+Obituary "$OB_34M2"
+damage (250)
+Radius 13
+Height 13
+scale 5.0
+Args 9
+}
+
+actor AstronautLaserPew3 : AstronautLaserPew
+{
+Translation "192:192=137:137","198:198=106:106","0:0=114:114"
+Obituary "$OB_34M3"
+damage (575)
+Radius 16
+Height 16
+scale 6.0
+Args 10
+}
+
+actor AstronautLaserFX1 : BasicClientSide
+{
++MISSILE
++DONTBLAST
++FORCEXYBILLBOARD
+//+BRIGHT
+Speed 70
+Scale 4.0
+Args 8
+States
+{
+Spawn:
+6P34 C 0
+6P34 C 0 A_CountDownArg(0)
+6P34 C 0 A_SpawnItemEx("AstronautLaserFX1",-1.5*sqrt(momx*momx+momy*momy),0,-1.5*momz,momx,momy,momz,0,1+8+16384+32768)
+6P34 C 1
+stop
+}
+}
+actor AstronautLaserFX2 : AstronautLaserFX1
+{
+States
+{
+Spawn://D
+6P34 B 0
+6P34 B 0 A_CountDownArg(0)
+6P34 B 0 A_SpawnItemEx("AstronautLaserFX2",-1.5*sqrt(momx*momx+momy*momy),0,-1.5*momz,momx,momy,momz,0,1+8+16384+32768)
+6P34 B 1 Bright
+stop
+}
+}
+actor AstronautLaserFX3 : AstronautLaserFX1{Args 3}
+
+actor AstronautJetPackDamage : BasicExplosion_Args_Trio
+{
+damagetype "Astronaut"
+Obituary "$OB_34A"
+Args 45,80,16
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_GiveToTarget("Astronaut_JetFX0_P",1)
+goto BasicExplosion_Args_Trio::Spawn
+}
+}
+
+actor Astronaut_JetFX0_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_SpawnItemEx("Astronaut_JetFX1",-10,-7,30,0,-2,-10,0,1)
+TNT1 A 0 A_SpawnItemEx("Astronaut_JetFX2",-10,7,30,0,2,-10,0,1)
+stop
+}
+}
+
+actor Astronaut_JetFX1 : BasicClientSideM
+{
++FORCEXYBILLBOARD
++BRIGHT
++DONTBLAST
+Speed 25
+Args 8,-7
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SetArg(2,random(0,1)*2-1)
+TNT1 A 0 A_SetScale(ScaleX*Args[2],ScaleY)
+TNT1 A 0 A_Jump(256,1,2,3,4,5,6,7,8)
+Jet:
+6P34 MMNNOOPP 1 A_GiveInventory("Astronaut_JetFX_P")
+loop
+}
+}
+actor Astronaut_JetFX2 : Astronaut_JetFX1
+{
+Args 8,7
+}
+
+actor Astronaut_JetFX_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_CountDownArg(0)
+TNT1 A 0 //A_Warp(2,-10,Args[1]-(Args[0]*7/Args[1]),Args[0]*3,0,WARPF_NOCHECKPOSITION|WARPF_INTERPOLATE)//8+16
+TNT1 A 0 A_SetScale(ScaleX-0.2*Args[2],ScaleY-0.2)
+TNT1 A 0 A_SpawnItemEx("Astronaut_LaserMissFX",0,0,0,frandom(-1,0),frandom(-1,1),-1,0,1+16384,256-ScaleY*16)
+stop
+}
+}
+
