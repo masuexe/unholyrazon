@@ -1,8 +1,10 @@
 #library "uh_shared"
 #include "zcommon.acs"
 
+global int 3: IsTeamGame;
+global int 4: ServerMAX;
+
 //Contains scripts used by several classes
-#define MAX_PLAYERS 64
 
 script "uhS_countinv_acs" (int Which, int Pointer)
 {
@@ -181,6 +183,55 @@ Script "uh_FlashStopperRNG" (int Power, int Dur, int Toggle) CLIENTSIDE
 	FadeRange(RC,BC,GC,((1.0)*Power)/100,RC,BC,GC,0.0,((1.0)*Dur)/100);
 }
 
+script "uh_FloorQuakeDamage" (int maxRange, int QuakePower, int Which)
+{
+	int userTID = ActivatorTID();
+	int userTeam = GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM);
+	int zDist;
+	str TheClass;
+	Switch(Which){
+		Default:
+			terminate;
+			break;
+		Case 36:
+			TheClass = "SumoWrestler";
+			break;
+		Case 41:
+			TheClass = "Handyman";
+			break;
+		Case -41:
+			TheClass = "HandymanDeath";
+			break;
+		Case 50:
+			TheClass = "DecoyBot";
+			break;
+
+		Case 1041:
+			TheClass = "S_Handyman";
+			break;
+		Case -1041:
+			TheClass = "S_HandymanDeath";
+			break;
+	}
+	str SpawnName = StrParam(s:TheClass,s:"_FloorQuakeSpawn");
+	//Log(s:"maxRange = ",i:maxRange,s:" \\ QuakePower = ",i:QuakePower);
+	// if(QuakePower > 255)
+	// 	Log(s:"\cg[!] WARNING [!] \cduh_FloorQuakeDamage (QuakePower) is too high! Max power is 255!");
+	for(int p = 0;p < ServerMAX; p++)
+	{
+		if(!PlayerInGame(p)){continue;}
+		if(IsTeamGame){if(userTeam == GetPlayerInfo(p, PLAYERINFO_TEAM)){continue;}
+		}
+		if(xyDistance(0, p+1000) < maxRange && zDistance(0, p+1000) >= -32 && zDistance(0, p+1000) <= 32 && userTID != p+1000)
+		{
+			//Log(s:"xyDist = ",i:xyDistance(0, p+1000),s:" \\ zDist = ",i:zDistance(0, p+1000));
+			//SpawnForced(SpawnName,GetActorX(p+1000),GetActorY(p+1000),GetActorZ(p+1000),0,QuakePower);
+			SpawnProjectile(userTID,SpawnName,QuakePower,0,p,0,0);
+		}
+	}
+}
+
+
 
 //ZANGIEF
 
@@ -218,7 +269,7 @@ script "uh_ZangiefGiver" (int i, int target)
 
 script "uh_ZangiefGiveToAll" (int i)
 {
-	for(int j=0; j<MAX_PLAYERS; j++) {
+	for(int j=0; j<ServerMAX; j++) {
 		if(PlayerInGame(j))GiveActorInventory(1000+j,ZangiefGiveItem[i],1);
 	}
 }
@@ -299,4 +350,103 @@ script "uh_ZangiefGrabReverse" (int pitch, int angle, int Grab_D)
 	} else {
 		setResultValue(0);
 	}
+}
+
+
+
+function int max(int x, int y)
+{
+	if(x > y)
+	{
+		return x;
+	}
+	return y;
+}
+
+function int xyDistance (int tid1, int tid2)
+{
+	int x, y, d;
+	x = GetActorX(tid1) - GetActorX(tid2);
+	y = GetActorY(tid1) - GetActorY(tid2);
+	d = VectorLength(x, y) >> 16;
+	return d;
+}
+
+function int zdistance (int tid1, int tid2)
+{
+	int z;
+	z = GetActorZ(tid1) - GetActorZ(tid2) >> 16;
+	return z;
+}
+
+function int distanceVal (int tid1x, int tid1y, int tid1z, int tid2)
+{//Similar to xyzDistance, except first TID has tweaked values
+	int x, y, z, d;
+	x = tid1x - GetActorX(tid2);
+	y = tid1y - GetActorY(tid2);
+	z = tid1z - GetActorZ(tid2);
+	d = VectorLength(VectorLength(x, y), z) >> 16;
+	return d;
+}
+
+function int fdistanceVal (int x, int y, int z)
+{
+	int len;
+
+	int ang = vectorangle(x,y);
+	if(((ang+0.125)%0.5) > 0.25) len = fixeddiv(y, sin(ang));
+	else len = fixeddiv(x, cos(ang));
+
+	ang = vectorangle(len, z);
+	if(((ang+0.125)%0.5) > 0.25) len = fixeddiv(z, sin(ang));
+	else len = fixeddiv(len, cos(ang));
+
+	return len;
+}
+
+function int round_func(int fixedNumber)
+{
+	return (fixedNumber + 0.5) >> 16;
+}
+
+function int abs (int x)
+{
+	if (x < 0)
+	{
+		return -x;
+	}
+	return x;
+}
+
+function bool isDifferentTeams (int team, int targetNumber)
+{
+	return (team != GetPlayerInfo(targetNumber, PLAYERINFO_TEAM));
+}
+
+function int pitchAdjust(int i)
+{
+	if(i>0.0) return 1.0-i;
+	return -i;
+}
+
+function int WrapAround(int i)
+{
+	if(i<-0.5) return i+1.0;
+	if(i>0.5) return i-1.0;
+	return i;
+}
+
+function int fDistanceVal1(int ang, int x, int y)
+{
+	int len;
+	if(((ang+0.125)%0.5) > 0.25) len = fixeddiv(y, sin(ang));
+	else len = fixeddiv(x, cos(ang));
+	return len;
+}
+
+function int fDistanceVal2(int ang, int len, int z)
+{
+	if(((ang+0.125)%0.5) > 0.25) len = fixeddiv(z, sin(ang));
+	else len = fixeddiv(len, cos(ang));
+	return len;
 }
