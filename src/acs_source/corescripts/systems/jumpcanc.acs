@@ -1,0 +1,335 @@
+
+// This is a copy of MM8BDM v6b "systems/JUMPCANC.acs"
+// Any area with the following line
+//$UH
+// Means that area is edited for UH
+
+#library "jumpcanc"
+#include "zcommon.acs"
+
+//$UH//$UH//$UH //Taken from library includes to reduce compile size and need for entire libraries
+#define CAPROP_AirJumpZ 64
+#define CAPROP_WallJumpZ 65
+
+// 0 if they haven't pressed jump (in a given tic)
+// 1 if the player pressed jump
+// 2 if the player released jump
+// 3 if the player is holding jump
+Function int JumpStatus (int Buttons, int OldButtons)
+{
+	int JumpNow = Buttons & BT_JUMP;
+	int JumpOld = OldButtons & BT_JUMP;
+	If(JumpNow > JumpOld){Return 1;}
+	If(JumpNow < JumpOld){Return 2;}
+	If(JumpNow > 0 &&  JumpOld > 0){Return 3;}
+	Return 0;
+}
+//$UH//$UH//$UH
+
+// [Mike]/[Mess] Jump Canceling script. 
+//
+script "core_jumpcancel" ENTER 
+{
+int InputButtons; 
+int InputOldButtons; 
+int JumpState;
+int Grounded, FallingCheck, VelZ, LastVelZ, Impact;
+bool UsedJump;
+if(PlayerIsBot(PlayerNumber())){terminate;}
+
+while (GetActorProperty(ActivatorTID(), APROP_HEALTH) > 0)
+	{
+	InputOldButtons = InputButtons;
+	InputButtons = GetPlayerInput(-1, INPUT_BUTTONS);
+	JumpState = JumpStatus(InputButtons, InputOldButtons);
+	VelZ = GetActorVelZ(0);
+
+if(GetActorProperty(ActivatorTID(), APROP_Gravity) <= -1){//$UH a copy of land check, but flipped for negative gravity
+	If(VelZ==0 && LastVelZ>0){Impact=LastVelZ;}
+	
+	If(VelZ>0) // Is the player falling? [flip]
+		{
+		FallingCheck=TRUE;
+		TakeInventory("JumpCancler",1);
+		Grounded = 0;
+		}
+	If(VelZ<0) // Is the player rising [flip]
+		{
+		FallingCheck=FALSE;
+		Grounded = 0;
+		}
+			
+	If(VelZ==0) // Is the player stopped on a surface
+		{
+		If(FallingCheck && Impact > 1.0 && GetActorZ(0) - GetActorFloorZ (0)!=0.0) //If the player has previously fallen, check for an impact force greater than 1
+			{
+			Grounded=3;
+			Impact=0;
+			}
+		if(Grounded < 3 && GetActorZ(0) - GetActorFloorZ (0)!=0.0 ){Grounded++;} //Increment grounded variable if velocity is 0 and player is not near the floor
+		}
+
+	if((GetActorCeilingZ(0) - GetActorZ(0)==0.0) || Grounded == 3)
+		{
+		If(!CheckInventory("JumpCancler")){GiveInventory("JumpCancler",1);}
+		If(!CheckInventory("BoostFlag")){GiveInventory("BoostFlag", 1);}
+		If(CheckInventory("AirJumpsUsed") > 0){TakeInventory("AirJumpsUsed", 9999);}
+		If(CheckInventory("WallJumpsUsed") > 0){TakeInventory("WallJumpsUsed", 9999);}
+		If(CheckInventory("AirFraudAchieved")){TakeInventory("AirFraudAchieved",99999);}//$UH
+		FallingCheck=FALSE;
+		}
+}//If negative gravity end
+else{
+	If(VelZ==0 && LastVelZ<0){Impact=LastVelZ;} //Impact to determine if you're actually landing on a platform vs gravity changing you slowly.
+
+	If(VelZ<0) // Is the player falling?
+		{
+		FallingCheck=TRUE;
+		TakeInventory("JumpCancler",1);
+		//print(s:"You're falling!");
+		Grounded = 0;
+		}
+	If(VelZ>0) // Is the player rising
+		{
+		FallingCheck=FALSE; // If the player is rising or on the ground, they're not falling
+		Grounded = 0;
+		}
+			
+	If(VelZ==0) // Is the player stopped on a surface
+		{
+		If(FallingCheck && Impact < -1.0 && GetActorCeilingZ(0) - GetActorZ(0) > 64.0) //If the player has previously fallen, check for an impact force less than -1 (Which falling from ANY height should be).  
+			{
+			Grounded=3; //Immediately assume the player is grounded
+			Impact=0;
+			//log(s:"You landed!");
+			}
+		if(Grounded < 3 && GetActorCeilingZ(0) - GetActorZ(0) > 64.0 ){Grounded++;} //Increment grounded variable if velocity is 0 and player is not near the ceiling
+		}
+
+	if((GetActorZ(0) - GetActorFloorZ (0)==0.0) || Grounded == 3 && CheckInventory("TrebleBoostDelay")==0)
+		{
+		If(!CheckInventory("JumpCancler")){GiveInventory("JumpCancler",1);}
+		If(!CheckInventory("BoostFlag")){GiveInventory("BoostFlag", 1);}
+		If(CheckInventory("AirJumpsUsed") > 0){TakeInventory("AirJumpsUsed", 9999);}
+		If(CheckInventory("WallJumpsUsed") > 0){TakeInventory("WallJumpsUsed", 9999);}
+		If(CheckInventory("AirFraudAchieved")){TakeInventory("AirFraudAchieved",99999);}//$UH
+		FallingCheck=FALSE;
+		//print(s:"You're grounded!");
+		}
+}//Else end
+	
+	UsedJump = false;
+	Switch(JumpState)
+		{
+		Case 1: // [Mess] You pressed Jump
+
+		if(CheckInventory("OnCeilingFlag") && !UsedJump){//$UH
+			GiveInventory("ReverseJump",1);
+			TakeInventory("OnCeilingFlag", 1);
+			UsedJump = true;
+		}
+
+		if(CheckInventory("VenusBlastJumpFlag") && !UsedJump) {//$UH
+			if(CheckInventory("JumpCancler")==0) {
+				GiveInventory("VenusExplosiveJump_P",1);
+				UsedJump = true;
+			}
+		}
+
+		if(CheckInventory("CanTreadWater") && !UsedJump) {//Note, change this to generic special jump check, for future Shademan
+			if(CheckInventory("JumpCancler")==0) {
+				if(CheckInventory("IsTreadingWater")==0) {
+					GiveInventory("GiveIsTreadingWater_P",1);
+					UsedJump = true;
+				}
+			}
+		}
+
+		if(CheckInventory("DisabledWallJumps") <= 0 && (CheckInventory("WallJumpLimit") > CheckInventory("WallJumpsUsed") || CheckInventory("InfiniteWallJumps") > 0) && !UsedJump)
+			{
+			if(CheckInventory("JumpCancler")==0)
+				{
+				if (CheckInventory("PlayerPropertyFlight")<=0)
+					{
+					bool north = ACS_NamedExecuteWithResult("core_checkWall_north");
+					bool east = ACS_NamedExecuteWithResult("core_checkWall_east");
+					bool south = ACS_NamedExecuteWithResult("core_checkWall_south");
+					bool west = ACS_NamedExecuteWithResult("core_checkWall_west");
+					if(north || east || south || west) 
+						{
+						GiveInventory("WallJumpsUsed", 1);
+						ACS_NamedExecuteWithResult("core_walljump", north, east, south, west);
+						PlaySound(0, "*walljump", CHAN_BODY);
+						GiveInventory("JumpCancler",1);
+						UsedJump = true;
+						}
+					}
+				}
+			}
+
+		if(CheckWeapon("SuperAdaptorWep")==1 && !UsedJump)
+			{
+			if(CheckInventory("JumpCancler")==0)
+				{
+				if (CheckInventory("BoostFlag")==1 && CheckInventory("PlayerPropertyFlight")<=0 && CheckInventory("PlayerPropertyGrounded")<=0)
+					{
+					GiveInventory("Boosting",1);
+					TakeInventory("BoostFlag", 1);
+					UsedJump = true;
+					}
+				}
+			}
+
+        if(CheckWeapon("TrebleBoost")==1 && !UsedJump)
+			{
+			if(CheckInventory("JumpCancler")==0)
+				{
+				if (CheckInventory("TrebleBoostDelay")==0 && CheckInventory("BoostFlag")==1 && CheckInventory("PlayerPropertyFlight")<=0 && CheckInventory("PlayerPropertyGrounded")<=0)
+					{
+                        ACS_NamedExecuteAlways("core_trebleboostdash", 0);
+                        GiveInventory("TrebleBoostDelay",1);
+                        GiveInventory("TrebleBoostJet",1);
+                        TakeInventory("BoostFlag", 1);
+						UsedJump = true;
+					}
+				}
+			}
+
+		if(CheckInventory("DisabledAirJumps") <= 0 && (CheckInventory("AirJumpLimit") > CheckInventory("AirJumpsUsed") || CheckInventory("InfiniteAirJumps") > 0) && !UsedJump)
+			{
+			if(CheckInventory("JumpCancler")==0)
+				{
+				if (CheckInventory("PlayerPropertyFlight")<=0)
+					{
+					GiveInventory("AirJumpsUsed", 1);
+					SetActorVelocity(0,GetActorVelX(0),GetActorVelY(0),ACS_NamedExecuteWithResult("core_GetCustomActorProperty",0,CAPROP_AirJumpZ)*(1+(CheckInventory("PowerHighJumpRune")||CheckInventory("RuneHighJump"))),0,0);
+					PlaySound(0, "*airjump", CHAN_BODY);
+					GiveInventory("JumpCancler",1);
+					UsedJump = true;
+					}
+				}
+			}
+
+
+		Grounded = 0;
+		break;
+		Case 2: // You Released Jump
+		if(CheckInventory("JumpCancler")>0 && Grounded == 0)
+			{
+			TakeInventory("JumpCancler",1);
+			if(CheckInventory("NoJumpCancel")==0){
+			ThrustThingZ(0,-1,0,0);
+			}
+			Grounded = 0;
+			}
+		break;
+		Case 3: //Holding Jump//$UH
+		if(CheckInventory("OnCeilingFlag")){
+			GiveInventory("ReverseJump",1);
+			TakeInventory("OnCeilingFlag", 1);
+		}
+		Default: //Holding Jump OR not holding Jump
+
+		break;
+		}	
+	LastVelZ = VelZ;
+	delay(1);	
+	}
+}
+
+script "core_jumpcancel_respawn" RESPAWN
+{
+	ACS_NamedExecuteAlways("core_jumpcancel", 0);
+}
+
+script "core_trebleboostdash" (void)
+{
+    int forward = GetPlayerInput(-1, INPUT_FORWARDMOVE);
+    int sideways = GetPlayerInput(-1, INPUT_SIDEMOVE);
+    int boostAngle = -360.0;
+    int boostTime = 7;
+    int speed = 45.0;
+    int hspeed = 22.5;
+
+    ActivatorSound("weapons/busters/trebleboostdash", 128);
+
+    if(forward > 0) {
+        if(sideways > 0) {
+            boostAngle = GetActorAngle(0)-0.1074;
+        } else if(sideways < 0) {
+            boostAngle = GetActorAngle(0)+0.1074;
+        } else {
+            boostAngle = GetActorAngle(0);
+        }
+    } else if(forward < 0) {
+        if(sideways > 0) {
+            boostAngle = GetActorAngle(0)+0.5+0.1074;
+        } else if(sideways < 0) {
+            boostAngle = GetActorAngle(0)+0.5-0.1074;
+        } else {
+            boostAngle = GetActorAngle(0)+0.5;
+        }
+    } else if(sideways > 0) {
+        boostAngle = GetActorAngle(0)-0.25;
+    } else if(sideways < 0) {
+        boostAngle = GetActorAngle(0)+0.25;
+    }
+
+    if(boostAngle == -360.0) {
+        for(int i = 0; i < boostTime; i++) {
+            ThrustThingZ(0, 30, 0, 0);
+            Delay(1);
+        }
+    }
+    else
+    {
+        for(i = 0; i < boostTime; i++) {
+            SetActorVelocity(0, fixedMul(cos(boostAngle), speed), fixedMul(sin(boostAngle), speed), 0.01, false, true);
+            Delay(1);
+        }
+        SetActorVelocity(0, fixedMul(cos(boostAngle), hspeed), fixedMul(sin(boostAngle), hspeed), 0.01, false, true);
+    }
+}
+
+// Partially borrowed from CBM, adapted using core systems
+script "core_walljump" (int north, int east, int south, int west)
+{
+	int JumpAngByte = 0;
+	int TotalAngles = 0;
+    if (north && !south) {
+		JumpAngByte += 128;
+		TotalAngles++;
+	}
+    if (/*south &&*/ !north) {
+		JumpAngByte += 256;
+		TotalAngles++;
+	}
+	if (east && !west) {
+	    JumpAngByte += 64;
+		TotalAngles++;
+	}
+	if (west && !east) {
+	    JumpAngByte += 192;
+		TotalAngles++;
+	}
+	if (/*south && */ !north && east && !west) { //Somewhere, a mathematician is crying.
+	    JumpAngByte = 32;
+		TotalAngles = 1;
+	}
+	if (TotalAngles>0) {
+		JumpAngByte /= TotalAngles;
+
+		int height = ACS_NamedExecuteWithResult("core_GetCustomActorProperty",0,CAPROP_WallJumpZ)*(1+(CheckInventory("PowerHighJumpRune")||CheckInventory("RuneHighJump")));
+		int thrust = FixedMul(height, 0.8) >> 16;
+		if(height<0){thrust *= -1;}//$UH //If flipped Zthrust, then the thrust away needs to be flipped
+//Log(f:height,s:" height ",i:height);
+//Log(f:thrust,s:" thrust ",i:thrust);
+		// if(CheckInventory("QuickManTrail")){thrust += 12; height += 5*1.0;}//$UH
+		// if(CheckInventory("ChillParkour")){thrust += 16; height += 3*1.0; GiveInventory("ChillParkourJump_P",1);}//$UH
+
+		ThrustThing(((GetActorAngle(0) >> 8) + JumpAngByte), thrust, 1);
+		SetActorVelocity(0, GetActorVelX(0), GetActorVelY(0), height, 0, 0);
+
+		GiveInventory("PowerWallJumpSpeed", 1);
+	}
+}
