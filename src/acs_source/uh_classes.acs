@@ -1,14 +1,8 @@
 #library "uh_classes"
 #include "zcommon.acs"
 
-bool IsTeamGame = 0;
-int ServerMAX = 32;
-
-script "uc_IsTeamServerMAX_S" OPEN
-{
-	IsTeamGame = ACS_NamedExecuteWithResult("core_checkmode", 1);
-	ServerMAX = GetMaxPlayers();
-}
+global int 3: IsTeamGame;
+global int 4: ServerMAX;
 
 script "uc_countinv_acs" (int Which, int Pointer)
 {
@@ -270,9 +264,82 @@ script "uc_SamuraiGetUser" (int num)
 	SetResultValue(GetUserVariable(0,Samurai_user_variables[num]));//>>16
 }
 
+
+function int func_FindNew_LockOnList (int owner, int LIMIT)
+{
+	for (int i=0; i<LIMIT; i++){
+		if(GetUserArray(owner,"user_LockOnList",i)==0){
+			//Log(s:"A chance for lock on...",i:i);
+			return i;
+		}
+	}
+	//Log(s:" NO SPACE FOR LOCK ON! ");
+	return -1;
+}
+function void func_CheckClear_LockOnList (int owner, int LIMIT)
+{
+	int CurrArr;
+	for (int i=0; i<LIMIT; i++){
+		CurrArr = GetUserArray(owner,"user_LockOnList",i);
+		if(CurrArr!=0)
+			if(GetActorProperty(CurrArr+999,APROP_HEALTH) <= 0 || CheckActorInventory(CurrArr+999,"PowerProtectSurvivor"))
+				SetUserArray(owner,"user_LockOnList",i,0);
+	}
+
+}
+function void func_Clear_LockOnList (int LIMIT)
+{
+	for (int i=0; i<LIMIT; i++){
+		SetUserArray(0,"user_LockOnList",i,0);
+	}
+}
+
+script "uc_MarksmanLockOn" (int mode, int Type1, int Type2, int Type3)
+{
+	Switch(mode) {
+		Default:
+			Log(i:mode,s:" >> Invalid Mode for uc_MarksmanLockOn");
+			break;
+		Case -1: //Reset Array to 0
+			func_Clear_LockOnList(Type1);
+			//Log(s:"Clearing Lockons...checking 1 = ",i:GetUserArray(0,"user_LockOnList",1));
+			break;
+		Case 0: //Type1 = Owner TID //Type2 = Tracer TID //Type3 = LockOn Limit
+			if(CheckActorInventory(Type2,"PowerProtectSurvivor"))
+				terminate;
+			int LockOnNum = func_FindNew_LockOnList(Type1,Type3);
+			if(LockOnNum == -1)//All slots filled, end the script
+				terminate;
+			//Check if last lock-on is that specific player
+			if( !(GetUserArray(Type1,"user_LockOnList",LockOnNum-(LockOnNum!=0))==Type2-999 && CheckActorInventory(Type1,"MarksmanLockOn_CD")) ){
+				SetUserArray(Type1,"user_LockOnList",LockOnNum,Type2-999);
+				GiveActorInventory(Type1,"MarksmanLockOn_CD_P",1);
+				ActivatorSound("CowboyKid/Chat",127);
+				NamedExecuteClientScript("uc_MarksmanClientSound",Type1-1000);
+				//Log(s:"Success lock on!");
+			}
+			break;
+		Case 1: //Missile copies TID in Targets slot
+			SetActivatorToTarget(0);
+			//Log(s:"Fetching lock on ",i:CheckInventory("MarksmanMissile_F"),s:"...",i:GetUserArray(0,"user_LockOnList",CheckInventory("MarksmanMissile_F")));
+			SetResultValue(GetUserArray(0,"user_LockOnList",CheckInventory("MarksmanMissile_F")));
+			break;
+		Case 3: //Check if locked on players are alive. Remove if not.
+			func_CheckClear_LockOnList(ActivatorTID(),Type1);
+			break;
+	}
+}
+
+script "uc_MarksmanClientSound" (void) CLIENTSIDE
+{
+	SetActivatorToPlayer(consoleplayernumber());
+	LocalAmbientSound("DuckHunt/Tally",127);
+}
+
+
 script "uc_HandyManPitch" (void)
 {
-	SetResultValue(GetActorPitch(ACS_NamedExecuteWithResult("UH_GetPointerTID",2))>>8);
+	SetResultValue(GetActorPitch(ACS_NamedExecuteWithResult("core_getptrtid", 2))>>8);
 }
 
 
