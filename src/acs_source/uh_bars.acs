@@ -72,6 +72,8 @@
 #define CUST_ASTRONAUT_S 212
 #define CUST_ASTRONAUT_S2 213
 
+#define CUST_MARKSMAN 214
+
 #define CUST_MLGEYE 250
 #define CUST_TANKEYE 249
 
@@ -1018,6 +1020,41 @@ script "DrawBar_Tristana_W" (void) {
 script "DrawBar_TristanaS_W" (void) {
 	DrawBarColor(34, 77);
 	SetOverlayBar(CheckInventory("TristanaFlag"), 56);
+}
+
+#define U_MARKMANSLOCK_LIMIT 7
+script "DrawBar_Marksman_W" (void) {
+	DrawBarColor(211, 231);
+	DrawCustomBar(CUST_MARKSMAN, CheckInventory("MarksmanMissile_F"), U_MARKMANSLOCK_LIMIT);
+	SetInventory("SBARAmmoOffset", 2);
+	DrawSecondAmmo();
+}
+script "DrawBar_MarksmanS_W" (void) {
+	// Unbound SBARINFO.VB/HB S_Marksman_W: CSI icon + lock count
+	DrawBarColor(204, 244);
+	SetHudSize(320, 200, 0);
+	int baseId = UH_IMAGE_ID_BASE - 40;
+	int locks = CheckInventory("MarksmanMissile_F");
+	str pip = "CSI_40Z";
+	if (locks >= 1) {
+		if (CheckInventory("MarksmanLockOn_CD"))
+			pip = "CSI_40A4";
+		else
+			pip = "CSI_40B";
+	}
+	// DrawImage CSI_* at vert (2,22) / hori (-93+center,-35)
+	AdjustedImageDisplay(pip, pip, baseId, baseId - 1,
+		1.1, 38.1,
+		67.1, 165.1);
+	// DrawNumber 2,CMBHPFONT,UH37 fillzeros at (3,37) / (-77+center,-30)
+	str lockStr;
+	if (locks < 10)
+		lockStr = StrParam(s:"0", i:locks);
+	else
+		lockStr = StrParam(i:locks);
+	AdjustedDrawString("CMBHPFONT", "UH37", lockStr, baseId - 2, baseId - 3,
+		4.1, 53.1, //+15
+		83.1, 170.1);
 }
 
 
