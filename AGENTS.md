@@ -2,16 +2,36 @@
 
 ## Project identity
 
-GZDoom/Zandronum `.pk3` mod based on Unholy, targeting MM8BDM-v6b (will switch to v6c when released). LMS (Last Man Standing) gamemode with new classes, bosses, items.
+This is a **Zandronum** mod for **MM8BDM (v6b)** — a `.pk3` mod based on Unholy (will switch to v6c when released). LMS (Last Man Standing) gamemode with new classes, bosses, items.
+
+Do **not** assume GZDoom-only APIs, DECORATE extensions, or ACS behavior unless verified against Zandronum / MM8BDM-v6b sources below.
+
+## Ambiguous prompts — stop and ask
+
+If the user's request is unclear, incomplete, or admits multiple reasonable interpretations:
+
+1. **Do not guess and execute.** Do not invent missing requirements, pick an arbitrary design, or start editing "based on a best guess."
+2. **Ask clarifying questions first** — scope, target class/weapon, expected behavior, constraints, reference to imitate, etc.
+3. **Wait for a clearer prompt** before implementing, researching deeply toward a chosen path, or changing files.
+
+Only proceed when the intent is concrete enough that a correct implementation is unambiguous.
+
+## Mandatory source consultation
+
+Before implementing or answering engine/mod behavior questions, **look up the relevant sources**. Do not rely on memory or generic Doom/GZDoom knowledge when Zandronum or MM8BDM differs.
+
+| Priority | Location | What to consult |
+|----------|----------|-----------------|
+| Required | `ref/zandronum-stable-branch-default/` | Zandronum engine source (actors, DECORATE, networking, inventory, etc.) |
+| Required | `ref/acc-branch-zandronum/` | Zandronum ACC (ACS compiler) source — ACS semantics, builtins, compile rules |
+| Required | `ref/MM8BDM-v6b/` | Base game assets, actors, classbase, weapons, ACS APIs this mod targets |
+| When useful | `ref/classes-v9gh_/` | Class Based Modification v9gh — **primary architectural template**; prefer its patterns when a feature already exists there |
+
+All paths under `ref/` are **read-only reference** (gitignored). Never load them as the mod, never edit them as part of normal work.
 
 ## Build
 
 There is no build tool. The mod is a ZIP file with `.pk3` extension: pack `src/` recursively into `out/build.pk3`. **Do not invent build/CI tooling.** The `.gitignore` already excludes compiled ACS bytecode (`src/acs/`), `.o`, `.err`, `out/`, and `ref/`.
-
-## Reference directories (read-only, never load)
-
-- `ref/MM8BDM-v6b/` — base game assets and actor definitions
-- `ref/classes-v9gh_/` — Class Based Modification v9gh; **primary architectural template**. When implementing a feature, look here first for the canonical solution.
 
 ## Entry points (in load order)
 
