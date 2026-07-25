@@ -61,18 +61,27 @@ actor ProjTeamColor2 : CustomInventory
 states
 {
 Pickup:
-TNT1 A 0 A_JumpIf(CallACS("core_Check_ProjectileColor_Server") && !CallACS("core_Check_NoTranslation"),"Pickup2")
-stop
-Pickup2:
+// NoTranslation / opt-out always wins
+TNT1 A 0 A_JumpIf(CallACS("core_Check_NoTranslation"),"PickupNo")
 TNT1 A 0 A_JumpIfInTargetInventory("NoProjectileTeamTranslation",1,"PickupNo")
-TNT1 A 0 A_Jumpifintargetinventory("MegaManSColor_F",1,"MegaManSColor") //$UH
-TNT1 A 0 A_Jumpifintargetinventory("IsQwantSFlag",1,"QwantS")
-TNT1 A 0 A_Jumpifintargetinventory("IsNegaManSFlag",1,"NegaManS")
-TNT1 A 0 A_Jumpifintargetinventory("IsNegaManFlag",1,"NegaMan")
+// Team + class colors when mm8bdm_sv_projteamcolor is on
+TNT1 A 0 A_JumpIf(CallACS("core_Check_ProjectileColor_Server"),"PickupTeam")
+//$UH Class palettes still apply when sv_projteamcolor is off (no static Translation fallback)
+goto PickupClass
+PickupTeam:
 TNT1 A 0 A_Jumpifintargetinventory("LightTeamFlag",1,"TeamBlue")
 TNT1 A 0 A_Jumpifintargetinventory("WilyTeamFlag",1,"TeamRed")
 TNT1 A 0 A_Jumpifintargetinventory("CossackTeamFlag",1,"TeamGreen")
 TNT1 A 0 A_Jumpifintargetinventory("KingTeamFlag",1,"TeamGold")
+PickupClass:
+TNT1 A 0 A_Jumpifintargetinventory("MegaManSColor_F",1,"MegaManSColor") //$UH
+TNT1 A 0 A_Jumpifintargetinventory("IsQwantSFlag",1,"QwantS")
+TNT1 A 0 A_Jumpifintargetinventory("IsNegaManSFlag",1,"NegaManS")
+TNT1 A 0 A_Jumpifintargetinventory("IsNegaManFlag",1,"NegaMan")
+TNT1 A 0 A_Jumpifintargetinventory("IsDecoyBotSFlag",1,"DecoyBotS")
+TNT1 A 0 A_Jumpifintargetinventory("IsDecoyBotFlag",1,"DecoyBot")
+stop
+
 PickupNo:
 TNT1 A 0
 stop
@@ -88,6 +97,13 @@ stop
 NegaManS:
 TNT1 A 0 ACS_NamedExecuteWithResult("core_Set_Projectile_Translation",15,CallACS("core_Check_TranslateWhiteColors"),CallACS("core_Check_TranslateBlackColors"))
 stop
+DecoyBot:
+TNT1 A 0 ACS_NamedExecuteWithResult("core_Set_Projectile_Translation",16,CallACS("core_Check_TranslateWhiteColors"),CallACS("core_Check_TranslateBlackColors"))
+stop
+DecoyBotS:
+TNT1 A 0 ACS_NamedExecuteWithResult("core_Set_Projectile_Translation",17,CallACS("core_Check_TranslateWhiteColors"),CallACS("core_Check_TranslateBlackColors"))
+stop
+
 TeamBlue:
 TeamBlue1:
 TNT1 A 0 ACS_NamedExecuteWithResult("core_Set_Projectile_Translation",0,CallACS("core_Check_TranslateWhiteColors"),CallACS("core_Check_TranslateBlackColors"))

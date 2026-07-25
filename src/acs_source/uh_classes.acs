@@ -352,6 +352,42 @@ script "uh_LimAmmoGiver" (int type, int dmg, int dmgType) EVENT {
 	}
 }
 
+script "uc_DecoyBotWepSwap" (int MaxRNG)
+{
+	
+	int p1 = CheckInventory("DecoyBotFlag1");
+	int p2 = CheckInventory("DecoyBotFlag2");
+	int p3 = CheckInventory("DecoyBotFlag3");
+
+	int n1 = DecoyBotWepCheckRNG(MaxRNG, p1, p2, p3, -1, -1);
+	int n2 = DecoyBotWepCheckRNG(MaxRNG, p1, p2, p3, n1, -1);
+	int n3 = DecoyBotWepCheckRNG(MaxRNG, p1, p2, p3, n1, n2);
+
+	Switch(random(0,5)){
+		Case 0: p1 = n1; p2 = n2; p3 = n3; break;
+		Case 1: p1 = n1; p2 = n3; p3 = n2; break;
+		Case 2: p1 = n2; p2 = n1; p3 = n3; break;
+		Case 3: p1 = n2; p2 = n3; p3 = n1; break;
+		Case 4: p1 = n3; p2 = n1; p3 = n2; break;
+		Case 5: p1 = n3; p2 = n2; p3 = n1; break;
+	}
+
+	SetInventory("DecoyBotFlag1", p1);
+	SetInventory("DecoyBotFlag2", p2);
+	SetInventory("DecoyBotFlag3", p3);
+}
+
+function int DecoyBotWepCheckRNG(int maxR, int p1, int p2, int p3, int p4, int p5)
+{
+	int dWep;
+	do {
+		dWep = random(0, maxR);
+	} while(dWep == p1 || dWep == p2 || dWep == p3 || dWep == p4 || dWep == p5);
+
+	return dWep;
+}
+
+
 //Functions
 //Functions
 //Func
@@ -498,4 +534,13 @@ function int pitchBetween(int looker, int target, int xOff, int yOff, int zOff)
 
 	pitch = -vectorangle(len, z);
 	return pitch;
+}
+
+function void SetInventory(str item, int amount)
+{
+	int diff = amount - CheckInventory(item);
+	if (diff > 0)
+		GiveInventory(item, diff);
+	else if (diff < 0)
+		TakeInventory(item, -diff);
 }
