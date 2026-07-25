@@ -338,6 +338,48 @@ script "uh_IsTracerAllyOrEnemy" (void)
 	SetResultValue(result);
 }
 
+script "uh_IsPointerClient" (int Pointer, int PlayerNum, int ChaseCam) CLIENTSIDE
+{
+	if(Pointer>0){
+		SetActivator(0,Pointer);
+		PlayerNum = PlayerNumber();
+	}
+//	Log(i:consoleplayernumber(),s:" = Console -uh_IsPointerClient- Player =",i:PlayerNum);
+	if(ConsolePlayerNumber() == PlayerNum){
+		if(ChaseCam)
+			SetResultValue(!GetPlayerChasecam(PlayerNum));
+		else
+			SetResultValue(1);
+	}
+	else{
+		SetResultValue(0);
+	}
+}
+
+script "uh_SetPtrCoordToArgs" (int Pointer)
+{
+	int tid = ACS_NamedExecuteWithResult("UH_GetPointerTID",Pointer);
+
+	int x = 80.0;
+	int y = 0.0;
+	int z = 33.0;
+
+	if(tid != 0){
+		x = (GetActorX(0) - GetActorX(tid)) >> 16;
+		y = (GetActorY(0) - GetActorY(tid)) >> 16;
+		z = (GetActorZ(0) - GetActorZ(tid)) >> 16;
+	}
+
+	SetThingSpecial(0,0,x,y,z);
+}
+
+script "uh_WarpToPlayerCenter" (int WarpTID)
+{
+	if(ClassifyActor(WarpTID) & ACTOR_PLAYER)
+		Warp(WarpTID,0,0,GetActorProperty(WarpTID,APROP_Height/2),0,WARPF_NOCHECKPOSITION);
+}
+
+
 script "uh_shinyclassmorpher" (int ClassNum)
 {
 	for ( int i = 0; i <= 7; i++ ) {
@@ -384,6 +426,9 @@ function void shinyClassMultiWeaponGive(void) {
 	}
 	if (!strICmp(className, "TidalManiacS")) {
 		GiveInventory("TidalManiacS_W2", 1);
+	}
+	if (!strICmp(className, "KateS")) {
+		GiveInventory("KateS_W2", 1);
 	}
 }
 
@@ -565,7 +610,6 @@ script "uh_RageAmmoGiver" (int type, int dmg, int dmgType) EVENT {
 		str rageName = StrParam(s: "UnholyPower", i: rageMax);
 		GiveInventory(rageName, dmg);
 	}
-
 }
 
 function void SetInventory(str item, int amount)
