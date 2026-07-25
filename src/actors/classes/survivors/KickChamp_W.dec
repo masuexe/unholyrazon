@@ -1,0 +1,949 @@
+actor KickChamp_W_ScriptBar : ScriptBar {}
+
+actor KickChamp_W : BaseMM8BDMWep_UH
+{
+Weapon.AmmoUse 0
+Weapon.AmmoGive 140
+Inventory.Pickupmessage "$PU_58"
+Obituary "$OB_58W"
+Tag "$TAG_KickChamp_W"
+// weapon.ammotype1 "MasterFootAmmo"
+weapon.ammotype1 "RonaldinhoAmmo"
++WEAPON.NOAUTOAIM
+States
+{
+Spawn:
+6H58 [ 6
+loop
+
+Deselect:
+6H58 A 0
+goto DeselectSwap
+Select:
+6H58 A 0
+goto SelectSwap
+
+Ready:
+6H58 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", KICKCHAMP_DYE)
+6H58 A 0 A_JumpIf(CallACS("UH_IsBot"),"BotReady")
+goto Ready2
+
+Ready2:
+6H58 A 2 A_GiveInventory("KickChamp_Ready_P")
+6H58 A 0 A_GiveInventory("KickChamp_FireGravEnd_P") //Desync forced an additional check to try to bandaid an issue of nogravity staying.
+6H58 A 0 A_GiveInventory("RonaldinhoAmmo",4)
+loop
+
+Fire:
+6H58 N 0 A_GiveInventory("KickChamp_Fire_P")
+6H58 N 0 A_ReFire(1)
+6H58 N 2 OffSet(-23,28)A_GunFlash("Flash.Main",1)
+6H58 N 2 OffSet(-120,10)
+6H58 N 2 OffSet(-215,-4)
+6H58 N 2 OffSet(-333,-16)
+6H58 N 2 OffSet(-461,-27)
+TNT1 AAA 3
+TNT1 A 2 OffSet(155,-27)
+6H58 N 2 OffSet(107,-3)
+6H58 N 2 OffSet(62,19)
+6H58 N 2 OffSet(14,39)
+6H58 A 0 A_JumpIfInventory("VivifyCycle1",1,1)
+Goto Ready2
+6H58 B 0 A_GunFlash("NoFlash",1)
+6H58 B 0 A_GiveInventory("KickChamp_FireGravEnd_P")
+Goto AirWait
+
+Flash.Main:
+TNT1 AAAAAAAAAAAAAAA 1 A_CheckFloor("Flash.MainEnd")
+TNT1 A 0 A_GiveInventory("KickChamp_FireGravEnd_P")
+TNT1 A 1 A_CheckFloor("Flash.MainEnd")
+wait
+Flash.MainEnd:
+TNT1 A 0 A_JumpIfInventory("VivifyCycle1",1,2)
+TNT1 A 1 A_GiveInventory("KickChamp_FireLanded_P")
+stop
+TNT1 A 0 A_GiveInventory("KickChamp_FireGravEnd_P")
+TNT1 A 1 A_GiveInventory("KickChamp_Reset_P")
+stop
+
+Flash.AltSlide:
+TNT1 A 1 A_SpawnItemEX("KickBoomTemp",0,0,24)//i dont know what i want to do for this yet. ~Pegg
+loop
+
+Flash.KickCenter:
+TNT1 AAAAA 1 A_GiveInventory("KickChamp_RealCenterViewTrustMe_P")
+stop
+
+AirWait:
+6H58 B 1 A_GiveInventory("KickChamp_ReadyAir_P")
+6H58 B 0 A_CheckFloor("Wipe")
+loop
+Wipe:
+6H58 A 2 A_GiveInventory("KickChamp_Reset_P")
+Goto Ready2
+
+
+Altfire:
+6H58 B 0 A_JumpIf(CallACS("uh_GetPointerButtonInput", 0, 0) & BT_JUMP, "DiveKick")
+6H58 B 0 A_GiveInventory("KickChamp_AltSlide_P")
+6H58 B 0 A_ReFire(1)
+6H58 B 3 A_GunFlash("Flash.AltSlide",1)
+6H58 C 5
+6H58 CCCCCCCCCCCCCCCCCCCCCCCCCC 1 A_JumpIf(CallACS("uh_GetPointerButtonInput", 0, 0) & BT_JUMP, "KickJump")
+//6H58 C 26
+6H58 B 0 A_GunFlash("NoFlash",1)
+6H58 B 2 A_GiveInventory("KickChamp_AltSlideEnd_P")
+Goto Ready2
+
+KickJump:
+6H58 B 0 A_GunFlash("NoFlash",1)
+6H58 B 4 A_GiveInventory("KickChamp_AltBoost_P")
+6H58 B 6 A_TakeInventory("DisableJumpTricks_F",1)
+goto AirWait
+
+DiveKick:
+6H58 B 0 A_GiveInventory("KickChamp_AltDive_P")
+6H58 B 0 A_ReFire(1)
+6H58 B 3 A_GunFlash("Flash.KickCenter",1)
+6H58 B 2 A_TakeInventory("KickChampFlag")
+6H58 C 1 offset(0,24)A_GiveInventory("KickChamp_AltDive2_P")
+goto DiveKickWait+2
+DiveKickWait:
+6H58 D 0 A_GiveInventory("KickChampDiveKick_P")
+6H58 D 0 A_SpawnItemEx("KickChampKickFX",sqrt(momx*momx+momy*momy)*1.0+32.0,0,-4,0,0,0,0,1+32)
+6H58 D 0 A_SpawnItemEx("KickChamp_SurfaceCheck",6,0,-2,momx,momy,0,0,8+32)//-40z
+6H58 D 1 A_SpawnItemEx("KickChampDiveDamager",32,0,-4,momx,momy,0,0,1+8+32)//-32z
+6H58 D 0 A_JumpIfInventory("KickChampFlag",1,"DiveKickRecoil")
+6H58 D 0 A_CheckFloor("DiveKickLand")
+6H58 C 0 A_GiveInventory("KickChampDiveKick_P")
+6H58 C 0 A_SpawnItemEx("KickChampKickFX",sqrt(momx*momx+momy*momy)*1.0+32.0,0,-4,0,0,0,0,1+32)
+6H58 C 0 A_SpawnItemEx("KickChamp_SurfaceCheck",6,0,-2,momx,momy,0,0,8+32)
+6H58 C 1 A_SpawnItemEx("KickChampDiveDamager",32,0,-4,momx,momy,0,0,1+8+32)
+6H58 C 0 A_JumpIfInventory("KickChampFlag",1,"DiveKickRecoil")
+6H58 C 0 A_CheckFloor("DiveKickLand")
+loop
+
+DiveKickLand:
+6H58 B 0 A_GiveInventory("KickChamp_AltDiveEnd_P")
+6H58 B 4 A_WeaponReady(WRF_NOSWITCH|WRF_NOFIRE)
+Goto Ready2
+
+DiveKickRecoil:
+6H58 B 2 offset(-9,20)A_GiveInventory("KickChamp_AltRecoil_P")
+6H58 B 2 offset(-5,25)
+6H58 B 2 offset(-2,29)
+6H58 B 6 A_WeaponReady(WRF_NOSWITCH|WRF_NOFIRE)
+goto AirWait
+
+
+
+BotReady:
+6H58 A 0 A_WeaponReady(12)
+6H58 A 2 A_JumpIfCloser(384,2)
+6H58 A 0 A_GiveInventory("RonaldinhoAmmo",4)
+loop
+6H58 A 2 A_Refire("BotCheck")
+goto BotReady+2
+
+BotCheck:
+6H58 A 0 A_JumpIfInventory("RonaldinhoAmmo",0,2)
+6H58 A 0 A_Jump(32,"BotAlt")
+goto BotFire
+6H58 A 0 A_Jump(32,2)
+6H58 A 0 A_Jump(192,"BotAlt")
+goto BotFire
+6H58 A 4 ThrustThingZ(0,80,0,0)
+goto BotAltKick
+
+BotFire:
+6H58 N 0 A_Jump(32,"BotFireX")
+6H58 N 0 A_GiveInventory("KickChamp_Fire_P")
+6H58 N 0 A_ReFire(1)
+6H58 NNNNNNN 2 A_Recoil(-2)
+6H58 N 0 A_GiveInventory("KickChamp_FireGravEnd_P")
+6H58 NNNN 2 A_Recoil(-2)
+6H58 N 1
+6H58 A 0 A_JumpIfInventory("VivifyCycle1",1,"BotAltWait")
+Goto BotReady
+BotFireX:
+6H58 N 0 A_GiveInventory("MasterFootAmmo",1)
+6H58 N 0 A_GiveInventory("RonaldinhoAmmo",100)
+6H58 N 0 A_PlaySoundEx("taunt/D_58","Voice")
+6H58 N 0 A_FaceTarget
+6H58 N 0 A_Recoil(-20)
+goto BotFire+1
+
+BotAltX:
+6H58 N 0 A_GiveInventory("RonaldinhoAmmo",100)
+6H58 N 0 A_PlaySoundEx("taunt/D_58","Voice")
+6H58 N 0 A_FaceTarget
+6H58 N 0 A_Recoil(-20)
+goto BotAlt+1
+BotAlt:
+6H58 B 0 A_Jump(32,"BotAltX")
+6H58 B 0 A_JumpIf(random(1,100)>=95 || CallACS("uh_GetPointerButtonInput", 0, 0) & BT_JUMP, "BotAltKick")
+6H58 B 0 A_GiveInventory("KickChamp_AltSlide_P")
+6H58 B 0 A_ReFire(1)
+6H58 B 3 A_GunFlash("Flash.AltSlide",1)
+6H58 C 5
+6H58 CCCCCCCCCCCCCCCCCCCCCCCCCC 1 A_JumpIf(random(1,100)>=95 || CallACS("uh_GetPointerButtonInput", 0, 0) & BT_JUMP, "BotAlt2")
+6H58 B 0 A_GunFlash("NoFlash",1)
+6H58 B 2 A_GiveInventory("KickChamp_AltSlideEnd_P")
+Goto BotReady
+BotAlt2:
+6H58 B 0 A_GunFlash("NoFlash",1)
+6H58 B 4 A_GiveInventory("KickChamp_AltBoost_P")
+6H58 B 6 A_TakeInventory("DisableJumpTricks_F",1)
+BotAltWait:
+6H58 B 1 A_Jump(32,2)
+6H58 B 0 A_CheckFloor("BotAltWipe")
+loop
+6H58 B 0 A_Jump(32,"BotFire")
+6H58 B 1 A_ReFire("BotAltKick")
+6H58 B 0 A_CheckFloor("BotAltWipe")
+loop
+BotAltWipe:
+6H58 A 2 A_GiveInventory("KickChamp_Reset_P")
+Goto BotReady
+
+BotAltKick:
+6H58 B 0 A_GiveInventory("KickChamp_AltDive_P")
+6H58 B 0 A_ReFire(1)
+6H58 B 3
+6H58 B 2 A_TakeInventory("KickChampFlag")
+6H58 C 1 A_GiveInventory("KickChamp_AltDive2_P")
+BotAltKick2:
+6H58 D 0 A_GiveInventory("KickChampDiveKick_P")
+6H58 D 0 A_SpawnItemEx("KickChampKickFX",sqrt(momx*momx+momy*momy)*1.0+32.0,0,-4,0,0,0,0,1+32)
+6H58 D 0 A_SpawnItemEx("KickChamp_SurfaceCheck",6,0,-2,momx,momy,0,0,8+32)
+6H58 D 1 A_SpawnItemEx("KickChampDiveDamager",32,0,-4,momx,momy,0,0,1+8+32)
+6H58 D 0 A_JumpIfInventory("KickChampFlag",1,"BotAltKick3")
+6H58 D 0 A_CheckFloor("BotAltKickLand")
+6H58 C 0 A_GiveInventory("KickChampDiveKick_P")
+6H58 C 0 A_SpawnItemEx("KickChampKickFX",sqrt(momx*momx+momy*momy)*1.0+32.0,0,-4,0,0,0,0,1+32)
+6H58 C 0 A_SpawnItemEx("KickChamp_SurfaceCheck",6,0,-2,momx,momy,0,0,8+32)
+6H58 C 1 A_SpawnItemEx("KickChampDiveDamager",32,0,-4,momx,momy,0,0,1+8+32)
+6H58 C 0 A_JumpIfInventory("KickChampFlag",1,"BotAltKick3")
+6H58 C 0 A_CheckFloor("BotAltKickLand")
+loop
+
+BotAltKickLand:
+6H58 B 4 A_GiveInventory("KickChamp_AltDiveEnd_P")
+Goto BotReady
+
+BotAltKick3:
+6H58 B 12 A_GiveInventory("KickChamp_AltRecoil_P")
+6H58 B 0 A_JumpIfInventory("RonaldinhoAmmo",100,3)
+6H58 B 0 A_Jump(64,1)
+goto BotAltKickLand
+6H58 N 0 A_PlaySoundEx("taunt/D_58","Voice")
+6H58 B 0 A_ReFire(1)
+goto BotAltKickLand
+6H58 B 0 A_Jump(64,2)
+6H58 B 0 A_Jump(192,"BotAltWait")
+goto BotAltKickLand
+6H58 B 0 A_GiveInventory("MasterFootAmmo",1)
+goto BotFire
+
+}
+}
+
+actor RonaldinhoAmmo : Ammo
+{
+inventory.amount 1
+inventory.maxamount 200
++INVENTORY.IGNORESKILL
+}
+
+actor MasterFootAmmo : Ammo
+{
+inventory.amount 1
+inventory.maxamount 1
++INVENTORY.IGNORESKILL
+}
+
+actor KickChampJumped_F : Inventory{}
+actor KickChampFlag : Inventory
+{
+inventory.maxamount 100
+}
+
+
+actor PowerSpinningKickChamp : Powerup
+{
+Powerup.Duration 20
+}
+
+actor KickChamp_Ready_P : CustomInventory
+{
+States
+{
+Pickup:
+Rdy:
+TNT1 A 0 A_JumpIfInventory("RonaldinhoAmmo",100,2)
+TNT1 A 0 A_WeaponReady(WRF_NOSECONDARY)
+stop
+TNT1 A 0 A_WeaponReady
+stop
+}
+}
+actor KickChamp_ReadyAir_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIfInventory("KickChampJumped_F",1,3)
+TNT1 A 0 A_JumpIfInventory("RonaldinhoAmmo",100,2)
+TNT1 A 0 A_WeaponReady(WRF_NOSECONDARY)
+goto Ammo
+TNT1 A 0 A_JumpIf(CallACS("uh_GetPointerButtonInput", 0, 0) & BT_JUMP, 2)
+TNT1 A 0 A_WeaponReady(WRF_NOSECONDARY)
+goto Ammo
+TNT1 A 0 A_WeaponReady
+goto Ammo
+
+Ammo:
+TNT1 A 0 A_GiveInventory("RonaldinhoAmmo",1+CallACS("uh_checkrune", RUNE_RAGE))
+stop
+}
+}
+
+actor KickChamp_Reset_P : CustomInventory
+{
+States
+{
+Pickup:
+P:
+TNT1 A 0 A_GiveInventory("VivifyDelay5",1)
+TNT1 A 0 A_GiveInventory("KickChamp_FireLanded_P")
+TNT1 A 0 A_TakeInventory("VivifyCycle1")
+TNT1 A 0 A_TakeInventory("VivifyFlag2")
+TNT1 A 0 A_TakeInventory("KickChampFlag")
+TNT1 A 0 A_TakeInventory("KickChampJumped_F")
+
+TNT1 A 0 ACS_NamedExecuteWithResult("core_unsolidplayer", 0, USP_TOGGLEOFF_DAMAGE, CallACS("core_getmaxhealth")/10)
+stop
+}
+}
+
+actor KickChamp_Fire_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_SpawnItemEx("KickChampSpinner",0,0,32,0,0,0,0,1)
+End:
+TNT1 A 0 A_PlaySound("KickChamp/Sword",1)
+TNT1 A 0 A_GiveInventory("VivifyDelay7",1)
+TNT1 A 0 A_JumpIfInventory("MasterFootAmmo",1,1)
+stop
+TNT1 A 0 A_CheckFloor(4)
+TNT1 A 0 A_GiveInventory("PowerSpinningKickChamp",1)
+TNT1 A 0 ACS_NamedExecuteWithResult("core_nogravityplayer", 0, true)
+TNT1 A 0 A_TakeInventory("MasterFootAmmo",1)
+TNT1 A 0
+stop
+}
+}
+actor KickChamp_FireGravEnd_P : CustomInventory
+{
+States
+{
+Pickup:
+P:
+/*TNT1 A 0 A_JumpIfInventory("PowerSpinningKickChamp",1,1)
+stop*/
+TNT1 A 0 A_TakeInventory("PowerSpinningKickChamp",1)
+TNT1 A 0 ACS_NamedExecuteWithResult("core_nogravityplayer", 0, false)
+stop
+}
+}
+actor KickChamp_FireLanded_P : KickChamp_FireGravEnd_P
+{
+States
+{
+Pickup:
+TNT1 A 0 A_GiveInventory("MasterFootAmmo",1)
+goto P
+}
+}
+
+actor KickChamp_AltSlide_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_TakeInventory("RonaldinhoAmmo",50,1)
+TNT1 A 0 A_TakeInventory("RonaldinhoAmmo",50)
+TNT1 A 0 A_TakeInventory("VivifyDelay4")
+TNT1 A 0 A_GiveInventory("VivifyCycle1",1)
+TNT1 A 0 A_GiveInventory("DisableJumpTricks_F",1)
+TNT1 A 0 A_PlaySound("KickChamp/Move",1)//weapon/chargekick
+TNT1 A 0 A_Recoil(-35)
+
+TNT1 A 0 A_ChangeFlag("THRUSPECIES",1)
+TNT1 A 0 A_TakeInventory("UnSolid",1)
+TNT1 A 0 A_ChangeFlag("SOLID",0)
+stop
+}
+}
+
+actor KickChamp_AltSlideEnd_P : KickChamp_Reset_P
+{
+States
+{
+Pickup:
+TNT1 A 0 A_GiveInventory("VivifyDelay4")
+TNT1 A 0 A_TakeInventory("DisableJumpTricks_F",1)
+goto P
+}
+}
+
+actor KickChamp_AltBoost_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_GiveInventory("KickChampJumped_F",1)
+TNT1 A 0 A_GiveInventory("VivifyCycle1",1)
+TNT1 A 0 A_GiveInventory("JumpCancler",1)
+TNT1 A 0 A_SpawnItemEX("KickChampJumpFX",0,0,0,0,0,0,0,1)
+TNT1 A 0 A_PlaySound("KickChamp/FalDive",1)
+TNT1 A 0 ThrustThingZ(0,85,0,0)
+stop
+TNT1 A 0 A_CheckFlag("SOLID",4)
+TNT1 A 0 A_ChangeFlag("THRUSPECIES",0)
+TNT1 A 0 A_JumpIfInventory("UnSolid",1,2)
+TNT1 A 0 A_SpawnItemEx("ResolidifyPlayer_H")
+TNT1 A 0
+stop
+}
+}
+
+actor KickChamp_AltDive_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_SpawnItemEX("KickChampJumpFX2",0,0,0,0,0,0,0,1)
+TNT1 A 0 A_PlaySound("KickChamp/Move",4)
+TNT1 A 0 ThrustThingZ(0,45,0,0)
+TNT1 A 0 A_GiveInventory("DisableJumpTricks_F",1)
+TNT1 A 0 A_GiveInventory("VivifyCycle1",2)
+TNT1 A 0 A_JumpIfInventory("KickChampJumped_F",1,3)
+TNT1 A 0 A_TakeInventory("RonaldinhoAmmo",50,1)
+TNT1 A 0 A_TakeInventory("RonaldinhoAmmo",50)
+TNT1 A 0 A_TakeInventory("KickChampJumped_F")
+
+TNT1 A 0 A_ChangeFlag("THRUSPECIES",1)
+TNT1 A 0 A_TakeInventory("UnSolid",1)
+TNT1 A 0 A_ChangeFlag("SOLID",0)
+stop
+}
+}
+actor KickChamp_AltDive2_P : CustomInventory
+{
+States
+{
+Pickup:
+//TNT1 A 0 A_ChangeVelocity(40*cos(pitch)+4,0,40*-sin(pitch),3)
+TNT1 A 0 A_GiveInventory("VivifyFlag2")
+TNT1 A 0 A_TakeInventory("KickChampFlag")
+TNT1 A 0 A_PlaySound("KickChamp/Fall",1)
+stop
+}
+}
+
+
+actor KickChamp_AltRecoil_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_GiveInventory("VivifyDelay3",1)
+TNT1 A 0 A_TakeInventory("VivifyFlag2")
+TNT1 A 0 A_TakeInventory("DisableJumpTricks_F",1)
+TNT1 A 0 A_JumpIfInventory("KickChampFlag",100,"Recoil.Hit")
+TNT1 A 0 A_PlaySound("KickChamp/Hit2",1)
+TNT1 A 0 A_ChangeVelocity(-29,0,45/4.0,3)
+//TNT1 A 0 ThrustThingZ(0,45,0,0)
+//TNT1 A 0 A_Recoil(70)
+goto End
+Recoil.Hit:
+TNT1 A 0 A_PlaySound("KickChamp/Hit3",1)
+TNT1 A 0 A_ChangeVelocity(-22,0,75/4.0,3)
+//TNT1 A 0 ThrustThingZ(0,75,0,0)
+//TNT1 A 0 A_Recoil(25)
+goto End
+End:
+TNT1 A 0 A_GiveInventory("KickChampFlag",10)//Sync online
+stop
+}
+}
+actor KickChamp_AltDiveEnd_P : KickChamp_Reset_P
+{
+States
+{
+Pickup:
+TNT1 A 0 A_TakeInventory("DisableJumpTricks_F",1)
+goto P
+}
+}
+
+
+//actor KickChamp_IllegalCenterView : PowerFlight{Powerup.Duration 1}
+actor KickChamp_RealCenterViewTrustMe_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIf(pitch<360 && pitch>=270,"FakeCenterView")
+stop
+FakeCenterView:
+TNT1 A 0 A_SetPitch((Pitch-360)*2.0/3.0+360)
+stop
+}
+}
+
+actor KickChampDiveKick_P : CustomInventory
+{
+States
+{
+Pickup:
+//TNT1 A 0 A_LogInt(pitch)
+//software 55 down 304 up
+//TNT1 A 0 A_JumpIfInventory("KickChampFlag",1,"No")
+TNT1 A 0 A_JumpIf(pitch<360 && pitch>=270 || pitch<=22.5 && pitch>=0, "UpLimit")//30//Looking up/looking down a little
+TNT1 A 0 A_JumpIf(pitch<90 && pitch>=88, "DownLimit")
+TNT1 A 0 A_JumpIf(CallACS("uh_checkrune", RUNE_RAGE),2)
+TNT1 A 0 A_ChangeVelocity(cos(pitch)*45,0,-sin(pitch)*45,3)
+stop
+//TNT1 A 0 A_ChangeVelocity(cos(pitch)*1,0,-sin(pitch)*1,3)
+TNT1 A 0 A_ChangeVelocity(cos(pitch)*55,0,-sin(pitch)*55,3)
+stop
+UpLimit:
+TNT1 A 0 A_JumpIf(CallACS("uh_checkrune", RUNE_RAGE),2)
+TNT1 A 0 A_ChangeVelocity(cos(22.5)*45,0,-sin(22.5)*45,3)//-25
+stop
+//TNT1 A 0 A_ChangeVelocity(cos(22.5)*1,0,-sin(22.5)*1,3)
+TNT1 A 0 A_ChangeVelocity(cos(22.5)*55,0,-sin(22.5)*55,3)//-30
+stop
+DownLimit:
+TNT1 A 0 A_JumpIf(CallACS("uh_checkrune", RUNE_RAGE),2)
+TNT1 A 0 A_ChangeVelocity(cos(88)*45,0,-sin(88)*45,3)//+!(momz)*5
+stop
+TNT1 A 0 A_ChangeVelocity(cos(88)*55,0,-sin(88)*55,3)
+stop
+No:
+TNT1 A 0
+stop
+}
+}
+
+
+actor KickChampSpinner : BasicExplosion
+{
+//Translation "192:192=199:199","198:198=172:172"//Subtract colors
+Damagetype "KickChamp"
+Obituary "$OB_58M"
+Reactiontime 20
+Args 20,118,32
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SetArg(4,1+CallACS("uh_checkrune", RUNE_SPREAD, 2)*2)
+SpawnL:
+TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death")
+TNT1 A 0 A_Warp(AAPTR_TARGET,0,0,32,32,WARPF_INTERPOLATE|WARPF_USECALLERANGLE|WARPF_NOCHECKPOSITION)
+TNT1 A 1 A_SpawnItemEX("KickChampSpinnerFX",64,0,0,0,0,0,0,1)
+TNT1 A 0 A_Explode(Args[0]*Args[4],Args[1],0,0,Args[2])
+TNT1 A 0 A_CountDown
+loop
+}
+}
+
+actor KickChampSpinnerFX : BasicClientSide
+{
++FORCEXYBILLBOARD
++BRIGHT
+//RenderStyle Subtract
+Scale 2.0
+States
+{
+Spawn:
+TNT1 A 0
+TMFX MEFGH 1
+//TMFX LEFGH 1
+stop
+}
+}
+
+actor KickBoomTemp : BasicExplosion_Args
+{
+Translation "192:192=228:228","198:198=194:194"
+Damagetype "KickChamp"
+Obituary "$OB_58A1"
+Height 24
+Args 16,64,32
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEX("KickChampSlide_H",0,0,-24,0,0,0,0,1)
+goto BasicExplosion_Args::Spawn
+}
+}
+
+
+actor KickChampSlide_H : BasicClientSide
+{
+height 16
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1 A_CheckFloor("okay")
+stop
+okay:
+TNT1 A 0
+TNT1 AA 0 A_SpawnItemEX("KickChampSlideDust",random(-16,-12),random(-4,4),random(8,16),frandom(-8,-9),frandom(-6,6),frandom(8,9),0,1,64)
+TNT1 A 1
+stop
+}
+}
+
+
+
+actor KickChampSlideDust : BasicClientSide
+{
++FORCEXYBILLBOARD
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_Jump(256,"J","M")
+J:
+6P58 J 3
+6P58 J 0 A_Jump(128,"N")
+K:
+6P58 K 3
+6P58 K 0 A_Jump(128,"O")
+L:
+6P58 L 3
+stop
+M:
+6P58 M 3
+6P58 M 0 A_Jump(128,"K")
+N:
+6P58 N 3
+6P58 N 0 A_Jump(128,"L")
+O:
+6P58 O 3
+stop
+}
+}
+
+
+actor KickChampSlideDust2 : BasicClientside
+{
+scale 0.5
+States
+{
+Spawn:
+TNT1 A 0
+KMUM HGFED 1
+KMUM E 0 A_SetScale(0.75,0.75)
+KMUM E 1 A_FadeOut(0.2)
+KMUM D 0 A_SetScale(1.0,1.0)
+KMUM D 1 A_FadeOut(0.2)
+KMUM E 0 A_SetScale(1.25,1.25)
+KMUM E 1 A_FadeOut(0.2)
+KMUM D 0 A_SetScale(1.5,1.5)
+KMUM D 1 A_FadeOut(0.2)
+KMUM E 0 A_SetScale(1.75,1.75)
+KMUM E 1 A_FadeOut(0.2)
+stop
+}
+}
+
+actor KickChamp_SurfaceCheck
+{
+Translation "192:192=228:228","198:198=194:194"
+PROJECTILE
++DONTSPLASH
++DONTBLAST
++THRUGHOST
++DONTREFLECT
++NOTIMEFREEZE
++NOEXPLODEFLOOR
++SKYEXPLODE
++STEPMISSILE
++SERVERSIDEONLY
+maxstepheight 22
+RenderStyle None
+Damage (0)
+radius 14
+height 14
+scale 2.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0
+stop
+Crash:
+XDeath:
+TNT1 A 1
+stop
+Death:
+TNT1 A 0 A_SpawnItemEx("KickChampWallHitFX_H",0,0,0,0,0,0,0,1)
+TNT1 A 1 A_GiveToTarget("KickChampFlag",1)
+stop
+}
+}
+//SERVERSIDEONLY cannot spawn ClientSide things
+//So this is spawned instead
+actor KickChampWallHitFX_H : BasicHelper
+{
+//Translation "192:192=228:228","198:198=194:194"
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("KickChampWallHitFX0",0,0,0,0,0,0,0,1)
+stop
+}
+}
+actor KickChampWallHitFX0 : BasicClientSide
+{
+Translation "192:192=228:228","198:198=194:194"
+Args 7
+States
+{
+Spawn:
+TNT1 A 0
+SpawnL:
+TNT1 A 0 A_SpawnItemEx("KickChampWallHitFX",0,cos(Args[0]*45)*16.0,sin(Args[0]*45)*16,0,cos(Args[0]*45),sin(Args[0]*45),0,1+SXF_MULTIPLYSPEED)//8192
+TNT1 A 0 A_CountDownArg(0)
+loop
+Death:
+TNT1 A 1
+stop
+}
+}
+actor KickChampWallHitFX : BasicClientSide
+{
+Speed 16
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_Jump(256,"D","G")
+D:
+6P58 D 3
+6P58 D 0 A_Jump(128,"H")
+E:
+6P58 E 3
+6P58 E 0 A_Jump(128,"I")
+F:
+6P58 F 3
+stop
+G:
+6P58 G 3
+6P58 G 0 A_Jump(128,"E")
+H:
+6P58 H 3
+6P58 H 0 A_Jump(128,"F")
+I:
+6P58 I 3
+stop
+}
+}
+
+actor KickChamp_DiveProtect : PowerProtection
+{
+Powerup.Duration 3
+DamageFactor "KickChamp_Dive", 0.0
+}
+
+actor KickChampDiveDamager : BasicProjectile
+{
+Damagetype "KickChamp_Dive"
+Obituary "$OB_58A2"
++DONTSPLASH
++DONTBLAST
++NOEXPLODEFLOOR
++THRUGHOST
++DONTREFLECT
++HITTRACER
++STEPMISSILE
+maxstepheight 4
+damage (333*(1+CallACS("uh_checkrune", RUNE_SPREAD, 2)*2))
+Radius 38
+Height 8
+Speed 25
+scale 2.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 //A_SpawnItemEx("KickChamp_SparkleFX",-momx+random(-8,8),-momy+random(-8,8),-momz+random(-8,8),0,0,0,0,1+2)
+TNT1 A 0 //A_SpawnItemEx("KickChampKickingFX1",-momx,-momy,-momz,0,0,0,0,1+2)
+stop
+
+Crash:
+//TNT1 A 0 A_JumpIfInTargetInventory("VivifyDelay3",1,"NullHit")
+//TNT1 A 0 A_JumpIfInventory("PowerProtectSurvivor",1,"AllyHit",8)
+TNT1 A 0 A_SetArg(0,CallACS("uh_IsTracerAllyOrEnemy"))
+TNT1 A 0 A_JumpIf(Args[0]==1,"AllyHit")
+TNT1 A 0 A_JumpIf(Args[0]==0,"NullHit")
+TNT1 A 0 A_JumpIf(Args[0]==-1,"FoeHit")
+goto Death
+
+AllyHit:
+TNT1 A 0 //A_Log("Ally")
+stop
+NullHit:
+TNT1 A 0 //A_Log("Null")
+stop
+FoeHit:
+TNT1 A 0 //A_Log("Foe")
+//TNT1 A 0 A_GiveInventory("KickChamp_DiveProtect",1,8)
+TNT1 A 0 A_GiveToTarget("RonaldinhoAmmo",100)
+SuccessHit:
+TNT1 A 0 A_GiveToTarget("KickChampFlag",100)
+TNT1 A 0 A_Warp(8,0,0,32,0,WARPF_NOCHECKPOSITION)
+//TNT1 A 0 A_FaceTarget
+TNT1 A 1 A_SpawnItemEx("KickChampKickedFX",0,0,0,0,0,0,0,1)
+stop
+Death:
+TNT1 A 0
+stop
+}
+}
+
+
+actor KickChampKickedFX : BasicExplosion
+{
+Translation "192:192=228:228","198:198=44:44"
++FORCEXYBILLBOARD
++BRIGHT
+Speed 40
+Scale 2.5
+States
+{
+Spawn:
+6P58 A 0
+6P58 A 0 Radius_Quake(3,9,0,1,0)
+6P58 A 0 //A_PlaySound("KickChamp/Hit1",1,0.75)
+6P58 ABC 4
+stop
+}
+}
+
+
+actor KickChampKickingFX1 : BasicClientSide
+{
++FORCEXYBILLBOARD
++BRIGHT
+States
+{
+Spawn:
+6Q58 Y 2
+stop
+}
+}
+actor KickChampKickingFX2 : KickChampKickingFX1
+{
+States
+{
+Spawn:
+6Q58 Z 2
+stop
+}
+}
+
+actor KickChampKickFX : BasicClientside
+{
+renderstyle translucent
+alpha 0.5//7
+scale 2.0
+States
+{
+Spawn:
+TNT1 A 0
+X_5F DEF 2
+stop
+}
+}
+
+actor KickChampJumpFX : BasicExplosion//BasicClientside
+{
++FORCEYBILLBOARD
+//scale 1.0
+Scale 4.0
+States
+{
+Spawn:
+TNT1 A 0
+6Q58 ABCD 3
+//6P51 RST 2
+stop
+}
+}
+actor KickChampJumpFX2 : BasicExplosion//BasicClientside
+{
++FORCEXYBILLBOARD
+Scale 4.0
+States
+{
+Spawn:
+6Q58 E 0
+6Q58 EFGHIJK 1
+stop
+}
+}
+
+actor KickChamp_KickNukeFX : BasicClientSide
+{
+Translation "192:192=228:228","198:198=44:44"
++FORCEXYBILLBOARD
++BRIGHT
+scale 2.5
+States
+{
+Spawn:
+6P58 V 0
+6P58 V 0 Radius_Quake(6,12,0,3,0)
+6P58 VWXYZ 4
+stop
+}
+}
+
+
+actor KickChamp_SparkleFX : BasicClientSide
+{
++FORCEXYBILLBOARD
++BRIGHT
+ReactionTime 5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SetScale(ScaleX-frandom(0,0.5))
+TNT1 A 0 A_Jump(256,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33)
+L:
+X_4A IJK 1 A_CountDown
+X_7A QRS 1 A_CountDown
+X_9E UVW 1 A_CountDown
+X_9H TSR 1 A_CountDown
+X_AD MNO 1 A_CountDown
+X_VA XWVPON 1 A_CountDown
+X_VB EFG 1 A_CountDown
+X_VE ABCHGF 1 A_CountDown
+X_VH DCB 1 A_CountDown
+loop//stop
+}
+}
+
