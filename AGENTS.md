@@ -122,6 +122,20 @@ All override `DeselectDeath` to check `uh_IsItOnline` for net sync.
 
 ## DECORATE gotchas
 
+### Empty inherit-only actors still need `{}`
+
+In Zandronum DECORATE, an actor that only inherits (no properties/states) **must** still have an empty body. A bare inheritance line is illegal:
+
+```cpp
+// WRONG — parse error
+actor Decoy_F_23TrailFX : StealthS_RailTrailFX
+
+// CORRECT
+actor Decoy_F_23TrailFX : StealthS_RailTrailFX {}
+```
+
+Do not strip empty `{}` when cleaning properties (e.g. removing `Translation`).
+
 ### Relative offsets ignore standalone state control instructions
 
 In Zandronum DECORATE, relative offsets used by `A_Jump*` functions:
