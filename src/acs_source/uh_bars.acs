@@ -123,7 +123,8 @@
 #define QWANT_TYPE_FAIRY     17
 #define QWANT_TYPE_COUNT     18
 
-#define QWANT_MOVE_BAR2_CYAN 138
+// Mugshot/bar2 fallback when uh_SyncMugFromWeaponDye does not recognize the dye
+#define QWANT_MOVE_BAR2_CYAN 110
 #define QWANT_MOVE_BAR2_BLUE 130
 
 #define NEGA_MM_AMMO_COUNT 15
@@ -202,6 +203,95 @@ Script "uh_assists_define" OPEN CLIENTSIDE
 	DefineAssistDisplay("uh_assist_YellowWizardInvis");
 }
 
+function str UH_MugshotIndexName(str prefix, int amount)
+{
+	// SBARMugshot* stores palette+1; texture names are 000-255
+	int idx = amount - 1;
+	if (idx < 0) { idx = 0; }
+	if (idx > 255) { idx = 255; }
+	return StrParam(s:prefix, s:StrRight(StrParam(s:"000", i:idx), 3));
+}
+
+function void DrawUHClassMugshot(int cam)
+{
+	if (!CheckActorInventory(cam, "MugshotFlag")) { return; }
+
+	int mode = AssistDisplayBar_HUDMode();
+	int x, y;
+	if (mode == BAR_DISPLAY_HORI) {
+		x = 186.1;
+		y = 184.1;
+	} else if (mode == BAR_DISPLAY_VERT) {
+		x = 20.1;
+		y = 0.1;
+	} else {
+		return;
+	}
+
+	SetHudSize(320, 200, 0);
+
+	// Dust Crusher skin: static YustMan face over MegaMan mugshot slot
+	if (CheckActorInventory(cam, "YustManFlag")) {
+		BasicImageDisplay("YUSTMUG", UH_IMAGE_ID_BASE + 61, x, y);
+		return;
+	}
+
+	// Qwant: mugshot follows weapon dye (192/198) synced by uh_SyncMugFromWeaponDye — not QwantBar args
+	if (CheckActorInventory(cam, "UHMugshotQwant")) {
+		int wc = CheckActorInventory(cam, "UHWepMugCyan");
+		int wb = CheckActorInventory(cam, "UHWepMugBlue");
+		if (wc >= 1 && wb >= 1) {
+			SetMugshotColor(wc - 1, wb - 1);
+		}
+	}
+
+	int cyan = CheckActorInventory(cam, "SBARMugshotCyan");
+	int blue = CheckActorInventory(cam, "SBARMugshotBlue");
+	int black = CheckActorInventory(cam, "SBARMugshotBlack");
+	int trans = CheckActorInventory(cam, "MugshotTransFlag");
+	str nBlu = "";
+	str nBlk = "";
+	str nCyn = "";
+
+	// HudMessage: lower IDs draw on top. BACK must use the highest ID so color layers stay visible.
+	if (CheckActorInventory(cam, "UHMugshotMegaMan")) {
+		if (trans) {
+			nBlu = UH_MugshotIndexName("MGBLU", blue);
+			nBlk = UH_MugshotIndexName("MGBLK", black);
+			nCyn = UH_MugshotIndexName("MGCYN", cyan);
+		} else {
+			nBlu = "MGBLU198";
+			nBlk = "MGBLK000";
+			nCyn = "MGCYN192";
+		}
+		BasicImageDisplay("MEGABCK", UH_IMAGE_ID_BASE + 73, x, y);
+		BasicImageDisplay(nBlu, UH_IMAGE_ID_BASE + 72, x, y);
+		BasicImageDisplay(nBlk, UH_IMAGE_ID_BASE + 71, x, y);
+		BasicImageDisplay(nCyn, UH_IMAGE_ID_BASE + 70, x, y);
+	} else if (CheckActorInventory(cam, "UHMugshotQwant")) {
+		if (trans) {
+			nBlu = UH_MugshotIndexName("QWBLU", blue);
+			nCyn = UH_MugshotIndexName("QWCYN", cyan);
+		} else {
+			// Fallback when dye sync / bar has not set mugshot (not QWANT_DYE 138/130)
+			nBlu = "QWBLU130";
+			nCyn = "QWCYN110";
+		}
+		BasicImageDisplay("QWNTBCK", UH_IMAGE_ID_BASE + 73, x, y);
+		BasicImageDisplay(nBlu, UH_IMAGE_ID_BASE + 72, x, y);
+		BasicImageDisplay(nCyn, UH_IMAGE_ID_BASE + 70, x, y);
+	} else if (CheckActorInventory(cam, "UHMugshotNegaMan")) {
+		if (trans) {
+			nCyn = UH_MugshotIndexName("NGPUR", cyan);
+		} else {
+			// NegaMan_W / NEGAMAN_DYE purple (253→95)
+			nCyn = "NGPUR095";
+		}
+		BasicImageDisplay("NEGABCK", UH_IMAGE_ID_BASE + 73, x, y);
+		BasicImageDisplay(nCyn, UH_IMAGE_ID_BASE + 70, x, y);
+	}
+}
+
 Script "uh_assist_General" (int cam) CLIENTSIDE
 {
 	SetActivator(cam);
@@ -209,6 +299,10 @@ Script "uh_assist_General" (int cam) CLIENTSIDE
 	func_UH_BarFlags();
 	SetHudSize(320,200,0);
 	// AdjustedImageDisplayFlag("EMPTICON", "EMPTICON", UH_IMAGE_ID_BASE+100, UH_IMAGE_ID_BASE+101, 24.1, 64.1, 122.1, 184.1, HUDMSG_LAYER_UNDERHUD);
+
+	// Class mugshots follow MugshotFlag (not AssistDisplayBar_On)
+	DrawUHClassMugshot(cam);
+
 	if(AssistDisplayBar_On()) {
 
 		if(CheckActorInventory(cam,"PowerDoubleDamageRune"))		{BasicImageDisplay("strr[0",UH_IMAGE_ID_BASE+50,40.1,1.1);}
@@ -223,7 +317,6 @@ Script "uh_assist_General" (int cam) CLIENTSIDE
 		if(CheckActorInventory(cam,"PowerSpeed25Rune"))				{BasicImageDisplay("hasr[0",UH_IMAGE_ID_BASE+59,141.1,1.1);}//155
 		if(CheckActorInventory(cam,"PowerEndlessAmmoRune"))			{BasicImageDisplay("eamr[0",UH_IMAGE_ID_BASE+60,157.1,1.1);}//161
 
-		if(CheckActorInventory(cam,"YustManFlag"))					{BasicImageDisplay("YUSTMUG",UH_IMAGE_ID_BASE+61,20.1,0.1);}
 		if(CheckActorInventory(cam,"PowerTreeHuggerFlag"))			{BasicImageDisplay("TREEHEAL",UH_IMAGE_ID_BASE+63,174.1,2.1);}
 	}
 }
@@ -522,7 +615,7 @@ script "DrawBar_Qwant_W" (void) {
 	DrawCustomBar(CUST_QWANT, CheckInventory("MyDestinyAmmo"), 28);
 	SetInventory("SBARAmmoOffset", 1);
     DrawNormalAmmo();
-	DrawBar2Color(138, 130);
+	DrawBar2Color(QWANT_MOVE_BAR2_CYAN, QWANT_MOVE_BAR2_BLUE);
 	SetHudSize(320, 200, 0);
 	InitPkmnf7WidthTable();
 	if (ball < 0) {
@@ -591,6 +684,8 @@ script "DrawBar_NegaManMove" (int ammoId, int cyan)
 }
 
 script "DrawBar_NegaMan_W" (void) {
+	// Bar uses body 192/198 (205/77); mugshot purple is NEGAMAN_DYE 253→95
+	SetMugshotColor(95, 77);
 	DrawBarColor(205, 77);
 	DrawCustomBar(CUST_NEGAMAN, CheckInventory("NegaDuckAmmo"), 400);
 	SetInventory("SBARAmmoOffset", 2);

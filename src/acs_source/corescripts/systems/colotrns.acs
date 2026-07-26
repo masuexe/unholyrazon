@@ -58,6 +58,9 @@ script "core_weaponcolor" (int weap, int weapSound, int teamweap)
 	
 	if(teamweap == TCLR_NONE){teamweap = TCLR_DEFAULT;}
 
+	// Mugshot follows weapon dye (192/198), not team remap of the body translation.
+	int mugDye = weap;
+
 	if((IsTeamGame || (Timer() <= 0 && ACS_NamedExecuteWithResult("core_checkmode", 1) == 1)) && CheckInventory("NoTeamTranslation")==0)
 	// it seems redundant to do this, but it fixes an edge case on round start
 	{
@@ -67,6 +70,8 @@ script "core_weaponcolor" (int weap, int weapSound, int teamweap)
 	}
 	
 	Thing_SetTranslation(0, weap);
+	//$UH — sync mugshot cyan/blue from dye's 192/198 remap (see uh_SyncMugFromWeaponDye)
+	ACS_NamedExecuteWithResult("uh_SyncMugFromWeaponDye", mugDye);
 }
 
 script "core_chargecolor" (int weap, int teamweap)
@@ -77,6 +82,7 @@ script "core_chargecolor" (int weap, int teamweap)
 script "uh_forceweaponcolor" (int weap) //$UH
 {
 	Thing_SetTranslation(0, weap);
+	ACS_NamedExecuteWithResult("uh_SyncMugFromWeaponDye", weap);
 }
 
 // The script below returns -1 for legacy reasons. Older versions of that script returned a translation ID.
