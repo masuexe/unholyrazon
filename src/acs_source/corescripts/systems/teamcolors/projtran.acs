@@ -48,3 +48,14 @@ function bool CheckForVar(str theVar) {
 script "core_Check_ProjectileColor_Server" (void) {
 	SetResultValue(ProjTeamColorCvarServer());
 }
+
+// Rail trail/puff CLIENTSIDEONLY FX often have null target, so ProjTeamColor2
+// cannot see IsDecoyBotFlag and falls through — leaving StealthS green Translation.
+// Force Decoy team slot after spawnfunc on Decoy_F_23* actors.
+script "uh_ForceDecoyRailProjColor" (void) CLIENTSIDE {
+	int slot = 16;
+	int cpn = ConsolePlayerNumber();
+	if (cpn >= 0 && CheckActorInventory(PLN_TID + cpn, "IsDecoyBotSFlag"))
+		slot = 17;
+	ACS_NamedExecuteWithResult("core_Set_Projectile_Translation", slot, 0, 0);
+}
