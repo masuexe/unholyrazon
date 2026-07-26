@@ -1,4 +1,4 @@
-actor TimeStopperWepU_NormalBar : TimeStopperWep_NormalBar {}
+actor TimeStopperWepU_ScriptBar : ScriptBar {}
 
 actor TimeStopperWepU : BaseMegaManUWep replaces TimeStopperWep
 {
@@ -21,6 +21,7 @@ Loop
 Ready:
 FLAS D 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_TIMESTOPPER)
 FLAS D 1 A_WeaponReady
+FLAS D 0 A_GiveInventory("TimeStopperUFlag",8)
 Goto Ready+1
 Deselect:
 FLAS D 0
@@ -31,6 +32,8 @@ goto SelectSwap
 Fire:
 FLAS E 0 A_JumpIFInventory("IsBot", 1 ,"BotFire")
 FLAS D 0 A_JumpIfNoAmmo("NoAmmo")
+FLAS D 0 A_JumpIfInventory("TimeStopperUFlag",0,"Fire_TimeStopperCheck")
+FLAS D 0 A_TakeInventory("TimeStopperUFlag")
 FLAS EFGH 2
 FireFlash:
 FLAS DDDDDDDDDDDDDD 0 A_SpawnItemEx("TimeStopGFX", random(0,WEPC_2TS_RADIUS), 0, random(0,WEPC_2TS_RADIUS - 175), 0, 0, 0, random(0, 359))
@@ -48,6 +51,46 @@ FLAS J 10
 FLAS GFE 3
 FLAS D 0 A_Refire
 Goto Ready+1
+
+Fire_TimeStopperCheck:
+FLAS B 0
+FLAS B 2 A_JumpIf(CallACS("Unholy_BeginTimeStopper",1), "Fire_TimeStopper")
+FLAS C 0 A_PlaySoundEx("S3_K/MetalSpark","Weapon")
+FLAS CA 2
+goto Ready+1
+
+Fire_TimeStopper:
+FLAS A 0 //A_PlaySoundEx("weapon/timestopper","Weapon",0,1)
+
+//FLAS A 0 A_GiveInventory("UnholyTimeStopperFreezer",1)
+FLAS D 1
+FLAS D 0 A_TakeInventory("TimeStopperUFlag")
+FLAS D 0 A_TakeInventory("TimeStopperAmmo",1)
+FLAS EFGH 2
+FLAS I 0 ACS_NamedExecuteWithResult("Unholy_BeginTimeStopper", 0)
+
+FLAS I 0 A_PlaySound("weapon/timestopper",CHAN_WEAPON|CHAN_NOPAUSE,1,0,0)
+FLAS I 2 A_GiveInventory("UsingTimeStopperU")
+
+FLAS I 0 A_FireCustomMissile("TimeStopperSlowRadiusU",0,0,0,0)
+FLAS JKL 2
+
+FLAS L 0 A_GunFlash("Flash.TimeStopper",GFF_NOEXTCHANGE)
+FLAS JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ 1
+FLAS JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ 1
+FLAS JJJJJJJJJJJJ 1//112 duration
+
+FLAS J 0 //A_TakeInventory("PowerTimeStopperUFreezer",1)
+FLAS GFE 3
+FLAS D 1 A_TakeInventory("UsingTimeStopperU")
+goto Ready+1
+
+Flash.TimeStopper:
+TNT1 A 0 A_TakeInventory("TimeStopperAmmo",4)
+TNT1 AAAA 1 A_JumpIfInventory("IsDead",1,"NoFlash")
+TNT1 A 0 A_JumpIfInventory("PowerTimeStopperUFreezer",1,"Flash.TimeStopper")
+stop
+
 NoAmmo:
 FLAS D 1 ACS_NamedExecuteAlways("core_noammo",0)
 FLAS D 1 A_Refire
@@ -75,8 +118,6 @@ goto Ready
 }
 }
 
-actor UsingTimeStopperU : UOnce {}
-
 actor TimeStopperRadiusU : BasicExplosion
 {
 Obituary "$OB_TIMESTOPPER"
@@ -87,7 +128,60 @@ states
 {
 Spawn:
 TNT1 A 0
-TNT1 A 1 A_Explode(70, WEPC_2TS_RADIUS, 0, 0, WEPC_2TS_RADIUS)
+TNT1 A 1 A_Explode(100, 512, 0, 0, 64)
+stop
+}
+}
+
+actor TimeStopperSlowRadiusU : TimeStopperRadiusU
+{
+damagetype "TimeSlow"
+states
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1 A_Explode(500, 1024, 0, 0, 512)
+stop
+}
+}
+
+
+//$UH
+actor TimeStopperUFlag : Inventory
+{
+inventory.amount 1
+inventory.maxamount 560
+}
+
+actor TSCameraControlFlag : UOnce {}
+
+actor UsingTimeStopperU : UOnce {}
+
+actor PowerTimeStopperSoundFix : PowerTimeFreezer
+{
+powerup.duration 3
+}
+
+actor UnholyTimeStopperFreezer : BasicPowerupGiver
+{
+Powerup.Type "PowerTimeStopperUFreezer"
+}
+
+actor PowerTimeStopperUFreezer : PowerTimeFreezer
+{
+//Time starts stuttering back around the powerup having 130 tics left
+powerup.duration 500
+}
+
+actor TS_CameraControl_P : CustomInventory
+{
+states
+{
+Pickup:
+TNT1 A 0 A_JumpIfInventory("TSCameraControlFlag",1,"No")
+TNT1 A 0 ACS_NamedExecuteAlways("Unholy_TS_CamWatch",0)
+No:
+TNT1 A 0
 stop
 }
 }

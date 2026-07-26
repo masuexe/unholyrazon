@@ -4,6 +4,8 @@
 global int 3: IsTeamGame;
 global int 4: ServerMAX;
 
+bool TimeIsStopped = 0;
+
 script "uc_countinv_acs" (int Which, int Pointer)
 {
 	if(Pointer>0){
@@ -59,6 +61,102 @@ script "uh_CriticalHitRNG" (int evt, int dmg, int dmgtype) EVENT {
 		}
 	}
 }
+
+script "Unholy_BeginTimeStopper" (int SwapCheck)
+{
+	if (SwapCheck) {
+		if(TimeIsStopped || GetGameModeState()==1)//Countdown
+			SetResultValue(0);
+	}
+	else if (!TimeIsStopped) {
+		int id = ActivatorTID();
+		SetActivator(0);
+		TimeIsStopped = id-999;
+		Delay(2);
+
+		if(GetActorProperty(id, APROP_HEALTH)>0)
+			GiveActorInventory(id,"UnholyTimeStopperFreezer",1);
+
+		GiveInventory("TS_CameraControl_P",1);
+
+		Delay(1);
+
+		//AmbientSound("",127);
+
+		SetHudSize(256,224,0);
+		SetFont("FLASHS");
+		HudMessageBold(s:"A"; 0,50,-1,256.0,112.0,3.45);
+
+		int TimeStopDelay = 120;
+
+		while(CheckActorInventory(id,"PowerTimeStopperUFreezer") && TimeStopDelay > 0 && GetGameModeState()!=1){
+			TimeStopDelay--;
+			Delay(1);
+		}
+
+		HudMessageBold(s:""; 0,50,-1,0.99,0.01,1873);
+		TakeActorInventory(id,"PowerTimeStopperUFreezer",1);
+		Delay(10);
+
+		TimeIsStopped = 0;
+	}
+}
+
+script "Unholy_TS_ClientSnd" (void) CLIENTSIDE
+{
+	//LocalAmbientSound("weapon/timestopper",127);
+}
+
+script "Unholy_TS_CamWatch" (void) //TSCameraControl Watcher
+{
+	ACS_NamedExecuteAlways("Unholy_TS_ClientSnd",0);
+	if (PlayerNumber() == -1 || CheckInventory("IsDead") || !PlayerInGame(PlayerNumber()))
+		terminate;
+	if (IsTeamGame)
+		if(GetPlayerInfo(TimeIsStopped - 1, PLAYERINFO_TEAM) == GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM))
+			terminate;
+
+	GiveInventory("TSCameraControlFlag",1);
+	ACS_NamedExecuteAlways("Unholy_TS_ClientCameraControl",0,0);
+
+	do {
+		delay(1);
+	} while (GetActorProperty(0, APROP_HEALTH) > 0 && TimeIsStopped);
+
+	TakeInventory("TSCameraControlFlag", 1);
+}
+
+script "Unholy_TS_ClientCameraControl" (int Which) CLIENTSIDE //TimeStop Camera Control
+{
+	switch (Which)
+	{
+	Case 0://Actual TimeStopperWep
+		do {
+			if (!CheckInventory("PowerTimeStopperUFreezer")) {
+				SetActorAngle(0, GetActorAngle(0)+GetPlayerInput(-1, INPUT_YAW));
+				SetActorPitch(0, GetActorPitch(0)-GetPlayerInput(-1, INPUT_PITCH));
+			}
+			delay(1);
+		} while (CheckInventory("TSCameraControlFlag"));
+	break;
+	Case 1://TimeStop Pain
+		if (!CheckInventory("TotallyFrozenLookOnce")) {
+			GiveInventory("TotallyFrozenLookOnce", 1);
+
+			do {
+				if (!CheckInventory("PlayerPropertyFrozen")) {
+					SetActorAngle(0, GetActorAngle(0)+GetPlayerInput(-1, INPUT_YAW));
+					SetActorPitch(0, GetActorPitch(0)-GetPlayerInput(-1, INPUT_PITCH));
+				}
+				delay(1);
+			} while (GetActorProperty(0, APROP_HEALTH)>0 && CheckInventory("TotallyFrozenLook"));
+
+			TakeInventory("TotallyFrozenLookOnce",1);
+		}
+		break;
+	}
+}
+
 
 Script "uh_RaiderHitSplat" (int Len)// CLIENTSIDE
 {
