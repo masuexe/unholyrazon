@@ -2,7 +2,7 @@
 
 SetFont/HudMessage works with Translation TEXTURES when HudMessage IDs are ordered
 correctly (BACK highest ID). Templates must be playpal-indexed with the remap source
-index (192/198/0/253).
+index (192/198/0/253/249).
 """
 from __future__ import annotations
 
@@ -25,6 +25,9 @@ LAYERS = (
     ("QWCYN", "qwant/QWCYN999.png", 192),
     ("QWBLU", "qwant/QWBLU999.png", 198),
     ("NGPUR", "negaman/NGPUR999.png", 253),
+    ("ARPD1", "arcanist/ARPD1999.png", 192),
+    ("ARPD2", "arcanist/ARPD2999.png", 198),
+    ("ARPD3", "arcanist/ARPD3999.png", 249),
 )
 
 
@@ -70,6 +73,7 @@ def main() -> None:
         "texture MEGABCK, 32, 32{XScale 4.0 YScale 4.0 patch MEGABACK, 0, 0}",
         "texture QWNTBCK, 32, 32{XScale 4.0 YScale 4.0 patch QWNTBACK, 0, 0}",
         "texture NEGABCK, 32, 32{XScale 4.0 YScale 4.0 patch NEGABACK, 0, 0}",
+        "texture ARCABCK, 32, 32{XScale 4.0 YScale 4.0 patch ARCABACK, 0, 0}",
         "",
     ]
     for prefix, rel, src_index in LAYERS:

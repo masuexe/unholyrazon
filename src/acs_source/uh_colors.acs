@@ -869,13 +869,14 @@ CreateTranslation(FURRY_EYE_DYE, 192:192=225:225, 198:198=214:214, 195:195=3:3);
 
 }
 
-// Mirror CreateTranslation 192/198 targets for the active weapon dye.
-// ACS cannot query translation tables at runtime; keep this in sync when adding Qwant dyes.
-// Stores palette index + 1 in UHWepMugCyan / UHWepMugBlue (0 = unknown / unset).
+// Mirror CreateTranslation / crown PD tables for mugshot layers.
+// ACS cannot query translation tables at runtime.
+// Stores palette index + 1 in UHWepMugCyan / UHWepMugBlue / UHWepMugBlack (0 = unset).
 script "uh_SyncMugFromWeaponDye" (int dye)
 {
 	int cyan = -1;
 	int blue = -1;
+	int black = -1;
 
 	if (dye == QWANT_DYE) { cyan = 138; blue = 130; }
 	else if (dye == QWANT_SDYE) { cyan = 208; blue = 89; }
@@ -904,18 +905,28 @@ script "uh_SyncMugFromWeaponDye" (int dye)
 	else if (dye == Q_DARK_DYE) { cyan = 4; blue = 95; }
 	else if (dye == Q_STEEL_DYE) { cyan = 4; blue = 152; }
 	else if (dye == Q_FAIRY_DYE) { cyan = 4; blue = 35; }
+	else if (dye == ARCANIST_DYE1) { cyan = 202; blue = 205; black = 198; }
+	else if (dye == ARCANIST_DYE2) { cyan = 42; blue = 44; black = 47; }
+	else if (dye == ARCANIST_DYE3) { cyan = 95; blue = 3; black = 5; }
+	else if (dye == ARCANIST_DYE4) { cyan = 80; blue = 85; black = 90; }
 
-	// Unknown dye: only Qwant gets mugshot fallback 110/130
 	if (cyan < 0) {
-		if (CheckInventory("UHMugshotQwant") <= 0) {
+		if (CheckInventory("UHMugshotArcanist") > 0) {
+			// lightest / mid / darkest
+			cyan = 57; blue = 60; black = 79;
+		} else if (CheckInventory("UHMugshotQwant") > 0) {
+			cyan = 110; blue = 130;
+		} else {
 			terminate;
 		}
-		cyan = 110;
-		blue = 130;
 	}
 	// UH_COLORS has no SetInventory; Take+Give stores palette+1
 	TakeInventory("UHWepMugCyan", 256);
 	TakeInventory("UHWepMugBlue", 256);
+	TakeInventory("UHWepMugBlack", 256);
 	GiveInventory("UHWepMugCyan", cyan + 1);
 	GiveInventory("UHWepMugBlue", blue + 1);
+	if (black >= 0) {
+		GiveInventory("UHWepMugBlack", black + 1);
+	}
 }
