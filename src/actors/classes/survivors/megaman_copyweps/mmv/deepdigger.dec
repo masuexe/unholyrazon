@@ -25,8 +25,8 @@ actor DeepDiggerWepU : BaseMegaManUWep replaces DeepDiggerWep
         DDIG D 0 A_JumpIfInventory("DeepDiggerFlagL", 1, "FireCheck")
         DDIG D 0 A_JumpIfInventory("DeepDiggerFlagR", 1, "FireCheck")
     DeselectSkip:
-        DDIG D 0 A_TakeInventory("DeepDiggerFlagL", 1)
-        DDIG D 0 A_TakeInventory("DeepDiggerFlagR", 1)
+        DDIG D 0 A_TakeInventory("DeepDiggerFlagL")
+        DDIG D 0 A_TakeInventory("DeepDiggerFlagR")
         goto DeselectSwap
     FireCheck:
         TNT1 A 0 A_JumpIfHealthLower(1,"DeselectSkip")
@@ -45,31 +45,20 @@ actor DeepDiggerWepU : BaseMegaManUWep replaces DeepDiggerWep
         "####" "#" 0 A_JumpIfInventory("DeepDiggerFlagL", 1, "CheckRight")
         "####" "#" 1 A_JumpIf(true, "FireCont")
         wait
-   FireCont:
+    FireCont:
         DDIG D 0 A_JumpIfNoAmmo("NoAmmo")
         DDIG E 1
         TNT1 A 1
         DDIG D 0 A_PlaySoundEx("weapons/mmv/deepdiggerload", "weapon")
-        DDIG D 0 A_GiveInventory("DeepDiggerFlagL", 1)
-        DDIG D 0 A_GiveInventory("DeepDiggerFlagR", 1)
+        DDIG D 0 A_GiveInventory("DeepDiggerFlagL", 2)
+        DDIG D 0 A_GiveInventory("DeepDiggerFlagR", 2)
         DDIG A 0 A_ChangeVelocity(0, 0, momz, CVF_REPLACE)
         DDIG D 0 A_Stop
         DDIG A 0 A_SpawnItemEx("DeepDiggerWarper_R", 68,  17, 16)
         DDIG A 0 A_SpawnItemEx("DeepDiggerWarper_L", 60, -17, 16)
-        DDIG F 1
-        DDIG A 0
-        DDIG A 0
-        DDIG F 1
-        DDIG A 0
-        DDIG A 0
-        DDIG G 1
-        DDIG A 0
-        DDIG A 0
-        DDIG G 1
-        DDIG A 0
-        DDIG A 0
-        DDIG H 1
-        DDIG H 1
+        DDIG A 0 A_SpawnItemEx("DeepDiggerWarper_R2", 68,  17, 56)
+        DDIG A 0 A_SpawnItemEx("DeepDiggerWarper_L2", 60, -17, 56)
+        DDIG FFGGHH 1
         TNT1 AAAAAAAAAA 1
         goto Carry
     Carry:
@@ -80,6 +69,9 @@ actor DeepDiggerWepU : BaseMegaManUWep replaces DeepDiggerWep
         TNT1 A 0 A_JumpIf(true, "FireEnd")
         loop
     FireEnd:
+        // Still have diggers left (4-shot charge) — do not end early
+        TNT1 A 0 A_JumpIfInventory("DeepDiggerFlagR", 1, "Carry")
+        TNT1 A 0 A_JumpIfInventory("DeepDiggerFlagL", 1, "Carry")
         TNT1 A 1 A_RailWait
         TNT1 A 0 A_JumpIfInventory("DeepDiggerAltFrames", 1, "FireEnd")
         TNT1 A 0 A_JumpIfInventory("DeepDiggerMainFrames", 1, "FireEnd")
@@ -117,26 +109,30 @@ actor DeepDiggerWepU : BaseMegaManUWep replaces DeepDiggerWep
     FireLeft:
         TNT1 A 0 A_PlaySoundEx("weapons/mmv/deepdiggerfire","Weapon")
         TNT1 A 0 A_FireCustomMissile("DeepDiggerU",0,1,-10,4)
-        TNT1 A 0 A_GiveInventory("DeepDiggerTakeLeft", 1)
+        TNT1 A 0 A_GiveInventory("DeepDiggerTakeLeftU")
         DDIG QRSTUV 1
+        TNT1 A 0 A_JumpIfInventory("DeepDiggerFlagR", 1, "Carry")
+        TNT1 A 0 A_JumpIfInventory("DeepDiggerFlagL", 1, "Carry")
         goto FireEnd
     FireRight:
         TNT1 A 0 A_PlaySoundEx("weapons/mmv/deepdiggerfire","Weapon")
         TNT1 A 0 A_FireCustomMissile("DeepDiggerU",0,1,10,-4)
-        TNT1 A 0 A_GiveInventory("DeepDiggerTakeRight", 1)
+        TNT1 A 0 A_GiveInventory("DeepDiggerTakeRightU")
         DDIG IJKLMN 1
+        TNT1 A 0 A_JumpIfInventory("DeepDiggerFlagR", 1, "Carry")
+        TNT1 A 0 A_JumpIfInventory("DeepDiggerFlagL", 1, "Carry")
         goto FireEnd
 
     FlashFireLeft:
         DDIG F 0 A_PlaySoundEx("weapons/mmv/deepdiggerfire","Weapon")
         DDIG F 0 A_FireCustomMissile("DeepDiggerU",0,1,-10,4)
-        DDIG F 0 A_GiveInventory("DeepDiggerTakeLeft", 1)
+        DDIG F 0 A_GiveInventory("DeepDiggerTakeLeftU")
         DDIG QRSTUV 1
         stop
     FlashFireRight:
         DDIG F 0 A_PlaySoundEx("weapons/mmv/deepdiggerfire","Weapon")
         DDIG F 0 A_FireCustomMissile("DeepDiggerU",0,1,10,-4)
-        DDIG F 0 A_GiveInventory("DeepDiggerTakeRight", 1)
+        DDIG F 0 A_GiveInventory("DeepDiggerTakeRightU")
         DDIG IJKLMN 1
         stop
 
@@ -146,6 +142,82 @@ actor DeepDiggerWepU : BaseMegaManUWep replaces DeepDiggerWep
     }
 }
 
+actor DeepDiggerWarper_R2 : DeepDiggerWarper_R {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_GiveInventory("MM8BDMProjSpawnFuncClient")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_shieldwarper_deepdiggerU", 0, 0, 2)
+    TNT1 A 0 A_Jump(256, "Shield")
+    Goto Shield
+   Shield:
+    DDIG B 1
+    DDIG B 1 A_Warp(AAPTR_TARGET, 52, 16, 32 + 40, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)
+    DDIG B 1 A_Warp(AAPTR_TARGET, 36, 15, 48 + 40, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)
+    DDIG B 1 A_Warp(AAPTR_TARGET, 20, 13, 64 + 40, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)
+    DDIG B 1 A_Warp(AAPTR_TARGET, 4,  10, 74 + 40, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)
+   ShieldLoop:
+    DDIG B 1 A_Warp(AAPTR_TARGET, -1, 10, 56 + 16 + 40, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)
+    loop
+  }
+}
+
+actor DeepDiggerWarper_L2 : DeepDiggerWarper_L {
+	States {
+   Spawn:
+	  TNT1 A 0
+	  TNT1 A 0 A_GiveInventory("MM8BDMProjSpawnFuncClient")
+	  TNT1 A 0 ACS_NamedExecuteAlways("uh_shieldwarper_deepdiggerU", 0, 1, 2)
+	  TNT1 A 0 A_Jump(256, "Shield")
+	  Goto Shield
+	 Shield:
+    DDIG B 1
+    DDIG B 1 A_Warp(AAPTR_TARGET, 44, -16, 32 + 40, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)
+    DDIG B 1 A_Warp(AAPTR_TARGET, 28, -15, 48 + 40, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)
+    DDIG B 1 A_Warp(AAPTR_TARGET, 12, -13, 64 + 40, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)
+    DDIG B 1 A_Warp(AAPTR_TARGET, -4, -10, 74 + 40, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)
+   ShieldLoop:
+	  DDIG B 1 A_Warp(AAPTR_TARGET, -9, -10, 56 + 16 + 40, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)
+	  loop
+	}
+}
+
+actor DeepDiggerTakeRightU : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0
+    TNT1 A 0 A_GiveInventory("DeepDiggerMainFrames", 1)
+    TNT1 A 0 A_JumpIfInventory("DeepDiggerFlagR", 2, "TakeRight")
+    TNT1 A 0 A_JumpIfInventory("DeepDiggerFlagL", 2, "TakeLeft")
+    TNT1 A 0 A_JumpIfInventory("DeepDiggerFlagR", 1, "TakeRight")
+    TNT1 A 0 A_JumpIfInventory("DeepDiggerFlagL", 1, "TakeLeft")
+    TNT1 A 1 A_JumpIf(true, "End")
+    wait
+   TakeRight:
+    TNT1 A 0 A_TakeInventory("DeepDiggerFlagR", 1)
+    goto End
+   TakeLeft:
+    TNT1 A 0 A_TakeInventory("DeepDiggerFlagL", 1)
+    goto End
+   End:
+    TNT1 A 0
+    stop
+  }
+}
+
+actor DeepDiggerTakeLeftU : DeepDiggerTakeRightU {
+  States {
+   Pickup:
+    TNT1 A 0
+    TNT1 A 0 A_GiveInventory("DeepDiggerAltFrames", 1)
+    TNT1 A 0 A_JumpIfInventory("DeepDiggerFlagL", 2, "TakeLeft")
+    TNT1 A 0 A_JumpIfInventory("DeepDiggerFlagR", 2, "TakeRight")
+    TNT1 A 0 A_JumpIfInventory("DeepDiggerFlagL", 1, "TakeLeft")
+    TNT1 A 0 A_JumpIfInventory("DeepDiggerFlagR", 1, "TakeRight")
+    TNT1 A 1 A_JumpIf(true, "End")
+    wait
+  }
+}
 
 actor DeepDiggerU : DeepDigger
 {
