@@ -1,0 +1,384 @@
+actor NeedleArmWep_QwantBar : QwantBar {args 4}
+
+actor NeedleArmWep : BaseQwantWep
+{
+Weapon.AmmoUse 2
+Weapon.AmmoGive 28
+Obituary "%k left holes in %o with their \cdNeedle Arm\c-."
+weapon.ammotype "GrassTypeAmmo"
+Tag "$TAG_NEEDLEARM"
+inventory.icon "PKMNI_Gr"
++WEAPON.NOAUTOAIM
+States
+{
+Spawn:
+WEAP L 1
+loop
+
+Deselect:
+NDAM A 0
+goto DeselectSwap
+Select:
+NDAM A 0
+goto SelectSwap
+
+Ready:
+NDAM A 0 ACS_NamedExecuteWithResult("core_weaponcolor", Q_GRASS_DYE, CLRF_QWANTMENU)
+goto ReadyX
+ReadyX:
+NDAM A 0 A_JumpIfInventory("GrassTypeAmmo",2,"ReadyX2")
+NDAM A 8 A_WeaponReady(WRF_NOPRIMARY)
+NDAM A 0 A_GiveInventory("GrassTypeAmmo",1)
+NDAM A 0 A_GiveInventory("MoveRelearnAmmo",1)
+loop
+ReadyX2:
+NDAM A 8 A_WeaponReady
+NDAM A 0 A_GiveInventory("GrassTypeAmmo",1)
+NDAM A 0 A_GiveInventory("MoveRelearnAmmo",1)
+loop
+
+Fire: 
+NDAM A 1 Offset(0,44)
+NDAM A 1 Offset(0,56)
+NDAM A 1 Offset(0,68)
+NDAM A 1 Offset(0,80)
+NDAM A 1 Offset(0,92)
+NDAM A 1 Offset(0,104)
+TNT1 A 1 A_WeaponReady(14)
+NDAM D 1 Offset(0,92)
+NDAM D 1 Offset(0,68)
+NDAM D 1 Offset(0,44)
+NDAM A 0 A_GiveInventory("MoveRelearnAmmo",1)
+FireX:
+NDAM D 0 A_JumpIfInventory("GrassTypeAmmo",2,1)
+goto FireEnd 
+NDAM D 0 A_TakeInventory("GrassTypeAmmo",1,1)
+NDAM D 0 A_TakeInventory("GrassTypeAmmo",1)
+NDAM D 0 A_PlaySoundEx("KirbyNES/InsertFlag","Weapon")
+NDAM D 1 Offset(0,38) A_SpawnItemEx("NeedleArmMeleeHitbox",0,0,28,cos(-pitch)*80,0,sin(-pitch)*80,0)
+NDAM D 0 A_SpawnItemEx("NeedleArmNeedle_H",0,0,28)
+NDAM D 0 A_JumpIfInventory("PlayerPropertyRage",1,1)
+NDAM D 1 Offset(0,32)
+NDAM E 1
+NDAM D 0 A_JumpIfInventory("PlayerPropertyRage",1,1)
+NDAM F 1
+NDAM G 1
+NDAM D 0 A_JumpIfInventory("PlayerPropertyRage",1,1)
+NDAM H 1
+NDAM I 1
+NDAM D 0 A_JumpIfInventory("PlayerPropertyRage",1,1)
+NDAM J 1
+NDAM K 1
+NDAM A 0 A_GiveInventory("MoveRelearnAmmo",1)
+NDAM D 0 A_JumpIfInventory("PlayerPropertyRage",1,1)
+NDAM L 1
+NDAM M 1
+NDAM D 0 A_JumpIfInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1
+NEAM D 0 A_PlaySoundEx("KirbyNES/InsertFlag","Weapon")
+NEAM D 1 A_SpawnItemEx("NeedleArmMeleeHitbox",0,0,28,cos(-pitch)*80,0,sin(-pitch)*80,0)
+NEAM D 0 A_JumpIfInventory("PlayerPropertyRage",1,1)
+NEAM D 1 
+NEAM E 1
+NEAM D 0 A_JumpIfInventory("PlayerPropertyRage",1,1)
+NEAM F 1
+NEAM G 1
+NDAM A 0 A_GiveInventory("MoveRelearnAmmo",1)
+NEAM D 0 A_JumpIfInventory("PlayerPropertyRage",1,1)
+NEAM H 1
+NEAM I 1
+NEAM D 0 A_JumpIfInventory("PlayerPropertyRage",1,1)
+NEAM J 1
+NEAM K 1
+NEAM D 0 A_JumpIfInventory("PlayerPropertyRage",1,1)
+NEAM L 1
+NEAM M 1
+NEAM D 0 A_JumpIfInventory("PlayerPropertyRage",1,1)
+NEAM N 1
+NEAM O 2 A_GiveInventory("MoveRelearnAmmo",1)
+TNT1 A 8
+NEAM O 0 A_JumpIfInventory("PlayerPropertyRage",1,1)
+TNT1 A 6
+NEAM O 0 A_Refire("FireX")
+FireEnd:
+TNT1 A 5
+NDAM A 1 Offset(0,104)
+NDAM A 1 Offset(0,92)
+NDAM A 1 Offset(0,80)
+NDAM A 1 Offset(0,68) A_GiveInventory("MoveRelearnAmmo",1)
+NDAM A 1 Offset(0,56)
+NDAM A 1 Offset(0,44)
+goto ReadyX
+}
+}
+
+Actor NeedleArmMeleeHitbox : BasicExplosion
+{
+Translation "192:192=128:128","198:198=134:134"
+Damagetype "NeedleArm"
+Obituary "%o got pummeled by %k's Needle Arm."
+Reactiontime 2
+Damage(200) //160
+Radius 16
+Height 16
+Speed 80
+Scale 1.0
+Args 200
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1 A_CountDown
+wait
+Death:
+TNT1 A 0 A_Explode(Args[0]*(1+CallACS("uh_checkrune", RUNE_SPREAD, 2)*1),56,0,0,14) //+20
+TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("NeedleArmDeathFX",0,0,0,random(-16,16),random(-16,16),random(-16,16),0,1)
+TNT1 A 1
+stop
+}
+}
+
+Actor NeedleArmDeathFX : BasicClientside
+{
++BRIGHT
+Scale 1.5
+States
+{
+Spawn:
+X_2F ABCDEF 2
+stop
+}
+}
+
+Actor NeedleArmNeedle : BasicProjectile
+{
+Translation "192:192=128:128","198:198=134:134"
+Damagetype "ArmNeedle"
+Obituary "%o got hollowed out by %k's Arm Needles."
+Damage (80) //45
+Radius 8
+Height 8
+Speed 60 //50
+Scale 1.5
+States
+{
+Spawn:
+X_3A A 2
+loop //stop
+XDeath:
+X_3A BCD 2
+stop
+}
+}
+
+Actor NeedleArmNeedle_H : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_JumpIfInTargetInventory("TruePowerItemFlag",1,"SpawnX")
+TNT1 A 0 A_JumpIfInTargetInventory("PowerSpread_ST",1,"Spawn2")
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P1",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P2",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P3",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P4",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P5",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 2
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1 
+TNT1 A 1 A_GiveToTarget("NeedleArm_P6",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P7",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P3",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P8",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 7 A_GiveToTarget("NeedleArm_P9",1)
+stop
+Spawn2:
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P10",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P11",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P12",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P13",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P14",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P15",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P16",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 2
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1 
+TNT1 A 1 A_GiveToTarget("NeedleArm_P16",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P15",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P14",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P13",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P12",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("NeedleArm_P11",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 3 A_GiveToTarget("NeedleArm_P10",1)
+stop
+SpawnX:
+TNT1 A 0 A_JumpIfInTargetInventory("PowerSpread_ST",1,"SpawnX2")
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P1",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P2",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P3",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P4",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P5",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 2
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1 
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P6",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P7",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P3",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P8",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 7 A_GiveToTarget("S_NeedleArm_P9",1)
+stop
+SpawnX2:
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P10",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P11",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P12",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P13",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P14",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P15",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P16",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 2
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1 
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P16",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P15",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P14",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P13",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P12",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 1 A_GiveToTarget("S_NeedleArm_P11",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,1)
+TNT1 A 1
+TNT1 A 3 A_GiveToTarget("S_NeedleArm_P10",1)
+stop
+}
+}
+
+//Look, I couldn't think of a better idea to do this at 5 or 6am leave me alone
+
+Actor NeedleArm_P1 : CustomInventory{States{Pickup:TNT1 A 0 A_FireCustomMissile("NeedleArmNeedle",16,0,-16,0,0,-4)stop}}
+Actor NeedleArm_P2 : NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("NeedleArmNeedle",8,0,-8,0,0,-2)stop}}
+Actor NeedleArm_P3 : NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("NeedleArmNeedle",0,0,0,0,0,0)stop}}
+Actor NeedleArm_P4 : NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("NeedleArmNeedle",-8,0,8,0,0,2)stop}}
+Actor NeedleArm_P5 : NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("NeedleArmNeedle",-16,0,16,0,0,4)stop}}
+Actor NeedleArm_P6 : NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("NeedleArmNeedle",-16,0,16,0,0,-4)stop}}
+Actor NeedleArm_P7 : NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("NeedleArmNeedle",-8,0,8,0,0,-2)stop}}
+Actor NeedleArm_P8 : NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("NeedleArmNeedle",8,0,-8,0,0,2)stop}}
+Actor NeedleArm_P9 : NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("NeedleArmNeedle",16,0,-16,0,0,4)stop}}
+Actor NeedleArm_P10 : NeedleArm_P1{States{Pickup:TNT1 A 0 A_SpawnItemEx("NeedleArmNeedle",0,0,28,cos(-pitch)*60,0,sin(-pitch)*60,15)stop}}
+Actor NeedleArm_P11 : NeedleArm_P1{States{Pickup:TNT1 A 0 A_SpawnItemEx("NeedleArmNeedle",0,0,28,cos(-pitch)*60,0,sin(-pitch)*60,10)stop}}
+Actor NeedleArm_P12 : NeedleArm_P1{States{Pickup:TNT1 A 0 A_SpawnItemEx("NeedleArmNeedle",0,0,28,cos(-pitch)*60,0,sin(-pitch)*60,5)stop}}
+Actor NeedleArm_P13 : NeedleArm_P1{States{Pickup:TNT1 A 0 A_SpawnItemEx("NeedleArmNeedle",0,0,28,cos(-pitch)*60,0,sin(-pitch)*60,0)stop}}
+Actor NeedleArm_P14 : NeedleArm_P1{States{Pickup:TNT1 A 0 A_SpawnItemEx("NeedleArmNeedle",0,0,28,cos(-pitch)*60,0,sin(-pitch)*60,-5)stop}}
+Actor NeedleArm_P15 : NeedleArm_P1{States{Pickup:TNT1 A 0 A_SpawnItemEx("NeedleArmNeedle",0,0,28,cos(-pitch)*60,0,sin(-pitch)*60,-10)stop}}
+Actor NeedleArm_P16 : NeedleArm_P1{States{Pickup:TNT1 A 0 A_SpawnItemEx("NeedleArmNeedle",0,0,28,cos(-pitch)*60,0,sin(-pitch)*60,-15)stop}}
+
+Actor S_NeedleArm_P1 : CustomInventory{States{Pickup:TNT1 A 0 A_FireCustomMissile("S_NeedleArmNeedle",16,0,-16,0,0,-4)stop}}
+Actor S_NeedleArm_P2 : S_NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("S_NeedleArmNeedle",8,0,-8,0,0,-2)stop}}
+Actor S_NeedleArm_P3 : S_NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("S_NeedleArmNeedle",0,0,0,0,0,0)stop}}
+Actor S_NeedleArm_P4 : S_NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("S_NeedleArmNeedle",-8,0,8,0,0,2)stop}}
+Actor S_NeedleArm_P5 : S_NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("S_NeedleArmNeedle",-16,0,16,0,0,4)stop}}
+Actor S_NeedleArm_P6 : S_NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("S_NeedleArmNeedle",-16,0,16,0,0,-4)stop}}
+Actor S_NeedleArm_P7 : S_NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("S_NeedleArmNeedle",-8,0,8,0,0,-2)stop}}
+Actor S_NeedleArm_P8 : S_NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("S_NeedleArmNeedle",8,0,-8,0,0,2)stop}}
+Actor S_NeedleArm_P9 : S_NeedleArm_P1{States{Pickup:TNT1 A 0 A_FireCustomMissile("S_NeedleArmNeedle",16,0,-16,0,0,4)stop}}
+Actor S_NeedleArm_P10 : S_NeedleArm_P1{States{Pickup:TNT1 A 0 A_SpawnItemEx("S_NeedleArmNeedle",0,0,28,cos(-pitch)*60,0,sin(-pitch)*60,15)stop}}
+Actor S_NeedleArm_P11 : S_NeedleArm_P1{States{Pickup:TNT1 A 0 A_SpawnItemEx("S_NeedleArmNeedle",0,0,28,cos(-pitch)*60,0,sin(-pitch)*60,10)stop}}
+Actor S_NeedleArm_P12 : S_NeedleArm_P1{States{Pickup:TNT1 A 0 A_SpawnItemEx("S_NeedleArmNeedle",0,0,28,cos(-pitch)*60,0,sin(-pitch)*60,5)stop}}
+Actor S_NeedleArm_P13 : S_NeedleArm_P1{States{Pickup:TNT1 A 0 A_SpawnItemEx("S_NeedleArmNeedle",0,0,28,cos(-pitch)*60,0,sin(-pitch)*60,0)stop}}
+Actor S_NeedleArm_P14 : S_NeedleArm_P1{States{Pickup:TNT1 A 0 A_SpawnItemEx("S_NeedleArmNeedle",0,0,28,cos(-pitch)*60,0,sin(-pitch)*60,-5)stop}}
+Actor S_NeedleArm_P15 : S_NeedleArm_P1{States{Pickup:TNT1 A 0 A_SpawnItemEx("S_NeedleArmNeedle",0,0,28,cos(-pitch)*60,0,sin(-pitch)*60,-10)stop}}
+Actor S_NeedleArm_P16 : S_NeedleArm_P1{States{Pickup:TNT1 A 0 A_SpawnItemEx("S_NeedleArmNeedle",0,0,28,cos(-pitch)*60,0,sin(-pitch)*60,-15)stop}}
