@@ -1,0 +1,82 @@
+actor IceShardWep_QwantBar : QwantBar {args 5}
+
+actor IceShardWep : BaseQwantWep
+{
+Weapon.AmmoUse 1
+Weapon.AmmoGive 28
+Obituary "%o couldn't outrun %k's \cnIce Shards\c-."
+weapon.ammotype "IceTypeAmmo"
+Tag "$TAG_ICESHARD"
+inventory.icon "PKMNI_I"
+States
+{
+Spawn:
+WEA3 O 1
+loop
+
+Deselect:
+ICES D 0
+goto DeselectSwap
+Select:
+ICES D 0
+goto SelectSwap
+
+Ready:
+ICES D 0 ACS_NamedExecuteWithResult("core_weaponcolor", Q_ICE_DYE, CLRF_QWANTMENU)
+goto ReadyX
+ReadyX:
+ICES D 0 A_JumpIfInventory("IceTypeAmmo",1,"ReadyX2")
+ICES D 8 A_WeaponReady(WRF_NOPRIMARY)
+ICES D 0 A_GiveInventory("IceTypeAmmo",1)
+ICES D 0 A_GiveInventory("MoveRelearnAmmo",1)
+loop
+ReadyX2:
+ICES D 8 A_WeaponReady
+ICES D 0 A_GiveInventory("IceTypeAmmo",1)
+ICES D 0 A_GiveInventory("MoveRelearnAmmo",1)
+loop
+
+Fire: //weird ammo desync noted here, remind to try to fix later since below may not fix it.
+ICES D 0 A_TakeInventory("IceTypeAmmo",1,1)
+ICES FE 2 A_FireCustomMissile("IceShardPKMN",0,0,8,0)
+ICES D 2 A_GunFlash("Flash.BonusShard",1)
+ICES D 8
+ICES D 0 A_GiveInventory("MoveRelearnAmmo",1)
+goto ReadyX
+
+Flash.BonusShard:
+TNT1 A 0 A_Jump(256,1,2,3)
+TNT1 A 0
+stop
+TNT1 A 2 A_FireCustomMissile("IceShardPKMN",random(-3,3),0,8,0,0,random(-3,3))
+stop
+TNT1 AA 2 A_FireCustomMissile("IceShardPKMN",random(-3,3),0,8,0,0,random(-3,3))
+stop
+}
+}
+
+actor IceShardPKMN : BasicFastProjectile
+{
+Translation "192:192=4:4","198:198=203:203"
+damagetype "IceShard"
+Obituary "%o was not fast enough for %k's \cnIce Shards\c-."
++DONTSPLASH
+Renderstyle "Add"
+damage(60) //40
+Radius 8
+Height 10
+speed 90
+scale 2.0
+States
+{
+Spawn:
+X_3A A 0
+X_3A A 0 A_PlaySoundEx("wep_L/mm4/ringboomberangfire","Voice")
+X_3A A 2 A_SpawnItemEx("FreezeCrackerFX",-8,random(-12,12),random(-12,12))
+wait
+Death:
+X_3A A 0 A_SpawnItemEx("IcePitFreeze")
+X_3A AAA 0 A_SpawnItemEx("FreezeCrackerFX",0,0,0,random(-7,7),random(-7,7),random(-7,7))
+stop
+}
+}
