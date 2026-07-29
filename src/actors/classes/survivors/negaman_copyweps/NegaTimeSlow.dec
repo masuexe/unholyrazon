@@ -1,0 +1,263 @@
+actor NegaTimeSlowWep_NegaManBar : NegaManBar {args 1, 239}
+actor NegaTimeSlowWep_ScriptBar : ScriptBar {}
+
+actor NegaTimeSlowWep : BaseNegaManWep
+{
+Weapon.AmmoUse 14 //28
+Weapon.AmmoGive 28
+Weapon.SlotNumber 6
+Inventory.Pickupmessage "$PU_02_MM1z"
+Obituary "$OB_TIMESLOW"
+Tag "$TAG_NegaMan_W1g"
+weapon.ammotype "NegaMM1_Ammo"
+inventory.icon "TIMMI2"
++WEAPON.NOAUTOAIM
+States
+{
+Spawn:
+6N02 B 6
+loop
+
+Deselect:
+6I02 P 0 A_GiveInventory("DrillFlag", 2)
+goto DeselectSwap
+Select:
+6I02 P 0 A_TakeInventory("DrillFlag")
+goto SelectSwap
+
+Ready:
+6I02 P 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_DYE1G)
+6I02 P 0 A_JumpIfNoAmmo("NoAmmo")
+6I02 P 0 A_JumpIfInventory("NegaTimeSlowCooldownFlag",1,"ReadyCooldown")
+6I02 P 8 A_WeaponReady
+6I02 P 0 A_GiveInventory("NegaMM1_Ammo",1)
+Goto Ready+2
+ReadyNoAmmo:
+6I02 P 8 A_WeaponReady(4)
+6I02 P 0 A_GiveInventory("NegaMM1_Ammo",1)
+6I02 P 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+Goto Ready+1
+
+ReadyCooldown:
+6I02 P 8 A_WeaponReady(12)
+6I02 P 0 A_GiveInventory("NegaMM1_Ammo",1)
+Goto Ready+1
+
+Fire:
+6I02 P 0 A_JumpIfNoAmmo("NoAmmo")
+6I02 P 0 A_PlaySoundEx("weapon/mbuster","Weapon")
+6I02 P 0 A_FireCustomMissile("NegaTimeSlowShot",0,1,8,0)
+6I02 QR 6
+6I02 P 0 A_GiveInventory("NegaTimeSlowCooldownFlag")
+6I02 P 0 A_SpawnItemEx("NegaTimeSlowCooldowner")
+6I02 PPPPPP 1 A_WeaponReady(12)
+6I02 P 0 A_JumpIfInventory("IsBot",1,"BotCheck")
+Goto Hold
+Hold:
+6I02 P 1 A_RailWait
+6I02 P 0 A_Refire
+// AltHold:
+// 6I02 P 0 A_ClearRefire
+// 6I02 P 10 A_GiveInventory("DrillFlag",2)
+// 6I02 P 0 A_TakeInventory("DrillFlag")
+// Goto Ready+1
+BotCheck:
+6I02 P 5 A_RailWait
+6I02 P 0 A_Jump(128,"BotCheck")
+Goto Hold+2
+
+NoAmmo:
+6I02 P 1 A_JumpIfInventory("IsBot",1,"NoAmmo_B")
+Goto ReadyNoAmmo
+BotAmmo:
+6I02 P 0 A_GiveInventory("NegaMM1_Ammo",28)
+Goto Ready+1
+}
+}
+
+actor NegaTimeSlowCooldownFlag : Once {}
+
+actor NegaTimeSlowCooldowner : BasicCooldowner
+{
+reactiontime 24
+States
+{
+Spawn:
+TNT1 A 0
+Spawn2:
+TNT1 A 1 A_GiveInventory("NegaTimeSlowCooldownerFunc",1)
+loop
+Death:
+TNT1 A 0 A_TakeFromTarget("NegaTimeSlowCooldownFlag",1)
+stop
+}
+}
+
+actor NegaTimeSlowCooldownerFunc : BasicCooldownerFunc
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIfInTargetInventory("NegaTimeSlowCooldownFlag",1,"PickupBasic")
+goto PickupRemove
+}
+}
+
+actor NegaTimeSlowShot : BasicProjectile
+{
+Translation "192:192=205:205","198:198=77:77","199:199=168:168","202:202=168:168"
+Damagetype "NegaTimeSlow"
+Obituary "$OB_TIMESLOW"
++FORCEXYBILLBOARD
++BRIGHT
++EXPLODEONWATER
++DONTSPLASH
+Damage 0
+Height 8
+Radius 8
+Speed 24
+Scale 2.5
+States
+{
+Spawn:
+X_1G A 0
+X_1G AAAABBBBCCCCDDDD 1 A_JumpIfInTargetInventory("DrillFlag",2,"Death")
+loop
+Death:
+X_1G A 0 A_Stop
+X_1G AAAAABBBBBCCCCCDDDDD 1
+Y_1G A 1
+X_1G AAAABBBBCCCCDDDD 1
+Y_1G A 1
+X_1G AAABBBCCCDDD 1
+Y_1G A 1
+X_1G AABBCCDD 1
+Y_1G A 1
+X_1G ABCD 1
+Y_1G A 1
+X_1G A 0 A_PlaySoundEx("weapon/slow","Weapon")
+X_1G A 0 A_TakeFromTarget("DrillFlag")
+TNT1 A 2 A_SpawnItem("NegaTimeSlowExplode")
+stop
+}
+}
+
+Actor NegaTimeSlowExplode : BasicExplosion
+{
+Translation "192:192=77:77","198:198=205:205"
+Damagetype "NegaTimeSlow"
+Obituary "%o was caught in %k's Nega Time Slow."
++FORCEXYBILLBOARD
++BRIGHT
+Renderstyle "Add"
+ReactionTime 15
+Scale 1.0
+Args 10,125,2
+States
+{
+Spawn:
+X_8B A 0
+X_8B ABC 1
+Spawn2:
+X_8B D 0 A_Explode(Args[0],Args[1],0,0,Args[1]/5)
+X_8B D 0 A_SetArg(0,Args[0]+Args[2])
+X_8B D 0 A_SetArg(1,Args[1]+15)
+X_8B DD 1 A_SetScale(scaleX+0.3,scaleY+0.3)
+X_8B D 0 A_CountDown
+loop
+Death:
+X_8B EFFFFFFFF 1 A_Fadeout(0.1)
+stop
+}
+}
+
+actor NegaSlowed : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIfInventory("PowerNegaSlow",1,2)
+TNT1 A 0 A_SpawnItemEx("NegaTimeSlowWatcher")
+TNT1 A 0 A_GiveInventory("SlowedPowerNega",1)
+TNT1 A 0 A_GiveInventory("PowerSlowFade",1)
+stop
+}
+}
+
+actor NegaSlowed_S : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIfInventory("PowerNegaSlow_S",1,2)
+TNT1 A 0 A_SpawnItemEx("NegaTimeSlowWatcher_S")
+TNT1 A 0 A_GiveInventory("SlowedPowerNega_S",1)
+TNT1 A 0 A_GiveInventory("PowerSlowFade",1)
+stop
+}
+}
+
+actor SlowedPowerNega : PowerupGiver
+{
+Speed 0.7
+powerup.duration 105
+powerup.type "PowerNegaSlow"
++INVENTORY.AUTOACTIVATE
++INVENTORY.ALWAYSPICKUP
+states
+{
+Pickup:
+TNT1 A 175
+stop
+}
+}
+
+actor SlowedPowerNega_S : SlowedPowerNega{Speed 0.55 powerup.type "PowerNegaSlow_S"}
+
+actor PowerNegaSlow : PowerSpeed{Speed 0.7}
+actor PowerNegaSlow_S : PowerSpeed{Speed 0.55}
+
+actor NegaTimeSlowWatcher : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0 
+TNT1 A 3 A_GiveToTarget("NegaTimeSlowFX",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PowerNegaSlow",1,"Spawn")
+TNT1 A 0 A_TakeFromTarget("PowerSlowFade",1)
+stop
+}
+}
+
+actor NegaTimeSlowWatcher_S : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0 
+TNT1 A 3 A_GiveToTarget("NegaTimeSlowFX_S",1)
+TNT1 A 0 A_JumpIfInTargetInventory("PowerNegaSlow_S",1,"Spawn")
+TNT1 A 0 A_TakeFromTarget("PowerSlowFade",1)
+stop
+}
+}
+
+actor NegaTimeSlowFX : CustomInventory{States{Pickup:TNT1 A 0 A_SpawnItemEx("NegaTimeSlowGFX",random(16,48),0,Random(16,48),0,0,0,random(0,359))stop}}
+actor NegaTimeSlowFX_S : CustomInventory{States{Pickup:TNT1 A 0 A_SpawnItemEx("NegaTimeSlowGFX_S",random(16,48),0,Random(16,48),0,0,0,random(0,359))stop}}
+
+actor NegaTimeSlowGFX : BasicGraphicEffect
+{
+Translation "192:192=205:205","198:198=77:77"
++FLOATBOB
++FORCEXYBILLBOARD
++BRIGHT
+States
+{
+Spawn:
+X_1G DCBA 4 A_Fadeout(0.2)
+loop
+}
+}
+
+actor NegaTimeSlowGFX_S : NegaTimeSlowGFX{Translation "192:192=228:228","198:198=230:230"}
