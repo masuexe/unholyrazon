@@ -1,0 +1,166 @@
+actor NegaRainFlushWep_NegaManBar : NegaManBar {args 4, 104}
+
+actor NegaRainFlushWep : BaseNegaManWep {
+  Weapon.AmmoUse 7
+  Weapon.AmmoGive 28
+  Weapon.SlotNumber 6
+  Inventory.Pickupmessage "$PU_02_MM4z"
+  Obituary "$OB_RAINFLUSH"
+  Tag "$TAG_NegaMan_W4b"
+  weapon.ammotype "NegaMM4_Ammo"
+  inventory.icon "NEG_RAIN"
+  States {
+   Spawn:
+    6N02 E 6
+loop
+
+   Deselect:
+    6I02 Y 0
+    goto DeselectSwap
+   Select:
+    6I02 Y 0
+    goto SelectSwap
+
+   Ready:
+    6I02 Y 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_DYE4B)
+   ReadyX:
+    6I02 Y 0 A_JumpIfNoAmmo("NoAmmo")
+    6I02 Y 8 A_WeaponReady
+    6I02 Y 0 A_GiveInventory("NegaMM4_Ammo", 1)
+    Goto Ready+2
+   ReadyNoAmmo:
+    6I02 Y 8 A_WeaponReady(4)
+    6I02 Y 0 A_GiveInventory("NegaMM4_Ammo", 1)
+    6I02 Y 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+    Goto ReadyX
+
+   Fire:  // Needs a version of hands specific for this attack
+    6I02 Y 0 A_JumpIfNoAmmo("NoAmmo")
+    6I02 Y 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    6I02 Z 4 A_FireCustomMissile("NegaRainFlushMineSpawner", 0, 1, 0, 0)
+    6J02 A 4
+    6I02 Y 18  // 12
+    Goto ReadyX
+
+   NoAmmo:
+    6I02 Y 1 A_JumpIfInventory("IsBot", 1, "NoAmmo_B")
+    Goto ReadyNoAmmo
+   BotAmmo:
+    6I02 Y 0 A_GiveInventory("NegaMM4_Ammo", 28)
+    Goto ReadyX
+  }
+}
+
+actor NegaRainFlushPod : BasicClientside
+{
+  Scale 1.5
+  States {
+Spawn:
+    X_4B A 0
+    X_4B A 3 ThrustThingZ(0, 5, 0, 0)
+    X_4B A 0 A_ChangeVelocity(0, 0, 0, 2)
+    X_4B A 1 ThrustThingZ(0, 20, 0, 0)
+    X_4B A 1 ThrustThingZ(0, 40, 0, 0)
+    X_4B A 1 ThrustThingZ(0, 60, 0, 1)
+    X_4B BCABCABCA 2
+    stop
+  }
+}
+
+actor NegaRainFlushMineSpawner : BasicProjectile {
+  Translation "192:192=205:205", "198:198=77:77"
+  Damagetype "RainFlush"  // Just in the very case this thing even damagesm, ever. - Trist
+  -NOGRAVITY
+  +RIPPER
+  +BOUNCEONWALLS
+  +BOUNCEONCEILINGS
+  +BOUNCEONACTORS
+  +EXPLODEONWATER
+  Bouncefactor 0.65
+  Radius 10
+  Height 10
+  Damage (0)
+  Speed 30
+  Scale 1.5
+  States {
+   Spawn:
+    X_4B A 2
+    loop
+   Death:
+    X_4B A 0 A_Stop
+    X_4B A 0 A_ChangeFlag("NOGRAVITY", 1)
+    X_4B A 0 A_PlaySound("weapon/crashland")
+    X_4B A 0 A_SpawnItemEx("NegaRainFlushMine")
+    TNT1 A 1
+    stop
+  }
+}
+
+actor NegaRainFlushMine : BasicProjectile {
+  Translation "192:192=205:205", "198:198=77:77", "199:199=168:168", "202:202=168:168"
+  Obituary "%o found out where %k's 9th Rain Flush mine was."
+  Damagetype "RainFlush"
+  +NOCLIP
+  +NODROPOFF
+  +NOEXPLODEFLOOR
+  Reactiontime 6
+  Damage (50)
+  Radius 12
+  Height 10
+  speed 0
+  Scale 1.5
+  States {
+   Spawn:
+    X_4B A 0
+    X_4B A 5
+    X_4B A 0 A_ChangeFlag("NOCLIP", 0)
+   Spawn2:
+    X_4B A 34
+    Y_4B A 2 A_Countdown
+    loop
+   Death:
+    TNT1 A 0 A_PlaySound("weapon/mbuster")
+    TNT1 A 1 A_SpawnItemEx("NegaRainFlush", 0, 0, 8, 0, 0, 0, 0, 1)
+    stop
+  }
+}
+
+actor NegaRainFlush : BasicExplosion {
+  Translation "192:192=205:205", "198:198=77:77"
+  Obituary "$OB_RAINFLUSH"
+  Damagetype "RainFlush"
+  var int user_RainArea;
+  var int user_RainDamage;
+  var int user_C;
+  Reactiontime 29
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SetUserVar("user_RainArea", 128)
+    TNT1 A 0 A_SetUserVar("user_RainDamage", 100)  // 150
+    TNT1 A 25 A_SpawnItemEx("NegaRainFlushPod", 0, 0, 0, 0, 0, 0, 0, 1)
+    TNT1 A 0 A_PlaySoundEx("weapon/rainflush", "Voice")
+    TNT1 A 0 A_Explode(user_RainDamage, user_RainArea, 0)
+   Spawn2:
+    TNT1 AAAAAAAAA 0 A_SpawnItemEx("NegaRainSprinkle", random(-1*user_RainArea, user_RainArea), random(-1*user_RainArea, user_RainArea), 384, -25, 0, -25, 90, 129)
+    TNT1 A 1 A_CountDown
+    TNT1 A 0 A_SetUserVar("user_RainArea", user_RainArea+26)
+    TNT1 A 0 A_SetUserVar("user_C", user_C+1)
+    TNT1 A 0 A_JumpIf(user_C>=7, "Spawn3")
+    loop
+   Spawn3:
+    TNT1 A 0 A_SetUserVar("user_RainDamage", user_RainDamage-20)  // -30
+    TNT1 A 0 A_Explode(user_RainDamage, user_RainArea*0.5, 0, 0, user_RainArea*0.5)
+    TNT1 A 0 A_SetUserVar("user_C", 0)
+    goto Spawn2
+  }
+}
+
+Actor NegaRainSprinkle : BasicGraphicEffect {
+  Translation "198:198=77:77"
+  States {
+   SpawnFrame:
+    X_4B D 30
+    stop
+  }
+}
