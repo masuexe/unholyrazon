@@ -1,0 +1,148 @@
+actor ToxicWep_QwantBar : QwantBar {args 7}
+
+actor ToxicWep : BaseQwantWep
+{
+Weapon.AmmoUse 10 //14
+Weapon.AmmoGive 28
+Tag "$TAG_TOXIC"
+weapon.ammotype "PoisonTypeAmmo"
+inventory.icon "PKMNI_Po"
+States
+{
+Spawn:
+SWAT A 1
+loop
+
+Deselect:
+TXIC A 0
+goto DeselectSwap
+Select:
+TXIC A 0
+goto SelectSwap
+
+Ready:
+TXIC A 0 ACS_NamedExecuteWithResult("core_weaponcolor", Q_POISON_DYE, CLRF_QWANTMENU)
+goto ReadyX
+ReadyX:
+TXIC A 0 A_JumpIfInventory("PoisonTypeAmmo",10,"ReadyX2")
+TXIC A 8 A_WeaponReady(WRF_NOPRIMARY)
+TXIC A 0 A_GiveInventory("PoisonTypeAmmo",1)
+TXIC A 0 A_GiveInventory("MoveRelearnAmmo",1)
+loop
+ReadyX2:
+TXIC A 8 A_WeaponReady
+TXIC A 0 A_GiveInventory("PoisonTypeAmmo",1)
+TXIC A 0 A_GiveInventory("MoveRelearnAmmo",1)
+loop
+
+Fire:
+TXIC A 0 A_TakeInventory("PoisonTypeAmmo",5,1)
+TXIC A 0 A_TakeInventory("PoisonTypeAmmo",5)
+TXIC A 0 A_PlaySoundEx("Pokemon/SpiderWeb","Weapon")
+TXIC A 0 A_FireCustomMissile("ToxicProjectile",0,0,8,0)
+TXIC CB 4
+TXIC AA 8 A_GiveInventory("MoveRelearnAmmo",1)
+goto ReadyX
+
+}
+}
+
+Actor ToxicFlag : Inventory{inventory.amount 1 inventory.maxamount 100}
+
+//Note: Do we allow Toxic stacking? Or does it simply reset the timer? I will just leave as the latter
+//for the time being.
+Actor ToxicProjectile : BasicProjectile
+{
++HITTRACER
++THRUGHOST
++NOTARGETSWITCH
+Translation "192:192=252:252","198:198=254:254","199:199=251:251"
+Obituary "%o succumbed to %k's \ctToxic poison\c-."
+Damagetype "ToxicPKMN"
+Damage(0)
+Speed 32 //35
+Radius 12 //10
+Height 12 //10
+Scale 2.0
+Args 30,32,32
+States
+{
+Spawn:
+TXIC D 0
+TXIC DEFGHIHGFE 2 A_SetScale(scaleX+0.2,scaleY+0.2)
+TXIC DEFGHIHGFE 2 A_SetScale(scaleX-0.2,scaleY-0.2)
+goto Spawn+1
+Crash:
+XDeath:
+TNT1 A 0 A_Stop
+TNT1 A 0 A_JumpIfInventory("PowerProtectSurvivor",1,"Death",AAPTR_TRACER)
+TNT1 A 0 A_JumpIfInventory("ToxicFlag",1,"AddStacks",AAPTR_TRACER)
+TNT1 A 0 A_GiveInventory("ToxicFlag",10,AAPTR_TRACER)
+Goto ToxicTick
+AddStacks:
+TNT1 A 0 A_GiveInventory("ToxicFlag",5,AAPTR_TRACER)
+Goto Death
+ToxicTick:
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,"ToxicTick_R")
+TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 8), "Death2")
+TNT1 A 0 A_JumpIfInventory("CutterFlag",5,"ToxicDamage")
+TNT1 A 0 A_GiveInventory("ToxicPoisonFX_P",1,AAPTR_TRACER)
+TNT1 AAAA 1 A_Warp(8,0,0,28,0,WARPF_NOCHECKPOSITION)
+TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 8), "Death2")
+TNT1 AAA 1 A_Warp(8,0,0,28,0,WARPF_NOCHECKPOSITION)
+TNT1 A 0 A_GiveInventory("CutterFlag",1)
+TNT1 A 0 A_JumpIfInventory("ToxicFlag",1,"ToxicTick",AAPTR_TRACER)
+goto Death2
+ToxicTick_R:
+TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 8), "Death2")
+TNT1 A 0 A_JumpIfInventory("CutterFlag",5,"ToxicDamage")
+TNT1 A 0 A_GiveInventory("ToxicPoisonFX_P",1,AAPTR_TRACER)
+TNT1 AAA 1 A_Warp(8,0,0,28,0,WARPF_NOCHECKPOSITION)
+TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 8), "Death2")
+TNT1 AA 1 A_Warp(8,0,0,28,0,WARPF_NOCHECKPOSITION)
+TNT1 A 0 A_GiveInventory("CutterFlag",1)
+TNT1 A 0 A_JumpIfInventory("ToxicFlag",1,"ToxicTick",AAPTR_TRACER)
+goto Death2
+ToxicDamage:
+TNT1 A 0 A_TakeInventory("CutterFlag")
+TNT1 A 0 A_Warp(8,0,0,28,0,WARPF_NOCHECKPOSITION)
+TNT1 A 1 A_SpawnItemEx("ToxicDamageExplode",0,0,28,0,0,0,0,SXF_TRANSFERSPECIAL) //A_Explode(Args[0],32,0,0,32)
+TNT1 A 0 A_SetArg(0,Args[0]+3) //5
+TNT1 A 0 A_TakeInventory("ToxicFlag",1,0,AAPTR_TRACER)
+TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage",1,"ToxicTick_R")
+goto ToxicTick
+Death:
+TNT1 A 0
+stop
+Death2:
+TNT1 A 0 A_TakeInventory("ToxicFlag",0,0,AAPTR_TRACER)
+TNT1 A 1
+stop
+}
+}
+
+Actor ToxicDamageExplode : BasicExplosion_Args{Damage(0) Obituary "%o succumbed to %k's \ctToxic poison\c-." Damagetype "ToxicPKMN"}
+
+Actor ToxicPoisonFX : BasicClientside
+{
+Translation "192:192=252:252","198:198=254:254","199:199=251:251","4:4=251:251"
+Scale 2.0
+States
+{
+Spawn:
+X_VI E 0
+X_VI EFE 2
+stop
+}
+}
+
+Actor ToxicPoisonFX_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_PlaySoundEx("Pokemon/SludgeLoop","Body")
+TNT1 A 0 A_SpawnItemEx("ToxicPoisonFX",20,0,random(20,28),0,0,random(2,4),random(0,359))
+stop
+}
+}
