@@ -1,0 +1,84 @@
+actor NegaBubbleLeadWep_NegaManBar : NegaManBar {args 2, 93}
+
+actor NegaBubbleLeadWep : BaseNegaManWep {
+  Weapon.AmmoUse 2
+  Weapon.AmmoGive 28
+  Weapon.SlotNumber 4
+  Inventory.Pickupmessage "$PU_02_MM2z"
+  Obituary "$OB_BUBBLELEAD"
+  Tag "$TAG_NegaMan_W2c"
+  weapon.ammotype "NegaMM2_Ammo"
+  inventory.icon "NEG_BUBB"
+  States {
+   Spawn:
+    6N02 C 6
+loop
+
+   Deselect:
+    6I02 S 0
+    goto DeselectSwap
+   Select:
+    6I02 S 0
+    goto SelectSwap
+
+   Ready:
+    6I02 S 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_DYE2C)
+6I02 S 0 A_JumpIfNoAmmo("NoAmmo")
+    6I02 S 8 A_WeaponReady
+    6I02 S 0 A_GiveInventory("NegaMM2_Ammo", 1)
+    Goto Ready+2
+   ReadyNoAmmo:
+    6I02 S 8 A_WeaponReady(4)
+    6I02 S 0 A_GiveInventory("NegaMM2_Ammo", 1)
+    6I02 S 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+    Goto Ready+1
+
+Fire:
+    6I02 S 0 A_JumpIfNoAmmo("NoAmmo")
+    6I02 S 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    6I02 S 0 A_FireCustomMissile("NegaBubbleLead", 0, 1, 8, 0)
+    6I02 TUS 4
+    6I02 S 0 A_Refire
+    Goto Ready+1
+
+NoAmmo:
+    6I02 S 1 A_JumpIfInventory("IsBot", 1, "NoAmmo_B")
+    Goto ReadyNoAmmo
+   BotAmmo:
+    6I02 S 0 A_GiveInventory("NegaMM2_Ammo", 28)
+    Goto Ready+1
+}
+}
+
+
+Actor NegaBubbleLead : BasicProjectile {
+  Translation "192:192=205:205", "198:198=77:77"
+  DamageType "BubbleLead"
+  Obituary "%o was lead further astray by %k's Nega Bubble Lead."  // OB_NEGABUBBLELEAD
+  BounceSound "Pokemon/BallBounce"
+  -NOGRAVITY
+  +FORCEXYBILLBOARD
+  +BOUNCEONFLOORS
+  +BOUNCEONCEILINGS
+  +BOUNCEONWALLS
+  +CANBOUNCEWATER
+  Bouncecount 7  // 5
+  Bouncefactor 0.88  // 0.8
+  WallBounceFactor 1.0
+  Damage (200)
+  Height 16
+  Radius 20
+  Speed 15
+  Scale 2.5
+  States {
+   Spawn:
+    X_2C A 0
+    X_2C A 0 ThrustThingZ(0, 18, 0, 1)
+   SpawnL:
+    X_2C ABC 4
+    loop
+   Death:
+    TNT1 A 0 A_SpawnItemEx("SoakifyEffect")
+    stop
+  }
+}
