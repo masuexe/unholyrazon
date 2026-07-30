@@ -51,11 +51,10 @@ loop
   }
 }
 
-actor NegaRainFlushPod : BasicClientside
-{
+actor NegaRainFlushPod : BasicGraphicEffect {
   Scale 1.5
   States {
-Spawn:
+   SpawnFrame:
     X_4B A 0
     X_4B A 3 ThrustThingZ(0, 5, 0, 0)
     X_4B A 0 A_ChangeVelocity(0, 0, 0, 2)
@@ -140,6 +139,7 @@ actor NegaRainFlush : BasicExplosion {
     TNT1 A 0 A_SetUserVar("user_RainDamage", 100)  // 150
     TNT1 A 25 A_SpawnItemEx("NegaRainFlushPod", 0, 0, 0, 0, 0, 0, 0, 1)
     TNT1 A 0 A_PlaySoundEx("weapon/rainflush", "Voice")
+    TNT1 A 0 A_SpawnItemEx("RainFlushSoakify")
     TNT1 A 0 A_Explode(user_RainDamage, user_RainArea, 0)
    Spawn2:
     TNT1 AAAAAAAAA 0 A_SpawnItemEx("NegaRainSprinkle", random(-1*user_RainArea, user_RainArea), random(-1*user_RainArea, user_RainArea), 384, -25, 0, -25, 90, 129)
@@ -150,6 +150,7 @@ actor NegaRainFlush : BasicExplosion {
     loop
    Spawn3:
     TNT1 A 0 A_SetUserVar("user_RainDamage", user_RainDamage-20)  // -30
+    TNT1 A 0 A_SpawnItemEx("RainFlushSoakify")
     TNT1 A 0 A_Explode(user_RainDamage, user_RainArea*0.5, 0, 0, user_RainArea*0.5)
     TNT1 A 0 A_SetUserVar("user_C", 0)
     goto Spawn2
@@ -169,26 +170,9 @@ Actor NegaRainSprinkle : BasicGraphicEffect {
 // == Shiny ==//
 /// //////////////////////////
 
-actor S_NegaRainFlushMineSpawner
-{
-PROJECTILE
--NOGRAVITY
-+RIPPER
-+BOUNCEONWALLS
-+BOUNCEONCEILINGS
-+BOUNCEONACTORS
-+EXPLODEONWATER
-Bouncefactor 0.65
-Radius 10
-Height 10
-Damage (0)
-Speed 30
-Scale 1.5
-States {
-Spawn:
-X_4B A 2
-loop
-Death:
+actor S_NegaRainFlushMineSpawner : NegaRainFlushMineSpawner {
+  States {
+   Death:
     X_4B A 0 A_Stop
     X_4B A 0 A_ChangeFlag("NOGRAVITY", 1)
     X_4B A 0 A_PlaySound("weapon/crashland")
@@ -278,6 +262,7 @@ actor S_NegaRainFlush : BasicExplosion {
    Spawn:
     TNT1 A 25 A_SpawnItemEx("NegaRainFlushPod", 0, 0, 0, 0, 0, 0, 0, 1)
     TNT1 A 0 A_PlaySoundEx("weapon/rainflush", "Voice")
+    TNT1 A 0 A_SpawnItemEx("RainFlushSoakify")
     TNT1 A 0 A_Explode(Args[0], Args[1], 0)
    Spawn2:
     TNT1 AAAAAAAAA 0 A_SpawnItemEx("NegaRainSprinkle", random(-1*Args[1], Args[1]), random(-1*Args[1], Args[1]), 384, -25, 0, -25, 90, 129)
@@ -288,6 +273,7 @@ actor S_NegaRainFlush : BasicExplosion {
     loop
    Spawn3:
     TNT1 A 0 A_SetArg(0, Args[0]-25)
+    TNT1 A 0 A_SpawnItemEx("RainFlushSoakify")
     TNT1 A 0 A_Explode(Args[0], Args[1]*0.5, 0, 0, Args[1]*0.5)
     TNT1 A 0 A_SetArg(2, 0)
     goto Spawn2
