@@ -170,3 +170,169 @@ actor NegaSearchSnakeCrawlD : NegaSearchSnakeCrawl {
     goto XDeath
   }
 }
+
+/// //////////////////////////
+// == Shiny ==//
+/// //////////////////////////
+
+actor S_NegaSearchSnakeBase : SearchSnakeBase {
+  Damage (150)
+  Radius 12
+  Height 10
+  Scale 3.0
+}
+
+actor S_NegaSearchSnakeStart : S_NegaSearchSnakeBase {
+  Damage (100)
+  Speed 35
+  -NOGRAVITY
+  States {
+   Spawn:
+    X_3F A 0
+    X_3F A 0 ThrustThingZ(0, 20, 0, 1)
+    X_3F AB 4
+    goto Spawn+2
+   Death:
+    TNT1 A 0 A_SpawnItemEx("S_NegaSearchSnakeMaster")
+    stop
+   XDeath:
+    TNT1 A 0
+    stop
+  }
+}
+
+actor S_NegaSearchSnakeStart2 : S_NegaSearchSnakeBase {
+  Damage (100)
+  Speed 35
+  -NOGRAVITY
+  States {
+   Spawn:
+    X_3F A 0
+    X_3F A 0 ThrustThingZ(0, 20, 0, 1)
+    X_3F AB 4
+    goto Spawn+2
+   Death:
+    TNT1 A 0 A_SpawnItemEx("S_NegaSearchSnakeMaster")
+    TNT1 A 0 A_SpawnItemEx("S_NegaSearchSnakeMaster", 0, 0, 0, 0, 0, 0, -45)
+    TNT1 A 0 A_SpawnItemEx("S_NegaSearchSnakeMaster", 0, 0, 0, 0, 0, 0, 45)
+    stop
+   XDeath:
+    TNT1 A 0
+    stop
+  }
+}
+
+actor S_NegaSearchSnakeStart3 : S_NegaSearchSnakeBase {
+  Damage (100)
+  Speed 35
+  -NOGRAVITY
+  States {
+   Spawn:
+    X_3F A 0
+    X_3F A 0 ThrustThingZ(0, 20, 0, 1)
+    X_3F AB 4
+    goto Spawn+2
+   Death:
+    TNT1 A 0 A_SpawnItemEx("S_NegaSearchSnakeMaster")
+    TNT1 A 0 A_SpawnItemEx("S_NegaSearchSnakeMaster", 0, 0, 0, 0, 0, 0, -30)
+    TNT1 A 0 A_SpawnItemEx("S_NegaSearchSnakeMaster", 0, 0, 0, 0, 0, 0, 30)
+    TNT1 A 0 A_SpawnItemEx("S_NegaSearchSnakeMaster", 0, 0, 0, 0, 0, 0, -60)
+    TNT1 A 0 A_SpawnItemEx("S_NegaSearchSnakeMaster", 0, 0, 0, 0, 0, 0, 60)
+    stop
+   XDeath:
+    TNT1 A 0
+    stop
+  }
+}
+
+actor S_NegaSearchSnakeMaster : S_NegaSearchSnakeBase {
+  +NOCLIP
+  +NOINTERACTION
+  reactiontime 100
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SetPitch(PITCH_FORWARD)
+    TNT1 A 0 A_SpawnItemEx("S_NegaSearchSnakeCrawl", 0, 0, 0, cos(pitch), 0, -sin(pitch), 0, SXF_SEARCHSNAKESTART, 0, CallACS("core_NewUniqueTID"))
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_setTIDsPointerToThis", CallACS("core_CurrentUniqueTID"), AAPTR_MASTER)
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_ClearUniqueTID", 0)
+   SpawnLoop:
+    X_3F A 1 A_GiveInventory("SearchSnakeMasterFunc",1)
+    loop
+   CustomState1:
+    X_3F A 1 A_ChangeVelocity(10, 0, 0, CVF_RELATIVE|CVF_REPLACE)
+   SpawnForward:
+    X_3F A 0 A_Jump(2, "HopBig")
+    X_3F AAAB 1 A_GiveInventory("SearchSnakeMasterFunc",1)
+    X_3F A 0 A_Jump(12, "HopSmall")
+    X_3F BBBA 1 A_GiveInventory("SearchSnakeMasterFunc",1)
+    X_3F A 0 A_Jump(24, "HopSmall")
+    goto SpawnForward
+   CustomState2:
+    X_3F E 1 A_ChangeVelocity(0, 0, -10, CVF_RELATIVE|CVF_REPLACE)
+   SpawnDown:
+    X_3F EEEFFFFE 1 A_GiveInventory("SearchSnakeMasterFunc",1)
+    loop
+   CustomState3:
+    X_3F C 1 A_ChangeVelocity(0, 0, 10, CVF_RELATIVE|CVF_REPLACE)
+   SpawnUp:
+    X_3F CCCDDDDC 1 A_GiveInventory("SearchSnakeMasterFunc",1)
+    loop
+   HopForward:
+    X_3F A 0 A_RemoveChildren(true)
+    X_3F A 0 A_SpawnItemEx("NegaSearchSnakeStart", 0, 0, 0, 10, 0, random(2, 5), 0, 0)
+    stop
+   HopSmall:
+    X_3F A 0 A_RemoveChildren(true)
+    X_3F A 0 A_SpawnItemEx("NegaSearchSnakeStart", 0, 0, 0, 10, 0, random(5, 12), 0, 0)
+    stop
+   HopBig:
+    X_3F A 0 A_RemoveChildren(true)
+    X_3F A 0 A_SpawnItemEx("NegaSearchSnakeStart", 0, 0, 0, 10, 0, random(10, 20), 0, 0)
+    stop
+   Death:
+    TNT1 A 0 A_RemoveChildren(true)
+    stop
+  }
+}
+
+actor S_NegaSearchSnakeCrawl : S_NegaSearchSnakeBase {
+  +INVISIBLE
+  +MOVEWITHSECTOR
+  +DONTSPLASH
+  +SERVERSIDEONLY
+  +NONETID
+  var int user_NoTranslation;
+  States {
+   Spawn:
+    TNT1 A 0
+    BUST A 1 A_GiveInventory("WarpMasterHere",1)
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_setpointerpitch", pitch, AAPTR_MASTER)
+    TNT1 A 0 A_JumpIf(pitch==PITCH_DOWN, "SpawnD")
+    TNT1 A 0 A_SetPitch(pitch+90)
+    TNT1 A 0 A_SpawnItemEx("S_NegaSearchSnakeCrawl", 0, 0, 0, cos(pitch)*2, 0, -sin(pitch)*2, 0, SXF_SEARCHSNAKE)
+    stop
+   SpawnD:
+    TNT1 A 0 A_SpawnItemEx("S_NegaSearchSnakeCrawl", 0, 0, 0, cos(pitch), 0, -sin(pitch), 0, SXF_SEARCHSNAKE)
+    stop
+   Death:
+    TNT1 A 0 A_JumpIf(pitch==PITCH_UP, "DeathU")
+    TNT1 A 0 A_SetPitch(pitch-90)
+    TNT1 A 0 A_SpawnItemEx("S_NegaSearchSnakeCrawl", 0, 0, 0, cos(pitch), 0, -sin(pitch), 0, SXF_SEARCHSNAKE)
+    stop
+   DeathU:
+    TNT1 A 0 A_SpawnItemEx("S_NegaSearchSnakeCrawlD", 0, 0, 0, cos(pitch-45), 0, -sin(pitch-45), 0, SXF_SEARCHSNAKE)
+    stop
+   XDeath:
+    TNT1 A 0 A_RemoveMaster
+    stop
+  }
+}
+
+actor S_NegaSearchSnakeCrawlD : S_NegaSearchSnakeCrawl {
+  States {
+   Death:
+    TNT1 A 0
+    goto XDeath
+  }
+}

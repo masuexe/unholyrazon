@@ -133,3 +133,147 @@ actor NegaFlashBombExplosion : BasicExplosion {
     stop
   }
 }
+
+/// //////////////////////////
+// == Shiny ==//
+/// //////////////////////////
+
+actor S_NegaFlashBomb
+{
+PROJECTILE
+damagetype "FlashBomb"
+Obituary "$OB_FLASHBOMB"
+-NOGRAVITY
++FORCEXYBILLBOARD
++ALLOWBOUNCEONACTORS
++BOUNCEONCEILINGS
++BOUNCEONWALLS
++BOUNCEONFLOORS
++CANBOUNCEWATER
++USEBOUNCESTATE
++BOUNCEONACTORS
+Bouncefactor 0.8
+WallBouncefactor 1.0
+Bouncecount 8  // 6
+  Gravity 0.8
+  Damage (180)
+Radius 12
+Height 13
+speed 28
+scale 2.5
+States {
+   Spawn:
+    X_8G WXYZ 3
+    loop
+   Bounce.Floor:
+   Bounce.Ceiling:
+   Bounce.Wall:
+    X_8G W 0 A_SpawnItemEx("S_NegaFlashBombExplosion", 0, 0, 0, 0, 0, 0, 0, 1)
+    goto Spawn
+   Death:
+    X_8G W 0 A_SpawnItemEx("S_NegaFlashBombExplosion", 0, 0, 0, 0, 0, 0, 0, 1)
+    stop
+  }
+}
+
+actor S_NegaFlashBomb2 : S_NegaFlashBomb {
+  Bouncefactor 0.7
+  Bouncecount 12  // 9
+  Gravity 1.0  // 1.1
+  Radius 14
+  Height 15
+  speed 36
+  scale 3.0
+  States {
+   Spawn:
+    X_8G WXYZ 3 A_SpawnItemEx("S_NegaFlashBombFX", 0, 0, 0, 0, 0, 0, 0, 1)
+    loop
+  }
+}
+
+actor S_NegaFlashBomb3 : S_NegaFlashBomb {
+  Bouncefactor 0.6
+  Bouncecount 16  // 12
+  Gravity 1.2  // 1.4
+  Radius 16
+  Height 17
+  speed 44
+  scale 3.5
+  States {
+   Spawn:
+    X_8G WWWXXXYYYZZZ 1 A_SpawnItemEx("S_NegaFlashBombFX", 0, 0, 0, 0, 0, 0, 0, 1)
+    loop
+  }
+}
+
+actor S_NegaFlashBombExplosion : BasicExplosion
+{
+damagetype "FlashBomb"
+Obituary "$OB_FLASHBOMB"
++FORCEXYBILLBOARD
++BRIGHT
+ReactionTime 12
+Scale 3.5
+States {
+   Spawn:
+    X_8G A 0
+    X_8G A 0 A_PlaySoundEx("weapon/flashbomb", "Weapon")
+    X_8G ABCD 1
+    X_8G E 0 A_Explode(40+ReactionTime*2, 92, 0, 0, 16)
+    X_8G E 0 A_SpawnItemEx("BasicFlashBomb_H0", 0, 0, 0, 0, 0, 0, 0, 1)
+    X_8G EFGF 1
+    X_8G G 0 A_Explode(38+ReactionTime*2, 92, 0, 0, 16)
+    Goto Pattern1
+   Pattern1:
+    X_8G E 0 A_SpawnItemEx("BasicFlashBomb_H1", 0, 0, 0, 0, 0, 0, 0, 1)
+    Y_8G EFGF 1
+    Goto DamageNow
+   Pattern2:
+    X_8G E 0 A_SpawnItemEx("BasicFlashBomb_H2", 0, 0, 0, 0, 0, 0, 0, 1)
+    Y_8G EFEF 1
+    Goto DamageNow
+   DamageNow:
+    X_8G G 0 A_Explode(36+ReactionTime*2, 92, 0, 0, 16)
+    X_8G G 0 A_CountDown
+    X_8G G 0 A_Jump(256, "Pattern1", "Pattern2")
+    Goto Death
+Death:
+X_8G G 1
+TNT1 A 1 
+X_8G D 1
+TNT1 A 1 
+X_8G D 1
+TNT1 A 1 
+X_8G N 1
+stop
+}
+}
+
+Actor S_NegaFlashBombFX : BasicClientside
+{
+  Renderstyle "Add"
+  Alpha 0.7
+  Reactiontime 3
+  States {
+Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_Jump(256, "WSpawn", "XSpawn", "YSpawn", "ZSpawn")
+    goto WSpawn
+   WSpawn:
+    X_8G W 2
+    X_8G W 0 A_Countdown
+   XSpawn:
+    X_8G X 2
+    X_8G W 0 A_Countdown
+   YSpawn:
+    X_8G Y 2
+    X_8G W 0 A_Countdown
+   ZSpawn:
+    X_8G Z 2
+    X_8G W 0 A_Countdown
+    goto WSpawn
+   Death:
+    TNT1 A 0
+    stop
+  }
+}
