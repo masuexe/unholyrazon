@@ -1,0 +1,129 @@
+actor FirePillarSpawnerU : FirePillarSpawner replaces FirePillarSpawner {
+  Obituary "%o got a very dark tan."
+}
+
+actor BigEyeU : BigEye replaces BigEye {
+  obituary "%o was crushed by a Big Eye."
+}
+
+actor SpineyU : Spiney replaces Spiney {
+  Obituary "\"Well shit, I died.\" -%o"
+}
+
+actor QuickBeamShooterU : QuickBeamShooter replaces QuickBeamShooter {
+  obituary "%o ate a Force Beam, yummy yummy."
+}
+
+actor MM2Wily2SpikeU : MM2Wily2Spike replaces MM2Wily2Spike {
+  Obituary "\"Yup, that's a spike pit.\" -%o"
+}
+
+actor AcidDripU : AcidDrip replaces AcidDrip {
+  +USESPAWNEVENTSCRIPT
+  var int user_UseProjSpawnFunc;
+  PROJECTILE
+  -NOGRAVITY
+  damagetype "AcidDrip"
+  Obituary "%o was dissolved by the Red Acid."
+  damage (350)
+}
+
+actor BoobeamTrapU : BoobeamTrap replaces BoobeamTrap {
+  States {
+   Spawn:
+    BBEA ABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCD 4
+    BBEA EEEEFEFEFEFEFEFEFEFEEEEEEEEE 3
+    BBEA E 0 A_SpawnItemEx("BoobeamShotSpawner")
+    loop
+  }
+}
+
+actor BoobeamShotSpawner : BasicWatcher {
+  +SEEKERMISSILE
+  // +SCREENSEEKER
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SeekerMissile(90, 90, SMF_LOOK, 256, 10)
+    TNT1 A 0 A_JumpIf(CallACS("uh_PointerExists", 8), "Shoot")
+    stop
+   Shoot:
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_lookatptr", 8)
+    TNT1 A 0 A_SpawnItemEx("BoobeamShot", 0, 0, 20, cos(-pitch), 0, sin(-pitch), 0, 8192)
+    stop
+  }
+}
+
+actor BoobeamShot : BasicProjectile {
+  damagetype "Enemy"
+  Obituary "%o didn't have enough crash bombs to escape Boobeam Traps."  // "%o was vaporized by a Boobeam Trap Shot."
+  +FORCEXYBILLBOARD
+  +BRIGHT
+  Damage (150)
+  radius 12
+  height 12
+  Speed 52
+  scale 2.5
+  States {
+   Spawn:
+    BBEA Q 1
+    wait
+   Death:
+    TNT1 A 1
+    stop
+  }
+}
+
+actor GutsManGU : GutsmanG replaces GutsManG
+{
+States
+{
+Spawn:
+GUTG AAAA 1 A_Wander
+GUTG BBBB 1 A_Wander
+GUTG A 0 A_LookEx(LOF_NOSOUNDCHECK, 0, 0, 0, 360, "See")
+loop
+See:
+GUTG A 0 A_PlaySoundEx("misc/gutsgboost","Voice")
+GUTG A 0 A_GiveInventory("CutterFlag",1)
+GUTG C 1 A_Chase
+GUTG A 0 A_FaceTarget
+GUTG A 0 A_Recoil(-5)
+GUTG C 1 A_Chase
+GUTG A 0 A_FaceTarget
+GUTG A 0 A_Recoil(-5)
+GUTG C 1 A_Chase
+GUTG A 0 A_FaceTarget
+GUTG A 0 A_Recoil(-5)
+GUTG D 1 A_Chase
+GUTG A 0 A_FaceTarget
+GUTG A 0 A_Recoil(-5)
+GUTG D 1 A_Chase
+GUTG A 0 A_FaceTarget
+GUTG A 0 A_Recoil(-5)
+GUTG D 1 A_Chase
+GUTG A 0 A_FaceTarget
+GUTG A 0 A_Recoil(-5)
+GUTG A 0 A_JumpIfInventory("CutterFlag",20,"Reset")
+Goto See+1
+Melee:
+GUTG A 0 A_Stop
+GUTG A 0 A_TakeInventory("CutterFlag")
+GUTG D 0 A_GiveToTarget("GutsManGWhackU")
+GUTG F 0 A_ClearTarget
+GUTG E 2 A_FaceTarget
+GUTG D 0 A_PlaySoundEx("weapon/powerstone","Voice")
+GUTG F 15
+goto Spawn
+}
+}
+
+actor GutsManGWhackU : GutsManGWhack replaces GutsManGWhack
+{
+States
+{
+Pickup:
+TNT1 A 0 Thing_Damage(tid, 150, 22)
+goto GutsManGWhack::Pickup+1
+}
+}
