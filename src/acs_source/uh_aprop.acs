@@ -161,6 +161,43 @@ script "uh_shadowplayer" (int player, int toggle) {
 	}
 }
 
+#define ELP_NATIVE 0
+#define ELP_INSURANCE 1
+#define ELP_MORTIS 2
+// Player Extra Life stacker
+// Set player to 0 for the activator or specify a player number
+script "uh_extralifeplayer" (int player, int toggle, int type) {
+	if (player == 0) {player = PlayerNumber() + 1;} 
+	if (player <= 0 || !SetActivatorToPlayer(player - 1)) {terminate;}
+
+  str extralifename;
+  switch (type) {
+		default:
+    case ELP_NATIVE:
+      extralifename = "PlayerPropertyExtraLifeNative";
+      break;
+    case ELP_INSURANCE:
+      extralifename = "PlayerPropertyExtraLifeUnholyInsurance";
+      break;
+		case ELP_MORTIS:
+			extralifename = "PlayerPropertyExtraLifeMortis";
+			break;
+  }
+
+	if (toggle >= 1) {
+		GiveInventory(extralifename, toggle);
+		GiveInventory("PlayerPropertyExtraLife", toggle);
+		GiveInventory("PlayerPropertyBuddha", 1);
+		GiveInventory("PlayerPropertyBuddhaOn", 1);
+	} else if (CheckInventory(extralifename) > 0) {
+		TakeInventory(extralifename, 1);
+		TakeInventory("PlayerPropertyExtraLife", 1);
+		TakeInventory("PlayerPropertyBuddha", 1);
+		if (CheckInventory("PlayerPropertyBuddha") == 0) {
+			GiveInventory("PlayerPropertyBuddhaOff", 1);
+		}
+	}
+}
 
 
 #define CAPROP_AirJumpZ 64
