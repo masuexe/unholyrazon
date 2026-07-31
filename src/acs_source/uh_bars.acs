@@ -211,6 +211,8 @@ Script "uh_assists_define" OPEN CLIENTSIDE
 	DefineAssistDisplay("uh_assist_YellowWizardSpread");
 	DefineAssistDisplay("uh_assist_YellowWizardInvis");
 	DefineAssistDisplay("uh_assist_CalmMind");
+	DefineAssistDisplay("uh_assist_GoldenWaspBomb");
+	DefineAssistDisplay("uh_assist_DeadlyFireArms");
 }
 
 function str UH_MugshotIndexName(str prefix, int amount)
@@ -1895,6 +1897,32 @@ function int checkGuhuMaxTimer(int cam) {
 	return 1;
 }
 
+Script "uh_assist_DeadlyFireArms" (int cam) CLIENTSIDE {
+	if (AssistDisplayBar_On()) {
+		SetHudSize(320, 200, 0);
+		SetActivator(0, AAPTR_NULL);
+
+		int flag = CheckActorInventory(cam, "DeadlyFireArmsFlag");
+		if (flag > 0) {
+			int pos = Get_And_Inc_AssistBarCount();
+			int x = Get_AssistDisplayBar_X(pos);
+			int y = Get_AssistDisplayBar_Y(pos);
+
+			BasicImageDisplay("FIREARM", Get_And_Inc_AssistDisplayID(), x, y);
+			int timeSec = flag;
+			timeSec = timeSec / 35 + (timeSec % 35 > 0);
+			DrawBasicBarAndNumber("AS_TV_TF", "AS_VR_16",
+				                    "AS_TH_TF", "AS_HR_16",
+				                    x, y,
+				                    Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(),
+				                    ((flag * 8.0 / max(flag, 840)) + 0.5) >> 16,
+				                    CheckActorInventory(cam, "AssistNumberFlag") > 0,
+				                    timeSec);
+		}
+	}
+}
+
+
 function void DrawReloadIcon(str image) {
 	SetHudSize(640, 400, false);
 	if (AssistDisplayBar_HUDMode() != BAR_DISPLAY_NONE) {
@@ -1990,3 +2018,9 @@ function void AdjustedDrawStringU(str numFont, int CR_color, int String, int id,
 	}
 }
 
+
+function int max(int a, int b) {
+	if (a > b)
+		return a;
+	return b;
+}
