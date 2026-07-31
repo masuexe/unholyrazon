@@ -46,3 +46,62 @@ script "uh_CheckItemInventory" (int itemType, int who)
         SetResultValue(CheckActorInventory(who, u_BossInvStr[itemType]));
     }
 }
+
+script "UB_OnFireBurning" (void) {
+	int h = max(PlayerHealth(), 0);
+	int Burn = CheckInventory("OnFireItemFlag");
+
+	if (h >= Burn+1)
+		SetActorProperty(0, APROP_HEALTH, h - Burn);
+	else
+		SetResultValue(0);
+}
+
+script "UB_OnFireFinalBurn" (void) {
+	Thing_Damage2(ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET), 100000, "OnFireB");
+}
+
+
+function int max(int a, int b) {
+	if (a > b)
+		return a;
+	return b;
+}
+
+script "UB_WhackSpellRNGCheck" (int High_HP, int Low_HP, int User_HP, int BonusChance) {
+	if (Timer() <= 100) {SetResultValue(1); terminate;}  // Quick kill lol
+
+	int TargetHPPer = 100 - ACS_NamedExecuteWithResult("UB_GetPointerHealth",2,2);
+	int TracerHPPer = 100 - ACS_NamedExecuteWithResult("UB_GetPointerHealth",8,2);
+	//Log(i:TargetHPPer,s:" =TargetHP Percent TracerHP= ",i:TracerHPPer);
+
+	if(High_HP > 100 || High_HP < 1)//Failsafe zone
+		High_HP = 100;
+	if(Low_HP > 99)
+		Low_HP = 99;
+	else if(Low_HP < 0)
+		Low_HP = 0;
+	//1 + 200 * (pt - 20) / 280 + 20 * (pH / 300)//Ultimate Math
+
+	int WhackChance = (TracerHPPer - (100 - High_HP)) * 100 / (100 - Low_HP);
+	//Log(i:WhackChance,s:" <> High_HP == ",i:High_HP,s:" <> Low_HP = ",i:Low_HP);
+	WhackChance += TargetHPPer / 100 * User_HP;
+	//Log(i:WhackChance,s:" <> User_HP = ",i:User_HP);
+	WhackChance += BonusChance;
+	//Log(i:WhackChance,s:" <> BonusChance = ",i:BonusChance);
+
+	if(WhackChance <= 0){
+		WhackChance = 1;
+	}
+	else{
+		WhackChance += 1;
+	}
+	//Log(i:WhackChance,s:" WhackSpell Math Done!");
+
+	if(WhackChance < 100 && TracerHPPer >= 100 - Low_HP){
+		WhackChance = 100;//Force Whack if Tracer has less than % LowHP (5% as example)
+		//Log(s:"Forced Thwack!");
+	}
+
+	SetResultValue(random(1, 100) <= WhackChance);
+}

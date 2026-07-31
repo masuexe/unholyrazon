@@ -86,6 +86,71 @@ Script "uc_clientwarper_jewel" (int jewelno) CLIENTSIDE
 	Thing_Remove(0);
 }
 
+// Copy of vanilla script 247 with edits
+script "uh_radiusPull" (int maxforce, int maxRange, int noFalloff, int unholyteamcheck) {
+	if (maxRange == 0) {terminate;}
+
+	int targetTID;
+	int angle;
+	int finalforce;
+	int distance;
+	int userTID;
+	int userTeam = -1;
+	int userCount = 0;
+	int userunholyteam = -1;
+
+	if (ActivatorTID() == 0) {
+		userTID = ACS_NamedExecuteWithResult("core_gettarget", 0);
+		userTeam = GetPlayerInfo(userTID - 1000, PLAYERINFO_TEAM);
+		userunholyteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", userTID - 1000);
+	} else {
+		userTID = ActivatorTID();
+	}
+
+	for (int p = 0; p < ServerMax; p++) {
+		if (!PlayerInGame(p)) {
+			continue;
+		}
+		// switch (teamcheck) {
+		// 	Default:
+		// 	Case 0:
+		// 		break;
+		// 	Case 1:
+		// 		if (CheckActorInventory(p+1000, "PowerProtectSurvivor")) {continue;}
+		// 		break;
+		// 	Case 2:
+		// 		if (CheckActorInventory(p+1000, "PowerProtectBoss")) {continue;}
+		// 		break;
+		// }
+		if (isTeamGame) {
+			if (userTeam == GetPlayerInfo(p, PLAYERINFO_TEAM)) {
+				continue;
+			}
+		}
+	  if (!IsTeamGame && unholyteamcheck) {
+	  	int punholyteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", p);
+	  	if (userunholyteam != 6 && punholyteam == userunholyteam) {  // PLS_EYE
+	  		continue;
+	  	}
+	  }		
+		targetTID = p + 1000;
+		if (CheckActorInventory(targetTID, "NoPushFlag") <= 0 && xyzDistance(0, targetTID) < maxRange && userTID != targetTID) {	
+			userCount++;
+			distance = xyzDistance(0, targetTID);
+			finalforce = zanceil(FixedMul(maxforce << 16, 1.0 - FixedDiv(distance, maxRange)));
+			if (finalforce > maxforce || noFalloff > 0) {
+				finalforce = maxforce;
+			}
+			
+			angle = VectorAngle(GetActorX(0) - GetActorX(targetTID), GetActorY(0) - GetActorY(targetTID)) >> 8;
+			if (distance > 40 || finalforce < 0) {
+				ThrustThing(angle, finalforce, false, targetTID);
+			}
+		}
+	}
+	SetResultValue(userCount);
+}
+
 script "uh_PoisonControl_acs" (int Which, int Style, int Change)
 {
 //	Log(s:"uh_PoisonControl_acs(",i:Which,s:", ",i:Style,s:", ",i:Change,s:")");
@@ -366,6 +431,30 @@ function int max(int x, int y)
 	return y;
 }
 
+function int zansqrt(int number) {
+	if (number <= 3) {
+		if (number > 0) {
+			return 1;
+		}
+		return 0;
+	}
+
+	int oldAns = number >> 1,
+	    newAns = (oldAns + number / oldAns) >> 1;
+
+	// main iterative method
+	while (newAns < oldAns) {
+		oldAns = newAns;
+		newAns = (oldAns + number / oldAns) >> 1;
+	}
+
+	return oldAns;
+}
+
+function int zanceil(int fixedIn) {
+  return (fixedIn + 65535) >> 16;
+}
+
 function int xyDistance (int tid1, int tid2)
 {
 	int x, y, d;
@@ -380,6 +469,14 @@ function int zdistance (int tid1, int tid2)
 	int z;
 	z = GetActorZ(tid1) - GetActorZ(tid2) >> 16;
 	return z;
+}
+
+function int xyzDistance (int tid1, int tid2) {
+	int x = GetActorX(tid1) - GetActorX(tid2) >> 16;
+	int y = GetActorY(tid1) - GetActorY(tid2) >> 16;
+	int z = GetActorZ(tid1) - GetActorZ(tid2) >> 16;
+	int d = zansqrt(x*x + y*y + z*z);
+	return d;
 }
 
 function int distanceVal (int tid1x, int tid1y, int tid1z, int tid2)
