@@ -1,0 +1,188 @@
+actor WhackSpellItem : UnholyItem
+{
+Tag "$TAG_P_BOX35"
+inventory.pickupmessage "Forbidden spell from Down-Under: Whack!"
+inventory.icon "PANBOX35"
+States
+{
+Spawn:
+I_BB J 6
+loop
+UseX:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("DW_IV/AttemptAttack","Item")
+UseX_Silent:
+TNT1 A 0 A_FireCustomMissile("WhackSpell",0,0,0,0)
+goto End
+}
+}
+actor AutoWhackSpellItem : WhackSpellItem {
+    Inventory.PickupSound ""
+    Inventory.MaxAmount 0
+    +ALWAYSPICKUP
+    States {
+        Pickup:
+            goto UseX
+    }
+}
+actor AutoWhackSpellItemSilent : AutoWhackSpellItem {
+    States {
+        Pickup:
+            goto UseX_Silent
+    }
+}
+actor WhackSpellItemFX : UnholyItemFX {
+    States {
+        Spawn: 
+            I_BB J 0
+            goto Spawn2
+    }
+}
+
+
+actor WhackSpell : BasicNoClassTranslationProjectile
+{
+Translation "4:4=5:5","192:192=43:43","198:198=63:63"
+Obituary "%o was deleted by %k's Whack spell."
+Damagetype "WhackSpell"
++THRUGHOST
++HITTRACER
++FOILINVUL
++DONTREFLECT
+Damage (10)
+Radius 14
+Height 14
+Speed 20
+Scale 2.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 //A_PlaySoundEx("DW_IV/AttemptMagic","Weapon")//"item/WhackSpell2","Weapon",1
+TNT1 A 1 A_SpawnItemEx("WhackSpellFX1",frandom(-4,4),frandom(-4,4),frandom(-4,4),momx,momy,momz,0,9)
+TNT1 A 1 A_SpawnItemEx("WhackSpellFX2",frandom(-4,4),frandom(-4,4),frandom(-4,4),momx,momy,momz,0,9)
+TNT1 A 1 A_SpawnItemEx("WhackSpellFX3",frandom(-4,4),frandom(-4,4),frandom(-4,4),momx,momy,momz,0,9)
+TNT1 A 1 A_SpawnItemEx("WhackSpellFX4",frandom(-4,4),frandom(-4,4),frandom(-4,4),momx,momy,momz,0,9)
+goto Spawn+2
+
+XDeath:
+TNT1 A 0 A_ChangeFlag("NOCLIP",1)
+TNT1 A 0 A_JumpIf(ACS_NamedExecuteWithResult("uc_istracerenemy")==1, "DeathChance")
+goto DeathFX
+DeathFX:
+I_CJ D 2 bright A_SetScale(ScaleX-0.5)
+TNT1 A 1
+I_CJ D 2 bright A_SetScale(ScaleX-0.5)
+TNT1 A 1
+I_CJ D 2 bright A_SetScale(ScaleX-0.5)
+stop
+DeathChance://HighHP,LowHP,UserHP_Bonus%,FlatBonus
+TNT1 A 0 A_JumpIf(CallACS("UB_WhackSpellRNGCheck",95,5,0,0)==1, "DeathSuccess")
+TNT1 A 0 A_PlaySoundEx("DW_IV/GotHit","Weapon")
+TNT1 A 0 //A_GiveToTarget("",1)
+goto DeathFX
+Death:
+TNT1 A 0
+goto DeathFX
+
+//Instakill:
+DeathSuccess:
+TNT1 A 1 A_Warp(8,0,0,28,0,24)
+TNT1 A 0 A_Warp(8,0,0,28,0,24)
+TNT1 A 0 A_SpawnItemEx("WhackSpell_Whacked",0,0,0,0,0,0,0,1)
+TNT1 A 0 A_PlaySoundEx("DW_IV/Sound79","Weapon")
+TNT1 AAAAAAAAAAAAAAA 0 A_SpawnItemEx("WhackSpellDeathFX",0,0,28,random(-13,13),0,random(-10,10),random(0,359),1)
+TNT1 AAAAAAAAAAAAAAA 0 A_SpawnItemEx("WhackSpellFX0",random(5,10),0,28,random(-13,13),0,random(-10,10),random(0,359),1)
+TNT1 A 1
+stop
+}
+}
+
+Actor WhackSpellFX0_H : BasicClientside
+{
+Renderstyle "None"
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SetArg(3,random(0,5))
+//TNT1 AA 0 A_SpawnItemEx("WhackSpellFX0",-6,0,0,random(-1,-5),0,random(-7,7),random(-90,90))
+TNT1 AA 0 A_SpawnItemEx("WhackSpellFX0",random(-8,-2),random(-17,17),random(-8,8),momx*(-0.25+0.03*Args[3]),momy*(-0.25+0.03*Args[3]),momz*-0.25+random(-6,6),0,9)
+stop
+}
+}
+
+actor WhackSpellFX0 : BasicNoClassTranslationGraphicEffect
+{
+//Translation "192:192=254:254", "198:198=0:0"
+Renderstyle "Translucent"
+Alpha 0.6
+Scale 1.0
+States
+{
+SpawnFrame:
+TNT1 A 0
+TNT1 A 0 A_SetScale(ScaleX+frandom(0,0.5))
+TNT1 A 0 A_Jump(256,1,7)
+X_8C EFGEFG 2 bright// A_ScaleVelocity(0.8)
+stop
+X_8C ABCD 2 bright// A_ScaleVelocity(0.8)
+stop
+}
+}
+
+actor WhackSpellFX1 : BasicNoClassTranslationGraphicEffect
+{
+Scale 2.5
+States
+{
+SpawnFrame:
+I_CJ A 0
+goto Spawn2
+Spawn2:
+"####" "#" 1 bright A_SpawnItemEx("WhackSpellFX0_H",0,0,0,momx,momy,momz,0,9)
+stop
+}
+}
+actor WhackSpellFX2 : WhackSpellFX1 {States {SpawnFrame: I_CJ B 0
+  goto Spawn2}}
+actor WhackSpellFX3 : WhackSpellFX1 {States {SpawnFrame: I_CJ C 0
+  goto Spawn2}}
+actor WhackSpellFX4 : WhackSpellFX1 {States {SpawnFrame: I_CJ D 0
+  goto Spawn2}}
+
+actor WhackSpellDeathFX : BasicNoClassTranslationGraphicEffect
+{
+//Translation "192:192=61:61","198:198=63:63"
+renderstyle "Add"
+Alpha 1.66
+Scale 1.5
+States
+{
+SpawnFrame:
+EVFL J 0
+EVFL JJJJJJJJJJ 2 bright A_FadeOut(0.05)
+stop
+}
+}
+
+actor WhackSpell2 : WhackSpell
+{
+Translation "4:4=57:57","192:192=246:246","198:198=245:245"
+}
+
+actor WhackSpell_Whacked : BasicNoClassTranslationExplosion
+{
+Obituary "%o was out-skilled by %k's Whack spell."
+Damagetype "WhackSpell"
+Scale 2.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("DW_IV/Sound79","Weapon")
+TNT1 A 0 A_Explode(7000000,28,0,0,28)
+I_CJ EFG 4 bright
+stop
+}
+}

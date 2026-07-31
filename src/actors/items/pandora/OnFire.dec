@@ -1,0 +1,193 @@
+actor OnFireItem : UnholyItem
+{
+Tag "$TAG_P_BOX19"
+inventory.pickupmessage "Hot Stuff! Self-Fire!"
+inventory.icon "PANBOX19"
+States
+{
+Spawn:
+I_BA S 6
+loop
+UseX:
+TNT1 A 0 A_SpawnItemEx("OnFireSound")
+UseX_Silent:
+TNT1 A 0 A_JumpIfInventory("SUDDENLYONFIRE",1,"UseX2")
+TNT1 A 0 A_GiveInventory("SUDDENLYONFIRE",1)
+TNT1 A 0 A_GiveInventory("OnFireItemFlag",1)
+TNT1 A 0 A_SpawnItemEx("OnFireItem_H")
+goto End
+UseX2:
+TNT1 A 0 A_GiveInventory("OnFireItemFlag",1)
+goto End
+}
+}
+actor AutoOnFireItem : OnFireItem {
+    Inventory.PickupSound ""
+    Inventory.MaxAmount 0
+    +ALWAYSPICKUP
+    States {
+        Pickup:
+            goto UseX
+    }
+}
+actor AutoOnFireItemSilent : AutoOnFireItem {
+    States {
+        Pickup:
+            goto UseX_Silent
+    }
+}
+actor OnFireItemFX : UnholyItemFX {
+    States {
+        Spawn: 
+            I_BA S 0
+            goto Spawn2
+    }
+}
+
+
+actor SUDDENLYONFIRE : UOnce {}
+
+actor OnFireSound : BasicSoundFollow {
+  PainSound "items/SelfBurn"
+  ReactionTime 50
+}
+
+actor OnFireItem_H : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 2 A_GiveToTarget("OnFire_P",1)
+TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "StopThis")
+TNT1 A 0 A_JumpIfInTargetInventory("SUDDENLYONFIRE",1,"Spawn")
+goto StopThis
+StopThis:
+TNT1 A 0 A_TakeFromTarget("SUDDENLYONFIRE")
+TNT1 A 1 A_TakeFromTarget("OnFireItemFlag")
+stop
+}
+}
+
+actor OnFireItemFlag : Inventory
+{
+inventory.amount 1
+inventory.maxamount 999
+}
+
+actor OnFire_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_SpawnItemEx("OnFireItemExplode",0,0,28,momx,momy,momz,0,8)
+TNT1 A 0 A_JumpIfInventory("OnFireItemFlag",10,"OnFire9")
+TNT1 A 0 A_JumpIfInventory("OnFireItemFlag",9,"OnFire8")
+TNT1 A 0 A_JumpIfInventory("OnFireItemFlag",8,"OnFire7")
+TNT1 A 0 A_JumpIfInventory("OnFireItemFlag",7,"OnFire6")
+TNT1 A 0 A_JumpIfInventory("OnFireItemFlag",6,"OnFire5")
+TNT1 A 0 A_JumpIfInventory("OnFireItemFlag",5,"OnFire4")
+TNT1 A 0 A_JumpIfInventory("OnFireItemFlag",4,"OnFire3")
+TNT1 A 0 A_JumpIfInventory("OnFireItemFlag",3,"OnFire2")
+TNT1 A 0 A_JumpIfInventory("OnFireItemFlag",2,"OnFire1")
+TNT1 A 0 A_SpawnItemEx("OnFireFX0")
+goto Done
+OnFire1:TNT1 A 0 A_SpawnItemEx("OnFireFX1")goto Done
+OnFire2:TNT1 A 0 A_SpawnItemEx("OnFireFX2")goto Done
+OnFire3:TNT1 A 0 A_SpawnItemEx("OnFireFX3")goto Done
+OnFire4:TNT1 A 0 A_SpawnItemEx("OnFireFX4")goto Done
+OnFire5:TNT1 A 0 A_SpawnItemEx("OnFireFX5")goto Done
+OnFire6:TNT1 A 0 A_SpawnItemEx("OnFireFX6")goto Done
+OnFire7:TNT1 A 0 A_SpawnItemEx("OnFireFX7")goto Done
+OnFire8:TNT1 A 0 A_SpawnItemEx("OnFireFX8")goto Done
+OnFire9:TNT1 A 0 A_SpawnItemEx("OnFireFX9")goto Done
+Done:
+TNT1 A 0 A_JumpIf(!CallACS("UB_OnFireBurning"),"YouDie")
+stop
+YouDie:
+TNT1 A 0 A_TakeInventory("SUDDENLYONFIRE",99)
+//TNT1 A 0 DamageThing(100,14)
+TNT1 A 0 A_SpawnItemEx("OnFire_FinalBurn_H",0,0,0,0,0,0,0,32)
+stop
+}
+}
+
+actor OnFire_FinalBurn_H
+{
+DamageType "OnFire"
+Obituary "%o became too hot to handle!"
+-SOLID
++NOGRAVITY
++NOINTERACTION
+RenderStyle None
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 ACS_NamedExecuteAlways("UB_OnFireFinalBurn",0)
+TNT1 A 70//Delay for player to look at death point
+stop
+}
+}
+
+actor OnFireItemExplode : BasicExplosion
+{
+DamageType "OnFire"
+Obituary "%o touched %k's hot body."
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_JumpIfInventory("BAWS",1,"Spawn2",2)
+Burn:
+TNT1 A 0 A_SpawnItemEx("OilPitIgnite", 0, 0, -20)
+TNT1 A 2 A_Explode(52*CallACS("uh_CheckItemInventory", CIINV_ONFIRE, AAPTR_TARGET), 138,0,0,8)
+stop
+Spawn2:
+TNT1 A 0 A_SetDamageType("OnFireB")
+goto Burn
+}
+}
+
+actor OnFireFX : BasicClientSide {
++FORCEXYBILLBOARD
++DONTBLAST
+height 6
+radius 6
+scale 2.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1
+TNT1 A 1 A_Jump(256,"Spawn2","Spawn3")
+Spawn2:
+X_8C EEFFGG 2 A_Fadeout(0.15) 
+stop
+Spawn3:
+X_8C AAABBCCDD 3 A_Fadeout
+stop
+}
+}
+
+actor OnFireFX0 : BasicHelper
+{
+Translation "192:192=170:170", "198:198=174:174"
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 AAA 0 A_SpawnItemEx("OnFireFX",28,0,28,random(5,15),0,random(-15,15),random(20,340),1)
+stop
+}
+}
+
+actor OnFireFX1 : OnFireFX0 {Translation "192:192=227:227", "198:198=183:183"}
+actor OnFireFX2 : OnFireFX0 {Translation "192:192=216:216", "198:198=220:220"}
+actor OnFireFX3 : OnFireFX0 {Translation "192:192=215:215", "198:198=229:229"}
+actor OnFireFX4 : OnFireFX0 {Translation "192:192=103:183", "198:198=117:117"}
+actor OnFireFX5 : OnFireFX0 {Translation "192:192=128:128", "198:198=135:135"}
+actor OnFireFX6 : OnFireFX0 {Translation "192:192=205:205", "198:198=74:74"}
+actor OnFireFX7 : OnFireFX0 {Translation "192:192=75:75", "198:198=241:241"}
+actor OnFireFX8 : OnFireFX0 {Translation "192:192=236:236", "198:198=238:238"}
+actor OnFireFX9 : OnFireFX0 {Translation "192:192=239:239", "198:198=253:253"}

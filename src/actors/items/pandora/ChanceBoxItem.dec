@@ -1,0 +1,679 @@
+actor ChanceBoxItem : UnholyItem //MagicHexahedronItem
+{
+inventory.amount 1
+inventory.pickupmessage "\c[MenuRed]What could it be? \c[MenuOrange]What could it be? \c[MenuYellow]What could it be? \c[MenuGreen]What could it be? \c[MenuCyan]What could it be? \c[MenuBlue]What could it be? \c[MenuPurple]What could it be?"
+inventory.icon "FNYBOX00"
+States
+{
+Spawn:
+F_NN Y 6
+loop
+UseX:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEX("misc/itemthrow","voice")
+UseX_Silent:
+TNT1 A 0 A_FireCustomMissile("ChanceBox",0,0,0,0)
+goto End
+}
+}
+actor AutoChanceBoxItem : ChanceBoxItem {
+    Inventory.PickupSound ""
+    Inventory.MaxAmount 0
+    +ALWAYSPICKUP
+    States {
+        Pickup:
+            goto UseX
+    }
+}
+actor AutoChanceBoxItemSilent : AutoChanceBoxItem {
+    States {
+        Pickup:
+            goto UseX_Silent
+    }
+}
+actor ChanceBoxItemFX : UnholyItemFX {
+    States {
+        Spawn: 
+            F_NN Y 0
+            goto Spawn2
+    }
+}
+
+
+actor FunnyItem : ChanceBoxItem {} //testing - old actor name, just for old muscle memory 
+
+actor ChanceBox
+{
+PROJECTILE
+Obituary "%k took a chance at %o's expense."
+-NOGRAVITY
++CANBOUNCEWATER
++BOUNCEONCEILINGS
++BOUNCEONWALLS
++FORCEXYBILLBOARD
++DONTBLAST
++THRUACTORS
+bouncefactor 1.0
+Damage(0)
+Radius 15
+Height 15
+Speed 40
+scale 1.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 Thing_SetTranslation(0,5025)
+TNT1 A 0 ThrustThing(angle*256/360,4,1,0)
+SpawnL:
+F_NN A 1
+loop
+Death:
+F_NN A 0 A_SpawnItemEx("ChanceBoxReal",0,0,0,0,0,0,0,1)
+stop
+}
+}
+
+actor ChanceBoxReal : BasicHelper
+{
+Renderstyle "Normal"
+Obituary "%k took a chance at %o's expense."
+Scale 1.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_Jump(1,"ZomoComedy")
+TNT1 A 0 A_GiveInventory("CutterFlag",1)
+TNT1 A 0 A_PlaySoundEX("weapon/LuckyLoopX","Voice")
+F_NN A 3 Thing_SetTranslation(0,5001)
+F_NN B 3 Thing_SetTranslation(0,5002)
+F_NN C 3 Thing_SetTranslation(0,5003)
+F_NN D 2 Thing_SetTranslation(0,5004)
+F_NN E 3 Thing_SetTranslation(0,5006)
+F_NN A 3 Thing_SetTranslation(0,5007)
+F_NN B 3 Thing_SetTranslation(0,5008)
+F_NN C 3 Thing_SetTranslation(0,5010)
+F_NN D 2 Thing_SetTranslation(0,5011)
+F_NN E 3 Thing_SetTranslation(0,5012)
+TNT1 A 0 A_JumpIfInventory("CutterFlag",3,1)
+goto Spawn+2
+TNT1 A 0 A_TakeInventory("CutterFlag")
+BRRRINGITSFORYOU:
+TNT1 A 0 A_PlaySoundEX("weapon/BoxBeep","Voice") 
+F_NN A 6 Thing_setTranslation(0,5003)
+F_NN A 5 Thing_setTranslation(0,5001)
+TNT1 A 0 A_GiveInventory("CutterFlag",1)
+TNT1 A 0 A_JumpIfInventory("CutterFlag",4,1)
+loop
+SHOWTIME:
+TNT1 A 0 
+TNT1 A 0 A_TakeInventory("CutterFlag",999)
+/*F_NN A 0 A_Jump(8,"I") //dastardly fellows. i wish to never see them
+F_NN A 0 A_Jump(32,"J","K")
+F_NN A 0 A_Jump(64,"PikComedy","ZomoComedy2","E")
+F_NN A 0 A_Jump(192,"A1","B","C","D","F","G","H","L")//"M","N")
+F_NN A 1 A_Jump(256,"A")*/
+F_NN A 1 A_Jump(256,"A","B","C","D","E","F","G","H","I","J","K","L") //testing
+goto SHOWTIME
+A:
+TNT1 A 0 A_Jump(16,"A2")
+TNT1 A 0 A_Jump(224,"A1")
+TNT1 A 0 A_PlaySoundEx("misc/partyball","Voice")
+TNT1 AAA 0 A_SpawnItemEx("ConfettiSpawner",0,0,16,random(-3,3),random(-3,3))
+TNT1 A 0 A_SpawnItemEX("ChanceBoxItem",0,0,0,0,0,5)
+TNT1 AAA 0 A_SpawnItemEX("DoveSpawner")
+stop
+A1:
+TNT1 A 0 A_PlaySoundEx("misc/partyball","Voice")
+TNT1 AAA 0 A_SpawnItemEx("ConfettiSpawner",0,0,16,random(-3,3),random(-3,3))
+TNT1 A 0 A_SpawnItemEX("PandoraBoxItem",0,0,0,0,0,5)
+TNT1 AAA 0 A_SpawnItemEX("DoveSpawner")
+stop
+A2:
+TNT1 A 0
+TNT1 A 0 A_Jump(1,"A4") //put here for even lower chances (0.000244140625% chance)
+TNT1 A 0 A_PlaySoundEx("S_Spin/Surprise","Voice")
+TNT1 AAA 0 A_SpawnItemEx("ConfettiSpawner",0,0,16,random(-3,3),random(-3,3))
+TNT1 A 0 A_SpawnItemEX("MysticBoxItem",0,0,0,0,0,5)
+TNT1 AAA 0 A_SpawnItemEX("DoveSpawner")
+stop
+A4:
+TNT1 A 0 A_PlaySoundEx("S_Spin/SUCCESS","Voice")
+TNT1 AAA 0 A_SpawnItemEx("ConfettiSpawner",0,0,16,random(-3,3),random(-3,3))
+TNT1 A 0 A_SpawnItemEX("TruePowerItem",0,0,0,0,0,5) //replace with Tank of Wonders if wanted
+TNT1 AAA 0 A_SpawnItemEX("DoveSpawner")
+stop
+B:
+F_NN A 40 Thing_setTranslation(0,5001)
+TNT1 A 0 A_PlaySoundEX("weapon/BoxBeep","Voice")
+F_NN A 8 Thing_setTranslation(0,5003)
+F_NN A 8 Thing_setTranslation(0,5001)
+TNT1 A 0 A_SetScale(scalex+0.1)
+TNT1 A 0 A_PlaySoundEX("weapon/BoxBeep","Voice")
+F_NN A 7 Thing_setTranslation(0,5003)
+F_NN A 7 Thing_setTranslation(0,5001)
+TNT1 A 0 A_SetScale(scalex+0.1)
+TNT1 A 0 A_PlaySoundEX("weapon/BoxBeep","Voice")
+F_NN A 6 Thing_setTranslation(0,5003)
+F_NN A 6 Thing_setTranslation(0,5001)
+TNT1 A 0 A_SetScale(scalex+0.1)
+TNT1 A 0 A_PlaySoundEX("weapon/BoxBeep","Voice")
+F_NN A 5 Thing_setTranslation(0,5003)
+F_NN A 5 Thing_setTranslation(0,5001)
+TNT1 A 0 A_SetScale(scalex+0.1)
+TNT1 A 0 A_PlaySoundEX("weapon/BoxBeep","Voice")
+F_NN A 4 Thing_setTranslation(0,5003)
+F_NN A 4 Thing_setTranslation(0,5001)
+TNT1 A 0 A_SetScale(scalex+0.1)
+TNT1 A 0 A_PlaySoundEX("weapon/BoxBeep","Voice")
+F_NN A 3 Thing_setTranslation(0,5003)
+F_NN A 3 Thing_setTranslation(0,5001)
+TNT1 A 0 A_SetScale(scalex+0.1)
+B2:
+TNT1 A 0 A_PlaySoundEX("weapon/BoxBeep","Voice")
+F_NN A 2 Thing_setTranslation(0,5003)
+F_NN A 2 Thing_setTranslation(0,5001)
+TNT1 A 0 A_SetScale(scalex+0.2)
+TNT1 A 0 A_GiveInventory("CutterFlag",1)
+TNT1 A 0 A_JumpIfInventory("CutterFlag",8,1)
+goto B2
+TNT1 A 0 A_TakeInventory("CutterFlag",999)
+B1:
+TNT1 A 0 A_PlaySoundEX("weapon/BoxBeep","Voice")
+F_NN A 1 Thing_setTranslation(0,5003)
+F_NN A 1 Thing_setTranslation(0,5001)
+TNT1 A 0 A_SetScale(scalex+0.4)
+TNT1 A 0 A_GiveInventory("CutterFlag",1)
+TNT1 A 0 A_JumpIfInventory("CutterFlag",16,1)
+goto B1
+TNT1 A 0 A_PlaySoundEX("Shin_1/Explode","Voice")
+TNT1 A 0 A_Explode(1000,360,1,0,256)
+NAPA EFGHIJKLMNOPQRS 1
+stop
+C:
+TNT1 A 0
+TNT1 A 0 A_Jump(16,"C2")
+TNT1 A 0 A_PlaySoundEX("weapon/coilexplode","Voice")
+TNT1 A 0 A_SpawnItemEX("FunnyLegoExplosion",0,0,16)
+NAPA EFGHIJKLMNOPQRS 1
+stop
+C2:
+TNT1 A 0 A_PlaySoundEX("weapon/coilexplode","Voice")
+TNT1 A 0 A_SpawnItemEX("FunnyThumbtackExplosion",0,0,16)
+NAPA EFGHIJKLMNOPQRS 1
+stop
+D:
+TNT1 A 0 A_PlaySoundEX("weapon/crackerexplode","Voice")
+TNT1 A 0 A_SpawnItemEX("BoxFlashbangHelper")
+TNT1 A 0 A_SetScale(10)
+NAPA EFGHIJKLMNOPQRS 1
+stop
+E:
+TNT1 A 0 A_PlaySoundEX("classes/WaterSoak","Voice")
+TNT1 AAAAAA 0 A_SpawnItemEX("StreetTree",random(-256,256),random(-256,256),4,0,0,-256)
+TNT1 AAAAAA 0 A_SpawnItemEX("BurnerBush_B",random(-256,256),random(-256,256),4,0,0,-256)
+TNT1 AAAAAAAAAAAAAA 0 A_SpawnItemEX("PlantManGrass_B",random(-256,256),random(-256,256),4,0,0,-256)
+TNT1 AAAAAAAAAAAAAA 0 A_SpawnItemEX("ERGrass_B",random(-256,256),random(-256,256),4,0,0,-256)
+TNT1 A 0 A_SetScale(10)
+NAPA EFGHIJKLMNOPQRS 1
+stop
+F: //f in the chat
+TNT1 A 0 Thing_SetTranslation(0,5024)
+TNT1 A 0 A_PlaySoundEX("S_Spin/WarnBeep","Voice")
+TNT1 A 0 A_SpawnItemEX("PayRespectsFX",0,0,0,0,0,16)
+F_NN A 128
+F_NN AAAAAAAAAA 1 A_FadeOut(0.1)
+stop
+G:
+TNT1 A 0 Thing_SetTranslation(0,5004)
+TNT1 A 0 A_PlaySoundEx("items/MoneyUse","Voice")
+TNT1 AAA 0 A_SpawnItemEx("MoneyBombDamage",0,0,8)
+TNT1 A 0 A_SpawnItemEx("MoneyBombFX_Helper")
+X_1D BCDEFGHIJKLMNBCDEFGHIJKLMNBCDEFGHIJKLMN 1 A_SpawnItemEx("MoneyBomb_MoolaB",0,0,16)
+stop
+H:
+TNT1 A 0
+TNT1 A 0 Thing_SetTranslation(0,5004)
+TNT1 A 0 A_PlaySoundEX("BIGMONEY","Voice")
+F_NN ABCDEABCDEABCDEABCDEABCDEABCDE 3 A_SpawnItemEX("DLC_CoinSpawner_H",0,0,32)
+TNT1 A 0 A_PlaySoundEX("weapon/crackerexplode","Voice")
+NAPA EFGHIJKLMNOPQRS 1
+stop
+I: 
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEX("DickheadSquadSpawner")
+TNT1 A 0 A_PlaySoundEX("S_Spin/DANGER","Voice")
+NAPA EFGHIJKLMNOPQRS 1
+stop
+J: 
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEX("BoxChargeFX",0,0,16)
+TNT1 A 0 A_PlaySound("weapon/pcharge","voice")
+F_NN A 35
+TNT1 A 0 A_ChangeFlag("NOGRAVITY",1)
+TNT1 A 0 ThrustThingZ(0,8,0,1)
+TNT1 A 0 A_SpawnItemEX("BoxTornado_H")
+F_NN ABCDEABCDEABCDEABCDEABCDEABCDEABCDEABCDEABCDEABCDE 1 ACS_NamedExecuteWithResult("uh_radiuspull", 1000, 100000, 0, 2)
+F_NN ABCDE 1 A_Fadeout(0.2)
+stop
+K: //is this safe to do? who knows
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEX("CountBomb",0,0,16)
+TNT1 A 0 A_PlaySoundEX("S3_K/RobotRise","voice")
+TNT1 A 0 A_SetScale(3.5)
+NAPA EFGHIJKLMNOPQRS 1
+stop
+L:
+TNT1 A 0
+TNT1 A 0 A_Jump(128,"L2")
+TNT1 A 0 A_SpawnItemEX("BigHealthUR")
+TNT1 A 0 A_PlaySoundEx("misc/partyball","Voice")
+TNT1 AAA 0 A_SpawnItemEx("ConfettiSpawner",0,0,16,random(-3,3),random(-3,3))
+stop
+L2:
+TNT1 A 0
+TNT1 A 0 A_Jump(128,"L3")
+TNT1 A 0 A_SpawnItemEX("BigHealthU_Support")
+TNT1 A 0 A_SpawnItemEX("BigHealthU_SupportDeluxe",0,16)
+TNT1 A 0 A_SpawnItemEX("BigHealthU_SupportDeluxe",0,-16)
+TNT1 A 0 A_PlaySoundEX("Pokemon/Swift","voice")
+TNT1 AAA 0 A_SpawnItemEx("ConfettiSpawner",0,0,16,random(-3,3),random(-3,3))
+stop
+L3:
+TNT1 A 0
+TNT1 A 0 A_Jump(128,"L4")
+TNT1 A 0 A_SpawnItemEX("MegaHealthU")
+TNT1 A 0 A_PlaySoundEX("S_Spin/Surprise","voice")
+TNT1 AAA 0 A_SpawnItemEx("ConfettiSpawner",0,0,16,random(-3,3),random(-3,3))
+TNT1 A 0 A_SetScale(3.5)
+NAPA EFGHIJKLMNOPQRS 1
+stop
+L4:
+TNT1 A 0
+TNT1 A 0 A_Jump(128,"L") //lol
+TNT1 A 0 A_SpawnItemEX("SundaeFoodItem")
+TNT1 A 0 A_SpawnItemEX("SundaeFoodItem",0,16)
+TNT1 A 0 A_SpawnItemEX("SundaeFoodItem",0,-16)
+TNT1 A 0 A_PlaySoundEX("classes/WaterSoak","voice")
+TNT1 AAA 0 A_SpawnItemEx("ConfettiSpawner",0,0,16,random(-3,3),random(-3,3))
+TNT1 A 0 A_SetScale(3.5)
+NAPA EFGHIJKLMNOPQRS 1
+stop
+M:
+N:
+/*
+Ibaraki Doji  - 10/04/20
+Count chocula
+[...]
+He just pops out
+And summons a rain of chocopuffs
+Which heals people
+Or something
+*/
+PikComedy:
+TNT1 A 0 A_SpawnItemEX("BoxChocula",0,0,0,0,0,16)
+TNT1 A 0 A_PlaySoundEX("classes/DakuSpecialSFX","Voice")
+NAPA EFGHIJKLMNOPQRS 1
+stop
+/*
+pegg - 09/04/20
+nuking the field huh
+good idea thanks zomo
+*/
+ZomoComedy:
+TNT1 A 0
+TNT1 A 0 A_PlaySound("misc/hugequake",0,1.0,0,ATTN_NONE)
+TNT1 A 0 A_Explode(10001,9001,1,1,9001)
+TNT1 A 0 Radius_Quake(9,35,0,150,0)
+TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("AirStrikeMeteorFX",random(-1000,1000),random(-1000,1000),random(-200,500))
+TNT1 A 1
+TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("AirStrikeMeteorFX",random(-1000,1000),random(-1000,1000),random(-200,500))
+TNT1 A 1
+TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("AirStrikeMeteorFX",random(-1000,1000),random(-1000,1000),random(-200,500))
+TNT1 A 35
+stop
+/*
+Definitely Not Trapist 19/07/20
+I laugh anytime I throw a wilyufo3
+Still think it should be a gag item
+*/
+ZomoComedy2:
+TNT1 A 0 A_PlaySoundEX("weapon/coilexplode","Voice")
+TNT1 A 0 A_SpawnItemEX("BoxWilyUFO3",0,0,16,0,0,1)
+NAPA EFGHIJKLMNOPQRS 1
+stop
+Death:
+TNT1 A 0
+stop
+}
+}
+
+actor FunnyLegoExplosion : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("BrickMineToss1",0,0,0,16,0,8,0)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss2",0,0,0,16,0,8,15)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss3",0,0,0,16,0,8,30)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss4",0,0,0,16,0,8,45)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss5",0,0,0,16,0,8,60)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss6",0,0,0,16,0,8,75)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss7",0,0,0,16,0,8,90)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss8",0,0,0,16,0,8,105)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss9",0,0,0,16,0,8,120)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss10",0,0,0,16,0,8,135)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss11",0,0,0,16,0,8,150)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss12",0,0,0,16,0,8,165)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss13",0,0,0,16,0,8,180)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss14",0,0,0,16,0,8,195)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss15",0,0,0,16,0,8,210)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss16",0,0,0,16,0,8,225)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss1",0,0,0,16,0,8,240)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss2",0,0,0,16,0,8,255)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss3",0,0,0,16,0,8,270)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss4",0,0,0,16,0,8,285)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss5",0,0,0,16,0,8,300)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss6",0,0,0,16,0,8,315)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss7",0,0,0,16,0,8,330)
+TNT1 A 0 A_SpawnItemEx("BrickMineToss8",0,0,0,16,0,8,345)
+stop
+}
+}
+
+actor FunnyThumbtackExplosion : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss1",0,0,0,16,0,8,0)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss2",0,0,0,16,0,8,15)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss3",0,0,0,16,0,8,30)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss4",0,0,0,16,0,8,45)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss5",0,0,0,16,0,8,60)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss6",0,0,0,16,0,8,75)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss7",0,0,0,16,0,8,90)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss8",0,0,0,16,0,8,105)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss9",0,0,0,16,0,8,120)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss10",0,0,0,16,0,8,135)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss11",0,0,0,16,0,8,150)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss12",0,0,0,16,0,8,165)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss13",0,0,0,16,0,8,180)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss14",0,0,0,16,0,8,195)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss15",0,0,0,16,0,8,210)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss16",0,0,0,16,0,8,225)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss1",0,0,0,16,0,8,240)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss2",0,0,0,16,0,8,255)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss3",0,0,0,16,0,8,270)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss4",0,0,0,16,0,8,285)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss5",0,0,0,16,0,8,300)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss6",0,0,0,16,0,8,315)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss7",0,0,0,16,0,8,330)
+TNT1 A 0 A_SpawnItemEx("ThumbtackToss8",0,0,0,16,0,8,345)
+stop
+}
+}
+
+actor BoxFlashBangHelper : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1 A_SpawnItemEX("BoxFlashBangHelper_Helper",random(-128,128),random(-128,128),0,0)
+TNT1 A 0 A_GiveInventory("CutterFlag",1)
+TNT1 A 0 A_JumpIfInventory("CutterFlag",8,1)
+loop
+TNT1 A 0
+stop
+}
+}
+
+actor BoxFlashBangHelper_Helper : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("item/refill","Item")
+TNT1 A 0 A_SpawnItemEX("FlashingDE")
+NAPA EFGHIJKLMNOPQRS 1
+stop
+}
+}
+
+actor PayRespectsFX : BasicClientSide
+{
+translation "198:198=182:182", "192:192=177:177"
+scale 1.0
+renderstyle translucent
+States
+{
+Spawn:
+F_NN FFFFF 1 A_FadeIn(0.2)
+F_NN F 35 A_Stop
+F_NN FFFFFFFFFF 2 A_FadeOut(0.1)
+Stop
+}
+}
+
+actor PlantManGrass_B : PlantManGrass{-NOINTERACTION -SOLID}
+actor BurnerBush_B : BurnerBush{-NOINTERACTION -SOLID}
+actor ERGrass_B : ERGrass{-NOINTERACTION -SOLID}
+
+actor AwfulBoxDE : KillerBoxDE //does not drop items. purely pain
+{
+Translation "192:192=183:183","198:198=185:185","199:199=187:187","204:204=180:180","195:195=180:180","8:8=180:180", "0:0=176:176"
+obituary "%o didn't get their refund."
+deathsound "misc/partyball"
+seesound "S3_K/ZapFloor" //maybe
+painchance 1
+DropItem "ConfettiSpawner" 256 1
+Health 850
+speed 30
+States
+{
+Melee:
+I_BD NN 0 A_FaceTarget
+I_BD N 0 A_CustomMeleeAttack(85,"weapon/pursuithit","","KillerBoxFling",0)
+I_BD N 0 //A_GiveToTarget("WithAidsDamage",1)
+I_BD N 0 //A_PlaySoundEx("weapon/pursuithit","Weapon")
+I_BD N 1 A_TakeInventory("WeaponCharge",999)
+goto MeleeWait
+MeleeWait:
+I_BD N 20
+I_BD N 10 A_ClearTarget
+goto Spawn+1//Look+9
+}
+}
+
+
+actor DickheadSquadSpawner : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1 A_SpawnItemEx("AwfulBoxDE",0,0,0,8,0,16,0)
+TNT1 A 0 A_PlaySoundEx("item/refill","Item")
+TNT1 A 1 A_SpawnItemEx("AwfulBoxDE",0,0,0,8,0,16,45)
+TNT1 A 0 A_PlaySoundEx("item/refill","Item")
+TNT1 A 1 A_SpawnItemEx("AwfulBoxDE",0,0,0,8,0,16,90)
+TNT1 A 0 A_PlaySoundEx("item/refill","Item")
+TNT1 A 1 A_SpawnItemEx("AwfulBoxDE",0,0,0,8,0,16,135)
+TNT1 A 0 A_PlaySoundEx("item/refill","Item")
+TNT1 A 1 A_SpawnItemEx("AwfulBoxDE",0,0,0,8,0,16,180)
+TNT1 A 0 A_PlaySoundEx("item/refill","Item")
+TNT1 A 1 A_SpawnItemEx("AwfulBoxDE",0,0,0,8,0,16,225)
+TNT1 A 0 A_PlaySoundEx("item/refill","Item")
+TNT1 A 1 A_SpawnItemEx("AwfulBoxDE",0,0,0,8,0,16,270)
+TNT1 A 0 A_PlaySoundEx("item/refill","Item")
+TNT1 A 1 A_SpawnItemEx("AwfulBoxDE",0,0,0,8,0,16,315)
+TNT1 A 0 A_PlaySoundEx("item/refill","Item")
+stop
+}
+}
+
+actor BoxChargeFX : BasicClientSide
+{
++NOGRAVITY
+renderstyle subtract
+Scale 2.5
+States
+{
+Spawn:
+TNT1 A 0
+X_1D NMLKJIHGFEDCB 2
+stop
+}
+}
+
+actor BoxTornado_H : BasicHelper
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEX("BoxTornadoFX")
+TNT1 AAAAAAAAAAAAAAAA 3 A_PlaySoundEx("weapon/superboost","Item",0,1)
+stop
+}
+}
+
+actor BoxTornadoFX : BasicClientside
+{
+renderstyle subtract
+//reactiontime 8
+States
+{
+Spawn:
+TNT1 A 0
+EVFL N 1 A_SetScale(0.25,2.5)
+EVFL N 1 A_SetScale(0.5,2.5)
+EVFL O 1 A_SetScale(0.75,2.5)
+EVFL O 1 A_SetScale(1.0,2.5)
+EVFL P 1 A_SetScale(1.25,2.5)
+EVFL P 1 A_SetScale(1.5,2.5)
+EVFL N 1 A_SetScale(1.75,2.5)
+EVFL N 1 A_SetScale(2.0,2.5)
+EVFL O 1 A_SetScale(2.25,2.5)
+EVFL O 1 A_SetScale(2.5,2.5)
+EVFL P 2
+EVFL NOPNOPNOPNOPNOP 2
+EVFL N 1 A_SetScale(2.25,2.5)
+EVFL N 1 A_SetScale(2.0,2.5)
+EVFL O 1 A_SetScale(1.75,2.5)
+EVFL O 1 A_SetScale(1.5,2.5)
+EVFL P 1 A_SetScale(1.25,2.5)
+EVFL P 1 A_SetScale(1.0,2.5)
+EVFL N 1 A_SetScale(0.75,2.5)
+EVFL N 1 A_SetScale(0.5,2.5)
+EVFL O 1 A_SetScale(0.25,2.5)
+stop
+}
+}
+
+actor BoxChocula //i forgot how to make FX that isn't clientsided
+{
+PROJECTILE
++THRUACTORS
++NOINTERACTION
++DONTBLAST
+Speed 0
+Damage (0)
+Radius 8
+Height 8
+renderstyle translucent
+States
+{
+Spawn:
+F_NN G 0
+F_NN G 2 A_PlaySoundEX("UT/TemChat1","Body")
+F_NN G 2 A_PlaySoundEX("UT/TemChat3","Body")
+F_NN G 2 A_PlaySoundEX("UT/TemChat5","Body")
+F_NN G 0 A_Stop
+F_NN GHGHGHGHGHGH 3 A_SpawnItemEX("ChoculaCocoaPuff",random(-128,128),random(-128,128),64,0)
+F_NN GHGHGHGHGHGH 3
+F_NN GHGHG 3 A_FadeOut(0.2)
+stop
+}
+}
+
+actor ChoculaCocoaPuff : AmberHealthShot
+{
+Translation "192:192=148:148","198:198=151:151","202:202=210:210","199:199=144:144"
+States
+{
+Spawn:
+X_5C B 0
+X_5C B 4 A_CountDown
+loop
+Death:
+X_5C BBBBBBBBBBBBBBB 1 A_FadeIn(0.05)
+X_5C BBBBB 1 A_FadeIn(0.05)
+X_5C Y 0 A_SpawnItemEx("ChoculaCocoaPuffPickup",0,0,0,0,0,0,0,1)
+stop
+}
+}
+
+actor ChoculaCocoaPuffPickup : CustomInventory
+{
+inventory.pickupmessage "Picked up a stale cocoa puff."
+scale 2.5
+Gravity 0.5
+States
+{
+Spawn:
+X_5C B 5
+Y_5C B 5
+loop
+Pickup:
+TNT1 A 0 A_PlaySound("item/energyup",3,1.0)
+TNT1 A 0 ACS_ExecuteAlways(U_HEALTHACS,0,7,100)
+stop
+}
+}
+
+actor BoxWilyUFO3 : WilyUFO3
+{
+Reactiontime 30
+States
+{
+Spawn:
+WUFO D 0
+WUFO D 0 A_PlaySoundEx("misc/ufo", "Voice", 1, 0)
+Fly:
+WUFO DEF 4 A_CountDown
+TNT1 A 0 ThrustThingZ(0,10,0,0)
+loop
+Death:
+TNT1 A 0 A_PlaySoundEX("weapon/coilexplode","Voice")
+TNT1 A 0 A_SpawnItemEX("BoxWilyGrovel",0,0,0,0,0,16,0)
+NAPA EFGHIJKLMNOPQRS 1
+stop
+}
+}
+
+actor BoxWilyGrovel
+{
+PROJECTILE
++THRUACTORS
+-NOGRAVITY
+damage (0)
+scale 2.5
+States
+{
+Spawn:
+WILG A 1 A_JumpIf(floorz-z==0,"Death")
+loop
+Death:
+WILG BCBCBCBCBCBC 7
+WILG OPOQOPOQOPOQ 7
+TNT1 A 0 A_PlaySoundEX("weapon/coilexplode","Voice")
+NAPA EFGHIJKLMNOPQRS 1
+stop
+}
+}
