@@ -296,7 +296,53 @@ script "uh_FloorQuakeDamage" (int maxRange, int QuakePower, int Which)
 	}
 }
 
+script "uh_missileyank" (int maxRange)
+{
+	int VelX = GetActorVelX(0);
+	int VelY = GetActorVelY(0);
+	int VelZ = GetActorVelZ(0);
+	int x = GetActorX(0);
+	int y = GetActorY(0);
+	int z = GetActorZ(0)-(28<<16);
 
+	int targetTID;
+	int userTID;
+	int userTeam = -1;
+	//int userCount = 0;
+
+	if(ActivatorTID() == 0)
+	{
+		userTID = ACS_NamedExecuteWithResult("core_getptrtid",2);
+		userTeam = GetPlayerInfo(userTID - 1000, PLAYERINFO_TEAM);
+	}
+	else
+	{
+		userTID = ActivatorTID();
+	}
+	for(int p = 0;p < ServerMAX; p++)
+	{
+		if(!PlayerInGame(p))
+		{
+			continue;
+		}
+		if(IsTeamGame)
+		{
+			if(userTeam == GetPlayerInfo(p, PLAYERINFO_TEAM))
+			{
+				continue;
+			}
+		}
+		if(CheckActorInventory(p+1000, "NoPushFlag")){continue;}
+		targetTID = p+1000;
+		//Log(f:GetActorZ(0)-(28<<16),s:" = FIXED = ",f:GetActorZ(targetTID));
+		if(distanceVal(x,y,z,targetTID) < maxRange && userTID != targetTID)
+		{
+			//userCount++;
+			SetActorVelocity(targetTID, Velx, Vely, Velz, 0, 0);
+		}
+	}
+	//SetResultValue(userCount);
+}
 
 //ZANGIEF
 
