@@ -45,19 +45,19 @@ ReadyX2:
 //8H10 A 0 A_JumpIfInventory("BossItemUseFlag",1,"SelectAnAttack")
 //
 8H10 A 0 A_TakeInventory("Giovanni_Is_Walking_Here")
-8H10 AA 2 A_WeaponReady
+8H10 AA 2 A_GiveInventory("Giovanni_ReadyX2_P")
 8H10 A 0 A_JumpIfInventory("UnholyBossAmmo250",250,2)
 8H10 A 0 A_JumpIfInventory("UnholyBossAmmo250",1,"ReadyX")
-8H10 AA 2 A_WeaponReady
+8H10 AA 2 A_GiveInventory("Giovanni_ReadyX2_P")
 8H10 A 0 A_JumpIfInventory("UnholyBossAmmo250",250,2)
 8H10 A 0 A_JumpIfInventory("UnholyBossAmmo250",1,"ReadyX")
-8H10 AA 2 A_WeaponReady
+8H10 AA 2 A_GiveInventory("Giovanni_ReadyX2_P")
 8H10 A 0 A_JumpIfInventory("UnholyBossAmmo250",250,2)
 8H10 A 0 A_JumpIfInventory("UnholyBossAmmo250",1,"ReadyX")
-8H10 AA 2 A_WeaponReady
+8H10 AA 2 A_GiveInventory("Giovanni_ReadyX2_P")
 8H10 A 0 A_JumpIfInventory("UnholyBossAmmo250",250,2)
 8H10 A 0 A_JumpIfInventory("UnholyBossAmmo250",1,"ReadyX")
-8H10 AA 2 A_WeaponReady
+8H10 AA 2 A_GiveInventory("Giovanni_ReadyX2_P")
 8H10 A 0 A_JumpIfInventory("UnholyBossAmmo250",250,2)
 8H10 A 0 A_JumpIfInventory("UnholyBossAmmo250",1,"ReadyX")
 //
@@ -213,6 +213,26 @@ AltfireR:
 8H10 A 1 A_TakeInventory("UH_90_AlphaPower")
 8H10 A 1 //A_TakeInventory("Fogettabou_et")
 goto ReadyX
+
+Reload:
+TNT1 A 0 A_JumpIfInventory("Giovanni_Is_Walking_Here",1,"ReadyX")
+TNT1 A 0 A_JumpIfInventory("Fogettabou_et",1,"Bamboozle_Buddy")
+TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo250",250,"Gio_Leap")
+goto ReadyX
+Gio_Leap:
+TNT1 A 0 A_JumpIfInventory("Giovanni_Is_Walking_Here",1,"ReadyX")
+TNT1 A 0 A_JumpIfInventory("Fogettabou_et",1,"ReadyX")
+TNT1 A 0 A_TakeInventory("UnholyBossAmmo250",200) //125 is too generous.
+TNT1 A 0 A_GiveInventory("Giovanni_BigFunny_P")
+goto ReadyX
+//
+Bamboozle_Buddy: //Once per invis state. As a result, lessens your cloak time.
+TNT1 A 0 A_JumpIfInventory("Giovanni_Is_Walking_Here",1,"ReadyX")
+TNT1 A 0 A_GiveInventory("Giovanni_Is_Walking_Here")
+TNT1 A 0 A_TakeInventory("UnholyBossAmmo250",100) //150
+TNT1 A 0 A_GiveInventory("Giovanni_Bamboozle_P")
+goto ReadyX
+
 //
 /*JesusManAttack:
 8H10 A 0 A_playSoundEx("weapon/mirrordeflect2","Weapon")
@@ -301,7 +321,15 @@ actor Giovanni_Ready_P : CustomInventory
 States
 {
 Pickup:
+TNT1 A 0 A_JumpIfInventory("Giovanni_Is_Walking_Here", 1, "PickupNormal")
+TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo250", 250, "PickupReload")
+TNT1 A 0 A_Jump(256, "PickupNormal")
+goto PickupNormal
+PickupNormal:
 TNT1 A 0 A_WeaponReady(WRF_NOSECONDARY)
+goto Ammo
+PickupReload:
+TNT1 A 0 A_WeaponReady(WRF_NOSECONDARY|WRF_ALLOWRELOAD)
 goto Ammo
 Ammo:
 TNT1 A 0 A_GiveInventory("UnholyBossAmmo250",2) //1
@@ -309,16 +337,29 @@ stop
 }
 }
 
-actor Giovanni_Ready_P2 : CustomInventory
+actor Giovanni_ReadyX2_P : Giovanni_Ready_P
 {
 States
 {
-Pickup:
+PickupNormal:
+TNT1 A 0 A_WeaponReady
+stop
+PickupReload:
+TNT1 A 0 A_WeaponReady(WRF_ALLOWRELOAD)
+stop
+}
+}
+
+actor Giovanni_Ready_P2 : Giovanni_Ready_P
+{
+States
+{
+PickupNormal:
 TNT1 A 0 A_WeaponReady(WRF_NOPRIMARY|WRF_NOSECONDARY)
 goto Ammo
-Ammo:
-TNT1 A 0 A_GiveInventory("UnholyBossAmmo250",2) //1
-stop
+PickupReload:
+TNT1 A 0 A_WeaponReady(WRF_NOPRIMARY|WRF_NOSECONDARY|WRF_ALLOWRELOAD)
+goto Ammo
 }
 }
 
@@ -398,26 +439,26 @@ Powerup.Duration 80
 // SAX1 A 6
 // loop
 // Use:
-// TNT1 A 0 A_JumpIfInventory("Giovanni_Is_Walking_Here",1,"Nuh_Uh")
+// TNT1 A 0 A_JumpIfInventory("Giovanni_Is_Walking_Here",1,"ReadyX")
 // TNT1 A 0 A_JumpIfInventory("Fogettabou_et",1,"Bamboozle_Buddy")
 // TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo250",250,"Gio_Leap")
-// fail
+// goto ReadyX
 // Gio_Leap:
-// TNT1 A 0 A_JumpIfInventory("Giovanni_Is_Walking_Here",1,"Nuh_Uh")
-// TNT1 A 0 A_JumpIfInventory("Fogettabou_et",1,"Nuh_Uh")
+// TNT1 A 0 A_JumpIfInventory("Giovanni_Is_Walking_Here",1,"ReadyX")
+// TNT1 A 0 A_JumpIfInventory("Fogettabou_et",1,"ReadyX")
 // TNT1 A 0 A_TakeInventory("UnholyBossAmmo250",200) //125 is too generous.
 // TNT1 A 0 A_GiveInventory("Giovanni_BigFunny_P")
-// fail
+// goto ReadyX
 // //
 // Bamboozle_Buddy: //Once per invis state. As a result, lessens your cloak time.
-// TNT1 A 0 A_JumpIfInventory("Giovanni_Is_Walking_Here",1,"Nuh_Uh")
+// TNT1 A 0 A_JumpIfInventory("Giovanni_Is_Walking_Here",1,"ReadyX")
 // TNT1 A 0 A_GiveInventory("Giovanni_Is_Walking_Here")
 // TNT1 A 0 A_TakeInventory("UnholyBossAmmo250",100) //150
 // TNT1 A 0 A_GiveInventory("Giovanni_Bamboozle_P")
-// fail
-// Nuh_Uh:
+// goto ReadyX
+// ReadyX:
 // TNT1 A 0
-// fail
+// goto ReadyX
 // }
 // }
 
