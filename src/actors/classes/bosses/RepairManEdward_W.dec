@@ -1,0 +1,256 @@
+actor RepairManEdward_W_NormalBar : NormalBar {args 218, 5}
+
+actor RepairManEdward_W : BaseUnholyBossWep
+{
+Tag "$TAG_Boss016_W"
+Obituary "\cmRepairman \cfEdward\c- (%k) fixed %o's face."
+Inventory.Pickupmessage "\cgHI, YOU MUST AFJSDOJFOJDSOJAGJSOGJADJSG!"
+weapon.ammotype "UnholyPower1500"
+States
+{
+Spawn:
+8H16 [ 1
+wait
+
+Deselect:
+8H16 A 0
+goto DeselectSwap
+Select:
+8H16 A 0
+goto SelectSwap
+
+Ready:
+8H16 A 0 A_GiveInventory("UnholyPowerLimit_F",1500)
+8H16 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", REPAIRMANEDWARD_DYE)
+8H16 A 1 ACS_NamedExecuteWithResult("uh_BossMorph", 16,2100,333)
+goto ReadyX
+ReadyX:
+8H16 A 1 A_WeaponReady
+8H16 A 0 //A_GiveInventory("UnholyBossItem",1)
+loop
+
+Fire:
+8H16 B 0 A_JumpIfInventory("UnholyPower1500",1500,"ThunderStrikerStrike")
+8H16 B 1
+8H16 C 1 A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+8H16 D 1
+8H16 E 1 A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+8H16 F 1
+8H16 G 1 A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+8H16 H 1
+8H16 G 0 A_PlaySoundEx("weapon/thunderbeam","Weapon")
+8H16 G 0 A_PlaySoundEx("weapon/thunderbolt","Body")
+8H16 G 0 A_FireCustomMissile("GreaterThunderDerpBlast",0,0,8,0)
+8H16 G 1
+8H16 F 1 A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+8H16 E 1
+8H16 C 1 A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+8H16 I 25
+Goto ReadyX
+Altfire:
+8H16 C 0 A_GiveInventory("VivifyDelay10")
+8H16 C 0 A_ReFire(1)
+8H16 C 0 A_PlaySoundEx("weapon/mirroractivate","Weapon")
+8H16 C 0 A_SpawnItemEx("GetAwaySparkShock",128,0,32,0,0,0,0,8)
+8H16 C 0 A_SpawnItemEx("GetAwaySparkShock",128,0,32,0,0,0,180,8)
+8H16 C 1 A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+8H16 E 1
+8H16 F 1 A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+8H16 G 1
+8H16 H 15
+8H16 G 1
+8H16 F 1 A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+8H16 E 1
+8H16 C 1 A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+8H16 A 16
+Goto ReadyX
+ThunderStrikerStrike:
+8H16 A 0 A_SpawnItemEx("RepairManEdwardRageStart",0,0,0,0,0,0,0,1)
+8H16 A 0 A_TakeInventory("UnholyPower1500",4)
+8H16 A 0 A_GunFlash
+8H16 A 0 A_GiveInventory("UH_125_SpeedPowerGiver")
+8H16 A 0 A_GiveInventory("UH_140_JumpPowerGiver")
+8H16 A 0 A_GiveInventory("CosmeticBossSpeedTrail")
+Goto Fire+1
+Flash:
+TNT1 A 0 A_TakeInventory("UnholyPower1500",8)
+TNT1 A 2 A_SpawnItemEx("ElectricAtmosphere",random(-100,100),random(-100,100),random(0,100),0,0,0,0,1)
+TNT1 A 0 A_JumpIfInventory("UnholyPower1500",1,"Flash")
+TNT1 A 0 A_TakeInventory("CosmeticBossSpeedTrail")
+TNT1 A 0 A_TakeInventory("UH_125_SpeedPower")
+TNT1 A 0 A_TakeInventory("UH_140_JumpPower")
+stop
+}
+}
+
+actor RepairManEdwardRageStart : BasicWatcher
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("weapon/lightningbolt","Weapon")
+TNT1 A 4 A_SpawnItemEx("LightningStartFX1Elec",0,0,64,0,0,0,0,1)
+TNT1 A 8 A_SpawnItemEx("LightningStartFX2Elec",4,0,48,0,0,0,0,1)
+stop
+}
+}
+
+Actor ElectricAtmosphere : BasicProjectile
+{
+Damagetype "EdwardStun"
+Obituary "\cmRepairman \cfEdward\c- (%k) didn't have to fix %o's face."
++RIPPER
++NOGRAVITY
++DONTBLAST
+Damage(85)
+Radius 25
+Height 16
+scale 3.5
+States
+{
+Spawn:
+X_7D IJKL 2
+stop
+}
+}
+
+actor GreaterThunderDerpBlast : BasicProjectile
+{
+//Translation "212:212=5:5", "69:69=5:5", "208:208=218:218"
+Translation "192:192=218:218", "198:198=5:5"
+Damagetype "Edward"
+Obituary "\cmRepairman \cfEdward\c- (%k) fixed %o's face."
++SKYEXPLODE
++EXPLODEONWATER
++RIPPER
+Damage (150)
+Radius 20
+Height 20
+Speed 70
+scale 2.0
+States
+{
+Spawn://WCPJ
+8P16 MNON 2 A_SpawnItemEx("GreaterThunderDerpBlastTrail",0,0,0,0,0,0,0,1)
+loop
+Death:
+TNT1 A 0 A_JumpIf(z-ceilingz==0-20, "Ceiling")
+TNT1 AAAAAA 0 A_SpawnItemEx("GreaterThunderDerpBlast2",0,0,8,random(-20,20),random(-20,20),random(0,20),0,0,0)
+TNT1 A 1
+stop
+Ceiling:
+TNT1 AAAAAA 0 A_SpawnItemEx("GreaterThunderDerpBlast2",0,0,-8,random(-20,20),random(-20,20),random(0,-20),0,0,0)
+TNT1 A 1
+stop
+}
+}
+
+actor GreaterThunderDerpBlast2 : GreaterThunderDerpBlast
+{
+-NOGRAVITY
+Damage (75)
+Speed 20
+States
+{
+Death:
+TNT1 A 1
+stop
+}
+}
+
+
+actor GreaterThunderDerpBlastTrail : BasicGraphicEffect
+{
+States
+{
+SpawnFrame:
+TNT1 A 2
+8P16 MNON 2 A_Fadeout(0.2)
+stop
+}
+}
+
+actor GetAwaySparkShock : BasicExplosion
+{
+Translation "192:192=218:218", "198:198=5:5"
+Damagetype "Edward"
+Obituary "\cmRepairman \cfEdward\c- (%k)'s bare hands fixed %o's face."
+ReactionTime 12
+scale 2.5
+States
+{
+Spawn:
+X_3G X 0 A_CountDown
+X_3G X 0 A_SpawnItemEx("GetAwaySparkShockFX1",0,0,0,0,0,0,0,1)
+X_3G X 0 A_Explode(85,128,0)
+X_3G X 1 A_Warp(AAPTR_TARGET,128,0,32,15,28)
+X_3G Y 0 A_SpawnItemEx("GetAwaySparkShockFX2",0,0,0,0,0,0,0,1)
+X_3G Y 0 A_Explode(85,128,0)
+X_3G Y 1 A_Warp(AAPTR_TARGET,128,0,32,15,28)
+loop
+}
+}
+
+actor GetAwaySparkShockFX1 : BasicGraphicEffect
+{
+States
+{
+SpawnFrame:
+X_3G XYXYXY 1
+stop
+}
+}
+actor GetAwaySparkShockFX2 : BasicGraphicEffect
+{
+States
+{
+SpawnFrame:
+X_3G YXYXYX 1
+stop
+}
+}
+
+///////////////////////
+// Legacy / Old Refs //
+///////////////////////
+
+actor LightningStartFX1Elec : BasicGraphicEffect
+{
++FORCEYBILLBOARD
++BRIGHT
+Scale 2.5
+States
+{
+SpawnFrame:
+X_BC A 0
+X_BC A 1
+X_BC BC 3
+stop
+}
+}
+
+actor LightningStartFX2Elec : LightningStartFX1Elec
+{
+-FORCEYBILLBOARD
+States
+{
+SpawnFrame:
+X_BC D 0
+X_BC DEFGHIJ 3
+stop
+}
+}
+
+Actor LightningExtendElec : LightningExtend
+{
+States
+{
+SpawnFrame:
+X_BC S 0 
+X_BC S 0 A_JumpIf(ceilingz-z<=32,"Death")
+X_BC S 0 A_SpawnItemEx("LightningExtendElec",0,0,160,0,0,0,0,1)
+X_BC SSTUV 1
+stop
+}
+}
