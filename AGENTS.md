@@ -188,3 +188,60 @@ ReadyXGive:
     8H00 A 1 A_GiveInventory("MyAmmo",4)
     goto ReadyX
 ```
+
+### `Offset(0, y)` does not clear X — and `Offset(x, 0)` does not clear Y
+
+In `P_SetPsprite`, Misc1/Misc2 from `Offset` are applied only when **non-zero**:
+
+```cpp
+if (state->GetMisc1()) psp->sx = state->GetMisc1()<<FRACBITS;
+if (state->GetMisc2()) psp->sy = state->GetMisc2()<<FRACBITS;
+```
+
+So `Offset(0, 42)` after `Offset(2, 46)` leaves **sx = 2** (only sy becomes 42). Writing `Offset(0, y)` does **not** mean “absolute X = 0”.
+
+```cpp
+// WRONG — intends center-X settle; sx stays 2
+8H19 A 1 Offset(2, 46)
+8H19 A 1 Offset(0, 42)
+8H19 A 1 Offset(0, 36)
+
+// CORRECT — reset both axes, then Y-only motion keeps sx at 0
+8H19 A 1 Offset(2, 46)
+8H19 A 0 A_WeaponReady(14)
+8H19 A 1 Offset(0, 42)
+8H19 A 1 Offset(0, 36)
+
+// ALSO CORRECT — keep stepping X with non-zero Misc1 until the final clear
+8H19 A 1 Offset(2, 46)
+8H19 A 1 Offset(1, 42)
+8H19 A 1 A_WeaponReady(14)
+```
+
+To force absolute ready position `(sx=0, sy=WEAPONTOP)`, call `A_WeaponReady` **without** `WRF_NoBob` so `DoReadyWeaponToBob` runs. In this mod, `A_WeaponReady(14)` is common (`14 = NoSwitch|NoFire`); it still resets psprite coords. `ReadyX` loops also call `A_WeaponReady`, but do not rely on that to fix mid-animation offsets.
+
+### Weapon `Flash` shares weapon `sx`/`sy` every tic
+
+At the end of `P_MovePsprites`, Zandronum copies weapon coords onto the flash layer:
+
+```cpp
+player->psprites[ps_flash].sx = player->psprites[ps_weapon].sx;
+player->psprites[ps_flash].sy = player->psprites[ps_weapon].sy;
+```
+
+`A_GunFlash` Flash-state `Offset(...)` cannot diverge from the weapon layer. For different relative placement, bake deltas into TEXTURES (or put the overlay animation on the weapon layer). Zandronum has no `A_Overlay` / `A_OverlayOffset`.
+
+### Rage rune halves psprite durations > 1
+
+MM8BDM Rage (`PowerDoubleFiringSpeedRune` → `CF_DOUBLEFIRINGSPEED`) makes `P_MovePsprites` decrement weapon/flash `tics` **twice** per game tic (second decrement skipped when tics already hit 0).
+
+| Written duration | Real duration under Rage |
+|------------------|---------------------------|
+| `1` | still `1` |
+| even `N` | `N / 2` |
+| odd `N` (e.g. 13) | `⌈N / 2⌉` (e.g. 7) |
+
+Implications:
+
+- Smoothing a fire anim to all `duration 1` frames **disables** this speedup; use `A_JumpIfInventory("PlayerPropertyRage", 1, 1)` skips and/or a separate Rage state branch.
+- Holds written as `A 13` inside a Rage-only state are really ~7 tics — double the written value when you need a target real length (e.g. want 13 real → write `26`).
