@@ -17,6 +17,7 @@ Script "core_DrawBar_Run" (int cam) CLIENTSIDE {
 #define BARSTYLE_SECONDAMMO 1<<5
 #define BARSTYLE_QWANT      1<<6  //$UH
 #define BARSTYLE_NEGAMAN    1<<7  //$UH
+#define BARSTYLE_RELOADICON 1<<8  //$UH
 
 str oldWep;
 int barStyle = BARSTYLE_NONE;
@@ -64,6 +65,9 @@ function void DrawBarRun(void) {
 	if (barStyle & BARSTYLE_SCRIPT) {
 		ACS_NamedExecuteWithResult(StrParam(s:"DrawBar_", s:wep));
 	}
+	if (barStyle & BARSTYLE_RELOADICON) {
+		ACS_NamedExecuteWithResult("DrawBar_ReloadIcon");
+	}
 }
 
 function int getWepBarStyle(str wep) {
@@ -81,6 +85,11 @@ function int getWepBarStyle(str wep) {
 		ret |= BARSTYLE_NEGAMAN;
 		negaAmmoId = getActorArg(u, 0);
 		negaCyan = getActorArg(u, 1);
+		Thing_Remove(u);
+	}
+
+	if (SpawnForced(StrParam(s:wep, s:"_ReloadIcon"), 0, 0, 0, u, 0)) {
+		ret |= BARSTYLE_RELOADICON;
 		Thing_Remove(u);
 	}
 
