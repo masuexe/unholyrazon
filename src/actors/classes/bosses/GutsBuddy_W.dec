@@ -28,12 +28,12 @@ Ready:
 8H46 A 0 A_GunFlash
 goto ReadyX
 ReadyX:
-8H46 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "ReadyX_16")
+// 8H46 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "ReadyX_16")
 8H46 A 2 A_WeaponReady
 loop
-ReadyX_16:
-8H46 A 2 A_WeaponReady(WRF_ALLOWRELOAD)
-loop
+// ReadyX_16:
+// 8H46 A 2 A_WeaponReady(WRF_ALLOWRELOAD)
+// loop
 
 Fire:
 8H46 A 1 Offset(8,66)A_JumpIfInventory("SuperArmTemp",1,"Throw")
@@ -106,34 +106,38 @@ Goto ReadyX
 
 Flash:
 TNT1 A 0 A_JumpIfInventory("IsDead",1,"NoFlash")
-TNT1 A 2 A_GiveInventory("GutsBuddyFlash_P",1)
+TNT1 A 2 A_GiveInventory("GutsBuddyFlash_P")
+TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, 1)
+loop
+TNT1 A 0 A_JumpIf(CallACS("uh_GetPointerButtonInput", 0, 1) & BT_RELOAD, "GutsLeap")
 loop
 
-// TODO: is "Reload" state better than check input in "Flash" state?
-Reload:
-8H46 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "GutsLeap")
-goto ReadyX
+// is "Reload" state better than check input in "Flash" state?
+// Reload:
+// 8H46 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "GutsLeap")
+// goto ReadyX
 GutsLeap:
-8H46 A 0 A_PlaySoundEx("weapon/superarmuse","Body")
-8H46 A 0 A_TakeInventory("UnholyBossAmmo200", 200)
-8H46 A 0 ThrustThingZ(0,60,0,0)
+TNT1 A 0 A_PlaySoundEx("weapon/superarmuse","Body")
+TNT1 A 0 A_TakeInventory("UnholyBossAmmo200", 200)
+TNT1 A 0 ThrustThingZ(0,60,0,0)
 //TNT1 A 0 A_Recoil(-35)//Unsure.
-8H46 AA 2
+TNT1 AA 2 A_JumpIfInventory("IsDead", 1, "NoFlash")
 GutsAirTime:
-8H46 A 1 A_JumpIf(CallACS("core_checkfooting_thruplayer"), "GutsLand")
-8H46 A 0 A_PlaySoundEx("BUTTSCKS", "Body")
-8H46 A 0 A_SpawnItemEX("GutsBuddyContactDamage",0,0,0,momx,momy,momz,0,8,0)
+TNT1 A 0 A_JumpIfInventory("IsDead", 1, "NoFlash")
+TNT1 A 1 A_JumpIf(CallACS("core_checkfooting_thruplayer"), "GutsLand")
+TNT1 A 0 A_PlaySoundEx("BUTTSCKS", "Body")
+TNT1 A 0 A_SpawnItemEX("GutsBuddyContactDamage",0,0,0,momx,momy,momz,0,8,0)
 loop
 GutsLand:
-8H46 A 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, true)
-8H46 A 0 Radius_Quake(6,35,0,50,0)
-8H46 A 0 A_PlaySoundEx("misc/hugequake","Body")
-8H46 A 0 A_PlaySoundEx("ED_IMPACT/CYCLE","SoundSlot5") //
-8H46 AAA 2 A_GiveInventory("GutsBuddy_FloorQuake_P",1)
-8H46 A 6
-8H46 A 0 A_TakeInventory("BossItemUseFlag")
-8H46 A 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, false)
-goto ReadyX
+TNT1 A 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, true)
+TNT1 A 0 Radius_Quake(6,35,0,50,0)
+TNT1 A 0 A_PlaySoundEx("misc/hugequake","Body")
+TNT1 A 0 A_PlaySoundEx("ED_IMPACT/CYCLE","SoundSlot5") //
+TNT1 AAA 2 A_GiveInventory("GutsBuddy_FloorQuake_P",1)
+TNT1 AAA 2 A_JumpIfInventory("IsDead", 1, "NoFlash")
+TNT1 A 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, false)
+TNT1 AAA 10 A_JumpIfInventory("IsDead", 1, "NoFlash")
+Goto Flash
 }
 }
 
