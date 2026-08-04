@@ -1,0 +1,582 @@
+actor JuggerbroGold_W_ScriptBar : ScriptBar {}
+
+actor JuggerbroGold_W : BaseUnholyBossWep
+{
+Tag "$TAG_Boss031_W"
+Obituary "%o was crushed by \cfJuggerbro Gold\c- (%k)."
+Inventory.Pickupmessage "\cfJuggernauts... made of SOLID GOLD."
+weapon.ammotype "UnholyPower1000"
+States
+{
+Spawn:
+8H31 [ 1
+wait
+
+Deselect:
+8H31 A 0
+goto DeselectSwap
+Select:
+8H31 A 0
+goto SelectSwap
+
+Ready:
+8H31 A 0 A_GiveInventory("UnholyPowerLimit_F",1000)
+8H31 A 0 A_GiveInventory("UnholyPowerDisableRazzle_F",1)
+8H31 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", JUGGERBROGOLD_DYE)
+8H31 A 3 ACS_NamedExecuteWithResult("uh_BossMorph", 31,4850,485)
+8H31 A 0 ACS_NamedExecuteWithResult("core_nopushplayer", 0, true)
+8H31 A 0 A_TakeInventory("JuggerGoldFlag")
+goto ReadyX
+ReadyX:
+8H31 A 0 A_JumpIfInventory("UnholyPower1000",1000,"ReadyX2")
+8H31 A 2 A_WeaponReady(WRF_NOSECONDARY)
+8H31 A 0 A_GiveInventory("UnholyPower1000",10)
+loop
+ReadyX2:
+8H31 A 2 A_WeaponReady
+8H31 A 0 A_GiveInventory("UnholyPower1000",10)
+loop
+
+Fire:
+8H31 A 0 A_JumpIfInventory("VivifyFlag1",1,"MeteorEnd")
+8H31 A 0 A_JumpIfInventory("JuggerGoldFlag",1,"MeteorEnd")
+8H31 A 0 A_JumpIfInventory("ProjectilePortDead",1,"MeteorEnd")
+8H31 A 2
+goto FireC
+FireC:
+//8H31 J 0 A_JumpIfInventory("UnholyBossAmmo100",100,"FireCHold2")
+8H31 J 0 A_JumpIfInventory("UnholyBossAmmo100",100,"FireCSound")
+8H31 J 1 ACS_NamedExecuteWithResult("core_chargecolor", JUGGERBROGOLDCHARGE_DYE)
+8H31 J 0 A_GiveInventory("UnholyBossAmmo100",2)
+8H31 J 0 A_Refire(1)
+goto Fire0
+8H31 A 0 A_JumpIfInventory("UnholyBossAmmo100",100,"FireCSound")
+8H31 A 1 ACS_NamedExecuteWithResult("core_chargecolor", JUGGERBROGOLD_DYE)
+8H31 A 0 A_GiveInventory("UnholyBossAmmo100",2)
+8H31 A 0 A_GiveInventory("UnholyPower1000",10)
+8H31 A 0 A_Refire("FireC")
+goto Fire0
+FireCSound:
+8H31 A 0 A_PlaySoundEx("wep/CrysCharge1","Weapon")
+goto FireCHold
+FireCHold:
+8H31 J 1 ACS_NamedExecuteWithResult("core_chargecolor", JUGGERBROGOLDCHARGE_DYE)
+8H31 A 1 ACS_NamedExecuteWithResult("core_chargecolor", JUGGERBROGOLD_DYE)
+8H31 A 0 A_GiveInventory("UnholyPower1000",10)
+8H31 A 0 A_Refire("FireCHold")
+goto Fire0
+Fire0:
+8H31 B 0 ACS_NamedExecuteWithResult("core_chargecolor", JUGGERBROGOLD_DYE)
+8H31 B 0 A_PlaySoundEx("weapon/screwcrusher","Weapon")
+8H31 B 0 A_GiveInventory("JuggerGoldCrusher_P",1) //JuggerGoldCrusher
+//8H31 B 0 A_GunFlash("Flash.Ammo",1)
+8H31 BCDEFGZZHI 2 A_GiveInventory("UnholyPower1000",10)
+Goto ReadyX
+
+/*Flash.Ammo:
+TNT1 AAAAAAAAAA 2 A_GiveInventory("UnholyPower1000",10)
+stop*/
+
+Flash.Meteor:
+TNT1 A 1 A_SpawnItemEx("JuggerGoldMeteorRing",0,0,32,0,0,0,0,1)
+TNT1 AA 1 A_SpawnItemEx("JuggerGoldMeteorRing2",0,0,32,0,0,0,0,1)
+TNT1 A 0 A_JumpIfInventory("JuggerGoldFlag",1,"NoFlash")
+TNT1 A 0 A_TakeInventory("UnholyPower1000",13,1)
+TNT1 A 0 A_TakeInventory("UnholyPower1000",12)
+TNT1 A 0 A_JumpIfInventory("UnholyPower1000",1,2)
+TNT1 A 0 A_GiveInventory("JuggerGoldFlag",1)
+stop
+TNT1 AAA 1 A_SpawnItemEx("JuggerGoldMeteorRing2",0,0,32,0,0,0,0,1)
+TNT1 A 0 A_JumpIfInventory("JuggerGoldFlag",1,"NoFlash")
+TNT1 A 0 A_TakeInventory("UnholyPower1000",13,1)
+TNT1 A 0 A_TakeInventory("UnholyPower1000",12)
+TNT1 A 0 A_JumpIfInventory("UnholyPower1000",1,"Flash.Meteor")
+TNT1 A 0 A_GiveInventory("JuggerGoldFlag",1)
+stop
+
+AltFire:
+8H31 A 0 A_JumpIfInventory("VivifyFlag1",1,"MeteorEnd")
+8H31 A 0 A_JumpIfInventory("JuggerGoldFlag",1,"MeteorEnd")
+8H31 A 0 A_JumpIfInventory("ProjectilePortDead",1,"MeteorEnd")
+//8H31 A 0 A_JumpIfInventory("UnholyPower1000",1000,"BeginMeteor")
+//goto ReadyX
+//BeginMeteor:
+8H31 N 0 A_GiveInventory("JuggerGold_AltStart_P")
+8H31 N 0 A_Refire(1)
+8H31 N 2
+8H31 O 2 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true)
+8H31 PQRS 2
+TNT1 A 12 //18
+TNT1 A 0 ACS_NamedExecuteWithResult("core_nogravityplayer", 0, false)
+TNT1 A 0 A_GiveInventory("VivifyDelay4",1)
+TNT1 A 0 A_GunFlash("Flash.Meteor")
+TNT1 A 0 A_PlaySoundEx("weapon/solarblaze","Weapon")
+TNT1 A 0 A_SpawnItemEx("JuggerGoldMeteor",0,0,0,cos(-pitch)*1,0,sin(-pitch)*1,0,1)
+TNT1 A 1 A_ClearReFire
+TNT1 A 0 A_JumpIfInventory("ProjectilePortDead",1,"MeteorEnd")
+TNT1 A 0 A_JumpIfInventory("JuggerGoldFlag",1,"MeteorEnd")
+TNT1 A 1 A_ClearReFire
+TNT1 A 0 A_JumpIfInventory("ProjectilePortDead",1,"MeteorEnd")
+TNT1 A 0 A_JumpIfInventory("JuggerGoldFlag",1,"MeteorEnd")
+TNT1 A 1 A_ClearReFire
+TNT1 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true)
+goto MeteorLoop
+MeteorLoop:
+TNT1 A 1 A_WeaponReady
+TNT1 A 0 A_JumpIfInventory("JuggerGoldFlag",1,"MeteorEnd")
+TNT1 A 0 A_JumpIfInventory("ProjectilePortDead",1,"MeteorEnd")
+TNT1 A 1 A_WeaponReady
+TNT1 A 0 A_JumpIfInventory("JuggerGoldFlag",1,"MeteorEnd")
+TNT1 A 0 A_JumpIfInventory("ProjectilePortDead",1,"MeteorEnd")
+loop
+
+MeteorEnd:
+TNT1 A 0 A_GiveInventory("VivifyDelay5",1)
+TNT1 A 0 A_TakeInventory("VivifyFlag1")
+TNT1 A 0 A_GiveInventory("JuggerGoldFlag",1)
+TNT1 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false)
+TNT1 A 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, false)
+TNT1 A 0 A_SpawnItemEx("JuggerGoldMeteorEndSync_H",0,0,28,0,0,0,0,1)
+TNT1 A 0 A_ReFire(1)
+8H31 H 1 A_JumpIfInventory("JuggerGoldFlag",1,"MeteorEnd1")//Sync
+goto MeteorEnd1
+MeteorEnd1:
+8H31 H 4 A_ChangeVelocity(sqrt(momx*momx+momy*momy),0,momz,3)
+8H31 IA 4
+8H31 A 1 A_GiveInventory("JuggerGold_AltReset_P")
+Goto ReadyX
+
+}
+}
+
+actor JuggerGoldFlag : UOnce {}
+
+actor JuggerGold_AltAmmo_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_GiveInventory("UnholyPower1000", 10)
+stop
+}
+}
+
+actor JuggerGold_AltStart_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_GiveInventory("VivifyFlag1",1)
+TNT1 A 0 A_Stop
+TNT1 A 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, true)
+TNT1 A 0 ACS_NamedExecuteWithResult("core_nogravityplayer", 0, true)
+TNT1 A 0 A_PlaySoundEx("weapon/pcharge","Weapon")
+TNT1 A 0 ThrustThingZ(0,4,0,0)
+goto Reset+1
+Reset:
+TNT1 A 0 A_TakeInventory("VivifyFlag1")
+TNT1 A 0 A_TakeInventory("JuggerGoldFlag")
+TNT1 A 0 A_TakeInventory("JuggerSilverFlag")
+TNT1 A 0 A_TakeInventory("ProjectilePortDead")
+stop
+}
+}
+
+actor JuggerGold_AltReset_P : JuggerGold_AltStart_P
+{
+States
+{
+Pickup:
+goto Reset
+}
+}
+
+Actor JuggerGoldCrusher_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo100",100,"Pickup2")
+TNT1 A 0 A_FireCustomMissile("JuggerGoldCrusher",0,0,8,0)
+goto End
+/*Pickup2:
+TNT1 A 0 A_FireCustomMissile("JuggerGoldCrusher2",0,0,8,0)
+goto End*/
+Pickup2:
+TNT1 A 0 A_FireCustomMissile("JuggerGoldCrusher3",0,0,8,0)
+goto End
+End:
+TNT1 A 0 A_TakeInventory("UnholyBossAmmo100",100)
+stop
+}
+}
+
+actor JuggerGoldCrusher : BasicProjectile
+{
+Translation "192:192=161:161","198:198=163:163","0:0=167:167"
++SKYEXPLODE
+DamageType "JuggerGold"
+Obituary "%o was crushed by \cfJuggerbro Gold\c- (%k)."
+Damage (180) //120
+Radius 18
+Height 10
+Speed 55 //85
+Scale 3.0
+States
+{
+Spawn:
+X_KB A 0
+X_KB AB 3
+goto Spawn+1
+Death:
+TNT1 A 0 A_PlaySoundEx("misc/mm3explosion","SoundSlot5")
+TNT1 A 0 A_Explode(180,96,0,0,48) //120
+TMFX AAAA 1 A_SetScale(scaleX+0.5,scaleY+0.5)
+TMFX AAAAAA 1 A_SetScale(scaleX-0.8,scaleY-0.8)
+stop
+}
+}
+
+Actor JuggerGoldCrusher3 : JuggerGoldCrusher
+{
++THRUGHOST
+Damage(450) //320
+Speed 1
+States
+{
+Spawn:
+X_KB A 0
+X_KB ABAB 2 //-4
+Spawn2:
+X_KB A 0 A_PlaySoundEx("classes/bikebrake","Voice")
+X_KB A 0 A_ScaleVelocity(75.0) //85
+X_KB A 0 A_SpawnItemEx("JuggerGoldCrusherFX1",0,0,0,0,0,0,0,1)
+X_KB A 1 A_ScaleVelocity(1.1)
+X_KB B 0 A_SpawnItemEx("JuggerGoldCrusherFX2",0,0,0,0,0,0,0,1)
+X_KB B 1 A_ScaleVelocity(1.1)
+X_KB A 0 A_SpawnItemEx("JuggerGoldCrusherFX1",0,0,0,0,0,0,0,1)
+X_KB A 1 A_ScaleVelocity(1.1)
+X_KB B 0 A_SpawnItemEx("JuggerGoldCrusherFX2",0,0,0,0,0,0,0,1)
+X_KB B 1 A_ScaleVelocity(1.1)
+X_KB A 0 A_SpawnItemEx("JuggerGoldCrusherX",0,0,0,random(4,8),0,random(3,6),random(0,359),1)
+goto Spawn2+2
+Death:
+TNT1 A 0 A_PlaySoundEx("Pokemon/Explosion","SoundSlot5")
+TNT1 AAAAAA 0 A_SpawnItemEx("JuggerGoldCrusherX",random(8,8),random(-8,8),random(-8,8),random(6,12),0,random(4,8),random(0,359),1)
+TNT1 AAAAAAAAAAAA 1 A_SpawnItemEx("JuggerGoldCrusher3Explode",random(-96,96),random(-96,96),random(-96,96),0,0,0,0,1)
+stop
+}
+}
+
+Actor JuggerGoldCrusherFX1 : BasicGraphicEffect
+{
+Scale 3.0
+Renderstyle "Translucent"
+Alpha 0.6
+States
+{
+SpawnFrame:
+X_KB A 2
+stop
+}
+}
+
+Actor JuggerGoldCrusherFX2 : JuggerGoldCrusherFX1
+{
+States
+{
+SpawnFrame:
+X_KB B 2
+stop
+}
+}
+
+Actor JuggerGoldCrusherX : JuggerGoldCrusher
+{
+-NOGRAVITY
++BOUNCEONWALLS
++BOUNCEONFLOORS
+Bouncefactor 0.88
+Bouncecount 8
+Damage(75) //90
+Radius 14
+Height 8
+Scale 2.0
+States
+{
+Spawn:
+X_KB AB 4
+loop
+Death:
+TNT1 A 0
+stop
+}
+}
+
+Actor JuggerGoldCrusher3Explode : BasicExplosion
+{
++BRIGHT
+Obituary "%o was \cfDEVASTATED\c- by \cfJuggerbro Gold\c- (%k)."
+DamageType "JuggerGold"
+Scale 1.5
+States
+{
+Spawn:
+X_8B A 0 
+X_8B A 0 A_Explode(140,144,0,0,36) //160,160,0,0,80
+X_8B AB 2
+X_8B CDEF 1
+stop
+}
+}
+
+Actor GoldRammingDamage : BasicExplosion
+{//Old A_SkullAttack
+DamageType "JuggerGold"
+Obituary "%o was \cfDESTROYED\c- by \cfJuggerbro Gold\c- (%k)."
+States
+{
+Spawn:
+TNT1 A 0 
+TNT1 A 1 A_Explode(300,100,0)
+stop
+}
+}
+
+actor JuggerGoldMeteor : BasicProjectile
+{
+BounceSound "misc/quake"
+DamageType "JuggerGold"
+Obituary "%o was \cfDESTROYED\c- by \cfJuggerbro Gold\c- (%k)."
++DONTBLAST
++DONTREFLECT
++THRUGHOST
++HEXENBOUNCE
+-ALLOWBOUNCEONACTORS
++CANBOUNCEWATER
+Bouncefactor 1.0
+Wallbouncefactor 1.0
+Radius 15
+Height 54
+damage (0)
+speed 75 //60
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1 ACS_NamedExecuteAlways("uh_ProjectilePort", 0, 200)
+TNT1 A 0 A_ScaleVelocity(75) //60
+goto Spawn2
+Spawn2:
+TNT1 AAAAA 1 A_JumpIfInTargetInventory("JuggerGoldFlag",1,"Death")
+TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death")
+loop
+
+Crash:
+XDeath:
+TNT1 A 0 A_GiveInventory("ProjectilePortDead")
+TNT1 A 0 A_JumpIfInTargetInventory("JuggerGoldFlag",1,"DeathXL")
+TNT1 A 0 A_Explode(2000*(CallACS("uh_checkrune", RUNE_SPREAD)*2+1),256,0,0,256) //1400,196,0,0,196
+TNT1 A 0 A_GiveToTarget("JuggerGoldMeteorPickup",1)
+TNT1 A 3 A_GiveToTarget("JuggerGoldFlag")
+TNT1 A 2 A_GiveToTarget("UnholyPower1000",250)
+stop
+Death:
+TNT1 A 0
+TNT1 A 0 A_GiveInventory("ProjectilePortDead")
+TNT1 A 0 A_ChangeFlag("NOINTERACTION",1)
+TNT1 A 0 A_JumpIfInTargetInventory("JuggerGoldFlag",1,"DeathXL")
+TNT1 A 0 A_Stop
+goto DeathXL
+DeathXL:
+TNT1 A 0 A_SpawnItemEx("JuggerGoldMeteorExplosion",0,0,27,0,0,0,0,1)
+TNT1 A 1 A_GiveToTarget("JuggerGoldFlag")
+stop
+}
+}
+
+actor JuggerGoldMeteorExplosion : BasicExplosion
+{
+DamageType "JuggerGold"
+Obituary "%o was \cfDESTROYED\c- by \cfJuggerbro Gold\c- (%k)."
+Scale 3.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("Pitfall/Boom","Body")
+TNT1 A 0 A_Explode(500*(CallACS("uh_checkrune", RUNE_SPREAD)*2+1),192,0,0,96) //250,196,0,0,64
+X_8B ABCD 2 A_SpawnItemEx("JuggerGoldMeteorExplosionFX",random(-56,56),random(-56,56),random(-56,56),0,0,0,0,1)
+X_8B EF 2
+stop
+}
+}
+
+actor JuggerGoldMeteorExplosionFX : BasicGraphicEffect
+{
+States
+{
+SpawnFrame:
+X_8B ABCDEF 2
+stop
+}
+}
+
+actor JuggerGoldMeteorRing : BasicExplosion
+{
+DamageType "JuggerGold"
+Obituary "%o was \cfDESTROYED\c- by \cfJuggerbro Gold\c- (%k)."
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_Explode(100,196,0,0,64)
+TNT1 A 2 A_SpawnItemEx("JuggerGoldMeteorRingFX",0,0,0,0,0,0,0,1)
+stop
+}
+}
+actor JuggerGoldMeteorRing2 : JuggerGoldMeteorRing
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_Explode(100,196,0,0,64)
+TNT1 A 2 A_SpawnItemEx("JuggerGoldMeteorFX_H",0,0,0,0,0,0,0,1)
+stop
+}
+}
+actor JuggerGoldMeteorRingFX : BasicGraphicEffect
+{
+States
+{
+SpawnFrame:
+TNT1 A 1
+X_0E N 4
+X_0E M 5
+X_0E M 1 A_FadeOut(0.2)
+wait
+}
+}
+
+actor JuggerGoldMeteorFX_H : BasicGraphicEffect
+{
+States
+{
+SpawnFrame:
+TNT1 A 0
+TNT1 AA 0 A_SpawnItemEx("JuggerGoldRamFX31",random(-32,32),random(-32,32),random(-32,32),random(-2,2),random(-2,2),random(-2,2),0,1,128)
+TNT1 AA 0 A_SpawnItemEx("JuggerGoldRamFX33",random(-32,32),random(-32,32),random(-32,32),random(-2,2),random(-2,2),random(-2,2),0,1,128)
+TNT1 A 1
+stop
+}
+}
+
+actor JuggerGoldMeteorPickup : CustomInventory
+{
+states
+{
+Pickup:
+TNT1 A 0
+TNT1 A 0 A_Stop
+TNT1 A 0 ThrustThingZ(0,40,0,0)
+TNT1 A 0 ThrustThing(angle*256/360+128,10,1,0)
+TNT1 A 0 A_PlaySoundEx("classes/DakuSpecialSFX","Body")
+TNT1 A 0 A_GiveInventory("JuggerGoldFlag",1)
+stop
+}
+}
+
+actor JuggerGoldMeteorEndSync_H : BasicWatcher
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_GiveToTarget("JuggerGoldFlag")
+TNT1 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", CallACS("core_gettarget")-999, false)
+TNT1 A 0 A_TakeFromTarget("UnholyPower1000",250,1)
+TNT1 A 0 A_TakeFromTarget("UnholyPower1000",250)
+TNT1 A 1 A_SpawnItemEx("JuggerGoldMeteorEndFX",0,0,0,0,0,0,0,1)
+stop
+}
+}
+actor JuggerGoldMeteorEndFX : BasicGraphicEffect
+{
+var int user_A;
+reactiontime 18
+States
+{
+SpawnFrame:
+TNT1 A 0
+TNT1 A 0 A_SetUserVar("user_A",random(0,20))
+TNT1 A 0 A_SpawnItemEx("JuggerGoldRamFX32",10,0,30,2,0,3,user_A+15,37)
+TNT1 A 0 A_SpawnItemEx("JuggerGoldRamFX32",20,0,20,4,0,2,user_A+10,37)
+TNT1 A 0 A_SpawnItemEx("JuggerGoldRamFX32",30,0,10,6,0,1,user_A+5,37)
+TNT1 A 0 A_SpawnItemEx("JuggerGoldRamFX32",40,0,0,8,0,0,user_A,37)
+TNT1 A 0 A_SpawnItemEx("JuggerGoldRamFX32",30,0,-10,6,0,-1,user_A+5,37)
+TNT1 A 0 A_SpawnItemEx("JuggerGoldRamFX32",20,0,-20,4,0,-2,user_A+10,37)
+TNT1 A 0 A_SpawnItemEx("JuggerGoldRamFX32",10,0,-30,2,0,-3,user_A+15,37)
+TNT1 A 0 A_SetUserVar("user_A",user_A+20)
+TNT1 A 0 A_Countdown
+goto SpawnFrame+2
+Death:
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("JuggerGoldRamFX32",0,0,40,0,0,4,0,37)
+TNT1 A 0 A_SpawnItemEx("JuggerGoldRamFX32",0,0,-40,0,0,-4,0,37)
+stop
+}
+}
+
+actor JuggerGoldRamFX31 : BasicGraphicEffect
+{
+States
+{
+SpawnFrame:
+TNT1 A 0
+TNT1 A 0 A_Jump(256,1)
+Spawn1:
+GIGO M 5
+GIGO N 10
+GIGO N 1 A_Fadeout(0.15)
+wait
+}
+}
+
+actor JuggerGoldRamFX32 : BasicGraphicEffect
+{
+States
+{
+SpawnFrame:
+TNT1 A 0
+TNT1 A 0 A_Jump(256,1,4)
+Spawn1:
+GIGO O 6
+GIGO P 2 A_ScaleVelocity(1.05)
+GIGO P 1 A_Fadeout
+goto Spawn1+1
+Spawn2:
+GIGO O 6
+GIGO Q 2 A_ScaleVelocity(1.05)
+GIGO Q 1 A_Fadeout
+goto Spawn2+1
+}
+}
+
+actor JuggerGoldRamFX33 : BasicGraphicEffect
+{
+States
+{
+SpawnFrame:
+TNT1 A 0
+TNT1 A 0 A_Jump(256,"Spawn1","Spawn2")
+Spawn1:
+GIGO RS 3
+GIGO T 3 A_Fadeout(0.2)
+goto Spawn1+1
+Spawn2:
+GIGO UV 3
+GIGO W 3 A_Fadeout(0.2)
+goto Spawn2+1
+}
+}

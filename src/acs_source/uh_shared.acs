@@ -398,6 +398,50 @@ script "uh_missileyank" (int maxRange)
 	//SetResultValue(userCount);
 }
 
+//Projectile Porting
+script "uh_ProjectilePort" (int maxDist) {
+	int target = ACS_NamedExecuteWithResult("core_getptrtid", 2);
+
+	if(getActorProperty(0,APROP_HEALTH) <= 0 || getActorProperty(target,APROP_HEALTH) <= 0) {
+		terminate;
+	}
+
+	maxDist = maxDist << 16;
+
+	int xDiff = getActorX(0) - getActorX(target);
+	int yDiff = getActorY(0) - getActorY(target);
+	int zDiff = getActorZ(0) - getActorZ(target);
+
+	if(fdistanceVal(xDiff,yDiff,zDiff) > maxDist) {
+		terminate;
+	}
+
+	while (true) {
+		xDiff += getActorVelX(0);
+		yDiff += getActorVelY(0);
+		zDiff += getActorVelZ(0);
+		SetActorVelocity(target, xDiff, yDiff, zDiff, 0, 0);
+
+		delay(1);
+
+		if(getActorProperty(0,APROP_HEALTH) <= 0 || getActorProperty(target,APROP_HEALTH) <= 0 || CheckInventory("ProjectilePortDead")) {
+			//Log(s:"Someone is Dead");
+			GiveActorInventory(target,"ProjectilePortDead",1);
+			terminate;
+		}
+		xDiff = getActorX(0) - getActorX(target);
+		yDiff = getActorY(0) - getActorY(target);
+		zDiff = getActorZ(0) - getActorZ(target);
+		if(fdistanceVal(xDiff,yDiff,zDiff) > maxDist //Log(s:"Someone is too far");
+		|| CheckActorInventory(target,"FlightDisableFlag")>=1 || CheckActorInventory(target,"TimeStoppedTFFlag")>=1) //Log(s:"Someone is suffering");
+		{
+			SetActorState(0,"Death",1);
+			GiveActorInventory(target,"ProjectilePortDead",1);
+			terminate;
+		}
+	}
+}
+
 //ZANGIEF
 
 #define GRAB_DISTANCE 100 //how far to position the grabbed away from zangief
