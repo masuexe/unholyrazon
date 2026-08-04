@@ -151,6 +151,59 @@ script "uh_radiusPull" (int maxforce, int maxRange, int noFalloff, int unholytea
 	SetResultValue(userCount);
 }
 
+#define CIFC_INCLUDE_TEAM 1
+#define CIFC_INCLUDE_DEAD 2
+
+script "rz_CountPlayerInFrontCone" (int r, int theta, int flags) {
+	int userTID = (PlayerNumber() == -1) ? ActivatorTID() : PlayerNumber() + 1000;
+	int userTeam = -1;
+	int userunholyteam = -1;
+	if (PlayerNumber() != -1) {
+		userTeam = GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM);
+		userunholyteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", PlayerNumber());
+	}
+
+	int half = FixedDiv(theta << 16, 720.0);
+	int count = 0;
+
+	for (int p = 0; p < ServerMAX; p++) {
+		if (!PlayerInGame(p)) {
+			continue;
+		}
+		int targetTID = p + 1000;
+		if (userTID == targetTID) {
+			continue;
+		}
+		if (!(flags & CIFC_INCLUDE_DEAD) && CheckActorInventory(targetTID, "IsDead") > 0) {
+			continue;
+		}
+		if (!(flags & CIFC_INCLUDE_TEAM)) {
+			if (isTeamGame) {
+				if (userTeam == GetPlayerInfo(p, PLAYERINFO_TEAM)) {
+					continue;
+				}
+			} else {
+				int punholyteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", p);
+				if (userunholyteam != 6 && punholyteam == userunholyteam) {
+					continue;
+				}
+			}
+		}
+
+		int dx = GetActorX(targetTID) - GetActorX(0);
+		int dy = GetActorY(targetTID) - GetActorY(0);
+		if (VectorLength(dx, dy) > (r << 16)) {
+			continue;
+		}
+
+		int rel = (VectorAngle(dx, dy) - GetActorAngle(0) + 1.0) % 1.0;
+		if (rel <= half || rel >= 1.0 - half) {
+			count++;
+		}
+	}
+	SetResultValue(count);
+}
+
 script "uh_PoisonControl_acs" (int Which, int Style, int Change)
 {
 //	Log(s:"uh_PoisonControl_acs(",i:Which,s:", ",i:Style,s:", ",i:Change,s:")");

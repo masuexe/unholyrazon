@@ -245,3 +245,54 @@ Implications:
 
 - Smoothing a fire anim to all `duration 1` frames **disables** this speedup; use `A_JumpIfInventory("PlayerPropertyRage", 1, 1)` skips and/or a separate Rage state branch.
 - Holds written as `A 13` inside a Rage-only state are really ~7 tics — double the written value when you need a target real length (e.g. want 13 real → write `26`).
+
+### The first frame of the Spawn state never runs its action — put a dummy `TNT1 A 0` before it
+
+When an actor is created, `AActor::StaticSpawn` sets the Spawn state **directly**, bypassing `SetState`, so the first frame's action is never called:
+
+```cpp
+// p_mobj.cpp (AActor::StaticSpawn)
+// Set the state, but do not use SetState, because action
+// routines can't be called yet.  If the spawnstate has an action
+// routine, it will not be called.
+FState *st = actor->SpawnState;
+actor->state = st;
+actor->tics = st->GetTics();
+```
+
+On the actor's first tick (`AActor::Tick`, `--tics <= 0`) the state machine jumps straight to `state->GetNextState()`, skipping the first frame entirely. State actions only run when a state is **entered via `SetState`** (`p_mobj.cpp:586`), and `StaticSpawn` never calls it.
+
+```cpp
+// WRONG — the ACS call never executes
+Spawn:
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", 2, 0)
+    X_4D JK 4
+    loop
+
+// CORRECT — dummy first frame; the action frame runs on the first tick
+Spawn:
+    TNT1 A 0
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", 2, 0)
+    X_4D JK 4
+    loop
+```
+
+Scope: this only applies to the **initial Spawn-state entry at actor creation** (every spawn path goes through `StaticSpawn`). States entered later via `SetState` (Death, Bounce, Pain, …) run their first frame's action normally — e.g. a `Bounce:` state starting with `TNT1 A 0 A_Stop` is fine. If an actor is later forced back into its Spawn state via `SetState(SpawnState)` (pickup respawn etc.), the action *does* run.
+
+### DECORATE expressions can read native Actor fields — angles are float degrees
+
+The expression evaluator exposes native `Actor` fields as readable variables. They are declared in the internal base actor definition `wadsrc/static/actors/actor.txt:30-59` (see also `ParseNativeVariable` in `thingdef_parse.cpp`):
+
+- `angle_t angle`, `angle_t pitch` — read as **float degrees** (0–360; pitch follows the engine convention: positive = down). Conversion is `VAL_Angle → value * 90/ANGLE_90` (`thingdef_expression.cpp:227-230`).
+- `fixed_t x, y, z, velx, vely, velz, floorz, ceilingz, alpha, scaleX, scaleY` — read as **floats** in map units (fixed → `/65536.`).
+- `int health, mass, tid, special, damage, score`, `args[5]` — plain ints.
+
+These are usable anywhere an expression is, e.g. `A_SpawnItemEx` velocity args:
+
+```cpp
+// velocity = Speed along the actor's aim (pitch). `sin(-pitch)` matches the
+// engine's `vz = -sin(pitch)` convention (p_mobj.cpp:7531).
+A_SpawnItemEx("SomeShot", 0, 0, 0, cos(pitch)*Speed, 0, sin(-pitch)*Speed, 0)
+```
+
+This is used throughout the mod (e.g. `NegaNeedleCannon.dec`, `General-inator.dec:47`). `pitch` reads the **calling actor's own** `pitch` field, so on a projectile that had its `pitch` set at spawn (e.g. via `uh_CopyPointerAnglePitch`), it stays readable later in Death/Bounce states. Do not route these through ACS (`CallACS("uh_FetchPointerPitch", …)`) — the native field is equivalent and simpler.
