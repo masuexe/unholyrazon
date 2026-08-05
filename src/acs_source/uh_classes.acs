@@ -64,6 +64,25 @@ script "uc_countinv_acs" (int Which, int Pointer)
 	}
 	SetResultValue(Counter);
 }
+script "ub_countinv_acs" (int Which, int Pointer)
+{
+	if(Pointer>0){
+		SetActivator(0,Pointer);
+	}
+	int Counter = 0;
+	switch(Which)
+	{
+		Default:
+			break;
+		Case 50:
+			Counter = CheckInventory("HalfPressHardmanFlag");
+			break;
+		Case 115:
+			Counter = CheckInventory("MagicDevilEyeMash_F");
+			break;
+	}
+	SetResultValue(Counter);
+}
 
 script "uh_CriticalHitRNG" (int evt, int dmg, int dmgtype) EVENT {
 	if (evt == GAMEEVENT_ACTOR_DAMAGED) {
@@ -573,6 +592,25 @@ script "ub_RedeadGutsHPDrain" (int AddDrainBool)
 	if(AddDrainBool)
 		GiveInventory("RedeadGutsHealthDrain",1);
 	SetActorProperty(0, APROP_HEALTH, CurrHP-HPDrain);
+}
+
+int HPHM_TempArr[65] = {-1};
+
+script "uh_HPHM_WarpChecker" (void) {
+	int OwnerTID = ACS_NamedExecuteWithResult("core_getptrtid", 2);
+	int MaxArray = -1;
+	for (int i; i < ServerMAX; i++) {
+		if (PlayerInGame(i) && i+1000 != OwnerTID) {
+			MaxArray++;
+			HPHM_TempArr[MaxArray] = i + 1000;
+		}
+	}
+	if (MaxArray < 0) {
+		SetResultValue(OwnerTID);
+	}
+	else {
+		SetResultValue(HPHM_TempArr[random(0, MaxArray)]);
+	}
 }
 
 //Functions

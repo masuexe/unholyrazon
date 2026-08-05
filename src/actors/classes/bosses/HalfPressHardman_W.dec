@@ -1,0 +1,950 @@
+// TODO: How about using mario 64 font as drawnumber?
+actor HalfPressHardman_W_ScriptBar : ScriptBar {}
+actor HalfPressHardman_W : BaseUnholyBossWep
+{
+Tag "$TAG_Boss050_W"
+Obituary "%o was caught cheating and was banned after getting called out by %k."
+Inventory.Pickupmessage "You'll PB with this weapon."
+weapon.ammotype "UnholyBossAmmo500"
+weapon.ammotype2 "UnholyPower1000"
+States
+{
+Spawn:
+8H50 [ 1
+wait
+
+Deselect:
+8H50 V 0//FIST A
+goto DeselectSwap
+Select:
+8H50 V 0
+goto SelectSwap
+
+Ready:
+8H50 V 0 A_GiveInventory("UnholyPowerLimit_F",1000)
+8H50 V 0 A_GiveInventory("UnholyPowerDisableRazzle_F")
+8H50 V 0 ACS_NamedExecuteWithResult("core_weaponcolor", HALFPRESSHARDMAN_DYE)
+8H50 V 3 ACS_NamedExecuteWithResult("uh_BossMorph", 50,2460,412) //2200,396
+8H50 V 0 A_GiveInventory("UnholyBossFlag1")
+8H50 V 0 A_GiveInventory("UnholyBossFlag2")
+8H50 V 0 A_TakeInventory("GenericBossFlag1")
+8H50 V 0 A_TakeInventory("GenericBossFlag2")
+8H50 G 2 A_GunFlash("Flash.QuakeWait")
+8H50 F 2
+goto Ready2
+Ready2:
+8H50 A 0 A_JumpIfInventory("UnholyBossAmmo500",500,"Ready3")
+8H50 A 10 A_GiveInventory("HalfPressHardman_Ready8_P")
+8H50 A 0 A_GiveInventory("UnholyBossAmmo500",20)
+8H50 A 0 A_GiveInventory("UnholyPower1000",5)
+loop
+Ready3:
+8H50 A 10 A_GiveInventory("HalfPressHardman_Ready0_P")
+8H50 A 0 A_GiveInventory("UnholyBossAmmo500",20)
+8H50 A 0 A_GiveInventory("UnholyPower1000",5)
+loop
+ReadyFistWait:
+8H50 A 0 A_GiveInventory("GenericBossFlag1",1)
+8H50 A 0 A_JumpIfInventory("GenericBossFlag1",40,"ReadyFistRefund")
+8H50 A 0 A_JumpIfInventory("UnholyBossFlag1",1,"Ready2")
+8H50 E 0 A_JumpIfInventory("UnholyBossAmmo500",500,2)
+8H50 E 1 A_GiveInventory("HalfPressHardman_Ready8_P")
+Goto ReadyFistWait
+8H50 E 1 A_GiveInventory("HalfPressHardman_Ready0_P")
+Goto ReadyFistWait
+ReadyFistRefund:
+8H50 A 0 A_GiveInventory("UnholyBossFlag1")
+goto Ready2
+
+Fire:
+8H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+8H50 A 0 A_JumpIfInventory("UnholyBossFlag1",1,"FireFist_R")
+8H50 A 0 A_JumpIfInventory("UnholyBossFlag2",1,"FireFist_L")
+Goto ReadyFistWait
+FireFist_R:
+8H50 A 0 A_PlaySound("M_64/CannonEdit",1)//,0.65)//weapon/HardFistFire
+8H50 A 0 A_TakeInventory("GenericBossFlag1")
+8H50 A 0 A_TakeInventory("UnholyBossFlag1")
+8H50 B 2 A_SpawnItemEx("HPHM_KnuckleFiringFX1",3,10,32,0,0,0,0,0)
+8H50 C 2
+8H50 D 2 A_FireCustomMissile("HPHM_Knuckle",0,0,10,-2)
+8H50 E 2
+Goto ReadyFistWait
+FireFist_L:
+8H50 A 0 A_GiveInventory("UnholyBossFlag3",1)
+goto FireFist_LWait
+FireFist_LWait:
+8H50 A 0 A_JumpIfInventory("UnholyBossFlag1",1,"FireFist_LWait2")
+8H50 E 1 A_RailWait
+8H50 A 0 A_JumpIfInventory("UnholyBossFlag3",1,"FireFist_LWait")
+goto ReadyFistWait
+FireFist_LWait2:
+8H50 A 1 A_RailWait
+8H50 A 0 A_JumpIfInventory("UnholyBossFlag3",1,"FireFist_LWait2")
+goto Ready2
+Altfire:
+8H50 A 0 A_JumpIfInventory("HalfPressHardmanFlag",1,"QuakeBoost")
+8H50 A 0 A_JumpIfInventory("UnholyBossAmmo500",500,"QuakeStart")
+8H50 A 0 A_JumpIfInventory("UnholyBossFlag1",1,"Ready2")
+Goto ReadyFistWait
+QuakeStart:
+8H50 A 0 A_GunFlash("Flash.QuakeStart")
+8H50 A 0 A_TakeInventory("HalfPressHardmanFlag")
+8H50 A 0 A_GiveInventory("HalfPressHardmanFlag",1)
+8H50 A 0 A_Refire(1)
+8H50 A 0 A_GiveInventory("JumpCancler")
+8H50 A 0 A_GiveInventory("CosmeticBossSpeedTrail")
+8H50 A 0 ACS_NamedExecuteWithResult("uh_cantpushwallsplayer", 0, true)
+8H50 A 0 A_TakeInventory("UnholyBossAmmo500",1)
+8H50 A 0 A_SpawnItemEx("HalfPressHardman_ReloadWatcher")
+8H50 A 0 A_PlaySoundEx("weapon/superboost","Weapon")
+8H50 A 0 A_SpawnItemEx("ZangiefDustFX",0,0,0,0,0,0,0,1)
+8H50 A 0
+8H50 A 0 A_Recoil(-1)
+8H50 A 0 ThrustThingZ(0,64,0,0)
+8H50 A 0 A_JumpIfInventory("UnholyBossFlag1",1,"QuakeStart2")
+8H50 HI 2 A_SpawnItemEX("HPHM_BoosterFX",-8,0,-8,0,0,-1,0,0)
+TNT1 A 0 A_GiveInventory("HalfPressHardmanFlag_RC")
+goto QuakeContinue
+QuakeStart2:
+8H50 FG 2 A_SpawnItemEX("HPHM_BoosterFX",-8,0,-8,0,0,-1,0,0)
+TNT1 A 0 A_GiveInventory("HalfPressHardmanFlag_RC")
+goto QuakeContinue
+QuakeContinue:
+TNT1 A 0 A_JumpIf(momz<=0,"QuakeDownStart")
+// TNT1 A 0 A_WeaponReady(14 + 16)
+TNT1 A 1 A_Refire("QuakeBoost")//A_WeaponReady(WRF_NOSWITCH|WRF_NOPRIMARY)
+loop
+QuakeContinue2:
+TNT1 A 1 A_JumpIf(momz<=0,"QuakeDownStart")
+TNT1 A 0 A_Refire("QuakeContinue2")
+loop
+QuakeBoost:
+TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo500",1,"QuakeBoost2")
+goto QuakeContinue2
+QuakeBoost2:
+TNT1 A 0 A_PlaySoundEx("weapon/superboost","Weapon")
+TNT1 A 0 //A_TakeInventory("UnholyBossAmmo500",10)
+TNT1 A 0 A_SpawnItemEX("HPHM_BoosterFX",-8,0,-8,0,0,-1,0,0)
+TNT1 A 0
+TNT1 A 2 A_GiveInventory("HalfPressHardAltBoost_P",1)
+TNT1 A 1
+goto QuakeContinue
+
+QuakeBoostStop:
+TNT1 A 0 A_PlaySound("M_64/Timer2",1)
+TNT1 A 0 A_SetArg(3,momz)
+TNT1 A 0 A_GiveInventory("HalfPressHardman_F",sqrt(momx*momx+momy*momy))
+TNT1 A 0 A_SetArg(2,sqrt(momx*momx+momy*momy))
+QuakeBoostStopL:
+TNT1 A 0 A_GiveInventory("HalfPressHardCrush_P",1)
+TNT1 A 0 A_GiveInventory("HalfPressHardman_F",1)
+TNT1 A 0 A_TakeInventory("UnholyBossAmmo500",1)
+TNT1 A 0 A_GiveInventory("HalfPressHardmanFlag_RC")
+TNT1 A 0 A_SpawnItemEX("HalfPressHardmanPauseFX",0,0,90,0,0,0,0,1,128)
+TNT1 A 1 A_Stop
+TNT1 A 0 A_SetArg(2,args[2]+1)
+TNT1 A 0 A_Refire("QuakeBoostStopC2")
+TNT1 A 0 A_GiveInventory("HPHM_BuiltSpeedRelease_P")
+goto QuakeDown
+QuakeBoostStopC:
+TNT1 A 0 A_JumpIfInventory("IsBot",1,"BotAlt1")
+TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo500",1,"QuakeBoostStop")
+goto QuakeDown
+BotAlt1:
+TNT1 A 0 A_Jump(246,"QuakeDown")
+goto QuakeBoostStopC+1
+QuakeBoostStopC2:
+TNT1 A 0 A_JumpIfInventory("IsBot",1,"BotAlt2")
+TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo500",1,"QuakeBoostStopL")
+TNT1 A 0 A_GiveInventory("HPHM_BuiltSpeedRelease_P")
+goto QuakeDown
+BotAlt2:
+TNT1 A 0 A_Jump(8,"QuakeDown")
+goto QuakeBoostStopC2+1
+
+QuakeDownStart:
+TNT1 A 2 A_JumpIf(z-floorz==0,"QuakeCrash")
+TNT1 A 1 A_JumpIf(z-floorz==0,"QuakeCrash")
+TNT1 A 1 A_GiveInventory("HalfPressHardmanFlag",10)
+goto QuakeDown
+QuakeDown:
+TNT1 A 0 ThrustThingZ(0,1,1,1)
+TNT1 A 0 A_GiveInventory("HalfPressHardCrush_P",1)
+TNT1 A 0 A_GiveInventory("HalfPressHardmanFlag_RC")
+TNT1 A 0 A_JumpIf(z-floorz==0,"QuakeCrash")
+TNT1 A 0 A_JumpIfInventory("HalfPressHardmanFlag",9999,"QuakeCrash")
+TNT1 A 1 A_PlaySoundEx("misc_L/fatland","weapon")
+TNT1 A 0 A_Refire("QuakeBoostStopC")
+loop
+QuakeCrash:
+TNT1 A 0 A_Quake(7,20,0,300,0)
+TNT1 A 0 A_PlaySoundEX("weapon/hardquakeland","Weapon")
+TNT1 A 0 //A_GiveInventory("HalfPressHardmanFlag",200)
+TNT1 A 0 A_GiveInventory("HalfPressHardman_FloorQuake_P",1)
+TNT1 A 0 A_GiveInventory("VivifyDelay10")
+TNT1 A 0 A_JumpIfInventory("PlayerPropertyRage",1,3)
+TNT1 AAAAA 1 A_Stop//
+TNT1 A 0 A_TakeInventory("HalfPressHardman_F")
+TNT1 A 0 A_TakeInventory("CosmeticBossSpeedTrail")
+TNT1 A 0 A_TakeInventory("VivifyDelay10",1)
+TNT1 A 0 A_GiveInventory("VivifyDelay5")
+8H50 H 0 A_TakeInventory("HalfPressHardmanFlag")
+TNT1 A 0 A_PlaySound("M_64/M_Woo",4)
+TNT1 A 0 A_JumpIfInventory("UnholyBossFlag1",1,"QuakeCrash2")
+8H50 IIH 1 A_Stop
+TNT1 A 0 A_TakeInventory("HalfPressHardman_F")
+8H50 H 0 A_TakeInventory("HalfPressHardmanFlag")
+8H50 H 0 ACS_NamedExecuteWithResult("uh_cantpushwallsplayer", 0, false)
+8H50 H 1 ThrustThingZ(0,48,0,0)
+8H50 A 0 A_TakeInventory("UnholyBossAmmo500",50)
+TNT1 A 0 A_JumpIfInventory("UnholyBossFlag1",1,"Ready2")
+goto ReadyFistWait
+QuakeCrash2:
+8H50 GGF 1 A_Stop
+8H50 F 0 A_TakeInventory("HalfPressHardmanFlag")
+8H50 F 0 ACS_NamedExecuteWithResult("uh_cantpushwallsplayer", 0, false)
+8H50 F 1 ThrustThingZ(0,48,0,0)
+8H50 A 0 A_TakeInventory("UnholyBossAmmo500",50)
+goto Ready2
+
+Reload:
+8H50 A 0 A_JumpIfInventory("ProjectilePorting",1,"Ready2")
+8H50 A 0 A_JumpIfInventory("UnholyPower1000",250,"ReloadWarp")
+goto Ready2
+ReloadWarp:
+tnt1 a 0 a_logint(2)
+8H50 A 12 A_GiveInventory("HalfPressHardman_ReloadWarp_P")
+goto Ready2
+
+Flash:
+8H50 J 0 A_JumpIfInventory("IsDead",1,"NoFlash")
+8H50 J 0 A_JumpIfInventory("PlayerPropertyRage",1,2)
+8H50 JJ 1 A_JumpIfInventory("UnholyBossFlag3",1,"Flash.FireFist")
+8H50 J 0 A_JumpIfInventory("PlayerPropertyRage",1,2)
+8H50 JJ 1 A_JumpIfInventory("UnholyBossFlag3",1,"Flash.FireFist")
+8H50 J 0 A_JumpIfInventory("PlayerPropertyRage",1,2)
+8H50 JJ 1 A_JumpIfInventory("UnholyBossFlag3",1,"Flash.FireFist")
+8H50 J 0 A_JumpIfInventory("PlayerPropertyRage",1,2)
+8H50 JJ 1 A_JumpIfInventory("UnholyBossFlag3",1,"Flash.FireFist")
+8H50 J 0 A_JumpIfInventory("PlayerPropertyRage",1,2)
+8H50 JJ 1 A_JumpIfInventory("UnholyBossFlag3",1,"Flash.FireFist")
+8H50 J 0 A_GiveInventory("UnholyBossAmmo500",20)
+8H50 J 0 A_GiveInventory("UnholyPower1000",5)
+loop
+Flash.FireFist:
+8H50 J 0 A_PlaySound("M_64/CannonEdit",1)
+8H50 J 0 A_TakeInventory("GenericBossFlag2")
+8H50 J 0 A_TakeInventory("UnholyBossFlag2")
+8H50 K 2 A_SpawnItemEx("HPHM_KnuckleFiringFX2",3,-10,32,0,0,0,0,0)
+8H50 L 2
+8H50 M 2 A_FireCustomMissile("HPHM_Knuckle2",0,0,-10,-2)
+8H50 N 0 A_JumpIfInventory("IsDead",1,"NoFlash")
+8H50 N 2
+8H50 N 0 A_TakeInventory("UnholyBossFlag3")
+goto Flash.FistWait
+Flash.FistWait:
+8H50 N 0 A_GiveInventory("GenericBossFlag2",1)
+8H50 N 0 A_JumpIfInventory("IsDead",1,"NoFlash")
+8H50 N 0 A_JumpIfInventory("GenericBossFlag2",40,"Flash.FistRefund")
+8H50 N 0 A_JumpIfInventory("UnholyBossFlag2",1,"Flash")
+8H50 N 1
+loop
+Flash.FistRefund:
+8H50 N 0 A_GiveInventory("UnholyBossFlag2")
+goto Flash
+Flash.QuakeStart:
+8H50 J 0 A_JumpIfInventory("UnholyBossFlag2",1,3)
+8H50 QR 2
+goto Flash.QuakeWait
+8H50 OP 2
+goto Flash.QuakeWait
+Flash.QuakeWait:
+TNT1 A 1
+TNT1 A 0 A_JumpIfInventory("IsDead",1,"NoFlash")
+TNT1 A 0 A_JumpIfInventory("HalfPressHardmanFlag",1,"Flash.QuakeWait")
+TNT1 A 0 A_JumpIfInventory("UnholyBossFlag2",1,3)
+8H50 RQ 2
+goto Flash.FistWait
+8H50 PO 2
+goto Flash
+
+BotFire:
+TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo500",500,"BotFire2")
+goto Fire+1
+BotFire2:
+8H50 A 0 A_JumpIfInventory("UnholyBossFlag1",1,"BotFire3")
+8H50 A 0 A_JumpIfInventory("UnholyBossFlag2",1,"BotFire3")
+goto BotQuakeStart
+BotFire3:
+TNT1 A 0 A_Jump(200,"QuakeStart")
+goto Fire+1
+}
+}
+
+actor HalfPressHardmanFlag : Inventory
+{
+inventory.amount 1
+inventory.maxamount 9999
+}
+actor HalfPressHardman_F : HalfPressHardmanFlag {}
+
+actor HalfPressHardman_Ready0_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("ProjectilePorting", 1, "PickupNormal")
+    TNT1 A 0 A_JumpIfInventory("UnholyPower1000", 250, "PickupReload")
+    TNT1 A 0 A_Jump(256, "PickupNormal")
+    goto PickupNormal
+   PickupNormal:
+    TNT1 A 0 A_WeaponReady
+    stop
+   PickupReload:
+    TNT1 A 0 A_WeaponReady(WRF_ALLOWRELOAD)
+    stop
+  }
+}
+actor HalfPressHardman_Ready8_P : IronCurtain_Ready0_P {
+  States {
+   PickupNormal:
+    TNT1 A 0 A_WeaponReady(8)
+    stop
+   PickupReload:
+    TNT1 A 0 A_WeaponReady(8+16)
+    stop
+  }
+}
+
+actor HalfPressHardman_ReloadWarp_P : CustomInventory {
+  Tag "Warp To Universe"
+  inventory.pickupmessage "Power Up! Parallel Universe Access!"
+  States {
+   Pickup:
+    TNT1 A 0 A_GiveInventory("ProjectilePorting")
+    TNT1 A 0 A_SpawnItemEx("HPHM_WarpToUniverse")
+    stop
+  }
+}
+
+actor HalfPressHardman_ReloadWatcher : BasicWatcher {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death")
+    TNT1 A 0 A_JumpIf(CallACS("uh_GetPointerButtonInput", 2, 1) & BT_RELOAD, "ReloadWarp")
+    TNT1 A 0 A_JumpIfInTargetInventory("HalfPressHardmanFlag", 1, "Spawn")
+    goto Death
+   ReloadWarp:
+    TNT1 A 0 A_JumpIfInTargetInventory("UnholyPower1000", 250, 1)
+    goto Spawn
+    TNT1 A 12 A_GiveToTarget("HalfPressHardman_ReloadWarp_P")
+    goto Spawn
+  }
+}
+
+actor HalfPressHardAltBoost_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIf(momz<3,"Pickup2")
+TNT1 A 0 A_ChangeVelocity(3,0,1.875,1)
+TNT1 A 0
+stop
+Pickup2:
+TNT1 A 0 A_Recoil(-3)
+TNT1 A 0 ThrustThingZ(0,12,0,0)
+stop
+}
+}
+
+
+actor HalfPressHardmanFlag_RC : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_JumpIfInventory("PlayerPropertyRage",1,"PickupR")
+TNT1 A 0 A_GiveInventory("HalfPressHardmanFlag",1)
+stop
+PickupR:
+TNT1 A 0 A_GiveInventory("HalfPressHardmanFlag",2)
+stop
+}
+}
+
+actor HPHM_BuiltSpeedRelease_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_TakeInventory("HalfPressHardman_F")
+TNT1 A 0 //A_LogInt(args[2])
+TNT1 A 0 A_JumpIf(CallACS("uh_GetPointerButtonInput", 0, 0) & BT_JUMP, "Pickup_J")
+TNT1 A 0 A_ChangeVelocity(args[2]+5,0,args[3],3)
+stop
+Pickup_J:
+TNT1 A 0 A_TakeInventory("UnholyBossAmmo500", 25)
+TNT1 A 0 A_ChangeVelocity(args[2]+5,0,5,3)
+stop
+}
+}
+
+actor HPHM_WarpToUniverse : BasicWatcher
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SetArg(3, CallACS("core_gettarget"))
+TNT1 A 0 A_SetArg(4, CallACS("uh_HPHM_WarpChecker"))
+TNT1 A 0 A_JumpIf(Args[3] == Args[4], "SpawnError")
+goto SpawnWarp
+SpawnError:
+TNT1 A 4 A_PlaySound("M_64/Invalid",1)
+stop
+SpawnWarp:
+TNT1 A 0 A_LogInt(Args[4])
+TNT1 A 0 ACS_NamedExecuteWithResult("core_unsolidplayer", Args[3]-999, USP_TOGGLEON)
+TNT1 A 0 A_GiveToTarget("Nudge")
+TNT1 A 0 A_TakeFromTarget("UnholyPower1000", 250)
+TNT1 A 0 A_SpawnItemEx("HPHM_WarpToUniverseFX",0,0,28)
+TNT1 A 1 Thing_Move(Args[3], Args[4], 1)
+TNT1 A 0 ACS_NamedExecuteWithResult("core_unsolidplayer", Args[3]-999, USP_TOGGLEOFF_DAMAGE, CallACS("core_getmaxhealth")/10)
+TNT1 A 0 A_Warp(2,0,0,28,0,24)
+TNT1 A 4 A_PlaySound("M_64/Warp1",1)
+stop
+}
+}
+actor HPHM_WarpToUniverseFX : BasicGraphicEffect
+{
+Translation "4:4=160:160","192:192=161:161","198:198=163:163"
+States
+{
+SpawnFrame:
+TNT1 A 0
+TNT1 A 0 A_PlaySound("M_64/Warp1",1)
+8P50 BCDEF 3
+stop
+}
+}
+
+actor HPHM_KnuckleFiringFX1 : BasicGraphicEffect
+{
+Translation "204:204=198:198"
++NOTIMEFREEZE
++THRUACTORS
+Meleerange 3
+Accuracy 10
+Mass 32
+Speed 40
+States
+{
+SpawnFrame:
+XMFX Q 1 A_Warp(2,Meleerange,Accuracy,Mass,0,24)
+YMFX Q 1 A_Warp(2,Meleerange,Accuracy,Mass,0,24)
+VMFX RS 1 A_Warp(2,Meleerange,Accuracy,Mass,0,24)
+stop
+}
+}
+
+actor HPHM_KnuckleFiringFX2 : HPHM_KnuckleFiringFX1
+{
+Accuracy -10
+}
+
+actor HPHM_BoosterFX : BasicGraphicEffect
+{
+Translation "204:204=198:198"
++THRUACTORS
+-NOGRAVITY
+-NOINTERACTION
+States
+{
+SpawnFrame:
+VMFX QRS 1
+SMFX D 1
+stop
+}
+}
+
+actor HalfPressHardCrush_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_SpawnItemEx("HalfPressHardCrush",0,0,-10,0,0,-10)
+TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"Pickup_S")
+stop
+Pickup_S:
+TNT1 A 0 A_SpawnItemEx("HalfPressHardCrush",0,0,-10,0,2,-10)
+TNT1 A 0 A_SpawnItemEx("HalfPressHardCrush",0,0,-10,0,-2,-10)
+stop
+}
+}
+
+actor HalfPressHardCrush : BasicProjectile
+{
+Obituary "%k half A-pressed %o's life."
+damagetype "HalfPressHardman"
++DONTBLAST
++THRUGHOST
+renderstyle none
+damage (96)
+Radius 18
+Height 3
+States
+{
+Spawn:
+TNT1 A 1
+stop
+}
+}
+
+actor HalfPressHardmanPauseFX : BasicGraphicEffect
+{
+Alpha 0.75
+States
+{
+SpawnFrame:
+8P50 A 1
+stop
+}
+}
+
+actor HalfPressHardman_FloorQuake_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 ACS_NamedExecuteAlways("uh_FloorQuakeDamageBoss",0,CallACS("ub_countinv_acs",50,0)*2+500,CallACS("ub_countinv_acs",50,0)*0.25+15,1050)
+TNT1 A 0 A_SpawnItemEx("HalfPressHardman_QuakeFX_H")
+stop
+}
+}
+
+actor HalfPressHardman_FloorQuakeSpawn : Basic_FloorQuakeSpawn
+{
+Obituary "%o's death was spliced in to save time in %k's speedrun."
+damagetype "HalfPressHardmanStun"
+States
+{
+Quake:
+TNT1 A 4 A_SpawnItemEx("HalfPressHardman_FloorQuakeBoom",0,0,28,0,0,0,0,32768+1)
+stop
+}
+}
+
+actor HalfPressHardman_FloorQuakeBoom : Basic_FloorQuakeBoom
+{
+Obituary "%o's death was spliced in to save time in %k's speedrun."
+damagetype "HalfPressHardmanStun"
+}
+
+actor HalfPressHardman_QuakeFX_H : Basic_FloorQuakeFX_H
+{
+Scale 50
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SetArg(3,CallACS("ub_countinv_acs",50,2))
+TNT1 A 0 A_SetPitch(args[3]*0.025+2)
+TNT1 A 0 A_SetScale(args[3]*0.2+50)
+TNT1 A 0 //A_LogInt(Pitch)
+TNT1 A 0 //A_LogInt(ScaleX)
+TNT1 A 0 //A_LogInt(args[3])
+
+TNT1 AAAAA 0 //A_SpawnItemEx("HPHM_QuakeRock",random(156,args[3]*0.2+50),0,random(300,400),0,0,random(-20-args[3]*0.04,-35-args[3]*0.04),random(0,7)*15)
+TNT1 AAAAA 0 //A_SpawnItemEx("HPHM_QuakeRock",random(156,args[3]*0.2+50),0,random(300,400),0,0,random(-20-args[3]*0.04,-35-args[3]*0.04),random(8,15)*15)
+TNT1 AAAAA 0 //A_SpawnItemEx("HPHM_QuakeRock",random(156,args[3]*0.2+50),0,random(300,400),0,0,random(-20-args[3]*0.04,-35-args[3]*0.04),random(16,23)*15)
+
+TNT1 A 1 A_SpawnItemEx("Basic_FloorQuakeFX",0,0,0,0,0,0,0,32768+512+1)  // BasicHardQuakeFX_H
+TNT1 A 1
+stop
+}
+}
+
+actor HPHM_QuakeRock : BasicProjectile
+{
+Translation "192:192=163:163", "198:198=165:165"
+Obituary "%o lost their run due to %k's RNG."
+Damagetype "HalfPressHardman"
++RIPPER
++NOINTERACTION
++DONTBLAST
+Reactiontime 25
+damage (random(25,25))
+radius 20
+height 12
+Speed 1
+Scale 2.5
+States
+{
+Spawn:
+TNT1 A 0
+QBOP DDDD 1 A_JumpIf(ceilingz-z>12,"Spawn2")
+QBOP D 0 A_JumpIf(momz==0,"Death")
+QBOP D 0 A_CountDown
+goto Spawn+1
+Spawn2:
+QBOP D 0 A_ChangeFlag("RIPPER",0)
+QBOP D 0 A_ChangeFlag("NOINTERACTION",0)
+QBOP D 4
+QBOP D 0 A_JumpIf(momz==0,"Death")
+QBOP D 0 A_CountDown
+Goto Spawn2+2
+Death:
+X_8B A 0 
+X_8B A 0 A_PlaySoundEx("weapon/crackerexplode","Weapon")
+X_8B A 0 //A_SetGravity(0.0)
+X_8B A 0 A_Explode(random(60,60),150,0,0,8)
+X_8B ABCDEF 2
+stop
+}
+}
+
+actor HPHM_KnuckleFX : BasicGraphicEffect
+{
+Scale 2.0
+States
+{
+SpawnFrame:
+TNT1 A 2
+VMFX SSSSS 1 A_SetScale(ScaleX - 0.25)
+stop
+}
+}
+
+actor HPHM_Knuckle : BasicProjectile
+{
+translation "192:192=161:161","198:198=163:163","0:0=235:235","204:204=198:198"
+Obituary "%k beat %o's any% record."
+Damagetype "HalfPressHardman"
++DONTREFLECT
++THRUGHOST
+Damage (random(175,225)) //111,164
+Radius 12
+Height 12
+Speed 55 //5-
+scale 2.5
+States
+{
+Spawn:
+HFIS T 0
+HFIS T 0 A_SpawnItemEx("HPHM_KnuckleFX",0,0,0,0,0,0,0,1)
+HFIS T 2 A_TakeFromTarget("GenericBossFlag1")
+loop
+Death:
+TNT1 A 0 A_JumpIfCloser(60,"Return")
+goto Continue
+Death2:
+TNT1 A 0
+stop
+Continue:
+TNT1 A 0 A_SpawnItemEx("HPHM_KnuckleR",0,0,0,0,0,0,0,1)
+stop
+OldDeath:
+TNT1 A 0 A_CustomMissile("HPHM_KnuckleR",0,0,0,0)
+stop
+XDeath:
+TNT1 A 0 A_PlaySoundEx("classes/DerpyHitX","Weapon")
+TNT1 A 0 A_JumpIfCloser(60,"Return")
+TNT1 A 0 A_SpawnItemEx("HPHM_KnuckleRH",0,0,0,0,0,0,0,1)
+stop
+Return:
+TNT1 A 0 A_GiveToTarget("UnholyBossFlag1",1)
+TNT1 A 0 //A_GiveToTarget("KnuckleReturnSnd_P",1)
+TNT1 A 0 A_SpawnItemEx("HPHM_KnuckleReturnSnd_H",0,0,0,0,0,0,0,1)
+stop
+}
+}
+
+actor HPHM_KnuckleReturnSnd_H : BasicWatcher
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_Warp(2,0,0,28,0,24)
+TNT1 A 2 A_PlaySoundEx("wep_L/adapterreturn","Body")
+stop
+}
+}
+
+actor KnuckleReturnSnd_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_PlaySoundEx("wep_L/adapterreturn","Body")
+stop
+}
+}
+
+actor HPHM_KnuckleR : HPHM_Knuckle
+{
+Obituary "%k beat %o's reverse boss order record."
+//+NOINTERACTION
++SEEKERMISSILE
+ReactionTime 210
+Damage (random(250,300)) //111,228
+States
+{
+Spawn:
+HFIS T 0
+HFIS T 0 A_RearrangePointers(0,0,2)
+HFIS T 0 A_FaceTarget
+goto Spawn2
+Spawn2:
+HFIS T 0 A_TakeFromTarget("GenericBossFlag1")
+HFIS TT 0 A_SeekerMissile(90,90,3)
+HFIS T 1 A_JumpIfCloser(60,"Return")
+HFIS T 0 A_CountDown
+HFIS T 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death2")
+HFIS T 0 A_TakeFromTarget("GenericBossFlag1")
+HFIS TT 0 A_SeekerMissile(90,90,3)
+HFIS T 1 A_JumpIfCloser(60,"Return")
+HFIS T 0 A_CountDown
+HFIS T 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death2")
+HFIS T 0 A_SpawnItemEx("HPHM_KnuckleFX",0,0,0,0,0,0,0,1)
+loop
+Death:
+TNT1 A 0 A_JumpIfCloser(60,"Return")
+goto OldDeath
+}
+}
+
+actor HPHM_KnuckleRH : HPHM_KnuckleR
+{
++NOINTERACTION
+States
+{
+Death:
+TNT1 A 0
+goto Return
+}
+}
+
+actor HPHM_Knuckle2 : HPHM_Knuckle
+{
+States
+{
+Spawn:
+HFIS T 0
+HFIS T 0 A_SpawnItemEx("HPHM_KnuckleFX",0,0,0,0,0,0,0,1)
+HFIS T 2 A_TakeFromTarget("GenericBossFlag2")
+loop
+
+Death:
+TNT1 A 0 A_JumpIfCloser(60,"Return")
+goto Continue
+Continue:
+TNT1 A 0 A_SpawnItemEx("HPHM_KnuckleR2",0,0,0,0,0,0,0,1)
+stop
+OldDeath:
+TNT1 A 0 A_CustomMissile("HPHM_KnuckleR2",0,0,0,0)
+stop
+XDeath:
+TNT1 A 0 A_PlaySoundEx("classes/DerpyHitX","Weapon")
+TNT1 A 0 A_JumpIfCloser(60,"Return")
+TNT1 A 0 A_SpawnItemEx("HPHM_KnuckleRH2",0,0,0,0,0,0,0,1)
+stop
+Return:
+TNT1 A 0 A_GiveToTarget("UnholyBossFlag2",1)
+TNT1 A 0 //A_GiveToTarget("KnuckleReturnSnd_P",1)
+TNT1 A 0 A_SpawnItemEx("HPHM_KnuckleReturnSnd_H",0,0,0,0,0,0,0,1)
+stop
+}
+}
+
+actor HPHM_KnuckleR2 : HPHM_Knuckle2
+{
+Obituary "%k beat %o's reverse boss order record."
++SEEKERMISSILE
+ReactionTime 210
+Damage (random(250,300)) //111,228
+States
+{
+Spawn:
+HFIS T 0
+HFIS T 0 A_RearrangePointers(0,0,2)
+HFIS T 0 A_FaceTarget
+goto Spawn2
+Spawn2:
+HFIS T 0 A_TakeFromTarget("GenericBossFlag2")
+HFIS TT 0 A_SeekerMissile(90,90,3)
+HFIS T 1 A_JumpIfCloser(60,"Return")
+HFIS T 0 A_CountDown
+HFIS T 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death2")
+HFIS T 0 A_TakeFromTarget("GenericBossFlag2")
+HFIS TT 0 A_SeekerMissile(90,90,3)
+HFIS T 1 A_JumpIfCloser(60,"Return")
+HFIS T 0 A_CountDown
+HFIS T 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death2")
+HFIS T 0 A_SpawnItemEx("HPHM_KnuckleFX",0,0,0,0,0,0,0,1)
+loop
+Death:
+TNT1 A 0 A_JumpIfCloser(60,"Return")
+goto OldDeath
+}
+}
+
+actor HPHM_KnuckleRH2 : HPHM_KnuckleR2
+{
++NOINTERACTION
+States
+{
+Death:
+TNT1 A 0
+goto Return
+}
+}
+
+
+actor HPHM_GoldenKnuckle : BasicProjectile
+{
+translation "192:192=161:161","198:198=163:163","0:0=235:235"
+Obituary "Shoutouts to %o for trying to beat %k's world record."
+Damagetype "HalfPressHardman"
+Damage (145) //80
+Radius 18
+Height 18
+Speed 60
+Scale 2.0
+States
+{
+Spawn:
+HFI2 T 0
+HFI2 T 0 A_PlaySoundEx("hardman/goldknuckle","Body")
+HFI2 T 3 A_ScaleVelocity(1.1)
+wait
+XDeath:
+TMFX B 0 A_PlaySoundEx("classes/DerpyHitX","Weapon")
+TMFX BCDE 2
+stop
+Death:
+TMFX B 0 Radius_Quake(2,15,0,4,0)
+TMFX BCDE 2
+stop
+}
+}
+
+Actor HPHM_TASCrusherFist : BasicProjectile
+{
+translation "192:192=161:161","198:198=163:163","0:0=235:235"
+Obituary "%o was smacked by %k in a parallel universe."
+Damagetype "HalfPressHardman"
++DONTBLAST
++DONTREFLECT
++THRUGHOST
+Damage (10)
+Radius 24
+Height 24
+Speed 50
+Scale 3.0
+States
+{
+Spawn:
+HFI2 T 0
+HFI2 T 1
+wait
+Death:
+HFI2 T 0 A_SetArg(4,20)
+HFI2 T 0 A_PlaySoundEx("weapon/powerstone","Weapon")
+HFI2 TTTTTT 0 A_SpawnItemEx("HPHM_TASCrusherFistFX1",random(-40,0),random(-40,40),random(-50,50),random(-5,-20),random(-20,20),random(-20,20))
+HFI2 TTTTTT 0 A_SpawnItemEx("HPHM_TASCrusherFistFX2",0,0,random(4,12),random(-25,25),random(-25,25),random(5,25),0,1)
+HFI2 T 1 A_CountDownArg(4,"Death2")
+goto Death+1
+Death2:
+TNT1 A 0 A_PlaySoundEx("wep/ReccaBomb","Weapon")
+TNT1 A 10 A_SpawnItemEx("HPHM_TASCrusherFistBoom",0,0,0,0,0,0,0,1)
+stop
+}
+}
+
+Actor HPHM_TASCrusherFistBoom : BasicExplosion
+{
+Obituary "%o was smacked by %k in a parallel universe."
+Damagetype "HalfPressHardman"
+RenderStyle None
+ReactionTime 8
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("HPHM_TASCrusherFistBoomFX",0,0,0,0,0,0,0,1)
+TNT1 A 0
+TNT1 AA 1 A_Explode(185,200+50*(9-ReactionTime),0,0,200+50*(9-ReactionTime)) //100
+TNT1 A 0 A_Countdown
+goto Spawn+2
+}
+}
+
+Actor HPHM_TASCrusherFistBoomFX : BasicGraphicEffect
+{
+Scale 1.0
+States
+{
+SpawnFrame:
+X_1D B 0
+X_1D B 2 A_SpawnItemEx("HPHM_TASCrusherFistBoomFX_H",0,0,0,0,0,0,0,1)
+X_1D C 2 A_SetScale(2.5)
+X_1D DEFGHI 2 A_SetScale(ScaleX+2.5)
+stop
+}
+}
+
+Actor HPHM_TASCrusherFistBoomFX_H : BasicGraphicEffect
+{
+ReactionTime 8
+States
+{
+SpawnFrame:
+TNT1 A 0
+TNT1 AAAAAAAAAAAA 0 A_SpawnItemEx("HPHM_TASCrusherFistBoomFX2",random(-300,300),random(-300,300),random(-300,300),0,0,0,0,1)
+TNT1 A 2 A_CountDown
+loop
+}
+}
+Actor HPHM_TASCrusherFistBoomFX2 : BasicGraphicEffect
+{
+States
+{
+SpawnFrame:
+TMFX B 0
+TMFX BCDE 2
+stop
+}
+}
+
+Actor HPHM_TASCrusherFistFX1 : BasicGraphicEffect
+{
+translation "192:192=4:4", "198:198=92:92"
+scale 2.0
+States
+{
+SpawnFrame:
+TNT1 A 0
+6P28 ABABABAB 2 A_Fadeout(0.05)
+6P28 AAB 1 A_SetScale(ScaleX-0.5)
+6P28 B 1 A_SetScale(0.25)
+6P28 BBB 1 A_Fadeout(0.05)
+stop
+}
+}
+
+actor HPHM_TASCrusherFistFX2 : BasicGraphicEffect
+{
+Translation "192:192=215:215","198:198=220:220"
+States
+{
+SpawnFrame:
+8P50 M 0
+8P50 M 0 A_Jump(256,1,2)
+8P50 M 25
+stop
+8P50 N 25
+stop
+}
+}
