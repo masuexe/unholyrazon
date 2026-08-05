@@ -613,6 +613,56 @@ script "uh_HPHM_WarpChecker" (void) {
 	}
 }
 
+#define MMSF_MAX_CARDS 9
+str mmsf_cards[MMSF_MAX_CARDS + 1] = {
+	"",
+	"RadarMissile",
+	"PuffBlast",
+	"GhostPulse",
+	"Shuriken",
+	"StunKnuckle",
+	"MoaiFall",
+	"HurricaneDance",  // TyphoonDance
+	"TriCrystal",  // MagicCrystal
+	"PlasmaSword",  // ElectricSlash
+};
+
+int mmsf_card_queue[64][6];
+
+function void ClearSFCards(void) {
+	for (int i = 1; i <= MMSF_MAX_CARDS; i++) {
+		TakeInventory(StrParam(s:mmsf_cards[i], s:"Flag"), 1);
+	}
+}
+
+function void GetSFCard(int player, int index) {
+	ClearSFCards();
+	int card_id = mmsf_card_queue[player][index];
+	if (card_id != 0) {
+		GiveInventory(StrParam(s:mmsf_cards[card_id], s:"Flag"), 1);
+	}
+}
+
+script "rz_DrawSFCards" (void) {
+	int player = PlayerNumber();
+	Log(s:"Drawing cards");
+	for (int i = 0; i < 6; i++) {
+		mmsf_card_queue[player][i] = random(1, MMSF_MAX_CARDS);
+		Log(s:mmsf_cards[mmsf_card_queue[player][i]]);
+	}
+	GetSFCard(player, 0);
+}
+
+script "rz_MoveSFCardQueue" (void) {
+	int player = PlayerNumber();
+	for (int i = 0; i < 6; i++) {
+		mmsf_card_queue[player][i] = mmsf_card_queue[player][i + 1];
+	}
+	Log(s:"Moving card queue");
+	Log(s:mmsf_cards[mmsf_card_queue[player][0]]);
+	GetSFCard(player, 0);
+}
+
 //Functions
 //Functions
 //Func
