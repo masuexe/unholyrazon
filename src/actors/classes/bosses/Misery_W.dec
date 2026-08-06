@@ -1,0 +1,1354 @@
+actor Misery_W_ScriptBar : ScriptBar {}
+actor Misery_W : BaseUnholyBossWep  // Magic_Of_Sorrow
+{
+Obituary "\cdMisery \c-(%k) casted \ciA_Kill\c- on %o." //filler
+Inventory.Pickupmessage "\cjImagine liking Curly." //	"I'm calling any of you out."
+weapon.ammotype "UnholyBossAmmo400" //	"I really will go on a tangent on why goth girls are better."
+weapon.ammotype2 "UnholyPower1000" //	"Cel, you better not take out these green texts." - Trist, unhinged.
+States
+{
+Spawn:
+8H60 [ 1
+wait
+
+Ready:
+MGCH A 0 A_GiveInventory("UnholyPowerLimit_F",1000)
+MGCH A 0 ACS_NamedExecuteWithResult("core_weaponcolor", MISERY_DYE)
+MGCH A 3 ACS_NamedExecuteWithResult("uh_BossMorph", 60,2500,375)
+MGCH A 0 A_TakeInventory("StopShield")
+MGCH A 0 A_GiveInventory("AirJumpLimit", 9)  // gotta simulate the ability to "float"
+MGCH A 0 ACS_NamedExecuteWithResult("core_SetCustomActorProperty", 0, CAPROP_AirJumpZ, 400000)  // 6 * 65536
+// MGCH A 0 A_GiveInventory("Misery_Item", 1) //For some reason, it doesn't give it on the get go.
+MGCH A 0 A_GunFlash
+goto ReadyX
+ReadyX: //THE FIRST READY ALWAYS
+MGCH A 2 A_GiveInventory("Misery_Ready8_P")
+MGCH A 0 A_JumpIfInventory("Misery_Cooldown", 1, "ReadyX")
+Goto ReadyY
+ReadyY:
+MGCH A 2 A_GiveInventory("Misery_Ready0_P")
+loop
+Deselect:
+MGCH C 0
+goto DeselectSwap
+Select:
+MGCH C 0
+goto SelectSwap
+//////
+
+Flash: //Misery_Cooldown
+TNT1 A 0 A_GiveInventory("Misery_Orb_Spawner")
+goto The_Idle_Game
+The_Idle_Game:
+TNT1 A 0 A_TakeInventory("Misery_Cooldown", 1)
+TNT1 A 1 A_GiveInventory("UnholyBossAmmo400", 1)
+TNT1 A 0 A_JumpIf(!CallACS("uh_PointerIsABoss_CheckInv"), "NoFlash")
+TNT1 A 0 A_JumpIfInventory("Misery_Orb_Canceller", 1, "Gacha_Joke")
+Loop
+Gacha_Joke: //Just so it's not instant.
+TNT1 A 0 A_TakeInventory("Misery_Cooldown", 1)
+TNT1 A 1 A_GiveInventory("UnholyBossAmmo400", 1)
+TNT1 A 0 A_TakeInventory("Misery_Cooldown", 1)
+TNT1 A 1 A_GiveInventory("UnholyBossAmmo400", 1)
+TNT1 A 0 A_TakeInventory("Misery_Orb_Canceller")
+TNT1 A 0 A_TakeInventory("Misery_Cooldown", 1)
+TNT1 A 1 A_GiveInventory("UnholyBossAmmo400", 1)
+Goto Farm_It_All_Again
+Farm_It_All_Again: //You don't get your orbs after a few.
+TNT1 A 0 A_GiveInventory("CutterFlag", 1)
+TNT1 A 0 A_TakeInventory("Misery_Cooldown", 1)
+TNT1 A 1 A_GiveInventory("UnholyBossAmmo400", 1)
+TNT1 A 0 A_JumpIf(!CallACS("uh_PointerIsABoss_CheckInv"), "NoFlash")
+TNT1 A 0 A_JumpIfInventory("CutterFlag", 105, "Here_We_Go_Again") //35 tics //70 tics
+Loop
+Here_We_Go_Again:
+TNT1 A 0 A_TakeInventory("CutterFlag")
+Goto Flash
+
+//////
+Fire:
+Charge: //
+//MGCH A 0 A_GiveInventory("BossItemUseFlag", 1)
+MGCH A 1 Offset(2,48)
+MGCH A 1 Offset(2,50)
+MGCH A 1 Offset(2,51)
+MGCH A 1 Offset(2,52)
+goto Charge0
+Charge0:
+MGCH A 0 A_JumpIfInventory("Misery_Charge", 17, "Charge1")
+MGCH A 0 A_JumpIfInventory("Misery_Charge", 16, "ChargeStart")
+MGCH A 0 //A_GiveInventory("UnholyBossAmmo250", 1)
+MGCH A 1 A_GiveInventory("Misery_Charge", 1 + CallACS("uh_CheckRune", RUNE_RAGE))
+MGCH A 0 A_Refire("Charge0")
+goto Fire1
+ChargeStart:
+MGCH A 0 A_PlaySoundEx("weapon/MiseryCharge","Weapon")
+Goto Charge1
+
+Charge1:
+MGCH A 0 A_JumpIfInventory("Misery_Charge",30,"Charge2")
+MGCH A 0 //A_GiveInventory("UnholyBossAmmo250", 1)
+MGCH A 1 Offset(2,52) A_GiveInventory("Misery_Charge", 1 + CallACS("uh_CheckRune", RUNE_RAGE))
+MGCH A 0 A_Refire("Charge1")
+goto Fire1
+
+Charge2:
+MGCH A 0 A_JumpIfInventory("Misery_OverCharge",50,"Charge33")
+MGCH A 1 Offset(2,52) A_RailWait
+MGCH A 0 //A_SpawnItemEX("StuntDoubleFistInidicator",-10,18,29,0,0,0)
+MGCH A 0 //A_GiveInventory("UnholyBossAmmo250", 1)
+MGCH A 0 A_GiveInventory("Misery_OverCharge", 1)
+MGCH A 0 A_Refire("Charge22")
+goto Fire2
+Charge22:
+MGCH A 0 A_JumpIfInventory("Misery_OverCharge",50,"Charge3")
+MGCH B 1 Offset(2,52) A_RailWait
+MGCH A 0 //A_SpawnItemEX("StuntDoubleFistInidicator",-10,18,28,0,0,0)
+MGCH A 0 //A_GiveInventory("UnholyBossAmmo250", 1)
+MGCH A 0 A_GiveInventory("Misery_OverCharge", 1)
+MGCH A 0 A_Refire("Charge2")
+goto Fire2
+
+//A_RailWait, do you need it? Maybe? Just tryin' somethin here.
+Charge3:
+MGCH A 0 A_SpawnItemEx("Misery_ChargeFX",random(-32,32),random(-32,32),0,momx,momy,20,0,9)
+MGCH B 1 Offset(2,52) A_WeaponReady(WRF_NOPRIMARY|WRF_NOSWITCH)//A_RailWait
+MGCH A 0 //A_SpawnItemEX("StuntDoubleFistInidicator",-10,18,29,0,0,0)
+MGCH A 0 //A_GiveInventory("UnholyBossAmmo250", 1)
+MGCH A 0 //ACS_NamedExecuteWithResult("core_chargecolor", 93)
+MGCH A 0 A_Refire("Charge33")
+goto Fire3
+Charge33:
+MGCH A 0 A_SpawnItemEx("Misery_ChargeFX",random(-32,32),random(-32,32),0,momx,momy,20,0,9)
+MGCH C 1 Offset(2,52) A_WeaponReady(WRF_NOPRIMARY|WRF_NOSWITCH)//A_RailWait
+MGCH A 0 //A_SpawnItemEX("StuntDoubleFistInidicator",-10,18,29,0,0,0)
+MGCH A 0 //A_GiveInventory("UnholyBossAmmo250", 1)
+MGCH A 0 //ACS_NamedExecuteWithResult("core_chargecolor", SCROTOSTUNTDOUBLE_DYE)
+MGCH A 0 A_Refire("Charge3")
+goto Fire3
+
+Fire1:
+MGCH A 0 Offset(16,5)A_TakeInventory("Misery_OverCharge")
+MGCH A 2 Offset(16,5)A_TakeInventory("Misery_Charge")
+MGCH A 0 //ACS_NamedExecuteWithResult("core_chargecolor", MAGICDEVILEYE_DYE)
+MGCH A 2 Offset(4,13)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH A 2 Offset(-10,22)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH A 2 Offset(-26,32)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH B 0 A_PlaySoundEx("weapon/MiseryOrbFire","Weapon")
+MGCH B 0 A_FireCustomMissile("Misery_Basic_Projectile",0,0,8,0)
+MGCH BC 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH A 2 Offset(-22,37)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH A 0 A_TakeInventory("BossItemUseFlag") //ANTI-ITEM PRE-USE
+MGCH A 0 //ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH A 0
+Goto ReadyX
+Fire2:
+MGCH A 0 Offset(16,5)A_TakeInventory("Misery_OverCharge")
+MGCH A 2 Offset(16,5)A_TakeInventory("Misery_Charge")
+MGCH A 0 //ACS_NamedExecuteWithResult("core_chargecolor", MAGICDEVILEYE_DYE)
+MGCH A 2 Offset(4,13)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH A 2 Offset(-10,22)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH A 2 Offset(-26,32)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH B 0 A_PlaySoundEx("weapon/MiseryOrbFire","Weapon")
+MGCH B 0 A_FireCustomMissile("Misery_Basic_Projectile",0,0,8,0)
+MGCH B 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH C 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH B 0 A_PlaySoundEx("weapon/MiseryOrbFire","Weapon")
+MGCH B 0 A_FireCustomMissile("Misery_Basic_Projectile",random(-4,4),0,8,0)
+MGCH B 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH C 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH B 0 A_PlaySoundEx("weapon/MiseryOrbFire","Weapon")
+MGCH B 0 A_FireCustomMissile("Misery_Basic_Projectile",random(-4,4),0,8,0)
+MGCH B 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH C 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH B 0 A_PlaySoundEx("weapon/MiseryOrbFire","Weapon")
+MGCH B 0 A_FireCustomMissile("Misery_Basic_Projectile",random(-6,6),0,8,0)
+MGCH B 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH C 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH B 0 A_PlaySoundEx("weapon/MiseryOrbFire","Weapon")
+MGCH B 0 A_FireCustomMissile("Misery_Basic_Projectile",random(-7,7),0,8,0)
+MGCH B 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH C 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH B 0 A_PlaySoundEx("weapon/MiseryOrbFire","Weapon")
+MGCH B 0 A_FireCustomMissile("Misery_Basic_Projectile",random(-8,8),0,8,0)
+MGCH BC 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH A 2 Offset(-22,37)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH A 0 A_TakeInventory("BossItemUseFlag") //ANTI-ITEM PRE-USE
+MGCH A 0 //ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH A 0
+Goto ReadyX
+Fire3:
+MGCH A 0 Offset(16,5)A_TakeInventory("Misery_OverCharge")
+MGCH A 2 Offset(16,5)A_TakeInventory("Misery_Charge")
+MGCH A 0 //ACS_NamedExecuteWithResult("core_chargecolor", MAGICDEVILEYE_DYE)
+MGCH A 2 Offset(4,13)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH A 2 Offset(-10,22)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH A 2 Offset(-26,32)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH B 0 A_PlaySoundEx("weapon/MiseryThunder","SoundSlot7")
+MGCH B 0 A_FireCustomMissile("Misery_Bolt_Projectile",0,0,8,0)
+MGCH B 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH C 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH B 0 A_PlaySoundEx("weapon/MiseryThunder","SoundSlot7")
+MGCH B 0 A_FireCustomMissile("Misery_Bolt_Projectile",random(-2,2),0,8,0)
+MGCH B 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH C 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH B 0 A_PlaySoundEx("weapon/MiseryThunder","SoundSlot7")
+MGCH B 0 A_FireCustomMissile("Misery_Bolt_Projectile",random(-2,2),0,8,0)
+MGCH BC 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH A 2 Offset(-22,37)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH A 0 A_TakeInventory("BossItemUseFlag") //ANTI-ITEM PRE-USE
+MGCH A 0 //ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH A 0
+Goto ReadyX
+
+DecideMyFate:
+MGCH A 1 A_WeaponReady(14)
+MGCH A 0 A_JumpIfInventory("UnholyPower1000",1000,"THUNDERBREAKER")
+Goto Fire3
+
+THUNDERBREAKER:
+MGCH A 0 A_SpawnItemEx("Misery_ThunderBreak_PlayerFX",0,0,0,0,0,0,0, 1)
+MGCH A 0 A_TakeInventory("UnholyPower1000")
+MGCH A 0 Offset(16,5)A_TakeInventory("Misery_OverCharge")
+MGCH A 0 //ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH B 2 Offset(16,5)A_TakeInventory("Misery_Charge")
+MGCH C 2 Offset(4,13)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH B 2 Offset(-10,22)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH C 2 Offset(-26,32)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH B 0 A_PlaySoundEx("weapon/MiseryThunder","Weapon")
+MGCH B 0 A_FireCustomMissile("Misery_ThunderBreak_Spawner",0,0,8,0)
+MGCH B 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH C 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH B 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH C 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH B 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH C 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH BABABABAAA 2 Offset(-44,43)
+MGCH A 0 A_TakeInventory("BossItemUseFlag") //ANTI-ITEM PRE-USE
+MGCH A 2 Offset(-22,37)
+MGCH A 0
+Goto ReadyX
+
+Altfire: //There is no way you're able to enter this alt with the charge.
+MGCH A 0 A_JumpIfInventory("Misery_OverCharge",50,"DecideMyFate")
+MGCH A 2 //ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH A 2 Offset(4,13)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH A 2 Offset(-10,22)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH A 2 Offset(-26,32)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH B 0 A_PlaySoundEx("weapon/jewelsatellite","Weapon")
+MGCH B 0 A_FireCustomMissile("Misery_Pinpointer",0,0,8,0)
+MGCH B 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH C 2 Offset(-44,43)//ACS_NamedExecuteWithResult("core_chargecolor", 40003)
+MGCH A 0 //ACS_NamedExecuteWithResult("core_chargecolor", 40002)
+MGCH A 0 A_TakeInventory("BossItemUseFlag") //ANTI-ITEM PRE-USE
+MGCH A 2 Offset(-22,37) A_GiveInventory("Misery_Cooldown",100)
+Goto ReadyX
+
+//
+Reload:
+MGCH A 0 A_JumpIfInventory("UnholyBossAmmo400", 400, "StateNoOneAsked")
+goto ReadyX
+StateNoOneAsked:
+MGCH A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true)
+MGCH A 0 A_Stop
+MGCH A 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, true)
+MGCH A 0 ACS_NamedExecuteWithResult("core_nogravityplayer", 0, true)
+//
+MGCH A 2 Offset(4,13)
+MGCH A 2 Offset(-10,22)
+MGCH A 2 Offset(-26,32)
+MGCH A 0 A_GiveInventory("Misery_ItemUse_P")
+MGCH B 0 A_PlaySoundEx("weapon/MiseryCharge","Weapon")
+//
+MGCH BCBCBCBCBCBCBC 2 Offset(-44,43) //28 //26 tics
+MGCH A 0 A_SpawnItemEX("Misery_Tele_SND") //
+MGCH A 2 Offset(-22,37) A_SpawnItemEx("Misery_Tele_Starter",0,0,0)
+MGCH A 0 A_GiveInventory("Misery_ItemEnd_P")
+MGCH A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false)
+MGCH A 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, false)
+MGCH A 0 ACS_NamedExecuteWithResult("core_nogravityplayer", 0, false)
+MGCH AAAAA 2 A_TakeInventory("BossItemUseFlag") //MAKING SURE YOU CAN'T SPAM THIS
+Goto ReadyX
+//
+}
+}
+
+actor Misery_Ready0_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo400", 400, "PickupReload")
+    TNT1 A 0 A_Jump(256, "PickupNormal")
+    goto PickupNormal
+   PickupNormal:
+    TNT1 A 0 A_WeaponReady
+    goto Ammo
+   PickupReload:
+    TNT1 A 0 A_WeaponReady(WRF_ALLOWRELOAD)
+    goto Ammo
+   Ammo:
+    TNT1 A 0
+    stop
+  }
+}
+actor Misery_Ready8_P : Misery_Ready0_P {
+  States {
+   PickupNormal:
+    TNT1 A 0 A_WeaponReady(8)
+    goto Ammo
+   PickupReload:
+    TNT1 A 0 A_WeaponReady(8 + 16)
+    goto Ammo
+  }
+}
+
+Actor Misery_Orb_Spawner : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_FireCustomMissile("Misery_Orb_Spinner",0,0,0,0)
+TNT1 A 0 A_FireCustomMissile("Misery_Orb_Spinner",90,0,0,0)
+TNT1 A 0 A_FireCustomMissile("Misery_Orb_Spinner",180,0,0,0)
+TNT1 A 0 A_FireCustomMissile("Misery_Orb_Spinner",270,0,0,0)
+stop
+}
+}
+
+//Uh oh
+actor Misery_ChargeFX : BasicGraphicEffect
+{
+States
+{
+SpawnFrame:
+CHPO X 5
+stop
+}
+}
+//
+actor Misery_Cooldown : Inventory
+{
+inventory.amount 1
+inventory.maxamount 100 //100
+}
+
+//Basic Charge
+actor Misery_Charge : Inventory
+{
+inventory.amount 1
+inventory.maxamount 30 //40
+}
+//The.. "Over" charge...
+actor Misery_OverCharge : Inventory
+{
+inventory.amount 1
+inventory.maxamount 50 //60
+}
+
+actor Misery_Fling_10 : Basic_PainFling_H {Args 0, 10, 2}
+actor Misery_Fling_30 : Basic_PainFling_H {Args 0, 30, 2}
+
+actor Misery_Basic_Projectile : BasicProjectile
+{ //You're better off extracting the... actual projectile sprites
+Translation "4:4=8:8", "210:214=77:77"
+Obituary "\cdMisery \c-(%k) eliminated %o." //filler
+damage (150) //75
+damagetype "Misery_A"
++FORCEXYBILLBOARD
++THRUGHOST //
+Radius 14 //16
+Height 14 //16
+speed 60 //80
+scale 2.5 //2.5
+States
+{
+Spawn:
+8P59 GHI 3
+loop
+Death:
+TNT1 A 0
+8P59 A 0 A_PlaySoundEX("weapon/BalrogOrbHit","Weapon")
+8P59 BCDEF 3
+stop
+}
+}
+
+actor Misery_Bolt_Projectile : BasicProjectile
+{
+Translation "192:192=78:78", "198:198=77:77", "202:202=78:78", "4:4=84:84"
+Obituary "\cdMisery \c-(%k) turned %o into ashes." //filler
+damagetype "Misery_B"
++THRUGHOST //
+Damage (325) //
+Radius 25
+Height 16
+Speed 80 //60
+scale 2.5
+States
+{
+Spawn: //The SHOCKING version of Proto charge shot.
+8P60 CD 3 A_SpawnItemEx("Misery_Bolt_FX_A",0,0,0,0,0,0,0, 1)
+loop
+Death: //Technically, the bolts spawn cloud smoke
+TNT1 A 1 A_SpawnItemEX("Misery_Bolt_Projectile_BOOM",0,0,0,0,0,0,0, 1) //You could try adding them???
+Stop
+}
+}
+
+actor Misery_Bolt_Projectile_BOOM : BasicExplosion
+{
+Obituary "\cdMisery \c-(%k) turned %o into ashes." //filler
+damagetype "Misery"
+scale 2.5 //3.5
+States
+{
+Spawn:
+TNT1 A 0 A_Stop
+TNT1 A 0 A_PlaySoundEx("weapon/BalrogMissileExplode","Weapon")
+TNT1 A 0 A_Explode(75,128,0,0,64)
+TNT1 AAA 0 A_SpawnItemEx("Balrog_Smoke_Cloud",random(-10,10),random(-10,10),random(-10,10),random(-8,8),random(-8,8),random(-4,4),0,0) //32
+TNT1 AAAAAA 2 A_SpawnItemEx("Misery_Bolt_Projectile_EX",random(-96,96),random(-96,96),random(-96,96),0,0,0,0, 1)
+stop //X_8B ABCDEF 2
+}
+}
+
+actor Misery_Bolt_Projectile_EX : BasicExplosion
+{
+Obituary "\cdMisery \c-(%k) turned %o into ashes." //filler
+damagetype "Misery"
+scale 3.5 //3.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_Stop //Unnecessary?
+//TNT1 A 0 A_PlaySoundEx("classes/thunderbolt","Weapon")
+TNT1 A 0 A_Explode(15,48,0,0,16)
+TNT1 AAAA 2 A_SpawnItemEx("Balrog_Smoke_Cloud",random(-48,48),random(-48,48),random(-48,48),random(-8,8),random(-8,8),random(-8,8),0,0) //32
+stop
+}
+}
+
+//Basic Bolt FX
+//The shots look more like protobuster shots-- but you know how bland that is.
+//The excuse for making the bolts projectiles and not like Magnet boss's alt is, well--
+//In a FPS atmosphere, that is kinda... EEEEH at best.
+//...So just make them into a damn projectile.
+actor Misery_Bolt_FX_A : BasicGraphicEffect
+{
+States
+{
+SpawnFrame:
+8P60 OPQRST 2
+stop
+}
+}
+
+actor Misery_Smoke_Cloud : Balrog_Smoke_Cloud {}
+
+actor Misery_Smoke_Cloud_X : Misery_Smoke_Cloud {
+  alpha 0.65 
+  Radius 6
+  Height 6
+  scale 1.5 
+}
+
+//
+//
+
+actor Misery_Block_Drop : BasicProjectile
+{
+Translation "204:204=84:84","195:195=77:77"
+Obituary "%o's bones were broken by \cdMisery \c-(%k)'s block drop." //filler
+damagetype "Misery_C"
++RIPPER
++THRUGHOST //
++NOINTERACTION
+Reactiontime 15
+damage (450) //Listen, it's a giant block...
+radius 30 //30 //20
+height 30 //30 //12
+States
+{
+Spawn:
+8P60 A 0
+8P60 A 0 A_ChangeVelocity(0,0,momz,3)
+8P60 AAAAAAAA 1 A_JumpIf(ceilingz-z>30,"Spawn2")
+8P60 A 0 A_JumpIf(momz==0,"Death")
+8P60 A 0 A_CountDown
+Goto Spawn+2
+Spawn2:
+8P60 A 0 A_ChangeFlag("RIPPER",0)
+8P60 A 0 A_ChangeFlag("NOINTERACTION",0)
+8P60 AAA 3 A_ChangeVelocity(0,0,momz,3) 
+8P60 A 0 A_JumpIf(momz==0,"Death")
+8P60 A 0 A_CountDown
+Goto Spawn2+2
+Death:
+TNT1 A 1 A_SpawnItemEX("Misery_Block_Drop_Explode",0,0,0,0,0,0,0,0)
+stop
+}
+}
+
+actor Misery_Block_Drop_Explode : BasicExplosion
+{
+Translation "192:192=84:84","198:198=77:77"
+Obituary "Despite everything, \cdMisery \c-(%k)'s block managed to kill %o." //filler
+damagetype "Misery"
+Scale 3.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_Stop
+TNT1 A 0 A_ChangeFlag("NOGRAVITY", 1)
+TNT1 A 0 A_PlaySoundEx("weapon/CaveStoryQuake","Voice")
+TNT1 A 0 A_SpawnItemEx("Misery_Block_Drop_FX_Starter",0,0,0,0,0,0,0,0)
+TNT1 A 0 A_Explode(100,164,0,0,32) //125
+TNT1 A 0 Radius_Quake(6,10,0,16,0)
+TNT1 AAAAAA 0 A_SpawnItemEx("Misery_Smoke_Cloud",random(-32,32),random(-32,32),random(4,32),random(-8,8),random(-8,8),random(2,8),0,0) //32
+TNT1 A 0 A_PlaySoundEx("Boss/BalrogBoom","Weapon")
+X_8B AA 1 A_SpawnItemEx("Misery_Block_Drop_Boom",random(-96,96),random(-96,96),random(-84,84),0,0,0,0, 1)
+X_8B BB 1 A_SpawnItemEx("Misery_Block_Drop_Boom",random(-102,102),random(-102,102),random(-84,84),0,0,0,0, 1)
+X_8B CC 1 A_SpawnItemEx("Misery_Block_Drop_Boom",random(-108,108),random(-108,108),random(-84,84),0,0,0,0, 1)
+X_8B DD 1 A_SpawnItemEx("Misery_Block_Drop_Boom",random(-114,114),random(-114,114),random(-84,84),0,0,0,0, 1)
+X_8B EE 1 A_SpawnItemEx("Misery_Block_Drop_Boom",random(-120,120),random(-120,120),random(-84,84),0,0,0,0, 1)
+X_8B FF 1 A_SpawnItemEx("Misery_Block_Drop_Boom",random(-126,126),random(-126,126),random(-84,84),0,0,0,0, 1)
+stop
+}
+}
+
+actor Misery_Block_Warning
+{
+Translation "192:192=84:84","198:198=77:77"
++MISSILE
+-SOLID
++THRUACTORS
++CLIENTSIDEONLY
++BOUNCEONWALLS
++BOUNCEONFLOORS
++BOUNCEONCEILINGS
++CANBOUNCEWATER
+//
++NOINTERACTION
+//
+bouncecount 8
+bouncefactor 0.2
+wallbouncefactor 0.2
+Reactiontime 15
+radius 2
+height 2 
+Scale 2.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_GiveInventory("MM8BDMProjSpawnFuncClient")
+TNT1 A 0 //A_ChangeVelocity(0,0,momz,3)
+TNT1 AAAAAAAAA 1 A_JumpIf(ceilingz-z>2,"Spawn2")
+TNT1 A 0 //A_JumpIf(momz==0,"Death")
+TNT1 A  0 A_CountDown
+Goto Spawn+2
+Spawn2:
+TNT1 A 0 A_ChangeFlag("NOINTERACTION",0)
+TNT1 A 0 A_Jump(256,"Frame_A","Frame_B","Frame_C")
+Frame_A:
+6P51 D 1 
+Loop
+Frame_B:
+6P51 E 1 
+Loop
+Frame_C:
+X_5C A 1 
+Loop
+Death:
+TNT1 A 0 A_Stop 
+TNT1 A 0 A_ChangeFlag("NOGRAVITY", 1)
+TMFX ABCD 1
+stop
+}
+}
+
+
+actor Misery_Block_Drop_FX_Starter : BasicGraphicEffect
+{
+ReactionTime 6
+States
+{
+SpawnFrame:
+TNT1 A 0
+TNT1 AAAA 0 A_SpawnItemEx("Misery_Block_Drop_FX",0,0,0,random(-20,20),random(-20,20),random(5,15),random(0,359),0)
+TNT1 A 2
+TNT1 A 0 A_CountDown
+loop
+}
+}
+
+actor Misery_Block_Drop_FX : BasicGraphicEffect
+{
+Translation "204:204=84:84","195:195=77:77"
+-NOINTERACTION
+-NOGRAVITY
++THRUACTORS
++BOUNCEONWALLS
++BOUNCEONFLOORS
++BOUNCEONCEILINGS
++CANBOUNCEWATER
+States
+{
+SpawnFrame:
+8P60 B 2
+TNT1 A 2
+8P60 B 2
+TNT1 A 2
+8P60 B 2
+TNT1 A 2
+8P60 B 2
+TNT1 A 2
+8P60 B 2
+TNT1 A 2
+stop
+}
+}
+
+actor Misery_Block_Drop_Boom : BasicExplosion
+{
+Obituary "Despite everything, \cdMisery \c-(%k)'s block managed to kill %o." //filler
+damagetype "Misery"
+Scale 1.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_Explode(15,48,0,0,16)
+//X_8B ABCDEF 2 
+TNT1 AAAA 0 A_SpawnItemEx("Misery_Smoke_Cloud",random(-32,32),random(-32,32),random(-32,32),random(-8,8),random(-8,8),random(-4,4),0,0) //32
+stop
+}
+}
+
+//
+//
+//
+
+actor Misery_Pinpointer : BasicFastProjectile
+{
+Translation "192:192=84:84","198:198=77:77"
+Obituary "\cdMisery \c-(%k) made sure %o's life story was given various ports on various consoles." //filler
+damagetype "Misery"
++SKYEXPLODE
++DONTBLAST
+//+RIPPER
++BLOODLESSIMPACT
++THRUGHOST //
+reactiontime 20 //20
+MissileHeight 8
+MissileType "Misery_Pinpointer_FX"
+damage (10)
+radius 16 //16 //30
+height 16 //16 //30
+speed 1000 //1000
+Scale 2.5
+States
+{ //If the hitbox is 30 | 30, wouldn't that be... I dunno..
+Spawn:
+TNT1 A 1 
+wait
+Crash:
+XDeath:
+TNT1 A 0 A_PlaySoundEx("classes/KOSpecialSFX","Weapon")
+TNT1 A 0 A_SpawnItemEx("Misery_PP_Target_DH",0,0,0,0,0,0,0, 1)
+TNT1 A 1
+stop
+Ceiling:
+TNT1 A 0 A_SpawnItemEx("Misery_PP_Target",0,0,-16,0,0,0,0, 1) //-8z
+TNT1 A 1
+stop
+Death:
+TNT1 A 0 A_PlaySoundEx("weapon/lightningbolt", "Weapon")
+TNT1 A 0 A_JumpIf(ceilingz-z<=16,"Ceiling")
+TNT1 A 0 A_SpawnItemEx("Misery_PP_Target",-16,0,0,0,0,0,0, 1) //-14x
+TNT1 A 1
+stop
+}
+}
+
+actor Misery_PP_Target_DH : BasicExplosion
+{
+DamageType "Misery"
+Scale 2.5 //8.5
+States
+{
+Spawn:
+X_BC DEFGHI 1 A_SpawnItemEx("Misery_Block_Warning",random(-64,64),random(-64,64),320,random(-2,2),random(-2,2),-42,0,0) //2
+//TNT1 AAAAAA 1 A_SpawnItemEx("Misery_Block_Warning",random(-64,64),random(-64,64),320,random(-2,2),random(-2,2),-42,0,0)
+TNT1 A 1 A_SpawnItemEx("Misery_Block_Drop",0,0,320,0,0,-40,0,0) //-30
+stop
+}
+}
+
+actor Misery_PP_Target : BasicExplosion
+{
+Damagetype "Misery" //
+Scale 2.5 //8.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_JumpIfCloser(350,"Spawn7")
+TNT1 A 0 A_JumpIfCloser(600,"Spawn6")
+TNT1 A 0 A_JumpIfCloser(850,"Spawn5")
+TNT1 A 0 A_JumpIfCloser(1100,"Spawn4")
+TNT1 A 0 A_JumpIfCloser(1350,"Spawn3")
+TNT1 A 0 A_JumpIfCloser(1600,"Spawn2")
+Spawn1: //2 tics each one
+X_BC D 2 A_SpawnItemEx("Misery_Block_Warning",random(-64,64),random(-64,64),320,random(-2,2),random(-2,2),-42,0,0)
+Spawn2:
+X_BC E 2 A_SpawnItemEx("Misery_Block_Warning",random(-64,64),random(-64,64),320,random(-2,2),random(-2,2),-42,0,0)
+Spawn3:
+X_BC F 2 A_SpawnItemEx("Misery_Block_Warning",random(-64,64),random(-64,64),320,random(-2,2),random(-2,2),-42,0,0)
+Spawn4:
+X_BC G 2 A_SpawnItemEx("Misery_Block_Warning",random(-64,64),random(-64,64),320,random(-2,2),random(-2,2),-42,0,0)
+Spawn5:
+X_BC H 2 A_SpawnItemEx("Misery_Block_Warning",random(-64,64),random(-64,64),320,random(-2,2),random(-2,2),-42,0,0)
+Spawn6:
+X_BC I 2 A_SpawnItemEx("Misery_Block_Warning",random(-64,64),random(-64,64),320,random(-2,2),random(-2,2),-42,0,0)
+Spawn7:
+X_BC J 2 A_SpawnItemEx("Misery_Block_Warning",random(-64,64),random(-64,64),320,random(-2,2),random(-2,2),-42,0,0)
+goto Death
+Death:
+TNT1 A 0
+TNT1 AAAAAAA 2 A_SpawnItemEx("Misery_Block_Warning",random(-64,64),random(-64,64),320,random(-2,2),random(-2,2),-42,0,0)
+//TNT1 AAAA 1 A_SpawnItemEx("Misery_Block_Warning",random(-64,64),random(-64,64),320,random(-2,2),random(-2,2),-42,0,0)
+TNT1 A 1 A_SpawnItemEx("Misery_Block_Drop",0,0,320,0,0,-40,0,0)
+stop
+}
+}
+
+actor Misery_Pinpointer_FX : BasicGraphicEffect
+{
+Translation "192:192=4:4","198:198=95:95"
++FORCEXYBILLBOARD
+Alpha 0.85 //0.8
+Scale 1.5 //1.5
+States
+{
+SpawnFrame: //2 tic
+X_BC KLM 1 A_FadeOut(0.065) //0.05
+loop
+}
+}
+
+
+//
+//
+//
+
+actor Misery_Squish_Slower : PowerSpeed
+{
+speed 0.2
+powerup.duration 105
+}
+
+actor Misery_Squish_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0
+TNT1 A 0 A_JumpIfInventory("Misery_Squish_Slower", 1, "No")
+TNT1 A 0 A_SetScale(ScaleX,ScaleX-(ScaleX/4)*3)
+TNT1 A 0 A_GiveInventory("Misery_Squish_Slower")
+TNT1 A 0 A_SpawnItemEx("Misery_Squish_Watcher")
+stop
+No:
+TNT1 A 0
+stop
+}
+}
+actor Misery_UnSquish_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0
+TNT1 A 0 A_SetScale(2.5,2.5)
+stop
+}
+}
+
+actor Misery_Squish_Watcher : BasicWatcher
+{
+ReactionTime 105
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1 A_CountDown
+wait
+Death:
+TNT1 A 1 A_GiveToTarget("Misery_UnSquish_P")
+stop
+}
+}
+
+// Thank you classes v9f DM2 shield?
+actor Misery_Orb_Spinner : ProjSpawnFuncActor
+{
+translation "192:192=3:3", "198:198=7:7"
+damagetype "Misery_A"
+Obituary "$OB_BOSS60B" //filler
+-SOLID
++MISSILE
++DONTSPLASH
++DONTBLAST
++DONTDRAIN
++DONTREFLECT
++DONTRIP
++GHOST
+//+INVULNERABLE
++SHOOTABLE
++NOBLOOD
++NOCLIP
++NORADIUSDMG
++NOTIMEFREEZE
++NOGRAVITY
++NOTARGETSWITCH
++BRIGHT
+Renderstyle "Translucent"
+Alpha 0.8
+damagefactor "Misery", 0.0
+damagefactor "Misery_A", 0.0
+damagefactor "Misery_B", 0.0
+damagefactor "Misery_C", 0.0
+painchance 0 //make 256 and give a painstate if you want to be convinced they work as intended? Also have a check there for CutterFlags/KnightFlags to jump properly
+painchance "Misery", 0
+painchance "Misery_A", 0
+painchance "Misery_B", 0
+painchance "Misery_C", 0
+//
+painchance "Telefrag", 0
+damagefactor "Telefrag", 0.0
+//
+Species "TheseOrbsAreAStupid"
+PainSound "weapon/CaveStoryBlock"
+health 0x7ffffffc
+Args 8, 25 
+Damage (0)
+Radius 16
+Height 20
+Speed 0
+scale 2.5
+//X_5H ABCDE
+States
+{
+Spawn:
+8P60 K 0
+8P60 K 0 ACS_NamedExecuteAlways("ub_enemypain",0)
+8P60 K 0 A_JumpIfInventory("KnightFlag", 12, "Spawn1")
+8P60 K 0 A_JumpIfInTargetInventory("Misery_Orb_Canceller", 1, "Orb_Shatter")
+8P60 K 0 A_JumpIf(!CallACS("uh_PointerIsABoss", 2), "Death")
+8P60 K 0 A_JumpIfInTargetInventory("IsAFakeBoss", 1, "SpawnStop")
+8P60 K 0 A_JumpIfInTargetInventory("StopShield", 1, "SpawnStop")
+8P60 K 0 A_Warp(2,Args[0],0,32,6,28)
+8P60 K 1 A_Explode(Args[1]*(CallACS("uh_checkrune", RUNE_SPREAD)*2+1),radius*2,0,0,radius*2)
+8P60 K 0 A_SetArg(0,Args[0]+8)
+8P60 K 0 A_GiveInventory("KnightFlag", 1)
+goto Spawn+2
+Spawn1:
+8P60 K 0 A_JumpIfInTargetInventory("Misery_Orb_Canceller", 1, "Orb_Shatter")
+8P60 K 0 A_JumpIf(!CallACS("uh_PointerIsABoss", 2), "Death")
+8P60 K 0 A_JumpIfInTargetInventory("IsAFakeBoss", 1, "SpawnStop")
+8P60 K 0 A_JumpIfInTargetInventory("StopShield", 1, "SpawnStop")
+8P60 K 0 A_Warp(2,96,0,32,6,28)
+8P60 K 1 A_Explode(Args[1]*(CallACS("uh_checkrune", RUNE_SPREAD)*2+1),radius*2,0,0,radius*2)
+loop
+Around_And_Around:
+8P60 E 0 A_TakeInventory("CutterFlag")
+Goto Spawn1 //Misery_Orb_Canceller
+Orb_Shatter: //Make the orb shatter... like orbs shattering
+TNT1 A 0 //The clouds could be smaller, maybe prettier like air just puffs out of it.
+TNT1 A 0 A_PlaySoundEx("weapon/crackerexplode", "Weapon")
+TNT1 AAAA 0 A_SpawnItemEx("Misery_Smoke_Cloud_X",random(-32,32),random(-32,32),random(-32,32),random(-8,8),random(-8,8),random(-4,4),0,0) //32
+TNT1 A 0 A_SpawnItemEX("Misery_Bat_SpawnerH",0,0,0,20,0,0,0,SXF_NOCHECKPOSITION) 
+TNT1 A 1 A_SpawnItemEX("Misery_Orb_ShatterBoom",0,0,0,0,0,0,0,0) 
+Death:
+TNT1 A 0 A_PlaySoundEx("weapon/crackerexplode","Weapon")
+TNT1 AAAA 0 A_SpawnItemEx("Misery_Smoke_Cloud_X",random(-32,32),random(-32,32),random(-32,32),random(-8,8),random(-8,8),random(-4,4),0,0) //32
+TNT1 A 2
+stop
+SpawnStop:
+TNT1 A 0
+TNT1 A 1
+stop
+}
+}
+
+actor Misery_Orb_SpinHitBox : BasicExplosion
+{
+Damagetype "Misery_A" //Repels people.
+Obituary "\cdMisery \c-(%k) asked \cj'But why...?' c-Only for %o to respond with \cj'Why not?'" //filler
+States
+{
+Spawn:
+TNT1 A 0 
+TNT1 A 1 A_Explode(25,32,0,0,32) //32 range max hit
+stop
+}
+}
+
+//Meleerange 28 // Warp X
+//Accuracy 0 // Warp Y 
+//Mass 8 // Warp Z
+
+actor Misery_Orb_BlockHitBox_P : CustomInventory
+{
+states
+{
+Pickup:
+TNT1 A 0 A_SpawnItemEx("Misery_Orb_BlockHitBox1",0,-16,16,0,0,0,0, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_Orb_BlockHitBox2",0,-16,-16,0,0,0,0, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_Orb_BlockHitBox3",0,16,-6,0,0,0,0, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_Orb_BlockHitBox4",0,16,-16,0,0,0,0, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_Orb_BlockHitBox5",4,0,0,0,0,0,0, 1)
+stop
+}
+}
+
+actor Misery_Orb_BlockHitBox : BasicShieldHitbox
+{
+damagefactor "Misery",0.0 //
+damagefactor "Misery_A",0.0 //
+damagefactor "Misery_B",0.0 //
+damagefactor "Misery_C",0.0 //
+Meleerange 0 //28
+Accuracy 0 //-16
+Mass 0 //8
+Height 16 //16
+Radius 16 //16
+States
+{
+Pain:
+TNT1 A 0
+TNT1 A 0 A_PlaySound("weapon/CaveStoryBlock")
+TNT1 A 0 A_SpawnItemEx("Misery_Orb_BlockDeathFX")
+goto Spawn
+}
+}
+
+actor Misery_Orb_BlockHitBox1 : Misery_Orb_BlockHitBox
+{
+Accuracy -16
+Mass 16
+}
+actor Misery_Orb_BlockHitBox2 : Misery_Orb_BlockHitBox
+{
+Accuracy -16
+Mass -16
+}
+actor Misery_Orb_BlockHitBox3 : Misery_Orb_BlockHitBox
+{
+Accuracy 16
+Mass 16
+}
+actor Misery_Orb_BlockHitBox4 : Misery_Orb_BlockHitBox
+{
+Accuracy 16
+Mass -16
+}
+
+actor Misery_Orb_BlockHitBox5 : Misery_Orb_BlockHitBox
+{
+Meleerange 4
+Mass 0
+}
+
+actor Misery_Orb_BlockDeathFX : ProtoShieldDeathFX
+{
+states
+{
+SpawnFrame:
+6P11 B 0 A_SetScale(scaleX+0.1,2.5)
+6P11 B 1 A_FadeOut(0.05)
+loop
+}
+}
+
+actor Misery_Orb_ShatterBoom : BasicExplosion
+//BasicBoom4FX_ColorX
+{
+Translation "192:192=84:84","198:198=77:77"
+Damagetype "Misery_A" //
+Obituary "$OB_BOSS60A" //filler
+States
+{
+Spawn:
+TNT1 A 0 
+TNT1 A 0 A_Explode(20,128,0,0,64) 
+//X_4L ABCDEFGHIJKLMNOPQRST 1
+TNT1 A 2
+stop
+}
+}
+//
+
+actor Misery_Bat_SpawnerH : BasicWatcher
+{
+States
+{
+Spawn:
+//TNT1 AA 1 A_GiveToTarget("UH_TargetMarker")
+//TNT1 A 0 ACS_ExecuteWithResult(989,0,ACS_ExecuteWithResult(257)+100, 0)
+//HAPPY_HALLOWEEN:
+TNT1 AAAA 1 A_SpawnItemEx("Misery_Bat_Spawny",cos(-pitch)*8,0,random(-32,32)+(sin(-pitch)*8),cos(-pitch)*40,0,sin(-pitch)*40,Random(-3,3),0)
+stop
+}
+}
+
+actor Misery_Bat_Spawny : BasicProjectile
+{
+translation "192:192=218:218", "198:198=227:227"
+damagetype "Misery_A"
+Obituary "%o hates halloween, according to \cdMisery \c-(%k)." //filler
+Species "TheseOrbsAreAStupid"
++THRUACTORS
++BOUNCEONFLOORS
++BOUNCEONWALLS
++BOUNCEONCEILINGS
++DONTSPLASH
++THRUSPECIES //
+bouncefactor 1.0
+bouncecount 8
+damage (50)
+Radius 10
+Height 10
+speed 13//40
+scale 3.5
+states
+{
+Spawn:
+8P60 E 0
+8P60 E 0 A_Stop
+8P60 E 0 A_GiveInventory("ReSyncPickup")
+8P60 LLMMUULL 2
+8P60 MM 1 A_GiveToTarget("UH_TargetMarker")
+8P60 B 0 ACS_NamedExecuteAlways("core_aimattargetcursor", 0, CallACS("core_gettarget")+PLN_TARGETPOINT_OFFSET, 0)
+8P60 M 2
+TNT1 A 0 A_SpawnItemEx("BATS_WE_ARE_THE_BATS",0,0,0,cos(-pitch)*56,0,sin(-pitch)*56,0, 1)
+TNT1 A 0 //A_PlaySound("wep_L/lasertrident",4,0.75)
+TNT1 A 2
+stop
+Crash:
+TNT1 A 0 
+TNT1 A 0 A_PlaySoundEX("weapon/BalrogOrbHit","Weapon")
+8P59 BDEF 3
+stop
+Death:
+TNT1 A 0 
+TNT1 A 0 A_PlaySoundEX("weapon/MiseryBat","Weapon")
+8P59 BDEF 3
+stop
+}
+}
+
+
+//Make bats fire off in the direction you aim?? //Trist-dayo says I'm on it, 2024-desu !
+actor BATS_WE_ARE_THE_BATS : BasicProjectile
+{ //Make translation good?
+translation "192:192=218:218", "198:198=227:227"
++DONTSEEKINVISIBLE
++SEEKERMISSILE
+Radius 6
+Height 6
+scale 2.5
+Species "TheseOrbsAreAStupid"
++THRUSPECIES
+damagetype "Misery_A"
+Obituary "%o hates halloween, according to \cdMisery \c-(%k)." //filler
+damage (50) //50
+speed 20 //14
+reactiontime 10 //
+States
+{
+Spawn: //Center bat???
+8P60 LLMMUULLMMUULLMM 2 A_SeekerMissile(2,10,3,60,5) //Make the... homing slight better? But not super good?
+8P60 A 0 A_CountDown
+loop
+Crash:
+TNT1 A 0 
+TNT1 A 0 A_PlaySoundEX("weapon/BalrogOrbHit","Weapon")
+8P59 BDEF 3
+stop
+Death: //Make this look good??
+TNT1 A 0 
+TNT1 A 0 A_PlaySoundEX("weapon/MiseryBat","Weapon")
+8P59 BDEF 3
+stop
+}
+}
+
+
+actor Misery_Orb_Canceller : UOnce {}
+
+actor Misery_ItemUse_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_TakeInventory("UnholyBossAmmo400")
+TNT1 A 0 A_GiveInventory("Misery_Orb_Canceller", 1)
+//TNT1 A 0 A_SpawnItemEx("Misery_Tele_Starter",0,0,0)
+stop
+}
+}
+
+actor Misery_ItemEnd_P : CustomInventory
+{
+States
+{
+Pickup:
+//TNT1 A 0 A_PlaySoundEX("Boss/MiseryTeleport","SoundSlot6")
+TNT1 A 0 A_GiveInventory("UH_ArtiTeleport_P", 1)
+stop
+}
+}
+
+actor Misery_Tele_SND : BasicClientside
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("Boss/MiseryTeleport","Voice")
+TNT1 A 1
+stop
+}
+}
+
+actor Misery_TeleFX : BasicGraphicEffect
+{
+Translation "192:192=102:102", "198:198=119:119", "5:8=127:127", "0:0=127:127", "210:215=82:82", "40:47=77:77"
+//+FORCEYBILLBOARD
+//Alpha 0.75
+States
+{
+SpawnFrame: //2 tic
+SPWI A 2 //3
+SPWI A 1 A_FadeOut(0.25)
+wait
+}
+}
+
+actor Misery_Tele_Starter : BasicClientSide
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("Misery_TeleFX_Proc")
+TNT1 A 2
+stop
+}
+}
+
+actor Misery_TeleFX_Proc : BasicClientSide
+{ //Make this better
+States //I dunno if both instances should be called at the same tic.
+{ //Or it goes left and right inbetween tics.
+Spawn: //But hey, as long as it looks pretty.
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("Misery_TeleFX",0,0,0,0,0,0)
+TNT1 A 1
+TNT1 A 0 A_SpawnItemEx("Misery_TeleFX",0,3,0,0,0,0)
+TNT1 A 1
+TNT1 A 0 A_SpawnItemEx("Misery_TeleFX",0,-3,0,0,0,0)
+TNT1 A 1
+TNT1 A 0 A_SpawnItemEx("Misery_TeleFX",0,8,0,0,2,0)
+TNT1 A 1
+TNT1 A 0 A_SpawnItemEx("Misery_TeleFX",0,-8,0,0,-2,0)
+TNT1 A 1
+TNT1 A 0 A_SpawnItemEx("Misery_TeleFX",0,18,0,0,3,0)
+TNT1 A 1
+TNT1 A 0 A_SpawnItemEx("Misery_TeleFX",0,-18,0,0,-3,0)
+TNT1 A 1
+TNT1 A 0 A_SpawnItemEx("Misery_TeleFX",0,32,0,0,4,0)
+TNT1 A 1
+TNT1 A 0 A_SpawnItemEx("Misery_TeleFX",0,-32,0,0,-4,0)
+TNT1 A 1
+TNT1 A 0 A_SpawnItemEx("Misery_TeleFX",0,66,0,0,5,0)
+TNT1 A 1
+TNT1 A 0 A_SpawnItemEx("Misery_TeleFX",0,-66,0,0,-5,0)
+TNT1 A 1
+TNT1 A 0 A_SpawnItemEx("Misery_TeleFX",0,102,0,0,6,0)
+TNT1 A 1
+TNT1 A 0 A_SpawnItemEx("Misery_TeleFX",0,-102,0,0,-6,0)
+TNT1 A 2
+stop
+}
+}
+
+//
+actor Misery_ThunderBreak_PlayerFX : BasicWatcher
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("weapon/lightningbolt","Weapon")
+TNT1 A 2 A_SpawnItemEx("LightningStartFX1Elec",0,0,64,0,0,0,0, 1) //4
+TNT1 A 4 A_SpawnItemEx("LightningStartFX2Elec",4,0,48,0,0,0,0, 1) //8
+stop
+}
+}
+
+
+actor Misery_ThunderBreak_Spawner
+{
+PROJECTILE
+Damagetype "Misery"
++FLOORHUGGER
++DONTREFLECT
++DONTBLAST
++THRUGHOST
++THRUACTORS
+Damage (0)
+Height 10
+Radius 10
+Speed 40 //10
+Scale 2.5
+States
+{
+Spawn: //7
+TNT1 A 8 A_SpawnItemEx("Misery_ThunderBreak_Caution",random(80,-80),random(76,-76),0,0,0,0)
+loop //3 tics
+}
+}
+
+actor Misery_ThunderBreak_Caution : BasicWatcher
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("weapon/thunderbolt","Weapon")
+TNT1 A 20 A_SpawnItemEx("Misery_ThunderBreak_Warning") //20
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak",0,0,320,0,0,random(-20,-22))
+stop
+}
+}
+
+//
+actor Misery_ThunderBreak_Warning : BasicGraphicEffect
+{
+Translation "192:192=84:84","198:198=78:78"
+States
+{
+SpawnFrame: //20 tics
+X_BC ABCDEFGHIJ 2
+stop
+}
+}
+
+actor Misery_ThunderBreak : BasicProjectile
+{
+Translation "192:192=77:77","198:198=8:8"//"4:4=84:84","192:192=77:77","198:198=78:78"
+DamageType "Misery"
+Obituary "%o was smitten by \cdMisery \c-(%k)'s Lightning Bolt." 
++THRUACTORS
++NOEXPLODEFLOOR
++FORCEYBILLBOARD
++FLOORHUGGER
++DONTBLAST
++OLDRADIUSDMG
++PIERCEARMOR // We live in a society.
+Damage (0)
+height 32
+radius 16
+scale 2.5 //6, sorry but this needs to be fixed
+States
+{
+Spawn:
+X_BC N 0
+X_BC N 1 A_SpawnItemEx("LightningExtendElec",0,0,355,0,0,0,0, 1) //I hope this is just core.
+X_BC N 0 A_PlaySoundEx("weapon/MiseryThunder","Weapon")
+X_BC N 0 A_Explode(250,128,0,64)
+X_BC N 0 A_SpawnItemEx("Misery_ThunderBreak_WaveSP",0,0,0,0,0,0,0,0)
+X_BC N 0 Radius_Quake(4,35,0,20,0)
+X_BC NNNNNNNNN 0 A_SpawnItemEx("Misery_Smoke_Cloud_X",random(-64,64),random(-64,64),random(4,64),random(-8,8),random(-8,8),random(-4,4),0,0) //A_SpawnItemEx("Misery_Smoke_Cloud_X",random(-32,32),random(-32,32),random(2,16),random(-20,20),random(-20,20),random(4,28),0,0) //1
+X_BC OPQR 2
+Stop
+}
+}
+
+actor Misery_ThunderBreak_WaveSP : BasicExplosion
+{
+Translation "198:198=77:77"
++OLDRADIUSDMG
+DamageType "Misery"
+Obituary "%o was smitten by \cdMisery \c-(%k)'s Lightning Bolt." 
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_Explode(100,128,0,64)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,0, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,15, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,30, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,45, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,60, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,75, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,90, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,105, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,120, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,135, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,150, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,165, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,180, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,195, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,210, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,225, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,240, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,255, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,270, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,285, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,300, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,315, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,330, 1)
+TNT1 A 0 A_SpawnItemEx("Misery_ThunderBreak_Wave",0,0,0,15,0,0,345, 1)
+TNT1 A 1
+stop
+}
+}
+
+actor Misery_ThunderBreak_Wave : BasicProjectile
+{
+Translation "198:198=77:77"
+DamageType "Misery"
+Obituary "%o was smitten by \cdMisery \c-(%k)'s Lightning Bolt." 
++FLOORHUGGER
++THRUGHOST
++RIPPER
+Alpha 0.9
+Damage (25)
+Radius 32
+Height 32
+Speed 5
+Scale 2.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1
+6P36 C 1 A_FadeOut
+wait
+}
+}
+
+actor Misery_ThunderBreakFX : BasicGraphicEffect
+{
+States
+{
+SpawnFrame:
+TMFX ABCBABCD 2 A_FadeOut(0.04)
+stop
+}
+}
