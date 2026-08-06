@@ -77,6 +77,9 @@ script "ub_countinv_acs" (int Which, int Pointer)
 		Case 50:
 			Counter = CheckInventory("HalfPressHardmanFlag");
 			break;
+		Case 51:
+			Counter = CheckInventory("WR_LockedTID");
+			break;
 		Case 115:
 			Counter = CheckInventory("MagicDevilEyeMash_F");
 			break;
@@ -614,26 +617,28 @@ script "uh_HPHM_WarpChecker" (void) {
 }
 
 #define MMSF_MAX_CARDS 11
-str mmsf_cards[MMSF_MAX_CARDS + 1] = {
-	"",
-	"RadarMissile",
-	"PuffBlast",
-	"GhostPulse",
-	"Shuriken",
-	"StunKnuckle",
-	"MoaiFall",
-	"HurricaneDance",  // TyphoonDance
-	"MagicCrystal1",
-	"MagicCrystal2",
-	"MagicCrystal3",
-	"PlasmaSword",  // ElectricSlash
+str mmsf_cards[MMSF_MAX_CARDS + 1][2] = {
+	// ! = can't lock on
+	{"", "!"},
+	{"RadarMissile", ""},
+	{"PuffBlast", ""},
+	{"GhostPulse", ""},
+	{"Shuriken", ""},
+	{"StunKnuckle", ""},
+	{"MoaiFall", "!"},
+	{"HurricaneDance", ""},  // TyphoonDance
+	{"MagicCrystal1", ""},
+	{"MagicCrystal2", ""},
+	{"MagicCrystal3", ""},
+	{"PlasmaSword", ""},  // ElectricSlash
 };
 
 int mmsf_card_queue[64][6];
 
 function void ClearSFCards(void) {
 	for (int i = 1; i <= MMSF_MAX_CARDS; i++) {
-		TakeInventory(StrParam(s:mmsf_cards[i], s:"_BCFlag"), 1);
+		TakeInventory(StrParam(s:mmsf_cards[i][0], s:"_BCFlag"), 1);
+		TakeInventory("SF_CanLockOn", 1);
 	}
 }
 
@@ -646,8 +651,17 @@ function int GiveSFCard(int player, int index) {
 	ClearSFCards();
 	int card_id = mmsf_card_queue[player][index];
 	if (card_id != 0) {
-		GiveInventory(StrParam(s:mmsf_cards[card_id], s:"_BCFlag"), 1);
-	}
+		GiveInventory(StrParam(s:mmsf_cards[card_id][0], s:"_BCFlag"), 1);
+		if (StrCmp(mmsf_cards[card_id][1], "!") != 0) {
+			GiveInventory("SF_CanLockOn", 1);
+		} else {
+			TakeInventory("SF_CanLockOn", 1);
+			TakeInventory("WR_LockOnFlag", 1);
+		}
+	} else {
+  	TakeInventory("SF_CanLockOn", 1);
+  	TakeInventory("WR_LockOnFlag", 1);
+  }
 	return card_id;
 }
 
