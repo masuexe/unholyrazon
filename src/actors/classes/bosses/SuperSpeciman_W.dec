@@ -1,0 +1,275 @@
+actor SuperSpeciman_W_NormalBar : NormalBar {args 200, 75}
+actor SuperSpeciman_W_SecondBar : SecondBar {args 201, 110}
+actor SuperSpeciman_W_ReloadIcon : ReloadIcon {tag "R105B0"}
+actor SuperSpeciman_W : BaseUnholyBossWep
+{
+Tag "$TAG_Boss105_W"
+Obituary "\cfSuper \ccSpeciman\c- (%k) assumed that %o was the strongman."
+Inventory.Pickupmessage "Hark Hark"
+weapon.ammotype "UnholyBossAmmo200"
+weapon.ammotype2 "UnholyBossAmmo250"
+States
+{
+Spawn:
+8I05 [ 1
+wait
+
+Deselect:
+8I05 A 0
+goto DeselectSwap
+Select:
+8I05 A 0
+goto SelectSwap
+
+Ready:
+8I05 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", SUPERSPECIMAN_DYE)
+8I05 A 0 ACS_NamedExecuteWithResult("uh_BossMorph", 105,1350,415)
+8I05 A 0 A_GiveInventory("IsSpecimanFlag")
+// 8I05 A 0 A_GiveInventory("SuperSpecimanItem",1)
+8I05 A 4 
+8I05 A 2 A_TakeInventory("DecoyFlag1")
+goto ReadyX
+ReadyX:
+8I05 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "ReadyX2")
+8I05 A 2 A_GiveInventory("SuperSpeciman_Ready8_P")
+loop
+ReadyX2:
+8I05 A 2 A_GiveInventory("SuperSpeciman_Ready0_P")
+loop
+
+Fire:
+8I05 B 0 A_PlaySoundEx("weapon/pshot","Weapon")
+8I05 D 2 Offset(-6,25)A_FireCustomMissile("ASPBeamShot",0,0,0,8)
+8I05 DDDDD 2 Offset(-12,18)
+8I05 D 2 Offset(-8,23)
+8I05 B 2 Offset(-4,28)
+8I05 B 2 Offset(-2,30)
+8I05 B 0 A_WeaponReady(14)
+8I05 BBBBB 2
+8I05 B 0 A_TakeInventory("BossItemUseFlag")
+Goto ReadyX
+
+Reload:
+8I05 A 0 A_JumpIfInventory("DecoyFlag1",1,"StopperPerkPro")
+8I05 A 0 A_JumpIfInventory("UnholyBossAmmo250",250,"ApplyHealing")
+Goto ReadyX
+ApplyHealing:
+8I05 C 0 A_Stop
+8I05 C 0 A_PlaySoundEx("E_B/Shield1","Weapon")
+8I05 C 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, true)
+8I05 C 0 ACS_NamedExecuteWithResult("core_nogravityplayer", 0, true)
+8I05 C 2 Offset(5,28)
+8I05 E 2 Offset(12,25)A_GiveInventory("DecoyFlag1",1)
+8I05 E 2 Offset(18,19)
+8I05 D 2 Offset(23,16)
+8I05 D 0 A_PlaySoundEx("E_B/Heal2","Weapon")
+Goto HealingPower
+HealingPower:
+8I05 DDD 0 A_SpawnItemEx("ASPHealCastingFX",random(-162,162),random(-162,162),0,momx,momy,7,0,8)
+8I05 D 0 A_RadiusGive("SuperSpeciman_GroupHeal_P",162,RGF_GIVESELF|RGF_PLAYERS|RGF_NOSIGHT,1)
+8I05 D 0 A_TakeInventory("UnholyBossAmmo250",3)
+8I05 D 2 A_WeaponReady(14 + 16)
+8I05 D 0 A_JumpIfInventory("UnholyBossAmmo250",1,"HealingPower")
+Goto StopperPerkPro
+StopperPerkPro:
+8I05 E 0 A_PlaySound("weapon/mirrordeflect2")
+8I05 EEEEEEEEEEEEEEEE 0 A_SpawnItemEx("ASPHealApplyingFX",random(-2,2),random(-2,2),32,random(-35,35),random(-35,35),random(-35,35))
+8I05 E 2 Offset(18,19)A_TakeInventory("UnholyBossAmmo250",50)
+8I05 E 2 Offset(12,25)A_TakeInventory("DecoyFlag1")
+8I05 B 0 ACS_NamedExecuteWithResult("core_nogravityplayer", 0, false)
+8I05 B 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, false)
+8I05 B 2 Offset(5,28)
+8I05 B 0 A_WeaponReady(14)
+8I05 B 10
+8I05 B 0 A_TakeInventory("BossItemUseFlag")
+Goto ReadyX
+
+AltFire:
+8I05 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "ApplyShieldPowers")
+goto ReadyX
+ApplyShieldPowers:
+8I05 C 0 A_GiveInventory("SuperSpeciman_ItemStart_P")
+8I05 C 2 Offset(5,28)A_SpawnItemEx("ASPShieldAppliedFX",random(-32,32),random(-32,32),0,momx,momy,7,0,8)
+8I05 E 2 Offset(12,25)A_SpawnItemEx("ASPShieldAppliedFX",random(-32,32),random(-32,32),0,momx,momy,7,0,8)
+8I05 E 2 Offset(18,19)A_SpawnItemEx("ASPShieldAppliedFX",random(-32,32),random(-32,32),0,momx,momy,7,0,8)
+8I05 DDDDDDDDDDDDDDDDDDDD 1 Offset(23,16)A_SpawnItemEx("ASPShieldAppliedFX",random(-32,32),random(-32,32),0,momx,momy,7,0,8)
+8I05 E 0 //A_PlaySound("weapon/mirrordeflect2")//////
+8I05 EEEEEEEEEEEEEEEE 0 A_SpawnItemEx("ASPShieldDeploymentFX",random(-2,2),random(-2,2),32,random(-35,35),random(-35,35),random(-35,35))
+8I05 E 2 Offset(18,19)
+8I05 E 2 Offset(12,25)
+8I05 B 0 ACS_NamedExecuteWithResult("core_nogravityplayer", 0, false)
+8I05 B 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, false)
+8I05 B 2 Offset(5,28)
+8I05 B 0 A_WeaponReady(14)
+8I05 B 10
+Goto ReadyX
+}
+}
+
+// actor SuperSpecimanItem : BasicBossInven
+// {
+// Tag "ASPShieldSFItem"
+// inventory.pickupmessage "Super special ultra item for special basic thing."
+// //inventory.icon "SAXTJU"
+// states
+// {
+// Spawn:
+// SAX1 A 6
+// loop
+// Use:
+// TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo200",200,"Give")
+// fail
+// }
+// }
+
+actor SuperSpeciman_Ready0_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo250", 250, "PickupReload")
+    TNT1 A 0 A_Jump(256, "PickupNormal")
+    goto PickupNormal
+   PickupNormal:
+    TNT1 A 0 A_WeaponReady
+    goto Ammo
+   PickupReload:
+    TNT1 A 0 A_WeaponReady(WRF_ALLOWRELOAD)
+    goto Ammo
+   Ammo:
+    TNT1 A 0 A_GiveInventory("UnholyBossAmmo200", 1)
+    TNT1 A 0 A_GiveInventory("UnholyBossAmmo250", 2)
+    stop
+  }
+}
+actor SuperSpeciman_Ready8_P : SuperSpeciman_Ready0_P {
+  States {
+   PickupNormal:
+    TNT1 A 0 A_WeaponReady(8)
+    goto Ammo
+   PickupReload:
+    TNT1 A 0 A_WeaponReady(8 + 16)
+    goto Ammo
+  }
+}
+
+actor SuperSpeciman_ItemStart_P : CustomInventory
+{
+states
+{
+Pickup:
+TNT1 A 0 A_TakeInventory("DynamicArmorDosage_F")
+TNT1 A 0 A_GiveInventory("DynamicArmorDosage_F",800)
+TNT1 A 0 A_TakeInventory("UnholyBossAmmo200",100,1)
+TNT1 A 0 A_TakeInventory("UnholyBossAmmo200",100)
+TNT1 A 0 A_GiveInventory("SuperSpeciman_BasicArmor_P",1)
+TNT1 A 0 A_TakeInventory("BossItemUseFlag")
+TNT1 A 0 A_Stop
+TNT1 A 0 A_PlaySound("E_B/Shield1")
+TNT1 A 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, true)
+TNT1 A 0 ACS_NamedExecuteWithResult("core_nogravityplayer", 0, true)
+stop
+}
+}
+
+actor ASPBeamShot : BasicProjectile
+{
+Translation "192:192=160:160", "198:198=163:163"
+damagetype "ASPSuper"
+Obituary "%o couldn't block \cfSuper \ccSpeciman\c- (%k)'s \ckASP Beam\c-."
++SKYEXPLODE
++EXPLODEONWATER
+Damage (70)
+radius 22
+height 22
+Speed 56
+scale 3.5
+States
+{
+Spawn:
+CHBU ABCD 2 A_SpawnItemEx("ASPBeamShotFX",-6,Random(-14,14),random(4,-4),0,0,0,0,1)
+loop
+Death:
+TNT1 A 0 A_Stop
+TNT1 A 0 A_PlaySoundEx("wep_L/mm5/napalmbombexplode","Weapon")
+TNT1 A 0 A_Explode(125,128,0)
+TNT1 AAAAAAAAAAAA 0 A_SpawnItemEx("ASPBeamShotFX2",random(-2,2),random(-2,2),8,random(-25,25),random(-25,25),random(-25,25),0,1)
+X_8B ABCDEF 2 A_SpawnItemEx("ASPBeamShotExplode",random(-96,96),random(-96,96),random(-72,72),0,0,0,0,1)
+stop
+}
+}
+
+actor ASPBeamShotFX : BasicGraphicEffect
+{
+scale 3.5
+States
+{
+SpawnFrame:
+X_7A I 2
+X_7A J 8
+X_7A J 1 A_Fadeout
+wait
+}
+}
+
+actor ASPBeamShotFX2 : BasicGraphicEffect
+{
+States
+{
+SpawnFrame:
+TMFX BBBBCCCDD 2 A_FadeOut(0.05)
+Stop
+}
+}
+
+actor ASPBeamShotExplode : BasicExplosion
+{
+damagetype "ASPSuper"
+Obituary "%o couldn't block \cfSuper \ccSpeciman\c- (%k)'s \ckASP Beam\c-."
+Scale 1.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("wep_L/mm5/napalmbombexplode","Weapon")
+TNT1 A 0 A_Explode(45,96,0,0,16)
+X_8B ABCDEF 2 A_Fadeout(0.08)
+stop
+}
+}
+
+actor ASPHealApplyingFX : BasicGraphicEffect
+{
+Translation "192:192=208:208", "198:198=128:128"
+States
+{
+SpawnFrame:
+TMFX CCCCDDDEE 2 A_FadeOut(0.05)
+Stop
+}
+}
+
+actor ASPHealCastingFX : BasicGraphicEffect
+{
+Translation "198:198=128:128", "192:192=4:4"
+States
+{
+SpawnFrame:
+CHPO X 4
+CHPO XXXX 2 A_ScaleVelocity(1.4)
+CHPO XXXXX 1 A_Fadeout(0.08)
+stop
+}
+}
+
+actor SuperSpeciman_GroupHeal_P : BasicGroupHealPickup
+{
+States
+{
+HealMe:
+TNT1 A 0 A_JumpIfInventory("BAWS",1,2)
+TNT1 A 0 ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, 1)
+stop
+TNT1 A 0 ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, 8)
+stop
+}
+}
+
