@@ -487,6 +487,26 @@ script "rz_CheckPointerFooting" (int pointer, int thruplayer) {
 	}
 }
 
+#define RPT_INCLUDESELF 1
+script "rz_RandomPlayerTID" (int flags, int retrycount) {
+	int tid = 0;
+	int callerTID = ActivatorTID();
+	for (int i = 0; i < retrycount; i++) {
+		tid = random(1000, 1000 + ServerMAX);
+		if (!(flags & RPT_INCLUDESELF) && tid == callerTID) {
+			continue;
+		}
+		SetActivator(tid);
+		if (PlayerNumber() == -1 || CheckInventory("IsDead") ||
+			  !PlayerInGame(PlayerNumber()) || CheckInventory("IsAFakeBoss")) {
+			continue;
+		}
+		SetResultValue(tid);
+		terminate;
+	}
+	SetResultValue(-1);
+}
+
 script "uh_shinyclassmorpher" (int ClassNum)
 {
 	for ( int i = 0; i <= 7; i++ ) {
