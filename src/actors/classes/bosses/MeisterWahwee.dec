@@ -1,0 +1,125 @@
+//Hidden thing // Wily "Falling"
+//WRUN E 
+//WRUN F 
+
+actor MeisterWahwee : BossBase
+{ //W2CP is Foot Wily.
+player.scoreIcon "UB064MUG"
+player.soundclass "MeisterWahwee"
+player.forwardmove 1.0, 1.0
+player.sidemove 1.0, 1.0
+player.jumpz 12
+Player.MaxHealth 3500
+Health 3500
+player.morphweapon "MeisterWahwee_W"
+States
+{
+Spawn: //WahweeMechaPower
+W2CP A 0 
+W2CP A 0 A_JumpIfInventory("WahweeMechaPower",1,3)
+W2CP B 1 A_JumpIfInventory("Wily_DoSOMETHING_Flag",1,"WilyPlanB")
+W2CP A -1 
+DRWI B 1 
+DRWI A 1 
+Goto Spawn+5
+
+See:
+W2CP A 0 A_JumpIfInventory("Wily_DoSOMETHING_Flag",1,"WilyPlanB") //Assure it goes to the damn state.
+W2CP A 0 A_JumpIfInventory("WahweeMechaPower",1,"SuitSee")
+W2CP A 0 A_JumpIfInventory("POWER_GEAR_BOSS",1,"POWER_GEAR_See")
+W2CP A 0 A_JumpIfInventory("HE_WAS_BOSS",1,"SPEED_GEAR_See")
+W2CP BCDE 3 //5
+Goto Spawn
+
+SPEED_GEAR_See:
+W2CP BCDE 1
+W2CP A 0 A_JumpIfInventory("HE_WAS_BOSS",1,"SPEED_GEAR_See")
+Goto Spawn
+POWER_GEAR_See:
+W2CP BCDE 6 //5
+Goto Spawn
+
+SuitSee:
+DRWI BCDE 5 //5
+W2CP B 0 A_JumpIfInventory("Wily_DoSOMETHING_Flag",1,"WilyPlanB") //Just how many fucking checks do I have to add?
+Goto Spawn+4
+
+Missile:
+W2CP A 0 A_JumpIfInventory("Wily_DoSOMETHING_Flag",1,"WilyPlanB") //Assure it goes to the damn state.
+W2CP A 0 A_JumpIfInventory("WahweeMechaPower",1,"SuitMissile")
+W2CP A 0 A_JumpIfInventory("HE_WAS_BOSS",1,"SPEED_GEAR_See")
+W2CP F 5
+W2CP G 4
+goto Spawn
+SuitMissile:
+DRWI F 5
+DRWI G 4
+W2CP B 0 A_JumpIfInventory("Wily_DoSOMETHING_Flag",1,"WilyPlanB") //UGHHH
+goto Spawn+4
+
+//What a nightmare, holy shit.
+WilyPlanB:
+DRWI HHH 2 
+DRWI H 4 A_JumpIfInventory("Wily_DoSOMETHING_Flag",1,"WilyPlanB") //if 4 isn't good, drop to 2 instead.
+Goto MeleeGetUp //Spawn+5
+
+Melee:
+WRUN H 0 A_JumpIfInventory("VivifyDelay6",1,"MeleeKnockDown")
+WRUN H 1
+goto Spawn
+MeleeKnockDown:
+WRUN H 20
+WRUN H 2 A_JumpIfInventory("VivifyDelay6",1,"MeleeGetUp")
+wait
+MeleeGetUp:
+W2CP A 0 A_SpawnItemEX("FakeDeathFX")
+W2CP AXAX 2 A_JumpIfInventory("WahweeMadGears",1,"Spawn")
+Goto MeleeGetUp+1
+
+ClassPain:
+W2CP H 0 A_JumpIfInventory("WahweeMechaPower",1,"SuitPainFix") 
+W2CP H 0
+Goto MegamanPain
+SuitPainFix:
+DRWI H 0 
+Goto MegamanPain
+/*ClassDeath:
+W2CP H 18
+W2CP H 0
+W2CP H 0
+Goto MegamanDeath*/
+ClassDeath:
+TNT1 A 0 A_SpawnItemEx("Wahwee_RealCorpse",0,0,0,0,0,4,0,9)
+goto MegamanDeath
+// MegamanDeath0:
+// TNT1 A 0 A_JumpIfInventory("CriticalDeath", 1, "MegamanGib")
+// TNT1 A 1 A_SpawnItemEx("Wahwee_RealCorpse",0,0,0,0,0,4,0,9)
+// Goto MegamanErase
+}
+}
+
+//
+//
+//
+
+actor Wahwee_RealCorpse //: BaseCorpse
+{
+Translation "192:192=41:41", "198:198=245:245"
+-SOLID
++THRUACTORS
++DONTBLAST
++DONTREFLECT
+damage 0
+radius 2
+height 2
+scale 2.5
+states
+{
+Spawn:
+W2CP H 25
+W2CP A 10 A_SetAngle(random(0,359))
+W2CP A 175 A_PlaySoundEX("boss/WilyRetreat","Soundslot7")
+W2CP E 0 A_SpawnItemEx("MeisterWahwee_Running_Y",0,0,0,5,0,0,0,1) //2 move
+stop
+}
+}
