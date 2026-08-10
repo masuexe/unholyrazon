@@ -950,3 +950,44 @@ function void giveMeTheFunc(str Hungry, int TheBill)
 		}
 	}
 }
+
+function int func_Tally_WispHex (void)
+{
+	int Total;
+	int CurrArr;
+	for (int i = 0; i < 64; i++){
+		CurrArr = GetUserArray(0, "user_WispHex", i);
+		Total += CurrArr;
+		if(CurrArr != 0)
+			SetUserArray(0, "user_WispHex", i, 0);
+	}
+	return Total;
+}
+function void func_Clear_WispHex (void)
+{
+	for (int i = 0; i < 64; i++){
+		SetUserArray(0, "user_WispHex", i, 0);
+	}
+}
+
+script "uc_WispHex" (int mode, int Igniter)
+{
+	Switch(mode) {
+		Default:
+			Log(i:mode, s:" >> Invalid Mode for uc_WispHex");
+			break;
+		Case -1: //Reset Entire Array to 0
+			SetActivatorToTarget(0);
+			func_Clear_WispHex();
+			break;
+		Case 0: //Increase burn count
+			if(Igniter < 0 || Igniter > 63)//Don't do anything if not a PlayerNum
+				break;
+			SetUserArray(0, "user_WispHex", Igniter, GetUserArray(0, "user_WispHex", Igniter) + 1);
+			break;
+		Case 1:
+			SetActivatorToTarget(0);
+			SetResultValue(func_Tally_WispHex());
+			break;
+	}
+}

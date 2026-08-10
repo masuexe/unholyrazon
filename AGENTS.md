@@ -66,12 +66,14 @@ Files earlier in the chain cannot reference actors defined later.
 
 ```
 ClassBase0 (MM8BDM core)
- → ClassBaseU0  (custom pain/death states)
-  → ClassBaseU1  (core damage type pain redirects)
-   → ClassBaseU2  (weakness mappings, boss pain redirects)
-    → ClassBaseSlot0 … ClassBaseSlot50 → ClassBase2
-     → CustWepClassBase (MM8BDM custom-weapon base)
-      → MegaManU / BusterExpert
+ → ClassBaseU0  (basic actor + shared pain helpers)
+  → ClassBaseU1  (MM8BDM Pain/Death)
+   → ClassBaseU2  (Unholy survivors)
+    → ClassBaseU3  (Unholy bosses)
+     → ClassBaseU4  (Demoneye + Unholy items)
+      → ClassBaseSlot0 … ClassBaseSlot50 → ClassBase2
+       → CustWepClassBase (MM8BDM custom-weapon base)
+        → MegaManU / BusterExpert
 ```
 
 The `actors/player/classbase/customslots/` directory (referenced by `classbase2_custompain.txt`) does not exist in this mod — the `_classbaseslot.txt` and its 50 slot files resolve from the base game v6b PK3. The mod only needs to provide `classbase2_custompain.txt` (which overrides the base game's version) and the `ClassBase_U*.dec` files it includes.
