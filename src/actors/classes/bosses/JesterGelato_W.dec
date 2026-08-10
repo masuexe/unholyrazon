@@ -1,0 +1,626 @@
+actor JesterGelato_W_NormalBar : NormalBar {args 64, 42}
+actor JesterGelato_W_SecondBar : SecondBar {args 4, 5}
+actor JesterGelato_W : BaseUnholyBossWep
+{
+Tag "$TAG_Boss510_W"
+Obituary "%o didn't understand \cjJester \cmGelato\c- (%k)."
+Inventory.Pickupmessage "\cjYou'rea so badea, you shouldea eatea pizza pasta more oftenea!"
+weapon.ammotype "UnholyBossAmmo200"
+weapon.ammotype2 "UnholyPower1000"
+States
+{
+Spawn:
+9H10 [ 1
+wait
+
+Deselect:
+9H10 A 0
+goto DeselectSwap
+Select:
+9H10 A 0
+goto SelectSwap
+
+Ready:
+9H10 A 0 A_GiveInventory("UnholyPowerLimit_F",1000)
+9H10 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", JESTERGELATO_DYE)
+9H10 A 0 ACS_NamedExecuteWithResult("uh_BossMorph", 510,1250,305)
+9H10 A 6
+goto ReadyX
+ReadyX:
+9H10 A 0 A_JumpIfInventory("UnholyBossAmmo200",200,"ReadyX2")
+9H10 A 2 A_GiveInventory("JesterGelato_Ready8_P")
+loop
+ReadyX2:
+9H10 A 2 A_GiveInventory("JesterGelato_Ready0_P")
+loop
+
+Fire:
+9H10 A 0 A_JumpIfInventory("UnholyPower1000",1000,"Assassination")
+9H10 A 0 A_PlaySoundEx("weapon/crackerthrow","Weapon")
+9H10 A 0 A_FireCustomMissile("JesterGelatoShot1",random(-2,2),1,-8,0)
+9H10 BCA 2
+9H10 A 0 A_PlaySoundEx("weapon/crackerthrow","Weapon")
+9H10 A 0 A_FireCustomMissile("JesterGelatoShot1",random(-2,2),0,8,0)
+9H10 BCA 2
+9H10 A 40
+Goto ReadyX
+Assassination:
+9H10 A 0
+9H10 A 0 A_GiveInventory("JesterGelatoRage_P",1)
+9H10 CB 2
+9H10 A 18
+9H10 A 0 A_GiveInventory("JesterGelatoRage_P",1)
+9H10 CB 2
+9H10 A 18
+Goto ReadyX
+Reload:
+9H10 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "DeformedNewlyProfoundSadnessatsu")
+goto ReadyX
+DeformedNewlyProfoundSadnessatsu:
+TNT1 A 0 A_TakeInventory("UnholyBossAmmo200",1)
+TNT1 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true)
+TNT1 A 0 A_GunFlash
+TNT1 A 1 A_FireCustomMissile("JesterGelatoShot4",0,0,0,0)
+TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 2 A_TakeInventory("UnholyBossAmmo200",5)
+TNT1 A 0 A_GiveInventory("VivifyDelay8")
+TNT1 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false)
+TNT1 A 0 A_FireCustomMissile("JesterGelatoShot3",0,0,0,0)
+Goto ReadyX
+Altfire:
+9H10 A 0 A_JumpIfInventory("UnholyBossAmmo200",200,"PIZZAPASTASPECIAL")
+goto ReadyX
+PIZZAPASTASPECIAL:
+9H10 A 0 A_TakeInventory("UnholyBossAmmo200",200)
+9H10 A 0 A_GiveInventory("GelatoInvisPower",1)
+9H10 A 1 A_FireCustomMissile("GelatoTwinThingGuyPSEUDOISM",0,1,0,0)
+9H10 A 10
+Goto ReadyX
+}
+}
+
+actor GelatoInvisPower : PowerInvisibility
+{
+	+CANTSEEK
+	Powerup.Mode "Translucent"
+	Powerup.Strength 100
+	Powerup.Duration 150
+}
+
+actor JesterGelato_Ready0_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "PickupReload")
+    TNT1 A 0 A_Jump(256, "PickupNormal")
+    goto PickupNormal
+   PickupNormal:
+    TNT1 A 0 A_WeaponReady
+    goto Ammo
+   PickupReload:
+    TNT1 A 0 A_WeaponReady(WRF_ALLOWRELOAD)
+    goto Ammo
+   Ammo:
+    TNT1 A 0 A_GiveInventory("UnholyBossAmmo200", 2)
+    stop
+  }
+}
+actor JesterGelato_Ready8_P : JesterGelato_Ready0_P {
+  States {
+   PickupNormal:
+    TNT1 A 0 A_WeaponReady(8)
+    goto Ammo
+   PickupReload:
+    TNT1 A 0 A_WeaponReady(8 + 16)
+    goto Ammo
+  }
+}
+
+actor GelatoPizzaItem : UnholyItem
+{
+inventory.amount 1
+inventory.maxamount 99
+inventory.pickupmessage "Got Item! Pizza Pasta!"
+inventory.icon "9H10Z0_I"
+States
+{
+Spawn:
+9H10 Z 6
+loop
+UseX:
+TNT1 A 0 A_PlaySoundEx("misc/stonethrow","Item")
+TNT1 A 0 A_SpawnItemEx("GelatoStickyPizzaToss",cos(-pitch)*2,0,28+(sin(-pitch)*2),cos(-pitch)*30,0,sin(-pitch)*30,0,32,0)
+TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"UseX_S")
+goto End
+UseX_S:
+TNT1 A 0 A_SpawnItemEx("GelatoStickyPizzaToss",cos(-pitch)*2,0,28+(sin(-pitch)*2),cos(-pitch)*30,0,sin(-pitch)*30,15,32,0)
+TNT1 A 0 A_SpawnItemEx("GelatoStickyPizzaToss",cos(-pitch)*2,0,28+(sin(-pitch)*2),cos(-pitch)*30,0,sin(-pitch)*30,-15,32,0)
+goto End
+}
+}
+
+actor JesterGelatoRage_P : CustomInventory
+{
+states
+{
+Pickup:
+TNT1 A 0 A_TakeInventory("UnholyPower1000",500)
+TNT1 A 0 A_PlaySoundEx("misc/stonethrow","Weapon")
+TNT1 A 0 A_SpawnItemEx("GelatoStickyPizzaToss",cos(-pitch)*2,0,28+(sin(-pitch)*2),cos(-pitch)*30,0,sin(-pitch)*30,0,32,0)
+TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"Pickup2")
+stop
+Pickup2:
+TNT1 A 0 A_SpawnItemEx("GelatoStickyPizzaToss",cos(-pitch)*2,0,28+(sin(-pitch)*2),cos(-pitch)*30,0,sin(-pitch)*30,15,32,0)
+TNT1 A 0 A_SpawnItemEx("GelatoStickyPizzaToss",cos(-pitch)*2,0,28+(sin(-pitch)*2),cos(-pitch)*30,0,sin(-pitch)*30,-15,32,0)
+stop
+}
+}
+
+actor GelatoStickyPizzaToss : CustomInventory
+{
+inventory.amount 1
+inventory.maxamount 1
+Translation "192:192=5:5","198:198=4:4"
+//+INVENTORY.QUIET
+//+INVENTORY.AUTOACTIVATE
+//+COUNTITEM
+//-FLOATBOB
+//+INVBAR
+//+NOCLIP
++FORCEXYBILLBOARD
++FIXMAPTHINGPOS
+-SPECIAL
++THRUACTORS
++NOBLOCKMONST
+inventory.pickupmessage "\cjOh god! This is one of Gelato's sticky explosives! You're in trouble!!"
+VisibleToPlayerClass JesterGelato
+inventory.PickupSound "weapon/BombChest"
+Speed 30
+scale 2.5
+states
+{
+Spawn:
+TNT1 A 1
+//TNT1 A 0 A_ChangeFlag("NOCLIP",0)
+X_8I BCDEFGHIBCDEFGHIBCDEFGHI 1 A_SpawnItemEx("GelatoStickyPizzaFX",random(-30,30),random(-30,30),random(-10,36))
+
+X_8I BCDEFGHI 1 A_Stop
+TNT1 A 0 A_ChangeFlag("MISSILE",1)
+TNT1 A 0 A_SpawnItemEx("GelatoStickyPizza")
+stop
+Death:
+TNT1 A 1
+stop
+Pickup:
+TNT1 A 0 A_JumpIfInventory("JesterGelato_W",1,"Use2")
+TNT1 A 0 A_Die
+stop
+Use2:
+TNT1 A 1 A_GiveInventory("GelatoPizzaItem",1)
+stop
+}
+}
+
+actor GelatoStickyPizzaFX : FlashM_SparkleFX_Base
+{
+Translation "192:192=5:5","198:198=4:4"
+VisibleToPlayerClass JesterGelato
+//VisibleToTeam BossBuddy
+scale 2.0
+}
+
+actor GelatoStickyPizzaRefundFX : BasicGraphicEffect
+{
+Translation "192:192=5:5","198:198=4:4"
+VisibleToPlayerClass JesterGelato
+ReactionTime 20
+Scale 2.0
+States
+{
+SpawnFrame:
+9H10 Z 1 A_Fadeout
+9H10 Z 0 A_SetScale(ScaleX+0.2,ScaleY+0.2)
+loop
+}
+}
+
+actor GelatoStickyPizza
+{
+damagetype "Gelato"
+Obituary "%o tripped over one of \cjJester \cmGelato\c- (%k)'s trick items!"
++DONTSPLASH
++DONTREFLECT
++DONTBLAST
++THRUGHOST
++HITTRACER
++SKYEXPLODE
++BOUNCEONCEILINGS
++NOEXPLODEFLOOR
+BounceFactor 0.0
+WallBounceFactor 0.0
+Damage (10)
+Radius 20
+Height 16
+Speed 0
+Scale 2.0
+States
+{
+Spawn:
+TNT1 A 1
+TNT1 A 0 A_Jump(16,"Spawn2")
+TNT1 A 0 A_Jump(256,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34)
+I_BA A 1
+goto S_Loop
+I_BA B 1
+goto S_Loop
+I_BA C 1
+goto S_Loop
+I_BA D 1
+goto S_Loop
+I_BA E 1
+goto S_Loop
+I_BA F 1
+goto S_Loop
+I_BA G 1
+goto S_Loop
+I_BA H 1
+goto S_Loop
+I_BA I 1
+goto S_Loop
+I_BA J 1
+goto S_Loop
+I_BA K 1
+goto S_Loop
+I_BA L 1
+goto S_Loop
+I_BA M 1
+goto S_Loop
+I_BA N 1
+goto S_Loop
+I_BA O 1
+goto S_Loop
+I_BA P 1
+goto S_Loop
+I_BA Q 1
+goto S_Loop
+I_BA R 1
+goto S_Loop
+I_BA S 1
+goto S_Loop
+I_BA T 1
+goto S_Loop
+I_BA U 1
+goto S_Loop
+I_BA V 1
+goto S_Loop
+I_BA W 1
+goto S_Loop
+I_BA X 1
+goto S_Loop
+I_BA Y 1
+goto S_Loop
+I_BB A 1
+goto S_Loop
+I_BB B 1
+goto S_Loop
+I_BB C 1
+goto S_Loop
+I_BB D 1
+goto S_Loop
+I_BB E 1
+goto S_Loop
+I_BB F 1
+goto S_Loop
+I_BB G 1
+goto S_Loop
+I_BB H 1
+goto S_Loop
+I_BB J 1
+goto S_Loop
+
+Spawn2:
+TNT1 A 0 A_Jump(32,"Spawn3")
+TNT1 A 0 A_Jump(256,1,2,3,4,5,6,7,8,9,10,11,12)
+I_MA A 1
+goto S_Loop
+I_MA B 1
+goto S_Loop
+I_MA C 1
+goto S_Loop
+I_MA D 1
+goto S_Loop
+I_MA E 1
+goto S_Loop
+I_MA F 1
+goto S_Loop
+I_MA G 1
+goto S_Loop
+I_MA H 1
+goto S_Loop
+I_MA I 1
+goto S_Loop
+I_MA J 1
+goto S_Loop
+I_MA K 1
+goto S_Loop
+I_MA L 1
+goto S_Loop
+
+Spawn3:
+TNT1 A 0 A_Jump(256,1,2,3,4,5,6,7,8,9,10,11,12,13,14)
+I_TA A 1
+goto S_Loop
+I_TA B 1
+goto S_Loop
+I_TA C 1
+goto S_Loop
+I_TD M 1//Money Sack due to Coins pickup never being seen
+goto S_Loop
+I_TA E 1
+goto S_Loop
+I_TA F 1
+goto S_Loop
+I_TA G 1
+goto S_Loop
+I_TA H 1
+goto S_Loop
+I_TA I 1
+goto S_Loop
+I_TA J 1
+goto S_Loop
+I_TA K 1
+goto S_Loop
+
+S_Loop:
+"####" "#" 4 A_SpawnItemEx("GelatoStickyPizzaFX",random(-30,30),random(-30,30),random(-6,40))
+loop
+
+Death:
+TNT1 A 0 A_JumpIfInventory("PowerProtectBoss",1,"DeathReturn",8)
+TNT1 A 0 A_JumpIf(ACS_NamedExecuteWithResult("uc_istracerplayer")==1,"DeathHit")
+goto DeathReturn
+DeathHit:
+TNT1 A 0 A_GiveInventory("GelatoStickyPizzaGet_P",1,8)
+TNT1 AAA 0 A_SpawnItemEx("ConfettiDeathSpawner",0,0,32,0,0,0,0,1)
+TNT1 AAAAAAAAAAAAAAAAA 5 A_JumpIf(!CallACS("uh_PointerExists", 8), "DeathReturn")
+TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 8), "DeathReturn")
+TNT1 A 0 A_Warp(8,0,0,28,0,24)
+TNT1 AAAAAAAAAA 0 A_SpawnItemEx("GelatoStickyPizzaBomb",0,0,0,random(-20,20),random(-20,20),random(0,20),0,0,0)
+TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GelatoStickyPizzaBomb2",0,0,0,random(-20,20),random(-20,20),random(0,20),0,0,0)
+TNT1 A 35
+stop
+DeathReturn:
+TNT1 A 0 A_GiveToTarget("GelatoPizzaItem",1)
+TNT1 A 0 A_SpawnItemEx("GelatoStickyPizzaRefundFX",0,0,0,0,0,2.5)
+stop
+}
+}
+
+actor GelatoStickyPizzaGet_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 //A_Log("\cjOh god! This is one of Gelato's sticky explosives! You're in trouble!!",1)
+TNT1 A 0 A_SpawnItemEx("GelatoStickyPizzaSound")
+stop
+}
+}
+actor GelatoStickyPizzaSound : BasicSoundFollow
+{
+PainSound "weapon/BombChest"
+ReactionTime 210
+}
+
+actor GelatoStickyPizzaBomb : BasicProjectile
+{
+Translation "192:192=5:5","198:198=4:4"
+damagetype "Gelato"
+Obituary "%o was blown up by \cjJester \cmGelato\c- (%k)'s trick items!"
+-NOGRAVITY
++SKYEXPLODE
++DONTREFLECT
++BOUNCEONWALLS
++BOUNCEONFLOORS
++BOUNCEONCEILINGS
++DONTSPLASH
+ReactionTime 1
+Mass 80
+damage (20)
+Radius 6
+Height 7
+speed 80
+States
+{
+Spawn:
+9P10 ABCD 3
+9P10 A 0 A_ChangeFlag("NOGRAVITY",1)
+9P10 ABCDABCDABCD 1
+9P10 A 1 A_CountDown
+wait
+Death:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("weapon/crackerexplode","Weapon")
+TNT1 A 0 A_SetGravity(0.0)
+TNT1 A 0 A_Explode(Mass,148,0,0,16)
+TNT1 A 4 A_SpawnItemEx("BasicBoom4FX_ColorX",0,0,0,0,0,0,0,1)
+stop
+}
+}
+actor GelatoStickyPizzaBomb2 : GelatoStickyPizzaBomb
+{
++THRUACTORS
+Mass 200
+damage (100)
+States
+{
+Spawn:
+9P10 AB 3
+9P10 A 0 A_ChangeFlag("THRUACTORS",0)
+goto Super::Spawn+2
+}
+}
+
+actor JesterGelatoShot1 : BasicProjectile
+{
+Translation "192:192=5:5", "198:198=4:4"
+damagetype "Gelato"
+Obituary "%o didn't understand \cjJester \cmGelato\c- (%k)."
+-NOGRAVITY
+damage (0)
+Radius 6
+Height 7
+speed 70
+States
+{
+Spawn:
+9P10 ABCD 3
+loop
+Crash:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("wep_L/mmk/balladecrackerexplode","Weapon")
+TNT1 A 0 A_SetGravity(0.0)
+TNT1 A 0 A_Explode(250,128,0)
+TNT1 AAAAAAA 0 A_SpawnItemEx("JesterGelatoShot2",0,0,8,random(-20,20),random(-20,20),random(0,20),0,0,0)
+TNT1 A 4 A_SpawnItemEx("BasicBoom4FX_ColorX",0,0,0,0,0,0,0,1)
+stop
+Death:
+TNT1 A 0
+//TNT1 A 0 A_PlaySoundEx("wep_L/mmk/balladecrackerexplode","Weapon")
+TNT1 A 0 A_SetGravity(0.0)
+TMFX ABCD 2
+stop
+}
+}
+
+actor JesterGelatoShot2 : BasicProjectile
+{
+Translation "192:192=5:5", "198:198=4:4"
+damagetype "Gelato"
+Obituary "%o didn't understand \cjJester \cmGelato\c- (%k)."
+-NOGRAVITY
++SKYEXPLODE
++DOOMBOUNCE
+-ALLOWBOUNCEONACTORS
++DONTSPLASH
+ReactionTime 1
+damage (20)
+Radius 6
+Height 7
+speed 80
+States
+{
+Spawn:
+9P10 ABCD 3
+//9P10 A 0 A_Stop
+9P10 A 0 A_ChangeFlag("NOGRAVITY",1)
+9P10 ABCDABCDABCD 1
+9P10 A 1 A_CountDown
+wait
+Death:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("weapon/crackerexplode", "Weapon")
+TNT1 A 0 A_SetGravity(0.0)
+TNT1 A 0 A_Explode(125,148,0)
+TNT1 A 4 A_SpawnItemEx("BasicBoom4FX_ColorX",0,0,0,0,0,0,0,1)
+stop
+}
+}
+
+actor JesterGelatoShot3 : BasicExplosion
+{
+Translation "192:192=5:5", "198:198=4:4"
+damagetype "Gelato"
+Obituary "%o didn't understand \cjJester \cmGelato\c- (%k)."
+scale 2.5
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("weapon/crackerexplode", "Weapon")
+TNT1 A 0 A_Explode(226,168,0)
+TNT1 AAAAAAA 0 A_SpawnItemEx("JesterGelatoShot2",0,0,8,random(-20,20),random(-20,20),random(0,20),0,0,0)
+TNT1 A 4 A_SpawnItemEx("BasicBoom4FX_ColorX",0,0,0,0,0,0,0,1)
+stop
+}
+}
+
+actor JesterGelatoShot4 : JesterGelatoShot3
+{
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("weapon/crackerexplode","Weapon")
+TNT1 A 0 A_Explode(206,128,0)
+TNT1 AAAAAAA 0 A_SpawnItemEx("JesterGelatoShot5",0,0,8,random(-20,20),random(-20,20),random(0,20),0,0,0)
+TNT1 A 4 A_SpawnItemEx("BasicBoom4FX_ColorX",0,0,0,0,0,0,0,1)
+stop
+}
+}
+
+actor JesterGelatoShot5 : BasicProjectile
+{
+Translation "192:192=5:5", "198:198=4:4"
+damagetype "Gelato"
+Obituary "%o didn't understand \cjJester \cmGelato\c- (%k)."
+-NOGRAVITY
++DOOMBOUNCE
+-ALLOWBOUNCEONACTORS
++DONTSPLASH
+reactiontime 100
+damage (150)
+Radius 6
+Height 7
+speed 30
+States
+{
+Spawn:
+9P10 ABCD 3
+9P10 A 0 A_Countdown
+loop
+Death:
+TNT1 A 0
+TNT1 A 0 A_PlaySoundEx("weapon/crackerexplode","Weapon")
+TNT1 A 0 A_SetGravity(0.0)
+TNT1 A 0 A_Explode(150,128,0)
+TNT1 A 4 A_SpawnItemEx("BasicBoom4FX_ColorX",0,0,0,0,0,0,0,1)
+stop
+}
+}
+
+actor GelatoTwinThingGuyPSEUDOISM : BasicProjectile
+{
+Translation "192:192=4:4", "198:198=5:5"
+damagetype "Gelato"
+Obituary "%o was now friends with \cjJester \cmGelato\c- (%k)."
+-NOGRAVITY
++DONTBLAST
++THRUGHOST
+Bouncetype Classic
+-BOUNCEONWALLS
+-BOUNCEONFLOORS
+-BOUNCEONCEILINGS
+-ALLOWBOUNCEONACTORS
++DONTSPLASH
++NOEXPLODEFLOOR
++STEPMISSILE
+maxstepheight 24
+BounceFactor 1.0
+WallBounceFactor 0.0
+gravity 1.0
+Damage (250)
+Radius 32
+Height 56
+speed 20
+States
+{
+Spawn:
+9A10 B 0
+9A10 B 0 A_ChangeVelocity(20,0,0,3)
+9A10 B 1 A_GiveInventory("ReSyncPickup")
+9A10 BCDE 5
+Goto Spawn+3
+Death:
+TNT1 A 1 A_SpawnItemEx("JesterGelatoShot3")
+stop
+}
+}
