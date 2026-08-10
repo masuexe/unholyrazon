@@ -40,3 +40,21 @@ script "rz_ClearForcedPlayerSkin_Enter" ENTER {
 script "rz_ClearForcedPlayerSkin_Respawn" RESPAWN {
 	ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
 }
+
+script "rz_ParalyzedStatusWatcher" (void) {
+	int ready = CheckInventory("UH_LastReadyDye");
+	GiveInventory("NoWeaponTranslation", 1);
+	while (CheckInventory("PlayerParalyzedTimer") > 0) {
+		if (Timer() % 2 == 0) {
+			Thing_SetTranslation(0, 7000); // PARALYZED_DYE
+		} else if (ready > 0) {
+			Thing_SetTranslation(0, ready);
+		}
+		Delay(1);
+	}
+	TakeInventory("NoWeaponTranslation", 1);
+	if (ready > 0) {
+		Thing_SetTranslation(0, ready);
+		ACS_NamedExecuteWithResult("uh_SyncMugFromWeaponDye", ready);
+	}
+}
