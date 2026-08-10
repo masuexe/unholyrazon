@@ -42,6 +42,7 @@ script "rz_ClearForcedPlayerSkin_Respawn" RESPAWN {
 }
 
 script "rz_ParalyzedStatusWatcher" (void) {
+	GiveInventory("PlayerIsParalyzed", 1);
 	int ready = CheckInventory("UH_LastReadyDye");
 	GiveInventory("NoWeaponTranslation", 1);
 	while (CheckInventory("PlayerParalyzedTimer") > 0) {
@@ -50,6 +51,7 @@ script "rz_ParalyzedStatusWatcher" (void) {
 		} else if (ready > 0) {
 			Thing_SetTranslation(0, ready);
 		}
+		TakeInventory("PlayerParalyzedTimer", 1);
 		Delay(1);
 	}
 	TakeInventory("NoWeaponTranslation", 1);
@@ -57,4 +59,7 @@ script "rz_ParalyzedStatusWatcher" (void) {
 		Thing_SetTranslation(0, ready);
 		ACS_NamedExecuteWithResult("uh_SyncMugFromWeaponDye", ready);
 	}
+	// Always unfreeze here: pain states may be interrupted before PlayerParalyzedOff
+	ACS_NamedExecuteWithResult("core_freezeplayer", 0, false);
+	TakeInventory("PlayerIsParalyzed", 1);
 }
