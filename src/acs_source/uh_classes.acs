@@ -208,7 +208,7 @@ Script "uh_shieldwarper_deepdiggerU" (int left, int amount) CLIENTSIDE {
 Script "uc_AnchorShot_mob" (int Vel)
 {
 	int nx, ny, nz;
-	
+
 	int myx = GetActorX(0);
 	int myy = GetActorY(0);
 	int myz = GetActorZ(0);
@@ -809,6 +809,34 @@ script "rz_SinfulBusterExpertSinWatcher" (void) {
 		}
 		Delay(1);
 	}
+}
+
+function bool HealthHasDigit(int hp, int digit)
+{
+	if (hp <= 0)
+		return false;
+	while (hp > 0)
+	{
+		if ((hp % 10) == digit)
+			return true;
+		hp /= 10;
+	}
+	return false;
+}
+
+// Activator: GBeast_EraseCross (or Fury) on Crash — HPBug + digit-4 bonus
+script "rz_EraseCrossHit" (void)
+{
+	int tracer = ACS_NamedExecuteWithResult("core_gettracer");
+	int owner = ACS_NamedExecuteWithResult("core_gettarget");
+	if (tracer <= 0)
+		terminate;
+
+	ACS_NamedExecuteWithResult("rz_HPBugPlayer", tracer - 999, 1);
+
+	int hp = GetActorProperty(tracer, APROP_HEALTH);
+	if (HealthHasDigit(hp, 4))
+		ACS_NamedExecuteWithResult("core_damageactor", "GBeast_EraseBonusDamager", 400, tracer, owner);
 }
 
 script "UB_MagicDevilFlingACS" (int Which)
