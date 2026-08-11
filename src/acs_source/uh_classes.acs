@@ -686,6 +686,8 @@ script "rz_MoveSFCardQueue" (void) {
 	GiveSFCard(player, 0);
 }
 
+#define RZ_LOWHP_NUM_ID -19729900
+
 script "rz_LowHPWarning" (int soundtype) CLIENTSIDE {
 	str soundname;
 	int sounddelay;
@@ -702,9 +704,31 @@ script "rz_LowHPWarning" (int soundtype) CLIENTSIDE {
 
 	int count = 0;
 	while (GetActorProperty(0, APROP_Health) > 0) {
-    int healthlimit = GetActorProperty(0, APROP_SpawnHealth) / 4;
+		int healthlimit = GetActorProperty(0, APROP_SpawnHealth) / 4;
 		if (GetActorProperty(0, APROP_Health) <= healthlimit && !CheckInventory("IsAFakeBoss")) {
 			GiveInventory("LowHealthFlag", 1);
+			int mode = ACS_NamedExecuteWithResult("core_Get_AssistDisplayBar_HUDMode");
+			if (mode == 1 || mode == 2) {
+				if (CheckInventory("HealthNumberFlag")) {
+					TakeInventory("HealthNumberFlag", 1);
+					GiveInventory("LowHealthNumHidden", 1);
+				}
+				if (CheckInventory("LowHealthNumHidden")) {
+					int hx;
+					int hy;
+					if (mode == 2) {
+						hx = 152.1;
+						hy = 177.1;
+					} else {
+						hx = 31.1;
+						hy = 31.1;
+					}
+					SetHudSize(320, 200, 0);
+					SetFont("8BDMAFONT");
+					HudMessage(i:GetActorProperty(0, APROP_Health);
+						HUDMSG_PLAIN, RZ_LOWHP_NUM_ID, CR_RED, hx, hy, 0.05);
+				}
+			}
 			if (count >= sounddelay) {
 				PlaySound(0, soundname, CHAN_AUTO);
 				count = 0;
@@ -713,9 +737,20 @@ script "rz_LowHPWarning" (int soundtype) CLIENTSIDE {
 			}
 		} else {
 			TakeInventory("LowHealthFlag", 1);
+			if (CheckInventory("LowHealthNumHidden")) {
+				GiveInventory("HealthNumberFlag", 1);
+				TakeInventory("LowHealthNumHidden", 1);
+			}
+			HudMessage(s:""; HUDMSG_PLAIN, RZ_LOWHP_NUM_ID, CR_UNTRANSLATED, 0, 0, 0.01);
 		}
 		Delay(1);
 	}
+	if (CheckInventory("LowHealthNumHidden")) {
+		GiveInventory("HealthNumberFlag", 1);
+		TakeInventory("LowHealthNumHidden", 1);
+	}
+	TakeInventory("LowHealthFlag", 1);
+	HudMessage(s:""; HUDMSG_PLAIN, RZ_LOWHP_NUM_ID, CR_UNTRANSLATED, 0, 0, 0.01);
 }
 
 script "rz_CheckVoidWalkerWeapon" (void) {
