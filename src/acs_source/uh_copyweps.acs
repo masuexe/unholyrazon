@@ -277,6 +277,141 @@ script "uh_GiveRandomCopyweps" (int Check)//Gives weapons to Megaman/Qwant, also
 	}
 }
 
+// --- Pharaoh Roulette: owned MegaMan / Qwant / NegaMan copy weapons ---
+function int rz_CountCopyWeaponsFunc(void)
+{
+	int count = 0;
+	int i;
+	if (CheckInventory("MegaManU_W"))
+		count++;
+	for (i = 0; i < RANGEDWEPU_MAX; i++)
+		if (CheckInventory(StrParam(s: RangedWepU[i], s: "WepU")))
+			count++;
+	for (i = 0; i < RAPIDWEPU_MAX; i++)
+		if (CheckInventory(StrParam(s: RapidWepU[i], s: "WepU")))
+			count++;
+	for (i = 0; i < CLOSEWEPU_MAX; i++)
+		if (CheckInventory(StrParam(s: CloseWepU[i], s: "WepU")))
+			count++;
+	for (i = 0; i < POWERWEPU_MAX; i++)
+		if (CheckInventory(StrParam(s: PowerWepU[i], s: "WepU")))
+			count++;
+	for (i = 0; i < AOEWEPU_MAX; i++)
+		if (CheckInventory(StrParam(s: AoEWepU[i], s: "WepU")))
+			count++;
+	for (i = 0; i < SHIELDWEPU_MAX; i++)
+		if (CheckInventory(StrParam(s: ShieldWepU[i], s: "WepU")))
+			count++;
+	for (i = 0; i < Q_PKMN_LIMIT; i++)
+		if (CheckInventory(QwantMoveList[i]))
+			count++;
+	if (CheckInventory("NegaMan_W"))
+		count++;
+	for (i = 0; i < NEGAWEP_MAX; i++)
+		if (CheckInventory(negaman_wep_list[i]))
+			count++;
+	return count;
+}
+
+script "rz_CountCopyWeapons" (void)
+{
+	SetResultValue(rz_CountCopyWeaponsFunc());
+}
+
+// Activator: player — SetWeapon to a random owned copywep (or MegamanU_W / NegaMan_W / Qwant_W)
+script "rz_RoulettePickCopyWeapon" (void)
+{
+	str weap = GetWeapon();
+	str owned[16];
+	int n = 0;
+	int i;
+	str cand;
+
+	if (CheckInventory("MegaManU_W") && n < 16) {
+		owned[n] = "MegaManU_W";
+		n++;
+	}
+	for (i = 0; i < RANGEDWEPU_MAX && n < 16; i++) {
+		cand = StrParam(s: RangedWepU[i], s: "WepU");
+		if (CheckInventory(cand)) {
+			owned[n] = cand;
+			n++;
+		}
+	}
+	for (i = 0; i < RAPIDWEPU_MAX && n < 16; i++) {
+		cand = StrParam(s: RapidWepU[i], s: "WepU");
+		if (CheckInventory(cand)) {
+			owned[n] = cand;
+			n++;
+		}
+	}
+	for (i = 0; i < CLOSEWEPU_MAX && n < 16; i++) {
+		cand = StrParam(s: CloseWepU[i], s: "WepU");
+		if (CheckInventory(cand)) {
+			owned[n] = cand;
+			n++;
+		}
+	}
+	for (i = 0; i < POWERWEPU_MAX && n < 16; i++) {
+		cand = StrParam(s: PowerWepU[i], s: "WepU");
+		if (CheckInventory(cand)) {
+			owned[n] = cand;
+			n++;
+		}
+	}
+	for (i = 0; i < AOEWEPU_MAX && n < 16; i++) {
+		cand = StrParam(s: AoEWepU[i], s: "WepU");
+		if (CheckInventory(cand)) {
+			owned[n] = cand;
+			n++;
+		}
+	}
+	for (i = 0; i < SHIELDWEPU_MAX && n < 16; i++) {
+		cand = StrParam(s: ShieldWepU[i], s: "WepU");
+		if (CheckInventory(cand)) {
+			owned[n] = cand;
+			n++;
+		}
+	}
+	for (i = 0; i < Q_PKMN_LIMIT && n < 16; i++) {
+		if (CheckInventory(QwantMoveList[i])) {
+			owned[n] = QwantMoveList[i];
+			n++;
+		}
+	}
+	if (CheckInventory("NegaMan_W") && n < 16) {
+		owned[n] = "NegaMan_W";
+		n++;
+	}
+	for (i = 0; i < NEGAWEP_MAX && n < 16; i++) {
+		if (CheckInventory(negaman_wep_list[i])) {
+			owned[n] = negaman_wep_list[i];
+			n++;
+		}
+	}
+
+	if (n < 2) {
+		SetResultValue(0);
+		terminate;
+	}
+	for (int tries = 0; tries < 24; tries++) {
+		int idx = random(0, n - 1);
+		if (StrCmp(owned[idx], weap) != 0) {
+			SetWeapon(owned[idx]);
+			SetResultValue(1);
+			terminate;
+		}
+	}
+	for (int j = 0; j < n; j++) {
+		if (StrCmp(owned[j], weap) != 0) {
+			SetWeapon(owned[j]);
+			SetResultValue(1);
+			terminate;
+		}
+	}
+	SetResultValue(0);
+}
+
 // Activator: FlameBurstSplit on Death/Crash — 1/16 victim max HP (Pokemon adjacent splash)
 script "rz_FlameBurstSplitDmg" (int ratio)
 {

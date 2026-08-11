@@ -592,7 +592,7 @@ function str rz_WeaponFamilyBase(str weap)
 	return weap;
 }
 
-function int rz_CountClassWeaponsFunc(void)
+function int rz_CountNativeWFamilyFunc(void)
 {
 	str weap = GetWeapon();
 	if (StrLen(weap) == 0)
@@ -608,12 +608,21 @@ function int rz_CountClassWeaponsFunc(void)
 	return count;
 }
 
+function int rz_CountClassWeaponsFunc(void)
+{
+	int native = rz_CountNativeWFamilyFunc();
+	int copy = ACS_NamedExecuteWithResult("rz_CountCopyWeapons");
+	if (native >= copy)
+		return native;
+	return copy;
+}
+
 script "rz_CountClassWeapons" (void)
 {
 	SetResultValue(rz_CountClassWeaponsFunc());
 }
 
-// Activator: player — SetWeapon to a random owned sibling in the same *_W / *_W# family
+// Activator: player — SetWeapon to another owned weapon (_W family, else Mega/Qwant/Nega copy pool)
 script "rz_RoulettePickOtherWeapon" (void)
 {
 	str weap = GetWeapon();
@@ -621,41 +630,44 @@ script "rz_RoulettePickOtherWeapon" (void)
 		SetResultValue(0);
 		terminate;
 	}
-	str base = rz_WeaponFamilyBase(weap);
-	str owned[7];
-	int n = 0;
-	str cand = StrParam(s: base, s: "_W");
-	if (CheckInventory(cand)) {
-		owned[n] = cand;
-		n++;
-	}
-	for (int i = 1; i <= 6; i++) {
-		cand = StrParam(s: base, s: "_W", i: i);
+
+	// Prefer class-native *_W / *_W# siblings when that family has 2+
+	if (rz_CountNativeWFamilyFunc() >= 2) {
+		str base = rz_WeaponFamilyBase(weap);
+		str owned[7];
+		int n = 0;
+		str cand = StrParam(s: base, s: "_W");
 		if (CheckInventory(cand)) {
 			owned[n] = cand;
 			n++;
 		}
-	}
-	if (n < 2) {
+		for (int i = 1; i <= 6; i++) {
+			cand = StrParam(s: base, s: "_W", i: i);
+			if (CheckInventory(cand)) {
+				owned[n] = cand;
+				n++;
+			}
+		}
+		for (int tries = 0; tries < 16; tries++) {
+			int idx = random(0, n - 1);
+			if (StrCmp(owned[idx], weap) != 0) {
+				SetWeapon(owned[idx]);
+				SetResultValue(1);
+				terminate;
+			}
+		}
+		for (int j = 0; j < n; j++) {
+			if (StrCmp(owned[j], weap) != 0) {
+				SetWeapon(owned[j]);
+				SetResultValue(1);
+				terminate;
+			}
+		}
 		SetResultValue(0);
 		terminate;
 	}
-	for (int tries = 0; tries < 16; tries++) {
-		int idx = random(0, n - 1);
-		if (StrCmp(owned[idx], weap) != 0) {
-			SetWeapon(owned[idx]);
-			SetResultValue(1);
-			terminate;
-		}
-	}
-	for (int j = 0; j < n; j++) {
-		if (StrCmp(owned[j], weap) != 0) {
-			SetWeapon(owned[j]);
-			SetResultValue(1);
-			terminate;
-		}
-	}
-	SetResultValue(0);
+
+	SetResultValue(ACS_NamedExecuteWithResult("rz_RoulettePickCopyWeapon"));
 }
 
 // Activator: player receiving a Pharaoh 4MI curse roll
