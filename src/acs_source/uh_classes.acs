@@ -669,6 +669,37 @@ script "rz_RoulettePickOtherWeapon" (void)
 	SetResultValue(ACS_NamedExecuteWithResult("rz_RoulettePickCopyWeapon"));
 }
 
+// Cache JumpZ before UH_DisableJumpPower zeroes it; inventory as second store.
+int PharaohHopJumpZ[64];
+
+script "rz_HopCacheJumpZ" (void)
+{
+	int p = PlayerNumber();
+	int jz = GetActorProperty(0, APROP_JumpZ) >> 16;
+	if (p < 0 || p >= 64) {
+		SetResultValue(0);
+		terminate;
+	}
+	PharaohHopJumpZ[p] = jz;
+	SetInventory("Pharaoh4MIHopJumpCache", jz);
+	SetResultValue(jz);
+}
+
+// Activator: HoppingWatcher; thrust TARGET using cached JumpZ
+script "rz_HopDoThrust" (void)
+{
+	if (!SetActivator(0, AAPTR_TARGET) || PlayerNumber() < 0)
+		terminate;
+	int p = PlayerNumber();
+	int jz = 0;
+	if (p >= 0 && p < 64)
+		jz = PharaohHopJumpZ[p];
+	if (jz == 0)
+		jz = CheckInventory("Pharaoh4MIHopJumpCache");
+	ThrustThingZ(0, jz * 4, 0, 0);
+	GiveInventory("JumpSound", 1);
+}
+
 // Activator: player receiving a Pharaoh 4MI curse roll
 script "rz_ApplyPharaoh4MICurse" (void)
 {

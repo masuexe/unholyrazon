@@ -533,6 +533,8 @@ actor RemovePharaoh4MICurse_P : CustomInventory {
     TNT1 A 0 A_TakeInventory("Pharaoh4MICurse_Darkness")
     TNT1 A 0 A_TakeInventory("Pharaoh4MICurse_Unknown")
     TNT1 A 0 A_TakeInventory("Pharaoh4MICurse_Roulette")
+    TNT1 A 0 A_TakeInventory("UH_DisableJumpPower")
+    TNT1 A 0 A_TakeInventory("Pharaoh4MIHopJumpCache")
     stop
   }
 }
@@ -578,11 +580,18 @@ actor Pharaoh4MICurse_Unknown_P : CustomInventory {
   }
 }
 
+actor Pharaoh4MIHopJumpCache : Inventory {
+  Inventory.MaxAmount 0x7ffffffd
+}
+
 actor Pharaoh4MICurse_Hopping_P : CustomInventory {
   States {
    Pickup:
+    // Cache JumpZ before DisableJump (watcher Spawn runs after Pickup).
+    TNT1 A 0 ACS_NamedExecuteWithResult("rz_HopCacheJumpZ")
     TNT1 A 0 A_GiveInventory("Pharaoh4MICurse_Hopping")
     TNT1 A 0 A_SpawnItemEx("Pharaoh4MICurse_HoppingWatcher")
+    TNT1 A 0 A_GiveInventory("UH_DisableJumpPowerGiver")
     stop
   }
 }
@@ -599,12 +608,13 @@ actor Pharaoh4MICurse_HoppingWatcher : BasicWatcher {
     TNT1 A 0 A_SetUserVar("user_timer", user_timer + 1)
     goto Spawn
    Hop:
-    TNT1 A 0 A_GiveToTarget("JumpSound")
-    TNT1 A 0 ThrustThingZ(CallACS("core_gettarget"),
-                          CallACS("core_getactorproperty",CallACS("core_gettarget"),APROP_JumpZ,1) * 4,
-                          0, 0)
+    TNT1 A 0 ACS_NamedExecuteWithResult("rz_HopDoThrust")
     TNT1 A 0 A_SetUserVar("user_timer", 0)
     goto Spawn
+   Death:
+    TNT1 A 0 A_TakeFromTarget("UH_DisableJumpPower")
+    TNT1 A 0 A_TakeFromTarget("Pharaoh4MIHopJumpCache")
+    stop
   }
 }
 
