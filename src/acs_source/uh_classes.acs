@@ -571,6 +571,117 @@ script "uc_GemBankerIsRainbowHud" (void) {
   SetResultValue(GetUserCVar(PlayerNumber(), "uh_cl_GemBankerHud"));
 }
 
+// Strip trailing _W / _W1.._W9 from a weapon classname
+function str rz_WeaponFamilyBase(str weap)
+{
+	int len = StrLen(weap);
+	if (len < 3)
+		return weap;
+	// *_W1 .. *_W9
+	if (len >= 4
+		&& GetChar(weap, len - 3) == '_'
+		&& GetChar(weap, len - 2) == 'W')
+	{
+		int d = GetChar(weap, len - 1);
+		if (d >= '1' && d <= '9')
+			return StrLeft(weap, len - 3);
+	}
+	// *_W
+	if (GetChar(weap, len - 2) == '_' && GetChar(weap, len - 1) == 'W')
+		return StrLeft(weap, len - 2);
+	return weap;
+}
+
+function int rz_CountClassWeaponsFunc(void)
+{
+	str weap = GetWeapon();
+	if (StrLen(weap) == 0)
+		return 0;
+	str base = rz_WeaponFamilyBase(weap);
+	int count = 0;
+	if (CheckInventory(StrParam(s: base, s: "_W")))
+		count++;
+	for (int i = 1; i <= 6; i++) {
+		if (CheckInventory(StrParam(s: base, s: "_W", i: i)))
+			count++;
+	}
+	return count;
+}
+
+script "rz_CountClassWeapons" (void)
+{
+	SetResultValue(rz_CountClassWeaponsFunc());
+}
+
+// Activator: player — SetWeapon to a random owned sibling in the same *_W / *_W# family
+script "rz_RoulettePickOtherWeapon" (void)
+{
+	str weap = GetWeapon();
+	if (StrLen(weap) == 0) {
+		SetResultValue(0);
+		terminate;
+	}
+	str base = rz_WeaponFamilyBase(weap);
+	str owned[7];
+	int n = 0;
+	str cand = StrParam(s: base, s: "_W");
+	if (CheckInventory(cand)) {
+		owned[n] = cand;
+		n++;
+	}
+	for (int i = 1; i <= 6; i++) {
+		cand = StrParam(s: base, s: "_W", i: i);
+		if (CheckInventory(cand)) {
+			owned[n] = cand;
+			n++;
+		}
+	}
+	if (n < 2) {
+		SetResultValue(0);
+		terminate;
+	}
+	for (int tries = 0; tries < 16; tries++) {
+		int idx = random(0, n - 1);
+		if (StrCmp(owned[idx], weap) != 0) {
+			SetWeapon(owned[idx]);
+			SetResultValue(1);
+			terminate;
+		}
+	}
+	for (int j = 0; j < n; j++) {
+		if (StrCmp(owned[j], weap) != 0) {
+			SetWeapon(owned[j]);
+			SetResultValue(1);
+			terminate;
+		}
+	}
+	SetResultValue(0);
+}
+
+// Activator: player receiving a Pharaoh 4MI curse roll
+script "rz_ApplyPharaoh4MICurse" (void)
+{
+	TakeInventory("Pharaoh4MICurse_Reverse", 1);
+	TakeInventory("Pharaoh4MICurse_Hopping", 1);
+	TakeInventory("Pharaoh4MICurse_Fidget", 1);
+	TakeInventory("Pharaoh4MICurse_Darkness", 1);
+	TakeInventory("Pharaoh4MICurse_Unknown", 1);
+	TakeInventory("Pharaoh4MICurse_Roulette", 1);
+
+	int pool = 5;
+	if (rz_CountClassWeaponsFunc() >= 2)
+		pool = 6;
+	int pick = random(0, pool - 1);
+	switch (pick) {
+		case 0: GiveInventory("Pharaoh4MICurse_Reverse_P", 1); break;
+		case 1: GiveInventory("Pharaoh4MICurse_Hopping_P", 1); break;
+		case 2: GiveInventory("Pharaoh4MICurse_Fidget_P", 1); break;
+		case 3: GiveInventory("Pharaoh4MICurse_Darkness_P", 1); break;
+		case 4: GiveInventory("Pharaoh4MICurse_Unknown_P", 1); break;
+		case 5: GiveInventory("Pharaoh4MICurse_Roulette_P", 1); break;
+	}
+}
+
 script "rzc_Pharaoh4MICurse" (int toggle) {
 	if (toggle) {
 		AmbientSound("4MI/CurseOn", 127);
