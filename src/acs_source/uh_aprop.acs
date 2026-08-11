@@ -211,6 +211,47 @@ script "uh_extralifeplayer" (int player, int toggle, int type) {
 	}
 }
 
+#define HPBUG_TAKE 0
+#define HPBUG_ADD 1
+#define HPBUG_CLEAR -1
+
+script "rz_HPBugPlayer" (int player, int toggle) {
+	if (player == 0) {player = PlayerNumber() + 1;}
+	if (player <= 0 || !SetActivatorToPlayer(player - 1)) {terminate;}
+
+	if (toggle < 0) {
+		TakeInventory("PlayerPropertyHPBug", 24);
+		terminate;
+	}
+	if (toggle >= 1) {
+		GiveInventory("PlayerPropertyHPBug", 1);
+		ACS_NamedExecuteAlways("rz_HPBugDrain", 0);
+	} else if (CheckInventory("PlayerPropertyHPBug") > 0) {
+		TakeInventory("PlayerPropertyHPBug", 1);
+	}
+}
+
+script "rz_HPBugDrain" (void) {
+	if (CheckInventory("PlayerPropertyHPBugRunning"))
+		terminate;
+	GiveInventory("PlayerPropertyHPBugRunning", 1);
+	while (CheckInventory("PlayerPropertyHPBug") > 0) {
+		int stacks = CheckInventory("PlayerPropertyHPBug");
+		// 1 stack: every 24 tics -1; more stacks → shorter period (faster bleed), capped by maxamount
+		int period = 24 - stacks;  // 24 / stacks;
+		if (period < 1)
+			period = 1;
+		Delay(period);
+		stacks = CheckInventory("PlayerPropertyHPBug");
+		if (stacks <= 0)
+			break;
+		int h = GetActorProperty(0, APROP_HEALTH);
+		if (h > 1)
+			SetActorProperty(0, APROP_HEALTH, h - 1);
+	}
+	TakeInventory("PlayerPropertyHPBugRunning", 1);
+}
+
 
 #define CAPROP_AirJumpZ 64
 #define CAPROP_WallJumpZ 65
