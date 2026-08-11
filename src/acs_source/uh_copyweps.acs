@@ -277,40 +277,114 @@ script "uh_GiveRandomCopyweps" (int Check)//Gives weapons to Megaman/Qwant, also
 	}
 }
 
-// --- Pharaoh Roulette: owned MegaMan / Qwant / NegaMan copy weapons ---
+// --- Pharaoh Roulette: copywep pool (exact MegaManU / Qwant / NegaMan only) ---
+#define RZ_COPY_NONE 0
+#define RZ_COPY_MEGA 1
+#define RZ_COPY_QWANT 2
+#define RZ_COPY_NEGA 3
+
+str rz_CopyOwnedBuf[16];
+int rz_CopyOwnedN;
+
+function int rz_CopyWepKind(void)
+{
+	str cls = GetActorClass(0);
+	if (StrCmp(cls, "MegaManU") == 0)
+		return RZ_COPY_MEGA;
+	if (StrCmp(cls, "Qwant") == 0)
+		return RZ_COPY_QWANT;
+	if (StrCmp(cls, "NegaMan") == 0)
+		return RZ_COPY_NEGA;
+	return RZ_COPY_NONE;
+}
+
+function void rz_CopyOwnedPush(str weap)
+{
+	if (rz_CopyOwnedN >= 16 || StrLen(weap) == 0)
+		return;
+	rz_CopyOwnedBuf[rz_CopyOwnedN] = weap;
+	rz_CopyOwnedN++;
+}
+
+function void rz_CopyOwnedPushMegaSlot(str slotFlag, int which)
+{
+	int idx = CheckInventory(slotFlag) - 1;
+	if (idx < 0)
+		return;
+	str cand = "";
+	switch (which) {
+		case 0:
+			if (idx < RANGEDWEPU_MAX)
+				cand = StrParam(s: RangedWepU[idx], s: "WepU");
+			break;
+		case 1:
+			if (idx < RAPIDWEPU_MAX)
+				cand = StrParam(s: RapidWepU[idx], s: "WepU");
+			break;
+		case 2:
+			if (idx < CLOSEWEPU_MAX)
+				cand = StrParam(s: CloseWepU[idx], s: "WepU");
+			break;
+		case 3:
+			if (idx < POWERWEPU_MAX)
+				cand = StrParam(s: PowerWepU[idx], s: "WepU");
+			break;
+		case 4:
+			if (idx < AOEWEPU_MAX)
+				cand = StrParam(s: AoEWepU[idx], s: "WepU");
+			break;
+		case 5:
+			if (idx < SHIELDWEPU_MAX)
+				cand = StrParam(s: ShieldWepU[idx], s: "WepU");
+			break;
+	}
+	if (StrLen(cand) > 0)
+		rz_CopyOwnedPush(cand);
+}
+
+function int rz_CollectCopyOwned(void)
+{
+	rz_CopyOwnedN = 0;
+	int kind = rz_CopyWepKind();
+	int i;
+	int move;
+
+	if (kind == RZ_COPY_MEGA) {
+		if (CheckInventory("MegaManU_W"))
+			rz_CopyOwnedPush("MegaManU_W");
+		rz_CopyOwnedPushMegaSlot("MegaSlotRanged_F", 0);
+		rz_CopyOwnedPushMegaSlot("MegaSlotRapid_F", 1);
+		rz_CopyOwnedPushMegaSlot("MegaSlotClose_F", 2);
+		rz_CopyOwnedPushMegaSlot("MegaSlotPower_F", 3);
+		rz_CopyOwnedPushMegaSlot("MegaSlotAoE_F", 4);
+		rz_CopyOwnedPushMegaSlot("MegaSlotShield_F", 5);
+		return rz_CopyOwnedN;
+	}
+	if (kind == RZ_COPY_QWANT) {
+		if (CheckInventory("Qwant_W"))
+			rz_CopyOwnedPush("Qwant_W");
+		for (i = 0; i < 4; i++) {
+			move = GetUserArray(0, "user_PKMN_MoveMem", i);
+			if (move > 0 && move < Q_PKMN_LIMIT && CheckInventory(QwantMoveList[move]))
+				rz_CopyOwnedPush(QwantMoveList[move]);
+		}
+		return rz_CopyOwnedN;
+	}
+	if (kind == RZ_COPY_NEGA) {
+		if (CheckInventory("NegaMan_W"))
+			rz_CopyOwnedPush("NegaMan_W");
+		for (i = 0; i < NEGAWEP_MAX; i++) {
+			if (CheckInventory(negaman_wep_list[i]))
+				rz_CopyOwnedPush(negaman_wep_list[i]);
+		}
+		return rz_CopyOwnedN;
+	}
+	return 0;
+}
+
 function int rz_CountCopyWeaponsFunc(void)
 {
-	int count = 0;
-	int i;
-	if (CheckInventory("MegaManU_W"))
-		count++;
-	for (i = 0; i < RANGEDWEPU_MAX; i++)
-		if (CheckInventory(StrParam(s: RangedWepU[i], s: "WepU")))
-			count++;
-	for (i = 0; i < RAPIDWEPU_MAX; i++)
-		if (CheckInventory(StrParam(s: RapidWepU[i], s: "WepU")))
-			count++;
-	for (i = 0; i < CLOSEWEPU_MAX; i++)
-		if (CheckInventory(StrParam(s: CloseWepU[i], s: "WepU")))
-			count++;
-	for (i = 0; i < POWERWEPU_MAX; i++)
-		if (CheckInventory(StrParam(s: PowerWepU[i], s: "WepU")))
-			count++;
-	for (i = 0; i < AOEWEPU_MAX; i++)
-		if (CheckInventory(StrParam(s: AoEWepU[i], s: "WepU")))
-			count++;
-	for (i = 0; i < SHIELDWEPU_MAX; i++)
-		if (CheckInventory(StrParam(s: ShieldWepU[i], s: "WepU")))
-			count++;
-	for (i = 0; i < Q_PKMN_LIMIT; i++)
-		if (CheckInventory(QwantMoveList[i]))
-			count++;
-	if (CheckInventory("NegaMan_W"))
-		count++;
-	for (i = 0; i < NEGAWEP_MAX; i++)
-		if (CheckInventory(negaman_wep_list[i]))
-			count++;
-	return count;
+	return rz_CollectCopyOwned();
 }
 
 script "rz_CountCopyWeapons" (void)
@@ -318,93 +392,26 @@ script "rz_CountCopyWeapons" (void)
 	SetResultValue(rz_CountCopyWeaponsFunc());
 }
 
-// Activator: player — SetWeapon to a random owned copywep (or MegamanU_W / NegaMan_W / Qwant_W)
+// Activator: player — SetWeapon to a random owned copywep for this class only
 script "rz_RoulettePickCopyWeapon" (void)
 {
 	str weap = GetWeapon();
-	str owned[16];
-	int n = 0;
-	int i;
-	str cand;
-
-	if (CheckInventory("MegaManU_W") && n < 16) {
-		owned[n] = "MegaManU_W";
-		n++;
-	}
-	for (i = 0; i < RANGEDWEPU_MAX && n < 16; i++) {
-		cand = StrParam(s: RangedWepU[i], s: "WepU");
-		if (CheckInventory(cand)) {
-			owned[n] = cand;
-			n++;
-		}
-	}
-	for (i = 0; i < RAPIDWEPU_MAX && n < 16; i++) {
-		cand = StrParam(s: RapidWepU[i], s: "WepU");
-		if (CheckInventory(cand)) {
-			owned[n] = cand;
-			n++;
-		}
-	}
-	for (i = 0; i < CLOSEWEPU_MAX && n < 16; i++) {
-		cand = StrParam(s: CloseWepU[i], s: "WepU");
-		if (CheckInventory(cand)) {
-			owned[n] = cand;
-			n++;
-		}
-	}
-	for (i = 0; i < POWERWEPU_MAX && n < 16; i++) {
-		cand = StrParam(s: PowerWepU[i], s: "WepU");
-		if (CheckInventory(cand)) {
-			owned[n] = cand;
-			n++;
-		}
-	}
-	for (i = 0; i < AOEWEPU_MAX && n < 16; i++) {
-		cand = StrParam(s: AoEWepU[i], s: "WepU");
-		if (CheckInventory(cand)) {
-			owned[n] = cand;
-			n++;
-		}
-	}
-	for (i = 0; i < SHIELDWEPU_MAX && n < 16; i++) {
-		cand = StrParam(s: ShieldWepU[i], s: "WepU");
-		if (CheckInventory(cand)) {
-			owned[n] = cand;
-			n++;
-		}
-	}
-	for (i = 0; i < Q_PKMN_LIMIT && n < 16; i++) {
-		if (CheckInventory(QwantMoveList[i])) {
-			owned[n] = QwantMoveList[i];
-			n++;
-		}
-	}
-	if (CheckInventory("NegaMan_W") && n < 16) {
-		owned[n] = "NegaMan_W";
-		n++;
-	}
-	for (i = 0; i < NEGAWEP_MAX && n < 16; i++) {
-		if (CheckInventory(negaman_wep_list[i])) {
-			owned[n] = negaman_wep_list[i];
-			n++;
-		}
-	}
-
+	int n = rz_CollectCopyOwned();
 	if (n < 2) {
 		SetResultValue(0);
 		terminate;
 	}
 	for (int tries = 0; tries < 24; tries++) {
 		int idx = random(0, n - 1);
-		if (StrCmp(owned[idx], weap) != 0) {
-			SetWeapon(owned[idx]);
+		if (StrCmp(rz_CopyOwnedBuf[idx], weap) != 0) {
+			SetWeapon(rz_CopyOwnedBuf[idx]);
 			SetResultValue(1);
 			terminate;
 		}
 	}
 	for (int j = 0; j < n; j++) {
-		if (StrCmp(owned[j], weap) != 0) {
-			SetWeapon(owned[j]);
+		if (StrCmp(rz_CopyOwnedBuf[j], weap) != 0) {
+			SetWeapon(rz_CopyOwnedBuf[j]);
 			SetResultValue(1);
 			terminate;
 		}
