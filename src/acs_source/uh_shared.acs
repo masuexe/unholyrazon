@@ -218,9 +218,10 @@ script "rz_CountPlayerInFrontCone" (int r, int theta, int flags) {
 	SetResultValue(count);
 }
 
-// Spawn ClownpieceStripeSpawner per cone enemy at boss-local (enemyX, yOffset, enemyZ), facing -Y.
-// r/theta match rz_CountPlayerInFrontCone; yOffset is map units (integer).
-script "uh_ClownpieceStripeVolley" (int r, int theta, int yOffset, int flags) {
+// Spawn ClownpieceStripeSpawner beside each cone enemy (same forward/height as E,
+// fixed lateral xOffset from E in boss frame), facing toward E.
+// r/theta match rz_CountPlayerInFrontCone; xOffset is map units (positive = boss-right of E).
+script "uh_ClownpieceStripeVolley" (int r, int theta, int xOffset) {
 	int bossTid = (PlayerNumber() == -1) ? ActivatorTID() : PlayerNumber() + 1000;
 	int userTeam = -1;
 	int userunholyteam = -1;
@@ -233,17 +234,24 @@ script "uh_ClownpieceStripeVolley" (int r, int theta, int yOffset, int flags) {
 	int ang = GetActorAngle(0);
 	int c = cos(ang);
 	int s = sin(ang);
-	int bx = GetActorX(0);
-	int by = GetActorY(0);
-	int bz = GetActorZ(0);
 	int half = FixedDiv(theta << 16, 720.0);
-	int yOff = yOffset << 16;
-	int fireAng = (ang + 0.5) >> 8;
+	// Boss-right unit: (sin, -cos). +xOffset = right of E, fire left (ang+0.25);
+	// -xOffset = left of E, fire right (ang-0.25).
+	int side = xOffset * 1.0;
+	if (side == 0) {
+		side = 128 * 1.0;
+	}
+	int fireAng;
+	if (xOffset < 0) {
+		fireAng = (ang - 0.25) >> 8;
+	} else {
+		fireAng = (ang + 0.25) >> 8;
+	}
 	int spawned = 0;
 
 	for (int p = 0; p < ServerMAX; p++) {
 		SetActivator(bossTid);
-		if (!ConePlayerPasses(bossTid, userTeam, userunholyteam, p, flags)) {
+		if (!ConePlayerPasses(bossTid, userTeam, userunholyteam, p, 0)) {
 			continue;
 		}
 		int targetTID = p + 1000;
@@ -251,16 +259,10 @@ script "uh_ClownpieceStripeVolley" (int r, int theta, int yOffset, int flags) {
 			continue;
 		}
 
-		int dx = GetActorX(targetTID) - bx;
-		int dy = GetActorY(targetTID) - by;
-		int dz = GetActorZ(targetTID) - bz;
-		// local +Y = forward, local +X = left (plan convention)
-		int localX = FixedMul(dx, -s) + FixedMul(dy, c);
-		int localZ = dz;
-
-		int wx = bx + FixedMul(localX, -s) + FixedMul(yOff, c);
-		int wy = by + FixedMul(localX, c) + FixedMul(yOff, s);
-		int wz = bz + localZ;
+		// Same depth/height as enemy; offset to boss-right by xOffset.
+		int wx = GetActorX(targetTID) + FixedMul(side, s);
+		int wy = GetActorY(targetTID) + FixedMul(side, -c);
+		int wz = GetActorZ(targetTID);
 
 		int u = UniqueTID();
 		if (SpawnForced("ClownpieceStripeSpawner", wx, wy, wz, u, fireAng)) {
