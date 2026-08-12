@@ -1,0 +1,314 @@
+// UHDT — shared DefineBoss tables (compiled library "UHDT").
+// Handlers and other UH libs #import this file to share state.
+//
+#library "uhdt"
+
+#include "zcommon.acs"
+
+#LIBDEFINE UH_MAX_VANILLA_BOSS 1000
+#LIBDEFINE UH_MAX_CUSTOM_BOSS 256
+#LIBDEFINE UHBOSS_FAIL -9999
+
+// rarity / pool ids (shared with UHADD)
+#LIBDEFINE UHBOSS_POOL_NONE 0
+#LIBDEFINE UHBOSS_POOL_COMMON 1
+#LIBDEFINE UHBOSS_POOL_RARE 2
+#LIBDEFINE UHBOSS_POOL_SPECIAL 3
+#LIBDEFINE UHBOSS_POOL_ULTRA 4
+#LIBDEFINE UHBOSS_POOL_EX 5
+#LIBDEFINE UHBOSS_POOL_COUNT 6
+
+// str fields per boss
+#LIBDEFINE UHBOSS_STR_ACTOR 0
+#LIBDEFINE UHBOSS_STR_NAME 1
+#LIBDEFINE UHBOSS_STR_MUGSHOT 2
+#LIBDEFINE UHBOSS_STR_MUSIC 3
+#LIBDEFINE UHBOSS_STR_MUSICCREDIT 4
+#LIBDEFINE UHBOSS_STR_INSTRUCTION 5
+#LIBDEFINE UHBOSS_STR_SPAWNMSGTYPE 6
+#LIBDEFINE UHBOSS_STR_SPAWNMSG 7
+#LIBDEFINE UHBOSS_STR_EXBASEACTOR 8
+#LIBDEFINE UHBOSS_STR_COUNT 9
+
+// int fields per boss
+#LIBDEFINE UHBOSS_INT_RARITY 0
+#LIBDEFINE UHBOSS_INT_BASEHP 1
+#LIBDEFINE UHBOSS_INT_ADDHP 2
+#LIBDEFINE UHBOSS_INT_EXBASEID 3
+#LIBDEFINE UHBOSS_INT_COUNT 4
+
+int uh_bossVanillaDefined[UH_MAX_VANILLA_BOSS];
+str uh_bossVanillaStr[UH_MAX_VANILLA_BOSS][UHBOSS_STR_COUNT];
+int uh_bossVanillaInt[UH_MAX_VANILLA_BOSS][UHBOSS_INT_COUNT];
+
+int uh_bossCustomCount = 0;
+str uh_bossCustomStr[UH_MAX_CUSTOM_BOSS][UHBOSS_STR_COUNT];
+int uh_bossCustomInt[UH_MAX_CUSTOM_BOSS][UHBOSS_INT_COUNT];
+
+// rarity pool: list of signed bossIds
+int uh_bossPoolCount[UHBOSS_POOL_COUNT];
+int uh_bossPoolIds[UHBOSS_POOL_COUNT][UH_MAX_VANILLA_BOSS];
+
+function int UH_BossCustomIndex(int id)
+{
+	return -1 - id;
+}
+
+function bool IsBossDefined(int id)
+{
+	if (id >= 0)
+	{
+		if (id >= UH_MAX_VANILLA_BOSS)
+			return false;
+		return uh_bossVanillaDefined[id] != 0;
+	}
+	if (id <= -1)
+	{
+		int i = UH_BossCustomIndex(id);
+		if (i < 0 || i >= uh_bossCustomCount)
+			return false;
+		return true;
+	}
+	return false;
+}
+
+function int UH_BossResolveSlot(int id)
+{
+	// Returns storage index for getters; vanilla id == slot, custom uses customIndex.
+	// Caller must IsBossDefined first. Returns UHBOSS_FAIL if invalid.
+	if (id >= 0)
+	{
+		if (id >= UH_MAX_VANILLA_BOSS || uh_bossVanillaDefined[id] == 0)
+			return UHBOSS_FAIL;
+		return id;
+	}
+	if (id <= -1)
+	{
+		int i = UH_BossCustomIndex(id);
+		if (i < 0 || i >= uh_bossCustomCount)
+			return UHBOSS_FAIL;
+		return i;
+	}
+	return UHBOSS_FAIL;
+}
+
+function str GetBossActor(int id)
+{
+	int slot = UH_BossResolveSlot(id);
+	if (slot == UHBOSS_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_bossVanillaStr[slot][UHBOSS_STR_ACTOR];
+	return uh_bossCustomStr[slot][UHBOSS_STR_ACTOR];
+}
+
+function str GetBossName(int id)
+{
+	int slot = UH_BossResolveSlot(id);
+	if (slot == UHBOSS_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_bossVanillaStr[slot][UHBOSS_STR_NAME];
+	return uh_bossCustomStr[slot][UHBOSS_STR_NAME];
+}
+
+function str GetBossMugshot(int id)
+{
+	int slot = UH_BossResolveSlot(id);
+	if (slot == UHBOSS_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_bossVanillaStr[slot][UHBOSS_STR_MUGSHOT];
+	return uh_bossCustomStr[slot][UHBOSS_STR_MUGSHOT];
+}
+
+function str getBossMusic(int id)
+{
+	int slot = UH_BossResolveSlot(id);
+	if (slot == UHBOSS_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_bossVanillaStr[slot][UHBOSS_STR_MUSIC];
+	return uh_bossCustomStr[slot][UHBOSS_STR_MUSIC];
+}
+
+function str getBossMusicCredit(int id)
+{
+	int slot = UH_BossResolveSlot(id);
+	if (slot == UHBOSS_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_bossVanillaStr[slot][UHBOSS_STR_MUSICCREDIT];
+	return uh_bossCustomStr[slot][UHBOSS_STR_MUSICCREDIT];
+}
+
+function str GetBossInstruction(int id)
+{
+	int slot = UH_BossResolveSlot(id);
+	if (slot == UHBOSS_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_bossVanillaStr[slot][UHBOSS_STR_INSTRUCTION];
+	return uh_bossCustomStr[slot][UHBOSS_STR_INSTRUCTION];
+}
+
+function str GetBossSpawnMsgType(int id)
+{
+	int slot = UH_BossResolveSlot(id);
+	if (slot == UHBOSS_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_bossVanillaStr[slot][UHBOSS_STR_SPAWNMSGTYPE];
+	return uh_bossCustomStr[slot][UHBOSS_STR_SPAWNMSGTYPE];
+}
+
+function str GetBossSpawnMsg(int id)
+{
+	int slot = UH_BossResolveSlot(id);
+	if (slot == UHBOSS_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_bossVanillaStr[slot][UHBOSS_STR_SPAWNMSG];
+	return uh_bossCustomStr[slot][UHBOSS_STR_SPAWNMSG];
+}
+
+function str GetBossExBaseActor(int id)
+{
+	int slot = UH_BossResolveSlot(id);
+	if (slot == UHBOSS_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_bossVanillaStr[slot][UHBOSS_STR_EXBASEACTOR];
+	return uh_bossCustomStr[slot][UHBOSS_STR_EXBASEACTOR];
+}
+
+function int GetBossRarity(int id)
+{
+	int slot = UH_BossResolveSlot(id);
+	if (slot == UHBOSS_FAIL)
+		return UHBOSS_POOL_NONE;
+	if (id >= 0)
+		return uh_bossVanillaInt[slot][UHBOSS_INT_RARITY];
+	return uh_bossCustomInt[slot][UHBOSS_INT_RARITY];
+}
+
+function int GetBossHPBase(int id)
+{
+	int slot = UH_BossResolveSlot(id);
+	if (slot == UHBOSS_FAIL)
+		return 0;
+	if (id >= 0)
+		return uh_bossVanillaInt[slot][UHBOSS_INT_BASEHP];
+	return uh_bossCustomInt[slot][UHBOSS_INT_BASEHP];
+}
+
+function int GetBossHPAdd(int id)
+{
+	int slot = UH_BossResolveSlot(id);
+	if (slot == UHBOSS_FAIL)
+		return 0;
+	if (id >= 0)
+		return uh_bossVanillaInt[slot][UHBOSS_INT_ADDHP];
+	return uh_bossCustomInt[slot][UHBOSS_INT_ADDHP];
+}
+
+function int GetBossExBaseId(int id)
+{
+	int slot = UH_BossResolveSlot(id);
+	if (slot == UHBOSS_FAIL)
+		return UHBOSS_FAIL;
+	if (id >= 0)
+		return uh_bossVanillaInt[slot][UHBOSS_INT_EXBASEID];
+	return uh_bossCustomInt[slot][UHBOSS_INT_EXBASEID];
+}
+
+function int FindBossByActor(str actor)
+{
+	int i;
+	if (StrCmp(actor, "") == 0)
+		return UHBOSS_FAIL;
+
+	for (i = 0; i < UH_MAX_VANILLA_BOSS; i++)
+	{
+		if (uh_bossVanillaDefined[i] != 0 && StrICmp(actor, uh_bossVanillaStr[i][UHBOSS_STR_ACTOR]) == 0)
+			return i;
+	}
+	for (i = 0; i < uh_bossCustomCount; i++)
+	{
+		if (StrICmp(actor, uh_bossCustomStr[i][UHBOSS_STR_ACTOR]) == 0)
+			return -1 - i;
+	}
+	return UHBOSS_FAIL;
+}
+
+function void UH_BossAppendPool(int rarity, int bossId)
+{
+	if (rarity <= UHBOSS_POOL_NONE || rarity >= UHBOSS_POOL_COUNT)
+		return;
+	int n = uh_bossPoolCount[rarity];
+	if (n < 0 || n >= UH_MAX_VANILLA_BOSS)
+		return;
+	uh_bossPoolIds[rarity][n] = bossId;
+	uh_bossPoolCount[rarity] = n + 1;
+}
+
+function int GetBossPoolCount(int rarity)
+{
+	if (rarity <= UHBOSS_POOL_NONE || rarity >= UHBOSS_POOL_COUNT)
+		return 0;
+	return uh_bossPoolCount[rarity];
+}
+
+function int GetBossPoolId(int rarity, int index)
+{
+	if (rarity <= UHBOSS_POOL_NONE || rarity >= UHBOSS_POOL_COUNT)
+		return UHBOSS_FAIL;
+	if (index < 0 || index >= uh_bossPoolCount[rarity])
+		return UHBOSS_FAIL;
+	return uh_bossPoolIds[rarity][index];
+}
+
+function void UH_BossWriteVanilla(int id, str actor, str name, int rarity, int basehp, int addhp,
+	str exboss_baseactor, str mugshot, str musiclump, str musiccredit,
+	str instruction, str spawnmessagetype, str spawnmessage)
+{
+	uh_bossVanillaDefined[id] = 1;
+	uh_bossVanillaStr[id][UHBOSS_STR_ACTOR] = actor;
+	uh_bossVanillaStr[id][UHBOSS_STR_NAME] = name;
+	uh_bossVanillaStr[id][UHBOSS_STR_MUGSHOT] = mugshot;
+	uh_bossVanillaStr[id][UHBOSS_STR_MUSIC] = musiclump;
+	uh_bossVanillaStr[id][UHBOSS_STR_MUSICCREDIT] = musiccredit;
+	uh_bossVanillaStr[id][UHBOSS_STR_INSTRUCTION] = instruction;
+	uh_bossVanillaStr[id][UHBOSS_STR_SPAWNMSGTYPE] = spawnmessagetype;
+	uh_bossVanillaStr[id][UHBOSS_STR_SPAWNMSG] = spawnmessage;
+	uh_bossVanillaStr[id][UHBOSS_STR_EXBASEACTOR] = exboss_baseactor;
+	uh_bossVanillaInt[id][UHBOSS_INT_RARITY] = rarity;
+	uh_bossVanillaInt[id][UHBOSS_INT_BASEHP] = basehp;
+	uh_bossVanillaInt[id][UHBOSS_INT_ADDHP] = addhp;
+	uh_bossVanillaInt[id][UHBOSS_INT_EXBASEID] = UHBOSS_FAIL;
+	UH_BossAppendPool(rarity, id);
+}
+
+function int UH_BossWriteCustom(str actor, str name, int rarity, int basehp, int addhp,
+	str exboss_baseactor, str mugshot, str musiclump, str musiccredit,
+	str instruction, str spawnmessagetype, str spawnmessage)
+{
+	int i = uh_bossCustomCount;
+	int bossId = -1 - i;
+	uh_bossCustomStr[i][UHBOSS_STR_ACTOR] = actor;
+	uh_bossCustomStr[i][UHBOSS_STR_NAME] = name;
+	uh_bossCustomStr[i][UHBOSS_STR_MUGSHOT] = mugshot;
+	uh_bossCustomStr[i][UHBOSS_STR_MUSIC] = musiclump;
+	uh_bossCustomStr[i][UHBOSS_STR_MUSICCREDIT] = musiccredit;
+	uh_bossCustomStr[i][UHBOSS_STR_INSTRUCTION] = instruction;
+	uh_bossCustomStr[i][UHBOSS_STR_SPAWNMSGTYPE] = spawnmessagetype;
+	uh_bossCustomStr[i][UHBOSS_STR_SPAWNMSG] = spawnmessage;
+	uh_bossCustomStr[i][UHBOSS_STR_EXBASEACTOR] = exboss_baseactor;
+	uh_bossCustomInt[i][UHBOSS_INT_RARITY] = rarity;
+	uh_bossCustomInt[i][UHBOSS_INT_BASEHP] = basehp;
+	uh_bossCustomInt[i][UHBOSS_INT_ADDHP] = addhp;
+	uh_bossCustomInt[i][UHBOSS_INT_EXBASEID] = UHBOSS_FAIL;
+	uh_bossCustomCount++;
+	UH_BossAppendPool(rarity, bossId);
+	return bossId;
+}

@@ -1,0 +1,100 @@
+#library "uhaddr"
+#include "zcommon.acs"
+
+#import "uhdt.acs"
+
+function int UH_DefineBossCore(
+	  int id,
+	  str actor,
+	  str name,
+	  int rarity,
+	  int basehp,
+	  int addhp,
+	  str exboss_baseactor,
+	  str mugshot,
+	  str musiclump,
+	  str musiccredit,
+	  str instruction,
+	  str spawnmessagetype,
+	  str spawnmessage) {
+	if (StrCmp(actor, "") == 0)
+		return UHBOSS_FAIL;
+
+	if (FindBossByActor(actor) != UHBOSS_FAIL)
+		return UHBOSS_FAIL;
+
+	if (id >= 0)
+	{
+		if (id >= UH_MAX_VANILLA_BOSS)
+			return UHBOSS_FAIL;
+		if (uh_bossVanillaDefined[id] != 0)
+			return UHBOSS_FAIL;
+		UH_BossWriteVanilla(id, actor, name, rarity, basehp, addhp,
+			exboss_baseactor, mugshot, musiclump, musiccredit,
+			instruction, spawnmessagetype, spawnmessage);
+		return id;
+	}
+
+	if (id == -1)
+	{
+		if (uh_bossCustomCount >= UH_MAX_CUSTOM_BOSS)
+			return UHBOSS_FAIL;
+		return UH_BossWriteCustom(actor, name, rarity, basehp, addhp,
+			exboss_baseactor, mugshot, musiclump, musiccredit,
+			instruction, spawnmessagetype, spawnmessage);
+	}
+
+	// Explicit negatives other than AUTO are rejected in v1
+	return UHBOSS_FAIL;
+}
+
+Script "uh_DefineBoss_S" (void)
+{
+	SetResultValue(UH_DefineBossCore(
+		GetCVar("uh_db_id"),
+		GetCVarString("uh_db_actor"),
+		GetCVarString("uh_db_name"),
+		GetCVar("uh_db_rarity"),
+		GetCVar("uh_db_basehp"),
+		GetCVar("uh_db_addhp"),
+		GetCVarString("uh_db_exbase"),
+		GetCVarString("uh_db_mugshot"),
+		GetCVarString("uh_db_music"),
+		GetCVarString("uh_db_musiccredit"),
+		GetCVarString("uh_db_instruction"),
+		GetCVarString("uh_db_spawnmsgtype"),
+		GetCVarString("uh_db_spawnmsg")
+	));
+}
+
+Script "uh_IsBossDefined_S" (int id)
+{
+	SetResultValue(IsBossDefined(id));
+}
+
+Script "uh_FindBossByActor_S" (void)
+{
+	SetResultValue(FindBossByActor(GetCVarString("uh_db_actor")));
+}
+
+Script "uh_GetBossActor_S" (int id)
+{
+	SetCVarString("uh_db_out_str", GetBossActor(id));
+	SetResultValue(IsBossDefined(id));
+}
+
+Script "uh_GetBossName_S" (int id)
+{
+	SetCVarString("uh_db_out_str", GetBossName(id));
+	SetResultValue(IsBossDefined(id));
+}
+
+Script "uh_GetBossHPBase_S" (int id)
+{
+	SetResultValue(GetBossHPBase(id));
+}
+
+Script "uh_GetBossHPAdd_S" (int id)
+{
+	SetResultValue(GetBossHPAdd(id));
+}

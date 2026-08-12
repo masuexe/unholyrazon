@@ -1,0 +1,89 @@
+// UHADD — modder-facing DefineBoss API (include; not a LOADACS library).
+// Pattern matches MM8BDM DTADD / CBM CBMADD: stash args in ephemeral cvars, call UHADDR.
+
+#define UHBOSS_FAIL -9999
+
+#define UHBOSS_POOL_NONE 0
+#define UHBOSS_POOL_COMMON 1
+#define UHBOSS_POOL_RARE 2
+#define UHBOSS_POOL_SPECIAL 3
+#define UHBOSS_POOL_ULTRA 4
+#define UHBOSS_POOL_EX 5
+
+int uh_inplay_cache = -1;
+
+function bool UHInPlay(void)
+{
+	if (uh_inplay_cache < 0)
+	{
+		int u = UniqueTID();
+		uh_inplay_cache = SpawnForced("UHModderSupport_H", 0, 0, 0, u, 0);
+		if (uh_inplay_cache)
+			Thing_Remove(u);
+	}
+	return uh_inplay_cache;
+}
+
+function int DefineBoss(
+	int id,
+	str actor,
+	str name,
+	int rarity,
+	int basehp,
+	int addhp,
+	str exboss_baseactor,
+	str mugshot,
+	str musiclump,
+	str musiccredit,
+	str instruction,
+	str spawnmessagetype,
+	str spawnmessage)
+{
+	SetCVar("uh_db_id", id);
+	SetCVarString("uh_db_actor", actor);
+	SetCVarString("uh_db_name", name);
+	SetCVar("uh_db_rarity", rarity);
+	SetCVar("uh_db_basehp", basehp);
+	SetCVar("uh_db_addhp", addhp);
+	SetCVarString("uh_db_exbase", exboss_baseactor);
+	SetCVarString("uh_db_mugshot", mugshot);
+	SetCVarString("uh_db_music", musiclump);
+	SetCVarString("uh_db_musiccredit", musiccredit);
+	SetCVarString("uh_db_instruction", instruction);
+	SetCVarString("uh_db_spawnmsgtype", spawnmessagetype);
+	SetCVarString("uh_db_spawnmsg", spawnmessage);
+	return ACS_NamedExecuteWithResult("uh_DefineBoss_S");
+}
+
+function int UH_IsBossDefined(int id)
+{
+	return ACS_NamedExecuteWithResult("uh_IsBossDefined_S", id);
+}
+
+function int UH_FindBossByActor(str actor)
+{
+	SetCVarString("uh_db_actor", actor);
+	return ACS_NamedExecuteWithResult("uh_FindBossByActor_S");
+}
+
+function str UH_GetBossActor(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetBossActor_S", id);
+	return GetCVarString("uh_db_out_str");
+}
+
+function str UH_GetBossName(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetBossName_S", id);
+	return GetCVarString("uh_db_out_str");
+}
+
+function int UH_GetBossHPBase(int id)
+{
+	return ACS_NamedExecuteWithResult("uh_GetBossHPBase_S", id);
+}
+
+function int UH_GetBossHPAdd(int id)
+{
+	return ACS_NamedExecuteWithResult("uh_GetBossHPAdd_S", id);
+}
