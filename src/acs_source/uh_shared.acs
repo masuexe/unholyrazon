@@ -133,16 +133,16 @@ script "uh_radiusPull" (int maxforce, int maxRange, int noFalloff, int unholytea
 	  	if (userunholyteam != 6 && punholyteam == userunholyteam) {  // PLS_EYE
 	  		continue;
 	  	}
-	  }		
+	  }
 		targetTID = p + 1000;
-		if (CheckActorInventory(targetTID, "NoPushFlag") <= 0 && xyzDistance(0, targetTID) < maxRange && userTID != targetTID) {	
+		if (CheckActorInventory(targetTID, "NoPushFlag") <= 0 && xyzDistance(0, targetTID) < maxRange && userTID != targetTID) {
 			userCount++;
 			distance = xyzDistance(0, targetTID);
 			finalforce = zanceil(FixedMul(maxforce << 16, 1.0 - FixedDiv(distance, maxRange)));
 			if (finalforce > maxforce || noFalloff > 0) {
 				finalforce = maxforce;
 			}
-			
+
 			angle = VectorAngle(GetActorX(0) - GetActorX(targetTID), GetActorY(0) - GetActorY(targetTID)) >> 8;
 			if (distance > 40 || finalforce < 0) {
 				ThrustThing(angle, finalforce, false, targetTID);
@@ -154,6 +154,46 @@ script "uh_radiusPull" (int maxforce, int maxRange, int noFalloff, int unholytea
 
 #define CIFC_INCLUDE_TEAM 1
 #define CIFC_INCLUDE_DEAD 2
+
+// Shared filters for front-cone player scans (count / stripe volley).
+function bool ConePlayerPasses(int userTID, int userTeam, int userunholyteam, int p, int flags)
+{
+	if (!PlayerInGame(p)) {
+		return false;
+	}
+	int targetTID = p + 1000;
+	if (userTID == targetTID) {
+		return false;
+	}
+	if (!(flags & CIFC_INCLUDE_DEAD) && CheckActorInventory(targetTID, "IsDead") > 0) {
+		return false;
+	}
+	if (!(flags & CIFC_INCLUDE_TEAM)) {
+		if (isTeamGame) {
+			if (userTeam == GetPlayerInfo(p, PLAYERINFO_TEAM)) {
+				return false;
+			}
+		} else {
+			int punholyteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", p);
+			if (userunholyteam != 6 && punholyteam == userunholyteam) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+// Activator must be the cone origin (boss). half = FixedDiv(theta << 16, 720.0).
+function bool ConePlayerInGeom(int targetTID, int r, int half)
+{
+	int dx = GetActorX(targetTID) - GetActorX(0);
+	int dy = GetActorY(targetTID) - GetActorY(0);
+	if (VectorLength(dx, dy) > (r << 16)) {
+		return false;
+	}
+	int rel = (VectorAngle(dx, dy) - GetActorAngle(0) + 1.0) % 1.0;
+	return (rel <= half || rel >= 1.0 - half);
+}
 
 script "rz_CountPlayerInFrontCone" (int r, int theta, int flags) {
 	int userTID = (PlayerNumber() == -1) ? ActivatorTID() : PlayerNumber() + 1000;
@@ -168,41 +208,70 @@ script "rz_CountPlayerInFrontCone" (int r, int theta, int flags) {
 	int count = 0;
 
 	for (int p = 0; p < ServerMAX; p++) {
-		if (!PlayerInGame(p)) {
+		if (!ConePlayerPasses(userTID, userTeam, userunholyteam, p, flags)) {
 			continue;
 		}
-		int targetTID = p + 1000;
-		if (userTID == targetTID) {
-			continue;
-		}
-		if (!(flags & CIFC_INCLUDE_DEAD) && CheckActorInventory(targetTID, "IsDead") > 0) {
-			continue;
-		}
-		if (!(flags & CIFC_INCLUDE_TEAM)) {
-			if (isTeamGame) {
-				if (userTeam == GetPlayerInfo(p, PLAYERINFO_TEAM)) {
-					continue;
-				}
-			} else {
-				int punholyteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", p);
-				if (userunholyteam != 6 && punholyteam == userunholyteam) {
-					continue;
-				}
-			}
-		}
-
-		int dx = GetActorX(targetTID) - GetActorX(0);
-		int dy = GetActorY(targetTID) - GetActorY(0);
-		if (VectorLength(dx, dy) > (r << 16)) {
-			continue;
-		}
-
-		int rel = (VectorAngle(dx, dy) - GetActorAngle(0) + 1.0) % 1.0;
-		if (rel <= half || rel >= 1.0 - half) {
+		if (ConePlayerInGeom(p + 1000, r, half)) {
 			count++;
 		}
 	}
 	SetResultValue(count);
+}
+
+// Spawn ClownpieceStripeSpawner per cone enemy at boss-local (enemyX, yOffset, enemyZ), facing -Y.
+// r/theta match rz_CountPlayerInFrontCone; yOffset is map units (integer).
+script "uh_ClownpieceStripeVolley" (int r, int theta, int yOffset, int flags) {
+	int bossTid = (PlayerNumber() == -1) ? ActivatorTID() : PlayerNumber() + 1000;
+	int userTeam = -1;
+	int userunholyteam = -1;
+	if (PlayerNumber() != -1) {
+		userTeam = GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM);
+		userunholyteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", PlayerNumber());
+	}
+
+	SetActivator(bossTid);
+	int ang = GetActorAngle(0);
+	int c = cos(ang);
+	int s = sin(ang);
+	int bx = GetActorX(0);
+	int by = GetActorY(0);
+	int bz = GetActorZ(0);
+	int half = FixedDiv(theta << 16, 720.0);
+	int yOff = yOffset << 16;
+	int fireAng = (ang + 0.5) >> 8;
+	int spawned = 0;
+
+	for (int p = 0; p < ServerMAX; p++) {
+		SetActivator(bossTid);
+		if (!ConePlayerPasses(bossTid, userTeam, userunholyteam, p, flags)) {
+			continue;
+		}
+		int targetTID = p + 1000;
+		if (!ConePlayerInGeom(targetTID, r, half)) {
+			continue;
+		}
+
+		int dx = GetActorX(targetTID) - bx;
+		int dy = GetActorY(targetTID) - by;
+		int dz = GetActorZ(targetTID) - bz;
+		// local +Y = forward, local +X = left (plan convention)
+		int localX = FixedMul(dx, -s) + FixedMul(dy, c);
+		int localZ = dz;
+
+		int wx = bx + FixedMul(localX, -s) + FixedMul(yOff, c);
+		int wy = by + FixedMul(localX, c) + FixedMul(yOff, s);
+		int wz = bz + localZ;
+
+		int u = UniqueTID();
+		if (SpawnForced("ClownpieceStripeSpawner", wx, wy, wz, u, fireAng)) {
+			SetActivator(u);
+			SetPointer(AAPTR_TARGET, bossTid);
+			spawned++;
+		}
+	}
+
+	SetActivator(bossTid);
+	SetResultValue(spawned);
 }
 
 script "rz_WarpToTID" (int warpToTid, int xOffset, int flags, int pointer) {
@@ -262,7 +331,7 @@ script "uh_TimeBenderCameraLook" (void) CLIENTSIDE
 {
 	if(!CheckInventory("TimeBenderCamera_F")) {
 		GiveInventory("TimeBenderCamera_F",1);
-		
+
 		do {
 			if(CheckInventory("PlayerPropertyFrozen")<2) {//TimeBender applies 1 stack
 				SetActorAngle(0,GetActorAngle(0)+GetPlayerInput(-1, INPUT_YAW));
@@ -270,7 +339,7 @@ script "uh_TimeBenderCameraLook" (void) CLIENTSIDE
 			}
 			delay(1);
 		} while (GetActorProperty(0, APROP_HEALTH)>0 && CheckInventory("IsTimeBended_F"));
-		
+
 		TakeInventory("TimeBenderCamera_F",1);
 	}
 }
@@ -455,7 +524,7 @@ Script "ub_enemypain" (void) {
   if(CheckInventory("EnemyHP")>0){terminate;} // Do not run twice for one monster
   int HP = GetActorProperty(0, APROP_Health);
   GiveInventory("EnemyHP", 1);
-  
+
   while(GetActorProperty(0, APROP_Health)>0){
     if(hp != GetActorProperty(0, APROP_Health)) {
        PlayActorSound(0, SOUND_Pain, CHAN_BODY, 1.0, false, ATTN_NORM);
@@ -477,7 +546,7 @@ Script "ub_enemypain" (void) {
 #define ZCI_WALRUSSLIDEANGLE 0
 #define ZCI_ZANGIEFANGLE 1
 #define ZCI_SUPLEXID 2
-str ZangiefCountItem[3] = 
+str ZangiefCountItem[3] =
 {
 "WalrusSlideAngle",
 "ZangiefAngle",
@@ -492,7 +561,7 @@ script "uh_ZangiefCountInv" (int Item, int ThePointer)
 	SetResultValue(CheckInventory(ZangiefCountItem[Item]));
 }
 
-str ZangiefGiveItem[2] = 
+str ZangiefGiveItem[2] =
 {
 "AntiInvincible_P",
 "AirSuplexGroundCheck"
@@ -524,11 +593,11 @@ script "uh_ZangiefStartGrab" (int target)
 	int xDiff = (getActorX(0)+GRAB_DISTANCE*cos(angle)) - getActorX(target);
 	int yDiff = (getActorY(0)+GRAB_DISTANCE*sin(angle)) - getActorY(target);
 	int zDiff = getActorZ(0) - getActorZ(target);
-	
+
 	int xDiffI = xDiff>>16;
 	int yDiffI = yDiff>>16;
 	int zDiffI = zDiff>>16;
-	
+
 	if (xDiffI*xDiffI+yDiffI*yDiffI+zDiffI*zDiffI < GRAB_DISTANCE_LIMIT) {
 		SetActorVelocity(target, xDiff, yDiff, zDiff, 0, 0);
 		setResultValue(1);
@@ -547,7 +616,7 @@ script "uh_ZangiefGrab" (int pitch, int angle, int Grab_D) //Pitch is given as x
 	int xDiff = (getActorX(0)+fixedMul(Grab_D*cos(angle),cos(pitch))) - getActorX(target);
 	int yDiff = (getActorY(0)+fixedMul(Grab_D*sin(angle),cos(pitch))) - getActorY(target);
 	int zDiff = (getActorZ(0)-Grab_D*sin(pitch)) - getActorZ(target);
-	
+
 	int xDiffI = xDiff>>16;
 	int yDiffI = yDiff>>16;
 	int zDiffI = zDiff>>16;
@@ -577,7 +646,7 @@ script "uh_ZangiefGrabReverse" (int pitch, int angle, int Grab_D)
 	int xDiff = (getActorX(0)+fixedMul(Grab_D*cos(angle),cos(pitch))) - getActorX(target);
 	int yDiff = (getActorY(0)+fixedMul(Grab_D*sin(angle),cos(pitch))) - getActorY(target);
 	int zDiff = (getActorZ(0)-Grab_D*sin(pitch)) - getActorZ(target);
-	
+
 	int xDiffI = xDiff>>16;
 	int yDiffI = yDiff>>16;
 	int zDiffI = zDiff>>16;
