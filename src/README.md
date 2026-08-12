@@ -4,10 +4,8 @@ Unholy Razon is a mod based on [Unholy](https://mm8bdm.net/forum/thread/unholy-c
 
 ## Planned Features
 - Compatible with MM8BDM-v6c (since it is not released yet, the project is now compatible with MM8BDM-v6b temporarily)
-- TLMS gamemode instead of LMS for better gameplay
-- New classes, bosses and items
-- New bonus events
-- Extensible API
+- New classes, bosses, items and bonus events
+- More extensible API
 
 ## Credits
 - [MM8BDM](https://mm8bdm.net/): for the base game and the modding API
