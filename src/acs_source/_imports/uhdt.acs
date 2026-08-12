@@ -49,9 +49,34 @@ int uh_bossCustomInt[UH_MAX_CUSTOM_BOSS][UHBOSS_INT_COUNT];
 int uh_bossPoolCount[UHBOSS_POOL_COUNT];
 int uh_bossPoolIds[UHBOSS_POOL_COUNT][UH_MAX_VANILLA_BOSS];
 
+// Per-player signed boss type (Inventory cannot hold negatives)
+#LIBDEFINE UH_MAX_PLAYERS 64
+int uh_playerBossId[UH_MAX_PLAYERS];
+
+script "uh_BossIdStorageInit" OPEN
+{
+	int i;
+	for (i = 0; i < UH_MAX_PLAYERS; i++)
+		uh_playerBossId[i] = UHBOSS_FAIL;
+}
+
 function int UH_BossCustomIndex(int id)
 {
 	return -1 - id;
+}
+
+function void SetPlayerBossId(int playerNum, int bossId)
+{
+	if (playerNum < 0 || playerNum >= UH_MAX_PLAYERS)
+		return;
+	uh_playerBossId[playerNum] = bossId;
+}
+
+function int GetPlayerBossId(int playerNum)
+{
+	if (playerNum < 0 || playerNum >= UH_MAX_PLAYERS)
+		return UHBOSS_FAIL;
+	return uh_playerBossId[playerNum];
 }
 
 function bool IsBossDefined(int id)
@@ -241,6 +266,61 @@ function int FindBossByActor(str actor)
 	return UHBOSS_FAIL;
 }
 
+function int UH_BossResolveExBaseId(str exboss_baseactor)
+{
+	if (StrCmp(exboss_baseactor, "") == 0)
+		return UHBOSS_FAIL;
+	return FindBossByActor(exboss_baseactor);
+}
+
+// Parent of an EX boss. UHBOSS_FAIL if not an EX / unknown.
+function int GetBossBaseId(int id)
+{
+	int cached = GetBossExBaseId(id);
+	if (cached != UHBOSS_FAIL)
+		return cached;
+	return UH_BossResolveExBaseId(GetBossExBaseActor(id));
+}
+
+function bool IsBossEx(int id)
+{
+	return GetBossBaseId(id) != UHBOSS_FAIL;
+}
+
+// EX child of a base boss. UHBOSS_FAIL if none registered.
+function int GetBossExId(int baseId)
+{
+	int i;
+	if (!IsBossDefined(baseId))
+		return UHBOSS_FAIL;
+
+	for (i = 0; i < UH_MAX_VANILLA_BOSS; i++)
+	{
+		if (uh_bossVanillaDefined[i] != 0 && uh_bossVanillaInt[i][UHBOSS_INT_EXBASEID] == baseId)
+			return i;
+	}
+	for (i = 0; i < uh_bossCustomCount; i++)
+	{
+		if (uh_bossCustomInt[i][UHBOSS_INT_EXBASEID] == baseId)
+			return -1 - i;
+	}
+	// Lazy: match exboss_baseactor string if EXBASEID not filled yet
+	str baseActor = GetBossActor(baseId);
+	if (StrCmp(baseActor, "") == 0)
+		return UHBOSS_FAIL;
+	for (i = 0; i < UH_MAX_VANILLA_BOSS; i++)
+	{
+		if (uh_bossVanillaDefined[i] != 0 && StrICmp(uh_bossVanillaStr[i][UHBOSS_STR_EXBASEACTOR], baseActor) == 0)
+			return i;
+	}
+	for (i = 0; i < uh_bossCustomCount; i++)
+	{
+		if (StrICmp(uh_bossCustomStr[i][UHBOSS_STR_EXBASEACTOR], baseActor) == 0)
+			return -1 - i;
+	}
+	return UHBOSS_FAIL;
+}
+
 function void UH_BossAppendPool(int rarity, int bossId)
 {
 	if (rarity <= UHBOSS_POOL_NONE || rarity >= UHBOSS_POOL_COUNT)
@@ -268,10 +348,19 @@ function int GetBossPoolId(int rarity, int index)
 	return uh_bossPoolIds[rarity][index];
 }
 
+function int RandomBossFromPool(int rarity)
+{
+	int n = GetBossPoolCount(rarity);
+	if (n <= 0)
+		return UHBOSS_FAIL;
+	return GetBossPoolId(rarity, random(0, n - 1));
+}
+
 function void UH_BossWriteVanilla(int id, str actor, str name, int rarity, int basehp, int addhp,
 	str exboss_baseactor, str mugshot, str musiclump, str musiccredit,
 	str instruction, str spawnmessagetype, str spawnmessage)
 {
+	int baseId;
 	uh_bossVanillaDefined[id] = 1;
 	uh_bossVanillaStr[id][UHBOSS_STR_ACTOR] = actor;
 	uh_bossVanillaStr[id][UHBOSS_STR_NAME] = name;
@@ -285,7 +374,8 @@ function void UH_BossWriteVanilla(int id, str actor, str name, int rarity, int b
 	uh_bossVanillaInt[id][UHBOSS_INT_RARITY] = rarity;
 	uh_bossVanillaInt[id][UHBOSS_INT_BASEHP] = basehp;
 	uh_bossVanillaInt[id][UHBOSS_INT_ADDHP] = addhp;
-	uh_bossVanillaInt[id][UHBOSS_INT_EXBASEID] = UHBOSS_FAIL;
+	baseId = UH_BossResolveExBaseId(exboss_baseactor);
+	uh_bossVanillaInt[id][UHBOSS_INT_EXBASEID] = baseId;
 	UH_BossAppendPool(rarity, id);
 }
 
@@ -295,6 +385,7 @@ function int UH_BossWriteCustom(str actor, str name, int rarity, int basehp, int
 {
 	int i = uh_bossCustomCount;
 	int bossId = -1 - i;
+	int baseId;
 	uh_bossCustomStr[i][UHBOSS_STR_ACTOR] = actor;
 	uh_bossCustomStr[i][UHBOSS_STR_NAME] = name;
 	uh_bossCustomStr[i][UHBOSS_STR_MUGSHOT] = mugshot;
@@ -307,7 +398,8 @@ function int UH_BossWriteCustom(str actor, str name, int rarity, int basehp, int
 	uh_bossCustomInt[i][UHBOSS_INT_RARITY] = rarity;
 	uh_bossCustomInt[i][UHBOSS_INT_BASEHP] = basehp;
 	uh_bossCustomInt[i][UHBOSS_INT_ADDHP] = addhp;
-	uh_bossCustomInt[i][UHBOSS_INT_EXBASEID] = UHBOSS_FAIL;
+	baseId = UH_BossResolveExBaseId(exboss_baseactor);
+	uh_bossCustomInt[i][UHBOSS_INT_EXBASEID] = baseId;
 	uh_bossCustomCount++;
 	UH_BossAppendPool(rarity, bossId);
 	return bossId;

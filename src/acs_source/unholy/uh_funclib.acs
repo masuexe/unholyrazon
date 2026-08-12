@@ -235,14 +235,15 @@ function int forceBossChange(str Force, bool TrueRandom)
 {
 	int BossNum = GetCVAR(Force);
 //if(!GetCVAR("UH_NoResetCVars"))
-	SetCVar(Force,-1);
-	if(BossNum != -1 && checkBossList(BossNum)) {
+	// UHBOSS_FAIL (-9999) = unset. Do not use -1: that is a valid custom boss id.
+	SetCVar(Force, UHBOSS_FAIL);
+	if(BossNum != UHBOSS_FAIL && checkBossList(BossNum)) {
 		BossNum = BossNum;
 		ShowMeTheRCON(StrParam(s:"Boss ",s:StrRight(Force,1)),BossNum);
 	}
 	else {
 		if(TrueRandom || BossNum == -666){BossNum = trueRandomBoss();}
-		else{BossNum = -1;}
+		else{BossNum = UHBOSS_FAIL;}
 	}
 
 	return BossNum;
@@ -276,16 +277,25 @@ function bool checkEventList (int CheckMe)
 	return Result;
 }
 
-//NEW#BOSS
+//NEW#BOSS — pool-based pick (no BOSSRNGMAX holes)
 function int trueRandomBoss(void)
 {
 	int RNGPick;
-	// if(randomPercent(5)){RNGPick = random(400,BOSSRNGMAX_400_499);}
-	// else if(randomPercent(1)){RNGPick = random(300,BOSSRNGMAX_300_399);}
-	// else if(randomPercent(15)){RNGPick = 500+RandomBossEX_Int[random(0,BOSSRNGMAX_500_999-1)];}
-	// else if(randomPercent(30)){RNGPick = random(100,BOSSRNGMAX_100_199);}
-	// else {RNGPick = random(0,BOSSRNGMAX_000_099);}
-	RNGPick = random(0,BOSSRNGMAX_000_099);
+	if (randomPercent(5))
+		RNGPick = RandomBossFromPool(UHBOSS_POOL_ULTRA);
+	else if (randomPercent(1))
+		RNGPick = RandomBossFromPool(UHBOSS_POOL_SPECIAL);
+	else if (randomPercent(15))
+		RNGPick = RandomBossFromPool(UHBOSS_POOL_EX);
+	else if (randomPercent(30))
+		RNGPick = RandomBossFromPool(UHBOSS_POOL_RARE);
+	else
+		RNGPick = RandomBossFromPool(UHBOSS_POOL_COMMON);
+
+	if (RNGPick == UHBOSS_FAIL || !IsBossDefined(RNGPick))
+		RNGPick = RandomBossFromPool(UHBOSS_POOL_COMMON);
+	if (RNGPick == UHBOSS_FAIL || !IsBossDefined(RNGPick))
+		RNGPick = 0;
 	return RNGPick;
 }
 
@@ -296,11 +306,11 @@ function void setUpBossSelection_Func (void)
 	int tempBoss;
 	for (int i = 0; i < multiBossCheck; i++) {
 		tempBoss = forceBossChange(strParam(s: "uh_sv_ForcedBoss", i: i+1), false);
-		if (tempBoss != -1) {
+		if (IsBossDefined(tempBoss)) {
 			bossDataArr[i][BOSSDATA_NUM] = TempBoss;
 		}
 		else {
-			bossDataArr[i][BOSSDATA_NUM] = random(0, BOSSRNGMAX_000_099);
+			bossDataArr[i][BOSSDATA_NUM] = trueRandomBoss();
 		}
 
 		if(TempBoss == 300 || ShadowTricksArr[i]){
