@@ -29,7 +29,7 @@ ReadyX:
 8H27 F 2 A_GiveInventory("Pharaoh4MI_Ready_P")
 loop
 ReadyX_Pissing:
-8H27 A 0 A_JumpIfInventory("Pharaohman4MIHealingFlag",1,"ReadyX_Healing")
+8H27 A 0 A_JumpIfInventory("Pharaohman4MIHealingFlag",1,"GoHealing")
 8H27 A 2 A_GiveInventory("Pharaoh4MI_Ready_P")
 loop
 ReadyX_Healing:
@@ -45,13 +45,17 @@ ReadyX_HealingEnd:
 8H27 C 2 Offset(-27, 45)
 8H27 B 2 Offset(16, 2)
 ReadyX_Pissed:
+8H27 A 0 A_JumpIfInventory("Pharaohman4MIHealingFlag",1,"GoHealing")
 8H27 A 2 A_GiveInventory("Pharaoh4MI_Ready_P")
 loop
+GoHealing:
+8H27 A 0 A_JumpIf(true, "ReadyX_Healing")
+Goto ReadyX_Healing
 
 Fire:
 PHAA A 0 A_JumpIfInventory("Pharaohman4MIHealingFlag",1,"ReadyX_Healing")
-PHAA A 0 A_JumpIfInventory("IsPissingTimer", 1, "DesperationFire_Pissing")
-PHAA A 0 A_JumpIfInventory("IsPissedFlag",1,"DesperationFire")
+PHAA A 0 A_JumpIfInventory("Pharaohman4MIPissing_F", 1, "DesperationFire_Pissing")
+PHAA A 0 A_JumpIfInventory("IsPissedFlag",1,"GoDesperationFire")
 PHAA A 0 A_PlaySoundEx("weapon/pharaoh1","Weapon")
 PHAA A 0 A_GiveInventory("FirePharaoh4MIShot_P")
 // 28 tics. 8H27 F/B/C TEXTURES origins differ (FlipX U_HA*):
@@ -71,8 +75,7 @@ GetHypedForPain:
 PHAA B 0 A_GiveInventory("Pharaohman4MIPainFlag")
 PHAA B 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true)
 PHAA B 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, true)
-PHAA B 0 A_GiveInventory("IsPissingTimer", 350)
-PHAA B 0 A_GiveInventory("IsPissedFlag")
+PHAA B 0 A_GiveInventory("Pharaohman4MIStartPiss_P")
 PHAA B 0 A_GunFlash("Flash_Pissing")
 PHAA B 2
 PHAA B 2 Offset(16, 2)
@@ -105,8 +108,7 @@ Flash_Pissing:
 TNT1 A 0 A_JumpIf(!CallACS("uh_PointerIsABoss_CheckInv"), "NoFlash")
 TNT1 A 1 A_TakeInventory("IsPissingTimer", 1)
 TNT1 A 0 A_JumpIfInventory("IsPissingTimer", 1, "Flash_Pissing")
-TNT1 A 0 A_GiveInventory("Pharaohman4MIHealingFlag")
-TNT1 A 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, true)
+TNT1 A 0 A_GiveInventory("Pharaohman4MIStartHeal_P")
 Goto Flash_Healing
 
 Flash_Healing:
@@ -173,6 +175,10 @@ TNT1 A 2
 8H27 A 2 Offset(-4,48)
 Goto ReadyX_Pissing
 
+
+GoDesperationFire:
+8H27 A 0 A_JumpIf(true, "DesperationFire")
+Goto DesperationFire
 
 DesperationFire:
 8H27 F 0 A_PlaySoundEx("weapon/pharaoh2","Weapon")
@@ -288,10 +294,18 @@ actor Pharaohman4MI_W_Pissed : Pharaohman4MI_W {
     8H27 F 0 A_JumpIf(true, "GetHypedForPain")
     Goto GetHypedForPain
    ReadyAfterGetUp:
-    8H27 A 0 A_JumpIfInventory("Pharaohman4MIHealingFlag",1,"ReadyX_Healing")
-    8H27 A 0 A_JumpIfInventory("IsPissingTimer",1,"ReadyX_Pissing")
+    8H27 A 0 A_JumpIfInventory("Pharaohman4MIHealingFlag",1,"RestartFlashHealing")
+    8H27 A 0 A_JumpIfInventory("Pharaohman4MIPissing_F",1,"RestartFlashPissing")
     8H27 A 0 A_JumpIf(true, "ReadyX_Pissed")
     Goto ReadyX_Pissed
+   RestartFlashHealing:
+    8H27 A 0 A_GunFlash("Flash_Healing", true)
+    Goto ReadyX_Healing
+   RestartFlashPissing:
+    8H27 A 0 A_TakeInventory("Pharaohman4MIPainFlag")
+    8H27 A 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, false)
+    8H27 A 0 A_GunFlash("Flash_Pissing", true)
+    Goto ReadyX_Pissing
   }
 }
 
@@ -329,6 +343,9 @@ actor Pharaohman4MIRageEnd_P : CustomInventory {
     TNT1 A 0 A_JumpIfInventory("Pharaohman4MI_W_Pissed",1,"Reselect")
     stop
    Reselect:
+    TNT1 A 0 A_TakeInventory("Pharaohman4MIHealingFlag")
+    TNT1 A 0 A_TakeInventory("Pharaohman4MIPissing_F")
+    TNT1 A 0 A_TakeInventory("IsPissingTimer", 0x7ffffffc)
     TNT1 A 0 A_SelectWeapon("Pharaohman4MI_W_Pissed")
     stop
   }
@@ -337,6 +354,28 @@ actor Pharaohman4MIRageEnd_P : CustomInventory {
 actor Pharaohman4MIGetUpDone_F : UOnce {}
 actor Pharaohman4MIPainFlag : UOnce {}
 actor Pharaohman4MIHealingFlag : UOnce {}
+actor Pharaohman4MIPissing_F : UOnce {}
+
+actor Pharaohman4MIStartPiss_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_GiveInventory("IsPissingTimer", 350)
+    TNT1 A 0 A_GiveInventory("Pharaohman4MIPissing_F")
+    TNT1 A 0 A_GiveInventory("IsPissedFlag")
+    stop
+  }
+}
+
+actor Pharaohman4MIStartHeal_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_TakeInventory("Pharaohman4MIPissing_F")
+    TNT1 A 0 A_TakeInventory("IsPissingTimer", 0x7ffffffc)
+    TNT1 A 0 A_GiveInventory("Pharaohman4MIHealingFlag")
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_stopplayer", 0, true)
+    stop
+  }
+}
 
 actor Pharaoh4MI_Ready_P : CustomInventory {
   States {
