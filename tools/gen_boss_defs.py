@@ -219,11 +219,12 @@ def main():
     out.append("")
     out.append("// Auto-generated from UH_DEF mainBossList/mainBossHP — Phase 2.")
     out.append("// Do not hand-edit rows; regenerate via tools/gen_boss_defs.py")
+    out.append("//")
+    out.append("// Zandronum: non-CLIENTSIDE OPEN runs on the server only. CLIENTSIDE HUD")
+    out.append("// reads local UHDT, so vanilla defs must also register via OPEN CLIENTSIDE.")
     out.append("")
-    out.append('script "uh_define_vanilla_bosses" OPEN')
+    out.append("function void uh_RegisterVanillaBossDefs(void)")
     out.append("{")
-    out.append("\tif (!UHInPlay()) terminate;")
-    out.append("")
 
     for idx in sorted(bosses):
         f = bosses[idx]["str"]
@@ -253,6 +254,20 @@ def main():
         ]
         out.append(f"\tDefineBoss({', '.join(args)});")
 
+    out.append("}")
+    out.append("")
+    out.append('script "uh_define_vanilla_bosses" OPEN')
+    out.append("{")
+    out.append("\tif (!UHInPlay()) terminate;")
+    out.append("\tif (UH_IsBossDefined(0)) terminate;")
+    out.append("\tuh_RegisterVanillaBossDefs();")
+    out.append("}")
+    out.append("")
+    out.append('script "uh_define_vanilla_bosses_cs" OPEN CLIENTSIDE')
+    out.append("{")
+    out.append("\t// Skip UHInPlay: SpawnForced can fail on pure clients.")
+    out.append("\tif (UH_IsBossDefined(0)) terminate;")
+    out.append("\tuh_RegisterVanillaBossDefs();")
     out.append("}")
     out.append("")
 

@@ -4,11 +4,12 @@
 
 // Auto-generated from UH_DEF mainBossList/mainBossHP — Phase 2.
 // Do not hand-edit rows; regenerate via tools/gen_boss_defs.py
+//
+// Zandronum: non-CLIENTSIDE OPEN runs on the server only. CLIENTSIDE HUD reads
+// local UHDT, so vanilla defs must also register via OPEN CLIENTSIDE.
 
-script "uh_define_vanilla_bosses" OPEN
+function void uh_RegisterVanillaBossDefs(void)
 {
-	if (!UHInPlay()) terminate;
-
 	DefineBoss(0, "TrueBusterExpert", "\cmTrue \cuBusterExpert", UHBOSS_POOL_COMMON, 5000, 500, "", "", "M_UB000", "Super Street Fighter 2 - M. Bison's Theme", "\ckUse your primary to fire a single Buster Shot!\n\cdUse your alt for a Sweeper Shot.\n\cnUse your item to dash ahead!\n\cjThe \cghelltatoru \cjwill help you if it's your \cglast resort...", "", "");
 	DefineBoss(1, "HunterHawkeye", "\cmHunter \crHawkeye", UHBOSS_POOL_COMMON, 2000, 416, "", "", "M_UB001", "Super Street Fighter 2 - T. Hawk's Theme", "\ckYour primary is a rail gun!\n\cdUse your alt to zoom in and deal extra damage!\n\cnUse your item for an Exit Unit!", "", "");
 	DefineBoss(2, "DonJavier", "\cmDon \ckJavier", UHBOSS_POOL_COMMON, 2250, 352, "", "", "M_UB002", "Super Street Fighter 2 - Vega's Theme", "\cnUse your item to throw knives!\n\ckUse your primary to dash and slice!\n\cdUse your alt to climb walls.", "", "");
@@ -117,3 +118,19 @@ script "uh_define_vanilla_bosses" OPEN
 	// Phase 3 acceptance: auto custom id + explicit mugshot (must stay after vanilla rows)
 	DefineBoss(-1, "UHPhase3TestBoss", "\cjUH Phase3 Test", UHBOSS_POOL_COMMON, 2150, 255, "", "UFACE26", "M_UB026 104", "Phase3 test credit", "\ckPhase3 custom boss mugshot test.", "T.", "tests as");
 }
+
+script "uh_define_vanilla_bosses" OPEN
+{
+	if (!UHInPlay()) terminate;
+	if (UH_IsBossDefined(0)) terminate;
+	uh_RegisterVanillaBossDefs();
+}
+
+// Joining clients never run non-CLIENTSIDE OPEN; fill local UHDT here for HUD names.
+script "uh_define_vanilla_bosses_cs" OPEN CLIENTSIDE
+{
+	// Skip UHInPlay: SpawnForced can fail on pure clients; this library only loads with UH.
+	if (UH_IsBossDefined(0)) terminate;
+	uh_RegisterVanillaBossDefs();
+}
+
