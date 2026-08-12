@@ -1,0 +1,177 @@
+// Spell card timer + announce (Phase 1).
+// No score system. Capture reward is an empty hook for later LMS combat rewards.
+//
+// DECORATE / CallACS API:
+//   ACS_NamedExecuteAlways("uh_SpellCardStart", 0, phaseId, timeLimitSec)
+//   ACS_NamedExecuteAlways("uh_SpellCardCapture", 0)   // success -> Spell Card Bonus!
+//   ACS_NamedExecuteAlways("uh_SpellCardFail", 0)      // fail -> Bonus Failed
+//   ACS_NamedExecuteAlways("uh_SpellCardBreak", 0)     // mark broken (Phase 3 death hook)
+//   ACS_NamedExecuteAlways("uh_SpellCardStop", 0)      // clear HUD / stop without announce
+
+#define UH_SC_HUD_NAME 1720
+#define UH_SC_HUD_TIMER 1721
+#define UH_SC_HUD_RESULT 1722
+
+#define UH_SC_PHASE_MAX 8
+#define UH_SC_TICRATE 35
+
+bool uh_SpellCardActive;
+bool uh_SpellCardBroken;
+int uh_SpellCardTimeLeft;
+int uh_SpellCardPhase;
+
+str uh_SpellCardNameList[UH_SC_PHASE_MAX + 1] = {
+	"",
+	"Nonspell 1",
+	"Hell Sign: Eclipse of Hell",
+	"Nonspell 2",
+	"Hell Sign: Star and Stripe",
+	"Nonspell 3",
+	"Hellfire: Infernal Essence of Grazing",
+	"Inferno: Striped Abyss",
+	"Apollo Hoax Theory"
+};
+
+function str uh_SpellCardNameOf(int phaseId)
+{
+	if (phaseId < 1 || phaseId > UH_SC_PHASE_MAX)
+		return "Spell Card";
+	return uh_SpellCardNameList[phaseId];
+}
+
+function void uh_SpellCardClearHud(void)
+{
+	ClearHudMessageBold(UH_SC_HUD_NAME);
+	ClearHudMessageBold(UH_SC_HUD_TIMER);
+}
+
+function void uh_SpellCardDrawHud(int timeLeft, int phaseId)
+{
+	SetFont("BIGFONT");
+	SetHudSize(640, 480, 0);
+	HudMessageBold(s: uh_SpellCardNameOf(phaseId); HUDMSG_PLAIN, UH_SC_HUD_NAME, CR_GOLD, 320.4, 36.0, 0);
+	HudMessageBold(i: timeLeft; HUDMSG_PLAIN, UH_SC_HUD_TIMER, CR_RED + (timeLeft <= 10), 320.4, 52.0, 0);
+}
+
+function void uh_SpellCardAnnounceResult(str msg, int color)
+{
+	SetFont("BIGFONT");
+	SetHudSize(640, 480, 0);
+	HudMessageBold(s: msg; HUDMSG_FADEOUT, UH_SC_HUD_RESULT, color, 320.4, 72.0, 3.0, 1.0);
+}
+
+function void uh_SpellCardEndQuiet(void)
+{
+	uh_SpellCardActive = false;
+	uh_SpellCardBroken = false;
+	uh_SpellCardTimeLeft = 0;
+	uh_SpellCardClearHud();
+	ACS_NamedTerminate("uh_SpellCardTimer", 0);
+}
+
+// phaseId 1..8, timeLimitSec >= 1
+script "uh_SpellCardStart" (int phaseId, int timeLimitSec)
+{
+	if (phaseId < 1 || phaseId > UH_SC_PHASE_MAX)
+		phaseId = 1;
+	if (timeLimitSec < 1)
+		timeLimitSec = 1;
+
+	ACS_NamedTerminate("uh_SpellCardTimer", 0);
+	uh_SpellCardClearHud();
+	ClearHudMessageBold(UH_SC_HUD_RESULT);
+
+	uh_SpellCardPhase = phaseId;
+	uh_SpellCardTimeLeft = timeLimitSec;
+	uh_SpellCardBroken = false;
+	uh_SpellCardActive = true;
+
+	uh_SpellCardDrawHud(uh_SpellCardTimeLeft, uh_SpellCardPhase);
+	ACS_NamedExecuteAlways("uh_SpellCardTimer", 0);
+}
+
+script "uh_SpellCardTimer" (void)
+{
+	while (uh_SpellCardActive && uh_SpellCardTimeLeft > 0)
+	{
+		if (uh_SpellCardBroken)
+		{
+			ACS_NamedExecuteAlways("uh_SpellCardFail", 0);
+			terminate;
+		}
+		uh_SpellCardDrawHud(uh_SpellCardTimeLeft, uh_SpellCardPhase);
+		Delay(UH_SC_TICRATE);
+		if (!uh_SpellCardActive)
+			terminate;
+		uh_SpellCardTimeLeft--;
+	}
+
+	if (uh_SpellCardActive)
+	{
+		uh_SpellCardActive = false;
+		uh_SpellCardClearHud();
+		uh_SpellCardAnnounceResult("Time Out", CR_DARKGRAY);
+		uh_SpellCardBroken = false;
+		uh_SpellCardTimeLeft = 0;
+	}
+}
+
+script "uh_SpellCardCapture" (void)
+{
+	if (!uh_SpellCardActive)
+		terminate;
+	if (uh_SpellCardBroken || uh_SpellCardTimeLeft <= 0)
+	{
+		ACS_NamedExecuteAlways("uh_SpellCardFail", 0);
+		terminate;
+	}
+
+	uh_SpellCardActive = false;
+	ACS_NamedTerminate("uh_SpellCardTimer", 0);
+	uh_SpellCardClearHud();
+	uh_SpellCardAnnounceResult("Get Spell Card Bonus!", CR_YELLOW);
+	ACS_NamedExecuteAlways("uh_SpellCardBonusReward", 0);
+	uh_SpellCardBroken = false;
+	uh_SpellCardTimeLeft = 0;
+}
+
+script "uh_SpellCardFail" (void)
+{
+	if (!uh_SpellCardActive && !uh_SpellCardBroken)
+		terminate;
+
+	uh_SpellCardActive = false;
+	ACS_NamedTerminate("uh_SpellCardTimer", 0);
+	uh_SpellCardClearHud();
+	uh_SpellCardAnnounceResult("Bonus Failed...", CR_RED);
+	uh_SpellCardBroken = false;
+	uh_SpellCardTimeLeft = 0;
+}
+
+// Mark the current card broken (survivor death). Timer will Fail on next tick.
+script "uh_SpellCardBreak" (void)
+{
+	if (uh_SpellCardActive)
+		uh_SpellCardBroken = true;
+}
+
+script "uh_SpellCardStop" (void)
+{
+	uh_SpellCardEndQuiet();
+}
+
+// Phase 1: empty. Later: LMS combat reward (never score).
+script "uh_SpellCardBonusReward" (void)
+{
+	terminate;
+}
+
+script "uh_SpellCardIsActive" (void)
+{
+	SetResultValue(uh_SpellCardActive);
+}
+
+script "uh_SpellCardGetTimeLeft" (void)
+{
+	SetResultValue(uh_SpellCardTimeLeft);
+}
