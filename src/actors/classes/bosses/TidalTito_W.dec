@@ -1,4 +1,5 @@
-// TODO: Giving ragerune is lazy, use rage states instead
+// Boss rage uses TidalTitoPropertyRage + shorter even-duration states.
+// Native Rage rune (CF_DOUBLEFIRINGSPEED) stacks on top; do not inherit PlayerPropertyRage.
 
 actor TidalTito_W_ScriptBar : ScriptBar {}
 actor TidalTito_W : BaseUnholyBossWep
@@ -56,7 +57,8 @@ Fire:
 8H53 CBAAAAAAAAAAAA 2 A_GiveInventory("UnholyBossAmmo100",1)
 goto ReadyX
 IAMTHESOLITAIRECHAMPION:
-8H53 CBAAAAAAAAAA 2 A_GiveInventory("UnholyBossAmmo100",1)
+// Half of CBAAAAAAAAAAAA 2 (28 -> 14); even duration so Rage rune can halve again
+8H53 CBAAAAA 2 A_GiveInventory("UnholyBossAmmo100",1)
 goto ReadyX
 PlaytimeIsOVER:
 8H53 C 0 A_PlaySoundEx("weapon/mirrordeflect2","Weapon")
@@ -65,7 +67,8 @@ PlaytimeIsOVER:
 8H53 CCBBAAAAAAAAAAAAAAAA 2 A_GiveInventory("UnholyBossAmmo100",1)
 goto ReadyX
 PLAYTIMEISOVERTIME:
-8H53 CCBBAAAAAAAAAAAAAA 2 A_GiveInventory("UnholyBossAmmo100",1)
+// ~Half recovery; even duration for CF_DOUBLEFIRINGSPEED stacking
+8H53 CCBBAAAAAAA 2 A_GiveInventory("UnholyBossAmmo100",1)
 goto ReadyX
 
 Never_AGAIN:
@@ -85,10 +88,14 @@ goto ReadyX
 8H53 C 0 A_TakeInventory("UnholyBossAmmo100",4)
 8H53 C 0 A_PlaySoundEx("CBM/ShadeNoise","Weapon") //note to make consistent with CBM later
 8H53 C 0 A_FireCustomMissile("TidalTitoEchoWaver",0,0,8,0)
-8H53 C 0 A_JumpIfInventory("TidalTitoPropertyRage",1,1)
+8H53 C 0 A_JumpIfInventory("TidalTitoPropertyRage",1,"AltHoldRage")
 8H53 CC 4
 8H53 C 0 A_Refire("AltHold")
-8H53 C 0 A_JumpIfInventory("TidalTitoPropertyRage",1,1)
+8H53 CB 2
+goto ReadyX
+AltHoldRage:
+8H53 CC 2
+8H53 C 0 A_Refire("AltHold")
 8H53 CB 2
 goto ReadyX
 
@@ -134,7 +141,8 @@ goto Flash
 }
 
 Actor TidalTitoFlow : Inventory {Inventory.amount 1  Inventory.maxamount 350}
-Actor TidalTitoPropertyRage : PlayerPropertyRage {}
+// Independent of PlayerPropertyRage so uh_runeplayer can still grant PowerDoubleFiringSpeedRune
+Actor TidalTitoPropertyRage : Inventory {}
 
 Actor TidalTitoRage_P : CustomInventory
 {
@@ -594,7 +602,7 @@ Actor TidalTitoWave : BasicProjectile
 +NOINTERACTION
 +NOTIMEFREEZE
 Damagetype "TidalMaster"
-Obituary "\cvTidal \chTito\c- (%k)'s flow was too much for %o." 
+Obituary "\cvTidal \chTito\c- (%k)'s flow was too much for %o."
 Damage(0)
 Radius 6
 Height 6
