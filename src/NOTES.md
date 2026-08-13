@@ -232,4 +232,5 @@ Update the following sprites to v6b sprites:
 - Homing Sniper
 - Flash Bomb
 - Mega Ball
+- Lightning Bolt
 - Remote Mine
