@@ -1,0 +1,70 @@
+// Map-level hail weather (Blizzard Attack). Visual snow + flag for Moonlight.
+
+actor UH_HailWeather_F : Inventory
+{
+inventory.amount 1
+inventory.maxamount 1
+}
+
+// Marker on a player while a UH_HailSnowFollow is attached (prevents stacking).
+actor UH_HailSnowFollow_F : Inventory
+{
+inventory.amount 1
+inventory.maxamount 1
+}
+
+actor UH_HailWeatherCtrl
+{
++NOINTERACTION
++NOGRAVITY
++NOBLOCKMAP
++NOCLIP
++DONTBLAST
+Height 1
+Radius 1
+var int user_HailTics;
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SetUserVar("user_HailTics", 350)
+TNT1 A 0 A_GiveInventory("UH_HailWeather_F", 1)
+SpawnLoop:
+TNT1 A 1 A_SetUserVar("user_HailTics", user_HailTics - 1)
+TNT1 A 0 A_JumpIf(user_HailTics <= 0, "Death")
+loop
+Death:
+TNT1 A 0
+stop
+}
+}
+
+// Server-synced follower; spawns CLIENTSIDE SnowFlake around its target player.
+actor UH_HailSnowFollow
+{
++NOINTERACTION
++NOGRAVITY
++NOBLOCKMAP
++NOCLIP
++DONTBLAST
+Height 1
+Radius 1
+States
+{
+Spawn:
+TNT1 A 0
+SpawnLoop:
+TNT1 A 0 A_JumpIf(!CallACS("rz_IsHailWeather"), "Death")
+TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", AAPTR_TARGET), "Death")
+TNT1 A 0 A_JumpIfInTargetInventory("IsDead", 1, "Death")
+TNT1 A 0 A_Warp(AAPTR_TARGET, 0, 0, 0, 0, WARPF_NOCHECKPOSITION|WARPF_INTERPOLATE)
+TNT1 A 6 A_Jump(50, "Snow")
+goto SpawnLoop
+Snow:
+TNT1 A 4 A_SpawnItemEx("SnowFlake", random(-384,384), random(-384,384), random(128,320), random(10,18), random(-10,10), random(-8,-12), 0, SXF_CLIENTSIDE)
+goto SpawnLoop
+Death:
+TNT1 A 0 A_TakeFromTarget("UH_HailSnowFollow_F", 1)
+stop
+}
+}

@@ -766,3 +766,52 @@ function int max(int a, int b)
 		return a;
 	return b;
 }
+
+// Blizzard Attack hail weather (singleton controller + per-player snow follows).
+#define HAILWEATHER_TID -8690
+#define HAILWEATHER_TICS 350
+
+function void AttachHailSnowFollows(void)
+{
+	int p;
+	for (p = 0; p < ServerMAX; p++) {
+		if (!PlayerInGame(p)) {
+			continue;
+		}
+		int ptid = p + 1000;
+		if (CheckActorInventory(ptid, "IsDead")) {
+			continue;
+		}
+		if (CheckActorInventory(ptid, "UH_HailSnowFollow_F")) {
+			continue;
+		}
+		int u = UniqueTID();
+		if (SpawnForced("UH_HailSnowFollow", GetActorX(ptid), GetActorY(ptid), GetActorZ(ptid), u, 0)) {
+			SetActivator(u);
+			SetPointer(AAPTR_TARGET, ptid);
+			GiveActorInventory(ptid, "UH_HailSnowFollow_F", 1);
+		}
+	}
+}
+
+script "rz_SetHailWeather" (void)
+{
+	int firer = ActivatorTID();
+	if (firer == 0) {
+		firer = 1000 + PlayerNumber();
+	}
+
+	if (ThingCount(T_NONE, HAILWEATHER_TID) == 0) {
+		SpawnForced("UH_HailWeatherCtrl", GetActorX(firer), GetActorY(firer), GetActorZ(firer), HAILWEATHER_TID, 0);
+	} else {
+		SetUserVariable(HAILWEATHER_TID, "user_HailTics", HAILWEATHER_TICS);
+	}
+
+	AttachHailSnowFollows();
+	SetActivator(firer);
+}
+
+script "rz_IsHailWeather" (void)
+{
+	SetResultValue(ThingCountName("UH_HailWeatherCtrl", 0) > 0);
+}
