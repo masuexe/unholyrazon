@@ -1,12 +1,5 @@
-// IDEA: add timed kill system
-//       give Piece multiple lives,
-//       if Piece loses a life without any survivor died in limited time,
-//       get spell card bonus
-//
-// Phase 1 (temp): Ready starts uh_SpellCardStart for HUD countdown / announce test.
-//   give UH_SpellCardCapture_P  -> Spell Card Bonus!
-//   give UH_SpellCardFail_P     -> Bonus Failed
-// Remove this Ready hook when Phase 2 wires Start per Wn.
+// 8 spell lives: W1–W8. Flash polls HP; on life break Give Wn+1 / Take Wn.
+// Each new weapon Ready heals, consumes ExtraLife, starts uh_SpellCardStart.
 
 // TODO: optimize hud sprites: replace buster with torch sprites
 
@@ -68,10 +61,78 @@ Select:
 goto SelectSwap
 
 Ready:
+8I12 A 0 A_JumpIfInventory("ClownpieceGetUpDone_F", 1, "ReadyAfterGetUp")
+// W2–W8 first (IsKindOf would also match W1). Only morph W1 falls through to FirstSpawn.
+8I12 A 0 A_JumpIfInventory("Clownpiece_W8", 1, "SpellBreak")
+8I12 A 0 A_JumpIfInventory("Clownpiece_W7", 1, "SpellBreak")
+8I12 A 0 A_JumpIfInventory("Clownpiece_W6", 1, "SpellBreak")
+8I12 A 0 A_JumpIfInventory("Clownpiece_W5", 1, "SpellBreak")
+8I12 A 0 A_JumpIfInventory("Clownpiece_W4", 1, "SpellBreak")
+8I12 A 0 A_JumpIfInventory("Clownpiece_W3", 1, "SpellBreak")
+8I12 A 0 A_JumpIfInventory("Clownpiece_W2", 1, "SpellBreak")
+goto FirstSpawn
+FirstSpawn:
+8I12 A 0 A_GiveInventory("ClownpieceGetUpDone_F")
 8I12 A 0 A_GiveInventory("UnholyPowerLimit_F",1500)
 8I12 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", CLOWNPIECE_DYE)
-8I12 A 0 ACS_NamedExecute("uh_SpellCardStart", 0, 1, 30) // TEMP Phase 1: Nonspell 1, 30s
+8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 1, 30)
+8I12 A 0 A_GunFlash("Flash", true)
 Goto Ready2
+SpellBreak:
+8I12 A 0 A_GiveInventory("ClownpieceGetUpDone_F")
+8I12 A 0 A_GiveInventory("ClownpiecePainFlag")
+8I12 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true)
+8I12 A 0 ACS_NamedExecuteWithResult("core_freezeplayer", 0, true)
+8I12 A 0 A_Stop
+8I12 A 0 A_TakeInventory("GenericBossFlag200")
+SpellBreakHeal:
+8I12 A 0 ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, 200)
+8I12 A 1 A_JumpIf(CallACS("uh_Health", UHEALTH_IS_FULL), "SpellBreakEnd")
+loop
+SpellBreakEnd:
+8I12 A 0 A_TakeInventory("ClownpiecePainFlag")
+8I12 A 0 ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, 0, ELP_NATIVE)
+8I12 A 0 A_JumpIfInventory("Clownpiece_W8", 1, "StartSpell8")
+8I12 A 0 A_JumpIfInventory("Clownpiece_W7", 1, "StartSpell7")
+8I12 A 0 A_JumpIfInventory("Clownpiece_W6", 1, "StartSpell6")
+8I12 A 0 A_JumpIfInventory("Clownpiece_W5", 1, "StartSpell5")
+8I12 A 0 A_JumpIfInventory("Clownpiece_W4", 1, "StartSpell4")
+8I12 A 0 A_JumpIfInventory("Clownpiece_W3", 1, "StartSpell3")
+goto StartSpell2
+StartSpell2:
+8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 2, 30)
+goto SpellBreakDone
+StartSpell3:
+8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 3, 30)
+goto SpellBreakDone
+StartSpell4:
+8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 4, 30)
+goto SpellBreakDone
+StartSpell5:
+8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 5, 30)
+goto SpellBreakDone
+StartSpell6:
+8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 6, 30)
+goto SpellBreakDone
+StartSpell7:
+8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 7, 30)
+goto SpellBreakDone
+StartSpell8:
+8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 8, 30)
+goto SpellBreakDone
+SpellBreakDone:
+8I12 A 0 ACS_NamedExecuteWithResult("core_freezeplayer", 0, false)
+8I12 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false)
+8I12 A 0 A_GunFlash("Flash", true)
+Goto Ready2
+ReadyAfterGetUp:
+8I12 A 0 A_GiveInventory("UnholyPowerLimit_F",1500)
+8I12 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", CLOWNPIECE_DYE)
+8I12 A 0 A_GunFlash("Flash", true)
+Goto Ready2
+Flash:
+TNT1 A 1 A_GiveInventory("ClownpieceHealthCheck_P")
+loop
 Ready1:
 8I12 A 2 A_GiveInventory("Clownpiece_Ready8_P")
 Goto Ready2
@@ -276,6 +337,83 @@ Goto Ready2
 }
 }
 
+actor ClownpieceGetUpDone_F : UOnce {}
+actor ClownpiecePainFlag : UOnce {}
+
+actor ClownpieceHealthCheck_P : CustomInventory
+{
+States
+{
+Pickup:
+tnt1 a 0 a_log(flash)
+TNT1 A 0 A_JumpIfHealthLower(2, 1)
+stop
+TNT1 A 0 A_JumpIfInventory("IsDead", 1, "NoSwap")
+TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "NoSwap")
+TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLifeNative", 1, 1)
+goto NoSwap
+TNT1 A 0 A_JumpIfInventory("Clownpiece_W8", 1, "NoSwap")
+TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
+TNT1 A 0 A_GiveInventory("ClownpieceSwapNext_P")
+stop
+NoSwap:
+TNT1 A 0
+stop
+}
+}
+
+actor ClownpieceSwapNext_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
+TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
+TNT1 A 0 A_JumpIfInventory("Clownpiece_W7", 1, "ToW8")
+TNT1 A 0 A_JumpIfInventory("Clownpiece_W6", 1, "ToW7")
+TNT1 A 0 A_JumpIfInventory("Clownpiece_W5", 1, "ToW6")
+TNT1 A 0 A_JumpIfInventory("Clownpiece_W4", 1, "ToW5")
+TNT1 A 0 A_JumpIfInventory("Clownpiece_W3", 1, "ToW4")
+TNT1 A 0 A_JumpIfInventory("Clownpiece_W2", 1, "ToW3")
+goto ToW2
+ToW2:
+TNT1 A 0 A_GiveInventory("Clownpiece_W2")
+TNT1 A 0 A_SelectWeapon("Clownpiece_W2")
+TNT1 A 0 A_TakeInventory("Clownpiece_W1")
+stop
+ToW3:
+TNT1 A 0 A_GiveInventory("Clownpiece_W3")
+TNT1 A 0 A_SelectWeapon("Clownpiece_W3")
+TNT1 A 0 A_TakeInventory("Clownpiece_W2")
+stop
+ToW4:
+TNT1 A 0 A_GiveInventory("Clownpiece_W4")
+TNT1 A 0 A_SelectWeapon("Clownpiece_W4")
+TNT1 A 0 A_TakeInventory("Clownpiece_W3")
+stop
+ToW5:
+TNT1 A 0 A_GiveInventory("Clownpiece_W5")
+TNT1 A 0 A_SelectWeapon("Clownpiece_W5")
+TNT1 A 0 A_TakeInventory("Clownpiece_W4")
+stop
+ToW6:
+TNT1 A 0 A_GiveInventory("Clownpiece_W6")
+TNT1 A 0 A_SelectWeapon("Clownpiece_W6")
+TNT1 A 0 A_TakeInventory("Clownpiece_W5")
+stop
+ToW7:
+TNT1 A 0 A_GiveInventory("Clownpiece_W7")
+TNT1 A 0 A_SelectWeapon("Clownpiece_W7")
+TNT1 A 0 A_TakeInventory("Clownpiece_W6")
+stop
+ToW8:
+TNT1 A 0 A_GiveInventory("Clownpiece_W8")
+TNT1 A 0 A_SelectWeapon("Clownpiece_W8")
+TNT1 A 0 A_TakeInventory("Clownpiece_W7")
+stop
+}
+}
+
 actor Clownpiece_W1 : Clownpiece_W {
   States {
    Fire:
@@ -382,9 +520,19 @@ actor Clownpiece_W1 : Clownpiece_W {
   }
 }
 
+// Spell weapons that are not W1: stub AltFire so they do not inherit base orberino.
+// Do not inherit W1/W2 as inventory classes — TakeInventory/CheckInventory use IsKindOf.
+actor Clownpiece_SpellWep : Clownpiece_W {
+  States {
+   AltFire:
+    8I12 A 0
+    goto Ready2
+  }
+}
+
 // Hell Sign "Hell Eclipse"
 // Hell Sign "Eclipse of Hell"
-actor Clownpiece_W2 : Clownpiece_W1 {
+actor Clownpiece_W2 : Clownpiece_SpellWep {
   States {
    Fire:
     8T12 A 0 A_TakeInventory("UnholyBossAmmo200",200)
@@ -426,7 +574,7 @@ actor Clownpiece_W3 : Clownpiece_W1 {
 
 // Hell Sign "Flash and Stripe"
 // Hell Sign "Star and Stripe"
-actor Clownpiece_W4 : Clownpiece_W2 {
+actor Clownpiece_W4 : Clownpiece_SpellWep {
   States {
    Fire:
     8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200", 100, "StripeFire")
@@ -460,7 +608,7 @@ actor Clownpiece_W5 : Clownpiece_W1 {
 
 // Hellfire "Graze Inferno"
 // Hellfire "Infernal Essence of Grazing"
-actor Clownpiece_W6 : Clownpiece_W2 {
+actor Clownpiece_W6 : Clownpiece_SpellWep {
   States {
    Fire:
     8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200", 67, "DollarGive")
@@ -474,14 +622,14 @@ actor Clownpiece_W6 : Clownpiece_W2 {
 }
 
 // Inferno "Striped Abyss"
-actor Clownpiece_W7 : Clownpiece_W2 {
+actor Clownpiece_W7 : Clownpiece_SpellWep {
   States {
    Fire:
     8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200", 80, "AbyssFire")
     Goto Ready2
    AbyssFire:
     8I12 A 0 A_TakeInventory("UnholyBossAmmo200", 80)
-    8I12 A 0 A_PlaySoundEx("wep_L/TouhouLazer0", "Weapon")
+    // 8I12 A 0 A_PlaySoundEx("wep_L/TouhouLazer0", "Weapon")
     8I12 A 0 A_Jump(256, "AbyssL", "AbyssR")
    AbyssL:
     // Left of boss; flies forward, streams lasers right (toward center)
@@ -501,7 +649,7 @@ actor Clownpiece_W7 : Clownpiece_W2 {
 // "Fake Apollo"
 // "Apollo Hoax Theory"
 // Moon Dream "Eclipse Nightmare"
-actor Clownpiece_W8 : Clownpiece_W2 {
+actor Clownpiece_W8 : Clownpiece_W {
   States {
    Fire:
    FireMoon:
