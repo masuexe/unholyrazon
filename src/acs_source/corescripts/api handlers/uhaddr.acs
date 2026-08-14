@@ -312,3 +312,80 @@ Script "uh_GetPlayerEyeId_S" (int playerNum)
 {
 	SetResultValue(GetPlayerEyeId(playerNum));
 }
+
+function int DefineUnholyItemCore(int id, str actor, str name, int pool, str mugshot)
+{
+	if (StrCmp(actor, "") == 0)
+		return UHITEM_FAIL;
+	if (StrCmp(name, "") == 0)
+		return UHITEM_FAIL;
+	if (pool < UHITEM_POOL_NONE || pool > UHITEM_POOL_OTHER)
+		return UHITEM_FAIL;
+	if (FindItemByActor(actor) != UHITEM_FAIL)
+		return UHITEM_FAIL;
+
+	if (id >= 0)
+	{
+		if (id >= UH_MAX_VANILLA_ITEM)
+			return UHITEM_FAIL;
+		if (uh_itemVanillaDefined[id] != 0)
+			return UHITEM_FAIL;
+		ItemWriteVanilla(id, actor, name, pool, mugshot);
+		return id;
+	}
+
+	if (id == -1)
+	{
+		if (uh_itemCustomCount >= UH_MAX_CUSTOM_ITEM)
+			return UHITEM_FAIL;
+		return ItemWriteCustom(actor, name, pool, mugshot);
+	}
+
+	return UHITEM_FAIL;
+}
+
+Script "uh_DefineUnholyItem_S" (void)
+{
+	SetResultValue(DefineUnholyItemCore(
+		GetCVar("uh_di_id"),
+		GetCVarString("uh_di_actor"),
+		GetCVarString("uh_di_name"),
+		GetCVar("uh_di_pool"),
+		GetCVarString("uh_di_mugshot")
+	));
+}
+
+Script "uh_IsItemDefined_S" (int id)
+{
+	SetResultValue(IsItemDefined(id));
+}
+
+Script "uh_FindItemByActor_S" (void)
+{
+	int id = FindItemByActor(GetCVarString("uh_di_actor"));
+	SetCVar("uh_di_id", id);
+	SetResultValue(id);
+}
+
+Script "uh_GetItemActor_S" (int id)
+{
+	SetCVarString("uh_di_out_str", GetItemActor(id));
+	SetResultValue(IsItemDefined(id));
+}
+
+Script "uh_GetItemName_S" (int id)
+{
+	SetCVarString("uh_di_out_str", GetItemName(id));
+	SetResultValue(IsItemDefined(id));
+}
+
+Script "uh_GetItemMugshot_S" (int id)
+{
+	SetCVarString("uh_di_out_str", GetItemMugshot(id));
+	SetResultValue(IsItemDefined(id));
+}
+
+Script "uh_GetItemPool_S" (int id)
+{
+	SetResultValue(GetItemPool(id));
+}

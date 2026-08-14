@@ -79,10 +79,31 @@
 // 3. Mugshot is mandatory (BHW SetFont name). eventStem builds {stem}_MoolaGiver.
 // 4. Bonus face-only ids may pass actor "".
 // 5. Do not register ArenaDemoneye-style boss-team eyes here — use DefineBoss.
+//
+// === DefineUnholyItem addon recipe ===========================================
+// 1. LOADACS after Unholy: YOUR_ITEMDEFS
+// 2. ACS:
+//      #library "YOUR_ITEMDEFS"
+//      #include "zcommon.acs"
+//      #include "UHADD.acs"
+//      function void YourRegisterItems(void) {
+//          DefineUnholyItem(-1, "YourItem", "Your Item", UHITEM_POOL_OTHER, "");
+//          // mugshot optional (items use DECORATE Inventory.Icon).
+//      }
+//      script "your_define_items" OPEN {
+//          if (!UHInPlay()) terminate;
+//          YourRegisterItems();
+//      }
+//      script "your_define_items_cs" OPEN CLIENTSIDE {
+//          YourRegisterItems();
+//      }
+// 3. Do NOT put item ids in BossNumb / BHW. Boxes still grant by actor string.
+// 4. MoneyBait morph / DarkPurplePotion Use stay DECORATE.
 
 #define UHBOSS_FAIL -9999
 #define UHSURV_FAIL -9999
 #define UHEYE_FAIL -9999
+#define UHITEM_FAIL -9999
 #define UHEYE_FLAG_NOSUFFIX 1
 
 #define UHBOSS_POOL_NONE 0
@@ -91,6 +112,12 @@
 #define UHBOSS_POOL_SPECIAL 3
 #define UHBOSS_POOL_ULTRA 4
 #define UHBOSS_POOL_EX 5
+
+#define UHITEM_POOL_NONE 0
+#define UHITEM_POOL_PANDORA 1
+#define UHITEM_POOL_MYSTIC 2
+#define UHITEM_POOL_TOW 3
+#define UHITEM_POOL_OTHER 4
 
 int uh_inplay_cache = -1;
 
@@ -306,4 +333,52 @@ function str GetEyeEventStem(int id)
 function int UH_GetPlayerEyeId(int playerNum)
 {
 	return ACS_NamedExecuteWithResult("uh_GetPlayerEyeId_S", playerNum);
+}
+
+// === DefineUnholyItem ========================================================
+// id: >=0 vanilla; -1 = auto custom (-1,-2,…).
+// actor / name required. mugshot optional (""). pool = UHITEM_POOL_*.
+
+function int DefineUnholyItem(int id, str actor, str name, int pool, str mugshot)
+{
+	SetCVar("uh_di_id", id);
+	SetCVarString("uh_di_actor", actor);
+	SetCVarString("uh_di_name", name);
+	SetCVar("uh_di_pool", pool);
+	SetCVarString("uh_di_mugshot", mugshot);
+	return ACS_NamedExecuteWithResult("uh_DefineUnholyItem_S");
+}
+
+function int IsItemDefined(int id)
+{
+	return ACS_NamedExecuteWithResult("uh_IsItemDefined_S", id);
+}
+
+function int FindItemByActor(str actor)
+{
+	SetCVarString("uh_di_actor", actor);
+	return ACS_NamedExecuteWithResult("uh_FindItemByActor_S");
+}
+
+function str GetItemActor(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetItemActor_S", id);
+	return GetCVarString("uh_di_out_str");
+}
+
+function str GetItemName(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetItemName_S", id);
+	return GetCVarString("uh_di_out_str");
+}
+
+function str GetItemMugshot(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetItemMugshot_S", id);
+	return GetCVarString("uh_di_out_str");
+}
+
+function int GetItemPool(int id)
+{
+	return ACS_NamedExecuteWithResult("uh_GetItemPool_S", id);
 }

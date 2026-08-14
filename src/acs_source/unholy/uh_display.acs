@@ -268,6 +268,32 @@ function bool IsSurvivorShinyBossNumb(int BossNumb)
 	return BossNumb <= -600;
 }
 
+// Demoneye BossNumb packing:
+//   vanilla eye: 1000 + id          (0→1000, 32→1032, 100→1100)
+//   custom eye:  2000 + EyeCustomIndex(id)  (clears 0..999 boss band)
+function int EncodeEyeBossNumb(int eyeId)
+{
+	if (eyeId == UHEYE_FAIL)
+		return 0;
+	if (eyeId >= 0)
+		return 1000 + eyeId;
+	return 2000 + EyeCustomIndex(eyeId);
+}
+
+function int DecodeEyeBossNumb(int BossNumb)
+{
+	if (BossNumb >= 2000)
+		return -1 - (BossNumb - 2000);
+	if (BossNumb >= 1000)
+		return BossNumb - 1000;
+	return UHEYE_FAIL;
+}
+
+function bool IsEyeBossNumb(int BossNumb)
+{
+	return BossNumb >= 1000;
+}
+
 function void Func_BHW_HudMess2(int TheBoss, int BossNumb, int Health, int Armor)
 {
 	SetHudSize(640,480,0);//640,512
@@ -286,8 +312,8 @@ function void Func_BHW_HudMess2(int TheBoss, int BossNumb, int Health, int Armor
 	str nameStr;
 	if (IsSurvivorBossNumb(BossNumb))
 		nameStr = GetSurvivorName(DecodeSurvivorBossNumb(BossNumb));
-	else if (BossNumb >= 1000)
-		nameStr = StrParam(s: GetEyePrefix(BossNumb - 1000), s: GetEyeName(BossNumb - 1000));
+	else if (IsEyeBossNumb(BossNumb))
+		nameStr = GetEyeHudName(DecodeEyeBossNumb(BossNumb));
 	else
 		nameStr = GetBossName(BossNumb);
 	HudMessage(s: nameStr; 0, -990-TheBoss, -1, 48.1+X_Aspect, 310.1+AddToY, 0, 1.0);
@@ -343,12 +369,15 @@ function void Func_BHW_SetFontMug(int BossNumb)
 			SetFont("NOFAC_0");
 		return;
 	}
-	if(BossNumb >=1000){//Demoneye
-		str eyeMug = GetEyeMugshot(BossNumb-1000);
+	if (BossNumb >= 1000) {//Demoneye (vanilla 1000+id or custom 2000+idx)
+		int eidMug = DecodeEyeBossNumb(BossNumb);
+		str eyeMug = GetEyeMugshot(eidMug);
 		if (StrCmp(eyeMug, "") != 0)
 			FontStr = eyeMug;
+		else if (eidMug >= 0)
+			FontStr = StrParam(s:"EYE_F",i:eidMug);
 		else
-			FontStr = StrParam(s:"EYE_F",i:BossNumb-1000);
+			FontStr = "NOFAC_0";
 	}
 	else if(BossNumb >=0){//Boss
 		FontStr = StrParam(s:"UFACE",i:BossNumb);

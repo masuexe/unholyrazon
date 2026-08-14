@@ -1,4 +1,4 @@
-// UHDT — shared DefineBoss / DefineSurvivor / DefineDemoneye tables (library "UHDT").
+// UHDT — shared DefineBoss / DefineSurvivor / DefineDemoneye / DefineUnholyItem tables (library "UHDT").
 // Handlers and other UH libs #import this file to share state.
 //
 #library "uhdt"
@@ -11,9 +11,12 @@
 #LIBDEFINE UH_MAX_CUSTOM_SURV 256
 #LIBDEFINE UH_MAX_VANILLA_EYE 200
 #LIBDEFINE UH_MAX_CUSTOM_EYE 256
+#LIBDEFINE UH_MAX_VANILLA_ITEM 256
+#LIBDEFINE UH_MAX_CUSTOM_ITEM 256
 #LIBDEFINE UHBOSS_FAIL -9999
 #LIBDEFINE UHSURV_FAIL -9999
 #LIBDEFINE UHEYE_FAIL -9999
+#LIBDEFINE UHITEM_FAIL -9999
 #LIBDEFINE UHEYE_FLAG_NOSUFFIX 1
 // UHEYE_FLAG_NOSUFFIX: omit " Demoneye" suffix in YouAreNow (was eyeList "A").
 
@@ -25,6 +28,13 @@
 #LIBDEFINE UHBOSS_POOL_ULTRA 4
 #LIBDEFINE UHBOSS_POOL_EX 5
 #LIBDEFINE UHBOSS_POOL_COUNT 6
+
+// Unholy item loot pools (not BossNumb; boxes still grant by DECORATE actor string)
+#LIBDEFINE UHITEM_POOL_NONE 0
+#LIBDEFINE UHITEM_POOL_PANDORA 1
+#LIBDEFINE UHITEM_POOL_MYSTIC 2
+#LIBDEFINE UHITEM_POOL_TOW 3
+#LIBDEFINE UHITEM_POOL_OTHER 4
 
 // str fields per boss
 #LIBDEFINE UHBOSS_STR_ACTOR 0
@@ -730,6 +740,17 @@ function str GetEyeYouAreNowName(int id)
 	return StrParam(s: prefix, s: name, s: " \ckDemoneye");
 }
 
+// BHW / parade label: "Plain Demoneye" (no article). NOSUFFIX → name only.
+function str GetEyeHudName(int id)
+{
+	str name = GetEyeName(id);
+	if (StrCmp(name, "") == 0)
+		return "";
+	if (GetEyeFlags(id) & UHEYE_FLAG_NOSUFFIX)
+		return name;
+	return StrParam(s: name, s: " Demoneye");
+}
+
 function int FindEyeByActor(str actor)
 {
 	int i;
@@ -772,4 +793,139 @@ function int EyeWriteCustom(str actor, str name, str prefix, int flags, str mugs
 	uh_eyeCustomStr[i][UHEYE_STR_EVENTSTEM] = eventStem;
 	uh_eyeCustomCount++;
 	return eyeId;
+}
+
+// --- DefineUnholyItem tables -------------------------------------------------
+
+#LIBDEFINE UHITEM_STR_ACTOR 0
+#LIBDEFINE UHITEM_STR_NAME 1
+#LIBDEFINE UHITEM_STR_MUGSHOT 2
+#LIBDEFINE UHITEM_STR_COUNT 3
+
+int uh_itemVanillaDefined[UH_MAX_VANILLA_ITEM];
+str uh_itemVanillaStr[UH_MAX_VANILLA_ITEM][UHITEM_STR_COUNT];
+int uh_itemVanillaPool[UH_MAX_VANILLA_ITEM];
+
+int uh_itemCustomCount = 0;
+str uh_itemCustomStr[UH_MAX_CUSTOM_ITEM][UHITEM_STR_COUNT];
+int uh_itemCustomPool[UH_MAX_CUSTOM_ITEM];
+
+function int ItemCustomIndex(int id)
+{
+	return -1 - id;
+}
+
+function bool IsItemDefined(int id)
+{
+	if (id >= 0)
+	{
+		if (id >= UH_MAX_VANILLA_ITEM)
+			return false;
+		return uh_itemVanillaDefined[id] != 0;
+	}
+	if (id <= -1)
+	{
+		int i = ItemCustomIndex(id);
+		if (i < 0 || i >= uh_itemCustomCount)
+			return false;
+		return true;
+	}
+	return false;
+}
+
+function int ItemResolveSlot(int id)
+{
+	if (id >= 0)
+	{
+		if (id >= UH_MAX_VANILLA_ITEM || uh_itemVanillaDefined[id] == 0)
+			return UHITEM_FAIL;
+		return id;
+	}
+	if (id <= -1)
+	{
+		int i = ItemCustomIndex(id);
+		if (i < 0 || i >= uh_itemCustomCount)
+			return UHITEM_FAIL;
+		return i;
+	}
+	return UHITEM_FAIL;
+}
+
+function str GetItemActor(int id)
+{
+	int slot = ItemResolveSlot(id);
+	if (slot == UHITEM_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_itemVanillaStr[slot][UHITEM_STR_ACTOR];
+	return uh_itemCustomStr[slot][UHITEM_STR_ACTOR];
+}
+
+function str GetItemName(int id)
+{
+	int slot = ItemResolveSlot(id);
+	if (slot == UHITEM_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_itemVanillaStr[slot][UHITEM_STR_NAME];
+	return uh_itemCustomStr[slot][UHITEM_STR_NAME];
+}
+
+function str GetItemMugshot(int id)
+{
+	int slot = ItemResolveSlot(id);
+	if (slot == UHITEM_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_itemVanillaStr[slot][UHITEM_STR_MUGSHOT];
+	return uh_itemCustomStr[slot][UHITEM_STR_MUGSHOT];
+}
+
+function int GetItemPool(int id)
+{
+	int slot = ItemResolveSlot(id);
+	if (slot == UHITEM_FAIL)
+		return UHITEM_POOL_NONE;
+	if (id >= 0)
+		return uh_itemVanillaPool[slot];
+	return uh_itemCustomPool[slot];
+}
+
+function int FindItemByActor(str actor)
+{
+	int i;
+	if (StrCmp(actor, "") == 0)
+		return UHITEM_FAIL;
+	for (i = 0; i < UH_MAX_VANILLA_ITEM; i++)
+	{
+		if (uh_itemVanillaDefined[i] != 0 && StrICmp(actor, uh_itemVanillaStr[i][UHITEM_STR_ACTOR]) == 0)
+			return i;
+	}
+	for (i = 0; i < uh_itemCustomCount; i++)
+	{
+		if (StrICmp(actor, uh_itemCustomStr[i][UHITEM_STR_ACTOR]) == 0)
+			return -1 - i;
+	}
+	return UHITEM_FAIL;
+}
+
+function void ItemWriteVanilla(int id, str actor, str name, int pool, str mugshot)
+{
+	uh_itemVanillaDefined[id] = 1;
+	uh_itemVanillaStr[id][UHITEM_STR_ACTOR] = actor;
+	uh_itemVanillaStr[id][UHITEM_STR_NAME] = name;
+	uh_itemVanillaStr[id][UHITEM_STR_MUGSHOT] = mugshot;
+	uh_itemVanillaPool[id] = pool;
+}
+
+function int ItemWriteCustom(str actor, str name, int pool, str mugshot)
+{
+	int i = uh_itemCustomCount;
+	int itemId = -1 - i;
+	uh_itemCustomStr[i][UHITEM_STR_ACTOR] = actor;
+	uh_itemCustomStr[i][UHITEM_STR_NAME] = name;
+	uh_itemCustomStr[i][UHITEM_STR_MUGSHOT] = mugshot;
+	uh_itemCustomPool[i] = pool;
+	uh_itemCustomCount++;
+	return itemId;
 }
