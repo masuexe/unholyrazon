@@ -29,17 +29,11 @@
 #LIBDEFINE UHBOSS_POOL_EX 5
 #LIBDEFINE UHBOSS_POOL_COUNT 6
 
-// Unholy item loot pools (box roll indices: PANDORA/MYSTIC/TOW)
-#LIBDEFINE UHITEM_POOL_NONE 0
-#LIBDEFINE UHITEM_POOL_PANDORA 1
-#LIBDEFINE UHITEM_POOL_MYSTIC 2
-#LIBDEFINE UHITEM_POOL_TOW 3
-#LIBDEFINE UHITEM_POOL_OTHER 4
-#LIBDEFINE UHITEM_BOX_POOL_COUNT 3
-// Weight/amt array index: pool 1→0, 2→1, 3→2 (OTHER never rolls).
-#LIBDEFINE UHITEM_WI_PANDORA 0
-#LIBDEFINE UHITEM_WI_MYSTIC 1
-#LIBDEFINE UHITEM_WI_TOW 2
+// Vanilla box item ids (for DECORATE ACS args; drops are keyed by box item id).
+#LIBDEFINE UHITEM_BOX_PANDORA 0
+#LIBDEFINE UHITEM_BOX_MYSTIC 37
+#LIBDEFINE UHITEM_BOX_TOW 53
+#LIBDEFINE UH_MAX_ITEM_DROPS 1024
 
 // str fields per boss
 #LIBDEFINE UHBOSS_STR_ACTOR 0
@@ -806,32 +800,29 @@ function int EyeWriteCustom(str actor, str name, str prefix, int flags, str mugs
 #LIBDEFINE UHITEM_STR_NAME 1
 #LIBDEFINE UHITEM_STR_MUGSHOT 2
 #LIBDEFINE UHITEM_STR_SOUND 3
-#LIBDEFINE UHITEM_STR_COUNT 4
+#LIBDEFINE UHITEM_STR_OPENSOUND 4
+#LIBDEFINE UHITEM_STR_EYEDROPSOUND 5
+#LIBDEFINE UHITEM_STR_COUNT 6
 
 int uh_itemVanillaDefined[UH_MAX_VANILLA_ITEM];
 str uh_itemVanillaStr[UH_MAX_VANILLA_ITEM][UHITEM_STR_COUNT];
-int uh_itemVanillaWeight[UH_MAX_VANILLA_ITEM][UHITEM_BOX_POOL_COUNT];
-int uh_itemVanillaAmt[UH_MAX_VANILLA_ITEM][UHITEM_BOX_POOL_COUNT];
+int uh_itemVanillaIsBox[UH_MAX_VANILLA_ITEM];
 
 int uh_itemCustomCount = 0;
 str uh_itemCustomStr[UH_MAX_CUSTOM_ITEM][UHITEM_STR_COUNT];
-int uh_itemCustomWeight[UH_MAX_CUSTOM_ITEM][UHITEM_BOX_POOL_COUNT];
-int uh_itemCustomAmt[UH_MAX_CUSTOM_ITEM][UHITEM_BOX_POOL_COUNT];
+int uh_itemCustomIsBox[UH_MAX_CUSTOM_ITEM];
+
+// Drop rows: (boxid, itemid, weight, amt, stingOverride).
+int uh_itemDropCount = 0;
+int uh_itemDropBoxId[UH_MAX_ITEM_DROPS];
+int uh_itemDropItemId[UH_MAX_ITEM_DROPS];
+int uh_itemDropWeight[UH_MAX_ITEM_DROPS];
+int uh_itemDropAmt[UH_MAX_ITEM_DROPS];
+str uh_itemDropSting[UH_MAX_ITEM_DROPS];
 
 function int ItemCustomIndex(int id)
 {
 	return -1 - id;
-}
-
-function int ItemPoolToWeightIndex(int pool)
-{
-	if (pool == UHITEM_POOL_PANDORA)
-		return UHITEM_WI_PANDORA;
-	if (pool == UHITEM_POOL_MYSTIC)
-		return UHITEM_WI_MYSTIC;
-	if (pool == UHITEM_POOL_TOW)
-		return UHITEM_WI_TOW;
-	return -1;
 }
 
 function bool IsItemDefined(int id)
@@ -910,26 +901,34 @@ function str GetItemSound(int id)
 	return uh_itemCustomStr[slot][UHITEM_STR_SOUND];
 }
 
-function int GetItemWeight(int id, int pool)
+function bool IsUnholyBox(int id)
 {
-	int wi = ItemPoolToWeightIndex(pool);
 	int slot = ItemResolveSlot(id);
-	if (wi < 0 || slot == UHITEM_FAIL)
-		return 0;
+	if (slot == UHITEM_FAIL)
+		return false;
 	if (id >= 0)
-		return uh_itemVanillaWeight[slot][wi];
-	return uh_itemCustomWeight[slot][wi];
+		return uh_itemVanillaIsBox[slot] != 0;
+	return uh_itemCustomIsBox[slot] != 0;
 }
 
-function int GetItemAmt(int id, int pool)
+function str GetBoxOpenSound(int boxid)
 {
-	int wi = ItemPoolToWeightIndex(pool);
-	int slot = ItemResolveSlot(id);
-	if (wi < 0 || slot == UHITEM_FAIL)
-		return 0;
-	if (id >= 0)
-		return uh_itemVanillaAmt[slot][wi];
-	return uh_itemCustomAmt[slot][wi];
+	int slot = ItemResolveSlot(boxid);
+	if (slot == UHITEM_FAIL)
+		return "";
+	if (boxid >= 0)
+		return uh_itemVanillaStr[slot][UHITEM_STR_OPENSOUND];
+	return uh_itemCustomStr[slot][UHITEM_STR_OPENSOUND];
+}
+
+function str GetBoxEyedropSound(int boxid)
+{
+	int slot = ItemResolveSlot(boxid);
+	if (slot == UHITEM_FAIL)
+		return "";
+	if (boxid >= 0)
+		return uh_itemVanillaStr[slot][UHITEM_STR_EYEDROPSOUND];
+	return uh_itemCustomStr[slot][UHITEM_STR_EYEDROPSOUND];
 }
 
 function int FindItemByActor(str actor)
@@ -950,100 +949,173 @@ function int FindItemByActor(str actor)
 	return UHITEM_FAIL;
 }
 
-function void ItemWriteVanilla(int id, str actor, str name, int wP, int amtP, int wM, int amtM, int wT, int amtT, str mugshot, str sound)
+function void ItemWriteVanilla(int id, str actor, str name, str mugshot, str sound)
 {
 	uh_itemVanillaDefined[id] = 1;
 	uh_itemVanillaStr[id][UHITEM_STR_ACTOR] = actor;
 	uh_itemVanillaStr[id][UHITEM_STR_NAME] = name;
 	uh_itemVanillaStr[id][UHITEM_STR_MUGSHOT] = mugshot;
 	uh_itemVanillaStr[id][UHITEM_STR_SOUND] = sound;
-	uh_itemVanillaWeight[id][UHITEM_WI_PANDORA] = wP;
-	uh_itemVanillaAmt[id][UHITEM_WI_PANDORA] = amtP;
-	uh_itemVanillaWeight[id][UHITEM_WI_MYSTIC] = wM;
-	uh_itemVanillaAmt[id][UHITEM_WI_MYSTIC] = amtM;
-	uh_itemVanillaWeight[id][UHITEM_WI_TOW] = wT;
-	uh_itemVanillaAmt[id][UHITEM_WI_TOW] = amtT;
+	uh_itemVanillaStr[id][UHITEM_STR_OPENSOUND] = "";
+	uh_itemVanillaStr[id][UHITEM_STR_EYEDROPSOUND] = "";
+	uh_itemVanillaIsBox[id] = 0;
 }
 
-function int ItemWriteCustom(str actor, str name, int wP, int amtP, int wM, int amtM, int wT, int amtT, str mugshot, str sound)
+function int ItemWriteCustom(str actor, str name, str mugshot, str sound)
 {
 	int i = uh_itemCustomCount;
-	int itemId = -1 - i;
+	int itemid = -1 - i;
 	uh_itemCustomStr[i][UHITEM_STR_ACTOR] = actor;
 	uh_itemCustomStr[i][UHITEM_STR_NAME] = name;
 	uh_itemCustomStr[i][UHITEM_STR_MUGSHOT] = mugshot;
 	uh_itemCustomStr[i][UHITEM_STR_SOUND] = sound;
-	uh_itemCustomWeight[i][UHITEM_WI_PANDORA] = wP;
-	uh_itemCustomAmt[i][UHITEM_WI_PANDORA] = amtP;
-	uh_itemCustomWeight[i][UHITEM_WI_MYSTIC] = wM;
-	uh_itemCustomAmt[i][UHITEM_WI_MYSTIC] = amtM;
-	uh_itemCustomWeight[i][UHITEM_WI_TOW] = wT;
-	uh_itemCustomAmt[i][UHITEM_WI_TOW] = amtT;
+	uh_itemCustomStr[i][UHITEM_STR_OPENSOUND] = "";
+	uh_itemCustomStr[i][UHITEM_STR_EYEDROPSOUND] = "";
+	uh_itemCustomIsBox[i] = 0;
 	uh_itemCustomCount++;
-	return itemId;
+	return itemid;
 }
 
-// Sum weights for a box pool (PANDORA / MYSTIC / TOW only).
-function int ItemPoolWeightSum(int pool)
+function int SetUnholyBoxCore(int boxid, str openSound, str eyedropSound)
 {
-	int wi = ItemPoolToWeightIndex(pool);
+	int slot = ItemResolveSlot(boxid);
+	if (slot == UHITEM_FAIL)
+		return UHITEM_FAIL;
+	if (boxid >= 0)
+	{
+		uh_itemVanillaIsBox[slot] = 1;
+		uh_itemVanillaStr[slot][UHITEM_STR_OPENSOUND] = openSound;
+		uh_itemVanillaStr[slot][UHITEM_STR_EYEDROPSOUND] = eyedropSound;
+	}
+	else
+	{
+		uh_itemCustomIsBox[slot] = 1;
+		uh_itemCustomStr[slot][UHITEM_STR_OPENSOUND] = openSound;
+		uh_itemCustomStr[slot][UHITEM_STR_EYEDROPSOUND] = eyedropSound;
+	}
+	return boxid;
+}
+
+function int FindItemDropRow(int boxid, int itemid)
+{
+	int i;
+	for (i = 0; i < uh_itemDropCount; i++)
+	{
+		if (uh_itemDropBoxId[i] == boxid && uh_itemDropItemId[i] == itemid)
+			return i;
+	}
+	return -1;
+}
+
+// Same (box, item) again: accumulate weight. amt/sting kept from first row unless weight-only add.
+function int AddUnholyItemDropCore(int boxid, int itemid, int weight, int amt, str stingOverride)
+{
+	int row;
+	if (!IsItemDefined(boxid) || !IsItemDefined(itemid))
+		return UHITEM_FAIL;
+	if (!IsUnholyBox(boxid))
+		return UHITEM_FAIL;
+	if (weight <= 0)
+		return UHITEM_FAIL;
+	if (amt < 1)
+		amt = 1;
+
+	row = FindItemDropRow(boxid, itemid);
+	if (row >= 0)
+	{
+		uh_itemDropWeight[row] += weight;
+		return row;
+	}
+	if (uh_itemDropCount >= UH_MAX_ITEM_DROPS)
+		return UHITEM_FAIL;
+	row = uh_itemDropCount;
+	uh_itemDropBoxId[row] = boxid;
+	uh_itemDropItemId[row] = itemid;
+	uh_itemDropWeight[row] = weight;
+	uh_itemDropAmt[row] = amt;
+	uh_itemDropSting[row] = stingOverride;
+	uh_itemDropCount++;
+	return row;
+}
+
+function int GetItemDropWeight(int boxid, int itemid)
+{
+	int row = FindItemDropRow(boxid, itemid);
+	if (row < 0)
+		return 0;
+	return uh_itemDropWeight[row];
+}
+
+function int GetItemDropAmt(int boxid, int itemid)
+{
+	int row = FindItemDropRow(boxid, itemid);
+	if (row < 0)
+		return 0;
+	return uh_itemDropAmt[row];
+}
+
+function str GetItemDropSting(int boxid, int itemid)
+{
+	int row = FindItemDropRow(boxid, itemid);
+	str override;
+	if (row < 0)
+		return "";
+	override = uh_itemDropSting[row];
+	if (StrCmp(override, "") != 0)
+		return override;
+	return GetItemSound(itemid);
+}
+
+function int ItemBoxWeightSum(int boxid)
+{
 	int sum = 0;
 	int i;
-	if (wi < 0)
+	if (!IsUnholyBox(boxid))
 		return 0;
-	for (i = 0; i < UH_MAX_VANILLA_ITEM; i++)
+	for (i = 0; i < uh_itemDropCount; i++)
 	{
-		if (uh_itemVanillaDefined[i] != 0)
-			sum += uh_itemVanillaWeight[i][wi];
+		if (uh_itemDropBoxId[i] == boxid)
+			sum += uh_itemDropWeight[i];
 	}
-	for (i = 0; i < uh_itemCustomCount; i++)
-		sum += uh_itemCustomWeight[i][wi];
 	return sum;
 }
 
-// Weighted pick. Returns item id or UHITEM_FAIL.
-function int RandomItemFromPool(int pool)
+// Weighted pick from a box's drop rows. Returns item id or UHITEM_FAIL.
+function int RandomItemFromBox(int boxid)
 {
-	int wi = ItemPoolToWeightIndex(pool);
 	int sum;
 	int roll;
 	int i;
-	if (wi < 0)
+	if (!IsUnholyBox(boxid))
 		return UHITEM_FAIL;
-	sum = ItemPoolWeightSum(pool);
+	sum = ItemBoxWeightSum(boxid);
 	if (sum <= 0)
 		return UHITEM_FAIL;
 	roll = random(1, sum);
-	for (i = 0; i < UH_MAX_VANILLA_ITEM; i++)
+	for (i = 0; i < uh_itemDropCount; i++)
 	{
-		if (uh_itemVanillaDefined[i] == 0)
+		if (uh_itemDropBoxId[i] != boxid)
 			continue;
-		roll -= uh_itemVanillaWeight[i][wi];
+		roll -= uh_itemDropWeight[i];
 		if (roll <= 0)
-			return i;
-	}
-	for (i = 0; i < uh_itemCustomCount; i++)
-	{
-		roll -= uh_itemCustomWeight[i][wi];
-		if (roll <= 0)
-			return -1 - i;
+			return uh_itemDropItemId[i];
 	}
 	return UHITEM_FAIL;
 }
 
 // Prosperity: roll twice, keep the rarer (lower weight) hit. Ties keep first.
-function int RandomItemFromPoolProsperity(int pool)
+function int RandomItemFromBoxProsperity(int boxid)
 {
-	int a = RandomItemFromPool(pool);
-	int b = RandomItemFromPool(pool);
+	int a = RandomItemFromBox(boxid);
+	int b = RandomItemFromBox(boxid);
 	int wa;
 	int wb;
 	if (a == UHITEM_FAIL)
 		return b;
 	if (b == UHITEM_FAIL)
 		return a;
-	wa = GetItemWeight(a, pool);
-	wb = GetItemWeight(b, pool);
+	wa = GetItemDropWeight(boxid, a);
+	wb = GetItemDropWeight(boxid, b);
 	if (wb < wa)
 		return b;
 	return a;

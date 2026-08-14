@@ -88,9 +88,19 @@
 //      #include "zcommon.acs"
 //      #include "UHADD.acs"
 //      function void YourRegisterItems(void) {
-//          // wP,amtP, wM,amtM, wT,amtT — weight 0 = not in that box pool
-//          // mugshot optional; sound = loot sting ("" = none)
-//          DefineUnholyItem(-1, "YourItem", "Your Item", 8, 1, 0, 0, 0, 0, "", "GNT/SuperShot");
+//          // Identity only; then AddUnholyItemDrop into a box.
+//          DefineUnholyItem(-1, "YourItem", "Your Item", "", "GNT/SuperShot");
+//          AddUnholyItemDrop("PandoraBoxItem", "YourItem", 8, 1, "");
+//      }
+//      // Custom box: DECORATE cannot pass string — wrap GiveUnholyBoxItem:
+//      //   script "GiveYourBox" (int prosperity, int silent) {
+//      //       SetResultValue(GiveUnholyBoxItem("YourBoxItem", prosperity, silent));
+//      //   }
+//      //   UseX: ACS_NamedExecuteWithResult("GiveYourBox", 0, 0)
+//      function void YourRegisterBox(void) {
+//          DefineUnholyItem(-1, "YourBoxItem", "Your Box", "", "");
+//          SetUnholyBox("YourBoxItem", "items/YourBoxOpen", "items/ABoxEyeBox");
+//          AddUnholyItemDrop("YourBoxItem", "YourItem", 50, 1, "");
 //      }
 //      script "your_define_items" OPEN {
 //          if (!UHInPlay()) terminate;
@@ -100,7 +110,8 @@
 //          YourRegisterItems();
 //      }
 // 3. Do NOT put item ids in BossNumb / BHW.
-// 4. DLC_Coin / AssHat inner rolls, MoneyBait morph stay DECORATE.
+// 4. Same (box, item) AddUnholyItemDrop again accumulates weight.
+// 5. DLC_Coin / AssHat inner rolls, MoneyBait morph stay DECORATE.
 
 #define UHBOSS_FAIL -9999
 #define UHSURV_FAIL -9999
@@ -115,12 +126,10 @@
 #define UHBOSS_POOL_ULTRA 4
 #define UHBOSS_POOL_EX 5
 
-#define UHITEM_POOL_NONE 0
-#define UHITEM_POOL_PANDORA 1
-#define UHITEM_POOL_MYSTIC 2
-#define UHITEM_POOL_TOW 3
-#define UHITEM_POOL_OTHER 4
-#define UHITEM_BOX_POOL_COUNT 3
+// Vanilla box item ids (DECORATE ACS args for rz_GiveRandomBoxItem).
+#define UHITEM_BOX_PANDORA 0
+#define UHITEM_BOX_MYSTIC 37
+#define UHITEM_BOX_TOW 53
 
 int uh_inplay_cache = -1;
 
@@ -341,25 +350,38 @@ function int UH_GetPlayerEyeId(int playerNum)
 
 // === DefineUnholyItem ========================================================
 // id: >=0 vanilla; -1 = auto custom (-1,-2,…).
-// actor / name required. mugshot / sound optional ("").
-// wP/amtP, wM/amtM, wT/amtT = Pandora / Mystic / ToW weight + give amount.
-// weight 0 = not in that pool. OTHER items use all weights 0.
-// sound = loot sting played after roll ("" = none).
+// actor / name required. mugshot / stingSound optional ("").
+// Drops: SetUnholyBox + AddUnholyItemDrop (not on DefineUnholyItem).
 
-function int DefineUnholyItem(int id, str actor, str name, int wP, int amtP, int wM, int amtM, int wT, int amtT, str mugshot, str sound)
+function int DefineUnholyItem(int id, str actor, str name, str mugshot, str sound)
 {
 	SetCVar("uh_di_id", id);
 	SetCVarString("uh_di_actor", actor);
 	SetCVarString("uh_di_name", name);
-	SetCVar("uh_di_wp", wP);
-	SetCVar("uh_di_amtp", amtP);
-	SetCVar("uh_di_wm", wM);
-	SetCVar("uh_di_amtm", amtM);
-	SetCVar("uh_di_wt", wT);
-	SetCVar("uh_di_amtt", amtT);
 	SetCVarString("uh_di_mugshot", mugshot);
 	SetCVarString("uh_di_sound", sound);
 	return ACS_NamedExecuteWithResult("uh_DefineUnholyItem_S");
+}
+
+// Mark a registered item as a rollable container (open / eyedrop sounds).
+function int SetUnholyBox(str boxactor, str openSound, str eyedropSound)
+{
+	SetCVarString("uh_di_boxactor", boxactor);
+	SetCVarString("uh_di_opensound", openSound);
+	SetCVarString("uh_di_eyedropsound", eyedropSound);
+	return ACS_NamedExecuteWithResult("uh_SetUnholyBox_S");
+}
+
+// Add a drop row. Same (box, item) again accumulates weight.
+// stingOverride "" = use item's DefineUnholyItem sting.
+function int AddUnholyItemDrop(str boxactor, str itemActor, int weight, int amt, str stingOverride)
+{
+	SetCVarString("uh_di_boxactor", boxactor);
+	SetCVarString("uh_di_itemactor", itemActor);
+	SetCVar("uh_di_weight", weight);
+	SetCVar("uh_di_amt", amt);
+	SetCVarString("uh_di_sound", stingOverride);
+	return ACS_NamedExecuteWithResult("uh_AddUnholyItemDrop_S");
 }
 
 function int IsItemDefined(int id)
@@ -397,17 +419,26 @@ function str GetItemSound(int id)
 	return GetCVarString("uh_di_out_str");
 }
 
-function int GetItemWeight(int id, int pool)
+function int GetItemDropWeight(int boxid, int itemid)
 {
-	return ACS_NamedExecuteWithResult("uh_GetItemWeight_S", id, pool);
+	return ACS_NamedExecuteWithResult("uh_GetItemDropWeight_S", boxid, itemid);
 }
 
-function int GetItemAmt(int id, int pool)
+function int GetItemDropAmt(int boxid, int itemid)
 {
-	return ACS_NamedExecuteWithResult("uh_GetItemAmt_S", id, pool);
+	return ACS_NamedExecuteWithResult("uh_GetItemDropAmt_S", boxid, itemid);
 }
 
-function int RandomItemFromPool(int pool)
+function int RandomItemFromBox(int boxid)
 {
-	return ACS_NamedExecuteWithResult("uh_RandomItemFromPool_S", pool);
+	return ACS_NamedExecuteWithResult("uh_RandomItemFromBox_S", boxid);
+}
+
+// Addon DECORATE wrapper target: GiveUnholyBoxItem("YourBoxItem", prosperity, silent).
+function int GiveUnholyBoxItem(str boxactor, int prosperity, int silent)
+{
+	SetCVarString("uh_di_boxactor", boxactor);
+	SetCVar("uh_di_prosperity", prosperity);
+	SetCVar("uh_di_silent", silent);
+	return ACS_NamedExecuteWithResult("uh_GiveUnholyBoxItem_S");
 }

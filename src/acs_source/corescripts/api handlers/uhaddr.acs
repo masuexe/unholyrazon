@@ -313,13 +313,11 @@ Script "uh_GetPlayerEyeId_S" (int playerNum)
 	SetResultValue(GetPlayerEyeId(playerNum));
 }
 
-function int DefineUnholyItemCore(int id, str actor, str name, int wP, int amtP, int wM, int amtM, int wT, int amtT, str mugshot, str sound)
+function int DefineUnholyItemCore(int id, str actor, str name, str mugshot, str sound)
 {
 	if (StrCmp(actor, "") == 0)
 		return UHITEM_FAIL;
 	if (StrCmp(name, "") == 0)
-		return UHITEM_FAIL;
-	if (wP < 0 || wM < 0 || wT < 0)
 		return UHITEM_FAIL;
 	if (FindItemByActor(actor) != UHITEM_FAIL)
 		return UHITEM_FAIL;
@@ -330,7 +328,7 @@ function int DefineUnholyItemCore(int id, str actor, str name, int wP, int amtP,
 			return UHITEM_FAIL;
 		if (uh_itemVanillaDefined[id] != 0)
 			return UHITEM_FAIL;
-		ItemWriteVanilla(id, actor, name, wP, amtP, wM, amtM, wT, amtT, mugshot, sound);
+		ItemWriteVanilla(id, actor, name, mugshot, sound);
 		return id;
 	}
 
@@ -338,7 +336,7 @@ function int DefineUnholyItemCore(int id, str actor, str name, int wP, int amtP,
 	{
 		if (uh_itemCustomCount >= UH_MAX_CUSTOM_ITEM)
 			return UHITEM_FAIL;
-		return ItemWriteCustom(actor, name, wP, amtP, wM, amtM, wT, amtT, mugshot, sound);
+		return ItemWriteCustom(actor, name, mugshot, sound);
 	}
 
 	return UHITEM_FAIL;
@@ -350,13 +348,30 @@ Script "uh_DefineUnholyItem_S" (void)
 		GetCVar("uh_di_id"),
 		GetCVarString("uh_di_actor"),
 		GetCVarString("uh_di_name"),
-		GetCVar("uh_di_wp"),
-		GetCVar("uh_di_amtp"),
-		GetCVar("uh_di_wm"),
-		GetCVar("uh_di_amtm"),
-		GetCVar("uh_di_wt"),
-		GetCVar("uh_di_amtt"),
 		GetCVarString("uh_di_mugshot"),
+		GetCVarString("uh_di_sound")
+	));
+}
+
+Script "uh_SetUnholyBox_S" (void)
+{
+	int boxid = FindItemByActor(GetCVarString("uh_di_boxactor"));
+	SetResultValue(SetUnholyBoxCore(
+		boxid,
+		GetCVarString("uh_di_opensound"),
+		GetCVarString("uh_di_eyedropsound")
+	));
+}
+
+Script "uh_AddUnholyItemDrop_S" (void)
+{
+	int boxid = FindItemByActor(GetCVarString("uh_di_boxactor"));
+	int itemid = FindItemByActor(GetCVarString("uh_di_itemactor"));
+	SetResultValue(AddUnholyItemDropCore(
+		boxid,
+		itemid,
+		GetCVar("uh_di_weight"),
+		GetCVar("uh_di_amt"),
 		GetCVarString("uh_di_sound")
 	));
 }
@@ -397,17 +412,17 @@ Script "uh_GetItemSound_S" (int id)
 	SetResultValue(IsItemDefined(id));
 }
 
-Script "uh_GetItemWeight_S" (int id, int pool)
+Script "uh_GetItemDropWeight_S" (int boxid, int itemid)
 {
-	SetResultValue(GetItemWeight(id, pool));
+	SetResultValue(GetItemDropWeight(boxid, itemid));
 }
 
-Script "uh_GetItemAmt_S" (int id, int pool)
+Script "uh_GetItemDropAmt_S" (int boxid, int itemid)
 {
-	SetResultValue(GetItemAmt(id, pool));
+	SetResultValue(GetItemDropAmt(boxid, itemid));
 }
 
-Script "uh_RandomItemFromPool_S" (int pool)
+Script "uh_RandomItemFromBox_S" (int boxid)
 {
-	SetResultValue(RandomItemFromPool(pool));
+	SetResultValue(RandomItemFromBox(boxid));
 }

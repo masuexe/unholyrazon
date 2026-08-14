@@ -28,7 +28,7 @@ script "UB_GUHU_SelfDamage" (int Pain, int Type)
 	Thing_Damage2(TargetTID,Pain,DamageType);
 }
 
-str u_BossInvStr[3] = 
+str u_BossInvStr[3] =
 {
 "GUHUItem",
 "OnFireItemFlag",
@@ -125,42 +125,25 @@ function int max(int a, int b) {
 	return b;
 }
 
-// Returns sting sound for this roll, or "" if none (caller plays box open instead).
-// MysticBox uses pool-specific stings so it never falls through to Pandora/ToW open.
-function str uh_GetItemLootSting(int id, int pool)
+// Returns sting for this (box, item) roll, or "" if none (caller plays open).
+function str GetItemLootSting(int boxid, int itemid)
 {
-	str actor;
-	if (id == UHITEM_FAIL)
+	if (itemid == UHITEM_FAIL)
 		return "";
-	actor = GetItemActor(id);
-	if (StrICmp(actor, "MysticBoxItem") == 0)
-	{
-		if (pool == UHITEM_POOL_PANDORA)
-			return "items/MysticItemUse";
-		if (pool == UHITEM_POOL_TOW)
-			return "items/DamnABox";
-		return "";
-	}
-	return GetItemSound(id);
+	return GetItemDropSting(boxid, itemid);
 }
 
-function str uh_GetBoxOpenSound(int pool, int eyedrop)
+function str GetBoxRollOpenSound(int boxid, int eyedrop)
 {
 	if (eyedrop)
-		return "items/ABoxEyeBox";
-	if (pool == UHITEM_POOL_PANDORA)
-		return "items/PandoraItemUse";
-	if (pool == UHITEM_POOL_MYSTIC)
-		return "items/MysticItemUse";
-	if (pool == UHITEM_POOL_TOW)
-		return "GNT/ChestOpen";
-	return "";
+		return GetBoxEyedropSound(boxid);
+	return GetBoxOpenSound(boxid);
 }
 
 // Play sting if any; otherwise box/eyedrop open (unless silent). Never both.
-function void uh_PlayBoxRollSound(int id, int pool, int eyedrop, int silent)
+function void PlayBoxRollSound(int boxid, int itemid, int eyedrop, int silent)
 {
-	str sting = uh_GetItemLootSting(id, pool);
+	str sting = GetItemLootSting(boxid, itemid);
 	str opensnd;
 	if (StrCmp(sting, "") != 0)
 	{
@@ -169,55 +152,75 @@ function void uh_PlayBoxRollSound(int id, int pool, int eyedrop, int silent)
 	}
 	if (silent)
 		return;
-	opensnd = uh_GetBoxOpenSound(pool, eyedrop);
+	opensnd = GetBoxRollOpenSound(boxid, eyedrop);
 	if (StrCmp(opensnd, "") != 0)
 		PlaySound(0, opensnd, CHAN_ITEM);
 }
 
-// Box Use: GiveInventory with pool amt. prosperity=1 → roll twice, keep rarer.
-// arg2 silent=1: no open sound (UseX_Silent); sting still plays.
-Script "uh_GiveRandomBoxItem" (int pool, int prosperity, int silent)
+// Core give path shared by DECORATE (boxid) and GiveUnholyBoxItem (actor → id).
+function int GiveRandomBoxItemCore(int boxid, int prosperity, int silent)
 {
 	int id;
 	str actor;
 	int amt;
+	str opensnd;
+
+	if (!IsUnholyBox(boxid))
+		return 0;
 
 	if (prosperity)
-		id = RandomItemFromPoolProsperity(pool);
+		id = RandomItemFromBoxProsperity(boxid);
 	else
-		id = RandomItemFromPool(pool);
+		id = RandomItemFromBox(boxid);
 
 	if (id == UHITEM_FAIL)
-	{
-		SetResultValue(0);
-		terminate;
-	}
+		return 0;
 
 	actor = GetItemActor(id);
 
 	// ToW: already have I_Win → give DLC coins instead (legacy Rare1→Rare2).
-	if (pool == UHITEM_POOL_TOW && StrICmp(actor, "I_WinItem") == 0 && CheckInventory("I_WinItem") >= 1)
+	if (boxid == UHITEM_BOX_TOW && StrICmp(actor, "I_WinItem") == 0 && CheckInventory("I_WinItem") >= 1)
 	{
 		if (!silent)
-			PlaySound(0, "GNT/ChestOpen", CHAN_ITEM);
+		{
+			opensnd = GetBoxOpenSound(boxid);
+			if (StrCmp(opensnd, "") != 0)
+				PlaySound(0, opensnd, CHAN_ITEM);
+		}
 		GiveInventory("DLC_CoinItem", 777);
-		SetResultValue(1);
-		terminate;
+		return 1;
 	}
 
-	uh_PlayBoxRollSound(id, pool, 0, silent);
+	PlayBoxRollSound(boxid, id, 0, silent);
 
-	amt = GetItemAmt(id, pool);
+	amt = GetItemDropAmt(boxid, id);
 	if (amt < 1)
 		amt = 1;
 	GiveInventory(actor, amt);
-	SetResultValue(1);
+	return 1;
+}
+
+// Box Use: arg0 = box item id (UHITEM_BOX_*). prosperity / silent as before.
+Script "rz_GiveRandomBoxItem" (int boxid, int prosperity, int silent)
+{
+	SetResultValue(GiveRandomBoxItemCore(boxid, prosperity, silent));
+}
+
+// Addon path: resolve box actor from cvars (UHADD GiveUnholyBoxItem).
+Script "uh_GiveUnholyBoxItem_S" (void)
+{
+	int boxid = FindItemByActor(GetCVarString("uh_di_boxactor"));
+	SetResultValue(GiveRandomBoxItemCore(
+		boxid,
+		GetCVar("uh_di_prosperity"),
+		GetCVar("uh_di_silent")
+	));
 }
 
 // EyeDrop: SpawnItemEx x1 at activator. GauntletExit / Minivile hijacks (EyeDrop-only).
-Script "uh_SpawnRandomBoxItem" (int pool)
+Script "uh_SpawnRandomBoxItem" (int boxid)
 {
-	int id = RandomItemFromPool(pool);
+	int id = RandomItemFromBox(boxid);
 	str actor;
 	int x;
 	int y;
@@ -235,7 +238,7 @@ Script "uh_SpawnRandomBoxItem" (int pool)
 	z = GetActorZ(0);
 
 	// Pandora EyeDrop: Rare4 → 32/256 GauntletExit instead of BoxDE / KillerBoxDE
-	if (pool == UHITEM_POOL_PANDORA)
+	if (boxid == UHITEM_BOX_PANDORA)
 	{
 		if ((StrICmp(actor, "BoxDEItem") == 0 || StrICmp(actor, "KillerBoxDEItem") == 0)
 			&& random(1, 256) <= 32)
@@ -254,7 +257,7 @@ Script "uh_SpawnRandomBoxItem" (int pool)
 		}
 	}
 
-	if (pool == UHITEM_POOL_MYSTIC)
+	if (boxid == UHITEM_BOX_MYSTIC)
 	{
 		if ((StrICmp(actor, "GoldenBoxDEItem") == 0 || StrICmp(actor, "GoldenKillerBoxDEItem") == 0)
 			&& random(1, 256) <= 32)
@@ -273,7 +276,7 @@ Script "uh_SpawnRandomBoxItem" (int pool)
 		}
 	}
 
-	uh_PlayBoxRollSound(id, pool, 1, 0);
+	PlayBoxRollSound(boxid, id, 1, 0);
 	SpawnForced(actor, x, y, z, 0, 0);
 	SetResultValue(1);
 }
