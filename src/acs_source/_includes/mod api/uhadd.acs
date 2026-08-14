@@ -89,7 +89,8 @@
 //      #include "UHADD.acs"
 //      function void YourRegisterItems(void) {
 //          // wP,amtP, wM,amtM, wT,amtT — weight 0 = not in that box pool
-//          DefineUnholyItem(-1, "YourItem", "Your Item", 8, 1, 0, 0, 0, 0, "");
+//          // mugshot optional; sound = loot sting ("" = none)
+//          DefineUnholyItem(-1, "YourItem", "Your Item", 8, 1, 0, 0, 0, 0, "", "GNT/SuperShot");
 //      }
 //      script "your_define_items" OPEN {
 //          if (!UHInPlay()) terminate;
@@ -340,11 +341,12 @@ function int UH_GetPlayerEyeId(int playerNum)
 
 // === DefineUnholyItem ========================================================
 // id: >=0 vanilla; -1 = auto custom (-1,-2,…).
-// actor / name required. mugshot optional ("").
+// actor / name required. mugshot / sound optional ("").
 // wP/amtP, wM/amtM, wT/amtT = Pandora / Mystic / ToW weight + give amount.
 // weight 0 = not in that pool. OTHER items use all weights 0.
+// sound = loot sting played after roll ("" = none).
 
-function int DefineUnholyItem(int id, str actor, str name, int wP, int amtP, int wM, int amtM, int wT, int amtT, str mugshot)
+function int DefineUnholyItem(int id, str actor, str name, int wP, int amtP, int wM, int amtM, int wT, int amtT, str mugshot, str sound)
 {
 	SetCVar("uh_di_id", id);
 	SetCVarString("uh_di_actor", actor);
@@ -356,6 +358,7 @@ function int DefineUnholyItem(int id, str actor, str name, int wP, int amtP, int
 	SetCVar("uh_di_wt", wT);
 	SetCVar("uh_di_amtt", amtT);
 	SetCVarString("uh_di_mugshot", mugshot);
+	SetCVarString("uh_di_sound", sound);
 	return ACS_NamedExecuteWithResult("uh_DefineUnholyItem_S");
 }
 
@@ -385,6 +388,12 @@ function str GetItemName(int id)
 function str GetItemMugshot(int id)
 {
 	ACS_NamedExecuteWithResult("uh_GetItemMugshot_S", id);
+	return GetCVarString("uh_di_out_str");
+}
+
+function str GetItemSound(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetItemSound_S", id);
 	return GetCVarString("uh_di_out_str");
 }
 

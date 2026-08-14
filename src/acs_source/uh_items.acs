@@ -125,9 +125,58 @@ function int max(int a, int b) {
 	return b;
 }
 
+// Returns sting sound for this roll, or "" if none (caller plays box open instead).
+// MysticBox uses pool-specific stings so it never falls through to Pandora/ToW open.
+function str uh_GetItemLootSting(int id, int pool)
+{
+	str actor;
+	if (id == UHITEM_FAIL)
+		return "";
+	actor = GetItemActor(id);
+	if (StrICmp(actor, "MysticBoxItem") == 0)
+	{
+		if (pool == UHITEM_POOL_PANDORA)
+			return "items/MysticItemUse";
+		if (pool == UHITEM_POOL_TOW)
+			return "items/DamnABox";
+		return "";
+	}
+	return GetItemSound(id);
+}
+
+function str uh_GetBoxOpenSound(int pool, int eyedrop)
+{
+	if (eyedrop)
+		return "items/ABoxEyeBox";
+	if (pool == UHITEM_POOL_PANDORA)
+		return "items/PandoraItemUse";
+	if (pool == UHITEM_POOL_MYSTIC)
+		return "items/MysticItemUse";
+	if (pool == UHITEM_POOL_TOW)
+		return "GNT/ChestOpen";
+	return "";
+}
+
+// Play sting if any; otherwise box/eyedrop open (unless silent). Never both.
+function void uh_PlayBoxRollSound(int id, int pool, int eyedrop, int silent)
+{
+	str sting = uh_GetItemLootSting(id, pool);
+	str opensnd;
+	if (StrCmp(sting, "") != 0)
+	{
+		PlaySound(0, sting, CHAN_ITEM);
+		return;
+	}
+	if (silent)
+		return;
+	opensnd = uh_GetBoxOpenSound(pool, eyedrop);
+	if (StrCmp(opensnd, "") != 0)
+		PlaySound(0, opensnd, CHAN_ITEM);
+}
+
 // Box Use: GiveInventory with pool amt. prosperity=1 → roll twice, keep rarer.
-// arg0 = UHITEM_POOL_PANDORA / MYSTIC / TOW; arg1 = prosperity.
-Script "uh_GiveRandomBoxItem" (int pool, int prosperity)
+// arg2 silent=1: no open sound (UseX_Silent); sting still plays.
+Script "uh_GiveRandomBoxItem" (int pool, int prosperity, int silent)
 {
 	int id;
 	str actor;
@@ -149,10 +198,14 @@ Script "uh_GiveRandomBoxItem" (int pool, int prosperity)
 	// ToW: already have I_Win → give DLC coins instead (legacy Rare1→Rare2).
 	if (pool == UHITEM_POOL_TOW && StrICmp(actor, "I_WinItem") == 0 && CheckInventory("I_WinItem") >= 1)
 	{
+		if (!silent)
+			PlaySound(0, "GNT/ChestOpen", CHAN_ITEM);
 		GiveInventory("DLC_CoinItem", 777);
 		SetResultValue(1);
 		terminate;
 	}
+
+	uh_PlayBoxRollSound(id, pool, 0, silent);
 
 	amt = GetItemAmt(id, pool);
 	if (amt < 1)
@@ -187,38 +240,40 @@ Script "uh_SpawnRandomBoxItem" (int pool)
 		if ((StrICmp(actor, "BoxDEItem") == 0 || StrICmp(actor, "KillerBoxDEItem") == 0)
 			&& random(1, 256) <= 32)
 		{
+			PlaySound(0, "GNT/Invun", CHAN_ITEM);
 			SpawnForced("GauntletExitItem", x, y, z, 0, 0);
 			SetResultValue(1);
 			terminate;
 		}
-		// OnFire slot → 64/256 Minivile
 		if (StrICmp(actor, "OnFireItem") == 0 && random(1, 256) <= 64)
 		{
+			PlaySound(0, "items/ABoxEyeBox", CHAN_ITEM);
 			SpawnForced("BoxDE_MinivileHidden_H1", x, y, z, 0, 0);
 			SetResultValue(1);
 			terminate;
 		}
 	}
 
-	// Mystic EyeDrop: Rare4 → 32/256 GauntletExit instead of Golden BoxDE
 	if (pool == UHITEM_POOL_MYSTIC)
 	{
 		if ((StrICmp(actor, "GoldenBoxDEItem") == 0 || StrICmp(actor, "GoldenKillerBoxDEItem") == 0)
 			&& random(1, 256) <= 32)
 		{
+			PlaySound(0, "GNT/Invun", CHAN_ITEM);
 			SpawnForced("GauntletExitItem", x, y, z, 0, 0);
 			SetResultValue(1);
 			terminate;
 		}
-		// Football → 64/256 Minivile
 		if (StrICmp(actor, "TheFootBallItem") == 0 && random(1, 256) <= 64)
 		{
+			PlaySound(0, "items/ABoxEyeBox", CHAN_ITEM);
 			SpawnForced("BoxDE_MinivileHidden_H2", x, y, z, 0, 0);
 			SetResultValue(1);
 			terminate;
 		}
 	}
 
+	uh_PlayBoxRollSound(id, pool, 1, 0);
 	SpawnForced(actor, x, y, z, 0, 0);
 	SetResultValue(1);
 }
