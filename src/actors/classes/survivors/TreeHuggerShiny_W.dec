@@ -1,0 +1,298 @@
+actor TreeHuggerShiny_W_NormalBar : NormalBar {args 160, 148}
+actor TreeHuggerShiny_W : BaseMM8BDMWep_UH
+{
+Tag "$TAG_S_TreeHugger_W"
+Weapon.AmmoUse 0
+Inventory.Pickupmessage "$PU_26"
+Obituary "$OB_26W"
+weapon.ammotype "TreeEnergyAmmo"
++WEAPON.NOAUTOAIM
+States
+{
+Spawn:
+7H26 [ 6
+loop
+
+Deselect:
+7H26 A 0
+goto DeselectSwap
+Select:
+7H26 A 0
+goto SelectSwap
+
+Ready:
+7H26 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", TREEHUGGER_SDYE)
+7H26 A 0 A_JumpIf(CallACS("UH_IsBot"),"BotReady")
+goto Ready2
+Ready2:
+7H26 A 2 A_GiveInventory("TreeHugger_Ready_P")
+7H26 A 0 A_JumpIfInventory("PowerTreeHuggerFlag",1,1)
+loop
+7H26 DEF 2 A_GiveInventory("TreeHugger_Ready_P")
+Ready3:
+7H26 F 2 A_GiveInventory("TreeHugger_Ready_P")
+7H26 F 0 A_JumpIfInventory("PowerTreeHuggerFlag",1,"Ready3")
+7H26 ED 2 A_GiveInventory("TreeHugger_Ready_P")
+goto Ready2
+
+Fire:
+7H26 "#" 0 A_GiveInventory("S_TreeHugger_Fire_P")
+7H26 C 0 A_JumpIfInventory("PowerTreeHuggerFlag",1,"Fire3")
+7H26 BCBCBA 2
+Goto Ready2
+Fire3:
+7H26 H 0 A_RailWait
+7H26 GHGHGF 2
+Goto Ready3
+
+AltFire:
+7H26 B 0 A_GiveInventory("S_TreeHugger_Alt_P")
+7H26 C 0 A_JumpIfInventory("PowerTreeHuggerFlag",1,"AltFire3")
+7H26 BCBAAA 2
+Goto Ready2
+AltFire3:
+7H26 GHGFFF 2
+Goto Ready3
+
+
+BotReady:
+7H26 A 0 A_WeaponReady(12)
+7H26 A 2 A_Refire("BotCheck")
+7H26 A 0 A_GiveInventory("TreeEnergyAmmo",1)
+loop
+
+BotCheck:
+7H26 A 0 A_Jump(12,"BotAlt2")
+7H26 A 0 A_JumpIfInventory("TreeEnergyAmmo",100,"BotAlt")
+7H26 A 0 A_Jump(16,"BotAlt")
+7H26 A 0 A_Jump(32,1)
+goto BotFire
+7H26 A 0 A_GiveInventory("TreeEnergyAmmo",10)
+goto BotFire
+
+BotFire:
+7H26 B 0 A_Jump(192,2)
+7H26 B 0 A_GiveInventory("PowerTreeHuggerFlag",1)
+7H26 B 0 A_GiveInventory("S_TreeHugger_Fire_P")
+7H26 BCBCBA 2
+Goto BotReady
+
+BotAlt:
+7H26 B 0 A_Jump(12,"BotAlt2")
+7H26 B 0 A_GiveInventory("S_TreeHugger_Alt_P")
+7H26 BCBAAA 2
+Goto BotReady
+BotAlt2:
+7H26 B 0 A_PlaySoundEx("taunt/D_26","Voice")
+7H26 C 0 A_TakeInventory("TreeEnergyAmmo",50,1)
+7H26 B 0 A_TakeInventory("TreeEnergyAmmo",50)
+7H26 C 0 A_PlaySound("LuckyLass/Fire3",1)
+7H26 B 0 A_FireCustomMissile("S_TreeHugger_BotShot",0,0)
+7H26 BCB 2
+7H26 A 10
+Goto BotReady
+}
+}
+
+actor S_TreeHugger_Fire_P : TreeHugger_Fire_P
+{
+States
+{
+Pickup:
+TNT1 A 0 A_GiveInventory("TreeEnergyAmmo",1)
+TNT1 A 0 A_PlaySound("TreeHugger/Main",1)
+TNT1 A 0 A_JumpIfInventory("RazorLeafFlags",1,4)
+TNT1 A 0 A_JumpIfInventory("PowerTreeHuggerFlag",1,2)
+TNT1 A 0 A_FireCustomMissile("S_TreeHugger_LeafSpawnerA",0,0)
+goto Give
+TNT1 A 0 A_FireCustomMissile("S_TreeHugger_LeafSpawnerA2",0,0)
+goto Give
+TNT1 A 0 A_JumpIfInventory("RazorLeafFlags",2,4)
+TNT1 A 0 A_JumpIfInventory("PowerTreeHuggerFlag",1,2)
+TNT1 A 0 A_FireCustomMissile("S_TreeHugger_LeafSpawnerB",0,0)
+goto Give
+TNT1 A 0 A_FireCustomMissile("S_TreeHugger_LeafSpawnerB2",0,0)
+goto Give
+TNT1 A 0 A_JumpIfInventory("PowerTreeHuggerFlag",1,2)
+TNT1 A 0 A_FireCustomMissile("S_TreeHugger_LeafSpawnerC",0,0)
+goto Take
+TNT1 A 0 A_FireCustomMissile("S_TreeHugger_LeafSpawnerC2",0,0)
+goto Take
+}
+}
+actor S_TreeHugger_Alt_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_TakeInventory("TreeEnergyAmmo",50,1)
+TNT1 A 0 A_TakeInventory("TreeEnergyAmmo",50)
+TNT1 A 0 A_PlaySound("TreeHugger/Alt",1)
+
+TNT1 A 0 A_JumpIf(CallACS("uh_checkrune", RUNE_SPREAD),2)
+TNT1 A 0 A_SpawnItemEx("S_TreeHugger_TreeStart",cos(-pitch)*14,0,32+(sin(-pitch)*14),cos(-pitch),0,sin(-pitch),0,32+8192)
+stop
+TNT1 A 0 A_SpawnItemEx("S_TreeHugger_TreeStart_Spread",cos(-pitch)*14,0,32+(sin(-pitch)*14),cos(-pitch),0,sin(-pitch),0,32+8192)
+stop
+}
+}
+
+actor S_TreeHugger_LeafSpawnerA : BasicHelper
+{
+Args 1,26,16,40
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch",2,1)
+TNT1 A 0 A_SpawnItemEx("S_TreeHugger_LeafSpawn",0,0,0,cos(-pitch)*13,0,sin(-pitch)*13,0,512)
+TNT1 A 0 A_SpawnItemEx("S_TreeHugger_LeafSpawn",0,16,0,cos(-pitch)*13,random(Args[0],Args[1]),sin(-pitch)*13+random(16,32),0,512)
+TNT1 A 0 A_SpawnItemEx("S_TreeHugger_LeafSpawn",0,-16,0,cos(-pitch)*13,random(-Args[0],-Args[1]),sin(-pitch)*13+random(16,32),0,512)
+TNT1 A 0 A_SpawnItemEx("S_TreeHugger_LeafSpawn",0,16,0,cos(-pitch)*13,random(Args[2],Args[3]),sin(-pitch)*13+random(0,16),0,512)
+TNT1 A 0 A_SpawnItemEx("S_TreeHugger_LeafSpawn",0,-16,0,cos(-pitch)*13,random(-Args[2],-Args[3]),sin(-pitch)*13+random(0,16),0,512)
+stop
+}
+}
+actor S_TreeHugger_LeafSpawnerB : S_TreeHugger_LeafSpawnerA{Args 1,32,1,32}
+actor S_TreeHugger_LeafSpawnerC : S_TreeHugger_LeafSpawnerA{Args 1,40,1,40}
+
+actor S_TreeHugger_LeafSpawnerA2 : BasicHelper
+{
+Args 1,26,16,40
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch",2,1)
+TNT1 A 0 A_SpawnItemEx("S_TreeHugger_LeafSpawn2",0,0,0,cos(-pitch)*13,0,sin(-pitch)*13,0,512)
+TNT1 A 0 A_SpawnItemEx("S_TreeHugger_LeafSpawn2",0,16,0,cos(-pitch)*13,random(Args[0],Args[1]),sin(-pitch)*13+random(16,32),0,512)
+TNT1 A 0 A_SpawnItemEx("S_TreeHugger_LeafSpawn2",0,-16,0,cos(-pitch)*13,random(-Args[0],-Args[1]),sin(-pitch)*13+random(16,32),0,512)
+TNT1 A 0 A_SpawnItemEx("S_TreeHugger_LeafSpawn2",0,16,0,cos(-pitch)*13,random(Args[2],Args[3]),sin(-pitch)*13+random(0,16),0,512)
+TNT1 A 0 A_SpawnItemEx("S_TreeHugger_LeafSpawn2",0,-16,0,cos(-pitch)*13,random(-Args[2],-Args[3]),sin(-pitch)*13+random(0,16),0,512)
+stop
+}
+}
+actor S_TreeHugger_LeafSpawnerB2 : S_TreeHugger_LeafSpawnerA2{Args 1,32,1,32}
+actor S_TreeHugger_LeafSpawnerC2 : S_TreeHugger_LeafSpawnerA2{Args 1,40,1,40}
+
+actor S_TreeHugger_LeafSpawn : TreeHugger_LeafSpawn
+{
+Translation "192:192=160:160","198:198=148:148"
+damage (150)//100
+States
+{
+Spawn:
+6Q26 A 0
+6Q26 ABAB 1
+6Q26 A 0 A_Stop
+6Q26 ABAB 1
+6Q26 A 0 A_CustomMissile("S_TreeHugger_LeafFired",0,0,0,2,-pitch)
+stop
+}
+}
+actor S_TreeHugger_LeafSpawn2 : S_TreeHugger_LeafSpawn
+{
++RIPPER
+damage (105)//70
+States
+{
+Spawn:
+6Q26 A 0
+6Q26 ABAB 1
+6Q26 A 0 A_Stop
+6Q26 ABAB 1
+6Q26 A 0 A_CustomMissile("S_TreeHugger_LeafFired2",0,0,0,2,-pitch)
+stop
+}
+}
+
+actor S_TreeHugger_LeafFired : TreeHugger_LeafFired
+{
+Translation "192:192=160:160","198:198=148:148"
+Damage (105)//70
+States
+{
+Death:
+6P26 "#" 0
+6P26 "#" 0 A_SpawnItemEx("S_TreeHugger_LeafFiredDeath")
+6P26 "###" 2 A_FadeOut(0.25)
+stop
+}
+}
+actor S_TreeHugger_LeafFired2 : S_TreeHugger_LeafFired
+{
+Obituary "$OB_26M3"
++RIPPER
+States
+{
+Spawn:goto SpawnRip
+}
+}
+
+actor S_TreeHugger_LeafFiredDeath : TreeHugger_LeafFiredDeath
+{
+Damage (105)
+}
+
+
+actor S_TreeHugger_TreeStart : TreeHugger_TreeStart
+{
+Translation "192:192=160:160","198:198=148:148"
+Damage (300)//200
+States
+{
+Death:
+TNT1 A 0 A_Jump(256,1,2,3,4)
+TNT1 A 1 A_SpawnItemEx("S_TreeHugger_NewTree1",0,0,0,0.0001,0,0,0,1+32)
+stop
+TNT1 A 1 A_SpawnItemEx("S_TreeHugger_NewTree2",0,0,0,0.0001,0,0,0,1+32)
+stop
+TNT1 A 1 A_SpawnItemEx("S_TreeHugger_NewTree3",0,0,0,0.0001,0,0,0,1+32)
+stop
+TNT1 A 1 A_SpawnItemEx("S_TreeHugger_NewTree4",0,0,0,0.0001,0,0,0,1+32)
+stop
+}
+}
+
+actor S_TreeHugger_TreeStart_Spread : S_TreeHugger_TreeStart
+{
+Damage (900)//600
+Scale 4.0
+States
+{
+Death:
+TNT1 A 1 A_SpawnItemEx("S_TreeHugger_NewTree_Spread",0,0,0,0.0001,0,0,0,1+32)
+stop
+}
+}
+actor S_TreeHugger_NewTree1 : TreeHugger_NewTree1{+NOFEAR}
+actor S_TreeHugger_NewTree2 : TreeHugger_NewTree2{+NOFEAR}
+actor S_TreeHugger_NewTree3 : TreeHugger_NewTree3{+NOFEAR}
+actor S_TreeHugger_NewTree4 : TreeHugger_NewTree4{+NOFEAR}
+actor S_TreeHugger_NewTree_Spread : TreeHugger_NewTree_Spread{+NOFEAR}
+
+
+actor S_TreeHugger_BotShot : TreeHugger_BotShot
+{
+Translation "192:192=160:160","198:198=148:148"
+Damage (150)//100
+States
+{
+Death:
+TNT1 A 1
+TNT1 AAAAAAAAAA 0 A_SpawnItemEx("S_TreeHugger_BotShot2",0,0,0,0,0,0,0,1)
+TNT1 A 1
+stop
+}
+}
+actor S_TreeHugger_BotShot2 : TreeHugger_BotShot2
+{
+States
+{
+Death:
+TNT1 AAAAAAAAAA 3 A_SpawnItemEx("S_TreeHugger_BotShot3",random(300,-300),random(300,-300),-11,0,0,-20,0,1)
+TNT1 A 1
+stop
+}
+}
+actor S_TreeHugger_BotShot3 : TreeHugger_BotShot3{Damage (150)}
