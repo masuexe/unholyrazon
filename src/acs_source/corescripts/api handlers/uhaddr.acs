@@ -141,3 +141,73 @@ Script "uh_GetBossMugshot_S" (int id)
 	SetCVarString("uh_db_out_str", GetBossMugshot(id));
 	SetResultValue(IsBossDefined(id));
 }
+
+function int DefineSurvivorCore(int id, str actor, str name, str mugshot)
+{
+	if (StrCmp(actor, "") == 0)
+		return UHSURV_FAIL;
+
+	if (FindSurvivorByActor(actor) != UHSURV_FAIL)
+		return UHSURV_FAIL;
+
+	if (id >= 0)
+	{
+		if (id >= UH_MAX_VANILLA_SURV)
+			return UHSURV_FAIL;
+		if (uh_survVanillaDefined[id] != 0)
+			return UHSURV_FAIL;
+		SurvWriteVanilla(id, actor, name, mugshot);
+		return id;
+	}
+
+	if (id == -1)
+	{
+		if (uh_survCustomCount >= UH_MAX_CUSTOM_SURV)
+			return UHSURV_FAIL;
+		return SurvWriteCustom(actor, name, mugshot);
+	}
+
+	return UHSURV_FAIL;
+}
+
+// Do NOT add CLIENTSIDE: same rule as uh_DefineBoss_S — clients run this
+// locally via ACS_NamedExecuteWithResult from their OPEN CLIENTSIDE twin.
+Script "uh_DefineSurvivor_S" (void)
+{
+	SetResultValue(DefineSurvivorCore(
+		GetCVar("uh_ds_id"),
+		GetCVarString("uh_ds_actor"),
+		GetCVarString("uh_ds_name"),
+		GetCVarString("uh_ds_mugshot")
+	));
+}
+
+Script "uh_IsSurvivorDefined_S" (int id)
+{
+	SetResultValue(IsSurvivorDefined(id));
+}
+
+Script "uh_FindSurvivorByActor_S" (void)
+{
+	int id = FindSurvivorByActor(GetCVarString("uh_ds_actor"));
+	SetCVar("uh_ds_id", id);
+	SetResultValue(id);
+}
+
+Script "uh_GetSurvivorActor_S" (int id)
+{
+	SetCVarString("uh_ds_out_str", GetSurvivorActor(id));
+	SetResultValue(IsSurvivorDefined(id));
+}
+
+Script "uh_GetSurvivorName_S" (int id)
+{
+	SetCVarString("uh_ds_out_str", GetSurvivorName(id));
+	SetResultValue(IsSurvivorDefined(id));
+}
+
+Script "uh_GetSurvivorMugshot_S" (int id)
+{
+	SetCVarString("uh_ds_out_str", GetSurvivorMugshot(id));
+	SetResultValue(IsSurvivorDefined(id));
+}

@@ -2,7 +2,7 @@
 // Pattern matches MM8BDM DTADD / CBM CBMADD: stash args in ephemeral cvars, call UHADDR.
 //
 // === Addon recipe (MM8BDM DefineWeapon + CLIENTSIDE twin) =====================
-// 1. LOADACS: UHDT → UHADDR → UH_BOSSDEFS → (your lib after Unholy pk3 loads).
+// 1. LOADACS: UHDT → UHADDR → UH_BOSSDEFS → UH_SURVDEFS → (your lib after Unholy pk3 loads).
 // 2. In YOUR_BOSSDEFS.acs:
 //      #library "YOUR_BOSSDEFS"
 //      #include "zcommon.acs"
@@ -36,9 +36,32 @@
 // 6. UHBOSS_POOL_NONE (0) = registered but not in RNG pools (force / EX parent only).
 // 7. EX: pass parent actor in exboss_baseactor; use GetBossBaseId / GetBossExId.
 // 8. Mugshot: set an explicit font/lump for custom ids (Shiny/CBM own negative bands).
+//
+// === DefineSurvivor addon recipe =============================================
+// 1. KEYCONF (addon pk3): addplayerclass YourClass nomenu  — NO clearplayerclasses.
+// 2. LOADACS after Unholy: YOUR_SURVDEFS
+// 3. ACS:
+//      #library "YOUR_SURVDEFS"
+//      #include "zcommon.acs"
+//      #include "UHADD.acs"
+//      function void YourRegisterSurvivors(void) {
+//          DefineSurvivor(-1, "YourClass", "\cjName", "UMUG_6");
+//      }
+//      script "your_define_survivors" OPEN {
+//          if (!UHInPlay()) terminate;
+//          YourRegisterSurvivors();
+//      }
+//      script "your_define_survivors_cs" OPEN CLIENTSIDE {
+//          YourRegisterSurvivors();
+//      }
+// 4. Shiny class (optional) = YourClass + "Shiny". Missing → MorphActor fails → S_ClassSpawnNo_P.
+// 5. Do not name non-player actors YourClassShiny (weapons use YourClassShiny_W).
+// 6. Look up by actor: FindSurvivorByActor / FindSurvivorByActor — do not assume
+//    PlayerClass() == survivorId for addon classes (KEYCONF append is 59+).
 // ============================================================================
 
 #define UHBOSS_FAIL -9999
+#define UHSURV_FAIL -9999
 
 #define UHBOSS_POOL_NONE 0
 #define UHBOSS_POOL_COMMON 1
@@ -154,4 +177,42 @@ function str UH_GetBossMugshot(int id)
 {
 	ACS_NamedExecuteWithResult("uh_GetBossMugshot_S", id);
 	return GetCVarString("uh_db_out_str");
+}
+
+function int DefineSurvivor(int id, str actor, str name, str mugshot)
+{
+	SetCVar("uh_ds_id", id);
+	SetCVarString("uh_ds_actor", actor);
+	SetCVarString("uh_ds_name", name);
+	SetCVarString("uh_ds_mugshot", mugshot);
+	return ACS_NamedExecuteWithResult("uh_DefineSurvivor_S");
+}
+
+function int IsSurvivorDefined(int id)
+{
+	return ACS_NamedExecuteWithResult("uh_IsSurvivorDefined_S", id);
+}
+
+function int FindSurvivorByActor(str actor)
+{
+	SetCVarString("uh_ds_actor", actor);
+	return ACS_NamedExecuteWithResult("uh_FindSurvivorByActor_S");
+}
+
+function str GetSurvivorActor(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetSurvivorActor_S", id);
+	return GetCVarString("uh_ds_out_str");
+}
+
+function str GetSurvivorName(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetSurvivorName_S", id);
+	return GetCVarString("uh_ds_out_str");
+}
+
+function str GetSurvivorMugshot(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetSurvivorMugshot_S", id);
+	return GetCVarString("uh_ds_out_str");
 }

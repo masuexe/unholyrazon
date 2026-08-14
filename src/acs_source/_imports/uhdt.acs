@@ -1,4 +1,4 @@
-// UHDT — shared DefineBoss tables (compiled library "UHDT").
+// UHDT — shared DefineBoss / DefineSurvivor tables (compiled library "UHDT").
 // Handlers and other UH libs #import this file to share state.
 //
 #library "uhdt"
@@ -7,7 +7,10 @@
 
 #LIBDEFINE UH_MAX_VANILLA_BOSS 1000
 #LIBDEFINE UH_MAX_CUSTOM_BOSS 256
+#LIBDEFINE UH_MAX_VANILLA_SURV 128
+#LIBDEFINE UH_MAX_CUSTOM_SURV 256
 #LIBDEFINE UHBOSS_FAIL -9999
+#LIBDEFINE UHSURV_FAIL -9999
 
 // rarity / pool ids (shared with UHADD)
 #LIBDEFINE UHBOSS_POOL_NONE 0
@@ -411,4 +414,153 @@ function int UH_BossWriteCustom(str actor, str name, int rarity, int basehp, int
 	uh_bossCustomCount++;
 	UH_BossAppendPool(rarity, bossId);
 	return bossId;
+}
+
+// --- DefineSurvivor tables ---------------------------------------------------
+
+#LIBDEFINE UHSURV_STR_ACTOR 0
+#LIBDEFINE UHSURV_STR_NAME 1
+#LIBDEFINE UHSURV_STR_MUGSHOT 2
+#LIBDEFINE UHSURV_STR_COUNT 3
+
+int uh_survVanillaDefined[UH_MAX_VANILLA_SURV];
+str uh_survVanillaStr[UH_MAX_VANILLA_SURV][UHSURV_STR_COUNT];
+
+int uh_survCustomCount = 0;
+str uh_survCustomStr[UH_MAX_CUSTOM_SURV][UHSURV_STR_COUNT];
+
+function int SurvCustomIndex(int id)
+{
+	return -1 - id;
+}
+
+function bool IsSurvivorDefined(int id)
+{
+	if (id >= 0)
+	{
+		if (id >= UH_MAX_VANILLA_SURV)
+			return false;
+		return uh_survVanillaDefined[id] != 0;
+	}
+	if (id <= -1)
+	{
+		int i = SurvCustomIndex(id);
+		if (i < 0 || i >= uh_survCustomCount)
+			return false;
+		return true;
+	}
+	return false;
+}
+
+function int SurvResolveSlot(int id)
+{
+	if (id >= 0)
+	{
+		if (id >= UH_MAX_VANILLA_SURV || uh_survVanillaDefined[id] == 0)
+			return UHSURV_FAIL;
+		return id;
+	}
+	if (id <= -1)
+	{
+		int i = SurvCustomIndex(id);
+		if (i < 0 || i >= uh_survCustomCount)
+			return UHSURV_FAIL;
+		return i;
+	}
+	return UHSURV_FAIL;
+}
+
+function str GetSurvivorActor(int id)
+{
+	int slot = SurvResolveSlot(id);
+	if (slot == UHSURV_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_survVanillaStr[slot][UHSURV_STR_ACTOR];
+	return uh_survCustomStr[slot][UHSURV_STR_ACTOR];
+}
+
+function str GetSurvivorName(int id)
+{
+	int slot = SurvResolveSlot(id);
+	if (slot == UHSURV_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_survVanillaStr[slot][UHSURV_STR_NAME];
+	return uh_survCustomStr[slot][UHSURV_STR_NAME];
+}
+
+function str GetSurvivorMugshot(int id)
+{
+	int slot = SurvResolveSlot(id);
+	if (slot == UHSURV_FAIL)
+		return "";
+	str mug;
+	if (id >= 0)
+		mug = uh_survVanillaStr[slot][UHSURV_STR_MUGSHOT];
+	else
+		mug = uh_survCustomStr[slot][UHSURV_STR_MUGSHOT];
+	if (StrCmp(mug, "") != 0)
+		return mug;
+	// Empty mugshot: vanilla KEYCONF id → UMUG_{id}; custom must set explicit.
+	if (id >= 0)
+		return StrParam(s: "UMUG_", i: id);
+	return "";
+}
+
+// Stored mugshot only (no UMUG fallback). Empty = use legacy C@ICN / C-ICN paths.
+function str GetSurvivorMugshotRaw(int id)
+{
+	int slot = SurvResolveSlot(id);
+	if (slot == UHSURV_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_survVanillaStr[slot][UHSURV_STR_MUGSHOT];
+	return uh_survCustomStr[slot][UHSURV_STR_MUGSHOT];
+}
+
+function str GetSurvivorShinyActor(int id)
+{
+	str actor = GetSurvivorActor(id);
+	if (StrCmp(actor, "") == 0)
+		return "";
+	return StrParam(s: actor, s: "Shiny");
+}
+
+function int FindSurvivorByActor(str actor)
+{
+	int i;
+	if (StrCmp(actor, "") == 0)
+		return UHSURV_FAIL;
+
+	for (i = 0; i < UH_MAX_VANILLA_SURV; i++)
+	{
+		if (uh_survVanillaDefined[i] != 0 && StrICmp(actor, uh_survVanillaStr[i][UHSURV_STR_ACTOR]) == 0)
+			return i;
+	}
+	for (i = 0; i < uh_survCustomCount; i++)
+	{
+		if (StrICmp(actor, uh_survCustomStr[i][UHSURV_STR_ACTOR]) == 0)
+			return -1 - i;
+	}
+	return UHSURV_FAIL;
+}
+
+function void SurvWriteVanilla(int id, str actor, str name, str mugshot)
+{
+	uh_survVanillaDefined[id] = 1;
+	uh_survVanillaStr[id][UHSURV_STR_ACTOR] = actor;
+	uh_survVanillaStr[id][UHSURV_STR_NAME] = name;
+	uh_survVanillaStr[id][UHSURV_STR_MUGSHOT] = mugshot;
+}
+
+function int SurvWriteCustom(str actor, str name, str mugshot)
+{
+	int i = uh_survCustomCount;
+	int survId = -1 - i;
+	uh_survCustomStr[i][UHSURV_STR_ACTOR] = actor;
+	uh_survCustomStr[i][UHSURV_STR_NAME] = name;
+	uh_survCustomStr[i][UHSURV_STR_MUGSHOT] = mugshot;
+	uh_survCustomCount++;
+	return survId;
 }

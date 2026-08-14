@@ -395,7 +395,14 @@ Script "ub_SpecialEventTracker" (int Which)
 	Switch (Which)
 	{
 	Case 0:
-		int TempNum_0 = PlayerClass(BossDataArr[0][BOSSDATA_TID]-1000)*-1-100;
+		// Prefer DefineSurvivor id for HUD encoding; fall back to KEYCONF PlayerClass.
+		int pnum0 = BossDataArr[0][BOSSDATA_TID] - 1000;
+		int sid0 = FindSurvivorByActor(GetActorClass(BossDataArr[0][BOSSDATA_TID]));
+		int TempNum_0;
+		if (sid0 >= 0)
+			TempNum_0 = sid0 * -1 - 100;
+		else
+			TempNum_0 = PlayerClass(pnum0) * -1 - 100;
 		bool TempMorphedBool;
 		bossSlotAlive[0] = true;
 		while(bossSlotAlive[0]){//@@@@@@@@@@@@@@@@
@@ -405,7 +412,15 @@ Script "ub_SpecialEventTracker" (int Which)
 					if(PlayerLifeStatusArr[BossDataArr[0][BOSSDATA_TID]-1000] == PLS_EYE)
 						TempNum_0 = CheckActorInventory(BossDataArr[0][BOSSDATA_TID],"ThisIsMyMagicEyeNumber")+1000;
 					else if(CheckActorInventory(BossDataArr[0][BOSSDATA_TID],"TruePowerItemFlag"))
-						TempNum_0 = PlayerClass(BossDataArr[0][BOSSDATA_TID]-1000)*-1-1;
+					{
+						int pnumTp = BossDataArr[0][BOSSDATA_TID] - 1000;
+						int sidTp = FindSurvivorByActor(GetActorClass(BossDataArr[0][BOSSDATA_TID]));
+						// Shiny band: C-ICN{n} via BossNumb = -1-n (vanilla id == KEYCONF slot).
+						if (sidTp >= 0)
+							TempNum_0 = sidTp * -1 - 1;
+						else
+							TempNum_0 = PlayerClass(pnumTp) * -1 - 1;
+					}
 					else
 						TempNum_0 = BossDataArr[0][BOSSDATA_NUM];
 					TempMorphedBool = true;
