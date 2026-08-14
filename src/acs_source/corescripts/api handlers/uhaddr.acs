@@ -211,3 +211,104 @@ Script "uh_GetSurvivorMugshot_S" (int id)
 	SetCVarString("uh_ds_out_str", GetSurvivorMugshot(id));
 	SetResultValue(IsSurvivorDefined(id));
 }
+
+function int DefineDemoneyeCore(int id, str actor, str name, str prefix, int flags, str mugshot, str eventStem)
+{
+	// Mugshot is mandatory — empty would fall through BHW numeric bands incorrectly.
+	if (StrCmp(mugshot, "") == 0)
+		return UHEYE_FAIL;
+	if (StrCmp(name, "") == 0)
+		return UHEYE_FAIL;
+	if (StrCmp(eventStem, "") == 0)
+		return UHEYE_FAIL;
+
+	// Actor uniqueness only when actor is set (bonus face slots may omit actor).
+	if (StrCmp(actor, "") != 0 && FindEyeByActor(actor) != UHEYE_FAIL)
+		return UHEYE_FAIL;
+
+	if (id >= 0)
+	{
+		if (id >= UH_MAX_VANILLA_EYE)
+			return UHEYE_FAIL;
+		if (uh_eyeVanillaDefined[id] != 0)
+			return UHEYE_FAIL;
+		EyeWriteVanilla(id, actor, name, prefix, flags, mugshot, eventStem);
+		return id;
+	}
+
+	if (id == -1)
+	{
+		if (StrCmp(actor, "") == 0)
+			return UHEYE_FAIL;
+		if (uh_eyeCustomCount >= UH_MAX_CUSTOM_EYE)
+			return UHEYE_FAIL;
+		return EyeWriteCustom(actor, name, prefix, flags, mugshot, eventStem);
+	}
+
+	return UHEYE_FAIL;
+}
+
+Script "uh_DefineDemoneye_S" (void)
+{
+	SetResultValue(DefineDemoneyeCore(
+		GetCVar("uh_de_id"),
+		GetCVarString("uh_de_actor"),
+		GetCVarString("uh_de_name"),
+		GetCVarString("uh_de_prefix"),
+		GetCVar("uh_de_flags"),
+		GetCVarString("uh_de_mugshot"),
+		GetCVarString("uh_de_eventstem")
+	));
+}
+
+Script "uh_IsEyeDefined_S" (int id)
+{
+	SetResultValue(IsEyeDefined(id));
+}
+
+Script "uh_FindEyeByActor_S" (void)
+{
+	int id = FindEyeByActor(GetCVarString("uh_de_actor"));
+	SetCVar("uh_de_id", id);
+	SetResultValue(id);
+}
+
+Script "uh_GetEyeActor_S" (int id)
+{
+	SetCVarString("uh_de_out_str", GetEyeActor(id));
+	SetResultValue(IsEyeDefined(id));
+}
+
+Script "uh_GetEyeName_S" (int id)
+{
+	SetCVarString("uh_de_out_str", GetEyeName(id));
+	SetResultValue(IsEyeDefined(id));
+}
+
+Script "uh_GetEyePrefix_S" (int id)
+{
+	SetCVarString("uh_de_out_str", GetEyePrefix(id));
+	SetResultValue(IsEyeDefined(id));
+}
+
+Script "uh_GetEyeFlags_S" (int id)
+{
+	SetResultValue(GetEyeFlags(id));
+}
+
+Script "uh_GetEyeMugshot_S" (int id)
+{
+	SetCVarString("uh_de_out_str", GetEyeMugshot(id));
+	SetResultValue(IsEyeDefined(id));
+}
+
+Script "uh_GetEyeEventStem_S" (int id)
+{
+	SetCVarString("uh_de_out_str", GetEyeEventStem(id));
+	SetResultValue(IsEyeDefined(id));
+}
+
+Script "uh_GetPlayerEyeId_S" (int playerNum)
+{
+	SetResultValue(GetPlayerEyeId(playerNum));
+}

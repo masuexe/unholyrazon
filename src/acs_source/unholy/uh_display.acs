@@ -225,8 +225,8 @@ function void Func_BHW_HudMess(int TheBoss, int BossNumb, int Health, int Armor)
 
 // BossNumb survivor HUD packing (parade / class face):
 //   vanilla class: -100 - sid                 (-100 .. -(100+UH_MAX_VANILLA_SURV-1))
-//   custom class:  -300 - SurvCustomIndex(sid) (<= -300)
-//   shiny/vanilla: -1 - sid                   (-1 .. -99)
+//   custom class:  -300 - SurvCustomIndex(sid) (<= -300, > -600)
+//   shiny vanilla: -600 - sid                 (<= -600) — clears -1..-99 for custom bosses
 function int EncodeSurvivorBossNumb(int sid)
 {
 	if (sid == UHSURV_FAIL)
@@ -236,15 +236,36 @@ function int EncodeSurvivorBossNumb(int sid)
 	return -300 - SurvCustomIndex(sid);
 }
 
+function int EncodeSurvivorShinyBossNumb(int sid)
+{
+	if (sid == UHSURV_FAIL)
+		return 0;
+	if (sid >= 0)
+		return -600 - sid;
+	// Custom survivors: table mugshot via class band (no C-ICN).
+	return EncodeSurvivorBossNumb(sid);
+}
+
 function int DecodeSurvivorBossNumb(int BossNumb)
 {
+	// Order matters: shiny <= -600 is also <= -300.
+	if (BossNumb <= -600)
+		return (BossNumb + 600) * -1;
 	if (BossNumb <= -300)
 		return -1 - (-300 - BossNumb);
 	if (BossNumb <= -100)
 		return (BossNumb + 100) * -1;
-	if (BossNumb < 0)
-		return (BossNumb + 1) * -1;
 	return UHSURV_FAIL;
+}
+
+function bool IsSurvivorBossNumb(int BossNumb)
+{
+	return BossNumb <= -100;
+}
+
+function bool IsSurvivorShinyBossNumb(int BossNumb)
+{
+	return BossNumb <= -600;
 }
 
 function void Func_BHW_HudMess2(int TheBoss, int BossNumb, int Health, int Armor)
@@ -262,13 +283,13 @@ function void Func_BHW_HudMess2(int TheBoss, int BossNumb, int Health, int Armor
 
 	HudMessage(s:"A"; 0, -1000-TheBoss,-1, 10.1+X_Aspect, 306.1+AddToY, 0,1.0);
 	SetFont("SMALLFONT");
-	str nameStr = GetBossName(BossNumb);
-	if (StrCmp(nameStr, "") == 0)
-	{
-		int sidName = DecodeSurvivorBossNumb(BossNumb);
-		if (sidName != UHSURV_FAIL)
-			nameStr = GetSurvivorName(sidName);
-	}
+	str nameStr;
+	if (IsSurvivorBossNumb(BossNumb))
+		nameStr = GetSurvivorName(DecodeSurvivorBossNumb(BossNumb));
+	else if (BossNumb >= 1000)
+		nameStr = StrParam(s: GetEyePrefix(BossNumb - 1000), s: GetEyeName(BossNumb - 1000));
+	else
+		nameStr = GetBossName(BossNumb);
 	HudMessage(s: nameStr; 0, -990-TheBoss, -1, 48.1+X_Aspect, 310.1+AddToY, 0, 1.0);
 	HudMessage(s:"\c[UB0HP]",i:Health; 0, -1010-TheBoss,-1, 48.1+X_Aspect, 320.1+AddToY, 0,1.0);
 	if(Armor >= 1){
@@ -293,16 +314,17 @@ script "ub_BHW_DeadHudClientside" (int TheBoss, int BossNumb, int DemiseType) CL
 function void Func_BHW_SetFontMug(int BossNumb)
 {
 	str FontStr;
-	// Class/custom survivor bands (<= -100): never treat as custom-boss mugshot.
-	// Shiny band (-99..-1) may collide with custom boss ids — try boss mug first.
-	if (BossNumb <= -100)
+	// Survivor-packed bands (<= -100, includes shiny <= -600): never GetBossMugshot.
+	if (IsSurvivorBossNumb(BossNumb))
 	{
-		int sidClass = DecodeSurvivorBossNumb(BossNumb);
-		str mugClass = GetSurvivorMugshotRaw(sidClass);
-		if (StrCmp(mugClass, "") != 0)
-			FontStr = mugClass;
-		else if (sidClass >= 0)
-			FontStr = StrParam(s:"C@ICN",i:sidClass);
+		int sidSurv = DecodeSurvivorBossNumb(BossNumb);
+		str mugSurv = GetSurvivorMugshotRaw(sidSurv);
+		if (StrCmp(mugSurv, "") != 0)
+			FontStr = mugSurv;
+		else if (IsSurvivorShinyBossNumb(BossNumb))
+			FontStr = StrParam(s:"C-ICN",i:sidSurv);
+		else if (sidSurv >= 0)
+			FontStr = StrParam(s:"C@ICN",i:sidSurv);
 		else
 			FontStr = "NOFAC_0";
 		if(CheckFont(FontStr))
@@ -322,18 +344,14 @@ function void Func_BHW_SetFontMug(int BossNumb)
 		return;
 	}
 	if(BossNumb >=1000){//Demoneye
-		FontStr = StrParam(s:"EYE_F",i:BossNumb-1000);
+		str eyeMug = GetEyeMugshot(BossNumb-1000);
+		if (StrCmp(eyeMug, "") != 0)
+			FontStr = eyeMug;
+		else
+			FontStr = StrParam(s:"EYE_F",i:BossNumb-1000);
 	}
 	else if(BossNumb >=0){//Boss
 		FontStr = StrParam(s:"UFACE",i:BossNumb);
-	}
-	else if(BossNumb < 0){//Shiny / TruePower class band
-		int sidShiny = DecodeSurvivorBossNumb(BossNumb);
-		str mugShiny = GetSurvivorMugshotRaw(sidShiny);
-		if (StrCmp(mugShiny, "") != 0)
-			FontStr = mugShiny;
-		else
-			FontStr = StrParam(s:"C-ICN",i:sidShiny);
 	}
 	else
 		FontStr = "NOFAC_0";

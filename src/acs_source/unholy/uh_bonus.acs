@@ -194,8 +194,9 @@ Script "ub_WhoWonTheRound" (void)
 //Demoneye event script
 Script "ub_DemoneyeEvent" (int Which)
 {
-	str EyeMorphStr = StrParam(s:EyeList[Which][EYELIST_NAME],s:"_MoolaGiver");
-	str EyeBonusStr = StrParam(s:EyeList[Which][EYELIST_NAME],s:"_EventD_P");
+	str stem = GetEyeEventStem(Which);
+	str EyeMorphStr = StrParam(s:stem,s:"_MoolaGiver");
+	str EyeBonusStr = StrParam(s:stem,s:"_EventD_P");
 
 	GiveMeTheFunc(EyeMorphStr,1);
 	GiveMeTheFunc(EyeBonusStr,1);
@@ -410,22 +411,19 @@ Script "ub_SpecialEventTracker" (int Which)
 			if(!TempMorphedBool)
 				if(CheckActorInventory(BossDataArr[0][BOSSDATA_TID],"MorphedFlag")){
 					if(PlayerLifeStatusArr[BossDataArr[0][BOSSDATA_TID]-1000] == PLS_EYE)
-						TempNum_0 = CheckActorInventory(BossDataArr[0][BOSSDATA_TID],"ThisIsMyMagicEyeNumber")+1000;
+					{
+						int eyeHud = GetPlayerEyeId(BossDataArr[0][BOSSDATA_TID]-1000);
+						if (eyeHud == UHEYE_FAIL)
+							eyeHud = CheckActorInventory(BossDataArr[0][BOSSDATA_TID],"ThisIsMyMagicEyeNumber");
+						TempNum_0 = eyeHud + 1000;
+					}
 					else if(CheckActorInventory(BossDataArr[0][BOSSDATA_TID],"TruePowerItemFlag"))
 					{
-						int pnumTp = BossDataArr[0][BOSSDATA_TID] - 1000;
-						int sidTp = FindSurvivorByActor(GetActorClass(BossDataArr[0][BOSSDATA_TID]));
-						// Shiny band: C-ICN{n} via BossNumb = -1-n (vanilla).
-						// Custom survivors stay in class band (table mugshot).
-						if (sidTp != UHSURV_FAIL)
-						{
-							if (sidTp >= 0)
-								TempNum_0 = sidTp * -1 - 1;
-							else
-								TempNum_0 = EncodeSurvivorBossNumb(sidTp);
-						}
+						// Reuse pre-morph sid0 — GetActorClass is *Shiny after morpher.
+						if (sid0 != UHSURV_FAIL)
+							TempNum_0 = EncodeSurvivorShinyBossNumb(sid0);
 						else
-							TempNum_0 = PlayerClass(pnumTp) * -1 - 1;
+							TempNum_0 = EncodeSurvivorShinyBossNumb(PlayerClass(pnum0));
 					}
 					else
 						TempNum_0 = BossDataArr[0][BOSSDATA_NUM];

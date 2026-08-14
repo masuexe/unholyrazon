@@ -56,12 +56,34 @@
 //      }
 // 4. Shiny class (optional) = YourClass + "Shiny". Missing → MorphActor fails → S_ClassSpawnNo_P.
 // 5. Do not name non-player actors YourClassShiny (weapons use YourClassShiny_W).
-// 6. Look up by actor: FindSurvivorByActor / FindSurvivorByActor — do not assume
+// 6. Look up by actor: FindSurvivorByActor — do not assume
 //    PlayerClass() == survivorId for addon classes (KEYCONF append is 59+).
-// ============================================================================
+//
+// === DefineDemoneye addon recipe =============================================
+// 1. LOADACS after Unholy: YOUR_EYEDEFS
+// 2. ACS:
+//      #library "YOUR_EYEDEFS"
+//      #include "zcommon.acs"
+//      #include "UHADD.acs"
+//      function void YourRegisterEyes(void) {
+//          DefineDemoneye(-1, "YourDemoneye", "Your", "a \ct", 0, "EYE_F0", "Your");
+//          // UHEYE_FLAG_NOSUFFIX = omit " Demoneye" in YouAreNow line.
+//      }
+//      script "your_define_eyes" OPEN {
+//          if (!UHInPlay()) terminate;
+//          YourRegisterEyes();
+//      }
+//      script "your_define_eyes_cs" OPEN CLIENTSIDE {
+//          YourRegisterEyes();
+//      }
+// 3. Mugshot is mandatory (BHW SetFont name). eventStem builds {stem}_MoolaGiver.
+// 4. Bonus face-only ids may pass actor "".
+// 5. Do not register ArenaDemoneye-style boss-team eyes here — use DefineBoss.
 
 #define UHBOSS_FAIL -9999
 #define UHSURV_FAIL -9999
+#define UHEYE_FAIL -9999
+#define UHEYE_FLAG_NOSUFFIX 1
 
 #define UHBOSS_POOL_NONE 0
 #define UHBOSS_POOL_COMMON 1
@@ -215,4 +237,73 @@ function str GetSurvivorMugshot(int id)
 {
 	ACS_NamedExecuteWithResult("uh_GetSurvivorMugshot_S", id);
 	return GetCVarString("uh_ds_out_str");
+}
+
+// === DefineDemoneye ==========================================================
+// id: >=0 vanilla sparse; -1 = auto custom (-1,-2,…).
+// mugshot / name / eventStem required. actor may be "" for bonus face-only ids
+// (e.g. 100 / 106) that share a base morph class.
+// eventStem builds "{stem}_MoolaGiver" / "{stem}_EventD_P" for bonus events.
+
+function int DefineDemoneye(int id, str actor, str name, str prefix, int flags, str mugshot, str eventStem)
+{
+	SetCVar("uh_de_id", id);
+	SetCVarString("uh_de_actor", actor);
+	SetCVarString("uh_de_name", name);
+	SetCVarString("uh_de_prefix", prefix);
+	SetCVar("uh_de_flags", flags);
+	SetCVarString("uh_de_mugshot", mugshot);
+	SetCVarString("uh_de_eventstem", eventStem);
+	return ACS_NamedExecuteWithResult("uh_DefineDemoneye_S");
+}
+
+function int IsEyeDefined(int id)
+{
+	return ACS_NamedExecuteWithResult("uh_IsEyeDefined_S", id);
+}
+
+function int FindEyeByActor(str actor)
+{
+	SetCVarString("uh_de_actor", actor);
+	return ACS_NamedExecuteWithResult("uh_FindEyeByActor_S");
+}
+
+function str GetEyeActor(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetEyeActor_S", id);
+	return GetCVarString("uh_de_out_str");
+}
+
+function str GetEyeName(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetEyeName_S", id);
+	return GetCVarString("uh_de_out_str");
+}
+
+function str GetEyePrefix(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetEyePrefix_S", id);
+	return GetCVarString("uh_de_out_str");
+}
+
+function int GetEyeFlags(int id)
+{
+	return ACS_NamedExecuteWithResult("uh_GetEyeFlags_S", id);
+}
+
+function str GetEyeMugshot(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetEyeMugshot_S", id);
+	return GetCVarString("uh_de_out_str");
+}
+
+function str GetEyeEventStem(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetEyeEventStem_S", id);
+	return GetCVarString("uh_de_out_str");
+}
+
+function int UH_GetPlayerEyeId(int playerNum)
+{
+	return ACS_NamedExecuteWithResult("uh_GetPlayerEyeId_S", playerNum);
 }

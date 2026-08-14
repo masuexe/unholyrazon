@@ -1,4 +1,4 @@
-// UHDT — shared DefineBoss / DefineSurvivor tables (compiled library "UHDT").
+// UHDT — shared DefineBoss / DefineSurvivor / DefineDemoneye tables (library "UHDT").
 // Handlers and other UH libs #import this file to share state.
 //
 #library "uhdt"
@@ -9,8 +9,13 @@
 #LIBDEFINE UH_MAX_CUSTOM_BOSS 256
 #LIBDEFINE UH_MAX_VANILLA_SURV 128
 #LIBDEFINE UH_MAX_CUSTOM_SURV 256
+#LIBDEFINE UH_MAX_VANILLA_EYE 200
+#LIBDEFINE UH_MAX_CUSTOM_EYE 256
 #LIBDEFINE UHBOSS_FAIL -9999
 #LIBDEFINE UHSURV_FAIL -9999
+#LIBDEFINE UHEYE_FAIL -9999
+#LIBDEFINE UHEYE_FLAG_NOSUFFIX 1
+// UHEYE_FLAG_NOSUFFIX: omit " Demoneye" suffix in YouAreNow (was eyeList "A").
 
 // rarity / pool ids (shared with UHADD)
 #LIBDEFINE UHBOSS_POOL_NONE 0
@@ -563,4 +568,208 @@ function int SurvWriteCustom(str actor, str name, str mugshot)
 	uh_survCustomStr[i][UHSURV_STR_MUGSHOT] = mugshot;
 	uh_survCustomCount++;
 	return survId;
+}
+
+// --- DefineDemoneye tables ---------------------------------------------------
+
+#LIBDEFINE UHEYE_STR_ACTOR 0
+#LIBDEFINE UHEYE_STR_NAME 1
+#LIBDEFINE UHEYE_STR_PREFIX 2
+#LIBDEFINE UHEYE_STR_MUGSHOT 3
+#LIBDEFINE UHEYE_STR_EVENTSTEM 4
+#LIBDEFINE UHEYE_STR_COUNT 5
+
+int uh_eyeVanillaDefined[UH_MAX_VANILLA_EYE];
+str uh_eyeVanillaStr[UH_MAX_VANILLA_EYE][UHEYE_STR_COUNT];
+int uh_eyeVanillaFlags[UH_MAX_VANILLA_EYE];
+
+int uh_eyeCustomCount = 0;
+str uh_eyeCustomStr[UH_MAX_CUSTOM_EYE][UHEYE_STR_COUNT];
+int uh_eyeCustomFlags[UH_MAX_CUSTOM_EYE];
+
+int uh_playerEyeId[UH_MAX_PLAYERS];
+
+script "uh_EyeIdStorageInit" OPEN
+{
+	int i;
+	for (i = 0; i < UH_MAX_PLAYERS; i++)
+		uh_playerEyeId[i] = UHEYE_FAIL;
+}
+
+script "uh_EyeIdStorageInit_cs" OPEN CLIENTSIDE
+{
+	int i;
+	for (i = 0; i < UH_MAX_PLAYERS; i++)
+		uh_playerEyeId[i] = UHEYE_FAIL;
+}
+
+function void SetPlayerEyeId(int playerNum, int eyeId)
+{
+	if (playerNum < 0 || playerNum >= UH_MAX_PLAYERS)
+		return;
+	uh_playerEyeId[playerNum] = eyeId;
+}
+
+function int GetPlayerEyeId(int playerNum)
+{
+	if (playerNum < 0 || playerNum >= UH_MAX_PLAYERS)
+		return UHEYE_FAIL;
+	return uh_playerEyeId[playerNum];
+}
+
+function int EyeCustomIndex(int id)
+{
+	return -1 - id;
+}
+
+function bool IsEyeDefined(int id)
+{
+	if (id >= 0)
+	{
+		if (id >= UH_MAX_VANILLA_EYE)
+			return false;
+		return uh_eyeVanillaDefined[id] != 0;
+	}
+	if (id <= -1)
+	{
+		int i = EyeCustomIndex(id);
+		if (i < 0 || i >= uh_eyeCustomCount)
+			return false;
+		return true;
+	}
+	return false;
+}
+
+function int EyeResolveSlot(int id)
+{
+	if (id >= 0)
+	{
+		if (id >= UH_MAX_VANILLA_EYE || uh_eyeVanillaDefined[id] == 0)
+			return UHEYE_FAIL;
+		return id;
+	}
+	if (id <= -1)
+	{
+		int i = EyeCustomIndex(id);
+		if (i < 0 || i >= uh_eyeCustomCount)
+			return UHEYE_FAIL;
+		return i;
+	}
+	return UHEYE_FAIL;
+}
+
+function str GetEyeActor(int id)
+{
+	int slot = EyeResolveSlot(id);
+	if (slot == UHEYE_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_eyeVanillaStr[slot][UHEYE_STR_ACTOR];
+	return uh_eyeCustomStr[slot][UHEYE_STR_ACTOR];
+}
+
+function str GetEyeName(int id)
+{
+	int slot = EyeResolveSlot(id);
+	if (slot == UHEYE_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_eyeVanillaStr[slot][UHEYE_STR_NAME];
+	return uh_eyeCustomStr[slot][UHEYE_STR_NAME];
+}
+
+function str GetEyePrefix(int id)
+{
+	int slot = EyeResolveSlot(id);
+	if (slot == UHEYE_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_eyeVanillaStr[slot][UHEYE_STR_PREFIX];
+	return uh_eyeCustomStr[slot][UHEYE_STR_PREFIX];
+}
+
+function int GetEyeFlags(int id)
+{
+	int slot = EyeResolveSlot(id);
+	if (slot == UHEYE_FAIL)
+		return 0;
+	if (id >= 0)
+		return uh_eyeVanillaFlags[slot];
+	return uh_eyeCustomFlags[slot];
+}
+
+function str GetEyeMugshot(int id)
+{
+	int slot = EyeResolveSlot(id);
+	if (slot == UHEYE_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_eyeVanillaStr[slot][UHEYE_STR_MUGSHOT];
+	return uh_eyeCustomStr[slot][UHEYE_STR_MUGSHOT];
+}
+
+function str GetEyeEventStem(int id)
+{
+	int slot = EyeResolveSlot(id);
+	if (slot == UHEYE_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_eyeVanillaStr[slot][UHEYE_STR_EVENTSTEM];
+	return uh_eyeCustomStr[slot][UHEYE_STR_EVENTSTEM];
+}
+
+// Personal morph line: "You are now {prefix}{name}[ Demoneye]!"
+function str GetEyeYouAreNowName(int id)
+{
+	str prefix = GetEyePrefix(id);
+	str name = GetEyeName(id);
+	if (StrCmp(name, "") == 0)
+		return "";
+	if (GetEyeFlags(id) & UHEYE_FLAG_NOSUFFIX)
+		return StrParam(s: prefix, s: name, s: "\ck");
+	return StrParam(s: prefix, s: name, s: " \ckDemoneye");
+}
+
+function int FindEyeByActor(str actor)
+{
+	int i;
+	if (StrCmp(actor, "") == 0)
+		return UHEYE_FAIL;
+
+	for (i = 0; i < UH_MAX_VANILLA_EYE; i++)
+	{
+		if (uh_eyeVanillaDefined[i] != 0 && StrICmp(actor, uh_eyeVanillaStr[i][UHEYE_STR_ACTOR]) == 0)
+			return i;
+	}
+	for (i = 0; i < uh_eyeCustomCount; i++)
+	{
+		if (StrICmp(actor, uh_eyeCustomStr[i][UHEYE_STR_ACTOR]) == 0)
+			return -1 - i;
+	}
+	return UHEYE_FAIL;
+}
+
+function void EyeWriteVanilla(int id, str actor, str name, str prefix, int flags, str mugshot, str eventStem)
+{
+	uh_eyeVanillaDefined[id] = 1;
+	uh_eyeVanillaStr[id][UHEYE_STR_ACTOR] = actor;
+	uh_eyeVanillaStr[id][UHEYE_STR_NAME] = name;
+	uh_eyeVanillaStr[id][UHEYE_STR_PREFIX] = prefix;
+	uh_eyeVanillaFlags[id] = flags;
+	uh_eyeVanillaStr[id][UHEYE_STR_MUGSHOT] = mugshot;
+	uh_eyeVanillaStr[id][UHEYE_STR_EVENTSTEM] = eventStem;
+}
+
+function int EyeWriteCustom(str actor, str name, str prefix, int flags, str mugshot, str eventStem)
+{
+	int i = uh_eyeCustomCount;
+	int eyeId = -1 - i;
+	uh_eyeCustomStr[i][UHEYE_STR_ACTOR] = actor;
+	uh_eyeCustomStr[i][UHEYE_STR_NAME] = name;
+	uh_eyeCustomStr[i][UHEYE_STR_PREFIX] = prefix;
+	uh_eyeCustomFlags[i] = flags;
+	uh_eyeCustomStr[i][UHEYE_STR_MUGSHOT] = mugshot;
+	uh_eyeCustomStr[i][UHEYE_STR_EVENTSTEM] = eventStem;
+	uh_eyeCustomCount++;
+	return eyeId;
 }
