@@ -88,8 +88,8 @@
 //      #include "zcommon.acs"
 //      #include "UHADD.acs"
 //      function void YourRegisterItems(void) {
-//          DefineUnholyItem(-1, "YourItem", "Your Item", UHITEM_POOL_OTHER, "");
-//          // mugshot optional (items use DECORATE Inventory.Icon).
+//          // wP,amtP, wM,amtM, wT,amtT — weight 0 = not in that box pool
+//          DefineUnholyItem(-1, "YourItem", "Your Item", 8, 1, 0, 0, 0, 0, "");
 //      }
 //      script "your_define_items" OPEN {
 //          if (!UHInPlay()) terminate;
@@ -98,8 +98,8 @@
 //      script "your_define_items_cs" OPEN CLIENTSIDE {
 //          YourRegisterItems();
 //      }
-// 3. Do NOT put item ids in BossNumb / BHW. Boxes still grant by actor string.
-// 4. MoneyBait morph / DarkPurplePotion Use stay DECORATE.
+// 3. Do NOT put item ids in BossNumb / BHW.
+// 4. DLC_Coin / AssHat inner rolls, MoneyBait morph stay DECORATE.
 
 #define UHBOSS_FAIL -9999
 #define UHSURV_FAIL -9999
@@ -119,6 +119,7 @@
 #define UHITEM_POOL_MYSTIC 2
 #define UHITEM_POOL_TOW 3
 #define UHITEM_POOL_OTHER 4
+#define UHITEM_BOX_POOL_COUNT 3
 
 int uh_inplay_cache = -1;
 
@@ -339,14 +340,21 @@ function int UH_GetPlayerEyeId(int playerNum)
 
 // === DefineUnholyItem ========================================================
 // id: >=0 vanilla; -1 = auto custom (-1,-2,…).
-// actor / name required. mugshot optional (""). pool = UHITEM_POOL_*.
+// actor / name required. mugshot optional ("").
+// wP/amtP, wM/amtM, wT/amtT = Pandora / Mystic / ToW weight + give amount.
+// weight 0 = not in that pool. OTHER items use all weights 0.
 
-function int DefineUnholyItem(int id, str actor, str name, int pool, str mugshot)
+function int DefineUnholyItem(int id, str actor, str name, int wP, int amtP, int wM, int amtM, int wT, int amtT, str mugshot)
 {
 	SetCVar("uh_di_id", id);
 	SetCVarString("uh_di_actor", actor);
 	SetCVarString("uh_di_name", name);
-	SetCVar("uh_di_pool", pool);
+	SetCVar("uh_di_wp", wP);
+	SetCVar("uh_di_amtp", amtP);
+	SetCVar("uh_di_wm", wM);
+	SetCVar("uh_di_amtm", amtM);
+	SetCVar("uh_di_wt", wT);
+	SetCVar("uh_di_amtt", amtT);
 	SetCVarString("uh_di_mugshot", mugshot);
 	return ACS_NamedExecuteWithResult("uh_DefineUnholyItem_S");
 }
@@ -380,7 +388,17 @@ function str GetItemMugshot(int id)
 	return GetCVarString("uh_di_out_str");
 }
 
-function int GetItemPool(int id)
+function int GetItemWeight(int id, int pool)
 {
-	return ACS_NamedExecuteWithResult("uh_GetItemPool_S", id);
+	return ACS_NamedExecuteWithResult("uh_GetItemWeight_S", id, pool);
+}
+
+function int GetItemAmt(int id, int pool)
+{
+	return ACS_NamedExecuteWithResult("uh_GetItemAmt_S", id, pool);
+}
+
+function int RandomItemFromPool(int pool)
+{
+	return ACS_NamedExecuteWithResult("uh_RandomItemFromPool_S", pool);
 }

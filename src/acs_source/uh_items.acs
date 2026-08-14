@@ -1,5 +1,6 @@
 #library "uh_items"
 #include "zcommon.acs"
+#import "uhdt.acs"
 
 script "UB_GUHU_SelfDamage" (int Pain, int Type)
 {
@@ -122,4 +123,102 @@ function int max(int a, int b) {
 	if (a > b)
 		return a;
 	return b;
+}
+
+// Box Use: GiveInventory with pool amt. prosperity=1 → roll twice, keep rarer.
+// arg0 = UHITEM_POOL_PANDORA / MYSTIC / TOW; arg1 = prosperity.
+Script "uh_GiveRandomBoxItem" (int pool, int prosperity)
+{
+	int id;
+	str actor;
+	int amt;
+
+	if (prosperity)
+		id = RandomItemFromPoolProsperity(pool);
+	else
+		id = RandomItemFromPool(pool);
+
+	if (id == UHITEM_FAIL)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+
+	actor = GetItemActor(id);
+
+	// ToW: already have I_Win → give DLC coins instead (legacy Rare1→Rare2).
+	if (pool == UHITEM_POOL_TOW && StrICmp(actor, "I_WinItem") == 0 && CheckInventory("I_WinItem") >= 1)
+	{
+		GiveInventory("DLC_CoinItem", 777);
+		SetResultValue(1);
+		terminate;
+	}
+
+	amt = GetItemAmt(id, pool);
+	if (amt < 1)
+		amt = 1;
+	GiveInventory(actor, amt);
+	SetResultValue(1);
+}
+
+// EyeDrop: SpawnItemEx x1 at activator. GauntletExit / Minivile hijacks (EyeDrop-only).
+Script "uh_SpawnRandomBoxItem" (int pool)
+{
+	int id = RandomItemFromPool(pool);
+	str actor;
+	int x;
+	int y;
+	int z;
+
+	if (id == UHITEM_FAIL)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+
+	actor = GetItemActor(id);
+	x = GetActorX(0);
+	y = GetActorY(0);
+	z = GetActorZ(0);
+
+	// Pandora EyeDrop: Rare4 → 32/256 GauntletExit instead of BoxDE / KillerBoxDE
+	if (pool == UHITEM_POOL_PANDORA)
+	{
+		if ((StrICmp(actor, "BoxDEItem") == 0 || StrICmp(actor, "KillerBoxDEItem") == 0)
+			&& random(1, 256) <= 32)
+		{
+			SpawnForced("GauntletExitItem", x, y, z, 0, 0);
+			SetResultValue(1);
+			terminate;
+		}
+		// OnFire slot → 64/256 Minivile
+		if (StrICmp(actor, "OnFireItem") == 0 && random(1, 256) <= 64)
+		{
+			SpawnForced("BoxDE_MinivileHidden_H1", x, y, z, 0, 0);
+			SetResultValue(1);
+			terminate;
+		}
+	}
+
+	// Mystic EyeDrop: Rare4 → 32/256 GauntletExit instead of Golden BoxDE
+	if (pool == UHITEM_POOL_MYSTIC)
+	{
+		if ((StrICmp(actor, "GoldenBoxDEItem") == 0 || StrICmp(actor, "GoldenKillerBoxDEItem") == 0)
+			&& random(1, 256) <= 32)
+		{
+			SpawnForced("GauntletExitItem", x, y, z, 0, 0);
+			SetResultValue(1);
+			terminate;
+		}
+		// Football → 64/256 Minivile
+		if (StrICmp(actor, "TheFootBallItem") == 0 && random(1, 256) <= 64)
+		{
+			SpawnForced("BoxDE_MinivileHidden_H2", x, y, z, 0, 0);
+			SetResultValue(1);
+			terminate;
+		}
+	}
+
+	SpawnForced(actor, x, y, z, 0, 0);
+	SetResultValue(1);
 }
