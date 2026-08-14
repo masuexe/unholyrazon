@@ -1,35 +1,41 @@
 // UHADD — modder-facing DefineBoss API (include; not a LOADACS library).
 // Pattern matches MM8BDM DTADD / CBM CBMADD: stash args in ephemeral cvars, call UHADDR.
 //
-// === Addon recipe ============================================================
-// 1. LOADACS (after UHDT / UHADDR, before UNHOLY):
-//      UHDT
-//      UHADDR
-//      YOUR_BOSSDEFS
+// === Addon recipe (MM8BDM DefineWeapon + CLIENTSIDE twin) =====================
+// 1. LOADACS: UHDT → UHADDR → UH_BOSSDEFS → (your lib after Unholy pk3 loads).
 // 2. In YOUR_BOSSDEFS.acs:
 //      #library "YOUR_BOSSDEFS"
 //      #include "zcommon.acs"
 //      #include "UHADD.acs"
-//      function void YourRegisterBosses(void) {
+//
+//      function void YourRegisterBosses(void)
+//      {
 //          DefineBoss(-1, "YourBossActor", "\cjName", UHBOSS_POOL_COMMON,
 //              2000, 300, "", "UFACE26", "M_UB000", "credit",
 //              "instructions", "T.", "spawn msg");
 //      }
-//      script "your_define_bosses" OPEN {
+//
+//      script "your_define_bosses" OPEN
+//      {
 //          if (!UHInPlay()) terminate;
 //          YourRegisterBosses();
 //      }
-//      // Required online: non-CLIENTSIDE OPEN does not run on joining clients;
+//
+//      // Required online: non-CLIENTSIDE OPEN runs on the server only;
 //      // CLIENTSIDE HUD reads local UHDT for boss names.
-//      script "your_define_bosses_cs" OPEN CLIENTSIDE {
-//          if (UH_IsBossDefined(/* your first id, or a sentinel */) ) terminate;
+//      script "your_define_bosses_cs" OPEN CLIENTSIDE
+//      {
+//          // Do NOT UHInPlay (SpawnForced can fail on pure clients).
+//          // Do NOT UH_IsBossDefined(0/-1); 0 is vanilla, -1 is first custom.
+//          // Duplicate actors are rejected by DefineBoss (UHBOSS_FAIL) — safe to re-run.
 //          YourRegisterBosses();
 //      }
 // 3. Identity = DECORATE actor class (must be unique across loaded PK3s).
 // 4. id: >=0 stable vanilla slot; -1 = auto custom (-1,-2,…).
-// 5. ForcedBoss "none" is -9999 (UHBOSS_FAIL), NOT -1 (first custom id).
-// 6. EX: pass parent actor in exboss_baseactor; use GetBossBaseId / GetBossExId.
-// 7. Mugshot: set an explicit font/lump for custom ids (Shiny/CBM own negative bands).
+// 5. ForcedBoss / ForcedShadowBoss "none" is UHBOSS_FAIL (-9999), NOT -1.
+// 6. UHBOSS_POOL_NONE (0) = registered but not in RNG pools (force / EX parent only).
+// 7. EX: pass parent actor in exboss_baseactor; use GetBossBaseId / GetBossExId.
+// 8. Mugshot: set an explicit font/lump for custom ids (Shiny/CBM own negative bands).
 // ============================================================================
 
 #define UHBOSS_FAIL -9999

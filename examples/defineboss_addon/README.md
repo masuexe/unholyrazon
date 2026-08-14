@@ -1,0 +1,48 @@
+# DefineBoss example addon
+
+Minimal second PK3 that registers one custom boss via `DefineBoss`, matching the UHADD recipe (OPEN + OPEN CLIENTSIDE twin).
+
+## Pack
+
+From this folder, zip contents (not the parent folder) into e.g. `out/defineboss_addon.pk3`:
+
+```
+LOADACS
+DECORATE
+acs/uh_exaddon.o
+```
+
+Compile ACS first (requires Unholy `uhadd.acs` on the include path):
+
+```powershell
+New-Item -ItemType Directory -Force -Path acs | Out-Null
+& "D:\AppFiles\ACC\acc.exe" `
+  -i "..\..\src\acs_source\_includes\mod api" `
+  -i "..\..\src\acs_source\_includes\common" `
+  -i "D:\AppFiles\ACC" `
+  acs_source\uh_exaddon.acs `
+  acs\uh_exaddon.o
+```
+
+## Load order
+
+1. MM8BDM-v6b
+2. Unholy `build.pk3` (main mod)
+3. This addon PK3
+
+Addon `LOADACS` only needs `uh_exaddon`; main mod already loads `uhdt` / `uhaddr` / `uh_bossdefs` / `unholy`.
+
+## Test (singleplayer)
+
+1. Main mod only: random LMS must not show "UH Phase3 Test".
+2. Main + this addon; RCON `uh_sv_ForcedBoss1 -1`; start LMS → body is CuttyCut clone, HUD name "UH Example Boss", instructions from DefineBoss.
+3. Shadow: `uh_sv_ForcedBoss1 300` (Shadowman fakeout) + `uh_sv_ForcedShadowBoss1 26` → after reveal, CuttyCut (id 26), not TrueBusterExpert.
+
+## Test (online)
+
+4. Host and joiners load main mod + this addon; force `-1`; clients must show "UH Example Boss" next to the mugshot (local UHDT filled by CLIENTSIDE twin).
+
+## Notes
+
+- ForcedBoss / ForcedShadowBoss "none" is `-9999` (`UHBOSS_FAIL`), not `-1` (`-1` is the first custom id).
+- Do not put `CLIENTSIDE` on main mod's `uh_DefineBoss_S` handler.
