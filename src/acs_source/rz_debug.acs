@@ -17,20 +17,29 @@ script "rz_debug_MorphMe" (int type, int num) {
 }
 
 function bool morphMeToBoss(int type, int bossNum) {
+	int tid = ActivatorTID();
+	if (tid == 0)
+		tid = PlayerNumber() + 1000;
+	if (!SetActivator(tid))
+		return false;
+
 	if (type == 0) {
-		// Player TIDs are PLN_TID + playerNum (1000+); TID 0 is world and SetActivator fails.
-		int tid = ActivatorTID();
-		if(tid == 0)
-			tid = PlayerNumber() + 1000;
 		return morphActorToBoss(tid, bossNum, "GigaAstroExplode");
 	}
-	else {
-		str eyeactor = GetEyeActor(bossNum);
-		if (StrCmp(eyeactor, "") == 0)
-			return false;
-		return MorphActor(0, eyeactor, "", 0x7ffffffd, MRF_FULLHEALTH|MRF_WHENINVULNERABLE|MRF_LOSEACTUALWEAPON|MRF_NEWTIDBEHAVIOUR, "GigaAstroExplode", "");
+
+	str eyeActor = GetEyeActor(bossNum);
+	if (StrCmp(eyeActor, "") == 0) {
+		Log(s: "rz_debug_MorphMe: GetEyeActor(", i: bossNum, s: ") empty (IsEyeDefined=", i: IsEyeDefined(bossNum), s: ")");
+		return false;
 	}
-	return false;
+	bool ok = MorphActor(0, eyeActor, "", 0x7ffffffc, MRF_FULLHEALTH|MRF_WHENINVULNERABLE|MRF_LOSEACTUALWEAPON|MRF_NEWTIDBEHAVIOUR, "GigaAstroExplode", "");
+	if (!ok) {
+		Log(s: "rz_debug_MorphMe: MorphActor failed for ", s: eyeActor);
+		return false;
+	}
+	SetActivator(tid);
+	ACS_NamedExecuteWithResult("uh_DemoneyeMorph", bossNum);
+	return true;
 }
 
 script "rz_debug_checkdeathstate" (void)
