@@ -793,9 +793,17 @@ function void ClearSFCards(void) {
 	}
 }
 
+function void SyncSFCardsToInv(int player) {
+	for (int i = 0; i < 6; i++) {
+		SetInventory(StrParam(s:"SF_CardQ", i:i), mmsf_card_queue[player][i]);
+	}
+}
+
 function int GetSFCard(int player, int index) {
-	int card_id = mmsf_card_queue[player][index];
-	return card_id;
+	int frominv = CheckInventory(StrParam(s:"SF_CardQ", i:index));
+	if (frominv > 0)
+		return frominv;
+	return mmsf_card_queue[player][index];
 }
 
 function int GiveSFCard(int player, int index) {
@@ -826,6 +834,7 @@ script "rz_DrawSFCards" (void) {
 	for (int i = 0; i < 6; i++) {
 		mmsf_card_queue[player][i] = random(1, MMSF_MAX_CARDS);
 	}
+	SyncSFCardsToInv(player);
 	GiveSFCard(player, 0);
 }
 
@@ -836,6 +845,7 @@ script "rz_MoveSFCardQueue" (void) {
 			mmsf_card_queue[player][i] = mmsf_card_queue[player][i + 1];
 		}
 	}
+	SyncSFCardsToInv(player);
 	GiveSFCard(player, 0);
 }
 
