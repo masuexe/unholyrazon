@@ -116,8 +116,7 @@ Script "ub_EventManagementACS" (int Perform) //events
 Script "ub_FreeForAll" (int FreeChance)
 {
 	int ForChance = 0;
-	
-	
+
 	Switch(FreeChance)
 	{
 		Default:
@@ -128,7 +127,7 @@ Script "ub_FreeForAll" (int FreeChance)
 		Case 113:
 			break;
 	}
-	
+
 	//if(FreeChance != 1 && FreeChance != 10 && FreeChance != 113){ForChance = random(1,9);}
 
 	GiveMeTheFunc("PowerProtectSurvivor", -1);
@@ -218,7 +217,7 @@ Script "ub_DemoneyeEvent" (int Which)
 		Delay(70);
 	}
 	debugLog(strParam(s:"Demoneye event script finished!"));
-	
+
 	// if (which == 2) {
 	// 	while (timer() < 1050) {
 	// 		Delay(1);
@@ -270,7 +269,7 @@ Script "ub_OneVsAllEvent" (int Which)
 	debugLog(strParam(s:"The 1 vs. all target: ", d:BossDataArr[0][BOSSDATA_TID]));
 
 	Delay(1);
-	
+
 	int TempBoss1 = BossDataArr[0][BOSSDATA_TID];
 
 	Switch(Which)
@@ -286,7 +285,7 @@ Script "ub_OneVsAllEvent" (int Which)
 
 			Delay(1);
 			ACS_NamedExecute("ub_SpecialEventEnding",0,0);//SinglePlayer tracker
-			
+
 			PlayMusic(BonusEventList[11][BONUS_MUSICLUMP]);
 			MusicCredits(BonusEventList[11][BONUS_MUSICCREDITS],0);
 			break;
@@ -399,14 +398,15 @@ Script "ub_SpecialEventTracker" (int Which)
 		int pnum0 = BossDataArr[0][BOSSDATA_TID] - 1000;
 		int sid0 = FindSurvivorByActor(GetActorClass(BossDataArr[0][BOSSDATA_TID]));
 		int TempNum_0;
-		if (sid0 >= 0)
-			TempNum_0 = sid0 * -1 - 100;
+		if (sid0 != UHSURV_FAIL)
+			TempNum_0 = EncodeSurvivorBossNumb(sid0);
 		else
 			TempNum_0 = PlayerClass(pnum0) * -1 - 100;
 		bool TempMorphedBool;
+		bool forcehud = true;
 		bossSlotAlive[0] = true;
 		while(bossSlotAlive[0]){//@@@@@@@@@@@@@@@@
-			
+
 			if(!TempMorphedBool)
 				if(CheckActorInventory(BossDataArr[0][BOSSDATA_TID],"MorphedFlag")){
 					if(PlayerLifeStatusArr[BossDataArr[0][BOSSDATA_TID]-1000] == PLS_EYE)
@@ -415,19 +415,25 @@ Script "ub_SpecialEventTracker" (int Which)
 					{
 						int pnumTp = BossDataArr[0][BOSSDATA_TID] - 1000;
 						int sidTp = FindSurvivorByActor(GetActorClass(BossDataArr[0][BOSSDATA_TID]));
-						// Shiny band: C-ICN{n} via BossNumb = -1-n (vanilla id == KEYCONF slot).
-						if (sidTp >= 0)
-							TempNum_0 = sidTp * -1 - 1;
+						// Shiny band: C-ICN{n} via BossNumb = -1-n (vanilla).
+						// Custom survivors stay in class band (table mugshot).
+						if (sidTp != UHSURV_FAIL)
+						{
+							if (sidTp >= 0)
+								TempNum_0 = sidTp * -1 - 1;
+							else
+								TempNum_0 = EncodeSurvivorBossNumb(sidTp);
+						}
 						else
 							TempNum_0 = PlayerClass(pnumTp) * -1 - 1;
 					}
 					else
 						TempNum_0 = BossDataArr[0][BOSSDATA_NUM];
 					TempMorphedBool = true;
-					//Func_BHW_Checker(0,BossDataArr[0][BOSSDATA_TID],TempNum_0,true);
-					Delay(1);
+					forcehud = true;
 				}
-			//Func_BHW_Checker(0,BossDataArr[0][BOSSDATA_TID],TempNum_0,false);
+			Func_BHW_Checker(0,BossDataArr[0][BOSSDATA_TID],TempNum_0,forcehud);
+			forcehud = false;
 			Delay(1);
 		}
 		break;

@@ -223,6 +223,30 @@ function void Func_BHW_HudMess(int TheBoss, int BossNumb, int Health, int Armor)
 	ACS_NamedExecuteWithResult("ub_BHW_HudClientside",TheBoss,BossNumb,Health,Armor);
 }
 
+// BossNumb survivor HUD packing (parade / class face):
+//   vanilla class: -100 - sid                 (-100 .. -(100+UH_MAX_VANILLA_SURV-1))
+//   custom class:  -300 - SurvCustomIndex(sid) (<= -300)
+//   shiny/vanilla: -1 - sid                   (-1 .. -99)
+function int EncodeSurvivorBossNumb(int sid)
+{
+	if (sid == UHSURV_FAIL)
+		return 0;
+	if (sid >= 0)
+		return sid * -1 - 100;
+	return -300 - SurvCustomIndex(sid);
+}
+
+function int DecodeSurvivorBossNumb(int BossNumb)
+{
+	if (BossNumb <= -300)
+		return -1 - (-300 - BossNumb);
+	if (BossNumb <= -100)
+		return (BossNumb + 100) * -1;
+	if (BossNumb < 0)
+		return (BossNumb + 1) * -1;
+	return UHSURV_FAIL;
+}
+
 function void Func_BHW_HudMess2(int TheBoss, int BossNumb, int Health, int Armor)
 {
 	SetHudSize(640,480,0);//640,512
@@ -238,7 +262,14 @@ function void Func_BHW_HudMess2(int TheBoss, int BossNumb, int Health, int Armor
 
 	HudMessage(s:"A"; 0, -1000-TheBoss,-1, 10.1+X_Aspect, 306.1+AddToY, 0,1.0);
 	SetFont("SMALLFONT");
-	HudMessage(s: GetBossName(BossNumb); 0, -990-TheBoss, -1, 48.1+X_Aspect, 310.1+AddToY, 0, 1.0);
+	str nameStr = GetBossName(BossNumb);
+	if (StrCmp(nameStr, "") == 0)
+	{
+		int sidName = DecodeSurvivorBossNumb(BossNumb);
+		if (sidName != UHSURV_FAIL)
+			nameStr = GetSurvivorName(sidName);
+	}
+	HudMessage(s: nameStr; 0, -990-TheBoss, -1, 48.1+X_Aspect, 310.1+AddToY, 0, 1.0);
 	HudMessage(s:"\c[UB0HP]",i:Health; 0, -1010-TheBoss,-1, 48.1+X_Aspect, 320.1+AddToY, 0,1.0);
 	if(Armor >= 1){
 		HudMessage(s:"\c[UB0AR]",i:Armor; 0, -1020-TheBoss,-1, 48.1+X_Aspect, 330.1+AddToY, 0,1.0);
@@ -262,6 +293,24 @@ script "ub_BHW_DeadHudClientside" (int TheBoss, int BossNumb, int DemiseType) CL
 function void Func_BHW_SetFontMug(int BossNumb)
 {
 	str FontStr;
+	// Class/custom survivor bands (<= -100): never treat as custom-boss mugshot.
+	// Shiny band (-99..-1) may collide with custom boss ids — try boss mug first.
+	if (BossNumb <= -100)
+	{
+		int sidClass = DecodeSurvivorBossNumb(BossNumb);
+		str mugClass = GetSurvivorMugshotRaw(sidClass);
+		if (StrCmp(mugClass, "") != 0)
+			FontStr = mugClass;
+		else if (sidClass >= 0)
+			FontStr = StrParam(s:"C@ICN",i:sidClass);
+		else
+			FontStr = "NOFAC_0";
+		if(CheckFont(FontStr))
+			SetFont(FontStr);
+		else
+			SetFont("NOFAC_0");
+		return;
+	}
 	str mug = GetBossMugshot(BossNumb);
 	if (StrCmp(mug, "") != 0)
 	{
@@ -278,25 +327,16 @@ function void Func_BHW_SetFontMug(int BossNumb)
 	else if(BossNumb >=0){//Boss
 		FontStr = StrParam(s:"UFACE",i:BossNumb);
 	}
-	else if(BossNumb < -157){//CBM
-		FontStr = StrParam(s:"C_ICN",i:(BossNumb+100+58)*-1);
-	}
-	else if(BossNumb > -100){//Shiny / TruePower class band
-		int sidShiny = (BossNumb + 1) * -1;
+	else if(BossNumb < 0){//Shiny / TruePower class band
+		int sidShiny = DecodeSurvivorBossNumb(BossNumb);
 		str mugShiny = GetSurvivorMugshotRaw(sidShiny);
 		if (StrCmp(mugShiny, "") != 0)
 			FontStr = mugShiny;
 		else
 			FontStr = StrParam(s:"C-ICN",i:sidShiny);
 	}
-	else{//Unholy Class band
-		int sidClass = (BossNumb + 100) * -1;
-		str mugClass = GetSurvivorMugshotRaw(sidClass);
-		if (StrCmp(mugClass, "") != 0)
-			FontStr = mugClass;
-		else
-			FontStr = StrParam(s:"C@ICN",i:sidClass);
-	}
+	else
+		FontStr = "NOFAC_0";
 	if(CheckFont(FontStr))
 		SetFont(FontStr);
 	else
