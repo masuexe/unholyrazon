@@ -167,11 +167,11 @@ Death:
 TNT1 A 1
 stop
 Pickup:
-TNT1 A 0 A_JumpIfInventory("JesterGelato_W",1,"Use2")
+TNT1 A 0 A_JumpIf(CheckClass("JesterGelato"), "Recycle")
 TNT1 A 0 A_Die
 stop
-Use2:
-TNT1 A 1 A_GiveInventory("GelatoPizzaItem",1)
+Recycle:
+TNT1 A 0 A_GiveInventory("GelatoPizzaItem",1)
 stop
 }
 }
@@ -223,6 +223,9 @@ States
 {
 Spawn:
 TNT1 A 1
+TNT1 A 0 A_SpawnItemEx("GelatoStickyPizzaTake",0,0,0,0,0,0,0,32,0,CallACS("core_NewUniqueTID"))
+TNT1 A 0 ACS_NamedExecuteWithResult("core_setTIDsPointerToThis", CallACS("core_CurrentUniqueTID"), AAPTR_MASTER)
+TNT1 A 0 ACS_NamedExecuteWithResult("core_ClearUniqueTID", 0)
 TNT1 A 0 A_Jump(16,"Spawn2")
 TNT1 A 0 A_Jump(256,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34)
 I_BA A 1
@@ -352,6 +355,7 @@ S_Loop:
 loop
 
 Death:
+TNT1 A 0 A_RemoveChildren(true)
 TNT1 A 0 A_JumpIfInventory("PowerProtectBoss",1,"DeathReturn",8)
 TNT1 A 0 A_JumpIf(CallACS("uh_istracerplayer"), "DeathHit")
 goto DeathReturn
@@ -368,6 +372,36 @@ stop
 DeathReturn:
 TNT1 A 0 A_GiveToTarget("GelatoPizzaItem",1)
 TNT1 A 0 A_SpawnItemEx("GelatoStickyPizzaRefundFX",0,0,0,0,0,2.5)
+stop
+}
+}
+
+actor GelatoStickyPizzaTake : CustomInventory
+{
+Inventory.Amount 1
+Inventory.MaxAmount 1
+Inventory.RestrictedTo "JesterGelato"
+VisibleToPlayerClass JesterGelato
++INVENTORY.QUIET
++DROPPED
+RenderStyle None
+Radius 20
+Height 16
+States
+{
+Spawn:
+TNT1 A -1
+stop
+Pickup:
+TNT1 A 0 A_JumpIf(CheckClass("JesterGelato"), "Recycle")
+stop
+Recycle:
+TNT1 A 0 A_GiveInventory("GelatoPizzaItem",1)
+TNT1 A 0 A_SpawnItemEx("GelatoStickyPizzaRefundFX",0,0,0,0,0,2.5)
+stop
+HoldAndDestroy:
+TNT1 A 0 A_RemoveMaster
+TNT1 A 1
 stop
 }
 }
