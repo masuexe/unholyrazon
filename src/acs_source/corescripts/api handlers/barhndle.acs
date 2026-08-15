@@ -18,6 +18,11 @@ Script "core_DrawBar_Run" (int cam) CLIENTSIDE {
 #define BARSTYLE_QWANT      1<<6  //$UH
 #define BARSTYLE_NEGAMAN    1<<7  //$UH
 #define BARSTYLE_RELOADICON 1<<8  //$UH
+#define BARSTYLE_MEGAMANU   1<<9  //$UH — RockNRollAmmo reroll bar
+
+#define UH_ROCKNROLL_MAX 28
+#define UH_ROCKNROLL_CYAN 192
+#define UH_ROCKNROLL_BLUE 198
 
 str oldWep;
 int barStyle = BARSTYLE_NONE;
@@ -28,6 +33,24 @@ int bar2cyan, bar2blue;
 int qwanttype;  //$UH
 int negaAmmoId; //$UH
 int negaCyan;   //$UH
+
+function void DrawMegaManURerollBar(void)
+{
+	int owned = CheckInventory("RockNRollAmmo");
+	int bar2Busy = (barStyle & (BARSTYLE_SECONDBAR | BARSTYLE_SECONDAMMO))
+		|| CheckInventory("SBARDrawBar2");
+
+	if (!bar2Busy)
+	{
+		DrawBar2ColorOwned(owned, UH_ROCKNROLL_MAX, UH_ROCKNROLL_CYAN, UH_ROCKNROLL_BLUE);
+		return;
+	}
+
+	if (CheckInventory("SBARDrawBar3"))
+		return;
+
+	DrawBar3Color(owned, UH_ROCKNROLL_MAX, UH_ROCKNROLL_CYAN, UH_ROCKNROLL_BLUE);
+}
 
 function void DrawBarRun(void) {
 	str wep = GetWeapon();
@@ -64,6 +87,10 @@ function void DrawBarRun(void) {
 	}
 	if (barStyle & BARSTYLE_SCRIPT) {
 		ACS_NamedExecuteWithResult(StrParam(s:"DrawBar_", s:wep));
+	}
+	//$UH — after ScriptBar so SBARDrawBar2 from scripts is visible
+	if (barStyle & BARSTYLE_MEGAMANU) {
+		DrawMegaManURerollBar();
 	}
 	if (barStyle & BARSTYLE_RELOADICON) {
 		ACS_NamedExecuteWithResult("DrawBar_ReloadIcon");
@@ -105,7 +132,13 @@ function int getWepBarStyle(str wep) {
 		Thing_Remove(u);
 	}
 
-	if(SpawnForced(StrParam(s:wep, s:"_NormalBar"), 0, 0, 0, u, 0)) {
+	//$UH — MegaManUBar supplies bar1 colors + RockNRoll reroll (prefer over _NormalBar)
+	if (SpawnForced(StrParam(s:wep, s:"_MegaManUBar"), 0, 0, 0, u, 0)) {
+		ret |= BARSTYLE_NORMALBAR | BARSTYLE_MEGAMANU;
+		bar1cyan = getActorArg(u, 0);
+		bar1blue = getActorArg(u, 1);
+		Thing_Remove(u);
+	} else if(SpawnForced(StrParam(s:wep, s:"_NormalBar"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_NORMALBAR;
 		bar1cyan = getActorArg(u, 0);
 		bar1blue = getActorArg(u, 1);
