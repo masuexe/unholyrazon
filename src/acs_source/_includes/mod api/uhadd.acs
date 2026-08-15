@@ -209,10 +209,17 @@
 //          }
 //          YourRegisterBossMusic();
 //      }
-// 4. Same (bossId, lump) again updates weight/credit/optional (no second row).
-// 5. DefineBoss musiclump is auto-seeded into the pool (weight 1, optional 0).
-// 6. Spawn uses weighted PickBossMusicRow in ub_PlayVariantMusic (server SetMusic).
-// 7. OPEN order is not LOADACS order — wait for the target actor before AddBossMusicByActor.
+// 4. Same (bossId, kind, phase, lump) again updates weight/credit/optional (no second row).
+// 5. DefineBoss musiclump is auto-seeded as SPAWN kind (weight 1, optional 0).
+// 6. Spawn uses PickBossMusicRow(id, UHMUS_KIND_SPAWN, 0) in ub_PlayVariantMusic.
+// 7. Enrage: AddBossEnrageMusic / ByActor; DECORATE ub_BossEnrageMusic(which, phase).
+// 8. OPEN order is not LOADACS order — wait for the target actor before Add*ByActor.
+
+// === AddBossEnrageMusic addon recipe =========================================
+// Same patterns as AddBossMusic. phase 0 = default enrage; CuttyCut uses 0 and 1.
+//      AddBossEnrageMusicByActor("YourBossActor", 0, "M_ENRAGE", "credit", 1, 0);
+// Custom DECORATE: ACS_NamedExecuteAlways("ub_BossEnrageMusic",0) or (0, phase).
+// Empty enrage pool → no music change.
 
 #define UHBOSS_FAIL -9999
 #define UHSURV_FAIL -9999
@@ -220,6 +227,8 @@
 #define UHITEM_FAIL -9999
 #define UHCOPY_FAIL -9999
 #define UHMUS_FAIL -9999
+#define UHMUS_KIND_SPAWN 0
+#define UHMUS_KIND_ENRAGE 1
 #define UHEYE_FLAG_NOSUFFIX 1
 
 #define UHBOSS_POOL_NONE 0
@@ -632,6 +641,8 @@ function int GetMegaOfficialCopyCount(void)
 function int AddBossMusic(int bossId, str lump, str credit, int weight, int optional)
 {
 	SetCVar("uh_bm_bossid", bossId);
+	SetCVar("uh_bm_kind", UHMUS_KIND_SPAWN);
+	SetCVar("uh_bm_phase", 0);
 	SetCVarString("uh_bm_lump", lump);
 	SetCVarString("uh_bm_credit", credit);
 	SetCVar("uh_bm_weight", weight);
@@ -647,4 +658,26 @@ function int AddBossMusicByActor(str actor, str lump, str credit, int weight, in
 	if (bossId == UHBOSS_FAIL)
 		return UHMUS_FAIL;
 	return AddBossMusic(bossId, lump, credit, weight, optional);
+}
+
+// Phase-2 / enrage BGM. phase: 0 default; some bosses use 1+ (e.g. CuttyCut).
+function int AddBossEnrageMusic(int bossId, int phase, str lump, str credit, int weight, int optional)
+{
+	SetCVar("uh_bm_bossid", bossId);
+	SetCVar("uh_bm_kind", UHMUS_KIND_ENRAGE);
+	SetCVar("uh_bm_phase", phase);
+	SetCVarString("uh_bm_lump", lump);
+	SetCVarString("uh_bm_credit", credit);
+	SetCVar("uh_bm_weight", weight);
+	SetCVar("uh_bm_optional", optional);
+	return ACS_NamedExecuteWithResult("uh_AddBossMusic_S");
+}
+
+function int AddBossEnrageMusicByActor(str actor, int phase, str lump, str credit, int weight, int optional)
+{
+	int bossId;
+	bossId = UH_FindBossByActor(actor);
+	if (bossId == UHBOSS_FAIL)
+		return UHMUS_FAIL;
+	return AddBossEnrageMusic(bossId, phase, lump, credit, weight, optional);
 }

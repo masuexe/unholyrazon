@@ -33,7 +33,7 @@ Script "ub_PlayVariantMusic" (int TheNum)
 	str lump;
 	str credit;
 
-	row = PickBossMusicRow(TheNum);
+	row = PickBossMusicRow(TheNum, UHMUS_KIND_SPAWN, 0);
 	if (row >= 0)
 	{
 		lump = GetBossMusicLumpByRow(row);
@@ -48,43 +48,32 @@ Script "ub_PlayVariantMusic" (int TheNum)
 	MusicCredits(credit, 0);
 }
 
-//This changes the music for boss weapons
+// Phase-2 / enrage music. which = legacy boss id from DECORATE; type = phase.
+// Prefer activator class; fall back to which if class not in UHDT.
 Script "ub_BossEnrageMusic" (int which, int type)
 {
-	if(CheckInventory("Is_UH_BossNum")/*==1*/ && !CheckInventory("IsGonnaBeFake")){
-		Switch (which)//Bonus things
-		{
-			Case 0:
-				PlayMusic(ExtraBossTunes_Arr[10][0]);
-				MusicCredits(ExtraBossTunes_Arr[10][1],0);
-				break;
-			Case 26:
-				if(!type){
-					PlayMusic(ExtraBossTunes_Arr[11][0]);
-					MusicCredits(ExtraBossTunes_Arr[11][1],0);}
-				else{
-					PlayMusic(ExtraBossTunes_Arr[12][0]);
-					MusicCredits(ExtraBossTunes_Arr[12][1],0);}
-				break;
-			Case 48:
-				PlayMusic(ExtraBossTunes_Arr[13][0]);
-				MusicCredits(ExtraBossTunes_Arr[13][1],0);
-				break;
-			Case 64:
-				PlayMusic(ExtraBossTunes_Arr[14][0]);
-				MusicCredits(ExtraBossTunes_Arr[14][1],0);
-				break;
-//SetActorProperty(BossDataArr[0][BOSSDATA_TID], APROP_SPEED, 1.25);Vlad 103
-			Case 104:
-				PlayMusic(ExtraBossTunes_Arr[15][0]);
-				MusicCredits(ExtraBossTunes_Arr[15][1],0);
-				break;
-			Case 107:
-				PlayMusic(ExtraBossTunes_Arr[16][0]);
-				MusicCredits(ExtraBossTunes_Arr[16][1],0);
-				break;
-		}
-	}
+	int id;
+	int row;
+	str lump;
+	str credit;
+
+	if (!CheckInventory("Is_UH_BossNum") || CheckInventory("IsGonnaBeFake"))
+		terminate;
+
+	id = FindBossByActor(GetActorClass(0));
+	if (id == UHBOSS_FAIL && IsBossDefined(which))
+		id = which;
+	if (id == UHBOSS_FAIL)
+		terminate;
+
+	row = PickBossMusicRow(id, UHMUS_KIND_ENRAGE, type);
+	if (row < 0)
+		terminate;
+
+	lump = GetBossMusicLumpByRow(row);
+	credit = GetBossMusicCreditByRow(row);
+	PlayMusic(lump);
+	MusicCredits(credit, 0);
 }
 
 function int PlayMusic_Winner(int Force)

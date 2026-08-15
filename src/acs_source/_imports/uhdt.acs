@@ -39,6 +39,8 @@
 #LIBDEFINE UH_MAX_BOSS_MUSICS 512
 #LIBDEFINE UHCOPY_FAIL -9999
 #LIBDEFINE UHMUS_FAIL -9999
+#LIBDEFINE UHMUS_KIND_SPAWN 0
+#LIBDEFINE UHMUS_KIND_ENRAGE 1
 #LIBDEFINE UHCOPY_MEGA 1
 #LIBDEFINE UHCOPY_QWANT 2
 #LIBDEFINE UHCOPY_NEGA 3
@@ -1613,29 +1615,34 @@ function int FindMegaCopyIdByStemPrefix(str s)
 	return bestId;
 }
 
-// --- Boss music pool (weighted spawn BGM) ------------------------------------
+// --- Boss music pool (weighted spawn / enrage BGM) ---------------------------
 
 int uh_bossMusicCount = 0;
 int uh_bossMusicBossId[UH_MAX_BOSS_MUSICS];
+int uh_bossMusicKind[UH_MAX_BOSS_MUSICS];
+int uh_bossMusicPhase[UH_MAX_BOSS_MUSICS];
 str uh_bossMusicLump[UH_MAX_BOSS_MUSICS];
 str uh_bossMusicCredit[UH_MAX_BOSS_MUSICS];
 int uh_bossMusicWeight[UH_MAX_BOSS_MUSICS];
 int uh_bossMusicOptional[UH_MAX_BOSS_MUSICS];
 
-function int FindBossMusicByBossLump(int bossId, str lump)
+function int FindBossMusicRow(int bossId, int kind, int phase, str lump)
 {
 	int i;
 	for (i = 0; i < uh_bossMusicCount; i++)
 	{
-		if (uh_bossMusicBossId[i] == bossId && StrCmp(uh_bossMusicLump[i], lump) == 0)
+		if (uh_bossMusicBossId[i] == bossId
+			&& uh_bossMusicKind[i] == kind
+			&& uh_bossMusicPhase[i] == phase
+			&& StrCmp(uh_bossMusicLump[i], lump) == 0)
 			return i;
 	}
 	return -1;
 }
 
 // weight >= 1. optional: non-zero = skip unless uh_sv_OptionalMusic.
-// Same (bossId, lump) again returns existing row (no double / no weight bump).
-function int AddBossMusicCore(int bossId, str lump, str credit, int weight, int optional)
+// Same (bossId, kind, phase, lump) again updates weight/credit/optional.
+function int AddBossMusicCore(int bossId, int kind, int phase, str lump, str credit, int weight, int optional)
 {
 	int row;
 	if (!IsBossDefined(bossId))
@@ -1644,11 +1651,14 @@ function int AddBossMusicCore(int bossId, str lump, str credit, int weight, int 
 		return UHMUS_FAIL;
 	if (weight < 1)
 		return UHMUS_FAIL;
+	if (kind != UHMUS_KIND_SPAWN && kind != UHMUS_KIND_ENRAGE)
+		return UHMUS_FAIL;
+	if (phase < 0)
+		return UHMUS_FAIL;
 
-	row = FindBossMusicByBossLump(bossId, lump);
+	row = FindBossMusicRow(bossId, kind, phase, lump);
 	if (row >= 0)
 	{
-		// Same identity: update weight / credit / optional (no second row).
 		uh_bossMusicCredit[row] = credit;
 		uh_bossMusicWeight[row] = weight;
 		if (optional != 0)
@@ -1662,6 +1672,8 @@ function int AddBossMusicCore(int bossId, str lump, str credit, int weight, int 
 
 	row = uh_bossMusicCount;
 	uh_bossMusicBossId[row] = bossId;
+	uh_bossMusicKind[row] = kind;
+	uh_bossMusicPhase[row] = phase;
 	uh_bossMusicLump[row] = lump;
 	uh_bossMusicCredit[row] = credit;
 	uh_bossMusicWeight[row] = weight;
@@ -1673,12 +1685,12 @@ function int AddBossMusicCore(int bossId, str lump, str credit, int weight, int 
 	return row;
 }
 
-// Seed DefineBoss music into the pool (weight 1, required). No-op for "" / "*".
+// Seed DefineBoss spawn music (weight 1, required). No-op for "" / "*".
 function void UH_BossSeedMusic(int bossId, str lump, str credit)
 {
 	if (StrCmp(lump, "") == 0 || StrCmp(lump, "*") == 0)
 		return;
-	AddBossMusicCore(bossId, lump, credit, 1, 0);
+	AddBossMusicCore(bossId, UHMUS_KIND_SPAWN, 0, lump, credit, 1, 0);
 }
 
 function str GetBossMusicLumpByRow(int row)
@@ -1695,8 +1707,8 @@ function str GetBossMusicCreditByRow(int row)
 	return uh_bossMusicCredit[row];
 }
 
-// Weighted pick among eligible rows for bossId. -1 if none eligible.
-function int PickBossMusicRow(int bossId)
+// Weighted pick among eligible rows. -1 if none eligible.
+function int PickBossMusicRow(int bossId, int kind, int phase)
 {
 	int i;
 	int sum;
@@ -1712,6 +1724,10 @@ function int PickBossMusicRow(int bossId)
 	{
 		if (uh_bossMusicBossId[i] != bossId)
 			continue;
+		if (uh_bossMusicKind[i] != kind)
+			continue;
+		if (uh_bossMusicPhase[i] != phase)
+			continue;
 		if (uh_bossMusicOptional[i] != 0 && !allowOptional)
 			continue;
 		sum += uh_bossMusicWeight[i];
@@ -1723,6 +1739,10 @@ function int PickBossMusicRow(int bossId)
 	for (i = 0; i < uh_bossMusicCount; i++)
 	{
 		if (uh_bossMusicBossId[i] != bossId)
+			continue;
+		if (uh_bossMusicKind[i] != kind)
+			continue;
+		if (uh_bossMusicPhase[i] != phase)
 			continue;
 		if (uh_bossMusicOptional[i] != 0 && !allowOptional)
 			continue;
