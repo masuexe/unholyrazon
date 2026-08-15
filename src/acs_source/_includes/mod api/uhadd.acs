@@ -137,11 +137,34 @@
 //    (e.g. 500); same minCount as vanilla (1000/6666/9999) shares 50/50 at use.
 //    Do not register minCount 25 — that steals the cheap random pool.
 // 6. AssHat throw/land DECORATE; only the 10s morph roll uses AddUnholyItemDrop.
+//
+// === DefineCopyWep addon recipe ==============================================
+// 1. LOADACS after Unholy: YOUR_COPYDEFS
+// 2. ACS:
+//      #library "YOUR_COPYDEFS"
+//      #include "zcommon.acs"
+//      #include "UHADD.acs"
+//      function void YourRegisterCopyWeps(void) {
+//          DefineCopyWep(UHCOPY_MEGA, UHCOPY_SLOT_RANGED, "YourWepU");
+//          DefineCopyWep(UHCOPY_QWANT, UHCOPY_QWANT_FIRE, "YourFireMoveWep");
+//          DefineCopyWep(UHCOPY_NEGA, UHCOPY_NEGA_MM8, "NegaYourWep");
+//      }
+//      script "your_define_copyweps" OPEN {
+//          if (!UHInPlay()) terminate;
+//          YourRegisterCopyWeps();
+//      }
+//      script "your_define_copyweps_cs" OPEN CLIENTSIDE {
+//          YourRegisterCopyWeps();
+//      }
+// 3. Same (kind, wepActor) again returns existing row (no double).
+// 4. Mega daily dmg: vanilla ids 1..official frozen; addon uses class hash (no jackpot).
+// 5. Qwant_W is not registered — startitem only.
 
 #define UHBOSS_FAIL -9999
 #define UHSURV_FAIL -9999
 #define UHEYE_FAIL -9999
 #define UHITEM_FAIL -9999
+#define UHCOPY_FAIL -9999
 #define UHEYE_FLAG_NOSUFFIX 1
 
 #define UHBOSS_POOL_NONE 0
@@ -155,6 +178,50 @@
 #define UHITEM_BOX_PANDORA 0
 #define UHITEM_BOX_MYSTIC 37
 #define UHITEM_BOX_TOW 53
+
+// DefineCopyWep kinds / slots
+#define UHCOPY_MEGA 1
+#define UHCOPY_QWANT 2
+#define UHCOPY_NEGA 3
+#define UHCOPY_SLOT_RANGED 0
+#define UHCOPY_SLOT_RAPID 1
+#define UHCOPY_SLOT_CLOSE 2
+#define UHCOPY_SLOT_POWER 3
+#define UHCOPY_SLOT_AOE 4
+#define UHCOPY_SLOT_SHIELD 5
+#define UHCOPY_QWANT_NORMAL 0
+#define UHCOPY_QWANT_FIRE 1
+#define UHCOPY_QWANT_WATER 2
+#define UHCOPY_QWANT_ELECTRIC 3
+#define UHCOPY_QWANT_GRASS 4
+#define UHCOPY_QWANT_ICE 5
+#define UHCOPY_QWANT_FIGHTING 6
+#define UHCOPY_QWANT_POISON 7
+#define UHCOPY_QWANT_GROUND 8
+#define UHCOPY_QWANT_FLYING 9
+#define UHCOPY_QWANT_PSYCHIC 10
+#define UHCOPY_QWANT_BUG 11
+#define UHCOPY_QWANT_ROCK 12
+#define UHCOPY_QWANT_GHOST 13
+#define UHCOPY_QWANT_DRAGON 14
+#define UHCOPY_QWANT_DARK 15
+#define UHCOPY_QWANT_STEEL 16
+#define UHCOPY_QWANT_FAIRY 17
+#define UHCOPY_NEGA_MM1 1
+#define UHCOPY_NEGA_MM2 2
+#define UHCOPY_NEGA_MM3 3
+#define UHCOPY_NEGA_MM4 4
+#define UHCOPY_NEGA_MM5 5
+#define UHCOPY_NEGA_MM6 6
+#define UHCOPY_NEGA_MM7 7
+#define UHCOPY_NEGA_MM8 8
+#define UHCOPY_NEGA_MM9 9
+#define UHCOPY_NEGA_MM10 10
+#define UHCOPY_NEGA_MM11 11
+#define UHCOPY_NEGA_MMB 12
+#define UHCOPY_NEGA_MMK 13
+#define UHCOPY_NEGA_MMV 14
+#define UHCOPY_NEGA_MMWT 15
 
 int uh_inplay_cache = -1;
 
@@ -482,4 +549,24 @@ function int GiveUnholyBoxItem(str boxactor, int prosperity, int silent)
 	SetCVar("uh_di_prosperity", prosperity);
 	SetCVar("uh_di_silent", silent);
 	return ACS_NamedExecuteWithResult("uh_GiveUnholyBoxItem_S");
+}
+
+// Register a copy weapon into Mega / Qwant / Nega roll pools.
+// slot: Mega = UHCOPY_SLOT_*; Qwant = UHCOPY_QWANT_*; Nega = UHCOPY_NEGA_* (1..15).
+function int DefineCopyWep(int kind, int slot, str wepActor)
+{
+	SetCVar("uh_cw_kind", kind);
+	SetCVar("uh_cw_slot", slot);
+	SetCVarString("uh_cw_actor", wepActor);
+	return ACS_NamedExecuteWithResult("uh_DefineCopyWep_S");
+}
+
+function void FreezeMegaOfficialCopyCount(void)
+{
+	ACS_NamedExecuteWithResult("uh_FreezeMegaOfficialCopyCount_S");
+}
+
+function int GetMegaOfficialCopyCount(void)
+{
+	return ACS_NamedExecuteWithResult("uh_GetMegaOfficialCopyCount_S");
 }

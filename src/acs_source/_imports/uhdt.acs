@@ -35,6 +35,50 @@
 #LIBDEFINE UHITEM_BOX_TOW 53
 #LIBDEFINE UH_MAX_ITEM_DROPS 1024
 #LIBDEFINE UH_MAX_COIN_SPENDS 32
+#LIBDEFINE UH_MAX_COPYWEPS 256
+#LIBDEFINE UHCOPY_FAIL -9999
+#LIBDEFINE UHCOPY_MEGA 1
+#LIBDEFINE UHCOPY_QWANT 2
+#LIBDEFINE UHCOPY_NEGA 3
+#LIBDEFINE UHCOPY_SLOT_RANGED 0
+#LIBDEFINE UHCOPY_SLOT_RAPID 1
+#LIBDEFINE UHCOPY_SLOT_CLOSE 2
+#LIBDEFINE UHCOPY_SLOT_POWER 3
+#LIBDEFINE UHCOPY_SLOT_AOE 4
+#LIBDEFINE UHCOPY_SLOT_SHIELD 5
+#LIBDEFINE UHCOPY_QWANT_NORMAL 0
+#LIBDEFINE UHCOPY_QWANT_FIRE 1
+#LIBDEFINE UHCOPY_QWANT_WATER 2
+#LIBDEFINE UHCOPY_QWANT_ELECTRIC 3
+#LIBDEFINE UHCOPY_QWANT_GRASS 4
+#LIBDEFINE UHCOPY_QWANT_ICE 5
+#LIBDEFINE UHCOPY_QWANT_FIGHTING 6
+#LIBDEFINE UHCOPY_QWANT_POISON 7
+#LIBDEFINE UHCOPY_QWANT_GROUND 8
+#LIBDEFINE UHCOPY_QWANT_FLYING 9
+#LIBDEFINE UHCOPY_QWANT_PSYCHIC 10
+#LIBDEFINE UHCOPY_QWANT_BUG 11
+#LIBDEFINE UHCOPY_QWANT_ROCK 12
+#LIBDEFINE UHCOPY_QWANT_GHOST 13
+#LIBDEFINE UHCOPY_QWANT_DRAGON 14
+#LIBDEFINE UHCOPY_QWANT_DARK 15
+#LIBDEFINE UHCOPY_QWANT_STEEL 16
+#LIBDEFINE UHCOPY_QWANT_FAIRY 17
+#LIBDEFINE UHCOPY_NEGA_MM1 1
+#LIBDEFINE UHCOPY_NEGA_MM2 2
+#LIBDEFINE UHCOPY_NEGA_MM3 3
+#LIBDEFINE UHCOPY_NEGA_MM4 4
+#LIBDEFINE UHCOPY_NEGA_MM5 5
+#LIBDEFINE UHCOPY_NEGA_MM6 6
+#LIBDEFINE UHCOPY_NEGA_MM7 7
+#LIBDEFINE UHCOPY_NEGA_MM8 8
+#LIBDEFINE UHCOPY_NEGA_MM9 9
+#LIBDEFINE UHCOPY_NEGA_MM10 10
+#LIBDEFINE UHCOPY_NEGA_MM11 11
+#LIBDEFINE UHCOPY_NEGA_MMB 12
+#LIBDEFINE UHCOPY_NEGA_MMK 13
+#LIBDEFINE UHCOPY_NEGA_MMV 14
+#LIBDEFINE UHCOPY_NEGA_MMWT 15
 
 // str fields per boss
 #LIBDEFINE UHBOSS_STR_ACTOR 0
@@ -1342,4 +1386,227 @@ function int FindCoinSpendRow(int coins)
 	if (n < 1)
 		return -1;
 	return candidates[Random(0, n - 1)];
+}
+
+// --- DefineCopyWep tables ----------------------------------------------------
+// Row: (kind, slot, actor, dmgStem). Mega dmg id = order among mega rows (1..n).
+// uh_copyMegaOfficialCount frozen after vanilla so jackpot pool stays stable.
+
+int uh_copyCount = 0;
+int uh_copyKind[UH_MAX_COPYWEPS];
+int uh_copySlot[UH_MAX_COPYWEPS];
+str uh_copyActor[UH_MAX_COPYWEPS];
+str uh_copyDmgStem[UH_MAX_COPYWEPS];
+int uh_copyMegaId[UH_MAX_COPYWEPS];
+int uh_copyMegaCount = 0;
+int uh_copyMegaOfficialCount = 0;
+
+function bool CopyWepSlotValid(int kind, int slot)
+{
+	if (kind == UHCOPY_MEGA)
+		return slot >= UHCOPY_SLOT_RANGED && slot <= UHCOPY_SLOT_SHIELD;
+	if (kind == UHCOPY_QWANT)
+		return slot >= UHCOPY_QWANT_NORMAL && slot <= UHCOPY_QWANT_FAIRY;
+	if (kind == UHCOPY_NEGA)
+		return slot >= UHCOPY_NEGA_MM1 && slot <= UHCOPY_NEGA_MMWT;
+	return false;
+}
+
+function str CopyWepMakeDmgStem(str wepActor)
+{
+	int len = StrLen(wepActor);
+	if (len >= 4 && StrCmp(StrRight(wepActor, 4), "WepU") == 0)
+		return StrLeft(wepActor, len - 4);
+	return wepActor;
+}
+
+function int FindCopyWepByKindActor(int kind, str wepActor)
+{
+	int i;
+	for (i = 0; i < uh_copyCount; i++)
+	{
+		if (uh_copyKind[i] == kind && StrICmp(uh_copyActor[i], wepActor) == 0)
+			return i;
+	}
+	return -1;
+}
+
+function int DefineCopyWepCore(int kind, int slot, str wepActor)
+{
+	int row;
+	if (kind != UHCOPY_MEGA && kind != UHCOPY_QWANT && kind != UHCOPY_NEGA)
+		return UHCOPY_FAIL;
+	if (!CopyWepSlotValid(kind, slot))
+		return UHCOPY_FAIL;
+	if (StrCmp(wepActor, "") == 0)
+		return UHCOPY_FAIL;
+
+	row = FindCopyWepByKindActor(kind, wepActor);
+	if (row >= 0)
+		return row;
+	if (uh_copyCount >= UH_MAX_COPYWEPS)
+		return UHCOPY_FAIL;
+
+	row = uh_copyCount;
+	uh_copyKind[row] = kind;
+	uh_copySlot[row] = slot;
+	uh_copyActor[row] = wepActor;
+	uh_copyDmgStem[row] = CopyWepMakeDmgStem(wepActor);
+	uh_copyMegaId[row] = 0;
+	if (kind == UHCOPY_MEGA)
+	{
+		uh_copyMegaCount++;
+		uh_copyMegaId[row] = uh_copyMegaCount;
+	}
+	uh_copyCount++;
+	return row;
+}
+
+function void FreezeMegaOfficialCopyCount(void)
+{
+	uh_copyMegaOfficialCount = uh_copyMegaCount;
+}
+
+function int GetMegaOfficialCopyCount(void)
+{
+	return uh_copyMegaOfficialCount;
+}
+
+function int CountCopyWepByKind(int kind)
+{
+	int i;
+	int n;
+	n = 0;
+	for (i = 0; i < uh_copyCount; i++)
+	{
+		if (uh_copyKind[i] == kind)
+			n++;
+	}
+	return n;
+}
+
+function int CountCopyWepByKindSlot(int kind, int slot)
+{
+	int i;
+	int n;
+	n = 0;
+	for (i = 0; i < uh_copyCount; i++)
+	{
+		if (uh_copyKind[i] == kind && uh_copySlot[i] == slot)
+			n++;
+	}
+	return n;
+}
+
+// idx = 0-based among rows with this kind. Returns table row or -1.
+function int FindCopyWepRowByKindIndex(int kind, int idx)
+{
+	int i;
+	int n;
+	n = 0;
+	for (i = 0; i < uh_copyCount; i++)
+	{
+		if (uh_copyKind[i] != kind)
+			continue;
+		if (n == idx)
+			return i;
+		n++;
+	}
+	return -1;
+}
+
+// idx = 0-based among rows with this kind+slot. Returns table row or -1.
+function int FindCopyWepRowByKindSlotIndex(int kind, int slot, int idx)
+{
+	int i;
+	int n;
+	n = 0;
+	for (i = 0; i < uh_copyCount; i++)
+	{
+		if (uh_copyKind[i] != kind || uh_copySlot[i] != slot)
+			continue;
+		if (n == idx)
+			return i;
+		n++;
+	}
+	return -1;
+}
+
+function str GetCopyWepActorByKindIndex(int kind, int idx)
+{
+	int row = FindCopyWepRowByKindIndex(kind, idx);
+	if (row < 0)
+		return "";
+	return uh_copyActor[row];
+}
+
+function str GetCopyWepActorByKindSlotIndex(int kind, int slot, int idx)
+{
+	int row = FindCopyWepRowByKindSlotIndex(kind, slot, idx);
+	if (row < 0)
+		return "";
+	return uh_copyActor[row];
+}
+
+function str GetCopyWepDmgStemByMegaId(int megaId)
+{
+	int i;
+	if (megaId < 1)
+		return "";
+	for (i = 0; i < uh_copyCount; i++)
+	{
+		if (uh_copyKind[i] == UHCOPY_MEGA && uh_copyMegaId[i] == megaId)
+			return uh_copyDmgStem[i];
+	}
+	return "";
+}
+
+// Case-insensitive prefix (UHDT self-contained for mega stem match).
+function bool UH_StrIStartsWithCopy(str s, str prefix)
+{
+	int plen;
+	int i;
+	int a;
+	int b;
+	plen = StrLen(prefix);
+	if (plen <= 0 || StrLen(s) < plen)
+		return false;
+	for (i = 0; i < plen; i++)
+	{
+		a = GetChar(s, i);
+		b = GetChar(prefix, i);
+		if (a >= 65 && a <= 90)
+			a = a + 32;
+		if (b >= 65 && b <= 90)
+			b = b + 32;
+		if (a != b)
+			return false;
+	}
+	return true;
+}
+
+// Longest mega dmgStem prefix match against s. Returns megaId or 0.
+function int FindMegaCopyIdByStemPrefix(str s)
+{
+	int i;
+	int bestId;
+	int bestLen;
+	int nlen;
+	str stem;
+
+	bestId = 0;
+	bestLen = 0;
+	for (i = 0; i < uh_copyCount; i++)
+	{
+		if (uh_copyKind[i] != UHCOPY_MEGA)
+			continue;
+		stem = uh_copyDmgStem[i];
+		nlen = StrLen(stem);
+		if (nlen > bestLen && UH_StrIStartsWithCopy(s, stem))
+		{
+			bestLen = nlen;
+			bestId = uh_copyMegaId[i];
+		}
+	}
+	return bestId;
 }
