@@ -499,7 +499,6 @@ script "uh_MegaManUNoAmmo" (void)
 // Official ids 1..103 follow the six *WepU[] arrays (append-only).
 // DECORATE: damage (CallACS("uh_TodayDmgMul", base)); ACS infers wep from activator.
 #define UH_COPYWEP_OFFICIAL_MAX 103
-#define UH_WEPC_PlantBarrier 95
 
 // Helpers whose class / DamageType do not prefix-match an official name.
 #define UH_COPYWEP_ALIAS_MAX 37
@@ -776,17 +775,25 @@ function int uh_CopywepDmgMul(int wep)
 	if (lucky == wep)
 		mul = uh_SeedRandom(date + 1234 * 1000, 80.0, 120.0);
 
-	// Plant Barrier: 50% chance to negate (heal-style joke)
-	if (wep == UH_WEPC_PlantBarrier) {
-		if (uh_SeedRandom(date + 309, 0.0, 1.0) < 0.5)
-			mul = -mul;
-	}
 	return mul;
 }
 
-script "uh_TodayDmgMul" (int damage)
+// allowNeg: after base+lucky mul, 50% chance to negate → mul on
+// [-max,-min] U [min,max] (same magnitude dist as unsigned, then flip).
+// Omitted 2nd CallACS arg is 0 (normal weapons).
+script "uh_TodayDmgMul" (int damage, int allowNeg)
 {
-	SetResultValue(FixedMul(uh_CopywepDmgMul(uh_CopywepIdFromActivator()), damage));
+	int wep = uh_CopywepIdFromActivator();
+	int mul = uh_CopywepDmgMul(wep);
+	if (allowNeg) {
+		int date = uh_DateToInt();
+		int seedKey = wep;
+		if (seedKey < 1)
+			seedKey = uh_HashStr(GetActorClass(0));
+		if (uh_SeedRandom(date + 309 + seedKey * 17, 0.0, 1.0) < 0.5)
+			mul = -mul;
+	}
+	SetResultValue(FixedMul(mul, damage));
 }
 
 script "uh_debug_ShowTodayDmgMul" (void)
