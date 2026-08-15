@@ -672,3 +672,149 @@ script "uh_debug_ShowTodayDmgMul" (void)
 		Log(s:GetCopyWepDmgStemByMegaId(i), s:" [", i:i, s:"] mul=", f:uh_CopywepDmgMul(i));
 	}
 }
+
+// --- Daily MegaMan copywep team-FF (leak weapons only; damage = uh_TodayDmgMul result) ---
+#define UH_TEAMFF_LEAK_MAX 8
+#define UH_TEAMFF_SALT 424242
+
+int uh_teamFFLeakIds[UH_TEAMFF_LEAK_MAX];
+int uh_teamFFLeakDate;
+int uh_teamFFLeakOfficial;
+int uh_teamFFLeakCount;
+
+function void uh_EnsureTodayTeamFFLeaks(void)
+{
+	int date = uh_DateToInt();
+	int official = GetMegaOfficialCopyCount();
+	int want;
+	int picked;
+	int attempt;
+	int i;
+	int j;
+	int id;
+	int dup;
+
+	if (official < 1)
+		official = 103;
+	if (uh_teamFFLeakDate == date && uh_teamFFLeakOfficial == official)
+		return;
+
+	uh_teamFFLeakDate = date;
+	uh_teamFFLeakOfficial = official;
+	want = UH_TEAMFF_LEAK_MAX;
+	if (want > official)
+		want = official;
+
+	for (i = 0; i < UH_TEAMFF_LEAK_MAX; i++)
+		uh_teamFFLeakIds[i] = 0;
+
+	picked = 0;
+	attempt = 0;
+	while (picked < want && attempt < 1000) {
+		attempt++;
+		id = uh_SeedRandom(date + UH_TEAMFF_SALT + attempt * 97, 1, official);
+		dup = 0;
+		for (j = 0; j < picked; j++) {
+			if (uh_teamFFLeakIds[j] == id) {
+				dup = 1;
+				break;
+			}
+		}
+		if (!dup) {
+			uh_teamFFLeakIds[picked] = id;
+			picked++;
+		}
+	}
+	uh_teamFFLeakCount = picked;
+}
+
+function int uh_IsTodayTeamFFLeak(int wepId)
+{
+	int i;
+	if (wepId < 1)
+		return 0;
+	uh_EnsureTodayTeamFFLeaks();
+	for (i = 0; i < uh_teamFFLeakCount; i++) {
+		if (uh_teamFFLeakIds[i] == wepId)
+			return 1;
+	}
+	return 0;
+}
+
+function str uh_StripMegaMPrefix(str dtype)
+{
+	if (StrLen(dtype) > 2 && GetChar(dtype, 0) == 77 && GetChar(dtype, 1) == 95)
+		return StrMid(dtype, 2, StrLen(dtype) - 2);
+	return dtype;
+}
+
+script "uh_ApplyCopywepTeamFF" (void)
+{
+	TakeInventory("PowerProtectMegaCopywep", 1);
+	if (!CheckInventory("PowerProtectSurvivor"))
+		terminate;
+	if (!GetCVar("rz_sv_randMegaManCopywepTeamFF"))
+		GiveInventory("PowerProtectMegaCopywep", 1);
+}
+
+script "uh_ClearCopywepTeamFF" (void)
+{
+	TakeInventory("PowerProtectMegaCopywep", 1);
+}
+
+// PREMOD: after PowerProtection / teamdamage, before armor.
+// When cvar is on (no blob), zero teammate copywep damage unless today's leak set.
+script "uh_CopywepTeamFF" (int evt, int dmg, int dmgtype) EVENT
+{
+	int victPn;
+	int srcPn;
+	int wepId;
+	str stem;
+
+	if (evt != GAMEEVENT_ACTOR_DAMAGED_PREMOD)
+		terminate;
+	if (!GetCVar("rz_sv_randMegaManCopywepTeamFF"))
+		terminate;
+
+	if (!SetActivator(0, AAPTR_DAMAGE_TARGET))
+		terminate;
+	victPn = PlayerNumber();
+	if (victPn < 0)
+		terminate;
+	if (!CheckInventory("PowerProtectSurvivor"))
+		terminate;
+
+	if (!SetActivator(0, AAPTR_DAMAGE_SOURCE))
+		terminate;
+	srcPn = PlayerNumber();
+	if (srcPn < 0)
+		terminate;
+	if (GetPlayerInfo(victPn, PLAYERINFO_TEAM) != GetPlayerInfo(srcPn, PLAYERINFO_TEAM))
+		terminate;
+
+	stem = uh_StripMegaMPrefix(dmgtype);
+	wepId = FindMegaCopyIdByStemPrefix(stem);
+	if (wepId < 1)
+		terminate;
+	if (uh_IsTodayTeamFFLeak(wepId))
+		terminate;
+	SetResultValue(0);
+}
+
+script "uh_debug_ShowTodayTeamFF" (void)
+{
+	int i;
+	int date = uh_DateToInt();
+	int official = GetMegaOfficialCopyCount();
+
+	uh_EnsureTodayTeamFFLeaks();
+	Log(s:"uh_debug_ShowTodayTeamFF date=", i:date,
+		s:" official=", i:official,
+		s:" leakCount=", i:uh_teamFFLeakCount,
+		s:" rz_sv_randMegaManCopywepTeamFF=", i:GetCVar("rz_sv_randMegaManCopywepTeamFF"));
+	for (i = 0; i < uh_teamFFLeakCount; i++) {
+		Log(s:"  leak ", i:i + 1, s:": ",
+			s:GetCopyWepDmgStemByMegaId(uh_teamFFLeakIds[i]),
+			s:" [", i:uh_teamFFLeakIds[i], s:"]");
+	}
+}
