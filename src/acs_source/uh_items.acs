@@ -242,6 +242,47 @@ Script "rz_DlcCoinRoll" (int silent)
 	SetResultValue(GiveRandomBoxItemCore(boxid, 0, silent));
 }
 
+// DLC_Coin Use / UseX_Silent: spend table first, then >=25 roll, else unlucky.
+// Spend sound on channel 5 (SoundSlot5); no GoldenWaspShot (roll pool only).
+Script "rz_DlcCoinUse" (void)
+{
+	int coins;
+	int row;
+	int take;
+	str give;
+	str snd;
+
+	coins = CheckInventory("DLC_CoinItem");
+	row = FindCoinSpendRow(coins);
+	if (row >= 0)
+	{
+		take = uh_coinSpendTake[row];
+		give = uh_coinSpendGive[row];
+		snd = uh_coinSpendSound[row];
+		if (take <= 0)
+			TakeInventory("DLC_CoinItem", coins);
+		else
+			TakeInventory("DLC_CoinItem", take);
+		if (StrCmp(snd, "") != 0)
+			PlaySound(0, snd, 5);
+		GiveInventory(give, 1);
+		SetResultValue(1);
+		terminate;
+	}
+
+	if (coins >= 25)
+	{
+		TakeInventory("DLC_CoinItem", 25);
+		SetResultValue(GiveRandomBoxItemCore(FindItemByActor("DLC_CoinItem"), 0, 0));
+		terminate;
+	}
+
+	if (coins > 0)
+		TakeInventory("DLC_CoinItem", coins);
+	PlaySound(0, "items/SoUnlucky", 5);
+	SetResultValue(0);
+}
+
 // EyeDrop: SpawnItemEx x1 at activator. GauntletExit / Minivile hijacks (EyeDrop-only).
 Script "uh_SpawnRandomBoxItem" (int boxid)
 {

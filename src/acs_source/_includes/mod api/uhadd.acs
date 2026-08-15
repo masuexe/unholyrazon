@@ -95,6 +95,8 @@
 //          // AddUnholyItemDrop("DLC_CoinItem", "YourItem", 8, 1, "", "AutoYourItemSilent");
 //          // AssHat: giveActor = hat class, or "" for generic hat + "{Item}FX"
 //          // AddUnholyItemDrop("AssHatItem", "YourItem", 8, 1, "", "");
+//          // Coin threshold (prefer empty tiers; 1000/6666/9999 share with vanilla):
+//          // DefineUnholyCoinSpend(500, 500, "YourItem", "misc/WellDoneMan");
 //      }
 //      // Custom box: DECORATE cannot pass string — wrap GiveUnholyBoxItem:
 //      //   script "GiveYourBox" (int prosperity, int silent) {
@@ -115,7 +117,9 @@
 //      }
 // 3. Do NOT put item ids in BossNumb / BHW.
 // 4. Same (box, item, giveActor, amt) AddUnholyItemDrop again accumulates weight.
-// 5. DLC_Coin thresholds (1000/6666/9999) stay DECORATE — not in drop table.
+// 5. Coin thresholds: DefineUnholyCoinSpend (not drop table). Prefer empty tiers
+//    (e.g. 500); same minCount as vanilla (1000/6666/9999) shares 50/50 at use.
+//    Do not register minCount 25 — that steals the cheap random pool.
 // 6. AssHat throw/land DECORATE; only the 10s morph roll uses AddUnholyItemDrop.
 
 #define UHBOSS_FAIL -9999
@@ -390,6 +394,19 @@ function int AddUnholyItemDrop(str boxactor, str itemActor, int weight, int amt,
 	SetCVarString("uh_di_sound", stingOverride);
 	SetCVarString("uh_di_giveactor", giveActor);
 	return ACS_NamedExecuteWithResult("uh_AddUnholyItemDrop_S");
+}
+
+// Coin threshold spend (not weighted drop). takeAmt 0 = take all coins.
+// Same (minCount, giveActor) again returns existing row (no double entry).
+// At use: highest eligible minCount; ties at that tier pick uniformly at random.
+// Example empty tier: DefineUnholyCoinSpend(500, 500, "YourItem", "misc/WellDoneMan");
+function int DefineUnholyCoinSpend(int minCount, int takeAmt, str giveActor, str sound)
+{
+	SetCVar("uh_di_mincount", minCount);
+	SetCVar("uh_di_amt", takeAmt);
+	SetCVarString("uh_di_giveactor", giveActor);
+	SetCVarString("uh_di_sound", sound);
+	return ACS_NamedExecuteWithResult("uh_DefineUnholyCoinSpend_S");
 }
 
 function int IsItemDefined(int id)

@@ -34,6 +34,7 @@
 #LIBDEFINE UHITEM_BOX_MYSTIC 37
 #LIBDEFINE UHITEM_BOX_TOW 53
 #LIBDEFINE UH_MAX_ITEM_DROPS 1024
+#LIBDEFINE UH_MAX_COIN_SPENDS 32
 
 // str fields per boss
 #LIBDEFINE UHBOSS_STR_ACTOR 0
@@ -823,6 +824,14 @@ str uh_itemDropSting[UH_MAX_ITEM_DROPS];
 str uh_itemDropGive[UH_MAX_ITEM_DROPS];
 int uh_itemLastDropRow = -1;
 
+// DLC_Coin threshold spends: identity (minCount, giveActor); same key returns existing row.
+// Runtime: highest minCount with coins >= minCount; ties uniform-random among that tier.
+int uh_coinSpendCount = 0;
+int uh_coinSpendMin[UH_MAX_COIN_SPENDS];
+int uh_coinSpendTake[UH_MAX_COIN_SPENDS];
+str uh_coinSpendGive[UH_MAX_COIN_SPENDS];
+str uh_coinSpendSound[UH_MAX_COIN_SPENDS];
+
 // AssHat generic pending: tid → item actor to give on pickup.
 #LIBDEFINE UH_ASSHAT_PENDING_MAX 32
 int uh_assHatPendingTid[UH_ASSHAT_PENDING_MAX];
@@ -1265,4 +1274,72 @@ function str AssHatPendingPeek(int tid)
 			return uh_assHatPendingItem[i];
 	}
 	return "";
+}
+
+function int FindCoinSpendByKey(int minCount, str giveActor)
+{
+	int i;
+	for (i = 0; i < uh_coinSpendCount; i++)
+	{
+		if (uh_coinSpendMin[i] == minCount && StrICmp(uh_coinSpendGive[i], giveActor) == 0)
+			return i;
+	}
+	return -1;
+}
+
+// takeAmt 0 = take all at use time. Same (minCount, giveActor) returns existing row (no double).
+function int DefineUnholyCoinSpendCore(int minCount, int takeAmt, str giveActor, str sound)
+{
+	int row;
+	if (minCount < 1)
+		return UHITEM_FAIL;
+	if (StrCmp(giveActor, "") == 0)
+		return UHITEM_FAIL;
+	if (takeAmt < 0)
+		takeAmt = 0;
+
+	row = FindCoinSpendByKey(minCount, giveActor);
+	if (row >= 0)
+		return row;
+	if (uh_coinSpendCount >= UH_MAX_COIN_SPENDS)
+		return UHITEM_FAIL;
+
+	row = uh_coinSpendCount;
+	uh_coinSpendMin[row] = minCount;
+	uh_coinSpendTake[row] = takeAmt;
+	uh_coinSpendGive[row] = giveActor;
+	uh_coinSpendSound[row] = sound;
+	uh_coinSpendCount++;
+	return row;
+}
+
+// Highest eligible minCount; uniform pick among rows at that tier. -1 if none.
+function int FindCoinSpendRow(int coins)
+{
+	int i;
+	int bestMin;
+	int n;
+	int candidates[UH_MAX_COIN_SPENDS];
+
+	bestMin = 0;
+	for (i = 0; i < uh_coinSpendCount; i++)
+	{
+		if (uh_coinSpendMin[i] <= coins && uh_coinSpendMin[i] > bestMin)
+			bestMin = uh_coinSpendMin[i];
+	}
+	if (bestMin < 1)
+		return -1;
+
+	n = 0;
+	for (i = 0; i < uh_coinSpendCount; i++)
+	{
+		if (uh_coinSpendMin[i] == bestMin)
+		{
+			candidates[n] = i;
+			n++;
+		}
+	}
+	if (n < 1)
+		return -1;
+	return candidates[Random(0, n - 1)];
 }
