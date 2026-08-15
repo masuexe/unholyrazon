@@ -227,8 +227,16 @@
 //      AddWinnerMusic("M_MYWIN", "Game - Victory", 1, 0, -1.0, 0);
 //      AddLoserMusic("M_MYLOSE", "Game - Game Over", 1, 0, -1.0, 0);
 // Prefer optional=0 and ship lumps in the same addon pk3.
-// Same (kind, lump) again updates weight/credit/optional/duration/emuflag.
+// Same (kind, phase=0, lump) again updates weight/credit/optional/duration/emuflag.
 // Empty pool → PlayMusic_Winner/Loser skips play and returns 0.
+//
+// === AddLMSMusic addon recipe ================================================
+// Per-event BGM for last-survivor LMS events (not a global random pool).
+// eventid: vanilla 0–11; ids >=12 can be registered now but do not fire until
+// DefineLMSEvent expands RNG (items/icons/messages still hardcoded this round).
+//      AddLMSMusic(4, "M_MYALT", "Game - Alt LMS Theme", 1, 0);
+// Same (kind, eventid, lump) again updates weight/credit/optional.
+// Empty pool for that eventid → ub_LMS_EventTime falls back to lmsListArray music.
 
 #define UHBOSS_FAIL -9999
 #define UHSURV_FAIL -9999
@@ -240,6 +248,7 @@
 #define UHMUS_KIND_ENRAGE 1
 #define UHMUS_KIND_WINNER 2
 #define UHMUS_KIND_LOSER 3
+#define UHMUS_KIND_LMS 4
 #define UHEYE_FLAG_NOSUFFIX 1
 
 #define UHBOSS_POOL_NONE 0
@@ -698,6 +707,7 @@ function int AddBossEnrageMusicByActor(str actor, int phase, str lump, str credi
 function int AddWinnerMusic(str lump, str credit, int weight, int optional, int duration, int emuflag)
 {
 	SetCVar("uh_bm_kind", UHMUS_KIND_WINNER);
+	SetCVar("uh_bm_phase", 0);
 	SetCVarString("uh_bm_lump", lump);
 	SetCVarString("uh_bm_credit", credit);
 	SetCVar("uh_bm_weight", weight);
@@ -711,11 +721,27 @@ function int AddWinnerMusic(str lump, str credit, int weight, int optional, int 
 function int AddLoserMusic(str lump, str credit, int weight, int optional, int duration, int emuflag)
 {
 	SetCVar("uh_bm_kind", UHMUS_KIND_LOSER);
+	SetCVar("uh_bm_phase", 0);
 	SetCVarString("uh_bm_lump", lump);
 	SetCVarString("uh_bm_credit", credit);
 	SetCVar("uh_bm_weight", weight);
 	SetCVar("uh_bm_optional", optional);
 	SetCVar("uh_bm_duration", duration);
 	SetCVar("uh_bm_emuflag", emuflag);
+	return ACS_NamedExecuteWithResult("uh_AddEventMusic_S");
+}
+
+// Last-survivor event BGM for a given eventid (vanilla 0–11; no upper cap).
+// No duration — plays until match end. weight >= 1.
+function int AddLMSMusic(int eventid, str lump, str credit, int weight, int optional)
+{
+	SetCVar("uh_bm_kind", UHMUS_KIND_LMS);
+	SetCVar("uh_bm_phase", eventid);
+	SetCVarString("uh_bm_lump", lump);
+	SetCVarString("uh_bm_credit", credit);
+	SetCVar("uh_bm_weight", weight);
+	SetCVar("uh_bm_optional", optional);
+	SetCVar("uh_bm_duration", 0);
+	SetCVar("uh_bm_emuflag", 0);
 	return ACS_NamedExecuteWithResult("uh_AddEventMusic_S");
 }
