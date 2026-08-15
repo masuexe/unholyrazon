@@ -436,3 +436,43 @@ script "rz_FlameBurstSplitDmg" (int ratio)
 
 	ACS_NamedExecuteWithResult("core_damageactor", "FlameBurstSplitDamager", dmg, victim, owner);
 }
+
+// --- MegaManU copywep Ready ammo regen (pulse from Ready / ReadyX) ---
+#DEFINE UH_COPYWEP_REGEN_PULSES 8
+
+int uh_cwRegenCount[64];
+int uh_cwRegenLastTic[64];
+
+// Activator: player. Called once per Ready loop tic from BaseMegaManUWep ReadyX
+// (or exception Ready loops). GyroAttackWepU → GyroAttackAmmo. 8 pulses → +1 ammo.
+script "uh_CopyWepReadyRegen" (void)
+{
+	int pn = PlayerNumber();
+	if (pn < 0) {
+		SetResultValue(0);
+		terminate;
+	}
+
+	str wep = GetWeapon();
+	int len = StrLen(wep);
+	if (len < 4 || StrCmp(StrRight(wep, 4), "WepU") != 0) {
+		uh_cwRegenCount[pn] = 0;
+		SetResultValue(0);
+		terminate;
+	}
+
+	int t = Timer();
+	if (uh_cwRegenLastTic[pn] != t - 1)
+		uh_cwRegenCount[pn] = 0;
+	uh_cwRegenLastTic[pn] = t;
+
+	uh_cwRegenCount[pn]++;
+	if (uh_cwRegenCount[pn] < UH_COPYWEP_REGEN_PULSES) {
+		SetResultValue(0);
+		terminate;
+	}
+
+	uh_cwRegenCount[pn] = 0;
+	GiveInventory(StrParam(s:StrLeft(wep, len - 4), s:"Ammo"), 1);
+	SetResultValue(1);
+}
