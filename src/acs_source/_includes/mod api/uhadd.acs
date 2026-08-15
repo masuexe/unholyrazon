@@ -239,19 +239,18 @@
 //
 // === DefineLMSEvent addon recipe =============================================
 // Full last-survivor event (messages, icons, drops, dual-rune flag, pool weight).
-// Music remains AddLMSMusic(id, ...) against the same id.
+// Drops and music bind by stem (stable). DefineLMSEvent(-1) still returns id for RCON.
 // 1. LOADACS after Unholy: YOUR_LMSDEFS
 // 2. ACS:
 //      #library "YOUR_LMSDEFS"
 //      #include "zcommon.acs"
 //      #include "UHADD.acs"
 //      function void YourRegisterLMS(void) {
-//          int id = DefineLMSEvent(-1, "my_lms", "Normal msg", "Rare msg",
+//          DefineLMSEvent(-1, "my_lms", "Normal msg", "Rare msg",
 //              "MYLMS_E", "MYLMS_X", 0, 1);
-//          // Capture id — do not hardcode auto ids across pk3s.
-//          AddLMSEventDrop(id, "GUHUItem", 1, 0);
-//          AddLMSEventDrop(id, "SuperGUHUItem", 1, 1);
-//          AddLMSMusic(id, "M_MYLMS", "Game - My LMS Theme", 1, 0);
+//          AddLMSEventDrop("my_lms", "GUHUItem", 1, 0);
+//          AddLMSEventDrop("my_lms", "SuperGUHUItem", 1, 1);
+//          AddLMSMusicByStem("my_lms", "M_MYLMS", "Game - My LMS Theme", 1, 0);
 //      }
 //      script "your_define_lms" OPEN {
 //          if (!UHInPlay()) terminate;
@@ -264,6 +263,7 @@
 // 4. weight 0 = RCON/force only; >=1 = random pool. UHLMS_FLAG_DUALRUNE = second rune.
 // 5. icon "" → LMS_E# / LMS_X# fallback (vanilla). Custom ids need explicit fonts.
 // 6. Drops optional (vanilla dual-rune event has none). rare 0=normal, 1=rare fire.
+// 7. Do not pass -1 to AddLMSEventDrop — use the stem string.
 
 #define UHBOSS_FAIL -9999
 #define UHSURV_FAIL -9999
@@ -789,10 +789,10 @@ function int DefineLMSEvent(int id, str stem, str message, str raremessage, str 
 	return ACS_NamedExecuteWithResult("uh_DefineLMSEvent_S");
 }
 
-// Item grant for an LMS event. rare 0 = normal fire, 1 = rare fire.
-function int AddLMSEventDrop(int id, str itemActor, int amt, int rare)
+// Item grant for an LMS event, keyed by stem. rare 0 = normal, 1 = rare.
+function int AddLMSEventDrop(str stem, str itemActor, int amt, int rare)
 {
-	SetCVar("uh_le_id", id);
+	SetCVarString("uh_le_stem", stem);
 	SetCVarString("uh_le_item", itemActor);
 	SetCVar("uh_le_amt", amt);
 	SetCVar("uh_le_rare", rare);
@@ -808,6 +808,16 @@ function int UH_FindLMSEventByStem(str stem)
 {
 	SetCVarString("uh_le_stem", stem);
 	return ACS_NamedExecuteWithResult("uh_FindLMSEventByStem_S");
+}
+
+// Addon-safe: resolve stem, then AddLMSMusic.
+function int AddLMSMusicByStem(str stem, str lump, str credit, int weight, int optional)
+{
+	int eventId;
+	eventId = UH_FindLMSEventByStem(stem);
+	if (eventId == UHLMS_FAIL)
+		return UHMUS_FAIL;
+	return AddLMSMusic(eventId, lump, credit, weight, optional);
 }
 
 function str UH_GetLMSEventMessage(int id)
