@@ -161,30 +161,58 @@
 // 5. Qwant_W is not registered — startitem only.
 //
 // === AddBossMusic addon recipe ===============================================
+// Prefer AddBossMusicByActor — class name is stable; custom DefineBoss(-1) ids are not.
+// Keep AddBossMusic(bossId, ...) for vanilla stable ids or the int returned by DefineBoss
+// in the *same* register function (do not hardcode -1 across pk3s).
+//
 // 1. LOADACS after Unholy: YOUR_MUSICDEFS
-// 2. ACS:
+// 2. Same pk3 as your custom boss (no wait — DefineBoss then music):
 //      #library "YOUR_MUSICDEFS"
 //      #include "zcommon.acs"
 //      #include "UHADD.acs"
-//      function void YourRegisterBossMusic(void) {
+//      function void YourRegister(void) {
+//          int id = DefineBoss(-1, "YourBossActor", "\cjName", UHBOSS_POOL_COMMON,
+//              2000, 300, "", "UFACE26", "M_MYBASE", "base credit",
+//              "instructions", "T.", "spawn msg");
 //          // weight >= 1. optional 1 = skip unless uh_sv_OptionalMusic.
 //          // Prefer optional=0 and ship lumps in the same addon pk3.
-//          AddBossMusic(22, "M_MYTUNE", "Game - Track", 3, 0);
-//          AddBossMusicByActor("GemBanker", "M_MYTUNE2", "Game - Alt", 1, 0);
+//          AddBossMusic(id, "M_MYTUNE", "Game - Track", 3, 0);
+//          // or: AddBossMusicByActor("YourBossActor", "M_MYTUNE", "Game - Track", 3, 0);
+//      }
+//      script "your_define" OPEN {
+//          if (!UHInPlay()) terminate;
+//          YourRegister();
+//      }
+//      script "your_define_cs" OPEN CLIENTSIDE {
+//          YourRegister();
+//      }
+// 3. Music-only addon for an existing boss (wait for *that* actor, not boss 0):
+//      function void YourRegisterBossMusic(void) {
+//          AddBossMusicByActor("GemBanker", "M_MYTUNE", "Game - Track", 3, 0);
 //      }
 //      script "your_define_boss_music" OPEN {
+//          int t;
 //          if (!UHInPlay()) terminate;
-//          while (!UH_IsBossDefined(0)) Delay(1);
+//          t = 0;
+//          while (UH_FindBossByActor("GemBanker") == UHBOSS_FAIL && t < 35) {
+//              Delay(1);
+//              t++;
+//          }
 //          YourRegisterBossMusic();
 //      }
 //      script "your_define_boss_music_cs" OPEN CLIENTSIDE {
-//          while (!UH_IsBossDefined(0)) Delay(1);
+//          int t;
+//          t = 0;
+//          while (UH_FindBossByActor("GemBanker") == UHBOSS_FAIL && t < 35) {
+//              Delay(1);
+//              t++;
+//          }
 //          YourRegisterBossMusic();
 //      }
-// 3. Same (bossId, lump) again updates weight/credit/optional (no second row).
-// 4. DefineBoss musiclump is auto-seeded into the pool (weight 1, optional 0).
-// 5. Spawn uses weighted PickBossMusicRow in ub_PlayVariantMusic (server SetMusic).
-// 6. OPEN order is not LOADACS order — wait until a vanilla boss exists before AddBossMusic.
+// 4. Same (bossId, lump) again updates weight/credit/optional (no second row).
+// 5. DefineBoss musiclump is auto-seeded into the pool (weight 1, optional 0).
+// 6. Spawn uses weighted PickBossMusicRow in ub_PlayVariantMusic (server SetMusic).
+// 7. OPEN order is not LOADACS order — wait for the target actor before AddBossMusicByActor.
 
 #define UHBOSS_FAIL -9999
 #define UHSURV_FAIL -9999
@@ -598,8 +626,9 @@ function int GetMegaOfficialCopyCount(void)
 	return ACS_NamedExecuteWithResult("uh_GetMegaOfficialCopyCount_S");
 }
 
-// Add a weighted spawn BGM for an existing boss. weight >= 1.
-// optional: 1 = skipped unless uh_sv_OptionalMusic (for lumps in an optional music wad).
+// Add a weighted spawn BGM for an existing boss (stable vanilla id, or id from
+// DefineBoss in the same register call). Prefer AddBossMusicByActor for addons.
+// weight >= 1. optional: 1 = skipped unless uh_sv_OptionalMusic.
 function int AddBossMusic(int bossId, str lump, str credit, int weight, int optional)
 {
 	SetCVar("uh_bm_bossid", bossId);
@@ -610,6 +639,7 @@ function int AddBossMusic(int bossId, str lump, str credit, int weight, int opti
 	return ACS_NamedExecuteWithResult("uh_AddBossMusic_S");
 }
 
+// Addon-safe: resolve DECORATE class name via UH_FindBossByActor (vanilla or custom).
 function int AddBossMusicByActor(str actor, str lump, str credit, int weight, int optional)
 {
 	int bossId;
