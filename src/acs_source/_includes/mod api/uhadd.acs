@@ -90,7 +90,11 @@
 //      function void YourRegisterItems(void) {
 //          // Identity only; then AddUnholyItemDrop into a box.
 //          DefineUnholyItem(-1, "YourItem", "Your Item", "", "GNT/SuperShot");
-//          AddUnholyItemDrop("PandoraBoxItem", "YourItem", 8, 1, "");
+//          AddUnholyItemDrop("PandoraBoxItem", "YourItem", 8, 1, "", "");
+//          // Coin pool (instant use): giveActor = Auto* / Auto*Silent
+//          // AddUnholyItemDrop("DLC_CoinItem", "YourItem", 8, 1, "", "AutoYourItemSilent");
+//          // AssHat: giveActor = hat class, or "" for generic hat + "{Item}FX"
+//          // AddUnholyItemDrop("AssHatItem", "YourItem", 8, 1, "", "");
 //      }
 //      // Custom box: DECORATE cannot pass string — wrap GiveUnholyBoxItem:
 //      //   script "GiveYourBox" (int prosperity, int silent) {
@@ -100,7 +104,7 @@
 //      function void YourRegisterBox(void) {
 //          DefineUnholyItem(-1, "YourBoxItem", "Your Box", "", "");
 //          SetUnholyBox("YourBoxItem", "items/YourBoxOpen", "items/ABoxEyeBox");
-//          AddUnholyItemDrop("YourBoxItem", "YourItem", 50, 1, "");
+//          AddUnholyItemDrop("YourBoxItem", "YourItem", 50, 1, "", "");
 //      }
 //      script "your_define_items" OPEN {
 //          if (!UHInPlay()) terminate;
@@ -110,8 +114,9 @@
 //          YourRegisterItems();
 //      }
 // 3. Do NOT put item ids in BossNumb / BHW.
-// 4. Same (box, item) AddUnholyItemDrop again accumulates weight.
-// 5. DLC_Coin / AssHat inner rolls, MoneyBait morph stay DECORATE.
+// 4. Same (box, item, giveActor, amt) AddUnholyItemDrop again accumulates weight.
+// 5. DLC_Coin thresholds (1000/6666/9999) stay DECORATE — not in drop table.
+// 6. AssHat throw/land DECORATE; only the 10s morph roll uses AddUnholyItemDrop.
 
 #define UHBOSS_FAIL -9999
 #define UHSURV_FAIL -9999
@@ -372,15 +377,18 @@ function int SetUnholyBox(str boxactor, str openSound, str eyedropSound)
 	return ACS_NamedExecuteWithResult("uh_SetUnholyBox_S");
 }
 
-// Add a drop row. Same (box, item) again accumulates weight.
-// stingOverride "" = use item's DefineUnholyItem sting.
-function int AddUnholyItemDrop(str boxactor, str itemActor, int weight, int amt, str stingOverride)
+// Add a drop row. Same (box, item, giveActor, amt) again accumulates weight.
+// stingOverride "" = item DefineUnholyItem sting, except Auto* (non-Silent) giveActor
+//   skips that fallback (Auto Use plays its own sound; e.g. Coin → AutoUnholyBook).
+// giveActor "" = GiveInventory/Spawn the itemActor itself.
+function int AddUnholyItemDrop(str boxactor, str itemActor, int weight, int amt, str stingOverride, str giveActor)
 {
 	SetCVarString("uh_di_boxactor", boxactor);
 	SetCVarString("uh_di_itemactor", itemActor);
 	SetCVar("uh_di_weight", weight);
 	SetCVar("uh_di_amt", amt);
 	SetCVarString("uh_di_sound", stingOverride);
+	SetCVarString("uh_di_giveactor", giveActor);
 	return ACS_NamedExecuteWithResult("uh_AddUnholyItemDrop_S");
 }
 

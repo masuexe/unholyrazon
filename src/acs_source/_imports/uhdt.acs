@@ -812,13 +812,22 @@ int uh_itemCustomCount = 0;
 str uh_itemCustomStr[UH_MAX_CUSTOM_ITEM][UHITEM_STR_COUNT];
 int uh_itemCustomIsBox[UH_MAX_CUSTOM_ITEM];
 
-// Drop rows: (boxid, itemid, weight, amt, stingOverride).
+// Drop rows: (boxid, itemid, weight, amt, stingOverride, giveActor).
+// Unique key = (box, item, giveActor, amt); same key accumulates weight.
 int uh_itemDropCount = 0;
 int uh_itemDropBoxId[UH_MAX_ITEM_DROPS];
 int uh_itemDropItemId[UH_MAX_ITEM_DROPS];
 int uh_itemDropWeight[UH_MAX_ITEM_DROPS];
 int uh_itemDropAmt[UH_MAX_ITEM_DROPS];
 str uh_itemDropSting[UH_MAX_ITEM_DROPS];
+str uh_itemDropGive[UH_MAX_ITEM_DROPS];
+int uh_itemLastDropRow = -1;
+
+// AssHat generic pending: tid → item actor to give on pickup.
+#LIBDEFINE UH_ASSHAT_PENDING_MAX 32
+int uh_assHatPendingTid[UH_ASSHAT_PENDING_MAX];
+str uh_assHatPendingItem[UH_ASSHAT_PENDING_MAX];
+int uh_assHatPendingUsed[UH_ASSHAT_PENDING_MAX];
 
 function int ItemCustomIndex(int id)
 {
@@ -996,7 +1005,22 @@ function int SetUnholyBoxCore(int boxid, str openSound, str eyedropSound)
 	return boxid;
 }
 
-function int FindItemDropRow(int boxid, int itemid)
+function int FindItemDropRow(int boxid, int itemid, str giveActor, int amt)
+{
+	int i;
+	for (i = 0; i < uh_itemDropCount; i++)
+	{
+		if (uh_itemDropBoxId[i] == boxid
+			&& uh_itemDropItemId[i] == itemid
+			&& uh_itemDropAmt[i] == amt
+			&& StrICmp(uh_itemDropGive[i], giveActor) == 0)
+			return i;
+	}
+	return -1;
+}
+
+// First row for (box, item) — API helpers / prosperity fallback.
+function int FindItemDropRowByItem(int boxid, int itemid)
 {
 	int i;
 	for (i = 0; i < uh_itemDropCount; i++)
@@ -1007,8 +1031,8 @@ function int FindItemDropRow(int boxid, int itemid)
 	return -1;
 }
 
-// Same (box, item) again: accumulate weight. amt/sting kept from first row unless weight-only add.
-function int AddUnholyItemDropCore(int boxid, int itemid, int weight, int amt, str stingOverride)
+// Same (box, item, giveActor, amt) again: accumulate weight. sting kept from first row.
+function int AddUnholyItemDropCore(int boxid, int itemid, int weight, int amt, str stingOverride, str giveActor)
 {
 	int row;
 	if (!IsItemDefined(boxid) || !IsItemDefined(itemid))
@@ -1020,7 +1044,7 @@ function int AddUnholyItemDropCore(int boxid, int itemid, int weight, int amt, s
 	if (amt < 1)
 		amt = 1;
 
-	row = FindItemDropRow(boxid, itemid);
+	row = FindItemDropRow(boxid, itemid, giveActor, amt);
 	if (row >= 0)
 	{
 		uh_itemDropWeight[row] += weight;
@@ -1034,13 +1058,14 @@ function int AddUnholyItemDropCore(int boxid, int itemid, int weight, int amt, s
 	uh_itemDropWeight[row] = weight;
 	uh_itemDropAmt[row] = amt;
 	uh_itemDropSting[row] = stingOverride;
+	uh_itemDropGive[row] = giveActor;
 	uh_itemDropCount++;
 	return row;
 }
 
 function int GetItemDropWeight(int boxid, int itemid)
 {
-	int row = FindItemDropRow(boxid, itemid);
+	int row = FindItemDropRowByItem(boxid, itemid);
 	if (row < 0)
 		return 0;
 	return uh_itemDropWeight[row];
@@ -1048,7 +1073,7 @@ function int GetItemDropWeight(int boxid, int itemid)
 
 function int GetItemDropAmt(int boxid, int itemid)
 {
-	int row = FindItemDropRow(boxid, itemid);
+	int row = FindItemDropRowByItem(boxid, itemid);
 	if (row < 0)
 		return 0;
 	return uh_itemDropAmt[row];
@@ -1056,14 +1081,69 @@ function int GetItemDropAmt(int boxid, int itemid)
 
 function str GetItemDropSting(int boxid, int itemid)
 {
-	int row = FindItemDropRow(boxid, itemid);
-	str override;
+	int row = FindItemDropRowByItem(boxid, itemid);
 	if (row < 0)
+		return "";
+	return GetItemDropStingByRow(row);
+}
+
+// Auto* (not *Silent) runs Use with its own sound — do not also play item loot sting.
+function bool ItemDropGiveIsAutoNonSilent(str give)
+{
+	int n;
+	if (StrCmp(give, "") == 0)
+		return false;
+	n = StrLen(give);
+	if (n < 4)
+		return false;
+	if (StrICmp(StrMid(give, 0, 4), "Auto") != 0)
+		return false;
+	if (n >= 6 && StrICmp(StrRight(give, 6), "Silent") == 0)
+		return false;
+	return true;
+}
+
+function str GetItemDropStingByRow(int row)
+{
+	str override;
+	int itemid;
+	if (row < 0 || row >= uh_itemDropCount)
 		return "";
 	override = uh_itemDropSting[row];
 	if (StrCmp(override, "") != 0)
 		return override;
+	// Explicit empty override + Auto Use sound → no ACS sting (e.g. Coin → AutoUnholyBook).
+	if (ItemDropGiveIsAutoNonSilent(uh_itemDropGive[row]))
+		return "";
+	itemid = uh_itemDropItemId[row];
 	return GetItemSound(itemid);
+}
+
+function str GetItemDropGiveActorByRow(int row)
+{
+	str give;
+	int itemid;
+	if (row < 0 || row >= uh_itemDropCount)
+		return "";
+	give = uh_itemDropGive[row];
+	if (StrCmp(give, "") != 0)
+		return give;
+	itemid = uh_itemDropItemId[row];
+	return GetItemActor(itemid);
+}
+
+function int GetItemDropAmtByRow(int row)
+{
+	if (row < 0 || row >= uh_itemDropCount)
+		return 0;
+	return uh_itemDropAmt[row];
+}
+
+function int GetItemDropItemIdByRow(int row)
+{
+	if (row < 0 || row >= uh_itemDropCount)
+		return UHITEM_FAIL;
+	return uh_itemDropItemId[row];
 }
 
 function int ItemBoxWeightSum(int boxid)
@@ -1080,17 +1160,18 @@ function int ItemBoxWeightSum(int boxid)
 	return sum;
 }
 
-// Weighted pick from a box's drop rows. Returns item id or UHITEM_FAIL.
-function int RandomItemFromBox(int boxid)
+// Weighted pick; returns drop row index or -1. Sets uh_itemLastDropRow.
+function int RandomItemDropRowFromBox(int boxid)
 {
 	int sum;
 	int roll;
 	int i;
+	uh_itemLastDropRow = -1;
 	if (!IsUnholyBox(boxid))
-		return UHITEM_FAIL;
+		return -1;
 	sum = ItemBoxWeightSum(boxid);
 	if (sum <= 0)
-		return UHITEM_FAIL;
+		return -1;
 	roll = random(1, sum);
 	for (i = 0; i < uh_itemDropCount; i++)
 	{
@@ -1098,25 +1179,90 @@ function int RandomItemFromBox(int boxid)
 			continue;
 		roll -= uh_itemDropWeight[i];
 		if (roll <= 0)
-			return uh_itemDropItemId[i];
+		{
+			uh_itemLastDropRow = i;
+			return i;
+		}
 	}
-	return UHITEM_FAIL;
+	return -1;
 }
 
-// Prosperity: roll twice, keep the rarer (lower weight) hit. Ties keep first.
+// Weighted pick. Returns item id or UHITEM_FAIL. Sets uh_itemLastDropRow.
+function int RandomItemFromBox(int boxid)
+{
+	int row = RandomItemDropRowFromBox(boxid);
+	if (row < 0)
+		return UHITEM_FAIL;
+	return uh_itemDropItemId[row];
+}
+
+// Prosperity: roll twice, keep the rarer (lower weight) *row*. Ties keep first.
 function int RandomItemFromBoxProsperity(int boxid)
 {
-	int a = RandomItemFromBox(boxid);
-	int b = RandomItemFromBox(boxid);
-	int wa;
-	int wb;
-	if (a == UHITEM_FAIL)
-		return b;
-	if (b == UHITEM_FAIL)
-		return a;
-	wa = GetItemDropWeight(boxid, a);
-	wb = GetItemDropWeight(boxid, b);
-	if (wb < wa)
-		return b;
-	return a;
+	int ra = RandomItemDropRowFromBox(boxid);
+	int rb = RandomItemDropRowFromBox(boxid);
+	if (ra < 0)
+	{
+		uh_itemLastDropRow = rb;
+		if (rb < 0)
+			return UHITEM_FAIL;
+		return uh_itemDropItemId[rb];
+	}
+	if (rb < 0)
+	{
+		uh_itemLastDropRow = ra;
+		return uh_itemDropItemId[ra];
+	}
+	if (uh_itemDropWeight[rb] < uh_itemDropWeight[ra])
+	{
+		uh_itemLastDropRow = rb;
+		return uh_itemDropItemId[rb];
+	}
+	uh_itemLastDropRow = ra;
+	return uh_itemDropItemId[ra];
+}
+
+function int AssHatPendingAlloc(int tid, str itemActor)
+{
+	int i;
+	for (i = 0; i < UH_ASSHAT_PENDING_MAX; i++)
+	{
+		if (uh_assHatPendingUsed[i] == 0)
+		{
+			uh_assHatPendingUsed[i] = 1;
+			uh_assHatPendingTid[i] = tid;
+			uh_assHatPendingItem[i] = itemActor;
+			return i;
+		}
+	}
+	return -1;
+}
+
+function str AssHatPendingTake(int tid)
+{
+	int i;
+	str item;
+	for (i = 0; i < UH_ASSHAT_PENDING_MAX; i++)
+	{
+		if (uh_assHatPendingUsed[i] != 0 && uh_assHatPendingTid[i] == tid)
+		{
+			item = uh_assHatPendingItem[i];
+			uh_assHatPendingUsed[i] = 0;
+			uh_assHatPendingTid[i] = 0;
+			uh_assHatPendingItem[i] = "";
+			return item;
+		}
+	}
+	return "";
+}
+
+function str AssHatPendingPeek(int tid)
+{
+	int i;
+	for (i = 0; i < UH_ASSHAT_PENDING_MAX; i++)
+	{
+		if (uh_assHatPendingUsed[i] != 0 && uh_assHatPendingTid[i] == tid)
+			return uh_assHatPendingItem[i];
+	}
+	return "";
 }

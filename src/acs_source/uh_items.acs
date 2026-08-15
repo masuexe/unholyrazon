@@ -2,6 +2,8 @@
 #include "zcommon.acs"
 #import "uhdt.acs"
 
+#define RUNE_SPREAD 3
+
 script "UB_GUHU_SelfDamage" (int Pain, int Type)
 {
 	int TargetTID = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
@@ -125,9 +127,11 @@ function int max(int a, int b) {
 	return b;
 }
 
-// Returns sting for this (box, item) roll, or "" if none (caller plays open).
+// Returns sting for the last rolled drop row (or by item fallback).
 function str GetItemLootSting(int boxid, int itemid)
 {
+	if (uh_itemLastDropRow >= 0 && uh_itemDropBoxId[uh_itemLastDropRow] == boxid)
+		return GetItemDropStingByRow(uh_itemLastDropRow);
 	if (itemid == UHITEM_FAIL)
 		return "";
 	return GetItemDropSting(boxid, itemid);
@@ -161,9 +165,11 @@ function void PlayBoxRollSound(int boxid, int itemid, int eyedrop, int silent)
 function int GiveRandomBoxItemCore(int boxid, int prosperity, int silent)
 {
 	int id;
-	str actor;
+	int row;
+	str give;
 	int amt;
 	str opensnd;
+	str actor;
 
 	if (!IsUnholyBox(boxid))
 		return 0;
@@ -176,6 +182,7 @@ function int GiveRandomBoxItemCore(int boxid, int prosperity, int silent)
 	if (id == UHITEM_FAIL)
 		return 0;
 
+	row = uh_itemLastDropRow;
 	actor = GetItemActor(id);
 
 	// ToW: already have I_Win → give DLC coins instead (legacy Rare1→Rare2).
@@ -191,12 +198,23 @@ function int GiveRandomBoxItemCore(int boxid, int prosperity, int silent)
 		return 1;
 	}
 
+	// Coin pool: GoldenWaspShot on most rolls; coin refunds with misc/coinget skip it.
+	if (StrICmp(GetItemActor(boxid), "DLC_CoinItem") == 0)
+	{
+		opensnd = GetItemDropStingByRow(row);
+		if (StrCmp(opensnd, "misc/coinget") != 0)
+			PlaySound(0, "items/GoldenWaspShot", 6);
+	}
+
 	PlayBoxRollSound(boxid, id, 0, silent);
 
-	amt = GetItemDropAmt(boxid, id);
+	give = GetItemDropGiveActorByRow(row);
+	amt = GetItemDropAmtByRow(row);
 	if (amt < 1)
 		amt = 1;
-	GiveInventory(actor, amt);
+	if (StrCmp(give, "") == 0)
+		give = actor;
+	GiveInventory(give, amt);
 	return 1;
 }
 
@@ -217,11 +235,20 @@ Script "uh_GiveUnholyBoxItem_S" (void)
 	));
 }
 
+// DLC_Coin UseX2ReRoll — no prosperity.
+Script "rz_DlcCoinRoll" (int silent)
+{
+	int boxid = FindItemByActor("DLC_CoinItem");
+	SetResultValue(GiveRandomBoxItemCore(boxid, 0, silent));
+}
+
 // EyeDrop: SpawnItemEx x1 at activator. GauntletExit / Minivile hijacks (EyeDrop-only).
 Script "uh_SpawnRandomBoxItem" (int boxid)
 {
 	int id = RandomItemFromBox(boxid);
+	int row = uh_itemLastDropRow;
 	str actor;
+	str give;
 	int x;
 	int y;
 	int z;
@@ -233,6 +260,9 @@ Script "uh_SpawnRandomBoxItem" (int boxid)
 	}
 
 	actor = GetItemActor(id);
+	give = GetItemDropGiveActorByRow(row);
+	if (StrCmp(give, "") == 0)
+		give = actor;
 	x = GetActorX(0);
 	y = GetActorY(0);
 	z = GetActorZ(0);
@@ -277,6 +307,83 @@ Script "uh_SpawnRandomBoxItem" (int boxid)
 	}
 
 	PlayBoxRollSound(boxid, id, 1, 0);
-	SpawnForced(actor, x, y, z, 0, 0);
+	SpawnForced(give, x, y, z, 0, 0);
+	SetResultValue(1);
+}
+
+// AssHat 10s morph: roll AssHat box at hat position; spawn giveActor (hat class).
+Script "rz_AssHatRoll" (void)
+{
+	int boxid = FindItemByActor("AssHatItem");
+	int row;
+	int id;
+	str give;
+	str itemActor;
+	int x;
+	int y;
+	int z;
+	int tid;
+
+	if (boxid == UHITEM_FAIL || !IsUnholyBox(boxid))
+	{
+		SetResultValue(0);
+		terminate;
+	}
+
+	row = RandomItemDropRowFromBox(boxid);
+	if (row < 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+
+	id = GetItemDropItemIdByRow(row);
+	itemActor = GetItemActor(id);
+	give = uh_itemDropGive[row];
+	x = GetActorX(0);
+	y = GetActorY(0);
+	z = GetActorZ(0);
+
+	if (StrCmp(give, "") == 0)
+	{
+		tid = UniqueTID();
+		if (AssHatPendingAlloc(tid, itemActor) < 0)
+		{
+			SetResultValue(0);
+			terminate;
+		}
+		SpawnForced("AssHatItemX_Generic", x, y, z, tid, 0);
+	}
+	else
+		SpawnForced(give, x, y, z, 0, 0);
+	SetResultValue(1);
+}
+
+Script "uh_AssHatGenericSpawnFX" (void)
+{
+	str item = AssHatPendingPeek(ActivatorTID());
+	str fx;
+	if (StrCmp(item, "") == 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+	fx = StrParam(s:item, s:"FX");
+	SpawnForced(fx, GetActorX(0), GetActorY(0), GetActorZ(0) + 8.0, 0, 0);
+	SpawnForced("AssHatItemX_FX", GetActorX(0), GetActorY(0), GetActorZ(0) + 8.0, 0, 0);
+	SetResultValue(1);
+}
+
+Script "uh_AssHatGenericPickup" (void)
+{
+	str item = AssHatPendingTake(ActivatorTID());
+	int amt;
+	if (StrCmp(item, "") == 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+	amt = 1 + ACS_NamedExecuteWithResult("uh_checkrune", RUNE_SPREAD) * 2;
+	GiveInventory(item, amt);
 	SetResultValue(1);
 }
