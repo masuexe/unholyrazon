@@ -39,8 +39,11 @@
 #LIBDEFINE UH_MAX_BOSS_MUSICS 512
 #LIBDEFINE UHCOPY_FAIL -9999
 #LIBDEFINE UHMUS_FAIL -9999
+#LIBDEFINE UHMUS_GLOBAL -10000
 #LIBDEFINE UHMUS_KIND_SPAWN 0
 #LIBDEFINE UHMUS_KIND_ENRAGE 1
+#LIBDEFINE UHMUS_KIND_WINNER 2
+#LIBDEFINE UHMUS_KIND_LOSER 3
 #LIBDEFINE UHCOPY_MEGA 1
 #LIBDEFINE UHCOPY_QWANT 2
 #LIBDEFINE UHCOPY_NEGA 3
@@ -1625,6 +1628,8 @@ str uh_bossMusicLump[UH_MAX_BOSS_MUSICS];
 str uh_bossMusicCredit[UH_MAX_BOSS_MUSICS];
 int uh_bossMusicWeight[UH_MAX_BOSS_MUSICS];
 int uh_bossMusicOptional[UH_MAX_BOSS_MUSICS];
+int uh_bossMusicDuration[UH_MAX_BOSS_MUSICS];
+int uh_bossMusicEmuflag[UH_MAX_BOSS_MUSICS];
 
 function int FindBossMusicRow(int bossId, int kind, int phase, str lump)
 {
@@ -1638,6 +1643,11 @@ function int FindBossMusicRow(int bossId, int kind, int phase, str lump)
 			return i;
 	}
 	return -1;
+}
+
+function int FindEventMusicRow(int kind, str lump)
+{
+	return FindBossMusicRow(UHMUS_GLOBAL, kind, 0, lump);
 }
 
 // weight >= 1. optional: non-zero = skip unless uh_sv_OptionalMusic.
@@ -1681,6 +1691,59 @@ function int AddBossMusicCore(int bossId, int kind, int phase, str lump, str cre
 		uh_bossMusicOptional[row] = 1;
 	else
 		uh_bossMusicOptional[row] = 0;
+	uh_bossMusicDuration[row] = 0;
+	uh_bossMusicEmuflag[row] = 0;
+	uh_bossMusicCount++;
+	return row;
+}
+
+// Global LMS winner/loser pool. Identity = (kind, lump). No IsBossDefined.
+// duration: seconds as ACS fixed (-1.0 = unknown). emuflag: 1 = MAME (+12 tics).
+function int AddEventMusicCore(int kind, str lump, str credit, int weight, int optional, int duration, int emuflag)
+{
+	int row;
+	int emuf;
+	if (kind != UHMUS_KIND_WINNER && kind != UHMUS_KIND_LOSER)
+		return UHMUS_FAIL;
+	if (StrCmp(lump, "") == 0 || StrCmp(lump, "*") == 0)
+		return UHMUS_FAIL;
+	if (weight < 1)
+		return UHMUS_FAIL;
+
+	if (emuflag != 0)
+		emuf = 1;
+	else
+		emuf = 0;
+
+	row = FindEventMusicRow(kind, lump);
+	if (row >= 0)
+	{
+		uh_bossMusicCredit[row] = credit;
+		uh_bossMusicWeight[row] = weight;
+		if (optional != 0)
+			uh_bossMusicOptional[row] = 1;
+		else
+			uh_bossMusicOptional[row] = 0;
+		uh_bossMusicDuration[row] = duration;
+		uh_bossMusicEmuflag[row] = emuf;
+		return row;
+	}
+	if (uh_bossMusicCount >= UH_MAX_BOSS_MUSICS)
+		return UHMUS_FAIL;
+
+	row = uh_bossMusicCount;
+	uh_bossMusicBossId[row] = UHMUS_GLOBAL;
+	uh_bossMusicKind[row] = kind;
+	uh_bossMusicPhase[row] = 0;
+	uh_bossMusicLump[row] = lump;
+	uh_bossMusicCredit[row] = credit;
+	uh_bossMusicWeight[row] = weight;
+	if (optional != 0)
+		uh_bossMusicOptional[row] = 1;
+	else
+		uh_bossMusicOptional[row] = 0;
+	uh_bossMusicDuration[row] = duration;
+	uh_bossMusicEmuflag[row] = emuf;
 	uh_bossMusicCount++;
 	return row;
 }
@@ -1705,6 +1768,20 @@ function str GetBossMusicCreditByRow(int row)
 	if (row < 0 || row >= uh_bossMusicCount)
 		return "";
 	return uh_bossMusicCredit[row];
+}
+
+function int GetBossMusicDurationByRow(int row)
+{
+	if (row < 0 || row >= uh_bossMusicCount)
+		return 0;
+	return uh_bossMusicDuration[row];
+}
+
+function int GetBossMusicEmuFlagByRow(int row)
+{
+	if (row < 0 || row >= uh_bossMusicCount)
+		return 0;
+	return uh_bossMusicEmuflag[row];
 }
 
 // Weighted pick among eligible rows. -1 if none eligible.
@@ -1743,6 +1820,44 @@ function int PickBossMusicRow(int bossId, int kind, int phase)
 		if (uh_bossMusicKind[i] != kind)
 			continue;
 		if (uh_bossMusicPhase[i] != phase)
+			continue;
+		if (uh_bossMusicOptional[i] != 0 && !allowOptional)
+			continue;
+		roll -= uh_bossMusicWeight[i];
+		if (roll <= 0)
+			return i;
+	}
+	return -1;
+}
+
+// Global winner/loser pick. Filters kind + optional only. -1 if none eligible.
+function int PickEventMusicRow(int kind)
+{
+	int i;
+	int sum;
+	int roll;
+	int allowOptional;
+
+	if (kind != UHMUS_KIND_WINNER && kind != UHMUS_KIND_LOSER)
+		return -1;
+
+	allowOptional = GetCVar("uh_sv_OptionalMusic");
+	sum = 0;
+	for (i = 0; i < uh_bossMusicCount; i++)
+	{
+		if (uh_bossMusicKind[i] != kind)
+			continue;
+		if (uh_bossMusicOptional[i] != 0 && !allowOptional)
+			continue;
+		sum += uh_bossMusicWeight[i];
+	}
+	if (sum <= 0)
+		return -1;
+
+	roll = random(1, sum);
+	for (i = 0; i < uh_bossMusicCount; i++)
+	{
+		if (uh_bossMusicKind[i] != kind)
 			continue;
 		if (uh_bossMusicOptional[i] != 0 && !allowOptional)
 			continue;
