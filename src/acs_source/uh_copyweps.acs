@@ -781,8 +781,13 @@ function int uh_CopywepDmgMul(int wep)
 // allowNeg: after base+lucky mul, 50% chance to negate → mul on
 // [-max,-min] U [min,max] (same magnitude dist as unsigned, then flip).
 // Omitted 2nd CallACS arg is 0 (normal weapons).
+// Host: rz_sv_randMegaManCopywepDmg (default true). Off → return base damage unchanged.
 script "uh_TodayDmgMul" (int damage, int allowNeg)
 {
+	if (!GetCVar("rz_sv_randMegaManCopywepDmg")) {
+		SetResultValue(damage);
+		terminate;
+	}
 	int wep = uh_CopywepIdFromActivator();
 	int mul = uh_CopywepDmgMul(wep);
 	if (allowNeg) {
@@ -799,7 +804,8 @@ script "uh_TodayDmgMul" (int damage, int allowNeg)
 script "uh_debug_ShowTodayDmgMul" (void)
 {
 	int date = uh_DateToInt();
-	Log(s:"uh_debug_ShowTodayDmgMul date=", i:date);
+	Log(s:"uh_debug_ShowTodayDmgMul date=", i:date,
+		s:" rz_sv_randMegaManCopywepDmg=", i:GetCVar("rz_sv_randMegaManCopywepDmg"));
 	for (int i = 1; i <= UH_COPYWEP_OFFICIAL_MAX; i++) {
 		Log(s:uh_CopywepNameFromId(i), s:" [", i:i, s:"] mul=", f:uh_CopywepDmgMul(i));
 	}
