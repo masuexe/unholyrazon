@@ -494,3 +494,306 @@ script "uh_MegaManUNoAmmo" (void)
 		ACS_NamedExecuteWithResult("core_freezeplayer", 0, 0);
 	}
 }
+
+// --- Daily copywep damage mul (server local calendar date as seed) ---
+// Official ids 1..103 follow the six *WepU[] arrays (append-only).
+// DECORATE: damage (CallACS("uh_TodayDmgMul", base)); ACS infers wep from activator.
+#define UH_COPYWEP_OFFICIAL_MAX 103
+#define UH_WEPC_PlantBarrier 95
+
+// Helpers whose class / DamageType do not prefix-match an official name.
+#define UH_COPYWEP_ALIAS_MAX 37
+str uh_CopywepAliasClass[UH_COPYWEP_ALIAS_MAX] = {
+	"BlastRuneAU",
+	"BlastRuneExplosionU",
+	"StarRadiusU",
+	"FireShieldDamageU",
+	"OilBlobFlameU",
+	"ReturningCutterFuncU",
+	"GutrockDebrisU",
+	"ChillShotU",
+	"WallSpikeU",
+	"CeilingSpikeU",
+	"SolarWaveU",
+	"AirShotU",
+	"NeedleU",
+	"DustBit1U",
+	"DustBitRU",
+	"PharaohFXU",
+	"GyroRadiusU",
+	"FlameWallPillarU",
+	"FlamePillarU",
+	"WrapExplosionU",
+	"FreezeBitU",
+	"JunkProjectileU",
+	"JunkProjectile2U",
+	"HoldingTornadoU",
+	"JewelShotU",
+	"CopyShotU",
+	"MediumDrill1U",
+	"MediumDrill2U",
+	"SmallDrill1U",
+	"SmallDrill2U",
+	"TenguDashU",
+	"TenguSlash1U",
+	"TenguSlash2U",
+	"WaveBurnU",
+	"MirrorShotSmallU",
+	"MirrorShotMediumU",
+	"MirrorShotLargeU",
+};
+str uh_CopywepAliasName[UH_COPYWEP_ALIAS_MAX] = {
+	"DawnBreaker",
+	"DawnBreaker",
+	"StarCrash",
+	"FireStorm",
+	"OilSlider",
+	"RollingCutter",
+	"SuperArm",
+	"ChillSpike",
+	"ChillSpike",
+	"ChillSpike",
+	"SolarBlaze",
+	"AirShooter",
+	"NeedleCannon",
+	"DustCrusher",
+	"DustCrusher",
+	"PharaohShot",
+	"GyroAttack",
+	"FlameBlast",
+	"FlameBlast",
+	"DangerWrap",
+	"FreezeCracker",
+	"JunkShield",
+	"JunkShield",
+	"TornadoHold",
+	"JewelSatellite",
+	"CopyVision",
+	"SpreadDrill",
+	"SpreadDrill",
+	"SpreadDrill",
+	"SpreadDrill",
+	"TenguBlade",
+	"TenguBlade",
+	"TenguBlade",
+	"WaveBurner",
+	"MirrorBuster",
+	"MirrorBuster",
+	"MirrorBuster",
+};
+
+function int uh_DateToInt(void)
+{
+	// YYYYMMDD from SystemTime (server local timezone; month is 0-based).
+	int time = SystemTime();
+	return GetTimeProperty(time, TM_YEAR) * 10000
+		+ (GetTimeProperty(time, TM_MONTH) + 1) * 100
+		+ GetTimeProperty(time, TM_DAY);
+}
+
+function int uh_SeedRandom(int seed, int minVal, int maxVal)
+{
+	int a = 1919810;
+	int b = 114514;
+	int n = (a * seed + b) & 0x7FFFFFFF;
+	if (maxVal < minVal) {
+		int temp = maxVal;
+		maxVal = minVal;
+		minVal = temp;
+	}
+	return n % (maxVal - minVal + 1) + minVal;
+}
+
+function int uh_HashStr(str s)
+{
+	int h = 0;
+	int len = StrLen(s);
+	for (int i = 0; i < len; i++)
+		h = (h * 31 + GetChar(s, i)) & 0x7FFFFFFF;
+	return h;
+}
+
+function int uh_CharLower(int c)
+{
+	if (c >= 65 && c <= 90)
+		return c + 32;
+	return c;
+}
+
+function bool uh_StrIStartsWith(str s, str prefix)
+{
+	int plen = StrLen(prefix);
+	if (plen <= 0 || StrLen(s) < plen)
+		return false;
+	for (int i = 0; i < plen; i++) {
+		if (uh_CharLower(GetChar(s, i)) != uh_CharLower(GetChar(prefix, i)))
+			return false;
+	}
+	return true;
+}
+
+function int uh_CopywepIdFromName(str s)
+{
+	int bestId = 0;
+	int bestLen = 0;
+	int i;
+	int nlen;
+
+	for (i = 0; i < RANGEDWEPU_MAX; i++) {
+		nlen = StrLen(RangedWepU[i]);
+		if (nlen > bestLen && uh_StrIStartsWith(s, RangedWepU[i])) {
+			bestLen = nlen;
+			bestId = 1 + i;
+		}
+	}
+	for (i = 0; i < RAPIDWEPU_MAX; i++) {
+		nlen = StrLen(RapidWepU[i]);
+		if (nlen > bestLen && uh_StrIStartsWith(s, RapidWepU[i])) {
+			bestLen = nlen;
+			bestId = 1 + RANGEDWEPU_MAX + i;
+		}
+	}
+	for (i = 0; i < CLOSEWEPU_MAX; i++) {
+		nlen = StrLen(CloseWepU[i]);
+		if (nlen > bestLen && uh_StrIStartsWith(s, CloseWepU[i])) {
+			bestLen = nlen;
+			bestId = 1 + RANGEDWEPU_MAX + RAPIDWEPU_MAX + i;
+		}
+	}
+	for (i = 0; i < POWERWEPU_MAX; i++) {
+		nlen = StrLen(PowerWepU[i]);
+		if (nlen > bestLen && uh_StrIStartsWith(s, PowerWepU[i])) {
+			bestLen = nlen;
+			bestId = 1 + RANGEDWEPU_MAX + RAPIDWEPU_MAX + CLOSEWEPU_MAX + i;
+		}
+	}
+	for (i = 0; i < AOEWEPU_MAX; i++) {
+		nlen = StrLen(AoEWepU[i]);
+		if (nlen > bestLen && uh_StrIStartsWith(s, AoEWepU[i])) {
+			bestLen = nlen;
+			bestId = 1 + RANGEDWEPU_MAX + RAPIDWEPU_MAX + CLOSEWEPU_MAX + POWERWEPU_MAX + i;
+		}
+	}
+	for (i = 0; i < SHIELDWEPU_MAX; i++) {
+		nlen = StrLen(ShieldWepU[i]);
+		if (nlen > bestLen && uh_StrIStartsWith(s, ShieldWepU[i])) {
+			bestLen = nlen;
+			bestId = 1 + RANGEDWEPU_MAX + RAPIDWEPU_MAX + CLOSEWEPU_MAX + POWERWEPU_MAX + AOEWEPU_MAX + i;
+		}
+	}
+	return bestId;
+}
+
+function str uh_CopywepNameFromId(int wep)
+{
+	if (wep < 1 || wep > UH_COPYWEP_OFFICIAL_MAX)
+		return "";
+	wep--;
+	if (wep < RANGEDWEPU_MAX)
+		return RangedWepU[wep];
+	wep -= RANGEDWEPU_MAX;
+	if (wep < RAPIDWEPU_MAX)
+		return RapidWepU[wep];
+	wep -= RAPIDWEPU_MAX;
+	if (wep < CLOSEWEPU_MAX)
+		return CloseWepU[wep];
+	wep -= CLOSEWEPU_MAX;
+	if (wep < POWERWEPU_MAX)
+		return PowerWepU[wep];
+	wep -= POWERWEPU_MAX;
+	if (wep < AOEWEPU_MAX)
+		return AoEWepU[wep];
+	wep -= AOEWEPU_MAX;
+	if (wep < SHIELDWEPU_MAX)
+		return ShieldWepU[wep];
+	return "";
+}
+
+function int uh_CopywepIdFromAlias(str cls)
+{
+	for (int i = 0; i < UH_COPYWEP_ALIAS_MAX; i++) {
+		if (StrCmp(cls, uh_CopywepAliasClass[i]) == 0)
+			return uh_CopywepIdFromName(uh_CopywepAliasName[i]);
+	}
+	return 0;
+}
+
+function int uh_CopywepIdFromActivator(void)
+{
+	str cls = GetActorClass(0);
+	int id = uh_CopywepIdFromName(cls);
+	if (id > 0)
+		return id;
+
+	id = uh_CopywepIdFromAlias(cls);
+	if (id > 0)
+		return id;
+
+	str dtype = GetActorProperty(0, APROP_DamageType);
+	if (StrLen(dtype) > 0) {
+		id = uh_CopywepIdFromName(dtype);
+		if (id > 0)
+			return id;
+	}
+	return 0;
+}
+
+function int uh_CopywepDmgMul(int wep)
+{
+	int date = uh_DateToInt();
+	int mul;
+	int i;
+	int lucky;
+	int maxPool;
+
+	if (wep < 1 || wep > UH_COPYWEP_OFFICIAL_MAX) {
+		// Third-party / unknown: 0.0–2.0 from class hash; no jackpot.
+		return uh_SeedRandom(date + uh_HashStr(GetActorClass(0)) * 893, 0.0, 2.0);
+	}
+
+	mul = uh_SeedRandom(date + wep * 893, 0.0, 2.0);
+
+	// Lucky ~5x (integer pool MAX+MAX/2 — ACS *1.5 is fixed-point and wrong)
+	maxPool = UH_COPYWEP_OFFICIAL_MAX + UH_COPYWEP_OFFICIAL_MAX / 2;
+	for (i = 1; i <= 4; i++) {
+		lucky = uh_SeedRandom(date + 127 * 5 * i, 1, maxPool);
+		if (lucky == wep)
+			mul = uh_SeedRandom(date + 1234 * 50, 4.0, 6.0);
+	}
+	// Lucky ~10x
+	maxPool = UH_COPYWEP_OFFICIAL_MAX * 2;
+	for (i = 1; i <= 2; i++) {
+		lucky = uh_SeedRandom(date + 721 * 10 * i, 1, maxPool);
+		if (lucky == wep)
+			mul = uh_SeedRandom(date + 1234 * 100, 8.0, 12.0);
+	}
+	// Lucky ~50x
+	lucky = uh_SeedRandom(date + 1234 * 50, 1, UH_COPYWEP_OFFICIAL_MAX * 50);
+	if (lucky == wep)
+		mul = uh_SeedRandom(date + 1234 * 500, 40.0, 60.0);
+	// Lucky ~100x
+	lucky = uh_SeedRandom(date + 567 * 100, 1, UH_COPYWEP_OFFICIAL_MAX * 100);
+	if (lucky == wep)
+		mul = uh_SeedRandom(date + 1234 * 1000, 80.0, 120.0);
+
+	// Plant Barrier: 50% chance to negate (heal-style joke)
+	if (wep == UH_WEPC_PlantBarrier) {
+		if (uh_SeedRandom(date + 309, 0.0, 1.0) < 0.5)
+			mul = -mul;
+	}
+	return mul;
+}
+
+script "uh_TodayDmgMul" (int damage)
+{
+	SetResultValue(FixedMul(uh_CopywepDmgMul(uh_CopywepIdFromActivator()), damage));
+}
+
+script "uh_debug_ShowTodayDmgMul" (void)
+{
+	int date = uh_DateToInt();
+	Log(s:"uh_debug_ShowTodayDmgMul date=", i:date);
+	for (int i = 1; i <= UH_COPYWEP_OFFICIAL_MAX; i++) {
+		Log(s:uh_CopywepNameFromId(i), s:" [", i:i, s:"] mul=", f:uh_CopywepDmgMul(i));
+	}
+}
