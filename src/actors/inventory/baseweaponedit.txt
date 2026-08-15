@@ -50,14 +50,27 @@ actor BaseMegaManUWep : BaseMM8BDMWep {
     "----" A 0
     goto SelectSwap
    Ready:
-    "----" A 0 ACS_NamedExecuteWithResult("core_weaponcolor", 0)
+    // Do not call core_weaponcolor(0) here: inherited gotos from ReadyNoAmmo
+    // resolve to this Ready, not the child's, and would wipe the weapon color.
+    "----" A 0
     goto ReadyX
    ReadyX:
     "----" A 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen")
     "----" A 1 A_WeaponReady
     loop
+   NoAmmo:
+    "----" A 0 ACS_NamedExecuteAlways("core_noammo", 0)
+    goto ReadyNoAmmo
+   ReadyNoAmmo:
+    "----" A 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen")
+    "----" A 1 A_WeaponReady(WRF_NOFIRE)
+    "----" A 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+    // ReadyNoAmmo is inherited: goto Ready would resolve to *this* Ready
+    // (core_weaponcolor 0), not the child's. ReadyX keeps the current sprite/color.
+    goto ReadyX
+   // Most copyweps have no Altfire. A stub that jumps to NoAmmo makes holding
+   // M2 spam core_noammo and bounce ReadyNoAmmo↔Ready forever.
    Fire:
-   Altfire:
 		"----" A 1 A_JumpIf(true, "NoAmmo")
 		wait
   }
