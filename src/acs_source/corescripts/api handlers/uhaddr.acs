@@ -17,6 +17,7 @@ function int UH_DefineBossCore(
 	  str instruction,
 	  str spawnmessagetype,
 	  str spawnmessage) {
+	int customid;
 	if (StrCmp(actor, "") == 0)
 		return UHBOSS_FAIL;
 
@@ -32,6 +33,7 @@ function int UH_DefineBossCore(
 		UH_BossWriteVanilla(id, actor, name, rarity, basehp, addhp,
 			exboss_baseactor, mugshot, musiclump, musiccredit,
 			instruction, spawnmessagetype, spawnmessage);
+		UH_BossSeedMusic(id, musiclump, musiccredit);
 		return id;
 	}
 
@@ -39,9 +41,11 @@ function int UH_DefineBossCore(
 	{
 		if (uh_bossCustomCount >= UH_MAX_CUSTOM_BOSS)
 			return UHBOSS_FAIL;
-		return UH_BossWriteCustom(actor, name, rarity, basehp, addhp,
+		customid = UH_BossWriteCustom(actor, name, rarity, basehp, addhp,
 			exboss_baseactor, mugshot, musiclump, musiccredit,
 			instruction, spawnmessagetype, spawnmessage);
+		UH_BossSeedMusic(customid, musiclump, musiccredit);
+		return customid;
 	}
 
 	// Explicit negatives other than AUTO are rejected in v1
@@ -456,4 +460,15 @@ Script "uh_GetItemDropAmt_S" (int boxid, int itemid)
 Script "uh_RandomItemFromBox_S" (int boxid)
 {
 	SetResultValue(RandomItemFromBox(boxid));
+}
+
+Script "uh_AddBossMusic_S" (void)
+{
+	SetResultValue(AddBossMusicCore(
+		GetCVar("uh_bm_bossid"),
+		GetCVarString("uh_bm_lump"),
+		GetCVarString("uh_bm_credit"),
+		GetCVar("uh_bm_weight"),
+		GetCVar("uh_bm_optional")
+	));
 }

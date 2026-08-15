@@ -159,12 +159,39 @@
 // 3. Same (kind, wepActor) again returns existing row (no double).
 // 4. Mega daily dmg: vanilla ids 1..official frozen; addon uses class hash (no jackpot).
 // 5. Qwant_W is not registered — startitem only.
+//
+// === AddBossMusic addon recipe ===============================================
+// 1. LOADACS after Unholy: YOUR_MUSICDEFS
+// 2. ACS:
+//      #library "YOUR_MUSICDEFS"
+//      #include "zcommon.acs"
+//      #include "UHADD.acs"
+//      function void YourRegisterBossMusic(void) {
+//          // weight >= 1. optional 1 = skip unless uh_sv_OptionalMusic.
+//          // Prefer optional=0 and ship lumps in the same addon pk3.
+//          AddBossMusic(22, "M_MYTUNE", "Game - Track", 3, 0);
+//          AddBossMusicByActor("GemBanker", "M_MYTUNE2", "Game - Alt", 1, 0);
+//      }
+//      script "your_define_boss_music" OPEN {
+//          if (!UHInPlay()) terminate;
+//          while (!UH_IsBossDefined(0)) Delay(1);
+//          YourRegisterBossMusic();
+//      }
+//      script "your_define_boss_music_cs" OPEN CLIENTSIDE {
+//          while (!UH_IsBossDefined(0)) Delay(1);
+//          YourRegisterBossMusic();
+//      }
+// 3. Same (bossId, lump) again updates weight/credit/optional (no second row).
+// 4. DefineBoss musiclump is auto-seeded into the pool (weight 1, optional 0).
+// 5. Spawn uses weighted PickBossMusicRow in ub_PlayVariantMusic (server SetMusic).
+// 6. OPEN order is not LOADACS order — wait until a vanilla boss exists before AddBossMusic.
 
 #define UHBOSS_FAIL -9999
 #define UHSURV_FAIL -9999
 #define UHEYE_FAIL -9999
 #define UHITEM_FAIL -9999
 #define UHCOPY_FAIL -9999
+#define UHMUS_FAIL -9999
 #define UHEYE_FLAG_NOSUFFIX 1
 
 #define UHBOSS_POOL_NONE 0
@@ -569,4 +596,25 @@ function void FreezeMegaOfficialCopyCount(void)
 function int GetMegaOfficialCopyCount(void)
 {
 	return ACS_NamedExecuteWithResult("uh_GetMegaOfficialCopyCount_S");
+}
+
+// Add a weighted spawn BGM for an existing boss. weight >= 1.
+// optional: 1 = skipped unless uh_sv_OptionalMusic (for lumps in an optional music wad).
+function int AddBossMusic(int bossId, str lump, str credit, int weight, int optional)
+{
+	SetCVar("uh_bm_bossid", bossId);
+	SetCVarString("uh_bm_lump", lump);
+	SetCVarString("uh_bm_credit", credit);
+	SetCVar("uh_bm_weight", weight);
+	SetCVar("uh_bm_optional", optional);
+	return ACS_NamedExecuteWithResult("uh_AddBossMusic_S");
+}
+
+function int AddBossMusicByActor(str actor, str lump, str credit, int weight, int optional)
+{
+	int bossId;
+	bossId = UH_FindBossByActor(actor);
+	if (bossId == UHBOSS_FAIL)
+		return UHMUS_FAIL;
+	return AddBossMusic(bossId, lump, credit, weight, optional);
 }
