@@ -232,11 +232,38 @@
 //
 // === AddLMSMusic addon recipe ================================================
 // Per-event BGM for last-survivor LMS events (not a global random pool).
-// eventid: vanilla 0–11; ids >=12 can be registered now but do not fire until
-// DefineLMSEvent expands RNG (items/icons/messages still hardcoded this round).
+// eventid: vanilla 0–11; ids >=12 work once DefineLMSEvent registers them.
 //      AddLMSMusic(4, "M_MYALT", "Game - Alt LMS Theme", 1, 0);
 // Same (kind, eventid, lump) again updates weight/credit/optional.
 // Empty pool for that eventid → ub_LMS_EventTime falls back to lmsListArray music.
+//
+// === DefineLMSEvent addon recipe =============================================
+// Full last-survivor event (messages, icons, drops, dual-rune flag, pool weight).
+// Music remains AddLMSMusic(id, ...) against the same id.
+// 1. LOADACS after Unholy: YOUR_LMSDEFS
+// 2. ACS:
+//      #library "YOUR_LMSDEFS"
+//      #include "zcommon.acs"
+//      #include "UHADD.acs"
+//      function void YourRegisterLMS(void) {
+//          int id = DefineLMSEvent(-1, "my_lms", "Normal msg", "Rare msg",
+//              "MYLMS_E", "MYLMS_X", 0, 1);
+//          // Capture id — do not hardcode auto ids across pk3s.
+//          AddLMSEventDrop(id, "GUHUItem", 1, 0);
+//          AddLMSEventDrop(id, "SuperGUHUItem", 1, 1);
+//          AddLMSMusic(id, "M_MYLMS", "Game - My LMS Theme", 1, 0);
+//      }
+//      script "your_define_lms" OPEN {
+//          if (!UHInPlay()) terminate;
+//          YourRegisterLMS();
+//      }
+//      script "your_define_lms_cs" OPEN CLIENTSIDE {
+//          YourRegisterLMS();
+//      }
+// 3. id: 0–11 vanilla; -1 = auto next unused >=12. Same id again updates.
+// 4. weight 0 = RCON/force only; >=1 = random pool. UHLMS_FLAG_DUALRUNE = second rune.
+// 5. icon "" → LMS_E# / LMS_X# fallback (vanilla). Custom ids need explicit fonts.
+// 6. Drops optional (vanilla dual-rune event has none). rare 0=normal, 1=rare fire.
 
 #define UHBOSS_FAIL -9999
 #define UHSURV_FAIL -9999
@@ -244,11 +271,13 @@
 #define UHITEM_FAIL -9999
 #define UHCOPY_FAIL -9999
 #define UHMUS_FAIL -9999
+#define UHLMS_FAIL -9999
 #define UHMUS_KIND_SPAWN 0
 #define UHMUS_KIND_ENRAGE 1
 #define UHMUS_KIND_WINNER 2
 #define UHMUS_KIND_LOSER 3
 #define UHMUS_KIND_LMS 4
+#define UHLMS_FLAG_DUALRUNE 1
 #define UHEYE_FLAG_NOSUFFIX 1
 
 #define UHBOSS_POOL_NONE 0
@@ -744,4 +773,73 @@ function int AddLMSMusic(int eventid, str lump, str credit, int weight, int opti
 	SetCVar("uh_bm_duration", 0);
 	SetCVar("uh_bm_emuflag", 0);
 	return ACS_NamedExecuteWithResult("uh_AddEventMusic_S");
+}
+
+// Define a last-survivor LMS event. id -1 = auto >=12. weight 0 = force only.
+function int DefineLMSEvent(int id, str stem, str message, str raremessage, str icon, str rareicon, int flags, int weight)
+{
+	SetCVar("uh_le_id", id);
+	SetCVarString("uh_le_stem", stem);
+	SetCVarString("uh_le_message", message);
+	SetCVarString("uh_le_raremessage", raremessage);
+	SetCVarString("uh_le_icon", icon);
+	SetCVarString("uh_le_rareicon", rareicon);
+	SetCVar("uh_le_flags", flags);
+	SetCVar("uh_le_weight", weight);
+	return ACS_NamedExecuteWithResult("uh_DefineLMSEvent_S");
+}
+
+// Item grant for an LMS event. rare 0 = normal fire, 1 = rare fire.
+function int AddLMSEventDrop(int id, str itemActor, int amt, int rare)
+{
+	SetCVar("uh_le_id", id);
+	SetCVarString("uh_le_item", itemActor);
+	SetCVar("uh_le_amt", amt);
+	SetCVar("uh_le_rare", rare);
+	return ACS_NamedExecuteWithResult("uh_AddLMSEventDrop_S");
+}
+
+function int UH_IsLMSEventDefined(int id)
+{
+	return ACS_NamedExecuteWithResult("uh_IsLMSEventDefined_S", id);
+}
+
+function int UH_FindLMSEventByStem(str stem)
+{
+	SetCVarString("uh_le_stem", stem);
+	return ACS_NamedExecuteWithResult("uh_FindLMSEventByStem_S");
+}
+
+function str UH_GetLMSEventMessage(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetLMSEventMessage_S", id);
+	return GetCVarString("uh_le_out_str");
+}
+
+function str UH_GetLMSEventraremessage(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetLMSEventraremessage_S", id);
+	return GetCVarString("uh_le_out_str");
+}
+
+function str UH_GetLMSEventIcon(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetLMSEventIcon_S", id);
+	return GetCVarString("uh_le_out_str");
+}
+
+function str UH_GetLMSEventrareicon(int id)
+{
+	ACS_NamedExecuteWithResult("uh_GetLMSEventrareicon_S", id);
+	return GetCVarString("uh_le_out_str");
+}
+
+function int UH_GetLMSEventFlags(int id)
+{
+	return ACS_NamedExecuteWithResult("uh_GetLMSEventFlags_S", id);
+}
+
+function int UH_PickLMSEvent(void)
+{
+	return ACS_NamedExecuteWithResult("uh_PickLMSEvent_S");
 }

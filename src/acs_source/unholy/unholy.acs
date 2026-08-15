@@ -68,7 +68,7 @@ script "ub_StartUpSettings" OPEN//These are start up variables so that they are 
 	//Most variables are redundant
 
 	gameover = false;
-	
+
 	playerLifeStatusArr_GatherFunc();
 
 	multiBossCheck = 1;
@@ -81,7 +81,7 @@ script "ub_StartUpSettings" OPEN//These are start up variables so that they are 
 
 	ACS_NamedExecuteWithResult("core_bossmusicstate", 1, 669); //Disables boss music for maps, that is if they use this script
 	MusicSaveFunc();
-	
+
 	u_MapLevelName = strParam(n: PRINTNAME_LEVELNAME);
 	u_MapLevelCode = strParam(n: PRINTNAME_LEVEL);
 
@@ -172,8 +172,8 @@ Script "ub_CountdownStartup" OPEN
 		}
 		else {
 			HudMessageBold(s:"Prepare yourselves!"; HUDMSG_FADEOUT, 66, CR_YELLOW, 240.4, 36.0, 20.0,2.0);
-		}		
-		
+		}
+
 		Delay(20);
 		terminate;
 	}
@@ -234,7 +234,7 @@ script "uh_BackgroundTimer" (void)//OPEN
 				ACS_NamedExecuteWithResult("uh_DrawTimerHud", TimeLeft, 1);
 				break;
 		}
-		
+
 		Delay(35);
 		TimeLeft--;
 	}
@@ -570,7 +570,7 @@ Script "ub_WatchSurvivors" (int SkipACS)//OPEN
 	while(totalPlayersArr[PLS_SURVIVOR]>=1 && !standardlmseventlocked && !gameover){
 		Delay(1);
 		if(totalPlayersArr[PLS_SURVIVOR]==1){
-			ACS_NamedExecute("ub_LMS_EventTime",0,random(0,11));
+			ACS_NamedExecute("ub_LMS_EventTime",0,-1);
 			debugLog(strParam(s: "Last Man Standing!"));
 			standardlmseventlocked = true;
 		}
@@ -608,6 +608,7 @@ script "ub_LMS_EventTime" (int LMSNum, int ForceRare)
 	int TheRuneNumber = -1;
 	int TheRuneNumberX = -1;
 	int musRow;
+	int dualRune;
 
 	int LMSCount = 0;
 	Until (LMSCount == 64) {//Find the lone survivor!
@@ -622,12 +623,14 @@ script "ub_LMS_EventTime" (int LMSNum, int ForceRare)
 
 
 	int LMS_Cvar = CheckClearCvar("uh_sv_LMSEvent",-1);
-	if(LMS_Cvar >= 0 && LMS_Cvar <= 11) {
+	if(LMS_Cvar >= 0 && IsLMSEventDefined(LMS_Cvar)) {
 		LMSNum = LMS_Cvar;
 		ShowMeTheRCON("The LMS Event",LMS_Cvar);
 	}
-	else if(LMSNum <= -1 || LMSNum >= 12){
-		LMSNum = random(0,11);
+	else if(!IsLMSEventDefined(LMSNum)){
+		LMSNum = PickLMSEvent();
+		if(LMSNum == UHLMS_FAIL)
+			terminate;
 	}
 
 	if(RandomPercent(RareLMSRune)){//
@@ -647,7 +650,8 @@ script "ub_LMS_EventTime" (int LMSNum, int ForceRare)
 		RareLMSTime++;
 	}
 
-	if(LMSNum == 9){
+	dualRune = (GetLMSEventFlags(LMSNum) & UHLMS_FLAG_DUALRUNE) != 0;
+	if(dualRune){
 		do {
 			if (RareItemCheck) {
 				TheRuneNumberX = randomRune(RANDRUNE_RARE);
@@ -661,9 +665,9 @@ script "ub_LMS_EventTime" (int LMSNum, int ForceRare)
 
 	SetFont("BIGFONT");
 	SetHudSize(640,480,0);
-	
+
 	str TheRune_Str = StrParam(s:"\c- got a ",s:RuneOfTheDay[TheRuneNumber]);
-	if(LMSNum == 9){
+	if(dualRune){
 		TheRune_Str = StrParam(s:TheRune_Str,s:" & ",s:RuneOfTheDay[TheRuneNumberX],s:" Rune!\n");
 	}
 	else{
@@ -671,8 +675,8 @@ script "ub_LMS_EventTime" (int LMSNum, int ForceRare)
 	}
 
 	str ItemMessage;
-	if(RareItemCheck){ItemMessage = LMSListArray[LMSNum][1];}
-	else{ItemMessage = LMSListArray[LMSNum][0];}
+	if(RareItemCheck){ItemMessage = GetLMSEventraremessage(LMSNum);}
+	else{ItemMessage = GetLMSEventMessage(LMSNum);}
 
 	HudMessageBold(n:TheLMSDude-999,s:TheRune_Str,s:ItemMessage; HUDMSG_FADEOUT|HUDMSG_LOG, 70, CR_YELLOW, 320.4, 336.2, 1.8,0.2);//396.2
 
@@ -684,7 +688,7 @@ script "ub_LMS_EventTime" (int LMSNum, int ForceRare)
 		PlayMusic(GetBossMusicLumpByRow(musRow));
 		MusicCredits(GetBossMusicCreditByRow(musRow), 0);
 	}
-	else
+	else if (LMSNum >= 0 && LMSNum <= 11)
 	{
 		PlayMusic(LMSListArray[LMSNum][LMS_MUSICLUMP]);
 		MusicCredits(LMSListArray[LMSNum][LMS_MUSICCREDITS],0);
@@ -705,7 +709,7 @@ script "ub_LMS_EventTime" (int LMSNum, int ForceRare)
 
 		// GiveActorInventory(TheLMSDude,StrParam(s:RuneOfTheDay[TheRuneNumber],s:"Rune_ST"),1);
 		ACS_NamedExecuteWithResult("uh_runeplayer", TheLMSDude-999, 1, TheRuneNumber);
-		if(LMSNum == 9){ACS_NamedExecuteWithResult("uh_runeplayer", TheLMSDude-999, 1, TheRuneNumberX);}
+		if(dualRune){ACS_NamedExecuteWithResult("uh_runeplayer", TheLMSDude-999, 1, TheRuneNumberX);}
 
 		if(TheRuneNumber == 0 || TheRuneNumberX == 0) {//Prosperity
 			GiveActorInventory(TheLMSDude,"AutoSundaeFoodItem",1);
@@ -713,58 +717,10 @@ script "ub_LMS_EventTime" (int LMSNum, int ForceRare)
 			else{GiveActorInventory(TheLMSDude,"PandoraBoxItem",2);}
 		}
 
-		Switch (LMSNum)
-		{
-		Case 0:
-			if(RareItemCheck){GiveActorInventory(TheLMSDude,"SuperGUHUItem",1);}
-			else{GiveActorInventory(TheLMSDude,"GUHUItem",1);}
-			break;
-		Case 1:
-			if(RareItemCheck){GiveActorInventory(TheLMSDude,"SuperMysticTankItem",1);GiveActorInventory(TheLMSDude,"PeriwinkleTankItem",1);}
-			else{GiveActorInventory(TheLMSDude,"SuperMysticTankItem",1);}
-			break;
-		Case 2:
-			if(RareItemCheck){GiveActorInventory(TheLMSDude,"MountainDewItem",1);}
-			else{GiveActorInventory(TheLMSDude,"UnholyWaterItem",1);}
-			break;
-		Case 3:
-			if(RareItemCheck){GiveActorInventory(TheLMSDude,"TankOfWondersItem",1);}
-			else{}
-			break;
-		Case 4:
-			if(RareItemCheck){GiveActorInventory(TheLMSDude,"GoldenWaspBombItem",1);}
-			else{GiveActorInventory(TheLMSDude,"WaspBombItem",9);}
-			break;
-		Case 5:
-			if(RareItemCheck){GiveActorInventory(TheLMSDude,"MysticBoxItem",1);}
-			else{GiveActorInventory(TheLMSDude,"PandoraBoxItem",3);}
-			break;
-		Case 6:
-			if(RareItemCheck){GiveActorInventory(TheLMSDude,"BEESItem",3);}
-			else{GiveActorInventory(TheLMSDude,"BluntRocketItem",12);GiveActorInventory(TheLMSDude,"SharpRocketItem",2);}
-			break;
-		Case 7:
-			if(RareItemCheck){GiveActorInventory(TheLMSDude,"SundaeFoodItem",1);GiveActorInventory(TheLMSDude,"HamburgerFoodItem",1);}
-			else{GiveActorInventory(TheLMSDude,"PancakeFoodItem",1);GiveActorInventory(TheLMSDude,"CakeFoodItem",1);GiveActorInventory(TheLMSDude,"HotdogFoodItem",1);}
-			break;
-		Case 8:
-			if(RareItemCheck){GiveActorInventory(TheLMSDude,"TheFootBallItem",1);}
-			else{GiveActorInventory(TheLMSDude,"RubberBandItem",1);}
-			break;
-		Case 9://Bonus Rune
-			break;
-		Case 10:
-			if(RareItemCheck){GiveActorInventory(TheLMSDude,"YouWillDieItem",1);}
-			else{GiveActorInventory(TheLMSDude,"HackyCoffeeItem",1);}
-			break;
-		Case 11:
-			if(RareItemCheck){GiveActorInventory(TheLMSDude,"TruePowerItem",1);}
-			else{GiveActorInventory(TheLMSDude,"UnholyInsuranceItem",1);}
-			break;
-		}
+		GrantLMSEventDrops(TheLMSDude, LMSNum, RareItemCheck);
 
 		for(int i = 0; i<35; i++){
-			if(!PlayerInGame(TheLMSDude-1000) || 
+			if(!PlayerInGame(TheLMSDude-1000) ||
 			   CheckActorInventory(TheLMSDude,"IsDead") ||
 			   CheckActorInventory(TheLMSDude,"IsBlessedWithLMSPower"))
 				break;

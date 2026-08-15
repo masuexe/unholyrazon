@@ -37,14 +37,18 @@
 #LIBDEFINE UH_MAX_COIN_SPENDS 32
 #LIBDEFINE UH_MAX_COPYWEPS 256
 #LIBDEFINE UH_MAX_BOSS_MUSICS 512
+#LIBDEFINE UH_MAX_LMS_EVENTS 256
+#LIBDEFINE UH_MAX_LMS_DROPS 512
 #LIBDEFINE UHCOPY_FAIL -9999
 #LIBDEFINE UHMUS_FAIL -9999
+#LIBDEFINE UHLMS_FAIL -9999
 #LIBDEFINE UHMUS_GLOBAL -10000
 #LIBDEFINE UHMUS_KIND_SPAWN 0
 #LIBDEFINE UHMUS_KIND_ENRAGE 1
 #LIBDEFINE UHMUS_KIND_WINNER 2
 #LIBDEFINE UHMUS_KIND_LOSER 3
 #LIBDEFINE UHMUS_KIND_LMS 4
+#LIBDEFINE UHLMS_FLAG_DUALRUNE 1
 #LIBDEFINE UHCOPY_MEGA 1
 #LIBDEFINE UHCOPY_QWANT 2
 #LIBDEFINE UHCOPY_NEGA 3
@@ -1876,4 +1880,236 @@ function int PickEventMusicRow(int kind, int phase)
 			return i;
 	}
 	return -1;
+}
+
+// --- LMS event table (last-survivor events) ----------------------------------
+// Ids are always >= 0. Vanilla 0–11; auto (-1) assigns next unused >= 12.
+// weight 0 = force/RCON only; weight >= 1 = random pool.
+
+int uh_lmsDefined[UH_MAX_LMS_EVENTS];
+str uh_lmsStem[UH_MAX_LMS_EVENTS];
+str uh_lmsMessage[UH_MAX_LMS_EVENTS];
+str uh_lmsraremessage[UH_MAX_LMS_EVENTS];
+str uh_lmsIcon[UH_MAX_LMS_EVENTS];
+str uh_lmsrareicon[UH_MAX_LMS_EVENTS];
+int uh_lmsFlags[UH_MAX_LMS_EVENTS];
+int uh_lmsWeight[UH_MAX_LMS_EVENTS];
+int uh_lmsNextCustomId = 12;
+
+int uh_lmsDropCount = 0;
+int uh_lmsDropEventId[UH_MAX_LMS_DROPS];
+str uh_lmsDropItem[UH_MAX_LMS_DROPS];
+int uh_lmsDropAmt[UH_MAX_LMS_DROPS];
+int uh_lmsDropRare[UH_MAX_LMS_DROPS];
+
+function bool IsLMSEventDefined(int id)
+{
+	if (id < 0 || id >= UH_MAX_LMS_EVENTS)
+		return false;
+	return uh_lmsDefined[id] != 0;
+}
+
+function int FindLMSEventByStem(str stem)
+{
+	int i;
+	if (StrCmp(stem, "") == 0)
+		return UHLMS_FAIL;
+	for (i = 0; i < UH_MAX_LMS_EVENTS; i++)
+	{
+		if (uh_lmsDefined[i] != 0 && StrICmp(uh_lmsStem[i], stem) == 0)
+			return i;
+	}
+	return UHLMS_FAIL;
+}
+
+function int DefineLMSEventCore(int id, str stem, str message, str raremessage, str icon, str rareicon, int flags, int weight)
+{
+	int other;
+	if (StrCmp(stem, "") == 0)
+		return UHLMS_FAIL;
+	if (weight < 0)
+		return UHLMS_FAIL;
+
+	if (id == -1)
+	{
+		id = uh_lmsNextCustomId;
+		while (id < UH_MAX_LMS_EVENTS && uh_lmsDefined[id] != 0)
+			id++;
+		if (id >= UH_MAX_LMS_EVENTS)
+			return UHLMS_FAIL;
+		uh_lmsNextCustomId = id + 1;
+	}
+	else if (id < 0 || id >= UH_MAX_LMS_EVENTS)
+		return UHLMS_FAIL;
+
+	other = FindLMSEventByStem(stem);
+	if (other != UHLMS_FAIL && other != id)
+		return UHLMS_FAIL;
+
+	uh_lmsDefined[id] = 1;
+	uh_lmsStem[id] = stem;
+	uh_lmsMessage[id] = message;
+	uh_lmsraremessage[id] = raremessage;
+	uh_lmsIcon[id] = icon;
+	uh_lmsrareicon[id] = rareicon;
+	uh_lmsFlags[id] = flags;
+	uh_lmsWeight[id] = weight;
+
+	if (id >= 12 && id >= uh_lmsNextCustomId)
+		uh_lmsNextCustomId = id + 1;
+
+	return id;
+}
+
+function int FindLMSEventDropRow(int eventId, str itemActor, int amt, int rare)
+{
+	int i;
+	int rareFlag;
+	if (rare != 0)
+		rareFlag = 1;
+	else
+		rareFlag = 0;
+	for (i = 0; i < uh_lmsDropCount; i++)
+	{
+		if (uh_lmsDropEventId[i] == eventId
+			&& uh_lmsDropAmt[i] == amt
+			&& uh_lmsDropRare[i] == rareFlag
+			&& StrICmp(uh_lmsDropItem[i], itemActor) == 0)
+			return i;
+	}
+	return -1;
+}
+
+// Same (id, item, amt, rare) again returns existing row (no double grant).
+function int AddLMSEventDropCore(int eventId, str itemActor, int amt, int rare)
+{
+	int row;
+	int rareFlag;
+	if (!IsLMSEventDefined(eventId))
+		return UHLMS_FAIL;
+	if (StrCmp(itemActor, "") == 0)
+		return UHLMS_FAIL;
+	if (amt < 1)
+		return UHLMS_FAIL;
+	if (rare != 0)
+		rareFlag = 1;
+	else
+		rareFlag = 0;
+
+	row = FindLMSEventDropRow(eventId, itemActor, amt, rareFlag);
+	if (row >= 0)
+		return row;
+	if (uh_lmsDropCount >= UH_MAX_LMS_DROPS)
+		return UHLMS_FAIL;
+
+	row = uh_lmsDropCount;
+	uh_lmsDropEventId[row] = eventId;
+	uh_lmsDropItem[row] = itemActor;
+	uh_lmsDropAmt[row] = amt;
+	uh_lmsDropRare[row] = rareFlag;
+	uh_lmsDropCount++;
+	return row;
+}
+
+function str GetLMSEventStem(int id)
+{
+	if (!IsLMSEventDefined(id))
+		return "";
+	return uh_lmsStem[id];
+}
+
+function str GetLMSEventMessage(int id)
+{
+	if (!IsLMSEventDefined(id))
+		return "";
+	return uh_lmsMessage[id];
+}
+
+function str GetLMSEventraremessage(int id)
+{
+	if (!IsLMSEventDefined(id))
+		return "";
+	return uh_lmsraremessage[id];
+}
+
+function str GetLMSEventIcon(int id)
+{
+	if (!IsLMSEventDefined(id))
+		return "";
+	return uh_lmsIcon[id];
+}
+
+function str GetLMSEventrareicon(int id)
+{
+	if (!IsLMSEventDefined(id))
+		return "";
+	return uh_lmsrareicon[id];
+}
+
+function int GetLMSEventFlags(int id)
+{
+	if (!IsLMSEventDefined(id))
+		return 0;
+	return uh_lmsFlags[id];
+}
+
+function int GetLMSEventWeight(int id)
+{
+	if (!IsLMSEventDefined(id))
+		return 0;
+	return uh_lmsWeight[id];
+}
+
+// Weighted pick among events with weight >= 1. UHLMS_FAIL if none.
+function int PickLMSEvent(void)
+{
+	int i;
+	int sum;
+	int roll;
+
+	sum = 0;
+	for (i = 0; i < UH_MAX_LMS_EVENTS; i++)
+	{
+		if (uh_lmsDefined[i] == 0)
+			continue;
+		if (uh_lmsWeight[i] < 1)
+			continue;
+		sum += uh_lmsWeight[i];
+	}
+	if (sum <= 0)
+		return UHLMS_FAIL;
+
+	roll = random(1, sum);
+	for (i = 0; i < UH_MAX_LMS_EVENTS; i++)
+	{
+		if (uh_lmsDefined[i] == 0)
+			continue;
+		if (uh_lmsWeight[i] < 1)
+			continue;
+		roll -= uh_lmsWeight[i];
+		if (roll <= 0)
+			return i;
+	}
+	return UHLMS_FAIL;
+}
+
+// Grant all drop rows for eventId matching rare flag to actor tid.
+function void GrantLMSEventDrops(int tid, int eventId, int rare)
+{
+	int i;
+	int rareFlag;
+	if (!IsLMSEventDefined(eventId))
+		return;
+	if (rare != 0)
+		rareFlag = 1;
+	else
+		rareFlag = 0;
+	for (i = 0; i < uh_lmsDropCount; i++)
+	{
+		if (uh_lmsDropEventId[i] != eventId)
+			continue;
+		if (uh_lmsDropRare[i] != rareFlag)
+			continue;
+		GiveActorInventory(tid, uh_lmsDropItem[i], uh_lmsDropAmt[i]);
+	}
 }
