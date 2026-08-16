@@ -2113,3 +2113,163 @@ function void GrantLMSEventDrops(int tid, int eventId, int rare)
 		GiveActorInventory(tid, uh_lmsDropItem[i], uh_lmsDropAmt[i]);
 	}
 }
+
+// ============================================================================
+// Shiny move-weapon API tables (APPENDED LAST — existing import indices stay
+// stable; only UHDT + libs using these new symbols need recompiling).
+//
+// Model: the shiny weapon's Fire/AltFire dispatch gives+selects a modder-made
+// WEAPON actor from these tables; the move weapon plays its own psprite anim,
+// then calls uh_ShinyMoveReturn to switch back and remove itself.
+// ============================================================================
+
+#LIBDEFINE UH_MAX_SHINYMOVES 64
+#LIBDEFINE UH_SHINYNEGA_SLOTBASE 26
+#LIBDEFINE UH_SHINYNEGA_SLOTCOUNT 8
+#LIBDEFINE UH_DECOY_SLOTBASE 59
+
+// QwantShiny AltFire custom moves (vanilla pool = 25 moves, each weight 1).
+int uh_shinyQwantMoveCount = 0;
+str uh_shinyQwantMoveWep[UH_MAX_SHINYMOVES];
+int uh_shinyQwantMoveWeight[UH_MAX_SHINYMOVES];
+
+// NegaManShiny custom slots 26..33, three charge levels per slot.
+// "" = unregistered; dispatcher falls back L2/L3 -> L1.
+str uh_shinyNegaSlotWep[UH_SHINYNEGA_SLOTCOUNT][3];
+
+// DecoyBot custom copy slots 59+ (uniform in the flag swap pool).
+int uh_decoyMoveCount = 0;
+str uh_decoyMoveWep[UH_MAX_SHINYMOVES];
+
+// Shiny MegaMan custom copywep fire actors (mixed into the RNG leaf pool).
+int uh_shinyMegaMainCount = 0;
+str uh_shinyMegaMainActor[UH_MAX_SHINYMOVES];
+int uh_shinyMegaMainWeight[UH_MAX_SHINYMOVES];
+int uh_shinyMegaAltCount = 0;
+str uh_shinyMegaAltActor[UH_MAX_SHINYMOVES];
+int uh_shinyMegaAltWeight[UH_MAX_SHINYMOVES];
+
+// QwantShiny: register a custom AltFire move weapon. weight < 1 becomes 1.
+// Same (wepActor) again returns the existing row (no double entry).
+function int DefineShinyQwantMoveWepCore(str wepActor, int weight)
+{
+	int i;
+	if (StrCmp(wepActor, "") == 0)
+		return UHCOPY_FAIL;
+	for (i = 0; i < uh_shinyQwantMoveCount; i++)
+	{
+		if (StrICmp(uh_shinyQwantMoveWep[i], wepActor) == 0)
+			return i;
+	}
+	if (uh_shinyQwantMoveCount >= UH_MAX_SHINYMOVES)
+		return UHCOPY_FAIL;
+	uh_shinyQwantMoveWep[uh_shinyQwantMoveCount] = wepActor;
+	uh_shinyQwantMoveWeight[uh_shinyQwantMoveCount] = weight < 1 ? 1 : weight;
+	uh_shinyQwantMoveCount++;
+	return uh_shinyQwantMoveCount - 1;
+}
+
+// NegaManShiny: register one custom slot (26..33) with up to three charge
+// level weapons. wepL1 mandatory; empty L2/L3 fall back to L1 at dispatch.
+// Re-registering the same slot overwrites it.
+function int DefineShinyNegaSlotWepCore(int slot, str wepL1, str wepL2, str wepL3)
+{
+	int i;
+	if (slot < UH_SHINYNEGA_SLOTBASE
+		|| slot >= UH_SHINYNEGA_SLOTBASE + UH_SHINYNEGA_SLOTCOUNT)
+		return UHCOPY_FAIL;
+	if (StrCmp(wepL1, "") == 0)
+		return UHCOPY_FAIL;
+	i = slot - UH_SHINYNEGA_SLOTBASE;
+	uh_shinyNegaSlotWep[i][0] = wepL1;
+	uh_shinyNegaSlotWep[i][1] = wepL2;
+	uh_shinyNegaSlotWep[i][2] = wepL3;
+	return slot;
+}
+
+// DecoyBot: register a custom copy slot. Slot is auto-assigned starting at
+// UH_DECOY_SLOTBASE (59). Same (wepActor) again returns the existing slot.
+function int DefineDecoyBotMoveWepCore(str wepActor)
+{
+	int i;
+	if (StrCmp(wepActor, "") == 0)
+		return UHCOPY_FAIL;
+	for (i = 0; i < uh_decoyMoveCount; i++)
+	{
+		if (StrICmp(uh_decoyMoveWep[i], wepActor) == 0)
+			return UH_DECOY_SLOTBASE + i;
+	}
+	if (uh_decoyMoveCount >= UH_MAX_SHINYMOVES)
+		return UHCOPY_FAIL;
+	uh_decoyMoveWep[uh_decoyMoveCount] = wepActor;
+	uh_decoyMoveCount++;
+	return UH_DECOY_SLOTBASE + uh_decoyMoveCount - 1;
+}
+
+// Shiny MegaMan main RNG custom fire actors (kind 0 = main, 1 = alt).
+function int DefineShinyMegaCopyWepCore(int kind, str fireActor, int weight)
+{
+	int n;
+	int w;
+	if (StrCmp(fireActor, "") == 0)
+		return UHCOPY_FAIL;
+	n = kind == 0 ? uh_shinyMegaMainCount : uh_shinyMegaAltCount;
+	w = weight < 1 ? 1 : weight;
+	for (int i = 0; i < n; i++)
+	{
+		if (kind == 0 && StrICmp(uh_shinyMegaMainActor[i], fireActor) == 0)
+			return i;
+		if (kind != 0 && StrICmp(uh_shinyMegaAltActor[i], fireActor) == 0)
+			return i;
+	}
+	if (n >= UH_MAX_SHINYMOVES)
+		return UHCOPY_FAIL;
+	if (kind == 0)
+	{
+		uh_shinyMegaMainActor[n] = fireActor;
+		uh_shinyMegaMainWeight[n] = w;
+		uh_shinyMegaMainCount++;
+	}
+	else
+	{
+		uh_shinyMegaAltActor[n] = fireActor;
+		uh_shinyMegaAltWeight[n] = w;
+		uh_shinyMegaAltCount++;
+	}
+	return n;
+}
+
+// Total DecoyBot copy slot count: vanilla 59 (flags 0..58) + custom.
+function int CountDecoyBotSlots(void)
+{
+	return UH_DECOY_SLOTBASE + uh_decoyMoveCount;
+}
+
+// Resolve a NegaManShiny custom slot charge weapon. lvl: 1..3.
+function str GetShinyNegaSlotWep(int slot, int lvl)
+{
+	int i;
+	str wep;
+	if (slot < UH_SHINYNEGA_SLOTBASE
+		|| slot >= UH_SHINYNEGA_SLOTBASE + UH_SHINYNEGA_SLOTCOUNT)
+		return "";
+	i = slot - UH_SHINYNEGA_SLOTBASE;
+	wep = lvl == 2 ? uh_shinyNegaSlotWep[i][1]
+		: lvl == 3 ? uh_shinyNegaSlotWep[i][2]
+		: uh_shinyNegaSlotWep[i][0];
+	if (StrCmp(wep, "") == 0)
+		return uh_shinyNegaSlotWep[i][0];
+	return wep;
+}
+
+// Any custom NegaManShiny slot registered? (gates the full-charge cycle.)
+function int HasCustomNegaSlots(void)
+{
+	int i;
+	for (i = 0; i < UH_SHINYNEGA_SLOTCOUNT; i++)
+	{
+		if (StrCmp(uh_shinyNegaSlotWep[i][0], "") != 0)
+			return 1;
+	}
+	return 0;
+}

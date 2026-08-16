@@ -818,3 +818,302 @@ script "uh_debug_ShowTodayTeamFF" (void)
 			s:" [", i:uh_teamFFLeakIds[i], s:"]");
 	}
 }
+
+// ============================================================================
+// Shiny move-weapon runtime (dispatchers + return). Weapon states on clients
+// get 0 from non-CLIENTSIDE scripts; the server's GiveInventory/SetWeapon are
+// synced, so a handled roll self-corrects within a tick or two.
+// ============================================================================
+
+// Team-color dyes (must match UH_COLORS.acs / ConstIntList_Ucolors.dec).
+#define UH_MOVE_DYE_MEGA 30000
+#define UH_MOVE_DYE_QWANT 30001
+#define UH_MOVE_DYE_NEGA 30002
+#define UH_MOVE_DYE_DECOY 20050
+
+// Vanilla RNG leaf pool sizes for Shiny MegaMan mixing (approximate;
+// S_MegamanMainRNG_P has ~83 leaves, S_MegamanAltRNG_P ~23).
+#define UH_SHINYMEGA_MAIN_POOL 83
+#define UH_SHINYMEGA_ALT_POOL 23
+
+// Vanilla QwantShiny AltFire move count (each vanilla move has weight 1).
+#define UH_SHINYQWANT_VANILLA_POOL 25
+
+// Per-player dispatch records (indexed by PlayerNumber; -1 = not a player).
+str uh_moveReturn[64];
+str uh_moveCurrent[64];
+int uh_negaChargeLvl[64];
+
+// QwantShiny AltFire gate: roll the mixed pool (vanilla 25 * weight 1 +
+// registered customs by weight). 1 = custom handled (weapon switched),
+// 0 = fall through to the vanilla A_Jump list.
+script "uh_QwantShinyMoveRoll" (void)
+{
+	int pn = PlayerNumber();
+	int total;
+	int roll;
+	int acc;
+	int i;
+	int pick;
+	str wep;
+
+	if (pn < 0 || uh_shinyQwantMoveCount <= 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+
+	total = 0;
+	for (i = 0; i < uh_shinyQwantMoveCount; i++)
+		total += uh_shinyQwantMoveWeight[i];
+
+	roll = random(0, UH_SHINYQWANT_VANILLA_POOL + total - 1);
+	if (roll >= total)
+	{
+		SetResultValue(0);	// vanilla half of the pool
+		terminate;
+	}
+
+	acc = 0;
+	pick = -1;
+	for (i = 0; i < uh_shinyQwantMoveCount; i++)
+	{
+		acc += uh_shinyQwantMoveWeight[i];
+		if (roll < acc)
+		{
+			pick = i;
+			break;
+		}
+	}
+	if (pick < 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+
+	wep = uh_shinyQwantMoveWep[pick];
+	uh_moveReturn[pn] = "QwantShiny_W";
+	uh_moveCurrent[pn] = wep;
+	uh_negaChargeLvl[pn] = 0;
+	GiveInventory(wep, 1);
+	SetWeapon(wep);
+	SetResultValue(1);
+}
+
+// NegaManShiny custom slot dispatch. lvl = 1..3 charge level.
+// 1 = move weapon selected; 0 = unregistered slot (buster fallback).
+script "uh_ShinyNegaCustomFire" (int lvl)
+{
+	int pn = PlayerNumber();
+	int slot;
+	str wep;
+
+	if (pn < 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+	slot = CheckInventory("SNegaFlag");
+	wep = GetShinyNegaSlotWep(slot, lvl);
+	if (StrCmp(wep, "") == 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+
+	uh_moveReturn[pn] = "NegaManShiny_W";
+	uh_moveCurrent[pn] = wep;
+	uh_negaChargeLvl[pn] = lvl;
+	GiveInventory(wep, 1);
+	SetWeapon(wep);
+	SetResultValue(1);
+}
+
+// For the move weapon's Select: which charge level launched it (1..3, 0 none).
+script "uh_ShinyNegaGetChargeLevel" (void)
+{
+	int pn = PlayerNumber();
+	SetResultValue(pn >= 0 ? uh_negaChargeLvl[pn] : 0);
+}
+
+// Gate for NegamanVB_3: 1 = extend the full-charge cycle into custom slots,
+// 0 = vanilla reset to slot 0.
+script "uh_HasCustomNegaSlots" (void)
+{
+	SetResultValue(HasCustomNegaSlots());
+}
+
+// DecoyBot custom slot dispatch. which: 1 = DecoyBot_W, 2 = _W2, 3 = _W3.
+// Reads the matching DecoyBotFlagN and returns to the launching weapon.
+script "uh_DecoyBotCustomFire" (int which)
+{
+	int pn = PlayerNumber();
+	int slot;
+	int idx;
+	str flag;
+	str wep;
+	str ret;
+
+	if (pn < 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+	flag = "DecoyBotFlag1";
+	ret = "DecoyBot_W";
+	if (which == 2)
+	{
+		flag = "DecoyBotFlag2";
+		ret = "DecoyBot_W2";
+	}
+	else if (which == 3)
+	{
+		flag = "DecoyBotFlag3";
+		ret = "DecoyBot_W3";
+	}
+
+	slot = CheckInventory(flag);
+	if (slot < UH_DECOY_SLOTBASE)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+	idx = slot - UH_DECOY_SLOTBASE;
+	if (idx >= uh_decoyMoveCount)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+	wep = uh_decoyMoveWep[idx];
+
+	uh_moveReturn[pn] = ret;
+	uh_moveCurrent[pn] = wep;
+	uh_negaChargeLvl[pn] = 0;
+	GiveInventory(wep, 1);
+	SetWeapon(wep);
+	SetResultValue(1);
+}
+
+// Dynamic DecoyBot copy slot count (vanilla 59 = flags 0..58 + customs).
+script "uh_CountDecoyBotSlots" (void)
+{
+	SetResultValue(CountDecoyBotSlots());
+}
+
+// Called from a move weapon's last animation frame: switch back to the
+// launching shiny weapon and remove the move weapon itself.
+// Order matters: SetWeapon first, TakeInventory second (same pattern as
+// uh_QwantMoveRelearn).
+script "uh_ShinyMoveReturn" (void)
+{
+	int pn = PlayerNumber();
+	str cur;
+	str ret;
+
+	if (pn < 0)
+		terminate;
+	cur = uh_moveCurrent[pn];
+	if (StrCmp(cur, "") == 0)
+		terminate;
+	ret = uh_moveReturn[pn];
+	uh_moveCurrent[pn] = "";
+	uh_moveReturn[pn] = "";
+	uh_negaChargeLvl[pn] = 0;
+
+	// Only clean up when we are still the ready weapon (player may have
+	// switched manually mid-move; then the record is simply cleared).
+	if (StrICmp(GetWeapon(), cur) != 0)
+		terminate;
+	SetWeapon(ret);
+	TakeInventory(cur, 1);
+}
+
+// Team-color the move weapon by the player's shiny class. Call from Select.
+script "uh_ShinyMoveColor" (void)
+{
+	str cls = GetActorClass(0);
+	int dye = UH_MOVE_DYE_MEGA;
+	if (StrICmp(cls, "QwantShiny") == 0)
+		dye = UH_MOVE_DYE_QWANT;
+	else if (StrICmp(cls, "NegaManShiny") == 0)
+		dye = UH_MOVE_DYE_NEGA;
+	else if (StrICmp(cls, "DecoyBot") == 0)
+		dye = UH_MOVE_DYE_DECOY;
+	ACS_NamedExecuteWithResult("core_weaponcolor", dye, 1);
+}
+
+// Shiny MegaMan RNG gate. which: 0 = main (Fire), 1 = alt (AltFire).
+// Handled: gives the custom fire actor (+ the main's +1 ammo refund) and
+// returns 1 so the DECORATE pickup stops before the vanilla jump chain.
+script "uh_ShinyMegaRollCustom" (int which)
+{
+	int pn = PlayerNumber();
+	int n;
+	int total;
+	int pool;
+	int roll;
+	int acc;
+	int i;
+	int pick;
+
+	if (pn < 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+
+	if (which == 0)
+	{
+		n = uh_shinyMegaMainCount;
+		pool = UH_SHINYMEGA_MAIN_POOL;
+	}
+	else
+	{
+		n = uh_shinyMegaAltCount;
+		pool = UH_SHINYMEGA_ALT_POOL;
+	}
+	if (n <= 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+
+	total = 0;
+	for (i = 0; i < n; i++)
+		total += which == 0 ? uh_shinyMegaMainWeight[i] : uh_shinyMegaAltWeight[i];
+
+	roll = random(0, pool + total - 1);
+	if (roll >= total)
+	{
+		SetResultValue(0);	// vanilla half of the pool
+		terminate;
+	}
+
+	acc = 0;
+	pick = -1;
+	for (i = 0; i < n; i++)
+	{
+		acc += which == 0 ? uh_shinyMegaMainWeight[i] : uh_shinyMegaAltWeight[i];
+		if (roll < acc)
+		{
+			pick = i;
+			break;
+		}
+	}
+	if (pick < 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+
+	if (which == 0)
+	{
+		GiveInventory(uh_shinyMegaMainActor[pick], 1);
+		GiveInventory("S_RockNRollAmmo", 1);	// match S_MegamanMainRNG_P refund
+	}
+	else
+	{
+		GiveInventory(uh_shinyMegaAltActor[pick], 1);
+	}
+	SetResultValue(1);
+}

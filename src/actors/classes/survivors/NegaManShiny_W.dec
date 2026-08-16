@@ -74,6 +74,7 @@ goto Fire3
 Fire1:
 7H02 A 0 A_TakeInventory("WeaponCharge",999)
 7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
+7H02 A 0 A_JumpIfInventory("SNegaFlag",UH_SHINYNEGA_SLOTBASE,"CustomFire1")
 7H02 A 0 A_JumpIfInventory("SNegaFlag",25,"NegamanVB_1")
 7H02 A 0 A_JumpIfInventory("SNegaFlag",24,"NegamanBB_1")
 7H02 A 0 A_JumpIfInventory("SNegaFlag",23,"Negaman10B_1")
@@ -309,6 +310,7 @@ Goto Ready2
 
 Fire2:
 7H02 B 0 A_TakeInventory("WeaponCharge",999)
+7H02 B 0 A_JumpIfInventory("SNegaFlag",UH_SHINYNEGA_SLOTBASE,"CustomFire2")
 7H02 B 0 A_JumpIfInventory("SNegaFlag",25,"NegamanVB_2")
 7H02 B 0 A_JumpIfInventory("SNegaFlag",24,"NegamanBB_2")
 7H02 B 0 A_JumpIfInventory("SNegaFlag",23,"Negaman10B_2")
@@ -556,6 +558,7 @@ Goto Fire2End
 
 Fire3:
 7H02 C 0 A_TakeInventory("WeaponCharge",999)
+7H02 C 0 A_JumpIfInventory("SNegaFlag",UH_SHINYNEGA_SLOTBASE,"CustomFire3")
 7H02 C 0 A_JumpIfInventory("SNegaFlag",25,"NegamanVB_3")
 7H02 C 0 A_JumpIfInventory("SNegaFlag",24,"NegamanBB_3")
 7H02 C 0 A_JumpIfInventory("SNegaFlag",23,"Negaman10B_3")
@@ -820,8 +823,36 @@ goto Fire3End
 NegamanVB_3:
 7H02 C 0 A_PlaySoundEx("weapon/sparkchaser","Weapon")
 7H02 C 0 A_FireCustomMissile("S_NegaSparkChaser3",0,0,8,0)
+7H02 C 0 A_JumpIf(CallACS("uh_HasCustomNegaSlots"), 2)
 7H02 C 0 A_TakeInventory("SNegaFlag",999)
 Goto Fire3End
+7H02 C 0 A_GiveInventory("SNegaFlag",1)
+Goto Fire3End
+
+// Custom move-weapon slots (26+): dispatch via ACS, fall back to the
+// vanilla buster when the slot is not registered by any addon.
+CustomFire1:
+7H02 A 0 A_JumpIf(CallACS("uh_ShinyNegaCustomFire", 1), 2)
+7H02 A 0
+goto Negaman0_1
+7H02 A 1
+goto Ready2
+CustomFire2:
+7H02 B 0 A_JumpIf(CallACS("uh_ShinyNegaCustomFire", 2), 2)
+7H02 B 0
+goto Negaman0_2
+7H02 B 1
+goto Ready2
+CustomFire3:
+7H02 C 0 A_JumpIf(CallACS("uh_ShinyNegaCustomFire", 3), 2)
+7H02 C 0
+goto Negaman0_3
+7H02 C 0 A_GiveInventory("SNegaFlag", 1)
+7H02 C 0 A_JumpIfInventory("SNegaFlag", UH_SHINYNEGA_CYCLE_RESET, 2)
+7H02 C 0
+goto Ready2
+7H02 C 0 A_TakeInventory("SNegaFlag", 999)
+goto Ready2
 
 Fire2End:  // 14 tics
 7H02 CB 4

@@ -1,0 +1,212 @@
+// ============================================================
+// Shiny move-weapon example addon (load AFTER Unholy build.pk3)
+//
+// The example reuses Unholy sprites (7H01/7H02/6H50) so it ships no
+// lumps; real addons ship their own sprite prefixes — that is where
+// the per-frame animation freedom lives (frame letters, offsets,
+// durations, sounds, projectiles are all yours).
+// ============================================================
+
+// --- QwantShiny AltFire move -----------------------------------
+actor UHExMoveFireBall_W : BaseMM8BDMWep_UH
+{
+	// Ammo gate: share the class's ammo pool with zero use so the
+	// dispatcher's SetWeapon (CheckAmmo EitherFire) passes.
+	weapon.ammotype "MyDestinyAmmo"
+	weapon.ammouse 0
+	+WEAPON.NOALERT
+	States
+	{
+	Spawn:
+		7H01 [ 6
+		loop
+	Deselect:
+		7H01 A 0
+		goto DeselectSwap
+	Select:
+		7H01 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
+		7H01 A 2 Offset(0, 40)
+		7H01 C 2 Offset(0, 56) A_GiveInventory("UHExFireBallShot_P")
+		7H01 C 2 Offset(0, 68) A_GiveInventory("UHExFireBallShot_P")
+		7H01 C 2 Offset(0, 72) A_GiveInventory("UHExFireBallShot_P")
+		7H01 B 2 Offset(0, 48)
+		7H01 A 1 Offset(0, 32) ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")
+		7H01 A 1 A_WeaponReady
+		wait
+	Ready:
+		7H01 A 1 A_WeaponReady
+		wait
+	Fire:
+	AltFire:
+		7H01 A 1 A_WeaponReady
+		wait
+	}
+}
+
+// --- NegaManShiny full-charge slot 26 (one weapon, 3 charge anims) -
+actor UHExNegaSlash_W : BaseMM8BDMWep_UH
+{
+	weapon.ammotype "S_NegaDuckAmmo"
+	weapon.ammouse 0
+	+WEAPON.NOALERT
+	States
+	{
+	Spawn:
+		7H02 [ 6
+		loop
+	Deselect:
+		7H02 A 0
+		goto DeselectSwap
+	Select:
+		7H02 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
+		7H02 A 0 A_JumpIf(CallACS("uh_ShinyNegaGetChargeLevel") == 2, "SelectL2")
+		7H02 A 0 A_JumpIf(CallACS("uh_ShinyNegaGetChargeLevel") == 3, "SelectL3")
+	SelectL1:
+		7H02 C 0 A_PlaySoundEx("nega/slashclaw", "Weapon")
+		7H02 C 3 A_FireCustomMissile("UHExNegaSlash", 0, 0, 8, 0)
+		7H02 B 2
+		7H02 A 1 ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")
+		goto SelectEnd
+	SelectL2:
+		7H02 C 0 A_PlaySoundEx("nega/slashclaw", "Weapon")
+		7H02 C 2 A_FireCustomMissile("UHExNegaSlash", 0, 0, 8, 0)
+		7H02 C 2 A_FireCustomMissile("UHExNegaSlash", 4, 0, 8, 0)
+		7H02 B 3
+		7H02 A 1 ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")
+		goto SelectEnd
+	SelectL3:
+		7H02 C 0 A_PlaySoundEx("nega/slashclaw", "Weapon")
+		7H02 C 2 A_FireCustomMissile("UHExNegaSlash", 0, 0, 8, 0)
+		7H02 C 2 A_FireCustomMissile("UHExNegaSlash", 5, 0, 8, 0)
+		7H02 C 2 A_FireCustomMissile("UHExNegaSlash", -5, 0, 8, 0)
+		7H02 B 4
+		7H02 A 1 ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")
+		goto SelectEnd
+	SelectEnd:
+		7H02 A 1 A_WeaponReady
+		wait
+	Ready:
+		7H02 A 1 A_WeaponReady
+		wait
+	Fire:
+	AltFire:
+		7H02 A 1 A_WeaponReady
+		wait
+	}
+}
+
+// --- DecoyBot copy slot 59+ ------------------------------------
+actor UHExDecoyShot_W : BaseMM8BDMWep_UH
+{
+	weapon.ammotype "DecoyEnergyAmmo"
+	weapon.ammouse 0
+	+WEAPON.NOALERT
+	States
+	{
+	Spawn:
+		6H50 [ 6
+		loop
+	Deselect:
+		6H50 A 0
+		goto DeselectSwap
+	Select:
+		6H50 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
+		6H50 C 2 A_GiveInventory("UHExDecoyShot_P")
+		6H50 C 2 A_GiveInventory("UHExDecoyShot_P")
+		6H50 C 2 A_GiveInventory("UHExDecoyShot_P")
+		6H50 B 2
+		6H50 A 1 ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")
+		6H50 A 1 A_WeaponReady
+		wait
+	Ready:
+		6H50 A 1 A_WeaponReady
+		wait
+	Fire:
+	AltFire:
+		6H50 A 1 A_WeaponReady
+		wait
+	}
+}
+
+// --- Shiny MegaMan fire actors (no weapon switch; Pickup fires) --
+actor UHExShinyFire_P : CustomInventory
+{
+	States
+	{
+	Pickup:
+		TNT1 A 0 A_PlaySoundEx("weapons/busters/megabusterfire", "Weapon")
+		TNT1 A 0 A_FireCustomMissile("UHExFireBall", 0, 0, 8, 0)
+		stop
+	}
+}
+actor UHExShinyAltFire_P : UHExShinyFire_P
+{
+	States
+	{
+	Pickup:
+		TNT1 A 0 A_PlaySoundEx("weapons/busters/megabusterfire", "Weapon")
+		TNT1 A 0 A_FireCustomMissile("UHExFireBall", -6, 0, 8, 0)
+		TNT1 A 0 A_FireCustomMissile("UHExFireBall", 6, 0, 8, 0)
+		stop
+	}
+}
+
+// --- Shared example projectiles --------------------------------
+actor UHExFireBallShot_P : CustomInventory
+{
+	States
+	{
+	Pickup:
+		TNT1 A 0 A_PlaySoundEx("weapons/mm2/crashbombfire", "Weapon")
+		TNT1 A 0 A_FireCustomMissile("UHExFireBall", 0, 0, 8, 0)
+		stop
+	}
+}
+actor UHExDecoyShot_P : CustomInventory
+{
+	States
+	{
+	Pickup:
+		TNT1 A 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+		TNT1 A 0 A_FireCustomMissile("UHExFireBall", random(-2, 2), 0, 8, 0)
+		stop
+	}
+}
+actor UHExNegaSlash : BasicProjectile
+{
+	damagetype "Normal"
+	Obituary "%o was sliced by %k's example nega move."
+	Damage (22)
+	Radius 8
+	Height 10
+	Speed 26
+	States
+	{
+	Spawn:
+		7H02 C 1
+		loop
+	Death:
+		X_8B A 0 A_PlaySoundEx("weapon/slashclaw", "Weapon")
+		X_8B ABCD 2
+		stop
+	}
+}
+actor UHExFireBall : BasicProjectile
+{
+	damagetype "Normal"
+	Obituary "%o was toasted by %k's example move."
+	Damage (18)
+	Radius 6
+	Height 8
+	Speed 22
+	States
+	{
+	Spawn:
+		7H01 C 1
+		loop
+	Death:
+		X_8B A 0 A_PlaySoundEx("weapons/mm2/crashbombexplode", "Weapon")
+		X_8B ABCD 2
+		stop
+	}
+}

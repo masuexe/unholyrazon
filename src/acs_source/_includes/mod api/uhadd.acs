@@ -853,3 +853,112 @@ function int UH_PickLMSEvent(void)
 {
 	return ACS_NamedExecuteWithResult("uh_PickLMSEvent_S");
 }
+
+// === Shiny move-weapon addon recipe =========================================
+// Lets an addon attach CUSTOM psprite-animated moves to the shiny copy classes.
+// The move is a WEAPON actor the modder ships: on dispatch the shiny weapon
+// GiveInventory + SetWeapon it; the move weapon's Select state plays the whole
+// frame-by-frame animation (own sprites/offsets/durations/sounds), fires its
+// projectiles from its own states, and at the end calls uh_ShinyMoveReturn
+// which switches back to the shiny weapon and removes the move weapon.
+//
+// Move weapon requirements (engine-enforced):
+// 1. SetWeapon needs CheckAmmo(EitherFire) to pass: either give the weapon
+//    an ammo type the class already holds (MyDestinyAmmo / S_NegaDuckAmmo /
+//    DecoyEnergyAmmo) or use NO ammotype with Weapon.AmmoUse 0.
+//    +WEAPON.AMMO_OPTIONAL does NOT help SetWeapon.
+// 2. Play the animation in Select; make Fire a no-op (A_WeaponReady) so a held
+//    fire button does not re-trigger it.
+// 3. Call ACS_NamedExecuteWithResult("uh_ShinyMoveColor") on the first Select
+//    frame for team coloring.
+// 4. End the animation with ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")
+//    (switches back and takes the weapon itself).
+// 5. NegaManShiny move weapons read the charge level in Select via
+//    CallACS("uh_ShinyNegaGetChargeLevel") (1..3).
+// 6. Do not give the move weapon a player.weaponslot entry (slotless).
+//
+// Recipes:
+//   DefineShinyQwantMoveWep("YourMove_W", 3);
+//       QwantShiny AltFire pool: vanilla 25 moves have weight 1 each; your
+//       move enters the same roll with weight 3.
+//   DefineShinyNegaSlotWep(26, "YourNegaL1_W", "YourNegaL2_W", "YourNegaL3_W");
+//       NegaManShiny slots 26..33 participate in the SNegaFlag full-charge
+//       cycle. L1 mandatory; empty L2/L3 fall back to L1. Register contiguous
+//       slots from 26 to avoid buster gaps in the cycle.
+//   DefineDecoyBotMoveWep("YourCopy_W");
+//       DecoyBot copy slot 59+ (uniform in the flag swap pool for all three
+//       weapons). Dispatcher remembers which of DecoyBot_W/_W2/_W3 launched
+//       the move and returns there.
+//   DefineShinyMegaCopyWep("YourFireActor", 2);      // main RNG (Fire)
+//   DefineShinyMegaAltCopyWep("YourAltFireActor", 2); // alt RNG (AltFire)
+//       Shiny MegaMan: the fire actor is a CustomInventory whose Pickup does
+//       the attack (A_FireCustomMissile/A_SpawnItemEx). Main pool mixes into
+//       ~83 vanilla leaves, alt into ~23, by weight proportion.
+//
+// 1. LOADACS after Unholy: YOUR_SHINYDEFS
+// 2. ACS:
+//      #library "YOUR_SHINYDEFS"
+//      #include "zcommon.acs"
+//      #include "UHADD.acs"
+//      function void YourRegister(void) {
+//          DefineShinyQwantMoveWep("YourMove_W", 3);
+//          DefineShinyNegaSlotWep(26, "YourNegaL1_W", "", "");
+//          DefineDecoyBotMoveWep("YourCopy_W");
+//          DefineShinyMegaCopyWep("YourShinyFire_P", 2);
+//      }
+//      script "your_define" OPEN {
+//          if (!UHInPlay()) terminate;
+//          YourRegister();
+//      }
+//      script "your_define_cs" OPEN CLIENTSIDE {
+//          YourRegister();
+//      }
+// 3. Same (kind, actor) registration again returns the existing row.
+// 4. Move weapons are taken on return — registration rows persist all match.
+//
+// Slot constants (match UHDT / ConstIntList_Uacsprops.dec):
+#define UH_SHINYNEGA_SLOTBASE 26
+#define UH_SHINYNEGA_SLOTCOUNT 8
+#define UH_DECOY_SLOTBASE 59
+
+// QwantShiny AltFire custom move weapon (weight >= 1 recommended).
+function int DefineShinyQwantMoveWep(str wepActor, int weight)
+{
+	SetCVarString("uh_sm_wep", wepActor);
+	SetCVar("uh_sm_weight", weight);
+	return ACS_NamedExecuteWithResult("uh_DefineShinyQwantMoveWep_S");
+}
+
+// NegaManShiny custom slot weapon set (slot 26..33; L1 mandatory).
+function int DefineShinyNegaSlotWep(int slot, str wepL1, str wepL2, str wepL3)
+{
+	SetCVar("uh_sm_slot", slot);
+	SetCVarString("uh_sm_wl1", wepL1);
+	SetCVarString("uh_sm_wl2", wepL2);
+	SetCVarString("uh_sm_wl3", wepL3);
+	return ACS_NamedExecuteWithResult("uh_DefineShinyNegaSlotWep_S");
+}
+
+// DecoyBot custom copy slot weapon (slot auto 59+).
+function int DefineDecoyBotMoveWep(str wepActor)
+{
+	SetCVarString("uh_sm_wep", wepActor);
+	return ACS_NamedExecuteWithResult("uh_DefineDecoyBotMoveWep_S");
+}
+
+// Shiny MegaMan custom copywep fire actor (kind 0 main / 1 alt).
+function int DefineShinyMegaCopyWep(str fireActor, int weight)
+{
+	SetCVar("uh_sm_kind", 0);
+	SetCVarString("uh_sm_wep", fireActor);
+	SetCVar("uh_sm_weight", weight);
+	return ACS_NamedExecuteWithResult("uh_DefineShinyMegaCopyWep_S");
+}
+
+function int DefineShinyMegaAltCopyWep(str fireActor, int weight)
+{
+	SetCVar("uh_sm_kind", 1);
+	SetCVarString("uh_sm_wep", fireActor);
+	SetCVar("uh_sm_weight", weight);
+	return ACS_NamedExecuteWithResult("uh_DefineShinyMegaCopyWep_S");
+}
