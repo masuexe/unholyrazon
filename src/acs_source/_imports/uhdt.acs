@@ -2123,10 +2123,13 @@ function void GrantLMSEventDrops(int tid, int eventId, int rare)
 // then calls uh_ShinyMoveReturn to switch back and remove itself.
 // ============================================================================
 
-#LIBDEFINE UH_MAX_SHINYMOVES 64
+#LIBDEFINE UH_MAX_SHINYMOVES 128
 #LIBDEFINE UH_SHINYNEGA_SLOTBASE 26
 #LIBDEFINE UH_SHINYNEGA_SLOTCOUNT 8
 #LIBDEFINE UH_DECOY_SLOTBASE 59
+#LIBDEFINE UH_SHINYMEGA_M1 1
+#LIBDEFINE UH_SHINYMEGA_M2 2
+#LIBDEFINE UH_SHINYMEGA_TRUE 3
 
 // QwantShiny AltFire custom moves (vanilla pool = 25 moves, each weight 1).
 int uh_shinyQwantMoveCount = 0;
@@ -2141,7 +2144,8 @@ str uh_shinyNegaSlotWep[UH_SHINYNEGA_SLOTCOUNT][3];
 int uh_decoyMoveCount = 0;
 str uh_decoyMoveWep[UH_MAX_SHINYMOVES];
 
-// Shiny MegaMan custom copywep fire actors (mixed into the RNG leaf pool).
+// Shiny MegaMan flat fire-actor pools (M1 = Fire, M2 = AltFire).
+// TRUE registers the same actor into both with the same weight.
 int uh_shinyMegaMainCount = 0;
 str uh_shinyMegaMainActor[UH_MAX_SHINYMOVES];
 int uh_shinyMegaMainWeight[UH_MAX_SHINYMOVES];
@@ -2206,37 +2210,63 @@ function int DefineDecoyBotMoveWepCore(str wepActor)
 	return UH_DECOY_SLOTBASE + uh_decoyMoveCount - 1;
 }
 
-// Shiny MegaMan main RNG custom fire actors (kind 0 = main, 1 = alt).
-function int DefineShinyMegaCopyWepCore(int kind, str fireActor, int weight)
+// Shiny MegaMan: register a fire CustomInventory into M1 (Fire), M2 (AltFire),
+// or TRUE (both, same weight). Same (actor, pool) again returns existing index.
+// which: UH_SHINYMEGA_M1 / M2 / TRUE.
+function int DefineShinyMegaCopyWepCore(int which, str fireActor, int weight)
 {
-	int n;
 	int w;
+	int i;
+	int last;
 	if (StrCmp(fireActor, "") == 0)
 		return UHCOPY_FAIL;
-	n = kind == 0 ? uh_shinyMegaMainCount : uh_shinyMegaAltCount;
-	w = weight < 1 ? 1 : weight;
-	for (int i = 0; i < n; i++)
-	{
-		if (kind == 0 && StrICmp(uh_shinyMegaMainActor[i], fireActor) == 0)
-			return i;
-		if (kind != 0 && StrICmp(uh_shinyMegaAltActor[i], fireActor) == 0)
-			return i;
-	}
-	if (n >= UH_MAX_SHINYMOVES)
+	if (which != UH_SHINYMEGA_M1 && which != UH_SHINYMEGA_M2 && which != UH_SHINYMEGA_TRUE)
 		return UHCOPY_FAIL;
-	if (kind == 0)
+	w = weight < 1 ? 1 : weight;
+	last = -1;
+
+	if (which == UH_SHINYMEGA_M1 || which == UH_SHINYMEGA_TRUE)
 	{
-		uh_shinyMegaMainActor[n] = fireActor;
-		uh_shinyMegaMainWeight[n] = w;
-		uh_shinyMegaMainCount++;
+		for (i = 0; i < uh_shinyMegaMainCount; i++)
+		{
+			if (StrICmp(uh_shinyMegaMainActor[i], fireActor) == 0)
+			{
+				last = i;
+				break;
+			}
+		}
+		if (last < 0)
+		{
+			if (uh_shinyMegaMainCount >= UH_MAX_SHINYMOVES)
+				return UHCOPY_FAIL;
+			last = uh_shinyMegaMainCount;
+			uh_shinyMegaMainActor[last] = fireActor;
+			uh_shinyMegaMainWeight[last] = w;
+			uh_shinyMegaMainCount++;
+		}
 	}
-	else
+
+	if (which == UH_SHINYMEGA_M2 || which == UH_SHINYMEGA_TRUE)
 	{
-		uh_shinyMegaAltActor[n] = fireActor;
-		uh_shinyMegaAltWeight[n] = w;
-		uh_shinyMegaAltCount++;
+		for (i = 0; i < uh_shinyMegaAltCount; i++)
+		{
+			if (StrICmp(uh_shinyMegaAltActor[i], fireActor) == 0)
+			{
+				last = i;
+				break;
+			}
+		}
+		if (i >= uh_shinyMegaAltCount)
+		{
+			if (uh_shinyMegaAltCount >= UH_MAX_SHINYMOVES)
+				return UHCOPY_FAIL;
+			last = uh_shinyMegaAltCount;
+			uh_shinyMegaAltActor[last] = fireActor;
+			uh_shinyMegaAltWeight[last] = w;
+			uh_shinyMegaAltCount++;
+		}
 	}
-	return n;
+	return last;
 }
 
 // Total DecoyBot copy slot count: vanilla 59 (flags 0..58) + custom.

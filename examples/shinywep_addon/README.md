@@ -8,8 +8,8 @@ the shiny copy classes through the Unholy mod API:
 | `DefineShinyQwantMoveWep("YourMove_W", 3)` | QwantShiny | AltFire RNG, mixed with the vanilla 25 moves by weight (vanilla moves = weight 1 each) |
 | `DefineShinyNegaSlotWep(26, "YourNegaL1_W", "", "")` | NegaManShiny | Full-charge slot 26 (26..33 available); participates in the `SNegaFlag` cycle |
 | `DefineDecoyBotMoveWep("YourCopy_W")` | DecoyBot | Copy slot 59+; rolled by the flag swap for all three weapons, returns to the weapon that launched it |
-| `DefineShinyMegaCopyWep("YourFire_P", 1)` | Shiny MegaMan | Mixed into the `S_MegamanMainRNG_P` fire pool (~83 vanilla leaves) |
-| `DefineShinyMegaAltCopyWep("YourAltFire_P", 1)` | Shiny MegaMan | Mixed into the `S_MegamanAltRNG_P` pool (~23 vanilla leaves) |
+| `DefineShinyMegaCopyWep("ShinyMega_Your_P", UH_SHINYMEGA_M1, 5)` | Shiny MegaMan | Flat Fire pool (ordinary weight 5; DawnBreaker uses TRUE + weight 1) |
+| `DefineShinyMegaCopyWep("ShinyMega_Your_P", UH_SHINYMEGA_M2, 19)` | Shiny MegaMan | Flat AltFire pool (ordinary weight 19) |
 
 ## How a move works
 
@@ -39,8 +39,10 @@ the shiny copy classes through the Unholy mod API:
 7. Move costs are yours: with `Weapon.AmmoUse 0` the move is free; spend
    `A_TakeInventory("MyDestinyAmmo"/"S_NegaDuckAmmo"/"DecoyEnergyAmmo", N)`
    on an early animation frame if you want a cost.
-8. Shiny MegaMan is different: register a **CustomInventory fire actor** whose
-   `Pickup` does `A_FireCustomMissile`/`A_SpawnItemEx` (no weapon switch).
+8. Shiny MegaMan: inherit `ShinyMegaBase_P`, name `ShinyMega_<Stem>_P`, register with
+   `DefineShinyMegaCopyWep(..., UH_SHINYMEGA_M1/M2/TRUE, weight)`. Ordinary M1=5, M2=19.
+   Pickup fires the attack (no weapon switch). For M1+M2 different shots, branch on
+   `CallACS("uh_ShinyMegaGetWhich")`.
 
 ## Notes
 

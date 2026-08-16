@@ -889,11 +889,13 @@ function int UH_PickLMSEvent(void)
 //       DecoyBot copy slot 59+ (uniform in the flag swap pool for all three
 //       weapons). Dispatcher remembers which of DecoyBot_W/_W2/_W3 launched
 //       the move and returns there.
-//   DefineShinyMegaCopyWep("YourFireActor", 2);      // main RNG (Fire)
-//   DefineShinyMegaAltCopyWep("YourAltFireActor", 2); // alt RNG (AltFire)
-//       Shiny MegaMan: the fire actor is a CustomInventory whose Pickup does
-//       the attack (A_FireCustomMissile/A_SpawnItemEx). Main pool mixes into
-//       ~83 vanilla leaves, alt into ~23, by weight proportion.
+//   DefineShinyMegaCopyWep("ShinyMega_YourStem_P", UH_SHINYMEGA_M1, 5);
+//   DefineShinyMegaCopyWep("ShinyMega_YourStem_P", UH_SHINYMEGA_M2, 19);
+//   DefineShinyMegaCopyWep("ShinyMega_DawnBreaker_P", UH_SHINYMEGA_TRUE, 1);
+//       Shiny MegaMan: flat weighted pool (no game-generation buckets).
+//       Fire actor is CustomInventory : ShinyMegaBase_P; Pickup does the attack.
+//       M1 = Fire, M2 = AltFire, TRUE = both (same weight). Ordinary moves use
+//       weight 5 (M1) / 19 (M2); DawnBreaker stays weight 1.
 //
 // 1. LOADACS after Unholy: YOUR_SHINYDEFS
 // 2. ACS:
@@ -904,7 +906,7 @@ function int UH_PickLMSEvent(void)
 //          DefineShinyQwantMoveWep("YourMove_W", 3);
 //          DefineShinyNegaSlotWep(26, "YourNegaL1_W", "", "");
 //          DefineDecoyBotMoveWep("YourCopy_W");
-//          DefineShinyMegaCopyWep("YourShinyFire_P", 2);
+//          DefineShinyMegaCopyWep("ShinyMega_YourStem_P", UH_SHINYMEGA_M1, 5);
 //      }
 //      script "your_define" OPEN {
 //          if (!UHInPlay()) terminate;
@@ -920,6 +922,9 @@ function int UH_PickLMSEvent(void)
 #define UH_SHINYNEGA_SLOTBASE 26
 #define UH_SHINYNEGA_SLOTCOUNT 8
 #define UH_DECOY_SLOTBASE 59
+#define UH_SHINYMEGA_M1 1
+#define UH_SHINYMEGA_M2 2
+#define UH_SHINYMEGA_TRUE 3
 
 // QwantShiny AltFire custom move weapon (weight >= 1 recommended).
 function int DefineShinyQwantMoveWep(str wepActor, int weight)
@@ -946,18 +951,10 @@ function int DefineDecoyBotMoveWep(str wepActor)
 	return ACS_NamedExecuteWithResult("uh_DefineDecoyBotMoveWep_S");
 }
 
-// Shiny MegaMan custom copywep fire actor (kind 0 main / 1 alt).
-function int DefineShinyMegaCopyWep(str fireActor, int weight)
+// Shiny MegaMan fire CustomInventory. which: UH_SHINYMEGA_M1 / M2 / TRUE.
+function int DefineShinyMegaCopyWep(str fireActor, int which, int weight)
 {
-	SetCVar("uh_sm_kind", 0);
-	SetCVarString("uh_sm_wep", fireActor);
-	SetCVar("uh_sm_weight", weight);
-	return ACS_NamedExecuteWithResult("uh_DefineShinyMegaCopyWep_S");
-}
-
-function int DefineShinyMegaAltCopyWep(str fireActor, int weight)
-{
-	SetCVar("uh_sm_kind", 1);
+	SetCVar("uh_sm_kind", which);
 	SetCVarString("uh_sm_wep", fireActor);
 	SetCVar("uh_sm_weight", weight);
 	return ACS_NamedExecuteWithResult("uh_DefineShinyMegaCopyWep_S");
