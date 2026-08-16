@@ -206,6 +206,8 @@ def main() -> None:
         parts.append("{")
         parts.append("Select:")
         parts.append('\t6H50 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")')
+        # SetWeapon starts at WEAPONBOTTOM (y=128); snap to WEAPONTOP before Anim.
+        parts.append("\t6H50 A 0 A_WeaponReady(14)")
         parts.append('\t6H50 A 0 A_JumpIf(CallACS("uh_DecoyBotGetWhich") == 2, "Anim2")')
         parts.append('\t6H50 A 0 A_JumpIf(CallACS("uh_DecoyBotGetWhich") == 3, "Anim3")')
         parts.append("\tgoto Anim1")

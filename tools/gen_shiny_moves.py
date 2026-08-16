@@ -159,6 +159,8 @@ def gen_qwant() -> None:
         parts.append("{")
         parts.append("Select:")
         parts.append('\t7H01 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")')
+        # SetWeapon starts at WEAPONBOTTOM (y=128); snap to WEAPONTOP before anim.
+        parts.append("\t7H01 A 0 A_WeaponReady(14)")
         parts.append("\tgoto SelectAnim")
         parts.append(body_inner.rstrip())
         parts.append("}")
@@ -404,6 +406,8 @@ def gen_nega() -> None:
         parts.append("{")
         parts.append("Select:")
         parts.append('\t7H02 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")')
+        # SetWeapon starts at WEAPONBOTTOM (y=128); snap to WEAPONTOP before anim.
+        parts.append("\t7H02 A 0 A_WeaponReady(14)")
         parts.append('\t7H02 A 0 A_JumpIf(CallACS("uh_ShinyNegaGetChargeLevel") == 2, "' + l2 + '")')
         parts.append('\t7H02 A 0 A_JumpIf(CallACS("uh_ShinyNegaGetChargeLevel") == 3, "' + l3 + '")')
         parts.append(f"\tgoto {l1}")
@@ -689,6 +693,8 @@ def gen_decoy() -> None:
         parts.append("{")
         parts.append("Select:")
         parts.append('\t6H50 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")')
+        # SetWeapon starts at WEAPONBOTTOM (y=128); snap to WEAPONTOP before Anim.
+        parts.append("\t6H50 A 0 A_WeaponReady(14)")
         parts.append('\t6H50 A 0 A_JumpIf(CallACS("uh_DecoyBotGetWhich") == 2, "Anim2")')
         parts.append('\t6H50 A 0 A_JumpIf(CallACS("uh_DecoyBotGetWhich") == 3, "Anim3")')
         parts.append("\tgoto Anim1")
