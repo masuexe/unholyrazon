@@ -187,7 +187,9 @@ def main() -> None:
 
         def prep(body: str, anim: str) -> str:
             body = rewrite_ends(body)
+            # FireNN: becomes AnimN:; rewrite quoted A_Refire/goto targets too.
             body = re.sub(rf"(?m)^{re.escape(fl)}\s*:", f"{anim}:", body, count=1)
+            body = re.sub(rf'"{re.escape(fl)}"', f'"{anim}"', body)
             body = re.sub(r"(?i)\bgoto\s+BotFire\b", "goto MoveReturn", body)
             # Prefix helper labels so Anim1/2/3 do not collide (FireH08, Fire08End, …).
             labs = sorted(set(re.findall(r"(?m)^(Fire\w+)\s*:", body)), key=len, reverse=True)
