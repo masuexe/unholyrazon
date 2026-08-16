@@ -42,7 +42,16 @@ Addon `LOADACS` only needs `uh_exaddon`; main mod already loads `uhdt` / `uhaddr
 
 4. Host and joiners load main mod + this addon; force `-1`; clients must show "UH Example Boss" next to the mugshot (local UHDT filled by CLIENTSIDE twin).
 
+## Morph setup hook
+
+The example registers `uh_BossMorphSetup_UHExampleBoss` via
+`SetBossMorphSetupByActor("UHExampleBoss", ...)`. That script runs after
+`MorphActor`, before the first weapon `Ready`, and gives the boss the same two
+lives as CuttyCut. This is where multi-weapon / ExtraLife / PowerLimit setup
+belongs for custom bosses.
+
 ## Notes
 
 - ForcedBoss / ForcedShadowBoss "none" is `-9999` (`UHBOSS_FAIL`), not `-1` (`-1` is the first custom id).
 - Do not put `CLIENTSIDE` on main mod's `uh_DefineBoss_S` handler.
+- The morph setup script runs on the server; do not mark it `CLIENTSIDE`.

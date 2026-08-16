@@ -37,6 +37,31 @@
 // 7. EX: pass parent actor in exboss_baseactor; use GetBossBaseId / GetBossExId.
 // 8. Mugshot: set an explicit font/lump for custom ids (Shiny/CBM own negative bands).
 //
+// === Boss morph setup (post-morph, pre-Ready) ================================
+// Optional per-boss script that runs after MorphActor/PostReset/BasicBossItem
+// and before uh_BossMorph. This is where multi-weapon/ExtraLife/PowerLimit
+// setup belongs (ArchArcanist, CuttyCut, GBeast, etc).
+//
+//      function void YourRegisterBosses(void)
+//      {
+//          DefineBoss(-1, "YourBossActor", "\cjYour Boss", UHBOSS_POOL_COMMON,
+//              2000, 300, "", "UFACE26", "M_UB000", "credit",
+//              "instructions", "T.", "spawn msg");
+//          SetBossMorphSetupByActor("YourBossActor", "uh_BossMorphSetup_YourBossActor");
+//      }
+//
+//      script "uh_BossMorphSetup_YourBossActor" (int bossId, int tid)
+//      {
+//          SetActivator(tid);
+//          GiveInventory("YourBoss_W", 1);
+//          GiveInventory("YourBoss_W2", 1);
+//          GiveInventory("UnholyPowerLimit_F", 1500);
+//      }
+//
+// Rules: script signature is (int bossId, int tid); do NOT Delay inside this
+// script. It runs on the server, so do NOT mark it CLIENTSIDE. If the script
+// is not found when a boss is morphed, core logs it.
+//
 // === DefineSurvivor addon recipe =============================================
 // 1. KEYCONF (addon pk3): addplayerclass YourClass nomenu  — NO clearplayerclasses.
 // 2. LOADACS after Unholy: YOUR_SURVDEFS
@@ -390,6 +415,26 @@ function int UH_FindBossByActor(str actor)
 {
 	SetCVarString("uh_db_actor", actor);
 	return ACS_NamedExecuteWithResult("uh_FindBossByActor_S");
+}
+
+// Internal helper: id is the signed UHDT boss id. Modders should use
+// SetBossMorphSetupByActor instead; custom ids are not stable across PK3s.
+function bool SetBossMorphSetupById(int id, str setupscript) {
+	SetCVar("uh_db_id", id);
+	SetCVarString("uh_db_setup", setupscript);
+	return ACS_NamedExecuteWithResult("uh_SetBossMorphSetup_S");
+}
+
+// Public API: register the ACS script that runs after MorphActor and before
+// the first Ready state. The script should be named/designed as
+// "uh_BossMorphSetup_<Actor>" by convention, but any existing named script works.
+function bool SetBossMorphSetupByActor(str actor, str setupscript) {
+	int id = UH_FindBossByActor(actor);
+	if (id == UHBOSS_FAIL) {
+		Log(s:"SetBossMorphSetupByActor: boss not found: ", s:actor);
+		return false;
+	}
+	return SetBossMorphSetupById(id, setupscript);
 }
 
 function str UH_GetBossActor(int id)
