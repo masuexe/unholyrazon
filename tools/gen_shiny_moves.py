@@ -123,8 +123,9 @@ def gen_qwant() -> None:
         "\t7H01 [ 6",
         "\tloop",
 		"Deselect:",
-		"\t7H01 A 0",
-		"\tgoto DeselectSwap",
+		"\tTNT1 AAAAAAAAAAAAAAAAAAAAAA 0 A_Lower",
+		"\tTNT1 A 1 A_Lower",
+		"\tloop",
 		"Select:",
 		"\t7H01 A 0",
 		"\tgoto Ready",
@@ -189,11 +190,21 @@ Spawn:
 loop
 
 Deselect:
-7H01 A 0
+7H01 A 0 A_JumpIfInventory("UH_MoveHud_F",1,"DeselectInstant")
 goto DeselectSwap
+DeselectInstant:
+TNT1 AAAAAAAAAAAAAAAAAAAAAA 0 A_Lower
+TNT1 A 1 A_Lower
+loop
 Select:
-7H01 A 0
+7H01 A 0 A_JumpIfInventory("UH_SilentSelect_F",1,"SilentSelect")
 goto SelectSwap
+SilentSelect:
+7H01 A 0 A_StopSound(CHAN_WEAPON)
+7H01 A 0 A_TakeInventory("UH_SilentSelect_F",1)
+7H01 A 0 A_TakeInventory("NoWeaponSwitchSound",1)
+7H01 A 0 A_TakeInventory("UH_MoveHud_F",5)
+goto ReadyX
 
 Ready:
 7H01 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", QWANT_SDYE, true)
@@ -219,7 +230,8 @@ AltFire:
 7H01 A 0 A_JumpIf(CallACS("uh_QwantShinyMoveRoll"), 2)
 7H01 A 0
 goto ReadyX
-7H01 A 1
+// PendingWeapon only applies via A_WeaponReady (wait alone stalls forever).
+TNT1 A 0 A_WeaponReady
 goto ReadyX
 
 FireEnd:
@@ -318,8 +330,9 @@ def gen_nega() -> None:
         "\t7H02 [ 6",
         "\tloop",
 		"Deselect:",
-		"\t7H02 A 0",
-		"\tgoto DeselectSwap",
+		"\tTNT1 AAAAAAAAAAAAAAAAAAAAAA 0 A_Lower",
+		"\tTNT1 A 1 A_Lower",
+		"\tloop",
 		"Select:",
 		"\t7H02 A 0",
 		"\tgoto Ready",
@@ -436,7 +449,7 @@ CustomFire1:
 7H02 A 0 A_JumpIf(CallACS("uh_ShinyNegaCustomFire", 1), 2)
 7H02 A 0
 goto Negaman0_1
-7H02 A 1
+TNT1 A 0 A_WeaponReady
 goto Ready2
 
 Fire2:
@@ -456,7 +469,7 @@ CustomFire2:
 7H02 B 0 A_JumpIf(CallACS("uh_ShinyNegaCustomFire", 2), 2)
 7H02 B 0
 goto Negaman0_2
-7H02 B 1
+TNT1 A 0 A_WeaponReady
 goto Ready2
 
 Fire3:
@@ -474,7 +487,7 @@ CustomFire3:
 7H02 C 0 A_JumpIf(CallACS("uh_ShinyNegaCustomFire", 3), 2)
 7H02 C 0
 goto Negaman0_3
-7H02 C 1
+TNT1 A 0 A_WeaponReady
 goto Ready2
 
 Nega4End:
@@ -634,16 +647,18 @@ def gen_decoy() -> None:
         "\t6H50 [ 6",
         "\tloop",
         "Deselect:",
-        "\t6H50 A 0",
-        "\tgoto DeselectSwap",
+        "\tTNT1 AAAAAAAAAAAAAAAAAAAAAA 0 A_Lower",
+        "\tTNT1 A 1 A_Lower",
+        "\tloop",
         "Ready:",
         "Fire:",
         "AltFire:",
         "\t6H50 A 1 A_WeaponReady",
         "\twait",
         "MoveReturn:",
-        '\t6H50 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")',
-        "\t6H50 A 1 A_WeaponReady",
+        '\tTNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")',
+        "\tTNT1 A 0 A_WeaponReady",
+        "\tTNT1 A 1 A_WeaponReady",
         "\twait",
         "}",
         "}",
