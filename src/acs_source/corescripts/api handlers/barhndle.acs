@@ -52,9 +52,9 @@ function void DrawMegaManURerollBar(void)
 	DrawBar3Color(owned, UH_ROCKNROLL_MAX, UH_ROCKNROLL_CYAN, UH_ROCKNROLL_BLUE);
 }
 
-// Shiny move-weapons have no ScriptBar; remap to the launching parent while
-// UH_MoveHud_F is set (synced inventory from uh_*CustomFire / MoveReturn).
+// Qwant move-weapons have no ScriptBar; remap to parent while UH_MoveHud_F set.
 // Decoy held copies (DecoyCopy_*_W1/_W2/_W3) remap to DecoyBot_W/_W2/_W3 bars.
+// Nega held cycle (NegaShiny_*) remaps via UH_NegaHeldBarWep to NegaManShiny_W.
 function str UH_MoveHudParentWep(void) {
 	int hud = CheckInventory("UH_MoveHud_F");
 	if (hud == 1)
@@ -93,13 +93,24 @@ function str UH_DecoyHeldBarWep(str wep) {
 	return wep;
 }
 
+function str UH_NegaHeldBarWep(str wep) {
+	if (StrLen(wep) < 10)
+		return wep;
+	if (StrICmp(StrLeft(wep, 10), "NegaShiny_") == 0)
+		return "NegaManShiny_W";
+	return wep;
+}
+
 function void DrawBarRun(void) {
 	str wep = GetWeapon();
 	str parent = UH_MoveHudParentWep();
 	if (StrLen(parent) > 0)
 		wep = parent;
 	else
+	{
 		wep = UH_DecoyHeldBarWep(wep);
+		wep = UH_NegaHeldBarWep(wep);
+	}
 
 	if(oldWep != wep) {
 		oldWep = wep;

@@ -895,55 +895,70 @@ script "uh_QwantShinyMoveRoll" (void)
 	SetResultValue(1);
 }
 
-// NegaManShiny slot dispatch. lvl = 1..3 charge level.
-// 1 = move weapon selected; 0 = unregistered slot (buster fallback).
-// Full-charge (lvl 3) advances SNegaFlag here (vanilla L3 used to GiveInventory).
+// Legacy SetWeapon dispatch — unused; held cycle fires in place.
 script "uh_ShinyNegaCustomFire" (int lvl)
+{
+	SetResultValue(0);
+}
+
+// Full-charge end: Give next cycle wep (or buster), SilentSelect, Take current.
+// SNegaFlag stays as HUD sync only.
+script "uh_ShinyNegaAdvanceHeld" (void)
 {
 	int pn = PlayerNumber();
 	int slot;
-	str wep;
+	int next;
+	int waits;
+	str old;
+	str neww;
 
 	if (pn < 0)
-	{
-		SetResultValue(0);
 		terminate;
-	}
-	slot = CheckInventory("SNegaFlag");
-	wep = GetShinyNegaSlotWep(slot, lvl);
-	if (StrCmp(wep, "") == 0)
+
+	waits = 0;
+	while (StrCmp(uh_shinyNegaSlotWep[1][0], "") == 0 && waits < 35)
 	{
-		SetResultValue(0);
-		terminate;
+		delay(1);
+		waits++;
 	}
 
-	// Advance full-charge cycle before SetWeapon (HUD already on next slot).
-	if (lvl == 3)
+	slot = CheckInventory("SNegaFlag");
+	old = GetWeapon();
+	if (StrICmp(old, "NegaManShiny_W") == 0)
+		slot = 0;
+	else if (StrCmp(uh_negaHeld[pn], "") != 0)
+		old = uh_negaHeld[pn];
+
+	next = UH_ShinyNegaNextSlot(slot);
+
+	GiveInventory("NoWeaponSwitchSound", 1);
+	GiveInventory("UH_SilentSelect_F", 1);
+
+	if (next <= 0)
 	{
-		if (slot == 25)
+		neww = "NegaManShiny_W";
+		SetInventory("SNegaFlag", 0);
+	}
+	else
+	{
+		neww = GetShinyNegaSlotWep(next, 1);
+		if (StrCmp(neww, "") == 0)
 		{
-			if (HasCustomNegaSlots())
-				GiveInventory("SNegaFlag", 1);
-			else
-				TakeInventory("SNegaFlag", 999);
+			neww = "NegaManShiny_W";
+			SetInventory("SNegaFlag", 0);
+			next = 0;
 		}
 		else
-		{
-			GiveInventory("SNegaFlag", 1);
-			if (CheckInventory("SNegaFlag") >= UH_SHINYNEGA_CYCLE_RESET)
-				TakeInventory("SNegaFlag", 999);
-		}
+			SetInventory("SNegaFlag", next);
 	}
 
-	uh_moveReturn[pn] = GetWeapon();
-	uh_moveCurrent[pn] = wep;
-	uh_negaChargeLvl[pn] = lvl;
-	uh_decoyWhich[pn] = 0;
-	SetInventory("UH_MoveHud_F", 2);
-	GiveInventory("NoWeaponSwitchSound", 1);
-	GiveInventory(wep, 1);
-	SetWeapon(wep);
-	SetResultValue(1);
+	GiveInventory(neww, 1);
+	SetWeapon(neww);
+	if (StrCmp(old, "") != 0 && StrICmp(old, neww) != 0)
+		TakeInventory(old, 1);
+	uh_negaHeld[pn] = neww;
+	uh_negaChargeLvl[pn] = 0;
+	SetInventory("UH_MoveHud_F", 0);
 }
 
 // For the move weapon's Select: which charge level launched it (1..3, 0 none).

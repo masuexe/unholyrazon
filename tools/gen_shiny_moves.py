@@ -284,135 +284,267 @@ def extract_until_any(text: str, start: str, stops: list[str]) -> str:
 
 
 def gen_nega() -> None:
-    src = read(SURV / "NegaManShiny_W.dec")
-    # All labels that start a "next" section for stop detection
-    all_l1 = [t[2] for t in NEGA_SLOTS]
-    all_l2 = [t[3] for t in NEGA_SLOTS]
-    all_l3 = [t[4] for t in NEGA_SLOTS]
-    section_stops = (
-        ["Fire1", "Fire2", "Fire3", "CustomFire1", "CustomFire2", "CustomFire3",
-         "Fire2End", "Fire3End", "Flash_Slide", "Altfire", "Negaman0_1", "Negaman0_2",
-         "Negaman0_3", "Nega4End"]
-        + all_l1 + all_l2 + all_l3
-        + ["Negaman4L", "Negaman4L2", "Negaman4L3",
-           "NegaKHold_1", "NegaKEnd", "NegaKHold_2", "NegaKEnd2"]
+    """Emit held NegaShiny_*_W: Charge on base, Fire1/2/3 per slot; L3 advances cycle."""
+    moves = read(SURV / "nega_shiny_moves.dec")
+    parent = read(SURV / "NegaManShiny_W.dec")
+
+    def actor_body(text: str, name: str) -> str:
+        m = re.search(rf"(?m)^actor\s+{re.escape(name)}\b", text)
+        if not m:
+            raise ValueError(f"missing actor {name}")
+        start = m.start()
+        m2 = re.search(r"(?m)^actor\s+", text[m.end() :])
+        return text[start : m.end() + m2.start()] if m2 else text[start:]
+
+    def grab_label(chunk: str, label: str, stops: list[str]) -> str:
+        return extract_labeled_block(chunk, label, stops)
+
+    # Shared Fire2End / Fire3End from current move base or parent
+    fire2_end = (
+        "Fire2End:\n"
+        "7H02 CB 4\n"
+        "7H02 A 6\n"
+        "goto Ready2\n"
+    )
+    fire3_end = (
+        "Fire3End:\n"
+        "7H02 CBA 3\n"
+        'TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyNegaAdvanceHeld")\n'
+        "goto Ready2\n"
     )
 
-    def grab(label: str, extra_stop: list[str] | None = None) -> str:
-        stops = list(section_stops)
-        if extra_stop:
-            stops = extra_stop + stops
-        # remove self
-        stops = [s for s in stops if s != label]
-        return extract_until_any(src, label, stops)
+    # Charge / Ready / AltFire / Flash from parent (through Charge2)
+    head = parent.split("Fire1:")[0]
+    # Strip ScriptBar + actor header props — rebuild HeldBase
+    # Pull Flash_Slide + Altfire from parent
+    flash_alt = ""
+    if "Flash_Slide:" in parent:
+        flash_alt = "Flash_Slide:" + parent.split("Flash_Slide:", 1)[1]
+        # trim trailing extra closes to single States/actor close handled below
+        flash_alt = flash_alt.rstrip()
+        while flash_alt.endswith("}"):
+            flash_alt = flash_alt[:-1].rstrip()
+        flash_alt = flash_alt.rstrip() + "\n"
 
-    fire2_end = extract_until_any(src, "Fire2End", ["Fire3End", "Flash_Slide", "CustomFire1"])
-    fire3_end = extract_until_any(src, "Fire3End", ["Flash_Slide", "CustomFire1", "Altfire"])
-    fire2_end = rewrite_ends(fire2_end, ready="Ready2")
-    fire3_end = rewrite_ends(fire3_end, ready="Ready2")
+    held_base = f'''// Vanilla NegaManShiny slots 1..25 as held weapons (slot 1).
+// Charge on this base; Fire1/2/3 are the current cycle slot's attacks.
+// Full-charge (Fire3End) Give/Takes the next slot via uh_ShinyNegaAdvanceHeld.
 
-    parts = [
-        "// Vanilla NegaManShiny slots 1..25 as slotless move-weapons.",
-        "// Select branches on uh_ShinyNegaGetChargeLevel (1/2/3).",
-        "// Flag advance on full charge is done by ACS dispatcher (not in L3 bodies).",
-        "",
-        "actor NegaShinyMoveBase_W : BaseMM8BDMWep_UH",
-        "{",
-		'\tweapon.ammotype "S_NegaDuckAmmo"',
-		"\tweapon.ammouse 0",
-		'\tWeapon.UpSound ""',
-		"\t+WEAPON.NOALERT",
-        "States",
-        "{",
-        "Spawn:",
-        "\t7H02 [ 6",
-        "\tloop",
-		"Deselect:",
-		"\tTNT1 A 0 Offset(1, 128) A_Lower",
-		"Select:",
-		"\t7H02 A 0",
-		"\tgoto Ready",
-		"Ready:",
-		"Fire:",
-		"AltFire:",
-		"\t7H02 A 1 A_WeaponReady",
-		"\twait",
-        "MoveReturn:",
-        '\tTNT1 A 0 ACS_NamedExecuteAlways("uh_ShinyMoveReturn_cs", 0)',
-        '\tTNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")',
-        "\tgoto Deselect",
-        fire2_end.rstrip(),
-        fire3_end.rstrip(),
-        "}",
-        "}",
-        "",
-    ]
+actor NegaShinyHeldBase_W : BaseMM8BDMWep_UH
+{{
+	Weapon.SlotNumber 1
+	Weapon.AmmoUse 0
+	Weapon.AmmoGive 0
+	weapon.ammotype "S_NegaDuckAmmo"
+	Weapon.UpSound ""
+	inventory.icon "C_I_02B"
+	+WEAPON.NOALERT
+	+WEAPON.NOAUTOAIM
+States
+{{
+Spawn:
+	7H02 [ 6
+	loop
+Deselect:
+	7H02 A 0
+	goto DeselectSwap
+Select:
+	7H02 A 0 A_JumpIfInventory("UH_SilentSelect_F",1,"SilentSelect")
+	goto SelectSwap
+SilentSelect:
+	7H02 A 0 A_StopSound(CHAN_WEAPON)
+	7H02 A 0 A_TakeInventory("UH_SilentSelect_F",1)
+	7H02 A 0 A_TakeInventory("NoWeaponSwitchSound",1)
+	7H02 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_SDYE)
+	7H02 A 0 A_WeaponReady(14)
+	goto Ready2
+Ready:
+	7H02 A 1 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_SDYE)
+	Goto Ready2
+Ready2:
+	7H02 A 0 A_JumpIfInventory("S_NegaDuckAmmo",100,"Ready3")
+	7H02 A 2 A_WeaponReady(8)
+	7H02 A 0 A_GiveInventory("S_NegaDuckAmmo",3)
+	loop
+Ready3:
+	7H02 A 2 A_WeaponReady
+	7H02 A 0 A_GiveInventory("S_NegaDuckAmmo",3)
+	loop
+Fire:
+Charge:
+	7H02 A 0
+	goto Charge0
+Charge0:
+	7H02 A 0 A_JumpIfInventory("WeaponCharge",25,"Charge1")
+	7H02 A 0 A_JumpIfInventory("WeaponCharge",24,"ChargeStart")
+	7H02 A 0 A_JumpIfInventory("PlayerPropertyRage",1,"Charge0R")
+	7H02 A 1 A_GiveInventory("WeaponCharge",1)
+	7H02 A 0 A_Refire("Charge0")
+	goto Fire1
+ChargeStart:
+	7H02 A 0 A_PlaySoundEx("weapon/pcharge","Weapon")
+	Goto Charge1
+Charge0R:
+	7H02 A 1 A_GiveInventory("WeaponCharge",2)
+	7H02 A 0 A_Refire("Charge0")
+	goto Fire1
+Charge1:
+	7H02 B 0 A_JumpIfInventory("WeaponCharge",56,"Charge2")
+	7H02 B 0 A_JumpIfInventory("PlayerPropertyRage",1,"Charge1R")
+	7H02 B 1 A_GiveInventory("WeaponCharge",1)
+	7H02 B 0 A_Refire("Charge1")
+	goto Fire2
+Charge1R:
+	7H02 B 1 A_GiveInventory("WeaponCharge",2)
+	7H02 B 0 A_Refire("Charge1")
+	goto Fire2
+Charge2:
+	7H02 C 1 A_RailWait
+	7H02 C 0 A_Refire("Charge2")
+	goto Fire3
+Fire1:
+	7H02 A 0 A_TakeInventory("WeaponCharge",999)
+	7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
+	7H02 A 1 A_WeaponReady
+	wait
+Fire2:
+	7H02 B 0 A_TakeInventory("WeaponCharge",999)
+	7H02 B 1 A_WeaponReady
+	wait
+Fire3:
+	7H02 C 0 A_TakeInventory("WeaponCharge",999)
+	7H02 C 1 A_WeaponReady
+	wait
+Nega4End:
+	7H02 C 0 A_PlaySoundEx("weapon/skullcounter","Weapon")
+	7H02 C 0 A_TakeInventory("ShieldCheck")
+	7H02 BA 3
+	goto Ready2
+Nega4End3:
+	7H02 C 0 A_PlaySoundEx("weapon/skullcounter","Weapon")
+	7H02 C 0 A_TakeInventory("ShieldCheck")
+	7H02 BA 3
+	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyNegaAdvanceHeld")
+	goto Ready2
+{fire2_end.rstrip()}
+{fire3_end.rstrip()}
+{flash_alt.rstrip()}
+}}
+}}
+'''
+
+    parts = [held_base, ""]
+
+    all_labels = []
+    for _slot, _stem, l1, l2, l3, extras in NEGA_SLOTS:
+        all_labels.extend([l1, l2, l3] + extras)
+    all_labels += ["Fire2End", "Fire3End", "Select", "Ready", "Fire", "AltFire", "MoveReturn", "Nega4End"]
 
     for slot, stem, l1, l2, l3, extras in NEGA_SLOTS:
-        # Extract each charge body; for Skull, include helpers after L1 etc.
-        b1 = grab(l1)
-        b2 = grab(l2)
-        b3 = grab(l3)
-        # Strip A_GiveInventory("SNegaFlag",1) from L3 — ACS advances flag
-        b3 = re.sub(
-            r'(?m)^.*A_GiveInventory\("SNegaFlag",\s*1\).*\n?',
-            "",
-            b3,
-        )
-        # Strip VB_3 custom-slot jump (ACS handles wrap)
-        if stem == "SparkChaser":
-            b3 = re.sub(
-                r'(?m)^.*CallACS\("uh_HasCustomNegaSlots"\).*\n?',
-                "",
-                b3,
-            )
-            b3 = re.sub(
-                r'(?m)^.*A_TakeInventory\("SNegaFlag",999\).*\n?',
-                "",
-                b3,
-            )
-            # After stripping, VB_3 may have leftover GiveInventory flag line already removed
-            # and two Fire3End paths — clean duplicate gotos to single Fire3End
-            b3 = re.sub(
-                r"(?i)Goto Fire3End\n7H02 C 0\nGoto Fire3End",
-                "Goto Fire3End",
-                b3,
-            )
+        name = f"NegaShiny_{stem}_W"
+        chunk = actor_body(moves, name)
+        # Idempotent: after first run labels are Fire1/2/3
+        src_l1, src_l2, src_l3 = l1, l2, l3
+        if re.search(r"(?m)^Fire1\s*:", chunk):
+            src_l1, src_l2, src_l3 = "Fire1", "Fire2", "Fire3"
+        stops = [s for s in all_labels if s != src_l1] + ["Fire1", "Fire2", "Fire3"]
+        b1 = grab_label(chunk, src_l1, [s for s in stops if s != src_l1])
+        b2 = grab_label(chunk, src_l2, [s for s in all_labels + ["Fire1", "Fire2", "Fire3"] if s != src_l2])
+        b3 = grab_label(chunk, src_l3, [s for s in all_labels + ["Fire1", "Fire2", "Fire3"] if s != src_l3])
 
-        # Helpers that live between L1 and next L1 (Skull 4L, Ballade holds)
         helper_blocks = []
         for h in extras:
             if h == "Nega4End":
-                # Keep Nega4End inside Skull move weapon
-                helper_blocks.append(grab("Nega4End", ["Negaman5_1", "Negaman5_2", "Negaman5_3", "Fire2", "Fire3"]))
-            elif h.startswith("Negaman4L"):
-                helper_blocks.append(grab(h))
-            elif h.startswith("NegaK"):
-                helper_blocks.append(grab(h))
+                continue  # on HeldBase
+            stops_h = [s for s in all_labels if s != h]
+            try:
+                helper_blocks.append(grab_label(chunk, h, stops_h))
+            except ValueError:
+                pass
 
-        # For Skull, Negaman4L is after Negaman4_1 in same extract if we expand stop
-        # Actually grab(l1) stops at Negaman4L if Negaman4L is in section_stops.
-        # So Negaman4_1 body ends before Negaman4L — need to append helpers.
+        def to_ready(body: str) -> str:
+            body = re.sub(r"(?i)\bgoto\s+MoveReturn\b", "goto Ready2", body)
+            body = re.sub(
+                r'(?m)^.*A_GiveInventory\("SNegaFlag",\s*1\).*\n?',
+                "",
+                body,
+            )
+            return body
 
-        b1 = rewrite_ends(b1, ready="Ready2")
-        b2 = rewrite_ends(b2, ready="Ready2")
-        b3 = rewrite_ends(b3, ready="Ready2")
-        helpers = "\n".join(rewrite_ends(h, ready="Ready2").rstrip() for h in helper_blocks)
+        b1 = to_ready(b1)
+        b2 = to_ready(b2)
+        b3 = to_ready(b3)
+        # Skull L3 ends at Nega4End — use advancing end
+        if stem == "Skull":
+            b3 = re.sub(r"(?i)\bgoto\s+Nega4End\b", "goto Nega4End3", b3)
+        # L3 direct MoveReturn already became Ready2 — send to Fire3End/Advance
+        # Only if L3 does not already goto Fire3End
+        if not re.search(r"(?i)\bgoto\s+Fire3End\b", b3):
+            b3 = re.sub(
+                r"(?i)\bgoto\s+Ready2\b\s*$",
+                "goto Fire3End",
+                b3.rstrip() + "\n",
+                count=1,
+            )
 
-        # Rename charge labels to SelectL1/2/3 entry points — keep original labels
-        # Select jumps to original labels
-        actor = f"NegaShiny_{stem}_W"
-        parts.append(f"actor {actor} : NegaShinyMoveBase_W")
+        # Strip SparkChaser custom wrap (Advance ACS handles it)
+        if stem == "SparkChaser":
+            b3 = re.sub(r'(?m)^.*CallACS\("uh_HasCustomNegaSlots"\).*\n?', "", b3)
+            b3 = re.sub(r'(?m)^.*A_TakeInventory\("SNegaFlag",999\).*\n?', "", b3)
+
+        helpers = "\n".join(to_ready(h).rstrip() for h in helper_blocks)
+        if stem == "Skull":
+            helpers = re.sub(
+                r"(?m)^(Negaman4L3:[\s\S]*?)\bgoto\s+Nega4End\b",
+                r"\1goto Nega4End3",
+                helpers,
+                count=1,
+                flags=re.IGNORECASE,
+            )
+
+        # Ensure Fire1/2/3 labels and one TakeInventory preamble each.
+        def as_fire(body: str, old: str, new: str) -> str:
+            body = re.sub(rf"(?m)^{re.escape(old)}\s*:", f"{new}:", body, count=1)
+            lines = body.split("\n", 4)
+            head = "\n".join(lines[:4])
+            if new == "Fire1":
+                if 'A_TakeInventory("WeaponCharge"' not in head:
+                    body = re.sub(
+                        r"(?m)^Fire1\s*:\s*\n",
+                        "Fire1:\n"
+                        '7H02 A 0 A_TakeInventory("WeaponCharge",999)\n'
+                        '7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")\n',
+                        body,
+                        count=1,
+                    )
+            elif new == "Fire2":
+                if 'A_TakeInventory("WeaponCharge"' not in head:
+                    body = re.sub(
+                        r"(?m)^Fire2\s*:\s*\n",
+                        "Fire2:\n"
+                        '7H02 B 0 A_TakeInventory("WeaponCharge",999)\n',
+                        body,
+                        count=1,
+                    )
+            elif new == "Fire3":
+                if 'A_TakeInventory("WeaponCharge"' not in head:
+                    body = re.sub(
+                        r"(?m)^Fire3\s*:\s*\n",
+                        "Fire3:\n"
+                        '7H02 C 0 A_TakeInventory("WeaponCharge",999)\n',
+                        body,
+                        count=1,
+                    )
+            return body
+
+        b1 = as_fire(b1, src_l1, "Fire1")
+        b2 = as_fire(b2, src_l2, "Fire2")
+        b3 = as_fire(b3, src_l3, "Fire3")
+
+        parts.append(f"actor {name} : NegaShinyHeldBase_W")
         parts.append("{")
         parts.append("States")
         parts.append("{")
-        parts.append("Select:")
-        parts.append('\t7H02 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")')
-        # SetWeapon starts at WEAPONBOTTOM (y=128); snap to WEAPONTOP before anim.
-        parts.append("\t7H02 A 0 A_WeaponReady(14)")
-        parts.append('\t7H02 A 0 A_JumpIf(CallACS("uh_ShinyNegaGetChargeLevel") == 2, "' + l2 + '")')
-        parts.append('\t7H02 A 0 A_JumpIf(CallACS("uh_ShinyNegaGetChargeLevel") == 3, "' + l3 + '")')
-        parts.append(f"\tgoto {l1}")
         parts.append(b1.rstrip())
         parts.append(b2.rstrip())
         parts.append(b3.rstrip())
@@ -424,15 +556,24 @@ def gen_nega() -> None:
 
     write(SURV / "nega_shiny_moves.dec", "\n".join(parts))
 
-    # Slim NegaManShiny_W — keep charge + buster + slide, ACS dispatch for slots >= 1
-    # Read header through Charge2, Negaman0_*, Altfire, Flash_Slide, Nega4End for shield
-    head = src.split("Fire1:")[0]
-    # Rebuild Fire1/2/3
+    # Slim parent: buster only (flag 0). L3 advances into slot 1 held wep.
+    flash_alt_p = ""
+    if "Flash_Slide:" in parent:
+        flash_alt_p = "Flash_Slide:" + parent.split("Flash_Slide:", 1)[1]
+    head_p = parent.split("Fire1:")[0]
+    # Ensure SilentSelect dyes
+    if "SilentSelect:" in head_p and "core_weaponcolor" not in head_p.split("SilentSelect:")[1].split("Ready:")[0]:
+        head_p = head_p.replace(
+            '7H02 A 0 A_TakeInventory("UH_MoveHud_F",5)\n'
+            "7H02 A 0 A_WeaponReady(14)",
+            '7H02 A 0 A_TakeInventory("UH_MoveHud_F",5)\n'
+            '7H02 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_SDYE)\n'
+            "7H02 A 0 A_WeaponReady(14)",
+        )
     slim_fires = '''
 Fire1:
 7H02 A 0 A_TakeInventory("WeaponCharge",999)
 7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 A 0 A_JumpIfInventory("SNegaFlag",1,"CustomFire1")
 goto Negaman0_1
 
 Negaman0_1:
@@ -442,16 +583,8 @@ Negaman0_1:
 7H02 A 0 A_Refire("Charge")
 Goto Ready2
 
-CustomFire1:
-7H02 A 0 A_JumpIf(CallACS("uh_ShinyNegaCustomFire", 1), 2)
-7H02 A 0
-goto Negaman0_1
-TNT1 A 0
-goto DeselectInstant
-
 Fire2:
 7H02 B 0 A_TakeInventory("WeaponCharge",999)
-7H02 B 0 A_JumpIfInventory("SNegaFlag",1,"CustomFire2")
 goto Negaman0_2
 
 Negaman0_2:
@@ -462,30 +595,14 @@ Negaman0_2:
 7H02 A 0 A_Refire("Charge")
 Goto Ready2
 
-CustomFire2:
-7H02 B 0 A_JumpIf(CallACS("uh_ShinyNegaCustomFire", 2), 2)
-7H02 B 0
-goto Negaman0_2
-TNT1 A 0
-goto DeselectInstant
-
 Fire3:
 7H02 C 0 A_TakeInventory("WeaponCharge",999)
-7H02 C 0 A_JumpIfInventory("SNegaFlag",1,"CustomFire3")
 goto Negaman0_3
 
 Negaman0_3:
 7H02 C 0 A_PlaySoundEx("weapon/pshot","Weapon")
 7H02 C 0 A_FireCustomMissile("S_NegaChargeShot3",0,0,8,0)
-7H02 C 0 A_GiveInventory("SNegaFlag",1)
 goto Fire3End
-
-CustomFire3:
-7H02 C 0 A_JumpIf(CallACS("uh_ShinyNegaCustomFire", 3), 2)
-7H02 C 0
-goto Negaman0_3
-TNT1 A 0
-goto DeselectInstant
 
 Nega4End:
 7H02 C 0 A_PlaySoundEx("weapon/skullcounter","Weapon")
@@ -493,26 +610,26 @@ Nega4End:
 7H02 BA 3
 goto Ready2
 
-Fire2End:  // 14 tics
+Fire2End:
 7H02 CB 4
 7H02 A 6
 Goto Ready2
 
-Fire3End:  // 9 tics
+Fire3End:
 7H02 CBA 3
+TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyNegaAdvanceHeld")
 Goto Ready2
 '''
-    # Keep Flash_Slide and Altfire from original
-    flash_alt = src.split("Flash_Slide:")[1]
-    # flash_alt starts after Flash_Slide: label — re-add label
-    slim = head + "Fire1:" + slim_fires.split("Fire1:", 1)[1]
-    # head already ends before Fire1; we used Fire1: in slim_fires incorrectly
-    # Fix: head ends with Charge2 body; append slim_fires + Flash_Slide
-    slim = head.rstrip() + "\n" + slim_fires.lstrip() + "\nFlash_Slide:" + flash_alt
-    # Ensure file ends properly
-    if not slim.rstrip().endswith("}"):
-        pass
+    slim = head_p.rstrip() + "\n" + slim_fires.lstrip()
+    if flash_alt_p:
+        # flash_alt_p includes closing braces
+        slim = slim.rstrip() + "\n" + flash_alt_p
+        if not slim.rstrip().endswith("}"):
+            slim = slim.rstrip() + "\n}\n}\n"
+    else:
+        slim = slim.rstrip() + "\n}\n}\n"
     write(SURV / "NegaManShiny_W.dec", slim)
+
 
 
 # ---------------------------------------------------------------------------
