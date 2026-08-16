@@ -380,41 +380,39 @@ Charge0:
 	7H02 A 0 A_JumpIfInventory("PlayerPropertyRage",1,"Charge0R")
 	7H02 A 1 A_GiveInventory("WeaponCharge",1)
 	7H02 A 0 A_Refire("Charge0")
-	goto Fire1
+	// A_Jump resolves Fire1/2/3 on the *held* class (goto would stick on base stubs).
+	7H02 A 0 A_Jump(256, "Fire1")
 ChargeStart:
 	7H02 A 0 A_PlaySoundEx("weapon/pcharge","Weapon")
 	Goto Charge1
 Charge0R:
 	7H02 A 1 A_GiveInventory("WeaponCharge",2)
 	7H02 A 0 A_Refire("Charge0")
-	goto Fire1
+	7H02 A 0 A_Jump(256, "Fire1")
 Charge1:
 	7H02 B 0 A_JumpIfInventory("WeaponCharge",56,"Charge2")
 	7H02 B 0 A_JumpIfInventory("PlayerPropertyRage",1,"Charge1R")
 	7H02 B 1 A_GiveInventory("WeaponCharge",1)
 	7H02 B 0 A_Refire("Charge1")
-	goto Fire2
+	7H02 B 0 A_Jump(256, "Fire2")
 Charge1R:
 	7H02 B 1 A_GiveInventory("WeaponCharge",2)
 	7H02 B 0 A_Refire("Charge1")
-	goto Fire2
+	7H02 B 0 A_Jump(256, "Fire2")
 Charge2:
 	7H02 C 1 A_RailWait
 	7H02 C 0 A_Refire("Charge2")
-	goto Fire3
+	7H02 C 0 A_Jump(256, "Fire3")
 Fire1:
 	7H02 A 0 A_TakeInventory("WeaponCharge",999)
 	7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-	7H02 A 1 A_WeaponReady
-	wait
+	goto Ready2
 Fire2:
 	7H02 B 0 A_TakeInventory("WeaponCharge",999)
-	7H02 B 1 A_WeaponReady
-	wait
+	goto Ready2
 Fire3:
 	7H02 C 0 A_TakeInventory("WeaponCharge",999)
-	7H02 C 1 A_WeaponReady
-	wait
+	goto Ready2
 Nega4End:
 	7H02 C 0 A_PlaySoundEx("weapon/skullcounter","Weapon")
 	7H02 C 0 A_TakeInventory("ShieldCheck")
@@ -474,6 +472,24 @@ Nega4End3:
         b1 = to_ready(b1)
         b2 = to_ready(b2)
         b3 = to_ready(b3)
+        # Normalize charge clear (bare TakeInventory only removes 1).
+        for _lbl in ("b1", "b2", "b3"):
+            pass
+        b1 = re.sub(
+            r'A_TakeInventory\("WeaponCharge"\)',
+            'A_TakeInventory("WeaponCharge",999)',
+            b1,
+        )
+        b2 = re.sub(
+            r'A_TakeInventory\("WeaponCharge"\)',
+            'A_TakeInventory("WeaponCharge",999)',
+            b2,
+        )
+        b3 = re.sub(
+            r'A_TakeInventory\("WeaponCharge"\)',
+            'A_TakeInventory("WeaponCharge",999)',
+            b3,
+        )
         # Skull L3 ends at Nega4End — use advancing end
         if stem == "Skull":
             b3 = re.sub(r"(?i)\bgoto\s+Nega4End\b", "goto Nega4End3", b3)
