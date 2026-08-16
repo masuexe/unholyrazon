@@ -1047,24 +1047,9 @@ script "uh_DecoyBotApplyHeldWeps" (void)
 
 	if (pn < 0)
 		terminate;
-
-	// Before OPEN fills the table, still bootstrap vanilla 00 so spawn is not unarmed.
+	// Caller (WepSwap) waits for the table; do not bootstrap 00 here.
 	if (uh_decoyMoveCount <= 0)
-	{
-		GiveInventory("DecoyCopy_00_W1", 1);
-		GiveInventory("DecoyCopy_00_W2", 1);
-		GiveInventory("DecoyCopy_00_W3", 1);
-		GiveInventory("NoWeaponSwitchSound", 1);
-		GiveInventory("UH_SilentSelect_F", 1);
-		SetWeapon("DecoyCopy_00_W1");
-		TakeInventory("DecoyBot_W", 1);
-		TakeInventory("DecoyBot_W2", 1);
-		TakeInventory("DecoyBot_W3", 1);
-		uh_decoyHeld1[pn] = "DecoyCopy_00_W1";
-		uh_decoyHeld2[pn] = "DecoyCopy_00_W2";
-		uh_decoyHeld3[pn] = "DecoyCopy_00_W3";
 		terminate;
-	}
 
 	s1 = CheckInventory("DecoyBotFlag1");
 	s2 = CheckInventory("DecoyBotFlag2");
@@ -1099,12 +1084,14 @@ script "uh_DecoyBotApplyHeldWeps" (void)
 	else
 		setto = new1;
 
+	// Before any Give: first auto-raise must SilentSelect (not SelectSwap Ready).
+	GiveInventory("NoWeaponSwitchSound", 1);
+	GiveInventory("UH_SilentSelect_F", 1);
+
 	GiveInventory(new1, 1);
 	GiveInventory(new2, 1);
 	GiveInventory(new3, 1);
 
-	GiveInventory("NoWeaponSwitchSound", 1);
-	GiveInventory("UH_SilentSelect_F", 1);
 	SetWeapon(setto);
 
 	if (StrCmp(old1, "") != 0 && StrICmp(old1, new1) != 0)
