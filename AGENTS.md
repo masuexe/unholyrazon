@@ -138,6 +138,22 @@ actor Decoy_F_23TrailFX : StealthS_RailTrailFX {}
 
 Do not strip empty `{}` when cleaning properties (e.g. removing `Translation`).
 
+### `CheckInventory` is ACS-only — not a DECORATE expression function
+
+In Zandronum DECORATE, `CheckInventory("Item")` is **not** a valid function in action arguments or expressions. Using it causes a load-time script error (`Call to unknown function 'CheckInventory'`). Inventory checks in DECORATE must use actions such as `A_JumpIfInventory` / `A_TakeInventory` / `A_GiveInventory`, or route through ACS via `CallACS` / `ACS_NamedExecute*`.
+
+```cpp
+// WRONG — parse/load error in DECORATE
+6H50 A 0 ACS_NamedExecuteAlways("MyLog", 0, CheckInventory("UH_MoveHud_F"))
+
+// CORRECT — jump on inventory in DECORATE
+6H50 A 0 A_JumpIfInventory("UH_MoveHud_F", 1, "HasHud")
+
+// CORRECT — read inventory inside ACS (CheckInventory is fine there)
+6H50 A 0 ACS_NamedExecuteAlways("MyLog", 0, 0)
+// script "MyLog" (int unused) { Log(i:CheckInventory("UH_MoveHud_F")); }
+```
+
 ### `SPRITE A 0 goto Label` is illegal — put `goto` on its own line
 
 In Zandronum DECORATE, state control keywords (`goto`, `loop`, `wait`, `stop`, `fail`) are **not** valid as the action/parameter of a sprite frame. Writing them on the same line as a frame is a parse error (`Invalid state parameter goto`):

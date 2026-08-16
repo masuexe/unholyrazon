@@ -875,8 +875,11 @@ function int UH_PickLMSEvent(void)
 //    places the psprite at WEAPONBOTTOM (y=128). Without Raise or a non-zero
 //    Offset, sprites stay off-screen for the whole move. A_WeaponReady(14)
 //    snaps (sx,sy) to WEAPONTOP; later Offset frames still override as usual.
-// 5. End the animation with ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")
-//    (switches back and takes the weapon itself).
+// 5. End the animation with ACS_NamedExecuteAlways("uh_ShinyMoveReturn_cs")
+//    then ACS_NamedExecuteWithResult("uh_ShinyMoveReturn"), then goto Deselect.
+//    The _cs script SetWeapon's the parent (from UH_MoveHud_F) so clients have
+//    a pending weapon; otherwise A_Lower re-raises the copy, or a TNT1 wait
+//    freezes the gun. Server Return still does the authoritative SetWeapon.
 // 6. NegaManShiny move weapons read the charge level in Select via
 //    CallACS("uh_ShinyNegaGetChargeLevel") (1..3).
 // 7. Do not give the move weapon a player.weaponslot entry (slotless).
@@ -896,7 +899,8 @@ function int UH_PickLMSEvent(void)
 //       DecoyBot copy slot 59+ (vanilla 0..58 already registered). Uniform in
 //       the flag swap pool for all three weapons; dispatcher remembers which
 //       of DecoyBot_W/_W2/_W3 launched the move and returns there.
-//       Move Select may CallACS("uh_DecoyBotGetWhich") for sprite branching.
+//       Move Select must A_JumpIfInventory("UH_MoveHud_F", 5/4, Anim3/2);
+//       CallACS("uh_DecoyBotGetWhich") is 0 on clients (server-only array).
 //   DefineShinyMegaCopyWep("ShinyMega_YourStem_P", UH_SHINYMEGA_M1, 5);
 //   DefineShinyMegaCopyWep("ShinyMega_YourStem_P", UH_SHINYMEGA_M2, 19);
 //   DefineShinyMegaCopyWep("ShinyMega_DawnBreaker_P", UH_SHINYMEGA_TRUE, 1);

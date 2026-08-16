@@ -169,6 +169,7 @@ def main() -> None:
 		"\t6H50 A 1 A_WeaponReady",
 		"\twait",
         "MoveReturn:",
+        '\tTNT1 A 0 ACS_NamedExecuteAlways("uh_ShinyMoveReturn_cs", 0)',
         '\tTNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")',
         "\tgoto Deselect",
         "}",
@@ -205,11 +206,12 @@ def main() -> None:
         parts.append("States")
         parts.append("{")
         parts.append("Select:")
-        parts.append('\t6H50 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")')
+        parts.append('\tTNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")')
         # SetWeapon starts at WEAPONBOTTOM (y=128); snap to WEAPONTOP before Anim.
-        parts.append("\t6H50 A 0 A_WeaponReady(14)")
-        parts.append('\t6H50 A 0 A_JumpIf(CallACS("uh_DecoyBotGetWhich") == 2, "Anim2")')
-        parts.append('\t6H50 A 0 A_JumpIf(CallACS("uh_DecoyBotGetWhich") == 3, "Anim3")')
+        parts.append("\tTNT1 A 0 A_WeaponReady(14)")
+        # UH_MoveHud_F is synced inventory (3/4/5). CallACS GetWhich is 0 on clients.
+        parts.append('\tTNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")')
+        parts.append('\tTNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")')
         parts.append("\tgoto Anim1")
         parts.append(prep(b1, "Anim1"))
         parts.append(prep(b2, "Anim2"))
