@@ -123,9 +123,7 @@ def gen_qwant() -> None:
         "\t7H01 [ 6",
         "\tloop",
 		"Deselect:",
-		"\tTNT1 AAAAAAAAAAAAAAAAAAAAAA 0 A_Lower",
-		"\tTNT1 A 1 A_Lower",
-		"\tloop",
+		"\tTNT1 A 0 Offset(1, 128) A_Lower",
 		"Select:",
 		"\t7H01 A 0",
 		"\tgoto Ready",
@@ -136,9 +134,7 @@ def gen_qwant() -> None:
 		"\twait",
         "MoveReturn:",
         '\tTNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")',
-        "\tTNT1 A 0 A_WeaponReady",
-        "\tTNT1 A 1 A_WeaponReady",
-        "\twait",
+        "\tgoto Deselect",
         "FireEnd:",
         "\t7H01 CB 4",
         "\t7H01 A 8",
@@ -193,17 +189,17 @@ Deselect:
 7H01 A 0 A_JumpIfInventory("UH_MoveHud_F",1,"DeselectInstant")
 goto DeselectSwap
 DeselectInstant:
-TNT1 AAAAAAAAAAAAAAAAAAAAAA 0 A_Lower
-TNT1 A 1 A_Lower
-loop
+TNT1 A 0 Offset(1, 128) A_Lower
 Select:
 7H01 A 0 A_JumpIfInventory("UH_SilentSelect_F",1,"SilentSelect")
 goto SelectSwap
 SilentSelect:
+7H01 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveTake")
 7H01 A 0 A_StopSound(CHAN_WEAPON)
 7H01 A 0 A_TakeInventory("UH_SilentSelect_F",1)
 7H01 A 0 A_TakeInventory("NoWeaponSwitchSound",1)
 7H01 A 0 A_TakeInventory("UH_MoveHud_F",5)
+7H01 A 0 A_WeaponReady(14)
 goto ReadyX
 
 Ready:
@@ -230,9 +226,8 @@ AltFire:
 7H01 A 0 A_JumpIf(CallACS("uh_QwantShinyMoveRoll"), 2)
 7H01 A 0
 goto ReadyX
-// PendingWeapon only applies via A_WeaponReady (wait alone stalls forever).
-TNT1 A 0 A_WeaponReady
-goto ReadyX
+TNT1 A 0
+goto DeselectInstant
 
 FireEnd:
 7H01 CB 4
@@ -330,9 +325,7 @@ def gen_nega() -> None:
         "\t7H02 [ 6",
         "\tloop",
 		"Deselect:",
-		"\tTNT1 AAAAAAAAAAAAAAAAAAAAAA 0 A_Lower",
-		"\tTNT1 A 1 A_Lower",
-		"\tloop",
+		"\tTNT1 A 0 Offset(1, 128) A_Lower",
 		"Select:",
 		"\t7H02 A 0",
 		"\tgoto Ready",
@@ -343,9 +336,7 @@ def gen_nega() -> None:
 		"\twait",
         "MoveReturn:",
         '\tTNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")',
-        "\tTNT1 A 0 A_WeaponReady",
-        "\tTNT1 A 1 A_WeaponReady",
-        "\twait",
+        "\tgoto Deselect",
         fire2_end.rstrip(),
         fire3_end.rstrip(),
         "}",
@@ -449,8 +440,8 @@ CustomFire1:
 7H02 A 0 A_JumpIf(CallACS("uh_ShinyNegaCustomFire", 1), 2)
 7H02 A 0
 goto Negaman0_1
-TNT1 A 0 A_WeaponReady
-goto Ready2
+TNT1 A 0
+goto DeselectInstant
 
 Fire2:
 7H02 B 0 A_TakeInventory("WeaponCharge",999)
@@ -469,8 +460,8 @@ CustomFire2:
 7H02 B 0 A_JumpIf(CallACS("uh_ShinyNegaCustomFire", 2), 2)
 7H02 B 0
 goto Negaman0_2
-TNT1 A 0 A_WeaponReady
-goto Ready2
+TNT1 A 0
+goto DeselectInstant
 
 Fire3:
 7H02 C 0 A_TakeInventory("WeaponCharge",999)
@@ -487,8 +478,8 @@ CustomFire3:
 7H02 C 0 A_JumpIf(CallACS("uh_ShinyNegaCustomFire", 3), 2)
 7H02 C 0
 goto Negaman0_3
-TNT1 A 0 A_WeaponReady
-goto Ready2
+TNT1 A 0
+goto DeselectInstant
 
 Nega4End:
 7H02 C 0 A_PlaySoundEx("weapon/skullcounter","Weapon")
@@ -647,9 +638,7 @@ def gen_decoy() -> None:
         "\t6H50 [ 6",
         "\tloop",
         "Deselect:",
-        "\tTNT1 AAAAAAAAAAAAAAAAAAAAAA 0 A_Lower",
-        "\tTNT1 A 1 A_Lower",
-        "\tloop",
+        "\tTNT1 A 0 Offset(1, 128) A_Lower",
         "Ready:",
         "Fire:",
         "AltFire:",
@@ -657,9 +646,7 @@ def gen_decoy() -> None:
         "\twait",
         "MoveReturn:",
         '\tTNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")',
-        "\tTNT1 A 0 A_WeaponReady",
-        "\tTNT1 A 1 A_WeaponReady",
-        "\twait",
+        "\tgoto Deselect",
         "}",
         "}",
         "",

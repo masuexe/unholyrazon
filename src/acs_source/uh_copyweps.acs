@@ -1017,9 +1017,8 @@ script "uh_CountDecoyBotSlots" (void)
 }
 
 // Called from a move weapon's last animation frame: switch back to the
-// launching shiny weapon and remove the move weapon itself.
-// Order matters: SetWeapon first, TakeInventory second (same pattern as
-// uh_QwantMoveRelearn).
+// launching shiny weapon. TakeInventory of the move wep is deferred to
+// parent SilentSelect (uh_ShinyMoveTake) so ReadyWeapon is never None.
 script "uh_ShinyMoveReturn" (void)
 {
 	int pn = PlayerNumber();
@@ -1032,18 +1031,17 @@ script "uh_ShinyMoveReturn" (void)
 	if (StrCmp(cur, "") == 0)
 		terminate;
 	ret = uh_moveReturn[pn];
-	uh_moveCurrent[pn] = "";
-	uh_moveReturn[pn] = "";
 	uh_negaChargeLvl[pn] = 0;
 	uh_decoyWhich[pn] = 0;
 
 	// Only clean up when we are still the ready weapon (player may have
 	// switched manually mid-move; then the record is simply cleared).
-	// Keep UH_MoveHud_F until parent SilentSelect so BARHNDLE never sees a
-	// gap tic with move GetWeapon() and no remap (bar flash).
 	if (StrICmp(GetWeapon(), cur) != 0)
 	{
+		uh_moveCurrent[pn] = "";
+		uh_moveReturn[pn] = "";
 		SetInventory("UH_MoveHud_F", 0);
+		TakeInventory(cur, 1);
 		terminate;
 	}
 	// Mute ACS menu/cursor (and Decoy gravitywarn) on parent Ready, and
@@ -1051,7 +1049,22 @@ script "uh_ShinyMoveReturn" (void)
 	GiveInventory("NoWeaponSwitchSound", 1);
 	GiveInventory("UH_SilentSelect_F", 1);
 	SetWeapon(ret);
-	TakeInventory(cur, 1);
+	// Do not TakeInventory here: that sets ReadyWeapon to None and skips
+	// move Deselect. Parent SilentSelect calls uh_ShinyMoveTake instead.
+}
+
+script "uh_ShinyMoveTake" (void)
+{
+	int pn = PlayerNumber();
+	str cur;
+
+	if (pn < 0)
+		terminate;
+	cur = uh_moveCurrent[pn];
+	uh_moveCurrent[pn] = "";
+	uh_moveReturn[pn] = "";
+	if (StrCmp(cur, "") != 0)
+		TakeInventory(cur, 1);
 }
 
 // Team-color the move weapon by the player's shiny class. Call from Select.

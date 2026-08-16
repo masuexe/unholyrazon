@@ -138,6 +138,21 @@ actor Decoy_F_23TrailFX : StealthS_RailTrailFX {}
 
 Do not strip empty `{}` when cleaning properties (e.g. removing `Translation`).
 
+### `SPRITE A 0 goto Label` is illegal — put `goto` on its own line
+
+In Zandronum DECORATE, state control keywords (`goto`, `loop`, `wait`, `stop`, `fail`) are **not** valid as the action/parameter of a sprite frame. Writing them on the same line as a frame is a parse error (`Invalid state parameter goto`):
+
+```cpp
+// WRONG — parse error
+TNT1 A 0 goto DeselectInstant
+
+// CORRECT — dummy frame, then standalone control
+TNT1 A 0
+goto DeselectInstant
+```
+
+The same rule applies to `loop` / `wait` / `stop` / `fail`: never append them after duration (and optional action) on one line. Standalone control lines also do **not** consume `A_Jump*` relative offsets (see above).
+
 ### Relative offsets ignore standalone state control instructions
 
 In Zandronum DECORATE, relative offsets used by `A_Jump*` functions:
@@ -155,7 +170,23 @@ ReadyX:
     8H00 A 2 A_WeaponReady(WRF_ALLOWRELOAD)    // offset 2
 ```
 
-Likewise, when a state control instruction appears on the same line as a state frame, it is simply flow control attached to that frame and does not create an additional counted state.
+Do **not** write `SPRITE A N goto Label` on one line — that is a parse error (see previous section). Use a frame plus a following standalone `goto`.
+
+A second `goto` after that **overwrites** the previous frame's next state (it is not unreachable dead code). Fail-path `goto Ready` must come *before* the success frames, never after `goto DeselectInstant`:
+
+```cpp
+// WRONG — second goto wins; success falls through to Ready instead of Deselect
+TNT1 A 0
+goto DeselectInstant
+Goto Ready2
+
+// CORRECT
+6H50 A 0 A_JumpIf(CallACS("uh_DoMove"), 2)
+6H50 A 0
+Goto Ready2              // fail path (offset 1)
+TNT1 A 0                 // success (offset 2)
+goto DeselectInstant
+```
 
 ### 0-tic loops are forbidden — they crash Zandronum
 
