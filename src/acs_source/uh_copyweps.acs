@@ -831,18 +831,15 @@ script "uh_debug_ShowTodayTeamFF" (void)
 #define UH_MOVE_DYE_NEGA 30002
 #define UH_MOVE_DYE_DECOY 20050
 
-// Vanilla QwantShiny AltFire move count (each vanilla move has weight 1).
-#define UH_SHINYQWANT_VANILLA_POOL 25
-
 // Per-player dispatch records (indexed by PlayerNumber; -1 = not a player).
 str uh_moveReturn[64];
 str uh_moveCurrent[64];
 int uh_negaChargeLvl[64];
 int uh_shinyMegaWhich[64];
+int uh_decoyWhich[64];
 
-// QwantShiny AltFire gate: roll the mixed pool (vanilla 25 * weight 1 +
-// registered customs by weight). 1 = custom handled (weapon switched),
-// 0 = fall through to the vanilla A_Jump list.
+// QwantShiny AltFire: flat weighted roll of the ACS table (vanilla + addon).
+// 1 = move weapon selected; 0 = empty table / failure.
 script "uh_QwantShinyMoveRoll" (void)
 {
 	int pn = PlayerNumber();
@@ -862,14 +859,13 @@ script "uh_QwantShinyMoveRoll" (void)
 	total = 0;
 	for (i = 0; i < uh_shinyQwantMoveCount; i++)
 		total += uh_shinyQwantMoveWeight[i];
-
-	roll = random(0, UH_SHINYQWANT_VANILLA_POOL + total - 1);
-	if (roll >= total)
+	if (total <= 0)
 	{
-		SetResultValue(0);	// vanilla half of the pool
+		SetResultValue(0);
 		terminate;
 	}
 
+	roll = random(0, total - 1);
 	acc = 0;
 	pick = -1;
 	for (i = 0; i < uh_shinyQwantMoveCount; i++)
@@ -891,13 +887,15 @@ script "uh_QwantShinyMoveRoll" (void)
 	uh_moveReturn[pn] = GetWeapon();
 	uh_moveCurrent[pn] = wep;
 	uh_negaChargeLvl[pn] = 0;
+	uh_decoyWhich[pn] = 0;
 	GiveInventory(wep, 1);
 	SetWeapon(wep);
 	SetResultValue(1);
 }
 
-// NegaManShiny custom slot dispatch. lvl = 1..3 charge level.
+// NegaManShiny slot dispatch. lvl = 1..3 charge level.
 // 1 = move weapon selected; 0 = unregistered slot (buster fallback).
+// Full-charge (lvl 3) advances SNegaFlag here (vanilla L3 used to GiveInventory).
 script "uh_ShinyNegaCustomFire" (int lvl)
 {
 	int pn = PlayerNumber();
@@ -917,9 +915,28 @@ script "uh_ShinyNegaCustomFire" (int lvl)
 		terminate;
 	}
 
+	// Advance full-charge cycle before SetWeapon (HUD already on next slot).
+	if (lvl == 3)
+	{
+		if (slot == 25)
+		{
+			if (HasCustomNegaSlots())
+				GiveInventory("SNegaFlag", 1);
+			else
+				TakeInventory("SNegaFlag", 999);
+		}
+		else
+		{
+			GiveInventory("SNegaFlag", 1);
+			if (CheckInventory("SNegaFlag") >= UH_SHINYNEGA_CYCLE_RESET)
+				TakeInventory("SNegaFlag", 999);
+		}
+	}
+
 	uh_moveReturn[pn] = GetWeapon();
 	uh_moveCurrent[pn] = wep;
 	uh_negaChargeLvl[pn] = lvl;
+	uh_decoyWhich[pn] = 0;
 	GiveInventory(wep, 1);
 	SetWeapon(wep);
 	SetResultValue(1);
@@ -932,20 +949,17 @@ script "uh_ShinyNegaGetChargeLevel" (void)
 	SetResultValue(pn >= 0 ? uh_negaChargeLvl[pn] : 0);
 }
 
-// Gate for NegamanVB_3: 1 = extend the full-charge cycle into custom slots,
-// 0 = vanilla reset to slot 0.
+// Gate for docs / rare DECORATE checks: 1 = addon slots 26..33 present.
 script "uh_HasCustomNegaSlots" (void)
 {
 	SetResultValue(HasCustomNegaSlots());
 }
 
-// DecoyBot custom slot dispatch. which: 1 = DecoyBot_W, 2 = _W2, 3 = _W3.
-// Reads the matching DecoyBotFlagN and returns to the launching weapon.
+// DecoyBot copy slot dispatch. which: 1 = DecoyBot_W, 2 = _W2, 3 = _W3.
 script "uh_DecoyBotCustomFire" (int which)
 {
 	int pn = PlayerNumber();
 	int slot;
-	int idx;
 	str flag;
 	str wep;
 
@@ -961,28 +975,35 @@ script "uh_DecoyBotCustomFire" (int which)
 		flag = "DecoyBotFlag3";
 
 	slot = CheckInventory(flag);
-	if (slot < UH_DECOY_SLOTBASE)
+	if (slot < 0 || slot >= uh_decoyMoveCount)
 	{
 		SetResultValue(0);
 		terminate;
 	}
-	idx = slot - UH_DECOY_SLOTBASE;
-	if (idx >= uh_decoyMoveCount)
+	wep = uh_decoyMoveWep[slot];
+	if (StrCmp(wep, "") == 0)
 	{
 		SetResultValue(0);
 		terminate;
 	}
-	wep = uh_decoyMoveWep[idx];
 
 	uh_moveReturn[pn] = GetWeapon();
 	uh_moveCurrent[pn] = wep;
 	uh_negaChargeLvl[pn] = 0;
+	uh_decoyWhich[pn] = which;
 	GiveInventory(wep, 1);
 	SetWeapon(wep);
 	SetResultValue(1);
 }
 
-// Dynamic DecoyBot copy slot count (vanilla 59 = flags 0..58 + customs).
+// For Decoy move Select: which launcher weapon (1..3).
+script "uh_DecoyBotGetWhich" (void)
+{
+	int pn = PlayerNumber();
+	SetResultValue(pn >= 0 ? uh_decoyWhich[pn] : 1);
+}
+
+// Dynamic DecoyBot copy slot count.
 script "uh_CountDecoyBotSlots" (void)
 {
 	SetResultValue(CountDecoyBotSlots());
@@ -1007,6 +1028,7 @@ script "uh_ShinyMoveReturn" (void)
 	uh_moveCurrent[pn] = "";
 	uh_moveReturn[pn] = "";
 	uh_negaChargeLvl[pn] = 0;
+	uh_decoyWhich[pn] = 0;
 
 	// Only clean up when we are still the ready weapon (player may have
 	// switched manually mid-move; then the record is simply cleared).

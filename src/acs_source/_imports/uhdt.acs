@@ -2126,21 +2126,23 @@ function void GrantLMSEventDrops(int tid, int eventId, int rare)
 #LIBDEFINE UH_MAX_SHINYMOVES 128
 #LIBDEFINE UH_SHINYNEGA_SLOTBASE 26
 #LIBDEFINE UH_SHINYNEGA_SLOTCOUNT 8
+#LIBDEFINE UH_SHINYNEGA_SLOTMAX 33
+#LIBDEFINE UH_SHINYNEGA_CYCLE_RESET 34
 #LIBDEFINE UH_DECOY_SLOTBASE 59
 #LIBDEFINE UH_SHINYMEGA_M1 1
 #LIBDEFINE UH_SHINYMEGA_M2 2
 #LIBDEFINE UH_SHINYMEGA_TRUE 3
 
-// QwantShiny AltFire custom moves (vanilla pool = 25 moves, each weight 1).
+// QwantShiny AltFire move pool (vanilla + addon; flat weighted).
 int uh_shinyQwantMoveCount = 0;
 str uh_shinyQwantMoveWep[UH_MAX_SHINYMOVES];
 int uh_shinyQwantMoveWeight[UH_MAX_SHINYMOVES];
 
-// NegaManShiny custom slots 26..33, three charge levels per slot.
+// NegaManShiny slots 1..33 (index == slot; [0] unused). Addon API uses 26..33.
 // "" = unregistered; dispatcher falls back L2/L3 -> L1.
-str uh_shinyNegaSlotWep[UH_SHINYNEGA_SLOTCOUNT][3];
+str uh_shinyNegaSlotWep[UH_SHINYNEGA_CYCLE_RESET][3];
 
-// DecoyBot custom copy slots 59+ (uniform in the flag swap pool).
+// DecoyBot copy slots (index == slot). Vanilla 0..58 registered first; addon 59+.
 int uh_decoyMoveCount = 0;
 str uh_decoyMoveWep[UH_MAX_SHINYMOVES];
 
@@ -2173,26 +2175,24 @@ function int DefineShinyQwantMoveWepCore(str wepActor, int weight)
 	return uh_shinyQwantMoveCount - 1;
 }
 
-// NegaManShiny: register one custom slot (26..33) with up to three charge
-// level weapons. wepL1 mandatory; empty L2/L3 fall back to L1 at dispatch.
-// Re-registering the same slot overwrites it.
+// NegaManShiny: register slot 1..33 with up to three charge-level weapons.
+// wepL1 mandatory; empty L2/L3 fall back to L1 at dispatch.
+// Re-registering the same slot overwrites it. Addons should use 26..33.
 function int DefineShinyNegaSlotWepCore(int slot, str wepL1, str wepL2, str wepL3)
 {
-	int i;
-	if (slot < UH_SHINYNEGA_SLOTBASE
-		|| slot >= UH_SHINYNEGA_SLOTBASE + UH_SHINYNEGA_SLOTCOUNT)
+	if (slot < 1 || slot > UH_SHINYNEGA_SLOTMAX)
 		return UHCOPY_FAIL;
 	if (StrCmp(wepL1, "") == 0)
 		return UHCOPY_FAIL;
-	i = slot - UH_SHINYNEGA_SLOTBASE;
-	uh_shinyNegaSlotWep[i][0] = wepL1;
-	uh_shinyNegaSlotWep[i][1] = wepL2;
-	uh_shinyNegaSlotWep[i][2] = wepL3;
+	uh_shinyNegaSlotWep[slot][0] = wepL1;
+	uh_shinyNegaSlotWep[slot][1] = wepL2;
+	uh_shinyNegaSlotWep[slot][2] = wepL3;
 	return slot;
 }
 
-// DecoyBot: register a custom copy slot. Slot is auto-assigned starting at
-// UH_DECOY_SLOTBASE (59). Same (wepActor) again returns the existing slot.
+// DecoyBot: register a copy slot. Slot is auto-assigned as the next index
+// (vanilla 0..58 first, then addon 59+). Same (wepActor) again returns the
+// existing slot index.
 function int DefineDecoyBotMoveWepCore(str wepActor)
 {
 	int i;
@@ -2201,13 +2201,13 @@ function int DefineDecoyBotMoveWepCore(str wepActor)
 	for (i = 0; i < uh_decoyMoveCount; i++)
 	{
 		if (StrICmp(uh_decoyMoveWep[i], wepActor) == 0)
-			return UH_DECOY_SLOTBASE + i;
+			return i;
 	}
 	if (uh_decoyMoveCount >= UH_MAX_SHINYMOVES)
 		return UHCOPY_FAIL;
 	uh_decoyMoveWep[uh_decoyMoveCount] = wepActor;
 	uh_decoyMoveCount++;
-	return UH_DECOY_SLOTBASE + uh_decoyMoveCount - 1;
+	return uh_decoyMoveCount - 1;
 }
 
 // Shiny MegaMan: register a fire CustomInventory into M1 (Fire), M2 (AltFire),
@@ -2269,34 +2269,31 @@ function int DefineShinyMegaCopyWepCore(int which, str fireActor, int weight)
 	return last;
 }
 
-// Total DecoyBot copy slot count: vanilla 59 (flags 0..58) + custom.
+// Total DecoyBot copy slot count (vanilla 59 once registered + addon).
 function int CountDecoyBotSlots(void)
 {
-	return UH_DECOY_SLOTBASE + uh_decoyMoveCount;
+	return uh_decoyMoveCount;
 }
 
-// Resolve a NegaManShiny custom slot charge weapon. lvl: 1..3.
+// Resolve a NegaManShiny slot charge weapon. lvl: 1..3. Slots 1..33.
 function str GetShinyNegaSlotWep(int slot, int lvl)
 {
-	int i;
 	str wep;
-	if (slot < UH_SHINYNEGA_SLOTBASE
-		|| slot >= UH_SHINYNEGA_SLOTBASE + UH_SHINYNEGA_SLOTCOUNT)
+	if (slot < 1 || slot > UH_SHINYNEGA_SLOTMAX)
 		return "";
-	i = slot - UH_SHINYNEGA_SLOTBASE;
-	wep = lvl == 2 ? uh_shinyNegaSlotWep[i][1]
-		: lvl == 3 ? uh_shinyNegaSlotWep[i][2]
-		: uh_shinyNegaSlotWep[i][0];
+	wep = lvl == 2 ? uh_shinyNegaSlotWep[slot][1]
+		: lvl == 3 ? uh_shinyNegaSlotWep[slot][2]
+		: uh_shinyNegaSlotWep[slot][0];
 	if (StrCmp(wep, "") == 0)
-		return uh_shinyNegaSlotWep[i][0];
+		return uh_shinyNegaSlotWep[slot][0];
 	return wep;
 }
 
-// Any custom NegaManShiny slot registered? (gates the full-charge cycle.)
+// Any addon NegaManShiny slot (26..33) registered? (gates full-charge wrap.)
 function int HasCustomNegaSlots(void)
 {
 	int i;
-	for (i = 0; i < UH_SHINYNEGA_SLOTCOUNT; i++)
+	for (i = UH_SHINYNEGA_SLOTBASE; i <= UH_SHINYNEGA_SLOTMAX; i++)
 	{
 		if (StrCmp(uh_shinyNegaSlotWep[i][0], "") != 0)
 			return 1;
