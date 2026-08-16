@@ -533,8 +533,13 @@ script "uc_LimHealth" (void) {
 script "uc_DecoyBotWepSwap" (int MaxRNG)
 {
 	// Custom copy slots (59+) extend the vanilla pool; the DECORATE caller
-	// still passes 58 for compatibility — override with the live count here.
-	MaxRNG = ACS_NamedExecuteWithResult("uh_CountDecoyBotSlots") - 1;
+	// still passes 58 for compatibility — override with the live count when
+	// the table is already registered. On singleplayer spawn, startitem can
+	// run before UH_COPYDEFS OPEN fills uh_decoyMoveCount (still 0); keep the
+	// DECORATE MaxRNG so DecoyBotWepCheckRNG does not infinite-loop.
+	int n = ACS_NamedExecuteWithResult("uh_CountDecoyBotSlots");
+	if (n > 0)
+		MaxRNG = n - 1;
 	int p1 = CheckInventory("DecoyBotFlag1");
 	int p2 = CheckInventory("DecoyBotFlag2");
 	int p3 = CheckInventory("DecoyBotFlag3");
@@ -560,9 +565,17 @@ script "uc_DecoyBotWepSwap" (int MaxRNG)
 function int DecoyBotWepCheckRNG(int maxR, int p1, int p2, int p3, int p4, int p5)
 {
 	int dWep;
+	int tries;
+
+	if (maxR < 0)
+		return 0;
+	// Cap retries so an over-excluded pool cannot runaway the script.
+	tries = 0;
 	do {
 		dWep = random(0, maxR);
-	} while(dWep == p1 || dWep == p2 || dWep == p3 || dWep == p4 || dWep == p5);
+		tries++;
+	} while (tries < 64
+		&& (dWep == p1 || dWep == p2 || dWep == p3 || dWep == p4 || dWep == p5));
 
 	return dWep;
 }
