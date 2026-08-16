@@ -888,6 +888,7 @@ script "uh_QwantShinyMoveRoll" (void)
 	uh_moveCurrent[pn] = wep;
 	uh_negaChargeLvl[pn] = 0;
 	uh_decoyWhich[pn] = 0;
+	SetInventory("UH_MoveHud_F", 1);
 	GiveInventory("NoWeaponSwitchSound", 1);
 	GiveInventory(wep, 1);
 	SetWeapon(wep);
@@ -938,6 +939,7 @@ script "uh_ShinyNegaCustomFire" (int lvl)
 	uh_moveCurrent[pn] = wep;
 	uh_negaChargeLvl[pn] = lvl;
 	uh_decoyWhich[pn] = 0;
+	SetInventory("UH_MoveHud_F", 2);
 	GiveInventory("NoWeaponSwitchSound", 1);
 	GiveInventory(wep, 1);
 	SetWeapon(wep);
@@ -993,6 +995,8 @@ script "uh_DecoyBotCustomFire" (int which)
 	uh_moveCurrent[pn] = wep;
 	uh_negaChargeLvl[pn] = 0;
 	uh_decoyWhich[pn] = which;
+	// which 1..3 → UH_MoveHud_F 3..5 (DecoyBot_W / _W2 / _W3)
+	SetInventory("UH_MoveHud_F", which + 2);
 	GiveInventory("NoWeaponSwitchSound", 1);
 	GiveInventory(wep, 1);
 	SetWeapon(wep);
@@ -1035,8 +1039,13 @@ script "uh_ShinyMoveReturn" (void)
 
 	// Only clean up when we are still the ready weapon (player may have
 	// switched manually mid-move; then the record is simply cleared).
+	// Keep UH_MoveHud_F until parent SilentSelect so BARHNDLE never sees a
+	// gap tic with move GetWeapon() and no remap (bar flash).
 	if (StrICmp(GetWeapon(), cur) != 0)
+	{
+		SetInventory("UH_MoveHud_F", 0);
 		terminate;
+	}
 	// Mute ACS menu/cursor (and Decoy gravitywarn) on parent Ready, and
 	// mark Select to skip SelectSwap raise + Ready color frame.
 	GiveInventory("NoWeaponSwitchSound", 1);

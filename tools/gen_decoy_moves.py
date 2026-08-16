@@ -120,7 +120,7 @@ def slim_actor_fire(chunk: str, which: int) -> str:
         f"6{spr}50 A 0 A_JumpIf(CallACS(\"uh_DecoyBotCustomFire\",{which}), 2)\n"
         f"6{spr}50 A 0\n"
         f"Goto Ready2\n"
-        f"TNT1 A 1 A_WeaponReady\n"
+        f"TNT1 A 0 A_WeaponReady\n"
         f"Goto Ready2\n"
         f"\n"
         f"}}\n"
@@ -171,6 +171,7 @@ def main() -> None:
 		"\twait",
         "MoveReturn:",
         '\tTNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")',
+        "\tTNT1 A 0 A_WeaponReady",
         "\tTNT1 A 1 A_WeaponReady",
         "\twait",
         "}",
