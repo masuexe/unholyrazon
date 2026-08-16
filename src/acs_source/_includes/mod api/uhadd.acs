@@ -856,16 +856,22 @@ function int UH_PickLMSEvent(void)
 
 // === Shiny move-weapon addon recipe =========================================
 // Lets an addon attach CUSTOM psprite-animated moves to the shiny copy classes.
-// The move is a WEAPON actor the modder ships: on dispatch the shiny weapon
-// GiveInventory + SetWeapon it; the move weapon's Select state plays the whole
-// frame-by-frame animation (own sprites/offsets/durations/sounds), fires its
-// projectiles from its own states, and at the end calls uh_ShinyMoveReturn
-// which switches back to the shiny weapon and removes the move weapon.
 //
-// Move weapon requirements (engine-enforced):
+// QwantShiny / NegaManShiny: the move is a WEAPON actor the modder ships; on
+// dispatch the shiny weapon GiveInventory + SetWeapon it; the move weapon's
+// Select state plays the whole frame-by-frame animation, fires its projectiles,
+// and at the end calls uh_ShinyMoveReturn which switches back and removes it.
+//
+// DecoyBot: different — M2 roll Gives three held weapons DecoyCopy_<stem>_W1/
+// _W2/_W3 into slots 1/2/3. M1 fires the held weapon's Fire state directly
+// (no SetWeapon / MoveReturn). Register with DefineDecoyBotMoveWep(stem or
+// *_W / *_W1); table stores the stem. Ship all three actors (W2/W3 may inherit
+// W1 and only change sprites / SlotNumber).
+//
+// Move weapon requirements for Qwant/Nega (engine-enforced):
 // 1. SetWeapon needs CheckAmmo(EitherFire) to pass: either give the weapon
-//    an ammo type the class already holds (MyDestinyAmmo / S_NegaDuckAmmo /
-//    DecoyEnergyAmmo) or use NO ammotype with Weapon.AmmoUse 0.
+//    an ammo type the class already holds (MyDestinyAmmo / S_NegaDuckAmmo)
+//    or use NO ammotype with Weapon.AmmoUse 0.
 //    +WEAPON.AMMO_OPTIONAL does NOT help SetWeapon.
 // 2. Play the animation in Select; make Fire a no-op (A_WeaponReady) so a held
 //    fire button does not re-trigger it.
@@ -888,6 +894,14 @@ function int UH_PickLMSEvent(void)
 //    Flag is cleared in the parent SilentSelect (not MoveReturn) to avoid a
 //    one-tic blank bar when switching back.
 //
+// DecoyBot held-copy requirements:
+// 1. Three actors: DecoyCopy_<Name>_W1 / _W2 / _W3 with Weapon.SlotNumber 1/2/3.
+// 2. Put the attack animation in Fire (not Select); end with goto Ready2.
+// 3. Ammo: DecoyEnergyAmmo, AmmoUse 0, AmmoGive 0; inventory.icon C_I_50A/B/C.
+// 4. W2/W3 may inherit W1 and only remap sprites (6H→6I/6J) + SlotNumber/icon.
+// 5. Register once: DefineDecoyBotMoveWep("DecoyCopy_YourName_W1") (or stem /
+//    *_W); M2 Give appends _W1/_W2/_W3 from the stored stem.
+//
 // Recipes:
 //   DefineShinyQwantMoveWep("YourMove_W", 3);
 //       QwantShiny AltFire flat weighted pool (vanilla 25 moves are already
@@ -895,12 +909,9 @@ function int UH_PickLMSEvent(void)
 //   DefineShinyNegaSlotWep(26, "YourNegaL1_W", "YourNegaL2_W", "YourNegaL3_W");
 //       NegaManShiny slots 26..33 (vanilla 1..25 already registered). L1
 //       mandatory; empty L2/L3 fall back to L1. Register contiguous from 26.
-//   DefineDecoyBotMoveWep("YourCopy_W");
+//   DefineDecoyBotMoveWep("DecoyCopy_YourName_W1");
 //       DecoyBot copy slot 59+ (vanilla 0..58 already registered). Uniform in
-//       the flag swap pool for all three weapons; dispatcher remembers which
-//       of DecoyBot_W/_W2/_W3 launched the move and returns there.
-//       Move Select must A_JumpIfInventory("UH_MoveHud_F", 5/4, Anim3/2);
-//       CallACS("uh_DecoyBotGetWhich") is 0 on clients (server-only array).
+//       the flag swap pool; ApplyHeldWeps Gives stem_W1/_W2/_W3.
 //   DefineShinyMegaCopyWep("ShinyMega_YourStem_P", UH_SHINYMEGA_M1, 5);
 //   DefineShinyMegaCopyWep("ShinyMega_YourStem_P", UH_SHINYMEGA_M2, 19);
 //   DefineShinyMegaCopyWep("ShinyMega_DawnBreaker_P", UH_SHINYMEGA_TRUE, 1);
@@ -917,7 +928,7 @@ function int UH_PickLMSEvent(void)
 //      function void YourRegister(void) {
 //          DefineShinyQwantMoveWep("YourMove_W", 3);
 //          DefineShinyNegaSlotWep(26, "YourNegaL1_W", "", "");
-//          DefineDecoyBotMoveWep("YourCopy_W");
+//          DefineDecoyBotMoveWep("DecoyCopy_YourName_W1");
 //          DefineShinyMegaCopyWep("ShinyMega_YourStem_P", UH_SHINYMEGA_M1, 5);
 //      }
 //      script "your_define" OPEN {
@@ -928,7 +939,7 @@ function int UH_PickLMSEvent(void)
 //          YourRegister();
 //      }
 // 3. Same (kind, actor) registration again returns the existing row.
-// 4. Move weapons are taken on return — registration rows persist all match.
+// 4. Qwant/Nega move weapons are taken on return — registration rows persist.
 //
 // Slot constants (match UHDT / ConstIntList_Uacsprops.dec):
 #define UH_SHINYNEGA_SLOTBASE 26
@@ -956,7 +967,8 @@ function int DefineShinyNegaSlotWep(int slot, str wepL1, str wepL2, str wepL3)
 	return ACS_NamedExecuteWithResult("uh_DefineShinyNegaSlotWep_S");
 }
 
-// DecoyBot custom copy slot weapon (slot auto 59+).
+// DecoyBot custom copy slot (slot auto 59+). Pass stem or *_W / *_W1..*_W3;
+// table stores stem; M2 Give uses stem_W1/_W2/_W3.
 function int DefineDecoyBotMoveWep(str wepActor)
 {
 	SetCVarString("uh_sm_wep", wepActor);

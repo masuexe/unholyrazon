@@ -54,6 +54,7 @@ function void DrawMegaManURerollBar(void)
 
 // Shiny move-weapons have no ScriptBar; remap to the launching parent while
 // UH_MoveHud_F is set (synced inventory from uh_*CustomFire / MoveReturn).
+// Decoy held copies (DecoyCopy_*_W1/_W2/_W3) remap to DecoyBot_W/_W2/_W3 bars.
 function str UH_MoveHudParentWep(void) {
 	int hud = CheckInventory("UH_MoveHud_F");
 	if (hud == 1)
@@ -69,11 +70,36 @@ function str UH_MoveHudParentWep(void) {
 	return "";
 }
 
+function str UH_DecoyHeldBarWep(str wep) {
+	int len;
+	int d;
+	if (StrLen(wep) < 11)
+		return wep;
+	if (StrICmp(StrLeft(wep, 10), "DecoyCopy_") != 0)
+		return wep;
+	len = StrLen(wep);
+	if (len >= 4
+		&& GetChar(wep, len - 3) == '_'
+		&& GetChar(wep, len - 2) == 'W')
+	{
+		d = GetChar(wep, len - 1);
+		if (d == '1')
+			return "DecoyBot_W";
+		if (d == '2')
+			return "DecoyBot_W2";
+		if (d == '3')
+			return "DecoyBot_W3";
+	}
+	return wep;
+}
+
 function void DrawBarRun(void) {
 	str wep = GetWeapon();
 	str parent = UH_MoveHudParentWep();
 	if (StrLen(parent) > 0)
 		wep = parent;
+	else
+		wep = UH_DecoyHeldBarWep(wep);
 
 	if(oldWep != wep) {
 		oldWep = wep;

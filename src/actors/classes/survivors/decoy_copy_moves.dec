@@ -1,10 +1,14 @@
-// Vanilla DecoyBot copy slots 0..58 as slotless move-weapons.
-// Select branches on uh_DecoyBotGetWhich (1/2/3) for sprite sets.
+// Vanilla DecoyBot copy slots 0..58 as held weapons (slot 1/2/3).
+// M2 roll Gives DecoyCopy_NN_W1/_W2/_W3; M1 fires the held weapon directly.
 
-actor DecoyCopyMoveBase_W : BaseMM8BDMWep_UH
+actor DecoyCopyHeldBase_W1 : BaseMM8BDMWep_UH
 {
+	Weapon.SlotNumber 1
+	Weapon.AmmoUse 0
+	Weapon.AmmoGive 0
 	weapon.ammotype "DecoyEnergyAmmo"
-	weapon.ammouse 0
+	weapon.ammotype2 "FlukyNumberAmmo"
+	inventory.icon "C_I_50A"
 	Weapon.UpSound ""
 	+WEAPON.NOALERT
 	+WEAPON.NOAUTOAIM
@@ -14,507 +18,793 @@ Spawn:
 	6H50 [ 6
 	loop
 Deselect:
-	TNT1 A 0 Offset(1, 128) A_Lower
-Select:
 	6H50 A 0
-	goto Ready
+	goto DeselectSwap
+Select:
+	6H50 A 0 A_JumpIfInventory("UH_SilentSelect_F",1,"SilentSelect")
+	goto SelectSwap
+SilentSelect:
+	6H50 A 0 A_StopSound(CHAN_WEAPON)
+	6H50 A 0 A_TakeInventory("UH_SilentSelect_F",1)
+	6H50 A 0 A_TakeInventory("NoWeaponSwitchSound",1)
+	6H50 A 0 A_WeaponReady(14)
+	goto Ready2
 Ready:
-Fire:
+	6H50 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", DECOYBOT_DYE, CLRF_GRAVITYWARN)
+	6H50 A 0
+	goto Ready2
+Ready2:
+	6H50 A 2 A_GiveInventory("DecoyBot_WepReady1_P")
+	6H50 A 0 A_GiveInventory("DecoyEnergyAmmo",3)
+	6H50 A 0 A_GiveInventory("FlukyNumberAmmo",1)
+	loop
 AltFire:
+	6H50 D 0 A_GiveInventory("DecoyBotAlt_P")
+	6H50 DDAADD 1 A_RailWait
+	6H50 A 0
+	6H50 AADDAA 1
+	goto Ready2
+BotFire:
+	"####" A 0 A_JumpIfInventory("DecoyBotFlagBot",30,"BotFire1")
+	"####" A 0 A_Jump(16,"BotFire2")
+	"####" A 0 A_GiveInventory("DecoyBotFlagBot",1)
+	"####" A 0 A_GiveInventory("DecoyEnergyAmmo",random(1,49))
+	goto Fire+1
+BotFire1:
+	"####" A 0 A_Jump(96,"BotFire2")
+	"####" A 0 A_GiveInventory("DecoyEnergyAmmo",random(40,100))
+	goto Fire+1
+BotFire2:
+	"####" A 0 A_TakeInventory("DecoyBotFlagBot",30)
+	"####" A 0 A_GiveInventory("DecoyEnergyAmmo",200)
+	"####" A 0 A_PlaySoundEx("taunt/D_50","Voice")
+	goto AltFire
+Fire:
 	6H50 A 1 A_WeaponReady
 	wait
-MoveReturn:
-	TNT1 A 0 ACS_NamedExecuteAlways("uh_ShinyMoveReturn_cs", 0)
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")
-	goto Deselect
 }
 }
 
-actor DecoyCopy_00_W : DecoyCopyMoveBase_W
+actor DecoyCopyHeldBase_W2 : BaseMM8BDMWep_UH
+{
+	Weapon.SlotNumber 2
+	Weapon.AmmoUse 0
+	Weapon.AmmoGive 0
+	weapon.ammotype "DecoyEnergyAmmo"
+	weapon.ammotype2 "FlukyNumberAmmo"
+	inventory.icon "C_I_50B"
+	Weapon.UpSound ""
+	+WEAPON.NOALERT
+	+WEAPON.NOAUTOAIM
+States
+{
+Spawn:
+	6I50 [ 6
+	loop
+Deselect:
+	6I50 A 0
+	goto DeselectSwap
+Select:
+	6I50 A 0 A_JumpIfInventory("UH_SilentSelect_F",1,"SilentSelect")
+	goto SelectSwap
+SilentSelect:
+	6I50 A 0 A_StopSound(CHAN_WEAPON)
+	6I50 A 0 A_TakeInventory("UH_SilentSelect_F",1)
+	6I50 A 0 A_TakeInventory("NoWeaponSwitchSound",1)
+	6I50 A 0 A_WeaponReady(14)
+	goto Ready2
+Ready:
+	6I50 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", DECOYBOT_DYE, CLRF_GRAVITYWARN)
+	6I50 A 0
+	goto Ready2
+Ready2:
+	6I50 A 2 A_GiveInventory("DecoyBot_WepReady2_P")
+	6I50 A 0 A_GiveInventory("DecoyEnergyAmmo",3)
+	6I50 A 0 A_GiveInventory("FlukyNumberAmmo",1)
+	loop
+AltFire:
+	6I50 D 0 A_GiveInventory("DecoyBotAlt_P")
+	6I50 DDAADD 1 A_RailWait
+	6I50 A 0
+	6I50 AADDAA 1
+	goto Ready2
+BotFire:
+	"####" A 0 A_JumpIfInventory("DecoyBotFlagBot",30,"BotFire1")
+	"####" A 0 A_Jump(16,"BotFire2")
+	"####" A 0 A_GiveInventory("DecoyBotFlagBot",1)
+	"####" A 0 A_GiveInventory("DecoyEnergyAmmo",random(1,49))
+	goto Fire+1
+BotFire1:
+	"####" A 0 A_Jump(96,"BotFire2")
+	"####" A 0 A_GiveInventory("DecoyEnergyAmmo",random(40,100))
+	goto Fire+1
+BotFire2:
+	"####" A 0 A_TakeInventory("DecoyBotFlagBot",30)
+	"####" A 0 A_GiveInventory("DecoyEnergyAmmo",200)
+	"####" A 0 A_PlaySoundEx("taunt/D_50","Voice")
+	goto AltFire
+Fire:
+	6I50 A 1 A_WeaponReady
+	wait
+}
+}
+
+actor DecoyCopyHeldBase_W3 : BaseMM8BDMWep_UH
+{
+	Weapon.SlotNumber 3
+	Weapon.AmmoUse 0
+	Weapon.AmmoGive 0
+	weapon.ammotype "DecoyEnergyAmmo"
+	weapon.ammotype2 "FlukyNumberAmmo"
+	inventory.icon "C_I_50C"
+	Weapon.UpSound ""
+	+WEAPON.NOALERT
+	+WEAPON.NOAUTOAIM
+States
+{
+Spawn:
+	6J50 [ 6
+	loop
+Deselect:
+	6J50 A 0
+	goto DeselectSwap
+Select:
+	6J50 A 0 A_JumpIfInventory("UH_SilentSelect_F",1,"SilentSelect")
+	goto SelectSwap
+SilentSelect:
+	6J50 A 0 A_StopSound(CHAN_WEAPON)
+	6J50 A 0 A_TakeInventory("UH_SilentSelect_F",1)
+	6J50 A 0 A_TakeInventory("NoWeaponSwitchSound",1)
+	6J50 A 0 A_WeaponReady(14)
+	goto Ready2
+Ready:
+	6J50 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", DECOYBOT_DYE, CLRF_GRAVITYWARN)
+	6J50 A 0
+	goto Ready2
+Ready2:
+	6J50 A 2 A_GiveInventory("DecoyBot_WepReady3_P")
+	6J50 A 0 A_GiveInventory("DecoyEnergyAmmo",3)
+	6J50 A 0 A_GiveInventory("FlukyNumberAmmo",1)
+	loop
+AltFire:
+	6J50 D 0 A_GiveInventory("DecoyBotAlt_P")
+	6J50 DDAADD 1 A_RailWait
+	6J50 A 0
+	6J50 AADDAA 1
+	goto Ready2
+BotFire:
+	"####" A 0 A_JumpIfInventory("DecoyBotFlagBot",30,"BotFire1")
+	"####" A 0 A_Jump(16,"BotFire2")
+	"####" A 0 A_GiveInventory("DecoyBotFlagBot",1)
+	"####" A 0 A_GiveInventory("DecoyEnergyAmmo",random(1,49))
+	goto Fire+1
+BotFire1:
+	"####" A 0 A_Jump(96,"BotFire2")
+	"####" A 0 A_GiveInventory("DecoyEnergyAmmo",random(40,100))
+	goto Fire+1
+BotFire2:
+	"####" A 0 A_TakeInventory("DecoyBotFlagBot",30)
+	"####" A 0 A_GiveInventory("DecoyEnergyAmmo",200)
+	"####" A 0 A_PlaySoundEx("taunt/D_50","Voice")
+	goto AltFire
+Fire:
+	6J50 A 1 A_WeaponReady
+	wait
+}
+}
+
+actor DecoyCopy_00_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 2 A_GiveInventory("DecoyB_F_P00")
 6H50 BAA 2
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_00_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 2 A_GiveInventory("DecoyB_F_P00")
 6I50 BAA 2
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_00_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 2 A_GiveInventory("DecoyB_F_P00")
 6J50 BAA 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_01_W : DecoyCopyMoveBase_W
+actor DecoyCopy_01_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 B 4 A_GiveInventory("DecoyB_F_P01")
 6H50 CAA 4
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_01_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 B 4 A_GiveInventory("DecoyB_F_P01")
 6I50 CAA 4
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_01_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 B 4 A_GiveInventory("DecoyB_F_P01")
 6J50 CAA 4
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_02_W : DecoyCopyMoveBase_W
+actor DecoyCopy_02_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 3 A_GiveInventory("DecoyB_F_P02")
 6H50 BAAAAA 3
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_02_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 3 A_GiveInventory("DecoyB_F_P02")
 6I50 BAAAAA 3
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_02_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 3 A_GiveInventory("DecoyB_F_P02")
 6J50 BAAAAA 3
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_03_W : DecoyCopyMoveBase_W
+actor DecoyCopy_03_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 4 A_GiveInventory("DecoyB_F_P03")
 6H50 BAAAA 4
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_03_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 4 A_GiveInventory("DecoyB_F_P03")
 6I50 BAAAA 4
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_03_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 4 A_GiveInventory("DecoyB_F_P03")
 6J50 BAAAA 4
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_04_W : DecoyCopyMoveBase_W
+actor DecoyCopy_04_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 4 A_GiveInventory("DecoyB_F_P04")
 6H50 BAA 4
-goto MoveReturn
-Anim2:
-6I50 C 4 A_GiveInventory("DecoyB_F_P04")
-6I50 BAA 4
-goto MoveReturn
-Anim3:
-6J50 C 4 A_GiveInventory("DecoyB_F_P04")
-6J50 BAA 4
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_05_W : DecoyCopyMoveBase_W
+actor DecoyCopy_04_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 4 A_GiveInventory("DecoyB_F_P04")
+6I50 BAA 4
+goto Ready2
+}
+}
+
+actor DecoyCopy_04_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 4 A_GiveInventory("DecoyB_F_P04")
+6J50 BAA 4
+goto Ready2
+}
+}
+
+actor DecoyCopy_05_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 B 0 A_GiveInventory("VivifyDelay2",1)
 6H50 B 0 A_ReFire(1)
 6H50 B 4
 6H50 C 12 A_GiveInventory("DecoyB_F_P05")
 6H50 CBBAA 2
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_05_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 B 0 A_GiveInventory("VivifyDelay2",1)
 6I50 B 0 A_ReFire(1)
 6I50 B 4
 6I50 C 12 A_GiveInventory("DecoyB_F_P05")
 6I50 CBBAA 2
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_05_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 B 0 A_GiveInventory("VivifyDelay2",1)
 6J50 B 0 A_ReFire(1)
 6J50 B 4
 6J50 C 12 A_GiveInventory("DecoyB_F_P05")
 6J50 CBBAA 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_06_W : DecoyCopyMoveBase_W
+actor DecoyCopy_06_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 3 A_GiveInventory("DecoyB_F_P06")
 6H50 BAAAA 3
-goto MoveReturn
-Anim2:
-6I50 C 3 A_GiveInventory("DecoyB_F_P06")
-6I50 BAAAA 3
-goto MoveReturn
-Anim3:
-6J50 C 3 A_GiveInventory("DecoyB_F_P06")
-6J50 BAAAA 3
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_07_W : DecoyCopyMoveBase_W
+actor DecoyCopy_06_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 3 A_GiveInventory("DecoyB_F_P06")
+6I50 BAAAA 3
+goto Ready2
+}
+}
+
+actor DecoyCopy_06_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 3 A_GiveInventory("DecoyB_F_P06")
+6J50 BAAAA 3
+goto Ready2
+}
+}
+
+actor DecoyCopy_07_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",12-6*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),4)
 6H50 C 0 A_GiveInventory("DecoyB_F_P07")
 6H50 CB 2 A_GiveInventory("Decoy_F_07_Speed_P")
-goto MoveReturn
+goto Ready2
 6H50 C 0 A_GiveInventory("DecoyB_F_P07")
 6H50 BCA 2 A_GiveInventory("Decoy_F_07_Speed_P")
-goto MoveReturn
-Anim2:
-6I50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",12-6*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),4)
-6I50 C 0 A_GiveInventory("DecoyB_F_P07")
-6I50 CB 2 A_GiveInventory("Decoy_F_07_Speed_P")
-goto MoveReturn
-6I50 C 0 A_GiveInventory("DecoyB_F_P07")
-6I50 BCA 2 A_GiveInventory("Decoy_F_07_Speed_P")
-goto MoveReturn
-Anim3:
-6J50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",12-6*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),4)
-6J50 C 0 A_GiveInventory("DecoyB_F_P07")
-6J50 CB 2 A_GiveInventory("Decoy_F_07_Speed_P")
-goto MoveReturn
-6J50 C 0 A_GiveInventory("DecoyB_F_P07")
-6J50 BCA 2 A_GiveInventory("Decoy_F_07_Speed_P")
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_08_W : DecoyCopyMoveBase_W
+actor DecoyCopy_07_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",12-6*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),4)
+6I50 C 0 A_GiveInventory("DecoyB_F_P07")
+6I50 CB 2 A_GiveInventory("Decoy_F_07_Speed_P")
+goto Ready2
+6I50 C 0 A_GiveInventory("DecoyB_F_P07")
+6I50 BCA 2 A_GiveInventory("Decoy_F_07_Speed_P")
+goto Ready2
+}
+}
+
+actor DecoyCopy_07_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",12-6*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),4)
+6J50 C 0 A_GiveInventory("DecoyB_F_P07")
+6J50 CB 2 A_GiveInventory("Decoy_F_07_Speed_P")
+goto Ready2
+6J50 C 0 A_GiveInventory("DecoyB_F_P07")
+6J50 BCA 2 A_GiveInventory("Decoy_F_07_Speed_P")
+goto Ready2
+}
+}
+
+actor DecoyCopy_08_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 1 Offset(16,56)A_GiveInventory("DecoyB_F_P08")
 6H50 C 3 Offset(34,82)
 6H50 B 2 Offset(19,66)
 6H50 B 2 Offset(11,53)
 6H50 A 0 Offset(5,42)
-Anim1_FireH08:
+FireH08:
 6H50 V 1 A_RailWait
 6H50 V 0 A_ReFire(1)
-goto Anim1_Fire08End
+goto Fire08End
 6H50 V 1 A_RailWait
 6H50 V 0 A_ReFire(1)
-goto Anim1_Fire08End
+goto Fire08End
 6H50 A 1 A_RailWait
 6H50 A 0 A_ReFire(1)
-goto Anim1_Fire08End
+goto Fire08End
 6H50 A 1 A_RailWait
-6H50 A 0 A_ReFire("Anim1_FireH08")
-goto Anim1_Fire08End
-Anim1_Fire08End:
+6H50 A 0 A_ReFire("FireH08")
+goto Fire08End
+Fire08End:
 6H50 X 2 A_GiveInventory("TacticalBomberFlag",1)
 6H50 BV 2
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_08_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 1 Offset(16,56)A_GiveInventory("DecoyB_F_P08")
 6I50 C 3 Offset(34,82)
 6I50 B 2 Offset(19,66)
 6I50 B 2 Offset(11,53)
 6I50 A 0 Offset(5,42)
-Anim2_FireH08:
+FireH08:
 6I50 V 1 A_RailWait
 6I50 V 0 A_ReFire(1)
-goto Anim2_Fire08End
+goto Fire08End
 6I50 V 1 A_RailWait
 6I50 V 0 A_ReFire(1)
-goto Anim2_Fire08End
+goto Fire08End
 6I50 A 1 A_RailWait
 6I50 A 0 A_ReFire(1)
-goto Anim2_Fire08End
+goto Fire08End
 6I50 A 1 A_RailWait
-6I50 A 0 A_ReFire("Anim2_FireH08")
-goto Anim2_Fire08End
-Anim2_Fire08End:
+6I50 A 0 A_ReFire("FireH08")
+goto Fire08End
+Fire08End:
 6I50 X 2 A_GiveInventory("TacticalBomberFlag",1)
 6I50 BV 2
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_08_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 1 Offset(16,56)A_GiveInventory("DecoyB_F_P08")
 6J50 C 3 Offset(34,82)
 6J50 B 2 Offset(19,66)
 6J50 B 2 Offset(11,53)
 6J50 A 0 Offset(5,42)
-Anim3_FireH08:
+FireH08:
 6J50 V 1 A_RailWait
 6J50 V 0 A_ReFire(1)
-goto Anim3_Fire08End
+goto Fire08End
 6J50 V 1 A_RailWait
 6J50 V 0 A_ReFire(1)
-goto Anim3_Fire08End
+goto Fire08End
 6J50 A 1 A_RailWait
 6J50 A 0 A_ReFire(1)
-goto Anim3_Fire08End
+goto Fire08End
 6J50 A 1 A_RailWait
-6J50 A 0 A_ReFire("Anim3_FireH08")
-goto Anim3_Fire08End
-Anim3_Fire08End:
+6J50 A 0 A_ReFire("FireH08")
+goto Fire08End
+Fire08End:
 6J50 X 2 A_GiveInventory("TacticalBomberFlag",1)
 6J50 BV 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_09_W : DecoyCopyMoveBase_W
+actor DecoyCopy_09_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 BC 2 A_GiveInventory("DecoyB_F_P09")
 6H50 B 0 A_ReFire(1)
-Anim1_FireH09:
+FireH09:
 6H50 BC 2 A_GiveInventory("DecoyB_F_P09")
 6H50 B 0 A_ReFire(1)
-Goto Anim1_Fire09End
+Goto Fire09End
 6H50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",2,1)
-Goto Anim1_Fire09End
+Goto Fire09End
 6H50 BC 2 A_GiveInventory("DecoyB_F_P09")
 6H50 B 0 A_ReFire(1)
-Goto Anim1_Fire09End
-6H50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",2,"Anim1_FireH09")
-Goto Anim1_Fire09End
-Anim1_Fire09End:
+Goto Fire09End
+6H50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",2,"FireH09")
+Goto Fire09End
+Fire09End:
 6H50 A 4
-goto MoveReturn
-Anim2:
-6I50 BC 2 A_GiveInventory("DecoyB_F_P09")
-6I50 B 0 A_ReFire(1)
-Anim2_FireH09:
-6I50 BC 2 A_GiveInventory("DecoyB_F_P09")
-6I50 B 0 A_ReFire(1)
-Goto Anim2_Fire09End
-6I50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",2,1)
-Goto Anim2_Fire09End
-6I50 BC 2 A_GiveInventory("DecoyB_F_P09")
-6I50 B 0 A_ReFire(1)
-Goto Anim2_Fire09End
-6I50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",2,"Anim2_FireH09")
-Goto Anim2_Fire09End
-Anim2_Fire09End:
-6I50 A 4
-goto MoveReturn
-Anim3:
-6J50 BC 2 A_GiveInventory("DecoyB_F_P09")
-6J50 B 0 A_ReFire(1)
-Anim3_FireH09:
-6J50 BC 2 A_GiveInventory("DecoyB_F_P09")
-6J50 B 0 A_ReFire(1)
-Goto Anim3_Fire09End
-6J50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",2,1)
-Goto Anim3_Fire09End
-6J50 BC 2 A_GiveInventory("DecoyB_F_P09")
-6J50 B 0 A_ReFire(1)
-Goto Anim3_Fire09End
-6J50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",2,"Anim3_FireH09")
-Goto Anim3_Fire09End
-Anim3_Fire09End:
-6J50 A 4
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_10_W : DecoyCopyMoveBase_W
+actor DecoyCopy_09_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 BC 2 A_GiveInventory("DecoyB_F_P09")
+6I50 B 0 A_ReFire(1)
+FireH09:
+6I50 BC 2 A_GiveInventory("DecoyB_F_P09")
+6I50 B 0 A_ReFire(1)
+Goto Fire09End
+6I50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",2,1)
+Goto Fire09End
+6I50 BC 2 A_GiveInventory("DecoyB_F_P09")
+6I50 B 0 A_ReFire(1)
+Goto Fire09End
+6I50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",2,"FireH09")
+Goto Fire09End
+Fire09End:
+6I50 A 4
+goto Ready2
+}
+}
+
+actor DecoyCopy_09_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 BC 2 A_GiveInventory("DecoyB_F_P09")
+6J50 B 0 A_ReFire(1)
+FireH09:
+6J50 BC 2 A_GiveInventory("DecoyB_F_P09")
+6J50 B 0 A_ReFire(1)
+Goto Fire09End
+6J50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",2,1)
+Goto Fire09End
+6J50 BC 2 A_GiveInventory("DecoyB_F_P09")
+6J50 B 0 A_ReFire(1)
+Goto Fire09End
+6J50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",2,"FireH09")
+Goto Fire09End
+Fire09End:
+6J50 A 4
+goto Ready2
+}
+}
+
+actor DecoyCopy_10_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 BC 2 A_GiveInventory("DecoyB_F_P10")
 6H50 B 0 A_ReFire(1)
-Anim1_FireH10:
+FireH10:
 6H50 BC 2 A_GiveInventory("DecoyB_F_P10")
 6H50 B 0 A_ReFire(1)
-Goto Anim1_Fire10End
+Goto Fire10End
 6H50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",1,1)
-Goto Anim1_Fire10End
+Goto Fire10End
 6H50 BC 2 A_GiveInventory("DecoyB_F_P10")
 6H50 B 0 A_ReFire(1)
-Goto Anim1_Fire10End
-6H50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",1,"Anim1_FireH10")
-Goto Anim1_Fire10End
-Anim1_Fire10End:
+Goto Fire10End
+6H50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",1,"FireH10")
+Goto Fire10End
+Fire10End:
 6H50 BA 4
 6H50 A 4
-goto MoveReturn
-Anim2:
-6I50 BC 2 A_GiveInventory("DecoyB_F_P10")
-6I50 B 0 A_ReFire(1)
-Anim2_FireH10:
-6I50 BC 2 A_GiveInventory("DecoyB_F_P10")
-6I50 B 0 A_ReFire(1)
-Goto Anim2_Fire10End
-6I50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",1,1)
-Goto Anim2_Fire10End
-6I50 BC 2 A_GiveInventory("DecoyB_F_P10")
-6I50 B 0 A_ReFire(1)
-Goto Anim2_Fire10End
-6I50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",1,"Anim2_FireH10")
-Goto Anim2_Fire10End
-Anim2_Fire10End:
-6I50 BA 4
-6I50 A 4
-goto MoveReturn
-Anim3:
-6J50 BC 2 A_GiveInventory("DecoyB_F_P10")
-6J50 B 0 A_ReFire(1)
-Anim3_FireH10:
-6J50 BC 2 A_GiveInventory("DecoyB_F_P10")
-6J50 B 0 A_ReFire(1)
-Goto Anim3_Fire10End
-6J50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",1,1)
-Goto Anim3_Fire10End
-6J50 BC 2 A_GiveInventory("DecoyB_F_P10")
-6J50 B 0 A_ReFire(1)
-Goto Anim3_Fire10End
-6J50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",1,"Anim3_FireH10")
-Goto Anim3_Fire10End
-Anim3_Fire10End:
-6J50 BA 4
-6J50 A 4
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_11_W : DecoyCopyMoveBase_W
+actor DecoyCopy_10_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 BC 2 A_GiveInventory("DecoyB_F_P10")
+6I50 B 0 A_ReFire(1)
+FireH10:
+6I50 BC 2 A_GiveInventory("DecoyB_F_P10")
+6I50 B 0 A_ReFire(1)
+Goto Fire10End
+6I50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",1,1)
+Goto Fire10End
+6I50 BC 2 A_GiveInventory("DecoyB_F_P10")
+6I50 B 0 A_ReFire(1)
+Goto Fire10End
+6I50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",1,"FireH10")
+Goto Fire10End
+Fire10End:
+6I50 BA 4
+6I50 A 4
+goto Ready2
+}
+}
+
+actor DecoyCopy_10_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 BC 2 A_GiveInventory("DecoyB_F_P10")
+6J50 B 0 A_ReFire(1)
+FireH10:
+6J50 BC 2 A_GiveInventory("DecoyB_F_P10")
+6J50 B 0 A_ReFire(1)
+Goto Fire10End
+6J50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",1,1)
+Goto Fire10End
+6J50 BC 2 A_GiveInventory("DecoyB_F_P10")
+6J50 B 0 A_ReFire(1)
+Goto Fire10End
+6J50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",1,"FireH10")
+Goto Fire10End
+Fire10End:
+6J50 BA 4
+6J50 A 4
+goto Ready2
+}
+}
+
+actor DecoyCopy_11_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 1 A_GiveInventory("DecoyB_F_P11")
 6H50 CCC 1
 6H50 C 6
 6H50 CBB 4
 6H50 A 4
-6H50 A 0 A_Refire("Anim1")
+6H50 A 0 A_Refire("Fire")
 6H50 AA 2
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_11_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 1 A_GiveInventory("DecoyB_F_P11")
 6I50 CCC 1
 6I50 C 6
 6I50 CBB 4
 6I50 A 4
-6I50 A 0 A_Refire("Anim2")
+6I50 A 0 A_Refire("Fire")
 6I50 AA 2
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_11_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 1 A_GiveInventory("DecoyB_F_P11")
 6J50 CCC 1
 6J50 C 6
 6J50 CBB 4
 6J50 A 4
-6J50 A 0 A_Refire("Anim3")
+6J50 A 0 A_Refire("Fire")
 6J50 AA 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_12_W : DecoyCopyMoveBase_W
+actor DecoyCopy_12_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 B 0 A_GiveInventory("VivifyDelay1",1)
 6H50 B 0 A_ReFire(1)
 6H50 B 0 A_PlaySound("wep_L/RIceCast1",4)
@@ -524,8 +814,16 @@ Anim1:
 6H50 CCC 2
 6H50 CB 6 A_RailWait
 6H50 AAAA 2
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_12_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 B 0 A_GiveInventory("VivifyDelay1",1)
 6I50 B 0 A_ReFire(1)
 6I50 B 0 A_PlaySound("wep_L/RIceCast1",4)
@@ -535,8 +833,16 @@ Anim2:
 6I50 CCC 2
 6I50 CB 6 A_RailWait
 6I50 AAAA 2
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_12_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 B 0 A_GiveInventory("VivifyDelay1",1)
 6J50 B 0 A_ReFire(1)
 6J50 B 0 A_PlaySound("wep_L/RIceCast1",4)
@@ -546,259 +852,298 @@ Anim3:
 6J50 CCC 2
 6J50 CB 6 A_RailWait
 6J50 AAAA 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_13_W : DecoyCopyMoveBase_W
+actor DecoyCopy_13_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
-6H50 B 0 A_JumpIfInventory("IsBot",1,"Anim1_Fire13Bot")
-6H50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",100-50*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Anim1_Fire13_B")
-Anim1_Fire13H:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6H50 B 0 A_JumpIfInventory("IsBot",1,"Fire13Bot")
+6H50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",100-50*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Fire13_B")
+Fire13H:
 6H50 C 0 A_GiveInventory("DecoyB_F_P13B")
 6H50 C 5
 6H50 BAA 2
-6H50 B 0 A_Refire("Anim1_Fire13H")
-goto MoveReturn
-Anim1_Fire13_B:
+6H50 B 0 A_Refire("Fire13H")
+goto Ready2
+Fire13_B:
 6H50 C 1 A_GiveInventory("DecoyB_F_P13A")
 6H50 CCCBBAA 2
-6H50 A 0 A_Refire("Anim1_Fire13H")
-goto MoveReturn
-Anim1_Fire13Bot:
+6H50 A 0 A_Refire("Fire13H")
+goto Ready2
+Fire13Bot:
 6H50 C 0 A_GiveInventory("DecoyB_F_P13")
 6H50 C 5
 6H50 BA 2
 6H50 A 2 A_Jump(48,"Ready2")
-6H50 A 0 A_Refire("Anim1_Fire13Bot")
-goto MoveReturn
-Anim2:
-6I50 B 0 A_JumpIfInventory("IsBot",1,"Anim2_Fire13Bot")
-6I50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",100-50*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Anim2_Fire13_B")
-Anim2_Fire13H:
+6H50 A 0 A_Refire("Fire13Bot")
+goto Ready2
+}
+}
+
+actor DecoyCopy_13_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 B 0 A_JumpIfInventory("IsBot",1,"Fire13Bot")
+6I50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",100-50*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Fire13_B")
+Fire13H:
 6I50 C 0 A_GiveInventory("DecoyB_F_P13B")
 6I50 C 5
 6I50 BAA 2
-6I50 B 0 A_Refire("Anim2_Fire13H")
-goto MoveReturn
-Anim2_Fire13_B:
+6I50 B 0 A_Refire("Fire13H")
+goto Ready2
+Fire13_B:
 6I50 C 1 A_GiveInventory("DecoyB_F_P13A")
 6I50 CCCBBAA 2
-6I50 A 0 A_Refire("Anim2_Fire13H")
-goto MoveReturn
-Anim2_Fire13Bot:
+6I50 A 0 A_Refire("Fire13H")
+goto Ready2
+Fire13Bot:
 6I50 C 0 A_GiveInventory("DecoyB_F_P13")
 6I50 C 5
 6I50 BA 2
 6I50 A 2 A_Jump(48,"Ready2")
-6I50 A 0 A_Refire("Anim2_Fire13Bot")
-goto MoveReturn
-Anim3:
-6J50 B 0 A_JumpIfInventory("IsBot",1,"Anim3_Fire13Bot")
-6J50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",100-50*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Anim3_Fire13_B")
-Anim3_Fire13H:
+6I50 A 0 A_Refire("Fire13Bot")
+goto Ready2
+}
+}
+
+actor DecoyCopy_13_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 B 0 A_JumpIfInventory("IsBot",1,"Fire13Bot")
+6J50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",100-50*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Fire13_B")
+Fire13H:
 6J50 C 0 A_GiveInventory("DecoyB_F_P13B")
 6J50 C 5
 6J50 BAA 2
-6J50 B 0 A_Refire("Anim3_Fire13H")
-goto MoveReturn
-Anim3_Fire13_B:
+6J50 B 0 A_Refire("Fire13H")
+goto Ready2
+Fire13_B:
 6J50 C 1 A_GiveInventory("DecoyB_F_P13A")
 6J50 CCCBBAA 2
-6J50 A 0 A_Refire("Anim3_Fire13H")
-goto MoveReturn
-Anim3_Fire13Bot:
+6J50 A 0 A_Refire("Fire13H")
+goto Ready2
+Fire13Bot:
 6J50 C 0 A_GiveInventory("DecoyB_F_P13")
 6J50 C 5
 6J50 BA 2
 6J50 A 2 A_Jump(48,"Ready2")
-6J50 A 0 A_Refire("Anim3_Fire13Bot")
-goto MoveReturn
+6J50 A 0 A_Refire("Fire13Bot")
+goto Ready2
 }
 }
 
-actor DecoyCopy_14_W : DecoyCopyMoveBase_W
+actor DecoyCopy_14_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 0 A_GiveInventory("DecoyB_F_P14")
 6H50 CB 4
 6H50 A 10
 6H50 AAAA 2
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_14_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 0 A_GiveInventory("DecoyB_F_P14")
 6I50 CB 4
 6I50 A 10
 6I50 AAAA 2
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_14_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 0 A_GiveInventory("DecoyB_F_P14")
 6J50 CB 4
 6J50 A 10
 6J50 AAAA 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_15_W : DecoyCopyMoveBase_W
+actor DecoyCopy_15_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
-6H50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.75+1,"Anim1_Fire15A")
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6H50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.75+1,"Fire15A")
 6H50 C 4 A_GiveInventory("DecoyB_F_P15")
 6H50 B 4
 6H50 A 8
-goto MoveReturn
-Anim1_Fire15A:
-6H50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.50+1,"Anim1_Fire15B")
+goto Ready2
+Fire15A:
+6H50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.50+1,"Fire15B")
 6H50 C 2 A_GiveInventory("DecoyB_F_P15A")
 6H50 B 2
 6H50 A 8
-goto MoveReturn
-Anim1_Fire15B:
-6H50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.25+1,"Anim1_Fire15C")
+goto Ready2
+Fire15B:
+6H50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.25+1,"Fire15C")
 6H50 C 2 A_GiveInventory("DecoyB_F_P15B")
 6H50 B 2
 6H50 A 6
-goto MoveReturn
-Anim1_Fire15C:
-6H50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.01+1,"Anim1_Fire15D")
+goto Ready2
+Fire15C:
+6H50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.01+1,"Fire15D")
 6H50 C 2 A_GiveInventory("DecoyB_F_P15C")
 6H50 BA 2
-goto MoveReturn
-Anim1_Fire15D:
+goto Ready2
+Fire15D:
 6H50 C 2 A_GiveInventory("DecoyB_F_P15DDDD")
 6H50 A 2 A_GiveInventory("DecoyB_F_P15DDD")
 6H50 B 2 A_GiveInventory("DecoyB_F_P15DD")
 6H50 A 2 A_GiveInventory("DecoyB_F_P15D")
-goto MoveReturn
-Anim2:
-6I50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.75+1,"Anim2_Fire15A")
+goto Ready2
+}
+}
+
+actor DecoyCopy_15_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.75+1,"Fire15A")
 6I50 C 4 A_GiveInventory("DecoyB_F_P15")
 6I50 B 4
 6I50 A 8
-goto MoveReturn
-Anim2_Fire15A:
-6I50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.50+1,"Anim2_Fire15B")
+goto Ready2
+Fire15A:
+6I50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.50+1,"Fire15B")
 6I50 C 2 A_GiveInventory("DecoyB_F_P15A")
 6I50 B 2
 6I50 A 8
-goto MoveReturn
-Anim2_Fire15B:
-6I50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.25+1,"Anim2_Fire15C")
+goto Ready2
+Fire15B:
+6I50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.25+1,"Fire15C")
 6I50 C 2 A_GiveInventory("DecoyB_F_P15B")
 6I50 B 2
 6I50 A 6
-goto MoveReturn
-Anim2_Fire15C:
-6I50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.01+1,"Anim2_Fire15D")
+goto Ready2
+Fire15C:
+6I50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.01+1,"Fire15D")
 6I50 C 2 A_GiveInventory("DecoyB_F_P15C")
 6I50 BA 2
-goto MoveReturn
-Anim2_Fire15D:
+goto Ready2
+Fire15D:
 6I50 C 2 A_GiveInventory("DecoyB_F_P15DDDD")
 6I50 A 2 A_GiveInventory("DecoyB_F_P15DDD")
 6I50 B 2 A_GiveInventory("DecoyB_F_P15DD")
 6I50 A 2 A_GiveInventory("DecoyB_F_P15D")
-goto MoveReturn
-Anim3:
-6J50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.75+1,"Anim3_Fire15A")
+goto Ready2
+}
+}
+
+actor DecoyCopy_15_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.75+1,"Fire15A")
 6J50 C 4 A_GiveInventory("DecoyB_F_P15")
 6J50 B 4
 6J50 A 8
-goto MoveReturn
-Anim3_Fire15A:
-6J50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.50+1,"Anim3_Fire15B")
+goto Ready2
+Fire15A:
+6J50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.50+1,"Fire15B")
 6J50 C 2 A_GiveInventory("DecoyB_F_P15A")
 6J50 B 2
 6J50 A 8
-goto MoveReturn
-Anim3_Fire15B:
-6J50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.25+1,"Anim3_Fire15C")
+goto Ready2
+Fire15B:
+6J50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.25+1,"Fire15C")
 6J50 C 2 A_GiveInventory("DecoyB_F_P15B")
 6J50 B 2
 6J50 A 6
-goto MoveReturn
-Anim3_Fire15C:
-6J50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.01+1,"Anim3_Fire15D")
+goto Ready2
+Fire15C:
+6J50 C 0 A_JumpIfHealthLower(CallACS("UH_FetchMyHealth",1)*0.01+1,"Fire15D")
 6J50 C 2 A_GiveInventory("DecoyB_F_P15C")
 6J50 BA 2
-goto MoveReturn
-Anim3_Fire15D:
+goto Ready2
+Fire15D:
 6J50 C 2 A_GiveInventory("DecoyB_F_P15DDDD")
 6J50 A 2 A_GiveInventory("DecoyB_F_P15DDD")
 6J50 B 2 A_GiveInventory("DecoyB_F_P15DD")
 6J50 A 2 A_GiveInventory("DecoyB_F_P15D")
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_16_W : DecoyCopyMoveBase_W
+actor DecoyCopy_16_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",200-100*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),1)
-goto MoveReturn
+goto Ready2
 6H50 C 0 A_GiveInventory("DecoyB_F_P16")
 6H50 CBAA 2
-goto MoveReturn
-Anim2:
-6I50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",200-100*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),1)
-goto MoveReturn
-6I50 C 0 A_GiveInventory("DecoyB_F_P16")
-6I50 CBAA 2
-goto MoveReturn
-Anim3:
-6J50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",200-100*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),1)
-goto MoveReturn
-6J50 C 0 A_GiveInventory("DecoyB_F_P16")
-6J50 CBAA 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_17_W : DecoyCopyMoveBase_W
+actor DecoyCopy_16_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",200-100*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),1)
+goto Ready2
+6I50 C 0 A_GiveInventory("DecoyB_F_P16")
+6I50 CBAA 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_16_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",200-100*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),1)
+goto Ready2
+6J50 C 0 A_GiveInventory("DecoyB_F_P16")
+6J50 CBAA 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_17_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 0 A_GiveInventory("DecoyB_F_P17")
 //6H50 CCBBAA 2
 //6H50 A 6
@@ -812,8 +1157,16 @@ Anim1:
 TNT1 A 6 Offset(-7,69)
 6H50 A 2 Offset(-7,69)
 6H50 A 2 Offset(-3,48)
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_17_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 0 A_GiveInventory("DecoyB_F_P17")
 6I50 N 2 Offset(84,-108)
 6I50 N 2 Offset(48,-83)
@@ -824,8 +1177,16 @@ Anim2:
 TNT1 A 6 Offset(-7,69)
 6I50 A 2 Offset(-7,69)
 6I50 A 2 Offset(-3,48)
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_17_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 0 A_GiveInventory("DecoyB_F_P17")
 6J50 N 2 Offset(84,-108)
 6J50 N 2 Offset(48,-83)
@@ -836,278 +1197,328 @@ Anim3:
 TNT1 A 6 Offset(-7,69)
 6J50 A 2 Offset(-7,69)
 6J50 A 2 Offset(-3,48)
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_18_W : DecoyCopyMoveBase_W
+actor DecoyCopy_18_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 0 A_GiveInventory("DecoyB_F_P18")
 6H50 BCBA 2
-goto MoveReturn
-Anim2:
-6I50 C 0 A_GiveInventory("DecoyB_F_P18")
-6I50 BCBA 2
-goto MoveReturn
-Anim3:
-6J50 C 0 A_GiveInventory("DecoyB_F_P18")
-6J50 BCBA 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_19_W : DecoyCopyMoveBase_W
+actor DecoyCopy_18_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
-6H50 C 0 A_JumpIfInventory("IsBot",1,"Anim1_Fire19Bot")
-Anim1_Fire19H:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 0 A_GiveInventory("DecoyB_F_P18")
+6I50 BCBA 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_18_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 0 A_GiveInventory("DecoyB_F_P18")
+6J50 BCBA 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_19_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6H50 C 0 A_JumpIfInventory("IsBot",1,"Fire19Bot")
+Fire19H:
 6H50 C 2 A_GiveInventory("DecoyB_F_P19")
 6H50 B 2
 6H50 A 2 A_Refire(1)
-goto MoveReturn
-6H50 A 2 A_JumpIfInventory("DecoyEnergyAmmo",1,"Anim1_Fire19H")
-goto MoveReturn
-Anim1_Fire19Bot:
+goto Ready2
+6H50 A 2 A_JumpIfInventory("DecoyEnergyAmmo",1,"Fire19H")
+goto Ready2
+Fire19Bot:
 6H50 C 2 A_GiveInventory("DecoyB_F_P19")
 6H50 B 2 A_Jump(8,2)
-6H50 A 0 A_Refire("Anim1_Fire19Bot")
+6H50 A 0 A_Refire("Fire19Bot")
 6H50 A 2
-goto MoveReturn
-Anim2:
-6I50 C 0 A_JumpIfInventory("IsBot",1,"Anim2_Fire19Bot")
-Anim2_Fire19H:
+goto Ready2
+}
+}
+
+actor DecoyCopy_19_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 0 A_JumpIfInventory("IsBot",1,"Fire19Bot")
+Fire19H:
 6I50 C 2 A_GiveInventory("DecoyB_F_P19")
 6I50 B 2
 6I50 A 2 A_Refire(1)
-goto MoveReturn
-6I50 A 2 A_JumpIfInventory("DecoyEnergyAmmo",1,"Anim2_Fire19H")
-goto MoveReturn
-Anim2_Fire19Bot:
+goto Ready2
+6I50 A 2 A_JumpIfInventory("DecoyEnergyAmmo",1,"Fire19H")
+goto Ready2
+Fire19Bot:
 6I50 C 2 A_GiveInventory("DecoyB_F_P19")
 6I50 B 2 A_Jump(8,2)
-6I50 A 0 A_Refire("Anim2_Fire19Bot")
+6I50 A 0 A_Refire("Fire19Bot")
 6I50 A 2
-goto MoveReturn
-Anim3:
-6J50 C 0 A_JumpIfInventory("IsBot",1,"Anim3_Fire19Bot")
-Anim3_Fire19H:
+goto Ready2
+}
+}
+
+actor DecoyCopy_19_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 0 A_JumpIfInventory("IsBot",1,"Fire19Bot")
+Fire19H:
 6J50 C 2 A_GiveInventory("DecoyB_F_P19")
 6J50 B 2
 6J50 A 2 A_Refire(1)
-goto MoveReturn
-6J50 A 2 A_JumpIfInventory("DecoyEnergyAmmo",1,"Anim3_Fire19H")
-goto MoveReturn
-Anim3_Fire19Bot:
+goto Ready2
+6J50 A 2 A_JumpIfInventory("DecoyEnergyAmmo",1,"Fire19H")
+goto Ready2
+Fire19Bot:
 6J50 C 2 A_GiveInventory("DecoyB_F_P19")
 6J50 B 2 A_Jump(8,2)
-6J50 A 0 A_Refire("Anim3_Fire19Bot")
+6J50 A 0 A_Refire("Fire19Bot")
 6J50 A 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_20_W : DecoyCopyMoveBase_W
+actor DecoyCopy_20_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 B 2 OffSet(-2,30)A_GiveInventory("VivifyFlag1",1)
-6H50 B 0 A_JumpIfInventory("IsBot",1,"Anim1_Fire20Bot")
-Anim1_Fire20H:
+6H50 B 0 A_JumpIfInventory("IsBot",1,"Fire20Bot")
+Fire20H:
 6H50 X 1 OffSet(-2,30)A_GiveInventory("DecoyB_F_P20")
 6H50 C 2 OffSet(-3,30)
 6H50 C 0 A_ReFire(1)
-goto Anim1_Fire20End
+goto Fire20End
 6H50 X 1 OffSet(-2,31)A_GiveInventory("DecoyB_F_P20")
 6H50 C 2 OffSet(-3,31)
 6H50 C 0 A_ReFire(1)
-goto Anim1_Fire20End
+goto Fire20End
 6H50 X 1 OffSet(-2,30)A_GiveInventory("DecoyB_F_P20")
 6H50 C 2 OffSet(-2,31)
 6H50 C 0 A_ReFire(1)
-goto Anim1_Fire20End
+goto Fire20End
 6H50 X 1 OffSet(-3,30)A_GiveInventory("DecoyB_F_P20")
 6H50 C 2 OffSet(-3,31)
-6H50 C 0 A_ReFire("Anim1_Fire20H")
-goto Anim1_Fire20End
-Anim1_Fire20End:
+6H50 C 0 A_ReFire("Fire20H")
+goto Fire20End
+Fire20End:
 6H50 B 2 OffSet(-2,30)A_TakeInventory("VivifyFlag1")
 6H50 A 4 A_WeaponReady(2+4+8)
-goto MoveReturn
-Anim1_Fire20Bot:
+goto Ready2
+Fire20Bot:
 6H50 X 1 A_GiveInventory("DecoyB_F_P20")
-6H50 C 2 A_Jump(1,"Anim1_Fire20End")
+6H50 C 2 A_Jump(1,"Fire20End")
 6H50 C 0 A_ReFire(1)
-goto Anim1_Fire20End
-6H50 C 0 A_JumpIfCloser(512,"Anim1_Fire20Bot")
-goto Anim1_Fire20End
-Anim2:
-6I50 B 2 OffSet(-2,30)A_GiveInventory("VivifyFlag1",1)
-6I50 B 0 A_JumpIfInventory("IsBot",1,"Anim2_Fire20Bot")
-Anim2_Fire20H:
-6I50 X 1 OffSet(-2,30)A_GiveInventory("DecoyB_F_P20")
-6I50 C 2 OffSet(-3,30)
-6I50 C 0 A_ReFire(1)
-goto Anim2_Fire20End
-6I50 X 1 OffSet(-2,31)A_GiveInventory("DecoyB_F_P20")
-6I50 C 2 OffSet(-3,31)
-6I50 C 0 A_ReFire(1)
-goto Anim2_Fire20End
-6I50 X 1 OffSet(-2,30)A_GiveInventory("DecoyB_F_P20")
-6I50 C 2 OffSet(-2,31)
-6I50 C 0 A_ReFire(1)
-goto Anim2_Fire20End
-6I50 X 1 OffSet(-3,30)A_GiveInventory("DecoyB_F_P20")
-6I50 C 2 OffSet(-3,31)
-6I50 C 0 A_ReFire("Anim2_Fire20H")
-goto Anim2_Fire20End
-Anim2_Fire20End:
-6I50 B 2 OffSet(-2,30)A_TakeInventory("VivifyFlag1")
-6I50 A 4 A_WeaponReady(2+4+8)
-goto MoveReturn
-Anim2_Fire20Bot:
-6I50 X 1 A_GiveInventory("DecoyB_F_P20")
-6I50 C 2 A_Jump(1,"Anim2_Fire20End")
-6I50 C 0 A_ReFire(1)
-goto Anim2_Fire20End
-6I50 C 0 A_JumpIfCloser(512,"Anim2_Fire20Bot")
-goto Anim2_Fire20End
-Anim3:
-6J50 B 2 OffSet(-2,30)A_GiveInventory("VivifyFlag1",1)
-6J50 B 0 A_JumpIfInventory("IsBot",1,"Anim3_Fire20Bot")
-Anim3_Fire20H:
-6J50 X 1 OffSet(-2,30)A_GiveInventory("DecoyB_F_P20")
-6J50 C 2 OffSet(-3,30)
-6J50 C 0 A_ReFire(1)
-goto Anim3_Fire20End
-6J50 X 1 OffSet(-2,31)A_GiveInventory("DecoyB_F_P20")
-6J50 C 2 OffSet(-3,31)
-6J50 C 0 A_ReFire(1)
-goto Anim3_Fire20End
-6J50 X 1 OffSet(-2,30)A_GiveInventory("DecoyB_F_P20")
-6J50 C 2 OffSet(-2,31)
-6J50 C 0 A_ReFire(1)
-goto Anim3_Fire20End
-6J50 X 1 OffSet(-3,30)A_GiveInventory("DecoyB_F_P20")
-6J50 C 2 OffSet(-3,31)
-6J50 C 0 A_ReFire("Anim3_Fire20H")
-goto Anim3_Fire20End
-Anim3_Fire20End:
-6J50 B 2 OffSet(-2,30)A_TakeInventory("VivifyFlag1")
-6J50 A 4 A_WeaponReady(2+4+8)
-goto MoveReturn
-Anim3_Fire20Bot:
-6J50 X 1 A_GiveInventory("DecoyB_F_P20")
-6J50 C 2 A_Jump(1,"Anim3_Fire20End")
-6J50 C 0 A_ReFire(1)
-goto Anim3_Fire20End
-6J50 C 0 A_JumpIfCloser(512,"Anim3_Fire20Bot")
-goto Anim3_Fire20End
+goto Fire20End
+6H50 C 0 A_JumpIfCloser(512,"Fire20Bot")
+goto Fire20End
 }
 }
 
-actor DecoyCopy_21_W : DecoyCopyMoveBase_W
+actor DecoyCopy_20_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 B 2 OffSet(-2,30)A_GiveInventory("VivifyFlag1",1)
+6I50 B 0 A_JumpIfInventory("IsBot",1,"Fire20Bot")
+Fire20H:
+6I50 X 1 OffSet(-2,30)A_GiveInventory("DecoyB_F_P20")
+6I50 C 2 OffSet(-3,30)
+6I50 C 0 A_ReFire(1)
+goto Fire20End
+6I50 X 1 OffSet(-2,31)A_GiveInventory("DecoyB_F_P20")
+6I50 C 2 OffSet(-3,31)
+6I50 C 0 A_ReFire(1)
+goto Fire20End
+6I50 X 1 OffSet(-2,30)A_GiveInventory("DecoyB_F_P20")
+6I50 C 2 OffSet(-2,31)
+6I50 C 0 A_ReFire(1)
+goto Fire20End
+6I50 X 1 OffSet(-3,30)A_GiveInventory("DecoyB_F_P20")
+6I50 C 2 OffSet(-3,31)
+6I50 C 0 A_ReFire("Fire20H")
+goto Fire20End
+Fire20End:
+6I50 B 2 OffSet(-2,30)A_TakeInventory("VivifyFlag1")
+6I50 A 4 A_WeaponReady(2+4+8)
+goto Ready2
+Fire20Bot:
+6I50 X 1 A_GiveInventory("DecoyB_F_P20")
+6I50 C 2 A_Jump(1,"Fire20End")
+6I50 C 0 A_ReFire(1)
+goto Fire20End
+6I50 C 0 A_JumpIfCloser(512,"Fire20Bot")
+goto Fire20End
+}
+}
+
+actor DecoyCopy_20_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 B 2 OffSet(-2,30)A_GiveInventory("VivifyFlag1",1)
+6J50 B 0 A_JumpIfInventory("IsBot",1,"Fire20Bot")
+Fire20H:
+6J50 X 1 OffSet(-2,30)A_GiveInventory("DecoyB_F_P20")
+6J50 C 2 OffSet(-3,30)
+6J50 C 0 A_ReFire(1)
+goto Fire20End
+6J50 X 1 OffSet(-2,31)A_GiveInventory("DecoyB_F_P20")
+6J50 C 2 OffSet(-3,31)
+6J50 C 0 A_ReFire(1)
+goto Fire20End
+6J50 X 1 OffSet(-2,30)A_GiveInventory("DecoyB_F_P20")
+6J50 C 2 OffSet(-2,31)
+6J50 C 0 A_ReFire(1)
+goto Fire20End
+6J50 X 1 OffSet(-3,30)A_GiveInventory("DecoyB_F_P20")
+6J50 C 2 OffSet(-3,31)
+6J50 C 0 A_ReFire("Fire20H")
+goto Fire20End
+Fire20End:
+6J50 B 2 OffSet(-2,30)A_TakeInventory("VivifyFlag1")
+6J50 A 4 A_WeaponReady(2+4+8)
+goto Ready2
+Fire20Bot:
+6J50 X 1 A_GiveInventory("DecoyB_F_P20")
+6J50 C 2 A_Jump(1,"Fire20End")
+6J50 C 0 A_ReFire(1)
+goto Fire20End
+6J50 C 0 A_JumpIfCloser(512,"Fire20Bot")
+goto Fire20End
+}
+}
+
+actor DecoyCopy_21_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 0 A_GiveInventory("DecoyB_F_P21")
 6H50 CC 3
 6H50 C 1
 6H50 BD 6
 6H50 VDVDV 2
 6H50 A 6 A_JumpIfInventory("DecoyEnergyAmmo",100-50*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),1)
-goto MoveReturn
-6H50 AAA 2 A_ReFire("Anim1")
-goto MoveReturn
-Anim2:
+goto Ready2
+6H50 AAA 2 A_ReFire("Fire")
+goto Ready2
+}
+}
+
+actor DecoyCopy_21_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 0 A_GiveInventory("DecoyB_F_P21")
 6I50 CC 3
 6I50 C 1
 6I50 BD 6
 6I50 VDVDV 2
 6I50 A 6 A_JumpIfInventory("DecoyEnergyAmmo",100-50*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),1)
-goto MoveReturn
-6I50 AAA 2 A_ReFire("Anim2")
-goto MoveReturn
-Anim3:
+goto Ready2
+6I50 AAA 2 A_ReFire("Fire")
+goto Ready2
+}
+}
+
+actor DecoyCopy_21_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 0 A_GiveInventory("DecoyB_F_P21")
 6J50 CC 3
 6J50 C 1
 6J50 BD 6
 6J50 VDVDV 2
 6J50 A 6 A_JumpIfInventory("DecoyEnergyAmmo",100-50*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),1)
-goto MoveReturn
-6J50 AAA 2 A_ReFire("Anim3")
-goto MoveReturn
+goto Ready2
+6J50 AAA 2 A_ReFire("Fire")
+goto Ready2
 }
 }
 
-actor DecoyCopy_22_W : DecoyCopyMoveBase_W
+actor DecoyCopy_22_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 2 A_GiveInventory("DecoyB_F_P22")
 6H50 B 2
-goto MoveReturn
-Anim2:
-6I50 C 2 A_GiveInventory("DecoyB_F_P22")
-6I50 B 2
-goto MoveReturn
-Anim3:
-6J50 C 2 A_GiveInventory("DecoyB_F_P22")
-6J50 B 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_23_W : DecoyCopyMoveBase_W
+actor DecoyCopy_22_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 2 A_GiveInventory("DecoyB_F_P22")
+6I50 B 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_22_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 2 A_GiveInventory("DecoyB_F_P22")
+6J50 B 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_23_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 0 A_GiveInventory("DecoyB_F_P23")
 6H50 CB 3
 6H50 AAAA 2
@@ -1122,8 +1533,16 @@ TNT1 A 16
 6H50 A 2 Offset(51,66)
 6H50 A 2 Offset(37,50)
 6H50 A 2 Offset(20,38)
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_23_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 0 A_GiveInventory("DecoyB_F_P23")
 6I50 CB 3
 6I50 AAAA 2
@@ -1138,8 +1557,16 @@ TNT1 A 16
 6I50 A 2 Offset(51,66)
 6I50 A 2 Offset(37,50)
 6I50 A 2 Offset(20,38)
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_23_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 0 A_GiveInventory("DecoyB_F_P23")
 6J50 CB 3
 6J50 AAAA 2
@@ -1154,162 +1581,190 @@ TNT1 A 16
 6J50 A 2 Offset(51,66)
 6J50 A 2 Offset(37,50)
 6J50 A 2 Offset(20,38)
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_24_W : DecoyCopyMoveBase_W
+actor DecoyCopy_24_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 B 2 A_PlaySound("item/tango",4,0.75)
 6H50 C 2 A_TakeInventory("SuplexID")
 6H50 X 0 A_GiveInventory("TangoGirl_Alt_P")
 6H50 X 0 A_GiveInventory("DecoyB_F_P24")
-6H50 X 0 A_JumpIfInventory("IsBot",1,"Anim1_Fire24Fail")
-Anim1_Fire24Check:
-6H50 X 0 A_JumpIfInventory("TangoGirlFlag",15,"Anim1_Fire24Fail")
+6H50 X 0 A_JumpIfInventory("IsBot",1,"Fire24Fail")
+Fire24Check:
+6H50 X 0 A_JumpIfInventory("TangoGirlFlag",15,"Fire24Fail")
 6H50 X 1 A_GiveInventory("TangoGirlSuplexSpawn_P")//A_GiveInventory("TangoGirlFlag",1)//
-6H50 X 0 A_JumpIfInventory("SuplexID",1,"Anim1_Fire24Suplex")
+6H50 X 0 A_JumpIfInventory("SuplexID",1,"Fire24Suplex")
 loop
-Anim1_Fire24Fail:
+Fire24Fail:
 6H50 B 3
 6H50 A 3 A_GiveInventory("TangoGirlSuplexReset_P")
-goto MoveReturn
-Anim1_Fire24Suplex:
+goto Ready2
+Fire24Suplex:
 6H50 B 2 A_PlaySoundEx("KirbyNES/FoeGrab","SoundSlot6")
 6H50 A 2
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_24_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 B 2 A_PlaySound("item/tango",4,0.75)
 6I50 C 2 A_TakeInventory("SuplexID")
 6I50 X 0 A_GiveInventory("TangoGirl_Alt_P")
 6I50 X 0 A_GiveInventory("DecoyB_F_P24")
-6I50 X 0 A_JumpIfInventory("IsBot",1,"Anim2_Fire24Fail")
-Anim2_Fire24Check:
-6I50 X 0 A_JumpIfInventory("TangoGirlFlag",15,"Anim2_Fire24Fail")
+6I50 X 0 A_JumpIfInventory("IsBot",1,"Fire24Fail")
+Fire24Check:
+6I50 X 0 A_JumpIfInventory("TangoGirlFlag",15,"Fire24Fail")
 6I50 X 1 A_GiveInventory("TangoGirlSuplexSpawn_P")
-6I50 X 0 A_JumpIfInventory("SuplexID",1,"Anim2_Fire24Suplex")
+6I50 X 0 A_JumpIfInventory("SuplexID",1,"Fire24Suplex")
 loop
-Anim2_Fire24Fail:
+Fire24Fail:
 6I50 B 3
 6I50 A 3 A_GiveInventory("TangoGirlSuplexReset_P")
-goto MoveReturn
-Anim2_Fire24Suplex:
+goto Ready2
+Fire24Suplex:
 6I50 B 2 A_PlaySoundEx("KirbyNES/FoeGrab","SoundSlot6")
 6I50 A 2
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_24_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 B 2 A_PlaySound("item/tango",4,0.75)
 6J50 C 2 A_TakeInventory("SuplexID")
 6J50 X 0 A_GiveInventory("TangoGirl_Alt_P")
 6J50 X 0 A_GiveInventory("DecoyB_F_P24")
-6J50 X 0 A_JumpIfInventory("IsBot",1,"Anim3_Fire24Fail")
-Anim3_Fire24Check:
-6J50 X 0 A_JumpIfInventory("TangoGirlFlag",15,"Anim3_Fire24Fail")
+6J50 X 0 A_JumpIfInventory("IsBot",1,"Fire24Fail")
+Fire24Check:
+6J50 X 0 A_JumpIfInventory("TangoGirlFlag",15,"Fire24Fail")
 6J50 X 1 A_GiveInventory("TangoGirlSuplexSpawn_P")
-6J50 X 0 A_JumpIfInventory("SuplexID",1,"Anim3_Fire24Suplex")
+6J50 X 0 A_JumpIfInventory("SuplexID",1,"Fire24Suplex")
 loop
-Anim3_Fire24Fail:
+Fire24Fail:
 6J50 B 3
 6J50 A 3 A_GiveInventory("TangoGirlSuplexReset_P")
-goto MoveReturn
-Anim3_Fire24Suplex:
+goto Ready2
+Fire24Suplex:
 6J50 B 2 A_PlaySoundEx("KirbyNES/FoeGrab","SoundSlot6")
 6J50 A 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_25_W : DecoyCopyMoveBase_W
+actor DecoyCopy_25_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
-6H50 B 2 A_JumpIfInventory("IsBot",1,"Anim1_Fire25Bot")
-Anim1_Fire25H:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6H50 B 2 A_JumpIfInventory("IsBot",1,"Fire25Bot")
+Fire25H:
 6H50 C 2 A_GiveInventory("DecoyB_F_P25")
-6H50 B 2 A_Refire("Anim1_Fire25H")
-goto MoveReturn
-Anim1_Fire25Bot:
+6H50 B 2 A_Refire("Fire25H")
+goto Ready2
+Fire25Bot:
 6H50 C 0 A_Jump(4,"Ready2")
 6H50 C 2 A_GiveInventory("DecoyB_F_P25")
-6H50 B 2 A_ReFire("Anim1_Fire25Bot")
-goto MoveReturn
-Anim2:
-6I50 B 2 A_JumpIfInventory("IsBot",1,"Anim2_Fire25Bot")
-Anim2_Fire25H:
+6H50 B 2 A_ReFire("Fire25Bot")
+goto Ready2
+}
+}
+
+actor DecoyCopy_25_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 B 2 A_JumpIfInventory("IsBot",1,"Fire25Bot")
+Fire25H:
 6I50 C 2 A_GiveInventory("DecoyB_F_P25")
-6I50 B 2 A_Refire("Anim2_Fire25H")
-goto MoveReturn
-Anim2_Fire25Bot:
+6I50 B 2 A_Refire("Fire25H")
+goto Ready2
+Fire25Bot:
 6I50 C 0 A_Jump(4,"Ready2")
 6I50 C 2 A_GiveInventory("DecoyB_F_P25")
-6I50 B 2 A_ReFire("Anim2_Fire25Bot")
-goto MoveReturn
-Anim3:
-6J50 B 2 A_JumpIfInventory("IsBot",1,"Anim3_Fire25Bot")
-Anim3_Fire25H:
+6I50 B 2 A_ReFire("Fire25Bot")
+goto Ready2
+}
+}
+
+actor DecoyCopy_25_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 B 2 A_JumpIfInventory("IsBot",1,"Fire25Bot")
+Fire25H:
 6J50 C 2 A_GiveInventory("DecoyB_F_P25")
-6J50 B 2 A_Refire("Anim3_Fire25H")
-goto MoveReturn
-Anim3_Fire25Bot:
+6J50 B 2 A_Refire("Fire25H")
+goto Ready2
+Fire25Bot:
 6J50 C 0 A_Jump(4,"Ready2")
 6J50 C 2 A_GiveInventory("DecoyB_F_P25")
-6J50 B 2 A_ReFire("Anim3_Fire25Bot")
-goto MoveReturn
+6J50 B 2 A_ReFire("Fire25Bot")
+goto Ready2
 }
 }
 
-actor DecoyCopy_26_W : DecoyCopyMoveBase_W
+actor DecoyCopy_26_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 B 0 A_GiveInventory("DecoyB_F_P26")
 6H50 BCBAAA 3
-goto MoveReturn
-Anim2:
-6I50 B 0 A_GiveInventory("DecoyB_F_P26")
-6I50 BCBAAA 3
-goto MoveReturn
-Anim3:
-6J50 B 0 A_GiveInventory("DecoyB_F_P26")
-6J50 BCBAAA 3
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_27_W : DecoyCopyMoveBase_W
+actor DecoyCopy_26_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 B 0 A_GiveInventory("DecoyB_F_P26")
+6I50 BCBAAA 3
+goto Ready2
+}
+}
+
+actor DecoyCopy_26_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 B 0 A_GiveInventory("DecoyB_F_P26")
+6J50 BCBAAA 3
+goto Ready2
+}
+}
+
+actor DecoyCopy_27_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 B 0 A_GiveInventory("DecoyB_F_P27")
 //6H50 BXCXCX 1
 //6H50 CCC 2
@@ -1324,8 +1779,16 @@ TNT1 AAAAAA 6 Offset(-21,81)
 6H50 A 2 Offset(-21,81)
 6H50 A 2 Offset(-11,60)
 6H50 A 2 Offset(-4,55)
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_27_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 B 0 A_GiveInventory("DecoyB_F_P27")
 6I50 N 1 Offset(84,-108)
 6I50 N 1 Offset(48,-83)
@@ -1337,8 +1800,16 @@ TNT1 AAAAAA 6 Offset(-7,69)
 6I50 A 2 Offset(-21,81)
 6I50 A 2 Offset(-11,60)
 6I50 A 2 Offset(-4,55)
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_27_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 B 0 A_GiveInventory("DecoyB_F_P27")
 6J50 N 1 Offset(84,-108)
 6J50 N 1 Offset(48,-83)
@@ -1350,46 +1821,52 @@ TNT1 AAAAAA 6 Offset(-7,69)
 6J50 A 2 Offset(-21,81)
 6J50 A 2 Offset(-11,60)
 6J50 A 2 Offset(-4,55)
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_28_W : DecoyCopyMoveBase_W
+actor DecoyCopy_28_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 2 A_GiveInventory("DecoyB_F_P28")
 6H50 BAA 2
-goto MoveReturn
-Anim2:
-6I50 C 2 A_GiveInventory("DecoyB_F_P28")
-6I50 BAA 2
-goto MoveReturn
-Anim3:
-6J50 C 2 A_GiveInventory("DecoyB_F_P28")
-6J50 BAA 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_29_W : DecoyCopyMoveBase_W
+actor DecoyCopy_28_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 2 A_GiveInventory("DecoyB_F_P28")
+6I50 BAA 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_28_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 2 A_GiveInventory("DecoyB_F_P28")
+6J50 BAA 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_29_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 B 0 A_GiveInventory("DecoyB_F_P29")
 //6H50 BBCCC 1
 //6H50 C 3
@@ -1402,8 +1879,16 @@ Anim1:
 TNT1 A 3
 6H50 A 2 Offset(31,52)
 6H50 A 2 Offset(13,39)
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_29_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 B 0 A_GiveInventory("DecoyB_F_P29")
 6I50 O 1 Offset(-50,31)
 6I50 O 1 Offset(-31,-14)
@@ -1413,8 +1898,16 @@ Anim2:
 TNT1 A 3
 6I50 A 2 Offset(31,52)
 6I50 A 2 Offset(13,39)
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_29_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 B 0 A_GiveInventory("DecoyB_F_P29")
 6J50 O 1 Offset(-50,31)
 6J50 O 1 Offset(-31,-14)
@@ -1424,98 +1917,115 @@ Anim3:
 TNT1 A 3
 6J50 A 2 Offset(31,52)
 6J50 A 2 Offset(13,39)
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_30_W : DecoyCopyMoveBase_W
+actor DecoyCopy_30_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
-6H30 C 0 A_JumpIfInventory("TrapistPrimedFlag",1,"Anim1_Fire30Det")
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6H30 C 0 A_JumpIfInventory("TrapistPrimedFlag",1,"Fire30Det")
 6H50 C 0 A_GiveInventory("DecoyB_F_P30")
 6H50 CBAA 2
-goto MoveReturn
-Anim1_Fire30Det:
+goto Ready2
+Fire30Det:
 6H30 C 0 A_GiveInventory("Trapist_AltDetonate_P")
 6H50 CXBDAA 2
-goto MoveReturn
-Anim2:
-6I30 C 0 A_JumpIfInventory("TrapistPrimedFlag",1,"Anim2_Fire30Det")
-6I50 C 0 A_GiveInventory("DecoyB_F_P30")
-6I50 CBAA 2
-goto MoveReturn
-Anim2_Fire30Det:
-6I30 C 0 A_GiveInventory("Trapist_AltDetonate_P")
-6I50 CXBDAA 2
-goto MoveReturn
-Anim3:
-6J30 C 0 A_JumpIfInventory("TrapistPrimedFlag",1,"Anim3_Fire30Det")
-6J50 C 0 A_GiveInventory("DecoyB_F_P30")
-6J50 CBAA 2
-goto MoveReturn
-Anim3_Fire30Det:
-6J30 C 0 A_GiveInventory("Trapist_AltDetonate_P")
-6J50 CXBDAA 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_31_W : DecoyCopyMoveBase_W
+actor DecoyCopy_30_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I30 C 0 A_JumpIfInventory("TrapistPrimedFlag",1,"Fire30Det")
+6I50 C 0 A_GiveInventory("DecoyB_F_P30")
+6I50 CBAA 2
+goto Ready2
+Fire30Det:
+6I30 C 0 A_GiveInventory("Trapist_AltDetonate_P")
+6I50 CXBDAA 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_30_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J30 C 0 A_JumpIfInventory("TrapistPrimedFlag",1,"Fire30Det")
+6J50 C 0 A_GiveInventory("DecoyB_F_P30")
+6J50 CBAA 2
+goto Ready2
+Fire30Det:
+6J30 C 0 A_GiveInventory("Trapist_AltDetonate_P")
+6J50 CXBDAA 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_31_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 B 2 A_GiveInventory("DecoyB_F_P31")
 6H50 C 1
 6H50 C 1 A_GiveInventory("DecoyB_F_P31")
 6H50 B 2
 6H50 C 2 A_GiveInventory("DecoyB_F_P31")
 6H50 B 1
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_31_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 B 2 A_GiveInventory("DecoyB_F_P31")
 6I50 C 1
 6I50 C 1 A_GiveInventory("DecoyB_F_P31")
 6I50 B 2
 6I50 C 2 A_GiveInventory("DecoyB_F_P31")
 6I50 B 1
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_31_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 B 2 A_GiveInventory("DecoyB_F_P31")
 6J50 C 1
 6J50 C 1 A_GiveInventory("DecoyB_F_P31")
 6J50 B 2
 6J50 C 2 A_GiveInventory("DecoyB_F_P31")
 6J50 B 1
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_32_W : DecoyCopyMoveBase_W
+actor DecoyCopy_32_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 0 A_GiveInventory("DecoyB_F_P32")
 //6H50 CXCXCCBAA 2
 6H50 N 2 Offset(84,-108)
@@ -1527,8 +2037,16 @@ Anim1:
 TNT1 A 2 Offset(-7,69)
 6H50 A 2 Offset(-7,69)
 6H50 A 2 Offset(-3,48)
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_32_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 0 A_GiveInventory("DecoyB_F_P32")
 6I50 N 2 Offset(84,-108)
 6I50 N 2 Offset(48,-83)
@@ -1539,8 +2057,16 @@ Anim2:
 TNT1 A 2 Offset(-7,69)
 6I50 A 2 Offset(-7,69)
 6I50 A 2 Offset(-3,48)
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_32_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 0 A_GiveInventory("DecoyB_F_P32")
 6J50 N 2 Offset(84,-108)
 6J50 N 2 Offset(48,-83)
@@ -1551,27 +2077,22 @@ Anim3:
 TNT1 A 2 Offset(-7,69)
 6J50 A 2 Offset(-7,69)
 6J50 A 2 Offset(-3,48)
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_33_W : DecoyCopyMoveBase_W
+actor DecoyCopy_33_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 B 0 ACS_NamedExecuteWithResult("uc_SamuraiSetUser",angle,pitch,(65536 * 2))
-Anim1_Fire33H:
-6H50 B 1 A_JumpIf(CallACS("uc_SamuraiCheckDrag",angle,pitch,15)==2,"Anim1_Fire33End")
-6H50 B 0 A_Refire("Anim1_Fire33H")
-goto MoveReturn
-Anim1_Fire33End:
+Fire33H:
+6H50 B 1 A_JumpIf(CallACS("uc_SamuraiCheckDrag",angle,pitch,15)==2,"Fire33End")
+6H50 B 0 A_Refire("Fire33H")
+goto Ready2
+Fire33End:
 6H50 C 0 A_GiveInventory("DecoyB_F_P33")
 6H50 C 2 OffSet(-39,32)
 6H50 C 2 OffSet(-79,39)
@@ -1583,14 +2104,22 @@ TNT1 A 7
 6H50 A 2 OffSet(-54,60)
 6H50 A 2 OffSet(-27,47)
 6H50 A 2 OffSet(-9,38)
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_33_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 B 0 ACS_NamedExecuteWithResult("uc_SamuraiSetUser",angle,pitch,(65536 * 2))
-Anim2_Fire33H:
-6I50 B 1 A_JumpIf(CallACS("uc_SamuraiCheckDrag",angle,pitch,15)==2,"Anim2_Fire33End")
-6I50 B 0 A_Refire("Anim2_Fire33H")
-goto MoveReturn
-Anim2_Fire33End:
+Fire33H:
+6I50 B 1 A_JumpIf(CallACS("uc_SamuraiCheckDrag",angle,pitch,15)==2,"Fire33End")
+6I50 B 0 A_Refire("Fire33H")
+goto Ready2
+Fire33End:
 6I50 C 0 A_GiveInventory("DecoyB_F_P33")
 6I50 C 2 OffSet(-39,32)
 6I50 C 2 OffSet(-79,39)
@@ -1602,14 +2131,22 @@ TNT1 A 7
 6I50 A 2 OffSet(-54,60)
 6I50 A 2 OffSet(-27,47)
 6I50 A 2 OffSet(-9,38)
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_33_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 B 0 ACS_NamedExecuteWithResult("uc_SamuraiSetUser",angle,pitch,(65536 * 2))
-Anim3_Fire33H:
-6J50 B 1 A_JumpIf(CallACS("uc_SamuraiCheckDrag",angle,pitch,15)==2,"Anim3_Fire33End")
-6J50 B 0 A_Refire("Anim3_Fire33H")
-goto MoveReturn
-Anim3_Fire33End:
+Fire33H:
+6J50 B 1 A_JumpIf(CallACS("uc_SamuraiCheckDrag",angle,pitch,15)==2,"Fire33End")
+6J50 B 0 A_Refire("Fire33H")
+goto Ready2
+Fire33End:
 6J50 C 0 A_GiveInventory("DecoyB_F_P33")
 6J50 C 2 OffSet(-39,32)
 6J50 C 2 OffSet(-79,39)
@@ -1621,49 +2158,55 @@ TNT1 A 7
 6J50 A 2 OffSet(-54,60)
 6J50 A 2 OffSet(-27,47)
 6J50 A 2 OffSet(-9,38)
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_34_W : DecoyCopyMoveBase_W
+actor DecoyCopy_34_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 2 A_GiveInventory("DecoyB_F_P34")
 6H50 B 2
 6H50 A 1
-goto MoveReturn
-Anim2:
-6I50 C 2 A_GiveInventory("DecoyB_F_P34")
-6I50 B 2
-6I50 A 1
-goto MoveReturn
-Anim3:
-6J50 C 2 A_GiveInventory("DecoyB_F_P34")
-6J50 B 2
-6J50 A 1
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_35_W : DecoyCopyMoveBase_W
+actor DecoyCopy_34_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 2 A_GiveInventory("DecoyB_F_P34")
+6I50 B 2
+6I50 A 1
+goto Ready2
+}
+}
+
+actor DecoyCopy_34_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 2 A_GiveInventory("DecoyB_F_P34")
+6J50 B 2
+6J50 A 1
+goto Ready2
+}
+}
+
+actor DecoyCopy_35_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 B 0 A_GiveInventory("DecoyB_F_P35")
 //6H50 B 2
 //6H50 C 14
@@ -1678,8 +2221,16 @@ Anim1:
 TNT1 A 8 Offset(-22,78)
 6H50 A 2 Offset(-22,78)
 6H50 A 2 Offset(-10,51)
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_35_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 B 0 A_GiveInventory("DecoyB_F_P35")
 6I50 N 2 Offset(84,-108)
 6I50 N 2 Offset(48,-83)
@@ -1690,8 +2241,16 @@ Anim2:
 TNT1 A 8 Offset(-22,78)
 6I50 A 2 Offset(-22,78)
 6I50 A 2 Offset(-10,51)
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_35_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 B 0 A_GiveInventory("DecoyB_F_P35")
 6J50 N 2 Offset(84,-108)
 6J50 N 2 Offset(48,-83)
@@ -1702,21 +2261,16 @@ Anim3:
 TNT1 A 8 Offset(-22,78)
 6J50 A 2 Offset(-22,78)
 6J50 A 2 Offset(-10,51)
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_36_W : DecoyCopyMoveBase_W
+actor DecoyCopy_36_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 15 A_GiveInventory("DecoyB_F_P36")
 6H50 BAAAA 2
 /*
@@ -1726,88 +2280,121 @@ Anim1:
 TNT1 A 10
 6H36 GHA 2
 */
-goto MoveReturn
-Anim2:
-6I50 C 15 A_GiveInventory("DecoyB_F_P36")
-6I50 BAAAA 2
-goto MoveReturn
-Anim3:
-6J50 C 15 A_GiveInventory("DecoyB_F_P36")
-6J50 BAAAA 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_37_W : DecoyCopyMoveBase_W
+actor DecoyCopy_36_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 15 A_GiveInventory("DecoyB_F_P36")
+6I50 BAAAA 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_36_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 15 A_GiveInventory("DecoyB_F_P36")
+6J50 BAAAA 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_37_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 0 A_GiveInventory("DecoyB_F_P37")
 6H50 CB 8
 6H50 A 6
-goto MoveReturn
-Anim2:
-6I50 C 0 A_GiveInventory("DecoyB_F_P37")
-6I50 CB 8
-6I50 A 6
-goto MoveReturn
-Anim3:
-6J50 C 0 A_GiveInventory("DecoyB_F_P37")
-6J50 CB 8
-6J50 A 6
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_38_W : DecoyCopyMoveBase_W
+actor DecoyCopy_37_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 0 A_GiveInventory("DecoyB_F_P37")
+6I50 CB 8
+6I50 A 6
+goto Ready2
+}
+}
+
+actor DecoyCopy_37_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 0 A_GiveInventory("DecoyB_F_P37")
+6J50 CB 8
+6J50 A 6
+goto Ready2
+}
+}
+
+actor DecoyCopy_38_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 2 Offset(1,32)A_GiveInventory("DecoyB_F_P38")
 6H50 C 1 Offset(8,59)
 6H50 B 3 Offset(6,47)
 6H50 A 3 Offset(3,38)
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_38_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 2 Offset(1,32)A_GiveInventory("DecoyB_F_P38")
 6I50 C 1 Offset(8,59)
 6I50 B 3 Offset(6,47)
 6I50 A 3 Offset(3,38)
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_38_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 2 Offset(1,32)A_GiveInventory("DecoyB_F_P38")
 6J50 C 1 Offset(8,59)
 6J50 B 3 Offset(6,47)
 6J50 A 3 Offset(3,38)
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_39_W : DecoyCopyMoveBase_W
+actor DecoyCopy_39_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 0 A_GiveInventory("DecoyB_F_P39")
 //6H50 CBAAAA 2
 6H50 N 2 Offset(84,-108)
@@ -1816,8 +2403,16 @@ Anim1:
 6H50 O 2 Offset(-31,-14)
 6H50 O 2 Offset(-50,31)
 6H50 O 2 Offset(-65,81)
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_39_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 0 A_GiveInventory("DecoyB_F_P39")
 6I50 N 2 Offset(84,-108)
 6I50 N 2 Offset(48,-83)
@@ -1825,8 +2420,16 @@ Anim2:
 6I50 O 2 Offset(-31,-14)
 6I50 O 2 Offset(-50,31)
 6I50 O 2 Offset(-65,81)
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_39_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 0 A_GiveInventory("DecoyB_F_P39")
 6J50 N 2 Offset(84,-108)
 6J50 N 2 Offset(48,-83)
@@ -1834,21 +2437,16 @@ Anim3:
 6J50 O 2 Offset(-31,-14)
 6J50 O 2 Offset(-50,31)
 6J50 O 2 Offset(-65,81)
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_40_W : DecoyCopyMoveBase_W
+actor DecoyCopy_40_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 3 A_GiveInventory("DecoyB_F_P40A")
 6H50 B 2
 6H50 C 3 A_GiveInventory("DecoyB_F_P40B")
@@ -1856,8 +2454,16 @@ Anim1:
 6H50 C 3 A_GiveInventory("DecoyB_F_P40C")
 6H50 B 2
 6H50 AAA 5
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_40_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 3 A_GiveInventory("DecoyB_F_P40A")
 6I50 B 2
 6I50 C 3 A_GiveInventory("DecoyB_F_P40B")
@@ -1865,8 +2471,16 @@ Anim2:
 6I50 C 3 A_GiveInventory("DecoyB_F_P40C")
 6I50 B 2
 6I50 AAA 5
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_40_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 3 A_GiveInventory("DecoyB_F_P40A")
 6J50 B 2
 6J50 C 3 A_GiveInventory("DecoyB_F_P40B")
@@ -1874,21 +2488,16 @@ Anim3:
 6J50 C 3 A_GiveInventory("DecoyB_F_P40C")
 6J50 B 2
 6J50 AAA 5
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_41_W : DecoyCopyMoveBase_W
+actor DecoyCopy_41_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 B 0 A_GiveInventory("Decoy_F_41Start_P")
 6H50 B 3 A_GunFlash("Flash.Fire41",1)
 F41Up:
@@ -1923,8 +2532,16 @@ F41Crash:
 6H50 CX 1 A_TakeInventory("HandyFlag")
 6H50 XCC 1
 6H50 BA 3
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_41_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 B 0 A_GiveInventory("Decoy_F_41Start_P")
 6I50 B 3 A_GunFlash("Flash.Fire41",1)
 F41Up:
@@ -1959,8 +2576,16 @@ F41Crash:
 6I50 CX 1 A_TakeInventory("HandyFlag")
 6I50 XCC 1
 6I50 BA 3
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_41_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 B 0 A_GiveInventory("Decoy_F_41Start_P")
 6J50 B 3 A_GunFlash("Flash.Fire41",1)
 F41Up:
@@ -1995,432 +2620,493 @@ F41Crash:
 6J50 CX 1 A_TakeInventory("HandyFlag")
 6J50 XCC 1
 6J50 BA 3
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_42_W : DecoyCopyMoveBase_W
+actor DecoyCopy_42_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
-6H50 B 0 A_JumpIfInventory("CaptainAssFlag",1,"Anim1_Fire42B")
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6H50 B 0 A_JumpIfInventory("CaptainAssFlag",1,"Fire42B")
 6H50 C 3 A_GiveInventory("DecoyB_F_P42")
 6H50 BAAA 3
-goto MoveReturn
-Anim1_Fire42B:
+goto Ready2
+Fire42B:
 6H50 B 2 Offset(0,36)A_GiveInventory("DecoyB_F_P42B")
 6H50 B 2 Offset(0,40)
 6H50 C 4 Offset(0,44)
 6H50 B 2 Offset(0,40)
 6H50 B 2 Offset(0,36)
-goto MoveReturn
-Anim2:
-6I50 B 0 A_JumpIfInventory("CaptainAssFlag",1,"Anim2_Fire42B")
+goto Ready2
+}
+}
+
+actor DecoyCopy_42_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 B 0 A_JumpIfInventory("CaptainAssFlag",1,"Fire42B")
 6I50 C 3 A_GiveInventory("DecoyB_F_P42")
 6I50 BAAA 3
-goto MoveReturn
-Anim2_Fire42B:
+goto Ready2
+Fire42B:
 6I50 B 2 Offset(0,36)A_GiveInventory("DecoyB_F_P42B")
 6I50 B 2 Offset(0,40)
 6I50 C 4 Offset(0,44)
 6I50 B 2 Offset(0,40)
 6I50 B 2 Offset(0,36)
-goto MoveReturn
-Anim3:
-6J50 B 0 A_JumpIfInventory("CaptainAssFlag",1,"Anim3_Fire42B")
+goto Ready2
+}
+}
+
+actor DecoyCopy_42_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 B 0 A_JumpIfInventory("CaptainAssFlag",1,"Fire42B")
 6J50 C 3 A_GiveInventory("DecoyB_F_P42")
 6J50 BAAA 3
-goto MoveReturn
-Anim3_Fire42B:
+goto Ready2
+Fire42B:
 6J50 B 2 Offset(0,36)A_GiveInventory("DecoyB_F_P42B")
 6J50 B 2 Offset(0,40)
 6J50 C 4 Offset(0,44)
 6J50 B 2 Offset(0,40)
 6J50 B 2 Offset(0,36)
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_43_W : DecoyCopyMoveBase_W
+actor DecoyCopy_43_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 A 2 offset(11,26)A_GiveInventory("DecoyB_F_P43")
 6H50 A 2 offset(23,17)
 6H50 B 2 offset(32,28)A_GiveInventory("PowerLimFiringSlow",1)
 6H50 B 2 A_ReFire(1)
-goto Anim1_Fire43End
-6H50 B 2 A_JumpIfInventory("IsBot",1,"Anim1_Fire43Bot")
+goto Fire43End
+6H50 B 2 A_JumpIfInventory("IsBot",1,"Fire43Bot")
 6H50 B 0 A_ReFire(1)
-goto Anim1_Fire43End
+goto Fire43End
 6H50 B 2
-6H50 B 0 A_ReFire("Anim1_Fire43H")
-goto Anim1_Fire43End
-Anim1_Fire43End:
+6H50 B 0 A_ReFire("Fire43H")
+goto Fire43End
+Fire43End:
 6H50 A 2 offset(21,16)A_TakeInventory("PowerLimFiringSlow")
 6H50 A 2 offset(11,23)
 6H50 A 2 offset(5,28)
-goto MoveReturn
-Anim1_Fire43H:
+goto Ready2
+Fire43H:
 6H50 X 2 offset(24,36)A_GiveInventory("DecoyB_F_P43A")
 6H50 C 1
 6H50 B 0 A_ReFire(1)
-goto Anim1_Fire43HEnd
+goto Fire43HEnd
 6H50 F 2 offset(32,28)A_GiveInventory("DecoyB_F_P43B")
 6H50 C 1
 6H50 B 0 A_ReFire(1)
-goto Anim1_Fire43HEnd
+goto Fire43HEnd
 6H50 X 2 offset(40,36)A_GiveInventory("DecoyB_F_P43C")
 6H50 C 1
 6H50 B 0 A_ReFire(1)
-goto Anim1_Fire43HEnd
+goto Fire43HEnd
 6H50 F 2 offset(32,44)A_GiveInventory("DecoyB_F_P43B")
 6H50 C 1
-6H50 B 0 A_ReFire("Anim1_Fire43H")
-goto Anim1_Fire43HEnd
-Anim1_Fire43HEnd:
+6H50 B 0 A_ReFire("Fire43H")
+goto Fire43HEnd
+Fire43HEnd:
 6H50 B 2 offset(22,32)
 6H50 A 2 offset(18,19)
 6H50 A 2 offset(9,25)A_TakeInventory("PowerLimFiringSlow")
 6H50 A 2 offset(4,29)
-goto MoveReturn
-Anim1_Fire43Bot:
-6H50 B 0 A_Jump(64,"Anim1_Fire43End")
-6H50 B 0 A_ReFire("Anim1_Fire43BotH")
-goto Anim1_Fire43End
-Anim1_Fire43BotH:
+goto Ready2
+Fire43Bot:
+6H50 B 0 A_Jump(64,"Fire43End")
+6H50 B 0 A_ReFire("Fire43BotH")
+goto Fire43End
+Fire43BotH:
 6H50 C 1 A_GiveInventory("DecoyB_F_P43")
 6H50 B random(1,2)
 6H50 C 1 A_GiveInventory("DecoyB_F_P43")
 6H50 B random(1,2)
-6H50 B 0 A_Jump(8,"Anim1_Fire43HEnd")
-6H50 B 0 A_ReFire("Anim1_Fire43BotH")
-goto Anim1_Fire43HEnd
-Anim2:
+6H50 B 0 A_Jump(8,"Fire43HEnd")
+6H50 B 0 A_ReFire("Fire43BotH")
+goto Fire43HEnd
+}
+}
+
+actor DecoyCopy_43_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 A 2 offset(11,26)A_GiveInventory("DecoyB_F_P43")
 6I50 A 2 offset(23,17)
 6I50 B 2 offset(32,28)A_GiveInventory("PowerLimFiringSlow",1)
 6I50 B 2 A_ReFire(1)
-goto Anim2_Fire43End
-6I50 B 2 A_JumpIfInventory("IsBot",1,"Anim2_Fire43Bot")
+goto Fire43End
+6I50 B 2 A_JumpIfInventory("IsBot",1,"Fire43Bot")
 6I50 B 0 A_ReFire(1)
-goto Anim2_Fire43End
+goto Fire43End
 6I50 B 2
-6I50 B 0 A_ReFire("Anim2_Fire43H")
-goto Anim2_Fire43End
-Anim2_Fire43End:
+6I50 B 0 A_ReFire("Fire43H")
+goto Fire43End
+Fire43End:
 6I50 A 2 offset(21,16)A_TakeInventory("PowerLimFiringSlow")
 6I50 A 2 offset(11,23)
 6I50 A 2 offset(5,28)
-goto MoveReturn
-Anim2_Fire43H:
+goto Ready2
+Fire43H:
 6I50 X 2 offset(24,36)A_GiveInventory("DecoyB_F_P43A")
 6I50 C 1
 6I50 B 0 A_ReFire(1)
-goto Anim2_Fire43HEnd
+goto Fire43HEnd
 6I50 F 2 offset(32,28)A_GiveInventory("DecoyB_F_P43B")
 6I50 C 1
 6I50 B 0 A_ReFire(1)
-goto Anim2_Fire43HEnd
+goto Fire43HEnd
 6I50 X 2 offset(40,36)A_GiveInventory("DecoyB_F_P43C")
 6I50 C 1
 6I50 B 0 A_ReFire(1)
-goto Anim2_Fire43HEnd
+goto Fire43HEnd
 6I50 F 2 offset(32,44)A_GiveInventory("DecoyB_F_P43B")
 6I50 C 1
-6I50 B 0 A_ReFire("Anim2_Fire43H")
-goto Anim2_Fire43HEnd
-Anim2_Fire43HEnd:
+6I50 B 0 A_ReFire("Fire43H")
+goto Fire43HEnd
+Fire43HEnd:
 6I50 B 2 offset(22,32)
 6I50 A 2 offset(18,19)
 6I50 A 2 offset(9,25)A_TakeInventory("PowerLimFiringSlow")
 6I50 A 2 offset(4,29)
-goto MoveReturn
-Anim2_Fire43Bot:
-6I50 B 0 A_Jump(64,"Anim2_Fire43End")
-6I50 B 0 A_ReFire("Anim2_Fire43BotH")
-goto Anim2_Fire43End
-Anim2_Fire43BotH:
+goto Ready2
+Fire43Bot:
+6I50 B 0 A_Jump(64,"Fire43End")
+6I50 B 0 A_ReFire("Fire43BotH")
+goto Fire43End
+Fire43BotH:
 6I50 C 1 A_GiveInventory("DecoyB_F_P43")
 6I50 B random(1,2)
 6I50 C 1 A_GiveInventory("DecoyB_F_P43")
 6I50 B random(1,2)
-6I50 B 0 A_Jump(8,"Anim2_Fire43HEnd")
-6I50 B 0 A_ReFire("Anim2_Fire43BotH")
-goto Anim2_Fire43HEnd
-Anim3:
+6I50 B 0 A_Jump(8,"Fire43HEnd")
+6I50 B 0 A_ReFire("Fire43BotH")
+goto Fire43HEnd
+}
+}
+
+actor DecoyCopy_43_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 A 2 offset(11,26)A_GiveInventory("DecoyB_F_P43")
 6J50 A 2 offset(23,17)
 6J50 B 2 offset(32,28)A_GiveInventory("PowerLimFiringSlow",1)
 6J50 B 2 A_ReFire(1)
-goto Anim3_Fire43End
-6J50 B 2 A_JumpIfInventory("IsBot",1,"Anim3_Fire43Bot")
+goto Fire43End
+6J50 B 2 A_JumpIfInventory("IsBot",1,"Fire43Bot")
 6J50 B 0 A_ReFire(1)
-goto Anim3_Fire43End
+goto Fire43End
 6J50 B 2
-6J50 B 0 A_ReFire("Anim3_Fire43H")
-goto Anim3_Fire43End
-Anim3_Fire43End:
+6J50 B 0 A_ReFire("Fire43H")
+goto Fire43End
+Fire43End:
 6J50 A 2 offset(21,16)A_TakeInventory("PowerLimFiringSlow")
 6J50 A 2 offset(11,23)
 6J50 A 2 offset(5,28)
-goto MoveReturn
-Anim3_Fire43H:
+goto Ready2
+Fire43H:
 6J50 X 2 offset(24,36)A_GiveInventory("DecoyB_F_P43A")
 6J50 C 1
 6J50 B 0 A_ReFire(1)
-goto Anim3_Fire43HEnd
+goto Fire43HEnd
 6J50 F 2 offset(32,28)A_GiveInventory("DecoyB_F_P43B")
 6J50 C 1
 6J50 B 0 A_ReFire(1)
-goto Anim3_Fire43HEnd
+goto Fire43HEnd
 6J50 X 2 offset(40,36)A_GiveInventory("DecoyB_F_P43C")
 6J50 C 1
 6J50 B 0 A_ReFire(1)
-goto Anim3_Fire43HEnd
+goto Fire43HEnd
 6J50 F 2 offset(32,44)A_GiveInventory("DecoyB_F_P43B")
 6J50 C 1
-6J50 B 0 A_ReFire("Anim3_Fire43H")
-goto Anim3_Fire43HEnd
-Anim3_Fire43HEnd:
+6J50 B 0 A_ReFire("Fire43H")
+goto Fire43HEnd
+Fire43HEnd:
 6J50 B 2 offset(22,32)
 6J50 A 2 offset(18,19)
 6J50 A 2 offset(9,25)A_TakeInventory("PowerLimFiringSlow")
 6J50 A 2 offset(4,29)
-goto MoveReturn
-Anim3_Fire43Bot:
-6J50 B 0 A_Jump(64,"Anim3_Fire43End")
-6J50 B 0 A_ReFire("Anim3_Fire43BotH")
-goto Anim3_Fire43End
-Anim3_Fire43BotH:
+goto Ready2
+Fire43Bot:
+6J50 B 0 A_Jump(64,"Fire43End")
+6J50 B 0 A_ReFire("Fire43BotH")
+goto Fire43End
+Fire43BotH:
 6J50 C 1 A_GiveInventory("DecoyB_F_P43")
 6J50 B random(1,2)
 6J50 C 1 A_GiveInventory("DecoyB_F_P43")
 6J50 B random(1,2)
-6J50 B 0 A_Jump(8,"Anim3_Fire43HEnd")
-6J50 B 0 A_ReFire("Anim3_Fire43BotH")
-goto Anim3_Fire43HEnd
+6J50 B 0 A_Jump(8,"Fire43HEnd")
+6J50 B 0 A_ReFire("Fire43BotH")
+goto Fire43HEnd
 }
 }
 
-actor DecoyCopy_44_W : DecoyCopyMoveBase_W
+actor DecoyCopy_44_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 0 A_GiveInventory("DecoyB_F_P44")
 6H50 CBAA 2
-goto MoveReturn
-Anim2:
-6I50 C 0 A_GiveInventory("DecoyB_F_P44")
-6I50 CBAA 2
-goto MoveReturn
-Anim3:
-6J50 C 0 A_GiveInventory("DecoyB_F_P44")
-6J50 CBAA 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_45_W : DecoyCopyMoveBase_W
+actor DecoyCopy_44_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
-6H50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",60-30*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Anim1_Fire45_B")
-Anim1_Fire45H:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 0 A_GiveInventory("DecoyB_F_P44")
+6I50 CBAA 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_44_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 0 A_GiveInventory("DecoyB_F_P44")
+6J50 CBAA 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_45_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6H50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",60-30*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Fire45_B")
+Fire45H:
 6H50 C 2 A_GiveInventory("DecoyB_F_P45B")
 6H50 CBBBA 1
 6H50 A 2 A_JumpIfInventory("IsBot",1,4)
-6H50 A 0 A_Refire("Anim1_Fire45H")
+6H50 A 0 A_Refire("Fire45H")
 6H50 AAA 2
-goto MoveReturn
-Anim1_Fire45_B:
+goto Ready2
+Fire45_B:
 6H50 C 2 A_GiveInventory("DecoyB_F_P45")
 6H50 CBBBA 1
 6H50 A 2
-6H50 A 0 A_Refire("Anim1")
-goto MoveReturn
-Anim2:
-6I50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",60-30*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Anim2_Fire45_B")
-Anim2_Fire45H:
+6H50 A 0 A_Refire("Fire")
+goto Ready2
+}
+}
+
+actor DecoyCopy_45_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",60-30*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Fire45_B")
+Fire45H:
 6I50 C 2 A_GiveInventory("DecoyB_F_P45B")
 6I50 CBBBA 1
 6I50 A 2 A_JumpIfInventory("IsBot",1,4)
-6I50 A 0 A_Refire("Anim2_Fire45H")
+6I50 A 0 A_Refire("Fire45H")
 6I50 AAA 2
-goto MoveReturn
-Anim2_Fire45_B:
+goto Ready2
+Fire45_B:
 6I50 C 2 A_GiveInventory("DecoyB_F_P45")
 6I50 CBBBA 1
 6I50 A 2
-6I50 A 0 A_Refire("Anim2")
-goto MoveReturn
-Anim3:
-6J50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",60-30*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Anim3_Fire45_B")
-Anim3_Fire45H:
+6I50 A 0 A_Refire("Fire")
+goto Ready2
+}
+}
+
+actor DecoyCopy_45_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",60-30*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Fire45_B")
+Fire45H:
 6J50 C 2 A_GiveInventory("DecoyB_F_P45B")
 6J50 CBBBA 1
 6J50 A 2 A_JumpIfInventory("IsBot",1,4)
-6J50 A 0 A_Refire("Anim3_Fire45H")
+6J50 A 0 A_Refire("Fire45H")
 6J50 AAA 2
-goto MoveReturn
-Anim3_Fire45_B:
+goto Ready2
+Fire45_B:
 6J50 C 2 A_GiveInventory("DecoyB_F_P45")
 6J50 CBBBA 1
 6J50 A 2
-6J50 A 0 A_Refire("Anim3")
-goto MoveReturn
+6J50 A 0 A_Refire("Fire")
+goto Ready2
 }
 }
 
-actor DecoyCopy_46_W : DecoyCopyMoveBase_W
+actor DecoyCopy_46_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 B 1 A_GiveInventory("DecoyB_F_P46")
 6H50 XCXCCCBBAA 2
-goto MoveReturn
-Anim2:
-6I50 B 1 A_GiveInventory("DecoyB_F_P46")
-6I50 XCXCCCBBAA 2
-goto MoveReturn
-Anim3:
-6J50 B 1 A_GiveInventory("DecoyB_F_P46")
-6J50 XCXCCCBBAA 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_47_W : DecoyCopyMoveBase_W
+actor DecoyCopy_46_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
-6H50 B 0 A_JumpIfInventory("IsBot",1,"Anim1_Fire47Bot")
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 B 1 A_GiveInventory("DecoyB_F_P46")
+6I50 XCXCCCBBAA 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_46_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 B 1 A_GiveInventory("DecoyB_F_P46")
+6J50 XCXCCCBBAA 2
+goto Ready2
+}
+}
+
+actor DecoyCopy_47_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6H50 B 0 A_JumpIfInventory("IsBot",1,"Fire47Bot")
 6H50 B 0 A_JumpIfInventory("GreenElfQuickDraw",1,4)
 6H50 BBB 3
-goto Anim1_Fire47H
+goto Fire47H
 6H50 BBB 2
-goto Anim1_Fire47H
-Anim1_Fire47H:
+goto Fire47H
+Fire47H:
 6H50 C 1 A_GiveInventory("DecoyCharge_F47",1+CallACS("uh_checkrune", RUNE_RAGE))
-6H50 C 0 A_Refire("Anim1_Fire47H")
+6H50 C 0 A_Refire("Fire47H")
 6H50 B 2 A_GiveInventory("DecoyB_F_P47")
 6H50 A 2
-goto MoveReturn
-Anim1_Fire47Bot:
+goto Ready2
+Fire47Bot:
 6H50 C 1 A_GiveInventory("DecoyCharge_F47",random(2,7))
 6H50 C 0 A_Jump(4,3)
 6H50 C 0 A_JumpIfInventory("DecoyCharge_F47",0,3)
 6H50 C 0 A_Refire//("Hold47")
 6H50 C 0
-goto Anim1_Fire47H+2
+goto Fire47H+2
 6H50 C 0 A_Jump(16,2)
 6H50 C 0 A_Refire//("Hold47")
 6H50 C 0
-goto Anim1_Fire47H+2
-Anim2:
-6I50 B 0 A_JumpIfInventory("IsBot",1,"Anim2_Fire47Bot")
+goto Fire47H+2
+}
+}
+
+actor DecoyCopy_47_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 B 0 A_JumpIfInventory("IsBot",1,"Fire47Bot")
 6I50 B 0 A_JumpIfInventory("GreenElfQuickDraw",1,4)
 6I50 BBB 3
-goto Anim2_Fire47H
+goto Fire47H
 6I50 BBB 2
-goto Anim2_Fire47H
-Anim2_Fire47H:
+goto Fire47H
+Fire47H:
 6I50 C 1 A_GiveInventory("DecoyCharge_F47",1+CallACS("uh_checkrune", RUNE_RAGE))
-6I50 C 0 A_Refire("Anim2_Fire47H")
+6I50 C 0 A_Refire("Fire47H")
 6I50 B 2 A_GiveInventory("DecoyB_F_P47")
 6I50 A 2
-goto MoveReturn
-Anim2_Fire47Bot:
+goto Ready2
+Fire47Bot:
 6I50 C 1 A_GiveInventory("DecoyCharge_F47",random(2,7))
 6I50 C 0 A_Jump(4,3)
 6I50 C 0 A_JumpIfInventory("DecoyCharge_F47",0,3)
 6I50 C 0 A_Refire//("Hold47")
 6I50 C 0
-goto Anim2_Fire47H+2
+goto Fire47H+2
 6I50 C 0 A_Jump(16,2)
 6I50 C 0 A_Refire//("Hold47")
 6I50 C 0
-goto Anim2_Fire47H+2
-Anim3:
-6J50 B 0 A_JumpIfInventory("IsBot",1,"Anim3_Fire47Bot")
+goto Fire47H+2
+}
+}
+
+actor DecoyCopy_47_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 B 0 A_JumpIfInventory("IsBot",1,"Fire47Bot")
 6J50 B 0 A_JumpIfInventory("GreenElfQuickDraw",1,4)
 6J50 BBB 3
-goto Anim3_Fire47H
+goto Fire47H
 6J50 BBB 2
-goto Anim3_Fire47H
-Anim3_Fire47H:
+goto Fire47H
+Fire47H:
 6J50 C 1 A_GiveInventory("DecoyCharge_F47",1+CallACS("uh_checkrune", RUNE_RAGE))
-6J50 C 0 A_Refire("Anim3_Fire47H")
+6J50 C 0 A_Refire("Fire47H")
 6J50 B 2 A_GiveInventory("DecoyB_F_P47")
 6J50 A 2
-goto MoveReturn
-Anim3_Fire47Bot:
+goto Ready2
+Fire47Bot:
 6J50 C 1 A_GiveInventory("DecoyCharge_F47",random(2,7))
 6J50 C 0 A_Jump(4,3)
 6J50 C 0 A_JumpIfInventory("DecoyCharge_F47",0,3)
 6J50 C 0 A_Refire//("Hold47")
 6J50 C 0
-goto Anim3_Fire47H+2
+goto Fire47H+2
 6J50 C 0 A_Jump(16,2)
 6J50 C 0 A_Refire//("Hold47")
 6J50 C 0
-goto Anim3_Fire47H+2
+goto Fire47H+2
 }
 }
 
-actor DecoyCopy_48_W : DecoyCopyMoveBase_W
+actor DecoyCopy_48_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 B 0 A_GiveInventory("DecoyB_F_P48")
 //6H50 BCCCCBBAAAAA 2
 6H50 N 2 Offset(84,-108)
@@ -2432,8 +3118,16 @@ Anim1:
 TNT1 A 8 Offset(-7,69)
 6H50 A 2 Offset(-7,69)
 6H50 A 2 Offset(-3,48)
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_48_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 B 0 A_GiveInventory("DecoyB_F_P48")
 6I50 N 2 Offset(84,-108)
 6I50 N 2 Offset(48,-83)
@@ -2444,8 +3138,16 @@ Anim2:
 TNT1 A 8 Offset(-7,69)
 6I50 A 2 Offset(-7,69)
 6I50 A 2 Offset(-3,48)
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_48_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 B 0 A_GiveInventory("DecoyB_F_P48")
 6J50 N 2 Offset(84,-108)
 6J50 N 2 Offset(48,-83)
@@ -2456,342 +3158,370 @@ Anim3:
 TNT1 A 8 Offset(-7,69)
 6J50 A 2 Offset(-7,69)
 6J50 A 2 Offset(-3,48)
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_49_W : DecoyCopyMoveBase_W
+actor DecoyCopy_49_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 B 0 A_GiveInventory("DecoyB_F_P49")
 6H50 BCB 4
 6H50 A 2
 6H50 A 10
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_49_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 B 0 A_GiveInventory("DecoyB_F_P49")
 6I50 BCB 4
 6I50 A 2
 6I50 A 10
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_49_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 B 0 A_GiveInventory("DecoyB_F_P49")
 6J50 BCB 4
 6J50 A 2
 6J50 A 10
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_50_W : DecoyCopyMoveBase_W
+actor DecoyCopy_50_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 0 A_GiveInventory("DecoyB_F_P50")
 6H50 C 0 A_Refire(1)
 6H50 CBAAAA 3
-goto MoveReturn
-Anim2:
-6I50 C 0 A_GiveInventory("DecoyB_F_P50")
-6I50 C 0 A_Refire(1)
-6I50 CBAAAA 3
-goto MoveReturn
-Anim3:
-6J50 C 0 A_GiveInventory("DecoyB_F_P50")
-6J50 C 0 A_Refire(1)
-6J50 CBAAAA 3
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_51_W : DecoyCopyMoveBase_W
+actor DecoyCopy_50_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 0 A_GiveInventory("DecoyB_F_P50")
+6I50 C 0 A_Refire(1)
+6I50 CBAAAA 3
+goto Ready2
+}
+}
+
+actor DecoyCopy_50_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 0 A_GiveInventory("DecoyB_F_P50")
+6J50 C 0 A_Refire(1)
+6J50 CBAAAA 3
+goto Ready2
+}
+}
+
+actor DecoyCopy_51_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 0 A_TakeInventory("SuplexID")
 6H50 CBAB 2
-Anim1_Fire51Run:
+Fire51Run:
 6H50 C 1 A_GiveInventory("Decoy_F_50Run_P0")
 6H50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",1,1)
-goto Anim1_Fire51Grab
-6H50 C 0 A_JumpIfInventory("IsBot",1,"Anim1_Fire51Bot")
+goto Fire51Grab
+6H50 C 0 A_JumpIfInventory("IsBot",1,"Fire51Bot")
 6H50 C 0 A_Refire(1)
-goto Anim1_Fire51Grab
+goto Fire51Grab
 6H50 B 1 A_GiveInventory("Decoy_F_50Run_P1")
 6H50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",1,1)
-goto Anim1_Fire51Grab
-6H50 B 0 A_Refire("Anim1_Fire51Run")
-goto Anim1_Fire51Grab
-Anim1_Fire51Bot:
+goto Fire51Grab
+6H50 B 0 A_Refire("Fire51Run")
+goto Fire51Grab
+Fire51Bot:
 6H50 C 0 A_Jump(64,2)
-6H50 C 0 A_Refire("Anim1_Fire51Run")
-goto Anim1_Fire51Grab
+6H50 C 0 A_Refire("Fire51Run")
+goto Fire51Grab
 6H50 C 0 A_FaceTarget
-6H50 C 0 A_JumpIfCloser(128,"Anim1_Fire51Grab")
-6H50 C 0 A_Refire("Anim1_Fire51Run")
-goto Anim1_Fire51Grab
-Anim1_Fire51Grab:
+6H50 C 0 A_JumpIfCloser(128,"Fire51Grab")
+6H50 C 0 A_Refire("Fire51Run")
+goto Fire51Grab
+Fire51Grab:
 6H50 X 1 A_GiveInventory("DecoyB_F_P51")
-6H50 C 0 A_JumpIfInventory("SuplexID",1,"Anim1_Fire51Suplex")
+6H50 C 0 A_JumpIfInventory("SuplexID",1,"Fire51Suplex")
 6H50 C 1 A_FireCustomMissile("Decoy_F_51",0,0,0,0,1,0)
-6H50 XCXC 1 A_JumpIfInventory("SuplexID",1,"Anim1_Fire51Suplex")
+6H50 XCXC 1 A_JumpIfInventory("SuplexID",1,"Fire51Suplex")
 6H50 C 2 A_TakeInventory("VivifyCycle2")
 6H50 CB 2
 6H50 BAAAA 4 A_GiveInventory("DecoyEnergyAmmo",2)
-goto MoveReturn
-Anim1_Fire51Suplex:
+goto Ready2
+Fire51Suplex:
 6H50 C 1 A_GiveInventory("Decoy_F_51Start_P")
 6H50 C 0 A_SetPitch(356)
 6H50 C 0 A_SetAngle(Args[1]+12)
-6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-12,Args[0],100)==0,"Anim1_Fire51Boom")
+6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-12,Args[0],100)==0,"Fire51Boom")
 6H50 C 0 A_SetPitch(352)
 6H50 C 0 A_SetAngle(Args[1]+24)
-6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-24,Args[0],100)==0,"Anim1_Fire51Boom")
+6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-24,Args[0],100)==0,"Fire51Boom")
 6H50 C 0 A_SetPitch(348)
 6H50 C 0 A_SetAngle(Args[1]+36)
-6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-35,Args[0],100)==0,"Anim1_Fire51Boom")
+6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-35,Args[0],100)==0,"Fire51Boom")
 6H50 C 0 A_SetPitch(344)
 6H50 C 0 A_SetAngle(Args[1]+48)
-6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-46,Args[0],100)==0,"Anim1_Fire51Boom")
+6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-46,Args[0],100)==0,"Fire51Boom")
 6H50 C 0 A_SetPitch(340)
 6H50 C 0 A_SetAngle(Args[1]+60)
-6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-57,Args[0],100)==0,"Anim1_Fire51Boom")
+6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-57,Args[0],100)==0,"Fire51Boom")
 6H50 C 0 A_SetPitch(336)
 6H50 C 0 A_SetAngle(Args[1]+72)
-6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-68,Args[0],100)==0,"Anim1_Fire51Boom")
+6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-68,Args[0],100)==0,"Fire51Boom")
 6H50 C 0 A_SetPitch(333)
 6H50 C 0 A_SetAngle(Args[1]+84)
-6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-79,Args[0],100)==0,"Anim1_Fire51Boom")
+6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-79,Args[0],100)==0,"Fire51Boom")
 6H50 C 0 A_SetPitch(330)
 6H50 C 0 A_SetAngle(Args[1]+103)
-6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-90,Args[0],100)==0,"Anim1_Fire51Boom")
+6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-90,Args[0],100)==0,"Fire51Boom")
 6H50 C 0 A_SetPitch(336)
 6H50 C 0 A_SetAngle(Args[1]+129)
-6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-67,Args[0]+128,100)==0,"Anim1_Fire51Boom")
+6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-67,Args[0]+128,100)==0,"Fire51Boom")
 6H50 C 0 A_SetPitch(343)
 6H50 C 0 A_SetAngle(Args[1]+155)
-6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-44,Args[0]+128,100)==0,"Anim1_Fire51Boom")
+6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-44,Args[0]+128,100)==0,"Fire51Boom")
 6H50 C 0 A_SetPitch(351)
 6H50 C 0 A_SetAngle(Args[1]+180)
-6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-22,Args[0]+128,100)==0,"Anim1_Fire51Boom")
+6H50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-22,Args[0]+128,100)==0,"Fire51Boom")
 6H50 C 0 A_SetPitch(0)
-Anim1_Fire51Boom:
+Fire51Boom:
 6H50 C 0 A_GiveInventory("Decoy_F_51Boom_P")
 6H50 X 2 //A_GiveInventory("VivifyDelay4",1)
 6H50 CX 2
 6H50 C 2 A_GiveInventory("Decoy_F_51End_P")
 6H50 BA 2
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_51_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 0 A_TakeInventory("SuplexID")
 6I50 CBAB 2
-Anim2_Fire51Run:
+Fire51Run:
 6I50 C 1 A_GiveInventory("Decoy_F_50Run_P0")
 6I50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",1,1)
-goto Anim2_Fire51Grab
-6I50 C 0 A_JumpIfInventory("IsBot",1,"Anim2_Fire51Bot")
+goto Fire51Grab
+6I50 C 0 A_JumpIfInventory("IsBot",1,"Fire51Bot")
 6I50 C 0 A_Refire(1)
-goto Anim2_Fire51Grab
+goto Fire51Grab
 6I50 B 1 A_GiveInventory("Decoy_F_50Run_P1")
 6I50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",1,1)
-goto Anim2_Fire51Grab
-6I50 B 0 A_Refire("Anim2_Fire51Run")
-goto Anim2_Fire51Grab
-Anim2_Fire51Bot:
+goto Fire51Grab
+6I50 B 0 A_Refire("Fire51Run")
+goto Fire51Grab
+Fire51Bot:
 6I50 C 0 A_Jump(64,2)
-6I50 C 0 A_Refire("Anim2_Fire51Run")
-goto Anim2_Fire51Grab
+6I50 C 0 A_Refire("Fire51Run")
+goto Fire51Grab
 6I50 C 0 A_FaceTarget
-6I50 C 0 A_JumpIfCloser(128,"Anim2_Fire51Grab")
-6I50 C 0 A_Refire("Anim2_Fire51Run")
-goto Anim2_Fire51Grab
-Anim2_Fire51Grab:
+6I50 C 0 A_JumpIfCloser(128,"Fire51Grab")
+6I50 C 0 A_Refire("Fire51Run")
+goto Fire51Grab
+Fire51Grab:
 6I50 X 1 A_GiveInventory("DecoyB_F_P51")
-6I50 C 0 A_JumpIfInventory("SuplexID",1,"Anim2_Fire51Suplex")
+6I50 C 0 A_JumpIfInventory("SuplexID",1,"Fire51Suplex")
 6I50 C 1 A_FireCustomMissile("Decoy_F_51",0,0,0,0,1,0)
-6I50 XCXC 1 A_JumpIfInventory("SuplexID",1,"Anim2_Fire51Suplex")
+6I50 XCXC 1 A_JumpIfInventory("SuplexID",1,"Fire51Suplex")
 6I50 C 2 A_TakeInventory("VivifyCycle2")
 6I50 CB 2
 6I50 BAAAA 4 A_GiveInventory("DecoyEnergyAmmo",2)
-goto MoveReturn
-Anim2_Fire51Suplex:
+goto Ready2
+Fire51Suplex:
 6I50 C 1 A_GiveInventory("Decoy_F_51Start_P")
 6I50 C 0 A_SetPitch(356)
 6I50 C 0 A_SetAngle(Args[1]+12)
-6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-12,Args[0],100)==0,"Anim2_Fire51Boom")
+6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-12,Args[0],100)==0,"Fire51Boom")
 6I50 C 0 A_SetPitch(352)
 6I50 C 0 A_SetAngle(Args[1]+24)
-6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-24,Args[0],100)==0,"Anim2_Fire51Boom")
+6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-24,Args[0],100)==0,"Fire51Boom")
 6I50 C 0 A_SetPitch(348)
 6I50 C 0 A_SetAngle(Args[1]+36)
-6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-35,Args[0],100)==0,"Anim2_Fire51Boom")
+6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-35,Args[0],100)==0,"Fire51Boom")
 6I50 C 0 A_SetPitch(344)
 6I50 C 0 A_SetAngle(Args[1]+48)
-6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-46,Args[0],100)==0,"Anim2_Fire51Boom")
+6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-46,Args[0],100)==0,"Fire51Boom")
 6I50 C 0 A_SetPitch(340)
 6I50 C 0 A_SetAngle(Args[1]+60)
-6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-57,Args[0],100)==0,"Anim2_Fire51Boom")
+6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-57,Args[0],100)==0,"Fire51Boom")
 6I50 C 0 A_SetPitch(336)
 6I50 C 0 A_SetAngle(Args[1]+72)
-6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-68,Args[0],100)==0,"Anim2_Fire51Boom")
+6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-68,Args[0],100)==0,"Fire51Boom")
 6I50 C 0 A_SetPitch(333)
 6I50 C 0 A_SetAngle(Args[1]+84)
-6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-79,Args[0],100)==0,"Anim2_Fire51Boom")
+6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-79,Args[0],100)==0,"Fire51Boom")
 6I50 C 0 A_SetPitch(330)
 6I50 C 0 A_SetAngle(Args[1]+103)
-6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-90,Args[0],100)==0,"Anim2_Fire51Boom")
+6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-90,Args[0],100)==0,"Fire51Boom")
 6I50 C 0 A_SetPitch(336)
 6I50 C 0 A_SetAngle(Args[1]+129)
-6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-67,Args[0]+128,100)==0,"Anim2_Fire51Boom")
+6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-67,Args[0]+128,100)==0,"Fire51Boom")
 6I50 C 0 A_SetPitch(343)
 6I50 C 0 A_SetAngle(Args[1]+155)
-6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-44,Args[0]+128,100)==0,"Anim2_Fire51Boom")
+6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-44,Args[0]+128,100)==0,"Fire51Boom")
 6I50 C 0 A_SetPitch(351)
 6I50 C 0 A_SetAngle(Args[1]+180)
-6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-22,Args[0]+128,100)==0,"Anim2_Fire51Boom")
+6I50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-22,Args[0]+128,100)==0,"Fire51Boom")
 6I50 C 0 A_SetPitch(0)
-Anim2_Fire51Boom:
+Fire51Boom:
 6I50 C 0 A_GiveInventory("Decoy_F_51Boom_P")
 6I50 X 2 //A_GiveInventory("VivifyDelay4",1)
 6I50 CX 2
 6I50 C 2 A_GiveInventory("Decoy_F_51End_P")
 6I50 BA 2
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_51_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 0 A_TakeInventory("SuplexID")
 6J50 CBAB 2
-Anim3_Fire51Run:
+Fire51Run:
 6J50 C 1 A_GiveInventory("Decoy_F_50Run_P0")
 6J50 C 0 A_JumpIfInventory("DecoyEnergyAmmo",1,1)
-goto Anim3_Fire51Grab
-6J50 C 0 A_JumpIfInventory("IsBot",1,"Anim3_Fire51Bot")
+goto Fire51Grab
+6J50 C 0 A_JumpIfInventory("IsBot",1,"Fire51Bot")
 6J50 C 0 A_Refire(1)
-goto Anim3_Fire51Grab
+goto Fire51Grab
 6J50 B 1 A_GiveInventory("Decoy_F_50Run_P1")
 6J50 B 0 A_JumpIfInventory("DecoyEnergyAmmo",1,1)
-goto Anim3_Fire51Grab
-6J50 B 0 A_Refire("Anim3_Fire51Run")
-goto Anim3_Fire51Grab
-Anim3_Fire51Bot:
+goto Fire51Grab
+6J50 B 0 A_Refire("Fire51Run")
+goto Fire51Grab
+Fire51Bot:
 6J50 C 0 A_Jump(64,2)
-6J50 C 0 A_Refire("Anim3_Fire51Run")
-goto Anim3_Fire51Grab
+6J50 C 0 A_Refire("Fire51Run")
+goto Fire51Grab
 6J50 C 0 A_FaceTarget
-6J50 C 0 A_JumpIfCloser(128,"Anim3_Fire51Grab")
-6J50 C 0 A_Refire("Anim3_Fire51Run")
-goto Anim3_Fire51Grab
-Anim3_Fire51Grab:
+6J50 C 0 A_JumpIfCloser(128,"Fire51Grab")
+6J50 C 0 A_Refire("Fire51Run")
+goto Fire51Grab
+Fire51Grab:
 6J50 X 1 A_GiveInventory("DecoyB_F_P51")
-6J50 C 0 A_JumpIfInventory("SuplexID",1,"Anim3_Fire51Suplex")
+6J50 C 0 A_JumpIfInventory("SuplexID",1,"Fire51Suplex")
 6J50 C 1 A_FireCustomMissile("Decoy_F_51",0,0,0,0,1,0)
-6J50 XCXC 1 A_JumpIfInventory("SuplexID",1,"Anim3_Fire51Suplex")
+6J50 XCXC 1 A_JumpIfInventory("SuplexID",1,"Fire51Suplex")
 6J50 C 2 A_TakeInventory("VivifyCycle2")
 6J50 CB 2
 6J50 BAAAA 4 A_GiveInventory("DecoyEnergyAmmo",2)
-goto MoveReturn
-Anim3_Fire51Suplex:
+goto Ready2
+Fire51Suplex:
 6J50 C 1 A_GiveInventory("Decoy_F_51Start_P")
 6J50 C 0 A_SetPitch(356)
 6J50 C 0 A_SetAngle(Args[1]+12)
-6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-12,Args[0],100)==0,"Anim3_Fire51Boom")
+6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-12,Args[0],100)==0,"Fire51Boom")
 6J50 C 0 A_SetPitch(352)
 6J50 C 0 A_SetAngle(Args[1]+24)
-6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-24,Args[0],100)==0,"Anim3_Fire51Boom")
+6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-24,Args[0],100)==0,"Fire51Boom")
 6J50 C 0 A_SetPitch(348)
 6J50 C 0 A_SetAngle(Args[1]+36)
-6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-35,Args[0],100)==0,"Anim3_Fire51Boom")
+6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-35,Args[0],100)==0,"Fire51Boom")
 6J50 C 0 A_SetPitch(344)
 6J50 C 0 A_SetAngle(Args[1]+48)
-6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-46,Args[0],100)==0,"Anim3_Fire51Boom")
+6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-46,Args[0],100)==0,"Fire51Boom")
 6J50 C 0 A_SetPitch(340)
 6J50 C 0 A_SetAngle(Args[1]+60)
-6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-57,Args[0],100)==0,"Anim3_Fire51Boom")
+6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-57,Args[0],100)==0,"Fire51Boom")
 6J50 C 0 A_SetPitch(336)
 6J50 C 0 A_SetAngle(Args[1]+72)
-6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-68,Args[0],100)==0,"Anim3_Fire51Boom")
+6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-68,Args[0],100)==0,"Fire51Boom")
 6J50 C 0 A_SetPitch(333)
 6J50 C 0 A_SetAngle(Args[1]+84)
-6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-79,Args[0],100)==0,"Anim3_Fire51Boom")
+6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-79,Args[0],100)==0,"Fire51Boom")
 6J50 C 0 A_SetPitch(330)
 6J50 C 0 A_SetAngle(Args[1]+103)
-6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-90,Args[0],100)==0,"Anim3_Fire51Boom")
+6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-90,Args[0],100)==0,"Fire51Boom")
 6J50 C 0 A_SetPitch(336)
 6J50 C 0 A_SetAngle(Args[1]+129)
-6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-67,Args[0]+128,100)==0,"Anim3_Fire51Boom")
+6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-67,Args[0]+128,100)==0,"Fire51Boom")
 6J50 C 0 A_SetPitch(343)
 6J50 C 0 A_SetAngle(Args[1]+155)
-6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-44,Args[0]+128,100)==0,"Anim3_Fire51Boom")
+6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-44,Args[0]+128,100)==0,"Fire51Boom")
 6J50 C 0 A_SetPitch(351)
 6J50 C 0 A_SetAngle(Args[1]+180)
-6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-22,Args[0]+128,100)==0,"Anim3_Fire51Boom")
+6J50 C 1 A_Jumpif(CallACS("uh_ZangiefGrab",360-22,Args[0]+128,100)==0,"Fire51Boom")
 6J50 C 0 A_SetPitch(0)
-Anim3_Fire51Boom:
+Fire51Boom:
 6J50 C 0 A_GiveInventory("Decoy_F_51Boom_P")
 6J50 X 2 //A_GiveInventory("VivifyDelay4",1)
 6J50 CX 2
 6J50 C 2 A_GiveInventory("Decoy_F_51End_P")
 6J50 BA 2
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_52_W : DecoyCopyMoveBase_W
+actor DecoyCopy_52_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
 6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
-Anim1_Fire52H1:
-6H50 A 0 A_JumpIfInventory("AmberChargeFlag",24,"Anim1_Fire52H2")
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+Fire52H1:
+6H50 A 0 A_JumpIfInventory("AmberChargeFlag",24,"Fire52H2")
 6H50 A 1 OffSet(2,34)//A_GiveInventory("AmberChargeFlag",1+CallACS("uh_checkrune", RUNE_RAGE))
-6H50 A 0 //A_ReFire("Anim1_Fire52H1")
-goto Anim1_Fire52A
-Anim1_Fire52H2:
-6H50 B 0 A_JumpIfInventory("AmberChargeFlag",0,"Anim1_Fire52H3")
+6H50 A 0 //A_ReFire("Fire52H1")
+goto Fire52A
+Fire52H2:
+6H50 B 0 A_JumpIfInventory("AmberChargeFlag",0,"Fire52H3")
 6H50 B 1 OffSet(4,37)A_GiveInventory("AmberChargeFlag",1+CallACS("uh_checkrune", RUNE_RAGE))
-6H50 B 0 A_ReFire("Anim1_Fire52H2")
-goto Anim1_Fire52A
-Anim1_Fire52H3:
+6H50 B 0 A_ReFire("Fire52H2")
+goto Fire52A
+Fire52H3:
 6H50 C 1 OffSet(6,40)ACS_NamedExecuteWithResult("core_weaponcolor", AMBER_DYE2,1)
 6H50 C 0 A_ReFire(1)
-goto Anim1_Fire52A
+goto Fire52A
 6H50 C 1 OffSet(6,41)ACS_NamedExecuteWithResult("core_weaponcolor", DECOYBOT_DYE,1)
-6H50 C 0 A_ReFire("Anim1_Fire52H3")
-goto Anim1_Fire52A
-Anim1_Fire52Bot:
+6H50 C 0 A_ReFire("Fire52H3")
+goto Fire52A
+Fire52Bot:
 6H50 C 0 A_GiveInventory("AmberChargeFlag",1+random(0,2)*35)
 6H50 C random(2,8)
-6H50 C 0 A_ReFire("Anim1_Fire52A")
-goto Anim1_Fire52A
-Anim1_Fire52A:
+6H50 C 0 A_ReFire("Fire52A")
+goto Fire52A
+Fire52A:
 6H50 C 1 OffSet(-12,20)A_GiveInventory("DecoyB_F_P52")
 6H50 C 1 OffSet(-39,23)
 6H50 C 1 OffSet(-82,32)
@@ -2801,15 +3531,15 @@ Anim1_Fire52A:
 6H50 B 1 OffSet(-256,69)
 6H50 B 1 OffSet(-304,86)
 TNT1 A 4
-TNT1 AAAAAAAAA 2 A_ReFire("Anim1_Fire52B")
+TNT1 AAAAAAAAA 2 A_ReFire("Fire52B")
 TNT1 A 0 A_TakeInventory("AmberChargeFlag")
-6H50 A 2 OffSet(-48,80)A_ReFire("Anim1")
-6H50 A 2 OffSet(-32,66)A_ReFire("Anim1")
-6H50 A 2 OffSet(-19,55)A_ReFire("Anim1")
-6H50 A 2 OffSet(-10,46)A_ReFire("Anim1")
-6H50 A 2 OffSet(-3,39)A_ReFire("Anim1")
-goto MoveReturn
-Anim1_Fire52B:
+6H50 A 2 OffSet(-48,80)A_ReFire("Fire")
+6H50 A 2 OffSet(-32,66)A_ReFire("Fire")
+6H50 A 2 OffSet(-19,55)A_ReFire("Fire")
+6H50 A 2 OffSet(-10,46)A_ReFire("Fire")
+6H50 A 2 OffSet(-3,39)A_ReFire("Fire")
+goto Ready2
+Fire52B:
 6H50 C 1 OffSet(-178,54)A_GiveInventory("DecoyB_F_P52B")
 6H50 C 1 OffSet(-128,45)
 6H50 C 1 OffSet(-79,34)A_TakeInventory("AmberChargeFlag")
@@ -2823,27 +3553,35 @@ TNT1 A 8
 6H50 A 2 OffSet(32,45)
 6H50 A 2 OffSet(16,39)
 6H50 A 2 OffSet(6,35)
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_52_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
 6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
-Anim2_Fire52H1:
-6I50 A 0 A_JumpIfInventory("AmberChargeFlag",24,"Anim2_Fire52H2")
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+Fire52H1:
+6I50 A 0 A_JumpIfInventory("AmberChargeFlag",24,"Fire52H2")
 6I50 A 1 OffSet(2,34)//A_GiveInventory("AmberChargeFlag",1+CallACS("uh_checkrune", RUNE_RAGE))
-6I50 A 0 //A_ReFire("Anim2_Fire52H1")
-goto Anim2_Fire52A
-Anim2_Fire52H2:
-6I50 B 0 A_JumpIfInventory("AmberChargeFlag",0,"Anim2_Fire52H3")
+6I50 A 0 //A_ReFire("Fire52H1")
+goto Fire52A
+Fire52H2:
+6I50 B 0 A_JumpIfInventory("AmberChargeFlag",0,"Fire52H3")
 6I50 B 1 OffSet(4,37)A_GiveInventory("AmberChargeFlag",1+CallACS("uh_checkrune", RUNE_RAGE))
-6I50 B 0 A_ReFire("Anim2_Fire52H2")
-goto Anim2_Fire52A
-Anim2_Fire52H3:
+6I50 B 0 A_ReFire("Fire52H2")
+goto Fire52A
+Fire52H3:
 6I50 C 1 OffSet(6,40)ACS_NamedExecuteWithResult("core_weaponcolor", AMBER_DYE2,1)
 6I50 C 0 A_ReFire(1)
-goto Anim2_Fire52A
+goto Fire52A
 6I50 C 1 OffSet(6,41)ACS_NamedExecuteWithResult("core_weaponcolor", DECOYBOT_DYE,1)
-6I50 C 0 A_ReFire("Anim2_Fire52H3")
-goto Anim2_Fire52A
-Anim2_Fire52A:
+6I50 C 0 A_ReFire("Fire52H3")
+goto Fire52A
+Fire52A:
 6I50 C 1 OffSet(-12,20)A_GiveInventory("DecoyB_F_P52")
 6I50 C 1 OffSet(-39,23)
 6I50 C 1 OffSet(-82,32)
@@ -2853,15 +3591,15 @@ Anim2_Fire52A:
 6I50 B 1 OffSet(-256,69)
 6I50 B 1 OffSet(-304,86)
 TNT1 A 4
-TNT1 AAAAAAAAA 2 A_ReFire("Anim2_Fire52B")
+TNT1 AAAAAAAAA 2 A_ReFire("Fire52B")
 TNT1 A 0 A_TakeInventory("AmberChargeFlag")
-6I50 A 2 OffSet(-48,80)A_ReFire("Anim2")
-6I50 A 2 OffSet(-32,66)A_ReFire("Anim2")
-6I50 A 2 OffSet(-19,55)A_ReFire("Anim2")
-6I50 A 2 OffSet(-10,46)A_ReFire("Anim2")
-6I50 A 2 OffSet(-3,39)A_ReFire("Anim2")
-goto MoveReturn
-Anim2_Fire52B:
+6I50 A 2 OffSet(-48,80)A_ReFire("Fire")
+6I50 A 2 OffSet(-32,66)A_ReFire("Fire")
+6I50 A 2 OffSet(-19,55)A_ReFire("Fire")
+6I50 A 2 OffSet(-10,46)A_ReFire("Fire")
+6I50 A 2 OffSet(-3,39)A_ReFire("Fire")
+goto Ready2
+Fire52B:
 6I50 C 1 OffSet(-178,54)A_GiveInventory("DecoyB_F_P52B")
 6I50 C 1 OffSet(-128,45)
 6I50 C 1 OffSet(-79,34)A_TakeInventory("AmberChargeFlag")
@@ -2875,27 +3613,35 @@ TNT1 A 8
 6I50 A 2 OffSet(32,45)
 6I50 A 2 OffSet(16,39)
 6I50 A 2 OffSet(6,35)
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_52_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
 6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
-Anim3_Fire52H1:
-6J50 A 0 A_JumpIfInventory("AmberChargeFlag",24,"Anim3_Fire52H2")
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+Fire52H1:
+6J50 A 0 A_JumpIfInventory("AmberChargeFlag",24,"Fire52H2")
 6J50 A 1 OffSet(2,34)//A_GiveInventory("AmberChargeFlag",1+CallACS("uh_checkrune", RUNE_RAGE))
-6J50 A 0 //A_ReFire("Anim3_Fire52H1")
-goto Anim3_Fire52A
-Anim3_Fire52H2:
-6J50 B 0 A_JumpIfInventory("AmberChargeFlag",0,"Anim3_Fire52H3")
+6J50 A 0 //A_ReFire("Fire52H1")
+goto Fire52A
+Fire52H2:
+6J50 B 0 A_JumpIfInventory("AmberChargeFlag",0,"Fire52H3")
 6J50 B 1 OffSet(4,37)A_GiveInventory("AmberChargeFlag",1+CallACS("uh_checkrune", RUNE_RAGE))
-6J50 B 0 A_ReFire("Anim3_Fire52H2")
-goto Anim3_Fire52A
-Anim3_Fire52H3:
+6J50 B 0 A_ReFire("Fire52H2")
+goto Fire52A
+Fire52H3:
 6J50 C 1 OffSet(6,40)ACS_NamedExecuteWithResult("core_weaponcolor", AMBER_DYE2,1)
 6J50 C 0 A_ReFire(1)
-goto Anim3_Fire52A
+goto Fire52A
 6J50 C 1 OffSet(6,41)ACS_NamedExecuteWithResult("core_weaponcolor", DECOYBOT_DYE,1)
-6J50 C 0 A_ReFire("Anim3_Fire52H3")
-goto Anim3_Fire52A
-Anim3_Fire52A:
+6J50 C 0 A_ReFire("Fire52H3")
+goto Fire52A
+Fire52A:
 6J50 C 1 OffSet(-12,20)A_GiveInventory("DecoyB_F_P52")
 6J50 C 1 OffSet(-39,23)
 6J50 C 1 OffSet(-82,32)
@@ -2905,15 +3651,15 @@ Anim3_Fire52A:
 6J50 B 1 OffSet(-256,69)
 6J50 B 1 OffSet(-304,86)
 TNT1 A 4
-TNT1 AAAAAAAAA 2 A_ReFire("Anim3_Fire52B")
+TNT1 AAAAAAAAA 2 A_ReFire("Fire52B")
 TNT1 A 0 A_TakeInventory("AmberChargeFlag")
-6J50 A 2 OffSet(-48,80)A_ReFire("Anim3")
-6J50 A 2 OffSet(-32,66)A_ReFire("Anim3")
-6J50 A 2 OffSet(-19,55)A_ReFire("Anim3")
-6J50 A 2 OffSet(-10,46)A_ReFire("Anim3")
-6J50 A 2 OffSet(-3,39)A_ReFire("Anim3")
-goto MoveReturn
-Anim3_Fire52B:
+6J50 A 2 OffSet(-48,80)A_ReFire("Fire")
+6J50 A 2 OffSet(-32,66)A_ReFire("Fire")
+6J50 A 2 OffSet(-19,55)A_ReFire("Fire")
+6J50 A 2 OffSet(-10,46)A_ReFire("Fire")
+6J50 A 2 OffSet(-3,39)A_ReFire("Fire")
+goto Ready2
+Fire52B:
 6J50 C 1 OffSet(-178,54)A_GiveInventory("DecoyB_F_P52B")
 6J50 C 1 OffSet(-128,45)
 6J50 C 1 OffSet(-79,34)A_TakeInventory("AmberChargeFlag")
@@ -2927,21 +3673,16 @@ TNT1 A 8
 6J50 A 2 OffSet(32,45)
 6J50 A 2 OffSet(16,39)
 6J50 A 2 OffSet(6,35)
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_53_W : DecoyCopyMoveBase_W
+actor DecoyCopy_53_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 0 A_GiveInventory("DecoyB_F_P53")
 //6H50 CCCCBBBAAAA 2
 6H50 N 2 Offset(84,-108)
@@ -2953,8 +3694,16 @@ Anim1:
 TNT1 A 6 Offset(-28,69)
 6H50 A 2 Offset(-28,69)
 6H50 A 2 Offset(-14,48)
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_53_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 0 A_GiveInventory("DecoyB_F_P53")
 6I50 N 2 Offset(84,-108)
 6I50 N 2 Offset(48,-83)
@@ -2965,8 +3714,16 @@ Anim2:
 TNT1 A 6 Offset(-28,69)
 6I50 A 2 Offset(-28,69)
 6I50 A 2 Offset(-14,48)
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_53_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 0 A_GiveInventory("DecoyB_F_P53")
 6J50 N 2 Offset(84,-108)
 6J50 N 2 Offset(48,-83)
@@ -2977,267 +3734,322 @@ Anim3:
 TNT1 A 6 Offset(-28,69)
 6J50 A 2 Offset(-28,69)
 6J50 A 2 Offset(-14,48)
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_54_W : DecoyCopyMoveBase_W
+actor DecoyCopy_54_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 2 A_GiveInventory("DecoyB_F_P54")
 6H50 BA 2
-6H50 AAA 2 A_ReFire("Anim1")
-goto MoveReturn
-Anim2:
-6I50 C 2 A_GiveInventory("DecoyB_F_P54")
-6I50 BA 2
-6I50 AAA 2 A_ReFire("Anim2")
-goto MoveReturn
-Anim3:
-6J50 C 2 A_GiveInventory("DecoyB_F_P54")
-6J50 BA 2
-6J50 AAA 2 A_ReFire("Anim3")
-goto MoveReturn
+6H50 AAA 2 A_ReFire("Fire")
+goto Ready2
 }
 }
 
-actor DecoyCopy_55_W : DecoyCopyMoveBase_W
+actor DecoyCopy_54_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 2 A_GiveInventory("DecoyB_F_P54")
+6I50 BA 2
+6I50 AAA 2 A_ReFire("Fire")
+goto Ready2
+}
+}
+
+actor DecoyCopy_54_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 2 A_GiveInventory("DecoyB_F_P54")
+6J50 BA 2
+6J50 AAA 2 A_ReFire("Fire")
+goto Ready2
+}
+}
+
+actor DecoyCopy_55_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 0 A_GiveInventory("DecoyB_F_P55")
 //6H50 CCBBAA 2
 6H50 N 2 Offset(84,-43)
 6H50 N 2 Offset(48,-14)
 6H50 O 2 Offset(12,25)
 6H50 O 2 Offset(-7,70)
-goto MoveReturn
-Anim2:
+goto Ready2
+}
+}
+
+actor DecoyCopy_55_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I50 C 0 A_GiveInventory("DecoyB_F_P55")
 6I50 N 2 Offset(84,-43)
 6I50 N 2 Offset(48,-14)
 6I50 O 2 Offset(12,25)
 6I50 O 2 Offset(-7,70)
-goto MoveReturn
-Anim3:
+goto Ready2
+}
+}
+
+actor DecoyCopy_55_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J50 C 0 A_GiveInventory("DecoyB_F_P55")
 6J50 N 2 Offset(84,-43)
 6J50 N 2 Offset(48,-14)
 6J50 O 2 Offset(12,25)
 6J50 O 2 Offset(-7,70)
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_56_W : DecoyCopyMoveBase_W
+actor DecoyCopy_56_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H50 C 5 A_GiveInventory("DecoyB_F_P56")
 6H50 B 5
 6H50 A 4
-goto MoveReturn
-Anim2:
-6I50 C 5 A_GiveInventory("DecoyB_F_P56")
-6I50 B 5
-6I50 A 4
-goto MoveReturn
-Anim3:
-6J50 C 5 A_GiveInventory("DecoyB_F_P56")
-6J50 B 5
-6J50 A 4
-goto MoveReturn
+goto Ready2
 }
 }
 
-actor DecoyCopy_57_W : DecoyCopyMoveBase_W
+actor DecoyCopy_56_W2 : DecoyCopyHeldBase_W2
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
-6H50 B 2 A_JumpIfInventory("IsBot",1,"Anim1_Fire57Bot")
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 C 5 A_GiveInventory("DecoyB_F_P56")
+6I50 B 5
+6I50 A 4
+goto Ready2
+}
+}
+
+actor DecoyCopy_56_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 C 5 A_GiveInventory("DecoyB_F_P56")
+6J50 B 5
+6J50 A 4
+goto Ready2
+}
+}
+
+actor DecoyCopy_57_W1 : DecoyCopyHeldBase_W1
+{
+States
+{
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6H50 B 2 A_JumpIfInventory("IsBot",1,"Fire57Bot")
 6H50 B 0 A_ReFire(1)
-Goto Anim1_Fire57Det
+Goto Fire57Det
 6H50 B 2 A_RailWait
 6H50 B 0 A_ReFire(1)
-Goto Anim1_Fire57Det
+Goto Fire57Det
 6H50 B 2 A_RailWait
-6H50 B 0 A_ReFire("Anim1_Fire57Toss")
-Goto Anim1_Fire57Det
-Anim1_Fire57Toss:
+6H50 B 0 A_ReFire("Fire57Toss")
+Goto Fire57Det
+Fire57Toss:
 6H50 C 3
 6H50 B 6 A_GiveInventory("DecoyB_F_P57")
 6H50 A 3
 6H50 A 2 A_ReFire(2)
 6H50 A 8
-goto MoveReturn
-6H50 A 8 A_JumpIfInventory("DecoyEnergyAmmo",20-10*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Anim1_Fire57Toss")
-goto MoveReturn
-Anim1_Fire57Det:
+goto Ready2
+6H50 A 8 A_JumpIfInventory("DecoyEnergyAmmo",20-10*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Fire57Toss")
+goto Ready2
+Fire57Det:
 6H50 X 1 offset(-2,36)A_GiveInventory("DecoyB_F_P57D",1)
-goto MoveReturn
-Anim1_Fire57Bot:
+goto Ready2
+Fire57Bot:
 6H50 C 3 A_GiveInventory("DecoyB_F_P57")
 6H50 B 6
 6H50 A 5
 6H50 A 10 A_ReFire(1)
-goto MoveReturn
-6H50 A 10 A_Jump(64,"Anim1_Fire57Det")
-goto MoveReturn
-Anim2:
-6I50 B 2 A_JumpIfInventory("IsBot",1,"Anim2_Fire57Bot")
+goto Ready2
+6H50 A 10 A_Jump(64,"Fire57Det")
+goto Ready2
+}
+}
+
+actor DecoyCopy_57_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6I50 B 2 A_JumpIfInventory("IsBot",1,"Fire57Bot")
 6I50 B 0 A_ReFire(1)
-Goto Anim2_Fire57Det
+Goto Fire57Det
 6I50 B 2 A_RailWait
 6I50 B 0 A_ReFire(1)
-Goto Anim2_Fire57Det
+Goto Fire57Det
 6I50 B 2 A_RailWait
-6I50 B 0 A_ReFire("Anim2_Fire57Toss")
-Goto Anim2_Fire57Det
-Anim2_Fire57Toss:
+6I50 B 0 A_ReFire("Fire57Toss")
+Goto Fire57Det
+Fire57Toss:
 6I50 C 3
 6I50 B 6 A_GiveInventory("DecoyB_F_P57")
 6I50 A 3
 6I50 A 2 A_ReFire(2)
 6I50 A 8
-goto MoveReturn
-6I50 A 8 A_JumpIfInventory("DecoyEnergyAmmo",20-10*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Anim2_Fire57Toss")
-goto MoveReturn
-Anim2_Fire57Det:
+goto Ready2
+6I50 A 8 A_JumpIfInventory("DecoyEnergyAmmo",20-10*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Fire57Toss")
+goto Ready2
+Fire57Det:
 6I50 X 1 offset(-2,36)A_GiveInventory("DecoyB_F_P57D",1)
-goto MoveReturn
-Anim2_Fire57Bot:
+goto Ready2
+Fire57Bot:
 6I50 C 3 A_GiveInventory("DecoyB_F_P57")
 6I50 B 6
 6I50 A 5
 6I50 A 10 A_ReFire(1)
-goto MoveReturn
-6I50 A 10 A_Jump(64,"Anim2_Fire57Det")
-goto MoveReturn
-Anim3:
-6J50 B 2 A_JumpIfInventory("IsBot",1,"Anim3_Fire57Bot")
+goto Ready2
+6I50 A 10 A_Jump(64,"Fire57Det")
+goto Ready2
+}
+}
+
+actor DecoyCopy_57_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
+6J50 B 2 A_JumpIfInventory("IsBot",1,"Fire57Bot")
 6J50 B 0 A_ReFire(1)
-Goto Anim3_Fire57Det
+Goto Fire57Det
 6J50 B 2 A_RailWait
 6J50 B 0 A_ReFire(1)
-Goto Anim3_Fire57Det
+Goto Fire57Det
 6J50 B 2 A_RailWait
-6J50 B 0 A_ReFire("Anim3_Fire57Toss")
-Goto Anim3_Fire57Det
-Anim3_Fire57Toss:
+6J50 B 0 A_ReFire("Fire57Toss")
+Goto Fire57Det
+Fire57Toss:
 6J50 C 3
 6J50 B 6 A_GiveInventory("DecoyB_F_P57")
 6J50 A 3
 6J50 A 2 A_ReFire(2)
 6J50 A 8
-goto MoveReturn
-6J50 A 8 A_JumpIfInventory("DecoyEnergyAmmo",20-10*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Anim3_Fire57Toss")
-goto MoveReturn
-Anim3_Fire57Det:
+goto Ready2
+6J50 A 8 A_JumpIfInventory("DecoyEnergyAmmo",20-10*CallACS("uh_checkrune", RUNE_ENDLESSAMMO),"Fire57Toss")
+goto Ready2
+Fire57Det:
 6J50 X 1 offset(-2,36)A_GiveInventory("DecoyB_F_P57D",1)
-goto MoveReturn
-Anim3_Fire57Bot:
+goto Ready2
+Fire57Bot:
 6J50 C 3 A_GiveInventory("DecoyB_F_P57")
 6J50 B 6
 6J50 A 5
 6J50 A 10 A_ReFire(1)
-goto MoveReturn
-6J50 A 10 A_Jump(64,"Anim3_Fire57Det")
-goto MoveReturn
+goto Ready2
+6J50 A 10 A_Jump(64,"Fire57Det")
+goto Ready2
 }
 }
 
-actor DecoyCopy_58_W : DecoyCopyMoveBase_W
+actor DecoyCopy_58_W1 : DecoyCopyHeldBase_W1
 {
 States
 {
-Select:
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveColor")
-	TNT1 A 0 A_WeaponReady(14)
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 5, "Anim3")
-	TNT1 A 0 A_JumpIfInventory("UH_MoveHud_F", 4, "Anim2")
-	goto Anim1
-Anim1:
+Fire:
+6H50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6H58 Y 0 A_GiveInventory("Decoy_F_58_P1")
 6H58 Y 0 A_ReFire(1)
 6H58 Y 3
 6H58 Y 2 A_TakeInventory("KickChampFlag")
 6H58 Z 1 A_GiveInventory("Decoy_F_58_P2")
-goto Anim1_Fire58Kick//+2
-Anim1_Fire58Kick:
+goto Fire58Kick//+2
+Fire58Kick:
 6H58 Z 1 A_GiveInventory("DecoyB_F_P58")
-6H58 Z 0 A_JumpIfInventory("KickChampFlag",1,"Anim1_Fire58Hit")
-6H58 Z 0 A_JumpIf(CallACS("core_CheckFooting_ThruPlayer"), "Anim1_Fire58Land")
+6H58 Z 0 A_JumpIfInventory("KickChampFlag",1,"Fire58Hit")
+6H58 Z 0 A_JumpIf(CallACS("core_CheckFooting_ThruPlayer"), "Fire58Land")
 loop
-Anim1_Fire58Land:
+Fire58Land:
 6H58 Y 4 A_GiveInventory("Decoy_F_58_P3")
-goto MoveReturn
-Anim1_Fire58Hit:
+goto Ready2
+Fire58Hit:
 6H58 Y 8 A_GiveInventory("KickChamp_AltRecoil_P")
-goto Anim1_Fire58Land
-Anim2:
+goto Fire58Land
+}
+}
+
+actor DecoyCopy_58_W2 : DecoyCopyHeldBase_W2
+{
+States
+{
+Fire:
+6I50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6I58 Y 0 A_GiveInventory("Decoy_F_58_P1")
 6I58 Y 0 A_ReFire(1)
 6I58 Y 3
 6I58 Y 2 A_TakeInventory("KickChampFlag")
 6I58 Z 1 A_GiveInventory("Decoy_F_58_P2")
-goto Anim2_Fire58Kick
-Anim2_Fire58Kick:
+goto Fire58Kick
+Fire58Kick:
 6I58 Z 1 A_GiveInventory("DecoyB_F_P58")
-6I58 Z 0 A_JumpIfInventory("KickChampFlag",1,"Anim2_Fire58Hit")
-6I58 Z 0 A_JumpIf(CallACS("core_CheckFooting_ThruPlayer"), "Anim2_Fire58Land")
+6I58 Z 0 A_JumpIfInventory("KickChampFlag",1,"Fire58Hit")
+6I58 Z 0 A_JumpIf(CallACS("core_CheckFooting_ThruPlayer"), "Fire58Land")
 loop
-Anim2_Fire58Land:
+Fire58Land:
 6I58 Y 4 A_GiveInventory("Decoy_F_58_P3")
-goto MoveReturn
-Anim2_Fire58Hit:
+goto Ready2
+Fire58Hit:
 6I58 Y 8 A_GiveInventory("KickChamp_AltRecoil_P")
-goto Anim2_Fire58Land
-Anim3:
+goto Fire58Land
+}
+}
+
+actor DecoyCopy_58_W3 : DecoyCopyHeldBase_W3
+{
+States
+{
+Fire:
+6J50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
 6J58 Y 0 A_GiveInventory("Decoy_F_58_P1")
 6J58 Y 0 A_ReFire(1)
 6J58 Y 3
 6J58 Y 2 A_TakeInventory("KickChampFlag")
 6J58 Z 1 A_GiveInventory("Decoy_F_58_P2")
-goto Anim3_Fire58Kick
-Anim3_Fire58Kick:
+goto Fire58Kick
+Fire58Kick:
 6J58 Z 1 A_GiveInventory("DecoyB_F_P58")
-6J58 Z 0 A_JumpIfInventory("KickChampFlag",1,"Anim3_Fire58Hit")
-6J58 Z 0 A_JumpIf(CallACS("core_CheckFooting_ThruPlayer"), "Anim3_Fire58Land")
+6J58 Z 0 A_JumpIfInventory("KickChampFlag",1,"Fire58Hit")
+6J58 Z 0 A_JumpIf(CallACS("core_CheckFooting_ThruPlayer"), "Fire58Land")
 loop
-Anim3_Fire58Land:
+Fire58Land:
 6J58 Y 4 A_GiveInventory("Decoy_F_58_P3")
-goto MoveReturn
-Anim3_Fire58Hit:
+goto Ready2
+Fire58Hit:
 6J58 Y 8 A_GiveInventory("KickChamp_AltRecoil_P")
-goto Anim3_Fire58Land
+goto Fire58Land
 }
 }

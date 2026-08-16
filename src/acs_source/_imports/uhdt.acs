@@ -2143,8 +2143,13 @@ int uh_shinyQwantMoveWeight[UH_MAX_SHINYMOVES];
 str uh_shinyNegaSlotWep[UH_SHINYNEGA_CYCLE_RESET][3];
 
 // DecoyBot copy slots (index == slot). Vanilla 0..58 registered first; addon 59+.
+// Table stores stem only (e.g. "DecoyCopy_00"); Give appends _W1/_W2/_W3.
 int uh_decoyMoveCount = 0;
 str uh_decoyMoveWep[UH_MAX_SHINYMOVES];
+// Per-player currently held DecoyCopy_*_W1/_W2/_W3 actor names ("" = parents).
+str uh_decoyHeld1[64];
+str uh_decoyHeld2[64];
+str uh_decoyHeld3[64];
 
 // Shiny MegaMan flat fire-actor pools (M1 = Fire, M2 = AltFire).
 // TRUE registers the same actor into both with the same weight.
@@ -2190,22 +2195,46 @@ function int DefineShinyNegaSlotWepCore(int slot, str wepL1, str wepL2, str wepL
 	return slot;
 }
 
+// Strip trailing _W / _W1.._W9 so registration accepts DecoyCopy_00_W or _W1.
+function str UH_DecoyMoveStem(str wepActor)
+{
+	int len = StrLen(wepActor);
+	int d;
+	if (len < 2)
+		return wepActor;
+	if (len >= 4
+		&& GetChar(wepActor, len - 3) == '_'
+		&& GetChar(wepActor, len - 2) == 'W')
+	{
+		d = GetChar(wepActor, len - 1);
+		if (d >= '1' && d <= '9')
+			return StrLeft(wepActor, len - 3);
+	}
+	if (GetChar(wepActor, len - 2) == '_' && GetChar(wepActor, len - 1) == 'W')
+		return StrLeft(wepActor, len - 2);
+	return wepActor;
+}
+
 // DecoyBot: register a copy slot. Slot is auto-assigned as the next index
-// (vanilla 0..58 first, then addon 59+). Same (wepActor) again returns the
-// existing slot index.
+// (vanilla 0..58 first, then addon 59+). Same stem again returns the
+// existing slot index. Accepts stem or *_W / *_W1..*_W3.
 function int DefineDecoyBotMoveWepCore(str wepActor)
 {
 	int i;
+	str stem;
 	if (StrCmp(wepActor, "") == 0)
+		return UHCOPY_FAIL;
+	stem = UH_DecoyMoveStem(wepActor);
+	if (StrCmp(stem, "") == 0)
 		return UHCOPY_FAIL;
 	for (i = 0; i < uh_decoyMoveCount; i++)
 	{
-		if (StrICmp(uh_decoyMoveWep[i], wepActor) == 0)
+		if (StrICmp(uh_decoyMoveWep[i], stem) == 0)
 			return i;
 	}
 	if (uh_decoyMoveCount >= UH_MAX_SHINYMOVES)
 		return UHCOPY_FAIL;
-	uh_decoyMoveWep[uh_decoyMoveCount] = wepActor;
+	uh_decoyMoveWep[uh_decoyMoveCount] = stem;
 	uh_decoyMoveCount++;
 	return uh_decoyMoveCount - 1;
 }

@@ -994,48 +994,134 @@ script "uh_ShinyMoveReturn_cs" (void) CLIENTSIDE
 	SetWeapon(ret);
 }
 
-// DecoyBot copy slot dispatch. which: 1 = DecoyBot_W, 2 = _W2, 3 = _W3.
+// Legacy M1 SetWeapon dispatch — unused; held copies fire in place.
 script "uh_DecoyBotCustomFire" (int which)
 {
+	SetResultValue(0);
+}
+
+// Which weapon slot is currently ready (1/2/3) from GetWeapon() suffix.
+function int uh_DecoyHeldSlotFromWeapon(str wep)
+{
+	int len = StrLen(wep);
+	int d;
+	if (len >= 4
+		&& GetChar(wep, len - 3) == '_'
+		&& GetChar(wep, len - 2) == 'W')
+	{
+		d = GetChar(wep, len - 1);
+		if (d == '2')
+			return 2;
+		if (d == '3')
+			return 3;
+		if (d == '1')
+			return 1;
+	}
+	if (StrICmp(wep, "DecoyBot_W2") == 0)
+		return 2;
+	if (StrICmp(wep, "DecoyBot_W3") == 0)
+		return 3;
+	return 1;
+}
+
+// After M2 roll: Give three new held copies, SetWeapon current slot, Take old.
+// Always strip leftover DecoyBot_W* parents (ScriptBar-only; never held).
+script "uh_DecoyBotApplyHeldWeps" (void)
+{
 	int pn = PlayerNumber();
+	int s1;
+	int s2;
+	int s3;
 	int slot;
-	str flag;
-	str wep;
+	str stem1;
+	str stem2;
+	str stem3;
+	str new1;
+	str new2;
+	str new3;
+	str old1;
+	str old2;
+	str old3;
+	str cur;
+	str setto;
 
 	if (pn < 0)
-	{
-		SetResultValue(0);
 		terminate;
-	}
-	flag = "DecoyBotFlag1";
-	if (which == 2)
-		flag = "DecoyBotFlag2";
-	else if (which == 3)
-		flag = "DecoyBotFlag3";
 
-	slot = CheckInventory(flag);
-	if (slot < 0 || slot >= uh_decoyMoveCount)
+	// Before OPEN fills the table, still bootstrap vanilla 00 so spawn is not unarmed.
+	if (uh_decoyMoveCount <= 0)
 	{
-		SetResultValue(0);
-		terminate;
-	}
-	wep = uh_decoyMoveWep[slot];
-	if (StrCmp(wep, "") == 0)
-	{
-		SetResultValue(0);
+		GiveInventory("DecoyCopy_00_W1", 1);
+		GiveInventory("DecoyCopy_00_W2", 1);
+		GiveInventory("DecoyCopy_00_W3", 1);
+		GiveInventory("NoWeaponSwitchSound", 1);
+		GiveInventory("UH_SilentSelect_F", 1);
+		SetWeapon("DecoyCopy_00_W1");
+		TakeInventory("DecoyBot_W", 1);
+		TakeInventory("DecoyBot_W2", 1);
+		TakeInventory("DecoyBot_W3", 1);
+		uh_decoyHeld1[pn] = "DecoyCopy_00_W1";
+		uh_decoyHeld2[pn] = "DecoyCopy_00_W2";
+		uh_decoyHeld3[pn] = "DecoyCopy_00_W3";
 		terminate;
 	}
 
-	uh_moveReturn[pn] = GetWeapon();
-	uh_moveCurrent[pn] = wep;
-	uh_negaChargeLvl[pn] = 0;
-	uh_decoyWhich[pn] = which;
-	// which 1..3 → UH_MoveHud_F 3..5 (DecoyBot_W / _W2 / _W3)
-	SetInventory("UH_MoveHud_F", which + 2);
+	s1 = CheckInventory("DecoyBotFlag1");
+	s2 = CheckInventory("DecoyBotFlag2");
+	s3 = CheckInventory("DecoyBotFlag3");
+	if (s1 < 0 || s1 >= uh_decoyMoveCount)
+		terminate;
+	if (s2 < 0 || s2 >= uh_decoyMoveCount)
+		terminate;
+	if (s3 < 0 || s3 >= uh_decoyMoveCount)
+		terminate;
+
+	stem1 = uh_decoyMoveWep[s1];
+	stem2 = uh_decoyMoveWep[s2];
+	stem3 = uh_decoyMoveWep[s3];
+	if (StrCmp(stem1, "") == 0 || StrCmp(stem2, "") == 0 || StrCmp(stem3, "") == 0)
+		terminate;
+
+	new1 = StrParam(s: stem1, s: "_W1");
+	new2 = StrParam(s: stem2, s: "_W2");
+	new3 = StrParam(s: stem3, s: "_W3");
+
+	old1 = uh_decoyHeld1[pn];
+	old2 = uh_decoyHeld2[pn];
+	old3 = uh_decoyHeld3[pn];
+
+	cur = GetWeapon();
+	slot = uh_DecoyHeldSlotFromWeapon(cur);
+	if (slot == 2)
+		setto = new2;
+	else if (slot == 3)
+		setto = new3;
+	else
+		setto = new1;
+
+	GiveInventory(new1, 1);
+	GiveInventory(new2, 1);
+	GiveInventory(new3, 1);
+
 	GiveInventory("NoWeaponSwitchSound", 1);
-	GiveInventory(wep, 1);
-	SetWeapon(wep);
-	SetResultValue(1);
+	GiveInventory("UH_SilentSelect_F", 1);
+	SetWeapon(setto);
+
+	if (StrCmp(old1, "") != 0 && StrICmp(old1, new1) != 0)
+		TakeInventory(old1, 1);
+	if (StrCmp(old2, "") != 0 && StrICmp(old2, new2) != 0)
+		TakeInventory(old2, 1);
+	if (StrCmp(old3, "") != 0 && StrICmp(old3, new3) != 0)
+		TakeInventory(old3, 1);
+
+	// Parents are never valid held guns (ScriptBar / bar remap only).
+	TakeInventory("DecoyBot_W", 1);
+	TakeInventory("DecoyBot_W2", 1);
+	TakeInventory("DecoyBot_W3", 1);
+
+	uh_decoyHeld1[pn] = new1;
+	uh_decoyHeld2[pn] = new2;
+	uh_decoyHeld3[pn] = new3;
 }
 
 // For Decoy move Select: which launcher weapon (1..3).
