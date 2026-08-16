@@ -888,6 +888,7 @@ script "uh_QwantShinyMoveRoll" (void)
 	uh_moveCurrent[pn] = wep;
 	uh_negaChargeLvl[pn] = 0;
 	uh_decoyWhich[pn] = 0;
+	GiveInventory("NoWeaponSwitchSound", 1);
 	GiveInventory(wep, 1);
 	SetWeapon(wep);
 	SetResultValue(1);
@@ -937,6 +938,7 @@ script "uh_ShinyNegaCustomFire" (int lvl)
 	uh_moveCurrent[pn] = wep;
 	uh_negaChargeLvl[pn] = lvl;
 	uh_decoyWhich[pn] = 0;
+	GiveInventory("NoWeaponSwitchSound", 1);
 	GiveInventory(wep, 1);
 	SetWeapon(wep);
 	SetResultValue(1);
@@ -991,6 +993,7 @@ script "uh_DecoyBotCustomFire" (int which)
 	uh_moveCurrent[pn] = wep;
 	uh_negaChargeLvl[pn] = 0;
 	uh_decoyWhich[pn] = which;
+	GiveInventory("NoWeaponSwitchSound", 1);
 	GiveInventory(wep, 1);
 	SetWeapon(wep);
 	SetResultValue(1);
@@ -1034,11 +1037,16 @@ script "uh_ShinyMoveReturn" (void)
 	// switched manually mid-move; then the record is simply cleared).
 	if (StrICmp(GetWeapon(), cur) != 0)
 		terminate;
+	// Mute ACS menu/cursor (and Decoy gravitywarn) on parent Ready, and
+	// mark Select to skip SelectSwap raise + Ready color frame.
+	GiveInventory("NoWeaponSwitchSound", 1);
+	GiveInventory("UH_SilentSelect_F", 1);
 	SetWeapon(ret);
 	TakeInventory(cur, 1);
 }
 
 // Team-color the move weapon by the player's shiny class. Call from Select.
+// CLRF_SILENT (=1) skips ACS switch noise; StopSound kills engine UpSound.
 script "uh_ShinyMoveColor" (void)
 {
 	str cls = GetActorClass(0);
@@ -1049,6 +1057,8 @@ script "uh_ShinyMoveColor" (void)
 		dye = UH_MOVE_DYE_NEGA;
 	else if (StrICmp(cls, "DecoyBot") == 0 || StrICmp(cls, "DecoyBotShiny") == 0)
 		dye = UH_MOVE_DYE_DECOY;
+	StopSound(0, CHAN_WEAPON);
+	// 1 = CLRF_SILENT (8BDMDEFS); mute ACS menu/cursor switch noise
 	ACS_NamedExecuteWithResult("core_weaponcolor", dye, 1);
 }
 
