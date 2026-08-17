@@ -10,7 +10,8 @@
 //   ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, toPhase) // 2..8 shared multi-boss break
 //
 // Multi-Clownpiece: one shared HUD/timer. Start is idempotent per phase.
-// Life break broadcasts ForceSwap so all surviving Clownpieces advance together.
+// Life break / timer timeout broadcasts ForceSwap so all surviving Clownpieces advance together.
+// W8 timeout kills all Clownpieces (no next phase).
 #define UH_SC_HUD_NAME 1720
 #define UH_SC_HUD_TIMER 1721
 #define UH_SC_HUD_RESULT 1722
@@ -135,6 +136,19 @@ script "uh_ClownpieceBroadcastPhase" (int toPhase)
 	}
 }
 
+// After Give/Take of Clownpiece_Wn: A_SelectWeapon same-tic as Take often leaves
+// ReadyWeapon empty (timeout ForceSwap). Delay 1 then SetWeapon.
+script "uh_ClownpieceSelectW" (int phase)
+{
+	Delay(1);
+	if (phase < 1 || phase > UH_SC_PHASE_MAX)
+		terminate;
+	str wep = StrParam(s: "Clownpiece_W", i: phase);
+	if (!CheckInventory(wep))
+		terminate;
+	SetWeapon(wep);
+}
+
 script "uh_SpellCardTimer" (int myGen)
 {
 	while (uh_SpellCardActive && uh_SpellCardTimeLeft > 0)
@@ -155,7 +169,7 @@ script "uh_SpellCardTimer" (int myGen)
 		uh_SpellCardTimeLeft--;
 	}
 
-	// Only the current generation may announce timeout
+	// Only the current generation may announce timeout / advance
 	if (uh_SpellCardActive && myGen == uh_SpellCardTimerGen)
 	{
 		uh_SpellCardActive = false;
@@ -163,6 +177,26 @@ script "uh_SpellCardTimer" (int myGen)
 		uh_SpellCardAnnounceResult("Time Out", CR_DARKGRAY);
 		uh_SpellCardBroken = false;
 		uh_SpellCardTimeLeft = 0;
+
+		// Advance shared phase: 1..7 -> ForceSwap next Wn; W8 -> die
+		if (uh_SpellCardPhase >= UH_SC_PHASE_MAX)
+			ACS_NamedExecuteAlways("uh_ClownpieceTimeoutKill", 0);
+		else
+			ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, uh_SpellCardPhase + 1);
+	}
+}
+
+// W8 (or desynced) timeout: strip ExtraLife/Buddha and kill every living Clownpiece.
+script "uh_ClownpieceTimeoutKill" (void)
+{
+	int tid;
+	for (tid = 1000; tid <= 1063; tid++)
+	{
+		if (!PlayerInGame(tid - 1000))
+			continue;
+		if (CheckActorInventory(tid, "IsDead"))
+			continue;
+		GiveActorInventory(tid, "ClownpieceTimeoutKill_P", 1);
 	}
 }
 
