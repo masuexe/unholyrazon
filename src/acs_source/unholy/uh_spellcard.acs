@@ -7,7 +7,10 @@
 //   ACS_NamedExecuteAlways("uh_SpellCardFail", 0)      // fail -> Bonus Failed
 //   ACS_NamedExecuteAlways("uh_SpellCardBreak", 0)     // mark broken (Phase 3 death hook)
 //   ACS_NamedExecuteAlways("uh_SpellCardStop", 0)      // clear HUD / stop without announce
-
+//   ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, toPhase) // 2..8 shared multi-boss break
+//
+// Multi-Clownpiece: one shared HUD/timer. Start is idempotent per phase.
+// Life break broadcasts ForceSwap so all surviving Clownpieces advance together.
 #define UH_SC_HUD_NAME 1720
 #define UH_SC_HUD_TIMER 1721
 #define UH_SC_HUD_RESULT 1722
@@ -81,12 +84,21 @@ function void uh_SpellCardEndQuiet(void)
 }
 
 // phaseId 1..8, timeLimitSec >= 1
+// Multi-Clownpiece: shared single HUD/timer. Same phase while Active = no-op.
+// Only phaseId > uh_SpellCardPhase (or first start) restarts the timer.
 script "uh_SpellCardStart" (int phaseId, int timeLimitSec)
 {
 	if (phaseId < 1 || phaseId > UH_SC_PHASE_MAX)
 		phaseId = 1;
 	if (timeLimitSec < 1)
 		timeLimitSec = 1;
+
+	// Already showing this phase — other Clownpieces Morph/SpellBreak must not reset
+	if (uh_SpellCardActive && phaseId == uh_SpellCardPhase)
+		terminate;
+	// Late Start for an older phase while a newer one is current
+	if (phaseId < uh_SpellCardPhase)
+		terminate;
 
 	// NamedTerminate is unreliable for Always timers; gen guard stops stale ticks
 	uh_SpellCardTimerGen++;
@@ -101,6 +113,26 @@ script "uh_SpellCardStart" (int phaseId, int timeLimitSec)
 
 	uh_SpellCardDrawHud(uh_SpellCardTimeLeft, uh_SpellCardPhase);
 	ACS_NamedExecuteAlways("uh_SpellCardTimer", 0, uh_SpellCardTimerGen);
+}
+
+// Force all surviving Clownpieces still on phase (toPhase-1) onto Clownpiece_WtoPhase.
+// Caller already swapped; those with the new weapon are skipped.
+// toPhase 2..8. W8 true death never calls this (no ExtraLife → no DoSwapGo).
+script "uh_ClownpieceBroadcastPhase" (int toPhase)
+{
+	if (toPhase < 2 || toPhase > UH_SC_PHASE_MAX)
+		terminate;
+
+	str swapP = StrParam(s: "ClownpieceForceSwap_W", i: toPhase, s: "_P");
+	int tid;
+	for (tid = 1000; tid <= 1063; tid++)
+	{
+		if (!PlayerInGame(tid - 1000))
+			continue;
+		if (CheckActorInventory(tid, "IsDead"))
+			continue;
+		GiveActorInventory(tid, swapP, 1);
+	}
 }
 
 script "uh_SpellCardTimer" (int myGen)
