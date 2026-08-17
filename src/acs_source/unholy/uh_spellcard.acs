@@ -1,5 +1,6 @@
 // Spell card timer + capture bonus (LMS).
-// Normal: clear phase in time, no survivor deaths → bonus.
+// Normal: clear spell-card phase in time, no survivor deaths → bonus.
+// Nonspells (1/3/5): timer only — no Bonus!/Failed, no SurvivorBoxItems_P.
 // Survival 时符 (W2/W8): boss invuln until timer ends; timeout + no deaths → bonus.
 //
 // DECORATE / CallACS API:
@@ -52,6 +53,12 @@ function str uh_SpellCardNameOf(int phaseId)
 function bool uh_SpellCardShowsName(int phaseId)
 {
 	return (phaseId == 2 || phaseId == 4 || phaseId == 6 || phaseId == 7 || phaseId == 8);
+}
+
+// Spell-card bonus stages only — nonspells 1/3/5 never announce or reward
+function bool uh_SpellCardIsBonusPhase(int phaseId)
+{
+	return uh_SpellCardShowsName(phaseId);
 }
 
 // LoLK survival spells (时符): W2 Eclipse of Hell, W8 Apollo Hoax
@@ -148,10 +155,20 @@ function void uh_ClownpieceClearSurvInv(void)
 }
 
 // mode: FAIL / DAMAGE (need timeLeft>0) / SURVIVAL timeout (!Broken, ignore time)
+// Nonspells (1/3/5): quiet stop only — no Bonus!/Failed announce, no boxes.
 function void uh_SpellCardTryCaptureOrFail(int mode)
 {
 	if (!uh_SpellCardActive && !uh_SpellCardBroken)
 		return;
+
+	if (!uh_SpellCardIsBonusPhase(uh_SpellCardPhase))
+	{
+		uh_SpellCardStopTimer();
+		uh_SpellCardBroken = false;
+		if (uh_SpellCardPhase >= UH_SC_PHASE_MAX)
+			uh_SpellCardClearHud();
+		return;
+	}
 
 	if (mode == UH_SC_RESOLVE_SURVIVAL && uh_SpellCardActive && !uh_SpellCardBroken)
 	{
