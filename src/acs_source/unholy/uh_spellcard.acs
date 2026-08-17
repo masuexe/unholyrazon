@@ -1,13 +1,13 @@
 // Spell card timer + capture bonus (LMS).
-// Capture: clear phase in time with no survivor deaths → SurvivorBoxItems_P each survivor.
-// Fail: survivor death during phase, or timeout / phase end without capture.
+// Normal: clear phase in time, no survivor deaths → bonus.
+// Survival 时符 (W2/W8): boss invuln until timer ends; timeout + no deaths → bonus.
 //
 // DECORATE / CallACS API:
 //   ACS_NamedExecuteAlways("uh_SpellCardStart", 0, phaseId, timeLimitSec)
 //   ACS_NamedExecuteAlways("uh_SpellCardCapture", 0)   // force success (debug)
 //   ACS_NamedExecuteAlways("uh_SpellCardFail", 0)      // force fail (debug)
 //   ACS_NamedExecuteAlways("uh_SpellCardBreak", 0)     // survivor death → mark broken
-//   ACS_NamedExecuteAlways("uh_SpellCardResolve", 0, allowCapture) // 1=try capture, 0=fail
+//   ACS_NamedExecuteAlways("uh_SpellCardResolve", 0, mode) // 0 fail, 1 damage, 2 survival timeout
 //   ACS_NamedExecuteAlways("uh_SpellCardStop", 0)
 //   ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, toPhase)
 //
@@ -18,6 +18,10 @@
 
 #define UH_SC_PHASE_MAX 8
 #define UH_SC_TICRATE 35
+
+#define UH_SC_RESOLVE_FAIL 0
+#define UH_SC_RESOLVE_DAMAGE 1
+#define UH_SC_RESOLVE_SURVIVAL 2
 
 bool uh_SpellCardActive;
 bool uh_SpellCardBroken;
@@ -48,6 +52,12 @@ function str uh_SpellCardNameOf(int phaseId)
 function bool uh_SpellCardShowsName(int phaseId)
 {
 	return (phaseId == 2 || phaseId == 4 || phaseId == 6 || phaseId == 7 || phaseId == 8);
+}
+
+// LoLK survival spells (时符): W2 Eclipse of Hell, W8 Apollo Hoax
+function bool uh_SpellCardIsSurvival(int phaseId)
+{
+	return (phaseId == 2 || phaseId == 8);
 }
 
 function void uh_SpellCardClearHud(void)
@@ -89,7 +99,6 @@ function void uh_SpellCardEndQuiet(void)
 	uh_SpellCardClearHud();
 }
 
-// Living survivors only (not bosses / eyes / dead)
 function void uh_SpellCardGiveSurvivorBoxes(void)
 {
 	int j;
@@ -103,16 +112,47 @@ function void uh_SpellCardGiveSurvivorBoxes(void)
 	}
 }
 
-// allowCapture 1: phase cleared by damage → capture if !Broken && time left
-// allowCapture 0: timeout / forced fail
-// Does not clear name/timer HUD (next Start redraws; result id is separate).
-// W8 final: clears timer after resolve (no next Start).
-function void uh_SpellCardTryCaptureOrFail(int allowCapture)
+// End 时符: drop flag and strip ALL PlayerPropertyInvulnerable stacks.
+// core_invulnerableplayer(false) only pops one layer; APROP stays if stacks remain.
+function void uh_ClownpieceClearSurvInv(void)
+{
+	int tid;
+	int old;
+
+	old = ActivatorTID();
+	for (tid = 1000; tid <= 1063; tid++)
+	{
+		if (!PlayerInGame(tid - 1000))
+			continue;
+		if (!CheckActorInventory(tid, "ClownpieceSurvivalInvuln_F")
+			&& CheckActorInventory(tid, "PlayerPropertyInvulnerable") < 1)
+			continue;
+		TakeActorInventory(tid, "ClownpieceSurvivalInvuln_F", 1);
+		TakeActorInventory(tid, "ClownpiecePhaseInvulnTics", 999);
+		TakeActorInventory(tid, "PlayerPropertyInvulnerable", 999);
+		SetActivator(tid);
+		SetActorProperty(0, APROP_INVULNERABLE, false);
+	}
+	if (old)
+		SetActivator(old);
+	else
+		SetActivator(0);
+}
+
+// mode: FAIL / DAMAGE (need timeLeft>0) / SURVIVAL timeout (!Broken, ignore time)
+function void uh_SpellCardTryCaptureOrFail(int mode)
 {
 	if (!uh_SpellCardActive && !uh_SpellCardBroken)
 		return;
 
-	if (allowCapture && uh_SpellCardActive && !uh_SpellCardBroken && uh_SpellCardTimeLeft > 0)
+	if (mode == UH_SC_RESOLVE_SURVIVAL && uh_SpellCardActive && !uh_SpellCardBroken)
+	{
+		uh_SpellCardStopTimer();
+		uh_SpellCardAnnounceResult("Get Spell Card Bonus!", CR_YELLOW);
+		uh_SpellCardGiveSurvivorBoxes();
+		uh_SpellCardBroken = false;
+	}
+	else if (mode == UH_SC_RESOLVE_DAMAGE && uh_SpellCardActive && !uh_SpellCardBroken && uh_SpellCardTimeLeft > 0)
 	{
 		uh_SpellCardStopTimer();
 		uh_SpellCardAnnounceResult("Get Spell Card Bonus!", CR_YELLOW);
@@ -130,8 +170,6 @@ function void uh_SpellCardTryCaptureOrFail(int allowCapture)
 		uh_SpellCardClearHud();
 }
 
-// phaseId 1..8, timeLimitSec >= 1
-// Multi-Clownpiece: shared single HUD/timer. Same phase while Active = no-op.
 script "uh_SpellCardStart" (int phaseId, int timeLimitSec)
 {
 	if (phaseId < 1 || phaseId > UH_SC_PHASE_MAX)
@@ -147,7 +185,6 @@ script "uh_SpellCardStart" (int phaseId, int timeLimitSec)
 	uh_SpellCardTimerGen++;
 	ACS_NamedTerminate("uh_SpellCardTimer", 0);
 	uh_SpellCardClearHud();
-	// Do not clear RESULT — Bonus!/Failed must coexist with the new countdown
 
 	uh_SpellCardPhase = phaseId;
 	uh_SpellCardTimeLeft = timeLimitSec;
@@ -158,14 +195,13 @@ script "uh_SpellCardStart" (int phaseId, int timeLimitSec)
 	ACS_NamedExecuteAlways("uh_SpellCardTimer", 0, uh_SpellCardTimerGen);
 }
 
-// Force all surviving Clownpieces still on phase (toPhase-1) onto Clownpiece_WtoPhase.
 script "uh_ClownpieceBroadcastPhase" (int toPhase)
 {
 	if (toPhase < 2 || toPhase > UH_SC_PHASE_MAX)
 		terminate;
 
-	// Life-break / timeout advance: settle capture for the phase being left
-	uh_SpellCardTryCaptureOrFail(1);
+	// Damage life-break settle (timeout already resolved before calling this)
+	uh_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_DAMAGE);
 
 	AmbientSound("Touhou/Cat0", 127);
 
@@ -200,7 +236,6 @@ script "uh_SpellCardTimer" (int myGen)
 	{
 		if (myGen != uh_SpellCardTimerGen)
 			terminate;
-		// Broken only blocks capture; timer keeps running until phase end
 		uh_SpellCardDrawHud(uh_SpellCardTimeLeft, uh_SpellCardPhase);
 		if (uh_SpellCardTimeLeft <= 9 && uh_SpellCardTimeLeft >= 5)
 			AmbientSound("Touhou/Timeout", 127);
@@ -217,8 +252,12 @@ script "uh_SpellCardTimer" (int myGen)
 	if (uh_SpellCardActive && myGen == uh_SpellCardTimerGen)
 	{
 		phase = uh_SpellCardPhase;
-		// Timeout never captures
-		uh_SpellCardTryCaptureOrFail(0);
+		if (uh_SpellCardIsSurvival(phase))
+			uh_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_SURVIVAL);
+		else
+			uh_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_FAIL);
+
+		uh_ClownpieceClearSurvInv();
 
 		if (phase >= UH_SC_PHASE_MAX)
 			ACS_NamedExecuteAlways("uh_ClownpieceTimeoutKill", 0);
@@ -240,10 +279,9 @@ script "uh_ClownpieceTimeoutKill" (void)
 	}
 }
 
-// allowCapture: 1 try capture, 0 force fail (W8 death / debug)
-script "uh_SpellCardResolve" (int allowCapture)
+script "uh_SpellCardResolve" (int mode)
 {
-	uh_SpellCardTryCaptureOrFail(allowCapture);
+	uh_SpellCardTryCaptureOrFail(mode);
 }
 
 script "uh_SpellCardCapture" (void)
@@ -252,17 +290,17 @@ script "uh_SpellCardCapture" (void)
 		terminate;
 	if (uh_SpellCardBroken || uh_SpellCardTimeLeft <= 0)
 	{
-		uh_SpellCardTryCaptureOrFail(0);
+		uh_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_FAIL);
 		terminate;
 	}
-	uh_SpellCardTryCaptureOrFail(1);
+	uh_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_DAMAGE);
 }
 
 script "uh_SpellCardFail" (void)
 {
 	if (!uh_SpellCardActive && !uh_SpellCardBroken)
 		terminate;
-	uh_SpellCardTryCaptureOrFail(0);
+	uh_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_FAIL);
 }
 
 script "uh_SpellCardBreak" (void)
@@ -284,4 +322,11 @@ script "uh_SpellCardIsActive" (void)
 script "uh_SpellCardGetTimeLeft" (void)
 {
 	SetResultValue(uh_SpellCardTimeLeft);
+}
+
+// Strip all invuln stacks + APROP (core_invulnerableplayer false only pops one layer)
+script "uh_StripInvulnStacks" (void)
+{
+	TakeInventory("PlayerPropertyInvulnerable", 999);
+	SetActorProperty(0, APROP_INVULNERABLE, false);
 }
