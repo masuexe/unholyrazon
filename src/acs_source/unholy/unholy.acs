@@ -29,9 +29,20 @@ Script "ub_BasicTLMSRespawn" RESPAWN
 
 Script "ub_Death_ChangeIsAlive" DEATH
 {
+	int pn;
+	int oldStatus;
+
 	if(GetCvar("lastmanstanding")==1){
-		debugLog(strParam(i:PlayerNumber(),s:" is dead!!"));
-		playerLifeStatusArr_UpdateFunc(PlayerNumber(),0);
+		pn = PlayerNumber();
+		oldStatus = playerLifeStatusArr[pn];
+		debugLog(strParam(i:pn,s:" is dead!!"));
+		// Survivor death breaks current spell-card capture
+		if (oldStatus == PLS_SURVIVOR)
+			ACS_NamedExecuteAlways("uh_SpellCardBreak", 0);
+		// W8 true death: try capture (timeout kill already resolved as fail)
+		if (oldStatus == PLS_BOSS && CheckInventory("Clownpiece_W8"))
+			ACS_NamedExecuteAlways("uh_SpellCardResolve", 0, 1);
+		playerLifeStatusArr_UpdateFunc(pn,0);
 	}
 }
 Script "ub_Disconnect_ChangeIsAlive" (int PlayerNum) DISCONNECT

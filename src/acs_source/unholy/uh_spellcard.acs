@@ -1,17 +1,17 @@
-// Spell card timer + announce (Phase 1).
-// No score system. Capture reward is an empty hook for later LMS combat rewards.
+// Spell card timer + capture bonus (LMS).
+// Capture: clear phase in time with no survivor deaths → SurvivorBoxItems_P each survivor.
+// Fail: survivor death during phase, or timeout / phase end without capture.
 //
 // DECORATE / CallACS API:
 //   ACS_NamedExecuteAlways("uh_SpellCardStart", 0, phaseId, timeLimitSec)
-//   ACS_NamedExecuteAlways("uh_SpellCardCapture", 0)   // success -> Spell Card Bonus!
-//   ACS_NamedExecuteAlways("uh_SpellCardFail", 0)      // fail -> Bonus Failed
-//   ACS_NamedExecuteAlways("uh_SpellCardBreak", 0)     // mark broken (Phase 3 death hook)
-//   ACS_NamedExecuteAlways("uh_SpellCardStop", 0)      // clear HUD / stop without announce
-//   ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, toPhase) // 2..8 shared multi-boss break
+//   ACS_NamedExecuteAlways("uh_SpellCardCapture", 0)   // force success (debug)
+//   ACS_NamedExecuteAlways("uh_SpellCardFail", 0)      // force fail (debug)
+//   ACS_NamedExecuteAlways("uh_SpellCardBreak", 0)     // survivor death → mark broken
+//   ACS_NamedExecuteAlways("uh_SpellCardResolve", 0, allowCapture) // 1=try capture, 0=fail
+//   ACS_NamedExecuteAlways("uh_SpellCardStop", 0)
+//   ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, toPhase)
 //
-// Multi-Clownpiece: one shared HUD/timer. Start is idempotent per phase.
-// Life break / timer timeout broadcasts ForceSwap so all surviving Clownpieces advance together.
-// W8 timeout kills all Clownpieces (no next phase).
+// Result HUD (Bonus!/Failed) uses a separate id so it can coexist with name/timer.
 #define UH_SC_HUD_NAME 1720
 #define UH_SC_HUD_TIMER 1721
 #define UH_SC_HUD_RESULT 1722
@@ -74,19 +74,64 @@ function void uh_SpellCardAnnounceResult(str msg, int color)
 	HudMessageBold(s: msg; HUDMSG_FADEOUT, UH_SC_HUD_RESULT, color, 320.4, 72.0, 3.0, 1.0);
 }
 
-function void uh_SpellCardEndQuiet(void)
+function void uh_SpellCardStopTimer(void)
 {
 	uh_SpellCardActive = false;
+	uh_SpellCardTimerGen++;
+	ACS_NamedTerminate("uh_SpellCardTimer", 0);
+}
+
+function void uh_SpellCardEndQuiet(void)
+{
+	uh_SpellCardStopTimer();
 	uh_SpellCardBroken = false;
 	uh_SpellCardTimeLeft = 0;
-	uh_SpellCardTimerGen++;
 	uh_SpellCardClearHud();
-	ACS_NamedTerminate("uh_SpellCardTimer", 0);
+}
+
+// Living survivors only (not bosses / eyes / dead)
+function void uh_SpellCardGiveSurvivorBoxes(void)
+{
+	int j;
+	for (j = 0; j < MAX_PLAYERS; j++)
+	{
+		if (!PlayerInGame(j))
+			continue;
+		if (playerLifeStatusArr[j] != PLS_SURVIVOR)
+			continue;
+		GiveActorInventory(j + 1000, "SurvivorBoxItems_P", 1);
+	}
+}
+
+// allowCapture 1: phase cleared by damage → capture if !Broken && time left
+// allowCapture 0: timeout / forced fail
+// Does not clear name/timer HUD (next Start redraws; result id is separate).
+// W8 final: clears timer after resolve (no next Start).
+function void uh_SpellCardTryCaptureOrFail(int allowCapture)
+{
+	if (!uh_SpellCardActive && !uh_SpellCardBroken)
+		return;
+
+	if (allowCapture && uh_SpellCardActive && !uh_SpellCardBroken && uh_SpellCardTimeLeft > 0)
+	{
+		uh_SpellCardStopTimer();
+		uh_SpellCardAnnounceResult("Get Spell Card Bonus!", CR_YELLOW);
+		uh_SpellCardGiveSurvivorBoxes();
+		uh_SpellCardBroken = false;
+	}
+	else
+	{
+		uh_SpellCardStopTimer();
+		uh_SpellCardAnnounceResult("Bonus Failed...", CR_RED);
+		uh_SpellCardBroken = false;
+	}
+
+	if (uh_SpellCardPhase >= UH_SC_PHASE_MAX)
+		uh_SpellCardClearHud();
 }
 
 // phaseId 1..8, timeLimitSec >= 1
 // Multi-Clownpiece: shared single HUD/timer. Same phase while Active = no-op.
-// Only phaseId > uh_SpellCardPhase (or first start) restarts the timer.
 script "uh_SpellCardStart" (int phaseId, int timeLimitSec)
 {
 	if (phaseId < 1 || phaseId > UH_SC_PHASE_MAX)
@@ -94,18 +139,15 @@ script "uh_SpellCardStart" (int phaseId, int timeLimitSec)
 	if (timeLimitSec < 1)
 		timeLimitSec = 1;
 
-	// Already showing this phase — other Clownpieces Morph/SpellBreak must not reset
 	if (uh_SpellCardActive && phaseId == uh_SpellCardPhase)
 		terminate;
-	// Late Start for an older phase while a newer one is current
 	if (phaseId < uh_SpellCardPhase)
 		terminate;
 
-	// NamedTerminate is unreliable for Always timers; gen guard stops stale ticks
 	uh_SpellCardTimerGen++;
 	ACS_NamedTerminate("uh_SpellCardTimer", 0);
 	uh_SpellCardClearHud();
-	ClearHudMessageBold(UH_SC_HUD_RESULT);
+	// Do not clear RESULT — Bonus!/Failed must coexist with the new countdown
 
 	uh_SpellCardPhase = phaseId;
 	uh_SpellCardTimeLeft = timeLimitSec;
@@ -117,12 +159,13 @@ script "uh_SpellCardStart" (int phaseId, int timeLimitSec)
 }
 
 // Force all surviving Clownpieces still on phase (toPhase-1) onto Clownpiece_WtoPhase.
-// Caller already swapped; those with the new weapon are skipped.
-// toPhase 2..8. W8 true death never calls this (no ExtraLife → no DoSwapGo).
 script "uh_ClownpieceBroadcastPhase" (int toPhase)
 {
 	if (toPhase < 2 || toPhase > UH_SC_PHASE_MAX)
 		terminate;
+
+	// Life-break / timeout advance: settle capture for the phase being left
+	uh_SpellCardTryCaptureOrFail(1);
 
 	AmbientSound("Touhou/Cat0", 127);
 
@@ -138,8 +181,6 @@ script "uh_ClownpieceBroadcastPhase" (int toPhase)
 	}
 }
 
-// After Give/Take of Clownpiece_Wn: A_SelectWeapon same-tic as Take often leaves
-// ReadyWeapon empty (timeout ForceSwap). Delay 1 then SetWeapon.
 script "uh_ClownpieceSelectW" (int phase)
 {
 	Delay(1);
@@ -153,17 +194,14 @@ script "uh_ClownpieceSelectW" (int phase)
 
 script "uh_SpellCardTimer" (int myGen)
 {
+	int phase;
+
 	while (uh_SpellCardActive && uh_SpellCardTimeLeft > 0)
 	{
 		if (myGen != uh_SpellCardTimerGen)
 			terminate;
-		if (uh_SpellCardBroken)
-		{
-			ACS_NamedExecuteAlways("uh_SpellCardFail", 0);
-			terminate;
-		}
+		// Broken only blocks capture; timer keeps running until phase end
 		uh_SpellCardDrawHud(uh_SpellCardTimeLeft, uh_SpellCardPhase);
-		// Final 9s: beep each second; at 4s also play Timeout2
 		if (uh_SpellCardTimeLeft <= 9 && uh_SpellCardTimeLeft >= 5)
 			AmbientSound("Touhou/Timeout", 127);
 		if (uh_SpellCardTimeLeft <= 4)
@@ -176,24 +214,19 @@ script "uh_SpellCardTimer" (int myGen)
 		uh_SpellCardTimeLeft--;
 	}
 
-	// Only the current generation may announce timeout / advance
 	if (uh_SpellCardActive && myGen == uh_SpellCardTimerGen)
 	{
-		uh_SpellCardActive = false;
-		uh_SpellCardClearHud();
-		uh_SpellCardAnnounceResult("Time Out", CR_DARKGRAY);
-		uh_SpellCardBroken = false;
-		uh_SpellCardTimeLeft = 0;
+		phase = uh_SpellCardPhase;
+		// Timeout never captures
+		uh_SpellCardTryCaptureOrFail(0);
 
-		// Advance shared phase: 1..7 -> ForceSwap next Wn; W8 -> die
-		if (uh_SpellCardPhase >= UH_SC_PHASE_MAX)
+		if (phase >= UH_SC_PHASE_MAX)
 			ACS_NamedExecuteAlways("uh_ClownpieceTimeoutKill", 0);
 		else
-			ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, uh_SpellCardPhase + 1);
+			ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, phase + 1);
 	}
 }
 
-// W8 (or desynced) timeout: strip ExtraLife/Buddha and kill every living Clownpiece.
 script "uh_ClownpieceTimeoutKill" (void)
 {
 	int tid;
@@ -207,41 +240,31 @@ script "uh_ClownpieceTimeoutKill" (void)
 	}
 }
 
+// allowCapture: 1 try capture, 0 force fail (W8 death / debug)
+script "uh_SpellCardResolve" (int allowCapture)
+{
+	uh_SpellCardTryCaptureOrFail(allowCapture);
+}
+
 script "uh_SpellCardCapture" (void)
 {
 	if (!uh_SpellCardActive)
 		terminate;
 	if (uh_SpellCardBroken || uh_SpellCardTimeLeft <= 0)
 	{
-		ACS_NamedExecuteAlways("uh_SpellCardFail", 0);
+		uh_SpellCardTryCaptureOrFail(0);
 		terminate;
 	}
-
-	uh_SpellCardActive = false;
-	uh_SpellCardTimerGen++;
-	ACS_NamedTerminate("uh_SpellCardTimer", 0);
-	uh_SpellCardClearHud();
-	uh_SpellCardAnnounceResult("Get Spell Card Bonus!", CR_YELLOW);
-	ACS_NamedExecuteAlways("uh_SpellCardBonusReward", 0);
-	uh_SpellCardBroken = false;
-	uh_SpellCardTimeLeft = 0;
+	uh_SpellCardTryCaptureOrFail(1);
 }
 
 script "uh_SpellCardFail" (void)
 {
 	if (!uh_SpellCardActive && !uh_SpellCardBroken)
 		terminate;
-
-	uh_SpellCardActive = false;
-	uh_SpellCardTimerGen++;
-	ACS_NamedTerminate("uh_SpellCardTimer", 0);
-	uh_SpellCardClearHud();
-	uh_SpellCardAnnounceResult("Bonus Failed...", CR_RED);
-	uh_SpellCardBroken = false;
-	uh_SpellCardTimeLeft = 0;
+	uh_SpellCardTryCaptureOrFail(0);
 }
 
-// Mark the current card broken (survivor death). Timer will Fail on next tick.
 script "uh_SpellCardBreak" (void)
 {
 	if (uh_SpellCardActive)
@@ -251,12 +274,6 @@ script "uh_SpellCardBreak" (void)
 script "uh_SpellCardStop" (void)
 {
 	uh_SpellCardEndQuiet();
-}
-
-// Phase 1: empty. Later: LMS combat reward (never score).
-script "uh_SpellCardBonusReward" (void)
-{
-	terminate;
 }
 
 script "uh_SpellCardIsActive" (void)
