@@ -19,6 +19,7 @@ bool uh_SpellCardActive;
 bool uh_SpellCardBroken;
 int uh_SpellCardTimeLeft;
 int uh_SpellCardPhase;
+int uh_SpellCardTimerGen; // bump on each Start; stale Always timers must not tick
 
 str uh_SpellCardNameList[UH_SC_PHASE_MAX + 1] = {
 	"",
@@ -74,6 +75,7 @@ function void uh_SpellCardEndQuiet(void)
 	uh_SpellCardActive = false;
 	uh_SpellCardBroken = false;
 	uh_SpellCardTimeLeft = 0;
+	uh_SpellCardTimerGen++;
 	uh_SpellCardClearHud();
 	ACS_NamedTerminate("uh_SpellCardTimer", 0);
 }
@@ -86,6 +88,8 @@ script "uh_SpellCardStart" (int phaseId, int timeLimitSec)
 	if (timeLimitSec < 1)
 		timeLimitSec = 1;
 
+	// NamedTerminate is unreliable for Always timers; gen guard stops stale ticks
+	uh_SpellCardTimerGen++;
 	ACS_NamedTerminate("uh_SpellCardTimer", 0);
 	uh_SpellCardClearHud();
 	ClearHudMessageBold(UH_SC_HUD_RESULT);
@@ -96,13 +100,15 @@ script "uh_SpellCardStart" (int phaseId, int timeLimitSec)
 	uh_SpellCardActive = true;
 
 	uh_SpellCardDrawHud(uh_SpellCardTimeLeft, uh_SpellCardPhase);
-	ACS_NamedExecuteAlways("uh_SpellCardTimer", 0);
+	ACS_NamedExecuteAlways("uh_SpellCardTimer", 0, uh_SpellCardTimerGen);
 }
 
-script "uh_SpellCardTimer" (void)
+script "uh_SpellCardTimer" (int myGen)
 {
 	while (uh_SpellCardActive && uh_SpellCardTimeLeft > 0)
 	{
+		if (myGen != uh_SpellCardTimerGen)
+			terminate;
 		if (uh_SpellCardBroken)
 		{
 			ACS_NamedExecuteAlways("uh_SpellCardFail", 0);
@@ -110,12 +116,15 @@ script "uh_SpellCardTimer" (void)
 		}
 		uh_SpellCardDrawHud(uh_SpellCardTimeLeft, uh_SpellCardPhase);
 		Delay(UH_SC_TICRATE);
+		if (myGen != uh_SpellCardTimerGen)
+			terminate;
 		if (!uh_SpellCardActive)
 			terminate;
 		uh_SpellCardTimeLeft--;
 	}
 
-	if (uh_SpellCardActive)
+	// Only the current generation may announce timeout
+	if (uh_SpellCardActive && myGen == uh_SpellCardTimerGen)
 	{
 		uh_SpellCardActive = false;
 		uh_SpellCardClearHud();
@@ -136,6 +145,7 @@ script "uh_SpellCardCapture" (void)
 	}
 
 	uh_SpellCardActive = false;
+	uh_SpellCardTimerGen++;
 	ACS_NamedTerminate("uh_SpellCardTimer", 0);
 	uh_SpellCardClearHud();
 	uh_SpellCardAnnounceResult("Get Spell Card Bonus!", CR_YELLOW);
@@ -150,6 +160,7 @@ script "uh_SpellCardFail" (void)
 		terminate;
 
 	uh_SpellCardActive = false;
+	uh_SpellCardTimerGen++;
 	ACS_NamedTerminate("uh_SpellCardTimer", 0);
 	uh_SpellCardClearHud();
 	uh_SpellCardAnnounceResult("Bonus Failed...", CR_RED);
