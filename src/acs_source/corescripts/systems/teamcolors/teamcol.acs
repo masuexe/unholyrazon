@@ -56,13 +56,13 @@ function void InitializeTeamColorData(void) {
 		a = team_color_input[i][0];
 		b = team_color_input[i][1];
 		c = team_color_input[i][2];
-		
+
 		team_color_light[i][0] = a;
 		team_color_light[i][1] = b;
 		team_color_light[i][2] = c;
-		
+
 		team_color_light_lum[i] = (a+b+c)/3;
-		
+
 		team_color_lighter[i][0] = (a+255)/2;
 		team_color_lighter[i][1] = (b+255)/2;
 		team_color_lighter[i][2] = (c+255)/2;
@@ -70,13 +70,13 @@ function void InitializeTeamColorData(void) {
 		a = team_color_input[i][3];
 		b = team_color_input[i][4];
 		c = team_color_input[i][5];
-		
+
 		team_color_dark[i][0] = a;
 		team_color_dark[i][1] = b;
 		team_color_dark[i][2] = c;
-		
+
 		team_color_dark_lum[i] = (a+b+c)/3;
-		
+
 		team_color_darker[i][0] = a/4; // a/8;
 		team_color_darker[i][1] = b/4; // b/8;
 		team_color_darker[i][2] = c/4; // c/8;
@@ -199,8 +199,14 @@ script "core_callteamtranslations" (void) CLIENTSIDE {
 				ACS_NamedExecuteAlways(getTeamColorDef(i), 0, j, j);
 			}
 		}
-		for(int k = TEAM_NATIVE_COUNT + 2; k < TEAM_COUNT; k++) { //$UH
-			ACS_NamedExecuteAlways(getTeamColorDef(i), 0, k, k);
+		//$UH Class-palette slots 6-17: build projectile + UH_TCLR tables only.
+		// Do NOT run core_defineteamcolors here — TCLR_DEFAULT+6..9 stomps
+		// CLR_DAWNBREAKER / charge slots 236-239.
+		if (i == 0) {
+			for (int k = TEAM_NATIVE_COUNT + 2; k < TEAM_COUNT; k++) {
+				ACS_NamedExecuteAlways("core_defineprojectileteamcolors", 0, k, k);
+				ACS_NamedExecuteAlways("uh_maketeamcolors", 0, k, k);
+			}
 		}
 	}
 }
