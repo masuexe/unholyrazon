@@ -80,19 +80,26 @@ actor SuperMegaman_W : BaseUnholyBossWep {
     goto ReadyX
 
    AltFire:
-    // TNT1 A 0 A_JumpIfInventory("GenericBossFlag100",1,"BeamReady")
-    TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200-100*CallACS("uh_CheckRune", RUNE_ENDLESSAMMO), "UseWarp")
-    8H66 A 0 A_GiveInventory("UnholyBossAmmo100", 2)
-    8H66 A 0 A_GiveInventory("UnholyBossAmmo200", 1)
-    goto ReadyX
+    8H66 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200-100*CallACS("uh_CheckRune", RUNE_ENDLESSAMMO), "UseWarp")
    UseWarp:
-    TNT1 A 0 A_TakeInventory("UnholyBossAmmo200", 100, 1)
-    TNT1 A 0 A_TakeInventory("UnholyBossAmmo200", 100)
-    TNT1 A 0 A_SpawnItemEx("SuperMegaWarp")
+    // Coil → lift the buster like opening a gate, then yank up off-screen.
+    8H66 A 1 Offset(8, 40)
+    8H66 B 1 Offset(16, 48) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H66 B 1 Offset(22, 54)
+    8H66 C 1 Offset(10, 32) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H66 C 1 Offset(4, 16)
+    8H66 C 0 A_TakeInventory("UnholyBossAmmo200", 100, 1)
+    8H66 C 0 A_TakeInventory("UnholyBossAmmo200", 100)
+    8H66 C 0 A_GiveInventory("ProjectilePorting")
+    8H66 C 0 A_SpawnItemEx("SuperMegaWarp")
+    // Drop in from below, overshoot forward, settle. Warp spawn stays on 0-tic.
+    8H66 C 1 Offset(28, 72)
+    8H66 B 1 Offset(-10, 26) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H66 B 1 Offset(12, 42)
+    8H66 A 1 Offset(-4, 30) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H66 A 1 Offset(6, 36)
+    8H66 A 0 A_WeaponReady(14)
     goto ReadyX
-   Nothing:
-    8H66 A 0
-    stop
 
    Reload:
     8H66 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200-100*CallACS("uh_CheckRune", RUNE_ENDLESSAMMO), "HorseFire")
@@ -138,7 +145,6 @@ actor SuperMegaman_W : BaseUnholyBossWep {
   }
 }
 
-actor IsHorseFlag : UOnce {}
 actor HorseBountyStack : Inventory {
   Inventory.amount 1
   Inventory.maxamount 999
@@ -233,29 +239,22 @@ actor SuperMegaChargeShot3 : SuperMegaChargeShot1 {
   }
 }
 
-actor SuperMegaWarp : BasicHelper {
+actor SuperMegaWarp : HPHM_WarpToUniverse {
   States {
-   Spawn:
-    TNT1 A 0
-    TNT1 A 0 A_SetArg(3, ACS_ExecuteWithResult(257, 0))
-    TNT1 A 0 A_SetArg(4, CallACS("uh_HPHM_WarpChecker"))
-    TNT1 A 0 A_JumpIf(Args[3]==Args[4], "SpawnError")
-    goto SpawnWarp
-   SpawnError:
-    TNT1 A 4 A_PlaySound("M_64/Invalid", 1)
-    stop
    SpawnWarp:
-    TNT1 A 0 A_GiveToTarget("HPHM_WarpToUniverse_P", 1)
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_unsolidplayer", Args[3]-999, USP_TOGGLEON)
+    TNT1 A 0 A_GiveToTarget("Nudge")
     TNT1 A 0 A_SpawnItemEx("SuperMegaWarpFX", 0, 0, 28)
     TNT1 A 1 ACS_NamedExecuteWithResult("rz_WarpToTID", Args[4], 0, 0, 2) //Thing_Move(Args[3],Args[4],1)
     TNT1 A 1 A_SpawnItemEx("SuperMegaWarpMoveBack_H", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERSPECIAL)
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_unsolidplayer", Args[3]-999, USP_TOGGLEOFF_DAMAGE, CallACS("core_getmaxhealth")/10)
     TNT1 A 0 A_Warp(2, 0, 0, 28, 0, 16)
     TNT1 A 4 A_PlaySound("M_64/Warp1", 1)
     stop
   }
 }
 
-actor SuperMegaWarpMoveBack_H : BasicHelper {
+actor SuperMegaWarpMoveBack_H : BasicWatcher {
   States {
    Spawn:
     TNT1 A 0
