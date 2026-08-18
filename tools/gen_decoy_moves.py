@@ -85,7 +85,7 @@ def anim_to_fire(body: str, which: int) -> str:
     body = re.sub(r"(?i)\bgoto\s+MoveReturn\b", "goto Ready2", body)
     # Inject IsBot check as first frame after Fire:
     spr = SPR[which]
-    inject = f'Fire:\n{spr}50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")\n'
+    inject = f'Fire:\n{spr}50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")\nFireGo:\n'
     body = re.sub(r"(?m)^Fire\s*:\s*\n", inject, body, count=1)
     return body.rstrip() + "\n"
 
@@ -130,6 +130,13 @@ def parse_slots_from_moves(text: str) -> dict[int, dict[int, str]]:
                 fb = re.sub(
                     r"(?m)^Fire\s*:\s*\n",
                     f'Fire:\n{spr}50 A 0 A_JumpIfInventory("IsBot",1,"BotFire")\n',
+                    fb,
+                    count=1,
+                )
+            if not re.search(r"(?m)^FireGo\s*:", fb):
+                fb = re.sub(
+                    r'(Fire:\s*\n[^\n]*A_JumpIfInventory\("IsBot",1,"BotFire"\)\s*\n)',
+                    r"\1FireGo:\n",
                     fb,
                     count=1,
                 )
@@ -195,17 +202,19 @@ def held_base(which: int) -> str:
         '\t"####" A 0 A_Jump(16,"BotFire2")',
         '\t"####" A 0 A_GiveInventory("DecoyBotFlagBot",1)',
         '\t"####" A 0 A_GiveInventory("DecoyEnergyAmmo",random(1,49))',
-        "\tgoto Fire+1",
+        '\t"####" A 0 A_Jump(256, "FireGo")',
         "BotFire1:",
         '\t"####" A 0 A_Jump(96,"BotFire2")',
         '\t"####" A 0 A_GiveInventory("DecoyEnergyAmmo",random(40,100))',
-        "\tgoto Fire+1",
+        '\t"####" A 0 A_Jump(256, "FireGo")',
         "BotFire2:",
         '\t"####" A 0 A_TakeInventory("DecoyBotFlagBot",30)',
         '\t"####" A 0 A_GiveInventory("DecoyEnergyAmmo",200)',
         '\t"####" A 0 A_PlaySoundEx("taunt/D_50","Voice")',
         "\tgoto AltFire",
         "Fire:",
+        f'\t{s} A 0 A_JumpIfInventory("IsBot",1,"BotFire")',
+        "FireGo:",
         f"\t{s} A 1 A_WeaponReady",
         "\twait",
         "}",
