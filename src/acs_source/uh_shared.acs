@@ -542,6 +542,71 @@ Script "ub_enemypain" (void) {
   }
 }
 
+script "UH_BeginXRayVision" (void) {
+	// Log(i:GetPlayerChasecam(0));
+	NamedExecuteClientScript("UH_XRayVisionManager", PlayerNumber());
+}
+
+script "UH_XRayVisionManager" (void) CLIENTSIDE {  // ENTER CLIENTSIDE
+	// Log(i:GetPlayerChasecam(0));
+	while (GetActorProperty(ActivatorTID(), APROP_Health) > 0) {
+		// Log(i:GetActorProperty(ActivatorTID(), APROP_Health));
+		for (int i = 1000; i < 1000+ServerMAX; i++) {
+			if (PlayerInGame (i - 1000) && ActivatorTID() != i) {
+				HudMessageOnActor(i, i, 640, 480, 0, -24, 9028, -1, StrParam(n:i-999), 0.1, CR_GREEN, 0);  // Displays nametags
+				HudMessageOnActor(i, i+100, 640, 480, 0, -32, 9028, -1, "", 0.1, CR_GREEN, 1);  // Displays distance
+			}
+		}
+		Delay(1);
+	}
+}
+
+function void HudMessageOnActor(int tid, int messageid,
+	                              int hudx, int hudy, int xoffset, int yoffset,
+																int range, str sprite,
+																str text, int holdtime, str colour, int swap) {
+	int dist, angle, vang, pitch, x, y;
+
+	if (hudx == 0) {hudx = 640;}
+	if (hudy == 0) {hudy = 480;}
+
+	if (sprite != -1) {
+		SetFont(sprite);
+		text = "A";
+		// offset = 0.1;
+	}
+	else {
+		SetFont("fakefntC");  // SMALLFONT
+	}
+
+	SetHudSize(hudx, hudy, 1);
+	x = GetActorX(tid) - GetActorX(0);
+	y = GetActorY(tid) - GetActorY(0);
+
+	vang = VectorAngle(x, y);
+	angle = (vang - GetActorAngle(0) + 1.0) % 1.0;
+
+	if (((vang+0.125) % 0.5) > 0.25) dist = FixedDiv(y, sin(vang));
+	else dist = FixedDiv(x, cos(vang));
+
+	if ((angle < 0.2 || angle > 0.8) && (dist >> 16) < range) {
+		if (GetActorPitch(0) >= -0.25 && GetActorPitch(0) <= 0.25) {
+			pitch = VectorAngle(dist, GetActorZ(tid) - (GetActorZ(0) + 41.0));
+			pitch = (pitch + GetActorPitch(0) + 1.0) % 1.0;
+			if ((hudx/2) * sin(angle) != 0 && cos(angle) != 0 && (hudx/2) * sin(pitch) != 0 && cos(pitch) != 0) {  // Fixes divide by zero
+				x = hudx/2 - ((hudx/2) * sin(angle) / cos(angle));
+				y = hudy/2 - ((hudx/2) * sin(pitch) / cos(pitch));
+
+				x += xoffset;
+				y += yoffset;
+				if (swap) {HudMessage(i:dist >> 16; HUDMSG_PLAIN, messageid, colour, (x << 16), (y << 16), holdtime);}
+				else {HudMessage(s:text; HUDMSG_PLAIN, messageid, colour, (x << 16), (y << 16), holdtime);}
+			}
+		}
+	}
+}
+
+
 //ZANGIEF
 
 #define GRAB_DISTANCE 100 //how far to position the grabbed away from zangief
