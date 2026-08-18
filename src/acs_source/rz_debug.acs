@@ -24,7 +24,24 @@ function bool morphMeToBoss(int type, int bossNum) {
 		return false;
 
 	if (type == 0) {
-		return morphActorToBoss(tid, bossNum, "GigaAstroExplode");
+		str morphName = GetBossActor(bossNum);
+		if (bossNum == 1113) morphName = "ProtoManBadGuy";
+		if (bossNum != 1113)
+			return morphActorToBoss(tid, bossNum, "GigaAstroExplode");
+		if (StrCmp(morphName, "") == 0)
+			return false;
+		ACS_NamedExecuteWithResult("uh_MorphPreReset");
+		bool okOverride = MorphActor(0, morphName, "", 0x7ffffffc, MRF_FULLHEALTH|MRF_WHENINVULNERABLE|MRF_LOSEACTUALWEAPON|MRF_NEWTIDBEHAVIOUR, "GigaAstroExplode", "");
+		if (!okOverride) {
+			Log(s: "rz_debug_MorphMe: MorphActor failed for ", s: morphName);
+			return false;
+		}
+		SetActivator(tid);
+		ACS_NamedExecuteWithResult("uh_MorphPostReset", 1);
+		GiveInventory("BasicBossItem", 1);
+		GiveInventory("MorphedFlag", 1);
+		GiveInventory("BAWS", 1);
+		return true;
 	}
 
 	str eyeActor = GetEyeActor(bossNum);
