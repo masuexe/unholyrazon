@@ -1,0 +1,428 @@
+actor BalladeGB_W_ScriptBar : ScriptBar {}
+actor BalladeGB_W : BaseUnholyBossWep {
+  tag "$TAG_Boss068_W"
+  Weapon.AmmoUse 0
+  Weapon.AmmoUse2 1
+  Weapon.AmmoGive2 3
+  Obituary "%o was blown apart by \ccSapion\c- (%k)."
+  Inventory.Pickupmessage "Power up! Sapion Cracker!"
+  // weapon.ammotype "ScrapIronAmmo"
+  weapon.ammotype "BalladeGBMineAmmo"
+  States {
+   Spawn:
+    C_0K C 1
+    loop
+
+   Deselect:
+    8H83 A 0
+    goto DeselectSwap
+   Select:
+    8H83 A 0
+    goto SelectSwap
+
+   Ready:
+    8H83 A 3 ACS_NamedExecuteAlways("core_weaponcolor", 0, BALLADEGB_DYE)
+    8H83 A 0 A_GiveInventory("BalladeGBMineAmmo", 3)
+    8H83 A 0 A_GunFlash("Flash", true)
+    goto Ready1
+   Ready1:
+    8H83 A 0 A_JumpIfInventory("BalladeGBMineAmmo", 1, 1)
+    goto ReadyNoAmmo
+    8H83 A 1 A_WeaponReady
+    wait
+   ReadyNoAmmo:
+    8H83 A 1 A_WeaponReady(8)
+    8H83 A 0 A_JumpIfInventory("BalladeGBMineAmmo", 1, "Ready1")
+    loop
+
+   Fire:
+    8H83 A 0 A_JumpIfInventory("IsBot", 1, "BotFire")
+    8H83 D 0 A_GunFlash("NoFlash", 1)
+    8H83 F 0 A_GiveInventory("BalladeGB_Fire_P")
+    8H83 BCDEFG 2
+    8H83 A 9
+    8H83 AA 4 A_TakeInventory("BalladeGBFocusFlag")
+    Goto Ready+1
+
+   Flash:
+    TNT1 A 2
+    TNT1 A 0 A_GiveInventory("BalladeGBFocusFlag", 1)
+    loop
+
+   AltFire:
+    8H83 A 0 A_JumpIfInventory("BalladeGBMineAmmo", 1, 1)
+    goto NoAmmo
+    8H83 A 0 A_GiveInventory("VivifyDelay8", 1)
+    8H83 A 0 A_Refire(1)
+    8H83 A 2 OffSet(-10, 52)
+    8H83 H 2 OffSet(-1, 33)
+    8H83 H 2 OffSet(-21, 57)
+    8H83 H 2 OffSet(-33, 67)
+    8H83 H 0 A_GiveInventory("BalladeGB_AltFireCheck_P")
+    8H83 H 0 A_GiveInventory("BalladeGBMineThrust_P")
+    8H83 H 2 OffSet(-21, 57)
+    8H83 H 2 OffSet(-1, 33)
+    8H83 A 2 OffSet(-10, 52)
+    goto Ready1
+   NoAmmo:
+    8H83 A 0 A_GiveInventory("BalladeGB_NoAmmoRefund_P")
+    Goto Ready1
+
+   BotFire:
+    8H83 A 0 A_Jump(64, "BotFire2")
+    8H83 A 0 A_Jump(192, 2)
+    8H83 A 0 A_GiveInventory("BalladeGBFocusFlag", random(1, 30))
+    goto Fire+1
+    8H83 A 0 A_Jump(128, 2)
+    8H83 A 0 A_GiveInventory("BalladeGBFocusFlag", random(8, 20))
+    goto Fire+1
+    8H83 A 0 A_Jump(64, 2)
+    8H83 A 0 A_GiveInventory("BalladeGBFocusFlag", random(16, 30))
+    goto Fire+1
+    8H83 A 0 A_Jump(32, 2)
+    8H83 A 0 A_GiveInventory("BalladeGBFocusFlag", random(19, 37))
+    goto Fire+1
+    8H83 A 0 A_GiveInventory("BalladeGBFocusFlag", 30)
+    goto Fire+1
+   BotFire2:
+    goto AltFire+1
+  }
+}
+
+// actor ScrapIronAmmo : Ammo {
+//   inventory.amount 1
+//   inventory.maxamount 3
+//   +INVENTORY.IGNORESKILL
+// }
+actor BalladeGBMineAmmo : Ammo {
+  inventory.amount 1
+  inventory.maxamount 3
+  +INVENTORY.IGNORESKILL
+}
+
+actor BalladeGBFocusFlag : Inventory {
+  inventory.amount 1
+  inventory.maxamount 30
+}
+
+actor BalladeGB_NoAmmoHelpF : Inventory {
+  inventory.amount 1
+  inventory.maxamount 3
+}
+
+actor BalladeGBMineDelay1 : Powerup {
+  Powerup.Duration 35
+}
+actor BalladeGBMineDelay2 : BalladeGBMineDelay1 {}
+actor BalladeGBMineDelay3 : BalladeGBMineDelay1 {}
+actor BalladeGBMineDelay4 : BalladeGBMineDelay1 {}
+actor BalladeGBMineDelay5 : BalladeGBMineDelay1 {}
+
+actor BalladeGBMineThrust_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0
+    TNT1 A 0 A_Recoil(-15)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertyGrounded", 1, "No")
+    goto PickupT
+   PickupT:
+    TNT1 A 0 A_JumpIfInventory("BalladeGBMineDelay5", 1, "P_5")
+    TNT1 A 0 A_JumpIfInventory("BalladeGBMineDelay4", 1, "P_4")
+    TNT1 A 0 A_JumpIfInventory("BalladeGBMineDelay3", 1, "P_3")
+    TNT1 A 0 A_JumpIfInventory("BalladeGBMineDelay2", 1, "P_2")
+    TNT1 A 0 A_JumpIfInventory("BalladeGBMineDelay1", 1, "P_1")
+    goto P_0
+   P_30:
+    TNT1 A 0 A_JumpIfInventory("IsUnderWater", 1, "P_30W")
+    TNT1 A 0 ThrustThingZ(0, 30, 0, 0)
+    stop
+   P_30W:
+    TNT1 A 0 ThrustThingZ(0, 16, 0, 0)
+    stop
+   P_0:
+    TNT1 A 0 A_GiveInventory("BalladeGBMineDelay1", 1)
+    goto P_30
+   P_1:
+    TNT1 A 0 A_GiveInventory("BalladeGBMineDelay2", 1)
+    goto P_30
+   P_2:
+    TNT1 A 0 A_GiveInventory("BalladeGBMineDelay3", 1)
+    goto P_30
+   P_3:
+    TNT1 A 0 A_GiveInventory("BalladeGBMineDelay4", 1)
+    goto P_30
+   P_4:
+    TNT1 A 0 A_GiveInventory("BalladeGBMineDelay5", 1)
+    goto P_30
+   P_5:
+    TNT1 A 0 A_GiveInventory("BalladeGBMineDelay5", 1)
+    TNT1 A 0 ThrustThingZ(0, 4, 0, 0)
+    stop
+   No:
+    TNT1 A 0
+    stop
+  }
+}
+
+actor BalladeGB_NoAmmoRefund_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("BalladeGB_NoAmmoHelpF", 1, 3)
+    TNT1 A 0 A_GiveInventory("BalladeGBMineAmmo", 3)
+    TNT1 A 0 A_PlaySoundEx("item/RaThorSoul", "Body")
+    TNT1 A 0
+    stop
+  }
+}
+
+
+actor BalladeGB_AltFireCheck_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("BalladeGBMineAmmo", 3, "Check3")
+    TNT1 A 0 A_JumpIfInventory("BalladeGBMineAmmo", 2, "Check2")
+    TNT1 A 0 A_JumpIfInventory("BalladeGBMineAmmo", 1, "Check1")
+    goto FireMine2
+   Check3:
+    TNT1 A 0 A_TakeInventory("BalladeGBMineAmmo", 1, 1)
+    TNT1 A 0 A_JumpIfInventory("BalladeGBMineAmmo", 3, "FireMine2")
+    TNT1 A 0 A_SpawnItemEx("BalladeGB_BCMineEmergency3")
+    goto FireMine
+   Check2:
+    TNT1 A 0 A_TakeInventory("BalladeGBMineAmmo", 1, 1)
+    TNT1 A 0 A_JumpIfInventory("BalladeGBMineAmmo", 2, "FireMine2")
+    TNT1 A 0 A_SpawnItemEx("BalladeGB_BCMineEmergency2")
+    goto FireMine
+   Check1:
+    TNT1 A 0 A_TakeInventory("BalladeGBMineAmmo", 1, 1)
+    TNT1 A 0 A_JumpIfInventory("BalladeGBMineAmmo", 1, "FireMine2")
+    TNT1 A 0 A_SpawnItemEx("BalladeGB_BCMineEmergency1")
+    goto FireMine
+   FireMine:
+    TNT1 A 0 A_GiveInventory("BalladeGB_NoAmmoHelpF")
+    TNT1 A 0 A_SpawnItemEx("BalladeGB_BCMine", 0, 0, 16)
+    stop
+   FireMine2:
+    TNT1 A 0 A_SpawnItemEx("BalladeGB_BCMine2", 0, 0, 16)
+    stop
+  }
+}
+
+actor BalladeGB_Fire_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_PlaySoundEx("weapon/crackerthrow", "Weapon")
+    TNT1 A 0 A_JumpIfInventory("BalladeGBFocusFlag", 30, "Fire4")
+    TNT1 A 0 A_JumpIfInventory("BalladeGBFocusFlag", 20, "Fire3")
+    TNT1 A 0 A_JumpIfInventory("BalladeGBFocusFlag", 10, "Fire2")
+    TNT1 A 0 A_FireCustomMissile("BalladeGB_BCShot", 0, 0, 8, 0)
+    goto End
+   Fire2:
+    TNT1 A 0 A_FireCustomMissile("BalladeGB_BCShot2", 0, 0, 8, 0)
+    goto End
+   Fire3:
+    TNT1 A 0 A_FireCustomMissile("BalladeGB_BCShot3", 0, 0, 8, 0)
+    goto End
+   Fire4:
+    TNT1 A 0 A_FireCustomMissile("BalladeGB_BCShot4", 0, 0, 8, 0)
+    goto End
+   End:
+    TNT1 A 0 A_TakeInventory("BalladeGBFocusFlag")
+    stop
+  }
+}
+
+actor BalladeGB_BCShot : BasicProjectile {
+  Translation "198:198=6:6", "204:204=208:208", "195:195=89:89", "0:0=6:6"
+  damagetype "BalladeGB_Shot"
+  Obituary "%o mistakenly called \ccSapion\c- (%k) \"Zeroprime\" then got killed by his Sapion Cracker cruelly."
+  +SKYEXPLODE
+  +EXPLODEONWATER
+  Accuracy 4
+  damage (12000 * (1 + 9 * (CallACS("rz_CheckBirthday") == 2)))
+  Radius 9
+  Height 17
+  speed 20
+  States {
+   Spawn:
+    TNT1 A 0
+    goto Spawn4
+   Spawn1:
+    TNT1 A 0 A_Jump(256, 1, 2, 3, 4)
+    8P83 ABCD 1
+    goto Spawn1+1
+   Spawn2:
+    TNT1 A 0 A_Jump(256, 1, 2, 3, 4)
+    8P83 ABCD 2
+    goto Spawn2+1
+   Spawn3:
+    TNT1 A 0 A_Jump(256, 1, 2, 3, 4)
+    8P83 ABCD 3
+    goto Spawn3+1
+   Spawn4:
+    TNT1 A 0 A_Jump(256, 1, 2, 3, 4)
+    8P83 ABCD 4
+    goto Spawn4+1
+   Death:
+    TNT1 A 0 A_PlaySoundEx("weapon/crackerexplode", "Weapon")
+    TNT1 A 0 A_Explode(16000, 96, 0, 0, 10)
+    TNT1 A 0 A_SpawnItemEx("BasicBoomVFX_ColorX", 0, 0, 0, 0, 0, 0, 0, 1)
+    TNT1 A 2
+    stop
+  }
+}
+
+actor BalladeGB_BCShot2 : BalladeGB_BCShot {
+  Speed 35
+  Accuracy 3
+  States {
+   Spawn:
+    TNT1 A 0
+    goto Spawn3
+  }
+}
+
+actor BalladeGB_BCShot3 : BalladeGB_BCShot {
+  Speed 50
+  Accuracy 2
+  States {
+   Spawn:
+    TNT1 A 0
+    goto Spawn2
+  }
+}
+
+actor BalladeGB_BCShot4 : BalladeGB_BCShot {
+  Speed 65
+  Accuracy 1
+  States {
+   Spawn:
+    TNT1 A 0
+    goto Spawn1
+  }
+}
+
+actor BalladeGB_BCMineEmergency3 : BasicWatcher {
+  +SERVERSIDEONLY
+  //RenderStyle Normal
+  ReactionTime 150
+  Scale 2.5
+  Args 150
+  States {
+   Spawn:
+    TNT1 A 0 A_SetArg(0, 150)
+   SpawnL:
+    TNT1 A 0 A_JumpIfInTargetInventory("BalladeGBMineAmmo", 3, "End")
+    TNT1 A 0 A_CountDownArg(0)
+    TNT1 A 1 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "End")
+    TNT1 A 0 A_JumpIfInTargetInventory("BalladeGBMineAmmo", 2, "SpawnL")
+   SpawnWait:
+    TNT1 A 1 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "End")
+    TNT1 A 0 A_JumpIfInTargetInventory("BalladeGBMineAmmo", 2, "Spawn")
+    loop
+   End:
+    TNT1 A 5 A_TakeFromTarget("BalladeGB_NoAmmoHelpF", 1)
+    stop
+   Death:
+    TNT1 A 0 A_TakeFromTarget("BalladeGB_NoAmmoHelpF", 1)
+    TNT1 A 5 A_GiveToTarget("BalladeGBMineAmmo", 1)
+    stop
+  }
+}
+actor BalladeGB_BCMineEmergency2 : BalladeGB_BCMineEmergency3 {
+  States {
+   Spawn:
+    TNT1 A 0 A_SetArg(0, 150)
+   SpawnL:
+    TNT1 A 0 A_JumpIfInTargetInventory("BalladeGBMineAmmo", 2, "End")
+    TNT1 A 0 A_CountDownArg(0)
+    PUNK H 1 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "End")
+    TNT1 A 0 A_JumpIfInTargetInventory("BalladeGBMineAmmo", 1, "SpawnL")
+   SpawnWait:
+    PUNK A 1 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "End")
+    TNT1 A 0 A_JumpIfInTargetInventory("BalladeGBMineAmmo", 1, "Spawn")
+    loop
+  }
+}
+actor BalladeGB_BCMineEmergency1 : BalladeGB_BCMineEmergency3 {
+  States {
+   Spawn:
+    TNT1 A 0
+   SpawnL:
+    TNT1 A 0 A_JumpIfInTargetInventory("BalladeGBMineAmmo", 1, "End")
+    TNT1 A 0 A_CountDownArg(0)
+    BALD H 1 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "End")
+    loop
+  }
+}
+
+actor BalladeGB_BCMine : BasicProjectile {
+  Translation "198:198=6:6", "204:204=208:208", "195:195=89:89", "0:0=6:6"
+  damagetype "BalladeGB_Mine"
+  Obituary "%o was blown up into an indescribable corpse, \ccSapion\c- (%k) made it into a game over screen!"
+  -NOGRAVITY
+  +NOEXPLODEFLOOR
+  +DONTSPLASH
+  +SKYEXPLODE
+  +EXPLODEONWATER
+  ReactionTime 10
+  Damage ((10000 + CallACS("core_checkrune", RUNE_SPREAD, 2)*20000) * (1 + 9*(CallACS("rz_CheckBirthday") == 2)))
+  Radius 20
+  Height 20
+  Speed 0
+  Scale 2.5
+  States {
+   Spawn:
+    8P83 M 0
+    8P83 M 0 A_PlaySoundEx("weapon/crackermine", "Weapon")
+   SpawnL:
+    // 8P83 M 0 A_JumpIf(ReactionTime<=4, "SpawnLow")
+    8P83 MNOP 3
+    8P83 M 0 A_CountDown
+    loop
+
+   Death:
+    TNT1 A 1 A_SpawnItemEx("BalladeGB_BCMineBoom", 0, 0, 10)
+    TNT1 A 2 A_GiveToTarget("BalladeGBMineAmmo", 1)//A_TakeFromTarget("BalladeGBMineFlag",1)
+    stop
+  }
+}
+actor BalladeGB_BCMineBoom : BasicExplosion {
+  damagetype "BalladeGB_Mine"
+  Obituary "%o was blown up into an indescribable corpse, \ccSapion\c- (%k) made it into a game over screen!"
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_Explode((10000 + CallACS("core_checkrune", RUNE_SPREAD, 2) * 20000) * (1 + 9 * (CallACS("rz_CheckBirthday") == 2)),
+                       96, 0, 0, 8)
+    TNT1 A 0 A_PlaySoundEx("weapon/GameBoyBalladeGB", "Weapon")
+    TNT1 A 0 A_SpawnItemEx("BasicBoomVFX_ColorX", 0, 0, 0, 0, 0, 0, 0, 1)
+    TNT1 A 2
+    stop
+  }
+}
+actor BalladeGB_BCMine2 : BalladeGB_BCMine {
+  States {
+   Death:
+    TNT1 A 1 A_SpawnItemEx("BalladeGB_BCMineBoom", 0, 0, 10)
+    TNT1 A 2
+    stop
+  }
+}
+
+actor BalladeGB_FinalMotherfuckingExplosion : BasicExplosion {
+  Translation "192:192=89:89", "198:198=0:0", "4:4=208:208"
+  Damagetype "BalladeGB_UltimateExplode"
+  Obituary "%o \ccFUCK YOUR MOTHER!!!"
+  // Obituary "%o finally understand that they shouldn't mess up with \ccTHE ULTIMATE WEAPON\c-."
+  +FOILINVUL
+  Scale 32//7.5
+  States {
+   Spawn:
+    X_8B A 0
+    X_8B A 0 A_PlaySoundEx("weapon/SapionUltiExplode", "Weapon", 0, 2)
+    X_8B A 0 A_Explode(6999999, 11451, 0, 0, 11451)
+    X_8B ABCDEF 2
+    stop
+  }
+}
