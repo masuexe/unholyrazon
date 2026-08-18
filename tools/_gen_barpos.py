@@ -42,7 +42,7 @@ def collect_defined_slots():
     if mm.is_dir():
         paths += [p for p in mm.glob("TEXTURES*") if p.is_file()]
     rx = re.compile(
-        r'(?i)(?:graphic|texture|sprite)\s+"?(BRSLT|VRSLT)(\d{3})\b'
+        r'(?i)(?:graphic|texture|sprite)\s+"?(BRSLT|VRSLT|BRSLB|VRSLB)(\d{3})\b'
     )
     for p in paths:
         # Skip our own output (re-run safety)
@@ -81,6 +81,7 @@ def gen_textures_and_animdefs(blocks, defined):
         "// Offset-0 aliases for DrawCustomBar1/2/HP (SBARINFO absolute coords)",
         "// Lump name TEXTURES.barspos loads AFTER TEXTURES.bars (patch sources).",
         "// BZSLT### / VZSLT### patch BRSLT### / VRSLT### when defined; else NOBAR.",
+        "// BZSLB### / VZSLB### patch BRSLB### / VRSLB### when defined; else NOBAR.",
         "// Animated slots: ANIMDEFS.barpos uses WZ#### frame wrappers (offset 0).",
         "",
         "// Offset-0 animation frame wrappers",
@@ -96,8 +97,12 @@ def gen_textures_and_animdefs(blocks, defined):
     for i in range(256):
         br = f"BRSLT{i:03d}"
         vr = f"VRSLT{i:03d}"
+        brb = f"BRSLB{i:03d}"
+        vrb = f"VRSLB{i:03d}"
         br_src = br if br in defined else "NOBAR"
         vr_src = vr if vr in defined else "VNOBAR"
+        brb_src = brb if brb in defined else "NOBAR"
+        vrb_src = vrb if vrb in defined else "VNOBAR"
         if br in defined:
             defined_n += 1
         else:
@@ -107,6 +112,12 @@ def gen_textures_and_animdefs(blocks, defined):
         )
         tex_lines.append(
             f"graphic VZSLT{i:03d}, 56, 8 {{offset 0, 0 patch {vr_src}, 0, 0}}"
+        )
+        tex_lines.append(
+            f"graphic BZSLB{i:03d}, 8, 56 {{offset 0, 0 patch {brb_src}, 0, 0}}"
+        )
+        tex_lines.append(
+            f"graphic VZSLB{i:03d}, 56, 8 {{offset 0, 0 patch {vrb_src}, 0, 0}}"
         )
 
     TEX_OUT.write_text("\n".join(tex_lines) + "\n", encoding="utf-8")
@@ -134,7 +145,7 @@ def gen_textures_and_animdefs(blocks, defined):
 def sbar_line(horiz: bool, slot_inv: str, ammo_inv: str, slot: int, x: int, y: int) -> str:
     """Exclusive InInventory range for slot+1 .. slot+2."""
     fill = f"{'VZSLT' if horiz else 'BZSLT'}{slot:03d}"
-    empty = "VNOBAR" if horiz else "NOBAR"
+    empty = f"{'VZSLB' if horiz else 'BZSLB'}{slot:03d}"
     orient = "horizontal" if horiz else "vertical"
     lo = slot + 1
     hi = slot + 2
@@ -202,12 +213,7 @@ def main():
     print(f"wrote {TEX_OUT.name}")
     nums = sorted({b["num"] for b in blocks})
     print("animated slots:", ",".join(nums))
-    # SBARINFO already generated; skip unless missing
-    marker = "\t\t\t//Custom Bar Position Banks (DrawCustomBar1/2/HP)"
-    if marker not in (ROOT / "SBARINFO.H.txt").read_text(encoding="utf-8"):
-        gen_sbarinfo_banks()
-    else:
-        print("SBARINFO banks already present; skipped")
+    gen_sbarinfo_banks()
 
 
 if __name__ == "__main__":
