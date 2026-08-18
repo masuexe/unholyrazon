@@ -107,25 +107,26 @@ actor SuperMegaman_W : BaseUnholyBossWep {
     goto ReadyX
 
    EndlessBeamLauncher:
-    8H66 A 0 A_GiveInventory("GenericBossFlag100", 100)
-    8H66 A 0 A_TakeInventory("UnholyPower2000")
     8H66 A 0 A_PlaySoundEx("misc/sunstarbeamcharge", "SoundSlot6")
     8H66 A 0 ACS_NamedExecuteWithResult("core_flyplayer", 0, true)
     8H66 B 2 ThrustThingZ(0, 20, 0, 0)
     8H66 B 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true)
-    8H66 C 60
+    8H66 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCC 2 A_GiveInventory("SuperMegaFlightPack_P")
     8H66 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false)
     goto BeamReady
    BeamReady:
     8H66 C 2 A_WeaponReady(14)
-    TNT1 A 0 A_FireCustomMissile("SuperMegaNovaBeamSpawn", 0, 0, 0, -16, 0, 0)
+    8H66 A 0 A_GiveInventory("SuperMegaFlightPack_P")
+    8H66 A 0 A_FireCustomMissile("SuperMegaEndlessBeamSpawn", 0, 0, 0, -16, 0, 0)
     8H66 C 0 A_GiveInventory("UnholyBossAmmo200", 2)
-    8H66 C 0 A_TakeInventory("GenericBossFlag100", 1)
-    8H66 C 0 A_JumpIfInventory("GenericBossFlag100", 1, "BeamReady")
+    8H66 C 0 A_TakeInventory("UnholyPower2000", 10, true)
+    8H66 C 0 A_TakeInventory("UnholyPower2000", 10)
+    8H66 C 0 A_JumpIfInventory("UnholyPower2000", 1, "BeamReady")
     goto BeamEnd
 
    BeamEnd:
-    TNT1 A 0 A_SpawnItemEx("SuperMegaNovaBeamEndFXSpawn", 24*cos(pitch), 0, 32+24*sin(-pitch), 0, 0, 0, 0, 545)
+    8H66 C 0 A_PlaySoundEx("weapon/ultrabeam", "SoundSlot6")
+    8H66 C 0 A_SpawnItemEx("SuperMegaEndlessBeamEndFXSpawn", 24*cos(pitch), 0, 32+24*sin(-pitch), 0, 0, 0, 0, 544)
     8H66 C 2
     8H66 C 2 ACS_NamedExecuteWithResult("core_flyplayer", 0, false)
     8H66 BA 2
@@ -133,7 +134,7 @@ actor SuperMegaman_W : BaseUnholyBossWep {
   }
 }
 
-actor IsAHorse : UOnce {}
+actor IsHorseFlag : UOnce {}
 actor HorseBountyStack : Inventory {
   Inventory.amount 1
   Inventory.maxamount 999
@@ -273,7 +274,7 @@ actor SuperMegaMoveStop_P : CustomInventory {
     stop
   }
 }
-
+// Placeholder
 actor SuperMegaWarpFX : BasicClientSide {
   Translation "4:4=160:160", "192:192=161:161", "198:198=163:163"
   States {
@@ -285,11 +286,36 @@ actor SuperMegaWarpFX : BasicClientSide {
   }
 }
 
+actor SuperMegaFlightPack_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_SpawnItemEx("SuperMegaFlightBoosterSmoke", 0, -15, 12, 0, -2, -10, 0)
+    TNT1 A 0 A_SpawnItemEx("SuperMegaFlightBoosterSmoke", 0, 15, 12, 0, 2, -10, 0)
+    TNT1 A 0 A_ChangeVelocity(0.5, 0, 0, 1)
+    stop
+  }
+}
+
+actor SuperMegaFlightBoosterSmoke : BasicProjectile {
+  Damage (20)
+  DamageType "SuperMegaman"
+  Obituary "%o stuck %p head into the chimney for the second time."
+  +RIPPER
+  Radius 20
+  Height 20
+  Speed 0
+  Scale 1.5
+  States {
+   Spawn:
+    MXP1 ABCDE 2
+    stop
+  }
+}
+
 // 545 = SXF_TRANSFERTRANSLATION|SXF_NOCHECKPOSITION|SXF_TRANSFERPITCH
-actor SuperMegaNovaBeamSpawn : BasicProjectile {
-  Translation "192:192=160:160", "198:198=60:60", "199:199=207:207"
-  Projectile
-  Obituary "Thanks to Endless Beam Launcher, %o finally realized they shouldn't challenge \cnSuper Megaman\c- (%k) at the expense of their mom!"
+actor SuperMegaEndlessBeamSpawn : BasicProjectile {
+  Translation "248:248=160:160", "227:227=66:66", "183:183=202:202"
+  Obituary "Thanks to Endless Beam Launcher, %o finally realized they shouldn't challenge \cnSuper Megaman\c- (%k) at the expense of %p horse!"
   DamageType "EndlessBeamLauncher"
   +THRUGHOST
   +BRIGHT
@@ -300,15 +326,16 @@ actor SuperMegaNovaBeamSpawn : BasicProjectile {
   Radius 8
   Height 8
   Speed 0
-  Scale 2.5
+  RenderStyle "Add"
+  Alpha 0.05
   States {
    Spawn:
     S_UN M 0
     S_UN M 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", 2, 0)
     S_UN M 0 A_PlaySoundEx("misc/sunstarbeamloop", "SoundSlot6")
-    S_UN M 0 A_SpawnItemEx("SuperMegaNovaBeamWallHitFX", 0, 0, 0, 1000*cos(pitch), 0, 1000*sin(-pitch), 0, 545)
-    S_UN M 0 A_SpawnItemEx("SuperMegaNovaBeamDamager", 32*cos(pitch), 0, 32*sin(-pitch), 0, 0, 0, 0, 545)
-    S_UN M 0 A_SpawnItemEx("SuperMegaNovaBeam", 10*cos(pitch), 0, 10*sin(-pitch), 0, 0, 0, 0, 545)
+    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeamWallHit", 0, 0, 0, 1000*cos(pitch), 0, 1000*sin(-pitch), 0, 545)
+    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeamDamager", 32*cos(pitch), 0, 32*sin(-pitch), 0, 0, 0, 0, 545)
+    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeam", 10*cos(pitch), 0, 10*sin(-pitch), 0, 0, 0, 0, 545)
     S_UN M 0 A_Stop
     S_UN MN 1
     stop
@@ -318,20 +345,21 @@ actor SuperMegaNovaBeamSpawn : BasicProjectile {
   }
 }
 
-actor SuperMegaNovaBeam : SuperMegaNovaBeamSpawn {
+actor SuperMegaEndlessBeam : SuperMegaEndlessBeamSpawn {
   States {
    Spawn:
     S_UN M 0
     S_UN M 0 A_JumpIfCloser(1200, "Appear")
     stop
    Appear:
-    S_UN M 0 A_SpawnItemEx("SuperMegaNovaBeam", 10*cos(pitch), 0, 10*sin(-pitch), 0, 0, 0, 0, 545)
+    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeam", 10*cos(pitch), 0, 10*sin(-pitch), 0, 0, 0, 0, 545)
     S_UN OP 1
     stop
   }
 }
 
-actor SuperMegaNovaBeamEndFXSpawn {
+actor SuperMegaEndlessBeamEndFXSpawn {
+  Translation "248:248=160:160", "227:227=66:66", "183:183=202:202"
   Projectile
   Renderstyle "None"
   +THRUGHOST
@@ -344,15 +372,16 @@ actor SuperMegaNovaBeamEndFXSpawn {
     S_UN M 0 A_JumpIfCloser(1200, "Appear")
     stop
    Appear:
-    S_UN MM 0 A_SpawnItemEx("SunstarNovaBeamEndFX", 0, random(-48, 48), random(-48, 52), random(5, 10), 0, 0, 0, 0, 128)
-    S_UN M 0 A_SpawnItemEx("SuperMegaNovaBeamEndFXSpawn", 10*cos(pitch), 0, 10*sin(-pitch), 0, 0, 0, 0, 545)
+    S_UN MM 0 A_SpawnItemEx("SunstarNovaBeamEndFX", 0, random(-48, 48), random(-48, 52), random(5, 10), 0, 0, 0, 1, 128)
+    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeamEndFXSpawn", 10*cos(pitch), 0, 10*sin(-pitch), 0, 0, 0, 0, 544)
     S_UN OP 1
     stop
   }
 }
 
-actor SuperMegaNovaBeamDamager {
-  Projectile
+actor SuperMegaEndlessBeamDamager : BasicProjectile {
+  Translation "248:248=160:160", "227:227=66:66", "183:183=202:202"
+
   Obituary "Thanks to Endless Beam Launcher, %o finally realized they shouldn't challenge \cnSuper Megaman\c- (%k) at the expense of their mom!"
   DamageType "EndlessBeamLauncher"
   +RIPPER
@@ -370,16 +399,19 @@ actor SuperMegaNovaBeamDamager {
     S_UN M 0 A_JumpIfCloser(1200, "Appear")
     stop
    Appear:
-    S_UN M 0 A_SpawnItemEx("SuperMegaNovaBeamDamager", 32*cos(pitch), 0, 32*sin(-pitch), 0, 0, 0, 0, 545)
+    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeamDamager", 32*cos(pitch), 0, 32*sin(-pitch), 0, 0, 0, 0, 545)
+    S_UN M 0 A_SpawnItemEx("IcePitFreeze")
     S_UN MN 1 A_Explode(60*(1+0.01*CallACS("ub_countinv_acs", 81, 2)), 40, 0, 0, 40)
     stop
    Death:
-    TNT1 A 0
+    TNT1 A 0 A_SpawnItemEx("IcePitFreeze")
     stop
   }
 }
 
-actor SuperMegaNovaBeamWallHitFX : FastProjectile {
+actor SuperMegaEndlessBeamWallHit : FastProjectile {
+  Translation "248:248=160:160", "227:227=66:66", "183:183=202:202"
+
   Projectile
   +THRUACTORS
   Speed 1000
@@ -390,24 +422,25 @@ actor SuperMegaNovaBeamWallHitFX : FastProjectile {
     stop
    Death:
     TNT1 A 0 A_Quake(3, 5, 0, 1000)
-    TNT1 AAAAAA 0 A_SpawnItemEx("SunstarNovaBeamExplosionFX", random(-32, 32), random(-64, 64), random(0, 100))
-    TNT1 A 0 A_PlaySoundEx("weapon/coilexplode", "Voice")
-    TNT1 A 15 A_SpawnItemEx("SunstarChokeFX2", random(-256, 256), random(-256, 256), 250, 0, 0, -5, 0, 0)
+    TNT1 AAAA 0 A_SpawnItemEx("SuperMegaEndlessBeamShard", random(-2, 2), random(-2, 2), 32, random(-16, 16), random(-16, 16), random(2, 12), 0, 1)
+    TNT1 A 0 A_PlaySoundEx("weapon/ChillBlockCrack", "Voice")
     stop
   }
 }
 
-actor HorseShot : MorphProjectile {
-  MorphProjectile.MorphFlash ""//"GigaAstroExplode"
-  MorphProjectile.UnMorphFlash "WeakHorseC" //FakeUnholyDeathFX
-  MorphProjectile.PlayerClass "WeakHorse"
-  MorphProjectile.Duration 999999999999//4200
-  MorphProjectile.MorphStyle MRF_ADDSTAMINA|MRF_FULLHEALTH|MRF_LOSEACTUALWEAPON|MRF_NEWTIDBEHAVIOUR|MRF_UNDOBYDEATH|MRF_UNDOBYDEATHFORCED
+actor SuperMegaEndlessBeamShard : FaggassoBlockShard {
+  Translation "192:192=[181,213,241]:[181,213,241]", "198:198=[0,120,255]:[0,120,255]"
+  Damagetype "SuperMegaman"
+  Obituary "%o was frozen by \cnSuper Megaman\c- (%k)'s \cnEndless Beam Launcher\c-."
+}
 
+actor HorseShot : BasicMorphProjectile {
+  MorphProjectile.PlayerClass "WeakHorse"
   Translation "192:192=144:144", "198:198=235:235"
   Projectile
   Damagetype "SuperMegaman"
-  Obituary "%o tried to attack at \cnSuper Megaman\c- (%k), but missed and turned into a weak horse!"
+  // Obituary "%o tried to attack at \cnSuper Megaman\c- (%k), but missed and turned into a weak horse!"
+  Obituary "%o refused to become a weak horse."
   Damage (1000*(1+0.01*CallACS("ub_countinv_acs", 81, 2))*(1+9*(CallACS("rz_CheckBirthday")==0)))
   +FOILINVUL
   +THRUGHOST
@@ -428,15 +461,15 @@ actor HorseShot : MorphProjectile {
     TNT1 A 0 A_Stop
     TNT1 A 0 A_PlaySoundEx("Contra/C_SPING", "Weapon")
     TNT1 A 0 A_Explode(500, 64, 0, 0, 64)
-    TNT1 A 0 A_SpawnItemEx("HorseShot2", 0, 0, 16)
+    TNT1 A 0 A_SpawnItemEx("HorseShotExplosion")
     X_8B ABCDEF 2
     stop
   }
 }
 
-actor HorseShot2 : BasicExplosion {
+actor HorseShotExplosion : BasicExplosion {
   Damagetype "SuperMegaman"
-  Obituary "%o tried to attack at \cnSuper Megaman\c- (%k), but missed and turned into a weak horse!"
+  Obituary "%o refused to become a weak horse."
   States {
    Spawn:
     TNT1 A 0
@@ -450,42 +483,31 @@ actor HorseShotProtect : PowerProtection {
   DamageFactor "SuperMegaman", 0.0
 }
 
-actor HorseGun_W : BaseUnholyBossWep {
-  Weapon.AmmoUse 1
-  Weapon.AmmoGive 3
-  Weapon.SlotNumber 1
-  Inventory.Pickupmessage "\cgI am an enemy?"
-  Obituary "%o's skill level was so low that %g was killed by a \c[g8]weak horse\c- (%k)."
+actor WeakHorse_W : BaseUnholyBossWep {
+  Inventory.Pickupmessage "\c[g8]Now everyone is coming after you."
+  Obituary "%o actually got killed by a \c[g8]weak horse\c- (%k), what a disgrace."
   Tag "Horse Gun"
-  Weapon.ammotype "BusterAmmo"
-  Inventory.icon "NULLICON"
-  Dropitem ""
   States {
    Spawn:
     WEA2 Q 1
     wait
    Ready:
-    8H66 D 0 ACS_ExecuteAlways(998, 0, 31081)
-    8H66 D 0 A_GiveInventory("HorseShotProtect", 1)
-    8H66 D 0 A_GiveInventory("IsAHorse")
-    8H66 D 0 A_GiveInventory("MorphedFlag")
-    8H66 D 2 A_GiveInventory("BasicBossItem", 1)
+    8H66 D 0 A_GiveInventory("HorseShotProtect")
+    8H66 D 0 A_GiveInventory("IsHorseFlag")
+    8H66 D 0 A_GiveInventory("ProtoManBadGuyMorph_P")
     8H66 D 1 A_GunFlash
     goto Ready2
    Ready2:
     8H66 D 1 A_WeaponReady
-    goto Ready2
+    loop
    Deselect:
-    TNT1 AAAAAAAAAAAAAAAAAAAAAA 0 A_Lower
-    8H66 D 1 A_Lower
-    loop
+    8H66 D 0
+    goto DeselectSwap
    Select:
-    TNT1 AAAAAAAAAAAAAAAAAAAAAA 0 A_Raise
-    8H66 D 1 A_Raise
-    loop
+    8H66 D 0
+    goto SelectSwap
    Fire:
     8H66 D 0 A_PlaySoundEx("weapon/chargekick", "Weapon")
-    //8H66 D 0 A_GiveInventory("NegaSlideBoost_P",1)
     8H66 D 1 Offset(11, 50)
     8H66 E 2 Offset(22, 68) A_FireCustomMissile("HorseKick", 180, 0, 0, 0)
     8H66 F 7 Offset(33, 104)
@@ -509,7 +531,8 @@ actor Horse_Flash_P : CustomInventory {
 }
 
 actor Horse_Contact_Damage : BasicExplosion {
-  Obituary "%o's skill level was so low that %g was killed by a \c[g8]weak horse\c- (%k)."
+  Obituary "%o actually got killed by a \c[g8]weak horse\c- (%k), what a disgrace."
+  // Obituary "%o's skill level was so low that %g was killed by a \c[g8]weak horse\c- (%k)."
   Damagetype "WeakHorse"
   States {
    Spawn:
@@ -519,10 +542,9 @@ actor Horse_Contact_Damage : BasicExplosion {
   }
 }
 
-actor HorseKick {
-  Translation "198:198=77:77", "192:192=205:205"
-  Projectile
-  Obituary "$OB_02A"
+actor HorseKick : BasicProjectile {
+  Translation "192:192=233:233", "198:198=143:143"
+  Obituary "%o actually got killed by a \c[g8]weak horse\c- (%k)'s kick, what a disgrace."
   Damagetype "WeakHorse"
   Damage (-1)
   Radius 14
@@ -535,7 +557,4 @@ actor HorseKick {
     stop
   }
 }
-
-
-
 
