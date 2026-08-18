@@ -10,9 +10,16 @@
 //
 //      function void YourRegisterBosses(void)
 //      {
-//          DefineBoss(-1, "YourBossActor", "\cjName", UHBOSS_POOL_COMMON,
-//              2000, 300, "", "UFACE26", "M_UB000", "credit",
-//              "instructions", "T.", "spawn msg");
+//          DefineBoss(
+//              -1, "YourBossActor", "\cjName",
+//              UHBOSS_POOL_COMMON,
+//              2000, 300,
+//              "",
+//              "UFACE26",
+//              "M_UB000", "credit",
+//              "instructions",
+//              "T.", "spawn msg"
+//          );
 //      }
 //
 //      script "your_define_bosses" OPEN
@@ -44,9 +51,16 @@
 //
 //      function void YourRegisterBosses(void)
 //      {
-//          DefineBoss(-1, "YourBossActor", "\cjYour Boss", UHBOSS_POOL_COMMON,
-//              2000, 300, "", "UFACE26", "M_UB000", "credit",
-//              "instructions", "T.", "spawn msg");
+//          DefineBoss(
+//              -1, "YourBossActor", "\cjYour Boss",
+//              UHBOSS_POOL_COMMON,
+//              2000, 300,
+//              "",
+//              "UFACE26",
+//              "M_UB000", "credit",
+//              "instructions",
+//              "T.", "spawn msg"
+//          );
 //          SetBossMorphSetupByActor("YourBossActor", "uh_BossMorphSetup_YourBossActor");
 //      }
 //
@@ -122,6 +136,32 @@
 // Use DrawBar2ColorOwned / DrawBar3Color for non-weapon ammo — plain DrawBar2Color
 // binds Ammo2 and will not show RockNRollAmmo.
 //
+// === Custom bar slots (DrawCustomBar / DrawCustomBar1) =======================
+// SBARINFO has 256 slots (0-255). Unholy occupies ~146-250 (see UH_BARS CUST_*).
+// v6b already has BRSLT000-002. Empty in Unholy: 003-145 and 251-255.
+// Other addons may take those too — pick a slot and document it; there is no
+// reservation API. Do not patch Unholy's TEXTURES.barspos; addons cannot run
+// tools/_gen_barpos.py against the loaded pk3.
+//
+// DrawCustomBar(slot, amount, cap) — overlay at SBAR (0,0), uses BRSLT### by
+// name at draw time. Addon pk3 loaded AFTER Unholy only needs:
+//   texture BRSLT251, 8, 56 {offset -24, -8 patch YourFill, 0, 0}
+//   texture BRSLB251, 8, 56 {offset -24, -8 patch BAREMPTY, 0, 0}
+//   texture VRSLT251, 56, 8 {offset -130, -184 patch BRSLT251, 0, 0 {rotate 90}}
+//   texture VRSLB251, 56, 8 {offset -130, -184 patch VAREMPTY, 0, 0}
+// Empty = NOBAR/VNOBAR if the tank should be invisible. ANIMDEFS can target
+// BRSLT251 / VRSLT251. ScriptBar: DrawCustomBar(251, owned, max);
+//
+// DrawCustomBar1/2/HP(slot, ...) — bar1/bar2/HP coords. SBARINFO draws
+// BZSLT### / BZSLB### (offset 0), which Unholy already defined as NOBAR for
+// unused slots. An addon must REDEFINE those four names in its own TEXTURES
+// (later pk3 wins):
+//   graphic BZSLT251, 8, 56 {offset 0, 0 patch YourFill, 0, 0}
+//   graphic BZSLB251, 8, 56 {offset 0, 0 patch BAREMPTY, 0, 0}
+//   graphic VZSLT251, 56, 8 {offset 0, 0 patch YourFillH, 0, 0}
+//   graphic VZSLB251, 56, 8 {offset 0, 0 patch VAREMPTY, 0, 0}
+// Defining only BRSLT251 does NOT update Unholy's BZSLT251 composite.
+//
 // === DefineUnholyItem addon recipe ===========================================
 // 1. LOADACS after Unholy: YOUR_ITEMDEFS
 // 2. ACS:
@@ -196,9 +236,16 @@
 //      #include "zcommon.acs"
 //      #include "UHADD.acs"
 //      function void YourRegister(void) {
-//          int id = DefineBoss(-1, "YourBossActor", "\cjName", UHBOSS_POOL_COMMON,
-//              2000, 300, "", "UFACE26", "M_MYBASE", "base credit",
-//              "instructions", "T.", "spawn msg");
+//          int id = DefineBoss(
+//              -1, "YourBossActor", "\cjName",
+//              UHBOSS_POOL_COMMON,
+//              2000, 300,
+//              "",
+//              "UFACE26",
+//              "M_MYBASE", "base credit",
+//              "instructions",
+//              "T.", "spawn msg"
+//          );
 //          // weight >= 1. optional 1 = skip unless uh_sv_OptionalMusic.
 //          // Prefer optional=0 and ship lumps in the same addon pk3.
 //          AddBossMusic(id, "M_MYTUNE", "Game - Track", 3, 0);

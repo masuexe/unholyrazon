@@ -1,0 +1,541 @@
+actor SuperMegaman_W_ScriptBar : ScriptBar {}
+actor SuperMegaman_W : BaseUnholyBossWep {
+  Tag "$TAG_Boss066_W"
+  Obituary "%o lost %p ass somehow."
+  Inventory.Pickupmessage "\ckYou want to kill me? I spectate lol"
+  Weapon.ammotype "UnholyBossAmmo100"
+  Weapon.ammotype2 "UnholyBossAmmo200" //UnholyPower2000
+  States {
+   Spawn:
+    8H66 [ 1
+    wait
+
+   Deselect:
+    8H66 A 0
+    goto DeselectSwap
+   Select:
+    8H66 A 0
+    goto SelectSwap
+
+   Ready:
+    8H66 A 0 A_GiveInventory("UnholyPowerLimit_F", 2000)
+    8H66 A 3 ACS_NamedExecuteAlways("core_weaponcolor", 0, SUPERMEGAMAN_DYE)
+    8H66 A 0 ACS_NamedExecuteWithResult("core_buddhaplayer", 0, true)
+    8H66 A 0 A_GunFlash
+    goto ReadyX
+   ReadyX:
+    8H66 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "ReadyX0")
+    8H66 A 1 A_GiveInventory("SuperMegaman_Ready8_P")
+    loop
+   ReadyX0:
+    8H66 A 1 A_GiveInventory("SuperMegaman_Ready0_P")
+    loop
+
+   Flash:
+    TNT1 A 1 A_JumpIfHealthLower(2, "NoYouCantDefeatMe")
+    loop
+   NoYouCantDefeatMe:
+    TNT1 A 1 ACS_NamedExecuteWithResult("rz_ForceSpectatePlayer", 1)
+    stop
+
+   Fire:
+    8H66 A 0 A_JumpIfInventory("UnholyPower2000", 0, "EndlessBeamLauncher")
+    8H66 A 0 A_JumpIfInventory("UnholyBossAmmo100", 100-50*CallACS("uh_CheckRune", RUNE_ENDLESSAMMO), "Fire3")
+    8H66 A 0 A_JumpIfInventory("UnholyBossAmmo100", 50-25*CallACS("uh_CheckRune", RUNE_ENDLESSAMMO), "Fire2")
+    goto Fire1
+
+   Fire1:
+    8H66 A 0 A_TakeInventory("WeaponCharge")
+    8H66 A 0 A_TakeInventory("UnholyBossAmmo100", 50, 1)
+    8H66 A 0 A_TakeInventory("UnholyBossAmmo100", 50)
+    8H66 A 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    8H66 A 0 A_FireCustomMissile("SuperMegaChargeShot1", 0, 0, 8, 0)
+    8H66 BCA 2
+    8H66 A 0 A_Refire//("Charge")
+    goto ReadyX
+   Fire2:
+    8H66 B 0 A_TakeInventory("WeaponCharge")
+    8H66 B 0 A_TakeInventory("UnholyBossAmmo100", 50, 1)
+    8H66 B 0 A_TakeInventory("UnholyBossAmmo100", 50)
+    8H66 B 0 A_PlaySoundEx("weapon/magmabazooka", "Weapon")
+    TNT1 A 0 A_FireCustomMissile("SuperMegaChargeShot2", -2, 0, 8, 0)
+    TNT1 A 0 A_FireCustomMissile("SuperMegaChargeShot2", -12, 0, 8, 0)
+    TNT1 A 0 A_FireCustomMissile("SuperMegaChargeShot2", 2, 0, 8, 0)
+    TNT1 A 0 A_FireCustomMissile("SuperMegaChargeShot2", 12, 0, 8, 0)
+    8H66 CBA 2
+    8H66 A 0 A_Refire//("Charge")
+    goto ReadyX
+   Fire3:
+    8H66 C 0 A_TakeInventory("WeaponCharge")
+    8H66 C 0 A_TakeInventory("UnholyBossAmmo100", 50, 1)
+    8H66 C 0 A_TakeInventory("UnholyBossAmmo100", 50)
+    8H66 C 0 A_PlaySoundEx("weapon/magmabazooka", "Weapon")
+    8H66 C 0 A_FireCustomMissile("SuperMegaChargeShot3", -1, 0, 8, 0)
+    8H66 C 0 A_FireCustomMissile("SuperMegaChargeShot3", -15, 0, 8, 0)
+    8H66 C 0 A_FireCustomMissile("SuperMegaChargeShot3", 1, 0, 8, 0)
+    8H66 C 0 A_FireCustomMissile("SuperMegaChargeShot3", 15, 0, 8, 0)
+    8H66 CBA 3
+    8H66 A 0 A_Refire//("Charge")
+    goto ReadyX
+
+   AltFire:
+    // TNT1 A 0 A_JumpIfInventory("GenericBossFlag100",1,"BeamReady")
+    TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200-100*CallACS("uh_CheckRune", RUNE_ENDLESSAMMO), "UseWarp")
+    8H66 A 0 A_GiveInventory("UnholyBossAmmo100", 2)
+    8H66 A 0 A_GiveInventory("UnholyBossAmmo200", 1)
+    goto ReadyX
+   UseWarp:
+    TNT1 A 0 A_TakeInventory("UnholyBossAmmo200", 100, 1)
+    TNT1 A 0 A_TakeInventory("UnholyBossAmmo200", 100)
+    TNT1 A 0 A_SpawnItemEx("SuperMegaWarp")
+    goto ReadyX
+   Nothing:
+    8H66 A 0
+    stop
+
+   Reload:
+    8H66 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200-100*CallACS("uh_CheckRune", RUNE_ENDLESSAMMO), "HorseFire")
+   HorseFire:
+    8H66 B 2
+    TNT1 A 0 A_TakeInventory("UnholyBossAmmo200", 100, true)
+    TNT1 A 0 A_TakeInventory("UnholyBossAmmo200", 100)
+    TNT1 A 0 A_TakeInventory("BossItemUseFlag", 9)
+    TNT1 A 0 A_PlaySoundEx("BUTTSCKS", "Weapon")
+    TNT1 A 0 A_FireCustomMissile("HorseShot", 0, 0, 0, 0)
+    8H66 C 24
+    8H66 B 4
+    goto ReadyX
+
+   EndlessBeamLauncher:
+    8H66 A 0 A_GiveInventory("GenericBossFlag100", 100)
+    8H66 A 0 A_TakeInventory("UnholyPower2000")
+    8H66 A 0 A_PlaySoundEx("misc/sunstarbeamcharge", "SoundSlot6")
+    8H66 A 0 ACS_NamedExecuteWithResult("core_flyplayer", 0, true)
+    8H66 B 2 ThrustThingZ(0, 20, 0, 0)
+    8H66 B 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true)
+    8H66 C 60
+    8H66 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false)
+    goto BeamReady
+   BeamReady:
+    8H66 C 2 A_WeaponReady(14)
+    TNT1 A 0 A_FireCustomMissile("SuperMegaNovaBeamSpawn", 0, 0, 0, -16, 0, 0)
+    8H66 C 0 A_GiveInventory("UnholyBossAmmo200", 2)
+    8H66 C 0 A_TakeInventory("GenericBossFlag100", 1)
+    8H66 C 0 A_JumpIfInventory("GenericBossFlag100", 1, "BeamReady")
+    goto BeamEnd
+
+   BeamEnd:
+    TNT1 A 0 A_SpawnItemEx("SuperMegaNovaBeamEndFXSpawn", 24*cos(pitch), 0, 32+24*sin(-pitch), 0, 0, 0, 0, 545)
+    8H66 C 2
+    8H66 C 2 ACS_NamedExecuteWithResult("core_flyplayer", 0, false)
+    8H66 BA 2
+    goto ReadyX
+  }
+}
+
+actor IsAHorse : UOnce {}
+actor HorseBountyStack : Inventory {
+  Inventory.amount 1
+  Inventory.maxamount 999
+}
+
+actor SuperMegaman_Ready0_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "PickupReload")
+    TNT1 A 0 A_Jump(256, "PickupNormal")
+    goto PickupNormal
+   PickupNormal:
+    TNT1 A 0 A_WeaponReady
+    goto Ammo
+   PickupReload:
+    TNT1 A 0 A_WeaponReady(WRF_ALLOWRELOAD)
+    goto Ammo
+   Ammo:
+    TNT1 A 0 A_GiveInventory("UnholyBossAmmo100", 2)
+    TNT1 A 0 A_GiveInventory("UnholyBossAmmo200", 1)
+    stop
+  }
+}
+actor SuperMegaman_Ready8_P : SuperMegaman_Ready0_P {
+  States {
+   PickupNormal:
+    TNT1 A 0 A_WeaponReady(8)
+    goto Ammo
+   PickupReload:
+    TNT1 A 0 A_WeaponReady(8 + 16)
+    goto Ammo
+  }
+}
+
+
+actor SuperMegaChargeShot1 : BasicProjectile {
+  Translation "192:192=216:216", "198:198=41:41"
+  Damagetype "SuperMegaman"
+  Obituary "%o is destroyed by \cnSuper Megaman\c- (%k) with Super Lemon Buster ONLY!"
+  +BRIGHT
+  Damage (100*(1+0.01*CallACS("ub_countinv_acs", 81, 2))*(1+9*(CallACS("rz_CheckBirthday")==0)))
+  Radius 8
+  Height 8
+  Speed 50
+  States {
+   Spawn:
+    TNT1 A 1
+    BUST A 1
+    wait
+  }
+}
+
+actor SuperMegaChargeShot2 : SuperMegaChargeShot1 {
+  Damagetype "SuperMegaChargeShot"
+  Obituary "%o didn't notice the appearance of \cnSuper Megaman\c- (%k), and found their ass burnt out."
+  +RIPPER
+  Damage (160*(1+0.01*CallACS("ub_countinv_acs", 81, 2))*(1+9*(CallACS("rz_CheckBirthday")==0)))
+  Radius 14
+  Height 14
+  Speed 60
+  States {
+   Spawn:
+    X_9G ABCDEF 2
+    loop
+   Death:
+    TNT1 A 0 A_SpawnItemEx("OilPitIgnite")
+    stop
+  }
+}
+
+actor SuperMegaChargeShot3 : SuperMegaChargeShot1 {
+  Damagetype "SuperMegaChargeShot"
+  Obituary "\cnSuper Megaman\c- (%k) whispered to %o: \cg\"I'm on your ass.\""
+  Damage (300*(1+0.01*CallACS("ub_countinv_acs", 81, 2))*(1+9*(CallACS("rz_CheckBirthday")==0)))
+  Radius 20
+  Height 20
+  Speed 70
+  Args 100, 128, 16
+  States {
+   Spawn:
+    X_9G GHIJKL 2
+    loop
+   Death:
+    TNT1 A 0 A_PlaySoundEx("wep_L/Igniter_Boom", "Weapon")
+    TNT1 A 0 A_Explode(Args[0]*(1+0.01*CallACS("ub_countinv_acs", 81, 2)), Args[1], 0, 0, Args[2])
+    TNT1 A 0 A_SpawnItemEx("OilPitIgnite")
+    TNT1 A 4 A_SpawnItemEx("BasicBoom6FX_ColorX", 0, 0, 0, 0, 0, 0, 0, 1)
+    stop
+  }
+}
+
+actor SuperMegaWarp : BasicHelper {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SetArg(3, ACS_ExecuteWithResult(257, 0))
+    TNT1 A 0 A_SetArg(4, CallACS("uh_HPHM_WarpChecker"))
+    TNT1 A 0 A_JumpIf(Args[3]==Args[4], "SpawnError")
+    goto SpawnWarp
+   SpawnError:
+    TNT1 A 4 A_PlaySound("M_64/Invalid", 1)
+    stop
+   SpawnWarp:
+    TNT1 A 0 A_GiveToTarget("HPHM_WarpToUniverse_P", 1)
+    TNT1 A 0 A_SpawnItemEx("SuperMegaWarpFX", 0, 0, 28)
+    TNT1 A 1 ACS_NamedExecuteWithResult("rz_WarpToTID", Args[4], 0, 0, 2) //Thing_Move(Args[3],Args[4],1)
+    TNT1 A 1 A_SpawnItemEx("SuperMegaWarpMoveBack_H", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERSPECIAL)
+    TNT1 A 0 A_Warp(2, 0, 0, 28, 0, 16)
+    TNT1 A 4 A_PlaySound("M_64/Warp1", 1)
+    stop
+  }
+}
+
+actor SuperMegaWarpMoveBack_H : BasicHelper {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 A_GiveToTarget("SuperMegaMoveBack_P")
+    goto StopIt
+   StopIt:
+    TNT1 A 0 A_GiveToTarget("SuperMegaMoveStop_P")
+    stop
+  }
+}
+actor SuperMegaMoveBack_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_ChangeVelocity(-52, 0, velz, CVF_RELATIVE|CVF_REPLACE)
+    stop
+  }
+}
+
+actor SuperMegaMoveStop_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_Stop
+    stop
+  }
+}
+
+actor SuperMegaWarpFX : BasicClientSide {
+  Translation "4:4=160:160", "192:192=161:161", "198:198=163:163"
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_PlaySound("M_64/Warp1", 1)
+    8P50 BCDEF 3
+    stop
+  }
+}
+
+// 545 = SXF_TRANSFERTRANSLATION|SXF_NOCHECKPOSITION|SXF_TRANSFERPITCH
+actor SuperMegaNovaBeamSpawn : BasicProjectile {
+  Translation "192:192=160:160", "198:198=60:60", "199:199=207:207"
+  Projectile
+  Obituary "Thanks to Endless Beam Launcher, %o finally realized they shouldn't challenge \cnSuper Megaman\c- (%k) at the expense of their mom!"
+  DamageType "EndlessBeamLauncher"
+  +THRUGHOST
+  +BRIGHT
+  +DONTBLAST
+  +FORCEXYBILLBOARD
+  +DONTREFLECT
+  Damage (0)
+  Radius 8
+  Height 8
+  Speed 0
+  Scale 2.5
+  States {
+   Spawn:
+    S_UN M 0
+    S_UN M 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", 2, 0)
+    S_UN M 0 A_PlaySoundEx("misc/sunstarbeamloop", "SoundSlot6")
+    S_UN M 0 A_SpawnItemEx("SuperMegaNovaBeamWallHitFX", 0, 0, 0, 1000*cos(pitch), 0, 1000*sin(-pitch), 0, 545)
+    S_UN M 0 A_SpawnItemEx("SuperMegaNovaBeamDamager", 32*cos(pitch), 0, 32*sin(-pitch), 0, 0, 0, 0, 545)
+    S_UN M 0 A_SpawnItemEx("SuperMegaNovaBeam", 10*cos(pitch), 0, 10*sin(-pitch), 0, 0, 0, 0, 545)
+    S_UN M 0 A_Stop
+    S_UN MN 1
+    stop
+   Death:
+    TNT1 A 0
+    stop
+  }
+}
+
+actor SuperMegaNovaBeam : SuperMegaNovaBeamSpawn {
+  States {
+   Spawn:
+    S_UN M 0
+    S_UN M 0 A_JumpIfCloser(1200, "Appear")
+    stop
+   Appear:
+    S_UN M 0 A_SpawnItemEx("SuperMegaNovaBeam", 10*cos(pitch), 0, 10*sin(-pitch), 0, 0, 0, 0, 545)
+    S_UN OP 1
+    stop
+  }
+}
+
+actor SuperMegaNovaBeamEndFXSpawn {
+  Projectile
+  Renderstyle "None"
+  +THRUGHOST
+  Speed 0
+  Radius 8
+  Height 8
+  States {
+   Spawn:
+    S_UN M 0
+    S_UN M 0 A_JumpIfCloser(1200, "Appear")
+    stop
+   Appear:
+    S_UN MM 0 A_SpawnItemEx("SunstarNovaBeamEndFX", 0, random(-48, 48), random(-48, 52), random(5, 10), 0, 0, 0, 0, 128)
+    S_UN M 0 A_SpawnItemEx("SuperMegaNovaBeamEndFXSpawn", 10*cos(pitch), 0, 10*sin(-pitch), 0, 0, 0, 0, 545)
+    S_UN OP 1
+    stop
+  }
+}
+
+actor SuperMegaNovaBeamDamager {
+  Projectile
+  Obituary "Thanks to Endless Beam Launcher, %o finally realized they shouldn't challenge \cnSuper Megaman\c- (%k) at the expense of their mom!"
+  DamageType "EndlessBeamLauncher"
+  +RIPPER
+  +THRUGHOST
+  +THRUACTORS
+  +DONTBLAST
+  +DONTREFLECT
+  Damage (0)
+  Height 40
+  Radius 18
+  Renderstyle "None"
+  States {
+   Spawn:
+    S_UN M 0
+    S_UN M 0 A_JumpIfCloser(1200, "Appear")
+    stop
+   Appear:
+    S_UN M 0 A_SpawnItemEx("SuperMegaNovaBeamDamager", 32*cos(pitch), 0, 32*sin(-pitch), 0, 0, 0, 0, 545)
+    S_UN MN 1 A_Explode(60*(1+0.01*CallACS("ub_countinv_acs", 81, 2)), 40, 0, 0, 40)
+    stop
+   Death:
+    TNT1 A 0
+    stop
+  }
+}
+
+actor SuperMegaNovaBeamWallHitFX : FastProjectile {
+  Projectile
+  +THRUACTORS
+  Speed 1000
+  Radius 32
+  States {
+   Spawn:
+    TNT1 A 5
+    stop
+   Death:
+    TNT1 A 0 A_Quake(3, 5, 0, 1000)
+    TNT1 AAAAAA 0 A_SpawnItemEx("SunstarNovaBeamExplosionFX", random(-32, 32), random(-64, 64), random(0, 100))
+    TNT1 A 0 A_PlaySoundEx("weapon/coilexplode", "Voice")
+    TNT1 A 15 A_SpawnItemEx("SunstarChokeFX2", random(-256, 256), random(-256, 256), 250, 0, 0, -5, 0, 0)
+    stop
+  }
+}
+
+actor HorseShot : MorphProjectile {
+  MorphProjectile.MorphFlash ""//"GigaAstroExplode"
+  MorphProjectile.UnMorphFlash "WeakHorseC" //FakeUnholyDeathFX
+  MorphProjectile.PlayerClass "WeakHorse"
+  MorphProjectile.Duration 999999999999//4200
+  MorphProjectile.MorphStyle MRF_ADDSTAMINA|MRF_FULLHEALTH|MRF_LOSEACTUALWEAPON|MRF_NEWTIDBEHAVIOUR|MRF_UNDOBYDEATH|MRF_UNDOBYDEATHFORCED
+
+  Translation "192:192=144:144", "198:198=235:235"
+  Projectile
+  Damagetype "SuperMegaman"
+  Obituary "%o tried to attack at \cnSuper Megaman\c- (%k), but missed and turned into a weak horse!"
+  Damage (1000*(1+0.01*CallACS("ub_countinv_acs", 81, 2))*(1+9*(CallACS("rz_CheckBirthday")==0)))
+  +FOILINVUL
+  +THRUGHOST
+  +RIPPER
+  +LOOKALLAROUND
+  +SKYEXPLODE
+  +EXPLODEONWATER
+
+  Radius 20
+  Height 20
+  Speed 50
+  Scale 2.5
+  States {
+   Spawn:
+    CHBU ABCD 2
+    loop
+   Death:
+    TNT1 A 0 A_Stop
+    TNT1 A 0 A_PlaySoundEx("Contra/C_SPING", "Weapon")
+    TNT1 A 0 A_Explode(500, 64, 0, 0, 64)
+    TNT1 A 0 A_SpawnItemEx("HorseShot2", 0, 0, 16)
+    X_8B ABCDEF 2
+    stop
+  }
+}
+
+actor HorseShot2 : BasicExplosion {
+  Damagetype "SuperMegaman"
+  Obituary "%o tried to attack at \cnSuper Megaman\c- (%k), but missed and turned into a weak horse!"
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 2 A_Explode(500*(1+0.01*CallACS("ub_countinv_acs", 81, 2)), 64, 0, 0, 64)
+    stop
+  }
+}
+
+actor HorseShotProtect : PowerProtection {
+  Powerup.Duration 16
+  DamageFactor "SuperMegaman", 0.0
+}
+
+actor HorseGun_W : BaseUnholyBossWep {
+  Weapon.AmmoUse 1
+  Weapon.AmmoGive 3
+  Weapon.SlotNumber 1
+  Inventory.Pickupmessage "\cgI am an enemy?"
+  Obituary "%o's skill level was so low that %g was killed by a \c[g8]weak horse\c- (%k)."
+  Tag "Horse Gun"
+  Weapon.ammotype "BusterAmmo"
+  Inventory.icon "NULLICON"
+  Dropitem ""
+  States {
+   Spawn:
+    WEA2 Q 1
+    wait
+   Ready:
+    8H66 D 0 ACS_ExecuteAlways(998, 0, 31081)
+    8H66 D 0 A_GiveInventory("HorseShotProtect", 1)
+    8H66 D 0 A_GiveInventory("IsAHorse")
+    8H66 D 0 A_GiveInventory("MorphedFlag")
+    8H66 D 2 A_GiveInventory("BasicBossItem", 1)
+    8H66 D 1 A_GunFlash
+    goto Ready2
+   Ready2:
+    8H66 D 1 A_WeaponReady
+    goto Ready2
+   Deselect:
+    TNT1 AAAAAAAAAAAAAAAAAAAAAA 0 A_Lower
+    8H66 D 1 A_Lower
+    loop
+   Select:
+    TNT1 AAAAAAAAAAAAAAAAAAAAAA 0 A_Raise
+    8H66 D 1 A_Raise
+    loop
+   Fire:
+    8H66 D 0 A_PlaySoundEx("weapon/chargekick", "Weapon")
+    //8H66 D 0 A_GiveInventory("NegaSlideBoost_P",1)
+    8H66 D 1 Offset(11, 50)
+    8H66 E 2 Offset(22, 68) A_FireCustomMissile("HorseKick", 180, 0, 0, 0)
+    8H66 F 7 Offset(33, 104)
+    8H66 E 4 Offset(22, 68)
+    8H66 E 4 Offset(11, 50)
+    goto Ready2
+
+   Flash:
+    TNT1 A 0 A_JumpIfInventory("IsDead", 1, "NoFlash")
+    TNT1 A 2 A_GiveInventory("Horse_Flash_P")
+    loop
+  }
+}
+
+actor Horse_Flash_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_SpawnItemEx("Horse_Contact_Damage", 0, 0, 32, momx, momy, momz, 0, 8)
+    stop
+  }
+}
+
+actor Horse_Contact_Damage : BasicExplosion {
+  Obituary "%o's skill level was so low that %g was killed by a \c[g8]weak horse\c- (%k)."
+  Damagetype "WeakHorse"
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 2 A_Explode(10, 36, 0, 0, 36) //32 radius
+    stop
+  }
+}
+
+actor HorseKick {
+  Translation "198:198=77:77", "192:192=205:205"
+  Projectile
+  Obituary "$OB_02A"
+  Damagetype "WeakHorse"
+  Damage (-1)
+  Radius 14
+  Height 25
+  Speed 60
+  Scale 2.5
+  States {
+   Spawn:
+    X_5F DEF 2
+    stop
+  }
+}
+
+
+
+
