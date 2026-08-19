@@ -101,3 +101,44 @@ script "rz_debug_ShowTodayDmgMul" (void) {
 script "rz_debug_ShowTodayTeamFF" (void) {
 	ACS_NamedExecuteAlways("uh_debug_ShowTodayTeamFF", 0);
 }
+
+// A_SpawnItemEx-style spawn from the activator (puke only has 3 int args).
+//   rz_dbg_spawnactor <class>
+//   rz_dbg_spawnang <degrees>
+//   pukename rz_debug_SpawnEx <xofs> <yofs> <zofs>
+script "rz_debug_SpawnEx" (int xofs, int yofs, int zofs)
+{
+	str cls = GetCVarString("rz_dbg_spawnactor");
+	if (StrCmp(cls, "") == 0) {
+		Log(s:"rz_debug_SpawnEx: set rz_dbg_spawnactor first");
+		terminate;
+	}
+
+	int ptid = ActivatorTID();
+	if (ptid == 0)
+		ptid = PlayerNumber() + 1000;
+	if (!SetActivator(ptid)) {
+		Log(s:"rz_debug_SpawnEx: no activator");
+		terminate;
+	}
+
+	int facing = GetActorAngle(0) + GetCVar("rz_dbg_spawnang") * 1.0 / 360;
+	int c = cos(facing);
+	int s = sin(facing);
+	int fx = xofs * 1.0;
+	int fy = yofs * 1.0;
+	int px = GetActorX(0) + FixedMul(fx, c) + FixedMul(fy, s);
+	int py = GetActorY(0) + FixedMul(fx, s) - FixedMul(fy, c);
+	int pz = GetActorZ(0) + zofs * 1.0;
+
+	int tid = UniqueTID();
+	if (!SpawnForced(cls, px, py, pz, tid, facing >> 8)) {
+		Log(s:"rz_debug_SpawnEx: SpawnForced failed for ", s:cls);
+		terminate;
+	}
+	SetActorAngle(tid, facing);
+	SetActivator(tid);
+	SetPointer(AAPTR_TARGET, ptid);
+	SetActivator(ptid);
+	Log(s:"rz_debug_SpawnEx: spawned ", s:cls, s:" tid=", i:tid);
+}
