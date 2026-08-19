@@ -1,0 +1,417 @@
+actor Floovy_W_NormalBar : NormalBar {Args 161, 218}
+actor Floovy_W_SecondBar : SecondBar {Args 219, 174}
+actor Floovy_W : BaseUnholyBossWep {
+  Tag "$TAG_Boss090_W"
+  Obituary "%o became nourishment for \c[p5]Floovy\c- (%k)."
+  Inventory.Pickupmessage "\cmFloovy? Flowey?"
+  weapon.ammotype "UnholyBossAmmo200"
+  weapon.ammotype "UnholyPower3000"
+  States {
+   Spawn:
+    8H75 [ 1
+    wait
+
+   Deselect:
+    8H75 A 0
+    goto DeselectSwap
+   Select:
+    8H75 A 0
+    goto SelectSwap
+
+   Ready:
+    8H75 A 3 ACS_NamedExecuteAlways("core_weaponcolor", 0, FLOOVY_DYE)
+    8H75 A 0 A_GiveInventory("UnholyPowerLimit_F", 3000)
+    goto ReadyX
+
+   ReadyX:
+    //8H75 A 0 A_JumpIfInventory("FloovyPlugFlag",1,"ReadyX.Plugging")
+    8H75 A 1 A_WeaponReady
+    8H75 A 0 A_GiveInventory("UnholyBossAmmo200", 1)
+    loop
+
+   Fire:
+    8H75 C 0 A_JumpIfInventory("FloovyPlugFlag", 1, "ReadyX")
+    8H75 C 0 A_JumpIfInventory("UnholyPower3000", 0, "GoldExperienceRequiem")
+    8H75 C 0 A_PlaySoundEx("weapon/pshot", "Weapon")
+    8H75 C 0 A_FireCustomMissile("FloovyOutOfBodyShot", 0, 0, 8, 0)
+    8H75 CBAAAAAAA 3 A_GiveInventory("UnholyBossAmmo200", 1)
+    Goto ReadyX
+
+   AltFire:
+    8H75 C 0 A_JumpIfInventory("FloovyPlugFlag", 1, "ReadyX")
+    8H75 C 0 A_JumpIfInventory("UnholyBossAmmo200", 1, 1)
+    goto ReadyX
+    8H75 C 0 A_TakeInventory("UnholyBossAmmo200", 0, 1)
+    8H75 C 0 A_PlaySoundEx("weapon/magnetmissile", "Weapon")
+    8H75 C 0 A_FireCustomMissile("FloovyPlug", 0, 0, 8, 0)
+    8H75 CE 2
+    8H75 DDDD 1 A_JumpIfInventory("FloovyPlugFlag", 1, "ReadyX.Plugging")
+    // 8H75 DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD 1 A_JumpIfInventory("FloovyPlugFlag",1,"ReadyX.Plugging")
+   AltFireEnd:
+    8H75 A 4 A_PlaySoundEx("weapon/adapterreturn", "Body")
+    goto ReadyX
+
+   ReadyX.Plugging:
+    8H75 D 1 A_WeaponReady(14)
+    8H75 D 0 A_JumpIfInventory("FloovyPlugFlag", 1, "ReadyX.Plugging")
+    goto AltFireEnd
+
+   GoldExperienceRequiem:
+    8H75 C 0 A_TakeInventory("UnholyPower3000")
+    8H75 BC 2
+    8H75 C 0 A_JumpIfInventory("FloovyPlugFlag", 1, "ReadyX")
+    8H75 C 0 A_PlaySoundEx("Pokemon/ShadowBall", "Weapon")
+    8H75 C 0 A_FireCustomMissile("FloovyGoldenShot", 0, 0, 8, 0)
+    8H75 CBA 2
+    8H75 A 40
+    goto ReadyX
+  }
+}
+actor FloovyPlugFlag : UOnce {}
+actor FloovyOutOfBodyTid : Inventory {
+  inventory.amount 1
+  inventory.maxamount 1063
+}
+actor FloovyStandTid : Inventory {
+  inventory.amount 1
+  inventory.maxamount 1063
+}
+actor FloovyDiesForMeTid : Inventory {
+  inventory.amount 1
+  inventory.maxamount 1063
+}
+actor FloovyOutOfBodyShot : BasicProjectile {
+  Translation "192:192=180:180", "198:198=189:189"
+  damagetype "FloovyOutOfBody"//"FloovyTimeStop"//"Floovy"
+  Obituary "%o was out of body but without body!"
+  +HITTRACER
+  damage (75*(1+9*(CallACS("rz_CheckBirthday")==3)))
+  radius 16
+  Height 16
+  Speed 40
+  scale 2.5
+  States {
+   Spawn:
+    6P50 OPQ 2
+    loop
+   Crash:
+   XDeath:
+    TNT1 A 0 A_JumpIf(!CallACS("uh_istracerplayer"), "Death")
+    6P50 R 0 A_JumpIfInventory("Is_UH_BossNum", 1, "BoostYou", 8)
+    goto OutOfBody
+   OutOfBody:
+    6P50 R 0 A_JumpIfInventory("FloovyOutOfBodyProtect", 1, "Death", 8)
+    //6P50 R 0 A_GiveInventory("FloovyOutOfBody_P",1,8)
+    6P50 R 0 A_TakeInventory("FloovyOutOfBodyTid", 0, 0, 2)
+    6P50 R 0 A_GiveInventory("FloovyOutOfBodyTid", CallACS("core_getptrtid", 8), 2)
+    6P50 R 0 A_SpawnItemEx("FloovyGhost", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
+    6P50 R 0 A_GiveInventory("FloovyOutOfBodyProtect", 1, 8)
+    goto Death
+   BoostYou:
+    6P50 R 0 A_GiveInventory("PowerFloovyDamage", 1, 8)
+    6P50 R 0 A_GiveInventory("PowerFloovySpeed", 1, 8)
+   Death:
+    6P50 OPQ 2 A_FadeOut(0.1)
+    loop
+  }
+}
+actor FloovyOutOfBodyProtect : PowerProtection {
+  powerup.duration 110 //105
+  damagefactor "FloovyOutOfBody", 0.0
+}
+actor PowerFloovyDamage : PowerDamage {
+  Powerup.duration -5
+  DamageFactor "normal", 1.5
+}
+actor PowerFloovySpeed : PowerSpeed {
+  Powerup.duration -5
+  Speed 1.5
+}
+actor FloovyGhost {
+  -NOGRAVITY
+  +SKYEXPLODE
+  +NOINTERACTION
+  +THRUACTORS
+  +NOCLIP
+  +INVULNERABLE
+  reactiontime 105
+  States {
+   Spawn:
+    _D02 A 0
+    _D02 A 0 Thing_ChangeTID(0, 800+CallACS("core_getptrtid", 8))
+    _D02 A 0 A_GiveInventory("FloovyGhostOn", 1, 8)
+   SpawnL:
+    _D02 A 0 A_JumpIf(!CallACS("uh_PointerExists", 8), "Death")
+    _D02 A 0 A_JumpIf(CallACS("rz_CheckInv_FloovyOutOfBodyTid", 2) != tid-800, "Death")
+    _D02 A 0 ACS_NamedExecuteAlways("rz_FloovyGhostMoving", 0, 8)
+    _D02 A 1 A_Countdown
+    _D02 A 0 A_JumpIf(!CallACS("uh_PointerExists", 8), "Death")
+    _D02 A 0 A_JumpIf(CallACS("rz_CheckInv_FloovyOutOfBodyTid", 2) != tid-800, "Death")
+    _D02 A 0 ACS_NamedExecuteAlways("rz_FloovyGhostMoving", 0, 8)
+    _D02 B 1 A_Countdown
+    _D02 A 0 A_JumpIf(!CallACS("uh_PointerExists", 8), "Death")
+    _D02 A 0 A_JumpIf(CallACS("rz_CheckInv_FloovyOutOfBodyTid", 2) != tid-800, "Death")
+    _D02 A 0 ACS_NamedExecuteAlways("rz_FloovyGhostMoving", 0, 8)
+    _D02 C 1 A_Countdown
+    _D02 A 0 A_JumpIf(!CallACS("uh_PointerExists", 8), "Death")
+    _D02 A 0 A_JumpIf(CallACS("rz_CheckInv_FloovyOutOfBodyTid", 2) != tid-800, "Death")
+    _D02 A 0 ACS_NamedExecuteAlways("rz_FloovyGhostMoving", 0, 8)
+    _D02 B 1 A_Countdown
+    loop
+   Death:
+    TNT1 A 0 A_GiveInventory("TimeStoppedUnfreeze", 1, 8)
+    stop
+  }
+}
+actor FloovyGhostOn : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 ChangeCamera(800+tid, 0, 0)
+    stop
+  }
+}
+actor FloovyGhostMoveForward : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", 8)
+    TNT1 A 0 A_ChangeVelocity(0.5*cos(pitch), 0, 0.5*sin(-pitch), CVF_RELATIVE)
+    stop
+  }
+}
+actor FloovyGhostMoveBack : CustomInventory{States{Pickup:TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", 8) TNT1 A 0 A_ChangeVelocity(-0.5*cos(pitch), 0, 0.5*sin(-pitch), CVF_RELATIVE)stop}}
+actor FloovyGhostMoveLeft : CustomInventory{States{Pickup:TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", 8) TNT1 A 0 A_ChangeVelocity(0, 0.5*cos(pitch), 0.5*sin(-pitch), CVF_RELATIVE)stop}}
+actor FloovyGhostMoveRight : CustomInventory{States{Pickup:TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", 8) TNT1 A 0 A_ChangeVelocity(0, -0.5*cos(pitch), 0.5*sin(-pitch), CVF_RELATIVE)stop}}
+actor FloovyGhostTurnLeft : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_SetAngle(angle+1)
+    stop
+  }
+}
+actor FloovyGhostTurnRight : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_SetAngle(angle-1)
+    stop
+  }
+}
+actor FloovyPlug : BasicProjectile {
+  Translation "195:195=180:180", "204:204=59:59"
+  var int user_targetTid;
+  var int user_tracerTid;
+  damagetype "Floovy"
+  Obituary "%o was raped by \c[p5]Floovy\c- (%k)'s little plug."
+  +HITTRACER
+  +THRUGHOST
+  +DONTREFLECT
+  +DONTBLAST
+  +SKYEXPLODE
+  damage (75*(1+9*(CallACS("rz_CheckBirthday")==3)))
+  Height 52
+  Radius 52
+  Speed 40
+  scale 5
+  reactiontime 70
+  States {
+   Spawn:
+    // 6P50 RRSSTT 1 A_SpawnItemEx("FloovyPlugFX",0,0,0,0,0,0,0,1)
+    // loop
+    PLGH G 0
+    PLGH G 0 A_GiveInventory("FloovyPlugFlag", 1, 2)
+    PLGH G 0 A_SetUserVar("user_targetTid", CallACS("core_getptrtid", 2))
+   SpawnL:
+    PLGH G 1 ACS_NamedExecuteAlways("rz_DrawFloovyPlugCable", 0, 0, user_targetTid, 0)
+    PLGH G 0 A_Countdown
+    loop
+   Crash:
+   XDeath:
+    TNT1 AAAAAA 0 A_SpawnItemEx("FloovyPlugDeathFX", 0, 0, 0, frandom(-3, 3), 0, frandom(8, 12), random(0, 359), 1)
+    PLGH G 0 A_SetUserVar("user_tracerTid", CallACS("core_getptrtid", 8))
+    PLGH G 0 ACS_NamedExecuteAlways("rz_FloovyPlugLatch", 0, user_targetTid, user_tracerTid)
+
+    //6P50 R 0 A_GiveInventory("FloovyPlugFlag",1,2)
+    6P50 R 0 A_JumpIfInventory("Is_UH_BossNum", 1, "BoostYou", 8)
+    goto VineSummon
+   VineSummon:
+    6P50 R 0 A_SpawnItemEx("FloovyVine_H", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)//A_GiveInventory("FloovyVine_P",1,8)
+    goto Death
+   BoostYou:
+    //6P50 R 0 A_GiveInventory("PowerFloovyRegen",1,8)
+    6P50 R 0 A_SpawnItemEx("FloovyRageCharge_H", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)//A_GiveInventory("FloovyRageCharge_P",1,8)
+   Death:
+    TNT1 A 0 A_TakeInventory("FloovyPlugFlag", 1, 0, 2)
+    stop
+  }
+}
+Actor FloovyPlugCableFX : BasicGraphicEffect {
+  Translation "204:204=107:107", "195:195=117:117"//, "250:250=4:4", "249:249=228:228"
+  +MISSILE
+  States {
+   SpawnFrame:
+    PLGH H 0
+    PLGH H 2 A_JumpIf(angle>0, "Woah")
+    stop
+   Woah:
+    PLGH H 0 A_Jump(100, "FX2", "FX3")
+   FX1:
+    PLGH H 2
+    stop
+   FX2:
+    PLGH I 2 bright
+    stop
+   FX3:
+    PLGH J 2 bright
+    stop
+  }
+}
+actor FloovyPlugDeathFX : BasicGraphicEffectM {
+  -NOGRAVITY
+  States {
+   SpawnFrame:
+    6P50 OZPZQZ 1
+    loop
+  }
+}
+actor FloovyVine_H : BasicWatcher {
+  reactiontime 4 //10
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 8), "Death")
+    TNT1 A 0 A_JumpIfInTargetInventory("FloovyPlugFlag", 1, 2)
+    TNT1 A 0 A_Jump(256, "Death")
+    TNT1 A 0 A_Warp(8, 0, 0, 0, 0, 24)
+    TNT1 A 0 A_SpawnItemEx("FloovyVine")
+    TNT1 A 0 A_GiveToTarget("UnholyPower3000", 36)
+    TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage", 1, "CountDownRage")
+   CountDown:
+    TNT1 A 18 A_Countdown
+    goto Spawn
+   CountDownRage:
+    TNT1 A 9 A_Countdown
+    goto Spawn
+   Death:
+    TNT1 A 0 A_TakeInventory("FloovyPlugFlag", 1, 0, 2)
+    stop
+  }
+}
+actor FloovyRageCharge_H : BasicWatcher {
+  reactiontime 140
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 8), "Death")
+    TNT1 A 0 A_JumpIfInTargetInventory("FloovyPlugFlag", 1, 2) TNT1 A 0 A_Jump(256, "Death")
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL_EXPAND_MAX, 1, 8)
+    TNT1 A 0 ACS_NamedExecuteAlways("rz_FloovyRageAmmoGiver", 0, 8)//A_GiveInventory("")
+    TNT1 A 0 A_GiveToTarget("UnholyPower3000", 4)
+    TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage", 1, "CountDownRage")
+   CountDown:
+    TNT1 A 2 A_Countdown
+    goto Spawn
+   CountDownRage:
+    TNT1 A 1 A_Countdown
+    goto Spawn
+    loop
+   Death:
+    TNT1 A 0 A_TakeInventory("FloovyPlugFlag", 1, 0, 2)
+    stop
+  }
+}
+actor FloovyVine {
+  Translation "60:60=107:107", "249:249=60:60", "61:61=160:160", "62:62=229:229"
+  PROJECTILE
+  damagetype "Floovy" //FloovyVine
+  Obituary "%o's buttocks were bruised and mangled by \c[p5]Floovy\c- (%k)'s thorns."
+  Radius 12
+  Height 12
+  scale 2.5
+  damage (20*(1+9*(CallACS("rz_CheckBirthday")==3)))
+  +FLOORHUGGER
+  +THRUACTORS
+  reactiontime 10
+  States {
+   Spawn:
+    BEC2 A 3
+    BEC2 A 0 A_PlaySound("misc/mm3explosion", "Voice")
+    BEC2 BCDEFG 3 A_Explode(100*(1+9*(CallACS("rz_CheckBirthday")==3)), 42, 0, 0, 42)
+    BEC2 G 0 A_Jump(256, "SpawnL1", "SpawnL2", "SpawnL3")
+   SpawnL1:
+    BEC2 H 3
+    BEC2 I 3
+    BEC2 F 0 A_Explode(50*(1+9*(CallACS("rz_CheckBirthday")==3)), 42, 0, 0, 42)
+    BEC2 F 0 A_Countdown
+   SpawnL2:
+    BEC2 H 3
+    BEC2 J 3
+    BEC2 F 0 A_Explode(50*(1+9*(CallACS("rz_CheckBirthday")==3)), 42, 0, 0, 42)
+    BEC2 F 0 A_Countdown
+   SpawnL3:
+    BEC2 K 3
+    BEC2 L 3
+    BEC2 F 0 A_Explode(50*(1+9*(CallACS("rz_CheckBirthday")==3)), 42, 0, 0, 42)
+    BEC2 F 0 A_Countdown
+    goto SpawnL1
+   Death:
+    BEC2 JMNA 3
+    stop
+  }
+}
+actor FloovyGoldenShot : BasicFastProjectile {
+  Translation "192:192=180:180", "198:198=189:189"
+  damagetype "Floovy" //FloovyOutOfBody
+  +HITTRACER
+  +SEEKERMISSILE
+  damage (0)
+  radius 16
+  Height 16
+  Speed 70
+  States {
+   Spawn:
+    6P50 RRSSTT 1 A_SeekerMissile(30, 90, SMF_LOOK|SMF_PRECISE, 256, 12)
+    loop
+   Crash:
+   XDeath:
+    TNT1 A 0 A_JumpIf(!CallACS("uh_istracerplayer"), "Death")
+    6P50 R 0 A_JumpIfInventory("Is_UH_BossNum", 1, "SacrificeMe", 8)
+    goto GoldExperience
+   GoldExperience:
+    6P50 R 0 A_GiveInventory("BeginItem_Buddha", 1, 2)
+    6P50 R 0 A_TakeInventory("FloovyStandTid", 0, 0, 2)
+    6P50 R 0 A_GiveInventory("FloovyStandTid", CallACS("core_getptrtid", 8), 2)
+    6P50 R 0 A_SpawnItemEx("FloovyStandWatcher", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
+    goto Death
+   SacrificeMe:
+    6P50 R 0 A_GiveInventory("BeginItem_Buddha", 1, 8)
+    6P50 R 0 A_TakeInventory("FloovyDiesForMeTid", 0, 0, 8)
+    6P50 R 0 A_GiveInventory("FloovyDiesForMeTid", CallACS("core_getptrtid", 2), 8)
+    6P50 R 0 A_SpawnItemEx("FloovyDiesForMeWatcher", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
+   Death:
+    6P50 RST 2 A_FadeOut(0.1)
+    loop
+  }
+}
+actor FloovyStandWatcher : BasicWatcher {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 A_JumpIf(!CallACS("uh_IsPlayerAlive", CallACS("core_getptrtid", 8)), "Death")
+    loop
+   Death:
+    TNT1 A 0 A_GiveInventory("StopUser_Buddha", 1, 2)
+    TNT1 A 0 A_TakeInventory("FloovyStandTid", 0, 2)
+    stop
+  }
+}
+actor FloovyDiesForMeWatcher : BasicWatcher {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 A_JumpIf(!CallACS("uh_IsPlayerAlive", CallACS("core_getptrtid", 2)), "Death")
+    loop
+   Death:
+    TNT1 A 0 A_GiveInventory("StopUser_Buddha", 1, 8)
+    TNT1 A 0 A_TakeInventory("FloovyDiesForMeTid", 0, 8)
+    stop
+  }
+}
