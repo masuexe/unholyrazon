@@ -1,0 +1,83 @@
+actor PurpleDestron_W : BaseUnholyBossWep {
+  Tag "$TAG_Boss085_W"
+  Obituary "%o can't defeat \ctPurple Destron\c- (%k)."
+  Inventory.Pickupmessage "\ctYou think the boss is bad? You guessed right. It's intended"
+  States {
+   Spawn:
+    8L03 [ 1
+    wait
+
+   Deselect:
+    TNT1 A 0
+    goto DeselectSwap
+   Select:
+    TNT1 A 0
+    goto SelectSwap
+
+   Ready:
+    TNT1 A 3
+    TNT1 A 0 ACS_NamedExecuteAlways("rz_PurpleDestronHealth")
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_flyplayer", 0, true)
+    TNT1 A 0 A_GunFlash
+    TNT1 A 0 A_JumpIf(true, "ReadyX")
+    goto ReadyX
+   ReadyX:
+    TNT1 A 0 A_WeaponReady(WRF_NOFIRE)
+    TNT1 A 0 A_PlaySoundEx("TransformersNES/DestronShot", "weapon")
+    TNT1 A 0 A_FireCustomMissile("DestronShotPurple", 0, 0, 0)
+    TNT1 A 85
+    loop
+
+   Flash:
+    TNT1 A 9 ACS_NamedExecuteWithResult("core_chargecolor", DESTRONPURPLE_DYE0)
+    TNT1 A 9 ACS_NamedExecuteWithResult("core_chargecolor", DESTRONPURPLE_DYE1)
+    TNT1 A 9 ACS_NamedExecuteWithResult("core_chargecolor", DESTRONPURPLE_DYE0)
+    TNT1 A 9 ACS_NamedExecuteWithResult("core_chargecolor", DESTRONPURPLE_DYE2)
+    loop
+  }
+}
+actor DestronDotFire_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_FireCustomMissile("DestronVeryVerySmallShot", 0, 0, 0, 32)
+    stop
+  }
+}
+actor DestronShotPurple : BasicProjectile {
+  Translation "192:192=217:217", "198:198=42:42"
+  //+NOINTERACTION
+  damagetype "PurpleDestron"
+  Obituary "%o was shredded by \ctPurple Destron\c- (%k)'s bullet."
+  Damage (1500)
+  radius 8
+  height 8
+  Speed 24
+  States {
+   Spawn:
+    8P70 AAAAABBBBB 1 A_Weave(4, 0, 16, 0)
+    loop
+   Death:
+    TNT1 A 1
+    stop
+  }
+}
+actor DestronVeryVerySmallShot : BasicProjectile {
+  +SEEKERMISSILE
+  +SCREENSEEKER
+  damagetype "Destron"
+  Obituary "%o did not see the small white dot."
+  Damage (1000)
+  radius 2
+  height 2
+  Speed 50
+  States {
+   Spawn:
+    COSS B 0
+    COSS B 0 A_SeekerMissile(0, 0, SMF_LOOK, 256, 6)
+    COSS B 1
+    wait
+   Death:
+    TNT1 A 1
+    stop
+  }
+}
