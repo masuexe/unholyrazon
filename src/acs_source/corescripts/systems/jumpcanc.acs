@@ -44,7 +44,7 @@ while (GetActorProperty(ActivatorTID(), APROP_HEALTH) > 0)
 	JumpState = JumpStatus(InputButtons, InputOldButtons);
 	VelZ = GetActorVelZ(0);
 
-if(GetActorProperty(ActivatorTID(), APROP_Gravity) <= -1){//$UH a copy of land check, but flipped for negative gravity
+if(GetActorProperty(ActivatorTID(), APROP_Gravity) < 0){//$UH flipped land check (A_SetGravity(-0.8) must count)
 	If(VelZ==0 && LastVelZ>0){Impact=LastVelZ;}
 	
 	If(VelZ>0) // Is the player falling? [flip]
@@ -69,7 +69,8 @@ if(GetActorProperty(ActivatorTID(), APROP_Gravity) <= -1){//$UH a copy of land c
 		if(Grounded < 3 && GetActorZ(0) - GetActorFloorZ (0)!=0.0 ){Grounded++;} //Increment grounded variable if velocity is 0 and player is not near the floor
 		}
 
-	if((GetActorCeilingZ(0) - GetActorZ(0)==0.0) || Grounded == 3)
+	// OnCeilingFlag: ReverseGravityThrust keeps +Z push, so VelZ may never settle at 0.
+	if((GetActorCeilingZ(0) - GetActorZ(0) <= 58.0) || Grounded == 3 || CheckInventory("OnCeilingFlag"))
 		{
 		If(!CheckInventory("JumpCancler")){GiveInventory("JumpCancler",1);}
 		If(!CheckInventory("BoostFlag")){GiveInventory("BoostFlag", 1);}
