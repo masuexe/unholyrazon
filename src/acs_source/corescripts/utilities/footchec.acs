@@ -1,0 +1,84 @@
+// This is a copy of MM8BDM v6b "utilities/FOOTCHEC.acs"
+// Any area with the following line
+//$UH
+// Means that area is edited for UH
+
+#library "footchec"
+#include "zcommon.acs"
+
+script "core_CheckFooting" (void) {
+	SetResultValue(CheckFootingFunc());
+}
+
+script "core_CheckFooting_ThruPlayer" (void) {
+	SetResultValue(CheckFootingFunc_ThruPlayer());
+}
+
+function bool CheckInvertedFooting(void) {  //$UH
+	return CheckInventory("CeilingFlag") || GetActorProperty(0, APROP_Gravity) < 0;
+}
+
+function bool CheckCeilingFootingFunc(str footingactor) {  //$UH
+	int z = GetActorZ(0);
+	if (CheckInventory("OnCeilingFlag")) return true;
+	if (GetActorCeilingZ(0) - z <= 58.0) return true;
+	if (!SpawnFootingFunc(footingactor, GetActorX(0), GetActorY(0), z + GetActorProperty(0, APROP_Height))) return true;
+	return false;
+}
+
+function bool CheckFootingFunc(void) {
+	if (CheckInvertedFooting()) return CheckCeilingFootingFunc("8bdmFootholdCheck");  //$UH
+
+	int z = GetActorZ(0);
+
+	if (z-GetActorFloorZ(0)==0.0) return true;
+	//PrintBold(i:SpawnFootingFunc("8bdmFootholdCheck",z));
+	if (!SpawnFootingFunc("8bdmFootholdCheck", GetActorX(0), GetActorY(0), z-1.0)) return true;
+
+	return false;
+}
+
+function bool SpawnFootingFunc(str footingactor, int x, int y, int z) {
+	int u = UniqueTID();
+	bool spawned = Spawn(footingactor, x, y, z, u);
+	Thing_Remove(u);
+	return spawned;
+}
+
+function bool CheckFootingFunc_ThruPlayer (void) {
+	if (CheckInvertedFooting()) return CheckCeilingFootingFunc("8bdmFootholdCheck_ThruPlayer");  //$UH
+
+	int z = GetActorZ(0);
+
+	if (z-GetActorFloorZ(0)==0.0) return true;
+	//PrintBold(i:SpawnFootingFunc("8bdmFootholdCheck_ThruPlayer",z));
+	if (!SpawnFootingFunc("8bdmFootholdCheck_ThruPlayer",GetActorX(0),GetActorY(0),z-1.0)) return true;
+
+	return false;
+}
+
+script "core_checkWall_north" (void) {
+	SetResultValue(CheckWallFunc(GetActorAngle(0), 23, 8.0));
+}
+
+script "core_checkWall_east" (void) {
+	SetResultValue(CheckWallFunc(GetActorAngle(0)+0.75, 23, 8.0));
+}
+
+script "core_checkWall_south" (void) {
+	SetResultValue(CheckWallFunc(GetActorAngle(0)+0.5, 23, 8.0));
+}
+
+script "core_checkWall_west" (void) {
+	SetResultValue(CheckWallFunc(GetActorAngle(0)+0.25, 23, 8.0));
+}
+
+function bool CheckWallFunc(int angle, int dist, int height) {
+	if (!SpawnFootingFunc("8bdmWallCheck_ThruPlayer",
+	                      GetActorX(0) + (dist * cos(angle)),
+												GetActorY(0) + (dist * sin(angle)),
+												GetActorZ(0) + height)) {
+		return true;
+	}
+	return false;
+}
