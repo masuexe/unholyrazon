@@ -26,12 +26,12 @@ Function int JumpStatus (int Buttons, int OldButtons)
 }
 //$UH//$UH//$UH
 
-// [Mike]/[Mess] Jump Canceling script. 
+// [Mike]/[Mess] Jump Canceling script.
 //
-script "core_jumpcancel" ENTER 
+script "core_jumpcancel" ENTER
 {
-int InputButtons; 
-int InputOldButtons; 
+int InputButtons;
+int InputOldButtons;
 int JumpState;
 int Grounded, FallingCheck, VelZ, LastVelZ, Impact;
 bool UsedJump;
@@ -44,9 +44,9 @@ while (GetActorProperty(ActivatorTID(), APROP_HEALTH) > 0)
 	JumpState = JumpStatus(InputButtons, InputOldButtons);
 	VelZ = GetActorVelZ(0);
 
-if(GetActorProperty(ActivatorTID(), APROP_Gravity) < 0){//$UH flipped land check (A_SetGravity(-0.8) must count)
+if(CheckInventory("CeilingFlag") || GetActorProperty(0, APROP_Gravity) < 0){//$UH UR3: CeilingFlag drives flipped land/regen (victim gravity prop often reads 0)
 	If(VelZ==0 && LastVelZ>0){Impact=LastVelZ;}
-	
+
 	If(VelZ>0) // Is the player falling? [flip]
 		{
 		FallingCheck=TRUE;
@@ -58,7 +58,7 @@ if(GetActorProperty(ActivatorTID(), APROP_Gravity) < 0){//$UH flipped land check
 		FallingCheck=FALSE;
 		Grounded = 0;
 		}
-			
+
 	If(VelZ==0) // Is the player stopped on a surface
 		{
 		If(FallingCheck && Impact > 1.0 && GetActorZ(0) - GetActorFloorZ (0)!=0.0) //If the player has previously fallen, check for an impact force greater than 1
@@ -79,7 +79,7 @@ if(GetActorProperty(ActivatorTID(), APROP_Gravity) < 0){//$UH flipped land check
 		If(CheckInventory("AirFraudAchieved")){TakeInventory("AirFraudAchieved",99999);}//$UH
 		FallingCheck=FALSE;
 		}
-}//If negative gravity end
+}//If CeilingFlag / negative gravity end
 else{
 	If(VelZ==0 && LastVelZ<0){Impact=LastVelZ;} //Impact to determine if you're actually landing on a platform vs gravity changing you slowly.
 
@@ -95,10 +95,10 @@ else{
 		FallingCheck=FALSE; // If the player is rising or on the ground, they're not falling
 		Grounded = 0;
 		}
-			
+
 	If(VelZ==0) // Is the player stopped on a surface
 		{
-		If(FallingCheck && Impact < -1.0 && GetActorCeilingZ(0) - GetActorZ(0) > 64.0) //If the player has previously fallen, check for an impact force less than -1 (Which falling from ANY height should be).  
+		If(FallingCheck && Impact < -1.0 && GetActorCeilingZ(0) - GetActorZ(0) > 64.0) //If the player has previously fallen, check for an impact force less than -1 (Which falling from ANY height should be).
 			{
 			Grounded=3; //Immediately assume the player is grounded
 			Impact=0;
@@ -118,7 +118,7 @@ else{
 		//print(s:"You're grounded!");
 		}
 }//Else end
-	
+
 	UsedJump = false;
 	Switch(JumpState)
 		{
@@ -156,7 +156,7 @@ else{
 					bool east = ACS_NamedExecuteWithResult("core_checkWall_east");
 					bool south = ACS_NamedExecuteWithResult("core_checkWall_south");
 					bool west = ACS_NamedExecuteWithResult("core_checkWall_west");
-					if(north || east || south || west) 
+					if(north || east || south || west)
 						{
 						GiveInventory("WallJumpsUsed", 1);
 						ACS_NamedExecuteWithResult("core_walljump", north, east, south, west);
@@ -203,14 +203,18 @@ else{
 				if (CheckInventory("PlayerPropertyFlight")<=0)
 					{
 					GiveInventory("AirJumpsUsed", 1);
-					SetActorVelocity(0,GetActorVelX(0),GetActorVelY(0),ACS_NamedExecuteWithResult("core_GetCustomActorProperty",0,CAPROP_AirJumpZ)*(1+(CheckInventory("PowerHighJumpRune")||CheckInventory("RuneHighJump"))),0,0);
+					int airJumpZ = ACS_NamedExecuteWithResult("core_GetCustomActorProperty",0,CAPROP_AirJumpZ)*(1+(CheckInventory("PowerHighJumpRune")||CheckInventory("RuneHighJump")));
+					// CeilingFlag (self-flip or victim reverse): thrust world-down.
+					// If FlipAirZ already made it negative, leave it; do not flip twice.
+					if(CheckInventory("CeilingFlag") && airJumpZ > 0)
+						airJumpZ = -airJumpZ;
+					SetActorVelocity(0,GetActorVelX(0),GetActorVelY(0),airJumpZ,0,0);
 					PlaySound(0, "*airjump", CHAN_BODY);
 					GiveInventory("JumpCancler",1);
 					UsedJump = true;
 					}
 				}
 			}
-
 
 		Grounded = 0;
 		break;
@@ -232,9 +236,9 @@ else{
 		Default: //Holding Jump OR not holding Jump
 
 		break;
-		}	
+		}
 	LastVelZ = VelZ;
-	delay(1);	
+	delay(1);
 	}
 }
 
@@ -321,6 +325,8 @@ script "core_walljump" (int north, int east, int south, int west)
 		JumpAngByte /= TotalAngles;
 
 		int height = ACS_NamedExecuteWithResult("core_GetCustomActorProperty",0,CAPROP_WallJumpZ)*(1+(CheckInventory("PowerHighJumpRune")||CheckInventory("RuneHighJump")));
+		if(CheckInventory("CeilingFlag") && height > 0)
+			height = -height;//$UH world-down walljump while gravity-flipped
 		int thrust = FixedMul(height, 0.8) >> 16;
 		if(height<0){thrust *= -1;}//$UH //If flipped Zthrust, then the thrust away needs to be flipped
 //Log(f:height,s:" height ",i:height);
