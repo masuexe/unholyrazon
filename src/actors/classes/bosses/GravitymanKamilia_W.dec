@@ -1,0 +1,819 @@
+actor GravitymanKamilia_W : BaseUnholyBossWep {
+  tag "$TAGC_5A"
+  Weapon.AmmoUse 0
+  Weapon.AmmoGive 280
+  Obituary "\cgGravityman\c- (%k) wanted %o to be the popularity."
+  weapon.ammotype "SurpriseGravityAmmo"
+
+  States {
+   Spawn:
+    C_05 A 1
+    loop
+
+   Deselect:
+    8I19 A 0
+    goto DeselectSwap
+   Select:
+    8I19 A 0
+    goto SelectSwap
+
+   Ready:
+    8I19 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", GRAVITYMANKAMILIA_DYE)
+    8I19 A 0 A_GiveInventory("Gravityman_WepStartCheck_P")
+    8I19 A 0 A_GunFlash("Flash", true)
+    goto Ready1
+
+   Ready1a:
+    8I19 A 0 A_JumpIfInventory("SurpriseGravityAmmo", 70, "Ready2a")
+    8I19 A 1 A_WeaponReady(8)
+   Ready1:
+    8I19 A 0 A_JumpIfInventory("CeilingFlag", 1, "ReadyUp1a")
+    8I19 A 0 A_JumpIfInventory("SurpriseGravityAmmo", 70, "Ready2")
+    8I19 A 1 A_WeaponReady(8)
+    8I19 A 0 A_GiveInventory("SurpriseGravityAmmo", 1+CallACS("core_checkrune", RUNE_RAGE))
+    8I19 A 0 A_GiveInventory("ScrewGravityAmmoGive_P")
+    loop
+   Ready2a:
+    8I19 A 1 A_WeaponReady
+   Ready2:
+    8I19 A 0 A_JumpIfInventory("CeilingFlag", 1, "ReadyUp2a")
+    8I19 A 1 A_WeaponReady
+    8I19 A 0 A_GiveInventory("SurpriseGravityAmmo", 1+CallACS("core_checkrune", RUNE_RAGE))
+    8I19 A 0 A_GiveInventory("ScrewGravityAmmoGive_P")
+    loop
+
+   ReadyUp1a:
+    8I19 D 0 A_JumpIfInventory("SurpriseGravityAmmo", 70, "ReadyUp2a")
+    8I19 D 1 A_WeaponReady(8)
+   ReadyUp1:
+    8I19 D 0 A_JumpIfInventory("GroundFlag", 1, "Ready1a")
+    8I19 D 0 A_JumpIfInventory("SurpriseGravityAmmo", 70, "ReadyUp2")
+    8I19 D 1 A_WeaponReady(8)
+    8I19 D 0 A_GiveInventory("SurpriseGravityAmmo", 1+CallACS("core_checkrune", RUNE_RAGE))
+    loop
+   ReadyUp2a:
+    8I19 D 1 A_WeaponReady
+   ReadyUp2:
+    8I19 D 0 A_JumpIfInventory("GroundFlag", 1, "Ready2a")
+    8I19 D 1 A_WeaponReady
+    8I19 D 0 A_GiveInventory("SurpriseGravityAmmo", 1+CallACS("core_checkrune", RUNE_RAGE))
+    loop
+
+   Fire:
+    //TNT1 A 0 //A_JumpIfInventory("IsBot",1,"BotFire")
+    8I19 A 0 A_JumpIfInventory("CeilingFlag", 1, "Fire2")
+    goto Fire1
+   Fire1:
+    8I19 A 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    8I19 A 0 A_FireCustomMissile("GravityShot", 0, 0, -8, 0)
+    8I19 BCBAA 3 A_GiveInventory("ScrewGravityAmmoFire_P")
+    goto Ready1
+   Fire2:
+    8I19 D 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    8I19 D 0 A_FireCustomMissile("GravityShotUp", 0, 0, 8, 0)
+    8I19 EFEDD 3 A_GiveInventory("ScrewGravityAmmoFire_P")
+    goto ReadyUp1
+
+   Altfire:
+    8I19 A 0 A_JumpIfInventory("CeilingFlag", 1, "AltfireH2.a")
+    8I19 A 0 A_JumpIfInventory("GroundFlag", 1, "AltfireH1.a")
+    Goto Ready1
+
+   AltfireH1:
+    8I19 A 1 A_GiveInventory("GravityChargeFlag", 1+CallACS("core_checkrune", RUNE_RAGE))
+    goto AltfireH1.a+1
+   AltfireH1.a:
+    8I19 A 0 A_JumpIfInventory("CeilingFlag", 1, "AltfireH2")
+    8I19 A 0 A_JumpIfInventory("GravityChargeFlag", 56, "AltfireH1.b")
+    8I19 A 0 A_GiveInventory("VivifyDelay8", 1)
+    8I19 A 1 A_GiveInventory("GravityChargeFlag", 1+CallACS("core_checkrune", RUNE_RAGE))
+    8I19 A 0 A_Refire("AltfireH1.a")
+    goto Altfire1Quick
+   AltfireH1.b:
+    8I19 B 0 A_TakeInventory("VivifyDelay8")
+    goto AltfireH1.c+1
+   AltfireH1.c:
+    8I19 B 0 A_JumpIfInventory("CeilingFlag", 1, "AltfireH2.b")
+    8I19 B 1 A_GiveInventory("ScrewGravityAmmoGive_P")
+    8I19 B 0 A_Refire("AltfireH1.c")
+    goto Altfire1
+
+   AltfireH2:
+    8I19 D 1 A_GiveInventory("GravityChargeFlag", 1+CallACS("core_checkrune", RUNE_RAGE))
+    goto AltfireH2.a+1
+   AltfireH2.a:
+    8I19 D 0 A_JumpIfInventory("GroundFlag", 1, "AltfireH1")
+    8I19 D 0 A_JumpIfInventory("GravityChargeFlag", 56, "AltfireH2.b")
+    8I19 D 0 A_GiveInventory("VivifyDelay8", 1)
+    8I19 D 1 A_GiveInventory("GravityChargeFlag", 1+CallACS("core_checkrune", RUNE_RAGE))
+    8I19 D 0 A_Refire("AltfireH2.a")
+    goto Altfire2Quick
+   AltfireH2.b:
+    8I19 E 0 A_TakeInventory("VivifyDelay8")
+    goto AltfireH2.c+1
+   AltfireH2.c:
+    8I19 E 0 A_JumpIfInventory("GroundFlag", 1, "AltfireH1.b")
+    8I19 E 1 A_GiveInventory("ScrewGravityAmmoGive_P")
+    8I19 E 0 A_Refire("AltfireH2.c")
+    goto Altfire2
+
+   Altfire1Quick:
+    8I19 G 0 A_GiveInventory("GravityChargeResync_P")
+    8I19 G 0 A_GiveInventory("VivifyDelay8", 1)
+    8I19 G 0 A_Refire(1)
+
+    8I19 G 0 A_PlaySoundEx("wep_L/GravityHold", "Weapon")
+    8I19 G 0 A_TakeInventory("SurpriseGravityAmmo", 35)
+    8I19 G 0 A_TakeInventory("SurpriseGravityAmmo", 35, 1)
+    8I19 G 0 A_FireCustomMissile("GravityManHold1", 0, 0, 0, 0)
+    8I19 G 1 ACS_NamedExecuteWithResult("core_chargecolor", DYE_GRAVITYMANFLIP, TINT_TCLR1)
+    8I19 G 1 Offset(-20, 6)
+    8I19 G 1 Offset(-47, -21)
+    8I19 H 2 Offset(-47, -21)
+    8I19 H 3 Offset(-47, -21)ACS_NamedExecuteWithResult("core_chargecolor", DYE_GRAVITYMAN, TCLR_NONE)
+    8I19 G 3 Offset(-47, -21)
+    8I19 G 3 Offset(-20, 6)
+    8I19 G 7 A_WeaponReady(14)
+    8I19 A 0
+    goto Ready1
+
+   Altfire2Quick:
+    8I19 I 0 A_GiveInventory("GravityChargeResync_P")
+    8I19 I 0 A_GiveInventory("VivifyDelay8", 1)
+    8I19 I 0 A_Refire(1)
+
+    8I19 I 0 A_PlaySoundEx("wep_L/GravityHoldUp", "Weapon")
+    8I19 I 0 A_FireCustomMissile("GravityManHold2", 0, 0, 0, 0)
+    8I19 I 0 A_TakeInventory("SurpriseGravityAmmo", 35)
+    8I19 I 0 A_TakeInventory("SurpriseGravityAmmo", 35, 1)
+    8I19 I 1 ACS_NamedExecuteWithResult("core_chargecolor", DYE_GRAVITYMANFLIP, TINT_TCLR1)
+    8I19 I 1 Offset(20, 58)
+    8I19 I 1 Offset(47, 85)
+    8I19 J 2 Offset(47, 85)
+    8I19 J 3 Offset(47, 85)ACS_NamedExecuteWithResult("core_chargecolor", DYE_GRAVITYMAN, TCLR_NONE)
+    8I19 I 3 Offset(47, 85)
+    8I19 I 3 Offset(20, 58)
+    8I19 I 7 A_WeaponReady(14)
+    8I19 D 0
+    goto ReadyUp1
+
+   Altfire1:
+    8I19 G 0 A_GiveInventory("GravityChargeResync_P")
+    8I19 G 0 A_GiveInventory("VivifyDelay8", 1)
+    8I19 G 0 A_Refire(1)
+
+    8I19 G 1 A_GiveInventory("Gravityman_Alt3_P")
+    8I19 G 1 Offset(-20, 6)
+    8I19 G 1 Offset(-47, -21)
+    8I19 H 2 Offset(-47, -21)
+    8I19 H 3 Offset(-47, -21)
+    8I19 G 3 Offset(-47, -21)
+    8I19 G 3 Offset(-20, 6)
+    8I19 G 3 A_WeaponReady(14)
+    goto Ready1
+
+   Altfire2:
+    8I19 I 0 A_GiveInventory("GravityChargeResync_P")
+    8I19 I 0 A_GiveInventory("VivifyDelay8", 1)
+    8I19 I 0 A_Refire(1)
+
+    8I19 I 1 A_GiveInventory("Gravityman_Alt3_P")
+    8I19 I 1 Offset(20, 58)
+    8I19 I 1 Offset(47, 85)
+    8I19 J 2 Offset(47, 85)
+    8I19 J 3 Offset(47, 85)
+    8I19 I 3 Offset(47, 85)
+    8I19 I 3 Offset(20, 58)
+    8I19 I 3 A_WeaponReady(14)
+    goto ReadyUp1
+
+    /*
+    Altfire:
+    8I19 A 0 A_JumpIfInventory("CeilingFlag",1,"Altfire2Quick")
+    //8I19 A 0 A_JumpIfInventory("GroundFlag",1,"Altfire1Quick")
+    Goto Altfire1Quick
+
+    Altfire1Quick:
+    8I19 G 0 A_GiveInventory("VivifyDelay8",1)
+    8I19 G 0 A_Refire(1)
+
+    8I19 G 0 A_PlaySoundEx("wep_L/GravityHold","Weapon")
+    8I19 G 0 A_TakeInventory("SurpriseGravityAmmo",35)
+    8I19 G 0 A_TakeInventory("SurpriseGravityAmmo",35,1)
+    8I19 G 0 A_FireCustomMissile("GravityManHold1",0,0,0,0)
+    8I19 G 1 ACS_NamedExecuteWithResult("core_chargecolor",DYE_GRAVITYMANFLIP,TINT_TCLR1)
+    8I19 G 1 Offset(-20,6)
+    8I19 G 1 Offset(-47,-21)
+    8I19 H 2 Offset(-47,-21)
+    8I19 H 3 Offset(-47,-21)ACS_NamedExecuteWithResult("core_chargecolor",DYE_GRAVITYMAN,TCLR_NONE)
+    8I19 G 3 Offset(-47,-21)
+    8I19 G 3 Offset(-20,6)
+    8I19 G 3 A_WeaponReady(14)
+    8I19 A 0
+
+    goto Ready1
+
+    Altfire2Quick:
+    8I19 I 0 A_GiveInventory("VivifyDelay8",1)
+    8I19 I 0 A_Refire(1)
+
+    8I19 I 0 A_PlaySoundEx("wep_L/GravityHoldUp","Weapon")
+    8I19 I 0 A_GiveInventory("GravitymanAlt2_CI",1)
+    8I19 I 1 ACS_NamedExecuteWithResult("core_chargecolor",DYE_GRAVITYMANFLIP,TINT_TCLR1)
+    8I19 I 1 Offset(20,58)
+    8I19 I 1 Offset(47,85)
+    8I19 J 2 Offset(47,85)
+    8I19 J 3 Offset(47,85)ACS_NamedExecuteWithResult("core_chargecolor",DYE_GRAVITYMAN,TCLR_NONE)
+    8I19 I 3 Offset(47,85)
+    8I19 I 3 Offset(20,58)
+    8I19 I 3 A_WeaponReady(14)
+    8I19 D 0
+    goto ReadyUp1
+    */
+   Flash:
+    TNT1 A 0 A_JumpIfInventory("GravitySwitch", 1, "Flash.SwitchUp")
+    TNT1 A 1
+    loop
+   Flash.SwitchUp:
+    TNT1 A 0 A_GiveInventory("GravityFlashSwitchUp_P")
+    TNT1 A 0 A_GiveInventory("CBM_FlipJumpPowerGiver", 1)
+    TNT1 A 0 A_GunFlash("Flash.Up")
+    goto Flash.Up
+   Flash.Up:
+    TNT1 A 0 A_JumpIfInventory("GravitySwitch", 1, "Flash.SwitchDown")
+    TNT1 A 1 A_GiveInventory("ReverseGravityThrust", 1)
+    TNT1 A 0 A_JumpIfInventory("ScrewGravityAmmo", 1, 1)
+    goto Flash.SwitchDown
+    TNT1 A 0 A_JumpIfInventory("GravitySwitch", 1, "Flash.SwitchDown")
+    TNT1 A 1 A_GiveInventory("ReverseGravityThrust2", 1)
+    TNT1 A 0 A_JumpIfInventory("ScrewGravityAmmo", 1, "Flash.Up")
+    goto Flash.SwitchDown
+   Flash.SwitchDown:
+    TNT1 A 0 A_GiveInventory("GravityFlashSwitchDown_P")
+    TNT1 A 0 A_TakeInventory("CBM_FlipJumpPower")
+    TNT1 A 0 A_GunFlash("Flash.Land")
+    goto Flash.Land
+
+   Flash.Land:
+    TNT1 A 0 A_JumpIf(z-floorz==0, "Flash.LandEnd")
+    TNT1 A 0 A_JumpIf(momz==0, "Flash.LandZ")
+    TNT1 A 1
+    TNT1 A 0 A_JumpIfInventory("GravitySwitch", 1, "Flash.SwitchUp")
+    loop
+   Flash.LandZ:
+    TNT1 A 1
+    TNT1 A 0 A_JumpIfInventory("GravitySwitch", 1, "Flash.SwitchUp")
+    TNT1 A 0 A_JumpIf(z-floorz==0, "Flash.LandEnd")
+    TNT1 A 0 A_JumpIf(momz==0, "Flash.LandEnd")
+    goto Flash.Land+2
+
+   Flash.LandEnd:
+    TNT1 A 0 A_TakeInventory("GravitySwitchX")
+    TNT1 A 0 A_JumpIfInventory("GravitySwitch", 1, "Flash.SwitchUp")
+    TNT1 A 0 A_TakeInventory("GravitySwitch")
+    goto Flash
+
+   BotFire:
+    TNT1 A 0 A_JumpIfInventory("CeilingFlag", 1, "AltCheck")
+    TNT1 A 0 A_JumpIfInventory("ScrewGravityAmmo", 280, "AltCheck")
+    TNT1 A 0 A_JumpIfInventory("ScrewGravityAmmo", 140, "NormalFire")
+   FleeFire:
+    TNT1 A 0 A_GiveInventory("BotRetreatFlag", 1)
+    8I19 A 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    8I19 A 0 A_FireCustomMissile("GravityShot", 0, 0, 8, 0)
+    8I19 BCBAA 3
+
+    8I19 A 0 A_GiveInventory("ScrewGravityAmmo", 20)
+    TNT1 A 0 A_TakeInventory("BotRetreatFlag")
+    goto Ready1
+   NormalFire:
+    TNT1 A 0
+    goto Fire+1
+   AltCheck:
+    TNT1 A 0 A_JumpIfCloser(750, "Altfire2Quick")
+    TNT1 A 0 //A_JumpIfInventory("CeilingFlag",1,2)
+    TNT1 A 0 A_Jump(64, "AltCheckFlip")
+    TNT1 A 0
+    goto Fire+1
+   AltCheckFlip:
+    TNT1 A 0 A_GiveInventory("GravitySwitch", 1)
+    goto Ready1
+  }
+}
+
+
+actor ScrewGravityAmmo : Ammo {
+  inventory.amount 1
+  inventory.maxamount 280
+  +INVENTORY.IGNORESKILL
+}
+
+actor SurpriseGravityAmmo : Ammo {
+  inventory.amount 1
+  inventory.maxamount 280
+  +INVENTORY.IGNORESKILL
+}
+
+actor GravityChargeFlag : Inventory {
+  inventory.amount 1
+  inventory.maxamount 56
+}
+
+actor GravitySwitch : OnceC{}
+actor GravitySwitchX : OnceC{}
+actor CeilingFlag : OnceC{}
+actor GroundFlag : OnceC{}
+
+actor OnCeilingFlag : OnceC{}
+
+actor ReverseJumped : PowerUp {
+  powerup.duration 7
+}
+
+actor PowerGravityCeilingSpeed : PowerSpeed {
+  Speed 2.0
+  powerup.duration 5
+  +POWERSPEED.NOTRAIL
+}
+
+//-1 Gravity
+actor GravitymanFlipGravPowerGiver : PowerApropGiver {}
+actor GravitymanFlipGravPower : Base_CBM_PropertyPower {}
+//-1 AirJump
+actor GravitymanFlipAirZPowerGiver : PowerApropGiver {}
+actor GravitymanFlipAirZPower : Base_CBM_PropertyPower {}
+//-1 WallJump
+actor GravitymanFlipWallZPowerGiver : PowerApropGiver {}
+actor GravitymanFlipWallZPower : Base_CBM_PropertyPower {}
+
+
+
+actor Gravityman_WepStartCheck_P : CustomInventory
+{//For Wep swapping and Bearer
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("CeilingFlag", 1, 2)
+    TNT1 A 0 A_GiveInventory("GroundFlag", 1)
+    TNT1 A 0
+    stop
+  }
+}
+
+actor GravitymanFullReset_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_TakeInventory("GravityChargeFlag")
+    TNT1 A 0 A_TakeInventory("GravitySwitch")
+    TNT1 A 0 A_TakeInventory("GravitySwitchX")
+    TNT1 A 0 A_TakeInventory("CeilingFlag")
+    TNT1 A 0 A_TakeInventory("GroundFlag")
+    TNT1 A 0 A_TakeInventory("OnCeilingFlag")
+    TNT1 A 0 A_TakeInventory("ReverseJumped")
+    TNT1 A 0 A_TakeInventory("GravitymanFlipGravPower")
+    TNT1 A 0 A_TakeInventory("GravitymanFlipAirZPower")
+    TNT1 A 0 A_TakeInventory("GravitymanFlipWallZPower")
+    stop
+  }
+}
+
+actor GravitySwitchItem : BasicClassItem {
+  inventory.icon "GravIcon"
+  inventory.pickupmessage "Power up! Screw Gravity!"
+  Tag "Gravity Switch Toggle"
+  states {
+   Spawn:
+    8I19 Z 1
+    loop
+   UseCBM:
+    TNT1 A 0 //A_JumpIfInventory("GravitySwitchX",1,"No")
+    TNT1 A 0 A_JumpIfInventory("CeilingFlag", 1, "Yes")
+    TNT1 A 0 A_JumpIfInventory("ScrewGravityAmmo", 70, "Yes")
+    fail
+   Yes:
+    TNT1 A 0 A_GiveInventory("GravitySwitch", 1)
+    fail
+  }
+}
+
+
+actor Gravityman_Alt3_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_PlaySoundEx("weapon/gravitysphere", "Weapon")
+    TNT1 A 0 A_FireCustomMissile("GravityWellSpawner", 0, 0, 0, 0)
+    TNT1 A 0 A_TakeInventory("SurpriseGravityAmmo", 35)
+    TNT1 A 0 A_TakeInventory("SurpriseGravityAmmo", 35, 1)
+    stop
+  }
+}
+
+
+actor GravityFlashSwitchUp_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_PlaySoundEx("weapon/upsidedown", "Body")
+    TNT1 A 0 A_GiveInventory("GravitymanFlipGravPowerGiver", 1)//A_SetGravity(-0.8)
+    TNT1 A 0 A_GiveInventory("GravitymanFlipAirZPowerGiver", 1)
+    TNT1 A 0 A_GiveInventory("GravitymanFlipWallZPowerGiver", 1)
+    TNT1 A 0 A_GiveInventory("CeilingFlag", 1)
+    TNT1 A 0 A_TakeInventory("GravitySwitch")
+    TNT1 A 0 A_TakeInventory("GroundFlag")
+    TNT1 A 0 A_TakeInventory("JumpCancler")
+    TNT1 A 0 A_TakeInventory("VivifyDelay5")
+    stop
+  }
+}
+
+actor GravityFlashSwitchDown_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_PlaySoundEx("weapon/upsidedown", "Body")
+    TNT1 A 0 A_TakeInventory("GravitymanFlipGravPower")//A_SetGravity(0.8)
+    TNT1 A 0 A_TakeInventory("GravitymanFlipAirZPower")
+    TNT1 A 0 A_TakeInventory("GravitymanFlipWallZPower")
+    TNT1 A 0 A_GiveInventory("GroundFlag", 1)
+    TNT1 A 0 A_GiveInventory("VivifyDelay5", 1)
+    TNT1 A 0 A_GiveInventory("GravitySwitchX", 1)
+    TNT1 A 0 A_GiveInventory("ScrewGravityAmmoResync_P")
+    TNT1 A 0 A_TakeInventory("GravitySwitch")
+    TNT1 A 0 A_TakeInventory("OnCeilingFlag")
+    TNT1 A 0 A_TakeInventory("CeilingFlag")
+    TNT1 A 0 A_TakeInventory("JumpCancler")
+    stop
+  }
+}
+
+actor ScrewGravityAmmoGive_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("CeilingFlag", 1, "No")
+    TNT1 A 0 A_JumpIfInventory("GravitySwitchX", 1, "No")
+    TNT1 A 0 A_GiveInventory("ScrewGravityAmmo", 1+CallACS("core_checkrune", RUNE_RAGE))
+    stop
+   No:
+    TNT1 A 0
+    stop
+  }
+}
+actor ScrewGravityAmmoFire_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("CeilingFlag", 1, "No")
+    TNT1 A 0 A_JumpIfInventory("GravitySwitchX", 1, "No")
+    TNT1 A 0 A_GiveInventory("ScrewGravityAmmo", 1)
+    goto No
+   No:
+    TNT1 A 0 A_GiveInventory("SurpriseGravityAmmo", 1)
+    stop
+  }
+}
+
+actor ScrewGravityAmmoResync_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_GiveInventory("ScrewGravityAmmo", 5)
+    TNT1 A 0 A_TakeInventory("ScrewGravityAmmo", 18, 1)
+    TNT1 A 0 A_TakeInventory("ScrewGravityAmmo", 7)
+    stop
+  }
+}
+
+actor GravityChargeResync_P : CustomInventory //?
+{
+  States {
+   Pickup:
+    TNT1 A 0 A_GiveInventory("GravityChargeFlag", 56)
+    TNT1 A 0 A_TakeInventory("GravityChargeFlag")
+    stop
+  }
+}
+
+actor ReverseGravityThrust : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("GroundFlag", 1, 4)//3
+    TNT1 A 0 //A_SetGravity(-0.8)
+    //TNT1 A 0 ThrustThingZ(0,momz*4+4/*4*/,0,0/*1*/)
+    TNT1 A 0 //A_ChangeVelocity(0,0,0.8)
+    TNT1 A 0 A_GiveInventory("CeilingCheck", 1)
+    TNT1 A 0 A_TakeInventory("ScrewGravityAmmo", 1)
+    TNT1 A 0
+    TNT1 A 0 A_JumpIf(z-floorz<=0 || momz==0, 1)//A_CheckFloor(1)
+    stop
+    TNT1 A 0 ThrustThingZ(0, 1, 0, 1)
+    stop
+  }
+}
+actor ReverseGravityThrust2 : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("GroundFlag", 1, 3)
+    TNT1 A 0 A_GiveInventory("CeilingCheck", 1)
+    TNT1 A 0 A_TakeInventory("ScrewGravityAmmo", 1, 1)
+    TNT1 A 0
+    TNT1 A 0 A_JumpIf(z-floorz<=0 || momz==0, 1)
+    stop
+    TNT1 A 0 ThrustThingZ(0, 1, 0, 1)
+    stop
+  }
+}
+
+actor CeilingCheck : CustomInventory {
+  States {
+   Pickup:
+    //TNT1 A 0 A_TakeInventory("JumpCancler",1)
+    TNT1 A 0 A_JumpIfInventory("GroundFlag", 1, "SpeedDown")
+    TNT1 A 0 A_JumpIf(z-ceilingz==0-56, "Contact")
+    goto SpeedDown
+   Contact:
+    TNT1 A 0 A_JumpIf(z-floorz<=0, "SpeedDown")
+    TNT1 A 0 //A_JumpIfInventory("OnCeilingFlag", 1, "SpeedUp")
+    TNT1 A 0 //A_PlaySoundEx("weapon/land","Voice")
+    TNT1 A 0 A_GiveInventory("OnCeilingFlag", 1)
+   SpeedUp:
+    TNT1 A 0 A_GiveInventory("PowerGravityCeilingSpeed", 1)
+    stop
+   SpeedDown:
+    TNT1 A 0 A_TakeInventory("OnCeilingFlag")
+    TNT1 A 0 A_TakeInventory("PowerGravityCeilingSpeed")
+    stop
+  }
+}
+
+actor ReverseJump : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("ReverseJumped", 1, "NoJump")
+    TNT1 A 0 A_JumpIfInventory("OnCeilingFlag", 1, "Jump")
+    stop
+   Jump:
+    TNT1 A 0 //ThrustThingZ(0,70,1,0)
+    //TNT1 A 0 ThrustThingZ(0,75,1,0)
+    //TNT1 A 0 A_Print("A jump!")
+    TNT1 A 0 A_ChangeVelocity(0, 0, -16.0)
+    TNT1 A 0 A_GiveInventory("ReverseJumped", 1)
+    TNT1 A 0 A_GiveInventory("JumpCancler", 1)
+    TNT1 A 0 A_TakeInventory("OnCeilingFlag")
+    TNT1 A 0
+    stop
+   NoJump:
+    TNT1 A 0
+    stop
+  }
+}
+
+
+
+actor GravityShot : ProjSpawnFuncActor {
+  var int user_TranslateWhiteColors;
+  PROJECTILE
+  damagetype "GravityM_Shot"
+  Obituary "$OB_GRAVITYBUSTER"
+  +FORCEXYBILLBOARD
+  +BRIGHT
+  Damage (140)
+  radius 10
+  height 8
+  Speed 50
+  scale 2.5
+  States {
+   Spawn:
+    TNT1 A 1
+    8I19 X 1
+    wait
+   Death:
+    8I19 X 1
+    stop
+  }
+}
+
+
+actor GravityShotUp : GravityShot {Obituary "$OB_GRAVITYBUSTERUP"}
+actor GravityManHold1 : BasicExplosion {
+  Translation "192:192=4:4", "198:198=41:41"
+  damagetype "GravityM_Down"
+  Obituary "$OB_GRAVITYHOLD_D"
+  RenderStyle None
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_Explode(40, 490, 0, 0, 490)//98
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX2", random(392, 490), 0, random(245, 490), 0, 0, -40, random(0, 359), 129)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX2", random(294, 392), 0, random(245, 490), 0, 0, -40, random(0, 359), 129)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX2", random(196, 294), 0, random(245, 490), 0, 0, -40, random(0, 359), 129)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX2", random(98, 196), 0, random(245, 490), 0, 0, -40, random(0, 359), 129)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX2", random(0, 98), 0, random(245, 490), 0, 0, -40, random(0, 359), 129)
+    TNT1 A 1
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX2", random(392, 490), 0, random(0, 245), 0, 0, -40, random(0, 359), 129)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX2", random(294, 392), 0, random(0, 245), 0, 0, -40, random(0, 359), 129)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX2", random(196, 294), 0, random(0, 245), 0, 0, -40, random(0, 359), 129)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX2", random(98, 196), 0, random(0, 245), 0, 0, -40, random(0, 359), 129)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX2", random(0, 98), 0, random(0, 245), 0, 0, -40, random(0, 359), 129)
+    TNT1 A 1
+    stop
+  }
+}
+
+actor GravityManHold2 : BasicExplosion {
+  damagetype "GravityM_Up"
+  Obituary "$OB_GRAVITYHOLD_U"
+  RenderStyle None
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_Explode(40, 490, 0, 0, 490)//98
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX3", random(392, 490), 0, random(-245, -490), 0, 0, 40, random(0, 359), 1)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX3", random(294, 392), 0, random(-245, -490), 0, 0, 40, random(0, 359), 1)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX3", random(196, 294), 0, random(-245, -490), 0, 0, 40, random(0, 359), 1)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX3", random(98, 196), 0, random(-245, -490), 0, 0, 40, random(0, 359), 1)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX3", random(0, 98), 0, random(-245, -490), 0, 0, 40, random(0, 359), 1)
+    TNT1 A 1
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX3", random(392, 490), 0, random(0, -245), 0, 0, 40, random(0, 359), 1)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX3", random(294, 392), 0, random(0, -245), 0, 0, 40, random(0, 359), 1)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX3", random(196, 294), 0, random(0, -245), 0, 0, 40, random(0, 359), 1)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX3", random(98, 196), 0, random(0, -245), 0, 0, 40, random(0, 359), 1)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX3", random(0, 98), 0, random(0, -245), 0, 0, 40, random(0, 359), 1)
+    TNT1 A 1
+    stop
+  }
+}
+
+actor GravityManHoldFX : BasicGraphicEffectM {
+  -NOGRAVITY
+  +THRUACTORS
+  +BRIGHT
+  States {
+   SpawnFrame:
+    8I19 Y 12
+    stop
+  }
+}
+
+actor GravityManHoldFX2 : GravityManHoldFX {
+  +NOGRAVITY
+  States {
+   SpawnFrame:
+    8I19 YYYYYYYYYYYY 1 A_SetScale(scaleX-0.15, scaleY+0.05)
+    stop
+  }
+}
+actor GravityManHoldFX3 : GravityManHoldFX2 {
+  +NOINTERACTION
+}
+
+actor GravityWellSpawner : ProjSpawnFuncActorFast {
+  +DONTBLAST
+  +DONTREFLECT
+  +THRUACTORS
+  +THRUGHOST
+  +SKYEXPLODE
+  +EXPLODEONWATER
+  RenderStyle None
+  reactiontime 5
+  damage (0)
+  radius 8
+  height 8
+  speed 1000
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 A_CountDown
+    loop
+   Death:
+    TNT1 A 0 A_JumpIfCloser(1536, 2)
+    TNT1 A 0 A_SetArg(3, Args[3]+1)
+    TNT1 A 0 A_JumpIfCloser(1280, 2)
+    TNT1 A 0 A_SetArg(3, Args[3]+1)
+    TNT1 A 0 A_JumpIfCloser(1024, 2)
+    TNT1 A 0 A_SetArg(3, Args[3]+1)
+    TNT1 A 0 A_JumpIfCloser(768, 2)
+    TNT1 A 0 A_SetArg(3, Args[3]+1)
+    TNT1 A 0 A_JumpIfCloser(512, 2)
+    TNT1 A 0 A_SetArg(3, Args[3]+1)
+    TNT1 A 0 A_JumpIfCloser(256, 2)
+    TNT1 A 0 A_SetArg(3, Args[3]+1)
+    TNT1 A 0 A_JumpIf(z-floorz<0-z+ceilingz, "Floor")
+   Ceiling:
+    TNT1 A 1 A_SpawnItemEx("GravityWellDown", 0, 0, 0, 0, 0, 0, Args[3], 1+4)
+    stop
+   Floor:
+    TNT1 A 1 A_SpawnItemEx("GravityWellUp", 0, 0, 0, 0, 0, 0, Args[3], 1+4)
+    stop
+  }
+}
+
+
+actor GravityWellDown_Boom : GravityManHold1 {
+  Obituary "$OB_GRAVITYBALL_D"
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 2 A_Explode(120, 294, 0, 0, 294)
+    stop
+  }
+}
+
+actor GravityWellUp_Boom : GravityManHold2 {
+  Obituary "$OB_GRAVITYBALL_U"
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 2 A_Explode(120, 294, 0, 0, 294)
+    stop
+  }
+}
+
+actor GravityWellDown : ProjSpawnFuncActor {
+  DeathSound "wep_L/GravityHold"
+
+  +MISSILE
+  +NOGRAVITY
+  +DONTBLAST
+  +DONTREFLECT
+  +THRUACTORS
+  +THRUGHOST
+  +CEILINGHUGGER
+  RenderStyle None
+  Mass 1
+  Damage (0)
+  radius 8
+  height 8
+  Scale 2.5
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SetArg(3, Angle*4+12)//8+24
+    GRAM W 0 A_SpawnItemEx("GravityWellDownFX", 0, 0, -10, 0, 0, 0, 0, 1+32768)
+    Goto Spawn2
+   Spawn2:
+    "####" "#" 0 A_SpawnItemEx("GravityManHoldFX3", random(196, 294), 0, random(0, 122*mass), 0, 0, -10*mass, random(0, 359), 1)
+    "####" "#" 0 A_SpawnItemEx("GravityManHoldFX3", random(98, 196), 0, random(0, 122*mass), 0, 0, -10*mass, random(0, 359), 1)
+    "####" "#" 0 A_SpawnItemEx("GravityManHoldFX3", random(0, 98), 0, random(0, 122*mass), 0, 0, -10*mass, random(0, 359), 1)
+    "####" "#" 1 A_CountDownArg(3)
+    loop
+   Death:
+    TNT1 A 0 A_SpawnItemEx("GravityWellDown_Boom", 0, 0, -28)
+    goto DeathHoldFX
+   DeathHoldFX:
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX3", random(196, 294), 0, random(-32*mass, 64*mass), 0, 0, -30*mass, random(0, 359), 1)//random(0,245),0,0,-40
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX3", random(98, 196), 0, random(-32*mass, 64*mass), 0, 0, -30*mass, random(0, 359), 1)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("GravityManHoldFX3", random(0, 98), 0, random(-32*mass, 64*mass), 0, 0, -30*mass, random(0, 359), 1)
+    stop
+  }
+}
+
+actor GravityWellUp : GravityWellDown {
+  DeathSound "wep_L/GravityHoldUp"
+  -CEILINGHUGGER
+  +FLOORHUGGER
+  Mass -1
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SetArg(3, Angle*4+12)
+    GRAM K 0 A_SpawnItemEx("GravityWellUpFX", 0, 0, 10, 0, 0, 0, 0, 1+32768)
+    Goto Spawn2
+   Death:
+    TNT1 A 0 A_SpawnItemEx("GravityWellUp_Boom", 0, 0, 28)
+    goto DeathHoldFX
+  }
+}
+
+actor GravityWellDownFX : BasicGraphicEffect {
+  +BRIGHT
+  States {
+   SpawnFrame:
+    8I19 P 0
+    8I19 P 0 A_SetArg(3, Args[3]/8)
+   Spawn2:
+    8I19 P 0 A_PlaySoundEx("wep_L/GSphereTravel", "Weapon")
+    8I19 PPQQRRSS 1 A_Weave(0, -2, 0, 1.25)
+    8I19 P 0 A_CountDownArg(3)
+    loop
+   Death:
+    //8I19 P 0 A_StopSound(1)
+    8I19 PQRS 1 A_SetScale(scaleX-0.2, scaleY-0.4)
+    stop
+  }
+}
+
+actor GravityWellUpFX : GravityWellDownFX {
+  States {
+   SpawnFrame:
+    8I19 T 0
+    8I19 T 0 A_SetArg(3, Args[3]/8)
+   Spawn2:
+    8I19 T 0 A_PlaySound("wep_L/GSphereTravel", 1)
+    8I19 TTUUVVWW 1 A_Weave(0, 2, 0, -1.25)
+    8I19 T 0 A_CountDownArg(3)
+    loop
+   Death:
+    //8I19 K 0 A_StopSound(1)
+    8I19 TUVW 1 A_SetScale(scaleX-0.2, scaleY-0.4)
+    stop
+  }
+}
+
+actor Gravityman_W_NormalBar : NormalBar {Args 4, 239}
+actor Gravityman_W_SecondBar : SecondBar {Args 4, 198}
+actor Gravityman_W_ScriptBar : ScriptBar {}
