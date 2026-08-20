@@ -1,0 +1,138 @@
+actor TimemanC_W : BaseUnholyBossWep {
+  Tag "$TAG_Boss090_W"
+  Obituary "%o was stopped by \ctTimeman C\c- (%k)'s Hands of Time."
+  Inventory.Pickupmessage "\cmdick man c / suck man c"
+  weapon.ammotype "UnholyBossAmmo200"
+  States {
+   Spawn:
+    8H00 [ 1
+    wait
+
+   Deselect:
+    TIMA A 0
+    goto DeselectSwap
+   Select:
+    TIMA A 0
+    goto SelectSwap
+
+   Ready:
+    TIMA A 3 ACS_NamedExecuteAlways("core_weaponcolor", 0, TIMEMANC_DYE)
+    TIMA A 0 ACS_NamedExecuteWithResult("rz_TimemanCLoliPornSpawner")
+    // TIMA A 0 A_GiveInventory("UpdatePissedMugshot", 1)
+    goto ReadyX
+
+   ReadyX:
+    TIMA A 0 A_JumpIfInventory("LoliPornPicItem", 1, "GetHypedForPain")
+    TIMA A 2 A_WeaponReady
+    TIMA A 0 A_GiveInventory("UnholyBossAmmo200", 4)
+    loop
+   ReadyX2:
+    // TIMA A 0 A_GunFlash
+    TIMA A 2 A_WeaponReady
+    TIMA A 0 A_GiveInventory("UnholyBossAmmo200", 8)
+    loop
+
+   GetHypedForPain:
+    TIMA A 0 ACS_NamedExecuteAlways("ub_BossEnrageMusic", 0, 91)
+    TIMA A 0 A_GiveInventory("IsPissedFlag", 1)
+    TIMA A 0 A_GiveInventory("CosmeticBossSpeedTrail", 1)
+    // TIMA A 0 ACS_ExecuteAlways(991,0,0)
+    // TIMA AADADADA 2
+    TIMA A 2
+    goto ReadyX2
+
+   Fire:
+    TIMA A 0 A_JumpIfInventory("IsPissedFlag", 1, "Fire2")
+    TIMA A 0 A_JumpIfInventory("LoliPornPicItem", 1, "GetHypedForPain")
+    TIMA A 0 A_PlaySoundEx("weapon/timeshot", "Weapon")
+    TNT1 A 0 A_GiveInventory("TimemanCFire_P", 1)
+    TIMA bBAAAAAAA 3 A_GiveInventory("UnholyBossAmmo200", 1)
+    Goto ReadyX
+   Fire2:
+    TIMA A 0 A_PlaySoundEx("weapon/timeshot", "Weapon")
+    TNT1 A 0 A_GiveInventory("TimemanCFire_P", 1)
+    TIMA BA 2 A_GiveInventory("UnholyBossAmmo200", 1)
+    Goto ReadyX2
+
+   AltFire:
+    TIMA A 0 A_JumpIfInventory("IsPissedFlag", 1, "Slow")
+    TIMA B 0 A_JumpIfInventory("UnholyBossAmmo200", 200-100*CallACS("uh_checkrune", RUNE_ENDLESSAMMO), "Slow")
+    goto ReadyX
+   Slow:
+    TIMA A 0 A_TakeInventory("UnholyBossAmmo200", 100, 1)
+    TIMA A 0 A_TakeInventory("UnholyBossAmmo200", 100)
+    TIMA A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true)
+    TIMA A 0 A_GiveInventory("UH_250_SpeedPowerGiver")
+    TIMA A 0 A_GiveInventory("VivifyDelay10")
+    TIMA A 0 A_ReFire(1)
+    TIMA BBBB 1
+    TIMA A 0 A_TakeInventory("UH_250_SpeedPower")
+    TIMA B 0 A_PlaySoundEx("weapon/slowC", "Body")
+    TIMA B 1 A_SetBlend(purple, 0.85, 5)
+    TIMA B 1 A_FireCustomMissile("TimeManCSlow", 0, 1, 0, 0)
+    TIMA BBBB 1
+    TIMA A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false)
+    TIMA A 5
+    TIMA A 0 A_JumpIfInventory("IsPissedFlag", 1, "ReadyX2")
+    goto ReadyX
+  }
+}
+
+actor TimemanCFire_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_Jump(256, 1, 2, 3, 4)
+    TNT1 A 0 A_FireCustomMissile("TimeManCArrow", -7, 0, 8, 0)
+    stop
+    TNT1 A 0 A_FireCustomMissile("TimeManCArrow", 7, 0, 8, 0)
+    stop
+    TNT1 A 0 A_FireCustomMissile("TimeArrowCFast", 0, 0, 8, 0)
+    stop
+    TNT1 A 0 A_FireCustomMissile("TimeArrowCSlow", 0, 0, 8, 0)
+    stop
+  }
+}
+actor TimeManCArrow : BasicProjectile {
+  Translation "192:192=65:65", "198:198=61:61"
+  Obituary "%o was stopped by \ctTimeman C\c- (%k)'s Hands of Time."
+  damagetype "TimemanC"
+  +FORCEXYBILLBOARD
+  //+RIPPER
+  Damage (110*(1+9*(CallACS("rz_CheckBirthday")==4)))
+  Height 7
+  Radius 6
+  speed 40
+  Scale 2.5
+  States {
+   Spawn:
+    TIMA S 6
+    TIMA R 3 bright
+    loop
+  }
+}
+actor TimeArrowCSlow : TimeManCArrow {
+  +RIPPER
+  Damage (70*(1+9*(CallACS("rz_CheckBirthday")==4)))
+  speed 15
+}
+actor TimeArrowCFast : TimeManCArrow {
+  +RIPPER
+  Damage (90*(1+9*(CallACS("rz_CheckBirthday")==4)))
+  speed 64
+}
+actor TimeManCSlow : BasicExplosion {
+  Translation "192:192=65:65", "198:198=61:61"
+  damagetype "TimemanCSlow"
+  Obituary "%o was a loli so \ctTimeman C\c- (%k) loved %h."
+  // "%o was a Lolita so \ctTimeman C\c- (%k) loved %h."
+  // "%o was clocked out by \ctTimeman C\c- (%k)'s Time Slow."
+  +FORCEXYBILLBOARD
+  +BRIGHT
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 A_Explode(140*(1+9*(CallACS("rz_CheckBirthday")==4)), 512, 0, 0, 32)
+    X_1G EFGHIJKLMNEFGHIJKLMN 1
+    stop
+  }
+}
