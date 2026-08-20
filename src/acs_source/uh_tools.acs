@@ -1,5 +1,6 @@
 #library "uh_tools"
 #include "zcommon.acs"
+#include "dtadd.acs"
 
 #import "8bdt.acs"
 
@@ -823,4 +824,26 @@ script "rz_ReverseGravityEveryoneExceptTid" (int tid) {
 			GiveActorInventory(i, "ReverseMyGravity_P", 1);
 		}
 	}
+}
+
+// ProjSpawnFunc hook: invert missile gravity when the firer is gravity-flipped.
+script "rz_spawnfuncs" OPEN {
+	AddSpawnFunc(DTADD_SFT_PROJ, "rz_projflipgrav");
+}
+
+script "rz_projflipgrav" (void) {
+	if (CheckFlag(0, "NOGRAVITY"))
+		terminate;
+	int grav = GetActorProperty(0, APROP_Gravity);
+	if (grav == 0)
+		terminate;
+	int owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+	if (owner == 0)
+		owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+	if (owner == 0)
+		terminate;
+	if (!(CheckActorInventory(owner, "CeilingFlag") ||
+	      GetActorProperty(owner, APROP_Gravity) < 0))
+		terminate;
+	SetActorProperty(0, APROP_Gravity, -grav);
 }
