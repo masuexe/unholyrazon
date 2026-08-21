@@ -7,54 +7,52 @@ actor Eden : CustWepClassBase {
   player.forwardmove 1.00, 1.00
   player.sidemove 0.98, 0.98
   player.jumpz 10
+  Player.StartItem "UH_BaseFlagPack"
   player.startitem "Eden_W"
   //player.startitem "EdenToyAmmo", 50
   States {
    Spawn:
-    1A59 A 0
-    1A59 B 1
-    1A59 A 1
-    Goto Spawn+3
+    1H59 A 0
+    1H59 B 1
+   SpawnFrame:
+    1H59 A 1
+    wait
    See:
-    1A59 BCDC 5
-    Goto Spawn+1
+    1H59 BCDC 5
+    Goto Spawn
    Melee:
-    1A59 EE 2
-    goto Spawn+3
+    1H59 FF 2
+    goto SpawnFrame
    Missile:
-    1A59 EEEEE 1
-    goto Spawn+3
+    1H59 F 5
+    goto SpawnFrame
    ClassPain:
-    1A59 H 0 A_GiveInventory("RogueShieldWasHit")
-   ClassPainCheck:
-    1A59 H 0 A_JumpIfInventory("C206Flag", 1, "HeadlessClassPain")
-    1A59 H 0 A_JumpIfInventory("C227Flag", 1, "Pain227")
-    1A59 H 0 A_JumpIfInventory("C371Flag", 1, "Pain371")
+    1H59 H 0 A_GiveInventory("RogueShieldWasHit")
     Goto MegamanPain
 
-   Pain227:
-    1A59 H 0 A_SpawnItemEx("EdenPiggyBankCoinSpawner")
-    1A59 H 0
-    goto ClassPainCheck+2
-   Pain371:
-    1A59 H 0 A_JumpIfInventory("PowerC371Cooldown", 1, 3)
-    1A59 H 0 A_GiveInventory("AnarchistCookbookIsaacItem_P")
-    1A59 H 0 A_GiveInventory("PowerC371Cooldown")
-    1A59 H 0
-    goto MegamanPain
-
    ClassDeath:
-    1A59 H 0
+    1H59 H 0
     goto MegamanDeath
    MegamanDeath0:
-    1A59 H 0 A_JumpIfInventory("CriticalDeath", 1, "MegamanGib")
-    1A59 H 16
-    1A59 H 10 A_SpawnItemEx("EdenLostFX", 0, 0, 4, 0, 0, 15, 0, 0)
+    1H59 H 0 A_JumpIfInventory("CriticalDeath", 1, "MegamanGib")
+    1H59 H 16
+    1H59 H 10 A_SpawnItemEx("EdenLostFX", 0, 0, 4, 0, 0, 15, 0, 0)
     goto MegamanFade
-   ClassCorpse:
-    1A59 Z 0 A_SpawnItemEx("Corpse_64", 0, 0, 0, momx, momy, momz, 0, 9)
-    goto MegaDeathEndGib
+   MegamanDisintegrate:
+    1H59 Z 0 A_SpawnItemEx("Corpse_Eden", 0, 0, 0, momx, momy, momz, 0, 9)
+    goto MegamanCorpseEnd
   }
+}
+actor EdenShiny : Eden {
+  // player.scoreIcon "UMUG_S0"
+  Player.Maxhealth 3000
+  health 3000
+  player.forwardmove 1.1, 1.1
+  player.sidemove 1.08, 1.08
+  player.jumpz 11
+  player.morphweapon "EdenShiny_W"
+  +NOSKIN
+  +NOMORPHLIMITATIONS
 }
 
 actor EdenLostFX : BasicGraphicEffect {
@@ -62,6 +60,28 @@ actor EdenLostFX : BasicGraphicEffect {
   States {
    Spawn:
     6R59 ABCDE 2 A_FadeOut(0.08)
+    loop
+  }
+}
+
+actor Corpse_Eden : BasicWatcher {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SpawnItemEx("Corpse_Eden_0", 0, 0, 36, momx+random(-2, 2), momy+frandom(-1, 1), momz+frandom(2, 6), 0, 169)
+    stop
+  }
+}
+
+actor Corpse_Eden_0 : BaseCorpseFX {
+  States {
+   Spawn:
+    1H59 O 0
+    1H59 OPQRSTU 1 A_GiveInventory("CutterFlag", 1)
+    1H59 U 0 A_JumpIfInventory("CutterFlag", 350, "Spawn2")
+    loop
+   Spawn2:
+    1H59 OPQRSTU 1 A_FadeOut(0,033)
     loop
   }
 }

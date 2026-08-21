@@ -1430,3 +1430,104 @@ function void GiveMeTheFunc(str hungry, int thebill) {
   }
 }
 
+function int Round(int x) {
+	return (x + 0.5) >> 16;
+}
+
+function int ConvertTears(int value, int swap) { // 0 = fire rate -> tears, 1 = tears -> fire rate
+  int res;
+  switch (swap) {
+    case 0:
+      res = Round(FixedDiv(300, (value + 1)));
+      break;
+    case 1:
+      res = Round(FixedDiv(300, value)) - 1;
+      break;
+  }
+  return res;
+}
+
+script "rz_InitEdenProperties" (void) {
+  if (CheckInventory("EdenInitFlag")) {
+    terminate;
+  }
+
+  int health, height, height_hud, speed, speed_hud, firerate, tears_hud, damage, range, shotspeed, luck;
+
+  if (CheckActorClass(0, "EdenShiny")) {
+    health = Random(2650, 4000);
+  }
+  else {
+    health = Random(650, 2000);
+  }
+  height = Random(10.0, 17.5);
+  height_hud = Round(height);
+  speed = Random(0.5, 1.5);
+  speed_hud = Round(speed * 10);
+  firerate = Random(2, 12);
+  tears_hud = ConvertTears(firerate, 0);
+  if (CheckActorClass(0, "EdenShiny")) {
+    damage = Random(75, 300);
+  }
+  else {
+    damage = Random(50, 200);
+  }
+  range = Random(10, 60);
+  shotspeed = Random(15, 55);
+  luck = Random(0, 16);
+
+  SetActorProperty(0, APROP_Health, health);
+  SetActorProperty(0, APROP_SpawnHealth, health);
+  SetActorProperty(0, APROP_Speed, speed);
+  SetActorProperty(0, APROP_JumpZ, height);
+  Delay(1);
+  SetInventory("EdenMaxHealthAttr", GetActorProperty(0, APROP_SpawnHealth));
+  SetInventory("EdenSpeedAttr", speed_hud);
+  SetInventory("EdenHeightAttr", height_hud);
+  SetInventory("EdenTearsAttr", firerate);
+  SetInventory("EdenTearsHUDAttr", tears_hud);
+  SetInventory("EdenDamageAttr", damage);
+  SetInventory("EdenRangeAttr", range);
+  SetInventory("EdenShotSpeedAttr", shotspeed);
+  SetInventory("EdenLuckAttr", luck);
+  GiveInventory("EdenInitFlag", 1);
+}
+
+#define EDENATTR_TEARS 1
+#define EDENATTR_DAMAGE 2
+#define EDENATTR_SHOTSPEED 3
+#define EDENATTR_LUCK 4
+#define EDENATTR_RANGE 5
+
+script "rz_GetEdenAttr" (int pointer, int attr, int hud, int useplayer) {
+  if (useplayer) {
+    SetActivatorToPlayer(pointer);
+  }
+  else if (pointer > 0) {
+    SetActivator(0, pointer);
+  }
+
+  switch (attr) {
+    case EDENATTR_TEARS:
+      if (hud) {
+        SetResultValue(CheckInventory("EdenTearsHUDAttr"));
+      }
+      else {
+        SetResultValue(CheckInventory("EdenTearsAttr"));
+      }
+      break;
+    case EDENATTR_DAMAGE:
+      SetResultValue(CheckInventory("EdenDamageAttr"));
+      break;
+    case EDENATTR_SHOTSPEED:
+      SetResultValue(CheckInventory("EdenShotSpeedAttr"));
+      break;
+    case EDENATTR_LUCK:
+      SetResultValue(CheckInventory("EdenLuckAttr"));
+      break;
+    case EDENATTR_RANGE:
+      SetResultValue(CheckInventory("EdenRangeAttr"));
+      break;
+  }
+}
+
