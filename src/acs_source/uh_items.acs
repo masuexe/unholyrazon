@@ -469,3 +469,87 @@ script "rz_CrookedPennyRolling" (void)
 		PlaySound(0, "items/SoUnlucky", 5);
 	}
 }
+
+// Eternal D6: defer gives so newly rolled items are not re-processed in the same pass.
+#define UH_EDEN_D6_PENDING_MAX 256
+str uh_edenD6PendingGive[UH_EDEN_D6_PENDING_MAX];
+int uh_edenD6PendingCount;
+
+function void EternalD6QueueGive(str actor)
+{
+	if (StrCmp(actor, "") == 0)
+		return;
+	if (uh_edenD6PendingCount >= UH_EDEN_D6_PENDING_MAX)
+		return;
+	uh_edenD6PendingGive[uh_edenD6PendingCount] = actor;
+	uh_edenD6PendingCount++;
+}
+
+function void EternalD6ProcessActor(str actor)
+{
+	int count;
+	int itemid;
+	int boxid;
+	int coinId;
+	int u;
+	int newId;
+	str giveActor;
+
+	count = CheckInventory(actor);
+	if (count <= 0)
+		return;
+	if (StrCmp(actor, "SuperGUHUItem") == 0 && CheckInventory("SuperGuhuDoomFlag"))
+		count--;
+	if (count <= 0)
+		return;
+
+	itemid = FindItemByActor(actor);
+	if (itemid == UHITEM_FAIL)
+		return;
+	coinId = FindItemByActor("DLC_CoinItem");
+	if (itemid == coinId)
+		return;
+	if (IsUnholyBox(itemid))
+		return;
+
+	for (u = 0; u < count; u++)
+	{
+		boxid = PickItemHomeBoxEdenD6(itemid);
+		if (boxid == UHITEM_FAIL)
+			continue;
+		if (ItemBoxWeightSumEdenD6(boxid, itemid) <= 0)
+			continue;
+		TakeInventory(actor, 1);
+		if (random(0, 99) < 75)
+		{
+			newId = RandomItemFromBoxEdenD6(boxid, itemid);
+			if (newId != UHITEM_FAIL)
+			{
+				giveActor = GetItemActor(newId);
+				EternalD6QueueGive(giveActor);
+			}
+		}
+	}
+}
+
+script "rz_EternalD6Rolling" (void)
+{
+	int id;
+	int i;
+
+	uh_edenD6PendingCount = 0;
+
+	for (id = 0; id < UH_MAX_VANILLA_ITEM; id++)
+	{
+		if (uh_itemVanillaDefined[id] == 0)
+			continue;
+		EternalD6ProcessActor(uh_itemVanillaStr[id][UHITEM_STR_ACTOR]);
+	}
+	for (i = 0; i < uh_itemCustomCount; i++)
+	{
+		EternalD6ProcessActor(uh_itemCustomStr[i][UHITEM_STR_ACTOR]);
+	}
+
+	for (i = 0; i < uh_edenD6PendingCount; i++)
+		GiveInventory(uh_edenD6PendingGive[i], 1);
+}
