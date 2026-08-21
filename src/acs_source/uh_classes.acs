@@ -1556,8 +1556,83 @@ function void UpdateEdenAttr(int attr, int value, bool set, bool hud) {
   }
 }
 
+// Isaac alt items: parallel arrays (ACS has no struct). Shape matches future DefineIsaacItem.
+#define EDEN_ISAAC_ALT_CAP 32
+int edenisaac_alt_count = 0;
+int edenisaac_alt_id[EDEN_ISAAC_ALT_CAP];
+int edenisaac_alt_ammo[EDEN_ISAAC_ALT_CAP];
+str edenisaac_alt_pickup[EDEN_ISAAC_ALT_CAP];
+
+function void EdenRegisterAlt(int id, int ammo, str giver) {
+  int i = edenisaac_alt_count;
+  if (i >= EDEN_ISAAC_ALT_CAP) {
+    Log(s:"EdenRegisterAlt overflow");
+    return;
+  }
+  edenisaac_alt_id[i] = id;
+  edenisaac_alt_ammo[i] = ammo;
+  edenisaac_alt_pickup[i] = giver;
+  edenisaac_alt_count++;
+}
+
+// OPEN alone is not reliable for #library map vars before first Ready; also call from Init.
+function void EdenEnsureVanillaAltRegistered(void) {
+  if (edenisaac_alt_count > 0) {
+    return;
+  }
+  EdenRegisterAlt(36, 75, "ThePoopIsaacItem_P");
+  EdenRegisterAlt(65, 225, "AnarchistCookbookIsaacItem_P");
+  EdenRegisterAlt(406, 300, "D8IsaacItem_P");
+  EdenRegisterAlt(485, 300, "CrookedPennyIsaacItem_P");
+}
+
+script "rz_EdenRegisterVanillaAlt" OPEN {
+  EdenEnsureVanillaAltRegistered();
+}
+
+function int EdenFindEquippedAlt(void) {
+  int i;
+  for (i = 0; i < edenisaac_alt_count; i++) {
+    if (CheckInventory(StrParam(s:"C", i:edenisaac_alt_id[i], s:"Flag"))) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+script "rz_EdenAltAmmoCost" (void) {
+  int i = EdenFindEquippedAlt();
+  int cost = 300;
+  if (i >= 0) {
+    cost = edenisaac_alt_ammo[i];
+  }
+  if (CheckInventory("PowerEndlessAmmoRune")) {
+    cost = cost / 2;
+  }
+  SetResultValue(cost);
+}
+
+script "rz_EdenUseAlt" (void) {
+  int i = EdenFindEquippedAlt();
+  if (i < 0) {
+    terminate;
+  }
+  GiveInventory(edenisaac_alt_pickup[i], 1);
+}
+
 script "rz_InitEdenProperties" (void) {
+  EdenEnsureVanillaAltRegistered();
+
+  int slot;
+  str flag;
+
+  // Recover: Init ran earlier with empty table → InitFlag set, no C*Flag.
   if (CheckInventory("EdenInitFlag")) {
+    if (EdenFindEquippedAlt() < 0 && edenisaac_alt_count > 0) {
+      slot = Random(0, edenisaac_alt_count - 1);
+      flag = StrParam(s:"C", i:edenisaac_alt_id[slot], s:"Flag");
+      GiveInventory(flag, 1);
+    }
     terminate;
   }
 
@@ -1589,6 +1664,14 @@ script "rz_InitEdenProperties" (void) {
   SetActorProperty(0, APROP_SpawnHealth, health);
   SetActorProperty(0, APROP_Speed, speed);
   SetActorProperty(0, APROP_JumpZ, height);
+
+  // Lock one alt item for the life; Flag persists via EdenInitFlag gate.
+  if (edenisaac_alt_count > 0) {
+    slot = Random(0, edenisaac_alt_count - 1);
+    flag = StrParam(s:"C", i:edenisaac_alt_id[slot], s:"Flag");
+    GiveInventory(flag, 1);
+  }
+
   Delay(1);
   SetInventory("EdenMaxHealthAttr", GetActorProperty(0, APROP_SpawnHealth));
   SetInventory("EdenSpeedAttr", speed_hud);
