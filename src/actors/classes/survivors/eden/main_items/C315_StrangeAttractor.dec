@@ -1,13 +1,42 @@
 actor C315Flag : UOnce {}
 
-actor EdenStrangeAttractor_F : UOnce {}
+// Marked on tear Death so attractor aura stops (GodHead UOnce pattern).
+actor EdenTearSpent_F : UOnce {}
 
-// Spawn-applied: dye + mark tear so SpawnLoop can pull (razon3 SpawnCheck/SpawnFrame.StrangeAttractor).
+// Spawn-applied: dye + companion aura (per-tic pull). Do not put tick logic on EdenTear.
 actor EdenTearStrangeAttractorApply_P : CustomInventory {
   States {
    Pickup:
     TNT1 A 0 ACS_NamedExecuteWithResult("rz_EdenTearColor", EDEN_TEAR_ATTRACTOR_DYE)
-    TNT1 A 0 A_GiveInventory("EdenStrangeAttractor_F", 1)
+    // UniqueTID + set MASTER=tear. SXF_SETMASTER from CustomInventory leaves MASTER null.
+    // TRANSFERPOINTERS copies TARGET=shooter for uh_radiuspull team checks.
+    TNT1 A 0 A_SpawnItemEx("EdenStrangeAttractorAura", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS, 0, CallACS("core_NewUniqueTID"))
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_setTIDsPointerToThis", CallACS("core_CurrentUniqueTID"), AAPTR_MASTER)
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_ClearUniqueTID", 0)
+    stop
+  }
+}
+
+// MASTER = tear. Follows and pulls. Do not name a label "Loop" (reserved keyword).
+// Do not use uh_PointerExists(MASTER) — that API is for player owners only.
+actor EdenStrangeAttractorAura {
+  +NOINTERACTION
+  +NOGRAVITY
+  +NOCLIP
+  +NOTELEPORT
+  +NOTIMEFREEZE
+  +INVISIBLE
+  States {
+   Spawn:
+    TNT1 A 0
+    goto AuraTick
+   AuraTick:
+    TNT1 A 0 A_JumpIf(!CallACS("rz_EdenAttractMasterOk"), "Death")
+    TNT1 A 0 A_Warp(4, 0, 0, 0, 0, WARPF_NOCHECKPOSITION)
+    TNT1 A 1 ACS_NamedExecuteAlways("uh_radiuspull", 0, 10, 128, 0)
+    goto AuraTick
+   Death:
+    TNT1 A 0
     stop
   }
 }
