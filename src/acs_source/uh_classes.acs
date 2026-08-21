@@ -1,5 +1,6 @@
 #library "uh_classes"
 #include "zcommon.acs"
+#import "uhdt.acs"
 
 global int 3: IsTeamGame;
 global int 4: ServerMAX;
@@ -1556,6 +1557,68 @@ function void UpdateEdenAttr(int attr, int value, bool set, bool hud) {
   }
 }
 
+// Void: consume all DefineUnholyItem except coins → random Eden attrs (razon3 rz_VoidConsuming).
+function int VoidConsumeActor(str actor)
+{
+  int count = CheckInventory(actor);
+  if (count <= 0)
+    return 0;
+  if (StrICmp(actor, "DLC_CoinItem") == 0)
+    return 0;
+  if (StrCmp(actor, "SuperGUHUItem") == 0 && CheckInventory("SuperGuhuDoomFlag"))
+    count--;
+  if (count <= 0)
+    return 0;
+  TakeInventory(actor, count);
+  return count;
+}
+
+script "rz_VoidConsuming" (void)
+{
+  int itemcount;
+  int i;
+  int id;
+  int slot;
+  int plus;
+  int attrplus[6];
+
+  itemcount = 0;
+  for (i = 0; i < 6; i++)
+    attrplus[i] = 0;
+
+  for (id = 0; id < UH_MAX_VANILLA_ITEM; id++)
+  {
+    if (uh_itemVanillaDefined[id] == 0)
+      continue;
+    itemcount += VoidConsumeActor(uh_itemVanillaStr[id][UHITEM_STR_ACTOR]);
+  }
+  for (i = 0; i < uh_itemCustomCount; i++)
+    itemcount += VoidConsumeActor(uh_itemCustomStr[i][UHITEM_STR_ACTOR]);
+
+  if (itemcount <= 0)
+    terminate;
+
+  PlaySound(0, "Isaac/voidconsumed");
+
+  for (i = 0; i < itemcount * 2; i++)
+  {
+    slot = random(0, 5);
+    switch (slot)
+    {
+      case 0: plus = 2; break;
+      case 1: plus = 1; break;
+      case 2: plus = 5; break;
+      case 3: plus = 20; break;
+      case 4: plus = 10; break;
+      case 5: plus = 10; break;
+      default: plus = 0; break;
+    }
+    attrplus[slot] += plus;
+  }
+  for (i = 0; i < 6; i++)
+    UpdateEdenAttr(i, attrplus[i], false, true);
+}
+
 // Isaac alt items: parallel arrays (ACS has no struct). Shape matches future DefineIsaacItem.
 #define EDEN_ISAAC_ALT_CAP 32
 int edenisaac_alt_count = 0;
@@ -1583,6 +1646,7 @@ function void EdenEnsureVanillaAltRegistered(void) {
   EdenRegisterAlt(36, 75, "ThePoopIsaacItem_P");
   EdenRegisterAlt(65, 225, "AnarchistCookbookIsaacItem_P");
   EdenRegisterAlt(406, 300, "D8IsaacItem_P");
+  EdenRegisterAlt(477, 300, "VoidIsaacItem_P");
   EdenRegisterAlt(485, 300, "CrookedPennyIsaacItem_P");
   EdenRegisterAlt(609, 300, "EternalD6IsaacItem_P");
 }
