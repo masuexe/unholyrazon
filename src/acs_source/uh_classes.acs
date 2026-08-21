@@ -1758,10 +1758,10 @@ script "rz_InitEdenProperties" (void) {
   SetInventory("EdenLuckAttr", luck);
   GiveInventory("EdenInitFlag", 1);
 
-  // // TEMP Ipecac test — remove when done testing passives
-  // GiveInventory("C149Flag", 1);
-  // SetInventory("EdenItemSlot1", 149);
-  // EdenApplyIpecacStats();
+  // TEMP Ipecac test — remove when done testing passives
+  GiveInventory("C149Flag", 1);
+  SetInventory("EdenItemSlot1", 149);
+  EdenApplyIpecacStats();
 
   // // TEMP TheWiz test — remove when done testing passives
   // GiveInventory("C358Flag", 1);
@@ -1789,14 +1789,15 @@ script "rz_EdenAttractMasterOk" (void) {
   SetResultValue(1);
 }
 
-script "rz_EdenTearOnDeath" (void) {
-  int owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
-  if (owner == 0)
-    owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
-  if (owner != 0 && CheckActorInventory(owner, "C149Flag"))
+// Tear death-mod registry (symmetric with rz_EdenTearPassiveSpawn).
+// Returns 1 if a death replace ran (skip normal splatter).
+script "rz_EdenTearRunDeath" (void) {
+  if (CheckInventory("EdenIpecacDeath_F")) {
+    GiveInventory("EdenIpecacDeath_P", 1);
     SetResultValue(1);
-  else
-    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(0);
 }
 
 // Pending Ipecac poison shooter TID per victim player number (0 if none).
