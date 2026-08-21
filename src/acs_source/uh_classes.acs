@@ -1778,6 +1778,94 @@ script "rz_EdenTearOnDeath" (void) {
     SetResultValue(0);
 }
 
+// Pending Ipecac poison shooter TID per victim player number (0 if none).
+int edenipecac_shootertid[64];
+
+script "rz_EdenIpecacMarkShooter" (void) {
+  int shooter;
+  int sx;
+  int sy;
+  int sz;
+  int p;
+  int tid;
+  int dx;
+  int dy;
+  int dz;
+  int dist;
+  int radius;
+
+  shooter = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  if (shooter == 0)
+    shooter = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  if (shooter < 1000 || shooter > 1063) {
+    SetResultValue(0);
+    terminate;
+  }
+
+  sx = GetActorX(0);
+  sy = GetActorY(0);
+  sz = GetActorZ(0);
+  radius = 140.0;
+
+  for (p = 0; p < 64; p++) {
+    edenipecac_shootertid[p] = 0;
+    if (!PlayerInGame(p))
+      continue;
+    tid = p + 1000;
+    if (tid == shooter)
+      continue;
+    if (CheckActorInventory(tid, "IsDead"))
+      continue;
+    if (IsTeamGame &&
+        GetPlayerInfo(p, PLAYERINFO_TEAM) == GetPlayerInfo(shooter - 1000, PLAYERINFO_TEAM))
+      continue;
+    dx = GetActorX(tid) - sx;
+    dy = GetActorY(tid) - sy;
+    dz = GetActorZ(tid) - sz;
+    dist = VectorLength(VectorLength(dx, dy), dz);
+    if (dist > radius)
+      continue;
+    edenipecac_shootertid[p] = shooter;
+  }
+  SetResultValue(1);
+}
+
+script "rz_EdenIpecacShouldPoison" (void) {
+  int pn = PlayerNumber();
+  if (pn < 0 || pn >= 64 || edenipecac_shootertid[pn] == 0)
+    SetResultValue(0);
+  else
+    SetResultValue(1);
+}
+
+script "rz_EdenIpecacSpawnDoT" (void) {
+  int pn = PlayerNumber();
+  int victim;
+  int shooter;
+  int u;
+
+  if (pn < 0 || pn >= 64) {
+    terminate;
+  }
+  shooter = edenipecac_shootertid[pn];
+  edenipecac_shootertid[pn] = 0;
+  if (shooter < 1000 || shooter > 1063) {
+    terminate;
+  }
+  victim = ActivatorTID();
+  if (victim == 0) {
+    victim = pn + 1000;
+  }
+
+  u = UniqueTID();
+  if (!SpawnForced("EdenIpecacPoisonDoT", GetActorX(0), GetActorY(0), GetActorZ(0) + 28.0, u, 0)) {
+    terminate;
+  }
+  SetActivator(u);
+  SetPointer(AAPTR_TARGET, shooter);
+  SetPointer(AAPTR_TRACER, victim);
+}
+
 script "rz_EdenApplyPassiveStats" (void) {
   EdenApplyIpecacStats();
 }

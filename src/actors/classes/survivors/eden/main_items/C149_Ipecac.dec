@@ -10,6 +10,53 @@ actor EdenTearIpecacApply_P : CustomInventory {
   }
 }
 
-actor BasicBoom4FX_ColorX_Ipecac : BasicBoom4FX_ColorX {
-  Scale 5.0
+// Given by Death.Ipecac A_RadiusGive; shooter TID pre-marked by rz_EdenIpecacMarkShooter.
+actor EdenIpecacPoisonStart_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIf(CallACS("rz_EdenIpecacShouldPoison") == 0, "No")
+    TNT1 A 0 ACS_NamedExecuteAlways("rz_EdenIpecacSpawnDoT", 0)
+   No:
+    TNT1 A 0
+    stop
+  }
+}
+
+// TRACER = victim, TARGET = shooter (set by ACS).
+actor EdenIpecacPoisonDoT {
+  +NOINTERACTION
+  +NOGRAVITY
+  +NOCLIP
+  +NOTELEPORT
+  +NOTIMEFREEZE
+  var int user_left;
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SetUserVar("user_left", 1)
+   DoT:
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 8), "Death")
+    TNT1 A 20 A_Warp(AAPTR_TRACER, 0, 0, 28, 0, WARPF_NOCHECKPOSITION)
+    TNT1 A 0 A_SpawnItemEx("IpecacPoisonDamager", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SetUserVar("user_left", user_left - 1)
+    TNT1 A 0 A_JumpIf(user_left <= 0, "Death")
+    goto DoT
+   Death:
+    TNT1 A 0
+    stop
+  }
+}
+
+actor IpecacPoisonDamager : BasicExplosion {
+  Translation "192:192=217:217", "198:198=221:221", "199:199=223:223", "202:202=214:214", "168:168=214:214", "4:4=214:214"
+  damagetype "EdenIpecacPoison"
+  Obituary "%o was poisoned by %k's deadly Ipecac toxicity."
+  Scale 2.5
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_PlaySound("Pokemon/FireSpin", 2, 0.75)
+    TNT1 A 0 A_Explode(50, 15, 0, 0, 15)
+    stop
+  }
 }
