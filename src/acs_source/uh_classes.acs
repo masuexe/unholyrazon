@@ -1685,6 +1685,15 @@ script "rz_EdenUseAlt" (void) {
   GiveInventory(edenisaac_alt_pickup[i], 1);
 }
 
+function void EdenApplyIpecacStats(void) {
+  if (!CheckInventory("C149Flag"))
+    return;
+  GiveInventory("EdenDamageAttr", 70);
+  GiveInventory("EdenTearsAttr", 12);
+  SyncEdenTears(CONVERTTEARS_FIRE2TEARS);
+  TakeInventory("EdenShotSpeedAttr", CheckInventory("EdenShotSpeedAttr") / 5);
+}
+
 script "rz_InitEdenProperties" (void) {
   EdenEnsureVanillaAltRegistered();
 
@@ -1748,6 +1757,29 @@ script "rz_InitEdenProperties" (void) {
   SetInventory("EdenShotSpeedAttr", shotspeed);
   SetInventory("EdenLuckAttr", luck);
   GiveInventory("EdenInitFlag", 1);
+
+  // TEMP Ipecac test — remove when done testing passives
+  GiveInventory("C149Flag", 1);
+  SetInventory("EdenItemSlot1", 149);
+  EdenApplyIpecacStats();
+}
+
+script "rz_EdenTearColor" (int colorNum) {
+  Thing_SetTranslation(0, colorNum);
+}
+
+script "rz_EdenTearOnDeath" (void) {
+  int owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  if (owner == 0)
+    owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  if (owner != 0 && CheckActorInventory(owner, "C149Flag"))
+    SetResultValue(1);
+  else
+    SetResultValue(0);
+}
+
+script "rz_EdenApplyPassiveStats" (void) {
+  EdenApplyIpecacStats();
 }
 
 #define EDENATTR_TEARS 1
