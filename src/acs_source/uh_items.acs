@@ -428,3 +428,44 @@ Script "uh_AssHatGenericPickup" (void)
 	GiveInventory(item, amt);
 	SetResultValue(1);
 }
+
+// Crooked Penny: double or strip all DefineUnholyItem identities (UHDT tables, no UHADD roundtrips).
+function void CrookedPennyMutateActor(str actor, bool lucky)
+{
+	int count = CheckInventory(actor);
+	if (count <= 0)
+		return;
+	if (lucky)
+	{
+		GiveInventory(actor, count);
+		return;
+	}
+	if (StrCmp(actor, "SuperGUHUItem") == 0 && CheckInventory("SuperGuhuDoomFlag"))
+		count--;
+	if (count > 0)
+		TakeInventory(actor, count);
+}
+
+script "rz_CrookedPennyRolling" (void)
+{
+	bool lucky = random(0, 1);
+	int id;
+	int i;
+
+	for (id = 0; id < UH_MAX_VANILLA_ITEM; id++)
+	{
+		if (uh_itemVanillaDefined[id] == 0)
+			continue;
+		CrookedPennyMutateActor(uh_itemVanillaStr[id][UHITEM_STR_ACTOR], lucky);
+	}
+	for (i = 0; i < uh_itemCustomCount; i++)
+	{
+		CrookedPennyMutateActor(uh_itemCustomStr[i][UHITEM_STR_ACTOR], lucky);
+	}
+
+	if (!lucky)
+	{
+		GiveInventory("DLC_CoinItem", 1);
+		PlaySound(0, "items/SoUnlucky", 5);
+	}
+}
