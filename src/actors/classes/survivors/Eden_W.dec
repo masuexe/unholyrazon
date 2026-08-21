@@ -1,0 +1,287 @@
+actor Eden_W : BaseMM8BDMWep_UH {
+  Weapon.AmmoUse 0
+  Weapon.AmmoGive 300
+  Inventory.Pickupmessage "$PU_03"
+  Obituary "$OB_59W"
+  Tag "$TAG_Eden_W"
+  weapon.ammotype "EdenToyAmmo"
+  // +WEAPON.NOAUTOAIM
+
+  States {
+   Spawn:
+    6H59 [ 6
+    loop
+
+   Deselect:
+    6H59 A 0
+    goto DeselectSwap
+   Select:
+    6H59 A 0
+    goto SelectSwap
+
+   Ready:
+    // 6H59 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", 0, EDEN_DYE)
+    // 6H59 A 0 ACS_NamedExecuteAlways("rz_InitEdenProperties")
+    // 6H59 A 0 ACS_NamedExecuteAlways("rz_RandomIsaacItemGiverX")
+    //6H59 C 0 A_SetUserVar("user_ShotSpeed", 100)
+    //6H59 A 0 A_SetUserVar("user_ShotSpeed", random(0, 20))
+    //6H59 A 0 A_GiveInventory("EdenShotSpeedAttr",random(75, 125))//ACS_NamedExecuteAlways("rz_InitEdenTears")
+    //6H59 A 0 A_GiveInventory("IsaacRandomItem")
+    6H59 A 0 A_GiveInventory("EdenToyAmmo", 300)
+  //   goto ReadyFlash
+
+  //  ReadyFlash:
+  //   6H59 A 10
+  //   6H59 A 0 A_JumpIfInventory("C60Flag", 1, "BuildingBridges")
+  //   goto Ready2
+
+  //  BuildingBridges:
+  //   6H59 A 0 A_GunFlash("Flash.TheLadder")
+  //   goto Ready2
+
+   Ready2:
+    6H59 A 0 A_JumpIfInventory("EdenTearCoolDown", 1, "ReadyX")
+    6H59 A 0 A_JumpIfInventory("EdenToyAmmo", CallACS("rz_SetEdenAmmoUse")-CallACS("rz_SetEdenAmmoUse")/2*CallACS("uh_CheckForEndlessAmmo"), "ReadyX2")
+    6H59 A 2 A_WeaponReady(WRF_NOSECONDARY)
+    6H59 A 0 A_GiveInventory("Eden_W_Ready_P")
+    loop
+
+   ReadyX:
+    6H59 A 0 A_JumpIfInventory("EdenToyAmmo", CallACS("rz_SetEdenAmmoUse")-CallACS("rz_SetEdenAmmoUse")/2*CallACS("uh_CheckForEndlessAmmo"), "ReadyX1")
+    6H59 A 2 A_WeaponReady(WRF_NOPRIMARY|WRF_NOSECONDARY)
+    6H59 A 0 A_GiveInventory("Eden_W_Ready_P")
+    goto Ready2
+
+   ReadyX1:
+    6H59 A 2 A_WeaponReady(WRF_NOPRIMARY)
+    6H59 A 0 A_GiveInventory("Eden_W_Ready_P")
+    goto Ready2
+
+   ReadyX2:
+    6H59 A 2 A_WeaponReady
+    6H59 A 0 A_GiveInventory("Eden_W_Ready_P")
+    goto Ready2
+
+   Fire:
+    6H59 C 0 A_JumpIfInventory("IsBot", 1, "BotFire")
+    6H59 C 0 A_JumpIfInventory("BobHeadFlag", 1, "ThrowHead")
+    6H59 C 0 A_JumpIfInventory("EdenChargeFlag", 1, "FireCharge")
+    6H59 C 0 A_JumpIfInventory("C678Flag", 1, "C678Fire")
+    6H59 A 0 A_GiveInventory("EdenFire_P")//A_FireCustomMissile("EdenTearSpawner_H",0,0,0,0)
+    goto CDCheck
+   CDCheck:
+    6H59 C 0 A_GiveInventory("EdenTearCoolDown", CallACS("rz_GetEdenAttr", 0, 1, 0)*(1-CallACS("uh_CheckForRage", 0)/2))
+    6H59 C 0 A_JumpIfInventory("EdenTearCoolDown", 6, "Cooldown6")
+    6H59 C 0 A_JumpIfInventory("EdenTearCoolDown", 4, "Cooldown4")
+    6H59 C 0 A_JumpIfInventory("EdenTearCoolDown", 2, "Cooldown2")
+    goto Cooldown1
+   Cooldown6:
+    6H59 A 2 Offset(0, 44) A_GiveInventory("EdenToyAmmo", 1)
+    6H59 A 2 Offset(0, 40) A_GiveInventory("EdenToyAmmo", 1)
+    6H59 A 2 Offset(0, 36) A_GiveInventory("EdenToyAmmo", 1)
+    Goto Ready2
+   Cooldown4:
+    6H59 A 2 Offset(0, 44) A_GiveInventory("EdenToyAmmo", 1)
+    6H59 A 2 Offset(0, 36) A_GiveInventory("EdenToyAmmo", 1)
+    Goto Ready2
+   Cooldown2:
+    6H59 A 2 Offset(0, 44) A_GiveInventory("EdenToyAmmo", 1)
+    Goto Ready2
+   Cooldown1:
+    6H59 A 1 Offset(0, 44) A_GiveInventory("EdenToyAmmo", 1)
+    Goto Ready2
+
+   FireCharge:
+    6H59 A 2
+    goto Charge0
+   Charge0:
+    6H59 A 0 A_JumpIfInventory("EdenTearsAttr", 3, 1) goto ChargeFireRage
+    6H59 A 0 A_JumpIfInventory("WeaponCharge", CallACS("rz_GetEdenAttr", 0, 1, 0), "Charge1")
+    6H59 A 0 A_JumpIfInventory("WeaponCharge", CallACS("rz_GetEdenAttr", 0, 1, 0)-1, "ChargeStart")
+    6H59 A 1 Offset(0, 44) A_GiveInventory("WeaponCharge", 1+CallACS("uh_CheckForRage", 0))
+    6H59 A 0 A_Refire("Charge0")
+    goto FireFailed
+   ChargeStart:
+    6H59 A 0 //A_PlaySoundEx("weapon/pcharge","Weapon")
+    Goto Charge1
+
+   Charge1:
+    6H59 A 1 Offset(0, 48) A_RailWait
+    6H59 C 0 A_Refire("Charge1")
+    goto ChargeFire
+
+   ChargeFire:
+    6H59 A 0 A_TakeInventory("WeaponCharge")
+    6H59 A 0 A_JumpIfInventory("C118Flag", 1, "ChargeFire.Brimstone")
+   ChargeFire.Brimstone:
+    6H59 A 0 A_PlaySoundEx("Isaac/bloodlaser", "SoundSlot5")
+    6H59 A 0 A_JumpIfInventory("C678Flag", 1, "ChargeFire.Brimstone.CSection")
+    6H59 A 0 //A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 Offset(0, 48) A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 Offset(0, 46) A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 2 Offset(0, 44)
+    6H59 A 2 Offset(0, 40)
+    6H59 A 2 Offset(0, 36)
+    Goto Ready2
+   ChargeFire.Brimstone.CSection:
+    6H59 A 0 //A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 Offset(0, 48) A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 Offset(0, 46) A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 0 A_GiveInventory("EdenFire_P")
+    6H59 A 1 A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 0 A_GiveInventory("EdenFire_P")
+    6H59 A 1 A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 0 A_GiveInventory("EdenFire_P")
+    6H59 A 1 A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 2 Offset(0, 44)
+    6H59 A 2 Offset(0, 40)
+    6H59 A 2 Offset(0, 36)
+    Goto Ready2
+
+   ChargeFireRage:
+   ChargeFireRage.Brimstone:
+    6H59 A 1 Offset(0, 48)
+    6H59 A 0 A_PlaySoundEx("Isaac/bloodlaser", "Weapon")
+   ChargeFireRageHold.Brimstone:
+    6H59 A 0 A_GiveInventory("EdenBrimstoneFire_P")
+    6H59 A 1 A_SetTics(CallACS("rz_GetEdenAttr", 0, 1, 0))
+    6H59 A 1
+    6H59 A 1 A_Refire("ChargeFireRageHold.Brimstone")
+    6H59 A 2 Offset(0, 44)
+    6H59 A 2 Offset(0, 40)
+    6H59 A 2 Offset(0, 36)
+    Goto Ready2
+
+   FireFailed:
+    6H59 A 0 A_TakeInventory("WeaponCharge")
+    Goto Ready2
+
+   C678Fire:
+    6H59 C 2
+    6H59 B 8 A_SetTics(CallACS("rz_GetEdenAttr", 0, 1, 0)/2)
+    6H59 C 2
+    6H59 C 0 A_GiveInventory("EdenFire_P")
+    6H59 DEF 2
+    TNT1 A 4
+    goto CDCheck
+
+   ThrowHead:
+    6H59 A 0 A_PlaySoundEx("weapon/deepdiggerthrow", 1)
+    6H59 A 0 A_TakeInventory("BobHeadFlag", 1)
+    6H59 A 0 A_FireCustomMissile("BobPoisonBomb", 0, 1, 0, 0)
+    6H59 IJKLMN 2
+    goto Fire+5
+
+   AltFire:
+    6H59 A 0 A_GiveInventory("IsaacToy_P")
+    //6H59 C 0 A_GiveInventory("EdenTearCoolDown",CallACS("rz_GetEdenAttr",0,1,0))//CallACS("rz_SetEdenTearCooldown")
+    //6H59 A 0 A_GunFlash("Flash.TheBible")//6H59 A 0 A_JumpIfInventory("C33Flag",1,"AltBible")
+    6H59 A 2 Offset(0, 44)
+    6H59 A 2 Offset(0, 40)
+    6H59 A 2 Offset(0, 36)
+    6H59 A 2 Offset(0, 32)
+    6H59 A 0 A_JumpIfInventory("C356Flag", 1, 1)
+    Goto Ready2
+    6H59 A 0 A_GiveInventory("CarBatteryFlag")
+    6H59 A 0 A_GiveInventory("IsaacToy_P")
+    6H59 A 2 Offset(0, 44) A_TakeInventory("CarBatteryFlag")
+    6H59 A 2 Offset(0, 40)
+    6H59 A 2 Offset(0, 36)
+    6H59 A 2 Offset(0, 32)
+    Goto Ready2
+    /*AltBible:
+    6H59 A 1 A_GunFlash("Flash.TheBible")
+    6H59 A 2 Offset(0,44)
+    6H59 A 2 Offset(0,40)
+    6H59 A 2 Offset(0,36)
+    Goto Ready2*/
+
+   BotFire:
+    6H59 C 0 A_Jump(32, "AltFire")
+    6H59 C 0 A_JumpIfInventory("BobHeadFlag", 1, "ThrowHead")
+    6H59 C 0 A_JumpIfInventory("C678Flag", 1, "C678Fire")
+    6H59 A 0 A_GiveInventory("EdenFire_P")//A_FireCustomMissile("EdenTearSpawner_H",0,0,0,0)
+    6H59 C 0 A_GiveInventory("EdenTearCoolDown", CallACS("rz_GetEdenAttr", 0, 1, 0))
+    6H59 A 2 Offset(0, 44) A_GiveInventory("EdenToyAmmo", 1)
+    6H59 A 2 Offset(0, 40) A_GiveInventory("EdenToyAmmo", 1)
+    6H59 A 2 Offset(0, 36) A_GiveInventory("EdenToyAmmo", 1)
+    Goto Ready2
+
+   Flash.TheLadder:
+    TNT1 A 1 A_GiveInventory("EdenLadderFlashClimb_P", 1)
+    loop
+
+  }
+}
+
+actor EdenAttr : Inventory {
+  inventory.maxamount 9999
+}
+
+actor EdenMaxHealthAttr : EdenAttr {}
+actor EdenSpeedAttr : EdenAttr {}
+actor EdenHeightAttr : EdenAttr {}
+actor EdenTearsAttr : EdenAttr {} //Fire Rate
+actor EdenTearsHUDAttr : EdenAttr { //HUD Tears
+  inventory.maxamount 300
+}
+actor EdenDamageAttr : EdenAttr {}
+actor EdenRangeAttr : EdenAttr {}
+actor EdenShotSpeedAttr : EdenAttr {}
+actor EdenLuckAttr : EdenAttr {}
+//Hidden
+actor EdenZThrustAttr : EdenAttr {}
+
+actor EdenInitFlag : UOnce {}
+
+actor EdenChargeFlag : UOnce {}
+
+actor EdenTearCoolDown : Inventory {
+  inventory.amount 1
+  inventory.maxamount 9999
+}
+
+actor EdenToyAmmo : Ammo {
+  inventory.amount 1
+  inventory.maxamount 300
+  +INVENTORY.IGNORESKILL
+}
+
+actor Eden_W_Ready_P : CustomInventory {
+  States {
+   Pickup:
+    //TNT1 A 0 A_WeaponReady
+    TNT1 A 0 A_GiveInventory("EdenToyAmmo", 1)
+    TNT1 A 0 A_TakeInventory("EdenTearCoolDown", 1)
+    stop
+  }
+}
+
+actor ResetEdenAttr_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_TakeInventory("EdenMaxHealthAttr")
+    TNT1 A 0 A_TakeInventory("EdenSpeedAttr")
+    TNT1 A 0 A_TakeInventory("EdenHeightAttr")
+    TNT1 A 0 A_TakeInventory("EdenTearsAttr")
+    TNT1 A 0 A_TakeInventory("EdenDamageAttr")
+    TNT1 A 0 A_TakeInventory("EdenRangeAttr")
+    TNT1 A 0 A_TakeInventory("EdenShotSpeedAttr")
+    stop
+  }
+}
+
+#include "actors/classes/survivors/eden_items/eden_projectiles.dec"
+#include "actors/classes/survivors/eden_items/eden_fx.dec"
+#include "actors/classes/survivors/eden_items/eden_familiar.dec"
