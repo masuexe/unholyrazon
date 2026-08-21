@@ -827,10 +827,10 @@ script "rz_ReverseGravityEveryoneExceptTid" (int tid) {
 }
 
 // ProjSpawnFunc hook: invert missile gravity when the firer is gravity-flipped.
-// Eden Ipecac tear spawn (filter EdenTear + owner C149Flag).
+// Eden tear passives on spawn (Ipecac / Strange Attractor).
 script "rz_spawnfuncs" OPEN {
 	AddSpawnFunc(DTADD_SFT_PROJ, "rz_projflipgrav");
-	AddSpawnFunc(DTADD_SFT_PROJ, "rz_EdenTearIpecacSpawn");
+	AddSpawnFunc(DTADD_SFT_PROJ, "rz_EdenTearPassiveSpawn");
 }
 
 script "rz_projflipgrav" (void) {
@@ -850,7 +850,7 @@ script "rz_projflipgrav" (void) {
 	SetActorProperty(0, APROP_Gravity, -grav);
 }
 
-script "rz_EdenTearIpecacSpawn" (void) {
+script "rz_EdenTearPassiveSpawn" (void) {
 	int owner;
 	if (!CheckActorClass(0, "EdenTear") && !CheckActorClass(0, "EdenSpectralTear"))
 		terminate;
@@ -859,7 +859,9 @@ script "rz_EdenTearIpecacSpawn" (void) {
 		owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
 	if (owner == 0)
 		terminate;
-	if (!CheckActorInventory(owner, "C149Flag"))
-		terminate;
-	GiveInventory("EdenTearIpecacApply_P", 1);
+	// Order matches razon3 SpawnCheck: Ipecac then Strange Attractor (dye may overwrite).
+	if (CheckActorInventory(owner, "C149Flag"))
+		GiveInventory("EdenTearIpecacApply_P", 1);
+	if (CheckActorInventory(owner, "C315Flag"))
+		GiveInventory("EdenTearStrangeAttractorApply_P", 1);
 }
