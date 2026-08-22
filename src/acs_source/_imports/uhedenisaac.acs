@@ -16,6 +16,7 @@ str edenisaac_alt_icon[EDEN_ISAAC_ALT_CAP];
 int edenisaac_main_count = 0;
 int edenisaac_main_id[EDEN_ISAAC_MAIN_CAP];
 str edenisaac_main_icon[EDEN_ISAAC_MAIN_CAP];
+int edenisaac_main_quality[EDEN_ISAAC_MAIN_CAP];
 
 // Fire HUD weapons: single-item and combo registrations (addon OPEN scripts).
 #define EDEN_FIRE_SINGLE_CAP 32
@@ -213,13 +214,35 @@ function void EdenRegisterAlt(int id, int ammo, str giver, str hudIcon) {
   edenisaac_alt_count++;
 }
 
-function void EdenRegisterMain(int id, str hudIcon) {
+function int EdenGetMainPickWeight(int quality) {
+  if (quality < 0) {
+    quality = 0;
+  }
+  if (quality > 4) {
+    quality = 4;
+  }
+  return 5 - quality;
+}
+
+function void EdenRegisterMain(int id, str hudIcon, int quality) {
   int i = edenisaac_main_count;
   if (i >= EDEN_ISAAC_MAIN_CAP) {
     Log(s:"EdenRegisterMain overflow");
     return;
   }
+  if (quality < 0 || quality > 4) {
+    Log(s:"EdenRegisterMain quality out of range, clamping");
+  }
   edenisaac_main_id[i] = id;
+  if (quality < 0) {
+    edenisaac_main_quality[i] = 0;
+  }
+  else if (quality > 4) {
+    edenisaac_main_quality[i] = 4;
+  }
+  else {
+    edenisaac_main_quality[i] = quality;
+  }
   if (StrLen(hudIcon) > 0) {
     edenisaac_main_icon[i] = hudIcon;
   }
@@ -268,10 +291,10 @@ function void EdenEnsureVanillaMainRegistered(void) {
   if (edenisaac_main_count > 0) {
     return;
   }
-  EdenRegisterMain(149, "");
-  EdenRegisterMain(315, "");
-  EdenRegisterMain(358, "");
-  EdenRegisterMain(678, "");
+  EdenRegisterMain(149, "", 4);
+  EdenRegisterMain(315, "", 0);
+  EdenRegisterMain(358, "", 0);
+  EdenRegisterMain(678, "", 4);
 }
 
 script "rz_EdenRegisterVanillaAlt" OPEN {
