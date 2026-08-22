@@ -1908,6 +1908,39 @@ function int EdenAntiGravReadFireHeld(int owner) {
   return 0;
 }
 
+function void EdenAntiGravUpdatePlayer(int owner) {
+  int pn;
+  int holding;
+  if (owner < 1000 || owner > 1063)
+    return;
+  pn = owner - 1000;
+  if (pn < 0 || pn >= 64)
+    return;
+  holding = EdenAntiGravReadFireHeld(owner);
+  if (holding) {
+    eden_antigrav_release_pulse[pn] = 0;
+    eden_antigrav_washolding[pn] = 1;
+  }
+  else {
+    if (eden_antigrav_washolding[pn])
+      eden_antigrav_release_pulse[pn] = 1;
+    eden_antigrav_washolding[pn] = 0;
+  }
+}
+
+script "rz_EdenAntiGravOwnerTickFromTear" (void) {
+  int owner;
+  owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  if (owner == 0)
+    owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  if (owner == 0)
+    terminate;
+  SetActivator(owner);
+  if (!CheckInventory("C222Flag"))
+    terminate;
+  EdenAntiGravUpdatePlayer(owner);
+}
+
 script "rz_EdenAntiGravEnterHover" (void) {
   int owner;
   int pn;
@@ -1950,23 +1983,9 @@ script "rz_EdenAntiGravShouldLaunch" (void) {
 }
 
 script "rz_EdenAntiGravTick" (void) {
-  int pn;
-  int holding;
   if (!CheckInventory("C222Flag"))
     terminate;
-  pn = PlayerNumber();
-  if (pn < 0 || pn >= 64)
-    terminate;
-  holding = EdenAntiGravReadFireHeld(ActivatorTID());
-  if (holding) {
-    eden_antigrav_release_pulse[pn] = 0;
-    eden_antigrav_washolding[pn] = 1;
-  }
-  else {
-    if (eden_antigrav_washolding[pn])
-      eden_antigrav_release_pulse[pn] = 1;
-    eden_antigrav_washolding[pn] = 0;
-  }
+  EdenAntiGravUpdatePlayer(ActivatorTID());
 }
 
 // Tear death-mod registry (symmetric with rz_EdenTearPassiveSpawn).
