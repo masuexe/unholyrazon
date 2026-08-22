@@ -17,6 +17,173 @@ int edenisaac_main_count = 0;
 int edenisaac_main_id[EDEN_ISAAC_MAIN_CAP];
 str edenisaac_main_icon[EDEN_ISAAC_MAIN_CAP];
 
+// Fire HUD weapons: single-item and combo registrations (addon OPEN scripts).
+#define EDEN_FIRE_SINGLE_CAP 32
+#define EDEN_FIRE_COMBO_CAP 16
+#define EDEN_FIRE_COMBO_IDS 4
+
+int edenfire_single_count = 0;
+int edenfire_single_id[EDEN_FIRE_SINGLE_CAP];
+str edenfire_single_wep[EDEN_FIRE_SINGLE_CAP];
+int edenfire_single_priority[EDEN_FIRE_SINGLE_CAP];
+
+int edenfire_combo_count = 0;
+str edenfire_combo_wep[EDEN_FIRE_COMBO_CAP];
+int edenfire_combo_priority[EDEN_FIRE_COMBO_CAP];
+int edenfire_combo_idcount[EDEN_FIRE_COMBO_CAP];
+int edenfire_combo_id[EDEN_FIRE_COMBO_CAP][EDEN_FIRE_COMBO_IDS];
+
+function int EdenHasItemFlag(int id) {
+  return CheckInventory(StrParam(s:"C", i:id, s:"Flag"));
+}
+
+function str EdenDefaultFireWep(void) {
+  if (CheckActorClass(0, "EdenShiny")) {
+    return "EdenShiny_W";
+  }
+  return "Eden_W";
+}
+
+function int EdenFireWepIsBetter(int newPri, int newKind, int newTie, int bestPri, int bestKind, int bestTie) {
+  if (newPri > bestPri) {
+    return 1;
+  }
+  if (newPri < bestPri) {
+    return 0;
+  }
+  if (newKind > bestKind) {
+    return 1;
+  }
+  if (newKind < bestKind) {
+    return 0;
+  }
+  if (newTie > bestTie) {
+    return 1;
+  }
+  return 0;
+}
+
+function int EdenComboMaxId(int comboIdx) {
+  int i;
+  int maxid;
+  maxid = 0;
+  for (i = 0; i < edenfire_combo_idcount[comboIdx]; i++) {
+    if (edenfire_combo_id[comboIdx][i] > maxid) {
+      maxid = edenfire_combo_id[comboIdx][i];
+    }
+  }
+  return maxid;
+}
+
+function int EdenComboMatches(int comboIdx) {
+  int i;
+  for (i = 0; i < edenfire_combo_idcount[comboIdx]; i++) {
+    if (!EdenHasItemFlag(edenfire_combo_id[comboIdx][i])) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+function void EdenRegisterFireWep(int id, str wep, int priority) {
+  int i = edenfire_single_count;
+  if (i >= EDEN_FIRE_SINGLE_CAP) {
+    Log(s:"EdenRegisterFireWep overflow");
+    return;
+  }
+  edenfire_single_id[i] = id;
+  edenfire_single_wep[i] = wep;
+  edenfire_single_priority[i] = priority;
+  edenfire_single_count++;
+}
+
+function void EdenRegisterFireWepCombo(str wep, int priority, int id0, int id1, int id2, int id3) {
+  int i = edenfire_combo_count;
+  int n = 0;
+  if (i >= EDEN_FIRE_COMBO_CAP) {
+    Log(s:"EdenRegisterFireWepCombo overflow");
+    return;
+  }
+  if (id0 > 0) {
+    edenfire_combo_id[i][n] = id0;
+    n++;
+  }
+  if (id1 > 0) {
+    edenfire_combo_id[i][n] = id1;
+    n++;
+  }
+  if (id2 > 0) {
+    edenfire_combo_id[i][n] = id2;
+    n++;
+  }
+  if (id3 > 0) {
+    edenfire_combo_id[i][n] = id3;
+    n++;
+  }
+  if (n < 2) {
+    Log(s:"EdenRegisterFireWepCombo needs at least 2 ids");
+    return;
+  }
+  edenfire_combo_wep[i] = wep;
+  edenfire_combo_priority[i] = priority;
+  edenfire_combo_idcount[i] = n;
+  edenfire_combo_count++;
+}
+
+function str EdenResolveFireWep(void) {
+  str best;
+  int bestPri;
+  int bestKind;
+  int bestTie;
+  int i;
+
+  best = EdenDefaultFireWep();
+  bestPri = -1;
+  bestKind = 0;
+  bestTie = 0;
+
+  for (i = 0; i < edenfire_combo_count; i++) {
+    if (!EdenComboMatches(i)) {
+      continue;
+    }
+    if (EdenFireWepIsBetter(edenfire_combo_priority[i], 2, EdenComboMaxId(i), bestPri, bestKind, bestTie)) {
+      best = edenfire_combo_wep[i];
+      bestPri = edenfire_combo_priority[i];
+      bestKind = 2;
+      bestTie = EdenComboMaxId(i);
+    }
+  }
+
+  for (i = 0; i < edenfire_single_count; i++) {
+    if (!EdenHasItemFlag(edenfire_single_id[i])) {
+      continue;
+    }
+    if (EdenFireWepIsBetter(edenfire_single_priority[i], 1, edenfire_single_id[i], bestPri, bestKind, bestTie)) {
+      best = edenfire_single_wep[i];
+      bestPri = edenfire_single_priority[i];
+      bestKind = 1;
+      bestTie = edenfire_single_id[i];
+    }
+  }
+
+  return best;
+}
+
+function void EdenSyncFireWeapon(void) {
+  str wep;
+  EdenEnsureFireWepRegistered();
+  wep = EdenResolveFireWep();
+  GiveInventory(wep, 1);
+  SetWeapon(wep);
+}
+
+function void EdenEnsureFireWepRegistered(void) {
+  if (edenfire_single_count > 0 || edenfire_combo_count > 0) {
+    return;
+  }
+  EdenRegisterFireWep(678, "Eden678_W", 100);
+}
+
 // CI59C### — id 60 → CI59C060 (matches TEXTURES.classes.40_59).
 function str EdenDefaultHudIcon(int id) {
   if (id < 10) {
@@ -113,4 +280,8 @@ script "rz_EdenRegisterVanillaAlt" OPEN {
 
 script "rz_EdenRegisterVanillaMain" OPEN {
   EdenEnsureVanillaMainRegistered();
+}
+
+script "rz_EdenRegisterVanillaFireWep" OPEN {
+  EdenEnsureFireWepRegistered();
 }
