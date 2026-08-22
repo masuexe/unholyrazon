@@ -1,5 +1,6 @@
 #library "uh_bars"
 #include "zcommon.acs"
+#import "uhedenisaac.acs"
 
 #include "barlib.acs"
 #include "dtadd.acs"
@@ -1928,44 +1929,47 @@ script "DrawBar_KickChampShiny_W" (void) {
 // razon3 SBARINFO.VB/HB IsSelected Eden_W: 64_B_BAR (192→110, 198→129),
 // 002B overlay TheBibleFlightFlag/180, C_I_64* stats + CMBHQFONT numbers,
 // active CI64C* / BobHeadFlag, passive EdenItemSlot1-4. Graphics are C_I_59* / CI59C*.
-function str EdenPassiveItemIcon(int amt) {
-  if (amt == 678) { return "CI59C678"; }
-  if (amt == 577) { return "CI59C577"; }
-  if (amt == 371) { return "CI59C371"; }
-  if (amt == 358) { return "CI59C358"; }
-  if (amt == 356) { return "CI59C356"; }
-  if (amt == 331) { return "CI59C331"; }
-  if (amt == 330) { return "CI59C330"; }
-  if (amt == 315) { return "CI59C315"; }
-  if (amt == 313) { return "CI59C313"; }
-  if (amt == 227) { return "CI59C227"; }
-  if (amt == 149) { return "CI59C149"; }
-  if (amt == 118) { return "CI59C118"; }
-  if (amt == 60) { return "CI59C060"; }
-  return "TNT1A0";
+// Icons: EdenLookup* in UHEDENISAAC (EdenRegisterMain/Alt at OPEN).
+
+function int EdenPassiveSlotAmount(int slotIndex) {
+  switch (slotIndex) {
+    case 0: return CheckInventory("EdenItemSlot1");
+    case 1: return CheckInventory("EdenItemSlot2");
+    case 2: return CheckInventory("EdenItemSlot3");
+    case 3: return CheckInventory("EdenItemSlot4");
+  }
+  return 0;
 }
 
-function str EdenActiveItemIcon(void) {
-  if (CheckInventory("C33Flag")) { return "CI59C033"; }
-  if (CheckInventory("C36Flag")) { return "CI59C036"; }
-  if (CheckInventory("C42Flag")) { return "CI59C042"; }
-  if (CheckInventory("C65Flag")) { return "CI59C065"; }
-  if (CheckInventory("C145Flag")) { return "CI59C145"; }
-  if (CheckInventory("C406Flag")) { return "CI59C406"; }
-  if (CheckInventory("C477Flag")) { return "CI59C477"; }
-  if (CheckInventory("C396Flag")) { return "CI59C396"; }
-  if (CheckInventory("C485Flag")) { return "CI59C485"; }
-  if (CheckInventory("C578Flag")) { return "CI59C578"; }
-  if (CheckInventory("C609Flag")) { return "CI59C609"; }
-  if (CheckInventory("C124Flag")) { return "CI59C124"; }
-  return "TNT1A0";
+function void DrawEdenPassiveSlots(int baseId) {
+  // razon3 SBARINFO fullscreenoffsets: negative x is from the RIGHT edge.
+  // HudMessage SetHudSize(320,200): x=0 is left, so -64 → 320-64=256.
+  int slotX[4] = {256, 272, 288, 305};
+  int i;
+  int amt;
+  str icon;
+  int xhud;
+
+  for (i = 0; i < 4; i++) {
+    amt = EdenPassiveSlotAmount(i);
+    icon = EdenLookupMainIconByAmount(amt);
+    if (!StrCmp(icon, "TNT1A0")) {
+      continue;
+    }
+    // ACS: int+fixed does NOT promote; 256+0.1 → ~0.10 (left). Convert with *1.0.
+    xhud = (slotX[i] * 1.0) + 0.1;
+    AdjustedImageDisplay(icon, icon,
+      baseId - 28 - i * 2, baseId - 29 - i * 2,
+      xhud, 106.1,
+      xhud, 106.1);
+  }
 }
 
 function void DrawEdenStatHud(void) {
   SetHudSize(320, 200, 0);
   int baseId = UH_IMAGE_ID_BASE - 130;
-  // Vert: icons x=0 / nums x=8 (SBARINFO), shifted left like RedWarrior so the ammo bar stays clear.
-  // Hori: 320 center → x=160+sbar; y=200+sbar (VB stacked / HB two columns).
+  // Stats/active stay with the ammo bar (VB top-left / HB bottom, razon3 +center).
+  // Passives: right-side row like razon3 DrawImage -64..-15,106 (fullscreenoffsets).
   AdjustedImageDisplay("C_I_59A", "C_I_59A", baseId,      baseId - 1,  -18.1, 9.1,   53.1, 155.1);
   AdjustedImageDisplay("C_I_59B", "C_I_59B", baseId - 2,  baseId - 3,  -18.1, 18.1,  53.1, 163.1);
   AdjustedImageDisplay("C_I_59C", "C_I_59C", baseId - 4,  baseId - 5,  -18.1, 27.1,  53.1, 171.1);
@@ -1985,7 +1989,7 @@ function void DrawEdenStatHud(void) {
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenShotSpeedAttr"),
     baseId - 22, baseId - 23, -9.1, 56.1, 89.1, 172.1);
 
-  str active = EdenActiveItemIcon();
+  str active = EdenLookupActiveItemIcon();
   if (StrCmp(active, "TNT1A0")) {
     AdjustedImageDisplay(active, active, baseId - 24, baseId - 25, -18.1, 64.1, 108.1, 186.1);
   }
@@ -1996,18 +2000,7 @@ function void DrawEdenStatHud(void) {
       baseId - 26, baseId - 27, 16.1, 72.1, 124.1, 192.1);
   }
 
-  AdjustedImageDisplay(EdenPassiveItemIcon(CheckInventory("EdenItemSlot1")),
-    EdenPassiveItemIcon(CheckInventory("EdenItemSlot1")),
-    baseId - 28, baseId - 29, -64.1, 106.1, -64.1, 106.1);
-  AdjustedImageDisplay(EdenPassiveItemIcon(CheckInventory("EdenItemSlot2")),
-    EdenPassiveItemIcon(CheckInventory("EdenItemSlot2")),
-    baseId - 30, baseId - 31, -48.1, 106.1, -48.1, 106.1);
-  AdjustedImageDisplay(EdenPassiveItemIcon(CheckInventory("EdenItemSlot3")),
-    EdenPassiveItemIcon(CheckInventory("EdenItemSlot3")),
-    baseId - 32, baseId - 33, -32.1, 106.1, -32.1, 106.1);
-  AdjustedImageDisplay(EdenPassiveItemIcon(CheckInventory("EdenItemSlot4")),
-    EdenPassiveItemIcon(CheckInventory("EdenItemSlot4")),
-    baseId - 34, baseId - 35, -15.1, 106.1, -15.1, 106.1);
+  DrawEdenPassiveSlots(baseId);
 }
 
 script "DrawBar_Eden_W" (void) {

@@ -1,0 +1,116 @@
+// UHEDENISAAC — shared Eden Isaac item registry (main passives + alt actives).
+// Imported by UH_CLASSES (gameplay roll) and UH_BARS (HUD icons).
+#library "uhedenisaac"
+
+#include "zcommon.acs"
+
+#define EDEN_ISAAC_ALT_CAP 32
+#define EDEN_ISAAC_MAIN_CAP 32
+
+int edenisaac_alt_count = 0;
+int edenisaac_alt_id[EDEN_ISAAC_ALT_CAP];
+int edenisaac_alt_ammo[EDEN_ISAAC_ALT_CAP];
+str edenisaac_alt_pickup[EDEN_ISAAC_ALT_CAP];
+str edenisaac_alt_icon[EDEN_ISAAC_ALT_CAP];
+
+int edenisaac_main_count = 0;
+int edenisaac_main_id[EDEN_ISAAC_MAIN_CAP];
+str edenisaac_main_icon[EDEN_ISAAC_MAIN_CAP];
+
+// CI59C### — id 60 → CI59C060 (matches TEXTURES.classes.40_59).
+function str EdenDefaultHudIcon(int id) {
+  if (id < 10) {
+    return StrParam(s:"CI59C00", i:id);
+  }
+  if (id < 100) {
+    return StrParam(s:"CI59C0", i:id);
+  }
+  return StrParam(s:"CI59C", i:id);
+}
+
+function void EdenRegisterAlt(int id, int ammo, str giver, str hudIcon) {
+  int i = edenisaac_alt_count;
+  if (i >= EDEN_ISAAC_ALT_CAP) {
+    Log(s:"EdenRegisterAlt overflow");
+    return;
+  }
+  edenisaac_alt_id[i] = id;
+  edenisaac_alt_ammo[i] = ammo;
+  edenisaac_alt_pickup[i] = giver;
+  if (StrLen(hudIcon) > 0) {
+    edenisaac_alt_icon[i] = hudIcon;
+  }
+  else {
+    edenisaac_alt_icon[i] = EdenDefaultHudIcon(id);
+  }
+  edenisaac_alt_count++;
+}
+
+function void EdenRegisterMain(int id, str hudIcon) {
+  int i = edenisaac_main_count;
+  if (i >= EDEN_ISAAC_MAIN_CAP) {
+    Log(s:"EdenRegisterMain overflow");
+    return;
+  }
+  edenisaac_main_id[i] = id;
+  if (StrLen(hudIcon) > 0) {
+    edenisaac_main_icon[i] = hudIcon;
+  }
+  else {
+    edenisaac_main_icon[i] = EdenDefaultHudIcon(id);
+  }
+  edenisaac_main_count++;
+}
+
+function str EdenLookupMainIconByAmount(int amt) {
+  int i;
+  if (amt <= 0) {
+    return "TNT1A0";
+  }
+  for (i = 0; i < edenisaac_main_count; i++) {
+    if (edenisaac_main_id[i] == amt) {
+      return edenisaac_main_icon[i];
+    }
+  }
+  return "TNT1A0";
+}
+
+function str EdenLookupActiveItemIcon(void) {
+  int i;
+  for (i = 0; i < edenisaac_alt_count; i++) {
+    if (CheckInventory(StrParam(s:"C", i:edenisaac_alt_id[i], s:"Flag"))) {
+      return edenisaac_alt_icon[i];
+    }
+  }
+  return "TNT1A0";
+}
+
+function void EdenEnsureVanillaAltRegistered(void) {
+  if (edenisaac_alt_count > 0) {
+    return;
+  }
+  EdenRegisterAlt(36, 75, "ThePoopIsaacItem_P", "");
+  EdenRegisterAlt(65, 225, "AnarchistCookbookIsaacItem_P", "");
+  EdenRegisterAlt(406, 300, "D8IsaacItem_P", "");
+  EdenRegisterAlt(477, 300, "VoidIsaacItem_P", "");
+  EdenRegisterAlt(485, 300, "CrookedPennyIsaacItem_P", "");
+  EdenRegisterAlt(609, 300, "EternalD6IsaacItem_P", "");
+}
+
+function void EdenEnsureVanillaMainRegistered(void) {
+  if (edenisaac_main_count > 0) {
+    return;
+  }
+  EdenRegisterMain(149, "");
+  EdenRegisterMain(315, "");
+  EdenRegisterMain(358, "");
+  EdenRegisterMain(678, "");
+}
+
+script "rz_EdenRegisterVanillaAlt" OPEN {
+  EdenEnsureVanillaAltRegistered();
+}
+
+script "rz_EdenRegisterVanillaMain" OPEN {
+  EdenEnsureVanillaMainRegistered();
+}

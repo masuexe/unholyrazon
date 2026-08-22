@@ -1,6 +1,7 @@
 #library "uh_classes"
 #include "zcommon.acs"
 #import "uhdt.acs"
+#import "uhedenisaac.acs"
 
 global int 3: IsTeamGame;
 global int 4: ServerMAX;
@@ -1619,70 +1620,8 @@ script "rz_VoidConsuming" (void)
     UpdateEdenAttr(i, attrplus[i], false, true);
 }
 
-// Isaac alt items: parallel arrays (ACS has no struct). Shape matches future DefineIsaacItem.
-#define EDEN_ISAAC_ALT_CAP 32
-int edenisaac_alt_count = 0;
-int edenisaac_alt_id[EDEN_ISAAC_ALT_CAP];
-int edenisaac_alt_ammo[EDEN_ISAAC_ALT_CAP];
-str edenisaac_alt_pickup[EDEN_ISAAC_ALT_CAP];
-
-function void EdenRegisterAlt(int id, int ammo, str giver) {
-  int i = edenisaac_alt_count;
-  if (i >= EDEN_ISAAC_ALT_CAP) {
-    Log(s:"EdenRegisterAlt overflow");
-    return;
-  }
-  edenisaac_alt_id[i] = id;
-  edenisaac_alt_ammo[i] = ammo;
-  edenisaac_alt_pickup[i] = giver;
-  edenisaac_alt_count++;
-}
-
-// OPEN alone is not reliable for #library map vars before first Ready; also call from Init.
-function void EdenEnsureVanillaAltRegistered(void) {
-  if (edenisaac_alt_count > 0) {
-    return;
-  }
-  EdenRegisterAlt(36, 75, "ThePoopIsaacItem_P");
-  EdenRegisterAlt(65, 225, "AnarchistCookbookIsaacItem_P");
-  EdenRegisterAlt(406, 300, "D8IsaacItem_P");
-  EdenRegisterAlt(477, 300, "VoidIsaacItem_P");
-  EdenRegisterAlt(485, 300, "CrookedPennyIsaacItem_P");
-  EdenRegisterAlt(609, 300, "EternalD6IsaacItem_P");
-}
-
-script "rz_EdenRegisterVanillaAlt" OPEN {
-  EdenEnsureVanillaAltRegistered();
-}
-
-// Isaac main passives: parallel id array (shape matches future DefineIsaacItem).
+// Cap must match UHEDENISAAC.acs.
 #define EDEN_ISAAC_MAIN_CAP 32
-int edenisaac_main_count = 0;
-int edenisaac_main_id[EDEN_ISAAC_MAIN_CAP];
-
-function void EdenRegisterMain(int id) {
-  int i = edenisaac_main_count;
-  if (i >= EDEN_ISAAC_MAIN_CAP) {
-    Log(s:"EdenRegisterMain overflow");
-    return;
-  }
-  edenisaac_main_id[i] = id;
-  edenisaac_main_count++;
-}
-
-function void EdenEnsureVanillaMainRegistered(void) {
-  if (edenisaac_main_count > 0) {
-    return;
-  }
-  EdenRegisterMain(149);
-  EdenRegisterMain(315);
-  EdenRegisterMain(358);
-  EdenRegisterMain(678);
-}
-
-script "rz_EdenRegisterVanillaMain" OPEN {
-  EdenEnsureVanillaMainRegistered();
-}
 
 #define EDEN_MAIN_COUNT_BUCKETS 5
 // Index = item count 0..4; bell curve — peaks at 2/3, tails at 0/4.
