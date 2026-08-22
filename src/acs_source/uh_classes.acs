@@ -1701,8 +1701,32 @@ function void EdenApplyIpecacStats(void) {
   TakeInventory("EdenShotSpeedAttr", CheckInventory("EdenShotSpeedAttr") / 5);
 }
 
+function void EdenApplyAntiGravityStats(void) {
+  int tears;
+  if (!CheckInventory("C222Flag"))
+    return;
+  if (CheckInventory("EdenAntiGravStats_F"))
+    return;
+  // EdenTearsAttr is tear-cooldown ticks: lower = faster (Isaac -2 tear delay).
+  tears = CheckInventory("EdenTearsAttr");
+  if (tears > 2)
+    TakeInventory("EdenTearsAttr", 2);
+  else
+    SetInventory("EdenTearsAttr", 1);
+  SyncEdenTears(CONVERTTEARS_FIRE2TEARS);
+  GiveInventory("EdenAntiGravStats_F", 1);
+}
+
 function void EdenApplyMainPassives(void) {
   EdenApplyIpecacStats();
+  EdenApplyAntiGravityStats();
+}
+
+// DEBUG: remove before release — always grant C222 for in-game testing.
+function void EdenDebugForceC222(void) {
+  GiveInventory("C222Flag", 1);
+  SetInventory("EdenItemSlot1", 222);
+  EdenApplyMainPassives();
 }
 
 function void EdenRollMainItems(void) {
@@ -1777,6 +1801,7 @@ script "rz_InitEdenProperties" (void) {
     }
     if (!CheckInventory("EdenMainRolled_F") && edenisaac_main_count > 0) {
       EdenRollMainItems();
+      EdenDebugForceC222();
       EdenSyncFireWeapon();
     }
     terminate;
@@ -1830,6 +1855,7 @@ script "rz_InitEdenProperties" (void) {
   SetInventory("EdenLuckAttr", luck);
 
   EdenRollMainItems();
+  EdenDebugForceC222();
 
   EdenSyncFireWeapon();
 
@@ -1851,6 +1877,96 @@ script "rz_EdenAttractMasterOk" (void) {
     terminate;
   }
   SetResultValue(1);
+}
+
+#define EDEN_ANTIGRAV_AUTO_TICS 105
+
+int eden_antigrav_washolding[64];
+int eden_antigrav_release_pulse[64];
+
+function int EdenAntiGravOwnerPn(void) {
+  int owner;
+  owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  if (owner == 0)
+    owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  if (owner < 1000 || owner > 1063)
+    return -1;
+  return owner - 1000;
+}
+
+function int EdenAntiGravReadFireHeld(int owner) {
+  int buttons;
+  if (owner < 1000 || owner > 1063)
+    return 0;
+  SetActivator(owner);
+  buttons = GetPlayerInput(-1, INPUT_BUTTONS);
+  if (buttons & BT_ATTACK)
+    return 1;
+  buttons = GetPlayerInput(-1, MODINPUT_BUTTONS);
+  if (buttons & BT_ATTACK)
+    return 1;
+  return 0;
+}
+
+script "rz_EdenAntiGravEnterHover" (void) {
+  int owner;
+  int pn;
+  owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  if (owner == 0)
+    owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  if (owner == 0) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetActivator(owner);
+  if (!CheckInventory("C222Flag")) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (CheckInventory("IsBot")) {
+    SetResultValue(0);
+    terminate;
+  }
+  pn = owner - 1000;
+  if (pn >= 0 && pn < 64 && EdenAntiGravReadFireHeld(owner)) {
+    eden_antigrav_release_pulse[pn] = 0;
+    eden_antigrav_washolding[pn] = 1;
+  }
+  SetResultValue(1);
+}
+
+script "rz_EdenAntiGravShouldLaunch" (void) {
+  int pn;
+  pn = EdenAntiGravOwnerPn();
+  if (pn < 0 || pn >= 64) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (eden_antigrav_release_pulse[pn]) {
+    SetResultValue(1);
+    terminate;
+  }
+  SetResultValue(0);
+}
+
+script "rz_EdenAntiGravTick" (void) {
+  int pn;
+  int holding;
+  if (!CheckInventory("C222Flag"))
+    terminate;
+  pn = PlayerNumber();
+  if (pn < 0 || pn >= 64)
+    terminate;
+  holding = EdenAntiGravReadFireHeld(ActivatorTID());
+  if (holding) {
+    eden_antigrav_release_pulse[pn] = 0;
+    eden_antigrav_washolding[pn] = 1;
+  }
+  else {
+    if (eden_antigrav_washolding[pn])
+      eden_antigrav_release_pulse[pn] = 1;
+    eden_antigrav_washolding[pn] = 0;
+  }
 }
 
 // Tear death-mod registry (symmetric with rz_EdenTearPassiveSpawn).
