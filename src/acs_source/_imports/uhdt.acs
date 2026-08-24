@@ -2326,6 +2326,12 @@ int uh_shinyMegaMainWeight[UH_MAX_SHINYMOVES];
 int uh_shinyMegaAltCount = 0;
 str uh_shinyMegaAltActor[UH_MAX_SHINYMOVES];
 int uh_shinyMegaAltWeight[UH_MAX_SHINYMOVES];
+// One row per unique DefineShinyMegaCopyWep(actor, kind, weight) definition.
+// DecoyBot TrueRNG rolls this table so TRUE entries are not counted twice.
+int uh_shinyMegaAllCount = 0;
+str uh_shinyMegaAllActor[UH_MAX_SHINYMOVES];
+int uh_shinyMegaAllWeight[UH_MAX_SHINYMOVES];
+int uh_shinyMegaAllKind[UH_MAX_SHINYMOVES];
 
 // QwantShiny: register a custom AltFire move weapon. weight < 1 becomes 1.
 // Same (wepActor) again returns the existing row (no double entry).
@@ -2428,12 +2434,32 @@ function int DefineShinyMegaCopyWepCore(int which, str fireActor, int weight)
 	int w;
 	int i;
 	int last;
+	int allrow;
 	if (StrCmp(fireActor, "") == 0)
 		return UHCOPY_FAIL;
 	if (which != UH_SHINYMEGA_M1 && which != UH_SHINYMEGA_M2 && which != UH_SHINYMEGA_TRUE)
 		return UHCOPY_FAIL;
 	w = weight < 1 ? 1 : weight;
 	last = -1;
+	allrow = -1;
+	for (i = 0; i < uh_shinyMegaAllCount; i++)
+	{
+		if (StrICmp(uh_shinyMegaAllActor[i], fireActor) == 0 && uh_shinyMegaAllKind[i] == which)
+		{
+			allrow = i;
+			break;
+		}
+	}
+	if (allrow < 0)
+	{
+		if (uh_shinyMegaAllCount >= UH_MAX_SHINYMOVES)
+			return UHCOPY_FAIL;
+		allrow = uh_shinyMegaAllCount;
+		uh_shinyMegaAllActor[allrow] = fireActor;
+		uh_shinyMegaAllWeight[allrow] = w;
+		uh_shinyMegaAllKind[allrow] = which;
+		uh_shinyMegaAllCount++;
+	}
 
 	if (which == UH_SHINYMEGA_M1 || which == UH_SHINYMEGA_TRUE)
 	{

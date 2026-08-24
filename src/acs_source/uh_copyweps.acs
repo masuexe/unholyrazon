@@ -1376,6 +1376,61 @@ script "uh_ShinyMegaRollCustom" (int which)
 	SetResultValue(1);
 }
 
+// Shiny MegaMan full-table roll for DecoyBot's MegaMan copy. Every unique API
+// definition contributes exactly one row and its declared weight.
+script "uh_ShinyMegaRollTrue" (void)
+{
+	int pn = PlayerNumber();
+	int total;
+	int roll;
+	int acc;
+	int i;
+	int pick;
+	str fireActor;
+	int poolwhich;
+
+	if (pn < 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+
+	total = 0;
+	for (i = 0; i < uh_shinyMegaAllCount; i++)
+		total += uh_shinyMegaAllWeight[i];
+	if (total <= 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+
+	roll = random(0, total - 1);
+	acc = 0;
+	pick = -1;
+	for (i = 0; i < uh_shinyMegaAllCount; i++)
+	{
+		acc += uh_shinyMegaAllWeight[i];
+		if (roll < acc)
+		{
+			pick = i;
+			break;
+		}
+	}
+	if (pick < 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+
+	fireActor = uh_shinyMegaAllActor[pick];
+	poolwhich = uh_shinyMegaAllKind[pick];
+	if (poolwhich == UH_SHINYMEGA_TRUE)
+		poolwhich = random(0, 1) ? UH_SHINYMEGA_M2 : UH_SHINYMEGA_M1;
+	uh_shinyMegaWhich[pn] = poolwhich;
+	GiveInventory(fireActor, 1);
+	SetResultValue(1);
+}
+
 // For ShinyMega_*_P Pickup: which pool launched this fire (M1 or M2).
 script "uh_ShinyMegaGetWhich" (void)
 {
