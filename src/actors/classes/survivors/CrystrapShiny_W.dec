@@ -1,0 +1,223 @@
+actor CrystrapShiny_W_NormalBar : NormalBar {Args 31, 5}
+actor CrystrapShiny_W : BaseMM8BDMWep_UH {
+  Weapon.AmmoUse 0
+  Weapon.AmmoGive 100
+  Inventory.Pickupmessage "$PU_22"
+  Obituary "$OB_65W"
+  Tag "$TAG_Crystrap_W"
+  weapon.ammotype "CrystrapCharge"
+  +WEAPON.NOAUTOAIM
+  States {
+   Spawn:
+    7H60 [ 6
+    loop
+
+   Deselect:
+    7H60 A 0
+    goto DeselectSwap
+   Select:
+    7H60 A 0
+    goto SelectSwap
+
+   Ready:
+    7H60 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", CRYSTRAP_SDYE)
+    goto Ready2
+   Ready2:
+    7H60 A 1 A_WeaponReady(16)
+    loop
+
+   Fire:
+    //7H60 C 0 A_JumpIfInventory("IsBot",1,"BotFire")
+    7H60 C 0 A_JumpIfInventory("CrystrapShotAlive", 1, "Detonate")
+    7H60 B 1
+    goto Hold
+   FireWeak:
+    7H60 C 0 A_TakeInventory("CrystrapCharge", 16, 1)
+    7H60 C 0 A_TakeInventory("CrystrapCharge", 16)
+    7H60 C 0 A_PlaySoundEx("wep/CrystrapFireWeak", "Weapon")
+    7H60 C 0 A_FireCustomMissile("S_CrystrapShotBit", 0, 0, 8, 0)
+    7H60 CB 2
+    7H60 A 6
+    Goto Ready2
+   FireR:
+    7H60 C 0 A_TakeInventory("CrystrapCharge", 16, 1)
+    7H60 C 0 A_TakeInventory("CrystrapCharge", 16)
+    7H60 C 4 A_GiveInventory("S_Crystrap_Fire_P")
+    7H60 B 4
+    7H60 A 4 //A_TakeInventory("CrystrapBoomFlag")
+    Goto Ready2
+   FireRapid:
+    7H60 C 0 A_TakeInventory("CrystrapRapidShotFlag")
+   FireRapidLoop:
+    7H60 A 0 A_TakeInventory("CrystrapCharge", 2, 1)
+    7H60 A 0 A_TakeInventory("CrystrapCharge", 2)
+    7H60 C 0 A_PlaySoundEx("wep/CrystrapFireWeak", "Weapon")
+    7H60 C 0 A_FireCustomMissile("S_CrystrapShotBit", 0, 0, 8+CRYSTRAP_RAPIDSHOTOFFSET*sqrt(2), 0)
+    7H60 C 0 A_FireCustomMissile("S_CrystrapShotBit", 0, 0, 8-CRYSTRAP_RAPIDSHOTOFFSET*sqrt(2), 0)
+    7H60 BA 2
+    7H60 A 0 A_TakeInventory("CrystrapCharge", 2, 1)
+    7H60 A 0 A_TakeInventory("CrystrapCharge", 2)
+    7H60 C 0 A_PlaySoundEx("wep/CrystrapFireWeak", "Weapon")
+    7H60 C 0 A_FireCustomMissile("S_CrystrapShotBit", 0, 0, 8+CRYSTRAP_RAPIDSHOTOFFSET, CRYSTRAP_RAPIDSHOTOFFSET)
+    7H60 C 0 A_FireCustomMissile("S_CrystrapShotBit", 0, 0, 8-CRYSTRAP_RAPIDSHOTOFFSET, -CRYSTRAP_RAPIDSHOTOFFSET)
+    7H60 BA 2
+    7H60 A 0 A_TakeInventory("CrystrapCharge", 2, 1)
+    7H60 A 0 A_TakeInventory("CrystrapCharge", 2)
+    7H60 C 0 A_PlaySoundEx("wep/CrystrapFireWeak", "Weapon")
+    7H60 C 0 A_FireCustomMissile("S_CrystrapShotBit", 0, 0, 8, CRYSTRAP_RAPIDSHOTOFFSET*sqrt(2))
+    7H60 C 0 A_FireCustomMissile("S_CrystrapShotBit", 0, 0, 8, -CRYSTRAP_RAPIDSHOTOFFSET*sqrt(2))
+    7H60 BA 2
+    7H60 A 0 A_TakeInventory("CrystrapCharge", 2, 1)
+    7H60 A 0 A_TakeInventory("CrystrapCharge", 2)
+    7H60 C 0 A_PlaySoundEx("wep/CrystrapFireWeak", "Weapon")
+    7H60 C 0 A_FireCustomMissile("S_CrystrapShotBit", 0, 0, 8+CRYSTRAP_RAPIDSHOTOFFSET, -CRYSTRAP_RAPIDSHOTOFFSET)
+    7H60 C 0 A_FireCustomMissile("S_CrystrapShotBit", 0, 0, 8-CRYSTRAP_RAPIDSHOTOFFSET, CRYSTRAP_RAPIDSHOTOFFSET)
+    7H60 BA 2
+    7H60 A 0 A_JumpIfInventory("CrystrapCharge", 1, "FireRapidLoop")
+    Goto Ready2
+
+   Hold:
+    7H60 B 0 A_JumpIfInventory("CrystrapCharge", 0, "Hold2")
+    7H60 B 1 A_GiveInventory("CrystrapCharge", 1)
+    7H60 B 0 A_Refire
+    goto FireWeak
+   Hold2:
+    7H60 C 0 A_JumpIfInventory("CrystrapRapidShotFlag", 1, "FireRapid")
+    7H60 C 0 A_GiveInventory("CrystrapRapidShotFlag", 1)
+    7H60 C 1 A_WeaponReady(6)
+    7H60 C 0 A_TakeInventory("CrystrapRapidShotFlag", 1)
+    7H60 C 0 A_Refire("Hold2")
+    Goto FireR
+
+   Detonate:
+    7H60 C 0 A_PlaySoundEx("Pokemon/Detect", "Weapon")
+    7H60 D 0 A_GiveInventory("CrystrapBoomFlag")
+    7H60 DED 2
+    7H60 A 8
+    Goto Ready2
+
+   BotFire:
+    7H60 C 2 //A_GiveInventory("S_Crystrap_BotFire_P")
+    7H60 B 2
+    7H60 A 0 A_Refire("BotFire")
+    Goto Ready2
+
+   AltFire:
+    7H60 C 0 A_JumpIfInventory("CrystrapRapidShotFlag", 1, "FireRapid")
+    7H60 A 0 A_JumpIfInventory("CrystrapSpyingTID", 1, "LookTheEye")
+    7H60 C 16 A_GiveInventory("S_Crystrap_Alt_P")
+    7H60 B 8
+    7H60 A 8
+    Goto Ready2
+   LookTheEye:
+    7H60 A 2 A_GiveInventory("Crystrap_Spying_P")
+    7H60 A 0 A_ReFire("NoAltHold")
+    Goto Ready2
+   NoAltHold:
+    7H60 A 1
+    7H60 A 0 A_Refire("NoAltHold")
+    goto Ready2
+
+    // AltDetonate:
+    // 7H60 C 0 A_PlaySoundEx("Pokemon/Detect","Weapon")
+    // 7H60 D 0 A_SpawnItemEx("CrystrapDetonator")
+    // 7H60 C 0 A_TakeInventory("CrystrapEyeExists")
+    // 7H60 C 0 A_TakeInventory("CrystrapIsLookingOnHisEye",1)
+    // 7H60 DEDA 2
+    // 7H60 A 8
+    // Goto Ready2
+   No:
+    7H60 C 0
+    Goto Ready2
+
+   Reload:
+    7H60 A 1 A_GiveInventory("Crystrap_Reload_P")
+    goto ReReloadLoop
+   ReReloadLoop:
+    7H60 A 1
+    7H60 A 0 A_JumpIf(!(CallACS("uh_GetPointerButtonInput", 0, 0) & BT_RELOAD), "ReadyX")
+    loop
+  }
+}
+
+actor S_Crystrap_Fire_P : CustomInventory {
+  States {
+   Pickup:
+    //TNT1 A 0 A_JumpIfInventory("CrystrapEyeExistFlag",1,"Detonate")
+    TNT1 A 0 A_PlaySoundEx("wep/CrystrapFire", "Weapon") //Pokemon/Detect
+    TNT1 A 0 A_FireCustomMissile("S_CrystrapShot", 0, 0, 8, 0)
+    TNT1 A 0 A_PlaySound("wep_L/CrystrapPew", 1, 0.9)//weapon/mbuster
+    stop
+   Detonate:
+    TNT1 A 0 A_GiveInventory("CrystrapBoomFlag", 1)
+    stop
+  }
+}
+actor S_Crystrap_Alt_P : CustomInventory {
+  States {
+   Pickup:
+    //TNT1 A 0 A_JumpIfInventory("CrystrapEyeExists",1,"LookTheEye")
+    TNT1 A 0 A_PlaySound("weapon/crackerthrow", 1)
+    TNT1 A 0 A_FireCustomMissile("S_CrystrapEyeShot", 0, 0, 8, 0)
+    //TNT1 A 0 A_GiveInventory("CrystrapEnergyAmmo",2)
+    stop
+
+    // LookTheEye:
+    // TNT1 A 0 A_JumpIfInventory("CrystrapIsLookingOnHisEye",1,"LookMyself")
+    // TNT1 A 0 ChangeCamera(700+TID,0,0)
+    // TNT1 A 0 A_GiveInventory("CrystrapIsLookingOnHisEye",1)
+    // stop
+    // LookMyself:
+    // TNT1 A 0 ChangeCamera(0,0,0)
+    // TNT1 A 0 A_TakeInventory("CrystrapIsLookingOnHisEye",1)
+    // stop
+  }
+}
+
+
+actor S_CrystrapShot : CrystrapShot {
+  Translation "4:4=93:93", "192:192=95:95", "198:198=3:3", "202:202=93:93", "199:199=3:3"
+  Damage (420)
+  States {
+   Bounce:
+    TNT1 A 0 A_SpawnItemEx("S_CrystrapShotBit", 0, 0, 0, 32, 0, sin(random(0, 359))*31, random(0, 360), 1)
+    goto SpawnL
+   DeathSpray:
+    TNT1 A 0 A_SpawnItemEx("S_CrystrapShotBit", 0, 0, 0, Cos(pitch)*Args[1], 0, -sin(pitch)*Args[1], 0, 1)
+
+    TNT1 A 0 A_SpawnItemEx("S_CrystrapShotBit", 0, 0, 0, Cos(pitch+Args[0]*2)*Args[1], 0, -sin(pitch+Args[0]*2)*Args[1], 0, 1)
+    TNT1 A 0 A_SpawnItemEx("S_CrystrapShotBit", 0, 0, 0, Cos(pitch-Args[0]*2)*Args[1], 0, -sin(pitch-Args[0]*2)*Args[1], 0, 1)
+
+    TNT1 A 0 A_SpawnItemEx("S_CrystrapShotBit", 0, 0, 0, Cos(pitch+Args[0])*Args[1], Args[0], -sin(pitch+Args[0])*Args[1], 0, 1)
+    TNT1 A 0 A_SpawnItemEx("S_CrystrapShotBit", 0, 0, 0, Cos(pitch-Args[0])*Args[1], Args[0], -sin(pitch-Args[0])*Args[1], 0, 1)
+    TNT1 A 0 A_SpawnItemEx("S_CrystrapShotBit", 0, 0, 0, Cos(pitch+Args[0]*3)*Args[1], Args[0], -sin(pitch+Args[0]*3)*Args[1], 0, 1)
+    TNT1 A 0 A_SpawnItemEx("S_CrystrapShotBit", 0, 0, 0, Cos(pitch-Args[0]*3)*Args[1], Args[0], -sin(pitch-Args[0]*3)*Args[1], 0, 1)
+
+    TNT1 A 0 A_SpawnItemEx("S_CrystrapShotBit", 0, 0, 0, Cos(pitch+Args[0])*Args[1], -Args[0], -sin(pitch+Args[0])*Args[1], 0, 1)
+    TNT1 A 0 A_SpawnItemEx("S_CrystrapShotBit", 0, 0, 0, Cos(pitch-Args[0])*Args[1], -Args[0], -sin(pitch-Args[0])*Args[1], 0, 1)
+    TNT1 A 0 A_SpawnItemEx("S_CrystrapShotBit", 0, 0, 0, Cos(pitch+Args[0]*3)*Args[1], -Args[0], -sin(pitch+Args[0]*3)*Args[1], 0, 1)
+    TNT1 A 0 A_SpawnItemEx("S_CrystrapShotBit", 0, 0, 0, Cos(pitch-Args[0]*3)*Args[1], -Args[0], -sin(pitch-Args[0]*3)*Args[1], 0, 1)
+
+    TNT1 A 0 A_SpawnItemEx("S_CrystrapShotBit", 0, 0, 0, Cos(pitch)*Args[1], Args[0]*2, -sin(pitch)*Args[1], 0, 1)
+    TNT1 A 0 A_SpawnItemEx("S_CrystrapShotBit", 0, 0, 0, Cos(pitch)*Args[1], -Args[0]*2, -sin(pitch)*Args[1], 0, 1)
+    stop
+  }
+}
+
+actor S_CrystrapShotBit : CrystrapShotBit {
+  Translation "4:4=93:93", "192:192=95:95", "198:198=3:3", "202:202=93:93", "199:199=3:3"
+Damage(105)
+}
+
+actor S_CrystrapShotBit_D : S_CrystrapShotBit {
+  Obituary "$OB_65D"
+}
+
+actor S_CrystrapEyeShot : CrystrapEyeShot {
+  Translation "192:192=31:31", "198:198=189:189"
+}
+
+actor S_CrystrapEyeShotBit : CrystrapEyeShotBit {
+  reactiontime 30
+  Damage (150)
+}
