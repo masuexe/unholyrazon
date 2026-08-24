@@ -22,16 +22,23 @@ Before implementing or answering engine/mod behavior questions, **look up the re
 
 | Priority | Location | What to consult |
 |----------|----------|-----------------|
-| Required | `ref/zandronum-stable-branch-default/` | Zandronum engine source (actors, DECORATE, networking, inventory, etc.) |
-| Required | `ref/acc-branch-zandronum/` | Zandronum ACC (ACS compiler) source — ACS semantics, builtins, compile rules |
-| Required | `ref/MM8BDM-v6b/` | Base game assets, actors, classbase, weapons, ACS APIs this mod targets |
-| When useful | `ref/classes-v9gh_/` | Class Based Modification v9gh — **primary architectural template**; prefer its patterns when a feature already exists there |
+| Required | `../references/zandronum/zandronum-stable-branch-default/` | Zandronum engine source (actors, DECORATE, networking, inventory, etc.) |
+| Required | `../references/zandronum/acc-branch-zandronum/` | Zandronum ACC (ACS compiler) source — ACS semantics, builtins, compile rules |
+| Required | `../references/for_8bdm-v6b/mm8bdm-v6b/` | Base game assets, actors, classbase, weapons, ACS APIs this mod targets |
+| When useful | `../references/for_8bdm-v6b/classes-v9gh_/` | Class Based Modification v9gh — **primary architectural template**; prefer its patterns when a feature already exists there |
+| When useful | `../references/for_8bdm-v6a/` | MM8BDM v6a, CBM v9fh, and the Unholy v7b pb1 packages used as legacy behavior references |
 
-All paths under `ref/` are **read-only reference** (gitignored). Never load them as the mod, never edit them as part of normal work.
+All paths under `../references/` are **read-only reference**. Never edit them as part of normal work, and never load the reference trees as the mod unless a task explicitly requires a reference package for comparison or testing.
+
+When loading the three Unholy v7b pb1 reference packages under `../references/for_8bdm-v6a/`, preserve this order:
+
+1. `unholy_classes_unbound_v7b_pb1`
+2. `unholy_bosses_unbound_v7b_pb1`
+3. `unholy_bossesclasses_v7b_pb1_snacks_fix`
 
 ## Build
 
-There is no build tool. The mod is a ZIP file with `.pk3` extension: pack `src/` recursively into `out/build.pk3`. **Do not invent build/CI tooling.** The `.gitignore` already excludes compiled ACS bytecode (`src/acs/`), `.o`, `.err`, `out/`, and `ref/`.
+There is no build tool. The mod is a ZIP file with `.pk3` extension: pack `src/` recursively into `out/build.pk3`. **Do not invent build/CI tooling.** The `.gitignore` already excludes compiled ACS bytecode (`src/acs/`), `.o`, `.err`, and `out/`; reference sources live outside this repository under `../references/`.
 
 ## Entry points (in load order)
 
