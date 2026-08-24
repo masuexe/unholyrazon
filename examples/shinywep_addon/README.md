@@ -8,6 +8,7 @@ the shiny copy classes through the Unholy mod API:
 | `DefineShinyQwantMoveWep("YourMove_W", 3)` | QwantShiny | AltFire flat weighted pool (vanilla 25 already at weight 1) |
 | `DefineShinyNegaSlotWep(26, "NegaShiny_Your_W", "", "")` | NegaManShiny | Full-charge cycle slot 26 (26..33); vanilla 1..25 already registered |
 | `DefineDecoyBotMoveWep("DecoyCopy_Your_W1")` | DecoyBot | Held copies slot 59+; vanilla 0..58 already registered |
+| `DefineDecoyBotShinyWep("DecoyCopy_Your_W1", "DecoyShiny_Your_W")` | DecoyBotShiny | Pairs the same slot with its M1 weapon; M2 cycles in registration order |
 | `DefineShinyMegaCopyWep("ShinyMega_Your_P", UH_SHINYMEGA_M1, 5)` | Shiny MegaMan | Flat Fire pool (ordinary weight 5; DawnBreaker uses TRUE + weight 1) |
 | `DefineShinyMegaCopyWep("ShinyMega_Your_P", UH_SHINYMEGA_M2, 19)` | Shiny MegaMan | Flat AltFire pool (ordinary weight 19) |
 
@@ -37,6 +38,9 @@ the shiny copy classes through the Unholy mod API:
    SetWeapon / MoveReturn per shot.
 3. Ship three actors (W2/W3 may inherit W1 and only change sprites / SlotNumber).
    Register once with `DefineDecoyBotMoveWep("DecoyCopy_Your_W1")` (stem stored).
+4. For Shiny Decoy, inherit `DecoyBotShinyCycleBase_W`, implement `Fire`, and
+   pair it with the same stem through `DefineDecoyBotShinyWep`. Old addon rows
+   without a shiny partner remain valid and are skipped by Shiny Decoy's M2.
 
 ## Move weapon requirements
 

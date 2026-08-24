@@ -998,6 +998,10 @@ function int UH_PickLMSEvent(void)
 // 4. W2/W3 may inherit W1 and only remap sprites (6H→6I/6J) + SlotNumber/icon.
 // 5. Register once: DefineDecoyBotMoveWep("DecoyCopy_YourName_W1") (or stem /
 //    *_W); M2 Give appends _W1/_W2/_W3 from the stored stem.
+// 6. Optional Shiny partner: inherit DecoyBotShinyCycleBase_W, implement Fire,
+//    then DefineDecoyBotShinyWep(the same normal stem, "YourShinyHeld_W").
+//    Shiny Decoy M1 fires that actor; M2 cycles paired rows in registration
+//    order and skips legacy/addon rows that have no shiny partner.
 //
 // Recipes:
 //   DefineShinyQwantMoveWep("YourMove_W", 3);
@@ -1009,6 +1013,9 @@ function int UH_PickLMSEvent(void)
 //   DefineDecoyBotMoveWep("DecoyCopy_YourName_W1");
 //       DecoyBot copy slot 59+ (vanilla 0..58 already registered). Uniform in
 //       the flag swap pool; ApplyHeldWeps Gives stem_W1/_W2/_W3.
+//   DefineDecoyBotShinyWep("DecoyCopy_YourName_W1", "DecoyShiny_YourName_W");
+//       Pairs the same row with Shiny Decoy. The shiny actor owns Fire and
+//       should inherit DecoyBotShinyCycleBase_W for the standard M2 cycle.
 //   DefineShinyMegaCopyWep("ShinyMega_YourStem_P", UH_SHINYMEGA_M1, 5);
 //   DefineShinyMegaCopyWep("ShinyMega_YourStem_P", UH_SHINYMEGA_M2, 19);
 //   DefineShinyMegaCopyWep("ShinyMega_DawnBreaker_P", UH_SHINYMEGA_TRUE, 1);
@@ -1071,6 +1078,17 @@ function int DefineDecoyBotMoveWep(str wepActor)
 {
 	SetCVarString("uh_sm_wep", wepActor);
 	return ACS_NamedExecuteWithResult("uh_DefineDecoyBotMoveWep_S");
+}
+
+// Pair the normal DecoyBot stem with its Shiny Decoy held weapon. The shiny
+// actor owns its Fire animation and must route AltFire to
+// uh_DecoyBotShinyAdvance (inherit DecoyBotShinyCycleBase_W or copy its states).
+// Calling this also registers the normal stem if it is not registered yet.
+function int DefineDecoyBotShinyWep(str wepActor, str shinyWepActor)
+{
+	SetCVarString("uh_sm_wep", wepActor);
+	SetCVarString("uh_sm_shiny", shinyWepActor);
+	return ACS_NamedExecuteWithResult("uh_DefineDecoyBotShinyWep_S");
 }
 
 // Shiny MegaMan fire CustomInventory. which: UH_SHINYMEGA_M1 / M2 / TRUE.

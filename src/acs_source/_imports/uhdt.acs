@@ -2313,6 +2313,10 @@ str uh_decoyMoveWep[UH_MAX_SHINYMOVES];
 str uh_decoyHeld1[64];
 str uh_decoyHeld2[64];
 str uh_decoyHeld3[64];
+// Shiny DecoyBot weapon paired with each normal Decoy slot. Empty entries are
+// legal (old addons only registered the normal stem) and are skipped by M2.
+str uh_decoyShinyWep[UH_MAX_SHINYMOVES];
+str uh_decoyShinyHeld[64];
 
 // Shiny MegaMan flat fire-actor pools (M1 = Fire, M2 = AltFire).
 // TRUE registers the same actor into both with the same weight.
@@ -2399,6 +2403,21 @@ function int DefineDecoyBotMoveWepCore(str wepActor)
 	uh_decoyMoveWep[uh_decoyMoveCount] = stem;
 	uh_decoyMoveCount++;
 	return uh_decoyMoveCount - 1;
+}
+
+// Pair a shiny held weapon with a normal DecoyBot stem. Registering the shiny
+// half first is supported: the normal stem receives the next ordinary slot,
+// so both forms always share one stable index.
+function int DefineDecoyBotShinyWepCore(str wepActor, str shinyWepActor)
+{
+	int slot;
+	if (StrCmp(wepActor, "") == 0 || StrCmp(shinyWepActor, "") == 0)
+		return UHCOPY_FAIL;
+	slot = DefineDecoyBotMoveWepCore(wepActor);
+	if (slot < 0 || slot >= UH_MAX_SHINYMOVES)
+		return UHCOPY_FAIL;
+	uh_decoyShinyWep[slot] = shinyWepActor;
+	return slot;
 }
 
 // Shiny MegaMan: register a fire CustomInventory into M1 (Fire), M2 (AltFire),

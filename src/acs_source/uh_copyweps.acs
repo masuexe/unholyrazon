@@ -1151,6 +1151,93 @@ script "uh_CountDecoyBotSlots" (void)
 	SetResultValue(CountDecoyBotSlots());
 }
 
+// Equip Shiny Decoy's current slot, or advance to the next registered shiny
+// partner. Old addons may leave shiny entries empty; M2 skips those rows.
+function int uh_DecoyBotShinyEquip(int advance)
+{
+	int pn = PlayerNumber();
+	int count = CountDecoyBotSlots();
+	int slot;
+	int tries;
+	str nextWep;
+	str oldWep;
+
+	if (pn < 0 || count <= 0)
+		return 0;
+	slot = CheckInventory("DecoyBotFlag1");
+	if (slot < 0 || slot >= count)
+		slot = 0;
+	if (advance)
+		slot = (slot + 1) % count;
+
+	for (tries = 0; tries < count; tries++)
+	{
+		nextWep = uh_decoyShinyWep[slot];
+		if (StrCmp(nextWep, "") != 0)
+			break;
+		slot = (slot + 1) % count;
+	}
+	if (StrCmp(nextWep, "") == 0)
+		return 0;
+
+	oldWep = uh_decoyShinyHeld[pn];
+	SetInventory("DecoyBotFlag1", slot);
+	GiveInventory("NoWeaponSwitchSound", 1);
+	GiveInventory("UH_SilentSelect_F", 1);
+	GiveInventory(nextWep, 1);
+	if (!CheckInventory(nextWep) || !SetWeapon(nextWep))
+	{
+		TakeInventory("UH_SilentSelect_F", 1);
+		TakeInventory("NoWeaponSwitchSound", 1);
+		return 0;
+	}
+	if (StrCmp(oldWep, "") != 0 && StrICmp(oldWep, nextWep) != 0)
+		TakeInventory(oldWep, 1);
+	if (StrICmp(nextWep, "DecoyBotShiny_W") != 0 && CheckInventory("DecoyBotShiny_W"))
+	{
+		TakeInventory("DecoyBotShiny_W", 1);
+	}
+	uh_decoyShinyHeld[pn] = nextWep;
+	return 1;
+}
+
+// MorphActor carries the ordinary Decoy loadout into the shiny pawn. Remove
+// the three dynamically named held weapons so number keys cannot escape the
+// one-weapon shiny cycle. The new shiny held actor is equipped by MorphWeapon.
+script "uh_DecoyBotShinyMorphSetup" (void)
+{
+	int pn = PlayerNumber();
+	if (pn < 0)
+		terminate;
+
+	if (StrCmp(uh_decoyHeld1[pn], "") != 0)
+		TakeInventory(uh_decoyHeld1[pn], 1);
+	if (StrCmp(uh_decoyHeld2[pn], "") != 0)
+		TakeInventory(uh_decoyHeld2[pn], 1);
+	if (StrCmp(uh_decoyHeld3[pn], "") != 0)
+		TakeInventory(uh_decoyHeld3[pn], 1);
+	TakeInventory("DecoyBot_W", 1);
+	TakeInventory("DecoyBot_W2", 1);
+	TakeInventory("DecoyBot_W3", 1);
+	uh_decoyHeld1[pn] = "";
+	uh_decoyHeld2[pn] = "";
+	uh_decoyHeld3[pn] = "";
+}
+
+script "uh_DecoyBotShinyStart" (void)
+{
+	// Zandronum clears a pending SetWeapon when the active MorphWeapon is
+	// removed in the same tic. Remove it first, then select on the next tic.
+	TakeInventory("DecoyBotShiny_W", 1);
+	Delay(1);
+	SetResultValue(uh_DecoyBotShinyEquip(false));
+}
+
+script "uh_DecoyBotShinyAdvance" (void)
+{
+	SetResultValue(uh_DecoyBotShinyEquip(true));
+}
+
 // Called from a move weapon's last animation frame: switch back to the
 // launching shiny weapon. TakeInventory of the move wep is deferred to
 // parent SilentSelect (uh_ShinyMoveTake) so ReadyWeapon is never None.
