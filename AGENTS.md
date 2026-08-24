@@ -40,6 +40,22 @@ When loading the three Unholy v7b pb1 reference packages under `../references/fo
 
 There is no build tool. The mod is a ZIP file with `.pk3` extension: pack `src/` recursively into `out/build.pk3`. **Do not invent build/CI tooling.** The `.gitignore` already excludes compiled ACS bytecode (`src/acs/`), `.o`, `.err`, and `out/`; reference sources live outside this repository under `../references/`.
 
+## Runtime testing
+
+For Zandronum MCP tests, prefer the newest locally available Zandronum build; nightly and alpha builds are allowed. Never test with a version older than 3.2.1 unless the user explicitly requests investigation of an older-version regression.
+
+Load MM8BDM test content in this order:
+
+0. IWAD: `megagame.wad` (usually `/mnt/d/wads/megagame.wad` on this machine)
+1. One base-game package named in the `mm8bdm-vXY` form, normally `mm8bdm-v6b.pk3` (v6a may be used when requested; v6c may be used after release)
+2. When step 1 is `mm8bdm-v6b.pk3`, mandatory fix package `/mnt/d/wads/8bdm-v6b-miscfixes-v5.pk3`
+3. All other mods, including this project's `out/build.pk3`
+
+Optional debugging mods, loaded in step 3 when relevant:
+
+- `/mnt/d/wads/8bdm-hitvoxel-0.pk3` — visualize projectile hitboxes
+- `/mnt/d/projects/mm8bdm/hudex/out/hudex.pk3` — preview `HudMessage` layouts
+
 ## Entry points (in load order)
 
 | Lump | Purpose |
