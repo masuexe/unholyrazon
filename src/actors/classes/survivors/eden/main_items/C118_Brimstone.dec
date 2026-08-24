@@ -1,36 +1,208 @@
 actor C118Flag : UOnce {}
 
-// One segment of Eden's Brimstone burst. Other main-item interactions are
-// intentionally deferred until the standalone C118 fire mode is established.
+actor EdenBrimstoneIpecacDeath_F : UOnce {}
+
+// Brimstone keeps a straight trajectory: only the dye, poison damage type,
+// and impact explosion are inherited from Ipecac.
+actor EdenBrimstoneIpecacApply_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 ACS_NamedExecuteWithResult("rz_EdenTearColor", EDEN_TEAR_EXPLOSIVE_DYE)
+    TNT1 A 0 A_SetDamageType("EdenPoisonIpecac")
+    TNT1 A 0 A_GiveInventory("EdenBrimstoneIpecacDeath_F", 1)
+    stop
+  }
+}
+
+actor EdenBrimstoneIpecacDeath_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_PlaySoundEx("weapons/mm5/napalmbombexplode", "Weapon")
+    TNT1 A 0 A_Explode(CallACS("rz_GetEdenBrimstoneAttr", 2, 2) / 2, 140, XF_HURTSOURCE, 0, 50)
+    TNT1 A 0 ACS_NamedExecuteWithResult("rz_EdenIpecacMarkShooter")
+    TNT1 A 0 A_RadiusGive("EdenIpecacPoisonStart_P", 140, RGF_PLAYERS|RGF_NOSIGHT|RGF_NOTARGET, 1)
+    TNT1 A 0 A_SpawnItemEx("BasicBoom4FX_ColorX_Scale5", 0, 0, 0, 0, 0, 0, 0, 1)
+    stop
+  }
+}
+
+// One segment of Eden's Brimstone burst. C149/C315 are attached by the
+// projectile spawn hook so they compose with every emitter.
 actor EdenBrimstone : BasicProjectile {
   translation "4:4=175:175", "192:192=42:42", "198:198=178:178", "199:199=43:43"
   damagetype "Eden"
   Obituary "%o was cleansed by %k's Brimstone beam."
   -NOGRAVITY
   +SKYEXPLODE
-  Damage (CallACS("rz_GetEdenAttr", 2, 2, 0) / 2)
+  Damage (CallACS("rz_GetEdenBrimstoneAttr", 2, 2) / 2)
   radius 16
   height 16
   scale 2.5
   Speed 200
   States {
    Spawn:
+    TNT1 A 0
     7P59 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", 2, 0)
+    goto BeamFly
+   BeamFly:
     7P59 A 1
     wait
-   Crash:
-   XDeath:
    Death:
-    TNT1 A 0 A_Stop
+    TNT1 A 1 A_Stop
+    TNT1 A 0 A_GiveInventory("EdenTearSpent_F", 1)
+    TNT1 A 0 A_JumpIfInventory("EdenBrimstoneIpecacDeath_F", 1, "Death.Ipecac")
+    goto Death.Frame
+   Death.Ipecac:
+    TNT1 A 0 A_GiveInventory("EdenBrimstoneIpecacDeath_P")
+   Death.Frame:
     7P59 EFGH 1
     stop
+  }
+}
+
+// Spawned by the Anti-Gravity orb. A_CustomMissile already supplied the
+// captured angle, pitch, velocity, and real player owner.
+actor EdenBrimstoneDelayed : EdenBrimstone {
+  States {
+   Spawn:
+    TNT1 A 0
+    goto Super::BeamFly
+  }
+}
+
+// C222+C678 fetuses launch immediately with the delayed beam rather than
+// entering Anti-Gravity's ordinary tear-hover state a second time.
+actor EdenBrimstoneDelayedFetus : EdenFetusTear {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SetUserVar("user_range", CallACS("rz_GetEdenAttr", 2, 5, 0))
+    goto Super::SpawnLoop
   }
 }
 
 actor EdenBrimstoneFire_P : CustomInventory {
   States {
    Pickup:
+    TNT1 A 0 A_JumpIfInventory("C358Flag", 1, "Dunce")
     TNT1 A 0 A_FireCustomMissile("EdenBrimstone", 0, 0, 0, 0)
+    stop
+   Dunce:
+    TNT1 A 0 A_FireCustomMissile("EdenBrimstone", -45, 0, 0, 16)
+    TNT1 A 0 A_FireCustomMissile("EdenBrimstone", 45, 0, 0, 16)
+    stop
+  }
+}
+
+// Called four times over a full beam. EdenFire_P already composes C358 with
+// C678, yielding four fetuses per beam direction.
+actor EdenBrimstoneFetusFire_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("C678Flag", 1, "FireFetus")
+    stop
+   FireFetus:
+    TNT1 A 0 A_GiveInventory("EdenFire_P")
+    stop
+  }
+}
+
+// These helpers execute with the Anti-Gravity orb as self. CMF_TRACKOWNER
+// walks TARGET back through the orb to the actual player for damage credit.
+actor EdenBrimstoneOrbFire_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInTargetInventory("C358Flag", 1, "Dunce")
+    TNT1 A 0 A_CustomMissile("EdenBrimstoneDelayed", 0, 0, 0, CMF_AIMDIRECTION|CMF_TRACKOWNER|CMF_SAVEPITCH, -pitch)
+    stop
+   Dunce:
+    TNT1 A 0 A_CustomMissile("EdenBrimstoneDelayed", 0, 0, -45, CMF_AIMDIRECTION|CMF_TRACKOWNER|CMF_SAVEPITCH, -pitch)
+    TNT1 A 0 A_CustomMissile("EdenBrimstoneDelayed", 0, 0, 45, CMF_AIMDIRECTION|CMF_TRACKOWNER|CMF_SAVEPITCH, -pitch)
+    stop
+  }
+}
+
+actor EdenBrimstoneOrbFetusFire_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInTargetInventory("C678Flag", 1, "CheckDunce")
+    stop
+   CheckDunce:
+    TNT1 A 0 A_JumpIfInTargetInventory("C358Flag", 1, "Dunce")
+    TNT1 A 0 A_CustomMissile("EdenBrimstoneDelayedFetus", 0, 0, 0, CMF_AIMDIRECTION|CMF_TRACKOWNER|CMF_SAVEPITCH, -pitch)
+    stop
+   Dunce:
+    TNT1 A 0 A_CustomMissile("EdenBrimstoneDelayedFetus", 0, 0, -45, CMF_AIMDIRECTION|CMF_TRACKOWNER|CMF_SAVEPITCH, -pitch)
+    TNT1 A 0 A_CustomMissile("EdenBrimstoneDelayedFetus", 0, 0, 45, CMF_AIMDIRECTION|CMF_TRACKOWNER|CMF_SAVEPITCH, -pitch)
+    stop
+  }
+}
+
+// Repentance Anti-Gravity: a stationary damaging mist expands and contracts,
+// then emits the snapshotted Brimstone volley independently of the weapon.
+actor EdenBrimstoneAntiGravOrb : BasicProjectile {
+  translation "4:4=175:175",
+              "192:192=42:42",
+              "198:198=178:178",
+              "199:199=43:43"
+  damagetype "Eden"
+  Obituary "%o was consumed by %k's Anti-Gravity Brimstone."
+  +NOINTERACTION
+  +NOGRAVITY
+  -USESPAWNEVENTSCRIPT
+  renderstyle "Translucent"
+  alpha 0.65
+  radius 16
+  height 16
+  Speed 0
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", 2, 1)
+    TNT1 A 0 A_Stop
+    TNT1 A 0 A_JumpIf(CallACS("rz_EdenBrimstoneOwnerOK") == 0, "Death")
+    7P59 A 0 A_SetScale(1.0)
+    7P59 A 3 A_Explode(CallACS("rz_GetEdenBrimstoneAttr", 2, 2) / 4, 16, 0, 0, 16)
+    7P59 A 0 A_SetScale(1.4)
+    7P59 A 3 A_Explode(CallACS("rz_GetEdenBrimstoneAttr", 2, 2) / 4, 24, 0, 0, 24)
+    7P59 A 0 A_SetScale(1.8)
+    7P59 A 3 A_Explode(CallACS("rz_GetEdenBrimstoneAttr", 2, 2) / 4, 32, 0, 0, 32)
+    7P59 A 0 A_SetScale(2.2)
+    7P59 A 3 A_Explode(CallACS("rz_GetEdenBrimstoneAttr", 2, 2) / 4, 40, 0, 0, 40)
+    7P59 A 0 A_SetScale(2.6)
+    7P59 A 3 A_Explode(CallACS("rz_GetEdenBrimstoneAttr", 2, 2) / 4, 48, 0, 0, 48)
+    7P59 A 0 A_SetScale(3.0)
+    7P59 A 3 A_Explode(CallACS("rz_GetEdenBrimstoneAttr", 2, 2) / 4, 56, 0, 0, 56)
+    7P59 A 0 A_SetScale(3.0)
+    7P59 A 3 A_Explode(CallACS("rz_GetEdenBrimstoneAttr", 2, 2) / 4, 56, 0, 0, 56)
+    7P59 A 0 A_SetScale(2.6)
+    7P59 A 3 A_Explode(CallACS("rz_GetEdenBrimstoneAttr", 2, 2) / 4, 48, 0, 0, 48)
+    7P59 A 0 A_SetScale(2.2)
+    7P59 A 3 A_Explode(CallACS("rz_GetEdenBrimstoneAttr", 2, 2) / 4, 40, 0, 0, 40)
+    7P59 A 0 A_SetScale(1.8)
+    7P59 A 3 A_Explode(CallACS("rz_GetEdenBrimstoneAttr", 2, 2) / 4, 32, 0, 0, 32)
+    7P59 A 0 A_SetScale(1.4)
+    7P59 A 3 A_Explode(CallACS("rz_GetEdenBrimstoneAttr", 2, 2) / 4, 24, 0, 0, 24)
+    7P59 A 0 A_SetScale(1.0)
+    7P59 A 3 A_Explode(CallACS("rz_GetEdenBrimstoneAttr", 2, 2) / 4, 16, 0, 0, 16)
+    TNT1 A 0 A_JumpIf(CallACS("rz_EdenBrimstoneOwnerOK") == 0, "Death")
+    TNT1 A 0 A_PlaySoundEx("Isaac/bloodlaser", "Weapon")
+    TNT1 A 0 A_GiveInventory("EdenBrimstoneOrbFetusFire_P")
+    TNT1 A 1 A_GiveInventory("EdenBrimstoneOrbFire_P")
+    TNT1 A 1 A_GiveInventory("EdenBrimstoneOrbFire_P")
+    TNT1 A 0 A_GiveInventory("EdenBrimstoneOrbFetusFire_P")
+    TNT1 A 1 A_GiveInventory("EdenBrimstoneOrbFire_P")
+    TNT1 A 1 A_GiveInventory("EdenBrimstoneOrbFire_P")
+    TNT1 A 0 A_GiveInventory("EdenBrimstoneOrbFetusFire_P")
+    TNT1 A 1 A_GiveInventory("EdenBrimstoneOrbFire_P")
+    TNT1 A 1 A_GiveInventory("EdenBrimstoneOrbFire_P")
+    TNT1 A 0 A_GiveInventory("EdenBrimstoneOrbFetusFire_P")
+    TNT1 A 1 A_GiveInventory("EdenBrimstoneOrbFire_P")
+    TNT1 A 1 A_GiveInventory("EdenBrimstoneOrbFire_P")
+    TNT1 A 1 A_GiveInventory("EdenBrimstoneOrbFire_P")
+    stop
+   Death:
+    TNT1 A 0
     stop
   }
 }

@@ -2143,6 +2143,52 @@ script "rz_GetEdenAttr" (int pointer, int attr, int hud, int useplayer) {
   }
 }
 
+// Repentance Brimstone + Ipecac ignores Ipecac's flat damage and fire-delay
+// penalties while retaining every other Eden stat change.
+script "rz_GetEdenBrimstoneAttr" (int pointer, int attr) {
+  int value;
+  if (pointer > 0) {
+    SetActivator(0, pointer);
+  }
+
+  switch (attr) {
+    case EDENATTR_TEARS:
+      value = CheckInventory("EdenTearsAttr");
+      if (CheckInventory("C149Flag"))
+        value = max(1, value - 12);
+      break;
+    case EDENATTR_DAMAGE:
+      value = CheckInventory("EdenDamageAttr");
+      if (CheckInventory("C149Flag"))
+        value = max(1, value - 70);
+      break;
+    case EDENATTR_SHOTSPEED:
+      value = CheckInventory("EdenShotSpeedAttr");
+      break;
+    case EDENATTR_LUCK:
+      value = CheckInventory("EdenLuckAttr");
+      break;
+    case EDENATTR_RANGE:
+      value = CheckInventory("EdenRangeAttr");
+      break;
+  }
+  SetResultValue(value);
+}
+
+script "rz_EdenBrimstoneOwnerOK" (void) {
+  int pn;
+  if (!SetActivator(0, AAPTR_TARGET)) {
+    SetResultValue(0);
+    terminate;
+  }
+  pn = PlayerNumber();
+  if (pn < 0 || !PlayerInGame(pn) || CheckInventory("IsDead") || GetActorProperty(0, APROP_Health) <= 0) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
+}
+
 // razon3 D8: 5 uniforms → clamp-sum to ~2.5 → mul in [0.5,2] → set attrs from D8Init*
 script "rz_D8Rolling" (void) {
   str attrinv[5] = {"EdenSpeedAttr", "EdenHeightAttr", "EdenTearsHUDAttr", "EdenDamageAttr", "EdenRangeAttr"};

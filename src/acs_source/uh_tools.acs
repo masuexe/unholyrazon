@@ -857,15 +857,29 @@ script "rz_projflipgrav" (void) {
 
 script "rz_EdenTearPassiveSpawn" (void) {
 	int owner;
-	if (!CheckActorClass(0, "EdenTear")
-		&& !CheckActorClass(0, "EdenSpectralTear")
-		&& !CheckActorClass(0, "EdenFetusTear"))
+	int brimstone;
+	brimstone = CheckActorClass(0, "EdenBrimstone") ||
+	            CheckActorClass(0, "EdenBrimstoneDelayed");
+	if (!CheckActorClass(0, "EdenTear") &&
+	    !CheckActorClass(0, "EdenSpectralTear") &&
+			!CheckActorClass(0, "EdenFetusTear") &&
+			!CheckActorClass(0, "EdenBrimstoneDelayedFetus") &&
+			!brimstone)
 		terminate;
 	owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
 	if (owner == 0)
 		owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
 	if (owner == 0)
 		terminate;
+	// Brimstone keeps its straight trajectory. Strange Attractor is applied
+	// first so Ipecac's green dye has deterministic visual priority.
+	if (brimstone) {
+		if (CheckActorInventory(owner, "C315Flag"))
+			GiveInventory("EdenTearStrangeAttractorApply_P", 1);
+		if (CheckActorInventory(owner, "C149Flag"))
+			GiveInventory("EdenBrimstoneIpecacApply_P", 1);
+		terminate;
+	}
 	// Order matches razon3 SpawnCheck: Ipecac then Strange Attractor (dye may overwrite).
 	if (CheckActorInventory(owner, "C149Flag"))
 		GiveInventory("EdenTearIpecacApply_P", 1);
