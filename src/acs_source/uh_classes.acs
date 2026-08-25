@@ -1685,11 +1685,22 @@ script "rz_EdenAltAmmoCost" (void) {
 }
 
 script "rz_EdenUseAlt" (void) {
-  int i = EdenFindEquippedAlt();
+  int i;
+  int hasBattery;
+
+  i = EdenFindEquippedAlt();
   if (i < 0) {
     terminate;
   }
+
+  // Eden_W has already paid the active item's one use cost. Car Battery
+  // copies the effect, not the cost. If the first activation removes the
+  // battery, the second activation is skipped as in the original behavior.
+  hasBattery = CheckInventory("C356Flag");
   GiveInventory(edenisaac_alt_pickup[i], 1);
+  if (hasBattery && CheckInventory("C356Flag")) {
+    GiveInventory(edenisaac_alt_pickup[i], 1);
+  }
 }
 
 // Standard Zandronum damage-event hook. Addons can compose with this by
@@ -1904,11 +1915,12 @@ script "rz_EdenApplyCSectionSkin" (void) {
   EdenApplyCSectionSkin();
 }
 
-// DEBUG: remove before release — always grant C371 for in-game testing.
-function void EdenDebugForceC371(void) {
+// DEBUG: remove before release — always grant C356 for in-game testing.
+function void EdenDebugForceC356(void) {
   TakeInventory("C118Flag", 1);
-  GiveInventory("C371Flag", 1);
-  SetInventory("EdenItemSlot1", 371);
+  TakeInventory("C371Flag", 1);
+  GiveInventory("C356Flag", 1);
+  SetInventory("EdenItemSlot1", 356);
 }
 
 function void EdenRollMainItems(void) {
@@ -1983,7 +1995,7 @@ script "rz_InitEdenProperties" (void) {
     }
     if (!CheckInventory("EdenMainRolled_F") && edenisaac_main_count > 0) {
       EdenRollMainItems();
-      EdenDebugForceC371();
+      EdenDebugForceC356();
       EdenSyncFireWeapon();
     }
     terminate;
@@ -2037,7 +2049,7 @@ script "rz_InitEdenProperties" (void) {
   SetInventory("EdenLuckAttr", luck);
 
   EdenRollMainItems();
-  EdenDebugForceC371();
+  EdenDebugForceC356();
 
   EdenSyncFireWeapon();
 
