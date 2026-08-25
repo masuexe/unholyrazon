@@ -1635,6 +1635,9 @@ script "rz_VoidConsuming" (void)
 // Cap must match UHEDENISAAC.acs.
 #define EDEN_ISAAC_MAIN_CAP 32
 
+int eden_normal_main_idx[EDEN_ISAAC_MAIN_CAP];
+int eden_normal_main_count = 0;
+
 #define EDEN_MAIN_COUNT_BUCKETS 5
 // Index = item count 0..4; bell curve — peaks at 2/3, tails at 0/4.
 int eden_main_count_weight[EDEN_MAIN_COUNT_BUCKETS] = {10, 20, 30, 30, 10};
@@ -2118,6 +2121,19 @@ function void EdenRollBaseStats(int shiny) {
   SetInventory("EdenLuckAttr", luck);
 }
 
+function void EdenRebuildNormalMainPool(void) {
+  int count = 0;
+  int i;
+
+  for (i = 0; i < edenisaac_main_count; i++) {
+    if (edenisaac_main_form[i] == EDEN_FORM_NONE) {
+      eden_normal_main_idx[count] = i;
+      count++;
+    }
+  }
+  eden_normal_main_count = count;
+}
+
 function void EdenRollMainItemsShiny(void) {
   int poolsize = edenisaac_main_count;
   int pickcount = EdenRollMainItemCount(poolsize);
@@ -2154,12 +2170,10 @@ function void EdenRollMainItemsShiny(void) {
     forced_id = 118;
   }
 
-  for (i = 0; i < poolsize; i++) {
-    id = edenisaac_main_id[i];
-    if (id != 118 && id != 331) {
-      normal_idx[normal_count] = i;
-      normal_count++;
-    }
+  EdenRebuildNormalMainPool();
+  normal_count = eden_normal_main_count;
+  for (i = 0; i < normal_count; i++) {
+    normal_idx[i] = eden_normal_main_idx[i];
   }
 
   rolled_ids[0] = forced_id;
@@ -2210,8 +2224,8 @@ function void EdenRollMainItems(void) {
     return;
   }
 
-  int poolsize = edenisaac_main_count;
-  int pickcount = EdenRollMainItemCount(poolsize);
+  int poolsize;
+  int pickcount;
   int indices[EDEN_ISAAC_MAIN_CAP];
   int i;
   int j;
@@ -2225,13 +2239,16 @@ function void EdenRollMainItems(void) {
 
   EdenClearMainSlots();
 
+  EdenRebuildNormalMainPool();
+  poolsize = eden_normal_main_count;
+  pickcount = EdenRollMainItemCount(poolsize);
+  for (i = 0; i < poolsize; i++) {
+    indices[i] = eden_normal_main_idx[i];
+  }
+
   if (pickcount <= 0) {
     GiveInventory("EdenMainRolled_F", 1);
     return;
-  }
-
-  for (i = 0; i < poolsize; i++) {
-    indices[i] = i;
   }
 
   for (i = 0; i < pickcount; i++) {
