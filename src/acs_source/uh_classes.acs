@@ -1684,6 +1684,34 @@ script "rz_EdenAltAmmoCost" (void) {
   SetResultValue(cost);
 }
 
+// C042 can only hold two Bob bombs.  This gate is checked before Eden_W
+// spends active charge, so pressing M2 at full stock is a true no-op.
+script "rz_EdenCanUseAlt" (void) {
+  int i = EdenFindEquippedAlt();
+  if (i >= 0 && edenisaac_alt_id[i] == 42 && CheckInventory("BobHeadFlag") >= 2) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
+}
+
+// Server-side lifetime watcher for C042's hand-bomb warpers.  The base game
+// uses the same pattern for Deep Digger so the visual actor is removed even
+// when inventory state changes on the server or the owner dies/disconnects.
+script "rz_EdenBobHeadWarper" (int left) {
+  int player = ACS_NamedExecuteWithResult("core_gettarget", 0);
+
+  while (GetActorProperty(player, APROP_HEALTH) > 0 &&
+         CheckActorInventory(player, "BobHeadFlag") > 0 &&
+         (CheckActorInventory(player, "BobHeadFlag") >= 2 ||
+          (left == 0 && CheckActorInventory(player, "BobHeadLeft_F") == 0) ||
+          (left == 1 && CheckActorInventory(player, "BobHeadLeft_F") > 0))) {
+    Delay(1);
+  }
+
+  Thing_Remove(0);
+}
+
 script "rz_EdenUseAlt" (void) {
   int i;
   int hasBattery;
@@ -1915,8 +1943,20 @@ script "rz_EdenApplyCSectionSkin" (void) {
   EdenApplyCSectionSkin();
 }
 
-// DEBUG: remove before release — always grant C356 for in-game testing.
-function void EdenDebugForceC356(void) {
+// DEBUG: remove before release — always grant C042 + C356 for in-game testing.
+function void EdenDebugForceC042C356(void) {
+  int i;
+  str flag;
+
+  EdenEnsureVanillaAltRegistered();
+  for (i = 0; i < edenisaac_alt_count; i++) {
+    flag = StrParam(s:"C", i:edenisaac_alt_id[i], s:"Flag");
+    TakeInventory(flag, 1);
+  }
+  TakeInventory("BobHeadFlag", 2);
+  TakeInventory("BobHeadLeft_F", 1);
+  GiveInventory("C42Flag", 1);
+
   TakeInventory("C118Flag", 1);
   TakeInventory("C371Flag", 1);
   GiveInventory("C356Flag", 1);
@@ -1995,7 +2035,7 @@ script "rz_InitEdenProperties" (void) {
     }
     if (!CheckInventory("EdenMainRolled_F") && edenisaac_main_count > 0) {
       EdenRollMainItems();
-      EdenDebugForceC356();
+      EdenDebugForceC042C356();
       EdenSyncFireWeapon();
     }
     terminate;
@@ -2049,7 +2089,7 @@ script "rz_InitEdenProperties" (void) {
   SetInventory("EdenLuckAttr", luck);
 
   EdenRollMainItems();
-  EdenDebugForceC356();
+  EdenDebugForceC042C356();
 
   EdenSyncFireWeapon();
 
