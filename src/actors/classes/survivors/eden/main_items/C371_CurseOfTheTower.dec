@@ -1,0 +1,37 @@
+actor C371Flag : UOnce {}
+
+// razon3 used a one-second guard so rapid multi-hit attacks cannot create a
+// new six-bomb wave every tic.
+actor PowerC371Cooldown : Powerup {
+  Powerup.Duration 35
+}
+
+// Fixed six-bomb version of the current Anarchist Cookbook spawner. Keep it
+// separate so C371 does not inherit active-item/rune spread modifications.
+actor EdenCurseTowerHit_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_SpawnItemEx("EdenCurseTowerBombWatcher")
+    stop
+  }
+}
+
+actor EdenCurseTowerBombWatcher : BasicWatcher {
+  ReactionTime 6
+  States {
+   Spawn:
+    TNT1 A 0
+   SpawnLoop:
+    TNT1 A 3 A_GiveToTarget("EdenCurseTowerSpawnBomb_P")
+    TNT1 A 0 A_CountDown
+    loop
+  }
+}
+
+actor EdenCurseTowerSpawnBomb_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_SpawnItemEx("EdenTrollBomb", 0, 0, 32, frandom(-64.0, 64.0), frandom(-64.0, 64.0), frandom(8.0, 16.0))
+    stop
+  }
+}

@@ -1717,6 +1717,39 @@ script "rz_EdenPiggyBankDamage" (int evt, int dmg, int dmgtype) EVENT {
   GiveInventory("EdenPiggyBankHit_P", 1);
 }
 
+function bool EdenDamageTypeIsBomb(str dmgtype) {
+  int i;
+  int len = StrLen(dmgtype);
+  for (i = 0; i <= len - 4; i++) {
+    if (StrICmp(StrMid(dmgtype, i, 4), "Bomb") == 0)
+      return true;
+  }
+  return false;
+}
+
+// Curse of the Tower composes with other damage EVENT hooks and never changes
+// their shared damage result. Bomb damage is excluded so its own Troll Bombs
+// cannot recursively create another wave.
+script "rz_EdenCurseTowerDamage" (int evt, int dmg, int dmgtype) EVENT {
+  int effectivedamage;
+  if (evt != GAMEEVENT_ACTOR_DAMAGED || dmg <= 0)
+    terminate;
+  if (PlayerNumber() < 0 || !CheckInventory("C371Flag") || CheckInventory("IsDead"))
+    terminate;
+  if (CheckInventory("PowerC371Cooldown") || EdenDamageTypeIsBomb(dmgtype))
+    terminate;
+
+  effectivedamage = GetEventResult();
+  if (effectivedamage <= 0)
+    terminate;
+  if (!CheckInventory("PlayerPropertyBuddha") &&
+      GetActorProperty(0, APROP_Health) <= effectivedamage)
+    terminate;
+
+  GiveInventory("EdenCurseTowerHit_P", 1);
+  GiveInventory("PowerC371Cooldown", 1);
+}
+
 function void EdenApplyIpecacStats(void) {
   if (!CheckInventory("C149Flag"))
     return;
@@ -1782,17 +1815,11 @@ script "rz_EdenApplyCSectionSkin" (void) {
   EdenApplyCSectionSkin();
 }
 
-// DEBUG: remove before release — always grant C227 for in-game testing.
-function void EdenDebugForceC227(void) {
-  int alreadyHadC227 = CheckInventory("C227Flag");
+// DEBUG: remove before release — always grant C371 for in-game testing.
+function void EdenDebugForceC371(void) {
   TakeInventory("C118Flag", 1);
-  GiveInventory("C227Flag", 1);
-  SetInventory("EdenItemSlot1", 227);
-  // EdenRollMainItems applies passives before this debug override. Apply only
-  // when C227 was not already part of the random roll, avoiding a duplicate
-  // pickup reward while still making the forced item functional.
-  if (!alreadyHadC227)
-    EdenApplyPiggyBankPickup();
+  GiveInventory("C371Flag", 1);
+  SetInventory("EdenItemSlot1", 371);
 }
 
 function void EdenRollMainItems(void) {
@@ -1867,7 +1894,7 @@ script "rz_InitEdenProperties" (void) {
     }
     if (!CheckInventory("EdenMainRolled_F") && edenisaac_main_count > 0) {
       EdenRollMainItems();
-      EdenDebugForceC227();
+      EdenDebugForceC371();
       EdenSyncFireWeapon();
     }
     terminate;
@@ -1921,7 +1948,7 @@ script "rz_InitEdenProperties" (void) {
   SetInventory("EdenLuckAttr", luck);
 
   EdenRollMainItems();
-  EdenDebugForceC227();
+  EdenDebugForceC371();
 
   EdenSyncFireWeapon();
 
