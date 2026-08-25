@@ -9,9 +9,14 @@ global int 4: ServerMAX;
 // Eden body-color translations; keep these in sync with UH_COLORS and
 // ConstIntList_Ucolors.dec.
 #define EDEN_DYE 20060
+#define EDEN_SDYE 30060
 #define EDEN_BRIMSTONE_DYE 20062
 #define EDEN_IPECAC_DYE 20063
 #define EDEN_ANTIGRAVITY_DYE 20064
+
+#define EDEN_FORM_NONE 0
+#define EDEN_FORM_DEVIL 1
+#define EDEN_FORM_ANGEL 2
 
 bool time_is_stopped = 0;
 
@@ -1985,6 +1990,8 @@ function int EdenGetColorDye(void) {
     return EDEN_IPECAC_DYE;
   if (CheckInventory("C222Flag"))
     return EDEN_ANTIGRAVITY_DYE;
+  if (CheckActorClass(0, "EdenShiny"))
+    return EDEN_SDYE;
   return EDEN_DYE;
 }
 
@@ -2031,7 +2038,178 @@ function void EdenDebugForceC396(void) {
   GiveInventory("C396Flag", 1);
 }
 
+function void EdenClearMorphState(void) {
+  int i;
+  str flag;
+
+  EdenEnsureVanillaAltRegistered();
+  EdenEnsureVanillaMainRegistered();
+
+  for (i = 0; i < edenisaac_main_count; i++) {
+    flag = StrParam(s:"C", i:edenisaac_main_id[i], s:"Flag");
+    TakeInventory(flag, 1);
+  }
+  for (i = 0; i < edenisaac_alt_count; i++) {
+    flag = StrParam(s:"C", i:edenisaac_alt_id[i], s:"Flag");
+    TakeInventory(flag, 1);
+  }
+
+  EdenClearMainSlots();
+  TakeInventory("EdenInitFlag", 1);
+  TakeInventory("EdenMainRolled_F", 1);
+  TakeInventory("EdenShinyAngel_F", 1);
+  TakeInventory("EdenShinyDevil_F", 1);
+  TakeInventory("EdenAntiGravStats_F", 1);
+  TakeInventory("EdenPiggyBankPickup_F", 1);
+  TakeInventory("EdenDamoclesActive_F", 1);
+  TakeInventory("EdenDamoclesSpent_F", 1);
+  SetInventory("EdenDamoclesRisk", 0);
+  TakeInventory("BobHeadFlag", 2);
+  TakeInventory("BobHeadLeft_F", 1);
+  TakeInventory("D8InitFlag", 1);
+  TakeInventory("Eden118_W", 1);
+  TakeInventory("Eden678_W", 1);
+}
+
+function void EdenRollBaseStats(int shiny) {
+  int health;
+  int height;
+  int height_hud;
+  int speed;
+  int speed_hud;
+  int firerate;
+  int tears_hud;
+  int damage;
+  int range;
+  int shotspeed;
+  int luck;
+
+  if (shiny) {
+    health = Random(2000, 3000);
+    damage = Random(75, 300);
+  }
+  else {
+    health = Random(650, 2000);
+    damage = Random(50, 200);
+  }
+  height = Random(10.0, 17.5);
+  height_hud = Round(height);
+  speed = Random(0.5, 1.5);
+  speed_hud = Round(speed * 10);
+  firerate = Random(2, 12);
+  tears_hud = ConvertTears(firerate, 0);
+  range = Random(10, 60);
+  shotspeed = Random(15, 55);
+  luck = Random(0, 16);
+
+  SetActorProperty(0, APROP_Health, health);
+  SetActorProperty(0, APROP_SpawnHealth, health);
+  SetActorProperty(0, APROP_Speed, speed);
+  SetActorProperty(0, APROP_JumpZ, height);
+
+  SetInventory("EdenMaxHealthAttr", health);
+  SetInventory("EdenSpeedAttr", speed_hud);
+  SetInventory("EdenHeightAttr", height_hud);
+  SetInventory("EdenTearsAttr", firerate);
+  SetInventory("EdenTearsHUDAttr", tears_hud);
+  SetInventory("EdenDamageAttr", damage);
+  SetInventory("EdenRangeAttr", range);
+  SetInventory("EdenShotSpeedAttr", shotspeed);
+  SetInventory("EdenLuckAttr", luck);
+}
+
+function void EdenRollMainItemsShiny(void) {
+  int poolsize = edenisaac_main_count;
+  int pickcount = EdenRollMainItemCount(poolsize);
+  int normal_idx[EDEN_ISAAC_MAIN_CAP];
+  int normal_count = 0;
+  int rolled_ids[4];
+  int rolled_count = 0;
+  int isAngel;
+  int forced_id;
+  int i;
+  int j;
+  int pick;
+  int total;
+  int roll;
+  int acc;
+  int id;
+  str flag;
+
+  EdenClearMainSlots();
+  TakeInventory("EdenShinyAngel_F", 1);
+  TakeInventory("EdenShinyDevil_F", 1);
+
+  if (pickcount < 1) {
+    pickcount = 1;
+  }
+
+  isAngel = Random(0, 1);
+  if (isAngel) {
+    GiveInventory("EdenShinyAngel_F", 1);
+    forced_id = 331;
+  }
+  else {
+    GiveInventory("EdenShinyDevil_F", 1);
+    forced_id = 118;
+  }
+
+  for (i = 0; i < poolsize; i++) {
+    id = edenisaac_main_id[i];
+    if (id != 118 && id != 331) {
+      normal_idx[normal_count] = i;
+      normal_count++;
+    }
+  }
+
+  rolled_ids[0] = forced_id;
+  rolled_count = 1;
+
+  for (i = 1; i < pickcount; i++) {
+    if (normal_count <= 0) {
+      break;
+    }
+    total = 0;
+    for (j = 0; j < normal_count; j++) {
+      total += EdenGetMainPickWeight(edenisaac_main_quality[normal_idx[j]]);
+    }
+    roll = Random(0, total - 1);
+    pick = 0;
+    acc = 0;
+    for (j = 0; j < normal_count; j++) {
+      acc += EdenGetMainPickWeight(edenisaac_main_quality[normal_idx[j]]);
+      if (roll < acc) {
+        pick = j;
+        break;
+      }
+    }
+    id = edenisaac_main_id[normal_idx[pick]];
+    rolled_ids[rolled_count] = id;
+    rolled_count++;
+    for (j = pick; j < normal_count - 1; j++) {
+      normal_idx[j] = normal_idx[j + 1];
+    }
+    normal_count--;
+  }
+
+  for (i = 0; i < rolled_count; i++) {
+    id = rolled_ids[i];
+    flag = StrParam(s:"C", i:id, s:"Flag");
+    GiveInventory(flag, 1);
+    SetInventory(StrParam(s:"EdenItemSlot", i:i + 1), id);
+  }
+
+  EdenApplyMainPassives();
+  EdenApplyColor();
+  GiveInventory("EdenMainRolled_F", 1);
+}
+
 function void EdenRollMainItems(void) {
+  if (CheckActorClass(0, "EdenShiny")) {
+    EdenRollMainItemsShiny();
+    return;
+  }
+
   int poolsize = edenisaac_main_count;
   int pickcount = EdenRollMainItemCount(poolsize);
   int indices[EDEN_ISAAC_MAIN_CAP];
@@ -2110,34 +2288,7 @@ script "rz_InitEdenProperties" (void) {
     terminate;
   }
 
-  int health, height, height_hud, speed, speed_hud, firerate, tears_hud, damage, range, shotspeed, luck;
-
-  if (CheckActorClass(0, "EdenShiny")) {
-    health = Random(2650, 4000);
-  }
-  else {
-    health = Random(650, 2000);
-  }
-  height = Random(10.0, 17.5);
-  height_hud = Round(height);
-  speed = Random(0.5, 1.5);
-  speed_hud = Round(speed * 10);
-  firerate = Random(2, 12);
-  tears_hud = ConvertTears(firerate, 0);
-  if (CheckActorClass(0, "EdenShiny")) {
-    damage = Random(75, 300);
-  }
-  else {
-    damage = Random(50, 200);
-  }
-  range = Random(10, 60);
-  shotspeed = Random(15, 55);
-  luck = Random(0, 16);
-
-  SetActorProperty(0, APROP_Health, health);
-  SetActorProperty(0, APROP_SpawnHealth, health);
-  SetActorProperty(0, APROP_Speed, speed);
-  SetActorProperty(0, APROP_JumpZ, height);
+  EdenRollBaseStats(CheckActorClass(0, "EdenShiny"));
 
   // Lock one alt item for the life; Flag persists via EdenInitFlag gate.
   if (edenisaac_alt_count > 0) {
@@ -2146,22 +2297,36 @@ script "rz_InitEdenProperties" (void) {
     GiveInventory(flag, 1);
   }
 
-  Delay(1);
-  SetInventory("EdenMaxHealthAttr", GetActorProperty(0, APROP_SpawnHealth));
-  SetInventory("EdenSpeedAttr", speed_hud);
-  SetInventory("EdenHeightAttr", height_hud);
-  SetInventory("EdenTearsAttr", firerate);
-  SetInventory("EdenTearsHUDAttr", tears_hud);
-  SetInventory("EdenDamageAttr", damage);
-  SetInventory("EdenRangeAttr", range);
-  SetInventory("EdenShotSpeedAttr", shotspeed);
-  SetInventory("EdenLuckAttr", luck);
-
   EdenRollMainItems();
   EdenDebugForceC396();
 
   EdenSyncFireWeapon();
 
+  GiveInventory("EdenInitFlag", 1);
+}
+
+script "rz_EdenShinyMorphInit" (void) {
+  int slot;
+  str flag;
+
+  if (!CheckActorClass(0, "EdenShiny")) {
+    terminate;
+  }
+
+  EdenEnsureVanillaAltRegistered();
+  EdenEnsureVanillaMainRegistered();
+  EdenClearMorphState();
+  EdenRollBaseStats(1);
+
+  if (edenisaac_alt_count > 0) {
+    slot = Random(0, edenisaac_alt_count - 1);
+    flag = StrParam(s:"C", i:edenisaac_alt_id[slot], s:"Flag");
+    GiveInventory(flag, 1);
+  }
+
+  EdenRollMainItems();
+  EdenDebugForceC396();
+  EdenSyncFireWeapon();
   GiveInventory("EdenInitFlag", 1);
 }
 

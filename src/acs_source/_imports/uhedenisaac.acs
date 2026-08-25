@@ -7,6 +7,10 @@
 #define EDEN_ISAAC_ALT_CAP 32
 #define EDEN_ISAAC_MAIN_CAP 32
 
+#define EDEN_FORM_NONE 0
+#define EDEN_FORM_DEVIL 1
+#define EDEN_FORM_ANGEL 2
+
 int edenisaac_alt_count = 0;
 int edenisaac_alt_id[EDEN_ISAAC_ALT_CAP];
 int edenisaac_alt_ammo[EDEN_ISAAC_ALT_CAP];
@@ -17,6 +21,7 @@ int edenisaac_main_count = 0;
 int edenisaac_main_id[EDEN_ISAAC_MAIN_CAP];
 str edenisaac_main_icon[EDEN_ISAAC_MAIN_CAP];
 int edenisaac_main_quality[EDEN_ISAAC_MAIN_CAP];
+int edenisaac_main_form[EDEN_ISAAC_MAIN_CAP];
 
 // Fire HUD weapons: single-item and combo registrations (addon OPEN scripts).
 #define EDEN_FIRE_SINGLE_CAP 32
@@ -39,9 +44,6 @@ function int EdenHasItemFlag(int id) {
 }
 
 function str EdenDefaultFireWep(void) {
-  if (CheckActorClass(0, "EdenShiny")) {
-    return "EdenShiny_W";
-  }
   return "Eden_W";
 }
 
@@ -226,7 +228,7 @@ function int EdenGetMainPickWeight(int quality) {
   return 5 - quality;
 }
 
-function void EdenRegisterMain(int id, str hudIcon, int quality) {
+function void EdenRegisterMain(int id, str hudIcon, int quality, int form) {
   int i = edenisaac_main_count;
   if (i >= EDEN_ISAAC_MAIN_CAP) {
     Log(s:"EdenRegisterMain overflow");
@@ -244,6 +246,12 @@ function void EdenRegisterMain(int id, str hudIcon, int quality) {
   }
   else {
     edenisaac_main_quality[i] = quality;
+  }
+  if (form == EDEN_FORM_DEVIL || form == EDEN_FORM_ANGEL) {
+    edenisaac_main_form[i] = form;
+  }
+  else {
+    edenisaac_main_form[i] = EDEN_FORM_NONE;
   }
   if (StrLen(hudIcon) > 0) {
     edenisaac_main_icon[i] = hudIcon;
@@ -295,17 +303,17 @@ function void EdenEnsureVanillaMainRegistered(void) {
   if (edenisaac_main_count > 0) {
     return;
   }
-  EdenRegisterMain(118, "", 4);
-  EdenRegisterMain(149, "", 4);
-  EdenRegisterMain(315, "", 0);
-  EdenRegisterMain(331, "", 4);
-  EdenRegisterMain(356, "", 3);
-  EdenRegisterMain(222, "", 2);
-  EdenRegisterMain(227, "", 1);
-  EdenRegisterMain(371, "", 0);
-  EdenRegisterMain(577, "", 3);
-  EdenRegisterMain(358, "", 0);
-  EdenRegisterMain(678, "", 4);
+  EdenRegisterMain(118, "", 4, EDEN_FORM_DEVIL);
+  EdenRegisterMain(149, "", 4, EDEN_FORM_NONE);
+  EdenRegisterMain(315, "", 0, EDEN_FORM_NONE);
+  EdenRegisterMain(331, "", 4, EDEN_FORM_ANGEL);
+  EdenRegisterMain(356, "", 3, EDEN_FORM_NONE);
+  EdenRegisterMain(222, "", 2, EDEN_FORM_NONE);
+  EdenRegisterMain(227, "", 1, EDEN_FORM_NONE);
+  EdenRegisterMain(371, "", 0, EDEN_FORM_NONE);
+  EdenRegisterMain(577, "", 3, EDEN_FORM_NONE);
+  EdenRegisterMain(358, "", 0, EDEN_FORM_NONE);
+  EdenRegisterMain(678, "", 4, EDEN_FORM_NONE);
 }
 
 script "rz_EdenRegisterVanillaAlt" OPEN {
