@@ -1692,6 +1692,31 @@ script "rz_EdenUseAlt" (void) {
   GiveInventory(edenisaac_alt_pickup[i], 1);
 }
 
+// Standard Zandronum damage-event hook. Addons can compose with this by
+// declaring their own uniquely named EVENT script; no ClassPain override is
+// needed. The event activator is the damage target, and this script never
+// changes the shared damage result.
+script "rz_EdenPiggyBankDamage" (int evt, int dmg, int dmgtype) EVENT {
+  int effectivedamage;
+  if (evt != GAMEEVENT_ACTOR_DAMAGED || dmg <= 0)
+    terminate;
+  if (PlayerNumber() < 0 || !CheckInventory("C227Flag") || CheckInventory("IsDead"))
+    terminate;
+
+  // GAMEEVENT_ACTOR_DAMAGED runs after armor. Read the current shared result
+  // so earlier shield/damage EVENT scripts can cancel or modify the hit.
+  effectivedamage = GetEventResult();
+  if (effectivedamage <= 0)
+    terminate;
+  // razon3's ClassPain implementation did not run on lethal hits. Preserve
+  // that LMS-safe behavior, while allowing a Buddha-protected hit to proc.
+  if (!CheckInventory("PlayerPropertyBuddha") &&
+      GetActorProperty(0, APROP_Health) <= effectivedamage)
+    terminate;
+
+  GiveInventory("EdenPiggyBankHit_P", 1);
+}
+
 function void EdenApplyIpecacStats(void) {
   if (!CheckInventory("C149Flag"))
     return;
@@ -1699,6 +1724,15 @@ function void EdenApplyIpecacStats(void) {
   GiveInventory("EdenTearsAttr", 12);
   SyncEdenTears(CONVERTTEARS_FIRE2TEARS);
   TakeInventory("EdenShotSpeedAttr", CheckInventory("EdenShotSpeedAttr") / 5);
+}
+
+function void EdenApplyPiggyBankPickup(void) {
+  if (!CheckInventory("C227Flag"))
+    return;
+  if (CheckInventory("EdenPiggyBankPickup_F"))
+    return;
+  GiveInventory("DLC_CoinItem", 3);
+  GiveInventory("EdenPiggyBankPickup_F", 1);
 }
 
 function void EdenApplyGodheadStats(void) {
@@ -1739,6 +1773,7 @@ function void EdenApplyCSectionSkin(void) {
 function void EdenApplyMainPassives(void) {
   EdenApplyIpecacStats();
   EdenApplyGodheadStats();
+  EdenApplyPiggyBankPickup();
   EdenApplyAntiGravityStats();
   EdenApplyCSectionSkin();
 }
