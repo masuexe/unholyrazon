@@ -1,0 +1,159 @@
+// C396 — Ventricle Razor.
+// The item places two linked portals. Each player gets one blue/orange TID
+// pair from the offsets in ConstIntList_Uacsprops.dec.
+
+actor VentricleRazorIsaacItem_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIf(CallACS("core_CheckFooting") == 0, "No")
+    TNT1 A 0 A_JumpIfInventory("VentricleFlag", 1, "Orange")
+   Blue:
+    TNT1 A 0 Thing_Remove(EDEN_C396_BLUE_TID_OFFSET + tid)
+    TNT1 A 0 A_GiveInventory("VentricleFlag")
+    TNT1 A 0 A_SpawnItemEx("VentriclePortalBlue")
+    stop
+   Orange:
+    TNT1 A 0 Thing_Remove(EDEN_C396_ORANGE_TID_OFFSET + tid)
+    TNT1 A 0 A_TakeInventory("VentricleFlag")
+    TNT1 A 0 A_SpawnItemEx("VentriclePortalOrange")
+    stop
+   No:
+    TNT1 A 0
+    stop
+  }
+}
+
+actor C396Flag : UOnce {}
+actor VentricleFlag : UOnce {}
+
+actor VentriclePortalBlue {
+  -SOLID
+  +DONTBLAST
+  +NOGRAVITY
+  +LOOKALLAROUND
+  +QUICKTORETALIATE
+  RenderStyle None
+  Radius 32
+  Height 32
+  Scale 2.5
+  var int user_warpToTid;
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_JumpIfInventory("Once", 1, "Spawn2")
+    TNT1 A 0 A_SpawnItemEx("VentriclePortalBlueFX")
+    TNT1 A 0 Thing_ChangeTID(0, EDEN_C396_BLUE_TID_OFFSET + CallACS("core_getptrtid", AAPTR_TARGET))
+    TNT1 A 0 A_SetUserVar("user_warpToTid", EDEN_C396_ORANGE_TID_OFFSET + CallACS("core_getptrtid", AAPTR_TARGET))
+    TNT1 A 0 A_GiveInventory("Once")
+    TNT1 A 18
+    goto SpawnWait
+   SpawnWait:
+    TNT1 A 1 A_JumpIf(CallACS("rz_IsTIDUsed", user_warpToTid), "Spawn2")
+    wait
+   Spawn2:
+    TNT1 A 1 A_LookEx(LOF_NOSOUNDCHECK, 0, 32, 0, 360, "See")
+    loop
+   See:
+    TNT1 A 0 A_JumpIfCloser(32, "Blip")
+    TNT1 A 1 A_ClearTarget
+    goto Spawn2
+   Blip:
+    TNT1 A 0 ACS_NamedExecuteAlways("rz_RazorTeleport", 0, user_warpToTid, 50)
+    goto End
+   End:
+    TNT1 A 0 A_GiveInventory("CutterFlag", 1)
+    TNT1 A 0
+    TNT1 A 4
+    TNT1 A 0 A_ClearTarget
+    TNT1 A 10
+    TNT1 A 0 A_TakeInventory("CutterFlag", 10)
+    goto Spawn2
+  }
+}
+
+actor VentriclePortalOrange : VentriclePortalBlue {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_JumpIfInventory("Once", 1, "Spawn2")
+    TNT1 A 0 A_SpawnItemEx("VentriclePortalOrangeFX")
+    TNT1 A 0 Thing_ChangeTID(0, EDEN_C396_ORANGE_TID_OFFSET + CallACS("core_getptrtid", AAPTR_TARGET))
+    TNT1 A 0 A_SetUserVar("user_warpToTid", EDEN_C396_BLUE_TID_OFFSET + CallACS("core_getptrtid", AAPTR_TARGET))
+    TNT1 A 0 A_GiveInventory("Once")
+    TNT1 A 18
+    goto SpawnWait
+  }
+}
+
+actor VentriclePortalBlueFX {
+  +NOINTERACTION
+  +DONTBLAST
+  +THRUACTORS
+  +NOGRAVITY
+  +MISSILE
+  +FORCEXYBILLBOARD
+  Scale 2.5
+  States {
+   Spawn:
+    WMBH A 0
+    WMBH C 1 A_JumpIf(CallACS("rz_IsTIDUsed", EDEN_C396_ORANGE_TID_OFFSET - EDEN_C396_BLUE_TID_OFFSET + CallACS("core_getptrtid", AAPTR_TARGET)), "SpawnA")
+    loop
+   SpawnA:
+    WMBH A 1 A_JumpIfInTargetInventory("CutterFlag", 1, "Blip")
+    WMBH A 0 A_JumpIf(!CallACS("rz_IsTIDUsed", CallACS("core_getptrtid", AAPTR_TARGET)), "Death")
+    WMBH A 0 A_SetScale(ScaleX - 0.01, ScaleY + 0.01)
+    WMBH A 0 A_SetArg(0, args[0] - 1)
+    WMBH A 0 A_JumpIf(args[0] == -3, "SpawnB")
+    loop
+   SpawnB:
+    WMBH A 1 A_JumpIfInTargetInventory("CutterFlag", 1, "Blip")
+    WMBH A 0 A_JumpIf(!CallACS("rz_IsTIDUsed", CallACS("core_getptrtid", AAPTR_TARGET)), "Death")
+    WMBH A 0 A_SetScale(ScaleX + 0.01, ScaleY - 0.01)
+    WMBH A 0 A_SetArg(0, args[0] + 1)
+    WMBH A 0 A_JumpIf(args[0] == 3, "SpawnA")
+    loop
+   Blip:
+    WMBH A 0 A_PlaySoundEx("misc/galaxyteleport", "Weapon")
+    WMBH A 0 A_TakeFromTarget("CutterFlag", 1)
+    WMBH D 0 A_SetArg(0, 0)
+    WMBH D 0 A_SetScale(2.5, 2.5)
+    WMBH ABCCCBA 2
+    goto SpawnA
+   Death:
+    WMBH ABC 2
+    stop
+  }
+}
+
+actor VentriclePortalOrangeFX : VentriclePortalBlueFX {
+  States {
+   Spawn:
+    WMBH F 0
+    WMBH F 1 A_JumpIf(CallACS("rz_IsTIDUsed", EDEN_C396_BLUE_TID_OFFSET - EDEN_C396_ORANGE_TID_OFFSET + CallACS("core_getptrtid", AAPTR_TARGET)), "SpawnA")
+    loop
+   SpawnA:
+    WMBH D 1 A_JumpIfInTargetInventory("CutterFlag", 1, "Blip")
+    WMBH D 0 A_JumpIf(!CallACS("rz_IsTIDUsed", CallACS("core_getptrtid", AAPTR_TARGET)), "Death")
+    WMBH D 0 A_SetScale(ScaleX - 0.01, ScaleY + 0.01)
+    WMBH D 0 A_SetArg(0, args[0] - 1)
+    WMBH A 0 A_JumpIf(args[0] == -3, "SpawnB")
+    loop
+   SpawnB:
+    WMBH D 1 A_JumpIfInTargetInventory("CutterFlag", 1, "Blip")
+    WMBH D 0 A_JumpIf(!CallACS("rz_IsTIDUsed", CallACS("core_getptrtid", AAPTR_TARGET)), "Death")
+    WMBH D 0 A_SetScale(ScaleX + 0.01, ScaleY - 0.01)
+    WMBH D 0 A_SetArg(0, args[0] + 1)
+    WMBH A 0 A_JumpIf(args[0] == 3, "SpawnA")
+    loop
+   Blip:
+    WMBH D 0 A_PlaySoundEx("misc/galaxyteleport", "Weapon")
+    WMBH D 0 A_TakeFromTarget("CutterFlag", 1)
+    WMBH D 0 A_SetArg(0, 0)
+    WMBH D 0 A_SetScale(2.5, 2.5)
+    WMBH DEFFFED 2
+    goto SpawnA
+   Death:
+    WMBH DEF 2
+    stop
+  }
+}

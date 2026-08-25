@@ -20,3 +20,10 @@ Unholy Razon is a mod based on [Unholy](https://mm8bdm.net/forum/thread/unholy-c
 |------|------|
 |1000 - 1063 | Players |
 |1100 - 1163 | Vanilla TargetAimPoint |
+|1500 - 1563 | C396 Ventricle Razor Blue portals (`player TID + 500`) |
+|1600 - 1663 | C396 Ventricle Razor Orange portals (`player TID + 600`) |
+
+C396 previously used `1100 - 1163` for its blue portals. That conflicted with
+the vanilla `TargetAimPoint` range and is no longer used. The documented C396
+ranges are free in MM8BDM v6b and this project; other loaded mods should avoid
+them as well.

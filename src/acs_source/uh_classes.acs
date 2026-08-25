@@ -1692,7 +1692,57 @@ script "rz_EdenCanUseAlt" (void) {
     SetResultValue(0);
     terminate;
   }
+  if (i >= 0 && edenisaac_alt_id[i] == 396 &&
+      !ACS_NamedExecuteWithResult("core_CheckFooting")) {
+    SetResultValue(0);
+    terminate;
+  }
   SetResultValue(1);
+}
+
+function int EdenNormalizeAngle(int value) {
+  while (value < 0) {
+    value += 1.0;
+  }
+  while (value > 1.0) {
+    value -= 1.0;
+  }
+  return value;
+}
+
+// C396 Ventricle Razor teleport. The calling portal targets the player who
+// entered its radius; preserve the source momentum while rotating it by the
+// difference between the two portal angles.
+script "rz_RazorTeleport" (int totid, int thrustspeed) {
+  int momx;
+  int momy;
+  int nmomx;
+  int nmomy;
+  int oldangle;
+  int newangle;
+  int deltaangle;
+  int momangle;
+
+  SetActivatorToTarget(0);
+
+  momx = GetActorVelX(0);
+  momy = GetActorVelY(0);
+  oldangle = GetActorAngle(0);
+  newangle = GetActorAngle(totid);
+  momangle = VectorAngle(momx, momy);
+
+  deltaangle = EdenNormalizeAngle(oldangle - newangle);
+  momangle = EdenNormalizeAngle(momangle - deltaangle);
+
+  nmomx = FixedMul(cos(momangle), abs(momx)) + FixedMul(cos(momangle), abs(momy));
+  nmomy = FixedMul(sin(momangle), abs(momy)) + FixedMul(sin(momangle), abs(momx));
+
+  TakeInventory("JumpCancler", 1);
+  SetActorState(totid, "End");
+  SetActorPosition(0, GetActorX(totid), GetActorY(totid), GetActorZ(totid), 0);
+  SetActorVelocity(0, nmomx, nmomy, 0, false, false);
+  SetActorAngle(0, GetActorAngle(totid));
+  ThrustThingZ(0, thrustspeed, 0, 0);
 }
 
 // Server-side lifetime watcher for C042's hand-bomb warpers.  The base game
@@ -1943,8 +1993,8 @@ script "rz_EdenApplyCSectionSkin" (void) {
   EdenApplyCSectionSkin();
 }
 
-// DEBUG: remove before release — always grant C042 for in-game testing.
-function void EdenDebugForceC042(void) {
+// DEBUG: remove before release — always grant C396 for in-game testing.
+function void EdenDebugForceC396(void) {
   int i;
   str flag;
 
@@ -1955,7 +2005,7 @@ function void EdenDebugForceC042(void) {
   }
   TakeInventory("BobHeadFlag", 2);
   TakeInventory("BobHeadLeft_F", 1);
-  GiveInventory("C42Flag", 1);
+  GiveInventory("C396Flag", 1);
 }
 
 function void EdenRollMainItems(void) {
@@ -2030,7 +2080,7 @@ script "rz_InitEdenProperties" (void) {
     }
     if (!CheckInventory("EdenMainRolled_F") && edenisaac_main_count > 0) {
       EdenRollMainItems();
-      EdenDebugForceC042();
+      EdenDebugForceC396();
       EdenSyncFireWeapon();
     }
     terminate;
@@ -2084,7 +2134,7 @@ script "rz_InitEdenProperties" (void) {
   SetInventory("EdenLuckAttr", luck);
 
   EdenRollMainItems();
-  EdenDebugForceC042();
+  EdenDebugForceC396();
 
   EdenSyncFireWeapon();
 
