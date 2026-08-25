@@ -1701,6 +1701,15 @@ function void EdenApplyIpecacStats(void) {
   TakeInventory("EdenShotSpeedAttr", CheckInventory("EdenShotSpeedAttr") / 5);
 }
 
+function void EdenApplyGodheadStats(void) {
+  if (!CheckInventory("C331Flag"))
+    return;
+  GiveInventory("EdenDamageAttr", 30);
+  GiveInventory("EdenTearsAttr", 5);
+  SyncEdenTears(CONVERTTEARS_FIRE2TEARS);
+  TakeInventory("EdenShotSpeedAttr", 4);
+}
+
 function void EdenApplyAntiGravityStats(void) {
   int tears;
   if (!CheckInventory("C222Flag"))
@@ -1729,6 +1738,7 @@ function void EdenApplyCSectionSkin(void) {
 
 function void EdenApplyMainPassives(void) {
   EdenApplyIpecacStats();
+  EdenApplyGodheadStats();
   EdenApplyAntiGravityStats();
   EdenApplyCSectionSkin();
 }
@@ -1737,10 +1747,17 @@ script "rz_EdenApplyCSectionSkin" (void) {
   EdenApplyCSectionSkin();
 }
 
-// DEBUG: remove before release — always grant C118 for in-game testing.
-function void EdenDebugForceC118(void) {
-  GiveInventory("C118Flag", 1);
-  SetInventory("EdenItemSlot1", 118);
+// DEBUG: remove before release — always grant C331 for in-game testing.
+function void EdenDebugForceC331(void) {
+  int alreadyHadC331 = CheckInventory("C331Flag");
+  TakeInventory("C118Flag", 1);
+  GiveInventory("C331Flag", 1);
+  SetInventory("EdenItemSlot1", 331);
+  // EdenRollMainItems applies passives before this debug override. Apply only
+  // when C331 was not already part of the random roll, avoiding duplicate
+  // stats while still making the forced item functional.
+  if (!alreadyHadC331)
+    EdenApplyGodheadStats();
 }
 
 function void EdenRollMainItems(void) {
@@ -1815,7 +1832,7 @@ script "rz_InitEdenProperties" (void) {
     }
     if (!CheckInventory("EdenMainRolled_F") && edenisaac_main_count > 0) {
       EdenRollMainItems();
-      EdenDebugForceC118();
+      EdenDebugForceC331();
       EdenSyncFireWeapon();
     }
     terminate;
@@ -1869,7 +1886,7 @@ script "rz_InitEdenProperties" (void) {
   SetInventory("EdenLuckAttr", luck);
 
   EdenRollMainItems();
-  EdenDebugForceC118();
+  EdenDebugForceC331();
 
   EdenSyncFireWeapon();
 
@@ -1882,6 +1899,19 @@ script "rz_EdenTearColor" (int colorNum) {
 
 // Attractor aura gate: MASTER is a tear (not a player). uh_PointerExists is wrong here.
 script "rz_EdenAttractMasterOk" (void) {
+  if (!SetActivator(0, AAPTR_MASTER)) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (CheckInventory("EdenTearSpent_F")) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
+}
+
+// Godhead aura gate: MASTER is its tear/fetus, not the player owner.
+script "rz_EdenGodheadMasterOk" (void) {
   if (!SetActivator(0, AAPTR_MASTER)) {
     SetResultValue(0);
     terminate;

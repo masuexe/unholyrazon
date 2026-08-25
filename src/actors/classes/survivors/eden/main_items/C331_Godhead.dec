@@ -1,0 +1,81 @@
+actor C331Flag : UOnce {}
+
+actor EdenGodheadHoming_F : UOnce {}
+
+// Brimstone only inherits Godhead's homing. It does not receive the aura.
+actor EdenGodheadHomingApply_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_GiveInventory("EdenGodheadHoming_F", 1)
+    stop
+  }
+}
+
+// MASTER = tear/fetus. TRANSFERPOINTERS keeps TARGET = shooter so radius
+// damage is credited to the player while the aura follows its projectile.
+actor EdenGodheadAuraApply_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_SpawnItemEx("EdenGodheadAura", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS, 0, CallACS("core_NewUniqueTID"))
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_setTIDsPointerToThis", CallACS("core_CurrentUniqueTID"), AAPTR_MASTER)
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_ClearUniqueTID", 0)
+    stop
+  }
+}
+
+actor EdenGodheadTearApply_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_GiveInventory("EdenGodheadHomingApply_P", 1)
+    TNT1 A 0 A_GiveInventory("EdenGodheadAuraApply_P", 1)
+    stop
+  }
+}
+
+// Repentance-style Godhead aura. C Section's contact exclusion cannot be
+// represented exactly by A_Explode, so fetuses use the same radius pulse.
+actor EdenGodheadAura : BasicExplosion {
+  translation "192:192=160:160", "198:198=214:214"
+  damagetype "Eden"
+  Obituary "%o was consumed by %k's Godhead aura."
+  -USESPAWNEVENTSCRIPT
+  +FORCEXYBILLBOARD
+  +BRIGHT
+  renderstyle "Translucent"
+  alpha 0.4
+  scale 7.5
+  States {
+   Spawn:
+    TNT1 A 0
+    goto AuraTick
+   AuraTick:
+    TMFX A 0 A_JumpIf(CallACS("rz_EdenGodheadMasterOk") == 0, "Death")
+    TMFX A 0 A_Warp(AAPTR_MASTER, 0, 0, 0, 0, WARPF_NOCHECKPOSITION)
+    TMFX A 1 A_FadeOut(0.05)
+    TMFX A 0 A_JumpIf(CallACS("rz_EdenGodheadMasterOk") == 0, "Death")
+    TMFX A 0 A_Warp(AAPTR_MASTER, 0, 0, 0, 0, WARPF_NOCHECKPOSITION)
+    TMFX A 1 A_Explode(20, 60, 0, 0)
+    TMFX A 0 A_JumpIf(CallACS("rz_EdenGodheadMasterOk") == 0, "Death")
+    TMFX A 0 A_Warp(AAPTR_MASTER, 0, 0, 0, 0, WARPF_NOCHECKPOSITION)
+    TMFX A 1 A_FadeOut(0.05)
+    TMFX A 0 A_JumpIf(CallACS("rz_EdenGodheadMasterOk") == 0, "Death")
+    TMFX A 0 A_Warp(AAPTR_MASTER, 0, 0, 0, 0, WARPF_NOCHECKPOSITION)
+    TMFX A 1 A_Explode(20, 60, 0, 0)
+    TMFX A 0 A_JumpIf(CallACS("rz_EdenGodheadMasterOk") == 0, "Death")
+    TMFX A 0 A_Warp(AAPTR_MASTER, 0, 0, 0, 0, WARPF_NOCHECKPOSITION)
+    TMFX A 1 A_FadeIn(0.05)
+    TMFX A 0 A_JumpIf(CallACS("rz_EdenGodheadMasterOk") == 0, "Death")
+    TMFX A 0 A_Warp(AAPTR_MASTER, 0, 0, 0, 0, WARPF_NOCHECKPOSITION)
+    TMFX A 1 A_Explode(20, 60, 0, 0)
+    TMFX A 0 A_JumpIf(CallACS("rz_EdenGodheadMasterOk") == 0, "Death")
+    TMFX A 0 A_Warp(AAPTR_MASTER, 0, 0, 0, 0, WARPF_NOCHECKPOSITION)
+    TMFX A 1 A_FadeIn(0.05)
+    TMFX A 0 A_JumpIf(CallACS("rz_EdenGodheadMasterOk") == 0, "Death")
+    TMFX A 0 A_Warp(AAPTR_MASTER, 0, 0, 0, 0, WARPF_NOCHECKPOSITION)
+    TMFX A 1 A_Explode(20, 60, 0, 0)
+    goto AuraTick
+   Death:
+    TNT1 A 0
+    stop
+  }
+}
