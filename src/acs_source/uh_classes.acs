@@ -1750,6 +1750,86 @@ script "rz_EdenCurseTowerDamage" (int evt, int dmg, int dmgtype) EVENT {
   GiveInventory("PowerC371Cooldown", 1);
 }
 
+function bool EdenDamoclesSelfDmg(str dmgtype) {
+  if (!StrICmp(dmgtype, "GiveUpHope") ||
+      !StrICmp(dmgtype, "SuperGiveUpHope") ||
+      !StrICmp(dmgtype, "FortuneCoin") ||
+      !StrICmp(dmgtype, "OnFireB") ||
+      !StrICmp(dmgtype, "Damocles"))
+    return true;
+
+  if (IsPointerEqual(AAPTR_DAMAGE_TARGET, AAPTR_DAMAGE_SOURCE))
+    return true;
+
+  // Eden's own bomb actors can be ownerless during A_Explode, so the
+  // source==target check above is not sufficient for C371/Anarchist bombs.
+  if (SetActivator(0, AAPTR_DAMAGE_INFLICTOR)) {
+    if (CheckActorClass(0, "EdenBomb")) {
+      SetActivator(0, AAPTR_DAMAGE_TARGET);
+      return true;
+    }
+    SetActivator(0, AAPTR_DAMAGE_TARGET);
+  }
+  return false;
+}
+
+// C577 keeps razon3's escalating risk, but uses hit count rather than lost
+// health: the first hit gives 4/20000 per check and every later hit adds one
+// unit (a 25% increase over the first-hit risk).
+script "rz_EdenDamoclesDamage" (int evt, int dmg, int dmgtype) EVENT {
+  int effectivedamage;
+  int risk;
+
+  if (evt != GAMEEVENT_ACTOR_DAMAGED || dmg <= 0)
+    terminate;
+  if (PlayerNumber() < 0 || !CheckInventory("C577Flag") ||
+      !CheckInventory("EdenDamoclesActive_F") || CheckInventory("IsDead"))
+    terminate;
+  if (GetActorProperty(0, APROP_Invulnerable))
+    terminate;
+  if (EdenDamoclesSelfDmg(dmgtype))
+    terminate;
+
+  effectivedamage = GetEventResult();
+  if (effectivedamage <= 0)
+    terminate;
+  if (!CheckInventory("PlayerPropertyBuddha") &&
+      GetActorProperty(0, APROP_Health) <= effectivedamage)
+    terminate;
+
+  risk = CheckInventory("EdenDamoclesRisk");
+  if (risk <= 0)
+    GiveInventory("EdenDamoclesRisk", 4);
+  else
+    GiveInventory("EdenDamoclesRisk", 1);
+}
+
+// Called by the server-side watcher while its target is the Eden player.
+script "rz_EdenDamoclesShouldFall" (void) {
+  int risk;
+  if (!SetActivator(0, AAPTR_TARGET)) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (PlayerNumber() < 0 || CheckInventory("IsDead") ||
+      !CheckInventory("EdenDamoclesActive_F")) {
+    SetResultValue(0);
+    terminate;
+  }
+  risk = CheckInventory("EdenDamoclesRisk");
+  if (risk > 0 && Random(1, 20000) <= risk)
+    SetResultValue(1);
+  else
+    SetResultValue(0);
+}
+
+script "rz_EdenDamoclesKill" (void) {
+  if (PlayerNumber() < 0 || CheckInventory("IsDead") ||
+      GetActorProperty(0, APROP_Health) <= 0)
+    terminate;
+  Thing_Damage2(0, 30000, "Damocles");
+}
+
 function void EdenApplyIpecacStats(void) {
   if (!CheckInventory("C149Flag"))
     return;
@@ -1775,6 +1855,14 @@ function void EdenApplyGodheadStats(void) {
   GiveInventory("EdenTearsAttr", 5);
   SyncEdenTears(CONVERTTEARS_FIRE2TEARS);
   TakeInventory("EdenShotSpeedAttr", 4);
+}
+
+function void EdenApplyDamocles(void) {
+  if (!CheckInventory("C577Flag") ||
+      CheckInventory("EdenDamoclesActive_F") ||
+      CheckInventory("EdenDamoclesSpent_F"))
+    return;
+  GiveInventory("EdenDamoclesStart_P", 1);
 }
 
 function void EdenApplyAntiGravityStats(void) {
@@ -1806,6 +1894,7 @@ function void EdenApplyCSectionSkin(void) {
 function void EdenApplyMainPassives(void) {
   EdenApplyIpecacStats();
   EdenApplyGodheadStats();
+  EdenApplyDamocles();
   EdenApplyPiggyBankPickup();
   EdenApplyAntiGravityStats();
   EdenApplyCSectionSkin();

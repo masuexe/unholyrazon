@@ -218,17 +218,36 @@ function int GiveRandomBoxItemCore(int boxid, int prosperity, int silent)
 	return 1;
 }
 
+// Formal box-open path. C577 grants a second independent roll for real box
+// uses, while DLC coin / EyeDrop / AssHat callers continue to use the core
+// directly and therefore remain single-roll paths.
+function int GiveOpenedBoxItemCore(int boxid, int prosperity, int silent)
+{
+	int damocles;
+	int result;
+
+	damocles = CheckInventory("EdenDamoclesActive_F");
+	result = GiveRandomBoxItemCore(boxid, prosperity, silent);
+	if (!result || !damocles)
+		return result;
+
+	// The second roll shares Prosperity but suppresses the generic open sound.
+	// Item-specific loot stings remain governed by PlayBoxRollSound.
+	GiveRandomBoxItemCore(boxid, prosperity, 1);
+	return result;
+}
+
 // Box Use: arg0 = box item id (UHITEM_BOX_*). prosperity / silent as before.
 Script "rz_GiveRandomBoxItem" (int boxid, int prosperity, int silent)
 {
-	SetResultValue(GiveRandomBoxItemCore(boxid, prosperity, silent));
+	SetResultValue(GiveOpenedBoxItemCore(boxid, prosperity, silent));
 }
 
 // Addon path: resolve box actor from cvars (UHADD GiveUnholyBoxItem).
 Script "uh_GiveUnholyBoxItem_S" (void)
 {
 	int boxid = FindItemByActor(GetCVarString("uh_di_boxactor"));
-	SetResultValue(GiveRandomBoxItemCore(
+	SetResultValue(GiveOpenedBoxItemCore(
 		boxid,
 		GetCVar("uh_di_prosperity"),
 		GetCVar("uh_di_silent")
