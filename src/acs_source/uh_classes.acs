@@ -6,6 +6,13 @@
 global int 3: IsTeamGame;
 global int 4: ServerMAX;
 
+// Eden body-color translations; keep these in sync with UH_COLORS and
+// ConstIntList_Ucolors.dec.
+#define EDEN_DYE 20060
+#define EDEN_BRIMSTONE_DYE 20062
+#define EDEN_IPECAC_DYE 20063
+#define EDEN_ANTIGRAVITY_DYE 20064
+
 bool time_is_stopped = 0;
 
 //     ad88888ba
@@ -1970,6 +1977,22 @@ function void EdenApplyAntiGravityStats(void) {
   GiveInventory("EdenAntiGravStats_F", 1);
 }
 
+function int EdenGetColorDye(void) {
+  // Main-item color priority: Brimstone > Ipecac > Anti-Gravity > default.
+  if (CheckInventory("C118Flag"))
+    return EDEN_BRIMSTONE_DYE;
+  if (CheckInventory("C149Flag"))
+    return EDEN_IPECAC_DYE;
+  if (CheckInventory("C222Flag"))
+    return EDEN_ANTIGRAVITY_DYE;
+  return EDEN_DYE;
+}
+
+function void EdenApplyColor(void) {
+  // The Eden player has NoTeamTranslation, so this dye is applied directly.
+  ACS_NamedExecuteWithResult("core_weaponcolor", EdenGetColorDye());
+}
+
 function void EdenApplyCSectionSkin(void) {
   int pn;
   if (!CheckInventory("C678Flag"))
@@ -2061,6 +2084,7 @@ function void EdenRollMainItems(void) {
   }
 
   EdenApplyMainPassives();
+  EdenApplyColor();
   GiveInventory("EdenMainRolled_F", 1);
 }
 
@@ -2143,6 +2167,10 @@ script "rz_InitEdenProperties" (void) {
 
 script "rz_EdenTearColor" (int colorNum) {
   Thing_SetTranslation(0, colorNum);
+}
+
+script "rz_EdenWeaponColor" (void) {
+  EdenApplyColor();
 }
 
 // Attractor aura gate: MASTER is a tear (not a player). uh_PointerExists is wrong here.
