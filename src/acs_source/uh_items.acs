@@ -464,6 +464,83 @@ Script "uh_AssHatGenericPickup" (void)
 	SetResultValue(1);
 }
 
+// DickHat morph: roll DickHat box at hat position; spawn giveActor (hat class).
+Script "rz_DickHatRoll" (void)
+{
+	int boxid = FindItemByActor("DickHatItem");
+	int row;
+	int id;
+	str give;
+	str itemActor;
+	int x;
+	int y;
+	int z;
+	int tid;
+
+	if (boxid == UHITEM_FAIL || !IsUnholyBox(boxid))
+	{
+		SetResultValue(0);
+		terminate;
+	}
+
+	row = RandomItemDropRowFromBox(boxid);
+	if (row < 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+
+	id = GetItemDropItemIdByRow(row);
+	itemActor = GetItemActor(id);
+	give = uh_itemDropGive[row];
+	x = GetActorX(0);
+	y = GetActorY(0);
+	z = GetActorZ(0);
+
+	if (StrCmp(give, "") == 0)
+	{
+		tid = UniqueTID();
+		if (AssHatPendingAlloc(tid, itemActor) < 0)
+		{
+			SetResultValue(0);
+			terminate;
+		}
+		SpawnForced("DickHatItemX_Generic", x, y, z, tid, 0);
+	}
+	else
+		SpawnForced(give, x, y, z, 0, 0);
+	SetResultValue(1);
+}
+
+Script "uh_DickHatGenericSpawnFX" (void)
+{
+	str item = AssHatPendingPeek(ActivatorTID());
+	str fx;
+	if (StrCmp(item, "") == 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+	fx = StrParam(s:item, s:"FX");
+	SpawnForced(fx, GetActorX(0), GetActorY(0), GetActorZ(0) + 8.0, 0, 0);
+	SpawnForced("DickHatItemX_FX", GetActorX(0), GetActorY(0), GetActorZ(0) + 8.0, 0, 0);
+	SetResultValue(1);
+}
+
+Script "uh_DickHatGenericPickup" (void)
+{
+	str item = AssHatPendingTake(ActivatorTID());
+	int amt;
+	if (StrCmp(item, "") == 0)
+	{
+		SetResultValue(0);
+		terminate;
+	}
+	amt = 1 + ACS_NamedExecuteWithResult("uh_checkrune", RUNE_SPREAD) * 2;
+	GiveInventory(item, amt);
+	SetResultValue(1);
+}
+
 // Crooked Penny: double or strip all DefineUnholyItem identities (UHDT tables, no UHADD roundtrips).
 function void CrookedPennyMutateActor(str actor, bool lucky)
 {
