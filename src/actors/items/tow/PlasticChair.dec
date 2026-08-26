@@ -1,0 +1,102 @@
+actor PlasticChairItem : UnholyItem {
+  Tag "$TAG_RZ_TBOX00"
+  inventory.pickupmessage "If you want it... you'll have to take it."
+  inventory.icon "RZTI_00"
+  States {
+   Spawn:
+    I_TA J 6
+    loop
+   UseX:
+    TNT1 A 0
+    TNT1 A 0 A_PlaySoundEx("weapon/SumoLeap", "Item")
+    TNT1 A 0 A_FireCustomMissile("VergilChair", 0, 0, 0, 0)
+    goto End
+  }
+}
+
+actor VergilChair : BasicNoClassTranslationProjectile {
+  Translation "192:192=4:4", "198:198=84:84"
+  // -MISSILE
+  damagetype "VergilChair"
+  Obituary "%o sat on %k's plastic chair."
+  -NOGRAVITY
+  +RIPPER
+  //+THRUACTORS
+  +THRUSPECIES
+  +THRUGHOST
+  +BOUNCEONFLOORS
+  +BOUNCEONWALLS
+  +BOUNCEONCEILINGS
+  +BOUNCEONACTORS
+  +CANBOUNCEWATER
+  +NOEXPLODEFLOOR
+  +SKYEXPLODE
+  // +USEBOUNCESTATE
+  bouncefactor 1.0
+  wallbouncefactor 1.0
+  ReactionTime 11000//20265 // song length
+  damage (10)
+  Radius 16
+  Height 16
+  speed 50
+  scale 2.5
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 ThrustThingZ(0, 12, 0, 1)
+    TNT1 A 0 A_PlaySoundEx("item/GoodChairSound", "SoundSlot7", 1)
+    I2TA A 0 A_SetAngle(random(0, 359))
+    Goto Spinning
+   Spinning:
+    I2TA A 1 A_SetAngle(15+angle)
+    I2TA A 0 ACS_NamedExecuteWithResult("uh_RadiusPull", 25, 250, 0)
+    I2TA A 0 A_CountDown
+    loop
+   Bounce:
+    I2TA A 0 ACS_NamedExecuteWithResult("core_setactorproperty", APROP_Speed, 5, 4)//A_ScaleVelocity((CallACS("core_getactorproperty",0,APROP_Speed)/65536)*1.25)
+    goto Spinning
+   Death:
+    TNT1 A 1
+    stop
+  }
+}
+
+actor TopTwistPain_H : BasicHelper {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_Jump(256, "Left", "Right")
+   Left:
+    TNT1 AAAAAAAAAAAAAAAAAAAAA 1 A_GiveToTarget("TopTwistAnglerL_P")
+    stop
+   Right:
+    TNT1 AAAAAAAAAAAAAAAAAAAAA 1 A_GiveToTarget("TopTwistAnglerR_P")
+    stop
+  }
+}
+
+actor TopTwistAnglerL_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_SetAngle(angle + 20.0)
+    TNT1 A 0 A_SpawnItemEx("TopTwistFX", 8)
+    stop
+  }
+}
+
+actor TopTwistAnglerR_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_SetAngle(angle - 20.0)
+    TNT1 A 0 A_SpawnItemEx("TopTwistFX", 8)
+    stop
+  }
+}
+
+actor TopTwistFX : BasicGraphicEffect {
+  States {
+   Spawn:
+    TOPS A 2
+    stop
+  }
+}
