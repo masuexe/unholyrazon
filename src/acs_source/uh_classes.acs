@@ -1176,16 +1176,64 @@ script "rz_FloovyDeath" (int tid) {
   ACS_NamedExecuteWithResult("uh_Health", 6, health);  // UHEALTH_HEAL
 }
 
+// Crystrap M2: find the nearest visible player in the eye's scan sphere.
+// The caller is the CrystrapEyeShot actor; its TARGET pointer is the owner.
+script "rz_CrystrapEyeAcquire" (int radius) {
+  int ownertid = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  int besttid = 0;
+  int bestdistance = radius + 1;
+
+  for (int p = 0; p < ServerMAX; p++) {
+    if (!PlayerInGame(p) || PlayerIsSpectator(p)) {
+      continue;
+    }
+
+    int tid = p + 1000;
+    if (tid == ownertid || CheckActorInventory(tid, "IsDead") ||
+        GetActorProperty(tid, APROP_Health) <= 0) {
+      continue;
+    }
+
+    int distance = XYZDistance(0, tid);
+    if (distance > radius || distance > bestdistance ||
+        !CheckSight(0, tid, 0)) {
+      continue;
+    }
+
+    if (distance < bestdistance || (distance == bestdistance &&
+        (besttid == 0 || tid < besttid))) {
+      besttid = tid;
+      bestdistance = distance;
+    }
+  }
+
+  if (besttid > 0) {
+    SetPointer(AAPTR_TRACER, besttid);
+  }
+  SetResultValue(besttid > 0);
+}
+
 // Crystrap M2: tag a hit player as a camera target, then AltFire looks through them.
-script "rz_CrystrapSpying" (int ownerTid, int tracerTid) {
-  if (tracerTid < 1000 || tracerTid > 1063) terminate;
-  SetActivator(ownerTid);
+script "rz_CrystrapSpying" (int ownertid, int tracerTid) {
+  if (ownertid < 1000 || ownertid > 1063 ||
+      tracerTid < 1000 || tracerTid > 1063) terminate;
+  SetActivator(ownertid);
+
+  int oldTid = CheckInventory("CrystrapSpyingTID");
+  int wasLooking = CheckInventory("CrystrapIsLookingOnHisEye");
+  if (oldTid >= 1000 && oldTid <= 1063 && oldTid != tracerTid) {
+    TakeActorInventory(oldTid, "CrystrapIsSpyingOnYou", 1);
+  }
+
   SetInventory("CrystrapSpyingTID", tracerTid);
   GiveActorInventory(tracerTid, "CrystrapIsSpyingOnYou", 1);
   SetHudSize(600, 380, 0);
-  HudMessage(s:"You can spy on ", n:tracerTid - 999, s:"!"; HUDMSG_FADEOUT|HUDMSG_COLORSTRING, 11400 + ownerTid, "MenuWhite", 300.4, 50.0, 2.0, 0.5);
-  GiveActorInventory(ownerTid, "CrystrapSpyingSound_P", 1);
+  HudMessage(s:"You can spy on ", n:tracerTid - 999, s:"!"; HUDMSG_FADEOUT|HUDMSG_COLORSTRING, 11400 + ownertid, "MenuWhite", 300.4, 50.0, 2.0, 0.5);
+  GiveActorInventory(ownertid, "CrystrapSpyingSound_P", 1);
   GiveActorInventory(tracerTid, "CrystrapSpyingSound_P", 1);
+  if (wasLooking) {
+    ChangeCamera(tracerTid, 0, 0);
+  }
 }
 
 script "rz_CrystrapSpyingReset" (void) {
