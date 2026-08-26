@@ -7,6 +7,7 @@
 #include "asstlib.acs"
 
 #define UH_IMAGE_ID_BASE -19730000
+#define UH_CRYSTRAP_SPY_HUD_ID UH_IMAGE_ID_BASE - 200
 
 #define CUST_INVUN_BAR 160
 #define CUST_GUARDUP_BAR 161
@@ -377,6 +378,27 @@ function void DrawUHClassMugshot(int cam)
   }
 }
 
+function void DrawCrystrapSpyingHud(void)
+{
+  int spyTid = 0;
+  int consolePlayer = ConsolePlayerNumber();
+  if (consolePlayer >= 0 && PlayerInGame(consolePlayer)) {
+    // DrawBar scripts run with the current camera as activator.  During
+    // Crystrap spying that is the target, so read the marker locally.
+    spyTid = CheckActorInventory(consolePlayer + 1000, "CrystrapSpyingTID");
+  }
+
+  if (AssistDisplayBar_On() && spyTid >= 1000 && spyTid <= 1063) {
+    SetHudSize(320, 200, 0);
+    HudMessageBold(s:"Spying: ", n:spyTid - 999;
+      HUDMSG_PLAIN, UH_CRYSTRAP_SPY_HUD_ID, CR_CYAN,
+      160.4, 4.1, 0.1, 1.0);
+  } else {
+    HudMessageBold(s:""; HUDMSG_PLAIN, UH_CRYSTRAP_SPY_HUD_ID,
+      CR_UNTRANSLATED, 0.0, 0.0, 0.01, 1.0);
+  }
+}
+
 Script "uh_assist_General" (int cam) CLIENTSIDE
 {
   SetActivator(cam);
@@ -459,6 +481,10 @@ script "DrawBar_ReloadIcon" (void) {
       DrawReloadIcon(tag);
     }
   }
+}
+
+script "DrawBar_Crystrap_W" (void) {
+  DrawCrystrapSpyingHud();
 }
 
 script "DrawBar_MegamanUShiny_W" (void) {
