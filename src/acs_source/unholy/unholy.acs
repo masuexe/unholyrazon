@@ -791,3 +791,118 @@ script "ub_WatchBossesAndEyes" (void)//Checks if all bosses are dead
 // script "uh_ChangeTeam" (int team) {
 // 	player_SetTeam(team, true);
 // }
+script "rz_DickheadRevival" (int owner_is_a_boss) {
+	int isbossrevival;
+	int revived_tid;
+	int i;
+	int j;
+	int pn;
+	int deadplayertidlist[MAX_PLAYERS];
+	int deadsurvivorcount;
+	int deadbosstidlist[MAX_BOSSES][2];
+	int deadbosscount;
+	int morphbossnum;
+	int slot;
+	int isboss;
+	int waittics;
+	int dropx;
+	int dropy;
+	int dropz;
+	int selftid;
+	int bossnum;
+
+	selftid = ActivatorTID();
+	if (selftid == 0) {
+		selftid = UniqueTID();
+		Thing_ChangeTID(0, selftid);
+	}
+	dropx = GetActorX(0);
+	dropy = GetActorY(0);
+	dropz = GetActorZ(0);
+
+	revived_tid = 0;
+	isbossrevival = 0;
+	deadsurvivorcount = 0;
+	deadbosscount = 0;
+	slot = 0;
+
+	if (totalplayersarr[PLS_DEAD] != 0) {
+		revivingqueue++;
+		waittics = revivingqueue - 1;
+		if (waittics > 0)
+			Delay(waittics);
+
+		ShuffleRevivalPlayerOrder();
+		for (i = 0; i < MAX_PLAYERS; i++) {
+			pn = revivalplayerorder[i];
+			if (PlayerIsSpectator(pn) != 2)
+				continue;
+
+			isboss = 0;
+			morphbossnum = 0;
+			for (j = 0; j < multibosscheck; j++) {
+				if (pn + 1000 == bossdataarr[j][BOSSDATA_TID]) {
+					isboss = 1;
+					morphbossnum = j;
+					break;
+				}
+			}
+			if (isboss) {
+				deadbosstidlist[deadbosscount][0] = pn + 1000;
+				deadbosstidlist[deadbosscount][1] = morphbossnum;
+				deadbosscount++;
+			}
+			deadplayertidlist[deadsurvivorcount] = pn + 1000;
+			deadsurvivorcount++;
+			break;
+		}
+
+		if (owner_is_a_boss && deadbosscount > 0) {
+			slot = random(0, deadbosscount - 1);
+			revived_tid = deadbosstidlist[slot][0];
+			isbossrevival = 1;
+		}
+		else if (deadsurvivorcount > 0) {
+			revived_tid = deadplayertidlist[random(0, deadsurvivorcount - 1)];
+			for (j = 0; j < multibosscheck; j++) {
+				if (revived_tid == bossdataarr[j][BOSSDATA_TID]) {
+					isbossrevival = 1;
+					slot = j;
+					deadbosstidlist[slot][1] = j;
+					break;
+				}
+			}
+		}
+
+		DebugLog(strParam(s:"rz_DickheadRevival revived_tid=", i:revived_tid));
+		if (revived_tid == 0) {
+			SetActorState(selftid, "BecomePickup", 0);
+			revivingqueue--;
+			terminate;
+		}
+
+		SpawnForced("DickheadReviveBoom", dropx, dropy, dropz);
+		SetDeadSpectator(revived_tid - 1000, 0);
+		Delay(2);
+
+		if (isbossrevival) {
+			bossnum = deadbosstidlist[slot][1];
+			bossdataarr[bossnum][BOSSDATA_MORPHED] = morphActorToBoss(bossdataarr[bossnum][BOSSDATA_TID], bossdataarr[bossnum][BOSSDATA_NUM], "GigaAstroExplode");
+			PlayerLifeStatusArr_UpdateFunc(revived_tid - 1000, PLS_BOSS);
+			bossslotalive[bossnum] = true;
+		}
+		else
+			PlayerLifeStatusArr_UpdateFunc(revived_tid - 1000, PLS_SURVIVOR);
+
+		SetActorPosition(revived_tid, dropx, dropy, dropz + 32.0, false);
+
+		SetFont("BIGFONT");
+		SetHudSize(640, 480, 0);
+		HudMessageBold(n:revived_tid - 1000 + 1, s:" \cvhas been revived!"; HUDMSG_FADEOUT|HUDMSG_LOG, 49, CR_YELLOW, 320.4, 464.2, 1.8, 0.2);
+		revivingqueue--;
+		SetActorState(selftid, "UsedUp", 0);
+		terminate;
+	}
+
+	SetActorState(selftid, "BecomePickup", 0);
+}

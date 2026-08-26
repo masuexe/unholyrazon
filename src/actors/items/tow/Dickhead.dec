@@ -48,10 +48,11 @@ actor DickheadProjectile : BasicNoClassTranslationProjectile {
   Damage (0)
   States {
    Spawn:
+    I2TE A 0
     I2TE A 1 A_CheckFloor("Floor")
     wait
    Floor:
-    I2TE A 0 A_SpawnItemEx("Dickhead")
+    I2TE A 0 A_SpawnItemEx("Dickhead", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
     goto Death
    Death:
     TNT1 A 0
@@ -63,10 +64,42 @@ actor Dickhead : CustomInventory {
   Scale 2.5
   States {
    Spawn:
+    I2TE AAA 35
+   Revive:
+    I2TE A 0 A_ChangeFlag("SPECIAL", 0)
+    I2TE A 0 A_JumpIfInTargetInventory("Is_UH_BossNum", 1, "ReviveAsBoss")
+    I2TE A 0 ACS_NamedExecuteAlways("rz_DickheadRevival", 0, 0)
+    I2TE A 1
+    wait
+   ReviveAsBoss:
+    I2TE A 0 ACS_NamedExecuteAlways("rz_DickheadRevival", 0, 1)
+    I2TE A 1
+    wait
+   UsedUp:
+    TNT1 A 0
+    stop
+   BecomePickup:
+    I2TE A 0 A_ChangeFlag("SPECIAL", 1)
     I2TE A 1
     wait
    Pickup:
     TNT1 A 0 A_GiveInventory("AutoUnholyInsuranceItem")
+    stop
+  }
+}
+
+actor DickheadReviveBoom : BasicExplosion {
+  Translation "192:192=176:176", "198:198=182:182"
+  Damagetype "Telefrag"
+  Obituary "$OB_MPTELEFRAG"
+  +OLDRADIUSDMG
+  +PIERCEARMOR
+  Radius 12
+  Height 64
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 A_Explode(999900, 48, 1, 0, 97)
     stop
   }
 }
