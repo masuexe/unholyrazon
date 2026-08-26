@@ -42,6 +42,8 @@ Script "ub_Death_ChangeIsAlive" DEATH
 			ACS_NamedExecuteAlways("uh_SpellCardBreak", 0);
 		// W8 is a survival spell: capture only on timer end (not on death)
 		playerLifeStatusArr_UpdateFunc(pn,0);
+		if (dickheadwatchcount > 0)
+			ACS_NamedExecuteAlways("rz_DickheadWatchDeath", 0, pn);
 	}
 }
 Script "ub_Disconnect_ChangeIsAlive" (int PlayerNum) DISCONNECT
@@ -791,6 +793,36 @@ script "ub_WatchBossesAndEyes" (void)//Checks if all bosses are dead
 // script "uh_ChangeTeam" (int team) {
 // 	player_SetTeam(team, true);
 // }
+
+function void DickheadDoRevive(int selftid, int revived_tid, int isbossrevival, int bossslot) {
+	int dropx;
+	int dropy;
+	int dropz;
+	int pn;
+	int bossnum;
+
+	pn = revived_tid - 1000;
+	dropx = GetActorX(selftid);
+	dropy = GetActorY(selftid);
+	dropz = GetActorZ(selftid);
+
+	if (isbossrevival) {
+		bossnum = bossslot;
+		bossdataarr[bossnum][BOSSDATA_MORPHED] = morphActorToBoss(bossdataarr[bossnum][BOSSDATA_TID], bossdataarr[bossnum][BOSSDATA_NUM], "GigaAstroExplode");
+		PlayerLifeStatusArr_UpdateFunc(pn, PLS_BOSS);
+		bossslotalive[bossnum] = true;
+	}
+	else
+		PlayerLifeStatusArr_UpdateFunc(pn, PLS_SURVIVOR);
+
+	SetActorPosition(revived_tid, dropx, dropy, dropz + 32.0, false);
+
+	SetFont("BIGFONT");
+	SetHudSize(640, 480, 0);
+	HudMessageBold(n:pn + 1, s:" \cvhas been revived!"; HUDMSG_FADEOUT|HUDMSG_LOG, 49, CR_YELLOW, 320.4, 464.2, 1.8, 0.2);
+	SetActorState(selftid, "UsedUp", 0);
+}
+
 script "rz_DickheadRevival" (void) {
 	int isbossrevival;
 	int revived_tid;
@@ -805,11 +837,7 @@ script "rz_DickheadRevival" (void) {
 	int slot;
 	int isboss;
 	int waittics;
-	int dropx;
-	int dropy;
-	int dropz;
 	int selftid;
-	int bossnum;
 	int owner_is_a_boss;
 
 	selftid = ActivatorTID();
@@ -817,10 +845,8 @@ script "rz_DickheadRevival" (void) {
 		selftid = UniqueTID();
 		Thing_ChangeTID(0, selftid);
 	}
-	dropx = GetActorX(0);
-	dropy = GetActorY(0);
-	dropz = GetActorZ(0);
 
+	owner_is_a_boss = 0;
 	if (SetActivator(0, AAPTR_TARGET))
 		owner_is_a_boss = CheckInventory("Is_UH_BossNum");
 	SetActivator(selftid);
@@ -880,34 +906,84 @@ script "rz_DickheadRevival" (void) {
 		}
 
 		DebugLog(strParam(s:"rz_DickheadRevival revived_tid=", i:revived_tid));
-		if (revived_tid == 0) {
-			SetActorState(selftid, "BecomePickup", 0);
+		if (revived_tid != 0) {
+			ChangeActorFlag(selftid, "SPECIAL", false);
+			SpawnForced("DickheadReviveBoom", GetActorX(selftid), GetActorY(selftid), GetActorZ(selftid));
+			SetDeadSpectator(revived_tid - 1000, 0);
+			Delay(2);
+			DickheadDoRevive(selftid, revived_tid, isbossrevival, slot);
 			revivingqueue--;
 			terminate;
 		}
-
-		SpawnForced("DickheadReviveBoom", dropx, dropy, dropz);
-		SetDeadSpectator(revived_tid - 1000, 0);
-		Delay(2);
-
-		if (isbossrevival) {
-			bossnum = deadbosstidlist[slot][1];
-			bossdataarr[bossnum][BOSSDATA_MORPHED] = morphActorToBoss(bossdataarr[bossnum][BOSSDATA_TID], bossdataarr[bossnum][BOSSDATA_NUM], "GigaAstroExplode");
-			PlayerLifeStatusArr_UpdateFunc(revived_tid - 1000, PLS_BOSS);
-			bossslotalive[bossnum] = true;
-		}
-		else
-			PlayerLifeStatusArr_UpdateFunc(revived_tid - 1000, PLS_SURVIVOR);
-
-		SetActorPosition(revived_tid, dropx, dropy, dropz + 32.0, false);
-
-		SetFont("BIGFONT");
-		SetHudSize(640, 480, 0);
-		HudMessageBold(n:revived_tid - 1000 + 1, s:" \cvhas been revived!"; HUDMSG_FADEOUT|HUDMSG_LOG, 49, CR_YELLOW, 320.4, 464.2, 1.8, 0.2);
 		revivingqueue--;
-		SetActorState(selftid, "UsedUp", 0);
-		terminate;
+
+		for (i = 0; i < MAX_PLAYERS; i++) {
+			pn = revivalplayerorder[i];
+			if (playerLifeStatusArr[pn] != PLS_DEAD)
+				continue;
+			SetActorState(selftid, "BecomePickup", 0);
+			SetActivator(selftid);
+			ACS_NamedExecuteAlways("rz_DickheadRevivalDelayed", 0, pn, selftid);
+			terminate;
+		}
 	}
 
 	SetActorState(selftid, "BecomePickup", 0);
+	DickheadWatchAdd(selftid);
+}
+
+script "rz_DickheadWatchDeath" (int dead_pn) {
+	int selftid;
+
+	if (dickheadwatchcount <= 0)
+		terminate;
+
+	selftid = DickheadWatchClaim();
+	if (selftid == 0)
+		terminate;
+
+	SetActivator(selftid);
+	ACS_NamedExecuteAlways("rz_DickheadRevivalDelayed", 0, dead_pn, selftid);
+}
+
+script "rz_DickheadRevivalDelayed" (int dead_pn, int selftid) {
+	int revived_tid;
+	int isbossrevival;
+	int bossslot;
+	int waittics;
+	int j;
+
+	SetActivator(selftid);
+	Delay(DICKHEAD_REVIVE_DELAY);
+
+	if (ClassifyActor(selftid) == ACTOR_NONE)
+		terminate;
+
+	if (PlayerIsSpectator(dead_pn) != 2) {
+		DickheadWatchAdd(selftid);
+		terminate;
+	}
+
+	revived_tid = dead_pn + 1000;
+	isbossrevival = 0;
+	bossslot = 0;
+	for (j = 0; j < multibosscheck; j++) {
+		if (revived_tid == bossdataarr[j][BOSSDATA_TID]) {
+			isbossrevival = 1;
+			bossslot = j;
+			break;
+		}
+	}
+
+	revivingqueue++;
+	waittics = revivingqueue - 1;
+	if (waittics > 0)
+		Delay(waittics);
+
+	ChangeActorFlag(selftid, "SPECIAL", false);
+	SpawnForced("DickheadReviveBoom", GetActorX(selftid), GetActorY(selftid), GetActorZ(selftid));
+	SetDeadSpectator(dead_pn, 0);
+	Delay(2);
+	DickheadDoRevive(selftid, revived_tid, isbossrevival, bossslot);
+	revivingqueue--;
 }
