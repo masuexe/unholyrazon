@@ -1,0 +1,186 @@
+actor CrowNestItem : UnholyItem {
+  Tag "$TAG_RZ_PBOX03"
+  inventory.pickupmessage "Bird Turret! Crow Nest!"
+  inventory.icon "RZPI_03"
+  States {
+   Spawn:
+    I_RP D 6
+    loop
+   UseX:
+    TNT1 A 0 A_PlaySoundEx("assists_L/item1spawn", "Item")
+   UseX_Silent:
+    TNT1 A 0 A_SpawnItemEx("KyorownSpawner", 64, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "UseX2")
+    goto End
+   UseX2:
+    TNT1 A 0 A_SpawnItemEx("KyorownSpawner", 0, -64, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("KyorownSpawner", 0, 64, 0, 0, 0, 0, 0, 0)
+    goto End
+  }
+}
+
+actor KyorownSpawner : BasicHelper {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_Jump(256, 1, 2, 3, 4)
+    TNT1 A 0 A_SpawnItemEx("RapidKyorown")
+    stop
+    TNT1 A 0 A_SpawnItemEx("DamageKyorown")
+    stop
+    TNT1 A 0 A_SpawnItemEx("SpreadKyorown")
+    stop
+    TNT1 A 0 A_SpawnItemEx("BounceKyorown")
+    stop
+  }
+}
+
+actor CrowNestKyorown : KyorownU {
+  States {
+   Spawn:
+    KYOR A 0
+   Spawn2:
+    KYOR A -1
+    loop
+   Pain:
+    KYOR A 0 A_ChangeFlag("SOLID", 0)
+    KYOR A 5 A_ChangeFlag("SHOOTABLE", 0)
+    KYOR A 0 A_FaceTarget
+    KYOR A 0 A_CustomMissile("KyorownBulletU", 32, 0, 0)
+    KYOR A 0 A_PlaySoundEx("misc/devilfire", "Voice")
+    KYOR BC 4
+    KYOR A 20
+    KYOR A 0 A_ChangeFlag("SOLID", 1)
+    KYOR A 0 A_ChangeFlag("SHOOTABLE", 1)
+    KYOR A 0 A_ClearTarget
+    Goto Spawn2
+  }
+}
+
+actor RapidKyorown : CrowNestKyorown {
+  Translation "61:61=162:162"
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SetArg(1, 6)
+   Spawn2:
+    KYOR A -1
+    loop
+   Pain:
+    KYOR A 0 A_ChangeFlag("SOLID", 0)
+    KYOR A 5 A_ChangeFlag("SHOOTABLE", 0)
+    KYOR A 0 A_SetArg(0, args[1])
+    goto Fire
+   Fire:
+    KYOR A 0 A_FaceTarget
+    KYOR A 0 A_CustomMissile("KyorownBulletRpd", 32, 0, 0)
+    KYOR A 0 A_PlaySoundEx("misc/devilfire", "Voice")
+    KYOR BC 2
+    KYOR A 3
+    KYOR A 0 A_CountdownArg(0, "FireEnd")
+    loop
+    /*Spawn:
+    TNT1 A 0 A_SetArg(1,-1)
+    Pain:
+    KYOR A 0 A_ChangeFlag("SOLID",0)
+    KYOR A 5 A_ChangeFlag("SHOOTABLE",0)
+    KYOR A 0 A_SetArg(1,args[1]+1)
+    KYOR A 0 A_SetArg(0,args[1])
+    goto Fire
+    Fire:
+    KYOR A 0 A_FaceTarget
+    KYOR A 0 A_CustomMissile("KyorownBulletU",32,0,0)
+    KYOR A 0 A_PlaySoundEx("misc/devilfire","Voice")
+    KYOR BC 4
+    KYOR A 6
+    KYOR A 0 A_CountdownArg(0,"FireEnd")
+    loop*/
+   FireEnd:
+    KYOR A 0 A_ChangeFlag("SOLID", 1)
+    KYOR A 0 A_ChangeFlag("SHOOTABLE", 1)
+    KYOR A 0 A_ClearTarget
+    Goto Spawn2
+  }
+}
+
+actor KyorownBulletRpd : KyorownBulletU {Damage (50)}
+
+actor DamageKyorown : CrowNestKyorown {
+  Translation "61:61=180:180"
+  States {
+   Pain:
+    KYOR A 0 A_ChangeFlag("SOLID", 0)
+    KYOR A 5 A_ChangeFlag("SHOOTABLE", 0)
+    KYOR A 0 A_FaceTarget
+    KYOR A 0 A_CustomMissile("KyorownBulletDmg", 32, 0, 0)
+    KYOR A 0 A_PlaySoundEx("misc/devilfire", "Voice")
+    KYOR BC 4
+    KYOR A 20
+    KYOR A 0 A_ChangeFlag("SOLID", 1)
+    KYOR A 0 A_ChangeFlag("SHOOTABLE", 1)
+    KYOR A 0 A_ClearTarget
+    Goto Spawn2
+  }
+}
+
+actor KyorownBulletDmg : KyorownBulletU {
+  Translation "192:192=172:172", "198:198=42:42"
+  Damage (200) //160
+  States {
+   Death:
+    TNT1 A 0 A_PlaySoundEx("weapon/napalm", "Weapon")
+    TNT1 A 0 A_Explode(200, 128, 0, 0, 9)
+    TNT1 A 4 A_SpawnItemEx("BasicBoom4FX_ColorX", 0, 0, 0, 0, 0, 0, 0, 1+16384)
+    stop
+  }
+}
+
+actor SpreadKyorown : CrowNestKyorown {
+  Translation "61:61=246:246"
+  States {
+   Pain:
+    KYOR A 0 A_ChangeFlag("SOLID", 0)
+    KYOR A 5 A_ChangeFlag("SHOOTABLE", 0)
+    KYOR A 0 A_FaceTarget
+    KYOR A 0 A_CustomMissile("KyorownBulletSpr", 32, 0, -30)
+    KYOR A 0 A_CustomMissile("KyorownBulletSpr", 32, 0, -15)
+    KYOR A 0 A_CustomMissile("KyorownBulletSpr", 32, 0, 0)
+    KYOR A 0 A_CustomMissile("KyorownBulletSpr", 32, 0, 15)
+    KYOR A 0 A_CustomMissile("KyorownBulletSpr", 32, 0, 30)
+    KYOR A 0 A_PlaySoundEx("misc/devilfire", "Voice")
+    KYOR BC 3
+    KYOR A 10
+    KYOR A 0 A_ChangeFlag("SOLID", 1)
+    KYOR A 0 A_ChangeFlag("SHOOTABLE", 1)
+    KYOR A 0 A_ClearTarget
+    Goto Spawn2
+  }
+}
+
+actor KyorownBulletSpr : KyorownBulletU {Damage (90)}
+
+actor BounceKyorown : CrowNestKyorown {
+  Translation "61:61=203:203"
+  States {
+   Pain:
+    KYOR A 0 A_ChangeFlag("SOLID", 0)
+    KYOR A 5 A_ChangeFlag("SHOOTABLE", 0)
+    KYOR A 0 A_FaceTarget
+    KYOR A 0 A_CustomMissile("KyorownBulletBnc", 32, 0, 0)
+    KYOR A 0 A_PlaySoundEx("misc/devilfire", "Voice")
+    KYOR BC 2
+    KYOR A 8
+    KYOR A 0 A_ChangeFlag("SOLID", 1)
+    KYOR A 0 A_ChangeFlag("SHOOTABLE", 1)
+    KYOR A 0 A_ClearTarget
+    Goto Spawn2
+  }
+}
+
+actor KyorownBulletBnc : BasicBouncer {
+  Damage (30)
+  Bouncecount 6
+  +RIPPER
+  //-NOGRAVITY
+  //Gravity 0.4
+}
