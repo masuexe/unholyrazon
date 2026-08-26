@@ -1,0 +1,146 @@
+actor FortuneCoinItem : UnholyItem {
+  Tag "$TAG_RZ_PBOX02"
+  inventory.amount 2
+  inventory.pickupmessage "You win some, you lose some."
+  inventory.icon "RZPI_02"
+  States {
+   Spawn:
+    I_RP C 6
+    loop
+   Use:
+   UseX:
+    //TNT1 A 0 A_PlaySoundEX("weapon/BoxBeep","Voice")
+
+    TNT1 A 0 A_GiveInventory("FortuneCoinChanceTime_P")
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "UseX2")
+    goto End
+   UseX2:
+    TNT1 A 0 A_GiveInventory("FortuneCoinChanceTime_P")
+    TNT1 A 0 A_GiveInventory("FortuneCoinChanceTime_P")
+    goto End
+  }
+}
+
+actor FortuneCoinChanceTime_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_Jump(256, "ThatsGood", "OhShit")
+   ThatsGood:
+    TNT1 A 0 A_GiveInventory("FortuneCoinHeal_P")
+    goto End
+   OhShit:
+    TNT1 A 0 A_GiveInventory("FortuneCoinPunish_P")
+    goto End
+  }
+}
+
+actor FortuneCoinHeal_P : CustomInventory {
+  //inventory.pickupmessage "\cdDivine Blessing! HP Restored!"
+  States {
+   Pickup:
+    //TNT1 A 0 A_Log("\cdDivine Blessing! HP Restored!")
+    TNT1 A 0 A_PlaySoundEx("item/energyup", "Item")
+    //TNT1 A 0 A_PlaySoundEx("items/EatHotDog","SoundSlot5")
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, CallACS("uh_Health", UHEALTH_GET_MAX)/2)
+    stop
+  }
+}
+
+actor FortuneCoinPunish_P : CustomInventory {
+  //inventory.pickupmessage "\chCursed Fate! Thunderstruck!"
+  damagetype "FortuneCoin"
+  Obituary "%k's Fortune Coin showed %o's fortune is death."
+  +BRIGHT
+  States {
+   Pickup:
+    //TNT1 A 0 A_Log("\chCursed Fate! Thunderstruck!")
+    Y_BC N 1 A_SpawnItemEx("ThunderTankShotExtendFX", 0, 0, 355, 0, 0, 0, 0, 1)
+    Y_BC O 0 A_PlaySoundEx("weapon/lightningbolt", "Weapon")
+    X_8B A 0 A_SpawnItemEx("FortuneCoinPunishSelf_H", 0, 0, 0, 0, 0, 0, 0, 0)
+    Y_BC O 0 A_Explode(CallACS("uh_Health", UHEALTH_GET_MAX) / 4, 128, 0, 0, 16)
+    Y_BC O 1 A_SpawnItemEx("UnfortuneShockWaveSpawner", 0, 0, 0, 0, 0, 0, 0, 1)
+    Y_BC P 0 A_SpawnItemEx("ThunderTankShotFX", Random(32, 96), Random(32, 96), 32, 0, 0, 0, 0, 1)
+    Y_BC P 0 A_SpawnItemEx("ThunderTankShotFX", Random(-32, -96), Random(-32, -96), 64, 0, 0, 0, 0, 1)
+    Y_BC P 0 A_SpawnItemEx("ThunderTankShotFX", Random(32, 96), Random(32, 96), 96, 0, 0, 0, 0, 1)
+    Y_BC P 0 A_SpawnItemEx("ThunderTankShotFX", Random(-32, -96), Random(-32, -96), 128, 0, 0, 0, 0, 1)
+    Y_BC P 0 A_SpawnItemEx("ThunderTankShotFX", Random(32, 96), Random(32, 96), 160, 0, 0, 0, 0, 1)
+    Y_BC P 0 A_SpawnItemEx("ThunderTankShotFX", Random(-32, -96), Random(-32, -96), 192, 0, 0, 0, 0, 1)
+    Y_BC PQR 1
+    stop
+  }
+}
+
+actor FortuneCoinPunishSelf_H : BasicHelper {
+  Obituary "%o met the cursed side of Fortune Coin."
+  -MISSILE
+  //+FOILINVUL
+  //+NODAMAGETHRUST
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 ACS_NamedExecuteWithResult("rz_ThingDamage_FortuneCoin", CallACS("core_gettarget"), CallACS("uh_Health", UHEALTH_GET_MAX, 0, AAPTR_TARGET) / 2)
+    stop
+  }
+}
+
+actor UnfortuneShockWaveSpawner : BasicExplosion {
+  damagetype "FortuneCoin"
+  Obituary "%k's Fortune Coin showed %o's fortune is death."
+  +OLDRADIUSDMG
+  States {
+   Spawn:
+    TNT1 A 0
+    //TNT1 A 0 A_Explode(CallACS("UH_FetchMyHealth",1,2)/4,128,0,0,64) // /2
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 15)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 30)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 45)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 60)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 75)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 90)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 105)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 120)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 135)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 150)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 165)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 180)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 195)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 210)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 225)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 240)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 255)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 270)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 285)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 300)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 315)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 330)
+    TNT1 A 0 A_SpawnItemEx("UnfortuneShockwaveAttack", 0, 0, 0, 30, 0, 0, 345)
+    TNT1 A 1
+    stop
+  }
+}
+
+actor UnfortuneShockwaveAttack : BasicNoClassTranslationProjectile {
+  Translation "192:192=79:79"
+  damagetype "FortuneCoin"
+  Obituary "%k's Fortune Coin showed %o's fortune is death."
+  +FLOORHUGGER
+  +THRUGHOST
+  +RIPPER
+  Damage (CallACS("uh_Health", UHEALTH_GET_MAX, 0, AAPTR_TARGET) / 4)
+  Radius 32
+  Height 32
+  Speed 30
+  Scale 2.0
+  States {
+   Spawn:
+    X_0E T 0
+    X_0E T 1 A_FadeOut
+    wait
+  }
+}
+
+actor FortuneCoinProtect : PowerProtection {
+  Powerup.Duration 8
+  damagefactor "FortuneCoin", 0
+}
