@@ -1,0 +1,224 @@
+actor CutmanBossU : GenericRobotBoss {
+  Height 52
+  Radius 48
+  translation "192:192=4:4", "198:198=41:41"
+  Obituary "%o was cut to pieces by \caCut Man\c-."
+  speed 8
+  States {
+   Look:
+    CUTM A 0 A_ChangeFlag("INVULNERABLE", 0)
+    CUTM A 0 A_JumpIfInventory("SPBossFlag", 1, "Spawn2")
+   TakeFlags:
+    CUTM B 0 A_TakeInventory("SPBossFlag")
+    CUTM AJ 5 A_LookEx(LOF_NOSOUNDCHECK, 0, 0, 0, 360, "Found")
+    loop
+   Spawn2:
+    CUTM QJ 5 A_LookEx(LOF_NOSOUNDCHECK, 0, 0, 0, 360, "See2")
+    CUTM Q 0 A_JumpIfInventory("SPBossFlag", 999, "TakeFlags")
+    loop
+   Found:
+    CUTM AJAJAJAJAJAJAJAJ 5
+    Goto See
+   See:
+    CUTM B 0 A_TakeInventory("SPBossFlag")
+    CUTM BBBBCCCC 1 A_Chase
+    CUTM R 0 A_Jump(30, "Leap")
+    CUTM DDDDEEEE 1 A_Chase
+    loop
+   Melee:
+    CUTM B 5 A_CustomMeleeAttack(200, "", "", "CutManBossU")
+    Goto See
+   Melee2:
+    CUTM R 5 A_CustomMeleeAttack(200, "", "", "CutManBossU")
+    Goto See2
+   Missile:
+    CUTM R 0 A_GiveInventory("SPBossFlag", 1)
+    CUTM F 8 A_FaceTarget
+    CUTM F 0 A_FaceTarget
+    CUTM G 8 A_CustomMissile("RollingCutterBossU", 40, 0, 0, 2)
+    Goto See2
+   Missile2:
+    CUTM F 0 A_FaceTarget
+    CUTM G 4 A_CustomMissile("RollingCutterBossU", 40, 0, 0, 2)
+    Goto Leaping2
+   See2:
+    CUTM R 0 A_GiveInventory("SPBossFlag", 5)
+    CUTM R 0 A_JumpIfInventory("SPBossFlag", 300, "See")
+    CUTM RRRR 1 A_Chase("Melee2", "")
+    CUTM R 0 A_Jump(80, "Leap2")
+    CUTM R 0 A_JumpIfInventory("SPBossFlag", 300, "See")
+    CUTM SSSS 1 A_Chase("Melee2", "")
+    CUTM R 0 A_JumpIfInventory("SPBossFlag", 300, "See")
+    CUTM TTTT 1 A_Chase("Melee2", "")
+    CUTM R 0 A_JumpIfInventory("SPBossFlag", 300, "See")
+    CUTM SSSS 1 A_Chase("Melee2", "")
+    loop
+   Leap:
+    CUTM R 0 A_Recoil(-10)
+    CUTM R 0 A_FaceTarget
+    CUTM W 10 ThrustThingZ(0, 90, 0, 0)
+    Goto Leaping
+   Leap2:
+    CUTM R 0 A_Recoil(-10)
+    CUTM R 0 A_FaceTarget
+    CUTM W 10 ThrustThingZ(0, 90, 0, 0)
+    Goto Leaping2
+   Leaping:
+    //CUTM J 2 //A_Chase
+    CUTM J 2 A_Jump(25, "Missile2")
+    CUTM J 0 A_JumpIf(floorz-z==0, "See")
+    loop
+   Leaping2:
+    //CUTM W 2 //A_Chase("","Melee2")
+    CUTM J 2 A_JumpIf(floorz-z==0, "See2")
+    CUTM W 0 A_JumpIfInventory("SPBossFlag", 300, "Leaping")
+    loop
+
+   Pain:
+    // CUTM H 0 A_SpawnItemEx("PainFX")
+    CUTM H 0 A_Pain
+    CUTM H 5 A_Recoil(5)
+    Goto Leap
+  }
+}
+
+actor RollingCutterBossBaseU : RollingCutterBase {
+  Radius 8
+  Height 8
+  scale 2.5
+  damage (50)
+  damagetype "CutmanBossU"
+  Obituary "%o was cut to pieces by \caCut Man\c-."
+  speed 24
+  Args 24
+}
+
+actor RollingCutterBossU : RollingCutterBossBaseU {
+  +DOOMBOUNCE
+  +SKYEXPLODE
+  bouncefactor 1.0
+  wallbouncefactor 1.0
+  +HITTRACER
+  States {
+   Spawn:
+    RCUT A 0
+    RCUT A 0 A_PlaySound("weapons/mm1/rollingcutterfly")
+    RCUT AAAABBBBCCCCDDDD 1 A_GiveInventory("BouncerReflectedCheck", 1)
+    RCUT A 0 A_PlaySound("weapons/mm1/rollingcutterfly")
+    RCUT AAAABBBB 1 A_GiveInventory("BouncerReflectedCheck", 1)
+   SpawnEnd:
+    TNT1 A 0 A_GiveInventory("BouncerReflectedCheck", 1)
+    TNT1 A 0 A_SpawnItemEx("ReturningCutterMasterBossU")
+    stop
+   Death:
+    "----" A 4 A_PlaySound("misc/tink")
+    goto SpawnEnd
+  }
+}
+
+actor ReturningCutterMasterBossU : RollingCutterBossBaseU {
+  +NOCLIP
+  +NOINTERACTION
+  reactiontime 350
+  damage (10)
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SpawnItemEx("ReturningCutterBossU", 0, 0, 0, 0, 0, 0, 0, 0, 0, CallACS("core_NewUniqueTID"))
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_setTIDsPointerToThis", CallACS("core_CurrentUniqueTID"), AAPTR_MASTER)
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_ClearUniqueTID", 0)
+    RCUT CCCCDDDD 1 A_GiveInventory("ReturningCutterMasterFunc", 1)
+   SpawnLoop:
+    RCUT A 0 A_PlaySound("weapons/mm1/rollingcutterfly")
+    RCUT AAAABBBBCCCCDDDD 1 A_GiveInventory("ReturningCutterMasterFunc", 1)
+    loop
+   Death:
+    TNT1 A 0 A_RemoveChildren(true)
+    stop
+  }
+}
+
+actor ReturningCutterBossU : RollingCutterBossBaseU {
+  +INVISIBLE
+  var int user_NoTranslation;
+  damage (10)
+  States {
+   Spawn:
+    TNT1 A 0
+   Spawn2:
+    BUST A 1 A_GiveInventory("ReturningCutterFuncBossU")
+    loop
+   Death:
+    TNT1 A 0 A_SpawnItemEx("ReturningCutter2BossU", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
+    stop
+  }
+}
+
+actor ReturningCutter2BossU : ReturningCutterBossU {
+  +NOCLIP
+  +NOINTERACTION
+  States {
+   Spawn:
+    TNT1 A 0
+   Spawn2:
+    BUST A 1 A_GiveInventory("ReturningCutterFuncBossU")
+    TNT1 A 0 A_SpawnItemEx("ReturningCutterBossU", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
+    stop
+   Death:
+    TNT1 A 0
+    stop
+  }
+}
+
+actor ReturningCutterFuncBossU : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_GiveToTarget("AliveCheck", 1)
+    TNT1 A 0 A_JumpIfInTargetInventory("AliveCheckFlag", 1, "Pickup2")
+   RemoveThis:
+    TNT1 A 0 A_RemoveMaster
+    TNT1 A 0 Thing_Remove(0)
+    stop
+   Pickup2:
+    TNT1 A 0 A_JumpIfCloser(60, "Returned")
+    TNT1 A 0 ACS_NamedExecuteWithResult("rz_LookAtPtr", AAPTR_TARGET)
+    TNT1 A 0 A_GiveInventory("HeadTowardsTarget_Arg0", 1)
+    TNT1 A 0 A_GiveInventory("WarpMasterHere", 1)
+    stop
+   Returned:
+    TNT1 A 0 A_GiveToTarget("SPBossFlag", 999)
+    goto RemoveThis
+  }
+}
+
+actor HazardTag_CutmanBossU : BasicACSDamager {
+  DamageType "CutmanBossU"
+  Obituary "%o was cut to pieces by Cut Man while fighting %k."
+}
+
+actor CutmanBossU_SRT : CutmanBossU {
+  translation "192:192=4:4", "198:198=76:76"
+  Obituary "%o was cut to pieces by \chCut Man\c-."
+  speed 16
+  States {
+   Found:
+    CUTM AJAJAJ 5
+    Goto See
+   Leap:
+    CUTM R 0 A_Recoil(-6)
+    CUTM R 0 A_FaceTarget
+    CUTM W 10 ThrustThingZ(0, 130, 0, 0)
+    Goto Leaping
+   Leap2:
+    CUTM R 0 A_Recoil(-6)
+    CUTM R 0 A_FaceTarget
+    CUTM W 10 ThrustThingZ(0, 130, 0, 0)
+    Goto Leaping2
+  }
+}
+
+actor CutmanBossU_Claw : CutmanBossU {
+  translation "192:192=4:4", "198:198=251:251"
+  States {
+  }
+}

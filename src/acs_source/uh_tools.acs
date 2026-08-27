@@ -903,3 +903,32 @@ script "rz_EdenTearPassiveSpawn" (void) {
 			GiveInventory("EdenGodheadTearApply_P", 1);
 	}
 }
+
+// Face/pitch toward a pointer even if that actor's TID is 0 (map monsters).
+// core_lookatptr uses getptrtid and no-ops when TID is 0.
+script "rz_LookAtPtr" (int ptr) {
+	if (IsPointerEqual(ptr, AAPTR_NULL))
+		terminate;
+
+	int me_og = ActivatorTID();
+	int me_tmp = UniqueTID();
+	Thing_ChangeTID(0, me_tmp);
+
+	SetActivator(me_tmp, ptr);
+	int tgt_og = ActivatorTID();
+	int tgt_tmp = tgt_og;
+	if (tgt_tmp == 0) {
+		tgt_tmp = UniqueTID();
+		Thing_ChangeTID(0, tgt_tmp);
+	}
+
+	SetActivator(me_tmp);
+	ACS_NamedExecuteWithResult("core_lookatptr", ptr);
+
+	if (tgt_og == 0) {
+		SetActivator(tgt_tmp);
+		Thing_ChangeTID(0, 0);
+	}
+	SetActivator(me_tmp);
+	Thing_ChangeTID(0, me_og);
+}
