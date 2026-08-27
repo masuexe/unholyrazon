@@ -1,0 +1,68 @@
+actor ChuncoU : GenericRobot replaces Chunco {
+  Health 100
+  Height 40
+  Radius 32
+  speed 12
+  floatspeed 12
+  Obituary "%o was bashed by a Chunco."
+  +FLOAT
+  -SOLID
+  +NOGRAVITY
+  +LOOKALLAROUND
+  // +INVULNERABLE
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 ACS_NamedExecuteAlways("sp_overflowcheck_ChuncoU", 0, 30)
+    TNT1 A 0 ACS_NamedExecuteAlways("sp_enemystart", 0)
+    CHCO AAACCCBBBAAACCCBBBAAACCCBBB 1 ThrustThingZ(0, 2, 0, 1)
+    // CHCO A 0 A_ChangeFlag("INVULNERABLE",0)
+    TNT1 A 1 A_Jump(256, "Look")
+    wait
+   Look:
+    CHCO ACB 3 A_LookEx(LOF_NOSOUNDCHECK, 0, 2000, 0, 270, "See")
+    loop
+   See:
+    CHCO AACCBB 1 A_Chase
+    CHCO AACCBB 1 A_Chase
+    TELY A 0 A_GiveInventory("CutterFlag", 1)
+    TELY A 0 A_GiveInventory("KnightFlag", 1)
+    TELY A 0 A_JumpIfInventory("KnightFlag", 10, 1)
+    goto SeeEnd
+   Shoot:
+    CHCO F 0 A_FaceTarget
+    CHCO F 0 A_CustomMissile("ChuncoShotU", 8, 0, -18, 0)
+    CHCO F 0 A_CustomMissile("ChuncoShotU", 8, 0, 18, 0)
+    CHCO F 0 A_TakeInventory("KnightFlag")
+   SeeEnd:
+    TELY A 0 A_JumpIfInventory("CutterFlag", 70, "DeathQuiet")
+    goto See
+   Melee:
+    TELY A 0 A_FaceTarget
+    TELY A 0 A_CustomMeleeAttack(100)
+    CHCO AAACCCBBBAAACCCBBBAAACCCBBBAAACCCBBBAAACCCBBBAAACCCBBB 1 A_Chase("", "")
+    Goto See
+  }
+}
+
+actor ChuncoShotU {
+  Projectile
+  Damage (100)
+  damagetype "ChuncoU"
+  Speed 18
+  scale 2.5
+  Height 8
+  Radius 8
+  Obituary "%o was shot by a Chunco."
+  // SeeSound "misc/devilfire"
+  States {
+   Spawn:
+    BASB A 1
+    loop
+  }
+}
+
+actor HazardTag_ChuncoU : BasicACSDamager {
+  DamageType "ChuncoU"
+  Obituary "%o was shot by a Chunco while fighting %k."
+}
