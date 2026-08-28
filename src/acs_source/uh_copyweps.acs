@@ -175,10 +175,29 @@ script "uh_QwantDebugUserArray" (void)
 
 script "uh_QwantStartMoves" (void)
 {
-	int T1 = func_QwantCheckRNG(-1, -1, -1, -1);
-	int T2 = func_QwantCheckRNG(T1, -1, -1, -1);
-	int T3 = func_QwantCheckRNG(T1, T2, -1, -1);
-	int T4 = func_QwantCheckRNG(T1, T2, T3, -1);
+	int waits;
+	int qCount;
+	int T1;
+	int T2;
+	int T3;
+	int T4;
+
+	// startitem Pickup can run before uh_define_vanilla_copyweps OPEN fills UHDT.
+	waits = 0;
+	qCount = CountCopyWepByKind(UHCOPY_QWANT);
+	while (qCount <= 0 && waits < 35)
+	{
+		Delay(1);
+		waits++;
+		qCount = CountCopyWepByKind(UHCOPY_QWANT);
+	}
+	if (qCount <= 0)
+		terminate;
+
+	T1 = func_QwantCheckRNG(-1, -1, -1, -1);
+	T2 = func_QwantCheckRNG(T1, -1, -1, -1);
+	T3 = func_QwantCheckRNG(T1, T2, -1, -1);
+	T4 = func_QwantCheckRNG(T1, T2, T3, -1);
 
 	SetUserArray(0, "user_PKMN_MoveMem", 0, T1);
 	SetUserArray(0, "user_PKMN_MoveMem", 1, T2);
@@ -205,47 +224,67 @@ function int func_QwantCheckRNG(int p1, int p2, int p3, int p4)
 	return qWep;
 }
 
-script "uh_GiveRandomCopyweps" (int Check)
+function void GiveNegaStartCopyWeps(void)
 {
-	int nCount;
+	int nCount = CountCopyWepByKind(UHCOPY_NEGA);
 	int NegaLimit;
 	int NegaULast2;
 	int NegaULast1;
 	int NegaU;
 
+	if (nCount <= 0)
+		return;
+	NegaLimit = 2;
+	NegaULast2 = -1;
+	NegaULast1 = random(0, nCount - 1);
+	GiveInventory(GetCopyWepActorByKindIndex(UHCOPY_NEGA, NegaULast1), 1);
+	while (NegaLimit > 0)
+	{
+		while (NegaLimit > 1)
+		{
+			NegaU = random(0, nCount - 1);
+			if (NegaU != NegaULast1)
+			{
+				GiveInventory(GetCopyWepActorByKindIndex(UHCOPY_NEGA, NegaU), 1);
+				NegaULast2 = NegaU;
+				NegaLimit--;
+			}
+		}
+		NegaU = random(0, nCount - 1);
+		if (NegaU != NegaULast1 && NegaU != NegaULast2)
+		{
+			GiveInventory(GetCopyWepActorByKindIndex(UHCOPY_NEGA, NegaU), 1);
+			NegaLimit--;
+		}
+	}
+}
+
+script "uh_NegaManStartMoves" (void)
+{
+	int waits;
+	int nCount;
+
+	waits = 0;
+	nCount = CountCopyWepByKind(UHCOPY_NEGA);
+	while (nCount <= 0 && waits < 35)
+	{
+		Delay(1);
+		waits++;
+		nCount = CountCopyWepByKind(UHCOPY_NEGA);
+	}
+	if (nCount <= 0)
+		terminate;
+	GiveNegaStartCopyWeps();
+}
+
+script "uh_GiveRandomCopyweps" (int Check)
+{
 	if (Check == 0)
 		Log(s: "U_RNGWEAPONGIVE CHECK 0 IS GONE! USE UH_COPYWEPS.acs");
 	if (Check == 1)
 		Log(s: "U_RNGWEAPONGIVE CHECK 1 IS GONE! USE UH_COPYWEPS.acs");
 	if (Check == 2)
-	{
-		nCount = CountCopyWepByKind(UHCOPY_NEGA);
-		if (nCount <= 0)
-			terminate;
-		NegaLimit = 2;
-		NegaULast2 = -1;
-		NegaULast1 = random(0, nCount - 1);
-		GiveInventory(GetCopyWepActorByKindIndex(UHCOPY_NEGA, NegaULast1), 1);
-		while (NegaLimit > 0)
-		{
-			while (NegaLimit > 1)
-			{
-				NegaU = random(0, nCount - 1);
-				if (NegaU != NegaULast1)
-				{
-					GiveInventory(GetCopyWepActorByKindIndex(UHCOPY_NEGA, NegaU), 1);
-					NegaULast2 = NegaU;
-					NegaLimit--;
-				}
-			}
-			NegaU = random(0, nCount - 1);
-			if (NegaU != NegaULast1 && NegaU != NegaULast2)
-			{
-				GiveInventory(GetCopyWepActorByKindIndex(UHCOPY_NEGA, NegaU), 1);
-				NegaLimit--;
-			}
-		}
-	}
+		GiveNegaStartCopyWeps();
 }
 
 // --- Pharaoh Roulette: copywep pool (exact MegaManU / Qwant / NegaMan only) ---
