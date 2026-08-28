@@ -243,8 +243,11 @@ script "uh_define_vanilla_guard_cs" OPEN CLIENTSIDE
 #define QWANT_TYPE_FAIRY     17
 #define QWANT_TYPE_COUNT     18
 
-// Mugshot/bar2 fallback when uh_SyncMugFromWeaponDye does not recognize the dye
-#define QWANT_MOVE_BAR2_CYAN 110
+// Qwant_W mugshot (QWCYN110 / QWBLU130). QWANT_DYE body remap is 138/130.
+#define QWANT_MUG_CYAN 110
+#define QWANT_MUG_BLUE 130
+// MoveRelearnAmmo (bar2) always uses QWANT_DYE palette, not the mugshot pair.
+#define QWANT_MOVE_BAR2_CYAN 138
 #define QWANT_MOVE_BAR2_BLUE 130
 
 #define NEGA_MM_AMMO_COUNT 15
@@ -361,12 +364,16 @@ function void DrawUHClassMugshot(int cam)
     return;
   }
 
-  // Qwant: mugshot follows weapon dye (192/198) synced by uh_SyncMugFromWeaponDye — not QwantBar args
+  // Qwant_W ready: portrait (110, 130). Copy moves follow weapon dye (DrawBar2Color must not leak).
   if (CheckActorInventory(cam, "UHMugshotQwant")) {
-    int wc = CheckActorInventory(cam, "UHWepMugCyan");
-    int wb = CheckActorInventory(cam, "UHWepMugBlue");
-    if (wc >= 1 && wb >= 1) {
-      SetMugshotColor(wc - 1, wb - 1);
+    if (CheckActorInventory(cam, "Qwant_W") && CheckWeapon("Qwant_W")) {
+      SetMugshotColor(QWANT_MUG_CYAN, QWANT_MUG_BLUE);
+    } else {
+      int wc = CheckActorInventory(cam, "UHWepMugCyan");
+      int wb = CheckActorInventory(cam, "UHWepMugBlue");
+      if (wc >= 1 && wb >= 1) {
+        SetMugshotColor(wc - 1, wb - 1);
+      }
     }
   }
 
@@ -410,7 +417,6 @@ function void DrawUHClassMugshot(int cam)
       nBlu = UH_MugshotIndexName("QWBLU", blue);
       nCyn = UH_MugshotIndexName("QWCYN", cyan);
     } else {
-      // Fallback when dye sync / bar has not set mugshot (not QWANT_DYE 138/130)
       nBlu = "QWBLU130";
       nCyn = "QWCYN110";
     }
@@ -818,6 +824,10 @@ script "DrawBar_QwantMove" (int type)
   DrawCustomBar(slot, CheckInventory(ammo), max);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
+  // Pin mugshot before DrawBar2Color so MoveRelearnAmmo (138, 130) does not leak into the face.
+  if (CheckInventory("Qwant_W")) {
+    SetMugshotColor(QWANT_MUG_CYAN, QWANT_MUG_BLUE);
+  }
   DrawBar2Color(QWANT_MOVE_BAR2_CYAN, QWANT_MOVE_BAR2_BLUE);
   // Landscape: PKMNI 16px at (50,176)+Offset(8,0) → left edge 42; name box matches.
   SetInventory("QwantAlignWepIcon", 1);
@@ -834,6 +844,7 @@ script "DrawBar_Qwant_W" (void) {
   DrawCustomBar(CUST_QWANT, CheckInventory("MyDestinyAmmo"), 28);
   SetInventory("SBARAmmoOffset", 1);
     DrawNormalAmmo();
+  SetMugshotColor(QWANT_MUG_CYAN, QWANT_MUG_BLUE);
   DrawBar2Color(QWANT_MOVE_BAR2_CYAN, QWANT_MOVE_BAR2_BLUE);
   SetInventory("QwantAlignWepIcon", 1);
   SetHudSize(320, 200, 0);
