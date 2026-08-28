@@ -14,6 +14,72 @@
 #define CUST_GUARDDOWN_BAR 162
 #define CUST_ONFIRE_BAR 236
 
+// Guard HP bar: product of registered PowerProtection Normal factors.
+// ACS cannot read DamageFactors — register via DefineUnholyGuardFactor.
+// Exclude runes (PowerHalfDamageRune has its own HUD icon).
+#define UH_GUARD_FACTOR_MAX 32
+#define UHGUARD_FAIL -9999
+int UH_GuardFactorCount = 0;
+str UH_GuardFactorClass[UH_GUARD_FACTOR_MAX];
+int UH_GuardFactorValue[UH_GUARD_FACTOR_MAX];
+
+function int UH_AddGuardFactor(str actor, int factor)
+{
+  if (StrLen(actor) < 1) {
+    return UHGUARD_FAIL;
+  }
+  int i;
+  for (i = 0; i < UH_GuardFactorCount; i++) {
+    if (!StrICmp(UH_GuardFactorClass[i], actor)) {
+      UH_GuardFactorValue[i] = factor;
+      return i;
+    }
+  }
+  if (UH_GuardFactorCount >= UH_GUARD_FACTOR_MAX) {
+    return UHGUARD_FAIL;
+  }
+  i = UH_GuardFactorCount;
+  UH_GuardFactorClass[i] = actor;
+  UH_GuardFactorValue[i] = factor;
+  UH_GuardFactorCount++;
+  return i;
+}
+
+function int UH_GuardNormalProduct(void)
+{
+  int prod = 1.0;
+  int i;
+  for (i = 0; i < UH_GuardFactorCount; i++) {
+    if (CheckInventory(UH_GuardFactorClass[i])) {
+      prod = FixedMul(prod, UH_GuardFactorValue[i]);
+    }
+  }
+  return prod;
+}
+
+function void RegisterVanillaGuardFactors(void)
+{
+  UH_AddGuardFactor("PowerSMTankNerf", 2.0);
+  UH_AddGuardFactor("UrineBottleDamage", 2.0);
+  UH_AddGuardFactor("CalmMind_PowerProtection", 0.8);
+  UH_AddGuardFactor("PowerFakeTruePower2", 0.8);
+  UH_AddGuardFactor("PowerMujicaColor2", 0.75);
+  UH_AddGuardFactor("Neru_DamageReduction", 0.70);
+  UH_AddGuardFactor("MorshuArmorPower", 0.15);
+  UH_AddGuardFactor("PowerEvilArmor", 0.25);
+  UH_AddGuardFactor("HellishArmor", 0.05);
+}
+
+script "uh_DefineUnholyGuardFactor_S" (void)
+{
+  SetResultValue(UH_AddGuardFactor(GetCVarString("uh_gf_actor"), GetCVar("uh_gf_factor")));
+}
+
+script "uh_define_vanilla_guard_cs" OPEN CLIENTSIDE
+{
+  RegisterVanillaGuardFactors();
+}
+
 #define CUST_WHITE_BAR 230
 
 #define CUST_ATOMICFIREU1 231
@@ -457,17 +523,24 @@ Script "uh_assist_General" (int cam) CLIENTSIDE
 }
 
 function void func_UH_BarFlags(void) {
-  if(CheckInventory("PlayerPropertyInvulnerable") || (CheckInventory("PlayerPropertyNonshootable") && CheckInventory("PlayerPropertyNoRadiusDmg"))){
-    DrawCustomBar(CUST_INVUN_BAR, GetActorHealth(0), GetActorMaxHealth(0));
-  }
-  else if(CheckInventory("GuardUpFlag")){
-    DrawCustomBar(CUST_GUARDUP_BAR, GetActorHealth(0), GetActorMaxHealth(0));
-  }
-  else if(CheckInventory("GuardDownFlag")){
-    DrawCustomBar(CUST_GUARDDOWN_BAR, GetActorHealth(0), GetActorMaxHealth(0));
-  }
-  else if(CheckInventory("SUDDENLYONFIRE")){
-    DrawCustomBar(CUST_ONFIRE_BAR, GetActorHealth(0), GetActorMaxHealth(0));
+  int hp = GetActorHealth(0);
+  int maxhp = GetActorMaxHealth(0);
+  if (CheckInventory("PlayerPropertyInvulnerable") || (CheckInventory("PlayerPropertyNonshootable") && CheckInventory("PlayerPropertyNoRadiusDmg"))) {
+    DrawCustomBar(CUST_INVUN_BAR, hp, maxhp);
+  } else {
+    int prod = UH_GuardNormalProduct();
+    if (prod > 1.0) {
+      DrawCustomBar(CUST_GUARDDOWN_BAR, hp, maxhp);
+    } else if (prod < 1.0) {
+      DrawCustomBar(CUST_GUARDUP_BAR, hp, maxhp);
+    } else if (CheckInventory("GuardUpFlag")) {
+      // Fallback for CBM / addon effects that still Give the flag.
+      DrawCustomBar(CUST_GUARDUP_BAR, hp, maxhp);
+    } else if (CheckInventory("GuardDownFlag")) {
+      DrawCustomBar(CUST_GUARDDOWN_BAR, hp, maxhp);
+    } else if (CheckInventory("SUDDENLYONFIRE")) {
+      DrawCustomBar(CUST_ONFIRE_BAR, hp, maxhp);
+    }
   }
 }
 

@@ -294,6 +294,26 @@ function str GetEyeMorphPoolActor(str pool, int eyeId, int mode)
 // 6. AssHat / DickHat throw/land DECORATE; only the morph roll uses AddUnholyItemDrop.
 // 7. LMS death drops every DefineUnholyItem the player still holds.
 //
+// === DefineUnholyGuardFactor addon recipe ====================================
+// HP bar GuardUp / GuardDown from PowerProtection DamageFactor "Normal".
+// ACS cannot read class DamageFactors — register the actor + factor here.
+// HUD is CLIENTSIDE; the OPEN CLIENTSIDE twin is required online.
+// Do NOT register PowerHalfDamageRune (own HUD icon) or type-only protects.
+//
+//      function void YourRegisterGuard(void) {
+//          // >1.0 GuardDown (take more damage); <1.0 GuardUp (resist).
+//          DefineUnholyGuardFactor("YourProtect", 2.0);
+//      }
+//      script "your_define_guard" OPEN {
+//          if (!UHInPlay()) terminate;
+//          YourRegisterGuard();
+//      }
+//      script "your_define_guard_cs" OPEN CLIENTSIDE {
+//          YourRegisterGuard();
+//      }
+// Same actor again overwrites the factor (safe to re-run). Or keep Giving
+// GuardUpFlag / GuardDownFlag — HUD still falls back when product == 1.0.
+//
 // === DefineCopyWep addon recipe ==============================================
 // 1. LOADACS after Unholy: YOUR_COPYDEFS
 // 2. ACS:
@@ -432,6 +452,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeId, int mode)
 #define UHSURV_FAIL -9999
 #define UHEYE_FAIL -9999
 #define UHITEM_FAIL -9999
+#define UHGUARD_FAIL -9999
 #define UHCOPY_FAIL -9999
 #define UHMUS_FAIL -9999
 #define UHLMS_FAIL -9999
@@ -786,6 +807,16 @@ function int DefineUnholyCoinSpend(int minCount, int takeAmt, str giveActor, str
 	SetCVarString("uh_di_giveactor", giveActor);
 	SetCVarString("uh_di_sound", sound);
 	return ACS_NamedExecuteWithResult("uh_DefineUnholyCoinSpend_S");
+}
+
+// PowerProtection DamageFactor "Normal" for the Guard HP bar.
+// Call from OPEN CLIENTSIDE (HUD table is local). factor is fixed (2.0, 0.8).
+// Returns slot index, or UHGUARD_FAIL. Same actor overwrites.
+function int DefineUnholyGuardFactor(str actor, int factor)
+{
+	SetCVarString("uh_gf_actor", actor);
+	SetCVar("uh_gf_factor", factor);
+	return ACS_NamedExecuteWithResult("uh_DefineUnholyGuardFactor_S");
 }
 
 function int IsItemDefined(int id)
