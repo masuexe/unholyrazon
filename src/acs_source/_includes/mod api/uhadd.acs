@@ -324,6 +324,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeId, int mode)
 //          DefineCopyWep(UHCOPY_MEGA, UHCOPY_SLOT_RANGED, "YourWepU");
 //          DefineCopyWep(UHCOPY_QWANT, UHCOPY_QWANT_FIRE, "YourFireMoveWep");
 //          DefineCopyWep(UHCOPY_NEGA, UHCOPY_NEGA_MM8, "NegaYourWep");
+//          DefineCopyWepRegen("ThunderWep", UHCOPY_REGEN_SKIP_ENERGY);
 //      }
 //      script "your_define_copyweps" OPEN {
 //          if (!UHInPlay()) terminate;
@@ -519,6 +520,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeId, int mode)
 #define UHCOPY_NEGA_MMK 13
 #define UHCOPY_NEGA_MMV 14
 #define UHCOPY_NEGA_MMWT 15
+#define UHCOPY_REGEN_SKIP_ENERGY 1
 
 int uh_inplay_cache = -1;
 
@@ -887,6 +889,16 @@ function int DefineCopyWep(int kind, int slot, str wepActor)
 	SetCVar("uh_cw_slot", slot);
 	SetCVarString("uh_cw_actor", wepActor);
 	return ACS_NamedExecuteWithResult("uh_DefineCopyWep_S");
+}
+
+// Ready regen: default is GetAmmoCapacity(ammo)/28 from kind+slot.
+// UHCOPY_REGEN_SKIP_ENERGY: do not give weapon energy (charge weps).
+// Qwant still gains MoveRelearnAmmo. Call after DefineCopyWep for that actor.
+function int DefineCopyWepRegen(str wepActor, int flags)
+{
+	SetCVarString("uh_cw_actor", wepActor);
+	SetCVar("uh_cw_regen", flags);
+	return ACS_NamedExecuteWithResult("uh_DefineCopyWepRegen_S");
 }
 
 function void FreezeMegaOfficialCopyCount(void)

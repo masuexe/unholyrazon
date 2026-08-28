@@ -91,6 +91,7 @@
 #LIBDEFINE UHCOPY_NEGA_MMK 13
 #LIBDEFINE UHCOPY_NEGA_MMV 14
 #LIBDEFINE UHCOPY_NEGA_MMWT 15
+#LIBDEFINE UHCOPY_REGEN_SKIP_ENERGY 1
 
 // str fields per boss
 #LIBDEFINE UHBOSS_STR_ACTOR 0
@@ -1569,6 +1570,7 @@ int uh_copySlot[UH_MAX_COPYWEPS];
 str uh_copyActor[UH_MAX_COPYWEPS];
 str uh_copyDmgStem[UH_MAX_COPYWEPS];
 int uh_copyMegaId[UH_MAX_COPYWEPS];
+int uh_copyRegenFlags[UH_MAX_COPYWEPS];
 int uh_copyMegaCount = 0;
 int uh_copyMegaOfficialCount = 0;
 
@@ -1602,6 +1604,38 @@ function int FindCopyWepByKindActor(int kind, str wepActor)
 	return -1;
 }
 
+function int FindCopyWepByActor(str wepActor)
+{
+	int i;
+	for (i = 0; i < uh_copyCount; i++)
+	{
+		if (StrICmp(uh_copyActor[i], wepActor) == 0)
+			return i;
+	}
+	return -1;
+}
+
+function int GetCopyWepKind(int row)
+{
+	if (row < 0 || row >= uh_copyCount)
+		return 0;
+	return uh_copyKind[row];
+}
+
+function int GetCopyWepSlot(int row)
+{
+	if (row < 0 || row >= uh_copyCount)
+		return 0;
+	return uh_copySlot[row];
+}
+
+function int GetCopyWepRegenFlags(int row)
+{
+	if (row < 0 || row >= uh_copyCount)
+		return 0;
+	return uh_copyRegenFlags[row];
+}
+
 function int DefineCopyWepCore(int kind, int slot, str wepActor)
 {
 	int row;
@@ -1624,12 +1658,25 @@ function int DefineCopyWepCore(int kind, int slot, str wepActor)
 	uh_copyActor[row] = wepActor;
 	uh_copyDmgStem[row] = CopyWepMakeDmgStem(wepActor);
 	uh_copyMegaId[row] = 0;
+	uh_copyRegenFlags[row] = 0;
 	if (kind == UHCOPY_MEGA)
 	{
 		uh_copyMegaCount++;
 		uh_copyMegaId[row] = uh_copyMegaCount;
 	}
 	uh_copyCount++;
+	return row;
+}
+
+function int DefineCopyWepRegenCore(str wepActor, int flags)
+{
+	int row;
+	if (StrCmp(wepActor, "") == 0)
+		return UHCOPY_FAIL;
+	row = FindCopyWepByActor(wepActor);
+	if (row < 0)
+		return UHCOPY_FAIL;
+	uh_copyRegenFlags[row] = flags;
 	return row;
 }
 
