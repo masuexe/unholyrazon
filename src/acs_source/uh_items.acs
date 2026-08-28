@@ -4,6 +4,85 @@
 
 #define RUNE_SPREAD 3
 
+// Spawn one concrete effect selected from a weighted eye-morph pool.  These
+// helpers are server-side entry points used by the MoneyBait/MoneyBomb
+// DECORATE actors; modders can use PickEyeMorphActor directly when they need a
+// different delivery shape.
+function int SpawnEyeMorphEffect(str pool, int mode, int zoff, int speed)
+{
+	str actor = PickEyeMorphActorCore(pool, mode);
+	int sourceTid = ActivatorTID();
+	int sourceTemp = 0;
+	int spawnTid;
+	int angle;
+	int result;
+	if (StrCmp(actor, "") == 0)
+		return 0;
+
+	// A_SpawnItemEx makes the spawned missile target its helper.  Give an
+	// activator without a TID a temporary one so the same pointer relationship
+	// and server-side ownership are retained for the dynamic spawn.
+	// DECORATE must call these scripts with ACS_NamedExecuteWithResult (not
+	// ACS_NamedExecuteAlways): Always is deferred, and a 0-tic helper is
+	// already gone by the time the script would run.
+	if (sourceTid == 0)
+	{
+		sourceTemp = UniqueTID();
+		Thing_ChangeTID(0, sourceTemp);
+		sourceTid = sourceTemp;
+	}
+
+	spawnTid = UniqueTID();
+	angle = GetActorAngle(0);
+	result = SpawnForced(
+		actor,
+		GetActorX(0),
+		GetActorY(0),
+		GetActorZ(0) + zoff * 1.0,
+		spawnTid,
+		angle >> 8
+	);
+	if (result)
+	{
+		if (speed != 0)
+		{
+			SetActorVelocity(
+				spawnTid,
+				FixedMul(cos(angle), speed * 1.0),
+				FixedMul(sin(angle), speed * 1.0),
+				0,
+				0,
+				0
+			);
+		}
+		SetActivator(spawnTid);
+		SetPointer(AAPTR_TARGET, sourceTid);
+		Thing_ChangeTID(spawnTid, 0);
+	}
+
+	if (sourceTemp != 0)
+	{
+		SetActivator(sourceTid);
+		Thing_ChangeTID(sourceTid, 0);
+	}
+	return result;
+}
+
+script "uh_SpawnMoneyBaitShot" (void)
+{
+	SetResultValue(SpawnEyeMorphEffect("MoneyBait", UHEM_MODE_SHOT, 0, 20));
+}
+
+script "uh_SpawnMoneyBaitBurst" (void)
+{
+	SetResultValue(SpawnEyeMorphEffect("MoneyBait", UHEM_MODE_BURST, 8, 0));
+}
+
+script "uh_SpawnMoneyBombBurst" (void)
+{
+	SetResultValue(SpawnEyeMorphEffect("MoneyBomb", UHEM_MODE_BURST, 0, 0));
+}
+
 script "UB_GUHU_SelfDamage" (int Pain, int Type)
 {
 	int TargetTID = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);

@@ -119,7 +119,96 @@
 // 3. Mugshot is mandatory (BHW SetFont name). eventStem builds {stem}_MoolaGiver.
 // 4. Bonus face-only ids may pass actor "".
 // 5. Do not register ArenaDemoneye-style boss-team eyes here — use DefineBoss.
+
+// === Eye-morph weighted pools ===============================================
+// A MorphProjectile's PlayerClass is static, so register concrete effect
+// actors for the modes a pool uses.  The actors normally inherit EyeMorphShot,
+// EyeMorphShotB (or a custom subclass), and EyeMorphGiver respectively.
 //
+//      int yourEye;
+//      DefineDemoneye(-1, "YourDemoneye", "\\ctYour", "a ", 0,
+//          "EYE_F0", "Your");
+//      yourEye = FindEyeByActor("YourDemoneye");
+//      DefineEyeMorphPool("YourPotion");
+//      SetEyeMorphPoolEntry("YourPotion", yourEye,
+//          "Your_MorphShot", "Your_MorphBurst", "Your_MorphGiver", 3);
+//
+// Pool names are case-insensitive.  A repeated (pool, eyeId) replaces the
+// complete row; weight 0 disables it.  Empty actor fields are omitted from
+// that mode's roll; at least one actor field is required.  PickEyeMorphActor
+// returns the selected actor name (or "" when no eligible row exists), so a
+// custom item's ACS can use
+// Spawn/SpawnForced/SpawnProjectile or GiveInventory according to its own
+// shape.  Call DefineEyeMorphPool before SetEyeMorphPoolEntry; an unknown pool
+// or eye returns UHEM_FAIL.
+// The built-in pools are "MoneyBait" and "MoneyBomb".
+#define UHEM_FAIL       -9999
+#define UHEM_MAX_WEIGHT 1000000
+#define UHEM_SHOT       0
+#define UHEM_BURST      1
+#define UHEM_GIVER      2
+// Verbose aliases for readability in shared helpers.
+#define UHEM_MODE_SHOT  UHEM_SHOT
+#define UHEM_MODE_BURST UHEM_BURST
+#define UHEM_MODE_GIVER UHEM_GIVER
+
+// Define/Find return the pool id (0 is valid); Set returns the row index.
+// These integer APIs return UHEM_FAIL on invalid input or capacity exhaustion.
+// GetEyeMorphPoolWeight also returns UHEM_FAIL for an unknown pool/eye;
+// GetEyeMorphPoolActor returns "" for an unknown pool/eye or invalid mode.
+function int DefineEyeMorphPool(str pool)
+{
+	SetCVarString("uh_em_pool", pool);
+	return ACS_NamedExecuteWithResult("uh_DefineEyeMorphPool_S");
+}
+
+function int FindEyeMorphPool(str pool)
+{
+	SetCVarString("uh_em_pool", pool);
+	return ACS_NamedExecuteWithResult("uh_FindEyeMorphPool_S");
+}
+
+function int SetEyeMorphPoolEntry(
+	str pool,
+	int eyeId,
+	str shotActor,
+	str burstActor,
+	str giverActor,
+	int weight)
+{
+	SetCVarString("uh_em_pool", pool);
+	SetCVar("uh_em_eyeid", eyeId);
+	SetCVarString("uh_em_shot", shotActor);
+	SetCVarString("uh_em_burst", burstActor);
+	SetCVarString("uh_em_giver", giverActor);
+	SetCVar("uh_em_weight", weight);
+	return ACS_NamedExecuteWithResult("uh_SetEyeMorphPoolEntry_S");
+}
+
+function str PickEyeMorphActor(str pool, int mode)
+{
+	SetCVarString("uh_em_pool", pool);
+	SetCVar("uh_em_mode", mode);
+	ACS_NamedExecuteWithResult("uh_PickEyeMorphActor_S");
+	return GetCVarString("uh_em_out_str");
+}
+
+function int GetEyeMorphPoolWeight(str pool, int eyeId)
+{
+	SetCVarString("uh_em_pool", pool);
+	SetCVar("uh_em_eyeid", eyeId);
+	return ACS_NamedExecuteWithResult("uh_GetEyeMorphPoolWeight_S");
+}
+
+function str GetEyeMorphPoolActor(str pool, int eyeId, int mode)
+{
+	SetCVarString("uh_em_pool", pool);
+	SetCVar("uh_em_eyeid", eyeId);
+	SetCVar("uh_em_mode", mode);
+	ACS_NamedExecuteWithResult("uh_GetEyeMorphPoolActor_S");
+	return GetCVarString("uh_em_out_str");
+}
+
 // === MegaManU copywep HUD (MegaManUBar) ======================================
 // Opt-in marker so BARHNDLE draws RockNRollAmmo (reroll meter) on bar2
 // (or bar3 if the weapon already uses bar2).

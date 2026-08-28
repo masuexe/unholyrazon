@@ -1,0 +1,48 @@
+// Eye-morph weighted-pool example addon.  Load after the Unholy build.
+
+// A real addon would normally provide its own player class and weapon.  This
+// example subclasses PlainDemoneye so it can be compiled without extra art.
+actor UHExDemoneye : PlainDemoneye
+{
+	player.displayname "UH Example Demoneye"
+}
+
+// Each delivery actor fixes its Morph/PowerMorph.PlayerClass at DECORATE
+// parse time; the ACS pool chooses between these concrete actor names.
+actor UHExMorphShot : EyeMorphShot
+{
+	MorphProjectile.PlayerClass "UHExDemoneye"
+}
+
+actor UHExMorphBurst : EyeMorphShotB
+{
+	MorphProjectile.PlayerClass "UHExDemoneye"
+}
+
+actor UHExMorphGiver : EyeMorphGiver
+{
+	Powerup.Type "PowerUHExMorph"
+}
+
+actor PowerUHExMorph : PowerEyeMorph
+{
+	PowerMorph.PlayerClass "UHExDemoneye"
+}
+
+// DefineDemoneye eventStem "UHEx" resolves this giver during bonus events.
+actor UHEx_MoolaGiver : UHExMorphGiver {}
+
+// A small usable item which demonstrates selecting a dynamic shot actor from
+// ACS.  The pool itself is independent from this item's delivery shape.
+actor UHExMorphBaitItem : UnholyItem
+{
+	Tag "UH Example Morph Bait"
+	inventory.pickupmessage "A weighted eye-morph example."
+	inventory.icon "C_I_00A"
+	States
+	{
+	UseX:
+		TNT1 A 0 ACS_NamedExecuteAlways("UHExMorphBaitUse", 0)
+		goto End
+	}
+}

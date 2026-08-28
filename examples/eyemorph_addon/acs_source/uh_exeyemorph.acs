@@ -1,0 +1,142 @@
+#library "uh_exeyemorph"
+#include "zcommon.acs"
+#include "uhadd.acs"
+
+// Spawn a selected shot while preserving the same helper -> projectile target
+// relationship as A_SpawnItemEx.  A custom item may use this pattern, or may
+// instead give the returned actor as inventory / spawn a burst at another
+// location.
+function int UHExSpawnPoolShot(str pool)
+{
+	str actor = PickEyeMorphActor(pool, UHEM_SHOT);
+	int sourceTid = ActivatorTID();
+	int sourceTemp = 0;
+	int spawnTid;
+	int angle;
+	int result;
+	if (StrCmp(actor, "") == 0)
+		return 0;
+
+	if (sourceTid == 0)
+	{
+		sourceTemp = UniqueTID();
+		Thing_ChangeTID(0, sourceTemp);
+		sourceTid = sourceTemp;
+	}
+
+	spawnTid = UniqueTID();
+	angle = GetActorAngle(0);
+	result = SpawnForced(
+		actor,
+		GetActorX(0),
+		GetActorY(0),
+		GetActorZ(0) + 8.0,
+		spawnTid,
+		angle >> 8
+	);
+	if (result)
+	{
+		SetActorVelocity(
+			spawnTid,
+			FixedMul(cos(angle), 20.0),
+			FixedMul(sin(angle), 20.0),
+			0,
+			0,
+			0
+		);
+		SetActivator(spawnTid);
+		SetPointer(AAPTR_TARGET, sourceTid);
+		Thing_ChangeTID(spawnTid, 0);
+	}
+
+	if (sourceTemp != 0)
+	{
+		SetActivator(sourceTid);
+		Thing_ChangeTID(sourceTid, 0);
+	}
+	return result;
+}
+
+script "UHExMorphBaitUse" (void)
+{
+	SetResultValue(UHExSpawnPoolShot("UHExPotion"));
+}
+
+function void UHExRegisterEyeMorph(void)
+{
+	int eye = FindEyeByActor("UHExDemoneye");
+	int ghost;
+	if (eye == UHEYE_FAIL)
+		eye = DefineDemoneye(
+			-1,
+			"UHExDemoneye",
+			"\\ccExample",
+			"an ",
+			0,
+			"EYE_F0",
+			"UHEx"
+		);
+	if (eye == UHEYE_FAIL)
+		return;
+
+	// A private pool with a 3:1 ratio between the custom and vanilla rows.
+	DefineEyeMorphPool("UHExPotion");
+	ghost = FindEyeByActor("GhostDemoneye");
+	SetEyeMorphPoolEntry(
+		"UHExPotion", eye,
+		"UHExMorphShot", "UHExMorphBurst", "UHExMorphGiver", 3
+	);
+	if (ghost != UHEYE_FAIL)
+	{
+		SetEyeMorphPoolEntry(
+			"UHExPotion", ghost,
+			"Ghost_Moola", "Ghost_MoolaB32", "Ghost_MoolaGiver", 1
+		);
+	}
+
+	// Existing pools are also editable.  This adds the custom eye to MoneyBait
+	// with a small weight and disables Furry in MoneyBomb (actors are repeated
+	// for the zero-weight row because at least one actor field is required).
+	if (FindEyeMorphPool("MoneyBait") != UHEM_FAIL)
+	{
+		SetEyeMorphPoolEntry(
+			"MoneyBait", eye,
+			"UHExMorphShot", "UHExMorphBurst", "UHExMorphGiver", 1
+		);
+	}
+	if (FindEyeMorphPool("MoneyBomb") != UHEM_FAIL)
+	{
+		SetEyeMorphPoolEntry(
+			"MoneyBomb", 31,
+			"", "Furry_MoolaB", "Furry_MoolaGiver", 0
+		);
+	}
+
+	DefineUnholyItem(-1, "UHExMorphBaitItem", "Example Morph Bait", "", "");
+}
+
+script "UHEx_define_eyemorph" OPEN
+{
+	int tries = 0;
+	if (!UHInPlay())
+		terminate;
+	// OPEN ordering is not guaranteed across libraries; wait for built-ins
+	// before attempting the optional MoneyBait/MoneyBomb edits.
+	while (FindEyeMorphPool("MoneyBait") == UHEM_FAIL && tries < 35)
+	{
+		Delay(1);
+		tries++;
+	}
+	UHExRegisterEyeMorph();
+}
+
+script "UHEx_define_eyemorph_cs" OPEN CLIENTSIDE
+{
+	int tries = 0;
+	while (FindEyeMorphPool("MoneyBait") == UHEM_FAIL && tries < 35)
+	{
+		Delay(1);
+		tries++;
+	}
+	UHExRegisterEyeMorph();
+}

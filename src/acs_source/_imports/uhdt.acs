@@ -2569,3 +2569,205 @@ function int HasCustomNegaSlots(void)
 	}
 	return 0;
 }
+
+// ============================================================================
+// Eye-morph effect pools (APPENDED LAST)
+//
+// A MorphProjectile's PlayerClass is a DECORATE-time property in Zandronum,
+// so the registry stores concrete effect actors rather than trying to change
+// the morph class at runtime.  A row may provide a different actor for each
+// delivery mode; empty modes are simply omitted from that mode's roll.
+// ============================================================================
+
+#LIBDEFINE UH_MAX_EYEMORPH_POOLS 64
+#LIBDEFINE UH_MAX_EYEMORPH_ENTRIES 1024
+#LIBDEFINE UHEM_MAX_WEIGHT 1000000
+#LIBDEFINE UHEM_FAIL -9999
+#LIBDEFINE UHEM_MODE_SHOT 0
+#LIBDEFINE UHEM_MODE_BURST 1
+#LIBDEFINE UHEM_MODE_GIVER 2
+
+int uh_eyeMorphPoolCount = 0;
+str uh_eyeMorphPoolName[UH_MAX_EYEMORPH_POOLS];
+
+int uh_eyeMorphEntryCount = 0;
+int uh_eyeMorphEntryPool[UH_MAX_EYEMORPH_ENTRIES];
+int uh_eyeMorphEntryEye[UH_MAX_EYEMORPH_ENTRIES];
+str uh_eyeMorphEntryShot[UH_MAX_EYEMORPH_ENTRIES];
+str uh_eyeMorphEntryBurst[UH_MAX_EYEMORPH_ENTRIES];
+str uh_eyeMorphEntryGiver[UH_MAX_EYEMORPH_ENTRIES];
+int uh_eyeMorphEntryWeight[UH_MAX_EYEMORPH_ENTRIES];
+
+function int FindEyeMorphPool(str pool)
+{
+	int i;
+	if (StrCmp(pool, "") == 0)
+		return UHEM_FAIL;
+	for (i = 0; i < uh_eyeMorphPoolCount; i++)
+	{
+		if (StrICmp(uh_eyeMorphPoolName[i], pool) == 0)
+			return i;
+	}
+	return UHEM_FAIL;
+}
+
+function int DefineEyeMorphPoolCore(str pool)
+{
+	int id;
+	if (StrCmp(pool, "") == 0)
+		return UHEM_FAIL;
+	id = FindEyeMorphPool(pool);
+	if (id != UHEM_FAIL)
+		return id;
+	if (uh_eyeMorphPoolCount >= UH_MAX_EYEMORPH_POOLS)
+		return UHEM_FAIL;
+	id = uh_eyeMorphPoolCount;
+	uh_eyeMorphPoolName[id] = pool;
+	uh_eyeMorphPoolCount++;
+	return id;
+}
+
+function int FindEyeMorphEntry(int poolid, int eyeid)
+{
+	int i;
+	for (i = 0; i < uh_eyeMorphEntryCount; i++)
+	{
+		if (uh_eyeMorphEntryPool[i] == poolid && uh_eyeMorphEntryEye[i] == eyeid)
+			return i;
+	}
+	return UHEM_FAIL;
+}
+
+// Register or replace one (pool, eye) row.  The pool must already have been
+// created with DefineEyeMorphPoolCore.  A zero weight disables a row without
+// destroying it, allowing addons to restore the original definition.
+function int SetEyeMorphPoolEntryCore(
+	str pool,
+	int eyeid,
+	str shotActor,
+	str burstActor,
+	str giverActor,
+	int weight)
+{
+	int poolid;
+	int row;
+	if (StrCmp(pool, "") == 0)
+		return UHEM_FAIL;
+	if (!IsEyeDefined(eyeid))
+		return UHEM_FAIL;
+	if (StrCmp(shotActor, "") == 0
+		&& StrCmp(burstActor, "") == 0
+		&& StrCmp(giverActor, "") == 0)
+		return UHEM_FAIL;
+	if (weight < 0 || weight > UHEM_MAX_WEIGHT)
+		return UHEM_FAIL;
+	poolid = FindEyeMorphPool(pool);
+	if (poolid == UHEM_FAIL)
+		return UHEM_FAIL;
+	row = FindEyeMorphEntry(poolid, eyeid);
+	if (row == UHEM_FAIL)
+	{
+		if (uh_eyeMorphEntryCount >= UH_MAX_EYEMORPH_ENTRIES)
+			return UHEM_FAIL;
+		row = uh_eyeMorphEntryCount;
+		uh_eyeMorphEntryPool[row] = poolid;
+		uh_eyeMorphEntryEye[row] = eyeid;
+		uh_eyeMorphEntryCount++;
+	}
+	uh_eyeMorphEntryShot[row] = shotActor;
+	uh_eyeMorphEntryBurst[row] = burstActor;
+	uh_eyeMorphEntryGiver[row] = giverActor;
+	uh_eyeMorphEntryWeight[row] = weight;
+	return row;
+}
+
+function int GetEyeMorphPoolWeightCore(str pool, int eyeid)
+{
+	int poolid = FindEyeMorphPool(pool);
+	int row;
+	if (poolid == UHEM_FAIL)
+		return UHEM_FAIL;
+	row = FindEyeMorphEntry(poolid, eyeid);
+	if (row == UHEM_FAIL)
+		return UHEM_FAIL;
+	return uh_eyeMorphEntryWeight[row];
+}
+
+function str GetEyeMorphPoolActorCore(str pool, int eyeid, int mode)
+{
+	int poolid = FindEyeMorphPool(pool);
+	int row;
+	if (mode < UHEM_MODE_SHOT || mode > UHEM_MODE_GIVER)
+		return "";
+	if (poolid == UHEM_FAIL)
+		return "";
+	row = FindEyeMorphEntry(poolid, eyeid);
+	if (row == UHEM_FAIL)
+		return "";
+	if (mode == UHEM_MODE_SHOT)
+		return uh_eyeMorphEntryShot[row];
+	if (mode == UHEM_MODE_BURST)
+		return uh_eyeMorphEntryBurst[row];
+	return uh_eyeMorphEntryGiver[row];
+}
+
+function int EyeMorphPoolWeightSum(int poolid, int mode)
+{
+	int sum = 0;
+	int i;
+	str actor;
+	if (mode < UHEM_MODE_SHOT || mode > UHEM_MODE_GIVER)
+		return 0;
+	for (i = 0; i < uh_eyeMorphEntryCount; i++)
+	{
+		if (uh_eyeMorphEntryPool[i] != poolid || uh_eyeMorphEntryWeight[i] <= 0)
+			continue;
+		actor = mode == UHEM_MODE_SHOT ? uh_eyeMorphEntryShot[i]
+			: mode == UHEM_MODE_BURST ? uh_eyeMorphEntryBurst[i]
+			: uh_eyeMorphEntryGiver[i];
+		if (StrCmp(actor, "") != 0)
+			sum += uh_eyeMorphEntryWeight[i];
+	}
+	return sum;
+}
+
+function int RandomEyeMorphEntry(str pool, int mode)
+{
+	int poolid = FindEyeMorphPool(pool);
+	int sum;
+	int roll;
+	int i;
+	str actor;
+	if (poolid == UHEM_FAIL)
+		return UHEM_FAIL;
+	sum = EyeMorphPoolWeightSum(poolid, mode);
+	if (sum <= 0)
+		return UHEM_FAIL;
+	roll = random(1, sum);
+	for (i = 0; i < uh_eyeMorphEntryCount; i++)
+	{
+		if (uh_eyeMorphEntryPool[i] != poolid || uh_eyeMorphEntryWeight[i] <= 0)
+			continue;
+		actor = mode == UHEM_MODE_SHOT ? uh_eyeMorphEntryShot[i]
+			: mode == UHEM_MODE_BURST ? uh_eyeMorphEntryBurst[i]
+			: uh_eyeMorphEntryGiver[i];
+		if (StrCmp(actor, "") == 0)
+			continue;
+		roll -= uh_eyeMorphEntryWeight[i];
+		if (roll <= 0)
+			return i;
+	}
+	return UHEM_FAIL;
+}
+
+function str PickEyeMorphActorCore(str pool, int mode)
+{
+	int row = RandomEyeMorphEntry(pool, mode);
+	if (row == UHEM_FAIL)
+		return "";
+	if (mode == UHEM_MODE_SHOT)
+		return uh_eyeMorphEntryShot[row];
+	if (mode == UHEM_MODE_BURST)
+		return uh_eyeMorphEntryBurst[row];
+	return uh_eyeMorphEntryGiver[row];
+}
