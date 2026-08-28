@@ -1,5 +1,5 @@
 //Specialized Items here.
-actor MistressCopyVisedBoxItem : CustomInventory
+actor MistressCopyVisedBoxItem : BasicDroppedItem
 {
 inventory.amount 1
 inventory.maxamount 99
@@ -8,15 +8,15 @@ inventory.icon "SAXFUG1"
 Inventory.PickupSound "item/1up"
 +INVBAR
 +COUNTITEM
-scale 2.0
 States
 {
 Spawn:
 SAX2 A 6
 loop
 Use:
-TNT1 A 0
+   UseX:
 TNT1 A 0 A_PlaySoundEx("items/PandoraItemUse","SoundSlot5")
+   UseX_Silent:
 TNT1 A 0 A_Jump(24,"BoxEXTREMEHEALING")
 TNT1 A 0 A_Jump(64,"BoxGUHU")
 TNT1 A 0 A_Jump(94,"BoxPOTION")
@@ -41,6 +41,31 @@ stop
 }
 }
 
+actor AutoMistressCopyVisedBoxItem : MistressCopyVisedBoxItem {
+  Translation "120:120=84:84", "124:124=4:4"
+  inventory.maxamount 0
+  Inventory.PickupSound ""
+  -INVENTORY.INVBAR
+  +INVENTORY.ALWAYSPICKUP
+  States {
+   Pickup:
+    goto Use
+  }
+}
+actor AutoMistressCopyVisedBoxItemSilent : AutoMistressCopyVisedBoxItem {
+  States {
+   Pickup:
+    goto UseX_Silent
+  }
+}
+actor MistressCopyVisedBoxItemFX : UnholyItemFX {
+  States {
+   Spawn:
+    SAX2 A 0
+    goto Spawn2
+  }
+}
+
 actor MistressBoxTimeFist : UnholyItem
 {
 inventory.amount 2
@@ -54,9 +79,33 @@ SAX2 F 6
 loop
 UseX:
 TNT1 A 0 A_PlaySoundEx("weapon/cfire","Item")
+UseX_Silent:
 TNT1 A 1 A_FireCustomMissile("MistressGigaFist",0,0,8,0)
 goto End
 }
+}
+
+actor AutoMistressBoxTimeFist : MistressBoxTimeFist {
+  Inventory.PickupSound ""
+  Inventory.MaxAmount 0
+  +ALWAYSPICKUP
+  States {
+   Pickup:
+    goto UseX
+  }
+}
+actor AutoMistressBoxTimeFistSilent : AutoMistressBoxTimeFist {
+  States {
+   Pickup:
+    goto UseX_Silent
+  }
+}
+actor MistressBoxTimeFistFX : UnholyItemFX {
+  States {
+   Spawn:
+    SAX2 F 0
+    goto Spawn2
+  }
 }
 
 actor MistressBoxSouret : UnholyItem
@@ -72,9 +121,33 @@ SAX2 E 6
 loop
 UseX:
 TNT1 A 0 A_PlaySoundEx("weapon/firestorm","Item")
+UseX_Silent:
 TNT1 A 1 A_FireCustomMissile("MistressSouretShot",0,0,8,0)
 goto End
 }
+}
+
+actor AutoMistressBoxSouret : MistressBoxSouret {
+  Inventory.PickupSound ""
+  Inventory.MaxAmount 0
+  +ALWAYSPICKUP
+  States {
+   Pickup:
+    goto UseX
+  }
+}
+actor AutoMistressBoxSouretSilent : AutoMistressBoxSouret {
+  States {
+   Pickup:
+    goto UseX_Silent
+  }
+}
+actor MistressBoxSouretFX : UnholyItemFX {
+  States {
+   Spawn:
+    SAX2 E 0
+    goto Spawn2
+  }
 }
 
 actor MistressBoxRegen : UnholyItem
@@ -90,10 +163,34 @@ SAX2 D 6
 loop
 UseX:
 TNT1 A 0 A_PlaySoundEx("item/refill","Item")
+UseX_Silent:
 TNT1 A 0 A_TakeInventory("EternalPainFlag")
 TNT1 A 0 A_SpawnItemEx("MistressRegeneration_H")
 goto End
 }
+}
+
+actor AutoMistressBoxRegen : MistressBoxRegen {
+  Inventory.PickupSound ""
+  Inventory.MaxAmount 0
+  +ALWAYSPICKUP
+  States {
+   Pickup:
+    goto UseX
+  }
+}
+actor AutoMistressBoxRegenSilent : AutoMistressBoxRegen {
+  States {
+   Pickup:
+    goto UseX_Silent
+  }
+}
+actor MistressBoxRegenFX : UnholyItemFX {
+  States {
+   Spawn:
+    SAX2 D 0
+    goto Spawn2
+  }
 }
 
 actor MistressRegeneration_H : BasicWatcher
@@ -146,11 +243,35 @@ Spawn:
 SAX2 C 6
 loop
 UseX:
-TNT1 A 0 ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL_EXPAND_MAX, 500)//Increase MaxHp if cap is hit
 TNT1 A 0 A_PlaySoundEx("E_B/Heal2","Item")
+UseX_Silent:
+TNT1 A 0 ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL_EXPAND_MAX, 500)//Increase MaxHp if cap is hit
 TNT1 A 0 A_SpawnItemEx("MistressBoxPotionFX_H")
 goto End
 }
+}
+
+actor AutoMistressBoxPotion : MistressBoxPotion {
+  Inventory.PickupSound ""
+  Inventory.MaxAmount 0
+  +ALWAYSPICKUP
+  States {
+   Pickup:
+    goto UseX
+  }
+}
+actor AutoMistressBoxPotionSilent : AutoMistressBoxPotion {
+  States {
+   Pickup:
+    goto UseX_Silent
+  }
+}
+actor MistressBoxPotionFX : UnholyItemFX {
+  States {
+   Spawn:
+    SAX2 C 0
+    goto Spawn2
+  }
 }
 
 actor MistressBoxPotionFX_H : BasicWatcher
@@ -160,21 +281,14 @@ States
 Spawn:
 TNT1 A 0
 TNT1 A 0 A_PlaySoundEx("E_B/Heal2","Weapon")
-TNT1 AAAAAAAAAA 0 A_SpawnItemEx("MistressBoxPotionFX",random(-32,32),random(-32,32),random(-20,70),0,0,0,0,32)
+TNT1 AAAAAAAAAA 0 A_SpawnItemEx("MistressBoxPotionSparkle",random(-32,32),random(-32,32),random(-20,70),0,0,0,0,32)
 TNT1 A 1
 stop
 }
 }
-actor MistressBoxPotionFX
+actor MistressBoxPotionSparkle : BasicGraphicEffect
 {
 //translation "4:4=236:236"
--SOLID
-+NOGRAVITY
-+CLIENTSIDEONLY
-+NOINTERACTION
-speed 0
-Radius 2
-Height 2
 Scale 4.0
 States
 {
@@ -198,9 +312,33 @@ SAX2 B 6
 loop
 UseX:
 TNT1 A 0 A_PlaySoundEx("S_Battle/Beep","Item")
+UseX_Silent:
 TNT1 A 0 A_FireCustomMissile("TrueMistressCopyVisionGUHU",0,0,0,0)
 goto End
 }
+}
+
+actor AutoMistressBoxGUHU : MistressBoxGUHU {
+  Inventory.PickupSound ""
+  Inventory.MaxAmount 0
+  +ALWAYSPICKUP
+  States {
+   Pickup:
+    goto UseX
+  }
+}
+actor AutoMistressBoxGUHUSilent : AutoMistressBoxGUHU {
+  States {
+   Pickup:
+    goto UseX_Silent
+  }
+}
+actor MistressBoxGUHUFX : UnholyItemFX {
+  States {
+   Spawn:
+    SAX2 B 0
+    goto Spawn2
+  }
 }
 
 
@@ -266,10 +404,10 @@ TNT1 A 0 ThrustThingZ(0,45,0,0)
 8A25 F 1 A_SpawnItemEx("MistressUPPERCUTATTACK",0,0,30,0,0,0)
 8A25 FF 1 A_SetAngle(angle-45.0)
 8A25 F 1 A_SpawnItemEx("MistressUPPERCUTATTACK",0,0,30,0,0,0)
-8A25 FF 1 A_SetAngle(angle-45.0) 
+8A25 FF 1 A_SetAngle(angle-45.0)
 8A25 F 1 A_SpawnItemEx("MistressUPPERCUTWind",0,0,30,0,0,0)
 8A25 F 1 A_SpawnItemEx("MistressUPPERCUTATTACK",0,0,30,0,0,0)
-8A25 FF 1 A_SetAngle(angle-45.0) 
+8A25 FF 1 A_SetAngle(angle-45.0)
 8A25 FFFF 2 A_Fadeout
 stop
 Death:
@@ -320,7 +458,7 @@ X_0E I 1 A_SpawnItemEx("MistressGigaFistFX",64,0,0,momx/7,momy/7,momz/7,0,9)
 X_0E K 2
 loop
 Death:
-X_0E I 0 
+X_0E I 0
 X_0E I 0 A_Recoil(5)
 X_0E I 1 A_FadeOut
 wait
