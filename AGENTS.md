@@ -140,3 +140,23 @@ Three weapon bases in `actors/inventory/baseweaponedit.txt`:
 - `BaseMM8BDMWep_UH` — UH-specific weapons
 
 All override `DeselectDeath` to check `uh_IsItOnline` for net sync.
+
+## Fast MCP debug loop
+
+The reusable MCP fork under `/home/user/projects/zandronum/zandronum-mcp/` supports named launch profiles,
+actor polling, detailed actor state, and incremental engine logs. Set
+`ZANDRONUM_LAUNCH_PROFILES` to `tools/mm8bdm-v6b.launch.json` in the MCP
+environment, then use this order for short feedback cycles:
+
+1. `launch_instance` with profile `mm8bdm-v6b-smoke`.
+2. Make the smallest reproducible action (for example, fire `FireBlastWep`).
+3. Use `wait_for_actor` by TID or exact class, then `actor_state` or
+   `actors_near` to inspect alpha/render state and actor pointers.
+4. Poll `read_engine_log` with its returned `nextCursor`; use
+   `get_startup_errors` if the bridge never opens.
+5. Use `mm8bdm-v6b-full` only for final integration checks with the optional
+   addons and debug cvars.
+
+This workflow targets the locally built Zandronum 3.3-alpha MCP engine. Do not
+fall back to the removed 3.1 archive. The profile file is intentionally the
+single source of truth for the v6b IWAD/base/fix/addon load order.
