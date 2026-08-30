@@ -50,7 +50,7 @@ actor MakeAGoodZero_W : BaseUnholyBossWep {
 	  loop
 
 	 WhyWilyDiscardedMe:
-	  TNT1 A 0 A_WeaponReady(14)
+	  TNT1 A 0 A_WeaponReady(WRF_NOSWITCH|WRF_NOFIRE)
 	  TNT1 A 0 A_SpawnItemEx("FakeDeathFX")
 	  TNT1 A 0 A_ChangeFlag("THRUACTORS", 1)
 	  TNT1 A 0 A_ChangeFlag("NOGRAVITY", 1)
@@ -72,7 +72,11 @@ actor MakeAGoodZero_W : BaseUnholyBossWep {
 	  8K06 E 0 A_GiveInventory("MGZeroChipAmmoPsycho", 1200)
 	  8K06 E 0 A_SpawnItemEx("MGZeroChipAmmoWatcher", 1)
 	  8K06 E 0 A_GiveInventory("UnholyPower3000", 1500)
-	  8K06 E 0 ACS_NamedExecuteAlways("uh_BossPhaseHealth", 0, 2020, 626)
+	  // This must complete before W2's Flash health poll can run.  The
+	  // phase-health script has no delay, so the result form executes it
+	  // synchronously; ACS_NamedExecuteAlways would leave it queued for a
+	  // later tic and W2 could see the transition HP of 1 first.
+	  8K06 E 0 ACS_NamedExecuteWithResult("uh_BossPhaseHealth", 2020, 626)
 	  8K06 E 0 A_GiveInventory("UnholyPowerLimit_F", 3000)
 	  8K06 E 0 ACS_NamedExecuteAlways("ub_RageDisplay", 0)
 	  8K06 E 0 ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, false, ELP_NATIVE)
@@ -86,6 +90,9 @@ actor MakeAGoodZero_W : BaseUnholyBossWep {
 	  8K06 E 0 A_GiveInventory("MakeAGoodZero_W7", 1)
 	  8K06 E 0 A_TakeInventory("MakeAGoodZeroPainFlag")
 	  8K06 E 0 A_GiveInventory("MakeAGoodZeroGetUpDone_F")
+	  // The transition state disabled switching.  Re-enable weapon switching
+	  // without allowing an attack before requesting W2.
+	  8K06 E 0 A_WeaponReady(WRF_NOFIRE)
 	  8K06 E 0 A_SelectWeapon("MakeAGoodZero_W2")
 	  stop
 
@@ -132,12 +139,12 @@ actor MakeAGoodZero_W2 : BaseUnholyBossWep {
 	  TNT1 A 0 A_TakeInventory("MGZeroChipFlag")
 	  TNT1 A 0 ACS_NamedExecuteAlways("rz_setactorproperty", 0, APROP_Speed, 1, 1)
 	  TNT1 A 0 ACS_NamedExecuteAlways("rz_setactorproperty", 0, APROP_Gravity, 1, 1)
-	  // The phase-1 weapon is removed after W2 has become current.  Removing
-	  // the currently executing weapon here would abort its transition state.
-	  TNT1 A 0 A_TakeInventory("MakeAGoodZero_W")
 	  goto SelectSwap
 
 	 Ready:
+	  // The W1 -> W2 switch has completed, so the obsolete phase-1 weapon can
+	  // now be removed without taking away the weapon driving the transition.
+	  8K06 O 0 A_TakeInventory("MakeAGoodZero_W")
 	  8K06 O 0 A_GiveInventory("UnholyPower3000", 1)
 	  8K06 O 0 A_GunFlash("Flash", true)
 	  goto ReadyX
@@ -167,6 +174,7 @@ actor MakeAGoodZero_W2 : BaseUnholyBossWep {
 	  8I04 A 0 ACS_NamedExecuteWithResult("uh_StripInvulnStacks", 0)
 	  8K06 E 1 A_GunFlash
 	  8K06 A 0 A_GiveInventory("MakeAGoodZero_W8", 1)
+	  8K06 A 0 A_WeaponReady(WRF_NOFIRE)
 	  8K06 A 0 A_SelectWeapon("MakeAGoodZero_W8")
 	  TNT1 A 0
 	  stop
@@ -180,6 +188,7 @@ actor MakeAGoodZero_W2 : BaseUnholyBossWep {
 	  8K06 E 0 ACS_NamedExecuteWithResult("core_chargecolor", MAKEAGOODZERO_DYE)
 	  8I04 A 0 ACS_NamedExecuteWithResult("uh_StripInvulnStacks", 0)
 	  8K06 A 0 A_GiveInventory("MakeAGoodZero_W8", 1)
+	  8K06 A 0 A_WeaponReady(WRF_NOFIRE)
 	  8K06 A 0 A_SelectWeapon("MakeAGoodZero_W8")
 	  TNT1 A 0
 	  stop

@@ -238,12 +238,16 @@ Script "uh_BossMorph" (int whoisit, int BaseHP, int AddHP) //Boss messages and H
 script "uh_BossPhaseHealth" (int BaseHP, int AddHP)
 {
 	int MainHealth = BaseHP;
-	if (multiBossCheck)
+	if (multiBossCheck > 0)
 	{
 		MainHealth = min(BaseHP + (PlayerCount() * AddHP / multiBossCheck) - AddHP / multiBossCheck, MAX_HEALTH);
-		SetActorProperty(0, APROP_HEALTH, MainHealth);
-		SetActorProperty(0, APROP_SPAWNHEALTH, MainHealth);
 	}
+	// Keep the phase transition valid even if a malformed/forced setup leaves
+	// multiBossCheck at zero.  The old conditional skipped both properties,
+	// leaving the actor at the trigger value of 1 HP and immediately arming
+	// the next phase.
+	SetActorProperty(0, APROP_HEALTH, MainHealth);
+	SetActorProperty(0, APROP_SPAWNHEALTH, MainHealth);
 	SetInventory("BossSpawnHealthFlag", MainHealth);
 }
 
