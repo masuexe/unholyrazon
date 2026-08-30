@@ -18,6 +18,11 @@ global int 4: ServerMAX;
 #define EDEN_FORM_DEVIL 1
 #define EDEN_FORM_ANGEL 2
 
+// Local copies: ACC imports do not export #define values between libraries.
+#define UHEALTH_HEAL 6
+#define ELP_FLOOVY_G 3
+#define ELP_FLOOVY_D 4
+
 bool time_is_stopped = 0;
 
 //     ad88888ba
@@ -1117,37 +1122,135 @@ Script "rz_FloovyPlugLatch" (int targettid, int tracertid) {
 }
 
 script "rz_FloovyGhostMoving" (int pointer) {
-  if ((ACS_NamedExecuteWithResult("uh_GetPointerButtonInput", pointer, 0) & BT_FORWARD) &&
-      (ACS_NamedExecuteWithResult("uh_GetPointerButtonInput", pointer, 0) & BT_BACK)) {
+  int selfTid = ActivatorTID();
+  int buttons = ACS_NamedExecuteWithResult("uh_GetPointerButtonInput", pointer, 0);
+  bool moved = false;
+
+  if ((buttons & BT_FORWARD) && !(buttons & BT_BACK)) {
     GiveInventory("FloovyGhostMoveForward", 1);
+    moved = true;
   }
-  else if ((ACS_NamedExecuteWithResult("uh_GetPointerButtonInput", pointer, 0) & BT_BACK) &&
-           (ACS_NamedExecuteWithResult("uh_GetPointerButtonInput", pointer, 0) & BT_FORWARD)) {
+  else if ((buttons & BT_BACK) && !(buttons & BT_FORWARD)) {
     GiveInventory("FloovyGhostMoveBack", 1);
+    moved = true;
   }
-  else if ((ACS_NamedExecuteWithResult("uh_GetPointerButtonInput", pointer, 0) & BT_MOVELEFT) &&
-           (ACS_NamedExecuteWithResult("uh_GetPointerButtonInput", pointer, 0) & BT_MOVERIGHT)) {
+  if ((buttons & BT_MOVELEFT) && !(buttons & BT_MOVERIGHT)) {
     GiveInventory("FloovyGhostMoveLeft", 1);
+    moved = true;
   }
-  else if ((ACS_NamedExecuteWithResult("uh_GetPointerButtonInput", pointer, 0) & BT_MOVERIGHT) &&
-           (ACS_NamedExecuteWithResult("uh_GetPointerButtonInput", pointer, 0) & BT_MOVELEFT)) {
+  else if ((buttons & BT_MOVERIGHT) && !(buttons & BT_MOVELEFT)) {
     GiveInventory("FloovyGhostMoveRight", 1);
+    moved = true;
   }
-  else if ((ACS_NamedExecuteWithResult("uh_GetPointerButtonInput", pointer, 0) & BT_LEFT) &&
-           (ACS_NamedExecuteWithResult("uh_GetPointerButtonInput", pointer, 0) & BT_RIGHT)) {
+  if ((buttons & BT_LEFT) && !(buttons & BT_RIGHT)) {
     GiveInventory("FloovyGhostTurnLeft", 1);
   }
-  else if ((ACS_NamedExecuteWithResult("uh_GetPointerButtonInput", pointer, 0) & BT_RIGHT) &&
-           (ACS_NamedExecuteWithResult("uh_GetPointerButtonInput", pointer, 0) & BT_LEFT)) {
+  else if ((buttons & BT_RIGHT) && !(buttons & BT_LEFT)) {
     GiveInventory("FloovyGhostTurnRight", 1);
   }
-  else {
+  if (!moved) {
     SetActorVelocity(0, FixedMul(GetActorVelX(0), 0.95), FixedMul(GetActorVelY(0), 0.95), FixedMul(GetActorVelZ(0), 0.95), 0, 0);
   }
-  int p_tid = ACS_NamedExecuteWithResult("core_getptrtid", pointer);
-  int x = GetActorX(p_tid) - GetActorX(0);
-  int y = GetActorY(p_tid) - GetActorY(0);
+  // Read the target through its pointer rather than converting it to a TID:
+  // a morphed player can legitimately have TID 0.  The ghost itself always
+  // has the positive per-effect link TID, so it is safe to restore it.
+  if (!SetActivator(0, pointer)) {
+    terminate;
+  }
+  int targetX = GetActorX(0);
+  int targetY = GetActorY(0);
+  if (!SetActivator(selfTid)) {
+    terminate;
+  }
+  int x = targetX - GetActorX(0);
+  int y = targetY - GetActorY(0);
   SetActorAngle(0, VectorAngle(x, y));
+}
+
+// uh_CopyPointerAnglePitch resolves the source through core_getptrtid, which
+// is intentionally not used here: a morphed player can have TID 0.  Preserve
+// the original movement actors' behavior by copying only the target pitch;
+// the ghost's angle is maintained by rz_FloovyGhostMoving.
+script "rz_FloovyGhostCopyPitch" (int pointer) {
+  int selfTid = ActivatorTID();
+  if (selfTid <= 0 || !SetActivator(0, pointer)) {
+    terminate;
+  }
+  int targetPitch = GetActorPitch(0);
+  if (!SetActivator(selfTid)) {
+    terminate;
+  }
+  SetActorPitch(0, targetPitch);
+}
+
+// The DECORATE expression language has no CheckInventory() value expression;
+// keep the dynamic camera TID lookup in ACS instead.
+script "rz_FloovyGhostCameraOn" (void) {
+  int cameraTid = CheckInventory("FloovyOutOfBodyViewTID");
+  if (cameraTid > 0) {
+    ChangeCamera(cameraTid, 0, 0);
+  }
+}
+
+// Interrupt an existing out-of-body link immediately when M1 retargets a
+// different player.  The old ghost will also observe the marker mismatch on
+// its next tic, but this direct path avoids leaving the previous player frozen
+// or on the old camera for those few tics.
+script "rz_FloovyGhostCancel" (int linkTid) {
+  if (linkTid <= 0 || !SetActivator(linkTid) ||
+      !SetActivator(0, AAPTR_TRACER)) {
+    terminate;
+  }
+  if (CheckInventory("FloovyOutOfBodyViewTID") != linkTid) {
+    terminate;
+  }
+  ChangeCamera(0, 0, 0);
+  ACS_NamedExecuteWithResult("core_freezeplayer", 0, false);
+  TakeInventory("FloovyOutOfBodyViewTID", 0x7fffffff);
+  TakeInventory("FloovyOutOfBodyProtect", 0x7fffffff);
+}
+
+// Only tear down the camera/freeze state if this exact ghost still owns the
+// target's view marker.  This prevents an old ghost from clearing a newer
+// effect after the target is hit again or the link is replaced.
+script "rz_FloovyGhostCleanup" (int pointer, int linkTid) {
+  if (linkTid <= 0) {
+    terminate;
+  }
+  int selfTid = ActivatorTID();
+
+  // Clear the owner link only if it still belongs to this ghost.  A newer
+  // hit may have installed a different link and must not be disturbed.
+  if (SetActivator(0, AAPTR_TARGET) &&
+      CheckInventory("FloovyOutOfBodyTID") == linkTid) {
+    TakeInventory("FloovyOutOfBodyTID", 0x7fffffff);
+  }
+
+  // Restore the ghost before resolving its tracer; otherwise the first
+  // SetActivator above would make the target pointer relative to the player.
+  if (selfTid <= 0 || !SetActivator(selfTid) || !SetActivator(0, pointer)) {
+    terminate;
+  }
+  if (CheckInventory("FloovyOutOfBodyViewTID") != linkTid) {
+    terminate;
+  }
+  ChangeCamera(0, 0, 0);
+  ACS_NamedExecuteWithResult("core_freezeplayer", 0, false);
+  TakeInventory("FloovyOutOfBodyViewTID", 0x7fffffff);
+  TakeInventory("FloovyOutOfBodyProtect", 0x7fffffff);
+}
+
+// Check a Floovy link pointer without converting the pointed player to a TID.
+// A dead player actor can remain allocated for a short time, so pointer
+// existence alone is not enough to settle an extra-life watcher.
+script "rz_FloovyPointerAlive" (int pointer) {
+  if (!SetActivator(0, pointer) || PlayerNumber() < 0 ||
+      !PlayerInGame(PlayerNumber()) || PlayerIsSpectator(PlayerNumber()) || CheckInventory("IsDead") ||
+      GetActorProperty(0, APROP_Health) <= 0) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
 }
 
 script "rz_FloovyRageAmmoGiver" (int pointer) {
@@ -1161,7 +1264,18 @@ script "rz_FloovyRageAmmoGiver" (int pointer) {
   }
 }
 
-script "rz_FloovyDeath" (int tid) {
+// Apply/remove one of Floovy's dedicated extra-life variants through a
+// direct actor pointer.  Player morphs can legitimately have TID 0, so the
+// usual `tid - 999` conversion is not safe here.
+script "rz_FloovyExtraLifePointer" (int pointer, int toggle, int type) {
+  if (!SetActivator(0, pointer)) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, toggle, type));
+}
+
+script "rz_FloovyDeath" (int tid, int type) {
   // int i;
   // for (i = 1000; i < 1064; i++) {
   // 	if (CheckActorClass(i, "Floovy")) {
@@ -1169,11 +1283,57 @@ script "rz_FloovyDeath" (int tid) {
   // 	}
   // }
   int health;
-  if (ACS_NamedExecuteWithResult("uh_IsPlayerAlive", tid)) {
-    health = GetActorProperty(tid, APROP_SpawnHealth);
-    Thing_Damage(tid, 30000, 5);
+
+  if (type == ELP_FLOOVY_G) {
+    // Preserve Floovy as the healer activator while inspecting/killing the
+    // linked enemy.  Calling uh_IsPlayerAlive would otherwise leave ACS
+    // activated on the enemy and heal the wrong player.
+    int floovyPlayer = PlayerNumber();
+    if (tid <= 0 || !SetActivator(tid) || !SetActivator(0, AAPTR_TRACER)) {
+      terminate;
+    }
+    if (PlayerNumber() < 0 || CheckInventory("IsDead") || !PlayerInGame(PlayerNumber()) ||
+        PlayerIsSpectator(PlayerNumber())) {
+      if (floovyPlayer >= 0) SetActivatorToPlayer(floovyPlayer);
+      terminate;
+    }
+    // The linked enemy's current HP is the amount exchanged back to Floovy.
+    // Read and damage it through the link actor's TRACER pointer so a target
+    // with TID 0 is still handled correctly.
+    health = GetActorProperty(0, APROP_Health);
+    Thing_Damage(0, 30000, 5);
+    if (floovyPlayer < 0 || !SetActivatorToPlayer(floovyPlayer)) {
+      terminate;
+    }
+    ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, health);
+    terminate;
   }
-  ACS_NamedExecuteWithResult("uh_Health", 6, health);  // UHEALTH_HEAL
+
+  if (type == ELP_FLOOVY_D) {
+    // `tid` is the dedicated link actor, not Floovy's player TID.  Resolve
+    // its TARGET pointer so a morphed Floovy (TID 0) is still killable.
+    int allyPlayer = PlayerNumber();
+    int allyMax = GetActorProperty(0, APROP_SpawnHealth);
+    int allyCurrent = max(GetActorProperty(0, APROP_Health), 0);
+    if (tid <= 0 || !SetActivator(tid) || !SetActivator(0, AAPTR_TARGET)) {
+      terminate;
+    }
+    if (PlayerNumber() < 0 || CheckInventory("IsDead") || !PlayerInGame(PlayerNumber()) ||
+        PlayerIsSpectator(PlayerNumber())) {
+      if (allyPlayer >= 0) SetActivatorToPlayer(allyPlayer);
+      terminate;
+    }
+
+    // TID 0 targets the current activator, which is now Floovy itself.
+    Thing_Damage(0, 30000, 5);
+    if (allyPlayer < 0 || !SetActivatorToPlayer(allyPlayer)) {
+      terminate;
+    }
+    ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, max(allyMax - allyCurrent, 0));
+    terminate;
+  }
+
+  Log(s:"rz_FloovyDeath: unknown type ", i:type);
 }
 
 // Crystrap M2: find the nearest visible player in the eye's scan sphere.

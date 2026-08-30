@@ -5,6 +5,29 @@
 #include "uh_def.acs"
 #include "uh_funclib.acs"
 
+// Server-console/MCP convenience wrapper for the CustomInventory test item.
+// In a normal game the item is used through the inventory key; this wrapper
+// makes the same Use state reachable when no client key event is available.
+script "rz_debug_FloovyOutOfBody" (void) {
+	int playerNum = ConsolePlayerNumber();
+	if (playerNum < 0) {
+		playerNum = 0;
+	}
+	if (!SetActivatorToPlayer(playerNum)) {
+		Log(s:"rz_debug_FloovyOutOfBody: no live player");
+		terminate;
+	}
+	// The item's Use state deliberately ends in `fail` so the reusable debug
+	// item is not consumed; do not interpret UseInventory's return value as a
+	// failure signal here.
+	if (CheckInventory("FloovyOutOfBodyDebugItem") <= 0 ||
+		CheckInventory("FloovyOutOfBodyProtect") > 0) {
+		Log(s:"rz_debug_FloovyOutOfBody: item unavailable or already active");
+		terminate;
+	}
+	UseInventory("FloovyOutOfBodyDebugItem");
+}
+
 script "rz_debug_MorphMe" (int type, int num) {
 	ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false);
 	bool res = morphMeToBoss(type, num);
@@ -83,6 +106,51 @@ script "rz_debug_countinv" (void) {
 		Log(s:"Weapon Charge: ", i:inv);
 		delay(1);
 	}
+}
+
+// Prepare a carrier spawned by FloovyOutOfBodyDebugItem.  The carrier's
+// TARGET pointer is the item owner, so this remains valid for a morphed
+// player whose current actor has TID 0.  The carrier then transfers both
+// pointers directly to FloovyGhost.
+script "rz_debug_FloovyOutOfBodyPrepare" (void) {
+	if (!SetPointer(AAPTR_TRACER, 0, AAPTR_TARGET)) {
+		SetResultValue(0);
+		terminate;
+	}
+	if (!SetActivator(0, AAPTR_TARGET)) {
+		SetResultValue(0);
+		terminate;
+	}
+
+	int playerNum = PlayerNumber();
+	if (playerNum < 0 || !PlayerInGame(playerNum) || PlayerIsSpectator(playerNum) || PlayerHealth() <= 0) {
+		SetResultValue(0);
+		terminate;
+	}
+	if (CheckInventory("FloovyOutOfBodyProtect") > 0) {
+		SetResultValue(0);
+		terminate;
+	}
+
+	int linkTid = ACS_NamedExecuteWithResult("core_uniquetid", 0, 1);
+	if (linkTid <= 0) {
+		SetResultValue(0);
+		terminate;
+	}
+	// Debug mode uses the player as both the Floovy owner and the hit target.
+	// Clear stale links before installing the new effect instance.
+	// ACS TakeInventory treats amount <= 0 as a no-op (the DECORATE action's
+	// amount 0 means "all"), so use a positive saturating amount here.
+	int oldLinkTid = CheckInventory("FloovyOutOfBodyTID");
+	if (oldLinkTid > 0) {
+		ACS_NamedExecuteWithResult("rz_FloovyGhostCancel", oldLinkTid);
+	}
+	TakeInventory("FloovyOutOfBodyTID", 0x7fffffff);
+	TakeInventory("FloovyOutOfBodyViewTID", 0x7fffffff);
+	GiveInventory("FloovyOutOfBodyTID", linkTid);
+	GiveInventory("FloovyOutOfBodyViewTID", linkTid);
+	GiveInventory("FloovyOutOfBodyProtect", 1);
+	SetResultValue(1);
 }
 
 script "rz_debug_setdecoyslot" (int slot, int num) {
