@@ -145,8 +145,28 @@ All override `DeselectDeath` to check `uh_IsItOnline` for net sync.
 
 The reusable MCP fork under `/home/user/projects/zandronum/zandronum-mcp/` supports named launch profiles,
 actor polling, detailed actor state, and incremental engine logs. Set
-`ZANDRONUM_LAUNCH_PROFILES` to `tools/mm8bdm-v6b.launch.json` in the MCP
-environment, then use this order for short feedback cycles:
+`ZANDRONUM_LAUNCH_PROFILES` to `tools/mm8bdm-v6b-linux.launch.json` when using
+the configured Linux MCP. The Windows counterpart, `tools/mm8bdm-v6b.launch.json`,
+is retained for Windows MCP clients. For a deterministic smoke regression, use
+the reusable wrapper first:
+
+```bash
+./tools/validate-build-pk3.sh
+./tools/mcp/smoke-test.sh
+./tools/mcp/smoke-test.sh --profile mm8bdm-v6b-full --json
+./tools/mcp/smoke-test.sh --dry-run
+```
+
+`validate-build-pk3.sh` is a read-only ZIP/entry-point check; it does not build
+or rewrite `out/build.pk3`.
+
+The wrapper validates profile paths, launches one instance, prints a compact
+startup/player summary, and asks MCP to quit the instance. It does not replace
+focused MCP calls when the next decision depends on live actor state or a
+specific log line. The Linux profiles include `-nosound` and software video
+mode so WSL automation does not depend on host audio/GPU presentation.
+
+For focused live debugging, use this order:
 
 1. `launch_instance` with profile `mm8bdm-v6b-smoke`.
 2. Make the smallest reproducible action (for example, fire `FireBlastWep`).
@@ -159,4 +179,16 @@ environment, then use this order for short feedback cycles:
 
 This workflow targets the locally built Zandronum 3.3-alpha MCP engine. Do not
 fall back to the removed 3.1 archive. The profile file is intentionally the
-single source of truth for the v6b IWAD/base/fix/addon load order.
+single source of truth for the v6b IWAD/base/fix/addon load order within each
+platform profile.
+
+## Reusable tool policy
+
+- Keep frequently repeated, deterministic workflows in `tools/` with a small
+  `--help` surface; keep one-off experiments in `/tmp`.
+- Prefer scripts that accept arguments or environment overrides, return useful
+  exit codes, and emit concise stdout. Save full engine logs outside the repo.
+- Add a `--dry-run` mode for launch or mutation helpers and make cleanup
+  automatic where a process is started.
+- Keep implementation details in the script. Put only the command, inputs,
+  outputs, and safety notes in this file or `tools/README.md`.
