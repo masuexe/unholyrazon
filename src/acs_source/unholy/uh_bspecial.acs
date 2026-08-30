@@ -231,6 +231,22 @@ Script "uh_BossMorph" (int whoisit, int BaseHP, int AddHP) //Boss messages and H
 	Delay(1);
 }
 
+// Recalculate a later phase's health without running the full morph setup a
+// second time.  uh_BossMorph also announces the boss, grants protection, and
+// starts its HUD watcher; a phase transition only needs the health values and
+// the inventory value used by the boss HUD.
+script "uh_BossPhaseHealth" (int BaseHP, int AddHP)
+{
+	int MainHealth = BaseHP;
+	if (multiBossCheck)
+	{
+		MainHealth = min(BaseHP + (PlayerCount() * AddHP / multiBossCheck) - AddHP / multiBossCheck, MAX_HEALTH);
+		SetActorProperty(0, APROP_HEALTH, MainHealth);
+		SetActorProperty(0, APROP_SPAWNHEALTH, MainHealth);
+	}
+	SetInventory("BossSpawnHealthFlag", MainHealth);
+}
+
 
 //Demoneyes + other morphes
 Script "uh_DemoneyeMorph" (int whoisit, int Bonus)
