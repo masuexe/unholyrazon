@@ -1301,7 +1301,14 @@ script "rz_FloovyDeath" (int tid, int type) {
     // Read and damage it through the link actor's TRACER pointer so a target
     // with TID 0 is still handled correctly.
     health = GetActorProperty(0, APROP_Health);
-    Thing_Damage(0, 30000, 5);
+    // Keep the link actor as the activator while its kill state performs an
+    // A_Explode.  This preserves the link's direct pointers and makes the
+    // watcher the inflictor, allowing its custom obituary to use Floovy as
+    // %k instead of falling back to a generic Thing_Damage obituary.
+    if (!SetActivator(tid) || !SetActorState(0, "GoldExperienceKill", true)) {
+      if (floovyPlayer >= 0) SetActivatorToPlayer(floovyPlayer);
+      terminate;
+    }
     if (floovyPlayer < 0 || !SetActivatorToPlayer(floovyPlayer)) {
       terminate;
     }
@@ -1324,8 +1331,13 @@ script "rz_FloovyDeath" (int tid, int type) {
       terminate;
     }
 
-    // TID 0 targets the current activator, which is now Floovy itself.
-    Thing_Damage(0, 30000, 5);
+    // Trigger the link's synchronous kill state.  It warps to Floovy, keeps
+    // Floovy in MASTER, and temporarily selects the beneficiary in TRACER as
+    // A_Explode's source, so the obituary receives both %o and %k correctly.
+    if (!SetActivator(tid) || !SetActorState(0, "DieForMeKill", true)) {
+      if (allyPlayer >= 0) SetActivatorToPlayer(allyPlayer);
+      terminate;
+    }
     if (allyPlayer < 0 || !SetActivatorToPlayer(allyPlayer)) {
       terminate;
     }

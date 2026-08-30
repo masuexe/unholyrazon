@@ -68,13 +68,6 @@ actor Floovy_W : BaseUnholyBossWep {
   }
 }
 actor FloovyPlugFlag : UOnce {}
-// Enemy M2 stores the number of tendrils already created on the hit target.
-// The marker is reset when a new enemy plug connects and is capped at ten so
-// a stale helper cannot keep incrementing it beyond the design limit.
-actor FloovyVineCount : Inventory {
-  inventory.amount 1
-  inventory.maxamount 10
-}
 actor FloovyOutOfBodyDebugItem : CustomInventory {
   Inventory.PickupMessage "\cmFloovy out-of-body debug"
   Inventory.PickupSound "WilyWar/Snd_37"
@@ -313,14 +306,6 @@ actor FloovyPlug : BasicProjectile {
     6P50 R 0 A_JumpIfInventory("Is_UH_BossNum", 1, "BoostYou", 8)
     goto VineSummon
    VineSummon:
-    // A new enemy connection starts a fresh ten-vine budget.  The old version
-    // accidentally stored this marker on the plug owner's target pointer
-    // (Floovy), so it stayed at ten after the first connection and made every
-    // later helper terminate immediately.  Clear that stale location as well
-    // as the actual enemy (tracer) location for compatibility with sessions
-    // started with the buggy build.
-    6P50 R 0 A_TakeInventory("FloovyVineCount", 0, 0, 2)
-    6P50 R 0 A_TakeInventory("FloovyVineCount", 0, 0, 8)
     6P50 R 0 A_SpawnItemEx("FloovyVine_H", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)//A_GiveInventory("FloovyVine_P",1,8)
     goto Death
    BoostYou:
@@ -360,20 +345,17 @@ actor FloovyPlugDeathFX : BasicGraphicEffectM {
   }
 }
 actor FloovyVine_H : BasicWatcher {
-  reactiontime 4 //10
+  // A_Countdown runs once after each generated tendril.  Four countdowns
+  // therefore give this connection a deterministic four-tendril budget.
+  reactiontime 4
   States {
    Spawn:
     TNT1 A 0
     TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 8), "Death")
     TNT1 A 0 A_JumpIfInTargetInventory("FloovyPlugFlag", 1, 2)
     TNT1 A 0 A_Jump(256, "Death")
-    // Allow exactly ten tendrils on the enemy (pointer 8/tracer).  The tenth
-    // iteration raises the marker to ten; the next pass takes Death and
-    // clears FloovyPlugFlag on the owner, which also terminates the latch.
-    TNT1 A 0 A_JumpIfInTargetInventory("FloovyVineCount", 10, "Death", 8)
     TNT1 A 0 A_Warp(8, 0, 0, 0, 0, 24)
     TNT1 A 0 A_SpawnItemEx("FloovyVine")
-    TNT1 A 0 A_GiveInventory("FloovyVineCount", 1, 8)
     TNT1 A 0 A_GiveToTarget("UnholyPower3000", 36)
     TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertyRage", 1, "CountDownRage")
    CountDown:
@@ -472,27 +454,34 @@ actor FloovyGoldenShot : BasicFastProjectile {
     // TARGET(2) is the Floovy player that fired this projectile.
     6P50 R 0 A_SetUserVar("user_linktid", CallACS("core_uniquetid", 0, 1))
     6P50 R 0 A_JumpIf(user_linktid <= 0, "Death")
-    6P50 R 0 ACS_NamedExecuteWithResult("rz_FloovyExtraLifePointer", 2, 2, false, ELP_FLOOVY_G)
+    // ACS_NamedExecuteWithResult has no map-number argument here; the wrapper
+    // expects exactly (pointer, toggle, type).
+    6P50 R 0 ACS_NamedExecuteWithResult("rz_FloovyExtraLifePointer", 2, false, ELP_FLOOVY_G)
     6P50 R 0 A_TakeInventory("FloovyStandTID", 0, 0, 2)
     6P50 R 0 A_GiveInventory("FloovyStandTID", user_linktid, 2)
     6P50 R 0 A_SpawnItemEx("FloovyStandWatcher", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS, 0, user_linktid)
-    6P50 R 0 ACS_NamedExecuteWithResult("rz_FloovyExtraLifePointer", 2, 2, true, ELP_FLOOVY_G)
+    6P50 R 0 ACS_NamedExecuteWithResult("rz_FloovyExtraLifePointer", 2, true, ELP_FLOOVY_G)
     goto Death
    SacrificeMe:
     // TRACER(8) is the ally hit by this projectile.
     6P50 R 0 A_SetUserVar("user_linktid", CallACS("core_uniquetid", 0, 1))
     6P50 R 0 A_JumpIf(user_linktid <= 0, "Death")
-    6P50 R 0 ACS_NamedExecuteWithResult("rz_FloovyExtraLifePointer", 8, 8, false, ELP_FLOOVY_D)
+    6P50 R 0 ACS_NamedExecuteWithResult("rz_FloovyExtraLifePointer", 8, false, ELP_FLOOVY_D)
     6P50 R 0 A_TakeInventory("FloovyDiesForMeTID", 0, 0, 8)
     6P50 R 0 A_GiveInventory("FloovyDiesForMeTID", user_linktid, 8)
     6P50 R 0 A_SpawnItemEx("FloovyDiesForMeLink", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS, 0, user_linktid)
-    6P50 R 0 ACS_NamedExecuteWithResult("rz_FloovyExtraLifePointer", 8, 8, true, ELP_FLOOVY_D)
+    6P50 R 0 ACS_NamedExecuteWithResult("rz_FloovyExtraLifePointer", 8, true, ELP_FLOOVY_D)
    Death:
     6P50 RST 2 A_FadeOut(0.1)
     loop
   }
 }
 actor FloovyStandWatcher : BasicWatcher {
+  // The watcher is the delayed inflictor for Golden Experience Requiem.
+  // A_Explode supplies this actor as the inflictor, so the engine can use
+  // this obituary while the direct TARGET/TRACER pointers keep TID 0 safe.
+  Obituary "%o died for %k's stand."
+  +FORCERADIUSDMG
   States {
    Spawn:
     TNT1 A 0
@@ -505,12 +494,23 @@ actor FloovyStandWatcher : BasicWatcher {
     TNT1 A 0
     stop
    Death:
-    TNT1 A 0 ACS_NamedExecuteWithResult("rz_FloovyExtraLifePointer", 2, 2, false, ELP_FLOOVY_G)
-    TNT1 A 0 A_TakeInventory("FloovyStandTID", 0, 2)
+    TNT1 A 0 ACS_NamedExecuteWithResult("rz_FloovyExtraLifePointer", 2, false, ELP_FLOOVY_G)
+    TNT1 A 0 A_TakeInventory("FloovyStandTID", 0, 0, 2)
+    stop
+   GoldExperienceKill:
+    // TRACER is the enemy and TARGET is Floovy, which becomes %k.
+    TNT1 A 0 A_Warp(AAPTR_TRACER, 0, 0, 0, 0, WARPF_NOCHECKPOSITION)
+    TNT1 A 0 A_Explode(30000, 8, 0, 0, 8)
     stop
   }
 }
 actor FloovyDiesForMeLink : BasicWatcher {
+  // In LMS, the TRACER player is the beneficiary/source and therefore %k.
+  // The damage state temporarily moves the original TARGET (Floovy) into
+  // MASTER so A_Explode can use TRACER as its attacker without losing the
+  // victim pointer.
+  Obituary "%o died for %k."
+  +FORCERADIUSDMG
   +NOINTERACTION
   +NOGRAVITY
   States {
@@ -524,8 +524,16 @@ actor FloovyDiesForMeLink : BasicWatcher {
     TNT1 A 0
     stop
    FloovyDead:
-    TNT1 A 0 ACS_NamedExecuteWithResult("rz_FloovyExtraLifePointer", 8, 8, false, ELP_FLOOVY_D)
-    TNT1 A 0 A_TakeInventory("FloovyDiesForMeTID", 0, 8)
+    TNT1 A 0 ACS_NamedExecuteWithResult("rz_FloovyExtraLifePointer", 8, false, ELP_FLOOVY_D)
+    TNT1 A 0 A_TakeInventory("FloovyDiesForMeTID", 0, 0, 8)
+    stop
+   DieForMeKill:
+    // Keep the link at Floovy, then use the ally in TRACER as the source.
+    TNT1 A 0 A_Warp(AAPTR_TARGET, 0, 0, 0, 0, WARPF_NOCHECKPOSITION)
+    TNT1 A 0 A_RearrangePointers(AAPTR_DEFAULT, AAPTR_TARGET, AAPTR_DEFAULT)
+    TNT1 A 0 A_RearrangePointers(AAPTR_TRACER, AAPTR_DEFAULT, AAPTR_DEFAULT)
+    TNT1 A 0 A_Explode(30000, 8, 0, 0, 8)
+    TNT1 A 0 A_RearrangePointers(AAPTR_MASTER, AAPTR_NULL, AAPTR_DEFAULT)
     stop
   }
 }
