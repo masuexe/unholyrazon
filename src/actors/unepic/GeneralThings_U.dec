@@ -538,14 +538,21 @@ actor GravityFlashSwitchDown_P : CustomInventory {
   }
 }
 
-// Shared reverse-grav tick: re-assert negative gravity + lift (UR3)
+// Shared reverse-grav tick: re-assert negative gravity + lift (UR3).
+// Check the contact state before applying the lift.  Once the player is
+// latched to a ceiling, repeatedly adding velocity into the clipped plane
+// can fight the engine's ceiling resolver (and the custom jump-cancel loop).
+// CeilingCheck still refreshes the ceiling-speed power while the player is
+// touching the ceiling, but no additional upward velocity is applied there.
 actor ReverseGravityThrust : CustomInventory {
   States {
    Pickup:
     TNT1 A 0 A_JumpIfInventory("GroundFlag", 1, "No")
+    TNT1 A 0 A_GiveInventory("CeilingCheck")
+    TNT1 A 0 A_JumpIfInventory("OnCeilingFlag", 1, "No")
+    TNT1 A 0 A_JumpIf(ceilingz - z <= 58, "No")
     TNT1 A 0 A_SetGravity(-0.8)
     TNT1 A 0 A_ChangeVelocity(0, 0, 0.8)
-    TNT1 A 0 A_GiveInventory("CeilingCheck")
     stop
    No:
     TNT1 A 0
