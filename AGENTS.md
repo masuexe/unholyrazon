@@ -89,11 +89,11 @@ Files earlier in the chain cannot reference actors defined later.
 
 ```
 ClassBase0 (MM8BDM core)
- → ClassBaseUH0  (basic actor + shared pain helpers)
-  → ClassBaseUH10_BaseDamageTypes  (MM8BDM Pain/Death aliases)
-   → ClassBaseUH20_HitEffects  (Unholy hit, protection, and status effects)
-    → ClassBaseUH30_MovementEffects  (Unholy push, fling, and lift effects)
-     → ClassBaseUH40_DeathEffects  (Unholy Death effects grouped by outcome)
+ → ClassBaseUH00  (basic actor + shared pain helpers)
+  → ClassBase_UH10_BaseDamageTypes  (MM8BDM Pain/Death aliases)
+   → ClassBase_UH20_HitEffects  (Unholy hit, protection, and status effects)
+    → ClassBase_UH30_MovementEffects  (Unholy push, fling, and lift effects)
+     → ClassBase_UH40_DeathEffects  (Unholy Death effects grouped by outcome)
       → ClassBaseSlot0 … ClassBaseSlot50 → ClassBase2
        → CustWepClassBase (MM8BDM custom-weapon base)
         → MegaManU / BusterExpert

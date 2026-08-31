@@ -1,9 +1,76 @@
 // Unholy hit, protection, and status effects
-actor ClassBaseUH20_HitEffects : ClassBaseUH10_BaseDamageTypes {
+actor ClassBase_UH20_HitEffects : ClassBase_UH10_BaseDamageTypes {
   States {
+    ///////////////////
+    // Class / weapon-specific reactions
+    ///////////////////
+   Pain.Sakugarne:
+    "----" H 0 A_SetAngle(angle + random(-8, 8))
+    "----" H 0 A_SetPitch(pitch + random(-8, 8))
+    Goto Pain
+   Pain.NegaBuster:
+    "----" H 0 A_Jump(16, "NegaBusterGive")
+    Goto Pain
+   NegaBusterGive:
+    // NegaMan v4 stores copy weapons through UH_COPYWEPS instead of the
+    // removed physical NegaWepGiver actors.
+    "----" H 0 ACS_NamedExecuteAlways("uh_GiveRandomCopyweps", 0, 2)
+    Goto Pain
+   Pain.CrystrapStun:
+    goto Pain_Stop
+   Pain.SoraNoMusica:
+    "----" H 0 A_GiveInventory("PowerMujicaProtection", 1)
+    "----" H 0 ACS_NamedExecuteAlways("rz_MujicaRevival", 0)
+    "----" H 0 A_GiveToTarget("SakiJoyOfRecruitment_P")
+    "----" H 0 A_GiveInventory("RewardOfRecruitment_P")
+    goto Pain+2
+   Pain.MGZeroZap:
+    goto Pain_Shock
+   Pain.FortuneCoin:
+    "----" H 0 A_GiveInventory("FortuneCoinProtect")
+    goto Pain+2
+
     ///////////////////
     // Protection / immunity / inventory side effects
     ///////////////////
+   Pain.CeobeTomahawkHit:
+    "----" H 0 A_ScaleVelocity(0.2)
+    "----" H 0 A_PlaySoundEx("weapon/CeobeDead", "SoundSlot5")
+    "----" H 0 A_SpawnItemEx("PainCeobeTomahawkHit")
+    "----" H 0 ThrustThingZ(0, 15, 0, 0)
+    Goto Pain+3
+   Pain.CeobeTomahawkGrabBack:
+    "----" H 0 A_ScaleVelocity(0.2)
+    "----" H 0 A_SpawnItemEx("PainCeobeTomahawkPull")
+    "----" H 0 ThrustThingZ(0, 25, 0, 0)
+    Goto Pain+3
+   Pain.CeobeTomahawkNormal:
+    "----" H 0 A_GiveInventory("Ceobe_SmackYou_Disorient")
+    Goto Pain+3
+   Pain.CeobeTouch:
+    "----" H 0 A_ScaleVelocity(0.6)
+    "----" H 0 A_PlaySoundEx("weapon/CeobeDead", "SoundSlot7")
+    "----" H 0 A_SpawnItemEx("PainCeobeContact")
+    "----" H 0 A_GiveInventory("Ceobe_SmackYou_Disorient")
+    "----" H 0 ThrustThingZ(0, 5, 0, 0)
+    Goto Pain+3
+   Pain.Neru:
+    "----" H 0 A_GiveToTarget("UnholyPower500", 2)
+    "----" H 0 A_GiveToTarget("UnholyPower1500", 1)
+    Goto Pain+3
+   Pain.Neru_EX:
+    "----" H 0 A_GiveToTarget("Neru_Adrenaline_Rush_P")
+    "----" H 0 A_GiveToTarget("UnholyPower500", 3)
+    "----" H 0 A_GiveToTarget("UnholyPower1500", 2)
+    "----" H 0 A_SpawnItemEx("PainNeruAmped")
+    Goto Pain+3
+   Pain.NeruFire:
+    "----" H 0 A_JumpIfInventory("SUDDENLYONFIRE", 1, "NeruNoBurn")
+    "----" H 0 A_GiveInventory("AutoOnFireItem", 1)
+   NeruNoBurn:
+    "----" H 0 A_GiveToTarget("UnholyPower500", 2)
+    "----" H 0 A_GiveToTarget("UnholyPower1500", 1)
+    Goto Pain+3
    Pain.FriendBall:
     "----" H 0 A_GiveInventory("FriendBallItem")
     Goto Pain
@@ -84,6 +151,11 @@ actor ClassBaseUH20_HitEffects : ClassBaseUH10_BaseDamageTypes {
    Pain.NetBall: Pain.GreatShieldStun: Pain.JuggerRam:
     "----" H 0 A_GiveInventory("PainHitstun_85_P")
     goto Pain_Shock
+   Pain.ASPStun: Pain.ASPStunJr: Pain.SampiStun:
+    "----" H 0 A_GiveInventory("PainHitstun_85_P")
+    goto Pain_Shock
+   Pain.TrueMistressStun:
+    goto Pain_Shock
    Pain.M_SparkShock: Pain.LuckyDerp: Pain.CatStun: Pain.TerrorStun: Pain.HandyStun: Pain.WispStun:
     Goto Pain_Shock
    Pain.ThunderWave: Pain.ElectricianStun:
@@ -124,6 +196,15 @@ actor ClassBaseUH20_HitEffects : ClassBaseUH10_BaseDamageTypes {
     "----" H 0 A_TakeInventory("PlayerParalyzedTimer")
     "----" H 0 A_GiveInventory("PlayerParalyzedTimer", 70)
     Goto Pain_Paralyze
+   Pain.SovietChill:
+    goto Pain_65
+   Pain.MorshuRope:
+    goto Pain_StopAndShock
+   Pain.TidalTitoEcho:
+    goto Pain_75
+   Pain.ThwompCrush:
+    "----" H 0 A_GiveInventory("ThwompCrush_P")
+    goto Pain_85
 
     ///////////////////
     // Visual / blind / flash effects
@@ -167,19 +248,69 @@ actor ClassBaseUH20_HitEffects : ClassBaseUH10_BaseDamageTypes {
     "----" H 0 A_SpawnItemEx("PainDecoy17PoisonHit")
     Goto Pain+2
    Pain.RaiderPoison:
-    "----" H 0 A_SetBlend(DarkGreen, 0.5, 35)
+    "----" H 0 A_SetBlend("DarkGreen", 0.5, 35)
     Goto Pain+2
    Pain.WispKindle:
     "----" H 0 ACS_NamedExecuteWithResult("uc_WispHex", 0, CallACS("core_getptrtid", 2)-1000)
     "----" H 0 A_GiveInventory("WispKindle_P")
     Goto Pain
    Pain.WispHex:
-    "----" H 0 A_SetBlend(firebrick, 0.35, 35)
+    "----" H 0 A_SetBlend("firebrick", 0.35, 35)
     "----" H 0 A_SpawnItemEx("Pain_WispHexHit")
     "----" H 0 A_GiveInventory("WispHexProtect")
     Goto Pain
+
+    ///////////////////
+    // Unholy effect reactions
+    ///////////////////
+   Pain.PitSpike:
+    goto Pain.Falling
+   Pain.MoonBlast:
+    "----" H 0 A_Jump(179, "Pain")
+    "----" H 0 A_GiveInventory("PowerMoonblastDamage")
+    Goto Pain
+   Pain.IceBeam:
+    "----" H 0 A_Jump(230, "Pain")
+    "----" H 0 A_GiveInventory("ChillFreeze")
+    Goto Pain
+   Pain.FlameWheel:
+    "----" H 0 A_TakeInventory("ChillFreezeTimer")
+    Goto Pain
+   Pain.SmokeHit:
+    "----" H 0 A_SetBlend("DarkGreen", 0.5, 35)
+    Goto Pain+3
+   Pain.EdenPoisonIpecac:
+    "----" H 0 A_SpawnItemEx("IpecacPoisonDamager")
+    Goto Pain+1
    Pain.MorshuLampOil:
     "----" H 0 A_SpawnItemEx("PainMorshuMolotovBurn")
+    Goto Pain
+   Pain.CoDKnife:
+    "----" H 0 A_GiveInventory("CoDJoeStabProtect")
+    Goto Pain
+   Pain.WahweeZAPDamage:
+    "----" H 0 A_GiveInventory("Wahwee_Zap_Protect")
+    Goto Pain
+   Pain.WahweeGraze:
+    "----" H 0 A_GiveInventory("Wahwee_Graze_Protect")
+    Goto Pain
+   Pain.Skull4MI:
+    "----" H 0 A_GiveInventory("PowerHellWheelProtect")
+    Goto Pain
+   Pain.Skull4MI2:
+    "----" H 0 A_GiveInventory("PowerHellWheelProtect2")
+    Goto Pain
+   Pain.Pharaoh4MI2:
+    "----" H 0 A_GiveInventory("Power4MIWave2Protect")
+    Goto Pain
+   Pain.ShinBanish:
+    "----" H 0 A_SpawnItemEx("ShinBanishSelf_TelOther", 0, 0, 24)
+    Goto Pain
+   Pain.DLCCentBomb:
+    "----" H 0 A_GiveInventory("DLCCentBombProtect")
+    Goto Pain
+   Pain.MadAlphaHellX:
+    "----" H 0 A_GiveInventory("MadAlphaHellXProtect")
     Goto Pain
    Pain.HellbotPoison:
     "----" H 0 A_SpawnItemEx("HellbotPoisonHit", 0, 0, 0, 0, 0, 0, 0, 1)
@@ -195,6 +326,73 @@ actor ClassBaseUH20_HitEffects : ClassBaseUH10_BaseDamageTypes {
     goto Pain
    Pain.UrineBottle: Pain.UrineBottleB:
     "----" H 0 A_GiveInventory("UrineDebuff_P")
+    goto Pain
+
+   Pain.Misery_A:
+    "----" H 0 A_PlaySoundEx("classes/DerpyHit", "Voice")
+    "----" H 0 A_JumpIfInventory("NoPushFlag", 1, "Pain2")
+    "----" H 0 A_SpawnItemEx("Misery_Fling_10")
+    "----" H 0 ThrustThingZ(0, 5, 0, 0)
+    Goto Pain+3
+   Pain.Misery_B:
+    "----" H 0 A_PlaySoundEx("classes/DerpyHit", "Voice")
+    "----" H 0 A_JumpIfInventory("NoPushFlag", 1, "Pain2")
+    "----" H 0 A_SpawnItemEx("SparkShockFX", 6, 0, 32)
+    "----" H 0 A_GiveInventory("Core_ShockedStopGiver")
+    "----" H 0 A_SpawnItemEx("Misery_Fling_30")
+    "----" H 0 ThrustThingZ(0, 10, 0, 0)
+    Goto Pain+3
+   Pain.Misery_C:
+    "----" H 0 A_GiveInventory("Misery_Squish_P")
+    Goto Pain
+   Pain.WahweeZAPFling: Pain.WahweeZAPFling_X:
+    "----" H 0 A_PlaySoundEx("classes/DerpyHit", "Voice")
+    "----" H 0 A_JumpIfInventory("NoPushFlag", 1, "Pain2")
+    "----" H 0 A_Stop
+    "----" H 0 A_GiveInventory("PainPush_Z_40")
+    "----" H 0 A_GiveInventory("HalfShockedStopGiver")
+    Goto Pain+3
+   Pain.PlasmaSpark_D:
+    "----" H 0 A_SpawnItemEx("SparkShockFX", 6, 0, 32)
+    "----" H 0 A_GiveInventory("Core_ShockedStopGiver")
+    "----" H 0 A_GiveInventory("PainPU_PlasmaMelee")
+    "----" H 0 ThrustThingZ(0, 5, 0, 0)
+    Goto Pain
+   Pain.PlasmaSpark_C:
+    "----" H 0 A_SpawnItemEx("SparkShockFX", 6, 0, 32)
+    "----" H 0 A_GiveInventory("Core_ShockedStopGiver")
+    Goto Pain
+   Pain.PlasmaSpark_A:
+    "----" H 0 A_GiveInventory("PainPU_PlasmaMelee")
+    Goto Pain
+   Pain.MistRing:
+    "----" H 0 A_JumpIfInventory("MistRingSoaked", 1, "Pain_85")
+    "----" H 0 A_SpawnItemEx("MistRingSoakedHelper", 0, 0, 28)
+    "----" H 0 A_GiveInventory("MistRingSoaked", 1)
+    Goto Pain_85
+   Pain.FrigidFreezer:
+    "----" H 0 A_JumpIfInventory("MistRingSoaked", 1, "FrigidFreezerSoaked")
+    goto Pain_75
+   FrigidFreezerSoaked:
+    "----" H 0 A_TakeInventory("MistRingSoaked", 1)
+    "----" H 0 A_GiveInventory("ChillFreeze", 1)
+    goto Pain
+   Pain.MagmaCannon:
+    "----" H 0 A_JumpIfInventory("MistRingSoaked", 1, "MagmaCannonSoaked")
+    goto Pain
+   MagmaCannonSoaked:
+    "----" H 0 A_TakeInventory("MistRingSoaked", 1)
+    goto Pain
+   Pain.MajorGrenadePoison:
+    "----" H 0 A_GiveInventory("PainPush_F_5")
+    "----" H 0 A_GiveInventory("PainPush_Z_20")
+    "----" H 0 A_GiveInventory("HalfShockedStopGiver")
+    Goto Pain
+   Pain.HillbillyRam:
+    "----" H 0 A_SpawnItemEx("MightyNumberPizzaExplosion", 0, 0, 28)
+    "----" H 0 A_GiveToTarget("ConfederatePainPickup", 1)
+    "----" H 0 ThrustThingZ(0, 35, 0, 0)
+    "----" H 0 ThrustThing(random(0, 255), 500, 1, 0)
     goto Pain
 
     ///////////////////
