@@ -1,24 +1,22 @@
-actor BoxDEItem : UnholyItem
-{
-Tag "$TAG_P_BOX07"
-inventory.pickupmessage "Box-Demoneye assist!"
-inventory.icon "PANBOX07"
-states
-{
-Spawn:
-I_BA H 6
-loop
-UseX:
-TNT1 A 0 A_PlaySoundEx("items/ABoxEyeBox","Item")
-UseX_Silent:
-TNT1 A 0 A_SpawnItemEx("FriendlyBoxDE",56,0,38,1,0,0,0,32)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"UseX2")
-goto End
-UseX2:
-TNT1 A 0 A_SpawnItemEx("FriendlyBoxDE_Spread",0,56,38,1,0,0,90,32)
-TNT1 A 0 A_SpawnItemEx("FriendlyBoxDE_Spread",0,-56,38,1,0,0,270,32)
-goto End
-}
+actor BoxDEItem : UnholyItem {
+  Tag "$TAG_P_BOX07"
+  inventory.pickupmessage "Box-Demoneye assist!"
+  inventory.icon "PANBOX07"
+  states {
+   Spawn:
+    I_BA H 6
+    loop
+   UseX:
+    TNT1 A 0 A_PlaySoundEx("items/ABoxEyeBox", "Item")
+   UseX_Silent:
+    TNT1 A 0 A_SpawnItemEx("FriendlyBoxDE", 56, 0, 38, 1, 0, 0, 0, 32)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "UseX2")
+    goto End
+   UseX2:
+    TNT1 A 0 A_SpawnItemEx("FriendlyBoxDE_Spread", 0, 56, 38, 1, 0, 0, 90, 32)
+    TNT1 A 0 A_SpawnItemEx("FriendlyBoxDE_Spread", 0, -56, 38, 1, 0, 0, 270, 32)
+    goto End
+  }
 }
 
 actor AutoBoxDEItem : BoxDEItem {
@@ -38,486 +36,462 @@ actor AutoBoxDEItemSilent : AutoBoxDEItem {
 }
 actor BoxDEItemFX : UnholyItemFX {
   States {
-   Spawn: 
+   Spawn:
     I_BA H 0
     goto Spawn2
   }
 }
 
-actor FriendlyBoxDE : UH_ShootableItemActor
-{
-var int user_NoTranslation;
-Translation "192:192=13:13","198:198=14:14","199:199=15:15","204:204=13:13","195:195=14:14"
-//+CANPASS
--ISMONSTER
--COUNTKILL
-+SHOOTABLE
-+NOBLOOD
--SOLID
-+DONTCORPSE
-painsound "misc/devilpain"
-deathsound "misc/devildeath"
+actor FriendlyBoxDE : UH_ShootableItemActor {
+  var int user_NoTranslation;
+  Translation "192:192=13:13", "198:198=14:14", "199:199=15:15", "204:204=13:13", "195:195=14:14"
+  //+CANPASS
+  -ISMONSTER
+  -COUNTKILL
+  +SHOOTABLE
+  +NOBLOOD
+  -SOLID
+  +DONTCORPSE
+  painsound "misc/devilpain"
+  deathsound "misc/devildeath"
 
-//damagefactor "", 0.0
+  //damagefactor "", 0.0
 
-DropItem "AutoPandoraBoxItem" 256 1
-Health 1250
-Mass 500
-gravity 0.8
-painchance 64
+  DropItem "AutoPandoraBoxItem" 256 1
+  Health 1250
+  Mass 500
+  gravity 0.8
+  painchance 64
 
-Damage (0)
-Radius 20
-Height 52
-Speed 16
-scale 2.5
-States
-{
-Spawn:
-I_BD N 0
-I_BD NNNNNNNNNNNNNNNNNNNN 1 A_Wander
-I_BD NNNNNNNNNNNNNNNNNNNN 1 A_Wander
-I_BD NNNNNNNNNNNNNNNNNNNN 1 A_Wander
-I_BD NNNNNNNNNN 1 A_Wander
-I_BD N 0 A_JumpIfInventory("WeaponCharge",10,"DeathTimer")
-I_BD N 0 A_GiveInventory("U_PSN",random(1,2))
-I_BD N 0 A_JumpIfInventory("U_PSN",5,"Item")
-I_BD N 0 A_Jump(32,"Spawn3")
-I_BD N 0 A_Jump(64,"Spawn2")
-I_BD N 0 A_Jump(128,"Spawn1")
-loop
-Spawn1:
-I_BD N 0
-goto Spawn+20
-Spawn2:
-I_BD N 0
-goto Spawn+40
-Spawn3:
-I_BD N 0
-goto Spawn+60
-Item:
-I_BD N 0 A_Stop
-I_BD N 1 A_TakeInventory("U_PSN",6)
-I_BD N 0 A_GiveInventory("WeaponCharge",1)
-I_BD N 0 A_ChangeVelocity(0,0,6)
-I_BD N 1 A_SpawnItemEx("PandoraBoxEyeDrop")
-I_BD N 0 A_Jump(16,"Spawn3")
-I_BD N 0 A_Jump(32,"Spawn2")
-I_BD N 0 A_Jump(64,"Spawn1")
-Goto Spawn+1
-Pain:
-I_BD N 0 A_Pain
-I_BD NNNNNNNNNN 2 A_SpawnItem("PainFX",0,3)
-I_BD N 0 A_Jump(32,"Spawn3")
-I_BD N 0 A_Jump(64,"Spawn2")
-I_BD N 0 A_Jump(128,"Spawn1")
-goto Spawn+1
-DeathTimer:
-I_BD N 0 A_ChangeFlag("INVULNERABLE",1)
-I_BD N 0 A_ChangeFlag("DONTBLAST",1)
-I_BD N 0 A_ChangeFlag("NOGRAVITY",1)
-I_BD N 6 A_Stop
-I_BD N 0 A_ChangeVelocity(0,0,8,3)
-I_BD NNNNNNNNNN 1 A_FadeOut(0.1,0)
-I_BD N 1 A_SpawnItemEx("BoxDEItem",0,0,0,0,0,6)
-stop
-Death:
-I_BD N 0 A_Fall
-I_BD N 20 A_Stop
-I_BD N 0 A_Scream
-I_BD N 0 //A_DropItem("PandoraBoxItem",1)
-TNT1 A 0 A_CustomMissile("FakeDeathFX")
-TNT1 A 70
-stop
-}
+  Damage (0)
+  Radius 20
+  Height 52
+  Speed 16
+  scale 2.5
+  States {
+   Spawn:
+    I_BD N 0
+    I_BD NNNNNNNNNNNNNNNNNNNN 1 A_Wander
+    I_BD NNNNNNNNNNNNNNNNNNNN 1 A_Wander
+    I_BD NNNNNNNNNNNNNNNNNNNN 1 A_Wander
+    I_BD NNNNNNNNNN 1 A_Wander
+    I_BD N 0 A_JumpIfInventory("WeaponCharge", 10, "DeathTimer")
+    I_BD N 0 A_GiveInventory("U_PSN", random(1, 2))
+    I_BD N 0 A_JumpIfInventory("U_PSN", 5, "Item")
+    I_BD N 0 A_Jump(32, "Spawn3")
+    I_BD N 0 A_Jump(64, "Spawn2")
+    I_BD N 0 A_Jump(128, "Spawn1")
+    loop
+   Spawn1:
+    I_BD N 0
+    goto Spawn+20
+   Spawn2:
+    I_BD N 0
+    goto Spawn+40
+   Spawn3:
+    I_BD N 0
+    goto Spawn+60
+   Item:
+    I_BD N 0 A_Stop
+    I_BD N 1 A_TakeInventory("U_PSN", 6)
+    I_BD N 0 A_GiveInventory("WeaponCharge", 1)
+    I_BD N 0 A_ChangeVelocity(0, 0, 6)
+    I_BD N 1 A_SpawnItemEx("PandoraBoxEyeDrop")
+    I_BD N 0 A_Jump(16, "Spawn3")
+    I_BD N 0 A_Jump(32, "Spawn2")
+    I_BD N 0 A_Jump(64, "Spawn1")
+    Goto Spawn+1
+   Pain:
+    I_BD N 0 A_Pain
+    I_BD NNNNNNNNNN 2 A_SpawnItem("PainFX", 0, 3)
+    I_BD N 0 A_Jump(32, "Spawn3")
+    I_BD N 0 A_Jump(64, "Spawn2")
+    I_BD N 0 A_Jump(128, "Spawn1")
+    goto Spawn+1
+   DeathTimer:
+    I_BD N 0 A_ChangeFlag("INVULNERABLE", 1)
+    I_BD N 0 A_ChangeFlag("DONTBLAST", 1)
+    I_BD N 0 A_ChangeFlag("NOGRAVITY", 1)
+    I_BD N 6 A_Stop
+    I_BD N 0 A_ChangeVelocity(0, 0, 8, 3)
+    I_BD NNNNNNNNNN 1 A_FadeOut(0.1, 0)
+    I_BD N 1 A_SpawnItemEx("BoxDEItem", 0, 0, 0, 0, 0, 6)
+    stop
+   Death:
+    I_BD N 0 A_Fall
+    I_BD N 20 A_Stop
+    I_BD N 0 A_Scream
+    I_BD N 0 //A_DropItem("PandoraBoxItem",1)
+    TNT1 A 0 A_CustomMissile("FakeDeathFX")
+    TNT1 A 70
+    stop
+  }
 }
 
-actor FriendlyBoxDE_Spread : FriendlyBoxDE
-{
-States
-{
-DeathTimer:
-I_BD N 0 A_ChangeFlag("INVULNERABLE",1)
-I_BD N 0 A_ChangeFlag("DONTBLAST",1)
-I_BD N 0 A_ChangeFlag("NOGRAVITY",1)
-I_BD N 6 A_Stop
-I_BD N 0 A_ChangeVelocity(0,0,8,3)
-I_BD NNNNNNNNNN 1 A_FadeOut(0.1,0)
-stop
-}
+actor FriendlyBoxDE_Spread : FriendlyBoxDE {
+  States {
+   DeathTimer:
+    I_BD N 0 A_ChangeFlag("INVULNERABLE", 1)
+    I_BD N 0 A_ChangeFlag("DONTBLAST", 1)
+    I_BD N 0 A_ChangeFlag("NOGRAVITY", 1)
+    I_BD N 6 A_Stop
+    I_BD N 0 A_ChangeVelocity(0, 0, 8, 3)
+    I_BD NNNNNNNNNN 1 A_FadeOut(0.1, 0)
+    stop
+  }
 }
 
 
-actor BoxDE_MinivileHidden
-{
--ISMONSTER
-+FLOORHUGGER
--SOLID
--NOGRAVITY
-+DONTBLAST
-+NOBLOOD
-+WINDTHRUST
-+NODAMAGETHRUST
-+NEVERRESPAWN
--NODROPOFF
-+LOOKALLAROUND
-Scale 2.0
-States
-{
-Spawn:
-TNT1 A 1
-TNT1 A 0 A_Jump(16,"Spawn2")
-TNT1 A 0 A_Jump(256,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34)
-I_BA A 1
-goto S_Loop
-I_BA B 1
-goto S_Loop
-I_BA C 1
-goto S_Loop
-I_BA D 1
-goto S_Loop
-I_BA E 1
-goto S_Loop
-I_BA F 1
-goto S_Loop
-I_BA G 1
-goto S_Loop
-I_BA H 1
-goto S_Loop
-I_BA I 1
-goto S_Loop
-I_BA J 1
-goto S_Loop
-I_BA K 1
-goto S_Loop
-I_BA L 1
-goto S_Loop
-I_BA M 1
-goto S_Loop
-I_BA N 1
-goto S_Loop
-I_BA O 1
-goto S_Loop
-I_BA P 1
-goto S_Loop
-I_BA Q 1
-goto S_Loop
-I_BA R 1
-goto S_Loop
-I_BA S 1
-goto S_Loop
-I_BA T 1
-goto S_Loop
-I_BA U 1
-goto S_Loop
-I_BA V 1
-goto S_Loop
-I_BA W 1
-goto S_Loop
-I_BA X 1
-goto S_Loop
-I_BA Y 1
-goto S_Loop
-I_BB A 1
-goto S_Loop
-I_BB B 1
-goto S_Loop
-I_BB C 1
-goto S_Loop
-I_BB D 1
-goto S_Loop
-I_BB E 1
-goto S_Loop
-I_BB F 1
-goto S_Loop
-I_BB G 1
-goto S_Loop
-I_BB H 1
-goto S_Loop
-I_BB J 1
-goto S_Loop
+actor BoxDE_MinivileHidden {
+  -ISMONSTER
+  +FLOORHUGGER
+  -SOLID
+  -NOGRAVITY
+  +DONTBLAST
+  +NOBLOOD
+  +WINDTHRUST
+  +NODAMAGETHRUST
+  +NEVERRESPAWN
+  -NODROPOFF
+  +LOOKALLAROUND
+  Scale 2.0
+  States {
+   Spawn:
+    TNT1 A 1
+    TNT1 A 0 A_Jump(16, "Spawn2")
+    TNT1 A 0 A_Jump(256, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34)
+    I_BA A 1
+    goto S_Loop
+    I_BA B 1
+    goto S_Loop
+    I_BA C 1
+    goto S_Loop
+    I_BA D 1
+    goto S_Loop
+    I_BA E 1
+    goto S_Loop
+    I_BA F 1
+    goto S_Loop
+    I_BA G 1
+    goto S_Loop
+    I_BA H 1
+    goto S_Loop
+    I_BA I 1
+    goto S_Loop
+    I_BA J 1
+    goto S_Loop
+    I_BA K 1
+    goto S_Loop
+    I_BA L 1
+    goto S_Loop
+    I_BA M 1
+    goto S_Loop
+    I_BA N 1
+    goto S_Loop
+    I_BA O 1
+    goto S_Loop
+    I_BA P 1
+    goto S_Loop
+    I_BA Q 1
+    goto S_Loop
+    I_BA R 1
+    goto S_Loop
+    I_BA S 1
+    goto S_Loop
+    I_BA T 1
+    goto S_Loop
+    I_BA U 1
+    goto S_Loop
+    I_BA V 1
+    goto S_Loop
+    I_BA W 1
+    goto S_Loop
+    I_BA X 1
+    goto S_Loop
+    I_BA Y 1
+    goto S_Loop
+    I_BB A 1
+    goto S_Loop
+    I_BB B 1
+    goto S_Loop
+    I_BB C 1
+    goto S_Loop
+    I_BB D 1
+    goto S_Loop
+    I_BB E 1
+    goto S_Loop
+    I_BB F 1
+    goto S_Loop
+    I_BB G 1
+    goto S_Loop
+    I_BB H 1
+    goto S_Loop
+    I_BB J 1
+    goto S_Loop
 
-Spawn2:
-TNT1 A 0 A_Jump(32,"Spawn3")
-TNT1 A 0 A_Jump(256,1,2,3,4,5,6,7,8,9,10,11,12)
-I_MA A 1
-goto S_Loop
-I_MA B 1
-goto S_Loop
-I_MA C 1
-goto S_Loop
-I_MA D 1
-goto S_Loop
-I_MA E 1
-goto S_Loop
-I_MA F 1
-goto S_Loop
-I_MA G 1
-goto S_Loop
-I_MA H 1
-goto S_Loop
-I_MA I 1
-goto S_Loop
-I_MA J 1
-goto S_Loop
-I_MA K 1
-goto S_Loop
-I_MA L 1
-goto S_Loop
+   Spawn2:
+    TNT1 A 0 A_Jump(32, "Spawn3")
+    TNT1 A 0 A_Jump(256, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+    I_MA A 1
+    goto S_Loop
+    I_MA B 1
+    goto S_Loop
+    I_MA C 1
+    goto S_Loop
+    I_MA D 1
+    goto S_Loop
+    I_MA E 1
+    goto S_Loop
+    I_MA F 1
+    goto S_Loop
+    I_MA G 1
+    goto S_Loop
+    I_MA H 1
+    goto S_Loop
+    I_MA I 1
+    goto S_Loop
+    I_MA J 1
+    goto S_Loop
+    I_MA K 1
+    goto S_Loop
+    I_MA L 1
+    goto S_Loop
 
-Spawn3:
-TNT1 A 0 A_Jump(256,1,2,3,4,5,6,7,8,9,10,11,12,13,14)
-I_TA A 1
-goto S_Loop
-I_TA B 1
-goto S_Loop
-I_TA C 1
-goto S_Loop
-I_TD M 1//Money Sack due to Coins pickup never being seen
-goto S_Loop
-I_TA E 1
-goto S_Loop
-I_TA F 1
-goto S_Loop
-I_TA G 1
-goto S_Loop
-I_TA H 1
-goto S_Loop
-I_TA I 1
-goto S_Loop
-I_TA J 1
-goto S_Loop
-I_TA K 1
-goto S_Loop
+   Spawn3:
+    TNT1 A 0 A_Jump(256, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+    I_TA A 1
+    goto S_Loop
+    I_TA B 1
+    goto S_Loop
+    I_TA C 1
+    goto S_Loop
+    I_TD M 1//Money Sack due to Coins pickup never being seen
+    goto S_Loop
+    I_TA E 1
+    goto S_Loop
+    I_TA F 1
+    goto S_Loop
+    I_TA G 1
+    goto S_Loop
+    I_TA H 1
+    goto S_Loop
+    I_TA I 1
+    goto S_Loop
+    I_TA J 1
+    goto S_Loop
+    I_TA K 1
+    goto S_Loop
 
-S_Loop:
-"####" "#" 4
-"####" "#" 4 A_LookEx(2,0,112,1,360,"See")
-wait
-See:
-See:
-"####" "###################" 1 A_SetScale(2.0,ScaleY-0.1)
-TNT1 A 10 A_SpawnItemEx("MinivileFire",0,0,4)
-TNT1 A 1 A_SpawnItemEx("Minivile",0,0,2,0,0,0,0,1024)
-stop
-}
+   S_Loop:
+    "####" "#" 4
+    "####" "#" 4 A_LookEx(2, 0, 112, 1, 360, "See")
+    wait
+   See:
+   See:
+    "####" "###################" 1 A_SetScale(2.0, ScaleY-0.1)
+    TNT1 A 10 A_SpawnItemEx("MinivileFire", 0, 0, 4)
+    TNT1 A 1 A_SpawnItemEx("Minivile", 0, 0, 2, 0, 0, 0, 0, 1024)
+    stop
+  }
 }
 
 
-actor Pandora_BoxDE_MinivileHidden : BoxDE_MinivileHidden
-{
-States
-{
-Spawn:
-TNT1 A 1
-TNT1 A 0
-goto Super::Spawn+2
+actor Pandora_BoxDE_MinivileHidden : BoxDE_MinivileHidden {
+  States {
+   Spawn:
+    TNT1 A 1
+    TNT1 A 0
+    goto Super::Spawn+2
+  }
 }
+actor Mystic_BoxDE_MinivileHidden : BoxDE_MinivileHidden {
+  States {
+   Spawn:
+    TNT1 A 1
+    TNT1 A 0
+    goto Spawn2+1
+  }
 }
-actor Mystic_BoxDE_MinivileHidden : BoxDE_MinivileHidden
-{
-States
-{
-Spawn:
-TNT1 A 1
-TNT1 A 0
-goto Spawn2+1
-}
-}
-actor ToW_BoxDE_MinivileHidden : BoxDE_MinivileHidden
-{
-States
-{
-Spawn:
-TNT1 A 1
-TNT1 A 0
-goto Spawn3
-}
+actor ToW_BoxDE_MinivileHidden : BoxDE_MinivileHidden {
+  States {
+   Spawn:
+    TNT1 A 1
+    TNT1 A 0
+    goto Spawn3
+  }
 }
 
-actor BoxDE_MinivileHidden_H1 : BasicHelper
-{
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 0 A_Jump(4,"Spawn4")
-TNT1 A 0 A_Jump(32,"Spawn32")
-Spawn0:
-TNT1 A 1 A_Jump(256,"SpawnL")
-stop
-Spawn4:
-TNT1 A 0 A_SetArg(0,random(20,30))
-goto Spawn0
-Spawn32:
-TNT1 A 0 A_SetArg(0,random(4,8))
-goto Spawn0
-SpawnL:
-TNT1 A 0 //A_Log("SPAWNED")
-TNT1 A 0 A_SpawnItemEx("Pandora_BoxDE_MinivileHidden")
-TNT1 A 0 A_CountDownArg(0)
-loop
-Death:
-TNT1 A 0
-TNT1 A 1
-stop
-}
+actor BoxDE_MinivileHidden_H1 : BasicWatcher {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_Jump(4, "Spawn4")
+    TNT1 A 0 A_Jump(32, "Spawn32")
+   Spawn0:
+    TNT1 A 1 A_Jump(256, "SpawnL")
+    stop
+   Spawn4:
+    TNT1 A 0 A_SetArg(0, random(20, 30))
+    goto Spawn0
+   Spawn32:
+    TNT1 A 0 A_SetArg(0, random(4, 8))
+    goto Spawn0
+   SpawnL:
+    TNT1 A 0 //A_Log("SPAWNED")
+    TNT1 A 0 A_SpawnItemEx("Pandora_BoxDE_MinivileHidden")
+    TNT1 A 0 A_CountDownArg(0)
+    loop
+   Death:
+    TNT1 A 0
+    TNT1 A 1
+    stop
+  }
 }
 
-actor BoxDE_MinivileHidden_H2 : BoxDE_MinivileHidden_H1
-{
-States
-{
-SpawnL:
-TNT1 A 0 A_SpawnItemEx("Mystic_BoxDE_MinivileHidden")
-TNT1 A 0 A_CountDownArg(0)
-loop
+actor BoxDE_MinivileHidden_H2 : BoxDE_MinivileHidden_H1 {
+  States {
+   SpawnL:
+    TNT1 A 0 A_SpawnItemEx("Mystic_BoxDE_MinivileHidden")
+    TNT1 A 0 A_CountDownArg(0)
+    loop
+  }
 }
-}
-actor BoxDE_MinivileHidden_H3 : BoxDE_MinivileHidden_H1
-{
-States
-{
-SpawnL:
-TNT1 A 0 A_SpawnItemEx("ToW_BoxDE_MinivileHidden")
-TNT1 A 0 A_CountDownArg(0)
-loop
-}
+actor BoxDE_MinivileHidden_H3 : BoxDE_MinivileHidden_H1 {
+  States {
+   SpawnL:
+    TNT1 A 0 A_SpawnItemEx("ToW_BoxDE_MinivileHidden")
+    TNT1 A 0 A_CountDownArg(0)
+    loop
+  }
 }
 
 
 Actor Minivile : UH_ShootableItemActor//Archvile
 {
-var int user_NoTranslation;
-Obituary "%o was incinerated by a Mini-Vile."
-Translation "192:192=52:52","198:198=50:50","195:195=147:147","0:0=148:148"
--ISMONSTER
--SHOOTABLE
--SOLID
--NOGRAVITY
-+DONTBLAST
-+NOBLOOD
-+WINDTHRUST
-+NODAMAGETHRUST
-+NEVERRESPAWN
-+NOBLOCKMONST
-+LOOKALLAROUND
-+ACTIVATEMCROSS
-+NOINFIGHTING
--NOTARGETSWITCH
-+QUICKTORETALIATE
-+NOICEDEATH
--NODROPOFF
-MaxStepHeight 36
-MaxDropOffHeight 48
-seesound "item/MiniVileSight"
-painsound "item/MiniVilePain"
-deathsound "item/MiniVileDeath"
-activesound "item/MiniVileActive"
-species "Minivile"
+  var int user_NoTranslation;
+  Obituary "%o was incinerated by a Mini-Vile."
+  Translation "192:192=52:52", "198:198=50:50", "195:195=147:147", "0:0=148:148"
+  -ISMONSTER
+  -SHOOTABLE
+  -SOLID
+  -NOGRAVITY
+  +DONTBLAST
+  +NOBLOOD
+  +WINDTHRUST
+  +NODAMAGETHRUST
+  +NEVERRESPAWN
+  +NOBLOCKMONST
+  +LOOKALLAROUND
+  +ACTIVATEMCROSS
+  +NOINFIGHTING
+  -NOTARGETSWITCH
+  +QUICKTORETALIATE
+  +NOICEDEATH
+  -NODROPOFF
+  MaxStepHeight 36
+  MaxDropOffHeight 48
+  seesound "item/MiniVileSight"
+  painsound "item/MiniVilePain"
+  deathsound "item/MiniVileDeath"
+  activesound "item/MiniVileActive"
+  species "Minivile"
 
-damagefactor "MiniVileFire", 0.0
+  damagefactor "MiniVileFire", 0.0
 
-painchance 16
+  painchance 16
 
-DropItem "OnFireItem" 256 1
+  DropItem "OnFireItem" 256 1
 
-Health 1250
-Mass 500
-Radius 16
-Height 28
-Speed 9
-scale 2.0
-States
-{
-Spawn:
-MVIL A 0
-MVIL A 0 A_SetScale(2.0,0.1)
-MVIL A 0 A_FaceTarget
-MVIL AAAAAAAAAAAAAAAAAAA 1 A_SetScale(scaleX+0.0,scaleY+0.1)
-MVIL A 10 A_SetScale(2.0,2.0)
-MVIL A 0 A_ChangeFlag("SHOOTABLE",1)
-MVIL A 0 A_PlaySound("item/MiniVileSight","Auto")
-MVIL AB 6 A_Look
-goto Spawn+24
-See:
-MVIL A 0 A_Jump(16,"Warp")
-MVIL AAAABBBBAAAABBBB 1 A_VileChase
-Loop
-Warp:
-MVIL AAAAA 2 A_FaceTarget
-MVIL A 0 A_Warp(2,0,0,48,0,WARPF_TESTONLY,"WarpS")
-goto Missile
-WarpS:
-MVIL AAAAA 1 A_FadeOut(0.2,0)
-TNT1 A 0 A_ChangeFlag("SHOOTABLE",0)
-TNT1 A 5 A_SpawnItemEx("MinivileFire",0,0,4)
-TNT1 A 0 A_Warp(2,0,0,64,0,0,"WarpSuccess")
-MVIL AAAAA 1 A_FadeIn(0.2)
-MVIL A 1 A_ChangeFlag("SHOOTABLE",1)
-goto See
-WarpSuccess:
-TNT1 A 5 A_SpawnItemEx("MinivileFire",0,0,4)
-MVIL A 0 A_ChangeFlag("SHOOTABLE",1)
-MVIL A 0 A_FaceTarget
-MVIL AAAAA 1 A_FadeIn(0.2)
-MVIL A 0 A_FaceTarget
-MVIL A 15 A_SetTranslucent(1.0)
-goto Missile
-Missile:
-MVIL C 0 A_PlaySound("item/MiniVileFire", CHAN_VOICE)//A_VileStart
-MVIL C 10 Bright A_FaceTarget
-MVIL C 8 Bright A_VileTarget("MinivileFire")
-MVIL CCCCCC 8 Bright A_FaceTarget
-MVIL C 0 A_ChangeFlag("QUICKTORETALIATE",0)
-MVIL D 0 Bright A_VileAttack("V_Man/Boom",100,150,100,1.0,"MiniVileFire",1)
-MVIL D 0 A_JumpIfTargetInLOS("Juggling")
-MVIL D 28 A_ChangeFlag("QUICKTORETALIATE",1)
-Goto See
-Juggling:
-MVIL D 24 ThrustThingZ(0,50,0,0)  //A_GiveToTarget("PainPU_Z_50",1)
-MVIL D 4 A_ChangeFlag("QUICKTORETALIATE",1)
-goto See
-Pain:
-MVIL D 3 Bright
-MVIL D 3 Bright A_Pain
-goto See
-Death:
-MVIL A 5 Bright
-MVIL C 5 Bright A_NoBlocking
-MVIL C 0 Bright A_Scream
-TNT1 A 0 A_CustomMissile("FakeDeathFX") //A_SpawnItemEx("VileDeathFX) - Burns away in fire
-stop
-Idle:
-MVIL AB 6 A_LookEx(0,0,0,0,0,"See")
-loop
-}
-}
-
-Actor MinivileFire
-{
-+NOBLOCKMAP
-+NOGRAVITY
-Scale 3.0
-Renderstyle "Translucent"
-Alpha 0.8
-Translation "192:192=219:219","198:198=174:174"
-States
-{
-Spawn:
-6P10 A 0
-6P10 A 0 A_PlaySound("item/MiniVileFire1","Weapon",0.5)
-6P10 A 2 bright A_Fire//A_StartFire
-6P10 BAB 2 bright A_Fire
-6P10 C 0 A_PlaySound("item/MiniVileFire2","Weapon",0.5)
-6P10 C 2 bright A_Fire//A_FireCrackle
-6P10 ABABCBCBCDCDC 2 bright A_Fire
-6P10 D 0 A_PlaySound("item/MiniVileFire2","Weapon",0.5)
-6P10 D 2 bright //A_FireA_FireCrackle
-6P10 DCDCDCBCBCB 2 bright A_Fire
-Stop
-}
+  Health 1250
+  Mass 500
+  Radius 16
+  Height 28
+  Speed 9
+  scale 2.0
+  States {
+   Spawn:
+    MVIL A 0
+    MVIL A 0 A_SetScale(2.0, 0.1)
+    MVIL A 0 A_FaceTarget
+    MVIL AAAAAAAAAAAAAAAAAAA 1 A_SetScale(scaleX+0.0, scaleY+0.1)
+    MVIL A 10 A_SetScale(2.0, 2.0)
+    MVIL A 0 A_ChangeFlag("SHOOTABLE", 1)
+    MVIL A 0 A_PlaySound("item/MiniVileSight", "Auto")
+    MVIL AB 6 A_Look
+    goto Spawn+24
+   See:
+    MVIL A 0 A_Jump(16, "Warp")
+    MVIL AAAABBBBAAAABBBB 1 A_VileChase
+    Loop
+   Warp:
+    MVIL AAAAA 2 A_FaceTarget
+    MVIL A 0 A_Warp(2, 0, 0, 48, 0, WARPF_TESTONLY, "WarpS")
+    goto Missile
+   WarpS:
+    MVIL AAAAA 1 A_FadeOut(0.2, 0)
+    TNT1 A 0 A_ChangeFlag("SHOOTABLE", 0)
+    TNT1 A 5 A_SpawnItemEx("MinivileFire", 0, 0, 4)
+    TNT1 A 0 A_Warp(2, 0, 0, 64, 0, 0, "WarpSuccess")
+    MVIL AAAAA 1 A_FadeIn(0.2)
+    MVIL A 1 A_ChangeFlag("SHOOTABLE", 1)
+    goto See
+   WarpSuccess:
+    TNT1 A 5 A_SpawnItemEx("MinivileFire", 0, 0, 4)
+    MVIL A 0 A_ChangeFlag("SHOOTABLE", 1)
+    MVIL A 0 A_FaceTarget
+    MVIL AAAAA 1 A_FadeIn(0.2)
+    MVIL A 0 A_FaceTarget
+    MVIL A 15 A_SetTranslucent(1.0)
+    goto Missile
+   Missile:
+    MVIL C 0 A_PlaySound("item/MiniVileFire", CHAN_VOICE)//A_VileStart
+    MVIL C 10 Bright A_FaceTarget
+    MVIL C 8 Bright A_VileTarget("MinivileFire")
+    MVIL CCCCCC 8 Bright A_FaceTarget
+    MVIL C 0 A_ChangeFlag("QUICKTORETALIATE", 0)
+    MVIL D 0 Bright A_VileAttack("V_Man/Boom", 100, 150, 100, 1.0, "MiniVileFire", 1)
+    MVIL D 0 A_JumpIfTargetInLOS("Juggling")
+    MVIL D 28 A_ChangeFlag("QUICKTORETALIATE", 1)
+    Goto See
+   Juggling:
+    MVIL D 24 ThrustThingZ(0, 50, 0, 0)  //A_GiveToTarget("PainPU_Z_50",1)
+    MVIL D 4 A_ChangeFlag("QUICKTORETALIATE", 1)
+    goto See
+   Pain:
+    MVIL D 3 Bright
+    MVIL D 3 Bright A_Pain
+    goto See
+   Death:
+    MVIL A 5 Bright
+    MVIL C 5 Bright A_NoBlocking
+    MVIL C 0 Bright A_Scream
+    TNT1 A 0 A_CustomMissile("FakeDeathFX") //A_SpawnItemEx("VileDeathFX) - Burns away in fire
+    stop
+   Idle:
+    MVIL AB 6 A_LookEx(0, 0, 0, 0, 0, "See")
+    loop
+  }
 }
 
-
-
+Actor MinivileFire {
+  +NOBLOCKMAP
+  +NOGRAVITY
+  Scale 3.0
+  Renderstyle "Translucent"
+  Alpha 0.8
+  Translation "192:192=219:219", "198:198=174:174"
+  States {
+   Spawn:
+    6P10 A 0
+    6P10 A 0 A_PlaySound("item/MiniVileFire1", "Weapon", 0.5)
+    6P10 A 2 bright A_Fire//A_StartFire
+    6P10 BAB 2 bright A_Fire
+    6P10 C 0 A_PlaySound("item/MiniVileFire2", "Weapon", 0.5)
+    6P10 C 2 bright A_Fire//A_FireCrackle
+    6P10 ABABCBCBCDCDC 2 bright A_Fire
+    6P10 D 0 A_PlaySound("item/MiniVileFire2", "Weapon", 0.5)
+    6P10 D 2 bright //A_FireA_FireCrackle
+    6P10 DCDCDCBCBCB 2 bright A_Fire
+    Stop
+  }
+}
