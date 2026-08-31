@@ -1,0 +1,536 @@
+// GravitymanKamilia's R3 boss-only automatic projectile pool.
+//
+// This is deliberately separate from the player weapon projectiles.  The
+// watcher runs independently of the weapon state, while the dispatcher is
+// given to the boss player so A_FireCustomMissile keeps the boss as owner.
+
+actor GravityKamiliaAutoWatcher_F : UOnce {}
+
+actor GravityKamiliaAutoCooldown_F : Inventory {
+  Inventory.MaxAmount 35
+}
+
+actor GravityKamiliaCrystalReleased : Powerup {
+  Powerup.Duration 7
+}
+
+// All gameplay projectiles in this file inherit the R4 projectile spawn
+// plumbing, but retain the R3 boss-specific species and damage type.
+actor GravityKamiliaAutoProjectile : BasicProjectile {
+  damagetype "GravityKamilia"
+  species "EdenManStar"
+  +THRUSPECIES
+}
+
+// Keep the R3 pinpoint wave's FastProjectile collision path at speed 1000.
+actor GravityKamiliaAutoFastProjectile : BasicFastProjectile {
+  damagetype "GravityKamilia"
+  species "EdenManStar"
+  +THRUSPECIES
+}
+
+actor StoneM_PowerStoneStart_H : BasicWatcher {
+  Translation "192:192=215:215", "198:198=216:216"
+  Speed 0
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SetArg(0, random(0,179))
+    TNT1 A 0 A_SpawnItemEx("PowerStoneManGK", 46, 0, 0, 0, 0, 0, 0 + args[0], SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("PowerStoneManGK", 46, 0, 0, 0, 0, 0, 180 + args[0], SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    stop
+  }
+}
+
+actor PowerStoneManGK : GravityKamiliaAutoProjectile {
+  var int user_speed;
+  var int user_maxturn;
+  var int user_turndivisor;
+  var int user_turn_add;
+  Obituary "$OB_POWERSTONE"
+  +FORCEXYBILLBOARD
+  Radius 38
+  Height 10
+  Damage 250
+  Speed 10
+  Scale 2.5
+  States {
+   Spawn:
+    X_5C Q 0
+    X_5C Q 0 A_SetUserVar("user_speed", 38)
+    X_5C Q 0 A_SetUserVar("user_maxturn", 1000)
+    X_5C Q 0 A_SetUserVar("user_turndivisor", 96)
+    X_5C Q 0 A_SetUserVar("user_turn_add", 4)
+   Spawn2:
+    X_5C Q 0 A_ChangeVelocity(30, 0, momz, 3)
+    X_5C QRS 2
+    X_5C T 1 A_Stop
+    POWB V 3 A_SetAngle(angle - 80)
+    X_5C T 0
+    goto Spawn3+1
+   Spawn3:
+    X_5C T 0 A_SetAngle(angle - user_maxturn / user_turndivisor)
+    X_5C T 1 A_ChangeVelocity(user_speed, 0, momz, 3)
+    X_5C T 0 A_JumpIf(user_turndivisor * 100 / user_maxturn > 92, "Spawn4")
+    X_5C T 0 A_SetUserVar("user_turndivisor", user_turndivisor + user_turn_add)
+    loop
+   Spawn4:
+    X_5C T 1
+    wait
+   Death:
+    TNT1 A 0 A_SpawnItemEx("PowerStoneManFX", 16, 0, 0, frandom(4,8), 0, frandom(1,5), random(-20,20), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("PowerStoneManFX", 16, 0, 0, frandom(4,8), 0, frandom(1,5), random(-20,20) + 120, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("PowerStoneManFX", 16, 0, 0, frandom(4,8), 0, frandom(1,5), random(-20,20) + 240, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 1
+    stop
+  }
+}
+
+actor PowerStoneManFX : BasicGraphicEffect {
+  +DOOMBOUNCE
+  +DONTSPLASH
+  +NOBLOCKMAP
+  BounceCount 3
+  ReactionTime 5
+  Damage 0
+  Radius 8
+  Height 8
+  Scale 2.5
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 A_Jump(256, "FX1", "FX2", "FX3")
+   FX1:
+    POWB A 2
+    TNT1 A 1 A_CountDown
+    loop
+   FX2:
+    POWB B 2
+    TNT1 A 1 A_CountDown
+    loop
+   FX3:
+    POWB C 2
+    TNT1 A 1 A_CountDown
+    loop
+  }
+}
+
+actor GyroAttackGK : GravityKamiliaAutoProjectile {
+  Translation "198:198=104:104"
+  SeeSound "weapon/gyroattack"
+  Obituary "$OB_GYROATTACK"
+  Damage 150
+  Radius 16
+  Height 8
+  Speed 40
+  Scale 2.5
+  States {
+   Spawn:
+    TNT1 A 0
+    GYAR G 0 A_PlaySoundEx("weapon/GyroM_Attack", "Voice")
+    GYAR GHGHGHGHGHG 2
+    GYAR H 0 A_PlaySoundEx("weapon/GyroM_Attack", "Voice")
+    GYAR HGHGHGHGHGH 2
+    loop
+   Death:
+    GYAR G 0
+    stop
+  }
+}
+
+actor ChargeCoalTrainGK : GravityKamiliaAutoProjectile {
+  DamageType "CarpetBomb"
+  Obituary "%o touched \cgGravityman\c- (%k)'s invisible Coal Train."
+  +CEILINGHUGGER
+  +DONTBLAST
+  +THRUACTORS
+  +THRUGHOST
+  +HEXENBOUNCE
+  BounceFactor 1.0
+  WallBounceFactor 1.0
+  BounceCount 6
+  ReactionTime 16
+  Damage 0
+  Radius 2
+  Height 16
+  Speed 400
+  Scale 2.5
+  Args -32, -7
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 A_CountDown
+    TNT1 A 0 A_SetAngle(angle + random(-5,5))
+    TNT1 A 0 A_SpawnItemEx("ChargeCoalShotGK", 0, 0, args[1], 0, 0, args[0], 0, SXF_TRANSFERPOINTERS)
+    loop
+   Death:
+    TNT1 A 1
+    stop
+  }
+}
+
+actor ChargeCoalTrainGK2 : ChargeCoalTrainGK {
+  -CEILINGHUGGER
+  +FLOORHUGGER
+  Args 32, 7
+}
+
+actor ChargeCoalShotGK : GravityKamiliaAutoProjectile {
+  Translation "198:198=225:225", "202:202=4:4", "199:199=210:210"
+  DamageType "GravityKamiliaCoal"
+  Obituary "%o blacked out from \cgGravityman\c- (%k)'s Coal Shot."
+  Damage 80
+  Radius 7
+  Height 7
+  Speed 38
+  Scale 3.0
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_Jump(256, 1, 2, 3, 4)
+    COAL GHIJ 2
+    goto Spawn+2
+   Death:
+    TNT1 A 0 A_PlaySoundEx("weapon/napalm", "Weapon")
+    TNT1 A 0 A_Explode(80, 96, 0, 0, 48)
+    TNT1 A 0 A_SpawnItemEx("BasicBoom4FX_ColorY", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
+    TNT1 A 1
+    stop
+  }
+}
+
+actor PinpointWaterWaveSpawnerGK : GravityKamiliaAutoFastProjectile {
+  Translation "192:192=208:208", "198:198=198:198"
+  Height 16
+  Radius 6
+  Speed 1000
+  +DONTBLAST
+  +SKYEXPLODE
+  +EXPLODEONWATER
+  +THRUACTORS
+  Damage 0
+  ReactionTime 5
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 A_CountDown
+    loop
+   Death:
+    TNT1 A 0 A_SpawnItemEx("WaterWaveSpawnerGK", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("WaterWaveSpawnerGK2", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    stop
+  }
+}
+
+actor WaterWaveSpawnerGK : GravityKamiliaAutoProjectile {
+  +DONTBLAST
+  Height 40
+  Radius 6
+  Scale 2.5
+  Damage 0
+  +THRUACTORS
+  +FLOORHUGGER
+  ReactionTime 30
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_PlaySoundEx("weapon/waterwave", "Weapon")
+   Spawn2:
+    TNT1 AA 1 A_CountDown
+    X_5B AAAABBAAAA 1 A_CountDown
+    loop
+   Death:
+    TNT1 A 0
+   Wave:
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK", 0, 0, 0, 23, 0, 0, 0, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK", 0, 0, 0, 23, 0, 0, 45, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK", 0, 0, 0, 23, 0, 0, 90, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK", 0, 0, 0, 23, 0, 0, 135, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK", 0, 0, 0, 23, 0, 0, 180, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK", 0, 0, 0, 23, 0, 0, 225, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK", 0, 0, 0, 23, 0, 0, 270, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK", 0, 0, 0, 23, 0, 0, 315, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 1
+    stop
+   Launch:
+    TNT1 A 0 A_JumpIf(z != floorz, "Wave")
+    goto Wave
+  }
+}
+
+actor WaterWaveSpawnerGK2 : WaterWaveSpawnerGK {
+  -FLOORHUGGER
+  +CEILINGHUGGER
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_PlaySoundEx("weapon/waterwave", "Weapon")
+   Spawn2:
+    TNT1 AA 1 A_CountDown
+    X_5B EEEEFFEEEE 1 A_CountDown
+    loop
+   Death:
+    TNT1 A 0
+   Wave:
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK2", 0, 0, 0, 23, 0, 0, 0, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK2", 0, 0, 0, 23, 0, 0, 45, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK2", 0, 0, 0, 23, 0, 0, 90, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK2", 0, 0, 0, 23, 0, 0, 135, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK2", 0, 0, 0, 23, 0, 0, 180, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK2", 0, 0, 0, 23, 0, 0, 225, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK2", 0, 0, 0, 23, 0, 0, 270, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK2", 0, 0, 0, 23, 0, 0, 315, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 1
+    stop
+   Launch:
+    TNT1 A 0 A_JumpIf(z != floorz, "Wave")
+    goto Wave
+  }
+}
+
+actor WaterWaveGK : GravityKamiliaAutoProjectile {
+  Obituary "$OB_WATERWAVE"
+  +DONTSPLASH
+  +FLOORHUGGER
+  +STEPMISSILE
+  ReactionTime 31
+  Damage 80
+  Radius 6
+  Height 40
+  Speed 12
+  Scale 2.5
+  States {
+   Spawn:
+    TNT1 A 0
+   WaveLoop:
+    X_5B A 1
+    X_5B A 3 A_GiveInventory("ResyncPickup", 1)
+    X_5B BCDCBA 4
+    X_5B A 0 A_CountDown
+    goto WaveLoop
+   Crash:
+   XDeath:
+    TNT1 A 0
+    stop
+   Death:
+    TNT1 A 0
+    TNT1 A 1
+    stop
+  }
+}
+
+actor WaterWaveGK2 : WaterWaveGK {
+  -FLOORHUGGER
+  +CEILINGHUGGER
+  MaxStepHeight 16
+  BounceCount 1
+  Gravity 51.0
+  ReactionTime 31
+  Damage 80
+  Radius 6
+  Height 40
+  Speed 12
+  Scale 2.5
+  States {
+   Spawn:
+    TNT1 A 0
+   WaveLoop:
+    X_5B E 1
+    X_5B E 3 A_GiveInventory("ResyncPickup", 1)
+    X_5B FGHGFE 4
+    X_5B E 0 A_CountDown
+    goto WaveLoop
+   Crash:
+   XDeath:
+    TNT1 A 0
+    stop
+   Death:
+    TNT1 A 0
+    TNT1 A 1
+    stop
+   Continue:
+    TNT1 A 0 A_SpawnItemEx("WaterWaveGK", 0, 0, 0, 23, 0, 0, 0, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 1
+    stop
+  }
+}
+
+actor CrystalSpawnerGK : BasicWatcher {
+  Translation "4:4=208:208", "192:192=8:8", "198:198=193:193", "202:202=208:208", "199:199=215:215"
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(35,55)) * 31, random(35,55), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(35,55)) * 31, random(-35,-55), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(-35,-55)) * 31, random(35,55), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(-35,-55)) * 31, random(-35,-55), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(215,235)) * 31, random(215,235), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(215,235)) * 31, random(-215,-235), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(-215,-235)) * 31, random(215,235), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(-215,-235)) * 31, random(-215,-235), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    stop
+  }
+}
+
+actor CrystalEyeBitGK : GravityKamiliaAutoProjectile {
+  Translation "4:4=208:208", "192:192=8:8", "198:198=193:193", "202:202=208:208", "199:199=215:215"
+  Obituary "$OB_CRYSTALEYE"
+  +HEXENBOUNCE
+  -ALLOWBOUNCEONACTORS
+  +CANBOUNCEWATER
+  +SKYEXPLODE
+  +FORCEXYBILLBOARD
+  BounceFactor 0.945
+  WallBounceFactor 0.945
+  ReactionTime 35
+  Damage 50
+  Height 9
+  Radius 9
+  Speed 30
+  Scale 2.5
+  States {
+   Spawn:
+    TNT1 A 0
+   CheckA:
+    X_5H A 0 A_JumpIfInTargetInventory("GravityKamiliaAutoWatcher_F", 1, "GiveA")
+    goto Death
+   GiveA:
+    X_5H A 4 A_GiveToTarget("GravityKamiliaCrystalReleased", 1)
+   CheckB:
+    X_5H B 0 A_JumpIfInTargetInventory("GravityKamiliaAutoWatcher_F", 1, "GiveB")
+    goto Death
+   GiveB:
+    X_5H B 4 A_GiveToTarget("GravityKamiliaCrystalReleased", 1)
+   CheckC:
+    X_5H C 0 A_JumpIfInTargetInventory("GravityKamiliaAutoWatcher_F", 1, "GiveC")
+    goto Death
+   GiveC:
+    X_5H C 4 A_GiveToTarget("GravityKamiliaCrystalReleased", 1)
+   CheckD:
+    X_5H D 0 A_JumpIfInTargetInventory("GravityKamiliaAutoWatcher_F", 1, "GiveD")
+    goto Death
+   GiveD:
+    X_5H D 4 A_GiveToTarget("GravityKamiliaCrystalReleased", 1)
+   CheckE:
+    X_5H E 0 A_JumpIfInTargetInventory("GravityKamiliaAutoWatcher_F", 1, "GiveE")
+    goto Death
+   GiveE:
+    X_5H E 4 A_GiveToTarget("GravityKamiliaCrystalReleased", 1)
+   CheckA2:
+    X_5H A 0 A_JumpIfInTargetInventory("GravityKamiliaAutoWatcher_F", 1, "GiveA2")
+    goto Death
+   GiveA2:
+    X_5H A 4 A_GiveToTarget("GravityKamiliaCrystalReleased", 1)
+   CheckA3:
+    X_5H A 0 A_JumpIfInTargetInventory("GravityKamiliaAutoWatcher_F", 1, "GiveA3")
+    goto Death
+   GiveA3:
+    X_5H A 4 A_GiveToTarget("GravityKamiliaCrystalReleased", 1)
+    goto CheckA
+   Death:
+    XMFX N 2
+    UMFX BCD 2
+    stop
+  }
+}
+
+actor NapalmBombGK : GravityKamiliaAutoProjectile {
+  Translation "192:192=216:216", "198:198=75:75", "202:202=4:4", "199:199=210:210"
+  Obituary "$OB_NAPALMBOMB"
+  Damage 40
+  Radius 9
+  Height 11
+  Speed 25
+  Scale 3.0
+  States {
+   Spawn:
+    TNT1 A 0
+    NAPC ABCD 4
+    loop
+   Death:
+    X_5G A 0 A_PlaySoundEx("weapon/napalm", "Weapon")
+    X_5G A 0 A_SetGravity(0.0)
+    X_5G E 0 A_Explode(160, 128, 0, 0, 9)
+    TNT1 A 4 A_SpawnItemEx("BasicBoom4FX_ColorY", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
+    stop
+  }
+}
+
+// Dispatcher runs in the Gravityman player context.  A_JumpIfHealthLower
+// uses strict '<' in Zandronum, so 75/50/25% remain in the preceding stage.
+actor GravityKamiliaAutoAttack_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfHealthLower(CallACS("uh_CountBossInventory", CNTB_SPAWNHEALTH) / 4, "Below25")
+    TNT1 A 0 A_JumpIfHealthLower(CallACS("uh_CountBossInventory", CNTB_SPAWNHEALTH) / 2, "Below50")
+    TNT1 A 0 A_JumpIfHealthLower(CallACS("uh_CountBossInventory", CNTB_SPAWNHEALTH) * 3 / 4, "Below75")
+    TNT1 A 0
+    stop
+   Below75:
+    TNT1 A 0 A_Jump(256, "AutoStone", "AutoGyro")
+    stop
+   AutoStone:
+    TNT1 A 0 A_PlaySoundEx("weapon/powerstone", "Weapon")
+    TNT1 A 0 A_FireCustomMissile("StoneM_PowerStoneStart_H", 0, 0, 0, 0)
+    TNT1 A 0 A_GiveInventory("GravityKamiliaAutoCooldown_F", 35 - 17 * CallACS("uh_checkrune", RUNE_RAGE))
+    stop
+   AutoGyro:
+    TNT1 A 0 A_FireCustomMissile("GyroAttackGK", 0, 0, 8, 0)
+    TNT1 A 0 A_FireCustomMissile("GyroAttackGK", -90, 0, 8, 0)
+    TNT1 A 0 A_FireCustomMissile("GyroAttackGK", 90, 0, 8, 0)
+    TNT1 A 0 A_GiveInventory("GravityKamiliaAutoCooldown_F", 35 - 17 * CallACS("uh_checkrune", RUNE_RAGE))
+    stop
+   Below50:
+    TNT1 A 0 A_Jump(256, "AutoWave", "AutoCoal")
+    stop
+   AutoWave:
+    TNT1 A 0 A_FireCustomMissile("PinpointWaterWaveSpawnerGK", 0, 0, -8, 0)
+    TNT1 A 0 A_GiveInventory("GravityKamiliaAutoCooldown_F", 35 - 17 * CallACS("uh_checkrune", RUNE_RAGE))
+    stop
+   AutoCoal:
+    TNT1 A 0 A_FireCustomMissile("ChargeCoalTrainGK", 0, 0, 0, 0)
+    TNT1 A 0 A_GiveInventory("GravityKamiliaAutoCooldown_F", 35 - 17 * CallACS("uh_checkrune", RUNE_RAGE))
+    stop
+   Below25:
+    TNT1 A 0 A_JumpIfInventory("GravityKamiliaCrystalReleased", 1, "AutoNapalm")
+    goto AutoCrystal
+   AutoNapalm:
+    TNT1 A 0 A_FireCustomMissile("NapalmBombGK", random(0,359), 0, 0, 0)
+    TNT1 A 0 A_GiveInventory("GravityKamiliaAutoCooldown_F", 8 - 4 * CallACS("uh_checkrune", RUNE_RAGE))
+    stop
+   AutoCrystal:
+    TNT1 A 0 A_FireCustomMissile("CrystalSpawnerGK", 0, 0, 0, 0)
+    TNT1 A 0 A_GiveInventory("GravityKamiliaAutoCooldown_F", 35 - 17 * CallACS("uh_checkrune", RUNE_RAGE))
+    stop
+  }
+}
+
+// The target of this BasicWatcher is the Gravityman player.  Cooldown is
+// decremented one tic at a time; a 1->0 transition returns to Spawn and the
+// dispatcher is therefore called on the following tic, matching R3 cadence.
+actor GravityKamiliaAutoAttack_H : BasicWatcher {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "Death")
+    TNT1 A 0 A_JumpIfInTargetInventory("GravityKamiliaAutoWatcher_F", 1, "Active")
+    goto Death
+   Active:
+    TNT1 A 1
+    TNT1 A 0 A_JumpIfInTargetInventory("GravityKamiliaAutoCooldown_F", 1, "Cooldown")
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "Death")
+    TNT1 A 0 A_JumpIfInTargetInventory("GravityKamiliaAutoWatcher_F", 1, "Dispatch")
+    goto Death
+   Dispatch:
+    TNT1 A 0 A_GiveToTarget("GravityKamiliaAutoAttack_P", 1)
+    goto Spawn
+   Cooldown:
+    TNT1 A 0 A_TakeFromTarget("GravityKamiliaAutoCooldown_F", 1)
+    goto Spawn
+   Death:
+    TNT1 A 0 A_TakeFromTarget("GravityKamiliaAutoCooldown_F", 999)
+    TNT1 A 0 A_TakeFromTarget("GravityKamiliaCrystalReleased", 999)
+    TNT1 A 0
+    stop
+  }
+}
