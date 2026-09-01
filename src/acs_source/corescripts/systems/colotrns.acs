@@ -1,16 +1,18 @@
 // This is a copy of MM8BDM v6b COLOTRNS
 // Any area with the following line
-//$UH
+// $UH
 // Means that area is edited for UH
 
 #library "colotrans"
 #include "zcommon.acs"
-#include "8bdmlib.acs"
+#import "uh_acsutils.acs"
+#include "8bdmdefs.acs"
+#include "8bdmvars.acs"
 
 script "core_synccolors" ENTER {
   delay(1);
 
-    //Syncs Player colors
+  // Syncs Player colors
   for (int i = 0; i < ServerMAX; i++) {
     if (!PlayerInGame(i)) continue;
 
@@ -23,20 +25,20 @@ script "core_synccolors_respawn" RESPAWN {
   ACS_NamedExecuteAlways("core_synccolors", 0);
 }
 
-//Color Translation script
+// Color Translation script
 script "core_weaponcolor" (int weap, int weap_sound, int teamweap) {
-	// timer check here helps a bug in Offline Skirmish, see Celebi for details
+  // timer check here helps a bug in Offline Skirmish, see Celebi for details
   if (CheckInventory("NoWeaponSwitchSound") == 0 && Timer() > 0) {
-    switch (weap_sound) {  //$UH
+    switch (weap_sound) {  // $UH
       case 0:
         LocalAmbientSound("menu/cursor", 127);  // Play weapon switch noise //$UH //core_snd/Menu
         break;
       case CLRF_SILENT:
       default:
         break;
-			//$UH
+        // $UH
       case CLRF_QWANTMENU:
-        LocalAmbientSound("Qwant/MenuXD", 127);  //Qwant/SwapMove
+        LocalAmbientSound("Qwant/MenuXD", 127);  // Qwant/SwapMove
         break;
       case CLRF_WILYWARMENU:
         LocalAmbientSound("WilyWar/Menu", 127);
@@ -59,7 +61,7 @@ script "core_weaponcolor" (int weap, int weap_sound, int teamweap) {
       case CLRF_VOIDWALKER_FIRE:
         LocalAmbientSound("MarioRPG/Drop", 127);
         break;
-			//$UH
+        // $UH
     }
   }
 
@@ -68,11 +70,11 @@ script "core_weaponcolor" (int weap, int weap_sound, int teamweap) {
 
   if (teamweap == TCLR_NONE) {teamweap = TCLR_DEFAULT;}
 
-	// Mugshot follows weapon dye (192/198), not team remap of the body translation.
+  // Mugshot follows weapon dye (192/198), not team remap of the body translation.
   int mug_dye = weap;
 
   if ((IsTeamGame || (Timer() <= 0 && ACS_NamedExecuteWithResult("core_checkmode", 1) == 1)) && CheckInventory("NoTeamTranslation") == 0)
-	// it seems redundant to do this, but it fixes an edge case on round start
+    // it seems redundant to do this, but it fixes an edge case on round start
   {
     if (PlayerTeam() >= 0 && PlayerTeam() <= 3) {
       weap = teamweap + PlayerTeam();
@@ -80,9 +82,9 @@ script "core_weaponcolor" (int weap, int weap_sound, int teamweap) {
   }
 
   Thing_SetTranslation(0, weap);
-	//$UH — sync mugshot cyan/blue from dye's 192/198 remap (see uh_SyncMugFromWeaponDye)
+  // $UH — sync mugshot cyan/blue from dye's 192/198 remap (see uh_SyncMugFromWeaponDye)
   ACS_NamedExecuteWithResult("uh_SyncMugFromWeaponDye", mug_dye);
-	//$UH — remember Ready dye; core_chargecolor sets UH_ChargeColor_F so charge flashes are skipped
+  // $UH — remember Ready dye; core_chargecolor sets UH_ChargeColor_F so charge flashes are skipped
   if (CheckInventory("UH_ChargeColor_F") == 0 && mug_dye > 0)
     SetInventory("UH_LastReadyDye", mug_dye);
 }
@@ -93,7 +95,7 @@ script "core_chargecolor" (int weap, int teamweap) {
   TakeInventory("UH_ChargeColor_F", 1);
 }
 
-script "uh_forceweaponcolor" (int weap)  //$UH
+script "uh_forceweaponcolor" (int weap)  // $UH
 {
   Thing_SetTranslation(0, weap);
   ACS_NamedExecuteWithResult("uh_SyncMugFromWeaponDye", weap);
@@ -101,7 +103,7 @@ script "uh_forceweaponcolor" (int weap)  //$UH
 
 // The script below returns -1 for legacy reasons. Older versions of that script returned a translation ID.
 // Now it just automatically sets the translation itself, but it should return something that preserves the
-// changed translation, hence -1. This bodge doesn't work too well online with reconnecting clients, so 
+// changed translation, hence -1. This bodge doesn't work too well online with reconnecting clients, so
 // the script should no longer be nested within Thing_SetTranslation. [Trill]
 
 // Copy the translation of target on server-side.
@@ -125,7 +127,7 @@ script "core_copytranslation_client" (void) CLIENTSIDE {
 }
 
 
-//$UH // Mostly a recreation of internal methods for player color setting (Attempt)
+// $UH // Mostly a recreation of internal methods for player color setting (Attempt)
 
 script "uh_FetchAndSetPlayerColor" (int color_start, int color_end, int translation_number) {
   if (color_start > color_end || (!color_start && !color_end) || color_start > 192 || color_end < 198) {
@@ -169,14 +171,14 @@ script "uh_FetchAndSetPlayerColor" (int color_start, int color_end, int translat
     if (fix_b > max_c)
       max_c = fix_b;
 
-		// V
+    // V
     v = max(max(r, g), b);
     delta = max_c - min_c;
 
-		// S
+    // S
     s = FixedDiv(delta, max_c);
 
-		// H
+    // H
     if (fix_r == max_c)
       h = FixedDiv((fix_g - fix_b), delta);  // between yellow & magenta
     else if (fix_g == max_c)
@@ -200,10 +202,10 @@ script "uh_FetchAndSetPlayerColor" (int color_start, int color_end, int translat
   int sdelta = 0.23 / range_size;
   int vdelta = -0.94112 / range_size;
 
-//Blue
+  // Blue
   int mem_blue_s = base_s + sdelta * (198 - color_start);
   int mem_blue_v = base_v + vdelta * (198 - color_start);
-//Cyan
+  // Cyan
   base_s = base_s + sdelta * (192 - color_start);
   base_v = base_v + vdelta * (192 - color_start);
 
@@ -223,7 +225,7 @@ script "uh_FetchAndSetPlayerColor" (int color_start, int color_end, int translat
     else if (base_v < 0.0)
       base_v = 0.0;
 
-    if (s == 0)  //s//base_S
+    if (s == 0)  // s//base_S
     {  // achromatic (grey)
       new_r = 255 * base_v;
       new_g = 255 * base_v;
@@ -265,14 +267,14 @@ script "uh_FetchAndSetPlayerColor" (int color_start, int color_end, int translat
       blue_b = new_b >> 16;
     }
   }
-//Log(s:"Cyan_COLORS >> ",i:Cyan_R,s:" <> ",i:Cyan_G,s:" <> ",i:Cyan_B);
-//Log(s:"Blue_COLORS >> ",i:Blue_R,s:" <> ",i:Blue_G,s:" <> ",i:Blue_B);
+  // Log(s:"Cyan_COLORS >> ",i:Cyan_R,s:" <> ",i:Cyan_G,s:" <> ",i:Cyan_B);
+  // Log(s:"Blue_COLORS >> ",i:Blue_R,s:" <> ",i:Blue_G,s:" <> ",i:Blue_B);
   CreateTranslation(translation_number + pl_num,
     192:192=[cyan_r, cyan_g, cyan_b]:[cyan_r, cyan_g, cyan_b],
     198:198=[blue_r, blue_g, blue_b]:[blue_r, blue_g, blue_b]);
-//Site	216:216=%[R*1.0/255,G*1.0/255,B*1.0/255]:[0.75,0.75,0.75],
-//Workr	41:41=%[0.25,0.25,0.25]:[R*1.0/255,G*1.0/255,B*1.0/255]);//41:41=[R,G,B]:[R,G,B]
-//
-	// PlayerTranslation[PlNum] = TranslationNumber+PlNum;
+  // Site	  216:216=%[R*1.0/255,G*1.0/255,B*1.0/255]:[0.75,0.75,0.75],
+  // Worker	41:41=%[0.25,0.25,0.25]:[R*1.0/255,G*1.0/255,B*1.0/255]);//41:41=[R,G,B]:[R,G,B]
+  //
+  // PlayerTranslation[PlNum] = TranslationNumber+PlNum;
   Thing_SetTranslation(0, translation_number + pl_num);
 }

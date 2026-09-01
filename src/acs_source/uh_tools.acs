@@ -1,5 +1,6 @@
 #library "uh_tools"
 #include "zcommon.acs"
+#import "uh_acsutils.acs"
 #include "dtadd.acs"
 
 #import "8bdt.acs"
@@ -534,7 +535,7 @@ function void ShinyClassMultiWeaponGive(void) {
 
 script "UH_AntiDamageHP" (int swap_var) {
   if (swap_var) {  // Adjust AntiDamageHealth to match current HP
-    SetInventory("AntiDamageHealth", Max(PlayerHealth(), 0));
+    SetInventory("AntiDamageHealth", max(PlayerHealth(), 0));
   } else {  // Reset player HP based on AntiDamageHealth
     SetActorProperty(0, APROP_HEALTH, CheckInventory("AntiDamageHealth"));
   }
@@ -560,7 +561,7 @@ script "uh_Health" (int swap_var, int hp_boost, int pointer)  // Health related 
   if (pointer > 0) {
     SetActivator(0, pointer);
   }
-  int h = Max(PlayerHealth(), 0);
+  int h = max(PlayerHealth(), 0);
   int s_h = GetActorProperty(0, APROP_SPAWNHEALTH);
   switch (swap_var) {
     default:
@@ -587,11 +588,11 @@ script "uh_Health" (int swap_var, int hp_boost, int pointer)  // Health related 
       if (swap_var == UHEALTH_HEAL && h >= s_h) {SetResultValue(0); break;}
 
       if (swap_var == UHEALTH_HEAL_ADD_MAX) {
-        s_h = Min(s_h + hp_boost, MAX_HEALTH);
+        s_h = min(s_h + hp_boost, MAX_HEALTH);
         SetActorProperty(0, APROP_SPAWNHEALTH, s_h);
       }
       else if (swap_var == UHEALTH_HEAL_EXPAND_MAX) {
-        int hp_add = Min(h + hp_boost, MAX_HEALTH);
+        int hp_add = min(h + hp_boost, MAX_HEALTH);
         if (hp_add > s_h) {
           s_h = hp_add;
           SetActorProperty(0, APROP_SPAWNHEALTH, s_h);
@@ -722,26 +723,6 @@ script "uh_MorphDemorphReset" (void) {
   GiveInventory("UH_MorphPowerPropReset_P", 1);
   GiveInventory("UH_FixMorphPower_P", 1);
   ACS_NamedExecuteAlways("uh_IsUnderWaterGravity", 0);
-}
-
-function void SetInventory(str item, int amount) {
-  int diff = amount - CheckInventory(item);
-  if (diff > 0)
-    GiveInventory(item, diff);
-  else if (diff < 0)
-    TakeInventory(item, -diff);
-}
-
-function int Min(int a, int b) {
-  if (a < b)
-    return a;
-  return b;
-}
-
-function int Max(int a, int b) {
-  if (a > b)
-    return a;
-  return b;
 }
 
 // Blizzard Attack hail weather (singleton controller + per-player snow follows).

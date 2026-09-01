@@ -1,5 +1,6 @@
 #library "uh_classes"
 #include "zcommon.acs"
+#import "uh_acsutils.acs"
 #import "uhdt.acs"
 #import "uhedenisaac.acs"
 
@@ -268,10 +269,10 @@ script "uh_HomingSeekerPushPull" (int limit, int swapper) {
     default:
       break;
     case 1:  // Push
-      force = Max(4, limit + 5 - forcexyz / 10) * -1;
+      force = max(4, limit + 5 - forcexyz / 10) * -1;
       break;
     case -1:  // Pull
-      force = Min(limit, forcexyz / 10);
+      force = min(limit, forcexyz / 10);
       break;
   }
 
@@ -282,7 +283,7 @@ script "uh_HomingSeekerPushPull" (int limit, int swapper) {
 
   ActorPull(targetid, tracerid, force, 0, 0, -12 << 16);
 
-  SetResultValue(Abs(force));
+  SetResultValue(abs(force));
 }
 
 script "uh_raiderhookshot" (int playerid, int vel, int moving) {
@@ -508,7 +509,7 @@ script "uc_LimHealth" (void) {
     SetInventory("LimHealth", health);
   }
   else if (limdiff != 0) {
-    GiveInventory("DireEnergyAmmo", Max(limdiff, 0));
+    GiveInventory("DireEnergyAmmo", max(limdiff, 0));
     SetInventory("LimHealth", health);
   }
 }
@@ -1302,7 +1303,7 @@ script "rz_FloovyDeath" (int tid, int type) {
     // its TARGET pointer so a morphed Floovy (TID 0) is still killable.
     int ally_player = PlayerNumber();
     int ally_max = GetActorProperty(0, APROP_SpawnHealth);
-    int ally_current = Max(GetActorProperty(0, APROP_Health), 0);
+    int ally_current = max(GetActorProperty(0, APROP_Health), 0);
     if (tid <= 0 || !SetActivator(tid) || !SetActivator(0, AAPTR_TARGET)) {
       terminate;
     }
@@ -1322,7 +1323,7 @@ script "rz_FloovyDeath" (int tid, int type) {
     if (ally_player < 0 || !SetActivatorToPlayer(ally_player)) {
       terminate;
     }
-    ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, Max(ally_max - ally_current, 0));
+    ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, max(ally_max - ally_current, 0));
     terminate;
   }
 
@@ -1546,20 +1547,6 @@ script "rz_MosquitoEyeTurboTime" (void) {
 // Func
 // Func
 
-function int Max(int m, int n) {
-  if (m > n)
-    return m;
-
-  return n;
-}
-
-function int Min(int m, int n) {
-  if (m < n)
-    return m;
-
-  return n;
-}
-
 function int WrapAround(int i) {
   if (i < -180.0) return i + 360.0;
   if (i > 180.0) return i - 360.0;
@@ -1610,13 +1597,6 @@ function int MagnitudeThree(int x, int y, int z) {
   return Sqrt8(x * x + y * y + z * z);
 }
 
-function int Abs(int x) {
-  if (x < 0)
-    return -x;
-
-  return x;
-}
-
 function int Sqrt8(int number) {
   if (number <= 3) {
     if (number > 0) {
@@ -1662,14 +1642,6 @@ function int PitchBetween(int looker, int target, int x_off, int y_off, int z_of
 
   pitch = -VectorAngle(len, z);
   return pitch;
-}
-
-function void SetInventory(str item, int amount) {
-  int diff = amount - CheckInventory(item);
-  if (diff > 0)
-    GiveInventory(item, diff);
-  else if (diff < 0)
-    TakeInventory(item, -diff);
 }
 
 function void GiveMeTheFunc(str hungry, int thebill) {
@@ -1888,7 +1860,7 @@ function void EdenClearMainSlots(void) {
 }
 
 function int EdenRollMainItemCount(int poolsize) {
-  int maxcount = Min(4, poolsize);
+  int maxcount = min(4, poolsize);
   int bucketcount = maxcount + 1;
   int total;
   int roll;
@@ -1987,8 +1959,8 @@ script "rz_RazorTeleport" (int totid, int thrustspeed) {
   deltaangle = EdenNormalizeAngle(oldangle - newangle);
   momangle = EdenNormalizeAngle(momangle - deltaangle);
 
-  nmomx = FixedMul(cos(momangle), Abs(momx)) + FixedMul(cos(momangle), Abs(momy));
-  nmomy = FixedMul(sin(momangle), Abs(momy)) + FixedMul(sin(momangle), Abs(momx));
+  nmomx = FixedMul(cos(momangle), abs(momx)) + FixedMul(cos(momangle), abs(momy));
+  nmomy = FixedMul(sin(momangle), abs(momy)) + FixedMul(sin(momangle), abs(momx));
 
   TakeInventory("JumpCancler", 1);
   SetActorState(totid, "End");
@@ -2863,12 +2835,12 @@ script "rz_GetEdenBrimstoneAttr" (int pointer, int attr) {
     case EDENATTR_TEARS:
       value = CheckInventory("EdenTearsAttr");
       if (CheckInventory("C149Flag"))
-        value = Max(1, value - 12);
+        value = max(1, value - 12);
       break;
     case EDENATTR_DAMAGE:
       value = CheckInventory("EdenDamageAttr");
       if (CheckInventory("C149Flag"))
-        value = Max(1, value - 70);
+        value = max(1, value - 70);
       break;
     case EDENATTR_SHOTSPEED:
       value = CheckInventory("EdenShotSpeedAttr");
@@ -2917,14 +2889,14 @@ script "rz_D8Rolling" (void) {
   for (i = 0; i < 5; i++) {
     temp_x2 = (2.5 - tempsum) / 5.0;
     for (j = 0; j < 5; j++) {
-      temp[j] = Min(1.0, Max(0.0, temp[j] + temp_x2));
+      temp[j] = min(1.0, max(0.0, temp[j] + temp_x2));
     }
     tempsum = temp[0] + temp[1] + temp[2] + temp[3] + temp[4];
   }
 
   int attrmul[5];
   for (i = 0; i < 5; i++) {
-    attrmul[i] = temp[i] + Max(temp[i], 0.5);
+    attrmul[i] = temp[i] + max(temp[i], 0.5);
     attr[i] = Round(attrmul[i] * CheckInventory(d8init_attrinv[i]));
     UpdateEdenAttr(i == 4? 5:i, attr[i], true, true);
   }
