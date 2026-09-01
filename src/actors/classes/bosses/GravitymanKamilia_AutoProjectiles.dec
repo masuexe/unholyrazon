@@ -16,17 +16,43 @@ actor GravityKamiliaCrystalReleased : Powerup {
 
 // All gameplay projectiles in this file inherit the R4 projectile spawn
 // plumbing, but retain the R3 boss-specific species and damage type.
-actor GravityKamiliaAutoProjectile : BasicProjectile {
+actor GravityKamiliaProjectile : BasicProjectile {
   damagetype "GravityKamilia"
   species "EdenManStar"
   +THRUSPECIES
 }
 
 // Keep the R3 pinpoint wave's FastProjectile collision path at speed 1000.
-actor GravityKamiliaAutoFastProjectile : BasicFastProjectile {
+actor GravityKamiliaFastProjectile : BasicFastProjectile {
   damagetype "GravityKamilia"
   species "EdenManStar"
   +THRUSPECIES
+}
+
+actor GravityKamiliaShot : GravityKamiliaProjectile {
+  Translation "192:192=4:4", "198:198=[255,255,0]:[255,255,0]"
+  var int user_TranslateWhiteColors;
+  Obituary "%o was shot down by \cgGravityman\c- (%k)'s Gravity Buster."
+  +FORCEXYBILLBOARD
+  +BRIGHT
+  Damage (50)
+  radius 10
+  height 8
+  Speed 50
+  scale 8.0
+  States {
+   Spawn:
+    TNT1 A 1
+   SpawnLoop:
+    8Q19 AB 8
+    loop
+   Death:
+    TNT1 A 1
+    stop
+  }
+}
+actor GravityKamiliaShotUp : GravityKamiliaShot {
+  Obituary "%o was shot up by \cgGravityman\c- (%k)'s Gravity Buster."
 }
 
 actor StoneM_PowerStoneStart_H : BasicWatcher {
@@ -35,14 +61,14 @@ actor StoneM_PowerStoneStart_H : BasicWatcher {
   States {
    Spawn:
     TNT1 A 0
-    TNT1 A 0 A_SetArg(0, random(0,179))
+    TNT1 A 0 A_SetArg(0, random(0, 179))
     TNT1 A 0 A_SpawnItemEx("PowerStoneManGK", 46, 0, 0, 0, 0, 0, 0 + args[0], SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
     TNT1 A 0 A_SpawnItemEx("PowerStoneManGK", 46, 0, 0, 0, 0, 0, 180 + args[0], SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
     stop
   }
 }
 
-actor PowerStoneManGK : GravityKamiliaAutoProjectile {
+actor PowerStoneManGK : GravityKamiliaProjectile {
   var int user_speed;
   var int user_maxturn;
   var int user_turndivisor;
@@ -78,9 +104,9 @@ actor PowerStoneManGK : GravityKamiliaAutoProjectile {
     X_5C T 1
     wait
    Death:
-    TNT1 A 0 A_SpawnItemEx("PowerStoneManFX", 16, 0, 0, frandom(4,8), 0, frandom(1,5), random(-20,20), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
-    TNT1 A 0 A_SpawnItemEx("PowerStoneManFX", 16, 0, 0, frandom(4,8), 0, frandom(1,5), random(-20,20) + 120, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
-    TNT1 A 0 A_SpawnItemEx("PowerStoneManFX", 16, 0, 0, frandom(4,8), 0, frandom(1,5), random(-20,20) + 240, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("PowerStoneManFX", 16, 0, 0, frandom(4, 8), 0, frandom(1, 5), random(-20, 20), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("PowerStoneManFX", 16, 0, 0, frandom(4, 8), 0, frandom(1, 5), random(-20, 20) + 120, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("PowerStoneManFX", 16, 0, 0, frandom(4, 8), 0, frandom(1, 5), random(-20, 20) + 240, SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
     TNT1 A 1
     stop
   }
@@ -115,7 +141,7 @@ actor PowerStoneManFX : BasicGraphicEffect {
   }
 }
 
-actor GyroAttackGK : GravityKamiliaAutoProjectile {
+actor GyroAttackGK : GravityKamiliaProjectile {
   Translation "198:198=104:104"
   SeeSound "weapon/gyroattack"
   Obituary "$OB_GYROATTACK"
@@ -138,7 +164,7 @@ actor GyroAttackGK : GravityKamiliaAutoProjectile {
   }
 }
 
-actor ChargeCoalTrainGK : GravityKamiliaAutoProjectile {
+actor ChargeCoalTrainGK : GravityKamiliaProjectile {
   DamageType "CarpetBomb"
   Obituary "%o touched \cgGravityman\c- (%k)'s invisible Coal Train."
   +CEILINGHUGGER
@@ -160,7 +186,7 @@ actor ChargeCoalTrainGK : GravityKamiliaAutoProjectile {
    Spawn:
     TNT1 A 0
     TNT1 A 1 A_CountDown
-    TNT1 A 0 A_SetAngle(angle + random(-5,5))
+    TNT1 A 0 A_SetAngle(angle + random(-5, 5))
     TNT1 A 0 A_SpawnItemEx("ChargeCoalShotGK", 0, 0, args[1], 0, 0, args[0], 0, SXF_TRANSFERPOINTERS)
     loop
    Death:
@@ -175,7 +201,7 @@ actor ChargeCoalTrainGK2 : ChargeCoalTrainGK {
   Args 32, 7
 }
 
-actor ChargeCoalShotGK : GravityKamiliaAutoProjectile {
+actor ChargeCoalShotGK : GravityKamiliaProjectile {
   Translation "198:198=225:225", "202:202=4:4", "199:199=210:210"
   DamageType "GravityKamiliaCoal"
   Obituary "%o blacked out from \cgGravityman\c- (%k)'s Coal Shot."
@@ -193,13 +219,13 @@ actor ChargeCoalShotGK : GravityKamiliaAutoProjectile {
    Death:
     TNT1 A 0 A_PlaySoundEx("weapon/napalm", "Weapon")
     TNT1 A 0 A_Explode(80, 96, 0, 0, 48)
-    TNT1 A 0 A_SpawnItemEx("BasicBoom4FX_ColorY", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("BasicBoom4FX_ColorY", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERTRANSLATION)
     TNT1 A 1
     stop
   }
 }
 
-actor PinpointWaterWaveSpawnerGK : GravityKamiliaAutoFastProjectile {
+actor PinpointWaterWaveSpawnerGK : GravityKamiliaFastProjectile {
   Translation "192:192=208:208", "198:198=198:198"
   Height 16
   Radius 6
@@ -222,7 +248,7 @@ actor PinpointWaterWaveSpawnerGK : GravityKamiliaAutoFastProjectile {
   }
 }
 
-actor WaterWaveSpawnerGK : GravityKamiliaAutoProjectile {
+actor WaterWaveSpawnerGK : GravityKamiliaProjectile {
   +DONTBLAST
   Height 40
   Radius 6
@@ -288,7 +314,7 @@ actor WaterWaveSpawnerGK2 : WaterWaveSpawnerGK {
   }
 }
 
-actor WaterWaveGK : GravityKamiliaAutoProjectile {
+actor WaterWaveGK : GravityKamiliaProjectile {
   Obituary "$OB_WATERWAVE"
   +DONTSPLASH
   +FLOORHUGGER
@@ -360,19 +386,19 @@ actor CrystalSpawnerGK : BasicWatcher {
   States {
    Spawn:
     TNT1 A 0
-    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(35,55)) * 31, random(35,55), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
-    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(35,55)) * 31, random(-35,-55), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
-    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(-35,-55)) * 31, random(35,55), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
-    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(-35,-55)) * 31, random(-35,-55), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
-    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(215,235)) * 31, random(215,235), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
-    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(215,235)) * 31, random(-215,-235), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
-    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(-215,-235)) * 31, random(215,235), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
-    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(-215,-235)) * 31, random(-215,-235), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(35, 55)) * 31, random(35, 55), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(35, 55)) * 31, random(-35, -55), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(-35, -55)) * 31, random(35, 55), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(-35, -55)) * 31, random(-35, -55), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(215, 235)) * 31, random(215, 235), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(215, 235)) * 31, random(-215, -235), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(-215, -235)) * 31, random(215, 235), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
+    TNT1 A 0 A_SpawnItemEx("CrystalEyeBitGK", 0, 0, 0, 32, 0, sin(random(-215, -235)) * 31, random(-215, -235), SXF_TRANSFERTRANSLATION|SXF_TRANSFERPOINTERS)
     stop
   }
 }
 
-actor CrystalEyeBitGK : GravityKamiliaAutoProjectile {
+actor CrystalEyeBitGK : GravityKamiliaProjectile {
   Translation "4:4=208:208", "192:192=8:8", "198:198=193:193", "202:202=208:208", "199:199=215:215"
   Obituary "$OB_CRYSTALEYE"
   +HEXENBOUNCE
@@ -434,7 +460,7 @@ actor CrystalEyeBitGK : GravityKamiliaAutoProjectile {
   }
 }
 
-actor NapalmBombGK : GravityKamiliaAutoProjectile {
+actor NapalmBombGK : GravityKamiliaProjectile {
   Translation "192:192=216:216", "198:198=75:75", "202:202=4:4", "199:199=210:210"
   Obituary "$OB_NAPALMBOMB"
   Damage 40
@@ -451,19 +477,200 @@ actor NapalmBombGK : GravityKamiliaAutoProjectile {
     X_5G A 0 A_PlaySoundEx("weapon/napalm", "Weapon")
     X_5G A 0 A_SetGravity(0.0)
     X_5G E 0 A_Explode(160, 128, 0, 0, 9)
-    TNT1 A 4 A_SpawnItemEx("BasicBoom4FX_ColorY", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
+    TNT1 A 4 A_SpawnItemEx("BasicBoom4FX_ColorY", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERTRANSLATION)
     stop
   }
 }
+
+actor FireNapalmBombGK_H : BasicHelper {
+  Translation "192:192=216:216", "198:198=75:75", "202:202=4:4", "199:199=210:210"
+  ReactionTime 4
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SpawnItemEx("NapalmBombGK", 0, 0, 0, 25, 0, 0, random(0, 359), SXF_TRANSFERTRANSLATION)
+    TNT1 A 1 A_CountDown
+    TNT1 A 0 A_Warp(AAPTR_TARGET, 0, 0, 32, 0, 72)
+    goto Spawn+1
+   Death:
+    TNT1 A 0
+    stop
+  }
+}
+
+actor SpawnMyEdenStarShield_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry", 0, 0, 0, 0, 0, 0, 45, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry", 0, 0, 0, 0, 0, 0, 90, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry", 0, 0, 0, 0, 0, 0, 135, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry", 0, 0, 0, 0, 0, 0, 180, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry", 0, 0, 0, 0, 0, 0, 225, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry", 0, 0, 0, 0, 0, 0, 270, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry", 0, 0, 0, 0, 0, 0, 315, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry2_1", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry2_2", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry2_3", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry2_4", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry2_5", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry2_6", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry2_7", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry2_8", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry3_1", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry3_2", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry3_3", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry3_4", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry3_5", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry3_6", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry3_7", 0, 0, 0, 0, 0, 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("EdenmanStarFlurry3_8", 0, 0, 0, 0, 0, 0, 0, 0)
+    stop
+  }
+}
+
+actor EdenmanStarFlurry {
+  Translation "192:192=217:217", "198:198=222:222"
+  -SOLID
+  +MISSILE
+  +DONTSPLASH
+  +DONTBLAST
+  +DONTDRAIN
+  +DONTREFLECT
+  +DONTRIP
+  +GHOST
+  +SHOOTABLE
+  +NOBLOOD
+  +NOCLIP
+  +NORADIUSDMG
+  +NOTIMEFREEZE
+  +NOGRAVITY
+  +NOTARGETSWITCH
+  +BRIGHT
+  +FORCEXYBILLBOARD
+  PainChance 0
+  PainChance "Telefrag", 0
+  DamageFactor "Telefrag", 0.0
+  Species "EdenManStar"
+  PainSound "item/protoreflect"
+  Health 0x7ffffffd
+  Args 50
+  DamageType "GravitymanKamilia"
+  Obituary "%o was star-struck by \ckEdenman\c- (%k)'s Star Flurry."
+  Damage (0)
+  Radius 10
+  Height 10
+  Speed 20
+  Scale 2.5
+  States {
+   Spawn:
+    STAP A 0
+    STAP A 0 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "Death")
+    STAP A 1 A_Warp(AAPTR_TARGET, 96, 0, 32, 6, 28)
+    STAP B 0 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "Death")
+    STAP B 1 A_Warp(AAPTR_TARGET, 96, 0, 32, 6, 28)
+    STAP B 0 A_Explode(args[0]*(CallACS("uh_checkrune", RUNE_SPREAD, AAPTR_TARGET)*2+1), radius*2, 0, 0, radius*2)
+    STAP C 0 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "Death")
+    STAP C 1 A_Warp(AAPTR_TARGET, 96, 0, 32, 6, 28)
+    STAP D 0 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "Death")
+    STAP D 1 A_Warp(AAPTR_TARGET, 96, 0, 32, 6, 28)
+    STAP B 0 A_Explode(args[0]*(CallACS("uh_checkrune", RUNE_SPREAD, AAPTR_TARGET)*2+1), radius*2, 0, 0, radius*2)
+    goto Spawn+1
+   Death:
+    TNT1 A 1
+    stop
+  }
+}
+
+actor EdenmanStarFlurry2 : EdenmanStarFlurry {
+  States {
+   Spawn:
+    STAP A 0
+    STAP A 0 A_SetPitch(args[0])
+    goto SpawnRing
+   SpawnRing:
+    STAP A 0 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "Death")
+    STAP A 0 A_SetPitch(pitch+6)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", AAPTR_TARGET, 2)
+    STAP A 1 A_Warp(AAPTR_TARGET, cos(pitch)*96, 0, sin(pitch)*96+32, 0, 28)
+    STAP B 0 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "Death")
+    STAP B 0 A_SetPitch(pitch+6)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", AAPTR_TARGET, 2)
+    STAP B 1 A_Warp(AAPTR_TARGET, cos(pitch)*96, 0, sin(pitch)*96+32, 0, 28)
+    STAP B 0 A_Explode(args[0]*(CallACS("uh_checkrune", RUNE_SPREAD, AAPTR_TARGET)*2+1), radius*2, 0, 0, radius*2)
+    STAP C 0 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "Death")
+    STAP C 0 A_SetPitch(pitch+6)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", AAPTR_TARGET, 2)
+    STAP C 1 A_Warp(AAPTR_TARGET, cos(pitch)*96, 0, sin(pitch)*96+32, 0, 28)
+    STAP D 0 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "Death")
+    STAP D 0 A_SetPitch(pitch+6)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", AAPTR_TARGET, 2)
+    STAP D 1 A_Warp(AAPTR_TARGET, cos(pitch)*96, 0, sin(pitch)*96+32, 0, 28)
+    STAP B 0 A_Explode(args[0]*(CallACS("uh_checkrune", RUNE_SPREAD, AAPTR_TARGET)*2+1), radius*2, 0, 0, radius*2)
+    goto SpawnRing
+  }
+}
+
+actor EdenmanStarFlurry2_1 : EdenmanStarFlurry2 {Args 0}
+actor EdenmanStarFlurry2_2 : EdenmanStarFlurry2 {Args 90}
+actor EdenmanStarFlurry2_3 : EdenmanStarFlurry2 {Args 180}
+actor EdenmanStarFlurry2_4 : EdenmanStarFlurry2 {Args 270}
+actor EdenmanStarFlurry2_5 : EdenmanStarFlurry2 {Args 45}
+actor EdenmanStarFlurry2_6 : EdenmanStarFlurry2 {Args 135}
+actor EdenmanStarFlurry2_7 : EdenmanStarFlurry2 {Args 225}
+actor EdenmanStarFlurry2_8 : EdenmanStarFlurry2 {Args 315}
+
+actor EdenmanStarFlurry3 : EdenmanStarFlurry {
+  States {
+   Spawn:
+    STAP A 0
+    STAP A 0 A_SetPitch(args[0])
+    goto SpawnRing
+   SpawnRing:
+    STAP A 0 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "Death")
+    STAP A 0 A_SetPitch(pitch+6)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", AAPTR_TARGET, 2)
+    STAP A 1 A_Warp(AAPTR_TARGET, 0, cos(pitch)*96, sin(pitch)*96+32, 0, 28)
+    STAP B 0 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "Death")
+    STAP B 0 A_SetPitch(pitch+6)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", AAPTR_TARGET, 2)
+    STAP B 1 A_Warp(AAPTR_TARGET, 0, cos(pitch)*96, sin(pitch)*96+32, 0, 28)
+    STAP B 0 A_Explode(args[0]*(CallACS("uh_checkrune", RUNE_SPREAD, AAPTR_TARGET)*2+1), radius*2, 0, 0, radius*2)
+    STAP C 0 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "Death")
+    STAP C 0 A_SetPitch(pitch+6)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", AAPTR_TARGET, 2)
+    STAP C 1 A_Warp(AAPTR_TARGET, 0, cos(pitch)*96, sin(pitch)*96+32, 0, 28)
+    STAP D 0 A_JumpIf(!CallACS("uh_PointerIsABoss", AAPTR_TARGET), "Death")
+    STAP D 0 A_SetPitch(pitch+6)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", AAPTR_TARGET, 2)
+    STAP D 1 A_Warp(AAPTR_TARGET, 0, cos(pitch)*96, sin(pitch)*96+32, 0, 28)
+    STAP B 0 A_Explode(args[0]*(CallACS("uh_checkrune", RUNE_SPREAD, AAPTR_TARGET)*2+1), radius*2, 0, 0, radius*2)
+    goto SpawnRing
+  }
+}
+
+actor EdenmanStarFlurry3_1 : EdenmanStarFlurry3 {Args 0}
+actor EdenmanStarFlurry3_2 : EdenmanStarFlurry3 {Args 90}
+actor EdenmanStarFlurry3_3 : EdenmanStarFlurry3 {Args 180}
+actor EdenmanStarFlurry3_4 : EdenmanStarFlurry3 {Args 270}
+actor EdenmanStarFlurry3_5 : EdenmanStarFlurry3 {Args 45}
+actor EdenmanStarFlurry3_6 : EdenmanStarFlurry3 {Args 135}
+actor EdenmanStarFlurry3_7 : EdenmanStarFlurry3 {Args 225}
+actor EdenmanStarFlurry3_8 : EdenmanStarFlurry3 {Args 315}
 
 // Dispatcher runs in the Gravityman player context.  A_JumpIfHealthLower
 // uses strict '<' in Zandronum, so 75/50/25% remain in the preceding stage.
 actor GravityKamiliaAutoAttack_P : CustomInventory {
   States {
    Pickup:
-    TNT1 A 0 A_JumpIfHealthLower(CallACS("uh_CountBossInventory", CNTB_SPAWNHEALTH) / 4, "Below25")
-    TNT1 A 0 A_JumpIfHealthLower(CallACS("uh_CountBossInventory", CNTB_SPAWNHEALTH) / 2, "Below50")
-    TNT1 A 0 A_JumpIfHealthLower(CallACS("uh_CountBossInventory", CNTB_SPAWNHEALTH) * 3 / 4, "Below75")
+    TNT1 A 0 A_JumpIfInventory("GravitymanKamiliaPainFlag", 1, "NoAttack")
+    TNT1 A 0 A_JumpIfInventory("IsPissedFlag", 1, "PickupX")
+    TNT1 A 0 A_JumpIfHealthLower(CallACS("rz_CountInv_BossSpawnHealthFlag") / 4, "Below25")
+    TNT1 A 0 A_JumpIfHealthLower(CallACS("rz_CountInv_BossSpawnHealthFlag") / 2, "Below50")
+    TNT1 A 0 A_JumpIfHealthLower(CallACS("rz_CountInv_BossSpawnHealthFlag") * 3 / 4, "Below75")
+    TNT1 A 0
+    stop
+   NoAttack:
     TNT1 A 0
     stop
    Below75:
@@ -495,12 +702,44 @@ actor GravityKamiliaAutoAttack_P : CustomInventory {
     TNT1 A 0 A_JumpIfInventory("GravityKamiliaCrystalReleased", 1, "AutoNapalm")
     goto AutoCrystal
    AutoNapalm:
-    TNT1 A 0 A_FireCustomMissile("NapalmBombGK", random(0,359), 0, 0, 0)
+    TNT1 A 0 A_FireCustomMissile("NapalmBombGK", random(0, 359), 0, 0, 0)
     TNT1 A 0 A_GiveInventory("GravityKamiliaAutoCooldown_F", 8 - 4 * CallACS("uh_checkrune", RUNE_RAGE))
     stop
    AutoCrystal:
     TNT1 A 0 A_FireCustomMissile("CrystalSpawnerGK", 0, 0, 0, 0)
     TNT1 A 0 A_GiveInventory("GravityKamiliaAutoCooldown_F", 35 - 17 * CallACS("uh_checkrune", RUNE_RAGE))
+    stop
+   PickupX:
+    TNT1 A 0 A_JumpIfInventory("GravityKamiliaCrystalReleased", 1, 1)
+    goto AutoCrystalX
+    TNT1 A 0 A_Jump(256, "AutoStoneX", "AutoGyroX", "AutoNapalmX", "AutoCoalX", "AutoWaveX")
+    stop
+   AutoStoneX:
+    TNT1 A 0 A_PlaySoundEx("weapon/powerstone", "Weapon")
+    TNT1 A 0 A_FireCustomMissile("StoneM_PowerStoneStart_H", 0, 0, 0, 0)
+    TNT1 A 0 A_GiveInventory("GravityKamiliaAutoCooldown_F", 12 - 6 * CallACS("uh_checkrune", RUNE_RAGE))
+    stop
+   AutoGyroX:
+    TNT1 A 0 A_FireCustomMissile("GyroAttackGK", 0, 0, 8, 0)
+    TNT1 A 0 A_FireCustomMissile("GyroAttackGK", -90, 0, 8, 0)
+    TNT1 A 0 A_FireCustomMissile("GyroAttackGK", 90, 0, 8, 0)
+    TNT1 A 0 A_GiveInventory("GravityKamiliaAutoCooldown_F", 12 - 6 * CallACS("uh_checkrune", RUNE_RAGE))
+    stop
+   AutoWaveX:
+    TNT1 A 0 A_FireCustomMissile("PinpointWaterWaveSpawnerGK", 0, 0, -8, 0)
+    TNT1 A 0 A_GiveInventory("GravityKamiliaAutoCooldown_F", 12 - 6 * CallACS("uh_checkrune", RUNE_RAGE))
+    stop
+   AutoCoalX:
+    TNT1 A 0 A_FireCustomMissile("ChargeCoalTrainGK", 0, 0, 0, 0)
+    TNT1 A 0 A_GiveInventory("GravityKamiliaAutoCooldown_F", 12 - 6 * CallACS("uh_checkrune", RUNE_RAGE))
+    stop
+   AutoNapalmX:
+    TNT1 A 0 A_FireCustomMissile("FireNapalmBombGK_H", random(0, 359), 0, 0, 0)
+    TNT1 A 0 A_GiveInventory("GravityKamiliaAutoCooldown_F", 12 - 6 * CallACS("uh_checkrune", RUNE_RAGE))
+    stop
+   AutoCrystalX:
+    TNT1 A 0 A_FireCustomMissile("CrystalSpawnerGK", 0, 0, 0, 0)
+    TNT1 A 0 A_GiveInventory("GravityKamiliaAutoCooldown_F", 12 - 6 * CallACS("uh_checkrune", RUNE_RAGE))
     stop
   }
 }
