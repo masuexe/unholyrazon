@@ -158,36 +158,12 @@ script "uh_FloorQuakeDamageBoss" (int maxRange, int QuakePower, int Which)
 // ExtraLife floor poll. Gravity Flash is a gravity-switch overlay that can
 // stop (NoFlash) and is only restarted by AltFire, so HP-at-1 must not live there.
 script "uh_GravitymanKamiliaELPoll" (void) {
-	int tid;
 	int hp;
-	int invHp;
-	int stuckLogged;
-
-	tid = ActivatorTID();
-	if (tid == 0) {
-		tid = PlayerNumber() + 1000;
-	}
 
 	if (CheckInventory("GravitymanKamiliaELPoll_F")) {
-		if (GetCVar("uh_sv_BossDebugText")) {
-			Log(s:"[GK EL] skip duplicate poll tid=", i:tid);
-		}
 		terminate;
 	}
 	GiveInventory("GravitymanKamiliaELPoll_F", 1);
-
-	hp = GetActorProperty(0, APROP_HEALTH);
-	invHp = CheckInventory("Health");
-	if (GetCVar("uh_sv_BossDebugText")) {
-		Log(s:"[GK EL] start tid=", i:tid,
-			s:" pn=", i:PlayerNumber(),
-			s:" hp=", i:hp,
-			s:" invHp=", i:invHp,
-			s:" el=", i:CheckInventory("PlayerPropertyExtraLifeNative"),
-			s:" buddha=", i:CheckInventory("PlayerPropertyBuddha"),
-			s:" w=", i:CheckInventory("GravitymanKamilia_W"),
-			s:" wp=", i:CheckInventory("GravitymanKamilia_W_Pissed"));
-	}
 
 	while (PlayerNumber() >= 0 && PlayerInGame(PlayerNumber()) &&
 		!CheckInventory("IsDead") &&
@@ -195,52 +171,20 @@ script "uh_GravitymanKamiliaELPoll" (void) {
 		!CheckInventory("GravitymanKamilia_W_Pissed"))
 	{
 		hp = GetActorProperty(0, APROP_HEALTH);
-		invHp = CheckInventory("Health");
-		if (hp < 2 || invHp < 2) {
-			if (CheckInventory("IsPissedFlag") || CheckInventory("GravitymanKamiliaPainFlag")) {
-				if (!stuckLogged && GetCVar("uh_sv_BossDebugText")) {
-					Log(s:"[GK EL] hp<2 but blocked tid=", i:tid,
-						s:" hp=", i:hp, s:" invHp=", i:invHp,
-						s:" pissed=", i:CheckInventory("IsPissedFlag"),
-						s:" pain=", i:CheckInventory("GravitymanKamiliaPainFlag"));
-					stuckLogged = 1;
-				}
-			} else {
-				if (GetCVar("uh_sv_BossDebugText")) {
-					Log(s:"[GK EL] swap tid=", i:tid,
-						s:" pn=", i:PlayerNumber(),
-						s:" hp=", i:hp,
-						s:" invHp=", i:invHp,
-						s:" el=", i:CheckInventory("PlayerPropertyExtraLifeNative"));
-				}
-				GiveInventory("GravitymanKamiliaSwapPissed_P", 1);
-				break;
-			}
+		if ((hp < 2 || CheckInventory("Health") < 2) &&
+			!CheckInventory("IsPissedFlag") &&
+			!CheckInventory("GravitymanKamiliaPainFlag"))
+		{
+			GiveInventory("GravitymanKamiliaSwapPissed_P", 1);
+			break;
 		}
 		Delay(1);
 	}
 
 	TakeInventory("GravitymanKamiliaELPoll_F", 1);
-	if (GetCVar("uh_sv_BossDebugText")) {
-		Log(s:"[GK EL] end tid=", i:tid,
-			s:" hp=", i:GetActorProperty(0, APROP_HEALTH),
-			s:" w=", i:CheckInventory("GravitymanKamilia_W"),
-			s:" wp=", i:CheckInventory("GravitymanKamilia_W_Pissed"));
-	}
 }
 
-script "uh_GravitymanKamiliaEdenDye" (void)
-{
-	int tid;
-
-	tid = ActivatorTID();
-	if (tid == 0) {
-		tid = PlayerNumber() + 1000;
-	}
-	if (GetCVar("uh_sv_BossDebugText")) {
-		Log(s:"[GK EL] eden dye start tid=", i:tid, s:" pn=", i:PlayerNumber());
-	}
-
+script "uh_GravitymanKamiliaEdenDye" (void) {
 	while (PlayerNumber() >= 0 && PlayerInGame(PlayerNumber()) &&
 		!CheckInventory("IsDead") &&
 		CheckInventory("IsPissedFlag") &&
@@ -253,9 +197,5 @@ script "uh_GravitymanKamiliaEdenDye" (void)
 		}
 		ACS_NamedExecuteWithResult("core_weaponcolor", EDENMAN_DYE2, CLRF_SILENT);
 		Delay(5);
-	}
-
-	if (GetCVar("uh_sv_BossDebugText")) {
-		Log(s:"[GK EL] eden dye end tid=", i:tid, s:" pn=", i:PlayerNumber());
 	}
 }
