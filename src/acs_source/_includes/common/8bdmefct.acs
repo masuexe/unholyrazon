@@ -11,36 +11,36 @@ function int ActorFace (int facer, int target)
 }
 
 // (Russ) Thrust an actor towards another with offsets
-function void actorPull(int puller, int pullee, int force, int xOff, int yOff, int zOff)
+function void actorPull(int puller, int pullee, int force, int x_off, int y_off, int z_off)
 {
-	int angle = VectorAngle((GetActorX(puller)+xOff)-GetActorX(pullee), (GetActorY(puller)+yOff)-GetActorY(pullee));
-	int pitch = pitchBetween(puller, pullee, xOff, yOff, zOff);
+	int angle = VectorAngle((GetActorX(puller)+x_off)-GetActorX(pullee), (GetActorY(puller)+y_off)-GetActorY(pullee));
+	int pitch = pitchBetween(puller, pullee, x_off, y_off, z_off);
 	
 	angle = angle >> 8; // Convert fixed point angle to byte angle.
-	int horizForce = fixedMul(cos(pitch), force<<16)>>16;
-	int vertiForce = fixedMul(sin(pitch), force<<16)>>16;
+	int horiz_force = fixedMul(cos(pitch), force<<16)>>16;
+	int verti_force = fixedMul(sin(pitch), force<<16)>>16;
 	
 	//PrintBold(s:"pitch: ", f:pitch, s:"\n",
 	//          s:"horizontal force: ", i:horizForce, s:"\n",
 	//		  s:"vertical force: ", i:vertiForce, s:"\n");
 	//
 	
-	ThrustThing(angle, horizForce, horizForce>30, pullee);
-	ThrustThingZ(pullee, vertiForce*4, 0, 0);
+	ThrustThing(angle, horiz_force, horiz_force>30, pullee);
+	ThrustThingZ(pullee, verti_force*4, 0, 0);
 }
 
 // (Russ) Stolen from Evil Escort, which in turn was stolen from the ZDoom forum
-function int pitchBetween(int looker, int target, int xOff, int yOff, int zOff)
+function int pitchBetween(int looker, int target, int x_off, int y_off, int z_off)
 {
 	int x, y, z, ang, pitch, len;
-	x = (getactorx(target) + xOff) - getactorx(looker);
-    y = (getactory(target) + yOff)- getactory(looker);
+	x = (getactorx(target) + x_off) - getactorx(looker);
+    y = (getactory(target) + y_off)- getactory(looker);
 
 	ang = vectorangle(x,y);
 	if(((ang+0.125)%0.5) > 0.25) len = fixeddiv(y, sin(ang));
 	else len = fixeddiv(x, cos(ang));
 
-	z = (getactorz(target) - zOff) - getactorz(looker);
+	z = (getactorz(target) - z_off) - getactorz(looker);
 
 	pitch = -vectorangle(len, z);
 	return pitch;
@@ -53,8 +53,8 @@ SetInventory2(inventory_item,amount,CheckInventory(inventory_item));
 
 function void SetInventory2(str inventory_item, int amount, int currentamount)
 {
-if(amount>currentAmount) GiveInventory(inventory_item,amount-currentAmount);
-else if(amount<currentAmount) TakeInventory(inventory_item,currentAmount-amount);
+if(amount>currentamount) GiveInventory(inventory_item,amount-currentamount);
+else if(amount<currentamount) TakeInventory(inventory_item,currentamount-amount);
 }
 
 function void SetActorInventory(int tid, str inventory_item, int amount)
@@ -64,10 +64,10 @@ SetActorInventory2(tid,inventory_item,amount,CheckActorInventory(tid,inventory_i
 
 function void SetActorInventory2(int tid, str inventory_item, int amount, int currentamount)
 {
-if(amount>currentAmount) {
-	GiveActorInventory(tid,inventory_item,amount-currentAmount);
-} else if(amount<currentAmount) {
-	TakeActorInventory(tid,inventory_item,currentAmount-amount);
+if(amount>currentamount) {
+	GiveActorInventory(tid,inventory_item,amount-currentamount);
+} else if(amount<currentamount) {
+	TakeActorInventory(tid,inventory_item,currentamount-amount);
 }
 }
 
@@ -75,12 +75,12 @@ if(amount>currentAmount) {
 // Returns whether the actor exists, won't log invalid inventory!
 function int GiveActorReplacedInventory(int tid, str item, int amt)
 {
-	int tempTid = UniqueTID();
-	int ret = SpawnForced(item, GetActorX(tid), GetActorY(tid), GetActorZ(tid), tempTid, 0);
+	int temp_tid = UniqueTID();
+	int ret = SpawnForced(item, GetActorX(tid), GetActorY(tid), GetActorZ(tid), temp_tid, 0);
 	if(ret)
 	{
-		GiveActorInventory(tid, GetActorClass(tempTid), amt);
-		Thing_Remove(tempTid);
+		GiveActorInventory(tid, GetActorClass(temp_tid), amt);
+		Thing_Remove(temp_tid);
 	}
 
 	return ret;
@@ -88,19 +88,19 @@ function int GiveActorReplacedInventory(int tid, str item, int amt)
 
 function int GiveReplacedInventory(str item, int amt)
 {
-	int tempTid = UniqueTID();
-	int ret = SpawnForced(item, GetActorX(0), GetActorY(0), GetActorZ(0), tempTid, 0);
+	int temp_tid = UniqueTID();
+	int ret = SpawnForced(item, GetActorX(0), GetActorY(0), GetActorZ(0), temp_tid, 0);
 	if(ret)
 	{
-		GiveInventory(GetActorClass(tempTid), amt);
-		Thing_Remove(tempTid);
+		GiveInventory(GetActorClass(temp_tid), amt);
+		Thing_Remove(temp_tid);
 	}
 
 	return ret;
 }
 
 // Taken from unkown
-function int ActorLookAt(int looker, int target, int zoff, int lookerzoff)
+function int ActorLookAt(int looker, int target, int z_off, int lookerzoff)
 {
    int x, y, z, ang, pitch, len;
    x = getactorx(target) - getactorx(looker);
@@ -110,7 +110,7 @@ function int ActorLookAt(int looker, int target, int zoff, int lookerzoff)
    if(((ang+0.125)%0.5) > 0.25) len = fixeddiv(y, sin(ang));
    else len = fixeddiv(x, cos(ang));
 
-   z = (getactorz(target) + zoff) - (getactorz(looker)+lookerzoff);
+   z = (getactorz(target) + z_off) - (getactorz(looker)+lookerzoff);
 
    pitch = -vectorangle(len, z);
 

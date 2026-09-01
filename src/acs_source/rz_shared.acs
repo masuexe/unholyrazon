@@ -2,67 +2,67 @@
 #include "zcommon.acs"
 
 script "rz_ForceSpectatePlayer" (int why) {
-	str reason = "Cold Dragoon did it";
-    switch (why) {
-        case 0:
-            reason = "Illegal content detected (Needle Cannon)";
-            break;
-        case 1:
-            reason = "Super Megaman can't be defeated!";
-            break;
-    }
-	Delay(1);
-	KickFromGame(PlayerNumber(), reason);
+  str reason = "Cold Dragoon did it";
+  switch (why) {
+    case 0:
+      reason = "Illegal content detected (Needle Cannon)";
+      break;
+    case 1:
+      reason = "Super Megaman can't be defeated!";
+      break;
+  }
+  Delay(1);
+  KickFromGame(PlayerNumber(), reason);
 }
 
 script "rz_SetPlayerSkin" (int skin) {
-    str skinname = "Base";
-    switch (skin) {
-        case 1:
-            skinname = "YustMan";
-            break;
-    }
-    SetPlayerSkin(PlayerNumber(), skinname, 1);
+  str skinname = "Base";
+  switch (skin) {
+    case 1:
+      skinname = "YustMan";
+      break;
+  }
+  SetPlayerSkin(PlayerNumber(), skinname, 1);
 }
 
 script "rz_ClearForcedPlayerSkin" (void) {
-	int pn = PlayerNumber();
-	if (pn < 0)
-		terminate;
-	SetPlayerSkin(pn, "", 0);
-	TakeInventory("YustManFlag", 1);
-	ACS_NamedExecuteWithResult("rz_EdenApplyCSectionSkin");
+  int pn = PlayerNumber();
+  if (pn < 0)
+    terminate;
+  SetPlayerSkin(pn, "", 0);
+  TakeInventory("YustManFlag", 1);
+  ACS_NamedExecuteWithResult("rz_EdenApplyCSectionSkin");
 }
 
 script "rz_ClearForcedPlayerSkin_Enter" ENTER {
-	ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
+  ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
 }
 
 script "rz_ClearForcedPlayerSkin_Respawn" RESPAWN {
-	ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
+  ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
 }
 
 script "rz_ParalyzedStatusWatcher" (void) {
-	GiveInventory("PlayerIsParalyzed", 1);
-	int ready = CheckInventory("UH_LastReadyDye");
-	GiveInventory("NoWeaponTranslation", 1);
-	while (CheckInventory("PlayerParalyzedTimer") > 0) {
-		if (Timer() % 2 == 0) {
-			Thing_SetTranslation(0, 7000); // PARALYZED_DYE
-		} else if (ready > 0) {
-			Thing_SetTranslation(0, ready);
-		}
-		TakeInventory("PlayerParalyzedTimer", 1);
-		Delay(1);
-	}
-	TakeInventory("NoWeaponTranslation", 1);
-	if (ready > 0) {
-		Thing_SetTranslation(0, ready);
-		ACS_NamedExecuteWithResult("uh_SyncMugFromWeaponDye", ready);
-	}
-	// Always unfreeze here: pain states may be interrupted before PlayerParalyzedOff
-	ACS_NamedExecuteWithResult("core_freezeplayer", 0, false);
-	TakeInventory("PlayerIsParalyzed", 1);
+  GiveInventory("PlayerIsParalyzed", 1);
+  int ready = CheckInventory("UH_LastReadyDye");
+  GiveInventory("NoWeaponTranslation", 1);
+  while (CheckInventory("PlayerParalyzedTimer") > 0) {
+    if (Timer() % 2 == 0) {
+      Thing_SetTranslation(0, 7000);  // PARALYZED_DYE
+    } else if (ready > 0) {
+      Thing_SetTranslation(0, ready);
+    }
+    TakeInventory("PlayerParalyzedTimer", 1);
+    Delay(1);
+  }
+  TakeInventory("NoWeaponTranslation", 1);
+  if (ready > 0) {
+    Thing_SetTranslation(0, ready);
+    ACS_NamedExecuteWithResult("uh_SyncMugFromWeaponDye", ready);
+  }
+  // Always unfreeze here: pain states may be interrupted before PlayerParalyzedOff
+  ACS_NamedExecuteWithResult("core_freezeplayer", 0, false);
+  TakeInventory("PlayerIsParalyzed", 1);
 }
 
 #define SMSBIRTHDAY_MAX 6

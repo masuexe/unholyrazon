@@ -110,7 +110,7 @@ UH libraries in `src/acs_source/`:
 | `UH_COLOR.acs` | `UH_COLORS` | Team color translations, dye defs, RGB translations |
 | `UH_TOOLS.acs` | `UH_TOOLS` | IsBot, IsItOnline, PointerExists, button/movement input helpers |
 
-Shared includes live under `acs_source/_includes/` (`common/` for MM8BDM base libs, `mod api/` for CBM). Compiled `.o` files go in `src/acs/` (gitignored).
+Shared includes live under `acs_source/_includes/` (`common/` for MM8BDM base libs, `mod_api/` for CBM). Compiled `.o` files go in `src/acs/` (gitignored).
 
 ## Naming conventions
 

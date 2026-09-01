@@ -1,179 +1,166 @@
-//This records whatever the current music/code is for possible later use.
-function void MusicSaveFunc(void)
-{
-	savedMusicLump = currentMusicLump;
-	savedMusicCredit = currentMusicCredit;
+// This records whatever the current music/code is for possible later use.
+function void MusicSaveFunc(void) {
+  saved_music_lump = current_music_lump;
+  saved_music_credit = current_music_credit;
 }
-function void PlayMusic(str music)//Plays music
-{
-	currentMusicLump = music;
-	SetCVarString("_uh_ServMusicLump",music);
-	int len = StrLen(music);//Also checks if music has a space and numbers after it
-	int space = FindSpace(music,len);//If it does, it plays the multi track
+function void PlayMusic(str music) {
+  current_music_lump = music;
+  SetCVarString("_uh_ServMusicLump", music);
+  int len = StrLen(music);  // Also checks if music has a space and numbers after it
+  int space = FindSpace(music, len);  // If it does, it plays the multi track
 
-	if(space==-1) {
-		SetMusic(music);
-	} else {
-		int len2 = len-space-1;
-		SetMusic(StrLeft(music,space),StringToInt(StrRight(music,len2),len2));
-	}
+  if (space == -1) {
+    SetMusic(music);
+  } else {
+    int len2 = len - space - 1;
+    SetMusic(StrLeft(music, space), StringToInt(StrRight(music, len2), len2));
+  }
 }
-//Easy to manage music credits rather than having it listed multiple times in this ACS file.
-function void MusicCredits(str Music, int Display)
-{
-	currentMusicCredit = Music;
-	SetCVarString("_uh_ServMusicCredits",Music);
-	if(Display==0){
-		ACS_NamedExecuteAlways("ub_FancyDisplayMusicStart",0);
-	}
+// Easy to manage music credits rather than having it listed multiple times in this ACS file.
+function void MusicCredits(str music, int display) {
+  current_music_credit = music;
+  SetCVarString("_uh_ServMusicCredits", music);
+  if (display == 0) {
+    ACS_NamedExecuteAlways("ub_FancyDisplayMusicStart", 0);
+  }
 }
-Script "ub_PlayVariantMusic" (int TheNum)
-{
-	int row;
-	str lump;
-	str credit;
+script "ub_PlayVariantMusic" (int the_num) {
+  int row;
+  str lump;
+  str credit;
 
-	row = PickBossMusicRow(TheNum, UHMUS_KIND_SPAWN, 0);
-	if (row >= 0)
-	{
-		lump = GetBossMusicLumpByRow(row);
-		credit = GetBossMusicCreditByRow(row);
-	}
-	else
-	{
-		lump = getBossMusic(TheNum);
-		credit = getBossMusicCredit(TheNum);
-	}
-	PlayMusic(lump);
-	MusicCredits(credit, 0);
+  row = PickBossMusicRow(the_num, UHMUS_KIND_SPAWN, 0);
+  if (row >= 0) {
+    lump = GetBossMusicLumpByRow(row);
+    credit = GetBossMusicCreditByRow(row);
+  }
+  else {
+    lump = getBossMusic(the_num);
+    credit = getBossMusicCredit(the_num);
+  }
+  PlayMusic(lump);
+  MusicCredits(credit, 0);
 }
 
 // Phase-2 / enrage music. which = legacy boss id from DECORATE; type = phase.
 // Prefer activator class; fall back to which if class not in UHDT.
-Script "ub_BossEnrageMusic" (int which, int type)
-{
-	int id;
-	int row;
-	str lump;
-	str credit;
+script "ub_BossEnrageMusic" (int which, int type) {
+  int id;
+  int row;
+  str lump;
+  str credit;
 
-	if (!CheckInventory("Is_UH_BossNum") || CheckInventory("IsGonnaBeFake"))
-		terminate;
+  if (!CheckInventory("Is_UH_BossNum") || CheckInventory("IsGonnaBeFake"))
+    terminate;
 
-	id = FindBossByActor(GetActorClass(0));
-	if (id == UHBOSS_FAIL && IsBossDefined(which))
-		id = which;
-	if (id == UHBOSS_FAIL)
-		terminate;
+  id = FindBossByActor(GetActorClass(0));
+  if (id == UHBOSS_FAIL && IsBossDefined(which))
+    id = which;
+  if (id == UHBOSS_FAIL)
+    terminate;
 
-	row = PickBossMusicRow(id, UHMUS_KIND_ENRAGE, type);
-	if (row < 0)
-		terminate;
+  row = PickBossMusicRow(id, UHMUS_KIND_ENRAGE, type);
+  if (row < 0)
+    terminate;
 
-	lump = GetBossMusicLumpByRow(row);
-	credit = GetBossMusicCreditByRow(row);
-	PlayMusic(lump);
-	MusicCredits(credit, 0);
+  lump = GetBossMusicLumpByRow(row);
+  credit = GetBossMusicCreditByRow(row);
+  PlayMusic(lump);
+  MusicCredits(credit, 0);
 }
 
-function int PlayMusic_Winner(int Force)
-{
-	int row;
-	int EmulateDelay;
+function int PlayMusicWinner(int force) {
+  int row;
+  int emulate_delay;
 
-	// Force ignored: always weighted-random from UHMUS_KIND_WINNER pool.
-	row = PickEventMusicRow(UHMUS_KIND_WINNER, 0);
-	if (row < 0)
-		return 0;
+  // Force ignored: always weighted-random from UHMUS_KIND_WINNER pool.
+  row = PickEventMusicRow(UHMUS_KIND_WINNER, 0);
+  if (row < 0)
+    return 0;
 
-	PlayMusic(GetBossMusicLumpByRow(row));
-	MusicCredits(GetBossMusicCreditByRow(row), 1);
+  PlayMusic(GetBossMusicLumpByRow(row));
+  MusicCredits(GetBossMusicCreditByRow(row), 1);
 
-	EmulateDelay = 0;
-	if (GetBossMusicEmuFlagByRow(row))
-		EmulateDelay = 12;
-	return round(35 * GetBossMusicDurationByRow(row)) + EmulateDelay;
+  emulate_delay = 0;
+  if (GetBossMusicEmuFlagByRow(row))
+    emulate_delay = 12;
+  return round(35 * GetBossMusicDurationByRow(row)) + emulate_delay;
 }
-function int PlayMusic_Loser(int Force)
-{
-	int row;
-	int EmulateDelay;
+function int PlayMusicLoser(int force) {
+  int row;
+  int emulate_delay;
 
-	// Force ignored: always weighted-random from UHMUS_KIND_LOSER pool.
-	row = PickEventMusicRow(UHMUS_KIND_LOSER, 0);
-	if (row < 0)
-		return 0;
+  // Force ignored: always weighted-random from UHMUS_KIND_LOSER pool.
+  row = PickEventMusicRow(UHMUS_KIND_LOSER, 0);
+  if (row < 0)
+    return 0;
 
-	PlayMusic(GetBossMusicLumpByRow(row));
-	MusicCredits(GetBossMusicCreditByRow(row), 1);
+  PlayMusic(GetBossMusicLumpByRow(row));
+  MusicCredits(GetBossMusicCreditByRow(row), 1);
 
-	EmulateDelay = 0;
-	if (GetBossMusicEmuFlagByRow(row))
-		EmulateDelay = 12;
-	return round(35 * GetBossMusicDurationByRow(row)) + EmulateDelay;
+  emulate_delay = 0;
+  if (GetBossMusicEmuFlagByRow(row))
+    emulate_delay = 12;
+  return round(35 * GetBossMusicDurationByRow(row)) + emulate_delay;
 }
 
-function void PlayMusic_Win(int Force)
-{
-	if(!Force){Force = random(1,3);}
-	Switch(Force)
-	{
-		Case -2://Solo Boss Spec/Disconnect!
-			MusicCredits("Team Fortress 2 - Class Duel Declined",1);
-			PlayMusic("VICT__T2");
-			break;
-		Case 1:
-			MusicCredits("Final Fight (SNES) - Game Over",1);
-			PlayMusic("M_UWON_1");
-			break;
-		Case 2:
-			MusicCredits("Fire Emblem 7 - Arena Victory",1);
-			PlayMusic("M_UWON_2");
-			break;
-		Case 3:
-			MusicCredits("Mario Golf - Won The Challenge!",1);
-			PlayMusic("MARIGOLF 31");
-			break;
-	}
+function void PlayMusicWin(int force) {
+  if (!force) {force = random(1, 3);}
+  switch (force) {
+    case -2:  // Solo Boss Spec/Disconnect!
+      MusicCredits("Team Fortress 2 - Class Duel Declined", 1);
+      PlayMusic("VICT__T2");
+      break;
+    case 1:
+      MusicCredits("Final Fight (SNES) - Game Over", 1);
+      PlayMusic("M_UWON_1");
+      break;
+    case 2:
+      MusicCredits("Fire Emblem 7 - Arena Victory", 1);
+      PlayMusic("M_UWON_2");
+      break;
+    case 3:
+      MusicCredits("Mario Golf - Won The Challenge!", 1);
+      PlayMusic("MARIGOLF 31");
+      break;
+  }
 }
 
-function void PlayMusic_Loss(int Force)
-{
-	if(Force < 1 || Force > 3){Force = random(1,3);}
-	Switch(Force)
-	{
-		Case 1:
-			MusicCredits("Super Street Fighter 2 - End Battle",1);
-			PlayMusic("M_ULOS_1");
-			break;
-		Case 2:
-			MusicCredits("Street Fighter 2 - Match Over",1);
-			PlayMusic("M_ULOS_2");
-			break;
-		Case 3:
-			MusicCredits("Mario Golf GBC - Lose",1);
-			PlayMusic("MARIGOLF 32");
-			break;
-	}
+function void PlayMusicLoss(int force) {
+  if (force < 1 || force > 3) {force = random(1, 3);}
+  switch (force) {
+    case 1:
+      MusicCredits("Super Street Fighter 2 - End Battle", 1);
+      PlayMusic("M_ULOS_1");
+      break;
+    case 2:
+      MusicCredits("Street Fighter 2 - Match Over", 1);
+      PlayMusic("M_ULOS_2");
+      break;
+    case 3:
+      MusicCredits("Mario Golf GBC - Lose", 1);
+      PlayMusic("MARIGOLF 32");
+      break;
+  }
 }
 
 
 
-function int FindSpace(str String, int length) {
-	for (int i=0; i<length; i++) {
-		if (GetChar(String,i)==' ') {
-			return i;
-		}
-	}
-	return -1;
+function int FindSpace(str string, int length) {
+  for (int i = 0; i < length; i++) {
+    if (GetChar(string, i) == ' ') {
+      return i;
+    }
+  }
+  return -1;
 }
 
-function int StringToInt(str String, int length) {
-	int result = 0;
+function int StringToInt(str string, int length) {
+  int result = 0;
 
-	for (int i=0; i<length; i++) {
-		result *= 10;
-		result += (GetChar(String,i)-'0');
-	}
-	return result;
+  for (int i = 0; i < length; i++) {
+    result *= 10;
+    result += (GetChar(string, i) - '0');
+  }
+  return result;
 }

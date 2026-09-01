@@ -3,8 +3,8 @@
 #import "uhdt.acs"
 #import "uhedenisaac.acs"
 
-global int 3: IsTeamGame;
-global int 4: ServerMAX;
+global int 3:IsTeamGame;
+global int 4:ServerMAX;
 
 // Eden body-color translations; keep these in sync with UH_COLORS and
 // ConstIntList_Ucolors.dec.
@@ -117,38 +117,38 @@ script "uh_CriticalHitRng" (int evt, int dmg, int dmgtype) EVENT {
   }
 }
 
-script "Unholy_BeginTimeStopper" (int SwapCheck) {
-  if (SwapCheck) {
-    if (time_is_stopped || GetGameModeState()==1)//Countdown
+script "Unholy_BeginTimeStopper" (int swap_check) {
+  if (swap_check) {
+    if (time_is_stopped || GetGameModeState() == 1)  // Countdown
       SetResultValue(0);
   }
   else if (!time_is_stopped) {
     int id = ActivatorTID();
     SetActivator(0);
-    time_is_stopped = id-999;
+    time_is_stopped = id - 999;
     Delay(2);
 
-    if (GetActorProperty(id, APROP_Health)>0)
+    if (GetActorProperty(id, APROP_Health) > 0)
       GiveActorInventory(id, "UnholyTimeStopperFreezer", 1);
 
     GiveInventory("TS_CameraControl_P", 1);
 
     Delay(1);
 
-    //AmbientSound("", 127);
+    // AmbientSound("", 127);
 
-    SetHudSize(256,224, 0);
+    SetHudSize(256, 224, 0);
     SetFont("FLASHS");
-    HudMessageBold(s:"A"; 0,50,-1,256.0, 112.0,3.45);
+    HudMessageBold(s:"A"; 0, 50, -1, 256.0, 112.0, 3.45);
 
-    int TimeStopDelay = 120;
+    int time_stop_delay = 120;
 
-    while(CheckActorInventory(id, "PowerTimeStopperUFreezer") && TimeStopDelay > 0 && GetGameModeState()!=1) {
-      TimeStopDelay--;
+    while (CheckActorInventory(id, "PowerTimeStopperUFreezer") && time_stop_delay > 0 && GetGameModeState() != 1) {
+      time_stop_delay--;
       Delay(1);
     }
 
-    HudMessageBold(s:""; 0,50,-1, 0.99, 0.01, 1873);
+    HudMessageBold(s:""; 0, 50, -1, 0.99, 0.01, 1873);
     TakeActorInventory(id, "PowerTimeStopperUFreezer", 1);
     Delay(10);
 
@@ -156,12 +156,11 @@ script "Unholy_BeginTimeStopper" (int SwapCheck) {
   }
 }
 
-script "Unholy_TS_ClientSnd" (void) CLIENTSIDE
-{
-  //LocalAmbientSound("weapon/timestopper", 127);
+script "Unholy_TS_ClientSnd" (void) CLIENTSIDE {
+  // LocalAmbientSound("weapon/timestopper", 127);
 }
 
-script "Unholy_TS_CamWatch" (void) //TSCameraControl Watcher
+script "Unholy_TS_CamWatch" (void)  // TSCameraControl Watcher
 {
   ACS_NamedExecuteAlways("Unholy_TS_ClientSnd", 0);
   if (PlayerNumber() == -1 || CheckInventory("IsDead") || !PlayerInGame(PlayerNumber()))
@@ -180,23 +179,23 @@ script "Unholy_TS_CamWatch" (void) //TSCameraControl Watcher
   TakeInventory("TSCameraControlFlag", 1);
 }
 
-script "Unholy_TS_ClientCameraControl" (int which) CLIENTSIDE //TimeStop Camera Control
+script "Unholy_TS_ClientCameraControl" (int which) CLIENTSIDE  // TimeStop Camera Control
 {
   switch (which) {
-  case 0:  // Actual TimeStopperWep
-    do {
-      if (!CheckInventory("PowerTimeStopperUFreezer")) {
-        SetActorAngle(0, GetActorAngle(0)+GetPlayerInput(-1, INPUT_YAW));
-        SetActorPitch(0, GetActorPitch(0)-GetPlayerInput(-1, INPUT_PITCH));
-      }
-      Delay(1);
-    } while (CheckInventory("TSCameraControlFlag"));
-  break;
+    case 0:  // Actual TimeStopperWep
+      do {
+        if (!CheckInventory("PowerTimeStopperUFreezer")) {
+          SetActorAngle(0, GetActorAngle(0) + GetPlayerInput(-1, INPUT_YAW));
+          SetActorPitch(0, GetActorPitch(0) - GetPlayerInput(-1, INPUT_PITCH));
+        }
+        Delay(1);
+      } while (CheckInventory("TSCameraControlFlag"));
+      break;
   }
 }
 
 // Script called by Deep Digger
-Script "uh_ShieldWarper_DeepDiggerU" (int left, int amount) CLIENTSIDE {
+script "uh_ShieldWarper_DeepDiggerU" (int left, int amount) CLIENTSIDE {
   int player = ACS_NamedExecuteWithResult("core_gettarget", 0);
   str checkactor = "DeepDiggerFlagL";
   if (!left) {
@@ -209,7 +208,7 @@ Script "uh_ShieldWarper_DeepDiggerU" (int left, int amount) CLIENTSIDE {
   Thing_Remove(0);
 }
 
-Script "uc_AnchorShot_mob" (int vel) {
+script "uc_AnchorShot_mob" (int vel) {
   int nx, ny, nz;
 
   int myx = GetActorX(0);
@@ -234,60 +233,59 @@ Script "uc_AnchorShot_mob" (int vel) {
     ny = 0;
     nz = 0;
   }
-  SetActorvelocity(playerid, nx*vel, ny*vel, nz*vel, true, true);
+  SetActorvelocity(playerid, nx * vel, ny * vel, nz * vel, true, true);
 }
 
-Script "uh_RaiderHitSplat" (int Len)// CLIENTSIDE
+script "uh_RaiderHitSplat" (int len)  // CLIENTSIDE
 {
-  Spawn(StrParam(s:"RS_HitSplat",s:StrRight(GetActorClass(0),Len)),GetActorX(0),GetActorY(0),GetActorZ(0));
+  Spawn(StrParam(s:"RS_HitSplat", s:StrRight(GetActorClass(0), len)), GetActorX(0), GetActorY(0), GetActorZ(0));
 }
 
-Script "uh_ArcanistSmokeWarp" (void) {
+script "uh_ArcanistSmokeWarp" (void) {
   if (ACS_NamedExecuteWithResult("uh_istracerplayer")) {
-    int Tracer = ACS_NamedExecuteWithResult("core_getptrtid",AAPTR_TRACER);
-    Warp(Tracer, 0, 0, GetActorProperty(Tracer, APROP_Height) / 2, 0,WARPF_NOCHECKPOSITION);
+    int tracer = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TRACER);
+    Warp(tracer, 0, 0, GetActorProperty(tracer, APROP_Height) / 2, 0, WARPF_NOCHECKPOSITION);
   }
 }
 
-Script "uh_HomingSeekerPushPull" (int limit, int swapper) {
+script "uh_HomingSeekerPushPull" (int limit, int swapper) {
   int targetid = ACS_NamedExecuteWithResult("core_getptrtid", 2);
   int tracerid = ACS_NamedExecuteWithResult("core_getptrtid", 8);
 
-  if (CheckActorInventory(tracerid, "NoPushFlag")==1) {terminate;}
+  if (CheckActorInventory(tracerid, "NoPushFlag") == 1) {terminate;}
 
-  int force = XYDistance(targetid,tracerid);
+  int force = XyDistance(targetid, tracerid);
 
-  int forcexyz = XYZDistance(targetid,tracerid);
+  int forcexyz = XyzDistance(targetid, tracerid);
 
-  //Log(s:"FORCE DIST = ", i:force);
-  //Log(s:"swapper = ", i:swapper);
+  // Log(s:"FORCE DIST = ", i:force);
+  // Log(s:"swapper = ", i:swapper);
 
-  //Log(s:" forcexyz i = ", i:forcexyz);
-  //Log(s:" forcexyz f = ",f:forcexyz);
+  // Log(s:" forcexyz i = ", i:forcexyz);
+  // Log(s:" forcexyz f = ",f:forcexyz);
 
   switch (swapper) {
     default:
       break;
     case 1:  // Push
-      force = max(4, limit+5-forcexyz/10) * -1;
+      force = Max(4, limit + 5 - forcexyz / 10) * -1;
       break;
     case -1:  // Pull
-      force = min(limit, forcexyz/10);
+      force = Min(limit, forcexyz / 10);
       break;
   }
 
-  //Log(s:"FORCE DIST = ", i:force);
-  if (CheckActorInventory(tracerid, "HalfPushFlag")==1) {
-    force = (force*0.5)>>16;
+  // Log(s:"FORCE DIST = ", i:force);
+  if (CheckActorInventory(tracerid, "HalfPushFlag") == 1) {
+    force = (force * 0.5) >> 16;
   }
 
-  ActorPull(targetid, tracerid, force, 0, 0, -12<<16);
+  ActorPull(targetid, tracerid, force, 0, 0, -12 << 16);
 
-  SetResultValue(abs(force));
-
+  SetResultValue(Abs(force));
 }
 
-Script "uh_raiderhookshot" (int playerid, int vel, int moving) {
+script "uh_raiderhookshot" (int playerid, int vel, int moving) {
   int myx, myy, myz;
   int vx, vy, vz, magnitude, nx, ny, nz;
   int letgo = false;
@@ -296,7 +294,7 @@ Script "uh_raiderhookshot" (int playerid, int vel, int moving) {
   myy = GetActorY(0);
   myz = GetActorZ(0);
 
-  while(!letgo) {
+  while (!letgo) {
     if (moving > 0) {  // If the hook is set to move, the positions need to be updated.
       myx = GetActorX(0);
       myy = GetActorY(0);
@@ -315,79 +313,79 @@ Script "uh_raiderhookshot" (int playerid, int vel, int moving) {
       nx = 0; ny = 0; nz = 0;
     }
 
-    //if (XYDistance(playerid, 0)>1500) {letgo = true;}
-    //Thing_Stop(0);
-    SetActorvelocity(playerid, nx*vel, ny*vel, nz*vel, true, true);
-    TakeActorInventory(playerid, "HookshotStamina", 2-CheckActorInventory(playerid, "PlayerPropertyEndlessAmmo"));
+    // if (XYDistance(playerid, 0)>1500) {letgo = true;}
+    // Thing_Stop(0);
+    SetActorvelocity(playerid, nx * vel, ny * vel, nz * vel, true, true);
+    TakeActorInventory(playerid, "HookshotStamina", 2 - CheckActorInventory(playerid, "PlayerPropertyEndlessAmmo"));
 
     Delay(1);
-    if (CheckActorInventory(playerid, "RaiderHookRelease_F")||CheckActorInventory(playerid, "IsDead")) {letgo = true;}
+    if (CheckActorInventory(playerid, "RaiderHookRelease_F") || CheckActorInventory(playerid, "IsDead")) {letgo = true;}
     else if (CheckActorInventory(playerid, "HookshotStamina") < 1) {
       ActivatorSound("S3_K/MetalSpark", 127);
       letgo = True;
     }
   }
   Delay(1);
-  //GiveActorInventory(playerid, "YesGravityPickup", 1);
-  //ACS_NamedExecuteWithResult("core_stopplayer", 0, false);
-  TakeActorInventory(playerid, "RaiderHookedFlag",9);
+  // GiveActorInventory(playerid, "YesGravityPickup", 1);
+  // ACS_NamedExecuteWithResult("core_stopplayer", 0, false);
+  TakeActorInventory(playerid, "RaiderHookedFlag", 9);
   GiveActorInventory(playerid, "RaiderHookRelease_F", 1);
 }
 
-script "uc_TrapistBombJump" (int thrust, int radius, int zoff, int zthrust) {
-  int targettid = ACS_NamedExecuteWithResult("core_getptrtid", 2);
-  int targetteam = GetPlayerInfo(targettid - 1000, PLAYERINFO_TEAM);
+script "uc_TrapistBombJump" (int thrust, int radius, int z_off, int zthrust) {
+  int target_tid = ACS_NamedExecuteWithResult("core_getptrtid", 2);
+  int targetteam = GetPlayerInfo(target_tid - 1000, PLAYERINFO_TEAM);
 
-  //Log(i:XYZDistance(0, target)); powerPro
+  // Log(i:XYZDistance(0, target)); powerPro
 
   for (int p = 0; p < ServerMAX; p++) {
-  //Not in game? Skip
+    // Not in game? Skip
     if (!PlayerInGame(p)) {
       continue;
     }
-  //If bomb owner, skip this
-  // 	if (p+1000 != targettid) {
-  // 		if (CheckActorInventory(p+1000, "PowerProtectSurvivor")) {
-  // 			continue;
-  // 		}
-  // 	}
-  //Is a team game? //Same Teams? Skip
+    // If bomb owner, skip this
+    // 	if (p+1000 != targettid) {
+    // 		if (CheckActorInventory(p+1000, "PowerProtectSurvivor")) {
+    // 			continue;
+    // 		}
+    // 	}
+    // Is a team game? //Same Teams? Skip
     if (IsTeamGame) {
       if (targetteam == GetPlayerInfo(p, PLAYERINFO_TEAM)) {
         continue;
       }
     }
-  //Within range and can see each other? Thrust them
-    if (XYZDistance(0, p+1000) <= radius+16 && CheckSight(0, p+1000,CSF_NOBLOCKALL)) {
+    // Within range and can see each other? Thrust them
+    if (XyzDistance(0, p + 1000) <= radius + 16 && CheckSight(0, p + 1000, CSF_NOBLOCKALL)) {
       SetResultValue(0);
-      ActorPullTrapist(0, p+1000, -thrust, zoff<<16, zthrust);
-      GiveActorInventory(p+1000, "TrapistThrustWeaken", 1);
+      ActorPullTrapist(0, p + 1000, -thrust, z_off << 16, zthrust);
+      GiveActorInventory(p + 1000, "TrapistThrustWeaken", 1);
     }
   }
 }
-function void ActorPullTrapist(int puller, int pullee, int force, int zoff, int zthrust) {//Edit from ActorPull
-  int angle = VectorAngle((GetActorX(puller))-GetActorX(pullee), (GetActorY(puller))-GetActorY(pullee));
-  int pitch = PitchBetween(puller, pullee, 0, 0, zoff);
+function void ActorPullTrapist(int puller, int pullee, int force, int z_off, int zthrust) {  // Edit from ActorPull
+  int angle = VectorAngle((GetActorX(puller)) - GetActorX(pullee), (GetActorY(puller)) - GetActorY(pullee));
+  int pitch = PitchBetween(puller, pullee, 0, 0, z_off);
 
   angle = angle >> 8;
-  int horizforce = FixedMul(cos(pitch), force<<16)>>16;
-  int vertiforce = FixedMul(sin(pitch), force<<16)>>16;
+  int horiz_force = FixedMul(cos(pitch), force << 16) >> 16;
+  int verti_force = FixedMul(sin(pitch), force << 16) >> 16;
   if (CheckActorInventory(pullee, "TrapistThrustWeaken")) {
     zthrust /= 2;
-    vertiforce /= 2;
+    verti_force /= 2;
   }
-  ThrustThing(angle, horizforce, 1, pullee);
-  ThrustThingZ(pullee, vertiforce*(1+(zthrust == 0)*2) + zthrust*4, 0, 1);
+  ThrustThing(angle, horiz_force, 1, pullee);
+  ThrustThingZ(pullee, verti_force * (1 + (zthrust == 0) * 2) + zthrust * 4, 0, 1);
 }
 
 
 script "uc_SamuraiSetUser" (int inputangle, int inputpitch, int inputlimit) {
-  SetUserVariable(0, "user_wepangle", inputangle<<16);
-  SetUserVariable(0, "user_weppitch", inputpitch<<16);
+  SetUserVariable(0, "user_wepangle", inputangle << 16);
+  SetUserVariable(0, "user_weppitch", inputpitch << 16);
   SetUserVariable(0, "user_wepaimlimit", inputlimit);
-//	Log(f:GetUserVariable(0, "user_wepangle"),s:":user_wepangle:", i:GetUserVariable(0, "user_wepangle"),s:"\n",
-//		f:GetUserVariable(0, "user_weppitch"),s:":user_weppitch:", i:GetUserVariable(0, "user_weppitch"),s:"\n",
-//		f:GetUserVariable(0, "user_wepaimlimit"),s:":user_wepaimlimit:", i:GetUserVariable(0, "user_wepaimlimit"));
+  // Log(f:GetUserVariable(0, "user_wepangle"),s:":user_wepangle:", i:GetUserVariable(0, "user_wepangle"),s:"\n",
+  //		f:GetUserVariable(0, "user_weppitch"),s:":user_weppitch:", i:GetUserVariable(0, "user_weppitch"),s:"\n",
+  //		f:GetUserVariable(0, "user_wepaimlimit"),s:":user_wepaimlimit:", i:GetUserVariable(0, "user_wepaimlimit"));
 }
 
 script "uc_SamuraiCheckDrag" (int inputangle, int inputpitch, int inputdiff) {
@@ -395,7 +393,7 @@ script "uc_SamuraiCheckDrag" (int inputangle, int inputpitch, int inputdiff) {
   inputpitch <<= 16;
   int changelimit = GetUserVariable(0, "user_wepaimlimit");
   if (!changelimit)
-    terminate;//This is for online desync? Is it 3.1 only?
+    terminate;  // This is for online desync? Is it 3.1 only?
   int currentangle = GetUserVariable(0, "user_wepangle");
   int currentpitch = GetUserVariable(0, "user_weppitch");
 
@@ -404,12 +402,12 @@ script "uc_SamuraiCheckDrag" (int inputangle, int inputpitch, int inputdiff) {
 
   int len = GetHypotenuse(angledif, pitchdif);
 
-  if (GetHypotenuse(angledif, pitchdif*2)>>16 >= inputdiff) {
-    SetUserVariable(0, "user_wepangle2", FixedDiv(FixedMul(angledif, changelimit),len));
-    SetUserVariable(0, "user_weppitch2", FixedDiv(FixedMul(pitchdif, changelimit),len));
+  if (GetHypotenuse(angledif, pitchdif * 2) >> 16 >= inputdiff) {
+    SetUserVariable(0, "user_wepangle2", FixedDiv(FixedMul(angledif, changelimit), len));
+    SetUserVariable(0, "user_weppitch2", FixedDiv(FixedMul(pitchdif, changelimit), len));
     SetResultValue(2);
   }
-  else{
+  else {
     SetResultValue(-1);
   }
 }
@@ -420,39 +418,38 @@ str samurai_user_variables[2] = {
 };
 
 script "uc_SamuraiAddonUser" (void) {
-  //Log(s:"user_wepangle = ",f:GetUserVariable(0, "user_wepangle"),s:" \/ user_wepangle2 = ",f:GetUserVariable(0, "user_wepangle2"));
-  //Log(s:"user_weppitch = ",f:GetUserVariable(0, "user_weppitch"),s:" \/ user_weppitch2 = ",f:GetUserVariable(0, "user_weppitch2"));
+  // Log(s:"user_wepangle = ",f:GetUserVariable(0, "user_wepangle"),s:" \/ user_wepangle2 = ",f:GetUserVariable(0, "user_wepangle2"));
+  // Log(s:"user_weppitch = ",f:GetUserVariable(0, "user_weppitch"),s:" \/ user_weppitch2 = ",f:GetUserVariable(0, "user_weppitch2"));
   SetUserVariable(0, "user_wepangle", GetUserVariable(0, "user_wepangle") + GetUserVariable(0, "user_wepangle2"));
   SetUserVariable(0, "user_weppitch", GetUserVariable(0, "user_weppitch") + GetUserVariable(0, "user_weppitch2"));
 }
 
 script "uc_SamuraiGetUser" (int num) {
-  //Log(s:"Var ", i:num,s:": ",f:GetUserVariable(0,samurai_user_variables[num]));
-  SetResultValue(GetUserVariable(0, samurai_user_variables[num]));//>>16
+  // Log(s:"Var ", i:num,s:": ",f:GetUserVariable(0,samurai_user_variables[num]));
+  SetResultValue(GetUserVariable(0, samurai_user_variables[num]));  // >>16
 }
 
 
-function int FindNew_LockOnList(int owner, int limit) {
+function int FindNewLockOnList(int owner, int limit) {
   for (int i = 0; i < limit; i++) {
     if (GetUserArray(owner, "user_lockOnList", i) == 0) {
-      //Log(s:"A chance for lock on...", i:i);
+      // Log(s:"A chance for lock on...", i:i);
       return i;
     }
   }
-  //Log(s:" NO SPACE FOR LOCK ON! ");
+  // Log(s:" NO SPACE FOR LOCK ON! ");
   return -1;
 }
-function void CheckClear_LockOnList(int owner, int limit) {
+function void CheckClearLockOnList(int owner, int limit) {
   int curr_arr;
   for (int i = 0; i < limit; i++) {
     curr_arr = GetUserArray(owner, "user_lockOnList", i);
     if (curr_arr != 0)
-      if (GetActorProperty(curr_arr+999, APROP_Health) <= 0 || CheckActorInventory(curr_arr+999, "PowerProtectSurvivor"))
+      if (GetActorProperty(curr_arr + 999, APROP_Health) <= 0 || CheckActorInventory(curr_arr + 999, "PowerProtectSurvivor"))
         SetUserArray(owner, "user_lockOnList", i, 0);
   }
-
 }
-function void Clear_LockOnList(int limit) {
+function void ClearLockOnList(int limit) {
   for (int i = 0; i < limit; i++) {
     SetUserArray(0, "user_lockOnList", i, 0);
   }
@@ -463,39 +460,38 @@ script "uc_MarksmanLockOn" (int mode, int type1, int type2, int type3) {
     default:
       Log(i:mode, s:" >> Invalid Mode for uc_MarksmanLockOn");
       break;
-    case -1: //Reset Array to 0
-      Clear_LockOnList(type1);
-      //Log(s:"Clearing Lockons...checking 1 = ", i:GetUserArray(0, "user_lockOnList", 1));
+    case -1:  // Reset Array to 0
+      ClearLockOnList(type1);
+      // Log(s:"Clearing Lockons...checking 1 = ", i:GetUserArray(0, "user_lockOnList", 1));
       break;
-    case 0: //type1 = Owner TID //type2 = Tracer TID //type3 = LockOn limit
+    case 0:  // type1 = Owner TID //type2 = Tracer TID //type3 = LockOn limit
       if (CheckActorInventory(type2, "PowerProtectSurvivor"))
         terminate;
-      int lockon_num = FindNew_LockOnList(type1, type3);
-      if (lockon_num == -1)//All slots filled, end the script
+      int lockon_num = FindNewLockOnList(type1, type3);
+      if (lockon_num == -1)  // All slots filled, end the script
         terminate;
-      //Check if last lock-on is that specific player
-      if (!(GetUserArray(type1, "user_lockOnList", lockon_num-(lockon_num!=0))==type2-999 &&
+      // Check if last lock-on is that specific player
+      if (!(GetUserArray(type1, "user_lockOnList", lockon_num - (lockon_num != 0)) == type2 - 999 &&
           CheckActorInventory(type1, "MarksmanLockOn_CD"))) {
-        SetUserArray(type1, "user_lockOnList",lockon_num,type2-999);
+        SetUserArray(type1, "user_lockOnList", lockon_num, type2 - 999);
         GiveActorInventory(type1, "MarksmanLockOn_CD_P", 1);
         ActivatorSound("CowboyKid/Chat", 127);
-        NamedExecuteClientScript("uc_MarksmanClientSound", type1-1000);
-        //Log(s:"Success lock on!");
+        NamedExecuteClientScript("uc_MarksmanClientSound", type1 - 1000);
+        // Log(s:"Success lock on!");
       }
       break;
-    case 1: //Missile copies TID in Targets slot
+    case 1:  // Missile copies TID in Targets slot
       SetActivatorToTarget(0);
-      //Log(s:"Fetching lock on ", i:CheckInventory("MarksmanMissile_F"),s:"...", i:GetUserArray(0, "user_lockOnList",CheckInventory("MarksmanMissile_F")));
-      SetResultValue(GetUserArray(0, "user_lockOnList",CheckInventory("MarksmanMissile_F")));
+      // Log(s:"Fetching lock on ", i:CheckInventory("MarksmanMissile_F"),s:"...", i:GetUserArray(0, "user_lockOnList",CheckInventory("MarksmanMissile_F")));
+      SetResultValue(GetUserArray(0, "user_lockOnList", CheckInventory("MarksmanMissile_F")));
       break;
-    case 3: //Check if locked on players are alive. Remove if not.
-      CheckClear_LockOnList(ActivatorTID(), type1);
+    case 3:  // Check if locked on players are alive. Remove if not.
+      CheckClearLockOnList(ActivatorTID(), type1);
       break;
   }
 }
 
-script "uc_MarksmanClientSound" (void) CLIENTSIDE
-{
+script "uc_MarksmanClientSound" (void) CLIENTSIDE {
   SetActivatorToPlayer(ConsolePlayerNumber());
   LocalAmbientSound("DuckHunt/Tally", 127);
 }
@@ -512,7 +508,7 @@ script "uc_LimHealth" (void) {
     SetInventory("LimHealth", health);
   }
   else if (limdiff != 0) {
-    GiveInventory("DireEnergyAmmo", max(limdiff, 0));
+    GiveInventory("DireEnergyAmmo", Max(limdiff, 0));
     SetInventory("LimHealth", health);
   }
 }
@@ -588,18 +584,18 @@ function int DecoyBotWepCheckRng(int max_r,
   return dwep;
 }
 
-function int Tally_WispHex (void) {
-  int Total;
+function int TallyWispHex(void) {
+  int total;
   int curr_arr;
   for (int i = 0; i < 64; i++) {
     curr_arr = GetUserArray(0, "user_wispHex", i);
-    Total += curr_arr;
+    total += curr_arr;
     if (curr_arr != 0)
       SetUserArray(0, "user_wispHex", i, 0);
   }
-  return Total;
+  return total;
 }
-function void Clear_WispHex (void) {
+function void ClearWispHex(void) {
   for (int i = 0; i < 64; i++) {
     SetUserArray(0, "user_wispHex", i, 0);
   }
@@ -610,18 +606,18 @@ script "uc_WispHex" (int mode, int igniter) {
     default:
       Log(i:mode, s:" >> Invalid Mode for uc_WispHex");
       break;
-    case -1: //Reset Entire Array to 0
+    case -1:  // Reset Entire Array to 0
       SetActivatorToTarget(0);
-      Clear_WispHex();
+      ClearWispHex();
       break;
-    case 0: //Increase burn count
-      if (igniter < 0 || igniter > 63)//Don't do anything if not a PlayerNum
+    case 0:  // Increase burn count
+      if (igniter < 0 || igniter > 63)  // Don't do anything if not a PlayerNum
         break;
       SetUserArray(0, "user_wispHex", igniter, GetUserArray(0, "user_wispHex", igniter) + 1);
       break;
     case 1:
       SetActivatorToTarget(0);
-      SetResultValue(Tally_WispHex());
+      SetResultValue(TallyWispHex());
       break;
   }
 }
@@ -802,7 +798,7 @@ script "ub_RedeadGutsHpDrain" (int adddrainbool) {
   }
   if (adddrainbool)
     GiveInventory("RedeadGutsHealthDrain", 1);
-  SetActorProperty(0, APROP_Health, currhp-hpdrain);
+  SetActorProperty(0, APROP_Health, currhp - hpdrain);
 }
 
 int hphm_temparr[65] = {-1};
@@ -811,7 +807,7 @@ script "uh_Hphm_WarpChecker" (void) {
   int ownertid = ACS_NamedExecuteWithResult("core_getptrtid", 2);
   int maxarray = -1;
   for (int i; i < ServerMAX; i++) {
-    if (PlayerInGame(i) && i+1000 != ownertid) {
+    if (PlayerInGame(i) && i + 1000 != ownertid) {
       maxarray++;
       hphm_temparr[maxarray] = i + 1000;
     }
@@ -1030,24 +1026,24 @@ script "rz_BlueDestronShotCooldown" (void) {
   }
 }
 
-//cbm_DrawPlugCable
-Script "rz_DrawFloovyPlugCable" (int grappletid, int playertid, int ang) CLIENTSIDE {
+// cbm_DrawPlugCable
+script "rz_DrawFloovyPlugCable" (int grappletid, int playertid, int ang) CLIENTSIDE {
   int plx; int ply; int plz;
   int grx; int gry; int grz;
-  int vx;  int vy;  int vz;
-  int nx;  int ny;  int nz;
-  int bx;  int by;  int bz;
+  int vx; int vy; int vz;
+  int nx; int ny; int nz;
+  int bx; int by; int bz;
   int magnitude;
   int pointcount;
   int pointoffset;
   int density = 18;
 
-  int zoff;
+  int z_off;
 
   int angle = GetActorAngle(playertid);
-  str spawnname = "FloovyPlugCableFX";
+  str spawn_name = "FloovyPlugCableFX";
 
-  if (grappletid != 0) {zoff = 32.0;}
+  if (grappletid != 0) {z_off = 32.0;}
   // if(grappletid!=0) {
   // 	zoff = 32.0;
   // 	spawnname = StrParam(s:"PlugCableFX",i:ACS_ExecuteWithResult(143,0));
@@ -1061,13 +1057,13 @@ Script "rz_DrawFloovyPlugCable" (int grappletid, int playertid, int ang) CLIENTS
   ply = GetActorY(playertid) + sin(angle + 0.75) * 17;
   gry = GetActorY(grappletid);
   plz = GetActorZ(playertid) + 28.0;
-  grz = GetActorZ(grappletid) + zoff;
+  grz = GetActorZ(grappletid) + z_off;
 
-  vx = grx - plx;   vy = gry - ply;   vz = grz - plz;
+  vx = grx - plx; vy = gry - ply; vz = grz - plz;
 
   magnitude = MagnitudeThree(vx >> 16, vy >> 16, vz >> 16);
 
-  pointcount  = magnitude / density;
+  pointcount = magnitude / density;
   pointoffset = magnitude - (pointcount * density);
 
   if (magnitude != 0) {
@@ -1078,36 +1074,36 @@ Script "rz_DrawFloovyPlugCable" (int grappletid, int playertid, int ang) CLIENTS
 
       bx = (nx * j) + plx;
       by = (ny * j) + ply;
-      bz = (nz * j) + plz;//+(16 << 16);
+      bz = (nz * j) + plz;  // +(16 << 16);
 
-      Spawn(spawnname, bx, by, bz, 0, ang);
+      Spawn(spawn_name, bx, by, bz, 0, ang);
     }
   }
 }
 
-//cbm_PlugLatch
-Script "rz_FloovyPlugLatch" (int targettid, int tracertid) {
-  //int targettid = ACS_NamedExecuteWithResult("uh_GetPointerTID",8);//Tracer
-  //SetActivatorToTarget(0);
-  SetActivator(targettid);
+// cbm_PlugLatch
+script "rz_FloovyPlugLatch" (int target_tid, int tracer_tid) {
+  // int targettid = ACS_NamedExecuteWithResult("uh_GetPointerTID",8);//Tracer
+  // SetActivatorToTarget(0);
+  SetActivator(target_tid);
 
-  if (tracertid == 0) {terminate;}
+  if (tracer_tid == 0) {terminate;}
 
   GiveInventory("FloovyPlugFlag", 1);
 
-  while (GetActorProperty(targettid, APROP_Health) > 0 &&
-         GetActorProperty(tracertid, APROP_Health) > 0 &&
+  while (GetActorProperty(target_tid, APROP_Health) > 0 &&
+         GetActorProperty(tracer_tid, APROP_Health) > 0 &&
          CheckInventory("FloovyPlugFlag")) {
-    ACS_NamedExecuteAlways("rz_DrawFloovyPlugCable", 0, tracertid, targettid, 0);
+    ACS_NamedExecuteAlways("rz_DrawFloovyPlugCable", 0, tracer_tid, target_tid, 0);
     Delay(1);
   }
 
-  //SetPointer(AAPTR_TRACER, 0);
+  // SetPointer(AAPTR_TRACER, 0);
   TakeInventory("FloovyPlugFlag", 1);
 }
 
 script "rz_FloovyGhostMoving" (int pointer) {
-  int selfTid = ActivatorTID();
+  int self_tid = ActivatorTID();
   int buttons = ACS_NamedExecuteWithResult("uh_GetPointerButtonInput", pointer, 0);
   bool moved = false;
 
@@ -1142,13 +1138,13 @@ script "rz_FloovyGhostMoving" (int pointer) {
   if (!SetActivator(0, pointer)) {
     terminate;
   }
-  int targetX = GetActorX(0);
-  int targetY = GetActorY(0);
-  if (!SetActivator(selfTid)) {
+  int target_x = GetActorX(0);
+  int target_y = GetActorY(0);
+  if (!SetActivator(self_tid)) {
     terminate;
   }
-  int x = targetX - GetActorX(0);
-  int y = targetY - GetActorY(0);
+  int x = target_x - GetActorX(0);
+  int y = target_y - GetActorY(0);
   SetActorAngle(0, VectorAngle(x, y));
 }
 
@@ -1157,23 +1153,23 @@ script "rz_FloovyGhostMoving" (int pointer) {
 // the original movement actors' behavior by copying only the target pitch;
 // the ghost's angle is maintained by rz_FloovyGhostMoving.
 script "rz_FloovyGhostCopyPitch" (int pointer) {
-  int selfTid = ActivatorTID();
-  if (selfTid <= 0 || !SetActivator(0, pointer)) {
+  int self_tid = ActivatorTID();
+  if (self_tid <= 0 || !SetActivator(0, pointer)) {
     terminate;
   }
-  int targetPitch = GetActorPitch(0);
-  if (!SetActivator(selfTid)) {
+  int target_pitch = GetActorPitch(0);
+  if (!SetActivator(self_tid)) {
     terminate;
   }
-  SetActorPitch(0, targetPitch);
+  SetActorPitch(0, target_pitch);
 }
 
 // The DECORATE expression language has no CheckInventory() value expression;
 // keep the dynamic camera TID lookup in ACS instead.
 script "rz_FloovyGhostCameraOn" (void) {
-  int cameraTid = CheckInventory("FloovyOutOfBodyViewTID");
-  if (cameraTid > 0) {
-    ChangeCamera(cameraTid, 0, 0);
+  int camera_tid = CheckInventory("FloovyOutOfBodyViewTID");
+  if (camera_tid > 0) {
+    ChangeCamera(camera_tid, 0, 0);
   }
 }
 
@@ -1181,12 +1177,12 @@ script "rz_FloovyGhostCameraOn" (void) {
 // different player.  The old ghost will also observe the marker mismatch on
 // its next tic, but this direct path avoids leaving the previous player frozen
 // or on the old camera for those few tics.
-script "rz_FloovyGhostCancel" (int linkTid) {
-  if (linkTid <= 0 || !SetActivator(linkTid) ||
+script "rz_FloovyGhostCancel" (int link_tid) {
+  if (link_tid <= 0 || !SetActivator(link_tid) ||
       !SetActivator(0, AAPTR_TRACER)) {
     terminate;
   }
-  if (CheckInventory("FloovyOutOfBodyViewTID") != linkTid) {
+  if (CheckInventory("FloovyOutOfBodyViewTID") != link_tid) {
     terminate;
   }
   ChangeCamera(0, 0, 0);
@@ -1198,25 +1194,25 @@ script "rz_FloovyGhostCancel" (int linkTid) {
 // Only tear down the camera/freeze state if this exact ghost still owns the
 // target's view marker.  This prevents an old ghost from clearing a newer
 // effect after the target is hit again or the link is replaced.
-script "rz_FloovyGhostCleanup" (int pointer, int linkTid) {
-  if (linkTid <= 0) {
+script "rz_FloovyGhostCleanup" (int pointer, int link_tid) {
+  if (link_tid <= 0) {
     terminate;
   }
-  int selfTid = ActivatorTID();
+  int self_tid = ActivatorTID();
 
   // Clear the owner link only if it still belongs to this ghost.  A newer
   // hit may have installed a different link and must not be disturbed.
   if (SetActivator(0, AAPTR_TARGET) &&
-      CheckInventory("FloovyOutOfBodyTID") == linkTid) {
+      CheckInventory("FloovyOutOfBodyTID") == link_tid) {
     TakeInventory("FloovyOutOfBodyTID", 0x7fffffff);
   }
 
   // Restore the ghost before resolving its tracer; otherwise the first
   // SetActivator above would make the target pointer relative to the player.
-  if (selfTid <= 0 || !SetActivator(selfTid) || !SetActivator(0, pointer)) {
+  if (self_tid <= 0 || !SetActivator(self_tid) || !SetActivator(0, pointer)) {
     terminate;
   }
-  if (CheckInventory("FloovyOutOfBodyViewTID") != linkTid) {
+  if (CheckInventory("FloovyOutOfBodyViewTID") != link_tid) {
     terminate;
   }
   ChangeCamera(0, 0, 0);
@@ -1273,13 +1269,13 @@ script "rz_FloovyDeath" (int tid, int type) {
     // Preserve Floovy as the healer activator while inspecting/killing the
     // linked enemy.  Calling uh_IsPlayerAlive would otherwise leave ACS
     // activated on the enemy and heal the wrong player.
-    int floovyPlayer = PlayerNumber();
+    int floovy_player = PlayerNumber();
     if (tid <= 0 || !SetActivator(tid) || !SetActivator(0, AAPTR_TRACER)) {
       terminate;
     }
     if (PlayerNumber() < 0 || CheckInventory("IsDead") || !PlayerInGame(PlayerNumber()) ||
         PlayerIsSpectator(PlayerNumber())) {
-      if (floovyPlayer >= 0) SetActivatorToPlayer(floovyPlayer);
+      if (floovy_player >= 0) SetActivatorToPlayer(floovy_player);
       terminate;
     }
     // The linked enemy's current HP is the amount exchanged back to Floovy.
@@ -1291,10 +1287,10 @@ script "rz_FloovyDeath" (int tid, int type) {
     // watcher the inflictor, allowing its custom obituary to use Floovy as
     // %k instead of falling back to a generic Thing_Damage obituary.
     if (!SetActivator(tid) || !SetActorState(0, "GoldExperienceKill", true)) {
-      if (floovyPlayer >= 0) SetActivatorToPlayer(floovyPlayer);
+      if (floovy_player >= 0) SetActivatorToPlayer(floovy_player);
       terminate;
     }
-    if (floovyPlayer < 0 || !SetActivatorToPlayer(floovyPlayer)) {
+    if (floovy_player < 0 || !SetActivatorToPlayer(floovy_player)) {
       terminate;
     }
     ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, health);
@@ -1304,15 +1300,15 @@ script "rz_FloovyDeath" (int tid, int type) {
   if (type == ELP_FLOOVY_D) {
     // `tid` is the dedicated link actor, not Floovy's player TID.  Resolve
     // its TARGET pointer so a morphed Floovy (TID 0) is still killable.
-    int allyPlayer = PlayerNumber();
-    int allyMax = GetActorProperty(0, APROP_SpawnHealth);
-    int allyCurrent = max(GetActorProperty(0, APROP_Health), 0);
+    int ally_player = PlayerNumber();
+    int ally_max = GetActorProperty(0, APROP_SpawnHealth);
+    int ally_current = Max(GetActorProperty(0, APROP_Health), 0);
     if (tid <= 0 || !SetActivator(tid) || !SetActivator(0, AAPTR_TARGET)) {
       terminate;
     }
     if (PlayerNumber() < 0 || CheckInventory("IsDead") || !PlayerInGame(PlayerNumber()) ||
         PlayerIsSpectator(PlayerNumber())) {
-      if (allyPlayer >= 0) SetActivatorToPlayer(allyPlayer);
+      if (ally_player >= 0) SetActivatorToPlayer(ally_player);
       terminate;
     }
 
@@ -1320,13 +1316,13 @@ script "rz_FloovyDeath" (int tid, int type) {
     // Floovy in MASTER, and temporarily selects the beneficiary in TRACER as
     // A_Explode's source, so the obituary receives both %o and %k correctly.
     if (!SetActivator(tid) || !SetActorState(0, "DieForMeKill", true)) {
-      if (allyPlayer >= 0) SetActivatorToPlayer(allyPlayer);
+      if (ally_player >= 0) SetActivatorToPlayer(ally_player);
       terminate;
     }
-    if (allyPlayer < 0 || !SetActivatorToPlayer(allyPlayer)) {
+    if (ally_player < 0 || !SetActivatorToPlayer(ally_player)) {
       terminate;
     }
-    ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, max(allyMax - allyCurrent, 0));
+    ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, Max(ally_max - ally_current, 0));
     terminate;
   }
 
@@ -1351,7 +1347,7 @@ script "rz_CrystrapEyeAcquire" (int radius) {
       continue;
     }
 
-    int distance = XYZDistance(0, tid);
+    int distance = XyzDistance(0, tid);
     if (distance > radius || distance > bestdistance ||
         !CheckSight(0, tid, 0)) {
       continue;
@@ -1371,25 +1367,25 @@ script "rz_CrystrapEyeAcquire" (int radius) {
 }
 
 // Crystrap M2: tag a hit player as a camera target, then AltFire looks through them.
-script "rz_CrystrapSpying" (int ownertid, int tracerTid) {
+script "rz_CrystrapSpying" (int ownertid, int tracer_tid) {
   if (ownertid < 1000 || ownertid > 1063 ||
-      tracerTid < 1000 || tracerTid > 1063) terminate;
-  SetActivator(ownertid);
+      tracer_tid < 1000 || tracer_tid > 1063) terminate;
+    SetActivator(ownertid);
 
-  int oldTid = CheckInventory("CrystrapSpyingTID");
-  int wasLooking = CheckInventory("CrystrapIsLookingOnHisEye");
-  if (oldTid >= 1000 && oldTid <= 1063 && oldTid != tracerTid) {
-    TakeActorInventory(oldTid, "CrystrapIsSpyingOnYou", 1);
+  int old_tid = CheckInventory("CrystrapSpyingTID");
+  int was_looking = CheckInventory("CrystrapIsLookingOnHisEye");
+  if (old_tid >= 1000 && old_tid <= 1063 && old_tid != tracer_tid) {
+    TakeActorInventory(old_tid, "CrystrapIsSpyingOnYou", 1);
   }
 
-  SetInventory("CrystrapSpyingTID", tracerTid);
-  GiveActorInventory(tracerTid, "CrystrapIsSpyingOnYou", 1);
+  SetInventory("CrystrapSpyingTID", tracer_tid);
+  GiveActorInventory(tracer_tid, "CrystrapIsSpyingOnYou", 1);
   SetHudSize(600, 380, 0);
-  HudMessage(s:"You can spy on ", n:tracerTid - 999, s:"!"; HUDMSG_FADEOUT|HUDMSG_COLORSTRING, 11400 + ownertid, "MenuWhite", 300.4, 50.0, 2.0, 0.5);
+  HudMessage(s:"You can spy on ", n:tracer_tid - 999, s:"!"; HUDMSG_FADEOUT | HUDMSG_COLORSTRING, 11400 + ownertid, "MenuWhite", 300.4, 50.0, 2.0, 0.5);
   GiveActorInventory(ownertid, "CrystrapSpyingSound_P", 1);
-  GiveActorInventory(tracerTid, "CrystrapSpyingSound_P", 1);
-  if (wasLooking) {
-    ChangeCamera(tracerTid, 0, 0);
+  GiveActorInventory(tracer_tid, "CrystrapSpyingSound_P", 1);
+  if (was_looking) {
+    ChangeCamera(tracer_tid, 0, 0);
   }
 }
 
@@ -1498,7 +1494,7 @@ script "rz_EraseCrossHit" (void) {
 }
 
 script "ub_MagicDevilFlingAcs" (int which) {
-  int usertid = ActivatorTID();
+  int user_tid = ActivatorTID();
   str theactor;
   switch (which) {
     case 2115:
@@ -1512,7 +1508,7 @@ script "ub_MagicDevilFlingAcs" (int which) {
     if (!PlayerInGame(p)) {
       continue;
     }
-    SpawnProjectile(usertid, theactor, 0, 0, p, 0, 0);
+    SpawnProjectile(user_tid, theactor, 0, 0, p, 0, 0);
   }
 }
 
@@ -1540,24 +1536,24 @@ script "rz_MosquitoEyeTurboTime" (void) {
   SetActorProperty(0, APROP_Speed, speedmtp);
 }
 
-//Functions
-//Functions
-//Func
-//Func
-//Functions
-//Functions
-//Func
-//Func
-//Func
+// Functions
+// Functions
+// Func
+// Func
+// Functions
+// Functions
+// Func
+// Func
+// Func
 
-function int max(int m, int n) {
+function int Max(int m, int n) {
   if (m > n)
     return m;
 
   return n;
 }
 
-function int min(int m, int n) {
+function int Min(int m, int n) {
   if (m < n)
     return m;
 
@@ -1565,63 +1561,63 @@ function int min(int m, int n) {
 }
 
 function int WrapAround(int i) {
-  if (i<-180.0) return i+360.0;
-  if (i>180.0) return i-360.0;
+  if (i < -180.0) return i + 360.0;
+  if (i > 180.0) return i - 360.0;
   return i;
 }
 
 function int GetHypotenuse(int x, int y) {
   int len;
   int ang = VectorAngle(x, y);
-  if (((ang+0.125)%0.5) > 0.25) len = FixedDiv(y, sin(ang));
+  if (((ang + 0.125) % 0.5) > 0.25) len = FixedDiv(y, sin(ang));
   else len = FixedDiv(x, cos(ang));
 
-  //print(f:len);
+  // print(f:len);
   return len;
 }
 
 function int GetMaxPlayers(void) {  // From 8bdmlib.acs
   int ret = GetCVar("sv_MaxClients");
-  if (PlayerCount() > ret)//admins can join
+  if (PlayerCount() > ret)  // admins can join
     ret = PlayerCount();
   return ret;
 }
 
-function int XYZDistance(int tid1, int tid2) {
+function int XyzDistance(int tid1, int tid2) {
   int x, y, z, d;
   x = GetActorX(tid1) - GetActorX(tid2) >> 16;
   y = GetActorY(tid1) - GetActorY(tid2) >> 16;
   z = GetActorZ(tid1) - GetActorZ(tid2) >> 16;
-  d = sqrt8( x*x + y*y + z*z );
+  d = Sqrt8(x * x + y * y + z * z);
   return d;
 }
 
-function int XYDistance(int tid1, int tid2) {
+function int XyDistance(int tid1, int tid2) {
   int x, y, d;
   x = GetActorX(tid1) - GetActorX(tid2) >> 16;
   y = GetActorY(tid1) - GetActorY(tid2) >> 16;
-  d = sqrt8( x*x + y*y );
+  d = Sqrt8(x * x + y * y);
   return d;
 }
 
-function int ZDistance(int tid1, int tid2) {
+function int Zdistance(int tid1, int tid2) {
   int z;
   z = GetActorZ(tid1) - GetActorZ(tid2) >> 16;
   return z;
 }
 
 function int MagnitudeThree(int x, int y, int z) {
-  return sqrt8(x*x + y*y + z*z);
+  return Sqrt8(x * x + y * y + z * z);
 }
 
-function int abs(int x) {
+function int Abs(int x) {
   if (x < 0)
     return -x;
 
   return x;
 }
 
-function int sqrt8(int number) {
+function int Sqrt8(int number) {
   if (number <= 3) {
     if (number > 0) {
       return 1;
@@ -1629,40 +1625,40 @@ function int sqrt8(int number) {
     return 0;
   }
 
-  int oldans = number >> 1;
-  int newans = (oldans + number / oldans) >> 1;
+  int old_ans = number >> 1;
+  int new_ans = (old_ans + number / old_ans) >> 1;
 
-  while(newans < oldans) {
-    oldans = newans;
-    newans = (oldans + number / oldans) >> 1;
+  while (new_ans < old_ans) {
+    old_ans = new_ans;
+    new_ans = (old_ans + number / old_ans) >> 1;
   }
 
-  return oldans;
+  return old_ans;
 }
 
 
-function void ActorPull(int puller, int pullee, int force, int xoff, int yoff, int zoff) {
-  int angle = VectorAngle((GetActorX(puller)+xoff)-GetActorX(pullee), (GetActorY(puller)+yoff)-GetActorY(pullee));
-  int pitch = PitchBetween(puller, pullee, xoff, yoff, zoff);
+function void ActorPull(int puller, int pullee, int force, int x_off, int y_off, int z_off) {
+  int angle = VectorAngle((GetActorX(puller) + x_off) - GetActorX(pullee), (GetActorY(puller) + y_off) - GetActorY(pullee));
+  int pitch = PitchBetween(puller, pullee, x_off, y_off, z_off);
 
   angle = angle >> 8;
-  int horizforce = FixedMul(cos(pitch), force<<16)>>16;
-  int vertiforce = FixedMul(sin(pitch), force<<16)>>16;
+  int horiz_force = FixedMul(cos(pitch), force << 16) >> 16;
+  int verti_force = FixedMul(sin(pitch), force << 16) >> 16;
 
-  ThrustThing(angle, horizforce, horizforce>30, pullee);
-  ThrustThingZ(pullee, vertiforce*4, 0, 0);
+  ThrustThing(angle, horiz_force, horiz_force > 30, pullee);
+  ThrustThingZ(pullee, verti_force * 4, 0, 0);
 }
 
-function int PitchBetween(int looker, int target, int xoff, int yoff, int zoff) {
+function int PitchBetween(int looker, int target, int x_off, int y_off, int z_off) {
   int x, y, z, ang, pitch, len;
-  x = (GetActorX(target) + xoff) - GetActorX(looker);
-    y = (GetActorY(target) + yoff) - GetActorY(looker);
+  x = (GetActorX(target) + x_off) - GetActorX(looker);
+  y = (GetActorY(target) + y_off) - GetActorY(looker);
 
   ang = VectorAngle(x, y);
-  if (((ang+0.125)%0.5) > 0.25) len = FixedDiv(y, sin(ang));
+  if (((ang + 0.125) % 0.5) > 0.25) len = FixedDiv(y, sin(ang));
   else len = FixedDiv(x, cos(ang));
 
-  z = (GetActorZ(target) - zoff) - GetActorZ(looker);
+  z = (GetActorZ(target) - z_off) - GetActorZ(looker);
 
   pitch = -VectorAngle(len, z);
   return pitch;
@@ -1692,14 +1688,14 @@ function void GiveMeTheFunc(str hungry, int thebill) {
 }
 
 function int Round(int x) {
-	return (x + 0.5) >> 16;
+  return(x + 0.5) >> 16;
 }
 
 #define CONVERTTEARS_FIRE2TEARS 0
 #define CONVERTTEARS_TEARS2FIRE 1
-function int ConvertTears(int value, int swap) { // 0 = fire rate -> tears, 1 = tears -> fire rate
+function int ConvertTears(int value, int swap_var) {  // 0 = fire rate -> tears, 1 = tears -> fire rate
   int res;
-  switch (swap) {
+  switch (swap_var) {
     case CONVERTTEARS_FIRE2TEARS:
       res = Round(FixedDiv(300, (value + 1)));
       break;
@@ -1710,8 +1706,8 @@ function int ConvertTears(int value, int swap) { // 0 = fire rate -> tears, 1 = 
   return res;
 }
 
-function void SyncEdenTears(int swap) {
-  switch (swap) {
+function void SyncEdenTears(int swap_var) {
+  switch (swap_var) {
     case CONVERTTEARS_FIRE2TEARS:
       SetInventory("EdenTearsHUDAttr", ConvertTears(CheckInventory("EdenTearsAttr"), CONVERTTEARS_FIRE2TEARS));
       break;
@@ -1727,7 +1723,7 @@ function void UpdateEdenAttr(int attr, int value, bool set, bool hud) {
     default:
       Log(s:"Unknown Eden attribute: ", i:attr);
       break;
-    case 0: // Speed
+    case 0:  // Speed
       if (set) {
         SetInventory("EdenSpeedAttr", value);
         SetActorProperty(0, APROP_Speed, FixedDiv(value, 10));
@@ -1740,7 +1736,7 @@ function void UpdateEdenAttr(int attr, int value, bool set, bool hud) {
         SetActorProperty(0, APROP_Speed, GetActorProperty(0, APROP_Speed) + FixedDiv(value, 10));
       }
       break;
-    case 1: // Height
+    case 1:  // Height
       realvalue = value << 16;
       if (set) {
         SetInventory("EdenHeightAttr", value);
@@ -1754,7 +1750,7 @@ function void UpdateEdenAttr(int attr, int value, bool set, bool hud) {
         SetActorProperty(0, APROP_JumpZ, GetActorProperty(0, APROP_JumpZ) + realvalue);
       }
       break;
-    case 2: // Tears
+    case 2:  // Tears
       if (hud == 0) {
         if (set) {
           SetInventory("EdenTearsAttr", value);
@@ -1781,7 +1777,7 @@ function void UpdateEdenAttr(int attr, int value, bool set, bool hud) {
         }
       }
       break;
-    case 3: // Damage
+    case 3:  // Damage
       if (set) {
         SetInventory("EdenDamageAttr", value);
       } else {
@@ -1792,7 +1788,7 @@ function void UpdateEdenAttr(int attr, int value, bool set, bool hud) {
         }
       }
       break;
-    case 4: // Shot Speed
+    case 4:  // Shot Speed
       if (set) {
         SetInventory("EdenShotSpeedAttr", value);
       } else {
@@ -1803,7 +1799,7 @@ function void UpdateEdenAttr(int attr, int value, bool set, bool hud) {
         }
       }
       break;
-    case 5: // Range
+    case 5:  // Range
       if (set) {
         SetInventory("EdenRangeAttr", value);
       } else {
@@ -1818,8 +1814,7 @@ function void UpdateEdenAttr(int attr, int value, bool set, bool hud) {
 }
 
 // Void: consume all DefineUnholyItem except coins → random Eden attrs (razon3 rz_VoidConsuming).
-function int VoidConsumeActor(str actor)
-{
+function int VoidConsumeActor(str actor) {
   int count = CheckInventory(actor);
   if (count <= 0)
     return 0;
@@ -1833,8 +1828,7 @@ function int VoidConsumeActor(str actor)
   return count;
 }
 
-script "rz_VoidConsuming" (void)
-{
+script "rz_VoidConsuming" (void) {
   int itemcount;
   int i;
   int id;
@@ -1846,25 +1840,22 @@ script "rz_VoidConsuming" (void)
   for (i = 0; i < 6; i++)
     attrplus[i] = 0;
 
-  for (id = 0; id < UH_MAX_VANILLA_ITEM; id++)
-  {
-    if (uh_itemVanillaDefined[id] == 0)
+  for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
+    if (uh_item_vanilla_defined[id] == 0)
       continue;
-    itemcount += VoidConsumeActor(uh_itemVanillaStr[id][UHITEM_STR_ACTOR]);
+    itemcount += VoidConsumeActor(uh_item_vanilla_str[id][UHITEM_STR_ACTOR]);
   }
-  for (i = 0; i < uh_itemCustomCount; i++)
-    itemcount += VoidConsumeActor(uh_itemCustomStr[i][UHITEM_STR_ACTOR]);
+  for (i = 0; i < uh_item_custom_count; i++)
+    itemcount += VoidConsumeActor(uh_item_custom_str[i][UHITEM_STR_ACTOR]);
 
   if (itemcount <= 0)
     terminate;
 
   PlaySound(0, "Isaac/voidconsumed");
 
-  for (i = 0; i < itemcount * 2; i++)
-  {
+  for (i = 0; i < itemcount * 2; i++) {
     slot = random(0, 5);
-    switch (slot)
-    {
+    switch (slot) {
       case 0: plus = 2; break;
       case 1: plus = 1; break;
       case 2: plus = 5; break;
@@ -1897,7 +1888,7 @@ function void EdenClearMainSlots(void) {
 }
 
 function int EdenRollMainItemCount(int poolsize) {
-  int maxcount = min(4, poolsize);
+  int maxcount = Min(4, poolsize);
   int bucketcount = maxcount + 1;
   int total;
   int roll;
@@ -1996,8 +1987,8 @@ script "rz_RazorTeleport" (int totid, int thrustspeed) {
   deltaangle = EdenNormalizeAngle(oldangle - newangle);
   momangle = EdenNormalizeAngle(momangle - deltaangle);
 
-  nmomx = FixedMul(cos(momangle), abs(momx)) + FixedMul(cos(momangle), abs(momy));
-  nmomy = FixedMul(sin(momangle), abs(momy)) + FixedMul(sin(momangle), abs(momx));
+  nmomx = FixedMul(cos(momangle), Abs(momx)) + FixedMul(cos(momangle), Abs(momy));
+  nmomy = FixedMul(sin(momangle), Abs(momy)) + FixedMul(sin(momangle), Abs(momx));
 
   TakeInventory("JumpCancler", 1);
   SetActorState(totid, "End");
@@ -2026,7 +2017,7 @@ script "rz_EdenBobHeadWarper" (int left) {
 
 script "rz_EdenUseAlt" (void) {
   int i;
-  int hasBattery;
+  int has_battery;
 
   i = EdenFindEquippedAlt();
   if (i < 0) {
@@ -2036,9 +2027,9 @@ script "rz_EdenUseAlt" (void) {
   // Eden_W has already paid the active item's one use cost. Car Battery
   // copies the effect, not the cost. If the first activation removes the
   // battery, the second activation is skipped as in the original behavior.
-  hasBattery = CheckInventory("C356Flag");
+  has_battery = CheckInventory("C356Flag");
   GiveInventory(edenisaac_alt_pickup[i], 1);
-  if (hasBattery && CheckInventory("C356Flag")) {
+  if (has_battery && CheckInventory("C356Flag")) {
     GiveInventory(edenisaac_alt_pickup[i], 1);
   }
 }
@@ -2373,7 +2364,7 @@ function void EdenRollMainItemsShiny(void) {
   int normal_count = 0;
   int rolled_ids[4];
   int rolled_count = 0;
-  int isAngel;
+  int is_angel;
   int forced_id;
   int i;
   int j;
@@ -2392,8 +2383,8 @@ function void EdenRollMainItemsShiny(void) {
     pickcount = 1;
   }
 
-  isAngel = Random(0, 1);
-  if (isAngel) {
+  is_angel = Random(0, 1);
+  if (is_angel) {
     GiveInventory("EdenShinyAngel_F", 1);
     forced_id = 331;
   }
@@ -2576,8 +2567,8 @@ script "rz_EdenShinyMorphInit" (void) {
   GiveInventory("EdenInitFlag", 1);
 }
 
-script "rz_EdenTearColor" (int colorNum) {
-  Thing_SetTranslation(0, colorNum);
+script "rz_EdenTearColor" (int color_num) {
+  Thing_SetTranslation(0, color_num);
 }
 
 script "rz_EdenWeaponColor" (void) {
@@ -2872,12 +2863,12 @@ script "rz_GetEdenBrimstoneAttr" (int pointer, int attr) {
     case EDENATTR_TEARS:
       value = CheckInventory("EdenTearsAttr");
       if (CheckInventory("C149Flag"))
-        value = max(1, value - 12);
+        value = Max(1, value - 12);
       break;
     case EDENATTR_DAMAGE:
       value = CheckInventory("EdenDamageAttr");
       if (CheckInventory("C149Flag"))
-        value = max(1, value - 70);
+        value = Max(1, value - 70);
       break;
     case EDENATTR_SHOTSPEED:
       value = CheckInventory("EdenShotSpeedAttr");
@@ -2922,19 +2913,19 @@ script "rz_D8Rolling" (void) {
   GiveInventory("D8InitFlag", 1);
 
   int tempsum = temp[0] + temp[1] + temp[2] + temp[3] + temp[4];
-  int tempx;
+  int temp_x2;
   for (i = 0; i < 5; i++) {
-    tempx = (2.5 - tempsum) / 5.0;
+    temp_x2 = (2.5 - tempsum) / 5.0;
     for (j = 0; j < 5; j++) {
-      temp[j] = min(1.0, max(0.0, temp[j] + tempx));
+      temp[j] = Min(1.0, Max(0.0, temp[j] + temp_x2));
     }
     tempsum = temp[0] + temp[1] + temp[2] + temp[3] + temp[4];
   }
 
   int attrmul[5];
   for (i = 0; i < 5; i++) {
-    attrmul[i] = temp[i] + max(temp[i], 0.5);
+    attrmul[i] = temp[i] + Max(temp[i], 0.5);
     attr[i] = Round(attrmul[i] * CheckInventory(d8init_attrinv[i]));
-    UpdateEdenAttr(i == 4 ? 5 : i, attr[i], true, true);
+    UpdateEdenAttr(i == 4? 5:i, attr[i], true, true);
   }
 }

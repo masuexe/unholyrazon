@@ -8,12 +8,11 @@
 // helpers are server-side entry points used by the MoneyBait/MoneyBomb
 // DECORATE actors; modders can use PickEyeMorphActor directly when they need a
 // different delivery shape.
-function int SpawnEyeMorphEffect(str pool, int mode, int zoff, int speed)
-{
+function int SpawnEyeMorphEffect(str pool, int mode, int z_off, int speed) {
 	str actor = PickEyeMorphActorCore(pool, mode);
-	int sourceTid = ActivatorTID();
-	int sourceTemp = 0;
-	int spawnTid;
+	int source_tid = ActivatorTID();
+	int source_temp = 0;
+	int spawn_tid;
 	int angle;
 	int result;
 	if (StrCmp(actor, "") == 0)
@@ -25,29 +24,26 @@ function int SpawnEyeMorphEffect(str pool, int mode, int zoff, int speed)
 	// DECORATE must call these scripts with ACS_NamedExecuteWithResult (not
 	// ACS_NamedExecuteAlways): Always is deferred, and a 0-tic helper is
 	// already gone by the time the script would run.
-	if (sourceTid == 0)
-	{
-		sourceTemp = UniqueTID();
-		Thing_ChangeTID(0, sourceTemp);
-		sourceTid = sourceTemp;
+	if (source_tid == 0) {
+		source_temp = UniqueTID();
+		Thing_ChangeTID(0, source_temp);
+		source_tid = source_temp;
 	}
 
-	spawnTid = UniqueTID();
+	spawn_tid = UniqueTID();
 	angle = GetActorAngle(0);
 	result = SpawnForced(
 		actor,
 		GetActorX(0),
 		GetActorY(0),
-		GetActorZ(0) + zoff * 1.0,
-		spawnTid,
+		GetActorZ(0) + z_off * 1.0,
+		spawn_tid,
 		angle >> 8
 	);
-	if (result)
-	{
-		if (speed != 0)
-		{
+	if (result) {
+		if (speed != 0) {
 			SetActorVelocity(
-				spawnTid,
+				spawn_tid,
 				FixedMul(cos(angle), speed * 1.0),
 				FixedMul(sin(angle), speed * 1.0),
 				0,
@@ -55,102 +51,95 @@ function int SpawnEyeMorphEffect(str pool, int mode, int zoff, int speed)
 				0
 			);
 		}
-		SetActivator(spawnTid);
-		SetPointer(AAPTR_TARGET, sourceTid);
-		Thing_ChangeTID(spawnTid, 0);
+		SetActivator(spawn_tid);
+		SetPointer(AAPTR_TARGET, source_tid);
+		Thing_ChangeTID(spawn_tid, 0);
 	}
 
-	if (sourceTemp != 0)
-	{
-		SetActivator(sourceTid);
-		Thing_ChangeTID(sourceTid, 0);
+	if (source_temp != 0) {
+		SetActivator(source_tid);
+		Thing_ChangeTID(source_tid, 0);
 	}
 	return result;
 }
 
-script "uh_SpawnMoneyBaitShot" (void)
-{
+script "uh_SpawnMoneyBaitShot" (void) {
 	SetResultValue(SpawnEyeMorphEffect("MoneyBait", UHEM_MODE_SHOT, 0, 20));
 }
 
-script "uh_SpawnMoneyBaitBurst" (void)
-{
+script "uh_SpawnMoneyBaitBurst" (void) {
 	SetResultValue(SpawnEyeMorphEffect("MoneyBait", UHEM_MODE_BURST, 8, 0));
 }
 
-script "uh_SpawnMoneyBombBurst" (void)
-{
+script "uh_SpawnMoneyBombBurst" (void) {
 	SetResultValue(SpawnEyeMorphEffect("MoneyBomb", UHEM_MODE_BURST, 0, 0));
 }
 
-script "UB_GUHU_SelfDamage" (int Pain, int Type)
-{
-	int TargetTID = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
-	str DamageType;
-	if(Pain <= 0)
-		Pain = 1;
-	Switch(Type){
-		Case 1:
-			Pain *= 2500;
-			DamageType = "GiveUpHope";
+script "UB_GUHU_SelfDamage" (int pain, int type) {
+	int target_tid = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+	str damage_type;
+	if (pain <= 0)
+		pain = 1;
+	switch (type) {
+		case 1:
+			pain *= 2500;
+			damage_type = "GiveUpHope";
 			break;
-		Case 2:
-			Pain *= 10000;
-			DamageType = "SuperGiveUpHope";
+		case 2:
+			pain *= 10000;
+			damage_type = "SuperGiveUpHope";
 			break;
 	}
-/*	if(CheckActorInventory(TargetTID,"RuneDoubleDamage")){Pain*=2;}//StrengthRune
+	/*	if(CheckActorInventory(TargetTID,"RuneDoubleDamage")){Pain*=2;}//StrengthRune
 	if(CheckActorInventory(TargetTID,"PowerStrength_ST")){Pain*=2;}
 	if(CheckActorInventory(TargetTID,"PowerSMTankBuff")){Pain*=2;}
 	if(CheckActorInventory(TargetTID,"PowerPeriwinkleStrength")){Pain = (1.5 * Pain + 0.5) >> 16;}
 	if(CheckActorInventory(TargetTID,"PowerFakeTruePower1")){Pain = (1.25 * Pain + 0.5) >> 16;}
 	if(Pain <= 0)
-		Pain = 0x7FFFFFFF;*/
-	Thing_Damage2(TargetTID,Pain,DamageType);
+	Pain = 0x7FFFFFFF;*/
+	Thing_Damage2(target_tid, pain, damage_type);
 }
 
 script "rz_ThingDamage_GiveUpHope" (int tid, int amount) {
-  SetResultValue(Thing_Damage2(tid, amount, "GiveUpHope"));
+	SetResultValue(Thing_Damage2(tid, amount, "GiveUpHope"));
 }
 
 script "rz_ThingDamage_SuperGiveUpHope" (int tid, int amount) {
-  SetResultValue(Thing_Damage2(tid, amount, "SuperGiveUpHope"));
+	SetResultValue(Thing_Damage2(tid, amount, "SuperGiveUpHope"));
 }
 
 script "rz_ThingDamage_FortuneCoin" (int tid, int amount) {
-  SetResultValue(Thing_Damage2(tid, amount, "FortuneCoin"));
+	SetResultValue(Thing_Damage2(tid, amount, "FortuneCoin"));
 }
 
 script "rz_ThingDamage_Damocles" (int tid, int amount) {
-  SetResultValue(Thing_Damage2(tid, amount, "Damocles"));
+	SetResultValue(Thing_Damage2(tid, amount, "Damocles"));
 }
 
-str u_BossInvStr[3] =
-{
-"GUHUItem",
+str u_boss_inv_str[3] = {
+	"GUHUItem",
 "OnFireItemFlag",
 "SuperGUHUItem",
 };
 #define CIINV_GUHU       0
 #define CIINV_ONFIRE     1
 #define CIINV_SUPERGUHU  2
-script "uh_CheckItemInventory" (int itemType, int who)
-{
-    if (who < 1000 || who > 1063) {
-        SetActivator(0, who);
-        SetResultValue(CheckInventory(u_BossInvStr[itemType]));
-    }
-    else {
-        SetResultValue(CheckActorInventory(who, u_BossInvStr[itemType]));
-    }
+script "uh_CheckItemInventory" (int item_type, int who) {
+	if (who < 1000 || who > 1063) {
+		SetActivator(0, who);
+		SetResultValue(CheckInventory(u_boss_inv_str[item_type]));
+	}
+	else {
+		SetResultValue(CheckActorInventory(who, u_boss_inv_str[item_type]));
+	}
 }
 
 script "UB_OnFireBurning" (void) {
-	int h = max(PlayerHealth(), 0);
-	int Burn = CheckInventory("OnFireItemFlag");
+	int h = Max(PlayerHealth(), 0);
+	int burn = CheckInventory("OnFireItemFlag");
 
-	if (h >= Burn+1)
-		SetActorProperty(0, APROP_HEALTH, h - Burn);
+	if (h >= burn + 1)
+		SetActorProperty(0, APROP_HEALTH, h - burn);
 	else
 		SetResultValue(0);
 }
@@ -159,93 +148,88 @@ script "UB_OnFireFinalBurn" (void) {
 	Thing_Damage2(ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET), 100000, "OnFireB");
 }
 
-script "UB_WhackSpellRNGCheck" (int High_HP, int Low_HP, int User_HP, int BonusChance) {
+script "UB_WhackSpellRNGCheck" (int high_hp, int low_hp, int user_hp, int bonus_chance) {
 	if (Timer() <= 100) {SetResultValue(1); terminate;}  // Quick kill lol
 
-	int TargetHPPer = 100 - ACS_NamedExecuteWithResult("UB_GetPointerHealth",2,2);
-	int TracerHPPer = 100 - ACS_NamedExecuteWithResult("UB_GetPointerHealth",8,2);
+	int target_hp_per = 100 - ACS_NamedExecuteWithResult("UB_GetPointerHealth", 2, 2);
+	int tracer_hp_per = 100 - ACS_NamedExecuteWithResult("UB_GetPointerHealth", 8, 2);
 	//Log(i:TargetHPPer,s:" =TargetHP Percent TracerHP= ",i:TracerHPPer);
 
-	if(High_HP > 100 || High_HP < 1)//Failsafe zone
-		High_HP = 100;
-	if(Low_HP > 99)
-		Low_HP = 99;
-	else if(Low_HP < 0)
-		Low_HP = 0;
+	if (high_hp > 100 || high_hp < 1)  //Failsafe zone
+		high_hp = 100;
+	if (low_hp > 99)
+		low_hp = 99;
+	else if (low_hp < 0)
+		low_hp = 0;
 	//1 + 200 * (pt - 20) / 280 + 20 * (pH / 300)//Ultimate Math
 
-	int WhackChance = (TracerHPPer - (100 - High_HP)) * 100 / (100 - Low_HP);
+	int whack_chance = (tracer_hp_per - (100 - high_hp)) * 100 / (100 - low_hp);
 	//Log(i:WhackChance,s:" <> High_HP == ",i:High_HP,s:" <> Low_HP = ",i:Low_HP);
-	WhackChance += TargetHPPer / 100 * User_HP;
+	whack_chance += target_hp_per / 100 * user_hp;
 	//Log(i:WhackChance,s:" <> User_HP = ",i:User_HP);
-	WhackChance += BonusChance;
+	whack_chance += bonus_chance;
 	//Log(i:WhackChance,s:" <> BonusChance = ",i:BonusChance);
 
-	if(WhackChance <= 0){
-		WhackChance = 1;
+	if (whack_chance <= 0) {
+		whack_chance = 1;
 	}
-	else{
-		WhackChance += 1;
+	else {
+		whack_chance += 1;
 	}
 	//Log(i:WhackChance,s:" WhackSpell Math Done!");
 
-	if(WhackChance < 100 && TracerHPPer >= 100 - Low_HP){
-		WhackChance = 100;//Force Whack if Tracer has less than % LowHP (5% as example)
+	if (whack_chance < 100 && tracer_hp_per >= 100 - low_hp) {
+		whack_chance = 100;  //Force Whack if Tracer has less than % LowHP (5% as example)
 		//Log(s:"Forced Thwack!");
 	}
 
-	SetResultValue(random(1, 100) <= WhackChance);
+	SetResultValue(random(1, 100) <= whack_chance);
 }
 
-script "UB_DeadlyFireArmsButtonCheck" (void)
-{
+script "UB_DeadlyFireArmsButtonCheck" (void) {
 	SetActivatorToTarget(0);
-	if(GetPlayerInput(-1,INPUT_BUTTONS) & (BT_ATTACK|BT_ALTATTACK))
+	if (GetPlayerInput(-1, INPUT_BUTTONS) & (BT_ATTACK | BT_ALTATTACK))
 		SetResultValue(2);
 }
 
 script "UB_I_WinACS" (void) {
-	PrintBold(s:"\ciYou're Winner!  \cj", c:169, s:" ", n:PlayerNumber()+1);
+	PrintBold(s:"\ciYou're Winner!  \cj", c:169, s:" ", n:PlayerNumber() + 1);
 	if (GetGameModeState() == GAMESTATE_COUNTDOWN)
 		terminate;
 	if (GetCvar("sv_noexit") == 1)
 		SetActivator(AAPTR_NULL);
-  ACS_NamedExecuteWithResult("uh_SetGameOverState", 1);
-  Delay(100);
+	ACS_NamedExecuteWithResult("uh_SetGameOverState", 1);
+	Delay(100);
 	Exit_Normal(0);
 }
 
 
-function int max(int a, int b) {
+function int Max(int a, int b) {
 	if (a > b)
 		return a;
 	return b;
 }
 
 // Returns sting for the last rolled drop row (or by item fallback).
-function str GetItemLootSting(int boxid, int itemid)
-{
-	if (uh_itemLastDropRow >= 0 && uh_itemDropBoxId[uh_itemLastDropRow] == boxid)
-		return GetItemDropStingByRow(uh_itemLastDropRow);
+function str GetItemLootSting(int boxid, int itemid) {
+	if (uh_item_last_drop_row >= 0 && uh_item_drop_box_id[uh_item_last_drop_row] == boxid)
+		return GetItemDropStingByRow(uh_item_last_drop_row);
 	if (itemid == UHITEM_FAIL)
 		return "";
 	return GetItemDropSting(boxid, itemid);
 }
 
-function str GetBoxRollOpenSound(int boxid, int eyedrop)
-{
+function str GetBoxRollOpenSound(int boxid, int eyedrop) {
 	if (eyedrop)
 		return GetBoxEyedropSound(boxid);
 	return GetBoxOpenSound(boxid);
 }
 
 // Play sting if any; otherwise box/eyedrop open (unless silent). Never both.
-function void PlayBoxRollSound(int boxid, int itemid, int eyedrop, int silent)
-{
+function void PlayBoxRollSound(int boxid, int itemid, int eyedrop, int silent) {
 	str sting = GetItemLootSting(boxid, itemid);
 	str opensnd;
-	if (StrCmp(sting, "") != 0)
-	{
+	if (StrCmp(sting, "") != 0) {
 		PlaySound(0, sting, CHAN_ITEM);
 		return;
 	}
@@ -257,8 +241,7 @@ function void PlayBoxRollSound(int boxid, int itemid, int eyedrop, int silent)
 }
 
 // Core give path shared by DECORATE (boxid) and GiveUnholyBoxItem (actor → id).
-function int GiveRandomBoxItemCore(int boxid, int prosperity, int silent)
-{
+function int GiveRandomBoxItemCore(int boxid, int prosperity, int silent) {
 	int id;
 	int row;
 	str give;
@@ -277,14 +260,12 @@ function int GiveRandomBoxItemCore(int boxid, int prosperity, int silent)
 	if (id == UHITEM_FAIL)
 		return 0;
 
-	row = uh_itemLastDropRow;
+	row = uh_item_last_drop_row;
 	actor = GetItemActor(id);
 
 	// ToW: already have I_Win → give DLC coins instead (legacy Rare1→Rare2).
-	if (boxid == UHITEM_BOX_TOW && StrICmp(actor, "I_WinItem") == 0 && CheckInventory("I_WinItem") >= 1)
-	{
-		if (!silent)
-		{
+	if (boxid == UHITEM_BOX_TOW && StrICmp(actor, "I_WinItem") == 0 && CheckInventory("I_WinItem") >= 1) {
+		if (!silent) {
 			opensnd = GetBoxOpenSound(boxid);
 			if (StrCmp(opensnd, "") != 0)
 				PlaySound(0, opensnd, CHAN_ITEM);
@@ -294,8 +275,7 @@ function int GiveRandomBoxItemCore(int boxid, int prosperity, int silent)
 	}
 
 	// Coin pool: GoldenWaspShot on most rolls; coin refunds with misc/coinget skip it.
-	if (StrICmp(GetItemActor(boxid), "DLC_CoinItem") == 0)
-	{
+	if (StrICmp(GetItemActor(boxid), "DLC_CoinItem") == 0) {
 		opensnd = GetItemDropStingByRow(row);
 		if (StrCmp(opensnd, "misc/coinget") != 0)
 			PlaySound(0, "items/GoldenWaspShot", 6);
@@ -316,8 +296,7 @@ function int GiveRandomBoxItemCore(int boxid, int prosperity, int silent)
 // Formal box-open path. C577 grants a second independent roll for real box
 // uses, while DLC coin / EyeDrop / AssHat callers continue to use the core
 // directly and therefore remain single-roll paths.
-function int GiveOpenedBoxItemCore(int boxid, int prosperity, int silent)
-{
+function int GiveOpenedBoxItemCore(int boxid, int prosperity, int silent) {
 	int damocles;
 	int result;
 
@@ -333,14 +312,12 @@ function int GiveOpenedBoxItemCore(int boxid, int prosperity, int silent)
 }
 
 // Box Use: arg0 = box item id (UHITEM_BOX_*). prosperity / silent as before.
-Script "rz_GiveRandomBoxItem" (int boxid, int prosperity, int silent)
-{
+script "rz_GiveRandomBoxItem" (int boxid, int prosperity, int silent) {
 	SetResultValue(GiveOpenedBoxItemCore(boxid, prosperity, silent));
 }
 
 // Addon path: resolve box actor from cvars (UHADD GiveUnholyBoxItem).
-Script "uh_GiveUnholyBoxItem_S" (void)
-{
+script "uh_GiveUnholyBoxItem_S" (void) {
 	int boxid = FindItemByActor(GetCVarString("uh_di_boxactor"));
 	SetResultValue(GiveOpenedBoxItemCore(
 		boxid,
@@ -350,16 +327,14 @@ Script "uh_GiveUnholyBoxItem_S" (void)
 }
 
 // DLC_Coin UseX2ReRoll — no prosperity.
-Script "rz_DlcCoinRoll" (int silent)
-{
+script "rz_DlcCoinRoll" (int silent) {
 	int boxid = FindItemByActor("DLC_CoinItem");
 	SetResultValue(GiveRandomBoxItemCore(boxid, 0, silent));
 }
 
 // DLC_Coin Use / UseX_Silent: spend table first, then >=25 roll, else unlucky.
 // Spend sound on channel 5 (SoundSlot5); no GoldenWaspShot (roll pool only).
-Script "rz_DlcCoinUse" (void)
-{
+script "rz_DlcCoinUse" (void) {
 	int coins;
 	int row;
 	int take;
@@ -368,11 +343,10 @@ Script "rz_DlcCoinUse" (void)
 
 	coins = CheckInventory("DLC_CoinItem");
 	row = FindCoinSpendRow(coins);
-	if (row >= 0)
-	{
-		take = uh_coinSpendTake[row];
-		give = uh_coinSpendGive[row];
-		snd = uh_coinSpendSound[row];
+	if (row >= 0) {
+		take = uh_coin_spend_take[row];
+		give = uh_coin_spend_give[row];
+		snd = uh_coin_spend_sound[row];
 		if (take <= 0)
 			TakeInventory("DLC_CoinItem", coins);
 		else
@@ -384,8 +358,7 @@ Script "rz_DlcCoinUse" (void)
 		terminate;
 	}
 
-	if (coins >= 25)
-	{
+	if (coins >= 25) {
 		TakeInventory("DLC_CoinItem", 25);
 		SetResultValue(GiveRandomBoxItemCore(FindItemByActor("DLC_CoinItem"), 0, 0));
 		terminate;
@@ -398,18 +371,16 @@ Script "rz_DlcCoinUse" (void)
 }
 
 // EyeDrop: SpawnItemEx x1 at activator. GauntletExit / Minivile hijacks (EyeDrop-only).
-Script "uh_SpawnRandomBoxItem" (int boxid)
-{
+script "uh_SpawnRandomBoxItem" (int boxid) {
 	int id = RandomItemFromBox(boxid);
-	int row = uh_itemLastDropRow;
+	int row = uh_item_last_drop_row;
 	str actor;
 	str give;
 	int x;
 	int y;
 	int z;
 
-	if (id == UHITEM_FAIL)
-	{
+	if (id == UHITEM_FAIL) {
 		SetResultValue(0);
 		terminate;
 	}
@@ -423,18 +394,15 @@ Script "uh_SpawnRandomBoxItem" (int boxid)
 	z = GetActorZ(0);
 
 	// Pandora EyeDrop: Rare4 → 32/256 GauntletExit instead of BoxDE / KillerBoxDE
-	if (boxid == UHITEM_BOX_PANDORA)
-	{
+	if (boxid == UHITEM_BOX_PANDORA) {
 		if ((StrICmp(actor, "BoxDEItem") == 0 || StrICmp(actor, "KillerBoxDEItem") == 0)
-			&& random(1, 256) <= 32)
-		{
+			&& random(1, 256) <= 32) {
 			PlaySound(0, "GNT/Invun", CHAN_ITEM);
 			SpawnForced("GauntletExitItem", x, y, z, 0, 0);
 			SetResultValue(1);
 			terminate;
 		}
-		if (StrICmp(actor, "OnFireItem") == 0 && random(1, 256) <= 64)
-		{
+		if (StrICmp(actor, "OnFireItem") == 0 && random(1, 256) <= 64) {
 			PlaySound(0, "items/ABoxEyeBox", CHAN_ITEM);
 			SpawnForced("BoxDE_MinivileHidden_H1", x, y, z, 0, 0);
 			SetResultValue(1);
@@ -442,18 +410,15 @@ Script "uh_SpawnRandomBoxItem" (int boxid)
 		}
 	}
 
-	if (boxid == UHITEM_BOX_MYSTIC)
-	{
+	if (boxid == UHITEM_BOX_MYSTIC) {
 		if ((StrICmp(actor, "GoldenBoxDEItem") == 0 || StrICmp(actor, "GoldenKillerBoxDEItem") == 0)
-			&& random(1, 256) <= 32)
-		{
+			&& random(1, 256) <= 32) {
 			PlaySound(0, "GNT/Invun", CHAN_ITEM);
 			SpawnForced("GauntletExitItem", x, y, z, 0, 0);
 			SetResultValue(1);
 			terminate;
 		}
-		if (StrICmp(actor, "TheFootBallItem") == 0 && random(1, 256) <= 64)
-		{
+		if (StrICmp(actor, "TheFootBallItem") == 0 && random(1, 256) <= 64) {
 			PlaySound(0, "items/ABoxEyeBox", CHAN_ITEM);
 			SpawnForced("BoxDE_MinivileHidden_H2", x, y, z, 0, 0);
 			SetResultValue(1);
@@ -467,43 +432,38 @@ Script "uh_SpawnRandomBoxItem" (int boxid)
 }
 
 // AssHat 10s morph: roll AssHat box at hat position; spawn giveActor (hat class).
-Script "rz_AssHatRoll" (void)
-{
+script "rz_AssHatRoll" (void) {
 	int boxid = FindItemByActor("AssHatItem");
 	int row;
 	int id;
 	str give;
-	str itemActor;
+	str item_actor;
 	int x;
 	int y;
 	int z;
 	int tid;
 
-	if (boxid == UHITEM_FAIL || !IsUnholyBox(boxid))
-	{
+	if (boxid == UHITEM_FAIL || !IsUnholyBox(boxid)) {
 		SetResultValue(0);
 		terminate;
 	}
 
 	row = RandomItemDropRowFromBox(boxid);
-	if (row < 0)
-	{
+	if (row < 0) {
 		SetResultValue(0);
 		terminate;
 	}
 
 	id = GetItemDropItemIdByRow(row);
-	itemActor = GetItemActor(id);
-	give = uh_itemDropGive[row];
+	item_actor = GetItemActor(id);
+	give = uh_item_drop_give[row];
 	x = GetActorX(0);
 	y = GetActorY(0);
 	z = GetActorZ(0);
 
-	if (StrCmp(give, "") == 0)
-	{
+	if (StrCmp(give, "") == 0) {
 		tid = UniqueTID();
-		if (AssHatPendingAlloc(tid, itemActor) < 0)
-		{
+		if (AssHatPendingAlloc(tid, item_actor) < 0) {
 			SetResultValue(0);
 			terminate;
 		}
@@ -514,12 +474,10 @@ Script "rz_AssHatRoll" (void)
 	SetResultValue(1);
 }
 
-Script "uh_AssHatGenericSpawnFX" (void)
-{
+script "uh_AssHatGenericSpawnFX" (void) {
 	str item = AssHatPendingPeek(ActivatorTID());
 	str fx;
-	if (StrCmp(item, "") == 0)
-	{
+	if (StrCmp(item, "") == 0) {
 		SetResultValue(0);
 		terminate;
 	}
@@ -529,12 +487,10 @@ Script "uh_AssHatGenericSpawnFX" (void)
 	SetResultValue(1);
 }
 
-Script "uh_AssHatGenericPickup" (void)
-{
+script "uh_AssHatGenericPickup" (void) {
 	str item = AssHatPendingTake(ActivatorTID());
 	int amt;
-	if (StrCmp(item, "") == 0)
-	{
+	if (StrCmp(item, "") == 0) {
 		SetResultValue(0);
 		terminate;
 	}
@@ -544,43 +500,38 @@ Script "uh_AssHatGenericPickup" (void)
 }
 
 // DickHat morph: roll DickHat box at hat position; spawn giveActor (hat class).
-Script "rz_DickHatRoll" (void)
-{
+script "rz_DickHatRoll" (void) {
 	int boxid = FindItemByActor("DickHatItem");
 	int row;
 	int id;
 	str give;
-	str itemActor;
+	str item_actor;
 	int x;
 	int y;
 	int z;
 	int tid;
 
-	if (boxid == UHITEM_FAIL || !IsUnholyBox(boxid))
-	{
+	if (boxid == UHITEM_FAIL || !IsUnholyBox(boxid)) {
 		SetResultValue(0);
 		terminate;
 	}
 
 	row = RandomItemDropRowFromBox(boxid);
-	if (row < 0)
-	{
+	if (row < 0) {
 		SetResultValue(0);
 		terminate;
 	}
 
 	id = GetItemDropItemIdByRow(row);
-	itemActor = GetItemActor(id);
-	give = uh_itemDropGive[row];
+	item_actor = GetItemActor(id);
+	give = uh_item_drop_give[row];
 	x = GetActorX(0);
 	y = GetActorY(0);
 	z = GetActorZ(0);
 
-	if (StrCmp(give, "") == 0)
-	{
+	if (StrCmp(give, "") == 0) {
 		tid = UniqueTID();
-		if (AssHatPendingAlloc(tid, itemActor) < 0)
-		{
+		if (AssHatPendingAlloc(tid, item_actor) < 0) {
 			SetResultValue(0);
 			terminate;
 		}
@@ -591,12 +542,10 @@ Script "rz_DickHatRoll" (void)
 	SetResultValue(1);
 }
 
-Script "uh_DickHatGenericSpawnFX" (void)
-{
+script "uh_DickHatGenericSpawnFX" (void) {
 	str item = AssHatPendingPeek(ActivatorTID());
 	str fx;
-	if (StrCmp(item, "") == 0)
-	{
+	if (StrCmp(item, "") == 0) {
 		SetResultValue(0);
 		terminate;
 	}
@@ -606,12 +555,10 @@ Script "uh_DickHatGenericSpawnFX" (void)
 	SetResultValue(1);
 }
 
-Script "uh_DickHatGenericPickup" (void)
-{
+script "uh_DickHatGenericPickup" (void) {
 	str item = AssHatPendingTake(ActivatorTID());
 	int amt;
-	if (StrCmp(item, "") == 0)
-	{
+	if (StrCmp(item, "") == 0) {
 		SetResultValue(0);
 		terminate;
 	}
@@ -621,13 +568,11 @@ Script "uh_DickHatGenericPickup" (void)
 }
 
 // Crooked Penny: double or strip all DefineUnholyItem identities (UHDT tables, no UHADD roundtrips).
-function void CrookedPennyMutateActor(str actor, bool lucky)
-{
+function void CrookedPennyMutateActor(str actor, bool lucky) {
 	int count = CheckInventory(actor);
 	if (count <= 0)
 		return;
-	if (lucky)
-	{
+	if (lucky) {
 		GiveInventory(actor, count);
 		return;
 	}
@@ -637,25 +582,21 @@ function void CrookedPennyMutateActor(str actor, bool lucky)
 		TakeInventory(actor, count);
 }
 
-script "rz_CrookedPennyRolling" (void)
-{
+script "rz_CrookedPennyRolling" (void) {
 	bool lucky = random(0, 1);
 	int id;
 	int i;
 
-	for (id = 0; id < UH_MAX_VANILLA_ITEM; id++)
-	{
-		if (uh_itemVanillaDefined[id] == 0)
+	for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
+		if (uh_item_vanilla_defined[id] == 0)
 			continue;
-		CrookedPennyMutateActor(uh_itemVanillaStr[id][UHITEM_STR_ACTOR], lucky);
+		CrookedPennyMutateActor(uh_item_vanilla_str[id][UHITEM_STR_ACTOR], lucky);
 	}
-	for (i = 0; i < uh_itemCustomCount; i++)
-	{
-		CrookedPennyMutateActor(uh_itemCustomStr[i][UHITEM_STR_ACTOR], lucky);
+	for (i = 0; i < uh_item_custom_count; i++) {
+		CrookedPennyMutateActor(uh_item_custom_str[i][UHITEM_STR_ACTOR], lucky);
 	}
 
-	if (!lucky)
-	{
+	if (!lucky) {
 		GiveInventory("DLC_CoinItem", 1);
 		PlaySound(0, "items/SoUnlucky", 5);
 	}
@@ -663,28 +604,26 @@ script "rz_CrookedPennyRolling" (void)
 
 // Eternal D6: defer gives so newly rolled items are not re-processed in the same pass.
 #define UH_EDEN_D6_PENDING_MAX 256
-str uh_edenD6PendingGive[UH_EDEN_D6_PENDING_MAX];
-int uh_edenD6PendingCount;
+str uh_eden_d6_pending_give[UH_EDEN_D6_PENDING_MAX];
+int uh_eden_d6_pending_count;
 
-function void EternalD6QueueGive(str actor)
-{
+function void EternalD6QueueGive(str actor) {
 	if (StrCmp(actor, "") == 0)
 		return;
-	if (uh_edenD6PendingCount >= UH_EDEN_D6_PENDING_MAX)
+	if (uh_eden_d6_pending_count >= UH_EDEN_D6_PENDING_MAX)
 		return;
-	uh_edenD6PendingGive[uh_edenD6PendingCount] = actor;
-	uh_edenD6PendingCount++;
+	uh_eden_d6_pending_give[uh_eden_d6_pending_count] = actor;
+	uh_eden_d6_pending_count++;
 }
 
-function void EternalD6ProcessActor(str actor)
-{
+function void EternalD6ProcessActor(str actor) {
 	int count;
 	int itemid;
 	int boxid;
-	int coinId;
+	int coin_id;
 	int u;
-	int newId;
-	str giveActor;
+	int new_id;
+	str give_actor;
 
 	count = CheckInventory(actor);
 	if (count <= 0)
@@ -697,67 +636,59 @@ function void EternalD6ProcessActor(str actor)
 	itemid = FindItemByActor(actor);
 	if (itemid == UHITEM_FAIL)
 		return;
-	coinId = FindItemByActor("DLC_CoinItem");
-	if (itemid == coinId)
+	coin_id = FindItemByActor("DLC_CoinItem");
+	if (itemid == coin_id)
 		return;
 	if (IsUnholyBox(itemid))
 		return;
 
-	for (u = 0; u < count; u++)
-	{
+	for (u = 0; u < count; u++) {
 		boxid = PickItemHomeBoxEdenD6(itemid);
 		if (boxid == UHITEM_FAIL)
 			continue;
 		if (ItemBoxWeightSumEdenD6(boxid, itemid) <= 0)
 			continue;
 		TakeInventory(actor, 1);
-		if (random(0, 99) < 75)
-		{
-			newId = RandomItemFromBoxEdenD6(boxid, itemid);
-			if (newId != UHITEM_FAIL)
-			{
-				giveActor = GetItemActor(newId);
-				EternalD6QueueGive(giveActor);
+		if (random(0, 99) < 75) {
+			new_id = RandomItemFromBoxEdenD6(boxid, itemid);
+			if (new_id != UHITEM_FAIL) {
+				give_actor = GetItemActor(new_id);
+				EternalD6QueueGive(give_actor);
 			}
 		}
 	}
 }
 
-script "rz_EternalD6Rolling" (void)
-{
+script "rz_EternalD6Rolling" (void) {
 	int id;
 	int i;
 
-	uh_edenD6PendingCount = 0;
+	uh_eden_d6_pending_count = 0;
 
-	for (id = 0; id < UH_MAX_VANILLA_ITEM; id++)
-	{
-		if (uh_itemVanillaDefined[id] == 0)
+	for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
+		if (uh_item_vanilla_defined[id] == 0)
 			continue;
-		EternalD6ProcessActor(uh_itemVanillaStr[id][UHITEM_STR_ACTOR]);
+		EternalD6ProcessActor(uh_item_vanilla_str[id][UHITEM_STR_ACTOR]);
 	}
-	for (i = 0; i < uh_itemCustomCount; i++)
-	{
-		EternalD6ProcessActor(uh_itemCustomStr[i][UHITEM_STR_ACTOR]);
+	for (i = 0; i < uh_item_custom_count; i++) {
+		EternalD6ProcessActor(uh_item_custom_str[i][UHITEM_STR_ACTOR]);
 	}
 
-	for (i = 0; i < uh_edenD6PendingCount; i++)
-		GiveInventory(uh_edenD6PendingGive[i], 1);
+	for (i = 0; i < uh_eden_d6_pending_count; i++)
+		GiveInventory(uh_eden_d6_pending_give[i], 1);
 }
 
 // LMS death drops: razon3 rz_TakeAndDropFullItems, but walk DefineUnholyItem
 // instead of the hardcoded fullItemList. DropItem spawns a pickup; Take clears
 // inventory. Coins become one money bag (lossy, same brackets as razon3).
-function str GetMoneyBagType(int credit)
-{
+function str GetMoneyBagType(int credit) {
 	int n;
 
 	if (credit <= 0)
 		return "";
 	if (credit == 9999)
 		return "DLCMoneyBag9999";
-	if (credit >= 1000)
-	{
+	if (credit >= 1000) {
 		n = credit / 1000;
 		if (n > 9)
 			n = 9;
@@ -768,8 +699,7 @@ function str GetMoneyBagType(int credit)
 	return "DLCMoneyBag";
 }
 
-function void TakeAndDropUnholyActor(str actor)
-{
+function void TakeAndDropUnholyActor(str actor) {
 	int count;
 	str bag;
 
@@ -778,8 +708,7 @@ function void TakeAndDropUnholyActor(str actor)
 	count = CheckInventory(actor);
 	if (count <= 0)
 		return;
-	if (StrICmp(actor, "DLC_CoinItem") == 0)
-	{
+	if (StrICmp(actor, "DLC_CoinItem") == 0) {
 		bag = GetMoneyBagType(count);
 		if (StrCmp(bag, "") != 0)
 			DropItem(0, bag, 1);
@@ -790,25 +719,22 @@ function void TakeAndDropUnholyActor(str actor)
 	TakeInventory(actor, count);
 }
 
-script "UH_DropItemsOnDeath" (void)
-{
+script "UH_DropItemsOnDeath" (void) {
 	int id;
 	int i;
 	int treasure;
 
-	for (id = 0; id < UH_MAX_VANILLA_ITEM; id++)
-	{
-		if (uh_itemVanillaDefined[id] == 0)
+	for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
+		if (uh_item_vanilla_defined[id] == 0)
 			continue;
-		TakeAndDropUnholyActor(uh_itemVanillaStr[id][UHITEM_STR_ACTOR]);
+		TakeAndDropUnholyActor(uh_item_vanilla_str[id][UHITEM_STR_ACTOR]);
 	}
-	for (i = 0; i < uh_itemCustomCount; i++)
-		TakeAndDropUnholyActor(uh_itemCustomStr[i][UHITEM_STR_ACTOR]);
+	for (i = 0; i < uh_item_custom_count; i++)
+		TakeAndDropUnholyActor(uh_item_custom_str[i][UHITEM_STR_ACTOR]);
 
 	// Not a DefineUnholyItem — Unholy_GeneralDeath dropped these one-for-one.
 	treasure = CheckInventory("GauntletTreasure_F");
-	if (treasure > 0)
-	{
+	if (treasure > 0) {
 		for (i = 0; i < treasure; i++)
 			DropItem(0, "GauntletTreasure_P", 1);
 		TakeInventory("GauntletTreasure_F", treasure);

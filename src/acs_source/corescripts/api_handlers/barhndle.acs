@@ -3,7 +3,7 @@
 
 #include "barlib.acs"
 
-Script "core_DrawBar_Run" (int cam) CLIENTSIDE {
+script "core_DrawBar_Run" (int cam) CLIENTSIDE {
 	SetActivator(cam);
 	DrawBarRun();
 }
@@ -24,23 +24,23 @@ Script "core_DrawBar_Run" (int cam) CLIENTSIDE {
 #define UH_ROCKNROLL_CYAN 192
 #define UH_ROCKNROLL_BLUE 198
 
-str oldWep;
-int barStyle = BARSTYLE_NONE;
+str oldwep;
+int barstyle = BARSTYLE_NONE;
 
 int mugcyan, mugblue;
 int bar1cyan, bar1blue;
 int bar2cyan, bar2blue;
 int qwanttype;  //$UH
-int negaAmmoId; //$UH
-int negaCyan;   //$UH
+int nega_ammo_id; //$UH
+int nega_cyan;   //$UH
 
 function void DrawMegaManURerollBar(void)
 {
 	int owned = CheckInventory("RockNRollAmmo");
-	int bar2Busy = (barStyle & (BARSTYLE_SECONDBAR | BARSTYLE_SECONDAMMO))
+	int bar2_busy = (barstyle & (BARSTYLE_SECONDBAR | BARSTYLE_SECONDAMMO))
 		|| CheckInventory("SBARDrawBar2");
 
-	if (!bar2Busy)
+	if (!bar2_busy)
 	{
 		DrawBar2ColorOwned(owned, UH_ROCKNROLL_MAX, UH_ROCKNROLL_CYAN, UH_ROCKNROLL_BLUE);
 		return;
@@ -55,7 +55,7 @@ function void DrawMegaManURerollBar(void)
 // Qwant move-weapons have no ScriptBar; remap to parent while UH_MoveHud_F set.
 // Decoy held copies (DecoyCopy_*_W1/_W2/_W3) remap to DecoyBot_W/_W2/_W3 bars.
 // Nega held cycle (NegaShiny_*) remaps via UH_NegaHeldBarWep to NegaManShiny_W.
-function str UH_MoveHudParentWep(void) {
+function str UHMoveHudParentWep(void) {
 	int hud = CheckInventory("UH_MoveHud_F");
 	if (hud == 1)
 		return "QwantShiny_W";
@@ -70,7 +70,7 @@ function str UH_MoveHudParentWep(void) {
 	return "";
 }
 
-function str UH_DecoyHeldBarWep(str wep) {
+function str UHDecoyHeldBarWep(str wep) {
 	int len;
 	int d;
 	if (StrLen(wep) >= 14 && StrICmp(StrLeft(wep, 14), "DecoyShinyCopy") == 0)
@@ -95,7 +95,7 @@ function str UH_DecoyHeldBarWep(str wep) {
 	return wep;
 }
 
-function str UH_NegaHeldBarWep(str wep) {
+function str UHNegaHeldBarWep(str wep) {
 	if (StrLen(wep) < 10)
 		return wep;
 	if (StrICmp(StrLeft(wep, 10), "NegaShiny_") == 0)
@@ -105,72 +105,72 @@ function str UH_NegaHeldBarWep(str wep) {
 
 function void DrawBarRun(void) {
 	str wep = GetWeapon();
-	str parent = UH_MoveHudParentWep();
+	str parent = UHMoveHudParentWep();
 	if (StrLen(parent) > 0)
 		wep = parent;
 	else
 	{
-		wep = UH_DecoyHeldBarWep(wep);
-		wep = UH_NegaHeldBarWep(wep);
+		wep = UHDecoyHeldBarWep(wep);
+		wep = UHNegaHeldBarWep(wep);
 	}
 
-	if(oldWep != wep) {
-		oldWep = wep;
-		barStyle = getWepBarStyle(wep);
+	if(oldwep != wep) {
+		oldwep = wep;
+		barstyle = GetWepBarStyle(wep);
 	}
 
-	if(barStyle & BARSTYLE_MUGSHOT)
+	if(barstyle & BARSTYLE_MUGSHOT)
 	{
 		SetMugshotColor(mugcyan, mugblue);
 	}
 
-	if(barStyle & BARSTYLE_NORMALBAR)
+	if(barstyle & BARSTYLE_NORMALBAR)
 	{
 		DrawBarColor(bar1cyan, bar1blue);
-	} else if (barStyle & BARSTYLE_NORMALAMMO) {
+	} else if (barstyle & BARSTYLE_NORMALAMMO) {
 		DrawNormalAmmo();
 	}
 
-	if(barStyle & BARSTYLE_SECONDBAR)
+	if(barstyle & BARSTYLE_SECONDBAR)
 	{
 		DrawBar2Color(bar2cyan, bar2blue);
-	} else if (barStyle & BARSTYLE_SECONDAMMO) {
+	} else if (barstyle & BARSTYLE_SECONDAMMO) {
 		DrawSecondAmmo();
 	}
 
 	//$UH — Qwant/NegaMan primary bar; ScriptBar may also overlay (e.g. FlameWheel charge)
-	if (barStyle & BARSTYLE_QWANT) {
+	if (barstyle & BARSTYLE_QWANT) {
 		ACS_NamedExecuteWithResult("DrawBar_QwantMove", qwanttype);
-	} else if (barStyle & BARSTYLE_NEGAMAN) {
-		ACS_NamedExecuteWithResult("DrawBar_NegaManMove", negaAmmoId, negaCyan);
+	} else if (barstyle & BARSTYLE_NEGAMAN) {
+		ACS_NamedExecuteWithResult("DrawBar_NegaManMove", nega_ammo_id, nega_cyan);
 	}
-	if (barStyle & BARSTYLE_SCRIPT) {
+	if (barstyle & BARSTYLE_SCRIPT) {
 		ACS_NamedExecuteWithResult(StrParam(s:"DrawBar_", s:wep));
 	}
 	//$UH — after ScriptBar so SBARDrawBar2 from scripts is visible
-	if (barStyle & BARSTYLE_MEGAMANU) {
+	if (barstyle & BARSTYLE_MEGAMANU) {
 		DrawMegaManURerollBar();
 	}
-	if (barStyle & BARSTYLE_RELOADICON) {
+	if (barstyle & BARSTYLE_RELOADICON) {
 		ACS_NamedExecuteWithResult("DrawBar_ReloadIcon");
 	}
 }
 
-function int getWepBarStyle(str wep) {
+function int GetWepBarStyle(str wep) {
 
 	int u = UniqueTID();
 	int ret = BARSTYLE_NONE;
 	//$UH
 	if (SpawnForced(StrParam(s:wep, s:"_QwantBar"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_QWANT;
-		qwanttype = getActorArg(u, 0);
+		qwanttype = GetActorArg(u, 0);
 		Thing_Remove(u);
 	}
 
 	if (SpawnForced(StrParam(s:wep, s:"_NegaManBar"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_NEGAMAN;
-		negaAmmoId = getActorArg(u, 0);
-		negaCyan = getActorArg(u, 1);
+		nega_ammo_id = GetActorArg(u, 0);
+		nega_cyan = GetActorArg(u, 1);
 		Thing_Remove(u);
 	}
 
@@ -186,21 +186,21 @@ function int getWepBarStyle(str wep) {
 
 	if(SpawnForced(StrParam(s:wep, s:"_MugshotColor"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_MUGSHOT;
-		mugcyan = getActorArg(u, 0);
-		mugblue = getActorArg(u, 1);
+		mugcyan = GetActorArg(u, 0);
+		mugblue = GetActorArg(u, 1);
 		Thing_Remove(u);
 	}
 
 	//$UH — MegaManUBar supplies bar1 colors + RockNRoll reroll (prefer over _NormalBar)
 	if (SpawnForced(StrParam(s:wep, s:"_MegaManUBar"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_NORMALBAR | BARSTYLE_MEGAMANU;
-		bar1cyan = getActorArg(u, 0);
-		bar1blue = getActorArg(u, 1);
+		bar1cyan = GetActorArg(u, 0);
+		bar1blue = GetActorArg(u, 1);
 		Thing_Remove(u);
 	} else if(SpawnForced(StrParam(s:wep, s:"_NormalBar"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_NORMALBAR;
-		bar1cyan = getActorArg(u, 0);
-		bar1blue = getActorArg(u, 1);
+		bar1cyan = GetActorArg(u, 0);
+		bar1blue = GetActorArg(u, 1);
 		Thing_Remove(u);
 	} else if (SpawnForced(StrParam(s:wep, s:"_NormalAmmo"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_NORMALAMMO;
@@ -209,8 +209,8 @@ function int getWepBarStyle(str wep) {
 
 	if(SpawnForced(StrParam(s:wep, s:"_SecondBar"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_SECONDBAR;
-		bar2cyan = getActorArg(u, 0);
-		bar2blue = getActorArg(u, 1);
+		bar2cyan = GetActorArg(u, 0);
+		bar2blue = GetActorArg(u, 1);
 		Thing_Remove(u);
 	} else if (SpawnForced(StrParam(s:wep, s:"_SecondAmmo"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_SECONDAMMO;
@@ -220,4 +220,4 @@ function int getWepBarStyle(str wep) {
 	return ret;
 }
 
-function int getActorArg(int t, int a) { return ACS_NamedExecuteWithResult("core_GetActorArg", t, a); }
+function int GetActorArg(int t, int a) { return ACS_NamedExecuteWithResult("core_GetActorArg", t, a); }

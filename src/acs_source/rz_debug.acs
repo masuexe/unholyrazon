@@ -9,103 +9,78 @@
 // In a normal game the item is used through the inventory key; this wrapper
 // makes the same Use state reachable when no client key event is available.
 script "rz_debug_FloovyOutOfBody" (void) {
-	int playerNum = ConsolePlayerNumber();
-	if (playerNum < 0) {
-		playerNum = 0;
-	}
-	if (!SetActivatorToPlayer(playerNum)) {
-		Log(s:"rz_debug_FloovyOutOfBody: no live player");
-		terminate;
-	}
+  int player_num = ConsolePlayerNumber();
+  if (player_num < 0) {
+    player_num = 0;
+  }
+  if (!SetActivatorToPlayer(player_num)) {
+    Log(s:"rz_debug_FloovyOutOfBody: no live player");
+    terminate;
+  }
 	// The item's Use state deliberately ends in `fail` so the reusable debug
 	// item is not consumed; do not interpret UseInventory's return value as a
 	// failure signal here.
-	if (CheckInventory("FloovyOutOfBodyDebugItem") <= 0 ||
-		CheckInventory("FloovyOutOfBodyProtect") > 0) {
-		Log(s:"rz_debug_FloovyOutOfBody: item unavailable or already active");
-		terminate;
-	}
-	UseInventory("FloovyOutOfBodyDebugItem");
+  if (CheckInventory("FloovyOutOfBodyDebugItem") <= 0 ||
+      CheckInventory("FloovyOutOfBodyProtect") > 0) {
+    Log(s:"rz_debug_FloovyOutOfBody: item unavailable or already active");
+    terminate;
+  }
+  UseInventory("FloovyOutOfBodyDebugItem");
 }
 
 script "rz_debug_MorphMe" (int type, int num) {
-	ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false);
-	bool res = morphMeToBoss(type, num);
-	if (res) {
-		Log(s:"Morph successful!");
-	}
-	else {
-		Log(s:"Morph failed!");
-	}
+  ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false);
+  bool res = MorphMeToBoss(type, num);
+  if (res) {
+    Log(s:"Morph successful!");
+  }
+  else {
+    Log(s:"Morph failed!");
+  }
 }
 
-function bool morphMeToBoss(int type, int bossNum) {
-	int tid = ActivatorTID();
-	if (tid == 0)
-		tid = PlayerNumber() + 1000;
-	if (!SetActivator(tid))
-		return false;
+function bool MorphMeToBoss(int type, int boss_num) {
+  int tid = ActivatorTID();
+  if (tid == 0)
+    tid = PlayerNumber() + 1000;
+  if (!SetActivator(tid))
+    return false;
 
-	if (type == 0) {
-		str morphName = GetBossActor(bossNum);
-		if (bossNum == 1066) morphName = "WeakHorse";
-		else if (bossNum == 1113) morphName = "ProtoManBadGuy";
-		else
-			return morphActorToBoss(tid, bossNum, "GigaAstroExplode");
-		if (StrCmp(morphName, "") == 0)
-			return false;
-		ACS_NamedExecuteWithResult("uh_MorphPreReset");
-		bool okOverride = MorphActor(0, morphName, "", 0x7ffffffc, MRF_FULLHEALTH|MRF_WHENINVULNERABLE|MRF_LOSEACTUALWEAPON|MRF_NEWTIDBEHAVIOUR, "GigaAstroExplode", "");
-		if (!okOverride) {
-			Log(s: "rz_debug_MorphMe: MorphActor failed for ", s: morphName);
-			return false;
-		}
-		SetActivator(tid);
-		ACS_NamedExecuteWithResult("uh_MorphPostReset", 1);
-		GiveInventory("BasicBossItem", 1);
-		GiveInventory("MorphedFlag", 1);
-		GiveInventory("BAWS", 1);
-		return true;
-	}
+  if (type == 0) {
+    str morph_name = GetBossActor(boss_num);
+    if (boss_num == 1066) morph_name = "WeakHorse";
+    else if (boss_num == 1113) morph_name = "ProtoManBadGuy";
+    else
+      return MorphActorToBoss(tid, boss_num, "GigaAstroExplode");
+    if (StrCmp(morph_name, "") == 0)
+      return false;
+    ACS_NamedExecuteWithResult("uh_MorphPreReset");
+    bool ok_override = MorphActor(0, morph_name, "", 0x7ffffffc, MRF_FULLHEALTH | MRF_WHENINVULNERABLE | MRF_LOSEACTUALWEAPON | MRF_NEWTIDBEHAVIOUR, "GigaAstroExplode", "");
+    if (!ok_override) {
+      Log(s:"rz_debug_MorphMe: MorphActor failed for ", s:morph_name);
+      return false;
+    }
+    SetActivator(tid);
+    ACS_NamedExecuteWithResult("uh_MorphPostReset", 1);
+    GiveInventory("BasicBossItem", 1);
+    GiveInventory("MorphedFlag", 1);
+    GiveInventory("BAWS", 1);
+    return true;
+  }
 
-	str eyeActor = GetEyeActor(bossNum);
-	if (StrCmp(eyeActor, "") == 0) {
-		Log(s: "rz_debug_MorphMe: GetEyeActor(", i: bossNum, s: ") empty (IsEyeDefined=", i: IsEyeDefined(bossNum), s: ")");
-		return false;
-	}
-	bool ok = MorphActor(0, eyeActor, "", 0x7ffffffc, MRF_FULLHEALTH|MRF_WHENINVULNERABLE|MRF_LOSEACTUALWEAPON|MRF_NEWTIDBEHAVIOUR, "GigaAstroExplode", "");
-	if (!ok) {
-		Log(s: "rz_debug_MorphMe: MorphActor failed for ", s: eyeActor);
-		return false;
-	}
-	SetActivator(tid);
-	ACS_NamedExecuteWithResult("uh_DemoneyeMorph", bossNum);
-	return true;
-}
-
-script "rz_debug_checkdeathstate" (void)
-{
-	bool ice = CheckInventory("IceDeathFlag");
-	bool gib = CheckInventory("ExplodeDeathFlag");
-	bool fall = CheckInventory("FallingDeathFlag");
-
-	while (true) {
-		ice = CheckInventory("IceDeathFlag");
-		gib = CheckInventory("ExplodeDeathFlag");
-		fall = CheckInventory("FallingDeathFlag");
-		Log(s:"Ice: ", i:ice, s:" Gib: ", i:gib, s:" Fall: ", i:fall);
-		delay(1);
-	}
-
-}
-
-script "rz_debug_countinv" (void) {
-	int inv;
-	while (true) {
-		inv = CheckInventory("WeaponCharge");
-		Log(s:"Weapon Charge: ", i:inv);
-		delay(1);
-	}
+  str eye_actor = GetEyeActor(boss_num);
+  if (StrCmp(eye_actor, "") == 0) {
+    Log(s:"rz_debug_MorphMe: GetEyeActor(", i:boss_num, s:") empty (IsEyeDefined=", i:IsEyeDefined(boss_num), s:")");
+    return false;
+  }
+  bool ok = MorphActor(0, eye_actor, "", 0x7ffffffc, MRF_FULLHEALTH | MRF_WHENINVULNERABLE | MRF_LOSEACTUALWEAPON | MRF_NEWTIDBEHAVIOUR, "GigaAstroExplode", "");
+  if (!ok) {
+    Log(s:"rz_debug_MorphMe: MorphActor failed for ", s:eye_actor);
+    return false;
+  }
+  SetActivator(tid);
+  ACS_NamedExecuteWithResult("uh_DemoneyeMorph", boss_num);
+  return true;
 }
 
 // Prepare a carrier spawned by FloovyOutOfBodyDebugItem.  The carrier's
@@ -113,100 +88,99 @@ script "rz_debug_countinv" (void) {
 // player whose current actor has TID 0.  The carrier then transfers both
 // pointers directly to FloovyGhost.
 script "rz_debug_FloovyOutOfBodyPrepare" (void) {
-	if (!SetPointer(AAPTR_TRACER, 0, AAPTR_TARGET)) {
-		SetResultValue(0);
-		terminate;
-	}
-	if (!SetActivator(0, AAPTR_TARGET)) {
-		SetResultValue(0);
-		terminate;
-	}
+  if (!SetPointer(AAPTR_TRACER, 0, AAPTR_TARGET)) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (!SetActivator(0, AAPTR_TARGET)) {
+    SetResultValue(0);
+    terminate;
+  }
 
-	int playerNum = PlayerNumber();
-	if (playerNum < 0 || !PlayerInGame(playerNum) || PlayerIsSpectator(playerNum) || PlayerHealth() <= 0) {
-		SetResultValue(0);
-		terminate;
-	}
-	if (CheckInventory("FloovyOutOfBodyProtect") > 0) {
-		SetResultValue(0);
-		terminate;
-	}
+  int player_num = PlayerNumber();
+  if (player_num < 0 || !PlayerInGame(player_num) || PlayerIsSpectator(player_num) || PlayerHealth() <= 0) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (CheckInventory("FloovyOutOfBodyProtect") > 0) {
+    SetResultValue(0);
+    terminate;
+  }
 
-	int linkTid = ACS_NamedExecuteWithResult("core_uniquetid", 0, 1);
-	if (linkTid <= 0) {
-		SetResultValue(0);
-		terminate;
-	}
+  int link_tid = ACS_NamedExecuteWithResult("core_uniquetid", 0, 1);
+  if (link_tid <= 0) {
+    SetResultValue(0);
+    terminate;
+  }
 	// Debug mode uses the player as both the Floovy owner and the hit target.
 	// Clear stale links before installing the new effect instance.
 	// ACS TakeInventory treats amount <= 0 as a no-op (the DECORATE action's
 	// amount 0 means "all"), so use a positive saturating amount here.
-	int oldLinkTid = CheckInventory("FloovyOutOfBodyTID");
-	if (oldLinkTid > 0) {
-		ACS_NamedExecuteWithResult("rz_FloovyGhostCancel", oldLinkTid);
-	}
-	TakeInventory("FloovyOutOfBodyTID", 0x7fffffff);
-	TakeInventory("FloovyOutOfBodyViewTID", 0x7fffffff);
-	GiveInventory("FloovyOutOfBodyTID", linkTid);
-	GiveInventory("FloovyOutOfBodyViewTID", linkTid);
-	GiveInventory("FloovyOutOfBodyProtect", 1);
-	SetResultValue(1);
+  int old_link_tid = CheckInventory("FloovyOutOfBodyTID");
+  if (old_link_tid > 0) {
+    ACS_NamedExecuteWithResult("rz_FloovyGhostCancel", old_link_tid);
+  }
+  TakeInventory("FloovyOutOfBodyTID", 0x7fffffff);
+  TakeInventory("FloovyOutOfBodyViewTID", 0x7fffffff);
+  GiveInventory("FloovyOutOfBodyTID", link_tid);
+  GiveInventory("FloovyOutOfBodyViewTID", link_tid);
+  GiveInventory("FloovyOutOfBodyProtect", 1);
+  SetResultValue(1);
 }
 
 script "rz_debug_setdecoyslot" (int slot, int num) {
-	if (num < 1 || num > 3) {
-		num = 1;
-	}
-	str item = StrParam(s:"DecoyBotFlag", i:num);
-	SetInventory(item, slot);
+  if (num < 1 || num > 3) {
+    num = 1;
+  }
+  str item = StrParam(s:"DecoyBotFlag", i:num);
+  SetInventory(item, slot);
 }
 
 // Thin wrapper — implementation lives in UH_COPYWEPS (has wep name/mul helpers).
 script "rz_debug_ShowTodayDmgMul" (void) {
-	ACS_NamedExecuteAlways("uh_debug_ShowTodayDmgMul", 0);
+  ACS_NamedExecuteAlways("uh_debug_ShowTodayDmgMul", 0);
 }
 
 script "rz_debug_ShowTodayTeamFF" (void) {
-	ACS_NamedExecuteAlways("uh_debug_ShowTodayTeamFF", 0);
+  ACS_NamedExecuteAlways("uh_debug_ShowTodayTeamFF", 0);
 }
 
 // A_SpawnItemEx-style spawn from the activator (puke only has 3 int args).
 //   rz_dbg_spawnactor <class>
 //   rz_dbg_spawnang <degrees>
 //   pukename rz_debug_SpawnEx <xofs> <yofs> <zofs>
-script "rz_debug_SpawnEx" (int xofs, int yofs, int zofs)
-{
-	str cls = GetCVarString("rz_dbg_spawnactor");
-	if (StrCmp(cls, "") == 0) {
-		Log(s:"rz_debug_SpawnEx: set rz_dbg_spawnactor first");
-		terminate;
-	}
+script "rz_debug_SpawnEx" (int xofs, int yofs, int zofs) {
+  str cls = GetCVarString("rz_dbg_spawnactor");
+  if (StrCmp(cls, "") == 0) {
+    Log(s:"rz_debug_SpawnEx: set rz_dbg_spawnactor first");
+    terminate;
+  }
 
-	int ptid = ActivatorTID();
-	if (ptid == 0)
-		ptid = PlayerNumber() + 1000;
-	if (!SetActivator(ptid)) {
-		Log(s:"rz_debug_SpawnEx: no activator");
-		terminate;
-	}
+  int ptid = ActivatorTID();
+  if (ptid == 0)
+    ptid = PlayerNumber() + 1000;
+  if (!SetActivator(ptid)) {
+    Log(s:"rz_debug_SpawnEx: no activator");
+    terminate;
+  }
 
-	int facing = GetActorAngle(0) + GetCVar("rz_dbg_spawnang") * 1.0 / 360;
-	int c = cos(facing);
-	int s = sin(facing);
-	int fx = xofs * 1.0;
-	int fy = yofs * 1.0;
-	int px = GetActorX(0) + FixedMul(fx, c) + FixedMul(fy, s);
-	int py = GetActorY(0) + FixedMul(fx, s) - FixedMul(fy, c);
-	int pz = GetActorZ(0) + zofs * 1.0;
+  int facing = GetActorAngle(0) + GetCVar("rz_dbg_spawnang") * 1.0 / 360;
+  int c = cos(facing);
+  int s = sin(facing);
+  int fx = xofs * 1.0;
+  int fy = yofs * 1.0;
+  int px = GetActorX(0) + FixedMul(fx, c) + FixedMul(fy, s);
+  int py = GetActorY(0) + FixedMul(fx, s) - FixedMul(fy, c);
+  int pz = GetActorZ(0) + zofs * 1.0;
 
-	int tid = UniqueTID();
-	if (!SpawnForced(cls, px, py, pz, tid, facing >> 8)) {
-		Log(s:"rz_debug_SpawnEx: SpawnForced failed for ", s:cls);
-		terminate;
-	}
-	SetActorAngle(tid, facing);
-	SetActivator(tid);
-	SetPointer(AAPTR_TARGET, ptid);
-	SetActivator(ptid);
-	Log(s:"rz_debug_SpawnEx: spawned ", s:cls, s:" tid=", i:tid);
+  int tid = UniqueTID();
+  if (!SpawnForced(cls, px, py, pz, tid, facing >> 8)) {
+    Log(s:"rz_debug_SpawnEx: SpawnForced failed for ", s:cls);
+    terminate;
+  }
+  SetActorAngle(tid, facing);
+  SetActivator(tid);
+  SetPointer(AAPTR_TARGET, ptid);
+  SetActivator(ptid);
+  Log(s:"rz_debug_SpawnEx: spawned ", s:cls, s:" tid=", i:tid);
 }

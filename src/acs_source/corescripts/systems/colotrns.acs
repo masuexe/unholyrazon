@@ -7,101 +7,96 @@
 #include "zcommon.acs"
 #include "8bdmlib.acs"
 
-script "core_synccolors" ENTER
-{
-	delay(1);
+script "core_synccolors" ENTER {
+  delay(1);
 
     //Syncs Player colors
-    for(int i = 0; i < ServerMax; i++) 
-	{
-        if(!PlayerInGame(i)) continue;
+  for (int i = 0; i < ServerMAX; i++) {
+    if (!PlayerInGame(i)) continue;
 
-		SetActivatorToPlayer(i);
-		Thing_SetTranslation(0, -1);
-    }
+    SetActivatorToPlayer(i);
+    Thing_SetTranslation(0, -1);
+  }
 }
 
-script "core_synccolors_respawn" RESPAWN
-{
-	ACS_NamedExecuteAlways("core_synccolors", 0);
+script "core_synccolors_respawn" RESPAWN {
+  ACS_NamedExecuteAlways("core_synccolors", 0);
 }
 
 //Color Translation script
-script "core_weaponcolor" (int weap, int weapSound, int teamweap) 
-{
+script "core_weaponcolor" (int weap, int weap_sound, int teamweap) {
 	// timer check here helps a bug in Offline Skirmish, see Celebi for details
-	if(CheckInventory("NoWeaponSwitchSound")==0 && Timer() > 0) {
-		switch (weapSound) { //$UH
-			case 0:
-				LocalAmbientSound("menu/cursor", 127); // Play weapon switch noise //$UH //core_snd/Menu
-				break;
-			case CLRF_SILENT:
-			default:
-				break;
+  if (CheckInventory("NoWeaponSwitchSound") == 0 && Timer() > 0) {
+    switch (weap_sound) {  //$UH
+      case 0:
+        LocalAmbientSound("menu/cursor", 127);  // Play weapon switch noise //$UH //core_snd/Menu
+        break;
+      case CLRF_SILENT:
+      default:
+        break;
 			//$UH
-			case CLRF_QWANTMENU:
-				LocalAmbientSound("Qwant/MenuXD", 127); //Qwant/SwapMove
-				break;
-			case CLRF_WILYWARMENU:
-				LocalAmbientSound("WilyWar/Menu", 127);
-				break;
-			case CLRF_GRAVITYWARN:
-				LocalAmbientSound("misc/gravitywarn", 127);
-				break;
-			case CLRF_GNTPOTION:
-				LocalAmbientSound("GNT/PotionCollect", 127);
-				break;
-			case CLRF_VOIDWALKER_WIND:
-				LocalAmbientSound("MarioRPG/BowserLightning", 127);
-				break;
-			case CLRF_VOIDWALKER_EARTH:
-				LocalAmbientSound("MarioRPG/SmithyHammerP", 127);
-				break;
-			case CLRF_VOIDWALKER_WATER:
-				LocalAmbientSound("MarioRPG/EnemyCrystal", 127);
-				break;
-			case CLRF_VOIDWALKER_FIRE:
-				LocalAmbientSound("MarioRPG/Drop", 127);
-				break;
+      case CLRF_QWANTMENU:
+        LocalAmbientSound("Qwant/MenuXD", 127);  //Qwant/SwapMove
+        break;
+      case CLRF_WILYWARMENU:
+        LocalAmbientSound("WilyWar/Menu", 127);
+        break;
+      case CLRF_GRAVITYWARN:
+        LocalAmbientSound("misc/gravitywarn", 127);
+        break;
+      case CLRF_GNTPOTION:
+        LocalAmbientSound("GNT/PotionCollect", 127);
+        break;
+      case CLRF_VOIDWALKER_WIND:
+        LocalAmbientSound("MarioRPG/BowserLightning", 127);
+        break;
+      case CLRF_VOIDWALKER_EARTH:
+        LocalAmbientSound("MarioRPG/SmithyHammerP", 127);
+        break;
+      case CLRF_VOIDWALKER_WATER:
+        LocalAmbientSound("MarioRPG/EnemyCrystal", 127);
+        break;
+      case CLRF_VOIDWALKER_FIRE:
+        LocalAmbientSound("MarioRPG/Drop", 127);
+        break;
 			//$UH
-		}
-	}
+    }
+  }
 
-	if((CheckInventory("NoWeaponTranslation")>0 && weap != CLR_ICEDEATH) || weap == CLR_PREVCOLOR)
-		terminate;
-	
-	if(teamweap == TCLR_NONE){teamweap = TCLR_DEFAULT;}
+  if ((CheckInventory("NoWeaponTranslation") > 0 && weap != CLR_ICEDEATH) || weap == CLR_PREVCOLOR)
+    terminate;
+
+  if (teamweap == TCLR_NONE) {teamweap = TCLR_DEFAULT;}
 
 	// Mugshot follows weapon dye (192/198), not team remap of the body translation.
-	int mugDye = weap;
+  int mug_dye = weap;
 
-	if((IsTeamGame || (Timer() <= 0 && ACS_NamedExecuteWithResult("core_checkmode", 1) == 1)) && CheckInventory("NoTeamTranslation")==0)
+  if ((IsTeamGame || (Timer() <= 0 && ACS_NamedExecuteWithResult("core_checkmode", 1) == 1)) && CheckInventory("NoTeamTranslation") == 0)
 	// it seems redundant to do this, but it fixes an edge case on round start
-	{
-		if(PlayerTeam() >= 0 && PlayerTeam() <= 3) {
-			weap = teamweap + PlayerTeam();
-		}
-	}
-	
-	Thing_SetTranslation(0, weap);
+  {
+    if (PlayerTeam() >= 0 && PlayerTeam() <= 3) {
+      weap = teamweap + PlayerTeam();
+    }
+  }
+
+  Thing_SetTranslation(0, weap);
 	//$UH — sync mugshot cyan/blue from dye's 192/198 remap (see uh_SyncMugFromWeaponDye)
-	ACS_NamedExecuteWithResult("uh_SyncMugFromWeaponDye", mugDye);
+  ACS_NamedExecuteWithResult("uh_SyncMugFromWeaponDye", mug_dye);
 	//$UH — remember Ready dye; core_chargecolor sets UH_ChargeColor_F so charge flashes are skipped
-	if(CheckInventory("UH_ChargeColor_F") == 0 && mugDye > 0)
-		SetInventory("UH_LastReadyDye", mugDye);
+  if (CheckInventory("UH_ChargeColor_F") == 0 && mug_dye > 0)
+    SetInventory("UH_LastReadyDye", mug_dye);
 }
 
-script "core_chargecolor" (int weap, int teamweap)
-{
-	GiveInventory("UH_ChargeColor_F", 1);
-	ACS_NamedExecuteWithResult("core_weaponcolor", weap, CLRF_SILENT, teamweap);
-	TakeInventory("UH_ChargeColor_F", 1);
+script "core_chargecolor" (int weap, int teamweap) {
+  GiveInventory("UH_ChargeColor_F", 1);
+  ACS_NamedExecuteWithResult("core_weaponcolor", weap, CLRF_SILENT, teamweap);
+  TakeInventory("UH_ChargeColor_F", 1);
 }
 
-script "uh_forceweaponcolor" (int weap) //$UH
+script "uh_forceweaponcolor" (int weap)  //$UH
 {
-	Thing_SetTranslation(0, weap);
-	ACS_NamedExecuteWithResult("uh_SyncMugFromWeaponDye", weap);
+  Thing_SetTranslation(0, weap);
+  ACS_NamedExecuteWithResult("uh_SyncMugFromWeaponDye", weap);
 }
 
 // The script below returns -1 for legacy reasons. Older versions of that script returned a translation ID.
@@ -110,182 +105,174 @@ script "uh_forceweaponcolor" (int weap) //$UH
 // the script should no longer be nested within Thing_SetTranslation. [Trill]
 
 // Copy the translation of target on server-side.
-Script "core_copytranslation" (void)
-{
-	int o = ActivatorTid();
-	int u = UniqueTID();
-	
-	Thing_ChangeTID(0,u);
-	SetActivator(0,AAPTR_TARGET);
-	
-	Thing_SetTranslation(u, -1);
-	
-	Thing_ChangeTID(u,o);
+script "core_copytranslation" (void) {
+  int o = ActivatorTid();
+  int u = UniqueTID();
 
-	SetResultValue(-1);
+  Thing_ChangeTID(0, u);
+  SetActivator(0, AAPTR_TARGET);
+
+  Thing_SetTranslation(u, -1);
+
+  Thing_ChangeTID(u, o);
+
+  SetResultValue(-1);
 }
 
 // Copy the translation of target on client-side.
-script "core_copytranslation_client" (void) CLIENTSIDE 
-{
-	ACS_NamedExecuteWithResult("core_copytranslation");
+script "core_copytranslation_client" (void) CLIENTSIDE {
+  ACS_NamedExecuteWithResult("core_copytranslation");
 }
 
 
 //$UH // Mostly a recreation of internal methods for player color setting (Attempt)
 
-script "uh_FetchAndSetPlayerColor" (int ColorStart, int ColorEnd, int TranslationNumber)
-{
-	if (ColorStart > ColorEnd || (!ColorStart && !ColorEnd) || ColorStart > 192 || ColorEnd < 198){
-		Log(s:"\cgERROR\c-,\cd uh_FetchAndSetPlayerColor\c- has invalid parameters!");
-		terminate;
-	}
-	int min_C, max_C, delta;
-	int h, s, v;
-	int FixR, FixG, FixB;
+script "uh_FetchAndSetPlayerColor" (int color_start, int color_end, int translation_number) {
+  if (color_start > color_end || (!color_start && !color_end) || color_start > 192 || color_end < 198) {
+    Log(s:"\cgERROR\c-,\cd uh_FetchAndSetPlayerColor\c- has invalid parameters!");
+    terminate;
+  }
+  int min_c, max_c, delta;
+  int h, s, v;
+  int fix_r, fix_g, fix_b;
 
-	int PlNum = PlayerNumber();
-	int Color = GetPlayerInfo(PlNum, PLAYERINFO_COLOR);
+  int pl_num = PlayerNumber();
+  int color = GetPlayerInfo(pl_num, PLAYERINFO_COLOR);
 
-	int Cyan_R, Cyan_G, Cyan_B, Blue_R, Blue_G, Blue_B;
+  int cyan_r, cyan_g, cyan_b, blue_r, blue_g, blue_b;
 
-	int R = (Color >> 16) & 0xff;
-	int G = (Color >> 8) & 0xff;
-	int B = Color & 0xff;
-	
-	FixR = 1.0 * R / 255;
-	FixG = 1.0 * G / 255;
-	FixB = 1.0 * B / 255;
+  int r = (color >> 16) & 0xff;
+  int g = (color >> 8) & 0xff;
+  int b = color & 0xff;
 
-	if (r == g && g == b)
-	{
-		h = 0;
-		s = 0;
-		v = r;
-	}
-	else
-	{
-		if(FixR < FixG)
-			min_C = FixR;
-		else
-			min_C = FixG;
-		if(FixB < min_C)
-			min_C = FixB;
+  fix_r = 1.0 * r / 255;
+  fix_g = 1.0 * g / 255;
+  fix_b = 1.0 * b / 255;
 
-		if(FixR > FixG)
-			max_C = FixR;
-		else
-			max_C = FixG;
-		if(FixB > max_C)
-			max_C = FixB;
+  if (r == g && g == b) {
+    h = 0;
+    s = 0;
+    v = r;
+  }
+  else {
+    if (fix_r < fix_g)
+      min_c = fix_r;
+    else
+      min_c = fix_g;
+    if (fix_b < min_c)
+      min_c = fix_b;
+
+    if (fix_r > fix_g)
+      max_c = fix_r;
+    else
+      max_c = fix_g;
+    if (fix_b > max_c)
+      max_c = fix_b;
 
 		// V
-		v = max(max(R,G),B);
-		delta = max_C - min_C;
+    v = max(max(r, g), b);
+    delta = max_c - min_c;
 
 		// S
-		s = FixedDiv(delta , max_C);
+    s = FixedDiv(delta, max_c);
 
 		// H
-		if( FixR == max_C )
-			h = FixedDiv(( FixG - FixB ) , delta); // between yellow & magenta
-		else if( FixG == max_C )
-			h = 2.0 + FixedDiv(( FixB - FixR ) , delta); // between cyan & yellow
-		else
-			h = 4.0 + FixedDiv(( FixR - FixG ) , delta); // between magenta & cyan
+    if (fix_r == max_c)
+      h = FixedDiv((fix_g - fix_b), delta);  // between yellow & magenta
+    else if (fix_g == max_c)
+      h = 2.0 + FixedDiv((fix_b - fix_r), delta);  // between cyan & yellow
+    else
+      h = 4.0 + FixedDiv((fix_r - fix_g), delta);  // between magenta & cyan
 
-		h *= 60; // degrees
+    h *= 60;  // degrees
 
-		if( h < 0 )
-			h += 360.0;
-	}
+    if (h < 0)
+      h += 360.0;
+  }
 
-	int RangeSize = ColorEnd - ColorStart + 1;
-	
-	int base_S = s;
-	int base_V = v*1.0/255;
+  int range_size = color_end - color_start + 1;
 
-	base_S -= 0.23;
-	base_V += 0.1;
-	int sdelta = 0.23 / RangeSize;
-	int vdelta = -0.94112 / RangeSize;
+  int base_s = s;
+  int base_v = v * 1.0 / 255;
+
+  base_s -= 0.23;
+  base_v += 0.1;
+  int sdelta = 0.23 / range_size;
+  int vdelta = -0.94112 / range_size;
 
 //Blue
-	int MemBlueS = base_S + sdelta*(198-ColorStart);
-	int MemBlueV = base_V + vdelta*(198-ColorStart);
+  int mem_blue_s = base_s + sdelta * (198 - color_start);
+  int mem_blue_v = base_v + vdelta * (198 - color_start);
 //Cyan
-	base_S = base_S + sdelta*(192-ColorStart);
-	base_V = base_V + vdelta*(192-ColorStart);
+  base_s = base_s + sdelta * (192 - color_start);
+  base_v = base_v + vdelta * (192 - color_start);
 
-	int New_R, New_G, New_B;
+  int new_r, new_g, new_b;
 
-	int h_Temp, h_Swap;
-	int f, p, q, t;
+  int h_temp, h_swap;
+  int f, p, q, t;
 
-	for(int i = 0; i < 2; i++)
-	{
-		if (base_S > 1.0)
-			base_S = 1.0;
-		else if (base_S < 0.0)
-			base_S = 0.0;
+  for (int i = 0; i < 2; i++) {
+    if (base_s > 1.0)
+      base_s = 1.0;
+    else if (base_s < 0.0)
+      base_s = 0.0;
 
-		if (base_V > 1.0)
-			base_V = 1.0;
-		else if (base_V < 0.0)
-			base_V = 0.0;
+    if (base_v > 1.0)
+      base_v = 1.0;
+    else if (base_v < 0.0)
+      base_v = 0.0;
 
-		if (s == 0)//s//base_S
-		{ // achromatic (grey)
-			New_R = 255 * base_V;
-			New_G = 255 * base_V;
-			New_B = 255 * base_V;
-		}
-		else{
-			h_Temp = h/60; 
-			h_Swap = h_Temp>>16;// sector 0 to 5
-			f = h_Temp - h_Swap * 1.0; // factorial part of h
+    if (s == 0)  //s//base_S
+    {  // achromatic (grey)
+      new_r = 255 * base_v;
+      new_g = 255 * base_v;
+      new_b = 255 * base_v;
+    }
+    else {
+      h_temp = h / 60;
+      h_swap = h_temp >> 16;  // sector 0 to 5
+      f = h_temp - h_swap * 1.0;  // factorial part of h
 
-			p = FixedMul(base_V , (1.0 - base_S));
-			q = FixedMul(base_V , (1.0 - FixedMul(base_S , f)));
-			t = FixedMul(base_V , (1.0 - FixedMul(base_S , (1.0 - f))));
+      p = FixedMul(base_v, (1.0 - base_s));
+      q = FixedMul(base_v, (1.0 - FixedMul(base_s, f)));
+      t = FixedMul(base_v, (1.0 - FixedMul(base_s, (1.0 - f))));
 
-			switch (h_Swap)
-			{
-			case 0:		New_R = base_V; New_G = t; 		New_B = p; break;
-			case 1:		New_R = q; 		New_G = base_V; New_B = p; break;
-			case 2:		New_R = p; 		New_G = base_V; New_B = t; break;
-			case 3:		New_R = p; 		New_G = q; 		New_B = base_V; break;
-			case 4:		New_R = t; 		New_G = p; 		New_B = base_V; break;
-			default:	New_R = base_V;	New_G = p; 		New_B = q; break;
-			}
-			New_R *= 255;
-			New_G *= 255;
-			New_B *= 255;
-		}
+      switch (h_swap) {
+        case 0: new_r = base_v; new_g = t; new_b = p; break;
+        case 1: new_r = q; new_g = base_v; new_b = p; break;
+        case 2: new_r = p; new_g = base_v; new_b = t; break;
+        case 3: new_r = p; new_g = q; new_b = base_v; break;
+        case 4: new_r = t; new_g = p; new_b = base_v; break;
+        default: new_r = base_v; new_g = p; new_b = q; break;
+      }
+      new_r *= 255;
+      new_g *= 255;
+      new_b *= 255;
+    }
 
-		if(i == 0){
-			Cyan_R = New_R>>16;
-			Cyan_G = New_G>>16;
-			Cyan_B = New_B>>16;
+    if (i == 0) {
+      cyan_r = new_r >> 16;
+      cyan_g = new_g >> 16;
+      cyan_b = new_b >> 16;
 
-			base_S = MemBlueS;
-			base_V = MemBlueV;
-		}
-		if(i == 1){
-			Blue_R = New_R>>16;
-			Blue_G = New_G>>16;
-			Blue_B = New_B>>16;
-		}
-
-	}
+      base_s = mem_blue_s;
+      base_v = mem_blue_v;
+    }
+    if (i == 1) {
+      blue_r = new_r >> 16;
+      blue_g = new_g >> 16;
+      blue_b = new_b >> 16;
+    }
+  }
 //Log(s:"Cyan_COLORS >> ",i:Cyan_R,s:" <> ",i:Cyan_G,s:" <> ",i:Cyan_B);
 //Log(s:"Blue_COLORS >> ",i:Blue_R,s:" <> ",i:Blue_G,s:" <> ",i:Blue_B);
-	CreateTranslation(TranslationNumber+PlNum,
-		192:192=[Cyan_R,Cyan_G,Cyan_B]:[Cyan_R,Cyan_G,Cyan_B],
-		198:198=[Blue_R,Blue_G,Blue_B]:[Blue_R,Blue_G,Blue_B]);
+  CreateTranslation(translation_number + pl_num,
+    192:192=[cyan_r, cyan_g, cyan_b]:[cyan_r, cyan_g, cyan_b],
+    198:198=[blue_r, blue_g, blue_b]:[blue_r, blue_g, blue_b]);
 //Site	216:216=%[R*1.0/255,G*1.0/255,B*1.0/255]:[0.75,0.75,0.75],
 //Workr	41:41=%[0.25,0.25,0.25]:[R*1.0/255,G*1.0/255,B*1.0/255]);//41:41=[R,G,B]:[R,G,B]
 //
 	// PlayerTranslation[PlNum] = TranslationNumber+PlNum;
-	Thing_SetTranslation(0, TranslationNumber+PlNum);
+  Thing_SetTranslation(0, translation_number + pl_num);
 }

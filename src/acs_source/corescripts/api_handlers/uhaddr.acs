@@ -3,7 +3,7 @@
 
 #import "uhdt.acs"
 
-function int UH_DefineBossCore(
+function int UHDefineBossCore(
 	  int id,
 	  str actor,
 	  str name,
@@ -28,7 +28,7 @@ function int UH_DefineBossCore(
 	{
 		if (id >= UH_MAX_VANILLA_BOSS)
 			return UHBOSS_FAIL;
-		if (uh_bossVanillaDefined[id] != 0)
+		if (uh_boss_vanilla_defined[id] != 0)
 			return UHBOSS_FAIL;
 		UH_BossWriteVanilla(id, actor, name, rarity, basehp, addhp,
 			exboss_baseactor, mugshot, musiclump, musiccredit,
@@ -39,7 +39,7 @@ function int UH_DefineBossCore(
 
 	if (id == -1)
 	{
-		if (uh_bossCustomCount >= UH_MAX_CUSTOM_BOSS)
+		if (uh_boss_custom_count >= UH_MAX_CUSTOM_BOSS)
 			return UHBOSS_FAIL;
 		customid = UH_BossWriteCustom(actor, name, rarity, basehp, addhp,
 			exboss_baseactor, mugshot, musiclump, musiccredit,
@@ -54,9 +54,9 @@ function int UH_DefineBossCore(
 
 // Do NOT add CLIENTSIDE: listen-server hosts share one ACS VM with the
 // client; a CLIENTSIDE twin would double-write UHDT on the host.
-Script "uh_DefineBoss_S" (void)
+script "uh_DefineBoss_S" (void)
 {
-	SetResultValue(UH_DefineBossCore(
+	SetResultValue(UHDefineBossCore(
 		GetCVar("uh_db_id"),
 		GetCVarString("uh_db_actor"),
 		GetCVarString("uh_db_name"),
@@ -73,12 +73,12 @@ Script "uh_DefineBoss_S" (void)
 	));
 }
 
-Script "uh_IsBossDefined_S" (int id)
+script "uh_IsBossDefined_S" (int id)
 {
 	SetResultValue(IsBossDefined(id));
 }
 
-Script "uh_FindBossByActor_S" (void)
+script "uh_FindBossByActor_S" (void)
 {
 	int id = FindBossByActor(GetCVarString("uh_db_actor"));
 	SetCVar("uh_db_id", id);
@@ -86,69 +86,69 @@ Script "uh_FindBossByActor_S" (void)
 }
 
 // Do NOT add CLIENTSIDE: same rule as uh_DefineBoss_S.
-Script "uh_SetBossMorphSetup_S" (void) {
+script "uh_SetBossMorphSetup_S" (void) {
 	SetResultValue(SetBossMorphSetup(
 		GetCVar("uh_db_id"),
 		GetCVarString("uh_db_setup")
 	));
 }
 
-Script "uh_GetBossActor_S" (int id)
+script "uh_GetBossActor_S" (int id)
 {
 	SetCVarString("uh_db_out_str", GetBossActor(id));
 	SetResultValue(IsBossDefined(id));
 }
 
-Script "uh_GetBossName_S" (int id)
+script "uh_GetBossName_S" (int id)
 {
 	SetCVarString("uh_db_out_str", GetBossName(id));
 	SetResultValue(IsBossDefined(id));
 }
 
-Script "uh_GetBossHPBase_S" (int id)
+script "uh_GetBossHPBase_S" (int id)
 {
 	SetResultValue(GetBossHPBase(id));
 }
 
-Script "uh_GetBossHPAdd_S" (int id)
+script "uh_GetBossHPAdd_S" (int id)
 {
 	SetResultValue(GetBossHPAdd(id));
 }
 
-Script "uh_GetBossBaseId_S" (int id)
+script "uh_GetBossBaseId_S" (int id)
 {
-	int baseId = GetBossBaseId(id);
-	SetCVar("uh_db_id", baseId);
-	SetResultValue(baseId);
+	int base_id = GetBossBaseId(id);
+	SetCVar("uh_db_id", base_id);
+	SetResultValue(base_id);
 }
 
-Script "uh_GetBossExId_S" (int id)
+script "uh_GetBossExId_S" (int id)
 {
-	int exId = GetBossExId(id);
-	SetCVar("uh_db_id", exId);
-	SetResultValue(exId);
+	int ex_id = GetBossExId(id);
+	SetCVar("uh_db_id", ex_id);
+	SetResultValue(ex_id);
 }
 
-Script "uh_IsBossEx_S" (int id)
+script "uh_IsBossEx_S" (int id)
 {
 	SetResultValue(IsBossEx(id));
 }
 
-Script "uh_RandomBossFromPool_S" (int rarity)
+script "uh_RandomBossFromPool_S" (int rarity)
 {
 	int pick = RandomBossFromPool(rarity);
 	SetCVar("uh_db_id", pick);
 	SetResultValue(pick);
 }
 
-Script "uh_GetPlayerBossId_S" (int playerNum)
+script "uh_GetPlayerBossId_S" (int player_num)
 {
-	int id = GetPlayerBossId(playerNum);
+	int id = GetPlayerBossId(player_num);
 	SetCVar("uh_db_id", id);
 	SetResultValue(id);
 }
 
-Script "uh_GetBossMugshot_S" (int id)
+script "uh_GetBossMugshot_S" (int id)
 {
 	SetCVarString("uh_db_out_str", GetBossMugshot(id));
 	SetResultValue(IsBossDefined(id));
@@ -166,7 +166,7 @@ function int DefineSurvivorCore(int id, str actor, str name, str mugshot)
 	{
 		if (id >= UH_MAX_VANILLA_SURV)
 			return UHSURV_FAIL;
-		if (uh_survVanillaDefined[id] != 0)
+		if (uh_surv_vanilla_defined[id] != 0)
 			return UHSURV_FAIL;
 		SurvWriteVanilla(id, actor, name, mugshot);
 		return id;
@@ -174,7 +174,7 @@ function int DefineSurvivorCore(int id, str actor, str name, str mugshot)
 
 	if (id == -1)
 	{
-		if (uh_survCustomCount >= UH_MAX_CUSTOM_SURV)
+		if (uh_surv_custom_count >= UH_MAX_CUSTOM_SURV)
 			return UHSURV_FAIL;
 		return SurvWriteCustom(actor, name, mugshot);
 	}
@@ -184,7 +184,7 @@ function int DefineSurvivorCore(int id, str actor, str name, str mugshot)
 
 // Do NOT add CLIENTSIDE: same rule as uh_DefineBoss_S — clients run this
 // locally via ACS_NamedExecuteWithResult from their OPEN CLIENTSIDE twin.
-Script "uh_DefineSurvivor_S" (void)
+script "uh_DefineSurvivor_S" (void)
 {
 	SetResultValue(DefineSurvivorCore(
 		GetCVar("uh_ds_id"),
@@ -194,44 +194,44 @@ Script "uh_DefineSurvivor_S" (void)
 	));
 }
 
-Script "uh_IsSurvivorDefined_S" (int id)
+script "uh_IsSurvivorDefined_S" (int id)
 {
 	SetResultValue(IsSurvivorDefined(id));
 }
 
-Script "uh_FindSurvivorByActor_S" (void)
+script "uh_FindSurvivorByActor_S" (void)
 {
 	int id = FindSurvivorByActor(GetCVarString("uh_ds_actor"));
 	SetCVar("uh_ds_id", id);
 	SetResultValue(id);
 }
 
-Script "uh_GetSurvivorActor_S" (int id)
+script "uh_GetSurvivorActor_S" (int id)
 {
 	SetCVarString("uh_ds_out_str", GetSurvivorActor(id));
 	SetResultValue(IsSurvivorDefined(id));
 }
 
-Script "uh_GetSurvivorName_S" (int id)
+script "uh_GetSurvivorName_S" (int id)
 {
 	SetCVarString("uh_ds_out_str", GetSurvivorName(id));
 	SetResultValue(IsSurvivorDefined(id));
 }
 
-Script "uh_GetSurvivorMugshot_S" (int id)
+script "uh_GetSurvivorMugshot_S" (int id)
 {
 	SetCVarString("uh_ds_out_str", GetSurvivorMugshot(id));
 	SetResultValue(IsSurvivorDefined(id));
 }
 
-function int DefineDemoneyeCore(int id, str actor, str name, str prefix, int flags, str mugshot, str eventStem)
+function int DefineDemoneyeCore(int id, str actor, str name, str prefix, int flags, str mugshot, str event_stem)
 {
 	// Mugshot is mandatory — empty would fall through BHW numeric bands incorrectly.
 	if (StrCmp(mugshot, "") == 0)
 		return UHEYE_FAIL;
 	if (StrCmp(name, "") == 0)
 		return UHEYE_FAIL;
-	if (StrCmp(eventStem, "") == 0)
+	if (StrCmp(event_stem, "") == 0)
 		return UHEYE_FAIL;
 
 	// Actor uniqueness only when actor is set (bonus face slots may omit actor).
@@ -242,9 +242,9 @@ function int DefineDemoneyeCore(int id, str actor, str name, str prefix, int fla
 	{
 		if (id >= UH_MAX_VANILLA_EYE)
 			return UHEYE_FAIL;
-		if (uh_eyeVanillaDefined[id] != 0)
+		if (uh_eye_vanilla_defined[id] != 0)
 			return UHEYE_FAIL;
-		EyeWriteVanilla(id, actor, name, prefix, flags, mugshot, eventStem);
+		EyeWriteVanilla(id, actor, name, prefix, flags, mugshot, event_stem);
 		return id;
 	}
 
@@ -252,15 +252,15 @@ function int DefineDemoneyeCore(int id, str actor, str name, str prefix, int fla
 	{
 		if (StrCmp(actor, "") == 0)
 			return UHEYE_FAIL;
-		if (uh_eyeCustomCount >= UH_MAX_CUSTOM_EYE)
+		if (uh_eye_custom_count >= UH_MAX_CUSTOM_EYE)
 			return UHEYE_FAIL;
-		return EyeWriteCustom(actor, name, prefix, flags, mugshot, eventStem);
+		return EyeWriteCustom(actor, name, prefix, flags, mugshot, event_stem);
 	}
 
 	return UHEYE_FAIL;
 }
 
-Script "uh_DefineDemoneye_S" (void)
+script "uh_DefineDemoneye_S" (void)
 {
 	SetResultValue(DefineDemoneyeCore(
 		GetCVar("uh_de_id"),
@@ -273,71 +273,71 @@ Script "uh_DefineDemoneye_S" (void)
 	));
 }
 
-Script "uh_IsEyeDefined_S" (int id)
+script "uh_IsEyeDefined_S" (int id)
 {
 	SetResultValue(IsEyeDefined(id));
 }
 
-Script "uh_FindEyeByActor_S" (void)
+script "uh_FindEyeByActor_S" (void)
 {
 	int id = FindEyeByActor(GetCVarString("uh_de_actor"));
 	SetCVar("uh_de_id", id);
 	SetResultValue(id);
 }
 
-Script "uh_GetEyeActor_S" (int id)
+script "uh_GetEyeActor_S" (int id)
 {
 	SetCVarString("uh_de_out_str", GetEyeActor(id));
 	SetResultValue(IsEyeDefined(id));
 }
 
-Script "uh_GetEyeName_S" (int id)
+script "uh_GetEyeName_S" (int id)
 {
 	SetCVarString("uh_de_out_str", GetEyeName(id));
 	SetResultValue(IsEyeDefined(id));
 }
 
-Script "uh_GetEyePrefix_S" (int id)
+script "uh_GetEyePrefix_S" (int id)
 {
 	SetCVarString("uh_de_out_str", GetEyePrefix(id));
 	SetResultValue(IsEyeDefined(id));
 }
 
-Script "uh_GetEyeFlags_S" (int id)
+script "uh_GetEyeFlags_S" (int id)
 {
 	SetResultValue(GetEyeFlags(id));
 }
 
-Script "uh_GetEyeMugshot_S" (int id)
+script "uh_GetEyeMugshot_S" (int id)
 {
 	SetCVarString("uh_de_out_str", GetEyeMugshot(id));
 	SetResultValue(IsEyeDefined(id));
 }
 
-Script "uh_GetEyeEventStem_S" (int id)
+script "uh_GetEyeEventStem_S" (int id)
 {
 	SetCVarString("uh_de_out_str", GetEyeEventStem(id));
 	SetResultValue(IsEyeDefined(id));
 }
 
-Script "uh_GetPlayerEyeId_S" (int playerNum)
+script "uh_GetPlayerEyeId_S" (int player_num)
 {
-	SetResultValue(GetPlayerEyeId(playerNum));
+	SetResultValue(GetPlayerEyeId(player_num));
 }
 
 // --- Eye-morph weighted pool API -------------------------------------------
 
-Script "uh_DefineEyeMorphPool_S" (void)
+script "uh_DefineEyeMorphPool_S" (void)
 {
 	SetResultValue(DefineEyeMorphPoolCore(GetCVarString("uh_em_pool")));
 }
 
-Script "uh_FindEyeMorphPool_S" (void)
+script "uh_FindEyeMorphPool_S" (void)
 {
 	SetResultValue(FindEyeMorphPool(GetCVarString("uh_em_pool")));
 }
 
-Script "uh_SetEyeMorphPoolEntry_S" (void)
+script "uh_SetEyeMorphPoolEntry_S" (void)
 {
 	SetResultValue(SetEyeMorphPoolEntryCore(
 		GetCVarString("uh_em_pool"),
@@ -349,7 +349,7 @@ Script "uh_SetEyeMorphPoolEntry_S" (void)
 	));
 }
 
-Script "uh_PickEyeMorphActor_S" (void)
+script "uh_PickEyeMorphActor_S" (void)
 {
 	str actor = PickEyeMorphActorCore(
 		GetCVarString("uh_em_pool"),
@@ -359,7 +359,7 @@ Script "uh_PickEyeMorphActor_S" (void)
 	SetResultValue(StrCmp(actor, "") != 0);
 }
 
-Script "uh_GetEyeMorphPoolWeight_S" (void)
+script "uh_GetEyeMorphPoolWeight_S" (void)
 {
 	SetResultValue(GetEyeMorphPoolWeightCore(
 		GetCVarString("uh_em_pool"),
@@ -367,7 +367,7 @@ Script "uh_GetEyeMorphPoolWeight_S" (void)
 	));
 }
 
-Script "uh_GetEyeMorphPoolActor_S" (void)
+script "uh_GetEyeMorphPoolActor_S" (void)
 {
 	str actor = GetEyeMorphPoolActorCore(
 		GetCVarString("uh_em_pool"),
@@ -391,7 +391,7 @@ function int DefineUnholyItemCore(int id, str actor, str name, str mugshot, str 
 	{
 		if (id >= UH_MAX_VANILLA_ITEM)
 			return UHITEM_FAIL;
-		if (uh_itemVanillaDefined[id] != 0)
+		if (uh_item_vanilla_defined[id] != 0)
 			return UHITEM_FAIL;
 		ItemWriteVanilla(id, actor, name, mugshot, sound);
 		return id;
@@ -399,7 +399,7 @@ function int DefineUnholyItemCore(int id, str actor, str name, str mugshot, str 
 
 	if (id == -1)
 	{
-		if (uh_itemCustomCount >= UH_MAX_CUSTOM_ITEM)
+		if (uh_item_custom_count >= UH_MAX_CUSTOM_ITEM)
 			return UHITEM_FAIL;
 		return ItemWriteCustom(actor, name, mugshot, sound);
 	}
@@ -407,7 +407,7 @@ function int DefineUnholyItemCore(int id, str actor, str name, str mugshot, str 
 	return UHITEM_FAIL;
 }
 
-Script "uh_DefineUnholyItem_S" (void)
+script "uh_DefineUnholyItem_S" (void)
 {
 	SetResultValue(DefineUnholyItemCore(
 		GetCVar("uh_di_id"),
@@ -418,7 +418,7 @@ Script "uh_DefineUnholyItem_S" (void)
 	));
 }
 
-Script "uh_SetUnholyBox_S" (void)
+script "uh_SetUnholyBox_S" (void)
 {
 	int boxid = FindItemByActor(GetCVarString("uh_di_boxactor"));
 	SetResultValue(SetUnholyBoxCore(
@@ -428,7 +428,7 @@ Script "uh_SetUnholyBox_S" (void)
 	));
 }
 
-Script "uh_AddUnholyItemDrop_S" (void)
+script "uh_AddUnholyItemDrop_S" (void)
 {
 	int boxid = FindItemByActor(GetCVarString("uh_di_boxactor"));
 	int itemid = FindItemByActor(GetCVarString("uh_di_itemactor"));
@@ -442,7 +442,7 @@ Script "uh_AddUnholyItemDrop_S" (void)
 	));
 }
 
-Script "uh_DefineUnholyCoinSpend_S" (void)
+script "uh_DefineUnholyCoinSpend_S" (void)
 {
 	SetResultValue(DefineUnholyCoinSpendCore(
 		GetCVar("uh_di_mincount"),
@@ -452,7 +452,7 @@ Script "uh_DefineUnholyCoinSpend_S" (void)
 	));
 }
 
-Script "uh_DefineCopyWep_S" (void)
+script "uh_DefineCopyWep_S" (void)
 {
 	SetResultValue(DefineCopyWepCore(
 		GetCVar("uh_cw_kind"),
@@ -461,7 +461,7 @@ Script "uh_DefineCopyWep_S" (void)
 	));
 }
 
-Script "uh_DefineCopyWepRegen_S" (void)
+script "uh_DefineCopyWepRegen_S" (void)
 {
 	SetResultValue(DefineCopyWepRegenCore(
 		GetCVarString("uh_cw_actor"),
@@ -469,69 +469,69 @@ Script "uh_DefineCopyWepRegen_S" (void)
 	));
 }
 
-Script "uh_FreezeMegaOfficialCopyCount_S" (void)
+script "uh_FreezeMegaOfficialCopyCount_S" (void)
 {
 	FreezeMegaOfficialCopyCount();
 	SetResultValue(GetMegaOfficialCopyCount());
 }
 
-Script "uh_GetMegaOfficialCopyCount_S" (void)
+script "uh_GetMegaOfficialCopyCount_S" (void)
 {
 	SetResultValue(GetMegaOfficialCopyCount());
 }
 
-Script "uh_IsItemDefined_S" (int id)
+script "uh_IsItemDefined_S" (int id)
 {
 	SetResultValue(IsItemDefined(id));
 }
 
-Script "uh_FindItemByActor_S" (void)
+script "uh_FindItemByActor_S" (void)
 {
 	int id = FindItemByActor(GetCVarString("uh_di_actor"));
 	SetCVar("uh_di_id", id);
 	SetResultValue(id);
 }
 
-Script "uh_GetItemActor_S" (int id)
+script "uh_GetItemActor_S" (int id)
 {
 	SetCVarString("uh_di_out_str", GetItemActor(id));
 	SetResultValue(IsItemDefined(id));
 }
 
-Script "uh_GetItemName_S" (int id)
+script "uh_GetItemName_S" (int id)
 {
 	SetCVarString("uh_di_out_str", GetItemName(id));
 	SetResultValue(IsItemDefined(id));
 }
 
-Script "uh_GetItemMugshot_S" (int id)
+script "uh_GetItemMugshot_S" (int id)
 {
 	SetCVarString("uh_di_out_str", GetItemMugshot(id));
 	SetResultValue(IsItemDefined(id));
 }
 
-Script "uh_GetItemSound_S" (int id)
+script "uh_GetItemSound_S" (int id)
 {
 	SetCVarString("uh_di_out_str", GetItemSound(id));
 	SetResultValue(IsItemDefined(id));
 }
 
-Script "uh_GetItemDropWeight_S" (int boxid, int itemid)
+script "uh_GetItemDropWeight_S" (int boxid, int itemid)
 {
 	SetResultValue(GetItemDropWeight(boxid, itemid));
 }
 
-Script "uh_GetItemDropAmt_S" (int boxid, int itemid)
+script "uh_GetItemDropAmt_S" (int boxid, int itemid)
 {
 	SetResultValue(GetItemDropAmt(boxid, itemid));
 }
 
-Script "uh_RandomItemFromBox_S" (int boxid)
+script "uh_RandomItemFromBox_S" (int boxid)
 {
 	SetResultValue(RandomItemFromBox(boxid));
 }
 
-Script "uh_AddBossMusic_S" (void)
+script "uh_AddBossMusic_S" (void)
 {
 	SetResultValue(AddBossMusicCore(
 		GetCVar("uh_bm_bossid"),
@@ -544,7 +544,7 @@ Script "uh_AddBossMusic_S" (void)
 	));
 }
 
-Script "uh_AddEventMusic_S" (void)
+script "uh_AddEventMusic_S" (void)
 {
 	SetResultValue(AddEventMusicCore(
 		GetCVar("uh_bm_kind"),
@@ -558,7 +558,7 @@ Script "uh_AddEventMusic_S" (void)
 	));
 }
 
-Script "uh_DefineLMSEvent_S" (void)
+script "uh_DefineLMSEvent_S" (void)
 {
 	SetResultValue(DefineLMSEventCore(
 		GetCVar("uh_le_id"),
@@ -572,76 +572,76 @@ Script "uh_DefineLMSEvent_S" (void)
 	));
 }
 
-Script "uh_AddLMSEventDrop_S" (void)
+script "uh_AddLMSEventDrop_S" (void)
 {
-	int eventId;
-	eventId = FindLMSEventByStem(GetCVarString("uh_le_stem"));
-	if (eventId == UHLMS_FAIL)
+	int event_id;
+	event_id = FindLMSEventByStem(GetCVarString("uh_le_stem"));
+	if (event_id == UHLMS_FAIL)
 	{
 		SetResultValue(UHLMS_FAIL);
 		terminate;
 	}
 	SetResultValue(AddLMSEventDropCore(
-		eventId,
+		event_id,
 		GetCVarString("uh_le_item"),
 		GetCVar("uh_le_amt"),
 		GetCVar("uh_le_rare")
 	));
 }
 
-Script "uh_IsLMSEventDefined_S" (int id)
+script "uh_IsLMSEventDefined_S" (int id)
 {
 	SetResultValue(IsLMSEventDefined(id));
 }
 
-Script "uh_FindLMSEventByStem_S" (void)
+script "uh_FindLMSEventByStem_S" (void)
 {
 	SetResultValue(FindLMSEventByStem(GetCVarString("uh_le_stem")));
 }
 
-Script "uh_GetLMSEventStem_S" (int id)
+script "uh_GetLMSEventStem_S" (int id)
 {
 	SetCVarString("uh_le_out_str", GetLMSEventStem(id));
 	SetResultValue(0);
 }
 
-Script "uh_GetLMSEventMessage_S" (int id)
+script "uh_GetLMSEventMessage_S" (int id)
 {
 	SetCVarString("uh_le_out_str", GetLMSEventMessage(id));
 	SetResultValue(0);
 }
 
-Script "uh_GetLMSEventraremessage_S" (int id)
+script "uh_GetLMSEventraremessage_S" (int id)
 {
 	SetCVarString("uh_le_out_str", GetLMSEventraremessage(id));
 	SetResultValue(0);
 }
 
-Script "uh_GetLMSEventIcon_S" (int id)
+script "uh_GetLMSEventIcon_S" (int id)
 {
 	SetCVarString("uh_le_out_str", GetLMSEventIcon(id));
 	SetResultValue(0);
 }
 
-Script "uh_GetLMSEventrareicon_S" (int id)
+script "uh_GetLMSEventrareicon_S" (int id)
 {
 	SetCVarString("uh_le_out_str", GetLMSEventrareicon(id));
 	SetResultValue(0);
 }
 
-Script "uh_GetLMSEventFlags_S" (int id)
+script "uh_GetLMSEventFlags_S" (int id)
 {
 	SetResultValue(GetLMSEventFlags(id));
 }
 
-Script "uh_PickLMSEvent_S" (void)
+script "uh_PickLMSEvent_S" (void)
 {
 	SetResultValue(PickLMSEvent());
 }
 
 // --- Shiny move-weapon registration stubs ---
 
-Script "uh_DefineShinyQwantMoveWep_S" (void)
+script "uh_DefineShinyQwantMoveWep_S" (void)
 {
 	SetResultValue(DefineShinyQwantMoveWepCore(
 		GetCVarString("uh_sm_wep"),
@@ -649,7 +649,7 @@ Script "uh_DefineShinyQwantMoveWep_S" (void)
 	));
 }
 
-Script "uh_DefineShinyNegaSlotWep_S" (void)
+script "uh_DefineShinyNegaSlotWep_S" (void)
 {
 	SetResultValue(DefineShinyNegaSlotWepCore(
 		GetCVar("uh_sm_slot"),
@@ -659,14 +659,14 @@ Script "uh_DefineShinyNegaSlotWep_S" (void)
 	));
 }
 
-Script "uh_DefineDecoyBotMoveWep_S" (void)
+script "uh_DefineDecoyBotMoveWep_S" (void)
 {
 	SetResultValue(DefineDecoyBotMoveWepCore(
 		GetCVarString("uh_sm_wep")
 	));
 }
 
-Script "uh_DefineDecoyBotShinyWep_S" (void)
+script "uh_DefineDecoyBotShinyWep_S" (void)
 {
 	SetResultValue(DefineDecoyBotShinyWepCore(
 		GetCVarString("uh_sm_wep"),
@@ -674,7 +674,7 @@ Script "uh_DefineDecoyBotShinyWep_S" (void)
 	));
 }
 
-Script "uh_DefineShinyMegaCopyWep_S" (void)
+script "uh_DefineShinyMegaCopyWep_S" (void)
 {
 	SetResultValue(DefineShinyMegaCopyWepCore(
 		GetCVar("uh_sm_kind"),

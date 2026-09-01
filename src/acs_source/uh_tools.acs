@@ -4,931 +4,892 @@
 
 #import "8bdt.acs"
 
-global int 3: IsTeamGame;
-global int 4: ServerMAX;
+global int 3:IsTeamGame;
+global int 4:ServerMAX;
 
 #define MAX_HEALTH 30000
 #define CAPROP_AirJumpZ 64
 #define CAPROP_WallJumpZ 65
 
-script "uh_IsBot" (void)
-{
-	SetResultValue(PlayerIsBot(PlayerNumber()) || CheckInventory("IsBot"));
+script "uh_IsBot" (void) {
+  SetResultValue(PlayerIsBot(PlayerNumber()) || CheckInventory("IsBot"));
 }
 
-script "uh_SyncPitchFix" (void)
-{
-	SetActorPitch(0,GetActorPitch(0));
+script "uh_SyncPitchFix" (void) {
+  SetActorPitch(0, GetActorPitch(0));
 }
 
-script "uh_IsItOnline" (void)//Used to adjust deselect Death
+script "uh_IsItOnline" (void)  // Used to adjust deselect Death
 {
-	if(IsNetworkGame()){//Check if Online or not
-		SetResultValue(0);
-	}
+  if (IsNetworkGame()) {  // Check if Online or not
+    SetResultValue(0);
+  }
 }
 
-script "uh_PointerExists" (int Point)
-{//This is for projectiles to check if their owner spectated, disconnected, or is dead.
-	SetActivator(0,Point);
-//	log(s:"Player #? ",i:PlayerInGame(PlayerNumber()));
-//	log(s:"Is Dead? ",i:CheckInventory("IsDead"));
-//	log(s:"In Game? ",i:PlayerInGame(PlayerNumber()));
-	if(PlayerNumber() == -1 || CheckInventory("IsDead") || !PlayerInGame(PlayerNumber())){
-		SetResultValue(0);
-	}
+script "uh_PointerExists" (int point)
+{  // This is for projectiles to check if their owner spectated, disconnected, or is dead.
+  SetActivator(0, point);
+  // log(s:"Player #? ",i:PlayerInGame(PlayerNumber()));
+  // log(s:"Is Dead? ",i:CheckInventory("IsDead"));
+  // log(s:"In Game? ",i:PlayerInGame(PlayerNumber()));
+  if (PlayerNumber() == -1 || CheckInventory("IsDead") || !PlayerInGame(PlayerNumber())) {
+    SetResultValue(0);
+  }
 }
 
 script "uh_IsPlayerAlive" (int tid) {
-	SetActivator(tid);
-	if (PlayerNumber() == -1 || CheckInventory("IsDead") || !PlayerInGame(PlayerNumber())){
-		SetResultValue(0);
-		terminate;
-	}
-	SetResultValue(1);
+  SetActivator(tid);
+  if (PlayerNumber() == -1 || CheckInventory("IsDead") || !PlayerInGame(PlayerNumber())) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
 }
 
 script "uh_PointerIsABoss" (int pointer) {
-	SetActivator(0, pointer);
-	if (PlayerNumber() == -1 || CheckInventory("IsDead") ||
-		  !PlayerInGame(PlayerNumber()) || CheckInventory("IsAFakeBoss")) {
-		SetResultValue(0);
-		terminate;
-	}
-	SetResultValue(1);
+  SetActivator(0, pointer);
+  if (PlayerNumber() == -1 || CheckInventory("IsDead") ||
+      !PlayerInGame(PlayerNumber()) || CheckInventory("IsAFakeBoss")) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
 }
 
 // Only use for weapon flash states
 script "uh_PointerIsABoss_CheckInv" (int pointer) {
-	SetActivator(0, pointer);
-	if (CheckInventory("IsDead") || CheckInventory("IsAFakeBoss")) {
-		SetResultValue(0);
-		terminate;
-	}
-	SetResultValue(1);
+  SetActivator(0, pointer);
+  if (CheckInventory("IsDead") || CheckInventory("IsAFakeBoss")) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
 }
 
-script "uh_PointerMorphed" (int Point) {
-	SetActivator(0,Point);
-	SetResultValue(CheckInventory("MorphedFlag"));
+script "uh_PointerMorphed" (int point) {
+  SetActivator(0, point);
+  SetResultValue(CheckInventory("MorphedFlag"));
 }
 
-script "uh_GetPlayerButtonInput" (int ThePlay, int Mod_Bool)
+script "uh_GetPlayerButtonInput" (int the_play, int mod_bool) {
+  int result = 0;
+  if (SetActivatorToPlayer(the_play)) {
+    Log(i:the_play, s:" >> Invalid PlayerNumber for uh_GetPlayerButtonInput");
+    terminate;
+  }
+  if (mod_bool)
+    SetResultValue(GetPlayerInput(-1, MODINPUT_BUTTONS));
+  else
+    SetResultValue(GetPlayerInput(-1, INPUT_BUTTONS));
+}
+script "uh_GetPointerButtonInput" (int the_point, int mod_bool) {
+  switch (the_point) {
+    default:
+      Log(i:the_point, s:" >> Invalid Pointer for uh_GetPointerInput");
+      break;
+    case 0:  // Default
+      break;
+    case 1:  // Null
+    case 2:  // Target
+    case 4:  // Master
+    case 8:  // Tracer
+    case 16:  // Player_GetTarget
+    case 32:  // Player_GetConversation
+    case 16384:  // FriendPlayer
+    case 32768:  // Get_LineTarget
+      SetActivator(0, the_point);
+      break;
+  }
+  if (mod_bool)
+    SetResultValue(GetPlayerInput(-1, MODINPUT_BUTTONS));
+  else
+    SetResultValue(GetPlayerInput(-1, INPUT_BUTTONS));
+}
+
+script "uh_FetchMovementInputOld" (void)  // Solarman
 {
-	int Result = 0;
-	if(SetActivatorToPlayer(ThePlay)){
-		Log(i:ThePlay,s:" >> Invalid PlayerNumber for uh_GetPlayerButtonInput");
-		terminate;
-	}
-	if(Mod_Bool)
-		SetResultValue(GetPlayerInput(-1, MODINPUT_BUTTONS));
-	else
-		SetResultValue(GetPlayerInput(-1, INPUT_BUTTONS));
+  SetResultValue(FuncCheckForMovementButton(GetPlayerInput(-1, INPUT_BUTTONS)));
 }
-script "uh_GetPointerButtonInput" (int ThePoint, int Mod_Bool)
+
+function bool FuncCheckForMovementButton(int buttons) {
+  int result = 1;
+
+  if (buttons & BT_MOVERIGHT) {
+    if (!(buttons & BT_MOVELEFT))
+      result += 2;
+  }
+  if (buttons & BT_MOVELEFT) {
+    if (!(buttons & BT_MOVERIGHT))
+      result += 4;
+  }
+  if (buttons & BT_BACK) {
+    if (!(buttons & BT_FORWARD))
+      result += 8;
+  }
+  if (buttons & BT_FORWARD) {
+    if (!(buttons & BT_BACK))
+      result += 16;
+  }
+  return(result);
+}
+
+script "uh_IsInputingMovement" (int mod_bool) {
+  if (mod_bool)
+    SetResultValue(GetPlayerInput(-1, MODINPUT_FORWARDMOVE) || GetPlayerInput(-1, MODINPUT_SIDEMOVE));
+  else
+    SetResultValue(GetPlayerInput(-1, INPUT_FORWARDMOVE) || GetPlayerInput(-1, INPUT_SIDEMOVE));
+}
+
+script "uh_FetchInputDir" (int swap_var) {
+  int f_move = FuncFetchInputSign(GetPlayerInput(-1, INPUT_FORWARDMOVE));
+  int s_move = FuncFetchInputSign(GetPlayerInput(-1, INPUT_SIDEMOVE));
+  if (!swap_var) {  // Forward
+    SetResultValue(f_move * 90 / (2 - !s_move));
+  }
+  else {  // Side
+    SetResultValue(s_move * 90 / (2 - !f_move));
+  }
+}
+
+function int FuncFetchInputSign(int input) {
+  if (input > 0)
+    return 1;
+  else if (input < 0)
+    return -1;
+  return 0;
+}
+
+script "uh_GetPointerSpeed" (int p1, int p2, int include_z) {
+  SetActivator(0, p1);
+  if (p2 > 0) {SetActivator(0, p2);}
+  int speed = VectorLength(GetActorVelX(0), GetActorVelY(0));
+  if (include_z) {speed = VectorLength(speed, GetActorVelZ(0));}
+  SetResultValue(speed);
+}
+
+script "uh_FaceMovementDirection" (void) {
+  SetActorAngle(0, VectorAngle(GetActorVelX(0), GetActorVelY(0)));
+}
+
+script "uh_FetchPointerAngle" (int pointer) {
+  SetResultValue(GetActorAngle(ACS_NamedExecuteWithResult("core_getptrtid", pointer)) >> 8);
+}
+
+script "uh_CopyPointerAnglePitch" (int pointer, int angle_pitch) {
+  int source = ACS_NamedExecuteWithResult("core_getptrtid", pointer);
+  int p_pitch = GetActorPitch(source);
+  int p_angle = GetActorAngle(source);
+  switch (angle_pitch) {
+    case 0:
+      SetActorPitch(0, p_pitch);
+      break;
+    case 1:
+      SetActorPitch(0, p_pitch);
+      SetActorAngle(0, p_angle);
+      break;
+    case 2:
+      SetActorAngle(0, p_angle);
+      break;
+  }
+}
+
+script "uh_pointerheightfromground" (int swap_var) {
+  switch (swap_var) {
+    case 3:
+      SetActivator(0, AAPTR_FRIENDPLAYER);
+      break;
+    case 2:
+      SetActivator(0, AAPTR_MASTER);
+      break;
+    case 1:
+      SetActivator(0, AAPTR_TRACER);
+      break;
+    case 0:
+      SetActivatorToTarget(0);
+      break;
+  }
+  SetResultValue((GetActorZ(0) - GetActorFloorZ(0)) >> 16);
+}
+
+// Example users Topman/Heatman
+script "uh_getplayervelocity" (int cap, int include_z) {
+  int x, y, z, speed, result;
+  x = GetActorVelX(0);
+  y = GetActorVelY(0);
+  if (include_z) {z = GetActorVelZ(0);} else {z = 0;}
+  speed = FixedMul(x, x) + FixedMul(y, y) + FixedMul(z, z);
+
+  result = fixedSqrt(speed) >> 16;
+  // Log(i:result);
+  if (result > cap) {result = cap;}
+  SetResultValue(result);
+}
+
+script "uh_getfixedangle" (void)  // BBA uses this
 {
-	Switch(ThePoint) {
-		Default:
-			Log(i:ThePoint,s:" >> Invalid Pointer for uh_GetPointerInput");
-			break;
-		Case 0://Default
-			break;
-		Case 1://Null
-		Case 2://Target
-		Case 4://Master
-		Case 8://Tracer
-		Case 16://Player_GetTarget
-		Case 32://Player_GetConversation
-		Case 16384://FriendPlayer
-		Case 32768://Get_LineTarget
-			SetActivator(0,ThePoint);
-			break;
-	}
-	if(Mod_Bool)
-		SetResultValue(GetPlayerInput(-1, MODINPUT_BUTTONS));
-	else
-		SetResultValue(GetPlayerInput(-1, INPUT_BUTTONS));
+  SetResultValue(GetActorAngle(0));
 }
 
-script "uh_FetchMovementInputOld" (void)//Solarman
-{
-	SetResultValue(Func_CheckForMovementButton(GetPlayerInput(-1, INPUT_BUTTONS)));
+script "uh_FetchVectorAngle" (int which) {
+  switch (which) {
+    case 2:
+      SetActivator(0, AAPTR_TARGET);
+      break;
+    case 4:
+      SetActivator(0, AAPTR_MASTER);
+      break;
+    case 8:
+      SetActivator(0, AAPTR_TRACER);
+      break;
+  }
+  // Log(s:"GetActorVelX = ",f:GetActorVelX(0),s:" <> GetActorVelY = ",f:GetActorVelY(0));
+  SetResultValue(VectorAngle(GetActorVelX(0), GetActorVelY(0)));
 }
 
-function bool Func_CheckForMovementButton(int buttons) {
-	int result = 1;
-
-	if (buttons & BT_MOVERIGHT){
-		if (!(buttons & BT_MOVELEFT))
-			result+=2;
-	}
-	if (buttons & BT_MOVELEFT){
-		if (!(buttons & BT_MOVERIGHT))
-			result+=4;
-	}
-	if (buttons & BT_BACK){
-		if (!(buttons & BT_FORWARD))
-			result+=8;
-	}
-	if (buttons & BT_FORWARD){
-		if (!(buttons & BT_BACK))
-			result+=16;
-	}
-	return(result);
-}
-
-script "uh_IsInputingMovement" (int Mod_Bool)
-{
-	if(Mod_Bool)
-		SetResultValue( GetPlayerInput(-1,MODINPUT_FORWARDMOVE) || GetPlayerInput(-1,MODINPUT_SIDEMOVE) );
-	else
-		SetResultValue( GetPlayerInput(-1,INPUT_FORWARDMOVE) || GetPlayerInput(-1,INPUT_SIDEMOVE) );
-}
-
-script "uh_FetchInputDir" (int Swap)
-{
-	int F_Move = Func_FetchInputSign(GetPlayerInput(-1,INPUT_FORWARDMOVE));
-	int S_Move = Func_FetchInputSign(GetPlayerInput(-1,INPUT_SIDEMOVE));
-	if(!Swap){//Forward
-		SetResultValue(F_Move*90/(2-!S_Move));
-	}
-	else{//Side
-		SetResultValue(S_Move*90/(2-!F_Move));
-	}
-}
-
-function int Func_FetchInputSign(int input)
-{
-	if (input > 0)
-		return 1;
-	else if (input < 0)
-		return -1;
-	return 0;
-}
-
-script "uh_GetPointerSpeed" (int P1, int P2, int IncludeZ)
-{
-	SetActivator(0,P1);
-	if(P2 > 0){SetActivator(0,P2);}
-	int Speed = VectorLength(GetActorVelX(0), GetActorVelY(0));
-	if(IncludeZ){Speed = VectorLength(speed, GetActorVelZ(0));}
-	SetResultValue(Speed);
-}
-
-script "uh_FaceMovementDirection" (void)
-{
-	SetActorAngle(0,VectorAngle(GetActorVelX(0),GetActorVelY(0)));
-}
-
-script "uh_FetchPointerAngle" (int Pointer)
-{
-	SetResultValue(GetActorAngle(ACS_NamedExecuteWithResult("core_getptrtid",Pointer)) >> 8);
-}
-
-script "uh_CopyPointerAnglePitch" (int Pointer, int AnglePitch)
-{
-	int Source = ACS_NamedExecuteWithResult("core_getptrtid",Pointer);
-	int P_Pitch = GetActorPitch(Source);
-	int P_Angle = GetActorAngle(Source);
-	Switch(AnglePitch)
-	{
-		Case 0:
-			SetActorPitch(0,P_Pitch);
-			break;
-		Case 1:
-			SetActorPitch(0,P_Pitch);
-			SetActorAngle(0,P_Angle);
-			break;
-		Case 2:
-			SetActorAngle(0,P_Angle);
-			break;
-	}
-}
-
-script "uh_pointerheightfromground" (int Swap)
-{
-	Switch(Swap) {
-		Case 3:
-			SetActivator(0,AAPTR_FRIENDPLAYER);
-			break;
-		Case 2:
-			SetActivator(0,AAPTR_MASTER);
-			break;
-		Case 1:
-			SetActivator(0,AAPTR_TRACER);
-			break;
-		Case 0:
-			SetActivatorToTarget(0);
-			break;
-	}
-	SetResultValue((GetActorZ(0) - GetActorFloorZ (0)) >> 16);
-}
-
-script "uh_getplayervelocity" (int cap, int includez)//Example users Topman/Heatman
-{
-	int x, y, z, speed, result;
-	x = GetActorVelX(0);
-	y = GetActorVelY(0);
-	if(includez){z = GetActorVelZ(0);}else{z = 0;}
-	speed = FixedMul(x, x) + FixedMul(y, y) + FixedMul(z, z);
-
-	result = fixedSqrt(speed)>>16;
-	//Log(i:result);
-	if(result > cap){result = cap;}
-	SetResultValue(result);
-}
-
-script "uh_getfixedangle" (void)//BBA uses this
-{
-	SetResultValue(GetActorAngle(0));
-}
-
-script "uh_FetchVectorAngle" (int Which)
-{
-	Switch(Which){
-		Case 2:
-			SetActivator(0,AAPTR_TARGET);
-			break;
-		Case 4:
-			SetActivator(0,AAPTR_MASTER);
-			break;
-		Case 8:
-			SetActivator(0,AAPTR_TRACER);
-			break;
-	}
-	//Log(s:"GetActorVelX = ",f:GetActorVelX(0),s:" <> GetActorVelY = ",f:GetActorVelY(0));
-	SetResultValue(VectorAngle(GetActorVelX(0), GetActorVelY(0)));
-}
-
-script "uh_TellVectorAngle" (int TheAngle, int TheThrust)
-{
-Log(s:"TheAngle = ",f:TheAngle,s:" Cos >> ",f:cos(TheAngle),s:" Sin >> ",f:sin(TheAngle),s:" FixedMulC >> ",f:FixedMul(cos(TheAngle),TheThrust << 16),s:" FixedMulS >> ",f:FixedMul(sin(TheAngle),TheThrust << 16));
+script "uh_TellVectorAngle" (int the_angle, int the_thrust) {
+  Log(s:"TheAngle = ", f:the_angle, s:" Cos >> ", f:cos(the_angle), s:" Sin >> ", f:sin(the_angle), s:" FixedMulC >> ", f:FixedMul(cos(the_angle), the_thrust << 16), s:" FixedMulS >> ", f:FixedMul(sin(the_angle), the_thrust << 16));
 }
 
 
-Script "uh_GradualAngleTurn" (int currAng, int inputAng, int turnAngLimit, int angMax)
-{
-	setResultValue(Func_AngleWrapAround(currAng, inputAng, turnAngLimit, angMax));
+script "uh_GradualAngleTurn" (int curr_ang, int input_ang, int turn_ang_limit, int ang_max) {
+  setResultValue(FuncAngleWrapAround(curr_ang, input_ang, turn_ang_limit, ang_max));
 }
 
-function int Func_AngleWrapAround(int currAng, int inputAng, int turnAngLimit, int angMax)
-{
-	int angleDif = inputAng-currAng;
-	//Log(i:angleDif);
-	int retAng;
+function int FuncAngleWrapAround(int curr_ang, int input_ang, int turn_ang_limit, int ang_max) {
+  int angledif = input_ang - curr_ang;
+  // Log(i:angleDif);
+  int ret_ang;
 
-	if(angleDif>angMax/2){
-		if((angleDif-angMax)<-turnAngLimit){
-			retAng = currAng-turnAngLimit;
-			if(retAng<0){retAng+=angMax;}
-		}
-		else{retAng = inputAng;}
-	}
-	else if(angleDif<-angMax/2){
-		if((angleDif+angMax)>turnAngLimit){
-			retAng = currAng+turnAngLimit;
-			if(retAng>=angMax){retAng-=angMax;}
-		}
-		else{retAng = inputAng;}
-	}
-	else if(angleDif<-turnAngLimit){
-		retAng = currAng-turnAngLimit;
-		if(retAng<0){retAng+=angMax;}
-	}
-	else if(angleDif>turnAngLimit){
-		retAng = currAng+turnAngLimit;
-		if(retAng>=angMax){retAng-=angMax;}
-	}
-	else{retAng = inputAng;}
+  if (angledif > ang_max / 2) {
+    if ((angledif - ang_max) < -turn_ang_limit) {
+      ret_ang = curr_ang - turn_ang_limit;
+      if (ret_ang < 0) {ret_ang += ang_max;}
+    }
+    else {ret_ang = input_ang;}
+  }
+  else if (angledif < -ang_max / 2) {
+    if ((angledif + ang_max) > turn_ang_limit) {
+      ret_ang = curr_ang + turn_ang_limit;
+      if (ret_ang >= ang_max) {ret_ang -= ang_max;}
+    }
+    else {ret_ang = input_ang;}
+  }
+  else if (angledif < -turn_ang_limit) {
+    ret_ang = curr_ang - turn_ang_limit;
+    if (ret_ang < 0) {ret_ang += ang_max;}
+  }
+  else if (angledif > turn_ang_limit) {
+    ret_ang = curr_ang + turn_ang_limit;
+    if (ret_ang >= ang_max) {ret_ang -= ang_max;}
+  }
+  else {ret_ang = input_ang;}
 
-	//Log(i:currAng);
-	return retAng;
+  // Log(i:currAng);
+  return ret_ang;
 }
 
 
-script "uh_MusicOff" (void)
-{
-	LocalSetMusic("");
+script "uh_MusicOff" (void) {
+  LocalSetMusic("");
 }
 
-script "uh_GetPlayerInfo" (int prop)
-{
-	if(PlayerNumber() != -1 && PlayerInGame(PlayerNumber()) ){
-		SetResultValue(GetPlayerInfo(PlayerNumber(),prop));
-	}
-	else{
-		SetResultValue(-2);
-	}
+script "uh_GetPlayerInfo" (int prop) {
+  if (PlayerNumber() != -1 && PlayerInGame(PlayerNumber())) {
+    SetResultValue(GetPlayerInfo(PlayerNumber(), prop));
+  }
+  else {
+    SetResultValue(-2);
+  }
 }
 
 script "uh_istracerenemy" (int unholyteamcheck) {
-	int targetTID = ACS_NamedExecuteWithResult("core_getptrtid", 2);
-	//int tracerTID = ACS_NamedExecuteWithResult("core_getptrtid", 8);
-	bool result = 0;
+  int target_tid = ACS_NamedExecuteWithResult("core_getptrtid", 2);
+  // int tracerTID = ACS_NamedExecuteWithResult("core_getptrtid", 8);
+  bool result = 0;
 
-	SetActivator(0, AAPTR_TRACER);
+  SetActivator(0, AAPTR_TRACER);
 
-	if (!(ClassifyActor(0) & ACTOR_PLAYER)) {
-		//Log(s:"Not a player");
-		result = 0;
-	}
-	else if (IsTeamGame &&
-		       GetPlayerInfo(targetTID - 1000, PLAYERINFO_TEAM) == GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM)) {
-		result = 0;
-		//Log(s:"Not different teams");
-	}
-	else if (!IsTeamGame && unholyteamcheck) {
-		int tracerteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", PlayerNumber());
-		int targetteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", targetTID - 1000);
-		if (targetteam != 6 && tracerteam == targetteam) {  // PLS_EYE
-			result = 0;
-		}
-	}
-	else {
-		//Log(s:"SUCCESS");
-		result = 1;
-	}
-	SetResultValue(result);
+  if (!(ClassifyActor(0) & ACTOR_PLAYER)) {
+    // Log(s:"Not a player");
+    result = 0;
+  }
+  else if (IsTeamGame &&
+           GetPlayerInfo(target_tid - 1000, PLAYERINFO_TEAM) == GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM)) {
+    result = 0;
+    // Log(s:"Not different teams");
+  }
+  else if (!IsTeamGame && unholyteamcheck) {
+    int tracerteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", PlayerNumber());
+    int targetteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", target_tid - 1000);
+    if (targetteam != 6 && tracerteam == targetteam) {  // PLS_EYE
+      result = 0;
+    }
+  }
+  else {
+    // Log(s:"SUCCESS");
+    result = 1;
+  }
+  SetResultValue(result);
 }
 
 script "uh_istracerally" (int unholyteamcheck) {
-	int targetTID = ACS_NamedExecuteWithResult("core_getptrtid", 2);
-	bool result = 0;
+  int target_tid = ACS_NamedExecuteWithResult("core_getptrtid", 2);
+  bool result = 0;
 
-	SetActivator(0, AAPTR_TRACER);
+  SetActivator(0, AAPTR_TRACER);
 
-	if (!(ClassifyActor(0) & ACTOR_PLAYER)) {
-		result = 0;
-	}
-	else if (IsTeamGame &&
-		       GetPlayerInfo(targetTID - 1000, PLAYERINFO_TEAM) != GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM)) {
-		result = 0;
-	}
-	else if (!IsTeamGame && unholyteamcheck) {
-		int tracerteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", PlayerNumber());
-		int targetteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", targetTID - 1000);
-		if (targetteam != 6 && tracerteam != targetteam) {
-			result = 0;
-		}
-	}
-	else {
-		result = 1;
-	}
-	SetResultValue(result);
+  if (!(ClassifyActor(0) & ACTOR_PLAYER)) {
+    result = 0;
+  }
+  else if (IsTeamGame &&
+           GetPlayerInfo(target_tid - 1000, PLAYERINFO_TEAM) != GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM)) {
+    result = 0;
+  }
+  else if (!IsTeamGame && unholyteamcheck) {
+    int tracerteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", PlayerNumber());
+    int targetteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", target_tid - 1000);
+    if (targetteam != 6 && tracerteam != targetteam) {
+      result = 0;
+    }
+  }
+  else {
+    result = 1;
+  }
+  SetResultValue(result);
 }
 
 script "uh_istracerplayer" (void) {
-	bool result = 0;
-	SetActivator(0, AAPTR_TRACER);
+  bool result = 0;
+  SetActivator(0, AAPTR_TRACER);
 
-	if (ClassifyActor(0) & ACTOR_PLAYER) {
-		if (PlayerNumber() == -1 || !PlayerInGame(PlayerNumber())) {
-			result = 0;
-		}
-		else {
-			result = 1;
-		}
-	}
-	SetResultValue(result);
+  if (ClassifyActor(0) & ACTOR_PLAYER) {
+    if (PlayerNumber() == -1 || !PlayerInGame(PlayerNumber())) {
+      result = 0;
+    }
+    else {
+      result = 1;
+    }
+  }
+  SetResultValue(result);
 }
 
-script "uh_IsTracerAllyOrEnemy" (void)
-{
-	int targetTID = ACS_NamedExecuteWithResult("core_getptrtid",2);
-	bool result = 0;
+script "uh_IsTracerAllyOrEnemy" (void) {
+  int target_tid = ACS_NamedExecuteWithResult("core_getptrtid", 2);
+  bool result = 0;
 
-	SetActivator(0, AAPTR_TRACER);
+  SetActivator(0, AAPTR_TRACER);
 
-	if(!(ClassifyActor(0) & ACTOR_PLAYER)){//Not a player
-		result = 0;
-	}
-	else{
-		result = -1;//IsFoe
-		if(ACS_NamedExecuteWithResult("core_checkmode",1)==1){//IsTeamGame
-			if(GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM) == GetPlayerInfo(targetTID - 1000, PLAYERINFO_TEAM)){
-				//tracerTeam == targetTeam
-				result = 1;//IsAlly!
-			}
-		}
-		else if(CheckInventory("PowerProtectSurvivor")){
-			result = 1;//IsAlly?
-		}
-	}
-//	Log(s:"uh_IsTracerAllyOrEnemy == ",i:result);
-	SetResultValue(result);
+  if (!(ClassifyActor(0) & ACTOR_PLAYER)) {  // Not a player
+    result = 0;
+  }
+  else {
+    result = -1;  // IsFoe
+    if (ACS_NamedExecuteWithResult("core_checkmode", 1) == 1) {  // IsTeamGame
+      if (GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM) == GetPlayerInfo(target_tid - 1000, PLAYERINFO_TEAM)) {
+        // tracerTeam == targetTeam
+        result = 1;  // IsAlly!
+      }
+    }
+    else if (CheckInventory("PowerProtectSurvivor")) {
+      result = 1;  // IsAlly?
+    }
+  }
+  // Log(s:"uh_IsTracerAllyOrEnemy == ",i:result);
+  SetResultValue(result);
 }
 
-script "uh_IsPointerClient" (int Pointer, int PlayerNum, int ChaseCam) CLIENTSIDE
-{
-	if(Pointer>0){
-		SetActivator(0,Pointer);
-		PlayerNum = PlayerNumber();
-	}
-//	Log(i:consoleplayernumber(),s:" = Console -uh_IsPointerClient- Player =",i:PlayerNum);
-	if(ConsolePlayerNumber() == PlayerNum){
-		if(ChaseCam)
-			SetResultValue(!GetPlayerChasecam(PlayerNum));
-		else
-			SetResultValue(1);
-	}
-	else{
-		SetResultValue(0);
-	}
+script "uh_IsPointerClient" (int pointer, int player_num, int chase_cam) CLIENTSIDE {
+  if (pointer > 0) {
+    SetActivator(0, pointer);
+    player_num = PlayerNumber();
+  }
+  // Log(i:consoleplayernumber(),s:" = Console -uh_IsPointerClient- Player =",i:PlayerNum);
+  if (ConsolePlayerNumber() == player_num) {
+    if (chase_cam)
+      SetResultValue(!GetPlayerChasecam(player_num));
+    else
+      SetResultValue(1);
+  }
+  else {
+    SetResultValue(0);
+  }
 }
 
-script "uh_SetPtrCoordToArgs" (int Pointer)
-{
-	int tid = ACS_NamedExecuteWithResult("core_getptrtid",Pointer);
+script "uh_SetPtrCoordToArgs" (int pointer) {
+  int tid = ACS_NamedExecuteWithResult("core_getptrtid", pointer);
 
-	int x = 80.0;
-	int y = 0.0;
-	int z = 33.0;
+  int x = 80.0;
+  int y = 0.0;
+  int z = 33.0;
 
-	if(tid != 0){
-		x = (GetActorX(0) - GetActorX(tid)) >> 16;
-		y = (GetActorY(0) - GetActorY(tid)) >> 16;
-		z = (GetActorZ(0) - GetActorZ(tid)) >> 16;
-	}
+  if (tid != 0) {
+    x = (GetActorX(0) - GetActorX(tid)) >> 16;
+    y = (GetActorY(0) - GetActorY(tid)) >> 16;
+    z = (GetActorZ(0) - GetActorZ(tid)) >> 16;
+  }
 
-	SetThingSpecial(0,0,x,y,z);
+  SetThingSpecial(0, 0, x, y, z);
 }
 
-script "uh_WarpToPlayerCenter" (int WarpTID)
-{
-	if(ClassifyActor(WarpTID) & ACTOR_PLAYER)
-		Warp(WarpTID,0,0,GetActorProperty(WarpTID,APROP_Height/2),0,WARPF_NOCHECKPOSITION);
+script "uh_WarpToPlayerCenter" (int warp_tid) {
+  if (ClassifyActor(warp_tid) & ACTOR_PLAYER)
+    Warp(warp_tid, 0, 0, GetActorProperty(warp_tid, APROP_Height / 2), 0, WARPF_NOCHECKPOSITION);
 }
 
 script "uh_SetClassCustomState" (int statenum) {
-	if (GetActorProperty(0, APROP_Health) <= 0 || CheckInventory("IsDead")) {
-		SetResultValue(-1);
-		terminate;
-	}
-	SetResultValue(SetActorState(0, StrParam(s:"CustomState", i:statenum), true));
+  if (GetActorProperty(0, APROP_Health) <= 0 || CheckInventory("IsDead")) {
+    SetResultValue(-1);
+    terminate;
+  }
+  SetResultValue(SetActorState(0, StrParam(s:"CustomState", i:statenum), true));
 }
 
 script "rz_CheckPointerFooting" (int pointer, int thruplayer) {
-	SetActivator(0, pointer);
-	if (!thruplayer) {
-		SetResultValue(ACS_NamedExecuteWithResult("core_CheckFooting"));
-	} else {
-		SetResultValue(ACS_NamedExecuteWithResult("core_CheckFooting_ThruPlayer"));
-	}
+  SetActivator(0, pointer);
+  if (!thruplayer) {
+    SetResultValue(ACS_NamedExecuteWithResult("core_CheckFooting"));
+  } else {
+    SetResultValue(ACS_NamedExecuteWithResult("core_CheckFooting_ThruPlayer"));
+  }
 }
 
 #define RPT_INCLUDESELF 1
 script "rz_RandomPlayerTID" (int flags, int retrycount) {
-	int tid = 0;
-	int callerTID = ActivatorTID();
-	for (int i = 0; i < retrycount; i++) {
-		tid = random(1000, 1000 + ServerMAX);
-		if (!(flags & RPT_INCLUDESELF) && tid == callerTID) {
-			continue;
-		}
-		SetActivator(tid);
-		if (PlayerNumber() == -1 || CheckInventory("IsDead") ||
-			  !PlayerInGame(PlayerNumber()) || CheckInventory("IsAFakeBoss")) {
-			continue;
-		}
-		SetResultValue(tid);
-		terminate;
-	}
-	SetResultValue(-1);
+  int tid = 0;
+  int caller_tid = ActivatorTID();
+  for (int i = 0; i < retrycount; i++) {
+    tid = random(1000, 1000 + ServerMAX);
+    if (!(flags & RPT_INCLUDESELF) && tid == caller_tid) {
+      continue;
+    }
+    SetActivator(tid);
+    if (PlayerNumber() == -1 || CheckInventory("IsDead") ||
+        !PlayerInGame(PlayerNumber()) || CheckInventory("IsAFakeBoss")) {
+      continue;
+    }
+    SetResultValue(tid);
+    terminate;
+  }
+  SetResultValue(-1);
 }
 
-script "uh_shinyclassmorpher" (int ClassNum)
-{
-	for ( int i = 0; i <= 7; i++ ) {
-		if(i!=3)
-			StopSound(0,i);
-	}
-	str originalClass = GetActorClass(0);
-	str shinyClass = StrParam(s: originalClass, s: "Shiny");
+script "uh_shinyclassmorpher" (int class_num) {
+  for (int i = 0; i <= 7; i++) {
+    if (i != 3)
+      StopSound(0, i);
+  }
+  str original_class = GetActorClass(0);
+  str shiny_class = StrParam(s:original_class, s:"Shiny");
 
-	if(ACS_NamedExecuteWithResult("core_checkmode", 0)==2)//Is it T/LMS ?
-		GiveInventory("UH_MorphLMSFix_P",1);
+  if (ACS_NamedExecuteWithResult("core_checkmode", 0) == 2)  // Is it T/LMS ?
+    GiveInventory("UH_MorphLMSFix_P", 1);
 
-	ACS_NamedExecuteWithResult("uh_MorphPreReset");
-	delay(1);
-	if(MorphActor(0, shinyClass, "", 0x7ffffffc, MRF_FULLHEALTH|MRF_WHENINVULNERABLE|MRF_LOSEACTUALWEAPON|MRF_NEWTIDBEHAVIOUR, "ShinySparkleFlash", "FlashM_GenesisSparkleFX")){
-		GiveInventory("RemoveWeaponsOfMortals_P", 1);
-		shinyClassMultiWeaponGive();
-		ACS_NamedExecuteWithResult("uh_MorphPostReset", 1);
-		if (!StrICmp(GetActorClass(0), "EdenShiny")) {
-			ACS_NamedExecuteWithResult("rz_EdenShinyMorphInit");
-		}
-		GiveInventory("S_ClassSpawn_P",1);
-		TakeInventory("MorphedFlag",1);
-	}
-	else{
-		GiveInventory("UH_MorphLMSFixAbort_P",1);
-		GiveInventory("S_ClassSpawnNo_P",1);
-	}
+  ACS_NamedExecuteWithResult("uh_MorphPreReset");
+  delay(1);
+  if (MorphActor(0, shiny_class, "", 0x7ffffffc, MRF_FULLHEALTH | MRF_WHENINVULNERABLE | MRF_LOSEACTUALWEAPON | MRF_NEWTIDBEHAVIOUR, "ShinySparkleFlash", "FlashM_GenesisSparkleFX")) {
+    GiveInventory("RemoveWeaponsOfMortals_P", 1);
+    ShinyClassMultiWeaponGive();
+    ACS_NamedExecuteWithResult("uh_MorphPostReset", 1);
+    if (!StrICmp(GetActorClass(0), "EdenShiny")) {
+      ACS_NamedExecuteWithResult("rz_EdenShinyMorphInit");
+    }
+    GiveInventory("S_ClassSpawn_P", 1);
+    TakeInventory("MorphedFlag", 1);
+  }
+  else {
+    GiveInventory("UH_MorphLMSFixAbort_P", 1);
+    GiveInventory("S_ClassSpawnNo_P", 1);
+  }
 }
 
-function void shinyClassMultiWeaponGive(void) {
-	str className = GetActorClass(0);
-	if (!strICmp(className, "QwantShiny")) {
-		GiveInventory("IsQwantSFlag", 1);
-	}
-	if (!strICmp(className, "NegaManShiny")) {
-		TakeInventory("IsNegaManFlag", 1);
-		GiveInventory("IsNegaManSFlag", 1);
-	}
-	if (!strICmp(className, "DecoyBotShiny")) {
-		TakeInventory("IsDecoyBotFlag", 1);
-		GiveInventory("IsDecoyBotSFlag", 1);
-		ACS_NamedExecuteWithResult("uh_DecoyBotShinyMorphSetup");
-	}
-	if (!strICmp(className, "ArcanistShiny")) {
-		GiveInventory("ArcanistShiny_W2", 1);
-		GiveInventory("ArcanistShiny_W3", 1);
-		GiveInventory("ArcanistShiny_W4", 1);
-	}
-	if (!strICmp(className, "RaiderShiny")) {
-		GiveInventory("RaiderShiny_W2", 1);
-	}
-	if (!strICmp(className, "TidalManiacShiny")) {
-		GiveInventory("TidalManiacShiny_W2", 1);
-	}
-	if (!strICmp(className, "KateShiny")) {
-		GiveInventory("KateShiny_W2", 1);
-	}
+function void ShinyClassMultiWeaponGive(void) {
+  str classname = GetActorClass(0);
+  if (!strICmp(classname, "QwantShiny")) {
+    GiveInventory("IsQwantSFlag", 1);
+  }
+  if (!strICmp(classname, "NegaManShiny")) {
+    TakeInventory("IsNegaManFlag", 1);
+    GiveInventory("IsNegaManSFlag", 1);
+  }
+  if (!strICmp(classname, "DecoyBotShiny")) {
+    TakeInventory("IsDecoyBotFlag", 1);
+    GiveInventory("IsDecoyBotSFlag", 1);
+    ACS_NamedExecuteWithResult("uh_DecoyBotShinyMorphSetup");
+  }
+  if (!strICmp(classname, "ArcanistShiny")) {
+    GiveInventory("ArcanistShiny_W2", 1);
+    GiveInventory("ArcanistShiny_W3", 1);
+    GiveInventory("ArcanistShiny_W4", 1);
+  }
+  if (!strICmp(classname, "RaiderShiny")) {
+    GiveInventory("RaiderShiny_W2", 1);
+  }
+  if (!strICmp(classname, "TidalManiacShiny")) {
+    GiveInventory("TidalManiacShiny_W2", 1);
+  }
+  if (!strICmp(classname, "KateShiny")) {
+    GiveInventory("KateShiny_W2", 1);
+  }
 }
 
-script "UH_AntiDamageHP" (int swap)
-{
-	if (swap) {  // Adjust AntiDamageHealth to match current HP
-		SetInventory("AntiDamageHealth", max(PlayerHealth(), 0));
-	} else {  // Reset player HP based on AntiDamageHealth
-		SetActorProperty(0, APROP_HEALTH, CheckInventory("AntiDamageHealth"));
-	}
+script "UH_AntiDamageHP" (int swap_var) {
+  if (swap_var) {  // Adjust AntiDamageHealth to match current HP
+    SetInventory("AntiDamageHealth", Max(PlayerHealth(), 0));
+  } else {  // Reset player HP based on AntiDamageHealth
+    SetActorProperty(0, APROP_HEALTH, CheckInventory("AntiDamageHealth"));
+  }
 }
 
 // Query
-#define UHEALTH_GET_INV			0   // CheckInventory("Health")
+#define UHEALTH_GET_INV			0  // CheckInventory("Health")
 #define UHEALTH_GET_MAX			-1  // SpawnHealth
 #define UHEALTH_GET_CURRENT		1
-#define UHEALTH_IS_FULL			2   // 1=full, 0=can gain
+#define UHEALTH_IS_FULL			2  // 1=full, 0=can gain
 
 // Modify
-#define UHEALTH_HEAL			6   // Heal up to max; returns 0 if dead/full, 1 if healed
-#define UHEALTH_HEAL_EXPAND_MAX	7   // 750/1000 > +500 > 1250/1500; always returns 1
+#define UHEALTH_HEAL			6  // Heal up to max; returns 0 if dead/full, 1 if healed
+#define UHEALTH_HEAL_EXPAND_MAX	7  // 750/1000 > +500 > 1250/1500; always returns 1
 #define UHEALTH_HEAL_ADD_MAX	-7  // 750/1000 > +500 > 1250/1250; always returns 1
 
 // Damage
 #define UHEALTH_DAMAGE_BURN		9
 
-script "uh_Health" (int Swap, int HPBoost, int pointer) //Health related script
+script "uh_Health" (int swap_var, int hp_boost, int pointer)  // Health related script
 {
-	//Log(s:"uh_Health called with...",i:Swap,s:" and ",i:HPBoost);
-	if (pointer > 0) {
-		SetActivator(0, pointer);
-	}
-	int h = max(PlayerHealth(),0);
-	int s_h = GetActorProperty(0, APROP_SPAWNHEALTH);
-	switch(Swap)
-	{
-		Default:
-			Log(s:"Invalid Swap Number for script uh_Health >> ",i:Swap);
-			break;
-		Case UHEALTH_GET_INV://Return Health
-			SetResultValue(CheckInventory("Health"));
-			break;
-		Case UHEALTH_GET_MAX://Returns MaxHp
-			SetResultValue(s_h);
-			break;
-		Case UHEALTH_GET_CURRENT://Return Health
-			SetResultValue(h);
-			break;
-		Case UHEALTH_IS_FULL://1=full, 0=can gain
-			SetResultValue(h >= s_h);
-			break;
+  // Log(s:"uh_Health called with...",i:Swap,s:" and ",i:HPBoost);
+  if (pointer > 0) {
+    SetActivator(0, pointer);
+  }
+  int h = Max(PlayerHealth(), 0);
+  int s_h = GetActorProperty(0, APROP_SPAWNHEALTH);
+  switch (swap_var) {
+    default:
+      Log(s:"Invalid Swap Number for script uh_Health >> ", i:swap_var);
+      break;
+    case UHEALTH_GET_INV:  // Return Health
+      SetResultValue(CheckInventory("Health"));
+      break;
+    case UHEALTH_GET_MAX:  // Returns MaxHp
+      SetResultValue(s_h);
+      break;
+    case UHEALTH_GET_CURRENT:  // Return Health
+      SetResultValue(h);
+      break;
+    case UHEALTH_IS_FULL:  // 1=full, 0=can gain
+      SetResultValue(h >= s_h);
+      break;
 
-//HealThing(HPBoost,s_h);
-		Case UHEALTH_HEAL:
-		Case UHEALTH_HEAL_ADD_MAX:
-		Case UHEALTH_HEAL_EXPAND_MAX:
-			if(h <= 0){ SetResultValue(0); break; }
-			if(Swap == UHEALTH_HEAL && h >= s_h){ SetResultValue(0); break; }
+      // HealThing(HPBoost,s_h);
+    case UHEALTH_HEAL:
+    case UHEALTH_HEAL_ADD_MAX:
+    case UHEALTH_HEAL_EXPAND_MAX:
+      if (h <= 0) {SetResultValue(0); break;}
+      if (swap_var == UHEALTH_HEAL && h >= s_h) {SetResultValue(0); break;}
 
-			if(Swap == UHEALTH_HEAL_ADD_MAX){
-				s_h = min(s_h + HPBoost, MAX_HEALTH);
-				SetActorProperty(0, APROP_SPAWNHEALTH, s_h);
-			}
-			else if(Swap == UHEALTH_HEAL_EXPAND_MAX){
-				int HPAdd = min(h + HPBoost, MAX_HEALTH);
-				if(HPAdd > s_h){
-					s_h = HPAdd;
-					SetActorProperty(0, APROP_SPAWNHEALTH, s_h);
-				}
-			}
+      if (swap_var == UHEALTH_HEAL_ADD_MAX) {
+        s_h = Min(s_h + hp_boost, MAX_HEALTH);
+        SetActorProperty(0, APROP_SPAWNHEALTH, s_h);
+      }
+      else if (swap_var == UHEALTH_HEAL_EXPAND_MAX) {
+        int hp_add = Min(h + hp_boost, MAX_HEALTH);
+        if (hp_add > s_h) {
+          s_h = hp_add;
+          SetActorProperty(0, APROP_SPAWNHEALTH, s_h);
+        }
+      }
 
-			HealThing(HPBoost,s_h);
-			if(CheckInventory("AntiDamageTime") != 300){//Check if AntiDamage is on
-				SetInventory("AntiDamageHealth",PlayerHealth());
-			}
-			SetResultValue(1);
-			break;
+      HealThing(hp_boost, s_h);
+      if (CheckInventory("AntiDamageTime") != 300) {  // Check if AntiDamage is on
+        SetInventory("AntiDamageHealth", PlayerHealth());
+      }
+      SetResultValue(1);
+      break;
 
-		Case UHEALTH_DAMAGE_BURN://Burning damage
-			if (h >= HPBoost+1){
-				SetActorProperty(0, APROP_HEALTH, (h-HPBoost));
-				break;
-			}
-			SetResultValue(2);
-			break;
-	}
+    case UHEALTH_DAMAGE_BURN:  // Burning damage
+      if (h >= hp_boost + 1) {
+        SetActorProperty(0, APROP_HEALTH, (h - hp_boost));
+        break;
+      }
+      SetResultValue(2);
+      break;
+  }
 }
 
-Script "UB_GetPointerHealth" (int Pointer, int Which)
-{
-	SetActivator(0,Pointer);
-	Switch(Which)
-	{
-		Default:
-			Log(s:"Invalid Number for script GetPointerHealth >> ",i:Which);
-			break;
-		Case 0:
-			SetResultValue(GetActorProperty(0,APROP_HEALTH));
-			break;
-		Case 1:
-			SetResultValue(GetActorProperty(0,APROP_SPAWNHEALTH));
-			break;
-		Case 2://Percent
-			int CurrHP = GetActorProperty(0,APROP_HEALTH);
-			int SpawnHP = GetActorProperty(0,APROP_SPAWNHEALTH);
-			if(CurrHP > SpawnHP)
-				CurrHP = SpawnHP;
-			else if(CurrHP < 0)
-				CurrHP = 0;
-			if(SpawnHP == 0){
-				SpawnHP = 1;
-				//Log(s:"Online is being stupid again");
-			}
-			SetResultValue(CurrHP*100/SpawnHP);
-			break;
-	}
+script "UB_GetPointerHealth" (int pointer, int which) {
+  SetActivator(0, pointer);
+  switch (which) {
+    default:
+      Log(s:"Invalid Number for script GetPointerHealth >> ", i:which);
+      break;
+    case 0:
+      SetResultValue(GetActorProperty(0, APROP_HEALTH));
+      break;
+    case 1:
+      SetResultValue(GetActorProperty(0, APROP_SPAWNHEALTH));
+      break;
+    case 2:  // Percent
+      int currhp = GetActorProperty(0, APROP_HEALTH);
+      int spawn_hp = GetActorProperty(0, APROP_SPAWNHEALTH);
+      if (currhp > spawn_hp)
+        currhp = spawn_hp;
+      else if (currhp < 0)
+        currhp = 0;
+      if (spawn_hp == 0) {
+        spawn_hp = 1;
+        // Log(s:"Online is being stupid again");
+      }
+      SetResultValue(currhp * 100 / spawn_hp);
+      break;
+  }
 }
 
 // Morph resets APROP_Gravity; core_commonwater only re-applies on feet/eyes transitions.
-script "uh_IsUnderWaterGravity" (void)
-{
-	if(PlayerNumber() == -1)
-		terminate;
-	if(CheckInventory("IsUnderWater") || CheckInventory("HasFeetInWater")){
-		ACS_NamedExecuteWithResult("core_watergravity", 0);
-		ACS_NamedExecuteAlways("core_watergravity", 0, 1);
-	}
+script "uh_IsUnderWaterGravity" (void) {
+  if (PlayerNumber() == -1)
+    terminate;
+  if (CheckInventory("IsUnderWater") || CheckInventory("HasFeetInWater")) {
+    ACS_NamedExecuteWithResult("core_watergravity", 0);
+    ACS_NamedExecuteAlways("core_watergravity", 0, 1);
+  }
 }
 
 // Rebuild DefaultProperties from current actor (Bearer copy of PUAPROP; avoids core_defineaproppowers spawn-invuln).
-function void DefineDefaultProperties(void)
-{
-	int p = PlayerNumber();
-	if(p < 0)
-		return;
-	for(int i = 0; i < MAX_PROPS; i++){
-		int prop = getPropertyFromIndex(i);
-		if(prop == CAPROP_AirJumpZ){
-			DefaultProperties[p][i] = (CheckInventory("AirJumpZ") * 1.0) + FixedDiv(CheckInventory("AirJumpZDecimal") * 1.0, 10000.0);
-			if(DefaultProperties[p][i] == 0.0)
-				DefaultProperties[p][i] = GetActorProperty(0, APROP_JumpZ);
-			ACS_NamedExecuteWithResult("core_SetCustomActorProperty", 0, CAPROP_AirJumpZ, DefaultProperties[p][i]);
-		}
-		else if(prop == CAPROP_WallJumpZ){
-			DefaultProperties[p][i] = (CheckInventory("WallJumpZ") * 1.0) + FixedDiv(CheckInventory("WallJumpZDecimal") * 1.0, 10000.0);
-			if(DefaultProperties[p][i] == 0.0)
-				DefaultProperties[p][i] = GetActorProperty(0, APROP_JumpZ);
-			ACS_NamedExecuteWithResult("core_SetCustomActorProperty", 0, CAPROP_WallJumpZ, DefaultProperties[p][i]);
-		}
-		else
-			DefaultProperties[p][i] = GetActorProperty(0, prop);
-	}
+function void DefineDefaultProperties(void) {
+  int p = PlayerNumber();
+  if (p < 0)
+    return;
+  for (int i = 0; i < MAX_PROPS; i++) {
+    int prop = getPropertyFromIndex(i);
+    if (prop == CAPROP_AirJumpZ) {
+      default_properties[p][i] = (CheckInventory("AirJumpZ") * 1.0) + FixedDiv(CheckInventory("AirJumpZDecimal") * 1.0, 10000.0);
+      if (default_properties[p][i] == 0.0)
+        default_properties[p][i] = GetActorProperty(0, APROP_JumpZ);
+      ACS_NamedExecuteWithResult("core_SetCustomActorProperty", 0, CAPROP_AirJumpZ, default_properties[p][i]);
+    }
+    else if (prop == CAPROP_WallJumpZ) {
+      default_properties[p][i] = (CheckInventory("WallJumpZ") * 1.0) + FixedDiv(CheckInventory("WallJumpZDecimal") * 1.0, 10000.0);
+      if (default_properties[p][i] == 0.0)
+        default_properties[p][i] = GetActorProperty(0, APROP_JumpZ);
+      ACS_NamedExecuteWithResult("core_SetCustomActorProperty", 0, CAPROP_WallJumpZ, default_properties[p][i]);
+    }
+    else
+      default_properties[p][i] = GetActorProperty(0, prop);
+  }
 }
 
 // Pre-MorphActor: flag sweeps + strip jump-mod inventory (Bearer CTF morph).
-script "uh_MorphPreReset" (void)
-{
-	if(PlayerNumber() == -1)
-		terminate;
-	ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
-	GiveInventory("UH_MorphFlagReset_P", 1);
-	GiveInventory("Core_MorphFlagReset_P", 1);
-	GiveInventory("Core_MorphFlagReset2_P", 1);
-	TakeInventory("AirJumpZ", 99999);
-	TakeInventory("AirJumpZDecimal", 99999);
-	TakeInventory("WallJumpZ", 99999);
-	TakeInventory("WallJumpZDecimal", 99999);
+script "uh_MorphPreReset" (void) {
+  if (PlayerNumber() == -1)
+    terminate;
+  ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
+  GiveInventory("UH_MorphFlagReset_P", 1);
+  GiveInventory("Core_MorphFlagReset_P", 1);
+  GiveInventory("Core_MorphFlagReset2_P", 1);
+  TakeInventory("AirJumpZ", 99999);
+  TakeInventory("AirJumpZDecimal", 99999);
+  TakeInventory("WallJumpZ", 99999);
+  TakeInventory("WallJumpZDecimal", 99999);
 }
 
 // Post-MorphActor: redefine defaults → strip PowerAprop → FixMorph → water gravity.
 // arg0 force: 1 = always run; 0 = skip if UH_MorphPipelineDone_F (PowerMorph / Ready re-entry).
-script "uh_MorphPostReset" (int force)
-{
-	if(PlayerNumber() == -1)
-		terminate;
-	if(!force && CheckInventory("UH_MorphPipelineDone_F"))
-		terminate;
+script "uh_MorphPostReset" (int force) {
+  if (PlayerNumber() == -1)
+    terminate;
+  if (!force && CheckInventory("UH_MorphPipelineDone_F"))
+    terminate;
 
-	ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
-	DefineDefaultProperties();
-	GiveInventory("UH_MorphPowerPropReset_P", 1);
-	// No Delay: ACS_NamedExecuteWithResult returns at Delay and leaves the rest async.
-	GiveInventory("UH_FixMorphPower_P", 1);
-	ACS_NamedExecuteAlways("uh_IsUnderWaterGravity", 0);
-	GiveInventory("UH_MorphPipelineDone_F", 1);
+  ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
+  DefineDefaultProperties();
+  GiveInventory("UH_MorphPowerPropReset_P", 1);
+  // No Delay: ACS_NamedExecuteWithResult returns at Delay and leaves the rest async.
+  GiveInventory("UH_FixMorphPower_P", 1);
+  ACS_NamedExecuteAlways("uh_IsUnderWaterGravity", 0);
+  GiveInventory("UH_MorphPipelineDone_F", 1);
 }
 
-script "uh_MorphDemorphReset" (void)
-{
-	if(PlayerNumber() == -1)
-		terminate;
-	ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
-	GiveInventory("UH_UnMorphSuperFlagReset_P", 1);
-	TakeInventory("BAWS", 1);
-	TakeInventory("MorphedFlag", 1);
-	TakeInventory("IsAnEye", 1);
-	TakeInventory("TruePowerItemFlag", 1);
-	TakeInventory("UH_MorphPipelineDone_F", 1);
-	DefineDefaultProperties();
-	GiveInventory("UH_MorphPowerPropReset_P", 1);
-	GiveInventory("UH_FixMorphPower_P", 1);
-	ACS_NamedExecuteAlways("uh_IsUnderWaterGravity", 0);
+script "uh_MorphDemorphReset" (void) {
+  if (PlayerNumber() == -1)
+    terminate;
+  ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
+  GiveInventory("UH_UnMorphSuperFlagReset_P", 1);
+  TakeInventory("BAWS", 1);
+  TakeInventory("MorphedFlag", 1);
+  TakeInventory("IsAnEye", 1);
+  TakeInventory("TruePowerItemFlag", 1);
+  TakeInventory("UH_MorphPipelineDone_F", 1);
+  DefineDefaultProperties();
+  GiveInventory("UH_MorphPowerPropReset_P", 1);
+  GiveInventory("UH_FixMorphPower_P", 1);
+  ACS_NamedExecuteAlways("uh_IsUnderWaterGravity", 0);
 }
 
-function void SetInventory(str item, int amount)
-{
-	int diff = amount - CheckInventory(item);
-	if (diff > 0)
-		GiveInventory(item, diff);
-	else if (diff < 0)
-		TakeInventory(item, -diff);
+function void SetInventory(str item, int amount) {
+  int diff = amount - CheckInventory(item);
+  if (diff > 0)
+    GiveInventory(item, diff);
+  else if (diff < 0)
+    TakeInventory(item, -diff);
 }
 
-function int min(int a, int b)
-{
-	if (a < b)
-		return a;
-	return b;
+function int Min(int a, int b) {
+  if (a < b)
+    return a;
+  return b;
 }
 
-function int max(int a, int b)
-{
-	if (a > b)
-		return a;
-	return b;
+function int Max(int a, int b) {
+  if (a > b)
+    return a;
+  return b;
 }
 
 // Blizzard Attack hail weather (singleton controller + per-player snow follows).
 #define HAILWEATHER_TID -8690
 #define HAILWEATHER_TICS 350
 
-function void AttachHailSnowFollows(void)
-{
-	int p;
-	for (p = 0; p < ServerMAX; p++) {
-		if (!PlayerInGame(p)) {
-			continue;
-		}
-		int ptid = p + 1000;
-		if (CheckActorInventory(ptid, "IsDead")) {
-			continue;
-		}
-		if (CheckActorInventory(ptid, "UH_HailSnowFollow_F")) {
-			continue;
-		}
-		int u = UniqueTID();
-		if (SpawnForced("UH_HailSnowFollow", GetActorX(ptid), GetActorY(ptid), GetActorZ(ptid), u, 0)) {
-			SetActivator(u);
-			SetPointer(AAPTR_TARGET, ptid);
-			GiveActorInventory(ptid, "UH_HailSnowFollow_F", 1);
-		}
-	}
+function void AttachHailSnowFollows(void) {
+  int p;
+  for (p = 0; p < ServerMAX; p++) {
+    if (!PlayerInGame(p)) {
+      continue;
+    }
+    int ptid = p + 1000;
+    if (CheckActorInventory(ptid, "IsDead")) {
+      continue;
+    }
+    if (CheckActorInventory(ptid, "UH_HailSnowFollow_F")) {
+      continue;
+    }
+    int u = UniqueTID();
+    if (SpawnForced("UH_HailSnowFollow", GetActorX(ptid), GetActorY(ptid), GetActorZ(ptid), u, 0)) {
+      SetActivator(u);
+      SetPointer(AAPTR_TARGET, ptid);
+      GiveActorInventory(ptid, "UH_HailSnowFollow_F", 1);
+    }
+  }
 }
 
-script "rz_SetHailWeather" (void)
-{
-	int firer = ActivatorTID();
-	if (firer == 0) {
-		firer = 1000 + PlayerNumber();
-	}
+script "rz_SetHailWeather" (void) {
+  int firer = ActivatorTID();
+  if (firer == 0) {
+    firer = 1000 + PlayerNumber();
+  }
 
-	if (ThingCount(T_NONE, HAILWEATHER_TID) == 0) {
-		SpawnForced("UH_HailWeatherCtrl", GetActorX(firer), GetActorY(firer), GetActorZ(firer), HAILWEATHER_TID, 0);
-	} else {
-		SetUserVariable(HAILWEATHER_TID, "user_HailTics", HAILWEATHER_TICS);
-	}
+  if (ThingCount(T_NONE, HAILWEATHER_TID) == 0) {
+    SpawnForced("UH_HailWeatherCtrl", GetActorX(firer), GetActorY(firer), GetActorZ(firer), HAILWEATHER_TID, 0);
+  } else {
+    SetUserVariable(HAILWEATHER_TID, "user_HailTics", HAILWEATHER_TICS);
+  }
 
-	AttachHailSnowFollows();
-	SetActivator(firer);
+  AttachHailSnowFollows();
+  SetActivator(firer);
 }
 
-script "rz_IsHailWeather" (void)
-{
-	SetResultValue(ThingCountName("UH_HailWeatherCtrl", 0) > 0);
+script "rz_IsHailWeather" (void) {
+  SetResultValue(ThingCountName("UH_HailWeatherCtrl", 0) > 0);
 }
 
 script "rz_ReverseGravityEveryoneExceptTid" (int tid) {
-	for (int i = 1000; i < 1064; i++) {
-		if (PlayerInGame(i - 1000) && i != tid) {
-			GiveActorInventory(i, "ReverseMyGravity_P", 1);
-		}
-	}
+  for (int i = 1000; i < 1064; i++) {
+    if (PlayerInGame(i - 1000) && i != tid) {
+      GiveActorInventory(i, "ReverseMyGravity_P", 1);
+    }
+  }
 }
 
 // ProjSpawnFunc hook: invert missile gravity when the firer is gravity-flipped.
 // Eden tear passives on spawn (Ipecac / Strange Attractor / Godhead).
 script "rz_spawnfuncs" OPEN {
-	AddSpawnFunc(DTADD_SFT_PROJ, "rz_projflipgrav");
-	AddSpawnFunc(DTADD_SFT_PROJ, "rz_EdenTearPassiveSpawn");
+  AddSpawnFunc(DTADD_SFT_PROJ, "rz_projflipgrav");
+  AddSpawnFunc(DTADD_SFT_PROJ, "rz_EdenTearPassiveSpawn");
 }
 
 script "rz_projflipgrav" (void) {
-	if (CheckFlag(0, "NOGRAVITY"))
-		terminate;
-	int grav = GetActorProperty(0, APROP_Gravity);
-	if (grav == 0)
-		terminate;
-	int owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
-	if (owner == 0)
-		owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
-	if (owner == 0)
-		terminate;
-	if (!(CheckActorInventory(owner, "CeilingFlag") ||
-	      GetActorProperty(owner, APROP_Gravity) < 0))
-		terminate;
-	SetActorProperty(0, APROP_Gravity, -grav);
+  if (CheckFlag(0, "NOGRAVITY"))
+    terminate;
+  int grav = GetActorProperty(0, APROP_Gravity);
+  if (grav == 0)
+    terminate;
+  int owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  if (owner == 0)
+    owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  if (owner == 0)
+    terminate;
+  if (!(CheckActorInventory(owner, "CeilingFlag") ||
+        GetActorProperty(owner, APROP_Gravity) < 0))
+    terminate;
+  SetActorProperty(0, APROP_Gravity, -grav);
 }
 
 script "rz_EdenTearPassiveSpawn" (void) {
-	int owner;
-	int brimstone;
-	int fetus;
-	brimstone = CheckActorClass(0, "EdenBrimstone") ||
-	            CheckActorClass(0, "EdenBrimstoneDelayed");
-	fetus = CheckActorClass(0, "EdenFetusTear") ||
-	        CheckActorClass(0, "EdenBrimstoneDelayedFetus");
-	if (!CheckActorClass(0, "EdenTear") &&
-	    !CheckActorClass(0, "EdenSpectralTear") &&
-			!CheckActorClass(0, "EdenFetusTear") &&
-			!CheckActorClass(0, "EdenBrimstoneDelayedFetus") &&
-			!brimstone)
-		terminate;
-	owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
-	if (owner == 0)
-		owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
-	if (owner == 0)
-		terminate;
-	// Brimstone receives Godhead homing but never its damaging aura.
-	// Strange Attractor is applied first so Ipecac's green dye has priority.
-	if (brimstone) {
-		if (CheckActorInventory(owner, "C315Flag"))
-			GiveInventory("EdenTearStrangeAttractorApply_P", 1);
-		if (CheckActorInventory(owner, "C149Flag"))
-			GiveInventory("EdenBrimstoneIpecacApply_P", 1);
-		if (CheckActorInventory(owner, "C331Flag"))
-			GiveInventory("EdenGodheadHomingApply_P", 1);
-		terminate;
-	}
-	// Order matches razon3 SpawnCheck: Ipecac then Strange Attractor.
-	if (CheckActorInventory(owner, "C149Flag"))
-		GiveInventory("EdenTearIpecacApply_P", 1);
-	if (CheckActorInventory(owner, "C315Flag"))
-		GiveInventory("EdenTearStrangeAttractorApply_P", 1);
-	if (CheckActorInventory(owner, "C331Flag")) {
-		if (fetus)
-			GiveInventory("EdenGodheadAuraApply_P", 1);
-		else
-			GiveInventory("EdenGodheadTearApply_P", 1);
-	}
+  int owner;
+  int brimstone;
+  int fetus;
+  brimstone = CheckActorClass(0, "EdenBrimstone") ||
+  CheckActorClass(0, "EdenBrimstoneDelayed");
+  fetus = CheckActorClass(0, "EdenFetusTear") ||
+  CheckActorClass(0, "EdenBrimstoneDelayedFetus");
+  if (!CheckActorClass(0, "EdenTear") &&
+      !CheckActorClass(0, "EdenSpectralTear") &&
+      !CheckActorClass(0, "EdenFetusTear") &&
+      !CheckActorClass(0, "EdenBrimstoneDelayedFetus") &&
+      !brimstone)
+    terminate;
+  owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  if (owner == 0)
+    owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  if (owner == 0)
+    terminate;
+  // Brimstone receives Godhead homing but never its damaging aura.
+  // Strange Attractor is applied first so Ipecac's green dye has priority.
+  if (brimstone) {
+    if (CheckActorInventory(owner, "C315Flag"))
+      GiveInventory("EdenTearStrangeAttractorApply_P", 1);
+    if (CheckActorInventory(owner, "C149Flag"))
+      GiveInventory("EdenBrimstoneIpecacApply_P", 1);
+    if (CheckActorInventory(owner, "C331Flag"))
+      GiveInventory("EdenGodheadHomingApply_P", 1);
+    terminate;
+  }
+  // Order matches razon3 SpawnCheck: Ipecac then Strange Attractor.
+  if (CheckActorInventory(owner, "C149Flag"))
+    GiveInventory("EdenTearIpecacApply_P", 1);
+  if (CheckActorInventory(owner, "C315Flag"))
+    GiveInventory("EdenTearStrangeAttractorApply_P", 1);
+  if (CheckActorInventory(owner, "C331Flag")) {
+    if (fetus)
+      GiveInventory("EdenGodheadAuraApply_P", 1);
+    else
+      GiveInventory("EdenGodheadTearApply_P", 1);
+  }
 }
 
 // Face/pitch toward a pointer even if that actor's TID is 0 (map monsters).
 // core_lookatptr uses getptrtid and no-ops when TID is 0.
 script "rz_LookAtPtr" (int ptr) {
-	if (IsPointerEqual(ptr, AAPTR_NULL))
-		terminate;
+  if (IsPointerEqual(ptr, AAPTR_NULL))
+    terminate;
 
-	int me_og = ActivatorTID();
-	int me_tmp = UniqueTID();
-	Thing_ChangeTID(0, me_tmp);
+  int me_og = ActivatorTID();
+  int me_tmp = UniqueTID();
+  Thing_ChangeTID(0, me_tmp);
 
-	SetActivator(me_tmp, ptr);
-	int tgt_og = ActivatorTID();
-	int tgt_tmp = tgt_og;
-	if (tgt_tmp == 0) {
-		tgt_tmp = UniqueTID();
-		Thing_ChangeTID(0, tgt_tmp);
-	}
+  SetActivator(me_tmp, ptr);
+  int tgt_og = ActivatorTID();
+  int tgt_tmp = tgt_og;
+  if (tgt_tmp == 0) {
+    tgt_tmp = UniqueTID();
+    Thing_ChangeTID(0, tgt_tmp);
+  }
 
-	SetActivator(me_tmp);
-	ACS_NamedExecuteWithResult("core_lookatptr", ptr);
+  SetActivator(me_tmp);
+  ACS_NamedExecuteWithResult("core_lookatptr", ptr);
 
-	if (tgt_og == 0) {
-		SetActivator(tgt_tmp);
-		Thing_ChangeTID(0, 0);
-	}
-	SetActivator(me_tmp);
-	Thing_ChangeTID(0, me_og);
+  if (tgt_og == 0) {
+    SetActivator(tgt_tmp);
+    Thing_ChangeTID(0, 0);
+  }
+  SetActivator(me_tmp);
+  Thing_ChangeTID(0, me_og);
 }

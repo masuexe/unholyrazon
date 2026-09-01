@@ -1,0 +1,94 @@
+function void BasicImageDisplay(str image, int id, int x, int y) {
+	BasicImageDisplay2(image, id, x, y, 0.1, 1.0);
+}
+
+function void BasicImageDisplay2(str image, int id, int x, int y, int holdtime, int alpha) {
+	SetFont(image);
+	HudMessageBold(s:"A"; HUDMSG_PLAIN, id, CR_UNTRANSLATED, x, y, holdtime, alpha);
+}
+
+function bool AssistDisplayBar_On(void) {
+	return ACS_NamedExecuteWithResult("core_Get_AssistDisplayBar_On");
+}
+
+#define BAR_DISPLAY_NONE 0
+#define BAR_DISPLAY_VERT 1
+#define BAR_DISPLAY_HORI 2
+
+function bool AssistDisplayBar_HUDMode(void) {
+	return ACS_NamedExecuteWithResult("core_Get_AssistDisplayBar_HUDMode");
+}
+
+function int Get_And_Inc_AssistBarCount(void) {
+	return ACS_NamedExecuteWithResult("core_Get_And_Increment_AssistDisplayBarCount");
+}
+
+function int Get_And_Inc_AssistDisplayID(void) {
+	return ACS_NamedExecuteWithResult("core_Get_And_Increment_AssistDisplayID");
+}
+
+function int Get_AssistDisplayBar_X(int pos) {
+	return 1.0 * ACS_NamedExecuteWithResult("core_Get_AssistDisplayBar_X", pos) + 0.1;
+}
+
+function int Get_AssistDisplayBar_Y(int pos) {
+	return 1.0 * ACS_NamedExecuteWithResult("core_Get_AssistDisplayBar_Y", pos) + 0.1;
+}
+
+function void DrawBasicBarAndNumber(str bar_piece, str bar_back, str bar_piece_h, str bar_back_h, int x, int y, int id1, int id2, int id3, int bar_length, bool drawnum, int number) {
+	int mode = AssistDisplayBar_HUDMode();
+	if (mode == BAR_DISPLAY_VERT) DrawBasicBarAndNumberV(bar_piece, bar_back, x, y, id1, id2, id3, bar_length, drawnum, number);
+	else if (mode == BAR_DISPLAY_HORI) DrawBasicBarAndNumberH(bar_piece_h, bar_back_h, x, y, id1, id2, id3, bar_length, drawnum, number);
+}
+
+function void DrawBasicBarAndNumberV(str bar_piece, str bar_back, int x, int y, int id1, int id2, int id3, int bar_length, bool drawnum, int number) {
+	SetFont(bar_piece);
+	HudMessageBold(s:GetBarStringV(bar_length); HUDMSG_PLAIN, id1, CR_UNTRANSLATED, x + 17.0, y + 16.1, 0.1, 1.0);
+	SetFont(bar_back);
+	HudMessageBold(s:"A"; HUDMSG_PLAIN, id2, CR_UNTRANSLATED, x + 17.0, y + 16.1, 0.1, 1.0);
+	if (drawnum) {
+		SetFont("8BDMAFONT");
+		HudMessageBold(i:number; HUDMSG_PLAIN, id3, CR_UNTRANSLATED, x + 22.0, y + 4.0, 0.1, 1.0);
+	}
+}
+
+function str GetBarStringV(int count) {
+	return StringOfString("A\n", count);
+}
+
+function str StringOfString(str string_input, int count) {
+	str the_string = "";
+	for (int i = 0; i < count; i++) the_string = strParam(s:the_string, s:string_input);
+	return the_string;
+}
+
+function void DrawBasicBarAndNumberH(str bar_piece, str bar_back, int x, int y, int id1, int id2, int id3, int bar_length, bool drawnum, int number) {
+	SetFont(bar_piece);
+	HudMessageBold(s:GetBarStringH(bar_length); HUDMSG_PLAIN, id1, CR_UNTRANSLATED, x, y + 17.0, 0.1, 1.0);
+	SetFont(bar_back);
+	HudMessageBold(s:"A"; HUDMSG_PLAIN, id2, CR_UNTRANSLATED, x, y + 17.0, 0.1, 1.0);
+	if (drawnum) {
+		SetFont("8BDMAFONT");
+		HudMessageBold(i:number; HUDMSG_PLAIN, id3, CR_UNTRANSLATED, (((x + 0.9) >> 16) + 7) << 16, y + 22.0, 0.1, 1.0);
+	}
+}
+
+function str GetBarStringH(int count) {
+	return StringOfString("A", count);
+}
+
+function void DrawHBarFunc(int id, str bar_piece, str bar_piece_h, int bar_length) {
+	int mode = AssistDisplayBar_HUDMode();
+	if (mode == BAR_DISPLAY_VERT) DrawHBarFuncV(id, bar_piece, bar_length);
+	else if (mode == BAR_DISPLAY_HORI) DrawHBarFuncH(id, bar_piece_h, bar_length);
+}
+
+function void DrawHBarFuncV(int id, str bar_piece, int bar_length) {
+	SetFont(bar_piece);
+	HudMessageBold(s:GetBarStringV(bar_length); HUDMSG_PLAIN, id, CR_UNTRANSLATED, 24.1, 8.0 + 56.2, 0.1, 1.0);
+}
+
+function void DrawHBarFuncH(int id, str bar_piece, int bar_length) {
+	SetFont(bar_piece);
+	HudMessageBold(s:GetBarStringH(bar_length); HUDMSG_PLAIN, id, CR_UNTRANSLATED, 130.1, 184.1, 0.1, 1.0);
+}
