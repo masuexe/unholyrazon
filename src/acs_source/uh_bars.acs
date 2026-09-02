@@ -479,9 +479,47 @@ str nega_mm_ammo[16] = {
   "NegaMMWT_Ammo",
 };
 
-function int QwantTypeCustSlot(int type) {
-  return CUST_QWANT_NORMAL + type;
-}
+str qwanttypebar[18] = {
+  "QWANT_NORMAL_BAR",
+  "QWANT_FIRE_BAR",
+  "QWANT_WATER_BAR",
+  "QWANT_ELECTRIC_BAR",
+  "QWANT_GRASS_BAR",
+  "QWANT_ICE_BAR",
+  "QWANT_FIGHTING_BAR",
+  "QWANT_POISON_BAR",
+  "QWANT_GROUND_BAR",
+  "QWANT_FLYING_BAR",
+  "QWANT_PSYCHIC_BAR",
+  "QWANT_BUG_BAR",
+  "QWANT_ROCK_BAR",
+  "QWANT_GHOST_BAR",
+  "QWANT_DRAGON_BAR",
+  "QWANT_DARK_BAR",
+  "QWANT_STEEL_BAR",
+  "QWANT_FAIRY_BAR",
+};
+
+str qwanttypevar[18] = {
+  "QWANT_NORMAL_VAR",
+  "QWANT_FIRE_VAR",
+  "QWANT_WATER_VAR",
+  "QWANT_ELECTRIC_VAR",
+  "QWANT_GRASS_VAR",
+  "QWANT_ICE_VAR",
+  "QWANT_FIGHTING_VAR",
+  "QWANT_POISON_VAR",
+  "QWANT_GROUND_VAR",
+  "QWANT_FLYING_VAR",
+  "QWANT_PSYCHIC_VAR",
+  "QWANT_BUG_VAR",
+  "QWANT_ROCK_VAR",
+  "QWANT_GHOST_VAR",
+  "QWANT_DRAGON_VAR",
+  "QWANT_DARK_VAR",
+  "QWANT_STEEL_VAR",
+  "QWANT_FAIRY_VAR",
+};
 
 function int QwantTypeAmmoMax(int type) {
   if (type == QWANT_TYPE_PSYCHIC || type == QWANT_TYPE_DRAGON || type == QWANT_TYPE_FAIRY) {
@@ -710,20 +748,20 @@ function void Func_UH_BarFlags(void) {
   int hp = GetActorHealth(0);
   int maxhp = GetActorMaxHealth(0);
   if (CheckInventory("PlayerPropertyInvulnerable") || (CheckInventory("PlayerPropertyNonshootable") && CheckInventory("PlayerPropertyNoRadiusDmg"))) {
-    DrawCustomBar(CUST_INVUN_BAR, hp, maxhp);
+    DrawCustomBarStringHP("0H_I_BAR", "0H_M_BAR", "0H_I_VAR", "0H_M_VAR", hp, maxhp);
   } else {
     int prod = UH_GuardNormalProduct();
     if (prod > 1.0) {
-      DrawCustomBar(CUST_GUARDDOWN_BAR, hp, maxhp);
+      DrawCustomBarStringHP("0H_W_BAR", "NOBAR", "0H_W_VAR", "VNOBAR", hp, maxhp);
     } else if (prod < 1.0) {
-      DrawCustomBar(CUST_GUARDUP_BAR, hp, maxhp);
+      DrawCustomBarStringHP("0H_R_BAR", "NOBAR", "0H_R_VAR", "VNOBAR", hp, maxhp);
     } else if (CheckInventory("GuardUpFlag")) {
       // Fallback for CBM / addon effects that still Give the flag.
-      DrawCustomBar(CUST_GUARDUP_BAR, hp, maxhp);
+      DrawCustomBarStringHP("0H_R_BAR", "NOBAR", "0H_R_VAR", "VNOBAR", hp, maxhp);
     } else if (CheckInventory("GuardDownFlag")) {
-      DrawCustomBar(CUST_GUARDDOWN_BAR, hp, maxhp);
+      DrawCustomBarStringHP("0H_W_BAR", "NOBAR", "0H_W_VAR", "VNOBAR", hp, maxhp);
     } else if (CheckInventory("SUDDENLYONFIRE")) {
-      DrawCustomBar(CUST_ONFIRE_BAR, hp, maxhp);
+      DrawCustomBarStringHP("ON_F0BAR", "NOBAR", "ON_F0VAR", "VNOBAR", hp, maxhp);
     }
   }
 }
@@ -987,11 +1025,12 @@ script "DrawBar_QwantMove" (int type) {
   str wep = GetWeapon();
   ResolveQwantFillAmmo(wep, type);
   str ammo = uh_qwant_fill_ammo;
-  int slot = QwantTypeCustSlot(type);
   int max_var = uh_qwant_fill_max;
   str name = StrParam(l:BuildQwantTagKey(wep));
 
-  DrawCustomBar(slot, CheckInventory(ammo), max_var);
+  DrawCustomBarString1(qwanttypebar[type], "BAREMPTY",
+                       qwanttypevar[type], "VAREMPTY",
+                       CheckInventory(ammo), max_var);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
   // Pin mugshot before DrawBar2Color so MoveRelearnAmmo (138, 130) does not leak into the face.
@@ -1011,7 +1050,8 @@ script "DrawBar_QwantMove" (int type) {
 
 script "DrawBar_Qwant_W" (void) {
   int ball = CheckInventory("QwantBallFlag");
-  DrawCustomBar(CUST_QWANT, CheckInventory("MyDestinyAmmo"), 28);
+  DrawCustomBarString1("02__ZV00", "BAREMPTY", "02__ZH00", "VAREMPTY",
+                       CheckInventory("MyDestinyAmmo"), 28);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
   SetMugshotColor(QWANT_MUG_CYAN, QWANT_MUG_BLUE);
@@ -1033,7 +1073,8 @@ script "DrawBar_Qwant_W" (void) {
 
 script "DrawBar_FlameWheelWep" (void) {
   if (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
-    DrawCustomBar(CUST_FLAMEWHEEL, CheckInventory("FlameWheelCharge"), 112);
+    DrawCustomBarString1("03_2BAR", "NOBAR", "03_2VAR", "VNOBAR",
+                         CheckInventory("FlameWheelCharge"), 112);
   }
 }
 
@@ -1063,7 +1104,8 @@ script "uh_assist_CalmMind" (int cam) CLIENTSIDE {
 }
 
 script "DrawBar_QwantShiny_W" (void) {
-  DrawCustomBar(CUST_QWANT_S, CheckInventory("MyDestinyAmmo"), 28);
+  DrawCustomBarString1("02__ZV00", "BAREMPTY", "02__ZH00", "VAREMPTY",
+                       CheckInventory("MyDestinyAmmo"), 28);
   SetInventory("SBARAmmoOffset", 1);
   SetInventory("SBARUseAmmo1Disp", 1);
   SetAmmoAmountAndCapacity("Ammo1Disp", CheckInventory("MyDestinyAmmo"), GetAmmoCapacity("MyDestinyAmmo"));
@@ -1111,7 +1153,8 @@ script "DrawBar_NegaManMove" (int ammoid, int cyan) {
   str wep = GetWeapon();
   ResolveNegaManFillAmmo(wep, ammoid);
   DrawBarColorOwned(CheckInventory(uh_nega_fill_ammo), uh_nega_fill_max, cyan, NEGA_BAR_BLUE);
-  DrawCustomBar(CUST_NEGAMAN, CheckInventory("NegaDuckAmmo"), 400);
+  DrawCustomBarString2("02_A_BAR", "BAREMPTY", "02_A_VAR", "VAREMPTY",
+                       CheckInventory("NegaDuckAmmo"), 400);
   SetInventory("SBARAmmoOffset", 2);
   DrawSecondAmmo();
 }
@@ -1122,15 +1165,18 @@ script "DrawBar_NegaMan_W" (void) {
   if (GetUserCVar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
     DrawBarColor(205, 77);
   }
-  DrawCustomBar(CUST_NEGAMAN, CheckInventory("NegaDuckAmmo"), 400);
+  DrawCustomBarString2("02_A_BAR", "BAREMPTY", "02_A_VAR", "VAREMPTY",
+                       CheckInventory("NegaDuckAmmo"), 400);
   SetInventory("SBARAmmoOffset", 2);
   DrawSecondAmmo();
 }
 
 script "DrawBar_NegaTimeStopperWep" (void) {
   DrawBarColor(239, 77);
-  DrawCustomBar(CUST_NEGATIMESTOPPER, CheckInventory("NegaMM2_Flag"), 1);
-  DrawCustomBar(CUST_NEGAMAN, CheckInventory("NegaDuckAmmo"), 400);
+  DrawCustomBarStringLayer1("02_2EBAR", "NOBAR", "02_2EVAR", "VNOBAR",
+                            CheckInventory("NegaMM2_Flag"), 1, 1);
+  DrawCustomBarString2("02_A_BAR", "BAREMPTY", "02_A_VAR", "VAREMPTY",
+                       CheckInventory("NegaDuckAmmo"), 400);
   SetInventory("SBARAmmoOffset", 2);
   DrawSecondAmmo();
 }
@@ -1156,7 +1202,8 @@ script "DrawBar_NegaMagmaBazookaWep" (void) {
 }
 
 script "DrawBar_NegaManShiny_W" (void) {
-  DrawCustomBar(CUST_NEGAMAN_S, CheckInventory("S_NegaDuckAmmo"), 200);
+  DrawCustomBarString1("02_ASBAR", "BAREMPTY", "02_ASVAR", "VAREMPTY",
+                       CheckInventory("S_NegaDuckAmmo"), 200);
   SetInventory("SBARAmmoOffset", 1);
   SetInventory("SBARUseAmmo1Disp", 1);
   SetAmmoAmountAndCapacity("Ammo1Disp", CheckInventory("S_NegaDuckAmmo"), GetAmmoCapacity("S_NegaDuckAmmo"));
@@ -1201,11 +1248,13 @@ script "DrawBar_BusterMistress_W" (void) {
 
 script "DrawBar_BusterMistressShiny_W" (void) {
   DrawBarColor(74, 3);
-  DrawCustomBar(CUST_BUSTERMISTRESS, CheckInventory("BusterMistressCloneFlag2"), 1);
+  DrawCustomBarString1("04_F_BAR", "NOBAR", "04_F_VAR", "VNOBAR",
+                       CheckInventory("BusterMistressCloneFlag2"), 1);
 }
 
 script "DrawBar_LuckyLass_W" (void) {
-  DrawCustomBar(CUST_LUCKYLASS, CheckInventory("LuckyEnergyAmmo"), 400);
+  DrawCustomBarString1("06_B_V77", "BAREMPTY", "06_B_H77", "VAREMPTY",
+                       CheckInventory("LuckyEnergyAmmo"), 400);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
 }
@@ -1215,20 +1264,24 @@ script "DrawBar_LuckyLassShiny_W" (void) {
 
 script "DrawBar_FrostBite_W" (void) {
   DrawBarColor(196, 197);
-  DrawCustomBar(CUST_FROSTBITE, CheckInventory("FrostBiteFlag"), 28);
+  DrawCustomBarString1("09_B_BAR", "NOBAR", "09_B_VAR", "VNOBAR",
+                       CheckInventory("FrostBiteFlag"), 28);
 }
 script "DrawBar_FrostBiteShiny_W" (void) {
   DrawBarColor(220, 46);
-  DrawCustomBar(CUST_FROSTBITE_S, CheckInventory("FrostBiteFlag"), 28);
+  DrawCustomBarString1("09_BSBAR", "NOBAR", "09_BSVAR", "VNOBAR",
+                       CheckInventory("FrostBiteFlag"), 28);
 }
 
 script "DrawBar_Igniter_W" (void) {
   DrawBarColor(220, 46);
-  DrawCustomBar(CUST_IGNITER, CheckInventory("IgniterFlag"), 28);
+  DrawCustomBarString1("10_B_BAR", "NOBAR", "10_B_VAR", "VNOBAR",
+                       CheckInventory("IgniterFlag"), 28);
 }
 script "DrawBar_IgniterShiny_W" (void) {
   DrawBarColor(196, 197);
-  DrawCustomBar(CUST_IGNITER_S, CheckInventory("IgniterFlag"), 28);
+  DrawCustomBarString1("10_BSBAR", "NOBAR", "10_BSVAR", "VNOBAR",
+                       CheckInventory("IgniterFlag"), 28);
 }
 
 script "DrawBar_Arcanist_W" (void) {
@@ -1487,43 +1540,50 @@ script "DrawBar_StealthSniper_W" (void) {
 }
 script "DrawBar_StealthSniperShiny_W" (void) {
   int ammo = CheckInventory("StealthyAmmo");
-  DrawCustomBar(CUST_STEALTHSNIPER_S, ammo, 112);
+  DrawCustomBarString1("23_BSBAR", "BAREMPTY", "23_BSVAR", "VAREMPTY", ammo, 112);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
   if (ammo >= 112) {
-    DrawCustomBar(CUST_STEALTHSNIPER_S_CHARGEMAX, ammo, 112);
+    DrawCustomBarStringLayer1("23_GSBAR", "NOBAR", "23_GSVAR", "VNOBAR", 1, 1, 1);
   }
   DrawBar2Color(93, 175);
 }
 
 script "DrawBar_TangoGirl_W" (void) {
-  DrawCustomBar(CUST_TANGOGIRL, CheckInventory("TangoEnergyAmmo"), 200);
+  DrawCustomBarString1("24_A_BAR", "BAREMPTY", "24_A_VAR", "VAREMPTY",
+                       CheckInventory("TangoEnergyAmmo"), 200);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
 }
 script "DrawBar_TangoGirlShiny_W" (void) {
-  DrawCustomBar(CUST_TANGOGIRL_S, CheckInventory("TangoEnergyAmmo"), 200);
+  DrawCustomBarString1("24_ASBAR", "BAREMPTY", "24_ASVAR", "VAREMPTY",
+                       CheckInventory("TangoEnergyAmmo"), 200);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
 }
 
 script "DrawBar_SmokeBandit_W" (void) {
-  DrawCustomBar(CUST_SMOKEBANDIT, CheckInventory("CigarAmmo"), 6);
-  DrawCustomBar(CUST_SMOKEBANDIT2, CheckInventory("SmokinAmmo"), 250);
+  DrawCustomBarString1("28_C_BAR", "28_B_BAR", "28_C_VAR", "28_B_VAR",
+                       CheckInventory("CigarAmmo"), 6);
+  DrawCustomBarString2("28_A_BAR", "BAREMPTY", "28_A_VAR", "VAREMPTY",
+                       CheckInventory("SmokinAmmo"), 250);
   SetInventory("SBARAmmoOffset", 2);
   DrawNormalAmmo();
   DrawSecondAmmo();
 }
 script "DrawBar_SmokeBanditShiny_W" (void) {
-  DrawCustomBar(CUST_SMOKEBANDIT_S, CheckInventory("CigarAmmo"), 6);
-  DrawCustomBar(CUST_SMOKEBANDIT_S2, CheckInventory("SmokinAmmo"), 250);
+  DrawCustomBarString1("28_CSBAR", "28_BSBAR", "28_CSVAR", "28_BSVAR",
+                       CheckInventory("CigarAmmo"), 6);
+  DrawCustomBarString2("28_ASBAR", "BAREMPTY", "28_ASVAR", "VAREMPTY",
+                       CheckInventory("SmokinAmmo"), 250);
   SetInventory("SBARAmmoOffset", 2);
   DrawNormalAmmo();
   DrawSecondAmmo();
 }
 
 script "DrawBar_Trapist_W" (void) {
-  DrawCustomBar(CUST_TRAPIST, CheckInventory("ClashEnergyAmmo"), 100);
+  DrawCustomBarString1("30_B_BAR", "BAREMPTY", "30_B_VAR", "VAREMPTY",
+                       CheckInventory("ClashEnergyAmmo"), 100);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
   if (CheckInventory("TrapistPrimedFlag")) {
@@ -1536,11 +1596,13 @@ script "DrawBar_Trapist_W" (void) {
     DrawBar2Color(228, 164);
   }
   if (GetUserCVar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
-    DrawCustomBar(CUST_TRAPIST2, CheckInventory("TrapistChargeFlag"), 36);
+    DrawCustomBarStringLayer2("30_F_BAR", "NOBAR", "30_F_VAR", "VNOBAR",
+                              CheckInventory("TrapistChargeFlag"), 36, 1);
   }
 }
 script "DrawBar_TrapistShiny_W" (void) {
-  DrawCustomBar(CUST_TRAPIST_S, CheckInventory("ClashEnergyAmmo"), 100);
+  DrawCustomBarString1("30_BSBAR", "BAREMPTY", "30_BSVAR", "VAREMPTY",
+                       CheckInventory("ClashEnergyAmmo"), 100);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
   if (CheckInventory("TrapistPrimedFlag")) {
@@ -1553,14 +1615,16 @@ script "DrawBar_TrapistShiny_W" (void) {
     DrawBar2Color(103, 206);
   }
   if (GetUserCVar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
-    DrawCustomBar(CUST_TRAPIST_S2, CheckInventory("TrapistChargeFlag"), 36);
+    DrawCustomBarStringLayer2("30_FSBAR", "NOBAR", "30_FSVAR", "VNOBAR",
+                              CheckInventory("TrapistChargeFlag"), 36, 1);
   }
 }
 
 script "DrawBar_Rameses_W" (void) {
   DrawBarColor(214, 248);
   if (GetUserCVar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
-    DrawCustomBar(CUST_RAMESES, CheckInventory("RamesesChargeFlag"), 14);
+    DrawCustomBarStringLayer1("32_F_BAR", "NOBAR", "32_F_VAR", "VNOBAR",
+                              CheckInventory("RamesesChargeFlag"), 14, 1);
   }
   SetHudSize(320, 200, 0);
   int flag = CheckInventory("RamesesCurseFlag");
@@ -1575,7 +1639,8 @@ script "DrawBar_Rameses_W" (void) {
 script "DrawBar_RamesesShiny_W" (void) {
   DrawBarColor(163, 158);
   if (GetUserCVar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
-    DrawCustomBar(CUST_RAMESES_S, CheckInventory("RamesesChargeFlag"), 14);
+    DrawCustomBarStringLayer1("32_FSBAR", "NOBAR", "32_FSVAR", "VNOBAR",
+                              CheckInventory("RamesesChargeFlag"), 14, 1);
   }
   SetHudSize(320, 200, 0);
   int flag = CheckInventory("RamesesCurseFlag");
@@ -1589,12 +1654,14 @@ script "DrawBar_RamesesShiny_W" (void) {
 }
 
 script "DrawBar_SamuraiSam_W" (void) {
-  DrawCustomBar(CUST_SAMURAISAM, CheckInventory("FoolishSamuraiWarriorAmmo"), 56);
+  DrawCustomBarString1("33_A_BAR", "BAREMPTY", "33_A_VAR", "VAREMPTY",
+                       CheckInventory("FoolishSamuraiWarriorAmmo"), 56);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
 }
 script "DrawBar_SamuraiSamShiny_W" (void) {
-  DrawCustomBar(CUST_SAMURAISAM_S, CheckInventory("FoolishSamuraiWarriorAmmo"), 56);
+  DrawCustomBarString1("33_ASBAR", "BAREMPTY", "33_ASVAR", "VAREMPTY",
+                       CheckInventory("FoolishSamuraiWarriorAmmo"), 56);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
 }
@@ -1602,11 +1669,11 @@ script "DrawBar_SamuraiSamShiny_W" (void) {
 script "DrawBar_Astronaut_W" (void) {
   if (GetUserCVar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
     int ammo = CheckInventory("AstronautCharging");
-    DrawCustomBar(CUST_ASTRONAUT, ammo, 70);
+    DrawCustomBarString1("34_B_BAR", "BAREMPTY", "34_B_VAR", "VAREMPTY", ammo, 70);
     SetInventory("SBARAmmoOffset", 1);
     DrawNormalAmmo();
     if (ammo >= 70) {
-      DrawCustomBar(CUST_ASTRONAUT2, ammo, 1);
+      DrawCustomBarStringLayer1("34_B_V11", "NOBAR", "34_B_H11", "VNOBAR", 1, 1, 1);
     }
     if (CheckInventory("MockingAmmo") >= 50) {
       DrawBar2Color(4, 106);
@@ -1624,11 +1691,11 @@ script "DrawBar_Astronaut_W" (void) {
 script "DrawBar_AstronautShiny_W" (void) {
   if (GetUserCVar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
     int ammo = CheckInventory("AstronautCharging");
-    DrawCustomBar(CUST_ASTRONAUT_S, ammo, 70);
+    DrawCustomBarString1("34_BSBAR", "BAREMPTY", "34_BSVAR", "VAREMPTY", ammo, 70);
     SetInventory("SBARAmmoOffset", 1);
     DrawNormalAmmo();
     if (ammo >= 70) {
-      DrawCustomBar(CUST_ASTRONAUT_S2, ammo, 1);
+      DrawCustomBarStringLayer1("34_BSV11", "NOBAR", "34_BSH11", "VNOBAR", 1, 1, 1);
     }
     if (CheckInventory("MockingAmmo") >= 50) {
       DrawBar2Color(160, 176);
@@ -1704,7 +1771,8 @@ script "DrawBar_TristanaShiny_W" (void) {
 #define U_MARKMANSLOCK_LIMIT 7
 script "DrawBar_Marksman_W" (void) {
   DrawBarColor(211, 231);
-  DrawCustomBar(CUST_MARKSMAN, CheckInventory("MarksmanMissile_F"), U_MARKMANSLOCK_LIMIT);
+  DrawCustomBarString2("40_A_BAR", "BAREMPTY", "40_A_VAR", "VAREMPTY",
+                       CheckInventory("MarksmanMissile_F"), U_MARKMANSLOCK_LIMIT);
   SetInventory("SBARAmmoOffset", 2);
   DrawSecondAmmo();
 }
@@ -1897,37 +1965,43 @@ script "uh_assist_YellowWizardInvis" (int cam) CLIENTSIDE {
 
 script "DrawBar_GreenElf_W" (void) {
   DrawBarColor(128, 132);
-  DrawCustomBar(CUST_GREENELF, CheckInventory("GreenElfFlag"), 100);
+  DrawCustomBarString1("47_B_V11", "NOBAR", "47_B_H11", "VNOBAR",
+                       CheckInventory("GreenElfFlag"), 100);
 }
 script "DrawBar_GreenElfShiny_W" (void) {
   DrawBarColor(161, 229);
-  DrawCustomBar(CUST_GREENELF_S, CheckInventory("GreenElfFlag"), 100);
+  DrawCustomBarString1("47_BSV11", "NOBAR", "47_BSH11", "VNOBAR",
+                       CheckInventory("GreenElfFlag"), 100);
 }
 
 script "DrawBar_Archivist_W" (void) {
   DrawBarColor(87, 146);
-  DrawCustomBar(CUST_ARCHIVIST, CheckInventory("Archivist_W"), 1);
+  DrawCustomBarStringLayer1("49_F_BAR", "NOBAR", "49_F_VAR", "VNOBAR",
+                            CheckInventory("Archivist_W"), 1, 1);
   SetHudSize(320, 200, 0);
   AdjustedImageDisplay("C_I_49A", "C_I_49A", UH_IMAGE_ID_BASE - 80, UH_IMAGE_ID_BASE - 81, -21.1, 42.1, 59.1, 166.1);
   AdjustedImageDisplay("C_I_49B", "C_I_49B", UH_IMAGE_ID_BASE - 82, UH_IMAGE_ID_BASE - 83, -2.1, 42.1, 96.1, 166.1);
 }
 script "DrawBar_Archivist_W2" (void) {
   DrawBarColor(87, 146);
-  DrawCustomBar(CUST_ARCHIVIST2, CheckInventory("Archivist_W2"), 1);
+  DrawCustomBarStringLayer1("49_K_BAR", "NOBAR", "49_K_VAR", "VNOBAR",
+                            CheckInventory("Archivist_W2"), 1, 1);
   SetHudSize(320, 200, 0);
   AdjustedImageDisplay("C_I_49C", "C_I_49C", UH_IMAGE_ID_BASE - 84, UH_IMAGE_ID_BASE - 85, -21.1, 42.1, 59.1, 166.1);
   AdjustedImageDisplay("C_I_49D", "C_I_49D", UH_IMAGE_ID_BASE - 86, UH_IMAGE_ID_BASE - 87, -2.1, 42.1, 96.1, 166.1);
 }
 script "DrawBar_Archivist_W3" (void) {
   DrawBarColor(87, 146);
-  DrawCustomBar(CUST_ARCHIVIST3, CheckInventory("Archivist_W3"), 1);
+  DrawCustomBarStringLayer1("49_P_BAR", "NOBAR", "49_P_VAR", "VNOBAR",
+                            CheckInventory("Archivist_W3"), 1, 1);
   SetHudSize(320, 200, 0);
   AdjustedImageDisplay("C_I_49E", "C_I_49E", UH_IMAGE_ID_BASE - 88, UH_IMAGE_ID_BASE - 89, -21.1, 42.1, 59.1, 166.1);
   AdjustedImageDisplay("C_I_49F", "C_I_49F", UH_IMAGE_ID_BASE - 90, UH_IMAGE_ID_BASE - 91, -2.1, 42.1, 96.1, 166.1);
 }
 script "DrawBar_Archivist_W4" (void) {
   DrawBarColor(87, 146);
-  DrawCustomBar(CUST_ARCHIVIST4, CheckInventory("Archivist_W4"), 1);
+  DrawCustomBarStringLayer1("49_U_BAR", "NOBAR", "49_U_VAR", "VNOBAR",
+                            CheckInventory("Archivist_W4"), 1, 1);
   SetHudSize(320, 200, 0);
   AdjustedImageDisplay("C_I_49G", "C_I_49G", UH_IMAGE_ID_BASE - 92, UH_IMAGE_ID_BASE - 93, -21.1, 42.1, 59.1, 166.1);
   AdjustedImageDisplay("C_I_49H", "C_I_49H", UH_IMAGE_ID_BASE - 94, UH_IMAGE_ID_BASE - 95, -2.1, 42.1, 96.1, 166.1);
@@ -2146,40 +2220,47 @@ script "DrawBar_AmberShiny_W" (void) {
 }
 
 script "DrawBar_Claire_W" (void) {
-  DrawCustomBar(CUST_CLAIRE, CheckInventory("ClaireEnergyAmmo"), 28);
+  DrawCustomBarString1("54_C_BAR", "BAREMPTY", "54_C_VAR", "VAREMPTY",
+                       CheckInventory("ClaireEnergyAmmo"), 28);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
   DrawBar2Color(107, 110);
 }
 script "DrawBar_ClaireShiny_W" (void) {
-  DrawCustomBar(CUST_CLAIRE, CheckInventory("ClaireEnergyAmmo"), 28);
+  DrawCustomBarString1("54_C_BAR", "BAREMPTY", "54_C_VAR", "VAREMPTY",
+                       CheckInventory("ClaireEnergyAmmo"), 28);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
   DrawBar2Color(108, 130);
 }
 
 script "DrawBar_Wisp_W" (void) {
-  DrawCustomBar(CUST_WISP, CheckInventory("WispSpiritAmmo"), 3);
+  DrawCustomBarString1("55_X_BAR", "55_Y_BAR", "55_X_VAR", "55_Y_VAR",
+                       CheckInventory("WispSpiritAmmo"), 3);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
   DrawBar2Color(43, 47);
   if (CheckInventory("PowerWispPortal")) {
-    DrawCustomBar(CUST_WISP2, CheckInventory("BewitchingHexAmmo"), 56);
+    DrawCustomBarStringLayer2("55_G_BAR", "NOBAR", "55_G_VAR", "VNOBAR",
+                              CheckInventory("BewitchingHexAmmo"), 56, 1);
   }
 }
 script "DrawBar_WispShiny_W" (void) {
-  DrawCustomBar(CUST_WISP_S, CheckInventory("WispSpiritAmmo"), 3);
+  DrawCustomBarString1("55_XSBAR", "55_YSBAR", "55_XSVAR", "55_YSVAR",
+                       CheckInventory("WispSpiritAmmo"), 3);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
   DrawBar2Color(56, 61);
   if (CheckInventory("PowerWispPortal")) {
-    DrawCustomBar(CUST_WISP2, CheckInventory("BewitchingHexAmmo"), 56);
+    DrawCustomBarStringLayer2("55_G_BAR", "NOBAR", "55_G_VAR", "VNOBAR",
+                              CheckInventory("BewitchingHexAmmo"), 56, 1);
   }
 }
 
 script "DrawBar_Miu_W" (void) {
   if (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
-    DrawCustomBar(CUST_MIU, CheckInventory("WeaponCharge"), 20);
+    DrawCustomBarStringLayer1("56_B_BAR", "NOBAR", "56_B_VAR", "VNOBAR",
+                              CheckInventory("WeaponCharge"), 20, 1);
   }
   DrawBarColor(161, 248);
   DrawBar2Color(74, 3);
@@ -2191,7 +2272,8 @@ script "DrawBar_Miu_W2" (void) {
 
 script "DrawBar_MiuShiny_W" (void) {
   if (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
-    DrawCustomBar(CUST_MIU, CheckInventory("WeaponCharge"), 20);
+    DrawCustomBarStringLayer1("56_B_BAR", "NOBAR", "56_B_VAR", "VNOBAR",
+                              CheckInventory("WeaponCharge"), 20, 1);
   }
   DrawBarColor(248, 164);
   DrawBar2Color(66, 60);
