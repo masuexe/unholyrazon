@@ -15,6 +15,8 @@
 #define UH_CUSTOM_BAR_STRING_POS2 1
 #define UH_CUSTOM_BAR_STRING_POS3 2
 #define UH_CUSTOM_BAR_STRING_POSHP 3
+#define UH_BAR_STRING_LAYER_STRIDE 16
+#define UH_BAR_STRING_LAYER_MAX 16
 
 function void ClearCustomBarStringMessage(int id) {
   HudMessageBold(s:""; HUDMSG_PLAIN, id, CR_UNTRANSLATED, 0.0, 0.0, 0.0);
@@ -74,9 +76,13 @@ function void DrawCustomBarStringHorizontal(str full, str empty, int amount, int
                              x, y, fill, 8, flags);
 }
 
-function void DrawCustomBarStringAt(str verticalfull, str verticalempty,
-                                    str horizontalfull, str horizontalempty,
-                                    int amount, int capacity, int position) {
+function void DrawCustomBarStringLayerAt(str verticalfull, str verticalempty,
+                                         str horizontalfull, str horizontalempty,
+                                         int amount, int capacity, int position, int layer) {
+  if (layer < 0 || layer >= UH_BAR_STRING_LAYER_MAX) {
+    return;
+  }
+
   int verticalx;
   int verticaly = 8;
   int horizontalx;
@@ -108,7 +114,9 @@ function void DrawCustomBarStringAt(str verticalfull, str verticalempty,
   }
 
   SetHudSize(320, 200, 0);
-  int id = UH_CUSTOM_BAR_STRING_ID - position * 4;
+  int id = UH_CUSTOM_BAR_STRING_ID
+           - layer * UH_BAR_STRING_LAYER_STRIDE
+           - position * 4;
   int mode = AssistDisplayBar_HUDMode();
   if (mode == BAR_DISPLAY_HORI) {
     ClearCustomBarStringMessage(id);
@@ -127,6 +135,41 @@ function void DrawCustomBarStringAt(str verticalfull, str verticalempty,
       ClearCustomBarStringMessage(id - 1);
     }
   }
+}
+
+function void DrawCustomBarStringAt(str verticalfull, str verticalempty,
+                                    str horizontalfull, str horizontalempty,
+                                    int amount, int capacity, int position) {
+  DrawCustomBarStringLayerAt(verticalfull, verticalempty, horizontalfull, horizontalempty,
+                             amount, capacity, position, 0);
+}
+
+function void DrawCustomBarStringLayer1(str verticalfull, str verticalempty,
+                                        str horizontalfull, str horizontalempty,
+                                        int amount, int capacity, int layer) {
+  DrawCustomBarStringLayerAt(verticalfull, verticalempty, horizontalfull, horizontalempty,
+                             amount, capacity, UH_CUSTOM_BAR_STRING_POS1, layer);
+}
+
+function void DrawCustomBarStringLayer2(str verticalfull, str verticalempty,
+                                        str horizontalfull, str horizontalempty,
+                                        int amount, int capacity, int layer) {
+  DrawCustomBarStringLayerAt(verticalfull, verticalempty, horizontalfull, horizontalempty,
+                             amount, capacity, UH_CUSTOM_BAR_STRING_POS2, layer);
+}
+
+function void DrawCustomBarStringLayer3(str verticalfull, str verticalempty,
+                                        str horizontalfull, str horizontalempty,
+                                        int amount, int capacity, int layer) {
+  DrawCustomBarStringLayerAt(verticalfull, verticalempty, horizontalfull, horizontalempty,
+                             amount, capacity, UH_CUSTOM_BAR_STRING_POS3, layer);
+}
+
+function void DrawCustomBarStringLayerHP(str verticalfull, str verticalempty,
+                                         str horizontalfull, str horizontalempty,
+                                         int amount, int capacity, int layer) {
+  DrawCustomBarStringLayerAt(verticalfull, verticalempty, horizontalfull, horizontalempty,
+                             amount, capacity, UH_CUSTOM_BAR_STRING_POSHP, layer);
 }
 
 function void DrawCustomBarString1(str verticalfull, str verticalempty,
@@ -1435,12 +1478,11 @@ script "DrawBar_RaiderShiny_W2" (void) {
 
 script "DrawBar_StealthSniper_W" (void) {
   int ammo = CheckInventory("StealthyAmmo");
-  DrawCustomBar(CUST_STEALTHSNIPER, ammo, 112);
+  DrawCustomBarString1("23_B_BAR", "BAREMPTY", "23_B_VAR", "VAREMPTY", ammo, 112);
+  DrawCustomBarStringLayer1("23_G_BAR", "NOBAR", "23_G_VAR", "VNOBAR",
+                            ammo >= 112, 1, 1);
   SetInventory("SBARAmmoOffset", 1);
   DrawNormalAmmo();
-  if (ammo >= 112) {
-    DrawCustomBar(CUST_STEALTHSNIPER_CHARGEMAX, ammo, 112);
-  }
   DrawBar2Color(105, 230);
 }
 script "DrawBar_StealthSniperShiny_W" (void) {
