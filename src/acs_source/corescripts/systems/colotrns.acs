@@ -24,10 +24,10 @@ script "core_synccolors_respawn" RESPAWN {
 }
 
 // Color Translation script
-script "core_weaponcolor" (int weap, int weap_sound, int teamweap) {
+script "core_weaponcolor" (int weap, int weapsound, int teamweap) {
   // timer check here helps a bug in Offline Skirmish, see Celebi for details
   if (CheckInventory("NoWeaponSwitchSound") == 0 && Timer() > 0) {
-    switch (weap_sound) {  // $UH
+    switch (weapsound) {  // $UH
       case 0:
         LocalAmbientSound("menu/cursor", 127);  // Play weapon switch noise //$UH //core_snd/Menu
         break;
@@ -69,7 +69,7 @@ script "core_weaponcolor" (int weap, int weap_sound, int teamweap) {
   if (teamweap == TCLR_NONE) {teamweap = TCLR_DEFAULT;}
 
   // Mugshot follows weapon dye (192/198), not team remap of the body translation.
-  int mug_dye = weap;
+  int mugdye = weap;
 
   if ((IsTeamGame || (Timer() <= 0 && ACS_NamedExecuteWithResult("core_checkmode", 1) == 1)) && CheckInventory("NoTeamTranslation") == 0)
     // it seems redundant to do this, but it fixes an edge case on round start
@@ -81,10 +81,10 @@ script "core_weaponcolor" (int weap, int weap_sound, int teamweap) {
 
   Thing_SetTranslation(0, weap);
   // $UH — sync mugshot cyan/blue from dye's 192/198 remap (see uh_SyncMugFromWeaponDye)
-  ACS_NamedExecuteWithResult("uh_SyncMugFromWeaponDye", mug_dye);
+  ACS_NamedExecuteWithResult("uh_SyncMugFromWeaponDye", mugdye);
   // $UH — remember Ready dye; core_chargecolor sets UH_ChargeColor_F so charge flashes are skipped
-  if (CheckInventory("UH_ChargeColor_F") == 0 && mug_dye > 0)
-    SetInventory("UH_LastReadyDye", mug_dye);
+  if (CheckInventory("UH_ChargeColor_F") == 0 && mugdye > 0)
+    SetInventory("UH_LastReadyDye", mugdye);
 }
 
 script "core_chargecolor" (int weap, int teamweap) {
@@ -127,17 +127,17 @@ script "core_copytranslation_client" (void) CLIENTSIDE {
 
 // $UH // Mostly a recreation of internal methods for player color setting (Attempt)
 
-script "uh_FetchAndSetPlayerColor" (int color_start, int color_end, int translation_number) {
-  if (color_start > color_end || (!color_start && !color_end) || color_start > 192 || color_end < 198) {
+script "uh_FetchAndSetPlayerColor" (int colorstart, int colorend, int translationnumber) {
+  if (colorstart > colorend || (!colorstart && !colorend) || colorstart > 192 || colorend < 198) {
     Log(s:"\cgERROR\c-,\cd uh_FetchAndSetPlayerColor\c- has invalid parameters!");
     terminate;
   }
   int min_c, max_c, delta;
   int h, s, v;
-  int fix_r, fix_g, fix_b;
+  int fixr, fixg, fixb;
 
-  int pl_num = PlayerNumber();
-  int color = GetPlayerInfo(pl_num, PLAYERINFO_COLOR);
+  int plnum = PlayerNumber();
+  int color = GetPlayerInfo(plnum, PLAYERINFO_COLOR);
 
   int cyan_r, cyan_g, cyan_b, blue_r, blue_g, blue_b;
 
@@ -145,9 +145,9 @@ script "uh_FetchAndSetPlayerColor" (int color_start, int color_end, int translat
   int g = (color >> 8) & 0xff;
   int b = color & 0xff;
 
-  fix_r = 1.0 * r / 255;
-  fix_g = 1.0 * g / 255;
-  fix_b = 1.0 * b / 255;
+  fixr = 1.0 * r / 255;
+  fixg = 1.0 * g / 255;
+  fixb = 1.0 * b / 255;
 
   if (r == g && g == b) {
     h = 0;
@@ -155,19 +155,19 @@ script "uh_FetchAndSetPlayerColor" (int color_start, int color_end, int translat
     v = r;
   }
   else {
-    if (fix_r < fix_g)
-      min_c = fix_r;
+    if (fixr < fixg)
+      min_c = fixr;
     else
-      min_c = fix_g;
-    if (fix_b < min_c)
-      min_c = fix_b;
+      min_c = fixg;
+    if (fixb < min_c)
+      min_c = fixb;
 
-    if (fix_r > fix_g)
-      max_c = fix_r;
+    if (fixr > fixg)
+      max_c = fixr;
     else
-      max_c = fix_g;
-    if (fix_b > max_c)
-      max_c = fix_b;
+      max_c = fixg;
+    if (fixb > max_c)
+      max_c = fixb;
 
     // V
     v = max(max(r, g), b);
@@ -177,12 +177,12 @@ script "uh_FetchAndSetPlayerColor" (int color_start, int color_end, int translat
     s = FixedDiv(delta, max_c);
 
     // H
-    if (fix_r == max_c)
-      h = FixedDiv((fix_g - fix_b), delta);  // between yellow & magenta
-    else if (fix_g == max_c)
-      h = 2.0 + FixedDiv((fix_b - fix_r), delta);  // between cyan & yellow
+    if (fixr == max_c)
+      h = FixedDiv((fixg - fixb), delta);  // between yellow & magenta
+    else if (fixg == max_c)
+      h = 2.0 + FixedDiv((fixb - fixr), delta);  // between cyan & yellow
     else
-      h = 4.0 + FixedDiv((fix_r - fix_g), delta);  // between magenta & cyan
+      h = 4.0 + FixedDiv((fixr - fixg), delta);  // between magenta & cyan
 
     h *= 60;  // degrees
 
@@ -190,22 +190,22 @@ script "uh_FetchAndSetPlayerColor" (int color_start, int color_end, int translat
       h += 360.0;
   }
 
-  int range_size = color_end - color_start + 1;
+  int rangesize = colorend - colorstart + 1;
 
   int base_s = s;
   int base_v = v * 1.0 / 255;
 
   base_s -= 0.23;
   base_v += 0.1;
-  int sdelta = 0.23 / range_size;
-  int vdelta = -0.94112 / range_size;
+  int sdelta = 0.23 / rangesize;
+  int vdelta = -0.94112 / rangesize;
 
   // Blue
-  int mem_blue_s = base_s + sdelta * (198 - color_start);
-  int mem_blue_v = base_v + vdelta * (198 - color_start);
+  int memblues = base_s + sdelta * (198 - colorstart);
+  int membluev = base_v + vdelta * (198 - colorstart);
   // Cyan
-  base_s = base_s + sdelta * (192 - color_start);
-  base_v = base_v + vdelta * (192 - color_start);
+  base_s = base_s + sdelta * (192 - colorstart);
+  base_v = base_v + vdelta * (192 - colorstart);
 
   int new_r, new_g, new_b;
 
@@ -256,8 +256,8 @@ script "uh_FetchAndSetPlayerColor" (int color_start, int color_end, int translat
       cyan_g = new_g >> 16;
       cyan_b = new_b >> 16;
 
-      base_s = mem_blue_s;
-      base_v = mem_blue_v;
+      base_s = memblues;
+      base_v = membluev;
     }
     if (i == 1) {
       blue_r = new_r >> 16;
@@ -267,14 +267,14 @@ script "uh_FetchAndSetPlayerColor" (int color_start, int color_end, int translat
   }
   // Log(s:"Cyan_COLORS >> ",i:Cyan_R,s:" <> ",i:Cyan_G,s:" <> ",i:Cyan_B);
   // Log(s:"Blue_COLORS >> ",i:Blue_R,s:" <> ",i:Blue_G,s:" <> ",i:Blue_B);
-  CreateTranslation(translation_number + pl_num,
+  CreateTranslation(translationnumber + plnum,
     192:192=[cyan_r, cyan_g, cyan_b]:[cyan_r, cyan_g, cyan_b],
     198:198=[blue_r, blue_g, blue_b]:[blue_r, blue_g, blue_b]);
   // Site	  216:216=%[R*1.0/255,G*1.0/255,B*1.0/255]:[0.75,0.75,0.75],
   // Worker	41:41=%[0.25,0.25,0.25]:[R*1.0/255,G*1.0/255,B*1.0/255]);//41:41=[R,G,B]:[R,G,B]
   //
   // PlayerTranslation[PlNum] = TranslationNumber+PlNum;
-  Thing_SetTranslation(0, translation_number + pl_num);
+  Thing_SetTranslation(0, translationnumber + plnum);
 }
 
 function void SetInventory(str item, int amount) {

@@ -9,7 +9,7 @@ script "uh_BossMorph" (int whoisit, int basehp, int addhp) {
   TakeInventory("PowerProtectMegaCopywep", 1);
   TakeInventory("PowerProtectUnholyItem", 1);
 
-  if (multi_boss_check >= 2) {  // && !VersusFightEvent
+  if (multibosscheck >= 2) {  // && !VersusFightEvent
     GiveInventory("PowerProtectBoss", 1);  // If multi boss, protect them from each other.
   }
 
@@ -20,54 +20,54 @@ script "uh_BossMorph" (int whoisit, int basehp, int addhp) {
   if (ab_scale >= 1) {
     GiveInventory("DynamicArmorDosage_F", GetArmorInfo(1));
 
-    if (multi_boss_check >= 1) {
-      int armor_bonus = (PlayerCount() - 1) / multi_boss_check;
-      str armor_name = StrParam(s:GetBossActor(whoisit), s:"_BasicArmorBonus_P");
+    if (multibosscheck >= 1) {
+      int armorbonus = (PlayerCount() - 1) / multibosscheck;
+      str armorname = StrParam(s:GetBossActor(whoisit), s:"_BasicArmorBonus_P");
 
-      until (armor_bonus <= 0) {
+      until (armorbonus <= 0) {
         GiveInventory("DynamicArmorDosage_F", ab_scale);
-        GiveInventory(armor_name, 1);
-        armor_bonus--;
+        GiveInventory(armorname, 1);
+        armorbonus--;
       }
     }
   }
 
-  NamedExecuteClientScript("UH_RainbowHudMessage", PlayerNumber(), whoisit, versus_fight_event * 24);
+  NamedExecuteClientScript("UH_RainbowHudMessage", PlayerNumber(), whoisit, versusfightevent * 24);
 
   ACS_NamedExecuteAlways("ub_RageDisplay", 0);
 
-  int hud_id = 5;  // ID to display the text //-10000
-  int hud_offset_y = 4;  // Text Y offset, 384 + Y * 32
+  int hudid = 5;  // ID to display the text //-10000
+  int hudoffsety = 4;  // Text Y offset, 384 + Y * 32
   // Sets up boss player name spacing and Face spacing. IE X has been selected to be Y.
   if (CheckInventory("Is_UH_BossNum") == 1) {
-    hud_id = 1;  // -10001
-    if (multi_boss_check == 4) {hud_offset_y = 0;}
-    else if (multi_boss_check == 3) {hud_offset_y = 1;}
-    else if (multi_boss_check == 2) {hud_offset_y = 2;}
-    else if (multi_boss_check == 1) {hud_offset_y = 2;}
+    hudid = 1;  // -10001
+    if (multibosscheck == 4) {hudoffsety = 0;}
+    else if (multibosscheck == 3) {hudoffsety = 1;}
+    else if (multibosscheck == 2) {hudoffsety = 2;}
+    else if (multibosscheck == 1) {hudoffsety = 2;}
   }
   else if (CheckInventory("Is_UH_BossNum") == 2) {
-    hud_id = 2;  // -10002
-    if (multi_boss_check == 4) {hud_offset_y = 1;}
-    else if (multi_boss_check == 3) {hud_offset_y = 2;}
-    else if (multi_boss_check == 2) {hud_offset_y = 3;}
+    hudid = 2;  // -10002
+    if (multibosscheck == 4) {hudoffsety = 1;}
+    else if (multibosscheck == 3) {hudoffsety = 2;}
+    else if (multibosscheck == 2) {hudoffsety = 3;}
   }
   else if (CheckInventory("Is_UH_BossNum") == 3) {
-    hud_id = 3;  // -10003
-    if (multi_boss_check == 4) {hud_offset_y = 2;}
-    else if (multi_boss_check == 3) {hud_offset_y = 3;}
+    hudid = 3;  // -10003
+    if (multibosscheck == 4) {hudoffsety = 2;}
+    else if (multibosscheck == 3) {hudoffsety = 3;}
   }
   else if (CheckInventory("Is_UH_BossNum") == 4) {
-    hud_id = 4;  // -10004
-    hud_offset_y = 3;
+    hudid = 4;  // -10004
+    hudoffsety = 3;
   }
-  hud_offset_y *= 32.0;  // 24.0
+  hudoffsety *= 32.0;  // 24.0
 
-  str b_name_str = GetBossName(whoisit);  // 'Boss' name
+  str b_namestr = GetBossName(whoisit);  // 'Boss' name
   int b_chr0 = GetChar(GetBossSpawnMsgType(whoisit), 0);  // Message style
   int b_chr1 = GetChar(GetBossSpawnMsgType(whoisit), 1);  // Color
   int b_chr2 = GetChar(GetBossSpawnMsgType(whoisit), 2);  // Punctuation...?!
-  str b_mess_str = GetBossSpawnMsg(whoisit);  // 'Custom' Message
+  str b_messstr = GetBossSpawnMsg(whoisit);  // 'Custom' Message
 
   // Defaults if nothing defined
   if (b_chr1 == 0)
@@ -76,7 +76,7 @@ script "uh_BossMorph" (int whoisit, int basehp, int addhp) {
     b_chr2 = '!';
   // s:"\c",c:B_Chr1,
 
-  str spawn_str;  // = StrParam(n:0, s:" \ckhas been selected to be ", s:B_NameStr, s:"\ck.");
+  str spawnstr;  // = StrParam(n:0, s:" \ckhas been selected to be ", s:B_NameStr, s:"\ck.");
   // Bonus things
   switch (b_chr0) {
     default:
@@ -97,127 +97,127 @@ script "uh_BossMorph" (int whoisit, int basehp, int addhp) {
   // Bonus things
   switch (b_chr0) {
     default:  // ~=Player 'Has been selected to be' Boss
-      spawn_str = StrParam(n:0, s:" \ckhas been selected to be ", s:b_name_str, s:"\ck!");
+      spawnstr = StrParam(n:0, s:" \ckhas been selected to be ", s:b_namestr, s:"\ck!");
       break;
     case 65:  // A=Player 'Custom'
-      spawn_str = StrParam(n:0, s:" ", s:b_mess_str);
+      spawnstr = StrParam(n:0, s:" ", s:b_messstr);
       break;
     case 66:  // B=Player 'Custom' Boss
-      spawn_str = StrParam(n:0, s:" \c", c:b_chr1, s:b_mess_str, s:" ", s:b_name_str, s:"\c", c:b_chr1, c:b_chr2);
+      spawnstr = StrParam(n:0, s:" \c", c:b_chr1, s:b_messstr, s:" ", s:b_namestr, s:"\c", c:b_chr1, c:b_chr2);
       break;
     case 67:  // C=(Player) Boss 'Custom'
-      spawn_str = StrParam(s:"\c", c:b_chr1, s:"(", n:0, s:"\c", c:b_chr1, s:") ", s:b_name_str, s:" \c", c:b_chr1, s:b_mess_str, c:b_chr2);
+      spawnstr = StrParam(s:"\c", c:b_chr1, s:"(", n:0, s:"\c", c:b_chr1, s:") ", s:b_namestr, s:" \c", c:b_chr1, s:b_messstr, c:b_chr2);
       break;
     case 69:  // E='Custom' Boss (Player)
-      spawn_str = StrParam(s:"\c", c:b_chr1, s:b_mess_str, s:" ", s:b_name_str, s:"\c", c:b_chr1, c:b_chr2, s:" (", n:0, s:"\c", c:b_chr1, s:")");
+      spawnstr = StrParam(s:"\c", c:b_chr1, s:b_messstr, s:" ", s:b_namestr, s:"\c", c:b_chr1, c:b_chr2, s:" (", n:0, s:"\c", c:b_chr1, s:")");
       break;
     case 70:  // F='Custom' (Player)
-      spawn_str = StrParam(s:b_mess_str, s:" \cj(", n:0, s:"\cj)");
+      spawnstr = StrParam(s:b_messstr, s:" \cj(", n:0, s:"\cj)");
       break;
     case 81:  // Q='Custom'
-      spawn_str = StrParam(s:b_mess_str);
+      spawnstr = StrParam(s:b_messstr);
       break;
 
     case -1:  // Loads of messages
       switch (random(0, 39)) {
         // Case -1:spawnStr = StrParam(s:"\ckRCON made ", n:0, s:" \ckbe ", s:B_NameStr, s:"\ck!");break;
-        case 0: spawn_str = StrParam(n:0, s:" \ckhas been selected to be ", s:b_name_str, s:"\ck."); break;
-        case 1: spawn_str = StrParam(n:0, s:"\ck is unfortunate enough to be ", s:b_name_str, s:"\ck."); break;
-        case 2: spawn_str = StrParam(n:0, s:"\ck was cursed to be ", s:b_name_str, s:"\ck."); break;
-        case 3: spawn_str = StrParam(n:0, s:"\ck was doomed to be ", s:b_name_str, s:"\ck."); break;
-        case 4: spawn_str = StrParam(n:0, s:"\ck was destined to be ", s:b_name_str, s:"\ck."); break;
-        case 5: spawn_str = StrParam(n:0, s:"\ck was replaced with ", s:b_name_str, s:"\ck."); break;
-        case 6: spawn_str = StrParam(n:0, s:"\ck was bribed to be ", s:b_name_str, s:"\ck."); break;
-        case 7: spawn_str = StrParam(n:0, s:"\ck didn't ask to be ", s:b_name_str, s:"\ck."); break;  // but is forced to.
-        case 8: spawn_str = StrParam(s:"\ckThe RNG gods made ", n:0, s:"\ck be ", s:b_name_str, s:"\ck!"); break;
-        case 9: spawn_str = StrParam(n:0, s:"\ck unlocked ", s:b_name_str, s:"\ck!"); break;  // applied for a job and ended up as .
-        case 10: spawn_str = StrParam(n:0, s:"\ck got a new job as ", s:b_name_str, s:"\ck."); break;  // wanted a job, became ... instead
-        case 11: spawn_str = StrParam(n:0, s:"\ck is now ", s:b_name_str, s:"\ck!"); break;
-        case 12: spawn_str = StrParam(n:0, s:"\ck drew the short straw to be ", s:b_name_str, s:"\ck."); break;  // is now ... unwillingly
-        case 13: spawn_str = StrParam(s:"\ckThe Dice made ", n:0, s:"\ck -> ", s:b_name_str); break;
-        case 14: spawn_str = StrParam(n:0, s:"\ck critical rolled into ", s:b_name_str, s:"\ck!"); break;  // rolled the dice, became
-        case 15: spawn_str = StrParam(n:0, s:"\ck playerclasses into ", s:b_name_str, s:"\ck."); break;
-        case 16: spawn_str = StrParam(n:0, s:"\ck has evolved into ", s:b_name_str, s:"\ck."); break;
-        case 17: spawn_str = StrParam(n:0, s:"\ck counterpicks into ", s:b_name_str, s:"\ck."); break;
-        case 18: spawn_str = StrParam(n:0, s:"\ck reincarnated as ", s:b_name_str, s:"\ck."); break;
-        case 19: spawn_str = StrParam(n:0, s:"\ck ranked up into ", s:b_name_str, s:"\ck."); break;
-        case 20: spawn_str = StrParam(n:0, s:"\ck spectated. ", s:b_name_str, s:"\ck joined the game."); break;  // 's loaded dice let them be !
-        case 21: spawn_str = StrParam(n:0, s:"\ck was sacrificed to summon ", s:b_name_str, s:"\ck!"); break;
-        case 22: spawn_str = StrParam(n:0, s:"\ck is dead. Long live ", s:b_name_str, s:"\ck!"); break;
-        case 23: spawn_str = StrParam(n:0, s:"\ck digievolved into ", s:b_name_str, s:"\ck!"); break;
-        case 24: spawn_str = StrParam(s:"\ckWatch out for ", s:b_name_str, s:"\ck! (", n:0, s:"\ck)"); break;
-        case 25: spawn_str = StrParam(n:0, s:"\ck got equipped with: ", s:b_name_str); break;
-        case 26: spawn_str = StrParam(s:"\ckYou tracked down ", s:b_name_str, s:"\ck! (", n:0, s:"\ck)"); break;
-        case 27: spawn_str = StrParam(n:0, s:"\ck is ", s:b_name_str, s:"\ck. Go wild."); break;
-        case 28: spawn_str = StrParam(s:b_name_str, s:"\ck's ghost possessed ", n:0, s:"\ck!"); break;
-        case 29: spawn_str = StrParam(n:0, s:"\ck found the ", s:b_name_str, s:"\ck button!"); break;
-        case 30: spawn_str = StrParam(n:0, s:"\ck bribed the game to be ", s:b_name_str, s:"\ck!"); break;
-        case 31: spawn_str = StrParam(s:b_name_str, s:"\ck was ", n:0, s:"\ck all along!"); break;
-        case 32: spawn_str = StrParam(s:"\ckEncountered a wild ", s:b_name_str, s:"\ck! (", n:0, s:"\ck)"); break;
-        case 33: spawn_str = StrParam(n:0, s:"\ck you're fired. ", s:b_name_str, s:"\ck, promotion."); break;
-        case 34: spawn_str = StrParam(n:0, s:"\ck? Never heard of 'em. ~", s:b_name_str); break;
-        case 35: spawn_str = StrParam(s:"\ckNo ", n:0, s:"\ck? Isn't that a shame, ", s:b_name_str, s:"\ck."); break;
-        case 36: spawn_str = StrParam(s:b_name_str, s:"\ck found ", n:0, s:"\ck's nuke codes!!"); break;
-        case 37: spawn_str = StrParam(s:"\ck(", n:0, s:"\ck) ", s:b_name_str, s:"\ck's location was found!"); break;
-        case 38: spawn_str = StrParam(n:0, s:"\ck purchased the ", s:b_name_str, s:"\ck DLC!"); break;
-        case 39: spawn_str = StrParam(n:0, s:"\ck won the lottery to become ", s:b_name_str, s:"\ck!"); break;
+        case 0: spawnstr = StrParam(n:0, s:" \ckhas been selected to be ", s:b_namestr, s:"\ck."); break;
+        case 1: spawnstr = StrParam(n:0, s:"\ck is unfortunate enough to be ", s:b_namestr, s:"\ck."); break;
+        case 2: spawnstr = StrParam(n:0, s:"\ck was cursed to be ", s:b_namestr, s:"\ck."); break;
+        case 3: spawnstr = StrParam(n:0, s:"\ck was doomed to be ", s:b_namestr, s:"\ck."); break;
+        case 4: spawnstr = StrParam(n:0, s:"\ck was destined to be ", s:b_namestr, s:"\ck."); break;
+        case 5: spawnstr = StrParam(n:0, s:"\ck was replaced with ", s:b_namestr, s:"\ck."); break;
+        case 6: spawnstr = StrParam(n:0, s:"\ck was bribed to be ", s:b_namestr, s:"\ck."); break;
+        case 7: spawnstr = StrParam(n:0, s:"\ck didn't ask to be ", s:b_namestr, s:"\ck."); break;  // but is forced to.
+        case 8: spawnstr = StrParam(s:"\ckThe RNG gods made ", n:0, s:"\ck be ", s:b_namestr, s:"\ck!"); break;
+        case 9: spawnstr = StrParam(n:0, s:"\ck unlocked ", s:b_namestr, s:"\ck!"); break;  // applied for a job and ended up as .
+        case 10: spawnstr = StrParam(n:0, s:"\ck got a new job as ", s:b_namestr, s:"\ck."); break;  // wanted a job, became ... instead
+        case 11: spawnstr = StrParam(n:0, s:"\ck is now ", s:b_namestr, s:"\ck!"); break;
+        case 12: spawnstr = StrParam(n:0, s:"\ck drew the short straw to be ", s:b_namestr, s:"\ck."); break;  // is now ... unwillingly
+        case 13: spawnstr = StrParam(s:"\ckThe Dice made ", n:0, s:"\ck -> ", s:b_namestr); break;
+        case 14: spawnstr = StrParam(n:0, s:"\ck critical rolled into ", s:b_namestr, s:"\ck!"); break;  // rolled the dice, became
+        case 15: spawnstr = StrParam(n:0, s:"\ck playerclasses into ", s:b_namestr, s:"\ck."); break;
+        case 16: spawnstr = StrParam(n:0, s:"\ck has evolved into ", s:b_namestr, s:"\ck."); break;
+        case 17: spawnstr = StrParam(n:0, s:"\ck counterpicks into ", s:b_namestr, s:"\ck."); break;
+        case 18: spawnstr = StrParam(n:0, s:"\ck reincarnated as ", s:b_namestr, s:"\ck."); break;
+        case 19: spawnstr = StrParam(n:0, s:"\ck ranked up into ", s:b_namestr, s:"\ck."); break;
+        case 20: spawnstr = StrParam(n:0, s:"\ck spectated. ", s:b_namestr, s:"\ck joined the game."); break;  // 's loaded dice let them be !
+        case 21: spawnstr = StrParam(n:0, s:"\ck was sacrificed to summon ", s:b_namestr, s:"\ck!"); break;
+        case 22: spawnstr = StrParam(n:0, s:"\ck is dead. Long live ", s:b_namestr, s:"\ck!"); break;
+        case 23: spawnstr = StrParam(n:0, s:"\ck digievolved into ", s:b_namestr, s:"\ck!"); break;
+        case 24: spawnstr = StrParam(s:"\ckWatch out for ", s:b_namestr, s:"\ck! (", n:0, s:"\ck)"); break;
+        case 25: spawnstr = StrParam(n:0, s:"\ck got equipped with: ", s:b_namestr); break;
+        case 26: spawnstr = StrParam(s:"\ckYou tracked down ", s:b_namestr, s:"\ck! (", n:0, s:"\ck)"); break;
+        case 27: spawnstr = StrParam(n:0, s:"\ck is ", s:b_namestr, s:"\ck. Go wild."); break;
+        case 28: spawnstr = StrParam(s:b_namestr, s:"\ck's ghost possessed ", n:0, s:"\ck!"); break;
+        case 29: spawnstr = StrParam(n:0, s:"\ck found the ", s:b_namestr, s:"\ck button!"); break;
+        case 30: spawnstr = StrParam(n:0, s:"\ck bribed the game to be ", s:b_namestr, s:"\ck!"); break;
+        case 31: spawnstr = StrParam(s:b_namestr, s:"\ck was ", n:0, s:"\ck all along!"); break;
+        case 32: spawnstr = StrParam(s:"\ckEncountered a wild ", s:b_namestr, s:"\ck! (", n:0, s:"\ck)"); break;
+        case 33: spawnstr = StrParam(n:0, s:"\ck you're fired. ", s:b_namestr, s:"\ck, promotion."); break;
+        case 34: spawnstr = StrParam(n:0, s:"\ck? Never heard of 'em. ~", s:b_namestr); break;
+        case 35: spawnstr = StrParam(s:"\ckNo ", n:0, s:"\ck? Isn't that a shame, ", s:b_namestr, s:"\ck."); break;
+        case 36: spawnstr = StrParam(s:b_namestr, s:"\ck found ", n:0, s:"\ck's nuke codes!!"); break;
+        case 37: spawnstr = StrParam(s:"\ck(", n:0, s:"\ck) ", s:b_namestr, s:"\ck's location was found!"); break;
+        case 38: spawnstr = StrParam(n:0, s:"\ck purchased the ", s:b_namestr, s:"\ck DLC!"); break;
+        case 39: spawnstr = StrParam(n:0, s:"\ck won the lottery to become ", s:b_namestr, s:"\ck!"); break;
       }
       break;
   }
 
   SetFont("BIGFONT");
   SetHudSize(640, 480, 0);
-  HudMessageBold(s:spawn_str; HUDMSG_FADEOUT | HUDMSG_LOG, 50 + hud_id, 10, 320.4, 352.2 + hud_offset_y, 1.8, 0.2);  // 384
+  HudMessageBold(s:spawnstr; HUDMSG_FADEOUT | HUDMSG_LOG, 50 + hudid, 10, 320.4, 352.2 + hudoffsety, 1.8, 0.2);  // 384
 
-  str spawn_actor = GetBossActor(whoisit);
-  if (StrICmp(spawn_actor, "TrueBusterMistress") == 0) {
+  str spawnactor = GetBossActor(whoisit);
+  if (StrICmp(spawnactor, "TrueBusterMistress") == 0) {
     if (!CheckInventory("IsGonnaBeFake")) {
-      if (multi_boss_check)
-        GiveInventory("MistressCopyVisedBoxItem", (PlayerCount() + 1) / multi_boss_check);
+      if (multibosscheck)
+        GiveInventory("MistressCopyVisedBoxItem", (PlayerCount() + 1) / multibosscheck);
       else
         GiveInventory("MistressCopyVisedBoxItem", 3);
     }
   }
-  else if (StrICmp(spawn_actor, "HellBot") == 0) {
+  else if (StrICmp(spawnactor, "HellBot") == 0) {
     ACS_NamedExecute("ub_HellTimerMonitor", 0);
   }
-  else if (StrICmp(spawn_actor, "SirAlpha") == 0 || StrICmp(spawn_actor, "SirAlphaEX") == 0) {
-    if (!CheckInventory("IsGonnaBeFake") && multi_boss_check == 1) {
+  else if (StrICmp(spawnactor, "SirAlpha") == 0 || StrICmp(spawnactor, "SirAlphaEX") == 0) {
+    if (!CheckInventory("IsGonnaBeFake") && multibosscheck == 1) {
       standardlmseventlocked = true;  // Old-Styled Fighting.
     }
   }
-  else if (StrICmp(spawn_actor, "Rogue") == 0) {
-    if (!CheckInventory("IsGonnaBeFake") && multi_boss_check == 1) {
+  else if (StrICmp(spawnactor, "Rogue") == 0) {
+    if (!CheckInventory("IsGonnaBeFake") && multibosscheck == 1) {
       standardlmseventlocked = true;
     }
   }
-  else if (StrICmp(spawn_actor, "FoxDemoneye300") == 0) {
+  else if (StrICmp(spawnactor, "FoxDemoneye300") == 0) {
     GiveInventory("ProsperityRune_ST", 1);
     standardlmseventlocked = true;
   }
-  else if (StrICmp(spawn_actor, "FinalSampi") == 0) {
-    if (!CheckInventory("IsGonnaBeFake") && multi_boss_check == 1) {
+  else if (StrICmp(spawnactor, "FinalSampi") == 0) {
+    if (!CheckInventory("IsGonnaBeFake") && multibosscheck == 1) {
       standardlmseventlocked = true;
     }
   }
-  else if (StrICmp(spawn_actor, "SPOOKYGHOSTHITLER") == 0) {
+  else if (StrICmp(spawnactor, "SPOOKYGHOSTHITLER") == 0) {
     ACS_NamedExecute("ub_HiglurLight", 0);
-    if (!CheckInventory("IsGonnaBeFake") && multi_boss_check == 1) {
+    if (!CheckInventory("IsGonnaBeFake") && multibosscheck == 1) {
       standardlmseventlocked = true;
     }
   }
 
   // multiBossCheck
   // This changes the health of the boss based on players and multibosses
-  int main_health = basehp;
-  if (multi_boss_check) {
-    main_health = min(basehp + (PlayerCount() * addhp / multi_boss_check) - addhp / multi_boss_check, MAX_HEALTH);
+  int mainhealth = basehp;
+  if (multibosscheck) {
+    mainhealth = min(basehp + (PlayerCount() * addhp / multibosscheck) - addhp / multibosscheck, MAX_HEALTH);
     // if(Debug_TXT) {Print(d:AddHP/multiBossCheck);}
-    SetActorProperty(0, APROP_HEALTH, main_health);
-    SetActorProperty(0, APROP_SPAWNHEALTH, main_health);
+    SetActorProperty(0, APROP_HEALTH, mainhealth);
+    SetActorProperty(0, APROP_SPAWNHEALTH, mainhealth);
   }
   // GiveActorInventory
-  SetInventory("BossSpawnHealthFlag", main_health);
+  SetInventory("BossSpawnHealthFlag", mainhealth);
   Delay(1);
 }
 
@@ -226,27 +226,27 @@ script "uh_BossMorph" (int whoisit, int basehp, int addhp) {
 // starts its HUD watcher; a phase transition only needs the health values and
 // the inventory value used by the boss HUD.
 script "uh_BossPhaseHealth" (int basehp, int addhp) {
-  int main_health = basehp;
-  if (multi_boss_check > 0) {
-    main_health = min(basehp + (PlayerCount() * addhp / multi_boss_check) - addhp / multi_boss_check, MAX_HEALTH);
+  int mainhealth = basehp;
+  if (multibosscheck > 0) {
+    mainhealth = min(basehp + (PlayerCount() * addhp / multibosscheck) - addhp / multibosscheck, MAX_HEALTH);
   }
   // Keep the phase transition valid even if a malformed/forced setup leaves
   // multiBossCheck at zero.  The old conditional skipped both properties,
   // leaving the actor at the trigger value of 1 HP and immediately arming
   // the next phase.
-  SetActorProperty(0, APROP_HEALTH, main_health);
-  SetActorProperty(0, APROP_SPAWNHEALTH, main_health);
-  SetInventory("BossSpawnHealthFlag", main_health);
+  SetActorProperty(0, APROP_HEALTH, mainhealth);
+  SetActorProperty(0, APROP_SPAWNHEALTH, mainhealth);
+  SetInventory("BossSpawnHealthFlag", mainhealth);
 }
 
 
 // Demoneyes + other morphes
 script "uh_DemoneyeMorph" (int whoisit, int bonus) {
-  PlayerLifeStatusArrUpdateFunc(PlayerNumber(), PLS_EYE);
+  PlayerLifeStatusArr_UpdateFunc(PlayerNumber(), PLS_EYE);
 
-  int eye_id = whoisit + bonus * 100;
-  SetPlayerEyeId(PlayerNumber(), eye_id);
-  SetInventory("ThisIsMyMagicEyeNumber", eye_id);  // Used for Menu Help/MugShot
+  int eyeid = whoisit + bonus * 100;
+  SetPlayerEyeId(PlayerNumber(), eyeid);
+  SetInventory("ThisIsMyMagicEyeNumber", eyeid);  // Used for Menu Help/MugShot
 
   TakeInventory("PowerProtectSurvivor", 1);
   TakeInventory("PowerProtectMegaCopywep", 1);
@@ -275,7 +275,7 @@ script "uh_DemoneyeMorph" (int whoisit, int bonus) {
   }
   ACS_NamedExecuteWithResult("uh_MorphPostReset", 0);
 
-  if (bonus && multi_boss_check >= 2) {  // && !VersusFightEvent
+  if (bonus && multibosscheck >= 2) {  // && !VersusFightEvent
     GiveInventory("PowerProtectBoss", 1);  // If multi boss, protect them from each other.
   }
 
@@ -301,22 +301,22 @@ script "uh_DemoneyeMorph" (int whoisit, int bonus) {
 // HellBot Script
 script "ub_HellTimerMonitor" (void) {
   SetActivator(0, AAPTR_NULL);
-  hell_timer = 10 + (PlayerCount() * 4);
-  if (hell_timer >= 90)
-    hell_timer = 90;
+  helltimer = 10 + (PlayerCount() * 4);
+  if (helltimer >= 90)
+    helltimer = 90;
   VariableLightChange(160, 0);
-  if (!zanko_rage_check)
+  if (!zankoragecheck)
     FadeLightChange(160, 16);
   Delay(16);
 
-  while (hell_timer >= 1 && ThingCountName("HellBot", 0) >= 1) {
-    ACS_NamedExecuteWithResult("ub_HellTimerHud", hell_timer);
+  while (helltimer >= 1 && ThingCountName("HellBot", 0) >= 1) {
+    ACS_NamedExecuteWithResult("ub_HellTimerHud", helltimer);
     Delay(34);
-    hell_timer -= 1;
+    helltimer -= 1;
     Delay(1);
   }
-  if (hell_timer <= 0) {
-    ACS_NamedExecuteWithResult("ub_HellTimerHud", hell_timer);
+  if (helltimer <= 0) {
+    ACS_NamedExecuteWithResult("ub_HellTimerHud", helltimer);
     GiveMeTheFunc("PowerEvilArmor", -998);  // Take from HellBots
     SetFont("BIGFONT");
     SetHudSize(480, 360, 0);
@@ -327,7 +327,7 @@ script "ub_HellTimerMonitor" (void) {
   }
   if (ThingCountName("SPOOKYGHOSTHITLER", 0) == 0) {
     VariableLightChange(255, 1);
-    if (!zanko_rage_check) {FadeLightChange(255, 130);}
+    if (!zankoragecheck) {FadeLightChange(255, 130);}
   }
 }
 
@@ -335,25 +335,25 @@ script "ub_HellTimerMonitor" (void) {
 script "ub_HiglurLight" (void) {
   SetActivator(0, AAPTR_NULL);
   VariableLightChange(160, 0);
-  if (!zanko_rage_check) {InstantLightChange(160);}
+  if (!zankoragecheck) {InstantLightChange(160);}
   while (ThingCountName("SPOOKYGHOSTHITLER", 0) >= 1) {
     Delay(10);
   }
   if (ThingCountName("HellBot", 0) == 0) {
     VariableLightChange(255, 1);
-    if (!zanko_rage_check) {FadeLightChange(255, 65);}
+    if (!zankoragecheck) {FadeLightChange(255, 65);}
   }
 }
 
-function bool ZHellAllyCheckFunc(int dead_tid) {
-  for (int i = 0; i < multi_boss_check; i++)
-    if (boss_data_arr[i][BOSSDATA_TID] == dead_tid)
+function bool ZHellAllyCheckFunc(int deadtid) {
+  for (int i = 0; i < multibosscheck; i++)
+    if (bossdataarr[i][BOSSDATA_TID] == deadtid)
       return true;
   return false;
 }
 
 script "uh_ZankokunaRage" (void) {
-  zanko_rage_check = true;
+  zankoragecheck = true;
   DebugLog(strParam(s:"This TID used Zankokuna rage: ", d:ActivatorTID()));
 
   MusicSaveFunc();
@@ -365,24 +365,24 @@ script "uh_ZankokunaRage" (void) {
 
   Delay(35);
   GiveActorInventory(ActivatorTID(), "InvulnerableOn_Pickup", 1);
-  int dead_tid = 1000;
-  until (dead_tid == 1064) {
-    if (ZHellAllyCheckFunc(dead_tid)) {
-      dead_tid = dead_tid;
+  int deadtid = 1000;
+  until (deadtid == 1064) {
+    if (ZHellAllyCheckFunc(deadtid)) {
+      deadtid = deadtid;
       // debugLog(strParam(s:"IGNORED ",d:DeadTID);
     }
     else {
-      GiveActorInventory(dead_tid, "AntiInvincible_P", 1);
-      Thing_Damage(dead_tid, 6000000, 5);
+      GiveActorInventory(deadtid, "AntiInvincible_P", 1);
+      Thing_Damage(deadtid, 6000000, 5);
       // debugLog(strParam(s:"Hurt ",d:DeadTID);
     }
-    dead_tid++;
+    deadtid++;
   }
 
   ACS_NamedTerminate("ub_WatchSurvivors", 0);
   ACS_NamedTerminate("ub_WatchBossesAndEyes", 0);
   gameover = true;
-  PlayMusicLoss(2);
+  PlayMusic_Loss(2);
 
   MakeAllPlayersInvun();
   FadeLightChange(0, 210);
@@ -401,15 +401,15 @@ script "uh_ZankokunaRage" (void) {
 script "uh_StopZankokunaRage" (int z) {
   switch (z) {
     case 0:
-      if (zanko_rage_check) {SetResultValue(0);}
+      if (zankoragecheck) {SetResultValue(0);}
       else {SetResultValue(1);}
       break;
     case 1:
-      zanko_rage_check = false;
+      zankoragecheck = false;
       ACS_NamedTerminate("uh_ZankokunaRage", 0);
-      PlayMusic(saved_music_lump);
-      MusicCredits(saved_music_credit, 1);
-      InstantLightChange(light_level_track);
+      PlayMusic(savedmusiclump);
+      MusicCredits(savedmusiccredit, 1);
+      InstantLightChange(lightleveltrack);
       break;
   }
 }
@@ -417,121 +417,121 @@ script "uh_StopZankokunaRage" (int z) {
 script "uh_WishingStar" (int star, int extra) {
   switch (star) {
     case -1:
-      SetResultValue(wishing_star_check);
+      SetResultValue(wishingstarcheck);
       break;
     case 0:
-      wishing_star_check = true;
+      wishingstarcheck = true;
       MusicSaveFunc();
       PlayMusic("");
       AmbientSound("items/wishingstar", 127);
       switch (extra) {
         case 0:
-          MusicCredits(musical_event_index[0][1], 1);
+          MusicCredits(musicaleventindex[0][1], 1);
           PrintBold(n:0, s:" has made a wish!");
           break;
         case 1:
-          MusicCredits(musical_event_index[0][2], 1);
+          MusicCredits(musicaleventindex[0][2], 1);
           PrintBold(n:0, s:" executed wish\cr.exe\c+!");
           break;
         case 2:
-          MusicCredits(musical_event_index[0][3], 1);
+          MusicCredits(musicaleventindex[0][3], 1);
           PrintBold(n:0, s:" has made a \cdwish\c+!");
           break;
         case 66:
-          MusicCredits(musical_event_index[0][4], 1);
+          MusicCredits(musicaleventindex[0][4], 1);
           PrintBold(s:"\c[MenuYellow]Delaying has caused a wish?");
           break;
       }
       break;
 
     case 1:
-      int star_death = 1000;
-      until (star_death == 1064) {
-        if (star_death != extra) {
-          GiveActorInventory(star_death, "AntiInvincible_P", 1);
-          Thing_Damage2(star_death, 6000000, "WishingStar");
+      int stardeath = 1000;
+      until (stardeath == 1064) {
+        if (stardeath != extra) {
+          GiveActorInventory(stardeath, "AntiInvincible_P", 1);
+          Thing_Damage2(stardeath, 6000000, "WishingStar");
         }
-        star_death++;
+        stardeath++;
       }
       Radius_Quake(9, 70, 0, 150, extra);
       AmbientSound("misc/hugequake", 127);
       PlayMusic("*");
       MusicCredits("Unknown - Stage Default", 1);
       Delay(35 * 10);
-      wishing_star_check = false;
-      MusicCredits(saved_music_credit, 1);
-      PlayMusic(saved_music_lump);
+      wishingstarcheck = false;
+      MusicCredits(savedmusiccredit, 1);
+      PlayMusic(savedmusiclump);
       break;
     case 6:  // Begin the entire EXE event.
       standardlmseventlocked = true;
       if (random(0, 1)) {
-        PlayMusic(musical_event_index[1][0]);
-        MusicCredits(musical_event_index[1][1], 1);
+        PlayMusic(musicaleventindex[1][0]);
+        MusicCredits(musicaleventindex[1][1], 1);
       }
       else {
-        PlayMusic(musical_event_index[2][0]);
-        MusicCredits(musical_event_index[2][1], 1);
+        PlayMusic(musicaleventindex[2][0]);
+        MusicCredits(musicaleventindex[2][1], 1);
       }
       Delay(10);
-      int red_r = 241;
-      int green_g = 220;
+      int redr = 241;
+      int greeng = 220;
       int blue_b2 = 220;
-      SectorColorChange(red_r, green_g, blue_b2, 0);
+      SectorColorChange(redr, greeng, blue_b2, 0);
       GiveMeTheFunc("SonicExeWishingStart_P", 1);
       Delay(35 * 12);
-      PlayMusic(musical_event_index[3][0]);
-      MusicCredits(musical_event_index[3][1], 1);
+      PlayMusic(musicaleventindex[3][0]);
+      MusicCredits(musicaleventindex[3][1], 1);
       for (int i = 0; i < 42; i++) {
-        SectorColorChange(red_r, green_g, blue_b2, 0);
-        red_r -= 2; green_g -= 5; blue_b2 -= 5;
+        SectorColorChange(redr, greeng, blue_b2, 0);
+        redr -= 2; greeng -= 5; blue_b2 -= 5;
         Delay(10);
       }
       AmbientSound(StrParam(s:"classes/SONICEXE", i:random(1, 4)), 127);
       Delay(35 * 4);
       PlayMusic("");
-      MusicCredits(musical_event_index[3][2], 1);
+      MusicCredits(musicaleventindex[3][2], 1);
       AmbientSound("classes/SONICEXE0", 127);
       AmbientSound("sonicEXE/Kefka", 127);
-      int exe_death = 1000;
-      until (exe_death == 1064) {
-        GiveActorInventory(exe_death, "AntiInvincible_P", 1);
-        Thing_Damage2(exe_death, 6000000, "WishingStar");
-        exe_death++;
+      int exedeath = 1000;
+      until (exedeath == 1064) {
+        GiveActorInventory(exedeath, "AntiInvincible_P", 1);
+        Thing_Damage2(exedeath, 6000000, "WishingStar");
+        exedeath++;
       }
       Delay(35 * 9);
       for (i = 0; i < 49; i++) {
-        red_r += 2; green_g += 5; blue_b2 += 5;
-        SectorColorChange(red_r, green_g, blue_b2, 0);
+        redr += 2; greeng += 5; blue_b2 += 5;
+        SectorColorChange(redr, greeng, blue_b2, 0);
         Delay(1);
       }
-      wishing_star_check = false;
-      MusicCredits(saved_music_credit, 1);
-      PlayMusic(saved_music_lump);
+      wishingstarcheck = false;
+      MusicCredits(savedmusiccredit, 1);
+      PlayMusic(savedmusiclump);
       break;
     case 7:  // Spec/Death
       LocalAmbientSound(StrParam(s:"classes/SONICEXE", i:random(1, 4)), 127);
       LocalSetMusic("");
       break;
     case 66:  // Wish Cancel
-      wishing_star_check = false;
+      wishingstarcheck = false;
       AmbientSound("S3_K/Wrong", 62);
       PrintBold(s:"Wish failed!");
-      MusicCredits(saved_music_credit, 1);
-      PlayMusic(saved_music_lump);
+      MusicCredits(savedmusiccredit, 1);
+      PlayMusic(savedmusiclump);
       break;
     case 77:
       AmbientSound("misc/TimeTravel", 127);
-      for (int time_t = 0; time_t < 64; time_t++) {  // Revive everyone who is dead
-        SetDeadSpectator(time_t, 0);
+      for (int timet = 0; timet < 64; timet++) {  // Revive everyone who is dead
+        SetDeadSpectator(timet, 0);
       }
       Delay(2);
-      wishing_star_check = false;
+      wishingstarcheck = false;
       ResetMap();
       break;
     case 165:  // DINODEATH
       // AmbientSound("misc/hugequake",127);
-      PlayMusic(musical_event_index[9][0]);
-      MusicCredits(musical_event_index[9][1], 0);
+      PlayMusic(musicaleventindex[9][0]);
+      MusicCredits(musicaleventindex[9][1], 0);
       break;
   }
 }

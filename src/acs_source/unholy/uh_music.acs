@@ -1,10 +1,10 @@
 // This records whatever the current music/code is for possible later use.
 function void MusicSaveFunc(void) {
-  saved_music_lump = current_music_lump;
-  saved_music_credit = current_music_credit;
+  savedmusiclump = currentmusiclump;
+  savedmusiccredit = currentmusiccredit;
 }
 function void PlayMusic(str music) {
-  current_music_lump = music;
+  currentmusiclump = music;
   SetCVarString("_uh_ServMusicLump", music);
   int len = StrLen(music);  // Also checks if music has a space and numbers after it
   int space = FindSpace(music, len);  // If it does, it plays the multi track
@@ -18,25 +18,25 @@ function void PlayMusic(str music) {
 }
 // Easy to manage music credits rather than having it listed multiple times in this ACS file.
 function void MusicCredits(str music, int display) {
-  current_music_credit = music;
+  currentmusiccredit = music;
   SetCVarString("_uh_ServMusicCredits", music);
   if (display == 0) {
     ACS_NamedExecuteAlways("ub_FancyDisplayMusicStart", 0);
   }
 }
-script "ub_PlayVariantMusic" (int the_num) {
+script "ub_PlayVariantMusic" (int thenum) {
   int row;
   str lump;
   str credit;
 
-  row = PickBossMusicRow(the_num, UHMUS_KIND_SPAWN, 0);
+  row = PickBossMusicRow(thenum, UHMUS_KIND_SPAWN, 0);
   if (row >= 0) {
     lump = GetBossMusicLumpByRow(row);
     credit = GetBossMusicCreditByRow(row);
   }
   else {
-    lump = getBossMusic(the_num);
-    credit = getBossMusicCredit(the_num);
+    lump = getBossMusic(thenum);
+    credit = getBossMusicCredit(thenum);
   }
   PlayMusic(lump);
   MusicCredits(credit, 0);
@@ -69,9 +69,9 @@ script "ub_BossEnrageMusic" (int which, int type) {
   MusicCredits(credit, 0);
 }
 
-function int PlayMusicWinner(int force) {
+function int PlayMusic_Winner(int force) {
   int row;
-  int emulate_delay;
+  int emulatedelay;
 
   // Force ignored: always weighted-random from UHMUS_KIND_WINNER pool.
   row = PickEventMusicRow(UHMUS_KIND_WINNER, 0);
@@ -81,14 +81,14 @@ function int PlayMusicWinner(int force) {
   PlayMusic(GetBossMusicLumpByRow(row));
   MusicCredits(GetBossMusicCreditByRow(row), 1);
 
-  emulate_delay = 0;
+  emulatedelay = 0;
   if (GetBossMusicEmuFlagByRow(row))
-    emulate_delay = 12;
-  return RoundFixedToInt(35 * GetBossMusicDurationByRow(row)) + emulate_delay;
+    emulatedelay = 12;
+  return RoundFixedToInt(35 * GetBossMusicDurationByRow(row)) + emulatedelay;
 }
-function int PlayMusicLoser(int force) {
+function int PlayMusic_Loser(int force) {
   int row;
-  int emulate_delay;
+  int emulatedelay;
 
   // Force ignored: always weighted-random from UHMUS_KIND_LOSER pool.
   row = PickEventMusicRow(UHMUS_KIND_LOSER, 0);
@@ -98,13 +98,13 @@ function int PlayMusicLoser(int force) {
   PlayMusic(GetBossMusicLumpByRow(row));
   MusicCredits(GetBossMusicCreditByRow(row), 1);
 
-  emulate_delay = 0;
+  emulatedelay = 0;
   if (GetBossMusicEmuFlagByRow(row))
-    emulate_delay = 12;
-  return RoundFixedToInt(35 * GetBossMusicDurationByRow(row)) + emulate_delay;
+    emulatedelay = 12;
+  return RoundFixedToInt(35 * GetBossMusicDurationByRow(row)) + emulatedelay;
 }
 
-function void PlayMusicWin(int force) {
+function void PlayMusic_Win(int force) {
   if (!force) {force = random(1, 3);}
   switch (force) {
     case -2:  // Solo Boss Spec/Disconnect!
@@ -126,7 +126,7 @@ function void PlayMusicWin(int force) {
   }
 }
 
-function void PlayMusicLoss(int force) {
+function void PlayMusic_Loss(int force) {
   if (force < 1 || force > 3) {force = random(1, 3);}
   switch (force) {
     case 1:

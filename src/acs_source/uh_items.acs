@@ -9,11 +9,11 @@
 // helpers are server-side entry points used by the MoneyBait/MoneyBomb
 // DECORATE actors; modders can use PickEyeMorphActor directly when they need a
 // different delivery shape.
-function int SpawnEyeMorphEffect(str pool, int mode, int z_off, int speed) {
+function int SpawnEyeMorphEffect(str pool, int mode, int zoff, int speed) {
 	str actor = PickEyeMorphActorCore(pool, mode);
-	int source_tid = ActivatorTID();
-	int source_temp = 0;
-	int spawn_tid;
+	int sourcetid = ActivatorTID();
+	int sourcetemp = 0;
+	int spawntid;
 	int angle;
 	int result;
 	if (StrCmp(actor, "") == 0)
@@ -25,26 +25,26 @@ function int SpawnEyeMorphEffect(str pool, int mode, int z_off, int speed) {
 	// DECORATE must call these scripts with ACS_NamedExecuteWithResult (not
 	// ACS_NamedExecuteAlways): Always is deferred, and a 0-tic helper is
 	// already gone by the time the script would run.
-	if (source_tid == 0) {
-		source_temp = UniqueTID();
-		Thing_ChangeTID(0, source_temp);
-		source_tid = source_temp;
+	if (sourcetid == 0) {
+		sourcetemp = UniqueTID();
+		Thing_ChangeTID(0, sourcetemp);
+		sourcetid = sourcetemp;
 	}
 
-	spawn_tid = UniqueTID();
+	spawntid = UniqueTID();
 	angle = GetActorAngle(0);
 	result = SpawnForced(
 		actor,
 		GetActorX(0),
 		GetActorY(0),
-		GetActorZ(0) + z_off * 1.0,
-		spawn_tid,
+		GetActorZ(0) + zoff * 1.0,
+		spawntid,
 		angle >> 8
 	);
 	if (result) {
 		if (speed != 0) {
 			SetActorVelocity(
-				spawn_tid,
+				spawntid,
 				FixedMul(cos(angle), speed * 1.0),
 				FixedMul(sin(angle), speed * 1.0),
 				0,
@@ -52,14 +52,14 @@ function int SpawnEyeMorphEffect(str pool, int mode, int z_off, int speed) {
 				0
 			);
 		}
-		SetActivator(spawn_tid);
-		SetPointer(AAPTR_TARGET, source_tid);
-		Thing_ChangeTID(spawn_tid, 0);
+		SetActivator(spawntid);
+		SetPointer(AAPTR_TARGET, sourcetid);
+		Thing_ChangeTID(spawntid, 0);
 	}
 
-	if (source_temp != 0) {
-		SetActivator(source_tid);
-		Thing_ChangeTID(source_tid, 0);
+	if (sourcetemp != 0) {
+		SetActivator(sourcetid);
+		Thing_ChangeTID(sourcetid, 0);
 	}
 	return result;
 }
@@ -77,18 +77,18 @@ script "uh_SpawnMoneyBombBurst" (void) {
 }
 
 script "UB_GUHU_SelfDamage" (int pain, int type) {
-	int target_tid = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
-	str damage_type;
+	int targettid = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+	str damagetype;
 	if (pain <= 0)
 		pain = 1;
 	switch (type) {
 		case 1:
 			pain *= 2500;
-			damage_type = "GiveUpHope";
+			damagetype = "GiveUpHope";
 			break;
 		case 2:
 			pain *= 10000;
-			damage_type = "SuperGiveUpHope";
+			damagetype = "SuperGiveUpHope";
 			break;
 	}
 	/*	if(CheckActorInventory(TargetTID,"RuneDoubleDamage")){Pain*=2;}//StrengthRune
@@ -98,7 +98,7 @@ script "UB_GUHU_SelfDamage" (int pain, int type) {
 	if(CheckActorInventory(TargetTID,"PowerFakeTruePower1")){Pain = (1.25 * Pain + 0.5) >> 16;}
 	if(Pain <= 0)
 	Pain = 0x7FFFFFFF;*/
-	Thing_Damage2(target_tid, pain, damage_type);
+	Thing_Damage2(targettid, pain, damagetype);
 }
 
 script "rz_ThingDamage_GiveUpHope" (int tid, int amount) {
@@ -117,7 +117,7 @@ script "rz_ThingDamage_Damocles" (int tid, int amount) {
 	SetResultValue(Thing_Damage2(tid, amount, "Damocles"));
 }
 
-str u_boss_inv_str[3] = {
+str u_bossinvstr[3] = {
 	"GUHUItem",
 "OnFireItemFlag",
 "SuperGUHUItem",
@@ -125,13 +125,13 @@ str u_boss_inv_str[3] = {
 #define CIINV_GUHU       0
 #define CIINV_ONFIRE     1
 #define CIINV_SUPERGUHU  2
-script "uh_CheckItemInventory" (int item_type, int who) {
+script "uh_CheckItemInventory" (int itemtype, int who) {
 	if (who < 1000 || who > 1063) {
 		SetActivator(0, who);
-		SetResultValue(CheckInventory(u_boss_inv_str[item_type]));
+		SetResultValue(CheckInventory(u_bossinvstr[itemtype]));
 	}
 	else {
-		SetResultValue(CheckActorInventory(who, u_boss_inv_str[item_type]));
+		SetResultValue(CheckActorInventory(who, u_bossinvstr[itemtype]));
 	}
 }
 
@@ -149,11 +149,11 @@ script "UB_OnFireFinalBurn" (void) {
 	Thing_Damage2(ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET), 100000, "OnFireB");
 }
 
-script "UB_WhackSpellRNGCheck" (int high_hp, int low_hp, int user_hp, int bonus_chance) {
+script "UB_WhackSpellRNGCheck" (int high_hp, int low_hp, int user_hp, int bonuschance) {
 	if (Timer() <= 100) {SetResultValue(1); terminate;}  // Quick kill lol
 
-	int target_hp_per = 100 - ACS_NamedExecuteWithResult("UB_GetPointerHealth", 2, 2);
-	int tracer_hp_per = 100 - ACS_NamedExecuteWithResult("UB_GetPointerHealth", 8, 2);
+	int targethpper = 100 - ACS_NamedExecuteWithResult("UB_GetPointerHealth", 2, 2);
+	int tracerhpper = 100 - ACS_NamedExecuteWithResult("UB_GetPointerHealth", 8, 2);
 	// Log(i:TargetHPPer,s:" =TargetHP Percent TracerHP= ",i:TracerHPPer);
 
 	if (high_hp > 100 || high_hp < 1)  // Failsafe zone
@@ -164,27 +164,27 @@ script "UB_WhackSpellRNGCheck" (int high_hp, int low_hp, int user_hp, int bonus_
 		low_hp = 0;
 	// 1 + 200 * (pt - 20) / 280 + 20 * (pH / 300)//Ultimate Math
 
-	int whack_chance = (tracer_hp_per - (100 - high_hp)) * 100 / (100 - low_hp);
+	int whackchance = (tracerhpper - (100 - high_hp)) * 100 / (100 - low_hp);
 	// Log(i:WhackChance,s:" <> High_HP == ",i:High_HP,s:" <> Low_HP = ",i:Low_HP);
-	whack_chance += target_hp_per / 100 * user_hp;
+	whackchance += targethpper / 100 * user_hp;
 	// Log(i:WhackChance,s:" <> User_HP = ",i:User_HP);
-	whack_chance += bonus_chance;
+	whackchance += bonuschance;
 	// Log(i:WhackChance,s:" <> BonusChance = ",i:BonusChance);
 
-	if (whack_chance <= 0) {
-		whack_chance = 1;
+	if (whackchance <= 0) {
+		whackchance = 1;
 	}
 	else {
-		whack_chance += 1;
+		whackchance += 1;
 	}
 	// Log(i:WhackChance,s:" WhackSpell Math Done!");
 
-	if (whack_chance < 100 && tracer_hp_per >= 100 - low_hp) {
-		whack_chance = 100;  // Force Whack if Tracer has less than % LowHP (5% as example)
+	if (whackchance < 100 && tracerhpper >= 100 - low_hp) {
+		whackchance = 100;  // Force Whack if Tracer has less than % LowHP (5% as example)
 		// Log(s:"Forced Thwack!");
 	}
 
-	SetResultValue(random(1, 100) <= whack_chance);
+	SetResultValue(random(1, 100) <= whackchance);
 }
 
 script "UB_DeadlyFireArmsButtonCheck" (void) {
@@ -207,8 +207,8 @@ script "UB_I_WinACS" (void) {
 
 // Returns sting for the last rolled drop row (or by item fallback).
 function str GetItemLootSting(int boxid, int itemid) {
-	if (uh_item_last_drop_row >= 0 && uh_item_drop_box_id[uh_item_last_drop_row] == boxid)
-		return GetItemDropStingByRow(uh_item_last_drop_row);
+	if (uh_itemlastdroprow >= 0 && uh_itemdropboxid[uh_itemlastdroprow] == boxid)
+		return GetItemDropStingByRow(uh_itemlastdroprow);
 	if (itemid == UHITEM_FAIL)
 		return "";
 	return GetItemDropSting(boxid, itemid);
@@ -255,7 +255,7 @@ function int GiveRandomBoxItemCore(int boxid, int prosperity, int silent) {
 	if (id == UHITEM_FAIL)
 		return 0;
 
-	row = uh_item_last_drop_row;
+	row = uh_itemlastdroprow;
 	actor = GetItemActor(id);
 
 	// ToW: already have I_Win → give DLC coins instead (legacy Rare1→Rare2).
@@ -339,9 +339,9 @@ script "rz_DlcCoinUse" (void) {
 	coins = CheckInventory("DLC_CoinItem");
 	row = FindCoinSpendRow(coins);
 	if (row >= 0) {
-		take = uh_coin_spend_take[row];
-		give = uh_coin_spend_give[row];
-		snd = uh_coin_spend_sound[row];
+		take = uh_coinspendtake[row];
+		give = uh_coinspendgive[row];
+		snd = uh_coinspendsound[row];
 		if (take <= 0)
 			TakeInventory("DLC_CoinItem", coins);
 		else
@@ -368,7 +368,7 @@ script "rz_DlcCoinUse" (void) {
 // EyeDrop: SpawnItemEx x1 at activator. GauntletExit / Minivile hijacks (EyeDrop-only).
 script "uh_SpawnRandomBoxItem" (int boxid) {
 	int id = RandomItemFromBox(boxid);
-	int row = uh_item_last_drop_row;
+	int row = uh_itemlastdroprow;
 	str actor;
 	str give;
 	int x;
@@ -432,7 +432,7 @@ script "rz_AssHatRoll" (void) {
 	int row;
 	int id;
 	str give;
-	str item_actor;
+	str itemactor;
 	int x;
 	int y;
 	int z;
@@ -450,15 +450,15 @@ script "rz_AssHatRoll" (void) {
 	}
 
 	id = GetItemDropItemIdByRow(row);
-	item_actor = GetItemActor(id);
-	give = uh_item_drop_give[row];
+	itemactor = GetItemActor(id);
+	give = uh_itemdropgive[row];
 	x = GetActorX(0);
 	y = GetActorY(0);
 	z = GetActorZ(0);
 
 	if (StrCmp(give, "") == 0) {
 		tid = UniqueTID();
-		if (AssHatPendingAlloc(tid, item_actor) < 0) {
+		if (AssHatPendingAlloc(tid, itemactor) < 0) {
 			SetResultValue(0);
 			terminate;
 		}
@@ -500,7 +500,7 @@ script "rz_DickHatRoll" (void) {
 	int row;
 	int id;
 	str give;
-	str item_actor;
+	str itemactor;
 	int x;
 	int y;
 	int z;
@@ -518,15 +518,15 @@ script "rz_DickHatRoll" (void) {
 	}
 
 	id = GetItemDropItemIdByRow(row);
-	item_actor = GetItemActor(id);
-	give = uh_item_drop_give[row];
+	itemactor = GetItemActor(id);
+	give = uh_itemdropgive[row];
 	x = GetActorX(0);
 	y = GetActorY(0);
 	z = GetActorZ(0);
 
 	if (StrCmp(give, "") == 0) {
 		tid = UniqueTID();
-		if (AssHatPendingAlloc(tid, item_actor) < 0) {
+		if (AssHatPendingAlloc(tid, itemactor) < 0) {
 			SetResultValue(0);
 			terminate;
 		}
@@ -583,12 +583,12 @@ script "rz_CrookedPennyRolling" (void) {
 	int i;
 
 	for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
-		if (uh_item_vanilla_defined[id] == 0)
+		if (uh_itemvanilladefined[id] == 0)
 			continue;
-		CrookedPennyMutateActor(uh_item_vanilla_str[id][UHITEM_STR_ACTOR], lucky);
+		CrookedPennyMutateActor(uh_itemvanillastr[id][UHITEM_STR_ACTOR], lucky);
 	}
-	for (i = 0; i < uh_item_custom_count; i++) {
-		CrookedPennyMutateActor(uh_item_custom_str[i][UHITEM_STR_ACTOR], lucky);
+	for (i = 0; i < uh_itemcustomcount; i++) {
+		CrookedPennyMutateActor(uh_itemcustomstr[i][UHITEM_STR_ACTOR], lucky);
 	}
 
 	if (!lucky) {
@@ -599,26 +599,26 @@ script "rz_CrookedPennyRolling" (void) {
 
 // Eternal D6: defer gives so newly rolled items are not re-processed in the same pass.
 #define UH_EDEN_D6_PENDING_MAX 256
-str uh_eden_d6_pending_give[UH_EDEN_D6_PENDING_MAX];
-int uh_eden_d6_pending_count;
+str uh_edend6pendinggive[UH_EDEN_D6_PENDING_MAX];
+int uh_edend6pendingcount;
 
 function void EternalD6QueueGive(str actor) {
 	if (StrCmp(actor, "") == 0)
 		return;
-	if (uh_eden_d6_pending_count >= UH_EDEN_D6_PENDING_MAX)
+	if (uh_edend6pendingcount >= UH_EDEN_D6_PENDING_MAX)
 		return;
-	uh_eden_d6_pending_give[uh_eden_d6_pending_count] = actor;
-	uh_eden_d6_pending_count++;
+	uh_edend6pendinggive[uh_edend6pendingcount] = actor;
+	uh_edend6pendingcount++;
 }
 
 function void EternalD6ProcessActor(str actor) {
 	int count;
 	int itemid;
 	int boxid;
-	int coin_id;
+	int coinid;
 	int u;
-	int new_id;
-	str give_actor;
+	int newid;
+	str giveactor;
 
 	count = CheckInventory(actor);
 	if (count <= 0)
@@ -631,8 +631,8 @@ function void EternalD6ProcessActor(str actor) {
 	itemid = FindItemByActor(actor);
 	if (itemid == UHITEM_FAIL)
 		return;
-	coin_id = FindItemByActor("DLC_CoinItem");
-	if (itemid == coin_id)
+	coinid = FindItemByActor("DLC_CoinItem");
+	if (itemid == coinid)
 		return;
 	if (IsUnholyBox(itemid))
 		return;
@@ -645,10 +645,10 @@ function void EternalD6ProcessActor(str actor) {
 			continue;
 		TakeInventory(actor, 1);
 		if (random(0, 99) < 75) {
-			new_id = RandomItemFromBoxEdenD6(boxid, itemid);
-			if (new_id != UHITEM_FAIL) {
-				give_actor = GetItemActor(new_id);
-				EternalD6QueueGive(give_actor);
+			newid = RandomItemFromBoxEdenD6(boxid, itemid);
+			if (newid != UHITEM_FAIL) {
+				giveactor = GetItemActor(newid);
+				EternalD6QueueGive(giveactor);
 			}
 		}
 	}
@@ -658,19 +658,19 @@ script "rz_EternalD6Rolling" (void) {
 	int id;
 	int i;
 
-	uh_eden_d6_pending_count = 0;
+	uh_edend6pendingcount = 0;
 
 	for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
-		if (uh_item_vanilla_defined[id] == 0)
+		if (uh_itemvanilladefined[id] == 0)
 			continue;
-		EternalD6ProcessActor(uh_item_vanilla_str[id][UHITEM_STR_ACTOR]);
+		EternalD6ProcessActor(uh_itemvanillastr[id][UHITEM_STR_ACTOR]);
 	}
-	for (i = 0; i < uh_item_custom_count; i++) {
-		EternalD6ProcessActor(uh_item_custom_str[i][UHITEM_STR_ACTOR]);
+	for (i = 0; i < uh_itemcustomcount; i++) {
+		EternalD6ProcessActor(uh_itemcustomstr[i][UHITEM_STR_ACTOR]);
 	}
 
-	for (i = 0; i < uh_eden_d6_pending_count; i++)
-		GiveInventory(uh_eden_d6_pending_give[i], 1);
+	for (i = 0; i < uh_edend6pendingcount; i++)
+		GiveInventory(uh_edend6pendinggive[i], 1);
 }
 
 // LMS death drops: razon3 rz_TakeAndDropFullItems, but walk DefineUnholyItem
@@ -720,12 +720,12 @@ script "UH_DropItemsOnDeath" (void) {
 	int treasure;
 
 	for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
-		if (uh_item_vanilla_defined[id] == 0)
+		if (uh_itemvanilladefined[id] == 0)
 			continue;
-		TakeAndDropUnholyActor(uh_item_vanilla_str[id][UHITEM_STR_ACTOR]);
+		TakeAndDropUnholyActor(uh_itemvanillastr[id][UHITEM_STR_ACTOR]);
 	}
-	for (i = 0; i < uh_item_custom_count; i++)
-		TakeAndDropUnholyActor(uh_item_custom_str[i][UHITEM_STR_ACTOR]);
+	for (i = 0; i < uh_itemcustomcount; i++)
+		TakeAndDropUnholyActor(uh_itemcustomstr[i][UHITEM_STR_ACTOR]);
 
 	// Not a DefineUnholyItem — Unholy_GeneralDeath dropped these one-for-one.
 	treasure = CheckInventory("GauntletTreasure_F");

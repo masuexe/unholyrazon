@@ -9,36 +9,36 @@ function int ActorFace (int facer, int target)
 }
 
 // (Russ) Thrust an actor towards another with offsets
-function void actorPull(int puller, int pullee, int force, int x_off, int y_off, int z_off)
+function void actorPull(int puller, int pullee, int force, int xoff, int yoff, int zoff)
 {
-	int angle = VectorAngle((GetActorX(puller)+x_off)-GetActorX(pullee), (GetActorY(puller)+y_off)-GetActorY(pullee));
-	int pitch = pitchBetween(puller, pullee, x_off, y_off, z_off);
+	int angle = VectorAngle((GetActorX(puller)+xoff)-GetActorX(pullee), (GetActorY(puller)+yoff)-GetActorY(pullee));
+	int pitch = pitchBetween(puller, pullee, xoff, yoff, zoff);
 
 	angle = angle >> 8; // Convert fixed point angle to byte angle.
-	int horiz_force = fixedMul(cos(pitch), force<<16)>>16;
-	int verti_force = fixedMul(sin(pitch), force<<16)>>16;
+	int horizforce = fixedMul(cos(pitch), force<<16)>>16;
+	int vertiforce = fixedMul(sin(pitch), force<<16)>>16;
 
 	//PrintBold(s:"pitch: ", f:pitch, s:"\n",
 	//          s:"horizontal force: ", i:horizForce, s:"\n",
 	//		  s:"vertical force: ", i:vertiForce, s:"\n");
 	//
 
-	ThrustThing(angle, horiz_force, horiz_force>30, pullee);
-	ThrustThingZ(pullee, verti_force*4, 0, 0);
+	ThrustThing(angle, horizforce, horizforce>30, pullee);
+	ThrustThingZ(pullee, vertiforce*4, 0, 0);
 }
 
 // (Russ) Stolen from Evil Escort, which in turn was stolen from the ZDoom forum
-function int pitchBetween(int looker, int target, int x_off, int y_off, int z_off)
+function int pitchBetween(int looker, int target, int xoff, int yoff, int zoff)
 {
 	int x, y, z, ang, pitch, len;
-	x = (getactorx(target) + x_off) - getactorx(looker);
-    y = (getactory(target) + y_off)- getactory(looker);
+	x = (getactorx(target) + xoff) - getactorx(looker);
+    y = (getactory(target) + yoff)- getactory(looker);
 
 	ang = vectorangle(x,y);
 	if(((ang+0.125)%0.5) > 0.25) len = fixeddiv(y, sin(ang));
 	else len = fixeddiv(x, cos(ang));
 
-	z = (getactorz(target) - z_off) - getactorz(looker);
+	z = (getactorz(target) - zoff) - getactorz(looker);
 
 	pitch = -vectorangle(len, z);
 	return pitch;
@@ -48,12 +48,12 @@ function int pitchBetween(int looker, int target, int x_off, int y_off, int z_of
 // Returns whether the actor exists, won't log invalid inventory!
 function int GiveActorReplacedInventory(int tid, str item, int amt)
 {
-	int temp_tid = UniqueTID();
-	int ret = SpawnForced(item, GetActorX(tid), GetActorY(tid), GetActorZ(tid), temp_tid, 0);
+	int temptid = UniqueTID();
+	int ret = SpawnForced(item, GetActorX(tid), GetActorY(tid), GetActorZ(tid), temptid, 0);
 	if(ret)
 	{
-		GiveActorInventory(tid, GetActorClass(temp_tid), amt);
-		Thing_Remove(temp_tid);
+		GiveActorInventory(tid, GetActorClass(temptid), amt);
+		Thing_Remove(temptid);
 	}
 
 	return ret;
@@ -61,19 +61,19 @@ function int GiveActorReplacedInventory(int tid, str item, int amt)
 
 function int GiveReplacedInventory(str item, int amt)
 {
-	int temp_tid = UniqueTID();
-	int ret = SpawnForced(item, GetActorX(0), GetActorY(0), GetActorZ(0), temp_tid, 0);
+	int temptid = UniqueTID();
+	int ret = SpawnForced(item, GetActorX(0), GetActorY(0), GetActorZ(0), temptid, 0);
 	if(ret)
 	{
-		GiveInventory(GetActorClass(temp_tid), amt);
-		Thing_Remove(temp_tid);
+		GiveInventory(GetActorClass(temptid), amt);
+		Thing_Remove(temptid);
 	}
 
 	return ret;
 }
 
 // Taken from unkown
-function int ActorLookAt(int looker, int target, int z_off, int lookerzoff)
+function int ActorLookAt(int looker, int target, int zoff, int lookerzoff)
 {
    int x, y, z, ang, pitch, len;
    x = getactorx(target) - getactorx(looker);
@@ -83,7 +83,7 @@ function int ActorLookAt(int looker, int target, int z_off, int lookerzoff)
    if(((ang+0.125)%0.5) > 0.25) len = fixeddiv(y, sin(ang));
    else len = fixeddiv(x, cos(ang));
 
-   z = (getactorz(target) + z_off) - (getactorz(looker)+lookerzoff);
+   z = (getactorz(target) + zoff) - (getactorz(looker)+lookerzoff);
 
    pitch = -vectorangle(len, z);
 

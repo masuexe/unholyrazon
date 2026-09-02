@@ -1,18 +1,18 @@
 // Clientside Display Zone
 
 #define HUDMESSAGE_REFRESHER_RATE 175  // 404
-bool refresh_hud_message;
+bool refreshhudmessage;
 
 script "ub_refreshHudMessageLoop" (void) {
-	int cycle_delay;
+	int cycledelay;
 	while (1) {
-		cycle_delay++;
+		cycledelay++;
 		Delay(1);
-		if (cycle_delay >= HUDMESSAGE_REFRESHER_RATE || refresh_hud_message) {
-			refresh_hud_message = true;
+		if (cycledelay >= HUDMESSAGE_REFRESHER_RATE || refreshhudmessage) {
+			refreshhudmessage = true;
 			Delay(1);
-			refresh_hud_message = false;
-			cycle_delay = 1;
+			refreshhudmessage = false;
+			cycledelay = 1;
 		}
 	}
 }
@@ -21,44 +21,44 @@ script "ub_refreshHudMessageLoop" (void) {
 
 
 #define COLORSARRAY_C 18
-int the_colors_array[COLORSARRAY_C] = {9, 2, 1, 0, 6, 17, 18, 8, 10, 5, 3, 16, 21, 7, 13, 19, 20, 12};
-script "UH_RainbowHudMessage" (int whoisit, int y_off_set) CLIENTSIDE {
+int thecolorsarray[COLORSARRAY_C] = {9, 2, 1, 0, 6, 17, 18, 8, 10, 5, 3, 16, 21, 7, 13, 19, 20, 12};
+script "UH_RainbowHudMessage" (int whoisit, int y_offset) CLIENTSIDE {
 	// if(ConsolePlayerNumber() != PlayerNumber()){
 	//		terminate;
 	// }
-	int color_num = random(0, COLORSARRAY_C);
-	int y2_off_set = y_off_set * 5 / 3;  // If VS Event, lower HudMessage
-	int alpha_num = 1;
-	str tips_upper_line = "";
-	str tips_lower_line = "";
+	int colornum = random(0, COLORSARRAY_C);
+	int y2_offset = y_offset * 5 / 3;  // If VS Event, lower HudMessage
+	int alphanum = 1;
+	str tipsupperline = "";
+	str tipslowerline = "";
 	for (int t_p = 0; t_p < 31; t_p++)  // Could just do \x1E \x11
 	{
-		tips_upper_line = StrParam(s:tips_upper_line, c:30);
-		tips_lower_line = StrParam(s:tips_lower_line, c:17);
+		tipsupperline = StrParam(s:tipsupperline, c:30);
+		tipslowerline = StrParam(s:tipslowerline, c:17);
 	}
 
 	SetFont("SMALLFONT");
 	SetHudSize(640, 480, 0);
 	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_ShowTipsOnScreen")) {
 		// Console copy only — avoid a second on-screen TYPEON (typetime 0.95) on id 59
-		Log(s:"\c[UH00]", c:29, s:tips_upper_line, c:31, s:"\n\n\c-", s:GetBossInstruction(whoisit), s:"\n\n\c[UH00]", c:16, s:tips_lower_line, c:18);
-		HudMessage(s:GetBossInstruction(whoisit); HUDMSG_TYPEON, 59, CR_RED, 320.0, y2_off_set * 1.0 + 72.0, 2.0, 0.05, 2.0);
+		Log(s:"\c[UH00]", c:29, s:tipsupperline, c:31, s:"\n\n\c-", s:GetBossInstruction(whoisit), s:"\n\n\c[UH00]", c:16, s:tipslowerline, c:18);
+		HudMessage(s:GetBossInstruction(whoisit); HUDMSG_TYPEON, 59, CR_RED, 320.0, y2_offset * 1.0 + 72.0, 2.0, 0.05, 2.0);
 	}
 	else {
-		HudMessage(s:"\c[UH00]", c:29, s:tips_upper_line, c:31, s:"\n\n\c-", s:GetBossInstruction(whoisit), s:"\n\n\c[UH00]", c:16, s:tips_lower_line, c:18; HUDMSG_TYPEON | HUDMSG_LOG, 59, CR_WHITE, 0.5, 0.18, 2.0, 0.95, 2.0);
-		HudMessage(s:"Check your console (", k:"toggleconsole", s:"key) to view flavour text or tips!"; HUDMSG_TYPEON, 59, CR_WHITE, 320.0, y2_off_set * 1.0 + 72.0, 3.957, 0.01, 0.571);
+		HudMessage(s:"\c[UH00]", c:29, s:tipsupperline, c:31, s:"\n\n\c-", s:GetBossInstruction(whoisit), s:"\n\n\c[UH00]", c:16, s:tipslowerline, c:18; HUDMSG_TYPEON | HUDMSG_LOG, 59, CR_WHITE, 0.5, 0.18, 2.0, 0.95, 2.0);
+		HudMessage(s:"Check your console (", k:"toggleconsole", s:"key) to view flavour text or tips!"; HUDMSG_TYPEON, 59, CR_WHITE, 320.0, y2_offset * 1.0 + 72.0, 3.957, 0.01, 0.571);
 	}
 	SetHudSize(384, 288, 0);  // 480,360//480,300
 
 	// HudMessage(s:"You are ", s:B_NameStr, s:"\c-!"; HUDMSG_FADEOUT, 66, CR_YELLOW,0.5, 0.10, 3.0,2.0);
-	HudMessage(s:"\ckYou are\n\cd"; HUDMSG_FADEINOUT, -6001, -1, 192.4, y_off_set * 1.0 + 24.0, 3.957, 0.571, 0.571);
+	HudMessage(s:"\ckYou are\n\cd"; HUDMSG_FADEINOUT, -6001, -1, 192.4, y_offset * 1.0 + 24.0, 3.957, 0.571, 0.571);
 	for (int i = 0; i < 35 * 5; i++) {
-		HudMessage(s:"\cd\n\c- (*) ", s:GetBossName(whoisit), s:" \c-(*)"; HUDMSG_ALPHA, -6000, the_colors_array[color_num], 192.4, y_off_set * 1.0 + 24.0, 0.5, 0.05 * alpha_num);
+		HudMessage(s:"\cd\n\c- (*) ", s:GetBossName(whoisit), s:" \c-(*)"; HUDMSG_ALPHA, -6000, thecolorsarray[colornum], 192.4, y_offset * 1.0 + 24.0, 0.5, 0.05 * alphanum);
 
-		if (i < 20) alpha_num++;
-		else if (i > 35 * 5 - 20) alpha_num--;
-		if (i % 5 == 0) color_num++;
-		if (color_num > COLORSARRAY_C) color_num = 0;
+		if (i < 20) alphanum++;
+		else if (i > 35 * 5 - 20) alphanum--;
+		if (i % 5 == 0) colornum++;
+		if (colornum > COLORSARRAY_C) colornum = 0;
 		Delay(1);
 	}
 	HudMessage(s:""; 0, -6000, -1, 0.99, 0.01, 1873);
@@ -66,7 +66,7 @@ script "UH_RainbowHudMessage" (int whoisit, int y_off_set) CLIENTSIDE {
 
 #define HELLTIMER_OFFSETX 50.1
 #define HELLTIMER_OFFSETY 309.1
-script "ub_HellTimerHud" (int time_left) CLIENTSIDE {
+script "ub_HellTimerHud" (int timeleft) CLIENTSIDE {
 	SetHudSize(640, 480, 0);
 	int x_aspect = GetHudLeft(640) * 1.0;
 	int y_aspect = GetHudTop(480) * 1.0;
@@ -75,10 +75,10 @@ script "ub_HellTimerHud" (int time_left) CLIENTSIDE {
 		y_aspect = 0;
 	}
 
-	ACS_NamedExecuteWithResult("uh_DrawTimerHud", time_left, 0);
+	ACS_NamedExecuteWithResult("uh_DrawTimerHud", timeleft, 0);
 }
 
-script "uh_DrawTimerHud" (int time_left, int type) CLIENTSIDE {
+script "uh_DrawTimerHud" (int timeleft, int type) CLIENTSIDE {
 	SetHudSize(640, 480, 0);
 	int x_aspect2 = GetHudLeft(640) * 1.0;
 	int y_aspect2 = GetHudTop(480) * 1.0;
@@ -87,48 +87,48 @@ script "uh_DrawTimerHud" (int time_left, int type) CLIENTSIDE {
 		y_aspect2 = 0;
 	}
 	int x, y;
-	int holdtime, alert_time;
+	int holdtime, alerttime;
 	switch (type) {
 		default:
 			break;
 		case 0:
 			x = 50.1 + x_aspect2; y = 309.1 + y_aspect2;
-			holdtime = 2.0; alert_time = 0;
+			holdtime = 2.0; alerttime = 0;
 			break;
 		case 1:
 			x = 300.1; y = 49.1; holdtime = 0;
-			holdtime = 1.0; alert_time = 60;
+			holdtime = 1.0; alerttime = 60;
 			break;
 	}
-	SetFont(strparam(s:"HELTIMR", i:time_left > 0));
+	SetFont(strparam(s:"HELTIMR", i:timeleft > 0));
 	HudMessage(s:"A"; HUDMSG_FADEOUT, 167 + type * 2, -1, x, y, holdtime, 3.0);
 	SetFont("fakefntC");  // SMALLFONT
-	HudMessageBold(i:time_left; HUDMSG_FADEOUT, 166 + type * 2, CR_GOLD + (time_left <= alert_time), x + 17.0, y + 5.0, holdtime, 3.0);
+	HudMessageBold(i:timeleft; HUDMSG_FADEOUT, 166 + type * 2, CR_GOLD + (timeleft <= alerttime), x + 17.0, y + 5.0, holdtime, 3.0);
 }
 
 
 script "ub_DemoneyeNumWatcher" (void) {
 	SetActivator(0, AAPTR_NULL);
 
-	int eye_count;
+	int eyecount;
 	while (true) {
-		if (eye_count != total_players_arr[6]) {
-			eye_count = total_players_arr[6];
-			ACS_NamedExecuteWithResult("ub_DemoneyeNumDisplay", eye_count);
+		if (eyecount != totalplayersarr[6]) {
+			eyecount = totalplayersarr[6];
+			ACS_NamedExecuteWithResult("ub_DemoneyeNumDisplay", eyecount);
 		}
 		Delay(1);
-		if (refresh_hud_message) {
-			if (eye_count > 0) {
-				ACS_NamedExecuteWithResult("ub_DemoneyeNumDisplay", eye_count);
+		if (refreshhudmessage) {
+			if (eyecount > 0) {
+				ACS_NamedExecuteWithResult("ub_DemoneyeNumDisplay", eyecount);
 				Delay(1);
 			}
 		}
 	}
 }
-script "ub_DemoneyeNumDisplay" (int eye_count) CLIENTSIDE {
-	FuncDemoneyeNumDisplay(eye_count);
+script "ub_DemoneyeNumDisplay" (int eyecount) CLIENTSIDE {
+	Func_DemoneyeNumDisplay(eyecount);
 }
-function void FuncDemoneyeNumDisplay(int eye_count) {
+function void Func_DemoneyeNumDisplay(int eyecount) {
 	SetHudSize(640, 480, 0);
 	int x_aspect = GetHudLeft(640) * 1.0;
 	int y_aspect = GetHudTop(480) * 1.0;
@@ -136,77 +136,77 @@ function void FuncDemoneyeNumDisplay(int eye_count) {
 		x_aspect = 0;
 		y_aspect = 0;
 	}
-	int fader = (eye_count == 0);  // If 0 Eyes, apply Fadeout
+	int fader = (eyecount == 0);  // If 0 Eyes, apply Fadeout
 	SetFont("EYE_F_0E");
 	HudMessage(s:"A"; 0 + fader, -996, -1, 10.1 + x_aspect, 309.1 + y_aspect, 0, 1.0, 3.0 * fader);
 	SetFont("fakefntC");  // SMALLFONT
-	HudMessage(s:"\c[MenuPurple]", i:eye_count; 0 + fader, -997, 19, 37.1 + x_aspect, 318.1 + y_aspect, 0, 1.0, 3.0 * fader);
+	HudMessage(s:"\c[MenuPurple]", i:eyecount; 0 + fader, -997, 19, 37.1 + x_aspect, 318.1 + y_aspect, 0, 1.0, 3.0 * fader);
 }
 
 script "ub_BossHealthWatcher" (void) {
 	SetActivator(0, AAPTR_NULL);
 
-	until (boss_slot_alive[0] || boss_slot_alive[1] || boss_slot_alive[2] || boss_slot_alive[3]) {
+	until (bossslotalive[0] || bossslotalive[1] || bossslotalive[2] || bossslotalive[3]) {
 		Delay(1);
 	}
-	while (boss_slot_alive[0] || boss_slot_alive[1] || boss_slot_alive[2] || boss_slot_alive[3]) {
+	while (bossslotalive[0] || bossslotalive[1] || bossslotalive[2] || bossslotalive[3]) {
 
-		FuncBHWShowHudMess(false);
+		Func_BHW_ShowHudMess(false);
 		Delay(1);
-		if (refresh_hud_message) {
-			FuncBHWShowHudMess(true);
+		if (refreshhudmessage) {
+			Func_BHW_ShowHudMess(true);
 			Delay(1);
 		}
 	}
 	DebugLog(strParam(s:"ub_BossHealthWatcher FINISHED!"));
-	FuncBHWShowHudMess(true);
+	Func_BHW_ShowHudMess(true);
 }
 
-function void FuncBHWShowHudMess(bool force) {
-	for (int i = multi_boss_check - 1; i >= 0; i--) {
-		FuncBHWChecker(i, boss_data_arr[i][BOSSDATA_TID], boss_data_arr[i][BOSSDATA_NUM], force);
+function void Func_BHW_ShowHudMess(bool force) {
+	for (int i = multibosscheck - 1; i >= 0; i--) {
+		Func_BHW_Checker(i, bossdataarr[i][BOSSDATA_TID], bossdataarr[i][BOSSDATA_NUM], force);
 	}
 }
 
-function void FuncBHWChecker(int num_b, int tid_of_boss, int which_boss, bool force) {
-	if (PlayerInGame(tid_of_boss - 1000) && boss_slot_alive[num_b]) {
-		boss_hp_arr[num_b][BOSSHP_CURRHP] = GetActorProperty(tid_of_boss, APROP_HEALTH);
-		boss_hp_arr[num_b][BOSSHP_CURRARMOR] = CheckActorInventory(tid_of_boss, "BasicArmor");
-		if (boss_hp_arr[num_b][BOSSHP_CURRHP] <= 0) {  // Boss is Dead!
-			if (timer() <= 35 * 30) {boss_hp_arr[num_b][BOSSHP_DEATH] = 6;}
-			else {boss_hp_arr[num_b][BOSSHP_DEATH] = 5;}
-			FuncBHWDeadHudMess(num_b + 1, which_boss, boss_hp_arr[num_b][BOSSHP_DEATH]);
-			boss_slot_alive[num_b] = false;
+function void Func_BHW_Checker(int numb, int tidofboss, int whichboss, bool force) {
+	if (PlayerInGame(tidofboss - 1000) && bossslotalive[numb]) {
+		bosshparr[numb][BOSSHP_CURRHP] = GetActorProperty(tidofboss, APROP_HEALTH);
+		bosshparr[numb][BOSSHP_CURRARMOR] = CheckActorInventory(tidofboss, "BasicArmor");
+		if (bosshparr[numb][BOSSHP_CURRHP] <= 0) {  // Boss is Dead!
+			if (timer() <= 35 * 30) {bosshparr[numb][BOSSHP_DEATH] = 6;}
+			else {bosshparr[numb][BOSSHP_DEATH] = 5;}
+			Func_BHW_DeadHudMess(numb + 1, whichboss, bosshparr[numb][BOSSHP_DEATH]);
+			bossslotalive[numb] = false;
 		}
-		else if (shadow_reveal_active && shadow_tricks_arr[num_b]) {  // During Shadow, show Blue
-			FuncBHWDeadHudMess(num_b + 1, which_boss, 8);
+		else if (shadowrevealactive && shadowtricksarr[numb]) {  // During Shadow, show Blue
+			Func_BHW_DeadHudMess(numb + 1, whichboss, 8);
 		}
-		else if (boss_hp_arr[num_b][BOSSHP_HPMEM] != boss_hp_arr[num_b][BOSSHP_CURRHP] || boss_hp_arr[num_b][BOSSHP_CURRARMOR] != boss_hp_arr[num_b][BOSSHP_ARMORMEM]) {
-			boss_hp_arr[num_b][BOSSHP_HPMEM] = boss_hp_arr[num_b][BOSSHP_CURRHP];
-			boss_hp_arr[num_b][BOSSHP_ARMORMEM] = boss_hp_arr[num_b][BOSSHP_CURRARMOR];
-			FuncBHWHudMess(num_b + 1, which_boss, boss_hp_arr[num_b][BOSSHP_HPMEM], boss_hp_arr[num_b][BOSSHP_ARMORMEM]);
+		else if (bosshparr[numb][BOSSHP_HPMEM] != bosshparr[numb][BOSSHP_CURRHP] || bosshparr[numb][BOSSHP_CURRARMOR] != bosshparr[numb][BOSSHP_ARMORMEM]) {
+			bosshparr[numb][BOSSHP_HPMEM] = bosshparr[numb][BOSSHP_CURRHP];
+			bosshparr[numb][BOSSHP_ARMORMEM] = bosshparr[numb][BOSSHP_CURRARMOR];
+			Func_BHW_HudMess(numb + 1, whichboss, bosshparr[numb][BOSSHP_HPMEM], bosshparr[numb][BOSSHP_ARMORMEM]);
 		}
 		else if (force) {
-			FuncBHWHudMess(num_b + 1, which_boss, boss_hp_arr[num_b][BOSSHP_HPMEM], boss_hp_arr[num_b][BOSSHP_ARMORMEM]);
+			Func_BHW_HudMess(numb + 1, whichboss, bosshparr[numb][BOSSHP_HPMEM], bosshparr[numb][BOSSHP_ARMORMEM]);
 		}
 	}
-	else if (boss_slot_alive[num_b]) {  // Boss Spectated!
-		boss_hp_arr[num_b][BOSSHP_ARMORMEM] = -1;
-		boss_hp_arr[num_b][BOSSHP_DEATH] = 7;
-		FuncBHWDeadHudMess(num_b + 1, which_boss, boss_hp_arr[num_b][BOSSHP_DEATH]);
-		boss_slot_alive[num_b] = false;
+	else if (bossslotalive[numb]) {  // Boss Spectated!
+		bosshparr[numb][BOSSHP_ARMORMEM] = -1;
+		bosshparr[numb][BOSSHP_DEATH] = 7;
+		Func_BHW_DeadHudMess(numb + 1, whichboss, bosshparr[numb][BOSSHP_DEATH]);
+		bossslotalive[numb] = false;
 	}
 	else if (force) {
-		FuncBHWDeadHudMess(num_b + 1, which_boss, boss_hp_arr[num_b][BOSSHP_DEATH]);
+		Func_BHW_DeadHudMess(numb + 1, whichboss, bosshparr[numb][BOSSHP_DEATH]);
 	}
 }
 
-script "ub_BHW_HudClientside" (int the_boss, int boss_numb, int health, int armor) CLIENTSIDE {
-	FuncBHWHudMess2(the_boss, boss_numb, health, armor);
+script "ub_BHW_HudClientside" (int theboss, int bossnumb, int health, int armor) CLIENTSIDE {
+	Func_BHW_HudMess2(theboss, bossnumb, health, armor);
 }
 
-function void FuncBHWHudMess(int the_boss, int boss_numb, int health, int armor) {
-	ACS_NamedExecuteWithResult("ub_BHW_HudClientside", the_boss, boss_numb, health, armor);
+function void Func_BHW_HudMess(int theboss, int bossnumb, int health, int armor) {
+	ACS_NamedExecuteWithResult("ub_BHW_HudClientside", theboss, bossnumb, health, armor);
 }
 
 // BossNumb survivor HUD packing (parade / class face):
@@ -230,49 +230,49 @@ function int EncodeSurvivorShinyBossNumb(int sid) {
 	return EncodeSurvivorBossNumb(sid);
 }
 
-function int DecodeSurvivorBossNumb(int boss_numb) {
+function int DecodeSurvivorBossNumb(int bossnumb) {
 	// Order matters: shiny <= -600 is also <= -300.
-	if (boss_numb <= -600)
-		return(boss_numb + 600) * -1;
-	if (boss_numb <= -300)
-		return -1 - (-300 - boss_numb);
-	if (boss_numb <= -100)
-		return(boss_numb + 100) * -1;
+	if (bossnumb <= -600)
+		return(bossnumb + 600) * -1;
+	if (bossnumb <= -300)
+		return -1 - (-300 - bossnumb);
+	if (bossnumb <= -100)
+		return(bossnumb + 100) * -1;
 	return UHSURV_FAIL;
 }
 
-function bool IsSurvivorBossNumb(int boss_numb) {
-	return boss_numb <= -100;
+function bool IsSurvivorBossNumb(int bossnumb) {
+	return bossnumb <= -100;
 }
 
-function bool IsSurvivorShinyBossNumb(int boss_numb) {
-	return boss_numb <= -600;
+function bool IsSurvivorShinyBossNumb(int bossnumb) {
+	return bossnumb <= -600;
 }
 
 // Demoneye BossNumb packing:
 //   vanilla eye: 1000 + id          (0→1000, 32→1032, 100→1100)
 //   custom eye:  2000 + EyeCustomIndex(id)  (clears 0..999 boss band)
-function int EncodeEyeBossNumb(int eye_id) {
-	if (eye_id == UHEYE_FAIL)
+function int EncodeEyeBossNumb(int eyeid) {
+	if (eyeid == UHEYE_FAIL)
 		return 0;
-	if (eye_id >= 0)
-		return 1000 + eye_id;
-	return 2000 + EyeCustomIndex(eye_id);
+	if (eyeid >= 0)
+		return 1000 + eyeid;
+	return 2000 + EyeCustomIndex(eyeid);
 }
 
-function int DecodeEyeBossNumb(int boss_numb) {
-	if (boss_numb >= 2000)
-		return -1 - (boss_numb - 2000);
-	if (boss_numb >= 1000)
-		return boss_numb - 1000;
+function int DecodeEyeBossNumb(int bossnumb) {
+	if (bossnumb >= 2000)
+		return -1 - (bossnumb - 2000);
+	if (bossnumb >= 1000)
+		return bossnumb - 1000;
 	return UHEYE_FAIL;
 }
 
-function bool IsEyeBossNumb(int boss_numb) {
-	return boss_numb >= 1000;
+function bool IsEyeBossNumb(int bossnumb) {
+	return bossnumb >= 1000;
 }
 
-function void FuncBHWHudMess2(int the_boss, int boss_numb, int health, int armor) {
+function void Func_BHW_HudMess2(int theboss, int bossnumb, int health, int armor) {
 	SetHudSize(640, 480, 0);  // 640,512
 	int x_aspect = GetHudLeft(640) * 1.0;
 	int y_aspect = GetHudTop(480) * 1.0;
@@ -280,89 +280,89 @@ function void FuncBHWHudMess2(int the_boss, int boss_numb, int health, int armor
 		x_aspect = 0;
 		y_aspect = 0;
 	}
-	int add_to_y = the_boss * 32.0 + y_aspect;
+	int addtoy = theboss * 32.0 + y_aspect;
 
-	FuncBHWSetFontMug(boss_numb);
+	Func_BHW_SetFontMug(bossnumb);
 
-	HudMessage(s:"A"; 0, -1000 - the_boss, -1, 10.1 + x_aspect, 306.1 + add_to_y, 0, 1.0);
+	HudMessage(s:"A"; 0, -1000 - theboss, -1, 10.1 + x_aspect, 306.1 + addtoy, 0, 1.0);
 	SetFont("SMALLFONT");
-	str name_str;
-	if (IsSurvivorBossNumb(boss_numb))
-		name_str = GetSurvivorName(DecodeSurvivorBossNumb(boss_numb));
-	else if (IsEyeBossNumb(boss_numb))
-		name_str = GetEyeHudName(DecodeEyeBossNumb(boss_numb));
+	str namestr;
+	if (IsSurvivorBossNumb(bossnumb))
+		namestr = GetSurvivorName(DecodeSurvivorBossNumb(bossnumb));
+	else if (IsEyeBossNumb(bossnumb))
+		namestr = GetEyeHudName(DecodeEyeBossNumb(bossnumb));
 	else
-		name_str = GetBossName(boss_numb);
-	HudMessage(s:name_str; 0, -990 - the_boss, -1, 48.1 + x_aspect, 310.1 + add_to_y, 0, 1.0);
-	HudMessage(s:"\c[UB0HP]", i:health; 0, -1010 - the_boss, -1, 48.1 + x_aspect, 320.1 + add_to_y, 0, 1.0);
+		namestr = GetBossName(bossnumb);
+	HudMessage(s:namestr; 0, -990 - theboss, -1, 48.1 + x_aspect, 310.1 + addtoy, 0, 1.0);
+	HudMessage(s:"\c[UB0HP]", i:health; 0, -1010 - theboss, -1, 48.1 + x_aspect, 320.1 + addtoy, 0, 1.0);
 	if (armor >= 1) {
-		HudMessage(s:"\c[UB0AR]", i:armor; 0, -1020 - the_boss, -1, 48.1 + x_aspect, 330.1 + add_to_y, 0, 1.0);
+		HudMessage(s:"\c[UB0AR]", i:armor; 0, -1020 - theboss, -1, 48.1 + x_aspect, 330.1 + addtoy, 0, 1.0);
 	}
 	else {
-		HudMessage(s:" "; 0, -1020 - the_boss, -1, 48.1 + x_aspect, 330.1 + add_to_y, 0.1, 1.0);
+		HudMessage(s:" "; 0, -1020 - theboss, -1, 48.1 + x_aspect, 330.1 + addtoy, 0.1, 1.0);
 	}
 }
 
-function void FuncBHWDeadHudMess(int the_boss, int boss_numb, int demise_type) {
-	ACS_NamedExecuteWithResult("ub_BHW_DeadHudClientside", the_boss, boss_numb, demise_type);
+function void Func_BHW_DeadHudMess(int theboss, int bossnumb, int demisetype) {
+	ACS_NamedExecuteWithResult("ub_BHW_DeadHudClientside", theboss, bossnumb, demisetype);
 }
 
 
-script "ub_BHW_DeadHudClientside" (int the_boss, int boss_numb, int demise_type) CLIENTSIDE {
-	FuncBHWDeadHudMess2(the_boss, boss_numb, demise_type);
+script "ub_BHW_DeadHudClientside" (int theboss, int bossnumb, int demisetype) CLIENTSIDE {
+	Func_BHW_DeadHudMess2(theboss, bossnumb, demisetype);
 }
 
-function void FuncBHWSetFontMug(int boss_numb) {
-	str font_str;
+function void Func_BHW_SetFontMug(int bossnumb) {
+	str fontstr;
 	// Survivor-packed bands (<= -100, includes shiny <= -600): never GetBossMugshot.
-	if (IsSurvivorBossNumb(boss_numb)) {
-		int sid_surv = DecodeSurvivorBossNumb(boss_numb);
-		str mug_surv = GetSurvivorMugshotRaw(sid_surv);
-		if (StrCmp(mug_surv, "") != 0)
-			font_str = mug_surv;
-		else if (IsSurvivorShinyBossNumb(boss_numb))
-			font_str = StrParam(s:"C-ICN", i:sid_surv);
-		else if (sid_surv >= 0)
-			font_str = StrParam(s:"C@ICN", i:sid_surv);
+	if (IsSurvivorBossNumb(bossnumb)) {
+		int sidsurv = DecodeSurvivorBossNumb(bossnumb);
+		str mugsurv = GetSurvivorMugshotRaw(sidsurv);
+		if (StrCmp(mugsurv, "") != 0)
+			fontstr = mugsurv;
+		else if (IsSurvivorShinyBossNumb(bossnumb))
+			fontstr = StrParam(s:"C-ICN", i:sidsurv);
+		else if (sidsurv >= 0)
+			fontstr = StrParam(s:"C@ICN", i:sidsurv);
 		else
-			font_str = "NOFAC_0";
-		if (CheckFont(font_str))
-			SetFont(font_str);
+			fontstr = "NOFAC_0";
+		if (CheckFont(fontstr))
+			SetFont(fontstr);
 		else
 			SetFont("NOFAC_0");
 		return;
 	}
-	str mug = GetBossMugshot(boss_numb);
+	str mug = GetBossMugshot(bossnumb);
 	if (StrCmp(mug, "") != 0) {
-		font_str = mug;
-		if (CheckFont(font_str))
-			SetFont(font_str);
+		fontstr = mug;
+		if (CheckFont(fontstr))
+			SetFont(fontstr);
 		else
 			SetFont("NOFAC_0");
 		return;
 	}
-	if (boss_numb >= 1000) {  // Demoneye (vanilla 1000+id or custom 2000+idx)
-		int eid_mug = DecodeEyeBossNumb(boss_numb);
-		str eye_mug = GetEyeMugshot(eid_mug);
-		if (StrCmp(eye_mug, "") != 0)
-			font_str = eye_mug;
-		else if (eid_mug >= 0)
-			font_str = StrParam(s:"EYE_F", i:eid_mug);
+	if (bossnumb >= 1000) {  // Demoneye (vanilla 1000+id or custom 2000+idx)
+		int eidmug = DecodeEyeBossNumb(bossnumb);
+		str eyemug = GetEyeMugshot(eidmug);
+		if (StrCmp(eyemug, "") != 0)
+			fontstr = eyemug;
+		else if (eidmug >= 0)
+			fontstr = StrParam(s:"EYE_F", i:eidmug);
 		else
-			font_str = "NOFAC_0";
+			fontstr = "NOFAC_0";
 	}
-	else if (boss_numb >= 0) {  // Boss
-		font_str = StrParam(s:"UFACE", i:boss_numb);
+	else if (bossnumb >= 0) {  // Boss
+		fontstr = StrParam(s:"UFACE", i:bossnumb);
 	}
 	else
-		font_str = "NOFAC_0";
-	if (CheckFont(font_str))
-		SetFont(font_str);
+		fontstr = "NOFAC_0";
+	if (CheckFont(fontstr))
+		SetFont(fontstr);
 	else
 		SetFont("NOFAC_0");
 }
 
-function void FuncBHWDeadHudMess2(int the_boss, int boss_numb, int demise_type) {
+function void Func_BHW_DeadHudMess2(int theboss, int bossnumb, int demisetype) {
 	SetHudSize(640, 480, 0);  // 640,512
 	int x_aspect = GetHudLeft(640) * 1.0;
 	int y_aspect = GetHudTop(480) * 1.0;
@@ -370,17 +370,17 @@ function void FuncBHWDeadHudMess2(int the_boss, int boss_numb, int demise_type) 
 		x_aspect = 0;
 		y_aspect = 0;
 	}
-	int add_to_y = the_boss * 32.0 + y_aspect;
+	int addtoy = theboss * 32.0 + y_aspect;
 
-	HudMessage(s:""; 0, -1060 - the_boss, -1, 0.99, 0.01, 1873);  // Rage
+	HudMessage(s:""; 0, -1060 - theboss, -1, 0.99, 0.01, 1873);  // Rage
 
-	FuncBHWSetFontMug(boss_numb);
+	Func_BHW_SetFontMug(bossnumb);
 
-	HudMessage(s:"A"; 0, -1000 - the_boss, -1, 10.1 + x_aspect, 306.1 + add_to_y, 0, 1.0);
-	SetFont(StrParam(s:"UFACE0", i:demise_type * 11));  // Tint
-	HudMessage(s:"A"; 0, -1010 - the_boss, -1, 10.1 + x_aspect, 306.1 + add_to_y, 0, 1.0);
-	SetFont(StrParam(s:"UFACE00", i:demise_type));  // Icon
-	HudMessage(s:"A"; 0, -1020 - the_boss, -1, 10.1 + x_aspect, 306.1 + add_to_y, 0, 1.0);
+	HudMessage(s:"A"; 0, -1000 - theboss, -1, 10.1 + x_aspect, 306.1 + addtoy, 0, 1.0);
+	SetFont(StrParam(s:"UFACE0", i:demisetype * 11));  // Tint
+	HudMessage(s:"A"; 0, -1010 - theboss, -1, 10.1 + x_aspect, 306.1 + addtoy, 0, 1.0);
+	SetFont(StrParam(s:"UFACE00", i:demisetype));  // Icon
+	HudMessage(s:"A"; 0, -1020 - theboss, -1, 10.1 + x_aspect, 306.1 + addtoy, 0, 1.0);
 }
 
 script "ub_RageDisplay" (void) {
@@ -401,7 +401,7 @@ script "ub_RageDisplay" (void) {
 
 	str rage_name = StrParam(s:"UnholyPower", i:rage_max);
 
-	bool rage_box_bool = false;
+	bool rage_boxbool = false;
 	// SetHudSize(640,480,0);//640,512
 	// SetFont("UFACE0RR");
 	while (GetActorProperty(act_tid, APROP_HEALTH) > 0 && CheckActorInventory(act_tid, "UnholyPowerLimit_F") > 0) {
@@ -417,40 +417,40 @@ script "ub_RageDisplay" (void) {
 
 		if (boss_spacing > 0) {
 			if (CheckActorInventory(act_tid, rage_name) >= rage_max || CheckActorInventory(act_tid, "UnholyPowerDazzle_F")) {
-				if (rage_box_bool) {
-					if (refresh_hud_message) {
+				if (rage_boxbool) {
+					if (refreshhudmessage) {
 						// HudMessageBold(s:"A"; 0, -1060-boss_Spacing,-1, 10.1, 306.1+boss_Spacing*32.0, 0,1.0);
-						FuncBHWRageHudMess(boss_spacing);
+						Func_BHW_RageHudMess(boss_spacing);
 					}
 				}
 				else {
 					// HudMessageBold
-					FuncBHWRageHudMess(boss_spacing);
-					rage_box_bool = true;
+					Func_BHW_RageHudMess(boss_spacing);
+					rage_boxbool = true;
 				}
 			}
-			else if (rage_box_bool) {
+			else if (rage_boxbool) {
 				HudMessageBold(s:""; 0, -1060 - boss_spacing, -1, 0.99, 0.01, 1873);
-				rage_box_bool = false;
+				rage_boxbool = false;
 			}
 		}
 		// debugLog(strParam(s:"Looping ub_RageAmmoGiver for ",i:rage_Max));
 		Delay(1);
 	}
-	if (rage_box_bool) {  // Doesn't work for Spectators
+	if (rage_boxbool) {  // Doesn't work for Spectators
 		HudMessageBold(s:""; 0, -1060 - boss_spacing, -1, 0.99, 0.01, 1873);
 	}
 }
 
-function void FuncBHWRageHudMess(int the_boss) {
-	ACS_NamedExecuteWithResult("ub_BHW_RageHudClientside", the_boss);
+function void Func_BHW_RageHudMess(int theboss) {
+	ACS_NamedExecuteWithResult("ub_BHW_RageHudClientside", theboss);
 }
 
-script "ub_BHW_RageHudClientside" (int the_boss) CLIENTSIDE {
-	FuncBHWRageHudMess2(the_boss);
+script "ub_BHW_RageHudClientside" (int theboss) CLIENTSIDE {
+	Func_BHW_RageHudMess2(theboss);
 }
 
-function void FuncBHWRageHudMess2(int the_boss) {
+function void Func_BHW_RageHudMess2(int theboss) {
 	SetHudSize(640, 480, 0);  // 640,512
 	int x_aspect = GetHudLeft(640) * 1.0;
 	int y_aspect = GetHudTop(480) * 1.0;
@@ -459,18 +459,18 @@ function void FuncBHWRageHudMess2(int the_boss) {
 		y_aspect = 0;
 	}
 	SetFont("UFACE0RR");  // X_Aspect
-	HudMessage(s:"A"; 0, -1060 - the_boss, -1, 10.1 + x_aspect, 306.1 + the_boss * 32.0 + y_aspect, 0, 1.0);
+	HudMessage(s:"A"; 0, -1060 - theboss, -1, 10.1 + x_aspect, 306.1 + theboss * 32.0 + y_aspect, 0, 1.0);
 }
 
 
 
 script "ub_BHW_TargetHudClientside" (int duration) CLIENTSIDE {
-	FuncBHWTargetHudMess2(duration);
+	Func_BHW_TargetHudMess2(duration);
 }
-function void FuncBHWTargetHudMess(int duration) {
+function void Func_BHW_TargetHudMess(int duration) {
 	ACS_NamedExecuteWithResult("ub_BHW_TargetHudClientside", duration);
 }
-function void FuncBHWTargetHudMess2(int duration) {
+function void Func_BHW_TargetHudMess2(int duration) {
 	SetHudSize(640, 480, 0);
 	int x_aspect = GetHudLeft(640) * 1.0;
 	int y_aspect = GetHudTop(480) * 1.0;
@@ -485,23 +485,23 @@ function void FuncBHWTargetHudMess2(int duration) {
 
 
 
-script "ub_LMS_EventIconStart" (int lms_num, int is_it_rare) {
+script "ub_LMS_EventIconStart" (int lmsnum, int isitrare) {
 	SetActivator(0, AAPTR_NULL);
-	ACS_NamedExecuteAlways("ub_LMS_EventIcon", 0, lms_num, is_it_rare);
+	ACS_NamedExecuteAlways("ub_LMS_EventIcon", 0, lmsnum, isitrare);
 }
 
 #define LMSEVENT_ICON_X -216.0
 #define LMSEVENT_ICON_Y 16.0
 
-script "ub_LMS_EventIcon" (int lms_num, int is_it_rare) CLIENTSIDE {
-	str icon_font;
-	if (is_it_rare) {icon_font = GetLMSEventrareicon(lms_num);}
-	else {icon_font = GetLMSEventIcon(lms_num);}
-	if (StrCmp(icon_font, "") == 0) {
-		if (is_it_rare) {icon_font = StrParam(s:"LMS_X#", i:lms_num);}
-		else {icon_font = StrParam(s:"LMS_E#", i:lms_num);}
+script "ub_LMS_EventIcon" (int lmsnum, int isitrare) CLIENTSIDE {
+	str iconfont;
+	if (isitrare) {iconfont = GetLMSEventrareicon(lmsnum);}
+	else {iconfont = GetLMSEventIcon(lmsnum);}
+	if (StrCmp(iconfont, "") == 0) {
+		if (isitrare) {iconfont = StrParam(s:"LMS_X#", i:lmsnum);}
+		else {iconfont = StrParam(s:"LMS_E#", i:lmsnum);}
 	}
-	SetFont(icon_font);
+	SetFont(iconfont);
 	// HudMessageBold(s: "A"; HUDMSG_FADEOUT, -14836, -1, 0.035, 0.40, 14.0,1.0);
 
 	SetHudSize(640, 480, 0);  // 640,512//400,300//800,600
@@ -562,98 +562,98 @@ script "uh_displaycurrentmusic" (void) NET CLIENTSIDE {
 	if (ConsolePlayerNumber() != PlayerNumber()) {
 		terminate;
 	}
-	str tune_code_str = GetCVarString("_uh_ServMusicLump");
+	str tunecode_str = GetCVarString("_uh_ServMusicLump");
 	str musical_str = GetCVarString("_uh_ServMusicCredits");
 
-	str char_line2_str = StrParam(c:1);  // Top line start
-	str char_line8_str = StrParam(c:7);  // Bottom line start
+	str charline2_str = StrParam(c:1);  // Top line start
+	str charline8_str = StrParam(c:7);  // Bottom line start
 
-	str char_line22_str = StrParam(c:1);
-	str char_line88_str = StrParam(c:7);
+	str charline22_str = StrParam(c:1);
+	str charline88_str = StrParam(c:7);
 
 	for (int i = 0; i < StrLen(musical_str); i++)  // Extend the lines to Music String Length
 	{
-		char_line2_str = StrParam(s:char_line2_str, c:2);
-		char_line8_str = StrParam(s:char_line8_str, c:8);
+		charline2_str = StrParam(s:charline2_str, c:2);
+		charline8_str = StrParam(s:charline8_str, c:8);
 	}
-	char_line2_str = StrParam(s:char_line2_str, c:3);  // Top line end
-	char_line8_str = StrParam(s:char_line8_str, c:9);  // Bottom line end
+	charline2_str = StrParam(s:charline2_str, c:3);  // Top line end
+	charline8_str = StrParam(s:charline8_str, c:9);  // Bottom line end
 
-	for (i = 0; i < StrLen(tune_code_str); i++)  // Extend for Music Code Length
+	for (i = 0; i < StrLen(tunecode_str); i++)  // Extend for Music Code Length
 	{
-		char_line22_str = StrParam(s:char_line22_str, c:2);
-		char_line88_str = StrParam(s:char_line88_str, c:8);
+		charline22_str = StrParam(s:charline22_str, c:2);
+		charline88_str = StrParam(s:charline88_str, c:8);
 	}
-	char_line22_str = StrParam(s:char_line22_str, c:3);
-	char_line88_str = StrParam(s:char_line88_str, c:9);
+	charline22_str = StrParam(s:charline22_str, c:3);
+	charline88_str = StrParam(s:charline88_str, c:9);
 
 	SetFont("CONFONT");
 	HudMessage(s:"\cd",
-		s:char_line22_str, s:"\n", c:4, s:"\cl", s:tune_code_str, s:"\cd", c:6, s:"\n", s:char_line88_str, c:5, s:"\n",
-		s:char_line2_str, s:"\n", c:4, s:"\cl", s:musical_str, s:"\cd", c:6, s:"\n", s:char_line8_str;
+		s:charline22_str, s:"\n", c:4, s:"\cl", s:tunecode_str, s:"\cd", c:6, s:"\n", s:charline88_str, c:5, s:"\n",
+		s:charline2_str, s:"\n", c:4, s:"\cl", s:musical_str, s:"\cd", c:6, s:"\n", s:charline8_str;
 		HUDMSG_LOG | HUDMSG_ALPHA, -68740, CR_GREEN, 0, 1000.1, 1873, 0.0);
 }
 
 
 
-script "ub_FancyDisplayMusicStart" (int garbage_text) {
+script "ub_FancyDisplayMusicStart" (int garbagetext) {
 	SetActivator(0, AAPTR_NULL);
 	ACS_NamedExecuteAlways("ub_FancyDisplayMusic", 0);
 }
 
-int fancy_tune_display_cl = 0;
+int fancytunedisplay_cl = 0;
 
-script "ub_FancyDisplayMusic" (int toggle_garbage) CLIENTSIDE {
-	str tune_code_str = GetCVarString("_uh_ServMusicLump");
+script "ub_FancyDisplayMusic" (int togglegarbage) CLIENTSIDE {
+	str tunecode_str = GetCVarString("_uh_ServMusicLump");
 	str musical_str = GetCVarString("_uh_ServMusicCredits");
 	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicDisplay")) {
-		fancy_tune_display_cl += 1;
-		if (fancy_tune_display_cl >= 2) {
-			int temp_delay = fancy_tune_display_cl;
-			while (fancy_tune_display_cl >= temp_delay) {
+		fancytunedisplay_cl += 1;
+		if (fancytunedisplay_cl >= 2) {
+			int temp_delay = fancytunedisplay_cl;
+			while (fancytunedisplay_cl >= temp_delay) {
 				Delay(1);
 			}
 		}
 	}
 
-	int m_info_length = StrLen(musical_str);
-	int m_code_length = StrLen(tune_code_str);
-	if (toggle_garbage) {
-		m_info_length = random(10, 64);
-		m_code_length = random(4, 10);
+	int m_infolength = StrLen(musical_str);
+	int m_codelength = StrLen(tunecode_str);
+	if (togglegarbage) {
+		m_infolength = random(10, 64);
+		m_codelength = random(4, 10);
 	}
 
-	str fake_space_str = "";
-	str char_line2_str = StrParam(c:1);
-	str char_line8_str = StrParam(c:7);
+	str fakespace_str = "";
+	str charline2_str = StrParam(c:1);
+	str charline8_str = StrParam(c:7);
 	str char_line_str2 = "";
 
-	str fake_space2_str = "";
-	str char_line22_str = StrParam(c:1);
-	str char_line88_str = StrParam(c:7);
-	str char_line_str = "";
+	str fakespace2_str = "";
+	str charline22_str = StrParam(c:1);
+	str charline88_str = StrParam(c:7);
+	str charline__str = "";
 
-	for (int i = 0; i < m_info_length; i++) {
-		fake_space_str = StrParam(s:fake_space_str, c:random(32, 255));  // 0,255
-		char_line2_str = StrParam(s:char_line2_str, c:2);
-		char_line8_str = StrParam(s:char_line8_str, c:8);
+	for (int i = 0; i < m_infolength; i++) {
+		fakespace_str = StrParam(s:fakespace_str, c:random(32, 255));  // 0,255
+		charline2_str = StrParam(s:charline2_str, c:2);
+		charline8_str = StrParam(s:charline8_str, c:8);
 		char_line_str2 = StrParam(s:char_line_str2, s:"A");
 	}
-	char_line2_str = StrParam(s:char_line2_str, c:3);
-	char_line8_str = StrParam(s:char_line8_str, c:9);
+	charline2_str = StrParam(s:charline2_str, c:3);
+	charline8_str = StrParam(s:charline8_str, c:9);
 
-	for (i = 0; i < m_code_length; i++) {
-		fake_space2_str = StrParam(s:fake_space2_str, c:random(32, 255));
-		char_line22_str = StrParam(s:char_line22_str, c:2);
-		char_line88_str = StrParam(s:char_line88_str, c:8);
-		char_line_str = StrParam(s:char_line_str, s:"A");
+	for (i = 0; i < m_codelength; i++) {
+		fakespace2_str = StrParam(s:fakespace2_str, c:random(32, 255));
+		charline22_str = StrParam(s:charline22_str, c:2);
+		charline88_str = StrParam(s:charline88_str, c:8);
+		charline__str = StrParam(s:charline__str, s:"A");
 	}
-	char_line22_str = StrParam(s:char_line22_str, c:3);
-	char_line88_str = StrParam(s:char_line88_str, c:9);  // 9
+	charline22_str = StrParam(s:charline22_str, c:3);
+	charline88_str = StrParam(s:charline88_str, c:9);  // 9
 
-	if (toggle_garbage) {
-		musical_str = fake_space_str;
-		tune_code_str = fake_space2_str;
+	if (togglegarbage) {
+		musical_str = fakespace_str;
+		tunecode_str = fakespace2_str;
 	}
 
 	SetHudSize(800, 600, 0);
@@ -668,17 +668,17 @@ script "ub_FancyDisplayMusic" (int toggle_garbage) CLIENTSIDE {
 
 	SetFont("CONFONT");  // Char 5 below is needed to fix Char 9 not showing up if followed by line skip for actual HudMessage calls
 	HudMessage(s:"\cd",
-		s:char_line22_str, s:"\n", c:4, s:"\cl", s:tune_code_str, s:"\cd", c:6, s:"\n", s:char_line88_str, c:5, s:"\n",
-		s:char_line2_str, s:"\n", c:4, s:"\cl", s:musical_str, s:"\cd", c:6, s:"\n", s:char_line8_str;
+		s:charline22_str, s:"\n", c:4, s:"\cl", s:tunecode_str, s:"\cd", c:6, s:"\n", s:charline88_str, c:5, s:"\n",
+		s:charline2_str, s:"\n", c:4, s:"\cl", s:musical_str, s:"\cd", c:6, s:"\n", s:charline8_str;
 		HUDMSG_LOG | HUDMSG_ALPHA, -68740, CR_GREEN, 0, 1000.1, 1873, 0.0);
 
 	if (!GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicDisplay")) {
 		terminate;
 	}
 
-	int temp_x = m_info_length * 8;
+	int temp_x = m_infolength * 8;
 	int temp_y = 0;
-	int temp_start = x_aspect + m_info_length * -8 + m_info_length / 10;
+	int temp_start = x_aspect + m_infolength * -8 + m_infolength / 10;
 	int temp_store, temp_whole;
 
 	for (i = 1; i < 21; i += 1) {
@@ -693,35 +693,35 @@ script "ub_FancyDisplayMusic" (int toggle_garbage) CLIENTSIDE {
 		// Log(s:"HudMess int = ",i:Temp_Whole - 0.1,s:" Fixed >> ",f:Temp_Whole - 0.1);
 		SetFont("CONFONT");  // CONFONT//LETFONT
 		HudMessage(s:"\cu",
-			s:char_line22_str, s:"\n", c:4, s:"\cc", s:tune_code_str, s:"\cu", c:6, s:"\n", s:char_line88_str, c:5, s:"\n",
-			s:char_line2_str, s:"\n", c:4, s:"\cc", s:musical_str, s:"\cu", c:6, s:"\n", s:char_line8_str;
+			s:charline22_str, s:"\n", c:4, s:"\cc", s:tunecode_str, s:"\cu", c:6, s:"\n", s:charline88_str, c:5, s:"\n",
+			s:charline2_str, s:"\n", c:4, s:"\cc", s:musical_str, s:"\cu", c:6, s:"\n", s:charline8_str;
 			HUDMSG_ALPHA, -68743, CR_DARKGRAY, temp_whole - 0.1, 334.1 + y_aspect, 2.0, 0.05 * i);
 		SetFont("STCFN606");
-		HudMessage(s:"\c- AA", s:char_line_str, s:char_line_str; HUDMSG_ALPHA, -68741, -1, temp_whole - 0.1, 336.1 + y_aspect, 2.0, 0.05 * i);
+		HudMessage(s:"\c- AA", s:charline__str, s:charline__str; HUDMSG_ALPHA, -68741, -1, temp_whole - 0.1, 336.1 + y_aspect, 2.0, 0.05 * i);
 		HudMessage(s:"\c- AA", s:char_line_str2, s:char_line_str2; HUDMSG_ALPHA, -68742, -1, temp_whole - 0.1, 360.1 + y_aspect, 2.0, 0.05 * i);
 		Delay(1);
 	}
 	SetFont("CONFONT");
 	HudMessage(s:"\cu",
-		s:char_line22_str, s:"\n", c:4, s:"\cc", s:tune_code_str, s:"\cu", c:6, s:"\n", s:char_line88_str, c:5, s:"\n",
-		s:char_line2_str, s:"\n", c:4, s:"\cc", s:musical_str, s:"\cu", c:6, s:"\n", s:char_line8_str;
+		s:charline22_str, s:"\n", c:4, s:"\cc", s:tunecode_str, s:"\cu", c:6, s:"\n", s:charline88_str, c:5, s:"\n",
+		s:charline2_str, s:"\n", c:4, s:"\cc", s:musical_str, s:"\cu", c:6, s:"\n", s:charline8_str;
 		0, -68743, CR_DARKGRAY, temp_whole - 0.1, 334.1 + y_aspect, 7.0, 1.0);
 	SetFont("STCFN606");
-	HudMessage(s:"\c- AA", s:char_line_str, s:char_line_str; 0, -68741, -1, temp_whole - 0.1, 336.1 + y_aspect, 7.0, 1.0);
+	HudMessage(s:"\c- AA", s:charline__str, s:charline__str; 0, -68741, -1, temp_whole - 0.1, 336.1 + y_aspect, 7.0, 1.0);
 	HudMessage(s:"\c- AA", s:char_line_str2, s:char_line_str2; 0, -68742, -1, temp_whole - 0.1, 360.1 + y_aspect, 7.0, 1.0);
 
 	for (i = 0; i < 35 * 5; i += 1) {
-		if (fancy_tune_display_cl >= 2) {
+		if (fancytunedisplay_cl >= 2) {
 			break;
 		}
 		Delay(1);
 	}
 	// Delay(35*5);
 
-	temp_x = m_info_length * 8;
+	temp_x = m_infolength * 8;
 	temp_y = 0;
 	temp_start = temp_whole >> 16;
-	temp_store = m_info_length / -10;
+	temp_store = m_infolength / -10;
 	temp_whole = 0;
 	for (i = 1; i < 20; i += 1) {
 		temp_y = temp_x;
@@ -731,11 +731,11 @@ script "ub_FancyDisplayMusic" (int toggle_garbage) CLIENTSIDE {
 
 		SetFont("CONFONT");
 		HudMessage(s:"\cu",
-			s:char_line22_str, s:"\n", c:4, s:"\cc", s:tune_code_str, s:"\cu", c:6, s:"\n", s:char_line88_str, c:5, s:"\n",
-			s:char_line2_str, s:"\n", c:4, s:"\cc", s:musical_str, s:"\cu", c:6, s:"\n", s:char_line8_str;
+			s:charline22_str, s:"\n", c:4, s:"\cc", s:tunecode_str, s:"\cu", c:6, s:"\n", s:charline88_str, c:5, s:"\n",
+			s:charline2_str, s:"\n", c:4, s:"\cc", s:musical_str, s:"\cu", c:6, s:"\n", s:charline8_str;
 			HUDMSG_ALPHA, -68743, CR_DARKGRAY, temp_whole - 0.1, 334.1 + y_aspect, 2.0, 0.05 * (20 - i));
 		SetFont("STCFN606");
-		HudMessage(s:"\c- AA", s:char_line_str, s:char_line_str; HUDMSG_ALPHA, -68741, -1, temp_whole - 0.1, 336.1 + y_aspect, 2.0, 0.05 * (20 - i));
+		HudMessage(s:"\c- AA", s:charline__str, s:charline__str; HUDMSG_ALPHA, -68741, -1, temp_whole - 0.1, 336.1 + y_aspect, 2.0, 0.05 * (20 - i));
 		HudMessage(s:"\c- AA", s:char_line_str2, s:char_line_str2; HUDMSG_ALPHA, -68742, -1, temp_whole - 0.1, 360.1 + y_aspect, 2.0, 0.05 * (20 - i));
 		Delay(1);
 	}
@@ -744,5 +744,5 @@ script "ub_FancyDisplayMusic" (int toggle_garbage) CLIENTSIDE {
 	HudMessage(s:""; 0, -68742, -1, 0.99, 0.01, 1873);
 	HudMessage(s:""; 0, -68741, -1, 0.99, 0.01, 1873);
 
-	fancy_tune_display_cl -= 1;
+	fancytunedisplay_cl -= 1;
 }

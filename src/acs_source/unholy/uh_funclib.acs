@@ -33,17 +33,17 @@ function int CheckClearCvar(str check, int num) {
 }
 
 // Marks which player numbers are ingame
-function void PlayerLifeStatusArrGatherFunc(void) {
-  total_players_arr[1] = PlayerCount();
+function void PlayerLifeStatusArr_GatherFunc(void) {
+  totalplayersarr[1] = PlayerCount();
 
   int p_total = PlayerCount();
   for (int i = 0; i < MAX_PLAYERS; i++) {
     if (PlayerInGame(i)) {
       DebugLog(strParam(s:"Player ", i:i, s:" is alive"));
-      player_life_status_arr[i] = 1;
+      playerlifestatusarr[i] = 1;
       if (p_total <= 1) {
-        player_life_status_arr[MAX_PLAYERS] = i;
-        DebugLog(strParam(s:"Done collecting alive players. Max ID = ", i:player_life_status_arr[MAX_PLAYERS]));
+        playerlifestatusarr[MAX_PLAYERS] = i;
+        DebugLog(strParam(s:"Done collecting alive players. Max ID = ", i:playerlifestatusarr[MAX_PLAYERS]));
         break;
       }
       p_total--;
@@ -51,10 +51,10 @@ function void PlayerLifeStatusArrGatherFunc(void) {
   }
 }
 // Updates player status and total players with status
-function void PlayerLifeStatusArrUpdateFunc(int the_dude, int new_status) {
-  total_players_arr[player_life_status_arr[the_dude]]--;
-  player_life_status_arr[the_dude] = new_status;
-  total_players_arr[new_status]++;
+function void PlayerLifeStatusArr_UpdateFunc(int thedude, int newstatus) {
+  totalplayersarr[playerlifestatusarr[thedude]]--;
+  playerlifestatusarr[thedude] = newstatus;
+  totalplayersarr[newstatus]++;
 }
 
 // Give/Take Inventory items to/from EVERY ingame player.
@@ -74,18 +74,18 @@ function void GiveMeTheFunc(str hungry, int thebill) {
 }
 
 // Similar to above except it doesn't give/take to/from the specific TID, TheDude.
-function void GiveMeTheFuncExcept(str h, int xx, int the_dude) {
+function void GiveMeTheFuncExcept(str h, int xx, int thedude) {
   if (xx == 0) {xx = 1;}
   if (xx < 0) {
     for (int i; i < MAX_PLAYERS; i++) {
-      if (PlayerInGame(i) && i + 1000 != the_dude) {
+      if (PlayerInGame(i) && i + 1000 != thedude) {
         TakeActorInventory(i + 1000, h, -xx);
       }
     }
   }
   else {
     for (int j; j < MAX_PLAYERS; j++) {
-      if (PlayerInGame(j) && j + 1000 != the_dude) {
+      if (PlayerInGame(j) && j + 1000 != thedude) {
         GiveActorInventory(j + 1000, h, xx);
       }
     }
@@ -97,14 +97,14 @@ function void GiveMeTheFuncExceptBosses(str h, int xx) {
   if (xx == 0) {xx = 1;}
   if (xx < 0) {
     for (int i; i < MAX_PLAYERS; i++) {
-      if (PlayerInGame(i) && player_life_status_arr[i] != PLS_BOSS) {
+      if (PlayerInGame(i) && playerlifestatusarr[i] != PLS_BOSS) {
         TakeActorInventory(i + 1000, h, -xx);
       }
     }
   }
   else {
     for (int j; j < MAX_PLAYERS; j++) {
-      if (PlayerInGame(j) && player_life_status_arr[j] != PLS_BOSS) {
+      if (PlayerInGame(j) && playerlifestatusarr[j] != PLS_BOSS) {
         GiveActorInventory(j + 1000, h, xx);
       }
     }
@@ -120,41 +120,41 @@ function void ScriptMeTheFunc(str scriptname, int arg1, int arg2, int arg3, int 
 }
 
 function void MakeAllPlayersInvun(void) {
-  int player_num = 1000;
-  until (player_num == 1064) {
-    SetActorProperty(player_num, APROP_DamageFactor, 0.0);
-    player_num++;
+  int playernum = 1000;
+  until (playernum == 1064) {
+    SetActorProperty(playernum, APROP_DamageFactor, 0.0);
+    playernum++;
   }
 }
 
 // Presets a random number for EX Bosses delay
-function void BossEXCountArrSetter(int maxcount, int ran1, int ran2) {
+function void BossEXCountArr_Setter(int maxcount, int ran1, int ran2) {
   for (int i = 0; i < maxcount; i++) {
-    boss_ex_count_array[i] = random(ran1, ran2);
+    bossexcountarray[i] = random(ran1, ran2);
   }
   // debugLog(strParam(s:"BossEXCountArray randomized between values [",i:Ran1,s:"] and [",i:Ran2,s:"]!");}
 }
 
-function void PresetStrongmanCheck(int setter, int how_far) {
-  for (int i = 0; i <= how_far; i++) {
-    strongman_check[i] = setter;
+function void PresetStrongmanCheck(int setter, int howfar) {
+  for (int i = 0; i <= howfar; i++) {
+    strongmancheck[i] = setter;
   }
-  DebugLog(strParam(s:"StrongmanCheck Array set to value ", i:setter, s:" with a size of ", i:how_far, s:"."));
+  DebugLog(strParam(s:"StrongmanCheck Array set to value ", i:setter, s:" with a size of ", i:howfar, s:"."));
 }
 
-function void AddStrongmanCheckArray(int the_num) {
+function void Add_StrongmanCheckArray(int thenum) {
   for (int i = 0; i <= 99; i++) {
-    if (strongman_check[i] == -1) {
-      strongman_check[i] = the_num;
-      DebugLog(strParam(s:"StrongmanCheck value [", i:i, s:"] set to ", i:the_num, s:"."));
+    if (strongmancheck[i] == -1) {
+      strongmancheck[i] = thenum;
+      DebugLog(strParam(s:"StrongmanCheck value [", i:i, s:"] set to ", i:thenum, s:"."));
       break;
     }
   }
 }
-function void MinusStrongmanCheckArray(void) {
+function void Minus_StrongmanCheckArray(void) {
   for (int i = 0; i <= 99; i++) {
-    if (strongman_check[i] != -1) {
-      strongman_check[i] = strongman_check[i + 1];
+    if (strongmancheck[i] != -1) {
+      strongmancheck[i] = strongmancheck[i + 1];
     }
     else {
       DebugLog(strParam(s:"StrongmanCheck shifted over ", i:i, s:" time(s)."));
@@ -168,8 +168,8 @@ function void AdjustPlayerForceNumArray(int swapper) {
   switch (swapper) {
     case -1:  // Minus
       for (i = 0; i <= 64; i++) {
-        if (player_force_num[i] != 0) {
-          player_force_num[i] = player_force_num[i + 1];
+        if (playerforcenum[i] != 0) {
+          playerforcenum[i] = playerforcenum[i + 1];
         }
         else {
           DebugLog(strParam(s:"PlayerForceNum shifted over ", i:i, s:" time(s)."));
@@ -179,14 +179,14 @@ function void AdjustPlayerForceNumArray(int swapper) {
       break;
     case 0:  // Reset
       for (i = 0; i <= 64; i++) {
-        player_force_num[i] = 0;
+        playerforcenum[i] = 0;
       }
       DebugLog(strParam(s:"Reset all PlayerForceNum to 0."));
       break;
     default:  // Add
       for (i = 0; i <= 64; i++) {
-        if (player_force_num[i] == 0) {
-          player_force_num[i] = swapper;
+        if (playerforcenum[i] == 0) {
+          playerforcenum[i] = swapper;
           DebugLog(strParam(s:"PlayerForceNum value [", i:i, s:"] set to ", i:swapper, s:"."));
           break;
         }
@@ -197,64 +197,64 @@ function void AdjustPlayerForceNumArray(int swapper) {
 
 // Check and decide what MultiBoss is possible.
 function void MultiBossFunction(bool reset) {
-  multi_boss_check = 1;
+  multibosscheck = 1;
   int plc = playerCount();
-  int sv_force = CheckClearCvar("uh_sv_MultiBoss", 0);
-  if (sv_force >= 1 && sv_force <= MAX_BOSSES) {
-    ShowMeTheRCON("uh_sv_MultiBoss", sv_force);
-    while (plc <= sv_force + 1) {
-      sv_force--;
+  int svforce = CheckClearCvar("uh_sv_MultiBoss", 0);
+  if (svforce >= 1 && svforce <= MAX_BOSSES) {
+    ShowMeTheRCON("uh_sv_MultiBoss", svforce);
+    while (plc <= svforce + 1) {
+      svforce--;
     }
-    multi_boss_check = sv_force;
+    multibosscheck = svforce;
   }
   else {
-    multi_boss_check = random(1, max(plc / 4, 1));
+    multibosscheck = random(1, max(plc / 4, 1));
   }
 
-  for (int i = 0; i < multi_boss_check; i++) {
-    boss_slot_alive[i] = true;
+  for (int i = 0; i < multibosscheck; i++) {
+    bossslotalive[i] = true;
   }
-  DebugLog(strParam(s:"multiBossCheck = ", i:multi_boss_check, s:" --- RNG [2][3][4] -> ", i:multi_b_rng_arr[2], s:" <> ", i:multi_b_rng_arr[3], s:" <> ", i:multi_b_rng_arr[4]));
+  DebugLog(strParam(s:"multiBossCheck = ", i:multibosscheck, s:" --- RNG [2][3][4] -> ", i:multib_rng_arr[2], s:" <> ", i:multib_rng_arr[3], s:" <> ", i:multib_rng_arr[4]));
 }
 
 // This checks for specific CVAR numbers for boss selection and returns the BossNum if it matches the check
-function int ForceBossChange(str force, bool true_random) {
-  int boss_num = GetCVAR(force);
+function int ForceBossChange(str force, bool truerandom) {
+  int bossnum = GetCVAR(force);
   // if(!GetCVAR("UH_NoResetCVars"))
   // UHBOSS_FAIL (-9999) = unset. Do not use -1: that is a valid custom boss id.
   SetCVar(force, UHBOSS_FAIL);
-  if (boss_num != UHBOSS_FAIL && CheckBossList(boss_num)) {
-    boss_num = boss_num;
-    ShowMeTheRCON(StrParam(s:"Boss ", s:StrRight(force, 1)), boss_num);
+  if (bossnum != UHBOSS_FAIL && CheckBossList(bossnum)) {
+    bossnum = bossnum;
+    ShowMeTheRCON(StrParam(s:"Boss ", s:StrRight(force, 1)), bossnum);
   }
   else {
-    if (true_random || boss_num == -666) {boss_num = TrueRandomBoss();}
-    else {boss_num = UHBOSS_FAIL;}
+    if (truerandom || bossnum == -666) {bossnum = TrueRandomBoss();}
+    else {bossnum = UHBOSS_FAIL;}
   }
 
-  return boss_num;
+  return bossnum;
 }
 
 // Check if Boss # is even in the list
-function bool CheckBossList(int check_me) {
-  return IsBossDefined(check_me);
+function bool CheckBossList(int checkme) {
+  return IsBossDefined(checkme);
 }
-function int ExEventChecker(int input_event) {
-  if (CheckEventList(input_event + 100)) {
-    if (event_ex_count_array[input_event] >= 3) {
-      event_ex_count_array[input_event] = 0;
-      input_event += 100;
+function int ExEventChecker(int inputevent) {
+  if (CheckEventList(inputevent + 100)) {
+    if (eventexcountarray[inputevent] >= 3) {
+      eventexcountarray[inputevent] = 0;
+      inputevent += 100;
     }
     else {
-      event_ex_count_array[input_event] += 1;
+      eventexcountarray[inputevent] += 1;
     }
   }
-  return input_event;
+  return inputevent;
 }
-function bool CheckEventList(int check_me) {
+function bool CheckEventList(int checkme) {
   bool result = true;
   // Checks the Event String, if its nothing, it defaults to Invalid
-  if (StrCmp(bonus_event_list[check_me][1], "Invalid") == 0 || check_me < 0 || check_me > 200) {
+  if (StrCmp(bonuseventlist[checkme][1], "Invalid") == 0 || checkme < 0 || checkme > 200) {
     result = false;
   }
   return result;
@@ -262,106 +262,106 @@ function bool CheckEventList(int check_me) {
 
 // NEW#BOSS — pool-based pick (no BOSSRNGMAX holes)
 function int TrueRandomBoss(void) {
-  int rng_pick;
+  int rngpick;
   if (RandomPercent(5))
-    rng_pick = RandomBossFromPool(UHBOSS_POOL_ULTRA);
+    rngpick = RandomBossFromPool(UHBOSS_POOL_ULTRA);
   else if (RandomPercent(1))
-    rng_pick = RandomBossFromPool(UHBOSS_POOL_SPECIAL);
+    rngpick = RandomBossFromPool(UHBOSS_POOL_SPECIAL);
   else if (RandomPercent(15))
-    rng_pick = RandomBossFromPool(UHBOSS_POOL_EX);
+    rngpick = RandomBossFromPool(UHBOSS_POOL_EX);
   else if (RandomPercent(30))
-    rng_pick = RandomBossFromPool(UHBOSS_POOL_RARE);
+    rngpick = RandomBossFromPool(UHBOSS_POOL_RARE);
   else
-    rng_pick = RandomBossFromPool(UHBOSS_POOL_COMMON);
+    rngpick = RandomBossFromPool(UHBOSS_POOL_COMMON);
 
-  if (rng_pick == UHBOSS_FAIL || !IsBossDefined(rng_pick))
-    rng_pick = RandomBossFromPool(UHBOSS_POOL_COMMON);
-  if (rng_pick == UHBOSS_FAIL || !IsBossDefined(rng_pick))
-    rng_pick = 0;
-  return rng_pick;
+  if (rngpick == UHBOSS_FAIL || !IsBossDefined(rngpick))
+    rngpick = RandomBossFromPool(UHBOSS_POOL_COMMON);
+  if (rngpick == UHBOSS_FAIL || !IsBossDefined(rngpick))
+    rngpick = 0;
+  return rngpick;
 }
 
 
 // Select Bosses
-function void SetUpBossSelectionFunc(void) {
-  int temp_boss;
-  for (int i = 0; i < multi_boss_check; i++) {
-    temp_boss = ForceBossChange(strParam(s:"uh_sv_ForcedBoss", i:i + 1), false);
-    if (IsBossDefined(temp_boss)) {
-      boss_data_arr[i][BOSSDATA_NUM] = temp_boss;
+function void SetUpBossSelection_Func(void) {
+  int tempboss;
+  for (int i = 0; i < multibosscheck; i++) {
+    tempboss = ForceBossChange(strParam(s:"uh_sv_ForcedBoss", i:i + 1), false);
+    if (IsBossDefined(tempboss)) {
+      bossdataarr[i][BOSSDATA_NUM] = tempboss;
     }
     else {
-      boss_data_arr[i][BOSSDATA_NUM] = TrueRandomBoss();
+      bossdataarr[i][BOSSDATA_NUM] = TrueRandomBoss();
     }
 
-    if (temp_boss == 300 || shadow_tricks_arr[i]) {
-      shadow_tricks_arr[i] = true;
-      shadow_fakeout_active = true;
-      boss_data_arr[i][BOSSDATA_NUM] = TrueRandomBoss();
+    if (tempboss == 300 || shadowtricksarr[i]) {
+      shadowtricksarr[i] = true;
+      shadowfakeoutactive = true;
+      bossdataarr[i][BOSSDATA_NUM] = TrueRandomBoss();
     }
     else
-      boss_data_arr[i][BOSSDATA_NUM] = boss_data_arr[i][BOSSDATA_NUM];  // EXBossChecker
+      bossdataarr[i][BOSSDATA_NUM] = bossdataarr[i][BOSSDATA_NUM];  // EXBossChecker
 
-    DebugLog(strParam(s:"UnholyBoss", i:i + 1, s:" = ", i:boss_data_arr[i][BOSSDATA_NUM]));
+    DebugLog(strParam(s:"UnholyBoss", i:i + 1, s:" = ", i:bossdataarr[i][BOSSDATA_NUM]));
   }
   // debugLog(strParam(s:"DEBUG TXT: RareBossChance = ",d:RareBossChance);}
 }
 
 // Assigns players as Bosses
-function void SetUpPlayerSelectionFunc(void) {
-  int temp_player = 0;
-  for (int i = 0; i < multi_boss_check; i++) {
-    temp_player = CheckClearCvar(strParam(s:"uh_sv_ForceBossPlayer", i:i + 1), -1);
-    if (temp_player >= 0 && temp_player <= MAX_PLAYERS) {
-      temp_player += 1000;
+function void SetUpPlayerSelection_Func(void) {
+  int tempplayer = 0;
+  for (int i = 0; i < multibosscheck; i++) {
+    tempplayer = CheckClearCvar(strParam(s:"uh_sv_ForceBossPlayer", i:i + 1), -1);
+    if (tempplayer >= 0 && tempplayer <= MAX_PLAYERS) {
+      tempplayer += 1000;
     }
-    if (PlayerPickCheck(temp_player, i)) {  // If above check isn't -1, is a player number, and is in the game
-      boss_data_arr[i][BOSSDATA_TID] = temp_player;
-      ShowMeTheRCON(StrParam(s:"Boss-Forced Player ", i:i + 1), temp_player);
+    if (PlayerPickCheck(tempplayer, i)) {  // If above check isn't -1, is a player number, and is in the game
+      bossdataarr[i][BOSSDATA_TID] = tempplayer;
+      ShowMeTheRCON(StrParam(s:"Boss-Forced Player ", i:i + 1), tempplayer);
     }
-    else if (PlayerPickCheck(player_force_num[0], i)) {  // Check if scripts wants a player
-      boss_data_arr[i][BOSSDATA_TID] = player_force_num[0];
+    else if (PlayerPickCheck(playerforcenum[0], i)) {  // Check if scripts wants a player
+      bossdataarr[i][BOSSDATA_TID] = playerforcenum[0];
       AdjustPlayerForceNumArray(-1);
     }
     else {  // If above never happens, RNG a player as boss
-      boss_data_arr[i][BOSSDATA_TID] = RngPickCheck(i);
+      bossdataarr[i][BOSSDATA_TID] = RngPickCheck(i);
     }
-    temp_player = boss_data_arr[i][BOSSDATA_TID];
-    GiveActorInventory(temp_player, "Is_UH_BossNum", i + 1);  // Basic flag to track who is what boss
-    if (shadow_tricks_arr[i]) {
-      GiveActorInventory(temp_player, "IsGonnaBeFake", 1);  // Specifically for Shadow boss
+    tempplayer = bossdataarr[i][BOSSDATA_TID];
+    GiveActorInventory(tempplayer, "Is_UH_BossNum", i + 1);  // Basic flag to track who is what boss
+    if (shadowtricksarr[i]) {
+      GiveActorInventory(tempplayer, "IsGonnaBeFake", 1);  // Specifically for Shadow boss
     }
-    DebugLog(strParam(s:"Boss ", i:i + 1, s:" TID = ", i:temp_player));
-    player_life_status_arr[temp_player - 1000] = PLS_BOSS;
+    DebugLog(strParam(s:"Boss ", i:i + 1, s:" TID = ", i:tempplayer));
+    playerlifestatusarr[tempplayer - 1000] = PLS_BOSS;
   }
 }
 
 // Randomly pick a player, if they are not ingame or are in use TID's, pick another random player.
-function int RngPickCheck(int past_check) {
+function int RngPickCheck(int pastcheck) {
   int check;
   do {
-    check = random(1000, player_life_status_arr[MAX_PLAYERS] + 1000);  // 1063
+    check = random(1000, playerlifestatusarr[MAX_PLAYERS] + 1000);  // 1063
   } while (!PlayerInGame(check - 1000) || CheckActorInventory(check, "IsDead") ||
-      !CheckBossDataTIDFunc(check, past_check));
+      !CheckBossDataTIDFunc(check, pastcheck));
 
   return check;
 }
 // One time check similar to above.
-function bool PlayerPickCheck(int tid, int past_check) {
+function bool PlayerPickCheck(int tid, int pastcheck) {
   if (tid < 1) {
     return false;
   }
   else if (PlayerInGame(tid - 1000) && !CheckActorInventory(tid, "IsDead") &&
-      tid >= 1000 && tid <= 1063 && CheckBossDataTIDFunc(tid, past_check)) {
+      tid >= 1000 && tid <= 1063 && CheckBossDataTIDFunc(tid, pastcheck)) {
     return true;
   }
   return false;
 }
 
 // Check if TID matches in use Boss TID
-function bool CheckBossDataTIDFunc(int tid, int past_check) {
-  for (int i = 0; i < past_check; i++) {
-    if (tid == boss_data_arr[i][BOSSDATA_TID]) {
+function bool CheckBossDataTIDFunc(int tid, int pastcheck) {
+  for (int i = 0; i < pastcheck; i++) {
+    if (tid == bossdataarr[i][BOSSDATA_TID]) {
       return false;
     }
   }
@@ -415,10 +415,10 @@ function void SectorColorChange(int r, int g, int b, int desat) {
 }
 function void VariableLightChange(int l, bool dir) {
   if (dir) {  // Up
-    if (light_level_track < l) {light_level_track = l;}
+    if (lightleveltrack < l) {lightleveltrack = l;}
   }
   else {  // Down
-    if (light_level_track > l) {light_level_track = l;}
+    if (lightleveltrack > l) {lightleveltrack = l;}
   }
 }
 
@@ -468,7 +468,7 @@ function int DickheadWatchClaim(void) {
 
 function bool IsDemoneyeEvent(void) {
   if (isbonuseventactive) {
-    switch (event_data_arr[EVENTDATA_MAINEVENT]) {
+    switch (eventdataarr[EVENTDATA_MAINEVENT]) {
       case 1:
       case 2:
       case 3:
@@ -494,11 +494,11 @@ function int RandomRune(int type) {
   switch (type) {
     case 0:
     default:
-      return rune_of_the_day[random(0, 11)];
+      return runeoftheday[random(0, 11)];
     case 1:  // common
-      return common_rune_list[random(0, 2)];
+      return commonrunelist[random(0, 2)];
     case 2:  // rare
-      return rare_rune_list[random(0, 7)];
+      return rarerunelist[random(0, 7)];
   }
   return -1;
 }

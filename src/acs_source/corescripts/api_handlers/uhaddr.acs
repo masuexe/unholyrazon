@@ -3,7 +3,7 @@
 
 #import "uhdt.acs"
 
-function int UHDefineBossCore(
+function int UH_DefineBossCore(
 	  int id,
 	  str actor,
 	  str name,
@@ -28,7 +28,7 @@ function int UHDefineBossCore(
 	{
 		if (id >= UH_MAX_VANILLA_BOSS)
 			return UHBOSS_FAIL;
-		if (uh_boss_vanilla_defined[id] != 0)
+		if (uh_bossvanilladefined[id] != 0)
 			return UHBOSS_FAIL;
 		UH_BossWriteVanilla(id, actor, name, rarity, basehp, addhp,
 			exboss_baseactor, mugshot, musiclump, musiccredit,
@@ -39,7 +39,7 @@ function int UHDefineBossCore(
 
 	if (id == -1)
 	{
-		if (uh_boss_custom_count >= UH_MAX_CUSTOM_BOSS)
+		if (uh_bosscustomcount >= UH_MAX_CUSTOM_BOSS)
 			return UHBOSS_FAIL;
 		customid = UH_BossWriteCustom(actor, name, rarity, basehp, addhp,
 			exboss_baseactor, mugshot, musiclump, musiccredit,
@@ -56,7 +56,7 @@ function int UHDefineBossCore(
 // client; a CLIENTSIDE twin would double-write UHDT on the host.
 script "uh_DefineBoss_S" (void)
 {
-	SetResultValue(UHDefineBossCore(
+	SetResultValue(UH_DefineBossCore(
 		GetCVar("uh_db_id"),
 		GetCVarString("uh_db_actor"),
 		GetCVarString("uh_db_name"),
@@ -117,16 +117,16 @@ script "uh_GetBossHPAdd_S" (int id)
 
 script "uh_GetBossBaseId_S" (int id)
 {
-	int base_id = GetBossBaseId(id);
-	SetCVar("uh_db_id", base_id);
-	SetResultValue(base_id);
+	int baseid = GetBossBaseId(id);
+	SetCVar("uh_db_id", baseid);
+	SetResultValue(baseid);
 }
 
 script "uh_GetBossExId_S" (int id)
 {
-	int ex_id = GetBossExId(id);
-	SetCVar("uh_db_id", ex_id);
-	SetResultValue(ex_id);
+	int exid = GetBossExId(id);
+	SetCVar("uh_db_id", exid);
+	SetResultValue(exid);
 }
 
 script "uh_IsBossEx_S" (int id)
@@ -141,9 +141,9 @@ script "uh_RandomBossFromPool_S" (int rarity)
 	SetResultValue(pick);
 }
 
-script "uh_GetPlayerBossId_S" (int player_num)
+script "uh_GetPlayerBossId_S" (int playernum)
 {
-	int id = GetPlayerBossId(player_num);
+	int id = GetPlayerBossId(playernum);
 	SetCVar("uh_db_id", id);
 	SetResultValue(id);
 }
@@ -166,7 +166,7 @@ function int DefineSurvivorCore(int id, str actor, str name, str mugshot)
 	{
 		if (id >= UH_MAX_VANILLA_SURV)
 			return UHSURV_FAIL;
-		if (uh_surv_vanilla_defined[id] != 0)
+		if (uh_survvanilladefined[id] != 0)
 			return UHSURV_FAIL;
 		SurvWriteVanilla(id, actor, name, mugshot);
 		return id;
@@ -174,7 +174,7 @@ function int DefineSurvivorCore(int id, str actor, str name, str mugshot)
 
 	if (id == -1)
 	{
-		if (uh_surv_custom_count >= UH_MAX_CUSTOM_SURV)
+		if (uh_survcustomcount >= UH_MAX_CUSTOM_SURV)
 			return UHSURV_FAIL;
 		return SurvWriteCustom(actor, name, mugshot);
 	}
@@ -224,14 +224,14 @@ script "uh_GetSurvivorMugshot_S" (int id)
 	SetResultValue(IsSurvivorDefined(id));
 }
 
-function int DefineDemoneyeCore(int id, str actor, str name, str prefix, int flags, str mugshot, str event_stem)
+function int DefineDemoneyeCore(int id, str actor, str name, str prefix, int flags, str mugshot, str eventstem)
 {
 	// Mugshot is mandatory — empty would fall through BHW numeric bands incorrectly.
 	if (StrCmp(mugshot, "") == 0)
 		return UHEYE_FAIL;
 	if (StrCmp(name, "") == 0)
 		return UHEYE_FAIL;
-	if (StrCmp(event_stem, "") == 0)
+	if (StrCmp(eventstem, "") == 0)
 		return UHEYE_FAIL;
 
 	// Actor uniqueness only when actor is set (bonus face slots may omit actor).
@@ -242,9 +242,9 @@ function int DefineDemoneyeCore(int id, str actor, str name, str prefix, int fla
 	{
 		if (id >= UH_MAX_VANILLA_EYE)
 			return UHEYE_FAIL;
-		if (uh_eye_vanilla_defined[id] != 0)
+		if (uh_eyevanilladefined[id] != 0)
 			return UHEYE_FAIL;
-		EyeWriteVanilla(id, actor, name, prefix, flags, mugshot, event_stem);
+		EyeWriteVanilla(id, actor, name, prefix, flags, mugshot, eventstem);
 		return id;
 	}
 
@@ -252,9 +252,9 @@ function int DefineDemoneyeCore(int id, str actor, str name, str prefix, int fla
 	{
 		if (StrCmp(actor, "") == 0)
 			return UHEYE_FAIL;
-		if (uh_eye_custom_count >= UH_MAX_CUSTOM_EYE)
+		if (uh_eyecustomcount >= UH_MAX_CUSTOM_EYE)
 			return UHEYE_FAIL;
-		return EyeWriteCustom(actor, name, prefix, flags, mugshot, event_stem);
+		return EyeWriteCustom(actor, name, prefix, flags, mugshot, eventstem);
 	}
 
 	return UHEYE_FAIL;
@@ -320,9 +320,9 @@ script "uh_GetEyeEventStem_S" (int id)
 	SetResultValue(IsEyeDefined(id));
 }
 
-script "uh_GetPlayerEyeId_S" (int player_num)
+script "uh_GetPlayerEyeId_S" (int playernum)
 {
-	SetResultValue(GetPlayerEyeId(player_num));
+	SetResultValue(GetPlayerEyeId(playernum));
 }
 
 // --- Eye-morph weighted pool API -------------------------------------------
@@ -391,7 +391,7 @@ function int DefineUnholyItemCore(int id, str actor, str name, str mugshot, str 
 	{
 		if (id >= UH_MAX_VANILLA_ITEM)
 			return UHITEM_FAIL;
-		if (uh_item_vanilla_defined[id] != 0)
+		if (uh_itemvanilladefined[id] != 0)
 			return UHITEM_FAIL;
 		ItemWriteVanilla(id, actor, name, mugshot, sound);
 		return id;
@@ -399,7 +399,7 @@ function int DefineUnholyItemCore(int id, str actor, str name, str mugshot, str 
 
 	if (id == -1)
 	{
-		if (uh_item_custom_count >= UH_MAX_CUSTOM_ITEM)
+		if (uh_itemcustomcount >= UH_MAX_CUSTOM_ITEM)
 			return UHITEM_FAIL;
 		return ItemWriteCustom(actor, name, mugshot, sound);
 	}
@@ -574,15 +574,15 @@ script "uh_DefineLMSEvent_S" (void)
 
 script "uh_AddLMSEventDrop_S" (void)
 {
-	int event_id;
-	event_id = FindLMSEventByStem(GetCVarString("uh_le_stem"));
-	if (event_id == UHLMS_FAIL)
+	int eventid;
+	eventid = FindLMSEventByStem(GetCVarString("uh_le_stem"));
+	if (eventid == UHLMS_FAIL)
 	{
 		SetResultValue(UHLMS_FAIL);
 		terminate;
 	}
 	SetResultValue(AddLMSEventDropCore(
-		event_id,
+		eventid,
 		GetCVarString("uh_le_item"),
 		GetCVar("uh_le_amt"),
 		GetCVar("uh_le_rare")

@@ -32,16 +32,16 @@ int mugcyan, mugblue;
 int bar1cyan, bar1blue;
 int bar2cyan, bar2blue;
 int qwanttype;  //$UH
-int nega_ammo_id; //$UH
-int nega_cyan;   //$UH
+int negaammoid; //$UH
+int negacyan;   //$UH
 
 function void DrawMegaManURerollBar(void)
 {
 	int owned = CheckInventory("RockNRollAmmo");
-	int bar2_busy = (barstyle & (BARSTYLE_SECONDBAR | BARSTYLE_SECONDAMMO))
+	int bar2busy = (barstyle & (BARSTYLE_SECONDBAR | BARSTYLE_SECONDAMMO))
 		|| CheckInventory("SBARDrawBar2");
 
-	if (!bar2_busy)
+	if (!bar2busy)
 	{
 		DrawBar2ColorOwned(owned, UH_ROCKNROLL_MAX, UH_ROCKNROLL_CYAN, UH_ROCKNROLL_BLUE);
 		return;
@@ -56,7 +56,7 @@ function void DrawMegaManURerollBar(void)
 // Qwant move-weapons have no ScriptBar; remap to parent while UH_MoveHud_F set.
 // Decoy held copies (DecoyCopy_*_W1/_W2/_W3) remap to DecoyBot_W/_W2/_W3 bars.
 // Nega held cycle (NegaShiny_*) remaps via UH_NegaHeldBarWep to NegaManShiny_W.
-function str UHMoveHudParentWep(void) {
+function str UH_MoveHudParentWep(void) {
 	int hud = CheckInventory("UH_MoveHud_F");
 	if (hud == 1)
 		return "QwantShiny_W";
@@ -71,7 +71,7 @@ function str UHMoveHudParentWep(void) {
 	return "";
 }
 
-function str UHDecoyHeldBarWep(str wep) {
+function str UH_DecoyHeldBarWep(str wep) {
 	int len;
 	int d;
 	if (StrLen(wep) >= 14 && StrICmp(StrLeft(wep, 14), "DecoyShinyCopy") == 0)
@@ -96,7 +96,7 @@ function str UHDecoyHeldBarWep(str wep) {
 	return wep;
 }
 
-function str UHNegaHeldBarWep(str wep) {
+function str UH_NegaHeldBarWep(str wep) {
 	if (StrLen(wep) < 10)
 		return wep;
 	if (StrICmp(StrLeft(wep, 10), "NegaShiny_") == 0)
@@ -106,13 +106,13 @@ function str UHNegaHeldBarWep(str wep) {
 
 function void DrawBarRun(void) {
 	str wep = GetWeapon();
-	str parent = UHMoveHudParentWep();
+	str parent = UH_MoveHudParentWep();
 	if (StrLen(parent) > 0)
 		wep = parent;
 	else
 	{
-		wep = UHDecoyHeldBarWep(wep);
-		wep = UHNegaHeldBarWep(wep);
+		wep = UH_DecoyHeldBarWep(wep);
+		wep = UH_NegaHeldBarWep(wep);
 	}
 
 	if(oldwep != wep) {
@@ -143,7 +143,7 @@ function void DrawBarRun(void) {
 	if (barstyle & BARSTYLE_QWANT) {
 		ACS_NamedExecuteWithResult("DrawBar_QwantMove", qwanttype);
 	} else if (barstyle & BARSTYLE_NEGAMAN) {
-		ACS_NamedExecuteWithResult("DrawBar_NegaManMove", nega_ammo_id, nega_cyan);
+		ACS_NamedExecuteWithResult("DrawBar_NegaManMove", negaammoid, negacyan);
 	}
 	if (barstyle & BARSTYLE_SCRIPT) {
 		ACS_NamedExecuteWithResult(StrParam(s:"DrawBar_", s:wep));
@@ -170,8 +170,8 @@ function int GetWepBarStyle(str wep) {
 
 	if (SpawnForced(StrParam(s:wep, s:"_NegaManBar"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_NEGAMAN;
-		nega_ammo_id = GetActorArg(u, 0);
-		nega_cyan = GetActorArg(u, 1);
+		negaammoid = GetActorArg(u, 0);
+		negacyan = GetActorArg(u, 1);
 		Thing_Remove(u);
 	}
 

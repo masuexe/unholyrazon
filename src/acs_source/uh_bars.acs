@@ -210,56 +210,56 @@ function void DrawCustomBarStringHP(str verticalfull, str verticalempty,
 // Exclude runes (PowerHalfDamageRune has its own HUD icon).
 #define UH_GUARD_FACTOR_MAX 32
 #define UHGUARD_FAIL -9999
-int uh_guard_factor_count = 0;
-str uh_guard_factor_class[UH_GUARD_FACTOR_MAX];
-int uh_guard_factor_value[UH_GUARD_FACTOR_MAX];
+int uh_guardfactorcount = 0;
+str uh_guardfactorclass[UH_GUARD_FACTOR_MAX];
+int uh_guardfactorvalue[UH_GUARD_FACTOR_MAX];
 
-function int UHAddGuardFactor(str actor, int factor) {
+function int UH_AddGuardFactor(str actor, int factor) {
   if (StrLen(actor) < 1) {
     return UHGUARD_FAIL;
   }
   int i;
-  for (i = 0; i < uh_guard_factor_count; i++) {
-    if (!StrICmp(uh_guard_factor_class[i], actor)) {
-      uh_guard_factor_value[i] = factor;
+  for (i = 0; i < uh_guardfactorcount; i++) {
+    if (!StrICmp(uh_guardfactorclass[i], actor)) {
+      uh_guardfactorvalue[i] = factor;
       return i;
     }
   }
-  if (uh_guard_factor_count >= UH_GUARD_FACTOR_MAX) {
+  if (uh_guardfactorcount >= UH_GUARD_FACTOR_MAX) {
     return UHGUARD_FAIL;
   }
-  i = uh_guard_factor_count;
-  uh_guard_factor_class[i] = actor;
-  uh_guard_factor_value[i] = factor;
-  uh_guard_factor_count++;
+  i = uh_guardfactorcount;
+  uh_guardfactorclass[i] = actor;
+  uh_guardfactorvalue[i] = factor;
+  uh_guardfactorcount++;
   return i;
 }
 
-function int UHGuardNormalProduct(void) {
+function int UH_GuardNormalProduct(void) {
   int prod = 1.0;
   int i;
-  for (i = 0; i < uh_guard_factor_count; i++) {
-    if (CheckInventory(uh_guard_factor_class[i])) {
-      prod = FixedMul(prod, uh_guard_factor_value[i]);
+  for (i = 0; i < uh_guardfactorcount; i++) {
+    if (CheckInventory(uh_guardfactorclass[i])) {
+      prod = FixedMul(prod, uh_guardfactorvalue[i]);
     }
   }
   return prod;
 }
 
 function void RegisterVanillaGuardFactors(void) {
-  UHAddGuardFactor("PowerSMTankNerf", 2.0);
-  UHAddGuardFactor("UrineBottleDamage", 2.0);
-  UHAddGuardFactor("CalmMind_PowerProtection", 0.8);
-  UHAddGuardFactor("PowerFakeTruePower2", 0.8);
-  UHAddGuardFactor("PowerMujicaColor2", 0.75);
-  UHAddGuardFactor("Neru_DamageReduction", 0.70);
-  UHAddGuardFactor("MorshuArmorPower", 0.15);
-  UHAddGuardFactor("PowerEvilArmor", 0.25);
-  UHAddGuardFactor("HellishArmor", 0.05);
+  UH_AddGuardFactor("PowerSMTankNerf", 2.0);
+  UH_AddGuardFactor("UrineBottleDamage", 2.0);
+  UH_AddGuardFactor("CalmMind_PowerProtection", 0.8);
+  UH_AddGuardFactor("PowerFakeTruePower2", 0.8);
+  UH_AddGuardFactor("PowerMujicaColor2", 0.75);
+  UH_AddGuardFactor("Neru_DamageReduction", 0.70);
+  UH_AddGuardFactor("MorshuArmorPower", 0.15);
+  UH_AddGuardFactor("PowerEvilArmor", 0.25);
+  UH_AddGuardFactor("HellishArmor", 0.05);
 }
 
 script "uh_DefineUnholyGuardFactor_S" (void) {
-  SetResultValue(UHAddGuardFactor(GetCVarString("uh_gf_actor"), GetCVar("uh_gf_factor")));
+  SetResultValue(UH_AddGuardFactor(GetCVarString("uh_gf_actor"), GetCVar("uh_gf_factor")));
 }
 
 script "uh_define_vanilla_guard_cs" OPEN CLIENTSIDE {
@@ -511,7 +511,7 @@ script "uh_assists_define" OPEN CLIENTSIDE {
   DefineAssistDisplay("uh_assist_DeadlyFireArms");
 }
 
-function str UHMugshotIndexName(str prefix, int amount) {
+function str UH_MugshotIndexName(str prefix, int amount) {
   // SBARMugshot* stores palette+1; texture names are 000-255
   int idx = amount - 1;
   if (idx < 0) {idx = 0;}
@@ -573,75 +573,75 @@ function void DrawUHClassMugshot(int cam) {
   int blue = CheckActorInventory(cam, "SBARMugshotBlue");
   int black = CheckActorInventory(cam, "SBARMugshotBlack");
   int trans = CheckActorInventory(cam, "MugshotTransFlag");
-  str n_blu = "";
-  str n_blk = "";
-  str n_cyn = "";
+  str nblu = "";
+  str nblk = "";
+  str ncyn = "";
 
   // HudMessage: lower IDs draw on top. BACK must use the highest ID so color layers stay visible.
   if (CheckActorInventory(cam, "UHMugshotMegaMan")) {
     if (trans) {
-      n_blu = UHMugshotIndexName("MGBLU", blue);
-      n_blk = UHMugshotIndexName("MGBLK", black);
-      n_cyn = UHMugshotIndexName("MGCYN", cyan);
+      nblu = UH_MugshotIndexName("MGBLU", blue);
+      nblk = UH_MugshotIndexName("MGBLK", black);
+      ncyn = UH_MugshotIndexName("MGCYN", cyan);
     } else {
-      n_blu = "MGBLU198";
-      n_blk = "MGBLK000";
-      n_cyn = "MGCYN192";
+      nblu = "MGBLU198";
+      nblk = "MGBLK000";
+      ncyn = "MGCYN192";
     }
     BasicImageDisplay("MEGABCK", UH_IMAGE_ID_BASE + 73, x, y);
-    BasicImageDisplay(n_blu, UH_IMAGE_ID_BASE + 72, x, y);
-    BasicImageDisplay(n_blk, UH_IMAGE_ID_BASE + 71, x, y);
-    BasicImageDisplay(n_cyn, UH_IMAGE_ID_BASE + 70, x, y);
+    BasicImageDisplay(nblu, UH_IMAGE_ID_BASE + 72, x, y);
+    BasicImageDisplay(nblk, UH_IMAGE_ID_BASE + 71, x, y);
+    BasicImageDisplay(ncyn, UH_IMAGE_ID_BASE + 70, x, y);
   } else if (CheckActorInventory(cam, "UHMugshotQwant")) {
     if (trans) {
-      n_blu = UHMugshotIndexName("QWBLU", blue);
-      n_cyn = UHMugshotIndexName("QWCYN", cyan);
+      nblu = UH_MugshotIndexName("QWBLU", blue);
+      ncyn = UH_MugshotIndexName("QWCYN", cyan);
     } else {
-      n_blu = "QWBLU130";
-      n_cyn = "QWCYN110";
+      nblu = "QWBLU130";
+      ncyn = "QWCYN110";
     }
     BasicImageDisplay("QWNTBCK", UH_IMAGE_ID_BASE + 73, x, y);
-    BasicImageDisplay(n_blu, UH_IMAGE_ID_BASE + 72, x, y);
-    BasicImageDisplay(n_cyn, UH_IMAGE_ID_BASE + 70, x, y);
+    BasicImageDisplay(nblu, UH_IMAGE_ID_BASE + 72, x, y);
+    BasicImageDisplay(ncyn, UH_IMAGE_ID_BASE + 70, x, y);
   } else if (CheckActorInventory(cam, "UHMugshotNegaMan")) {
     if (trans) {
-      n_cyn = UHMugshotIndexName("NGPUR", cyan);
+      ncyn = UH_MugshotIndexName("NGPUR", cyan);
     } else {
       // NegaMan_W / NEGAMAN_DYE purple (253→95)
-      n_cyn = "NGPUR095";
+      ncyn = "NGPUR095";
     }
     BasicImageDisplay("NEGABCK", UH_IMAGE_ID_BASE + 73, x, y);
-    BasicImageDisplay(n_cyn, UH_IMAGE_ID_BASE + 70, x, y);
+    BasicImageDisplay(ncyn, UH_IMAGE_ID_BASE + 70, x, y);
   } else if (CheckActorInventory(cam, "UHMugshotArcanist")) {
     if (trans) {
       // ARPD1=cyan(lightest), ARPD2=blue, ARPD3=black(darkest)
-      n_cyn = UHMugshotIndexName("ARPD1", black);
-      n_blu = UHMugshotIndexName("ARPD2", blue);
-      n_blk = UHMugshotIndexName("ARPD3", cyan);
+      ncyn = UH_MugshotIndexName("ARPD1", black);
+      nblu = UH_MugshotIndexName("ARPD2", blue);
+      nblk = UH_MugshotIndexName("ARPD3", cyan);
     } else {
-      n_cyn = "ARPD1057";
-      n_blu = "ARPD2060";
-      n_blk = "ARPD3079";
+      ncyn = "ARPD1057";
+      nblu = "ARPD2060";
+      nblk = "ARPD3079";
     }
     BasicImageDisplay("ARCABCK", UH_IMAGE_ID_BASE + 73, x, y);
-    BasicImageDisplay(n_blu, UH_IMAGE_ID_BASE + 72, x, y);
-    BasicImageDisplay(n_blk, UH_IMAGE_ID_BASE + 71, x, y);
-    BasicImageDisplay(n_cyn, UH_IMAGE_ID_BASE + 70, x, y);
+    BasicImageDisplay(nblu, UH_IMAGE_ID_BASE + 72, x, y);
+    BasicImageDisplay(nblk, UH_IMAGE_ID_BASE + 71, x, y);
+    BasicImageDisplay(ncyn, UH_IMAGE_ID_BASE + 70, x, y);
   }
 }
 
 function void DrawCrystrapSpyingHud(void) {
-  int spy_tid = 0;
-  int console_player = ConsolePlayerNumber();
-  if (console_player >= 0 && PlayerInGame(console_player)) {
+  int spytid = 0;
+  int consoleplayer = ConsolePlayerNumber();
+  if (consoleplayer >= 0 && PlayerInGame(consoleplayer)) {
     // DrawBar scripts run with the current camera as activator.  During
     // Crystrap spying that is the target, so read the marker locally.
-    spy_tid = CheckActorInventory(console_player + 1000, "CrystrapSpyingTID");
+    spytid = CheckActorInventory(consoleplayer + 1000, "CrystrapSpyingTID");
   }
 
-  if (AssistDisplayBar_On() && spy_tid >= 1000 && spy_tid <= 1063) {
+  if (AssistDisplayBar_On() && spytid >= 1000 && spytid <= 1063) {
     SetHudSize(320, 200, 0);
-    HudMessageBold(s:"Spying: ", n:spy_tid - 999;
+    HudMessageBold(s:"Spying: ", n:spytid - 999;
       HUDMSG_PLAIN, UH_CRYSTRAP_SPY_HUD_ID, CR_CYAN,
       160.4, 4.1, 0.1, 1.0);
   } else {
@@ -653,7 +653,7 @@ function void DrawCrystrapSpyingHud(void) {
 script "uh_assist_General" (int cam) CLIENTSIDE {
   SetActivator(cam);
   // SetActivator(0,AAPTR_NULL);
-  FuncUHBarFlags();
+  Func_UH_BarFlags();
   SetHudSize(320, 200, 0);
   // AdjustedImageDisplayFlag("EMPTICON", "EMPTICON", UH_IMAGE_ID_BASE+100, UH_IMAGE_ID_BASE+101, 24.1, 64.1, 122.1, 184.1, HUDMSG_LAYER_UNDERHUD);
   // Extra Life
@@ -706,13 +706,13 @@ script "uh_assist_General" (int cam) CLIENTSIDE {
   }
 }
 
-function void FuncUHBarFlags(void) {
+function void Func_UH_BarFlags(void) {
   int hp = GetActorHealth(0);
   int maxhp = GetActorMaxHealth(0);
   if (CheckInventory("PlayerPropertyInvulnerable") || (CheckInventory("PlayerPropertyNonshootable") && CheckInventory("PlayerPropertyNoRadiusDmg"))) {
     DrawCustomBar(CUST_INVUN_BAR, hp, maxhp);
   } else {
-    int prod = UHGuardNormalProduct();
+    int prod = UH_GuardNormalProduct();
     if (prod > 1.0) {
       DrawCustomBar(CUST_GUARDDOWN_BAR, hp, maxhp);
     } else if (prod < 1.0) {
@@ -932,15 +932,15 @@ function str PkmovName(int width) {
 }
 
 // Draws PKMOV box + text with Gold/Silver 3px left/right inset inside the frame.
-function void DrawTextInPkmovBox(str text, str font_name, str color_name,
-  int boxid, int box_id2, int text_id, int text_id2,
-  int box_x1, int box_y1, int box_x2, int box_y2) {
+function void DrawTextInPkmovBox(str text, str fontname, str colorname,
+  int boxid, int boxid2, int textid, int textid2,
+  int boxx1, int boxy1, int boxx2, int boxy2) {
   // *1.0 keeps HudMessage alignment bits (.1 left) when adding pixel offsets.
   str box = PkmovName(TextBoxWidth(text));
-  AdjustedImageDisplay(box, box, boxid, box_id2, box_x1, box_y1, box_x2, box_y2);
-  AdjustedDrawString(font_name, color_name, text, text_id, text_id2,
-    box_x1 + PKMNF7_TEXT_X_OFF * 1.0, box_y1 + PKMNF7_TEXT_Y_OFF * 1.0,
-    box_x2 + PKMNF7_TEXT_X_OFF * 1.0, box_y2 + PKMNF7_TEXT_Y_OFF * 1.0);
+  AdjustedImageDisplay(box, box, boxid, boxid2, boxx1, boxy1, boxx2, boxy2);
+  AdjustedDrawString(fontname, colorname, text, textid, textid2,
+    boxx1 + PKMNF7_TEXT_X_OFF * 1.0, boxy1 + PKMNF7_TEXT_Y_OFF * 1.0,
+    boxx2 + PKMNF7_TEXT_X_OFF * 1.0, boxy2 + PKMNF7_TEXT_Y_OFF * 1.0);
 }
 
 str uh_qwant_fill_wep = "";
@@ -958,18 +958,18 @@ function void ResolveQwantFillAmmo(str wep, int type) {
 
   int u = UniqueTID();
   if (SpawnForced(StrParam(s:wep, s:"_QwantBar"), 0, 0, 0, u, 0)) {
-    int custom_max = ACS_NamedExecuteWithResult("core_GetActorArg", u, 1);
-    if (custom_max > 0) {
+    int custommax = ACS_NamedExecuteWithResult("core_GetActorArg", u, 1);
+    if (custommax > 0) {
       str tag = GetActorProperty(u, APROP_Nametag);
       // Only treat Tag as fill ammo when it is a real Ammo class (cap > 0).
       // Unset Tag returns the actor classname via APROP_Nametag — must not use that.
-      int tag_cap = 0;
+      int tagcap = 0;
       if (StrLen(tag) > 0 && GetChar(tag, 0) != 36) {
-        tag_cap = GetAmmoCapacity(tag);
+        tagcap = GetAmmoCapacity(tag);
       }
-      if (tag_cap > 0) {
+      if (tagcap > 0) {
         uh_qwant_fill_ammo = tag;
-        uh_qwant_fill_max = tag_cap;
+        uh_qwant_fill_max = tagcap;
       }
     }
     Thing_Remove(u);
@@ -1049,15 +1049,15 @@ script "uh_assist_CalmMind" (int cam) CLIENTSIDE {
       int y = Get_AssistDisplayBar_Y(pos);
 
       BasicImageDisplay("C_A_01A", Get_And_Inc_AssistDisplayID(), x, y);
-      int time_sec = flag;
-      time_sec = time_sec / 35 + (time_sec % 35 > 0);
+      int timesec = flag;
+      timesec = timesec / 35 + (timesec % 35 > 0);
       DrawBasicBarAndNumber("ASVS001A", "AS_VR_16",
                             "ASHS001A", "AS_HR_16",
                             x, y,
                             Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(),
                             ((flag * 8.0 / 350) + 0.5) >> 16,
                             CheckActorInventory(cam, "AssistNumberFlag") > 0,
-                            time_sec);
+                            timesec);
     }
   }
 }
@@ -1074,42 +1074,42 @@ str uh_nega_fill_wep = "";
 str uh_nega_fill_ammo = "";
 int uh_nega_fill_max = 0;
 
-function void ResolveNegaManFillAmmo(str wep, int ammo_id) {
+function void ResolveNegaManFillAmmo(str wep, int ammoid) {
   if (uh_nega_fill_wep == wep && StrLen(uh_nega_fill_ammo) > 0) {
     return;
   }
   uh_nega_fill_wep = wep;
-  uh_nega_fill_ammo = nega_mm_ammo[ammo_id];
+  uh_nega_fill_ammo = nega_mm_ammo[ammoid];
   uh_nega_fill_max = 28;
 
   int u = UniqueTID();
   if (SpawnForced(StrParam(s:wep, s:"_NegaManBar"), 0, 0, 0, u, 0)) {
-    int custom_max = ACS_NamedExecuteWithResult("core_GetActorArg", u, 2);
-    if (custom_max > 0) {
+    int custommax = ACS_NamedExecuteWithResult("core_GetActorArg", u, 2);
+    if (custommax > 0) {
       str tag = GetActorProperty(u, APROP_Nametag);
-      int tag_cap = 0;
+      int tagcap = 0;
       if (StrLen(tag) > 0 && GetChar(tag, 0) != 36) {
-        tag_cap = GetAmmoCapacity(tag);
+        tagcap = GetAmmoCapacity(tag);
       }
-      if (tag_cap > 0) {
+      if (tagcap > 0) {
         uh_nega_fill_ammo = tag;
-        uh_nega_fill_max = tag_cap;
+        uh_nega_fill_max = tagcap;
       }
     }
     Thing_Remove(u);
   }
 }
 
-script "DrawBar_NegaManMove" (int ammo_id, int cyan) {
-  if (ammo_id < 0) {
-    ammo_id = 0;
+script "DrawBar_NegaManMove" (int ammoid, int cyan) {
+  if (ammoid < 0) {
+    ammoid = 0;
   }
-  if (ammo_id >= NEGA_MM_AMMO_COUNT) {
-    ammo_id = 0;
+  if (ammoid >= NEGA_MM_AMMO_COUNT) {
+    ammoid = 0;
   }
 
   str wep = GetWeapon();
-  ResolveNegaManFillAmmo(wep, ammo_id);
+  ResolveNegaManFillAmmo(wep, ammoid);
   DrawBarColorOwned(CheckInventory(uh_nega_fill_ammo), uh_nega_fill_max, cyan, NEGA_BAR_BLUE);
   DrawCustomBar(CUST_NEGAMAN, CheckInventory("NegaDuckAmmo"), 400);
   SetInventory("SBARAmmoOffset", 2);
@@ -1161,36 +1161,36 @@ script "DrawBar_NegaManShiny_W" (void) {
   SetInventory("SBARUseAmmo1Disp", 1);
   SetAmmoAmountAndCapacity("Ammo1Disp", CheckInventory("S_NegaDuckAmmo"), GetAmmoCapacity("S_NegaDuckAmmo"));
   DrawNormalAmmo();
-  str wep_icon = "C_I_02B";
+  str wepicon = "C_I_02B";
   switch (CheckInventory("SNegaFlag")) {
-    case 1: wep_icon = "THUNSI"; break;
-    case 2: wep_icon = "FLASHSI"; break;
-    case 3: wep_icon = "SNAKESI"; break;
-    case 4: wep_icon = "SKLBSI"; break;
-    case 5: wep_icon = "GRAVSI"; break;
-    case 6: wep_icon = "FLMBSI"; break;
-    case 7: wep_icon = "SCLASI"; break;
-    case 8: wep_icon = "ICEWAVI"; break;
-    case 9: wep_icon = "BLAKHOLI"; break;
-    case 10: wep_icon = "CHILLI"; break;
-    case 11: wep_icon = "LIGHTNI"; break;
-    case 12: wep_icon = "BALLSI"; break;
-    case 13: wep_icon = "GRABBI"; break;
-    case 14: wep_icon = "TIMMI2"; break;
-    case 15: wep_icon = "BUBBI"; break;
-    case 16: wep_icon = "NEEDSI"; break;
-    case 17: wep_icon = "RAINSI"; break;
-    case 18: wep_icon = "NAPAI"; break;
-    case 19: wep_icon = "YAMASI"; break;
-    case 20: wep_icon = "WCOISI"; break;
-    case 21: wep_icon = "FLSHBOMI"; break;
-    case 22: wep_icon = "MAGMAI"; break;
-    case 23: wep_icon = "BLAWI"; break;
-    case 24: wep_icon = "IWALL"; break;
-    case 25: wep_icon = "SCHSWI"; break;
+    case 1: wepicon = "THUNSI"; break;
+    case 2: wepicon = "FLASHSI"; break;
+    case 3: wepicon = "SNAKESI"; break;
+    case 4: wepicon = "SKLBSI"; break;
+    case 5: wepicon = "GRAVSI"; break;
+    case 6: wepicon = "FLMBSI"; break;
+    case 7: wepicon = "SCLASI"; break;
+    case 8: wepicon = "ICEWAVI"; break;
+    case 9: wepicon = "BLAKHOLI"; break;
+    case 10: wepicon = "CHILLI"; break;
+    case 11: wepicon = "LIGHTNI"; break;
+    case 12: wepicon = "BALLSI"; break;
+    case 13: wepicon = "GRABBI"; break;
+    case 14: wepicon = "TIMMI2"; break;
+    case 15: wepicon = "BUBBI"; break;
+    case 16: wepicon = "NEEDSI"; break;
+    case 17: wepicon = "RAINSI"; break;
+    case 18: wepicon = "NAPAI"; break;
+    case 19: wepicon = "YAMASI"; break;
+    case 20: wepicon = "WCOISI"; break;
+    case 21: wepicon = "FLSHBOMI"; break;
+    case 22: wepicon = "MAGMAI"; break;
+    case 23: wepicon = "BLAWI"; break;
+    case 24: wepicon = "IWALL"; break;
+    case 25: wepicon = "SCHSWI"; break;
   }
   SetHudSize(320, 200, 0);
-  AdjustedImageDisplay(wep_icon, wep_icon, UH_IMAGE_ID_BASE - 100, UH_IMAGE_ID_BASE - 101, 16.1, 64.1, 50.1, 184.1);
+  AdjustedImageDisplay(wepicon, wepicon, UH_IMAGE_ID_BASE - 100, UH_IMAGE_ID_BASE - 101, 16.1, 64.1, 50.1, 184.1);
 }
 
 script "DrawBar_BusterMistress_W" (void) {
@@ -1444,8 +1444,8 @@ script "DrawBar_HeavyGunnerShiny_W" (void) {
 }
 
 script "DrawBar_Raider_W" (void) {
-  int hook_num = CheckInventory("HookshotStamina");
-  str hook_ammo = StrRight(StrParam(s:"000", i:hook_num), 3);
+  int hooknum = CheckInventory("HookshotStamina");
+  str hookammo = StrRight(StrParam(s:"000", i:hooknum), 3);
   SetHudSize(320, 200, 0);
   if (CheckInventory("RaiderHookRelease_F") > 0) {
     AdjustedImageDisplay("C_I_17NV", "C_I_17NH", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 3.1, 39.1, 107.1, 175.1);
@@ -1453,7 +1453,7 @@ script "DrawBar_Raider_W" (void) {
     AdjustedImageDisplay("C_I_17CV", "C_I_17CH", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 3.1, 39.1, 107.1, 175.1);
   }
   // CR_RED 6//CR_ORANGE 8
-  AdjustedDrawStringC("CMBHRFONT", 6 + (hook_num >= 200) * 2, hook_ammo, UH_IMAGE_ID_BASE - 2, UH_IMAGE_ID_BASE - 3, 2.1, 56.1, 95.1, 177.1);
+  AdjustedDrawStringC("CMBHRFONT", 6 + (hooknum >= 200) * 2, hookammo, UH_IMAGE_ID_BASE - 2, UH_IMAGE_ID_BASE - 3, 2.1, 56.1, 95.1, 177.1);
 }
 
 script "DrawBar_Raider_W2" (void) {
@@ -1461,15 +1461,15 @@ script "DrawBar_Raider_W2" (void) {
 }
 
 script "DrawBar_RaiderShiny_W" (void) {
-  int hook_num = CheckInventory("HookshotStamina");
-  str hook_ammo = StrRight(StrParam(s:"000", i:hook_num), 3);
+  int hooknum = CheckInventory("HookshotStamina");
+  str hookammo = StrRight(StrParam(s:"000", i:hooknum), 3);
   SetHudSize(320, 200, 0);
   if (CheckInventory("RaiderHookRelease_F") > 0) {
     AdjustedImageDisplay("C_I_17NV", "C_I_17NH", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 3.1, 39.1, 107.1, 175.1);
   } else {
     AdjustedImageDisplay("C_I_17DV", "C_I_17DH", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 3.1, 39.1, 107.1, 175.1);
   }
-  AdjustedDrawStringC("CMBHRFONT", 6 + (hook_num >= 200) * 2, hook_ammo, UH_IMAGE_ID_BASE - 2, UH_IMAGE_ID_BASE - 3, 2.1, 56.1, 95.1, 177.1);
+  AdjustedDrawStringC("CMBHRFONT", 6 + (hooknum >= 200) * 2, hookammo, UH_IMAGE_ID_BASE - 2, UH_IMAGE_ID_BASE - 3, 2.1, 56.1, 95.1, 177.1);
 }
 
 script "DrawBar_RaiderShiny_W2" (void) {
@@ -1660,21 +1660,21 @@ function str SiteWorkerTetGraphic(int piece) {
 }
 
 function void DrawSiteWorkerTetrisHud(void) {
-  int next_piece = CheckInventory("SiteWorkerTetris_F");
-  int save_piece = CheckInventory("SiteWorkerSaved_F");
-  str next_pic = SiteWorkerTetGraphic(next_piece);
-  str save_pic = SiteWorkerTetGraphic(save_piece);
+  int nextpiece = CheckInventory("SiteWorkerTetris_F");
+  int savepiece = CheckInventory("SiteWorkerSaved_F");
+  str nextpic = SiteWorkerTetGraphic(nextpiece);
+  str savepic = SiteWorkerTetGraphic(savepiece);
 
   SetHudSize(320, 200, 0);
   // Vert: x≈-16 clears Ammo1 at 15; Hori: y≈169 sits above bar/number cluster
   // NEXT
   AdjustedImageDisplay("35_A_TET", "35_A_TET", UH_IMAGE_ID_BASE - 20, UH_IMAGE_ID_BASE - 21, -16.1, 23.1, 68.1, 165.1);
   AdjustedImageDisplay("35_B_TET", "35_B_TET", UH_IMAGE_ID_BASE - 22, UH_IMAGE_ID_BASE - 23, -16.1, 18.1, 68.1, 160.1);
-  AdjustedImageDisplay(next_pic, next_pic, UH_IMAGE_ID_BASE - 24, UH_IMAGE_ID_BASE - 25, -16.1, 23.1, 68.1, 165.1);
+  AdjustedImageDisplay(nextpic, nextpic, UH_IMAGE_ID_BASE - 24, UH_IMAGE_ID_BASE - 25, -16.1, 23.1, 68.1, 165.1);
   // SAVE — vert under NEXT; hori right of NEXT (box≈16px + 4px gutter)
   AdjustedImageDisplay("35_A_TET", "35_A_TET", UH_IMAGE_ID_BASE - 26, UH_IMAGE_ID_BASE - 27, -16.1, 41.1, 88.1, 165.1);
   AdjustedImageDisplay("35_C_TET", "35_C_TET", UH_IMAGE_ID_BASE - 28, UH_IMAGE_ID_BASE - 29, -16.1, 36.1, 88.1, 160.1);
-  AdjustedImageDisplay(save_pic, save_pic, UH_IMAGE_ID_BASE - 30, UH_IMAGE_ID_BASE - 31, -16.1, 41.1, 88.1, 165.1);
+  AdjustedImageDisplay(savepic, savepic, UH_IMAGE_ID_BASE - 30, UH_IMAGE_ID_BASE - 31, -16.1, 41.1, 88.1, 165.1);
 }
 
 script "DrawBar_SiteWorker_W" (void) {
@@ -1712,7 +1712,7 @@ script "DrawBar_MarksmanShiny_W" (void) {
   // Unbound SBARINFO.VB/HB S_Marksman_W: CSI icon + lock count
   DrawBarColor(204, 244);
   SetHudSize(320, 200, 0);
-  int base_id = UH_IMAGE_ID_BASE - 40;
+  int baseid = UH_IMAGE_ID_BASE - 40;
   int locks = CheckInventory("MarksmanMissile_F");
   str pip = "CSI_40Z";
   if (locks >= 1) {
@@ -1722,16 +1722,16 @@ script "DrawBar_MarksmanShiny_W" (void) {
       pip = "CSI_40B";
   }
   // DrawImage CSI_* at vert (2,22) / hori (-93+center,-35)
-  AdjustedImageDisplay(pip, pip, base_id, base_id - 1,
+  AdjustedImageDisplay(pip, pip, baseid, baseid - 1,
     1.1, 38.1,
     67.1, 165.1);
   // DrawNumber 2,CMBHPFONT,UH37 fillzeros at (3,37) / (-77+center,-30)
-  str lock_str;
+  str lockstr;
   if (locks < 10)
-    lock_str = StrParam(s:"0", i:locks);
+    lockstr = StrParam(s:"0", i:locks);
   else
-    lock_str = StrParam(i:locks);
-  AdjustedDrawString("CMBHPFONT", "UH37", lock_str, base_id - 2, base_id - 3,
+    lockstr = StrParam(i:locks);
+  AdjustedDrawString("CMBHPFONT", "UH37", lockstr, baseid - 2, baseid - 3,
     4.1, 53.1,  // +15
     83.1, 170.1);
 }
@@ -1740,27 +1740,27 @@ script "DrawBar_MarksmanShiny_W" (void) {
 // C_I_44* display ~16px; icons shifted left (vert) / numbers raised (hori) so counts stay clear.
 function void DrawRedWarriorStackHud(void) {
   SetHudSize(320, 200, 0);
-  int base_id = UH_IMAGE_ID_BASE - 50;
+  int baseid = UH_IMAGE_ID_BASE - 50;
   // Vert: icons at x=-8 (was 0); numbers at x=9 (was 8) — clear of 16px icon
   // Hori: icons y=171; numbers y=165 (was same-x / 5px above) — more headroom above icons
-  AdjustedImageDisplay("C_I_44A", "C_I_44A", base_id, base_id - 1, -18.1, 9.1, 60.1, 168.1);
-  AdjustedImageDisplay("C_I_44B", "C_I_44B", base_id - 2, base_id - 3, -18.1, 18.1, 69.1, 168.1);
-  AdjustedImageDisplay("C_I_44C", "C_I_44C", base_id - 4, base_id - 5, -18.1, 27.1, 78.1, 168.1);
-  AdjustedImageDisplay("C_I_44D", "C_I_44D", base_id - 6, base_id - 7, -18.1, 36.1, 87.1, 168.1);
-  AdjustedImageDisplay("C_I_44E", "C_I_44E", base_id - 8, base_id - 9, -18.1, 45.1, 96.1, 168.1);
-  AdjustedImageDisplay("C_I_44F", "C_I_44F", base_id - 10, base_id - 11, -18.1, 54.1, 105.1, 168.1);
+  AdjustedImageDisplay("C_I_44A", "C_I_44A", baseid, baseid - 1, -18.1, 9.1, 60.1, 168.1);
+  AdjustedImageDisplay("C_I_44B", "C_I_44B", baseid - 2, baseid - 3, -18.1, 18.1, 69.1, 168.1);
+  AdjustedImageDisplay("C_I_44C", "C_I_44C", baseid - 4, baseid - 5, -18.1, 27.1, 78.1, 168.1);
+  AdjustedImageDisplay("C_I_44D", "C_I_44D", baseid - 6, baseid - 7, -18.1, 36.1, 87.1, 168.1);
+  AdjustedImageDisplay("C_I_44E", "C_I_44E", baseid - 8, baseid - 9, -18.1, 45.1, 96.1, 168.1);
+  AdjustedImageDisplay("C_I_44F", "C_I_44F", baseid - 10, baseid - 11, -18.1, 54.1, 105.1, 168.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("WarriorStack1"),
-    base_id - 12, base_id - 13, -9.1, 11.1, 64.0, 162.1);  // +6
+    baseid - 12, baseid - 13, -9.1, 11.1, 64.0, 162.1);  // +6
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("WarriorStack2"),
-    base_id - 14, base_id - 15, -9.1, 21.1, 73.0, 162.1);  // +9
+    baseid - 14, baseid - 15, -9.1, 21.1, 73.0, 162.1);  // +9
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("WarriorStack3"),
-    base_id - 16, base_id - 17, -9.1, 29.1, 82.0, 162.1);
+    baseid - 16, baseid - 17, -9.1, 29.1, 82.0, 162.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("WarriorStack4"),
-    base_id - 18, base_id - 19, -9.1, 38.1, 91.0, 162.1);
+    baseid - 18, baseid - 19, -9.1, 38.1, 91.0, 162.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("WarriorStack5"),
-    base_id - 20, base_id - 21, -9.1, 47.1, 100.0, 162.1);
+    baseid - 20, baseid - 21, -9.1, 47.1, 100.0, 162.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("WarriorStack6"),
-    base_id - 22, base_id - 23, -9.1, 56.1, 109.0, 162.1);
+    baseid - 22, baseid - 23, -9.1, 56.1, 109.0, 162.1);
 }
 
 script "DrawBar_RedWarrior_W" (void) {
@@ -1799,8 +1799,8 @@ script "uh_assist_YellowWizardReflect" (int cam) CLIENTSIDE {
       int y = Get_AssistDisplayBar_Y(pos);
 
       BasicImageDisplay("C_A_46B", Get_And_Inc_AssistDisplayID(), x, y);
-      int time_sec = flag;
-      time_sec = time_sec / 35 + (time_sec % 35 > 0);
+      int timesec = flag;
+      timesec = timesec / 35 + (timesec % 35 > 0);
       DrawBasicBarAndNumber(
         "ASVS046B", "AS_VR_16",
         "ASHS046B", "AS_HR_16",
@@ -1808,7 +1808,7 @@ script "uh_assist_YellowWizardReflect" (int cam) CLIENTSIDE {
         Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(),
         ((flag * 8.0 / 232) + 0.5) >> 16,
         CheckActorInventory(cam, "AssistNumberFlag") > 0,
-        time_sec
+        timesec
       );
     }
   }
@@ -1826,8 +1826,8 @@ script "uh_assist_YellowWizardInvun" (int cam) CLIENTSIDE {
       int y = Get_AssistDisplayBar_Y(pos);
 
       BasicImageDisplay("C_A_46C", Get_And_Inc_AssistDisplayID(), x, y);
-      int time_sec = flag;
-      time_sec = time_sec / 35 + (time_sec % 35 > 0);
+      int timesec = flag;
+      timesec = timesec / 35 + (timesec % 35 > 0);
       DrawBasicBarAndNumber(
         "ASVS046C", "AS_VR_16",
         "ASHS046C", "AS_HR_16",
@@ -1835,7 +1835,7 @@ script "uh_assist_YellowWizardInvun" (int cam) CLIENTSIDE {
         Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(),
         ((flag * 8.0 / 232) + 0.5) >> 16,
         CheckActorInventory(cam, "AssistNumberFlag") > 0,
-        time_sec
+        timesec
       );
     }
   }
@@ -1853,8 +1853,8 @@ script "uh_assist_YellowWizardSpread" (int cam) CLIENTSIDE {
       int y = Get_AssistDisplayBar_Y(pos);
 
       BasicImageDisplay("C_A_46D", Get_And_Inc_AssistDisplayID(), x, y);
-      int time_sec = flag;
-      time_sec = time_sec / 35 + (time_sec % 35 > 0);
+      int timesec = flag;
+      timesec = timesec / 35 + (timesec % 35 > 0);
       DrawBasicBarAndNumber(
         "ASVS046D", "AS_VR_16",
         "ASHS046D", "AS_HR_16",
@@ -1862,7 +1862,7 @@ script "uh_assist_YellowWizardSpread" (int cam) CLIENTSIDE {
         Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(),
         ((flag * 8.0 / 232) + 0.5) >> 16,
         CheckActorInventory(cam, "AssistNumberFlag") > 0,
-        time_sec
+        timesec
       );
     }
   }
@@ -1880,8 +1880,8 @@ script "uh_assist_YellowWizardInvis" (int cam) CLIENTSIDE {
       int y = Get_AssistDisplayBar_Y(pos);
 
       BasicImageDisplay("C_A_46F", Get_And_Inc_AssistDisplayID(), x, y);
-      int time_sec = flag;
-      time_sec = time_sec / 35 + (time_sec % 35 > 0);
+      int timesec = flag;
+      timesec = timesec / 35 + (timesec % 35 > 0);
       DrawBasicBarAndNumber(
         "ASVS046F", "AS_VR_16",
         "ASHS046F", "AS_HR_16",
@@ -1889,7 +1889,7 @@ script "uh_assist_YellowWizardInvis" (int cam) CLIENTSIDE {
         Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(),
         ((flag * 8.0 / 232) + 0.5) >> 16,
         CheckActorInventory(cam, "AssistNumberFlag") > 0,
-        time_sec
+        timesec
       );
     }
   }
@@ -1978,7 +1978,7 @@ script "DrawBar_ArchivistShiny_W" (void) {
 
 function void DrawDecoyBotHud(void) {
   SetHudSize(320, 200, 0);
-  int base_id = UH_IMAGE_ID_BASE - 110;
+  int baseid = UH_IMAGE_ID_BASE - 110;
   // Held DecoyCopy_*_W1/_W2/_W3 (and legacy parents): slot from weapon suffix.
   int sel = 1;
   int wlen;
@@ -2026,9 +2026,9 @@ function void DrawDecoyBotHud(void) {
   // Layer (bottom→top): C_I_50G → C_I_50D/E/F box → UCNUM portrait.
   // HudMessage stacks by id (more negative = on top), so UCNUM ids sit below D/E/F ids.
   // Vert x shifted further left so Ammo1 "200" (right-align x=15) keeps its leading digit clear.
-  AdjustedImageDisplay("C_I_50G", "C_I_50G", base_id, base_id - 1, -17.1, 9.1, 55.1, 158.1);
-  AdjustedImageDisplay("C_I_50G", "C_I_50G", base_id - 2, base_id - 3, -17.1, 29.1, 73.1, 158.1);
-  AdjustedImageDisplay("C_I_50G", "C_I_50G", base_id - 4, base_id - 5, -17.1, 49.1, 91.1, 158.1);
+  AdjustedImageDisplay("C_I_50G", "C_I_50G", baseid, baseid - 1, -17.1, 9.1, 55.1, 158.1);
+  AdjustedImageDisplay("C_I_50G", "C_I_50G", baseid - 2, baseid - 3, -17.1, 29.1, 73.1, 158.1);
+  AdjustedImageDisplay("C_I_50G", "C_I_50G", baseid - 4, baseid - 5, -17.1, 49.1, 91.1, 158.1);
 
   str sel1 = "TNT1A0";
   str sel2 = "TNT1A0";
@@ -2036,47 +2036,47 @@ function void DrawDecoyBotHud(void) {
   if (sel == 1) {sel1 = "C_I_50D";}
   else if (sel == 2) {sel2 = "C_I_50E";}
   else {sel3 = "C_I_50F";}
-  AdjustedImageDisplay(sel1, sel1, base_id - 6, base_id - 7, -17.1, 9.1, 55.1, 158.1);
-  AdjustedImageDisplay(sel2, sel2, base_id - 8, base_id - 9, -17.1, 29.1, 73.1, 158.1);
-  AdjustedImageDisplay(sel3, sel3, base_id - 10, base_id - 11, -17.1, 49.1, 91.1, 158.1);
+  AdjustedImageDisplay(sel1, sel1, baseid - 6, baseid - 7, -17.1, 9.1, 55.1, 158.1);
+  AdjustedImageDisplay(sel2, sel2, baseid - 8, baseid - 9, -17.1, 29.1, 73.1, 158.1);
+  AdjustedImageDisplay(sel3, sel3, baseid - 10, baseid - 11, -17.1, 49.1, 91.1, 158.1);
 
   AdjustedImageDisplay(f1 >= UH_DECOY_SLOTBASE? "TNT1A0":StrParam(s:"UCNUM_", i:f1),
     f1 >= UH_DECOY_SLOTBASE? "TNT1A0":StrParam(s:"UCNUM_", i:f1),
-    base_id - 26, base_id - 27, -16.1, 10.1, 56.1, 159.1);
+    baseid - 26, baseid - 27, -16.1, 10.1, 56.1, 159.1);
   AdjustedImageDisplay(f2 >= UH_DECOY_SLOTBASE? "TNT1A0":StrParam(s:"UCNUM_", i:f2),
     f2 >= UH_DECOY_SLOTBASE? "TNT1A0":StrParam(s:"UCNUM_", i:f2),
-    base_id - 28, base_id - 29, -16.1, 30.1, 74.1, 159.1);
+    baseid - 28, baseid - 29, -16.1, 30.1, 74.1, 159.1);
   AdjustedImageDisplay(f3 >= UH_DECOY_SLOTBASE? "TNT1A0":StrParam(s:"UCNUM_", i:f3),
     f3 >= UH_DECOY_SLOTBASE? "TNT1A0":StrParam(s:"UCNUM_", i:f3),
-    base_id - 30, base_id - 31, -16.1, 50.1, 92.1, 159.1);
+    baseid - 30, baseid - 31, -16.1, 50.1, 92.1, 159.1);
 
-  AdjustedDrawStringC("CMBHQFONT", c1, n1, base_id - 12, base_id - 13, -8.2, 23.1, 64.2, 153.1);
-  AdjustedDrawStringC("CMBHQFONT", c2, n2, base_id - 14, base_id - 15, -8.2, 43.1, 82.2, 153.1);
-  AdjustedDrawStringC("CMBHQFONT", c3, n3, base_id - 16, base_id - 17, -8.2, 63.1, 100.2, 153.1);
+  AdjustedDrawStringC("CMBHQFONT", c1, n1, baseid - 12, baseid - 13, -8.2, 23.1, 64.2, 153.1);
+  AdjustedDrawStringC("CMBHQFONT", c2, n2, baseid - 14, baseid - 15, -8.2, 43.1, 82.2, 153.1);
+  AdjustedDrawStringC("CMBHQFONT", c3, n3, baseid - 16, baseid - 17, -8.2, 63.1, 100.2, 153.1);
 
-  AdjustedImageDisplay("50_L_B_R", "50_L_V_R", base_id - 18, base_id - 19, -17.1, 70.1, 44.1, 159.1);
+  AdjustedImageDisplay("50_L_B_R", "50_L_V_R", baseid - 18, baseid - 19, -17.1, 70.1, 44.1, 159.1);
   int fluky = CheckInventory("FlukyNumberAmmo");
-  str pip_v = "TNT1A0";
-  str pip_h = "TNT1A0";
+  str pipv = "TNT1A0";
+  str piph = "TNT1A0";
   if (fluky >= 100) {
-    pip_v = "50_L_BAR";
-    pip_h = "50_L_VAR";
+    pipv = "50_L_BAR";
+    piph = "50_L_VAR";
   }
-  AdjustedImageDisplay(pip_v, pip_h, base_id - 20, base_id - 21, -13.1, 73.1, 47.1, 163.1);
-  pip_v = "TNT1A0";
-  pip_h = "TNT1A0";
+  AdjustedImageDisplay(pipv, piph, baseid - 20, baseid - 21, -13.1, 73.1, 47.1, 163.1);
+  pipv = "TNT1A0";
+  piph = "TNT1A0";
   if (fluky >= 200) {
-    pip_v = "50_L_BAR";
-    pip_h = "50_L_VAR";
+    pipv = "50_L_BAR";
+    piph = "50_L_VAR";
   }
-  AdjustedImageDisplay(pip_v, pip_h, base_id - 22, base_id - 23, -11.1, 73.1, 47.1, 165.1);
-  pip_v = "TNT1A0";
-  pip_h = "TNT1A0";
+  AdjustedImageDisplay(pipv, piph, baseid - 22, baseid - 23, -11.1, 73.1, 47.1, 165.1);
+  pipv = "TNT1A0";
+  piph = "TNT1A0";
   if (fluky >= 300) {
-    pip_v = "50_L_BAR";
-    pip_h = "50_L_VAR";
+    pipv = "50_L_BAR";
+    piph = "50_L_VAR";
   }
-  AdjustedImageDisplay(pip_v, pip_h, base_id - 24, base_id - 25, -9.1, 73.1, 47.1, 167.1);
+  AdjustedImageDisplay(pipv, piph, baseid - 24, baseid - 25, -9.1, 73.1, 47.1, 167.1);
 }
 
 script "DrawBar_DecoyBot_W" (void) {
@@ -2216,8 +2216,8 @@ script "DrawBar_KickChampShiny_W" (void) {
 // active CI64C* / BobHeadFlag, passive EdenItemSlot1-4. Graphics are C_I_59* / CI59C*.
 // Icons: EdenLookup* in UHEDENISAAC (EdenRegisterMain/Alt at OPEN).
 
-function int EdenPassiveSlotAmount(int slot_index) {
-  switch (slot_index) {
+function int EdenPassiveSlotAmount(int slotindex) {
+  switch (slotindex) {
     case 0: return CheckInventory("EdenItemSlot1");
     case 1: return CheckInventory("EdenItemSlot2");
     case 2: return CheckInventory("EdenItemSlot3");
@@ -2226,10 +2226,10 @@ function int EdenPassiveSlotAmount(int slot_index) {
   return 0;
 }
 
-function void DrawEdenPassiveSlots(int base_id) {
+function void DrawEdenPassiveSlots(int baseid) {
   // razon3 SBARINFO fullscreenoffsets: negative x is from the RIGHT edge.
   // HudMessage SetHudSize(320,200): x=0 is left, so -64 → 320-64=256.
-  int slot_x[4] = {256, 272, 288, 305};
+  int slotx[4] = {256, 272, 288, 305};
   int i;
   int amt;
   str icon;
@@ -2242,9 +2242,9 @@ function void DrawEdenPassiveSlots(int base_id) {
       continue;
     }
     // ACS: int+fixed does NOT promote; 256+0.1 → ~0.10 (left). Convert with *1.0.
-    xhud = (slot_x[i] * 1.0) + 0.1;
+    xhud = (slotx[i] * 1.0) + 0.1;
     AdjustedImageDisplay(icon, icon,
-      base_id - 28 - i * 2, base_id - 29 - i * 2,
+      baseid - 28 - i * 2, baseid - 29 - i * 2,
       xhud, 106.1,
       xhud, 106.1);
   }
@@ -2252,40 +2252,40 @@ function void DrawEdenPassiveSlots(int base_id) {
 
 function void DrawEdenStatHud(void) {
   SetHudSize(320, 200, 0);
-  int base_id = UH_IMAGE_ID_BASE - 130;
+  int baseid = UH_IMAGE_ID_BASE - 130;
   // Stats/active stay with the ammo bar (VB top-left / HB bottom, razon3 +center).
   // Passives: right-side row like razon3 DrawImage -64..-15,106 (fullscreenoffsets).
-  AdjustedImageDisplay("C_I_59A", "C_I_59A", base_id, base_id - 1, -18.1, 9.1, 53.1, 155.1);
-  AdjustedImageDisplay("C_I_59B", "C_I_59B", base_id - 2, base_id - 3, -18.1, 18.1, 53.1, 163.1);
-  AdjustedImageDisplay("C_I_59C", "C_I_59C", base_id - 4, base_id - 5, -18.1, 27.1, 53.1, 171.1);
-  AdjustedImageDisplay("C_I_59D", "C_I_59D", base_id - 6, base_id - 7, -18.1, 36.1, 80.1, 155.1);
-  AdjustedImageDisplay("C_I_59E", "C_I_59E", base_id - 8, base_id - 9, -18.1, 45.1, 80.1, 163.1);
-  AdjustedImageDisplay("C_I_59F", "C_I_59F", base_id - 10, base_id - 11, -18.1, 54.1, 80.1, 171.1);
+  AdjustedImageDisplay("C_I_59A", "C_I_59A", baseid, baseid - 1, -18.1, 9.1, 53.1, 155.1);
+  AdjustedImageDisplay("C_I_59B", "C_I_59B", baseid - 2, baseid - 3, -18.1, 18.1, 53.1, 163.1);
+  AdjustedImageDisplay("C_I_59C", "C_I_59C", baseid - 4, baseid - 5, -18.1, 27.1, 53.1, 171.1);
+  AdjustedImageDisplay("C_I_59D", "C_I_59D", baseid - 6, baseid - 7, -18.1, 36.1, 80.1, 155.1);
+  AdjustedImageDisplay("C_I_59E", "C_I_59E", baseid - 8, baseid - 9, -18.1, 45.1, 80.1, 163.1);
+  AdjustedImageDisplay("C_I_59F", "C_I_59F", baseid - 10, baseid - 11, -18.1, 54.1, 80.1, 171.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenSpeedAttr"),
-    base_id - 12, base_id - 13, -9.1, 11.1, 62.1, 156.1);
+    baseid - 12, baseid - 13, -9.1, 11.1, 62.1, 156.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenHeightAttr"),
-    base_id - 14, base_id - 15, -9.1, 20.1, 62.1, 164.1);
+    baseid - 14, baseid - 15, -9.1, 20.1, 62.1, 164.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenTearsHUDAttr"),
-    base_id - 16, base_id - 17, -9.1, 29.1, 62.1, 172.1);
+    baseid - 16, baseid - 17, -9.1, 29.1, 62.1, 172.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenDamageAttr"),
-    base_id - 18, base_id - 19, -9.1, 38.1, 89.1, 156.1);
+    baseid - 18, baseid - 19, -9.1, 38.1, 89.1, 156.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenRangeAttr"),
-    base_id - 20, base_id - 21, -9.1, 47.1, 89.1, 164.1);
+    baseid - 20, baseid - 21, -9.1, 47.1, 89.1, 164.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenShotSpeedAttr"),
-    base_id - 22, base_id - 23, -9.1, 56.1, 89.1, 172.1);
+    baseid - 22, baseid - 23, -9.1, 56.1, 89.1, 172.1);
 
   str active = EdenLookupActiveItemIcon();
   if (StrCmp(active, "TNT1A0")) {
-    AdjustedImageDisplay(active, active, base_id - 24, base_id - 25, -18.1, 64.1, 40.1, 181.1);
+    AdjustedImageDisplay(active, active, baseid - 24, baseid - 25, -18.1, 64.1, 40.1, 181.1);
   }
 
   int bob = CheckInventory("BobHeadFlag");
   if (bob > 0) {
     AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, bob,
-      base_id - 26, base_id - 27, 16.1, 72.1, 124.1, 192.1);
+      baseid - 26, baseid - 27, 16.1, 72.1, 124.1, 192.1);
   }
 
-  DrawEdenPassiveSlots(base_id);
+  DrawEdenPassiveSlots(baseid);
 }
 
 script "DrawBar_Eden_W" (void) {
@@ -2920,8 +2920,8 @@ script "uh_assist_GhostEyeShadowInvis" (int cam) CLIENTSIDE {
       y = Get_AssistDisplayBar_Y(pos);
 
       BasicImageDisplay("GHOSTESI", Get_And_Inc_AssistDisplayID(), x, y);
-      int time_sec = CheckActorInventory(cam, "GhostShadowInvisFlag");
-      time_sec = time_sec / 35 + (time_sec % 35 > 0);
+      int timesec = CheckActorInventory(cam, "GhostShadowInvisFlag");
+      timesec = timesec / 35 + (timesec % 35 > 0);
       DrawBasicBarAndNumber(
         "AS_TV_GI", "AS_VR_16",
         "AS_TH_GI", "AS_HR_16",
@@ -2929,7 +2929,7 @@ script "uh_assist_GhostEyeShadowInvis" (int cam) CLIENTSIDE {
         Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(),
         ((CheckActorInventory(cam, "GhostShadowInvisFlag") * 8.0 / 1050) + 0.5) >> 16,
         CheckActorInventory(cam, "AssistNumberFlag") > 0,
-        time_sec
+        timesec
       );
     }
   }
@@ -2952,32 +2952,32 @@ script "DrawBar_BrickDemoneye_W" (void) {
   // razon3 BARAMM75: Translation 192→229, 198→222
   DrawBarColor(229, 222);
   SetHudSize(320, 200, 0);
-  int base_id = UH_IMAGE_ID_BASE - 220;
+  int baseid = UH_IMAGE_ID_BASE - 220;
   int tacks = CheckInventory("BrickEyeThumbtackStack");
   int mines = CheckInventory("BrickEyeBrickMineStack");
-  str tack_str;
-  str mine_str;
+  str tackstr;
+  str minestr;
   if (tacks < 10)
-    tack_str = StrParam(s:"0", i:tacks);
+    tackstr = StrParam(s:"0", i:tacks);
   else
-    tack_str = StrParam(i:tacks);
+    tackstr = StrParam(i:tacks);
   if (mines < 10)
-    mine_str = StrParam(s:"0", i:mines);
+    minestr = StrParam(s:"0", i:mines);
   else
-    mine_str = StrParam(i:mines);
+    minestr = StrParam(i:mines);
 
   // VB: MYSBOX15 0,20 / PANBOX32 0,44; numbers 8,22 / 8,46
   // HB: MYSBOX15 -107+center,-29 / PANBOX32 -80+center,-29; numbers -98/-71+center,-27
-  AdjustedImageDisplay("MYSBOX15", "MYSBOX15", base_id, base_id - 1,
+  AdjustedImageDisplay("MYSBOX15", "MYSBOX15", baseid, baseid - 1,
     -18.1, 20.1,
     60.1, 168.1);
-  AdjustedImageDisplay("PANBOX32", "PANBOX32", base_id - 2, base_id - 3,
+  AdjustedImageDisplay("PANBOX32", "PANBOX32", baseid - 2, baseid - 3,
     -18.1, 44.1,
     87.1, 168.1);
-  AdjustedDrawString("CMBHQFONT", "Untranslated", tack_str, base_id - 4, base_id - 5,
+  AdjustedDrawString("CMBHQFONT", "Untranslated", tackstr, baseid - 4, baseid - 5,
     -9.1, 22.1,
     73.1, 170.1);
-  AdjustedDrawString("CMBHQFONT", "Untranslated", mine_str, base_id - 6, base_id - 7,
+  AdjustedDrawString("CMBHQFONT", "Untranslated", minestr, baseid - 6, baseid - 7,
     -9.1, 46.1,
     100.1, 170.1);
 }
@@ -2990,21 +2990,21 @@ script "uh_assist_SuperGUHUItem" (int cam) CLIENTSIDE {
     SetActivator(0, AAPTR_NULL);
 
     if (CheckActorInventory(cam, "SuperGuhuDoomFlag") > 0) {
-      int max_timer = CheckGuhuMaxTimer(cam);
+      int maxtimer = CheckGuhuMaxTimer(cam);
       pos = Get_And_Inc_AssistBarCount();
       x = Get_AssistDisplayBar_X(pos);
       y = Get_AssistDisplayBar_Y(pos);
 
       BasicImageDisplay("SUPGUHU", Get_And_Inc_AssistDisplayID(), x, y);
-      int time_sec = CheckActorInventory(cam, "SuperGuhuTimer");
+      int timesec = CheckActorInventory(cam, "SuperGuhuTimer");
       DrawBasicBarAndNumber(
         "AS_TV_MA", "AS_VR_16",
         "AS_TH_MA", "AS_HR_16",
         x, y,
         Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(),
-        ((CheckActorInventory(cam, "SuperGuhuTimer") * 8.0 / max_timer) + 0.5) >> 16,
+        ((CheckActorInventory(cam, "SuperGuhuTimer") * 8.0 / maxtimer) + 0.5) >> 16,
         CheckActorInventory(cam, "AssistNumberFlag") > 0,
-        time_sec
+        timesec
       );
     }
   }
@@ -3032,14 +3032,14 @@ script "uh_assist_GoldenWaspBomb" (int cam) CLIENTSIDE {
       int y = Get_AssistDisplayBar_Y(pos);
 
       BasicImageDisplay("GOLDWASP", Get_And_Inc_AssistDisplayID(), x, y);
-      int time_sec = flag;
+      int timesec = flag;
       DrawBasicBarAndNumber("AS_TV_TB", "AS_VR_16",
                             "AS_TH_TB", "AS_HR_16",
                             x, y,
                             Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(),
                             ((flag * 8.0 / 176) + 0.5) >> 16,
                             CheckActorInventory(cam, "AssistNumberFlag") > 0,
-                            time_sec);
+                            timesec);
     }
   }
 }
@@ -3056,15 +3056,15 @@ script "uh_assist_DeadlyFireArms" (int cam) CLIENTSIDE {
       int y = Get_AssistDisplayBar_Y(pos);
 
       BasicImageDisplay("FIREARM", Get_And_Inc_AssistDisplayID(), x, y);
-      int time_sec = flag;
-      time_sec = time_sec / 35 + (time_sec % 35 > 0);
+      int timesec = flag;
+      timesec = timesec / 35 + (timesec % 35 > 0);
       DrawBasicBarAndNumber("AS_TV_TF", "AS_VR_16",
                             "AS_TH_TF", "AS_HR_16",
                             x, y,
                             Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(),
                             ((flag * 8.0 / max(flag, 840)) + 0.5) >> 16,
                             CheckActorInventory(cam, "AssistNumberFlag") > 0,
-                            time_sec);
+                            timesec);
     }
   }
 }
@@ -3115,15 +3115,15 @@ function void AdjustedImageDisplayFlag(str image, str image2, int id, int id2, i
   AdjustedImageDisplay2(image, image2, id, id2, x1, y1, x2, y2, 1873, 1.0, flag);
 }
 
-function void AdjustedImageDisplay2(str vert_image, str hori_image, int id, int id2, int x1, int y1, int x2, int y2, int holdtime, int alpha, int flag) {
+function void AdjustedImageDisplay2(str vertimage, str horiimage, int id, int id2, int x1, int y1, int x2, int y2, int holdtime, int alpha, int flag) {
   if (AssistDisplayBar_HUDMode() == BAR_DISPLAY_HORI) {
-    SetFont(hori_image);
+    SetFont(horiimage);
     HudMessageBold(s:"A"; HUDMSG_PLAIN | flag, id, CR_UNTRANSLATED, x2, y2, holdtime, alpha);
   } else {
-    SetFont(hori_image);
+    SetFont(horiimage);
     HudMessageBold(s:"A"; HUDMSG_NOTWITHOVERLAYMAP | HUDMSG_NOTWITH3DVIEW | flag, id2, CR_UNTRANSLATED, x2, y2, holdtime, alpha);
     if (AssistDisplayBar_HUDMode() == BAR_DISPLAY_VERT) {
-      SetFont(vert_image);
+      SetFont(vertimage);
       HudMessageBold(s:"A"; HUDMSG_NOTWITHFULLMAP | flag, id, CR_UNTRANSLATED, x1, y1, holdtime, alpha);
     }
   }
@@ -3131,8 +3131,8 @@ function void AdjustedImageDisplay2(str vert_image, str hori_image, int id, int 
 
 // CBM Stuff
 
-function void AdjustedDrawNumber(str num_font, str cr_color, int number, int id, int id2, int x1, int y1, int x2, int y2) {
-  SetFont(num_font);
+function void AdjustedDrawNumber(str numfont, str cr_color, int number, int id, int id2, int x1, int y1, int x2, int y2) {
+  SetFont(numfont);
   if (AssistDisplayBar_HUDMode() == BAR_DISPLAY_HORI) {
     HudMessageBold(i:number; HUDMSG_PLAIN | HUDMSG_COLORSTRING, id, cr_color, x2, y2, 1873, 1.0);
   } else {
@@ -3143,8 +3143,8 @@ function void AdjustedDrawNumber(str num_font, str cr_color, int number, int id,
   }
 }
 
-function void AdjustedDrawNumberC(str num_font, int cr_color, int number, int id, int id2, int x1, int y1, int x2, int y2) {
-  SetFont(num_font);
+function void AdjustedDrawNumberC(str numfont, int cr_color, int number, int id, int id2, int x1, int y1, int x2, int y2) {
+  SetFont(numfont);
   if (AssistDisplayBar_HUDMode() == BAR_DISPLAY_HORI) {
     HudMessageBold(i:number; HUDMSG_PLAIN, id, cr_color, x2, y2, 1873, 1.0);
   } else {
@@ -3155,8 +3155,8 @@ function void AdjustedDrawNumberC(str num_font, int cr_color, int number, int id
   }
 }
 
-function void AdjustedDrawString(str num_font, str cr_color, int string, int id, int id2, int x1, int y1, int x2, int y2) {
-  SetFont(num_font);
+function void AdjustedDrawString(str numfont, str cr_color, int string, int id, int id2, int x1, int y1, int x2, int y2) {
+  SetFont(numfont);
   if (AssistDisplayBar_HUDMode() == BAR_DISPLAY_HORI) {
     HudMessageBold(s:string; HUDMSG_PLAIN | HUDMSG_COLORSTRING, id, cr_color, x2, y2, 1873, 1.0);
   } else {
@@ -3167,8 +3167,8 @@ function void AdjustedDrawString(str num_font, str cr_color, int string, int id,
   }
 }
 
-function void AdjustedDrawStringC(str num_font, int cr_color, int string, int id, int id2, int x1, int y1, int x2, int y2) {
-  SetFont(num_font);
+function void AdjustedDrawStringC(str numfont, int cr_color, int string, int id, int id2, int x1, int y1, int x2, int y2) {
+  SetFont(numfont);
   if (AssistDisplayBar_HUDMode() == BAR_DISPLAY_HORI) {
     HudMessageBold(s:string; HUDMSG_PLAIN, id, cr_color, x2, y2, 1873, 1.0);
   } else {

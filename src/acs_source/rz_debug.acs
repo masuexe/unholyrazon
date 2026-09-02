@@ -9,11 +9,11 @@
 // In a normal game the item is used through the inventory key; this wrapper
 // makes the same Use state reachable when no client key event is available.
 script "rz_debug_FloovyOutOfBody" (void) {
-  int player_num = ConsolePlayerNumber();
-  if (player_num < 0) {
-    player_num = 0;
+  int playernum = ConsolePlayerNumber();
+  if (playernum < 0) {
+    playernum = 0;
   }
-  if (!SetActivatorToPlayer(player_num)) {
+  if (!SetActivatorToPlayer(playernum)) {
     Log(s:"rz_debug_FloovyOutOfBody: no live player");
     terminate;
   }
@@ -39,7 +39,7 @@ script "rz_debug_MorphMe" (int type, int num) {
   }
 }
 
-function bool MorphMeToBoss(int type, int boss_num) {
+function bool MorphMeToBoss(int type, int bossnum) {
   int tid = ActivatorTID();
   if (tid == 0)
     tid = PlayerNumber() + 1000;
@@ -47,17 +47,17 @@ function bool MorphMeToBoss(int type, int boss_num) {
     return false;
 
   if (type == 0) {
-    str morph_name = GetBossActor(boss_num);
-    if (boss_num == 1066) morph_name = "WeakHorse";
-    else if (boss_num == 1113) morph_name = "ProtoManBadGuy";
+    str morphname = GetBossActor(bossnum);
+    if (bossnum == 1066) morphname = "WeakHorse";
+    else if (bossnum == 1113) morphname = "ProtoManBadGuy";
     else
-      return MorphActorToBoss(tid, boss_num, "GigaAstroExplode");
-    if (StrCmp(morph_name, "") == 0)
+      return MorphActorToBoss(tid, bossnum, "GigaAstroExplode");
+    if (StrCmp(morphname, "") == 0)
       return false;
     ACS_NamedExecuteWithResult("uh_MorphPreReset");
-    bool ok_override = MorphActor(0, morph_name, "", 0x7ffffffc, MRF_FULLHEALTH | MRF_WHENINVULNERABLE | MRF_LOSEACTUALWEAPON | MRF_NEWTIDBEHAVIOUR, "GigaAstroExplode", "");
-    if (!ok_override) {
-      Log(s:"rz_debug_MorphMe: MorphActor failed for ", s:morph_name);
+    bool okoverride = MorphActor(0, morphname, "", 0x7ffffffc, MRF_FULLHEALTH | MRF_WHENINVULNERABLE | MRF_LOSEACTUALWEAPON | MRF_NEWTIDBEHAVIOUR, "GigaAstroExplode", "");
+    if (!okoverride) {
+      Log(s:"rz_debug_MorphMe: MorphActor failed for ", s:morphname);
       return false;
     }
     SetActivator(tid);
@@ -68,18 +68,18 @@ function bool MorphMeToBoss(int type, int boss_num) {
     return true;
   }
 
-  str eye_actor = GetEyeActor(boss_num);
-  if (StrCmp(eye_actor, "") == 0) {
-    Log(s:"rz_debug_MorphMe: GetEyeActor(", i:boss_num, s:") empty (IsEyeDefined=", i:IsEyeDefined(boss_num), s:")");
+  str eyeactor = GetEyeActor(bossnum);
+  if (StrCmp(eyeactor, "") == 0) {
+    Log(s:"rz_debug_MorphMe: GetEyeActor(", i:bossnum, s:") empty (IsEyeDefined=", i:IsEyeDefined(bossnum), s:")");
     return false;
   }
-  bool ok = MorphActor(0, eye_actor, "", 0x7ffffffc, MRF_FULLHEALTH | MRF_WHENINVULNERABLE | MRF_LOSEACTUALWEAPON | MRF_NEWTIDBEHAVIOUR, "GigaAstroExplode", "");
+  bool ok = MorphActor(0, eyeactor, "", 0x7ffffffc, MRF_FULLHEALTH | MRF_WHENINVULNERABLE | MRF_LOSEACTUALWEAPON | MRF_NEWTIDBEHAVIOUR, "GigaAstroExplode", "");
   if (!ok) {
-    Log(s:"rz_debug_MorphMe: MorphActor failed for ", s:eye_actor);
+    Log(s:"rz_debug_MorphMe: MorphActor failed for ", s:eyeactor);
     return false;
   }
   SetActivator(tid);
-  ACS_NamedExecuteWithResult("uh_DemoneyeMorph", boss_num);
+  ACS_NamedExecuteWithResult("uh_DemoneyeMorph", bossnum);
   return true;
 }
 
@@ -97,8 +97,8 @@ script "rz_debug_FloovyOutOfBodyPrepare" (void) {
     terminate;
   }
 
-  int player_num = PlayerNumber();
-  if (player_num < 0 || !PlayerInGame(player_num) || PlayerIsSpectator(player_num) || PlayerHealth() <= 0) {
+  int playernum = PlayerNumber();
+  if (playernum < 0 || !PlayerInGame(playernum) || PlayerIsSpectator(playernum) || PlayerHealth() <= 0) {
     SetResultValue(0);
     terminate;
   }
@@ -107,8 +107,8 @@ script "rz_debug_FloovyOutOfBodyPrepare" (void) {
     terminate;
   }
 
-  int link_tid = ACS_NamedExecuteWithResult("core_uniquetid", 0, 1);
-  if (link_tid <= 0) {
+  int linktid = ACS_NamedExecuteWithResult("core_uniquetid", 0, 1);
+  if (linktid <= 0) {
     SetResultValue(0);
     terminate;
   }
@@ -116,14 +116,14 @@ script "rz_debug_FloovyOutOfBodyPrepare" (void) {
 	// Clear stale links before installing the new effect instance.
 	// ACS TakeInventory treats amount <= 0 as a no-op (the DECORATE action's
 	// amount 0 means "all"), so use a positive saturating amount here.
-  int old_link_tid = CheckInventory("FloovyOutOfBodyTID");
-  if (old_link_tid > 0) {
-    ACS_NamedExecuteWithResult("rz_FloovyGhostCancel", old_link_tid);
+  int oldlinktid = CheckInventory("FloovyOutOfBodyTID");
+  if (oldlinktid > 0) {
+    ACS_NamedExecuteWithResult("rz_FloovyGhostCancel", oldlinktid);
   }
   TakeInventory("FloovyOutOfBodyTID", 0x7fffffff);
   TakeInventory("FloovyOutOfBodyViewTID", 0x7fffffff);
-  GiveInventory("FloovyOutOfBodyTID", link_tid);
-  GiveInventory("FloovyOutOfBodyViewTID", link_tid);
+  GiveInventory("FloovyOutOfBodyTID", linktid);
+  GiveInventory("FloovyOutOfBodyViewTID", linktid);
   GiveInventory("FloovyOutOfBodyProtect", 1);
   SetResultValue(1);
 }

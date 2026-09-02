@@ -1,26 +1,24 @@
-#define MAX_PLAYERS 64
-
 global int 3:IsTeamGame;
 global int 4:ServerMAX;
 
-world int 12:multi_b_rng_arr[];
+world int 12:multib_rng_arr[];
 #define EVENTDATA_MAINEVENT 0
 #define EVENTDATA_DELAY 1
 #define EVENTDATA_LASTEVENT 2
 #define EVENTDATA_FORCED 3
-world int 14:event_data_arr[];  //{MainEvent, EventDelay, LastEvent, ForcedEvent}
-world int 15:rare_boss_chance;
-world int 16:strongman_check[];
-world int 17:hell_mark_frags;
-world int 18:speciman_frags;
+world int 14:eventdataarr[];  //{MainEvent, EventDelay, LastEvent, ForcedEvent}
+world int 15:rarebosschance;
+world int 16:strongmancheck[];
+world int 17:hellmarkfrags;
+world int 18:specimanfrags;
 
-world int 21:boss_event_counter;
-world int 23:rare_lms_rune;
-world bool 26:start_up_variables;
-world int 33:boss_ex_count_array[];
-world int 34:event_ex_count_array[];
+world int 21:bosseventcounter;
+world int 23:rarelmsrune;
+world bool 26:startupvariables;
+world int 33:bossexcountarray[];
+world int 34:eventexcountarray[];
 world bool 66:debug_txt;  // Display DEBUG messages if true.
-world int 90:player_force_num[];
+world int 90:playerforcenum[];
 
 #define MAX_HEALTH 30000
 
@@ -34,21 +32,21 @@ int revivalplayerorder[MAX_PLAYERS];
 int dickheadwatchcount;
 int dickheadwatchtid[DICKHEAD_WATCH_MAX];
 
-bool item_mode;
+bool itemmode;
 
 bool standardlmseventlocked;  // Formerly isLMS_Active: standard LMS fired or was pre-disabled.
-int rare_lms_time;
-int the_lms_dude;
-bool surv_win_with_lms;  //LastManChecker
+int rarelmstime;
+int thelmsdude;
+bool survwinwithlms;  //LastManChecker
 
 bool isbonuseventactive;  // Formerly InABonusStage: current round is a bonus event.
-bool versus_fight_event;
+bool versusfightevent;
 
-int light_level_track = 255;
+int lightleveltrack = 255;
 
-int hell_timer;  //For Hellbot's Zankokuna Chance
-bool zanko_rage_check;
-bool wishing_star_check;
+int helltimer;  //For Hellbot's Zankokuna Chance
+bool zankoragecheck;
+bool wishingstarcheck;
 
 
 #define PLS_NULL -1
@@ -56,15 +54,15 @@ bool wishing_star_check;
 #define PLS_SURVIVOR 1
 #define PLS_BOSS 2
 #define PLS_EYE 6
-int total_players_arr[7];  //Array spots; 0 = dead, 1 = survivor, 2 = boss, 6 = demoneye
-int player_life_status_arr[MAX_PLAYERS + 1] = {-1};  //-1 = null, 0 = dead, 1 = alive, 2 = boss, 6 = eye
+int totalplayersarr[7];  //Array spots; 0 = dead, 1 = survivor, 2 = boss, 6 = demoneye
+int playerlifestatusarr[MAX_PLAYERS + 1] = {-1};  //-1 = null, 0 = dead, 1 = alive, 2 = boss, 6 = eye
 
 #define MAX_BOSSES 4
 
 #define BOSSDATA_TID 0
 #define BOSSDATA_NUM 1
 #define BOSSDATA_MORPHED 2
-int boss_data_arr[MAX_BOSSES][3];
+int bossdataarr[MAX_BOSSES][3];
 //{Boss TID, TheBossNum, MorphSuccess}
 
 #define BOSSHP_HPMEM 0
@@ -72,20 +70,20 @@ int boss_data_arr[MAX_BOSSES][3];
 #define BOSSHP_ARMORMEM 2
 #define BOSSHP_CURRARMOR 3
 #define BOSSHP_DEATH 4
-int boss_hp_arr[MAX_BOSSES][5];
+int bosshparr[MAX_BOSSES][5];
 //{HP Mem, Curr HP, Armor Mem, Curr Armor, Death}
 
-int multi_boss_check;
+int multibosscheck;
 
-bool boss_slot_alive[MAX_BOSSES];  //B_AliveX
+bool bossslotalive[MAX_BOSSES];  //B_AliveX
 
-bool shadow_tricks_arr[MAX_BOSSES];
+bool shadowtricksarr[MAX_BOSSES];
 //0 is for 'ShadowTime', 1-4 is for Player 1-4
-bool shadow_reveal_active;  //B_AliveX[72]
-bool shadow_fakeout_active;  //ShadowTricksArr[72]
+bool shadowrevealactive;  //B_AliveX[72]
+bool shadowfakeoutactive;  //ShadowTricksArr[72]
 
-str u_map_level_name;
-str u_map_level_code;
+str u_maplevelname;
+str u_maplevelcode;
 
 // Boss metadata/HP live in UHDT via UH_BOSSDEFS DefineBoss.
 // Demoneye metadata lives in UHDT via UH_EYEDEFS DefineDemoneye.
@@ -97,7 +95,7 @@ str u_map_level_code;
 #define BONUS_BONUSSOUND 3
 #define BONUS_HUDMESS1 4
 #define BONUS_HUDMESS2 5
-str bonus_event_list[200][6] = {  //"Null", "Event Mess", "Music", "Music Info", "Bonus sound", "HudMess1", "HudMess2"
+str bonuseventlist[200][6] = {  //"Null", "Event Mess", "Music", "Music Info", "Bonus sound", "HudMess1", "HudMess2"
   {"Free for All", "DIXIEMUS", "Mario Golf: Advance Tour - Link's Tourney (Sped-up)", "", "", ""},
   {"MLG eyes", "M_EYE01 10", "Snake's Revenge (NES) - Enemy Alert Lv.1 Theme", "", "\cjMLG Tourney! Last one standing gets paid!", ""},
   {"Ghost eyes", "M_EYE02", "Luigi's Mansion - Dancing Shy-Guys (Sped-up)", "misc/BOO", "\ccBOO! Haunted House!", "\ccNow please scream."},
@@ -160,7 +158,7 @@ str bonus_event_list[200][6] = {  //"Null", "Event Mess", "Music", "Music Info",
 #define RUNE_HIGHJUMP 8
 #define RUNE_HASTE 9
 #define RUNE_ENDLESSAMMO 10
-str rune_of_the_day[11] = {
+str runeoftheday[11] = {
   "Strength",
   "Rage",
   "Drain",
@@ -173,14 +171,14 @@ str rune_of_the_day[11] = {
   "Haste",
   "Endless Ammo",
 };
-int common_rune_list[3] = {RUNE_STRENGTH, RUNE_RESISTANCE, RUNE_PROSPERITY};
-int rare_rune_list[8] = {RUNE_RAGE, RUNE_DRAIN, RUNE_SPREAD, RUNE_REGENERATION, RUNE_REFLECTION, RUNE_HIGHJUMP, RUNE_HASTE, RUNE_ENDLESSAMMO};
+int commonrunelist[3] = {RUNE_STRENGTH, RUNE_RESISTANCE, RUNE_PROSPERITY};
+int rarerunelist[8] = {RUNE_RAGE, RUNE_DRAIN, RUNE_SPREAD, RUNE_REGENERATION, RUNE_REFLECTION, RUNE_HIGHJUMP, RUNE_HASTE, RUNE_ENDLESSAMMO};
 
 #define LMS_MESSAGE 0
 #define LMS_raremessage 1
 #define LMS_MUSICLUMP 2
 #define LMS_MUSICCREDITS 3
-str lms_list_array[12][4] = {
+str lmslistarray[12][4] = {
   {"\cgOnly death can save you now...", "ITS NO USE! Only death can save you now...", "M_LMS0", "Megaman X - Vile Battle Theme"},
   {"\cfGO FOR BROKE!", "\cfGO FOR BROKE! x2!", "M_LMS1", "Marvel vs. Capcom 1 - Theme of Hidden Character"},
   {"\cgScissors61.exe achieved!", "\cdScissors61.exe hacked!", "M_LMS2", "SSF2 Turbo Revival - Akuma's Theme (Sped-up)"},
@@ -197,12 +195,12 @@ str lms_list_array[12][4] = {
 
 
 //Music Zone
-str current_music_lump = "*";  //MusicCodeVar
-str saved_music_lump = "";  //MusicCodeVarX
-str current_music_credit = "*";  //U_MusicInfo
-str saved_music_credit = "";  //U_MusicInfoX
+str currentmusiclump = "*";  //MusicCodeVar
+str savedmusiclump = "";  //MusicCodeVarX
+str currentmusiccredit = "*";  //U_MusicInfo
+str savedmusiccredit = "";  //U_MusicInfoX
 
-str extra_boss_tunes_arr[20][2] = {
+str extrabosstunes_arr[20][2] = {
   {"M_UB022Z", "Spa NES Remix / Puyo Puyo (MegaDrive) - Sticker of Puyo Puyo"},
   {"M_UB022A", "Dr. Robotnik's Mean Bean Machine - 2P Battle Mode"},
   {"M_UB022B", "Puyo Puyo - Final"},
@@ -225,7 +223,7 @@ str extra_boss_tunes_arr[20][2] = {
 };
 
 
-str music_arr_invincibility[8][2] = {
+str musicarr_invincibility[8][2] = {
   {"S_1PSTAR", "Sonic 1 Proto - Invincibility"},
   {"S_1_STAR", "Sonic 1 - Invincibility"},
 
@@ -244,7 +242,7 @@ str music_arr_invincibility[8][2] = {
 
 //Sadly have to put music code to sync for !Music
 // Columns: lump, credit, duration (seconds), emuflag ("M" = MAME +12 tics)
-str music_arr_victory[65][4] = {
+str musicarr_victory[65][4] = {
 //Code, Name, Duration, Emulation
   {"VICT__0", "Null", 4.0, ""},
   {"VICT__1", "Michael Jackson - Round Clear", 4.31, "M"},
@@ -304,7 +302,7 @@ str music_arr_victory[65][4] = {
   {"VICT__55", "Battletoads - Level Complete", 2.57, "M"}  //Use for QuickEye winner
 };
 
-str music_arr_defeat[65][4] = {
+str musicarr_defeat[65][4] = {
 //Code, Name, Duration, Emulation
   {"DEFE__0", "Null", 4.0, ""},
   {"DEFE__8 20", "Dragon Warrior - Party Slain", 5.35, "M"},
@@ -313,7 +311,7 @@ str music_arr_defeat[65][4] = {
 //https://vgmrips.net/packs/pack/cadillacs-and-dinosaurs-cp-system-dash
 };
 
-str music_arr_intro[65][4] = {
+str musicarr_intro[65][4] = {
 //Code, Name, Duration, Emulation
   {"INTR__0", "Null", 4.0, ""},
   {"INTR__1", "Mystic Defender - Round Intro", 8.5, "M"},
@@ -330,7 +328,7 @@ str music_arr_intro[65][4] = {
   {"M_UMIX07 7", "Silver Surfer - Section Start", -1.0, "M"},
 };
 
-str musical_event_index[10][5] = {
+str musicaleventindex[10][5] = {
   {"", "Oh look a wish!", "There is no hope.", "Lets try again!", "Six minutes is six minutes."},
   {"D_AOSH1", "An Ordinary Sonic ROM Hack - Hill Act 1"},
   {"D_AOSH2", "An Ordinary Sonic ROM Hack - 1 tcA lliH"},

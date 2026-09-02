@@ -85,24 +85,24 @@ script "uc_clientwarper_jewel" (int jewelno) CLIENTSIDE {
 }
 
 // Copy of vanilla script 247 with edits
-script "uh_radiusPull" (int maxforce, int max_range, int no_falloff, int unholyteamcheck) {
-  if (max_range == 0) {terminate;}
+script "uh_radiusPull" (int maxforce, int maxrange, int nofalloff, int unholyteamcheck) {
+  if (maxrange == 0) {terminate;}
 
-  int target_tid;
+  int targettid;
   int angle;
   int finalforce;
   int distance;
-  int user_tid;
+  int usertid;
   int userteam = -1;
   int usercount = 0;
   int userunholyteam = -1;
 
   if (ActivatorTID() == 0) {
-    user_tid = ACS_NamedExecuteWithResult("core_gettarget", 0);
-    userteam = GetPlayerInfo(user_tid - 1000, PLAYERINFO_TEAM);
-    userunholyteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", user_tid - 1000);
+    usertid = ACS_NamedExecuteWithResult("core_gettarget", 0);
+    userteam = GetPlayerInfo(usertid - 1000, PLAYERINFO_TEAM);
+    userunholyteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", usertid - 1000);
   } else {
-    user_tid = ActivatorTID();
+    usertid = ActivatorTID();
   }
 
   for (int p = 0; p < ServerMAX; p++) {
@@ -131,18 +131,18 @@ script "uh_radiusPull" (int maxforce, int max_range, int no_falloff, int unholyt
         continue;
       }
     }
-    target_tid = p + 1000;
-    if (CheckActorInventory(target_tid, "NoPushFlag") <= 0 && XyzDistance(0, target_tid) < max_range && user_tid != target_tid) {
+    targettid = p + 1000;
+    if (CheckActorInventory(targettid, "NoPushFlag") <= 0 && XyzDistance(0, targettid) < maxrange && usertid != targettid) {
       usercount++;
-      distance = XyzDistance(0, target_tid);
-      finalforce = Zanceil(FixedMul(maxforce << 16, 1.0 - FixedDiv(distance, max_range)));
-      if (finalforce > maxforce || no_falloff > 0) {
+      distance = XyzDistance(0, targettid);
+      finalforce = Zanceil(FixedMul(maxforce << 16, 1.0 - FixedDiv(distance, maxrange)));
+      if (finalforce > maxforce || nofalloff > 0) {
         finalforce = maxforce;
       }
 
-      angle = VectorAngle(GetActorX(0) - GetActorX(target_tid), GetActorY(0) - GetActorY(target_tid)) >> 8;
+      angle = VectorAngle(GetActorX(0) - GetActorX(targettid), GetActorY(0) - GetActorY(targettid)) >> 8;
       if (distance > 40 || finalforce < 0) {
-        ThrustThing(angle, finalforce, false, target_tid);
+        ThrustThing(angle, finalforce, false, targettid);
       }
     }
   }
@@ -153,15 +153,15 @@ script "uh_radiusPull" (int maxforce, int max_range, int no_falloff, int unholyt
 #define CIFC_INCLUDE_DEAD 2
 
 // Shared filters for front-cone player scans (count / stripe volley).
-function bool ConePlayerPasses(int user_tid, int userteam, int userunholyteam, int p, int flags) {
+function bool ConePlayerPasses(int usertid, int userteam, int userunholyteam, int p, int flags) {
   if (!PlayerInGame(p)) {
     return false;
   }
-  int target_tid = p + 1000;
-  if (user_tid == target_tid) {
+  int targettid = p + 1000;
+  if (usertid == targettid) {
     return false;
   }
-  if (!(flags & CIFC_INCLUDE_DEAD) && CheckActorInventory(target_tid, "IsDead") > 0) {
+  if (!(flags & CIFC_INCLUDE_DEAD) && CheckActorInventory(targettid, "IsDead") > 0) {
     return false;
   }
   if (!(flags & CIFC_INCLUDE_TEAM)) {
@@ -180,9 +180,9 @@ function bool ConePlayerPasses(int user_tid, int userteam, int userunholyteam, i
 }
 
 // Activator must be the cone origin (boss). half = FixedDiv(theta << 16, 720.0).
-function bool ConePlayerInGeom(int target_tid, int r, int half) {
-  int dx = GetActorX(target_tid) - GetActorX(0);
-  int dy = GetActorY(target_tid) - GetActorY(0);
+function bool ConePlayerInGeom(int targettid, int r, int half) {
+  int dx = GetActorX(targettid) - GetActorX(0);
+  int dy = GetActorY(targettid) - GetActorY(0);
   if (VectorLength(dx, dy) > (r << 16)) {
     return false;
   }
@@ -191,7 +191,7 @@ function bool ConePlayerInGeom(int target_tid, int r, int half) {
 }
 
 script "rz_CountPlayerInFrontCone" (int r, int theta, int flags) {
-  int user_tid = (PlayerNumber() == -1)? ActivatorTID():PlayerNumber() + 1000;
+  int usertid = (PlayerNumber() == -1)? ActivatorTID():PlayerNumber() + 1000;
   int userteam = -1;
   int userunholyteam = -1;
   if (PlayerNumber() != -1) {
@@ -203,7 +203,7 @@ script "rz_CountPlayerInFrontCone" (int r, int theta, int flags) {
   int count = 0;
 
   for (int p = 0; p < ServerMAX; p++) {
-    if (!ConePlayerPasses(user_tid, userteam, userunholyteam, p, flags)) {
+    if (!ConePlayerPasses(usertid, userteam, userunholyteam, p, flags)) {
       continue;
     }
     if (ConePlayerInGeom(p + 1000, r, half)) {
@@ -217,7 +217,7 @@ script "rz_CountPlayerInFrontCone" (int r, int theta, int flags) {
 // fixed lateral xOffset from E in boss frame), facing toward E.
 // r/theta match rz_CountPlayerInFrontCone; xOffset is map units (positive = boss-right of E).
 script "uh_ClownpieceStripeVolley" (int r, int theta, int xoffset) {
-  int boss_tid = (PlayerNumber() == -1)? ActivatorTID():PlayerNumber() + 1000;
+  int bosstid = (PlayerNumber() == -1)? ActivatorTID():PlayerNumber() + 1000;
   int userteam = -1;
   int userunholyteam = -1;
   if (PlayerNumber() != -1) {
@@ -225,7 +225,7 @@ script "uh_ClownpieceStripeVolley" (int r, int theta, int xoffset) {
     userunholyteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", PlayerNumber());
   }
 
-  SetActivator(boss_tid);
+  SetActivator(bosstid);
   int ang = GetActorAngle(0);
   int c = cos(ang);
   int s = sin(ang);
@@ -236,38 +236,38 @@ script "uh_ClownpieceStripeVolley" (int r, int theta, int xoffset) {
   if (side == 0) {
     side = 128 * 1.0;
   }
-  int fire_ang;
+  int fireang;
   if (xoffset < 0) {
-    fire_ang = (ang - 0.25) >> 8;
+    fireang = (ang - 0.25) >> 8;
   } else {
-    fire_ang = (ang + 0.25) >> 8;
+    fireang = (ang + 0.25) >> 8;
   }
   int spawned = 0;
 
   for (int p = 0; p < ServerMAX; p++) {
-    SetActivator(boss_tid);
-    if (!ConePlayerPasses(boss_tid, userteam, userunholyteam, p, 0)) {
+    SetActivator(bosstid);
+    if (!ConePlayerPasses(bosstid, userteam, userunholyteam, p, 0)) {
       continue;
     }
-    int target_tid = p + 1000;
-    if (!ConePlayerInGeom(target_tid, r, half)) {
+    int targettid = p + 1000;
+    if (!ConePlayerInGeom(targettid, r, half)) {
       continue;
     }
 
     // Same depth/height as enemy; offset to boss-right by xOffset.
-    int wx = GetActorX(target_tid) + FixedMul(side, s);
-    int wy = GetActorY(target_tid) + FixedMul(side, -c);
-    int wz = GetActorZ(target_tid);
+    int wx = GetActorX(targettid) + FixedMul(side, s);
+    int wy = GetActorY(targettid) + FixedMul(side, -c);
+    int wz = GetActorZ(targettid);
 
     int u = UniqueTID();
-    if (SpawnForced("ClownpieceStripeSpawner", wx, wy, wz, u, fire_ang)) {
+    if (SpawnForced("ClownpieceStripeSpawner", wx, wy, wz, u, fireang)) {
       SetActivator(u);
-      SetPointer(AAPTR_TARGET, boss_tid);
+      SetPointer(AAPTR_TARGET, bosstid);
       spawned++;
     }
   }
 
-  SetActivator(boss_tid);
+  SetActivator(bosstid);
   SetResultValue(spawned);
 }
 
@@ -281,28 +281,28 @@ script "rz_WarpToTID" (int warptotid, int xoffset, int flags, int pointer) {
 
 script "uh_PoisonControl_acs" (int which, int style, int change) {
   // Log(s:"uh_PoisonControl_acs(",i:which,s:", ",i:Style,s:", ",i:Change,s:")");
-  int source_tid = ACS_NamedExecuteWithResult("core_getptrtid", 2);  // Caused the poison
-  int poisoned_tid = ACS_NamedExecuteWithResult("core_getptrtid", 8);  // player being poisoned
-  if (source_tid < 1000 || source_tid > 1063) {  // End if not a player TID
+  int sourcetid = ACS_NamedExecuteWithResult("core_getptrtid", 2);  // Caused the poison
+  int poisonedtid = ACS_NamedExecuteWithResult("core_getptrtid", 8);  // player being poisoned
+  if (sourcetid < 1000 || sourcetid > 1063) {  // End if not a player TID
     SetResultValue(-1);
     terminate;
   }
-  source_tid -= 1000;
-  str the_class;
+  sourcetid -= 1000;
+  str theclass;
   switch (which) {
     case 17:
-      the_class = "Raider_Poison";
+      theclass = "Raider_Poison";
       break;
     case 6100:
-      the_class = "Hellbot_Poison";
+      theclass = "Hellbot_Poison";
       break;
     case 6056:
-      the_class = "Morshu_Burn";
+      theclass = "Morshu_Burn";
       break;
   }
-  str spawn_name = StrParam(s:"user_", s:the_class);  // ,s:"_OnFire"
+  str spawnname = StrParam(s:"user_", s:theclass);  // ,s:"_OnFire"
 
-  int result = GetUserArray(poisoned_tid, spawn_name, source_tid);
+  int result = GetUserArray(poisonedtid, spawnname, sourcetid);
 
   // Log(s:"TID <",i:PoisonedTID,s:"> ",s:spawnname,s:"[",i:SourceTID,s:"] = ",i:Result);
   switch (style) {
@@ -313,11 +313,11 @@ script "uh_PoisonControl_acs" (int which, int style, int change) {
       SetResultValue(result);
       break;
     case 1:  // Adjust
-      SetUserArray(poisoned_tid, spawn_name, source_tid, result + change);
+      SetUserArray(poisonedtid, spawnname, sourcetid, result + change);
       SetResultValue(result + change);
       break;
     case 2:  // Initial Set
-      SetUserArray(poisoned_tid, spawn_name, source_tid, change);
+      SetUserArray(poisonedtid, spawnname, sourcetid, change);
       SetResultValue(result <= 0);
       break;
   }
@@ -372,36 +372,36 @@ script "uh_FlashStopperRNG" (int power, int dur, int toggle) CLIENTSIDE {
   FadeRange(rc, bc, gc, ((1.0) * power) / 100, rc, bc, gc, 0.0, ((1.0) * dur) / 100);
 }
 
-script "uh_FloorQuakeDamage" (int max_range, int quake_power, int which) {
-  int user_tid = ActivatorTID();
+script "uh_FloorQuakeDamage" (int maxrange, int quakepower, int which) {
+  int usertid = ActivatorTID();
   int userteam = GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM);
-  int z_dist;
-  str the_class;
+  int zdist;
+  str theclass;
   switch (which) {
     default:
       terminate;
       break;
     case 36:
-      the_class = "SumoWrestler";
+      theclass = "SumoWrestler";
       break;
     case 41:
-      the_class = "Handyman";
+      theclass = "Handyman";
       break;
     case -41:
-      the_class = "HandymanDeath";
+      theclass = "HandymanDeath";
       break;
     case 50:
-      the_class = "DecoyBot";
+      theclass = "DecoyBot";
       break;
 
     case 1041:
-      the_class = "S_Handyman";
+      theclass = "S_Handyman";
       break;
     case -1041:
-      the_class = "S_HandymanDeath";
+      theclass = "S_HandymanDeath";
       break;
   }
-  str spawn_name = StrParam(s:the_class, s:"_FloorQuakeSpawn");
+  str spawnname = StrParam(s:theclass, s:"_FloorQuakeSpawn");
   // Log(s:"maxrange = ",i:maxrange,s:" \\ quakepower = ",i:quakepower);
   // if (quakepower > 255)
   // 	Log(s:"\cg[!] WARNING [!] \cduh_FloorQuakeDamage (quakepower) is too high! Max power is 255!");
@@ -410,33 +410,33 @@ script "uh_FloorQuakeDamage" (int max_range, int quake_power, int which) {
     if (IsTeamGame) {
       if (userteam == GetPlayerInfo(p, PLAYERINFO_TEAM)) {continue;}
     }
-    if (XyDistance(0, p + 1000) < max_range && Zdistance(0, p + 1000) >= -32 && Zdistance(0, p + 1000) <= 32 && user_tid != p + 1000) {
+    if (XyDistance(0, p + 1000) < maxrange && Zdistance(0, p + 1000) >= -32 && Zdistance(0, p + 1000) <= 32 && usertid != p + 1000) {
       // Log(s:"xyDist = ",i:XYDistance(0, p+1000),s:" \\ zDist = ",i:ZDistance(0, p+1000));
       // SpawnForced(spawnname,GetActorX(p+1000),GetActorY(p+1000),GetActorZ(p+1000), 0,quakepower);
-      SpawnProjectile(user_tid, spawn_name, quake_power, 0, p, 0, 0);
+      SpawnProjectile(usertid, spawnname, quakepower, 0, p, 0, 0);
     }
   }
 }
 
-script "uh_missileyank" (int max_range) {
-  int vel_x = GetActorVelX(0);
-  int vel_y = GetActorVelY(0);
-  int vel_z = GetActorVelZ(0);
+script "uh_missileyank" (int maxrange) {
+  int velx = GetActorVelX(0);
+  int vely = GetActorVelY(0);
+  int velz = GetActorVelZ(0);
   int x = GetActorX(0);
   int y = GetActorY(0);
   int z = GetActorZ(0) - (28 << 16);
 
-  int target_tid;
-  int user_tid;
+  int targettid;
+  int usertid;
   int userteam = -1;
   // int usercount = 0;
 
   if (ActivatorTID() == 0) {
-    user_tid = ACS_NamedExecuteWithResult("core_getptrtid", 2);
-    userteam = GetPlayerInfo(user_tid - 1000, PLAYERINFO_TEAM);
+    usertid = ACS_NamedExecuteWithResult("core_getptrtid", 2);
+    userteam = GetPlayerInfo(usertid - 1000, PLAYERINFO_TEAM);
   }
   else {
-    user_tid = ActivatorTID();
+    usertid = ActivatorTID();
   }
   for (int p = 0; p < ServerMAX; p++) {
     if (!PlayerInGame(p)) {
@@ -448,31 +448,31 @@ script "uh_missileyank" (int max_range) {
       }
     }
     if (CheckActorInventory(p + 1000, "NoPushFlag")) {continue;}
-    target_tid = p + 1000;
+    targettid = p + 1000;
     // Log(f:GetActorZ(0) - (28<<16),s:" = FIXED = ",f:GetActorZ(targettid));
-    if (DistanceVal(x, y, z, target_tid) < max_range && user_tid != target_tid) {
+    if (DistanceVal(x, y, z, targettid) < maxrange && usertid != targettid) {
       // usercount++;
-      SetActorVelocity(target_tid, vel_x, vel_y, vel_z, 0, 0);
+      SetActorVelocity(targettid, velx, vely, velz, 0, 0);
     }
   }
   // SetResultValue(usercount);
 }
 
 // Projectile Porting
-script "uh_ProjectilePort" (int max_dist) {
+script "uh_ProjectilePort" (int maxdist) {
   int target = ACS_NamedExecuteWithResult("core_getptrtid", 2);
 
   if (GetActorProperty(0, APROP_HEALTH) <= 0 || GetActorProperty(target, APROP_HEALTH) <= 0) {
     terminate;
   }
 
-  max_dist = max_dist << 16;
+  maxdist = maxdist << 16;
 
   int x_diff = GetActorX(0) - GetActorX(target);
   int y_diff = GetActorY(0) - GetActorY(target);
   int z_diff = GetActorZ(0) - GetActorZ(target);
 
-  if (FDistanceVal(x_diff, y_diff, z_diff) > max_dist) {
+  if (FDistanceVal(x_diff, y_diff, z_diff) > maxdist) {
     terminate;
   }
 
@@ -492,7 +492,7 @@ script "uh_ProjectilePort" (int max_dist) {
     x_diff = GetActorX(0) - GetActorX(target);
     y_diff = GetActorY(0) - GetActorY(target);
     z_diff = GetActorZ(0) - GetActorZ(target);
-    if (FDistanceVal(x_diff, y_diff, z_diff) > max_dist ||  // Log(s:"Someone is too far");
+    if (FDistanceVal(x_diff, y_diff, z_diff) > maxdist ||  // Log(s:"Someone is too far");
         CheckActorInventory(target, "FlightDisableFlag") >= 1 ||
         CheckActorInventory(target, "TimeStoppedCounter") >= 1) {  // Log(s:"Someone is suffering");
       SetActorState(0, "Death", 1);
@@ -540,7 +540,7 @@ script "UH_XRayVisionManager" (void) CLIENTSIDE {  // ENTER CLIENTSIDE
 }
 
 function void HudMessageOnActor(int tid, int messageid,
-                                int hudx, int hudy, int xoffset, int yoffset,
+                                int hudx, int hudy, int xoffset, int y_offset,
                                 int range, str sprite,
                                 str text, int holdtime, str colour, int swap_var) {
   int dist, angle, vang, pitch, x, y;
@@ -576,7 +576,7 @@ function void HudMessageOnActor(int tid, int messageid,
         y = hudy / 2 - ((hudx / 2) * sin(pitch) / cos(pitch));
 
         x += xoffset;
-        y += yoffset;
+        y += y_offset;
         if (swap_var) {HudMessage(i:dist >> 16; HUDMSG_PLAIN, messageid, colour, (x << 16), (y << 16), holdtime);}
         else {HudMessage(s:text; HUDMSG_PLAIN, messageid, colour, (x << 16), (y << 16), holdtime);}
       }
@@ -727,19 +727,19 @@ function int ZanSqrt(int number) {
     return 0;
   }
 
-  int old_ans = number >> 1;
-  int new_ans = (old_ans + number / old_ans) >> 1;
+  int oldans = number >> 1;
+  int newans = (oldans + number / oldans) >> 1;
 
-  while (new_ans < old_ans) {
-    old_ans = new_ans;
-    new_ans = (old_ans + number / old_ans) >> 1;
+  while (newans < oldans) {
+    oldans = newans;
+    newans = (oldans + number / oldans) >> 1;
   }
 
-  return old_ans;
+  return oldans;
 }
 
-function int Zanceil(int fixed_in) {
-  return(fixed_in + 65535) >> 16;
+function int Zanceil(int fixedin) {
+  return(fixedin + 65535) >> 16;
 }
 
 function int XyDistance(int tid1, int tid2) {
