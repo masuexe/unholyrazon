@@ -1,0 +1,220 @@
+#library "rz_redwarrior"
+#include "zcommon.acs"
+#import "uh_acsutils.acs"
+
+// RedWarrior's reservation queue is server-authoritative ACS state.  The
+// inventory actors below are the replicated mirrors used by DECORATE and HUD.
+#define RW_RESERVE_MAX_PLAYERS 64
+#define RW_RESERVE_CAPACITY 8
+
+int rw_reserve_queue[RW_RESERVE_MAX_PLAYERS][RW_RESERVE_CAPACITY];
+int rw_reserve_head[RW_RESERVE_MAX_PLAYERS];
+int rw_reserve_tail[RW_RESERVE_MAX_PLAYERS];
+int rw_reserve_count[RW_RESERVE_MAX_PLAYERS];
+int rw_reserve_active[RW_RESERVE_MAX_PLAYERS];
+int rw_reserve_busy[RW_RESERVE_MAX_PLAYERS];
+
+function bool RW_ReserveValidPlayer(int player) {
+  return player >= 0 && player < RW_RESERVE_MAX_PLAYERS;
+}
+
+function bool RW_ReserveValidSlot(int slot) {
+  return slot >= 1 && slot <= 6;
+}
+
+function int RW_ReserveCost(void) {
+  if (CheckInventory("PlayerPropertyEndlessAmmo") > 0)
+    return 25;
+  return 75;
+}
+
+function int RW_ReserveStackAmount(int slot) {
+  if (!RW_ReserveValidSlot(slot))
+    return 0;
+  return CheckInventory(StrParam(s:"WarriorStack", i:slot));
+}
+
+function int RW_ReservePendingAmount(int player, int slot) {
+  int i;
+  int index;
+  int pending = 0;
+
+  if (!RW_ReserveValidPlayer(player) || !RW_ReserveValidSlot(slot))
+    return 0;
+
+  index = rw_reserve_head[player];
+  for (i = 0; i < rw_reserve_count[player]; i++) {
+    if (rw_reserve_queue[player][index] == slot)
+      pending++;
+    index = (index + 1) % RW_RESERVE_CAPACITY;
+  }
+  return pending;
+}
+
+function void RW_ReserveClearData(int player) {
+  int i;
+  if (!RW_ReserveValidPlayer(player))
+    return;
+
+  for (i = 0; i < RW_RESERVE_CAPACITY; i++)
+    rw_reserve_queue[player][i] = 0;
+  rw_reserve_head[player] = 0;
+  rw_reserve_tail[player] = 0;
+  rw_reserve_count[player] = 0;
+  rw_reserve_active[player] = 0;
+  rw_reserve_busy[player] = 0;
+}
+
+function void RW_ReservePublish(void) {
+  int player = PlayerNumber();
+  int head = 0;
+  int slot;
+
+  if (!RW_ReserveValidPlayer(player))
+    return;
+  if (rw_reserve_count[player] > 0)
+    head = rw_reserve_queue[player][rw_reserve_head[player]];
+
+  // These values are deliberately ordinary inventory actors: bar drawing is
+  // CLIENTSIDE, so it must consume state that Zandronum replicates.
+  SetInventory("WarriorReserveQueueCount", rw_reserve_count[player]);
+  SetInventory("WarriorReserveHead", head);
+  SetInventory("WarriorReserveActiveSlot", rw_reserve_active[player]);
+  SetInventory("WarriorReserveBusy_F", rw_reserve_busy[player]);
+  for (slot = 1; slot <= 6; slot++)
+    SetInventory(StrParam(s:"WarriorReservePending", i:slot),
+      RW_ReservePendingAmount(player, slot));
+}
+
+function void RW_ReserveClearCurrent(void) {
+  int player = PlayerNumber();
+  if (!RW_ReserveValidPlayer(player))
+    return;
+
+  RW_ReserveClearData(player);
+  RW_ReservePublish();
+  SetInventory("WarriorReserveGrant_F", 0);
+  SetInventory("WarriorReserveLatch_F", 0);
+  SetInventory("WarriorReserveEnqueueFail_F", 0);
+}
+
+function void RW_ReservePop(int player) {
+  if (!RW_ReserveValidPlayer(player) || rw_reserve_count[player] <= 0)
+    return;
+
+  rw_reserve_queue[player][rw_reserve_head[player]] = 0;
+  rw_reserve_head[player] = (rw_reserve_head[player] + 1) % RW_RESERVE_CAPACITY;
+  rw_reserve_count[player]--;
+  if (rw_reserve_count[player] == 0) {
+    // Keeping an empty queue canonical makes the first later enqueue use slot 0.
+    rw_reserve_head[player] = 0;
+    rw_reserve_tail[player] = 0;
+  }
+}
+
+script "rz_RedWarriorReserveEnqueue" (int slot) {
+  int player = PlayerNumber();
+
+  SetInventory("WarriorReserveEnqueueFail_F", 0);
+  if (!RW_ReserveValidPlayer(player) || !RW_ReserveValidSlot(slot)) {
+    SetInventory("WarriorReserveEnqueueFail_F", 1);
+    SetResultValue(0);
+    terminate;
+  }
+  if (rw_reserve_count[player] >= RW_RESERVE_CAPACITY) {
+    SetInventory("WarriorReserveEnqueueFail_F", 1);
+    SetResultValue(0);
+    terminate;
+  }
+
+  rw_reserve_queue[player][rw_reserve_tail[player]] = slot;
+  rw_reserve_tail[player] = (rw_reserve_tail[player] + 1) % RW_RESERVE_CAPACITY;
+  rw_reserve_count[player]++;
+  RW_ReservePublish();
+  SetResultValue(1);
+}
+
+// Start exactly the queue head.  A full stack can never become available
+// again, so discard such stale entries before looking at the next request.
+script "rz_RedWarriorReserveTryStart" (void) {
+  int player = PlayerNumber();
+  int slot;
+  str stack;
+
+  if (!RW_ReserveValidPlayer(player) || rw_reserve_busy[player])
+    terminate;
+
+  while (rw_reserve_count[player] > 0) {
+    slot = rw_reserve_queue[player][rw_reserve_head[player]];
+    stack = StrParam(s:"WarriorStack", i:slot);
+    if (!RW_ReserveValidSlot(slot) || RW_ReserveStackAmount(slot) >= 99)
+      RW_ReservePop(player);
+    else
+      break;
+  }
+
+  if (rw_reserve_count[player] <= 0) {
+    RW_ReservePublish();
+    terminate;
+  }
+  if (CheckInventory("TreasureAmmo") < RW_ReserveCost())
+    terminate;
+
+  slot = rw_reserve_queue[player][rw_reserve_head[player]];
+  rw_reserve_active[player] = slot;
+  rw_reserve_busy[player] = 1;
+  RW_ReservePublish();
+
+  // Reuse the existing payment path so normal and Endless Ammo costs stay in
+  // one place.  The stack point itself is granted by the weapon animation.
+  GiveInventory("RedWarrior_Alt_P", 1);
+  SetInventory("WarriorReserveGrant_F", 1);
+  SetResultValue(1);
+}
+
+script "rz_RedWarriorReserveCommit" (void) {
+  int player = PlayerNumber();
+
+  if (!RW_ReserveValidPlayer(player))
+    terminate;
+  if (!rw_reserve_busy[player] || rw_reserve_count[player] <= 0) {
+    SetInventory("WarriorReserveGrant_F", 0);
+    rw_reserve_active[player] = 0;
+    rw_reserve_busy[player] = 0;
+    RW_ReservePublish();
+    terminate;
+  }
+
+  RW_ReservePop(player);
+  rw_reserve_active[player] = 0;
+  rw_reserve_busy[player] = 0;
+  SetInventory("WarriorReserveGrant_F", 0);
+  RW_ReservePublish();
+  SetResultValue(1);
+}
+
+script "rz_RedWarriorReserveClear" (void) {
+  RW_ReserveClearCurrent();
+}
+
+script "rz_RedWarriorReserveOpen" OPEN {
+  int player;
+  for (player = 0; player < RW_RESERVE_MAX_PLAYERS; player++)
+    RW_ReserveClearData(player);
+}
+
+script "rz_RedWarriorReserveEnter" ENTER {
+  RW_ReserveClearCurrent();
+}
+
+script "rz_RedWarriorReserveRespawn" RESPAWN {
+  RW_ReserveClearCurrent();
+}
+
+script "rz_RedWarriorReserveDeath" DEATH {
+  RW_ReserveClearCurrent();
+}
+
+script "rz_RedWarriorReserveDisconnect" (int gone) DISCONNECT {
+  RW_ReserveClearData(gone);
+}
