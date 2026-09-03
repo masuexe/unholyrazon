@@ -44,8 +44,10 @@ DECORATE/ACS diagnostics.
 - `check_boss_defs.py` — verify `DefineBoss` actor names against `src/actors`.
 - `gen_shiny_moves.py` / `gen_decoy_moves.py` — regenerate checked-in DECORATE
   fragments from their source actors.
-- `_gen_barpos.py` and the `_patch_` / `_revert_` helpers — focused maintenance
-  tools; inspect their headers before running because they modify source files.
+- `_gen_barpos.py` — regenerate `uh_barcat.acs`, `SBARINFO.HZ.txt` /
+  `SBARINFO.VZ.txt` (AppendStatusBar), and BarFX layer/offset actors. Renames
+  leftover `BRSLT` wrappers in `TEXTURES.bars` / `ANIMDEFS.bars` to `UHVT`/`UHHT`.
+  Run after adding String-bar graphics.
 
 Scripts should accept paths or environment overrides where practical, return a
 non-zero exit code on failure, and print a concise summary. Do not commit MCP

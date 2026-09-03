@@ -3,6 +3,7 @@
 #import "uh_acsutils.acs"
 
 #include "barlib.acs"
+#include "uh_barcat.acs"
 
 script "core_DrawBar_Clear" (int cam) CLIENTSIDE {
 	ClearBarFlags(cam);
@@ -62,10 +63,16 @@ function void ClearBarFlags(int cam) {
 		SetActorInventory(cam,StrParam(s:"CustSbarSlotFlag", i:i),0);
 	}
 
-	//$UH — DrawCustomBar1/2/HP
-	SetActorInventory(cam,"CustSbarPos1Slot",0);
-	SetActorInventory(cam,"CustSbarPos2Slot",0);
-	SetActorInventory(cam,"CustSbarPosHPSlot",0);
+	UH_ClearOffsetBars(cam);
+
+	//$UH — DrawCustomBar layer pool (pos 1/2/3/HP × layers)
+	int uh_bar_pos;
+	int uh_bar_layer;
+	for (uh_bar_pos = 0; uh_bar_pos < 4; uh_bar_pos++) {
+		for (uh_bar_layer = 0; uh_bar_layer < UH_BAR_LAYER_MAX; uh_bar_layer++) {
+			SetActorInventory(cam, UH_BarLayerSlotInv(uh_bar_pos, uh_bar_layer), 0);
+		}
+	}
 
 	//$UH — Qwant landscape wepicon align
 	SetActorInventory(cam,"QwantAlignWepIcon",0);

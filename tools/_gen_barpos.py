@@ -1,219 +1,371 @@
 #!/usr/bin/env python3
-"""Generate TEXTURES.barspos, ANIMDEFS.barpos, and SBARINFO position-bank blocks.
+"""Generate Unholy bar catalog ACS, HZ/VZ AppendStatusBar, and BarFX actors.
 
-TEXTURES.barspos must sort after TEXTURES.bars so Patch sources exist.
+Unholy DrawBar uses real graphic names (layer pool) or UHVT/UHHT wrappers
+(offset bars). Does not define BRSLT/BZSLT. Main SBARINFO.H/V keep v6b
+CustSbarSlotFlag + BRSLT lines for other mods.
 """
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "src"
-REPO = Path(__file__).resolve().parents[1]
-ANIM_SRC = ROOT / "ANIMDEFS.bars"
-TEX_OUT = ROOT / "TEXTURES.barspos"  # after TEXTURES.bars alphabetically
+ACS_CAT = ROOT / "acs_source" / "_includes" / "mod_api" / "uh_barcat.acs"
+BARFX = ROOT / "actors" / "inventory" / "sbar" / "BarFX.txt"
+SBAR_H = ROOT / "SBARINFO.h._core"
+SBAR_V = ROOT / "SBARINFO.v._core"
+SBAR_HZ = ROOT / "SBARINFO.h.uhappend"
+SBAR_VZ = ROOT / "SBARINFO.v.uhappend"
+TEX_BARS = ROOT / "TEXTURES.bars"
+ANIM_BARS = ROOT / "ANIMDEFS.bars"
+
+UH_BAR_LAYER_MAX = 4
+KIND_RENAME = {
+    "BRSLT": "UHVT",
+    "BRSLB": "UHVB",
+    "VRSLT": "UHHT",
+    "VRSLB": "UHHB",
+}
+BRSLT_NAME_RX = re.compile(r"\b(BRSLT|BRSLB|VRSLT|VRSLB)(\d{3})\b")
+
+POS_BANKS = [
+    ("1", "Custom Bar Pos1 (bar1)", 58, 184, 16, 8),
+    ("2", "Custom Bar Pos2 (bar2)", 58, 176, 8, 8),
+    ("3", "Custom Bar Pos3 (bar3)", 58, 168, 0, 8),
+    ("HP", "Custom Bar PosHP", 130, 184, 24, 8),
+]
+
+STALE_GENERATED = (
+    ROOT / "TEXTURES.barscat",
+    ROOT / "TEXTURES.barspos",
+    ROOT / "TEXTURES.barpos",
+    ROOT / "ANIMDEFS.barscat",
+    ROOT / "ANIMDEFS.barpos",
+)
 
 
-def parse_animated_blocks(text: str):
-    pattern = re.compile(
-        r"^texture\s+(BRSLT|VRSLT)(\d{3})\b[^\n]*\n(.*?)(?=^texture\s|\Z)",
-        re.MULTILINE | re.DOTALL,
+def rename_unholy_brslt_wrappers():
+    """TEXTURES.bars / ANIMDEFS.bars: BRSLT### → UHVT### (idempotent)."""
+
+    def repl(m):
+        return KIND_RENAME[m.group(1)] + m.group(2)
+
+    n = 0
+    for path in (TEX_BARS, ANIM_BARS):
+        text = path.read_text(encoding="utf-8")
+        new = BRSLT_NAME_RX.sub(repl, text)
+        if new != text:
+            path.write_text(new, encoding="utf-8")
+            n += 1
+            print(f"renamed BRSLT/VRSLT wrappers in {path.name}")
+    return n
+
+
+def parse_str_array(text: str, name: str) -> list:
+    m = re.search(
+        rf"str\s+{re.escape(name)}\s*\[[^\]]+\]\s*=\s*\{{([^}}]*)\}}",
+        text,
     )
-    blocks = []
-    for m in pattern.finditer(text):
-        kind, num, body = m.group(1), m.group(2), m.group(3)
-        pics = re.findall(r"\bpic\s+(\S+)", body)
-        if not pics:
-            continue
-        blocks.append(
-            {
-                "kind": kind,
-                "num": num,
-                "body": body.rstrip() + "\n",
-                "pics": pics,
-            }
-        )
-    return blocks
+    if not m:
+        return []
+    return re.findall(r'"([^"]+)"', m.group(1))
 
 
-def collect_defined_slots():
-    """BRSLT/VRSLT names defined in mod or MM8BDM TEXTURES lumps."""
+def collect_string_bar_pairs() -> list:
+    pairs = {}
+
+    def add(vf, ve, hf, he):
+        key = (vf, ve, hf, he)
+        if all(key) and key not in pairs:
+            pairs[key] = None
+
+    acs_files = list((ROOT / "acs_source").rglob("*.acs"))
+    call_rx = re.compile(
+        r"DrawCustomBarString(?:Layer)?(?:1|2|3|HP|At)?\s*\(\s*"
+        r'"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"'
+    )
+    assign_rx = re.compile(r'\bbar_[vh]\s*=\s*"([^"]+)"')
+
+    for path in acs_files:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        for m in call_rx.finditer(text):
+            add(m.group(1), m.group(2), m.group(3), m.group(4))
+
+        bars = parse_str_array(text, "qwanttypebar")
+        vars_ = parse_str_array(text, "qwanttypevar")
+        for i, vf in enumerate(bars):
+            hf = vars_[i] if i < len(vars_) else vf
+            add(vf, "BAREMPTY", hf, "VAREMPTY")
+
+        v_names = assign_rx.findall(text)
+        if v_names:
+            verts = [n for n in v_names if n.endswith("BAR") or "_V" in n]
+            hors = [
+                n
+                for n in v_names
+                if n.endswith("VAR") or "_H" in n or n.endswith("SVAR")
+            ]
+            if not hors:
+                hors = [
+                    n.replace("BAR", "VAR") if n.endswith("BAR") else n
+                    for n in verts
+                ]
+            for vf, hf in zip(verts, hors):
+                add(vf, "BAREMPTY", hf, "VAREMPTY")
+
+    return sorted(pairs.keys())
+
+
+def collect_offset_ids() -> list:
+    text = TEX_BARS.read_text(encoding="utf-8")
+    return sorted({int(n) for n in re.findall(r"\bUHVT(\d{3})\b", text)})
+
+
+def defined_uh_names() -> set:
+    text = TEX_BARS.read_text(encoding="utf-8")
     names = set()
-    paths = [p for p in ROOT.glob("TEXTURES*") if p.is_file()]
-    mm = REPO / "ref" / "MM8BDM-v6b"
-    if mm.is_dir():
-        paths += [p for p in mm.glob("TEXTURES*") if p.is_file()]
-    rx = re.compile(
-        r'(?i)(?:graphic|texture|sprite)\s+"?(BRSLT|VRSLT|BRSLB|VRSLB)(\d{3})\b'
-    )
-    for p in paths:
-        # Skip our own output (re-run safety)
-        if p.name in ("TEXTURES.barpos", "TEXTURES.barspos"):
-            continue
-        t = p.read_text(encoding="utf-8", errors="ignore")
-        for m in rx.finditer(t):
-            names.add(m.group(1) + m.group(2))
+    for m in re.finditer(
+        r'(?i)(?:graphic|texture)\s+(UHVT|UHVB|UHHT|UHHB)(\d{3})\b',
+        text,
+    ):
+        names.add(m.group(1).upper() + m.group(2))
     return names
 
 
-def rewrite_body(body: str, mapping: dict) -> str:
-    def repl(m):
-        name = m.group(1)
-        return "pic " + mapping.get(name, name)
-
-    return re.sub(r"\bpic\s+(\S+)", repl, body)
-
-
-def gen_textures_and_animdefs(blocks, defined):
-    v_pics = {}
-    h_pics = {}
-    wrapper_id = 0
-
-    def wrap_name(i: int) -> str:
-        return f"WZ{i:04d}"
-
-    for b in blocks:
-        dest = v_pics if b["kind"] == "BRSLT" else h_pics
-        for p in b["pics"]:
-            if p not in dest:
-                dest[p] = wrap_name(wrapper_id)
-                wrapper_id += 1
-
-    tex_lines = [
-        "// Offset-0 aliases for DrawCustomBar1/2/HP (SBARINFO absolute coords)",
-        "// Lump name TEXTURES.barspos loads AFTER TEXTURES.bars (patch sources).",
-        "// BZSLT### / VZSLT### patch BRSLT### / VRSLT### when defined; else NOBAR.",
-        "// BZSLB### / VZSLB### patch BRSLB### / VRSLB### when defined; else NOBAR.",
-        "// Animated slots: ANIMDEFS.barpos uses WZ#### frame wrappers (offset 0).",
+def gen_catalog(pairs, offset_ids):
+    cap = max(128, len(pairs) + 8)
+    acs = [
+        "// Generated by tools/_gen_barpos.py — DrawCustomBarString catalog.",
+        "// Slot = catalog index (not a BRSLT number). DrawBar uses real names.",
+        f"#define UH_BARCAT_MAX {cap}",
+        "#define UH_BARCAT_NONE -1",
         "",
-        "// Offset-0 animation frame wrappers",
+        "int uh_barcat_ready = 0;",
+        f"int uh_barcat_n = {len(pairs)};",
+        "str uh_barcat_full[UH_BARCAT_MAX];",
+        "str uh_barcat_empty[UH_BARCAT_MAX];",
+        "str uh_barcat_hfull[UH_BARCAT_MAX];",
+        "str uh_barcat_hempty[UH_BARCAT_MAX];",
+        "int uh_barcat_slot[UH_BARCAT_MAX];",
+        "",
+        "function void UH_BarCatalogInit(void) {",
+        "  if (uh_barcat_ready) {",
+        "    return;",
+        "  }",
+        "  uh_barcat_ready = 1;",
     ]
-    for pic, w in sorted(v_pics.items(), key=lambda x: x[1]):
-        tex_lines.append(f"graphic {w}, 8, 56 {{offset 0, 0 patch {pic}, 0, 0}}")
-    for pic, w in sorted(h_pics.items(), key=lambda x: x[1]):
-        tex_lines.append(f"graphic {w}, 56, 8 {{offset 0, 0 patch {pic}, 0, 0}}")
-    tex_lines.append("")
-    tex_lines.append("// Position-bank fill aliases (offset 0)")
-    defined_n = 0
-    fallback_n = 0
-    for i in range(256):
-        br = f"BRSLT{i:03d}"
-        vr = f"VRSLT{i:03d}"
-        brb = f"BRSLB{i:03d}"
-        vrb = f"VRSLB{i:03d}"
-        br_src = br if br in defined else "NOBAR"
-        vr_src = vr if vr in defined else "VNOBAR"
-        brb_src = brb if brb in defined else "NOBAR"
-        vrb_src = vrb if vrb in defined else "VNOBAR"
-        if br in defined:
-            defined_n += 1
-        else:
-            fallback_n += 1
-        tex_lines.append(
-            f"graphic BZSLT{i:03d}, 8, 56 {{offset 0, 0 patch {br_src}, 0, 0}}"
-        )
-        tex_lines.append(
-            f"graphic VZSLT{i:03d}, 56, 8 {{offset 0, 0 patch {vr_src}, 0, 0}}"
-        )
-        tex_lines.append(
-            f"graphic BZSLB{i:03d}, 8, 56 {{offset 0, 0 patch {brb_src}, 0, 0}}"
-        )
-        tex_lines.append(
-            f"graphic VZSLB{i:03d}, 56, 8 {{offset 0, 0 patch {vrb_src}, 0, 0}}"
-        )
-
-    TEX_OUT.write_text("\n".join(tex_lines) + "\n", encoding="utf-8")
-
-    # Remove old mis-ordered lump if present
-    old = ROOT / "TEXTURES.barpos"
-    if old.exists():
-        old.unlink()
-
-    anim_lines = [
-        "// Offset-0 animations for BZSLT/VZSLT (DrawCustomBar1/2/HP)",
+    for i, (vf, ve, hf, he) in enumerate(pairs):
+        acs.append(f'  uh_barcat_full[{i}] = "{vf}";')
+        acs.append(f'  uh_barcat_empty[{i}] = "{ve}";')
+        acs.append(f'  uh_barcat_hfull[{i}] = "{hf}";')
+        acs.append(f'  uh_barcat_hempty[{i}] = "{he}";')
+        acs.append(f"  uh_barcat_slot[{i}] = {i};")
+    acs += [
+        "}",
+        "",
+        "function int UH_FindBarCatalogSlot(str verticalfull, str verticalempty,",
+        "                                   str horizontalfull, str horizontalempty) {",
+        "  int i;",
+        "  UH_BarCatalogInit();",
+        "  for (i = 0; i < uh_barcat_n; i++) {",
+        "    if (uh_barcat_full[i] == verticalfull && uh_barcat_empty[i] == verticalempty",
+        "        && uh_barcat_hfull[i] == horizontalfull && uh_barcat_hempty[i] == horizontalempty) {",
+        "      return uh_barcat_slot[i];",
+        "    }",
+        "  }",
+        "  return UH_BARCAT_NONE;",
+        "}",
+        "",
+        "function void UH_ClearOffsetBars(int cam) {",
+    ]
+    for oid in offset_ids:
+        acs.append(f'  SetActorInventory(cam, "UHOffBar{oid}", 0);')
+    acs += [
+        "}",
         "",
     ]
-    for b in blocks:
-        mapping = v_pics if b["kind"] == "BRSLT" else h_pics
-        new_kind = "BZSLT" if b["kind"] == "BRSLT" else "VZSLT"
-        anim_lines.append(f"texture {new_kind}{b['num']}")
-        anim_lines.append(rewrite_body(b["body"], mapping).rstrip())
-        anim_lines.append("")
-
-    (ROOT / "ANIMDEFS.barpos").write_text("\n".join(anim_lines) + "\n", encoding="utf-8")
-    return len(blocks), len(v_pics), len(h_pics), defined_n, fallback_n
+    ACS_CAT.write_text("\n".join(acs) + "\n", encoding="utf-8")
+    print(f"wrote {ACS_CAT.name} catalog entries={len(pairs)}")
 
 
-def sbar_line(horiz: bool, slot_inv: str, ammo_inv: str, slot: int, x: int, y: int) -> str:
-    """Exclusive InInventory range for slot+1 .. slot+2."""
-    fill = f"{'VZSLT' if horiz else 'BZSLT'}{slot:03d}"
-    empty = f"{'VZSLB' if horiz else 'BZSLB'}{slot:03d}"
-    orient = "horizontal" if horiz else "vertical"
-    lo = slot + 1
-    hi = slot + 2
+def inv_names(pos_key: str, layer: int):
+    if layer == 0:
+        return f"CustSbarPos{pos_key}Slot", f"CustSbarPos{pos_key}Ammo"
     return (
-        f'\t\t\tInInventory {slot_inv}, {lo}{{InInventory not {slot_inv}, {hi}'
+        f"CustSbarPos{pos_key}L{layer}Slot",
+        f"CustSbarPos{pos_key}L{layer}Ammo",
+    )
+
+
+def sbar_layer_line(horiz, slot_inv, ammo_inv, cat_i, fill, empty, x, y):
+    orient = "horizontal" if horiz else "vertical"
+    lo = cat_i + 1
+    hi = cat_i + 2
+    return (
+        f"\t\t\t\tInInventory {slot_inv}, {lo}{{InInventory not {slot_inv}, {hi}"
         f'{{DrawBar "{fill}", "{empty}", {ammo_inv}, {orient}, {x}, {y};}}}}'
     )
 
 
-def gen_sbarinfo_banks():
-    banks = [
-        ("Custom Bar Pos1 (bar1)", "CustSbarPos1Slot", "CustSbarPos1Ammo", 58, 184, 16, 8),
-        ("Custom Bar Pos2 (bar2)", "CustSbarPos2Slot", "CustSbarPos2Ammo", 58, 176, 8, 8),
-        ("Custom Bar PosHP", "CustSbarPosHPSlot", "CustSbarPosHPAmmo", 130, 184, 24, 8),
-    ]
+def offset_line(horiz, oid, names):
+    if horiz:
+        fill, empty = f"UHHT{oid:03d}", f"UHHB{oid:03d}"
+        orient = "horizontal"
+        if fill not in names:
+            return None
+        if empty not in names:
+            empty = "VNOBAR"
+    else:
+        fill, empty = f"UHVT{oid:03d}", f"UHVB{oid:03d}"
+        orient = "vertical"
+        if fill not in names:
+            return None
+        if empty not in names:
+            empty = "NOBAR"
+    return (
+        f"\t\t\t\tInInventory UHOffBar{oid}, 1{{DrawBar "
+        f'"{fill}", "{empty}", UHOffBarAmmo{oid}, {orient}, 0, 0;}}'
+    )
 
-    h_block = []
-    v_block = []
-    for label, slot_inv, ammo_inv, hx, hy, vx, vy in banks:
-        h_block.append(f"\t\t\t//{label}")
-        v_block.append(f"\t\t\t//{label}")
-        for slot in range(256):
-            h_block.append(sbar_line(True, slot_inv, ammo_inv, slot, hx, hy))
-            v_block.append(sbar_line(False, slot_inv, ammo_inv, slot, vx, vy))
 
+def strip_main_layer_banks():
     marker = "\t\t\t//Custom Bar Position Banks (DrawCustomBar1/2/HP)"
-    h_insert = marker + "\n" + "\n".join(h_block) + "\n"
-    v_insert = marker + "\n" + "\n".join(v_block) + "\n"
-
-    for path, insert in (
-        (ROOT / "SBARINFO.H.txt", h_insert),
-        (ROOT / "SBARINFO.V.txt", v_insert),
-    ):
+    for path in (SBAR_H, SBAR_V):
         text = path.read_text(encoding="utf-8")
-        if marker in text:
-            start = text.index(marker)
-            rest = text[start:]
-            m_end = re.search(
-                r"\n\t\t\tInInventory BasicArmor,|\n\t\t\t//mugshot",
-                rest,
-            )
-            if not m_end:
-                raise SystemExit(f"cannot find end marker in {path}")
-            text = text[:start] + rest[m_end.start() + 1 :]
-
-        needle = re.search(
-            r'InInventory CustSbarSlotFlag255, 1\{DrawBar "[BV]RSLT255".*?\}\s*\n',
-            text,
+        if marker not in text:
+            print(f"no layer banks in {path.name}")
+            continue
+        start = text.index(marker)
+        rest = text[start:]
+        m_end = re.search(
+            r"\n\t\t\tInInventory BasicArmor,|\n\t\t\t//mugshot",
+            rest,
         )
-        if not needle:
-            raise SystemExit(f"cannot find CustSbarSlotFlag255 in {path}")
-        pos = needle.end()
-        text = text[:pos] + "\n" + insert + text[pos:]
+        if not m_end:
+            raise SystemExit(f"cannot find end of layer banks in {path}")
+        text = text[:start] + rest[m_end.start() + 1 :]
         path.write_text(text, encoding="utf-8")
-        print(f"updated {path.name}")
+        print(f"stripped layer banks from {path.name}")
+
+
+def gen_append_files(pairs, offset_ids, names):
+    def body(horiz: bool) -> list:
+        lines = [
+            "\tInInventory DrawStatusBarFlag, 1 {",
+            "\t\tInInventory not NoHud, 1 {",
+            "\t\t\tInInventory not NoHealthBar, 1 {",
+            "\t\t\t\t// UH offset bars (DrawUHOffsetBar)",
+        ]
+        for oid in offset_ids:
+            line = offset_line(horiz, oid, names)
+            if line:
+                lines.append(line)
+        for pos_key, label, hx, hy, vx, vy in POS_BANKS:
+            x, y = (hx, hy) if horiz else (vx, vy)
+            for layer in range(UH_BAR_LAYER_MAX):
+                slot_inv, ammo_inv = inv_names(pos_key, layer)
+                lines.append(f"\t\t\t\t//{label} layer {layer}")
+                for cat_i, (vf, ve, hf, he) in enumerate(pairs):
+                    fill, empty = (hf, he) if horiz else (vf, ve)
+                    lines.append(
+                        sbar_layer_line(
+                            horiz, slot_inv, ammo_inv, cat_i, fill, empty, x, y
+                        )
+                    )
+        lines += ["\t\t\t}", "\t\t}", "\t}"]
+        return lines
+
+    hz = [
+        "// Generated by tools/_gen_barpos.py — AppendStatusBar normal",
+        "AppendStatusBar normal, forcescaled {",
+        *body(True),
+        "}",
+        "",
+    ]
+    vz = [
+        "// Generated by tools/_gen_barpos.py — AppendStatusBar fullscreen",
+        "AppendStatusBar fullscreen, forcescaled {",
+        *body(False),
+        "}",
+        "",
+    ]
+    SBAR_HZ.write_text("\n".join(hz), encoding="utf-8")
+    SBAR_VZ.write_text("\n".join(vz), encoding="utf-8")
+    print(f"wrote {SBAR_HZ.name} {SBAR_VZ.name}")
+
+
+def gen_barfx_actors(offset_ids):
+    marker = "//$UH — DrawCustomBar1/2/HP position banks"
+    block = [
+        marker + " / layer pool (amount = slot+1; 0 = off)",
+    ]
+    seen = set()
+    for pos_key, _label, *_rest in POS_BANKS:
+        for layer in range(UH_BAR_LAYER_MAX):
+            slot_n, ammo_n = inv_names(pos_key, layer)
+            if slot_n in seen:
+                continue
+            seen.add(slot_n)
+            block += [
+                f"actor {slot_n} : Inventory",
+                "{",
+                "inventory.amount 1",
+                "inventory.maxamount 256",
+                "}",
+                "",
+                f"actor {ammo_n} : Ammo",
+                "{",
+                "+INVENTORY.IGNORESKILL",
+                "inventory.amount 1",
+                "inventory.maxamount 1",
+                "}",
+                "",
+            ]
+    block.append("//$UH — DrawUHOffsetBar flags (CUST_* ids)")
+    for oid in offset_ids:
+        block += [
+            "",
+            f"actor UHOffBar{oid} : Inventory",
+            "{",
+            "inventory.amount 1",
+            "inventory.maxamount 1",
+            "}",
+            "",
+            f"actor UHOffBarAmmo{oid} : Ammo",
+            "{",
+            "+INVENTORY.IGNORESKILL",
+            "inventory.amount 1",
+            "inventory.maxamount 1",
+            "}",
+        ]
+    text = BARFX.read_text(encoding="utf-8")
+    start = text.find("//$UH — DrawCustomBar1/2/HP")
+    if start < 0:
+        raise SystemExit("BarFX.txt missing DrawCustomBar marker")
+    BARFX.write_text(text[:start] + "\n".join(block).rstrip() + "\n", encoding="utf-8")
+    print(f"updated {BARFX.name} offset bars={len(offset_ids)}")
+
+
+def delete_stale():
+    for p in STALE_GENERATED:
+        if p.exists():
+            p.unlink()
+            print(f"deleted {p.name}")
 
 
 def main():
-    defined = collect_defined_slots()
-    print(f"defined BRSLT/VRSLT names: {len(defined)}")
-    blocks = parse_animated_blocks(ANIM_SRC.read_text(encoding="utf-8"))
-    n, nv, nh, dn, fn = gen_textures_and_animdefs(blocks, defined)
-    print(f"anim blocks={n} v_pics={nv} h_pics={nh}")
-    print(f"BZSLT from real BRSLT={dn}, NOBAR fallback={fn}")
-    print(f"wrote {TEX_OUT.name}")
-    nums = sorted({b["num"] for b in blocks})
-    print("animated slots:", ",".join(nums))
-    gen_sbarinfo_banks()
+    rename_unholy_brslt_wrappers()
+    pairs = collect_string_bar_pairs()
+    if len(pairs) > 255:
+        raise SystemExit(f"catalog too large for inventory amount: {len(pairs)}")
+    print(f"string-bar pairs: {len(pairs)}")
+    offset_ids = collect_offset_ids()
+    names = defined_uh_names()
+    print(f"UH offset ids: {len(offset_ids)}")
+    gen_catalog(pairs, offset_ids)
+    strip_main_layer_banks()
+    gen_append_files(pairs, offset_ids, names)
+    gen_barfx_actors(offset_ids)
+    delete_stale()
 
 
 if __name__ == "__main__":
