@@ -351,35 +351,15 @@ script "uh_FlashStopperRNG" (int power, int dur, int toggle) CLIENTSIDE {
   FadeRange(rc, bc, gc, ((1.0) * power) / 100, rc, bc, gc, 0.0, ((1.0) * dur) / 100);
 }
 
-script "uh_FloorQuakeDamage" (int maxrange, int quakepower, int which) {
+function void UH_FloorQuakeDamageCore(int maxrange, int quakepower, str theclass) {
   int usertid = ActivatorTID();
   int userteam = GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM);
-  int zdist;
-  str theclass;
-  switch (which) {
-    default:
-      terminate;
-      break;
-    case 36:
-      theclass = "SumoWrestler";
-      break;
-    case 41:
-      theclass = "Handyman";
-      break;
-    case -41:
-      theclass = "HandymanDeath";
-      break;
-    case 50:
-      theclass = "DecoyBot";
-      break;
 
-    case 1041:
-      theclass = "S_Handyman";
-      break;
-    case -1041:
-      theclass = "S_HandymanDeath";
-      break;
+  // GetActorClass returns "None" when the activator is no longer valid.
+  if (StrICmp(theclass, "None") == 0 || StrCmp(theclass, "") == 0) {
+    return;
   }
+
   str spawnname = StrParam(s:theclass, s:"_FloorQuakeSpawn");
   // Log(s:"maxrange = ",i:maxrange,s:" \\ quakepower = ",i:quakepower);
   // if (quakepower > 255)
@@ -395,6 +375,40 @@ script "uh_FloorQuakeDamage" (int maxrange, int quakepower, int which) {
       SpawnProjectile(usertid, spawnname, quakepower, 0, p, 0, 0);
     }
   }
+}
+
+// The generic entry point derives the projectile prefix from the activator.
+script "uh_FloorQuakeDamage" (int maxrange, int quakepower) {
+  UH_FloorQuakeDamageCore(maxrange, quakepower, GetActorClass(0));
+}
+
+// Explicit prefixes cover death/shiny classes and legacy projectile aliases.
+script "uh_FloorQuakeDamage_HandymanDeath" (int maxrange, int quakepower) {
+  UH_FloorQuakeDamageCore(maxrange, quakepower, "HandymanDeath");
+}
+
+script "uh_FloorQuakeDamage_S_Handyman" (int maxrange, int quakepower) {
+  UH_FloorQuakeDamageCore(maxrange, quakepower, "S_Handyman");
+}
+
+script "uh_FloorQuakeDamage_S_HandymanDeath" (int maxrange, int quakepower) {
+  UH_FloorQuakeDamageCore(maxrange, quakepower, "S_HandymanDeath");
+}
+
+script "uh_FloorQuakeDamage_S_SumoWrestler" (int maxrange, int quakepower) {
+  UH_FloorQuakeDamageCore(maxrange, quakepower, "S_SumoWrestler");
+}
+
+script "uh_FloorQuakeDamage_DecoyBot" (int maxrange, int quakepower) {
+  UH_FloorQuakeDamageCore(maxrange, quakepower, "DecoyBot");
+}
+
+script "uh_FloorQuakeDamage_Balrog" (int maxrange, int quakepower) {
+  UH_FloorQuakeDamageCore(maxrange, quakepower, "Balrog_Boss");
+}
+
+script "uh_FloorQuakeDamage_HellBot" (int maxrange, int quakepower) {
+  UH_FloorQuakeDamageCore(maxrange, quakepower, "HellBot");
 }
 
 script "uh_missileyank" (int maxrange) {
