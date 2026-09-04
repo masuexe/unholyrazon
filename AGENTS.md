@@ -124,9 +124,10 @@ Eden-only C396 TID reservation stays at
 imported via `#import` live in `_imports/uh_acsutils.acs` (Unholy additions
 section); `WrapAround(i, lo, hi)` there is the single generalized angle fold —
 never reintroduce unit-specific WrapAround variants (they collided across the
-Unholy and CBM lineages). `systems/shared/math_helpers.acs` keeps same-named
-distance helpers with deliberate VectorLength/ZanSqrt implementations — do not
-unify them blindly. Color implementation fragments
+Unholy and CBM lineages). The XYDistance/XYZDistance/ZDistance
+family is unified in `uh_acsutils.acs` as well (`XYDistance` uses the precise
+VectorLength builtin; `ZDistance` is kept though currently unused); `uh_shared`
+imports it. Color implementation fragments
 live under `systems/colors/`.
 
 Survivor, boss, and demoneye class logic belongs under `classes/`. GemBanker’s

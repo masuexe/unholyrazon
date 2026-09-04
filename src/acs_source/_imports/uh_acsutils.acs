@@ -212,9 +212,10 @@ function int GetAspectRatio(void) {
 // (-208/-207/-209), so calls compile to stubs that silently return 0
 // (acc distributions that comment the entries out are unaffected).
 // Use RoundFixedToInt for fixed-to-int rounding.
-// NOTE: systems/shared/math_helpers.acs keeps same-named distance helpers
-// (XyDistance/XyzDistance/Zdistance) with deliberate VectorLength/ZanSqrt
-// implementations instead of these Sqrt8-based ones; do not unify blindly.
+// NOTE: the XYDistance/XYZDistance/ZDistance family is unified here.
+// XYDistance uses the precise VectorLength builtin; XYZDistance/ZDistance
+// keep integer-unit math (3D fixed-point squaring would overflow 32-bit
+// ints).  ZDistance currently has no callers but is kept for future use.
 // ---------------------------------------------------------------------------
 // Generalized angle fold: steps i one window-span toward [lo, hi] when just
 // outside it (single-step semantics shared by the legacy Unholy degrees
@@ -246,26 +247,22 @@ function int GetMaxPlayers(void) {  // From 8bdmlib.acs
   return ret;
 }
 
-function int XyzDistance(int tid1, int tid2) {
-  int x, y, z, d;
-  x = GetActorX(tid1) - GetActorX(tid2) >> 16;
-  y = GetActorY(tid1) - GetActorY(tid2) >> 16;
-  z = GetActorZ(tid1) - GetActorZ(tid2) >> 16;
-  d = Sqrt8(x * x + y * y + z * z);
+function int XYZDistance(int tid1, int tid2) {
+  int x = GetActorX(tid1) - GetActorX(tid2) >> 16;
+  int y = GetActorY(tid1) - GetActorY(tid2) >> 16;
+  int z = GetActorZ(tid1) - GetActorZ(tid2) >> 16;
+  int d = Sqrt8(x * x + y * y + z * z);
   return d;
 }
 
-function int XyDistance(int tid1, int tid2) {
-  int x, y, d;
-  x = GetActorX(tid1) - GetActorX(tid2) >> 16;
-  y = GetActorY(tid1) - GetActorY(tid2) >> 16;
-  d = Sqrt8(x * x + y * y);
-  return d;
+function int XYDistance(int tid1, int tid2) {
+  int x = GetActorX(tid1) - GetActorX(tid2);
+  int y = GetActorY(tid1) - GetActorY(tid2);
+  return VectorLength(x, y) >> 16;
 }
 
-function int Zdistance(int tid1, int tid2) {
-  int z;
-  z = GetActorZ(tid1) - GetActorZ(tid2) >> 16;
+function int ZDistance(int tid1, int tid2) {
+  int z = GetActorZ(tid1) - GetActorZ(tid2) >> 16;
   return z;
 }
 
@@ -319,4 +316,3 @@ function int PitchBetween(int looker, int target, int xoff, int yoff, int zoff) 
   pitch = -VectorAngle(len, z);
   return pitch;
 }
-
