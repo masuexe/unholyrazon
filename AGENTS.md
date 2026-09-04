@@ -128,7 +128,7 @@ Unholy and CBM lineages). The XYDistance/XYZDistance/ZDistance
 family is unified in `uh_acsutils.acs` as well (`XYDistance` uses the precise
 VectorLength builtin; `ZDistance` is kept though currently unused); `uh_shared`
 imports it, as do the fixed-point distance helpers `XYZDistanceFixed`/
-`XYHypotFixed`/`XYZHypotFixed` (ex-CBM `fDistanceVal*` — numeric-suffix names
+`XYHypot`/`XYHypotFixed`/`XYZHypotFixed` (ex-CBM `fDistanceVal*` — numeric-suffix names
 rejected; keep the XY/XYZ family prefix), plus `CeilFixedToInt` (avoid
 reserved `Ceil`/`Floor`/`Round` names).
 Color implementation fragments
