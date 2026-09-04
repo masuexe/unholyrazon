@@ -1,0 +1,122 @@
+// ZANGIEF
+
+#define GRAB_DISTANCE 100  // how far to position the grabbed away from zangief
+#define GRAB_DISTANCE_LIMIT 100000  // how far away to give up on the grabbed, squared
+
+str zangief_give_item[2] = {
+  "AntiInvincible_P",
+  "AirSuplexGroundCheck"
+};
+
+script "uh_ZangiefGiver" (int i, int target) {
+  // log(i:i,s:" & ",i:target);
+  // zangief_give_item was reduced to the two entries actually used by the
+  // current grab code.  Keep malformed/stale callers from indexing into the
+  // neighboring ACS string data (which can turn a map string into an item
+  // name and make GiveActorInventory report a misleading class error).
+  if (target == 999 || i < 0 || i >= 2) {terminate;}
+  GiveActorInventory(target, zangief_give_item[i], 1);
+}
+
+script "uh_ZangiefGiveToAll" (int i) {
+  for (int j = 0; j < ServerMAX; j++) {
+    if (PlayerInGame(j)) GiveActorInventory(1000 + j, zangief_give_item[i], 1);
+  }
+}
+
+script "uh_ZangiefFaceTarget" (int target) {
+  SetResultValue(VectorAngle(GetActorX(target) - GetActorX(0), GetActorY(target) - GetActorY(0)) >> 8);
+}
+
+script "uh_ZangiefStartGrab" (int target, int grabdist, int grablimit) {
+  if (target == 999) {
+    SetResultValue(1);
+    terminate;
+  }
+  // Discouraged: omit both args (0, 0) to fall back on these defines.
+  // Pass grabdist and grablimit explicitly instead.
+  if (grabdist <= 0 && grablimit <= 0) {
+    grabdist = GRAB_DISTANCE;
+    grablimit = GRAB_DISTANCE_LIMIT;
+  }
+  int angle = GetActorAngle(0);
+  int x_diff = (GetActorX(0) + grabdist * cos(angle)) - GetActorX(target);
+  int y_diff = (GetActorY(0) + grabdist * sin(angle)) - GetActorY(target);
+  int z_diff = GetActorZ(0) - GetActorZ(target);
+
+  int x_diff_i = x_diff >> 16;
+  int y_diff_i = y_diff >> 16;
+  int z_diff_i = z_diff >> 16;
+
+  if (x_diff_i * x_diff_i + y_diff_i * y_diff_i + z_diff_i * z_diff_i < grablimit) {
+    SetActorVelocity(target, x_diff, y_diff, z_diff, 0, 0);
+    setResultValue(1);
+  } else {
+    setResultValue(0);
+  }
+}
+
+// Pitch is given as x/360, Angle is given as x/255
+script "uh_ZangiefGrab" (int pitch, int angle, int grab_d, int grablimit) {
+  int target = ACS_NamedExecuteWithResult("rz_CountInv_SuplexID") + 999;
+  if (target == 999) {
+    SetResultValue(1);
+    terminate;
+  }
+  // Discouraged: omit grablimit (0) to fall back on GRAB_DISTANCE_LIMIT.
+  // CallACS can pass a 4th argument; pass grablimit explicitly instead.
+  if (grablimit <= 0) grablimit = GRAB_DISTANCE_LIMIT;
+  GiveActorInventory(target, "DashingStraitjacket_F", 1);
+  angle = angle << 8;
+  pitch = (pitch - 360) * 1.0 / 360;
+  int x_diff = (GetActorX(0) + FixedMul(grab_d * cos(angle), cos(pitch))) - GetActorX(target);
+  int y_diff = (GetActorY(0) + FixedMul(grab_d * sin(angle), cos(pitch))) - GetActorY(target);
+  int z_diff = (GetActorZ(0) - grab_d * sin(pitch)) - GetActorZ(target);
+
+  int x_diff_i = x_diff >> 16;
+  int y_diff_i = y_diff >> 16;
+  int z_diff_i = z_diff >> 16;
+
+  if (x_diff_i * x_diff_i + y_diff_i * y_diff_i + z_diff_i * z_diff_i < grablimit) {
+    SetActorVelocity(target, x_diff, y_diff, z_diff, 0, 0);
+    setResultValue(1);
+  } else {
+    setResultValue(0);
+  }
+}
+
+script "uh_ZangiefSetThrow" (int target, int force, int zforce) {
+  Thing_Stop(target);
+  ThrustThing(GetActorAngle(0) >> 8, force, 1, target);
+  ThrustThingZ(target, zforce, 0, 0);
+}
+
+script "uh_ZangiefGrabReverse" (int pitch, int angle, int grab_d, int grablimit) {
+  int target = ACS_namedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  SetActivator(0, 8);
+  if (target == 999) {
+    SetResultValue(1);
+    terminate;
+  }
+  // Discouraged: omit grablimit (0) to fall back on GRAB_DISTANCE_LIMIT.
+  // CallACS can pass a 4th argument; pass grablimit explicitly instead.
+  if (grablimit <= 0) grablimit = GRAB_DISTANCE_LIMIT;
+  angle = angle << 8;
+  pitch = (pitch - 360) * 1.0 / 360;
+  int x_diff = (GetActorX(0) + FixedMul(grab_d * cos(angle), cos(pitch))) - GetActorX(target);
+  int y_diff = (GetActorY(0) + FixedMul(grab_d * sin(angle), cos(pitch))) - GetActorY(target);
+  int z_diff = (GetActorZ(0) - grab_d * sin(pitch)) - GetActorZ(target);
+
+  int x_diff_i = x_diff >> 16;
+  int y_diff_i = y_diff >> 16;
+  int z_diff_i = z_diff >> 16;
+
+  if (x_diff_i * x_diff_i + y_diff_i * y_diff_i + z_diff_i * z_diff_i < grablimit) {
+    SetActorVelocity(target, x_diff, y_diff, z_diff, 0, 0);
+    setResultValue(1);
+  } else {
+    setResultValue(0);
+  }
+}
+
+

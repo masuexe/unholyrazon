@@ -202,3 +202,114 @@ function int GetAspectRatio(void) {
     return ASPECT_5_4;
   return ASPECT_4_3;
 }
+
+// ---------------------------------------------------------------------------
+// Unholy additions (not part of upstream ACSUtils): generic math and actor
+// geometry helpers shared via #import.  Formerly in
+// classes/shared/math_and_eden_helpers.acs (library UH_CLASSES).
+// WARNING: never define or call Round/Floor/Ceil helpers: the default ACC
+// zspecial.acs reserves those names as unimplemented engine specials
+// (-208/-207/-209), so calls compile to stubs that silently return 0
+// (acc distributions that comment the entries out are unaffected).
+// Use RoundFixedToInt for fixed-to-int rounding.
+// NOTE: UH_SHARED keeps same-named helpers with different semantics in
+// systems/shared/math_helpers.acs (turn-based WrapAround, VectorLength
+// distances); do not unify them blindly.
+// ---------------------------------------------------------------------------
+function int WrapAround(int i) {
+  if (i < -180.0) return i + 360.0;
+  if (i > 180.0) return i - 360.0;
+  return i;
+}
+
+function int GetHypotenuse(int x, int y) {
+  int len;
+  int ang = VectorAngle(x, y);
+  if (((ang + 0.125) % 0.5) > 0.25) len = FixedDiv(y, sin(ang));
+  else len = FixedDiv(x, cos(ang));
+
+  // print(f:len);
+  return len;
+}
+
+function int GetMaxPlayers(void) {  // From 8bdmlib.acs
+  int ret = GetCVar("sv_MaxClients");
+  if (PlayerCount() > ret)  // admins can join
+    ret = PlayerCount();
+  return ret;
+}
+
+function int XyzDistance(int tid1, int tid2) {
+  int x, y, z, d;
+  x = GetActorX(tid1) - GetActorX(tid2) >> 16;
+  y = GetActorY(tid1) - GetActorY(tid2) >> 16;
+  z = GetActorZ(tid1) - GetActorZ(tid2) >> 16;
+  d = Sqrt8(x * x + y * y + z * z);
+  return d;
+}
+
+function int XyDistance(int tid1, int tid2) {
+  int x, y, d;
+  x = GetActorX(tid1) - GetActorX(tid2) >> 16;
+  y = GetActorY(tid1) - GetActorY(tid2) >> 16;
+  d = Sqrt8(x * x + y * y);
+  return d;
+}
+
+function int Zdistance(int tid1, int tid2) {
+  int z;
+  z = GetActorZ(tid1) - GetActorZ(tid2) >> 16;
+  return z;
+}
+
+function int MagnitudeThree(int x, int y, int z) {
+  return Sqrt8(x * x + y * y + z * z);
+}
+
+function int Sqrt8(int number) {
+  if (number <= 3) {
+    if (number > 0) {
+      return 1;
+    }
+    return 0;
+  }
+
+  int oldans = number >> 1;
+  int newans = (oldans + number / oldans) >> 1;
+
+  while (newans < oldans) {
+    oldans = newans;
+    newans = (oldans + number / oldans) >> 1;
+  }
+
+  return oldans;
+}
+
+
+function void ActorPull(int puller, int pullee, int force, int xoff, int yoff, int zoff) {
+  int angle = VectorAngle((GetActorX(puller) + xoff) - GetActorX(pullee), (GetActorY(puller) + yoff) - GetActorY(pullee));
+  int pitch = PitchBetween(puller, pullee, xoff, yoff, zoff);
+
+  angle = angle >> 8;
+  int horizforce = FixedMul(cos(pitch), force << 16) >> 16;
+  int vertiforce = FixedMul(sin(pitch), force << 16) >> 16;
+
+  ThrustThing(angle, horizforce, horizforce > 30, pullee);
+  ThrustThingZ(pullee, vertiforce * 4, 0, 0);
+}
+
+function int PitchBetween(int looker, int target, int xoff, int yoff, int zoff) {
+  int x, y, z, ang, pitch, len;
+  x = (GetActorX(target) + xoff) - GetActorX(looker);
+  y = (GetActorY(target) + yoff) - GetActorY(looker);
+
+  ang = VectorAngle(x, y);
+  if (((ang + 0.125) % 0.5) > 0.25) len = FixedDiv(y, sin(ang));
+  else len = FixedDiv(x, cos(ang));
+
+  z = (GetActorZ(target) - zoff) - GetActorZ(looker);
+
+  pitch = -VectorAngle(len, z);
+  return pitch;
+}
+

@@ -1,0 +1,124 @@
+// Eden attribute/tear helpers (Isaac-style item stats).
+// Fragment of library UH_CLASSES; included before eden_runtime.acs.
+
+#define CONVERTTEARS_FIRE2TEARS 0
+#define CONVERTTEARS_TEARS2FIRE 1
+function int ConvertTears(int value, int swap_var) {  // 0 = fire rate -> tears, 1 = tears -> fire rate
+  int res;
+  switch (swap_var) {
+    case CONVERTTEARS_FIRE2TEARS:
+      res = RoundFixedToInt(FixedDiv(300, (value + 1)));
+      break;
+    case CONVERTTEARS_TEARS2FIRE:
+      res = RoundFixedToInt(FixedDiv(300, value)) - 1;
+      break;
+  }
+  return res;
+}
+
+function void SyncEdenTears(int swap_var) {
+  switch (swap_var) {
+    case CONVERTTEARS_FIRE2TEARS:
+      SetInventory("EdenTearsHUDAttr", ConvertTears(CheckInventory("EdenTearsAttr"), CONVERTTEARS_FIRE2TEARS));
+      break;
+    case CONVERTTEARS_TEARS2FIRE:
+      SetInventory("EdenTearsAttr", ConvertTears(CheckInventory("EdenTearsHUDAttr"), CONVERTTEARS_TEARS2FIRE));
+      break;
+  }
+}
+
+function void UpdateEdenAttr(int attr, int value, bool set, bool hud) {
+  int realvalue;
+  switch (attr) {
+    default:
+      Log(s:"Unknown Eden attribute: ", i:attr);
+      break;
+    case 0:  // Speed
+      if (set) {
+        SetInventory("EdenSpeedAttr", value);
+        SetActorProperty(0, APROP_Speed, FixedDiv(value, 10));
+      } else {
+        if (value > 0) {
+          GiveInventory("EdenSpeedAttr", value);
+        } else if (value < 0) {
+          TakeInventory("EdenSpeedAttr", -value);
+        }
+        SetActorProperty(0, APROP_Speed, GetActorProperty(0, APROP_Speed) + FixedDiv(value, 10));
+      }
+      break;
+    case 1:  // Height
+      realvalue = value << 16;
+      if (set) {
+        SetInventory("EdenHeightAttr", value);
+        SetActorProperty(0, APROP_JumpZ, realvalue);
+      } else {
+        if (value > 0) {
+          GiveInventory("EdenHeightAttr", value);
+        } else if (value < 0) {
+          TakeInventory("EdenHeightAttr", -value);
+        }
+        SetActorProperty(0, APROP_JumpZ, GetActorProperty(0, APROP_JumpZ) + realvalue);
+      }
+      break;
+    case 2:  // Tears
+      if (hud == 0) {
+        if (set) {
+          SetInventory("EdenTearsAttr", value);
+          SetInventory("EdenTearsHUDAttr", ConvertTears(value, CONVERTTEARS_FIRE2TEARS));
+        } else {
+          if (value > 0) {
+            GiveInventory("EdenTearsAttr", value);
+          } else if (value < 0) {
+            TakeInventory("EdenTearsAttr", -value);
+          }
+          SyncEdenTears(CONVERTTEARS_FIRE2TEARS);
+        }
+      } else {
+        if (set) {
+          SetInventory("EdenTearsHUDAttr", value);
+          SetInventory("EdenTearsAttr", ConvertTears(value, CONVERTTEARS_TEARS2FIRE));
+        } else {
+          if (value > 0) {
+            GiveInventory("EdenTearsHUDAttr", value);
+          } else if (value < 0) {
+            TakeInventory("EdenTearsHUDAttr", -value);
+          }
+          SyncEdenTears(CONVERTTEARS_TEARS2FIRE);
+        }
+      }
+      break;
+    case 3:  // Damage
+      if (set) {
+        SetInventory("EdenDamageAttr", value);
+      } else {
+        if (value > 0) {
+          GiveInventory("EdenDamageAttr", value);
+        } else if (value < 0) {
+          TakeInventory("EdenDamageAttr", -value);
+        }
+      }
+      break;
+    case 4:  // Shot Speed
+      if (set) {
+        SetInventory("EdenShotSpeedAttr", value);
+      } else {
+        if (value > 0) {
+          GiveInventory("EdenShotSpeedAttr", value);
+        } else if (value < 0) {
+          TakeInventory("EdenShotSpeedAttr", -value);
+        }
+      }
+      break;
+    case 5:  // Range
+      if (set) {
+        SetInventory("EdenRangeAttr", value);
+      } else {
+        if (value > 0) {
+          GiveInventory("EdenRangeAttr", value);
+        } else if (value < 0) {
+          TakeInventory("EdenRangeAttr", -value);
+        }
+      }
+      break;
+  }
+}

@@ -1,0 +1,51 @@
+script "uc_SamuraiSetUser" (int inputangle, int inputpitch, int inputlimit) {
+  SetUserVariable(0, "user_wepangle", inputangle << 16);
+  SetUserVariable(0, "user_weppitch", inputpitch << 16);
+  SetUserVariable(0, "user_wepaimlimit", inputlimit);
+  // Log(f:GetUserVariable(0, "user_wepangle"),s:":user_wepangle:", i:GetUserVariable(0, "user_wepangle"),s:"\n",
+  //		f:GetUserVariable(0, "user_weppitch"),s:":user_weppitch:", i:GetUserVariable(0, "user_weppitch"),s:"\n",
+  //		f:GetUserVariable(0, "user_wepaimlimit"),s:":user_wepaimlimit:", i:GetUserVariable(0, "user_wepaimlimit"));
+}
+
+script "uc_SamuraiCheckDrag" (int inputangle, int inputpitch, int inputdiff) {
+  inputangle <<= 16;
+  inputpitch <<= 16;
+  int changelimit = GetUserVariable(0, "user_wepaimlimit");
+  if (!changelimit)
+    terminate;  // This is for online desync? Is it 3.1 only?
+  int currentangle = GetUserVariable(0, "user_wepangle");
+  int currentpitch = GetUserVariable(0, "user_weppitch");
+
+  int angledif = WrapAround(inputangle - currentangle);
+  int pitchdif = WrapAround(inputpitch - currentpitch);
+
+  int len = GetHypotenuse(angledif, pitchdif);
+
+  if (GetHypotenuse(angledif, pitchdif * 2) >> 16 >= inputdiff) {
+    SetUserVariable(0, "user_wepangle2", FixedDiv(FixedMul(angledif, changelimit), len));
+    SetUserVariable(0, "user_weppitch2", FixedDiv(FixedMul(pitchdif, changelimit), len));
+    SetResultValue(2);
+  }
+  else {
+    SetResultValue(-1);
+  }
+}
+
+str samurai_user_variables[2] = {
+  "user_wepangle",
+  "user_weppitch"
+};
+
+script "uc_SamuraiAddonUser" (void) {
+  // Log(s:"user_wepangle = ",f:GetUserVariable(0, "user_wepangle"),s:" \/ user_wepangle2 = ",f:GetUserVariable(0, "user_wepangle2"));
+  // Log(s:"user_weppitch = ",f:GetUserVariable(0, "user_weppitch"),s:" \/ user_weppitch2 = ",f:GetUserVariable(0, "user_weppitch2"));
+  SetUserVariable(0, "user_wepangle", GetUserVariable(0, "user_wepangle") + GetUserVariable(0, "user_wepangle2"));
+  SetUserVariable(0, "user_weppitch", GetUserVariable(0, "user_weppitch") + GetUserVariable(0, "user_weppitch2"));
+}
+
+script "uc_SamuraiGetUser" (int num) {
+  // Log(s:"Var ", i:num,s:": ",f:GetUserVariable(0,samurai_user_variables[num]));
+  SetResultValue(GetUserVariable(0, samurai_user_variables[num]));  // >>16
+}
+
+

@@ -1,0 +1,223 @@
+function int QwantTypeAmmoMax(int type) {
+  if (type == QWANT_TYPE_PSYCHIC || type == QWANT_TYPE_DRAGON || type == QWANT_TYPE_FAIRY) {
+    return 56;
+  }
+  return 28;
+}
+
+function str BuildQwantTagKey(str wep) {
+  int len = StrLen(wep);
+  if (len >= 3 && !StrCmp(StrRight(wep, 3), "Wep")) {
+    wep = StrLeft(wep, len - 3);
+  }
+  return StrParam(s:"TAG_", s:wep);
+}
+
+script "uh_assists_define" OPEN CLIENTSIDE {
+  DefineAssistDisplay("uh_assist_General");
+  DefineAssistDisplay("uh_assist_SuperGUHUItem");
+  DefineAssistDisplay("uh_assist_GhostEyeShadowInvis");
+  DefineAssistDisplay("uh_assist_YellowWizardReflect");
+  DefineAssistDisplay("uh_assist_YellowWizardInvun");
+  DefineAssistDisplay("uh_assist_YellowWizardSpread");
+  DefineAssistDisplay("uh_assist_YellowWizardInvis");
+  DefineAssistDisplay("uh_assist_CalmMind");
+  DefineAssistDisplay("uh_assist_GoldenWaspBomb");
+  DefineAssistDisplay("uh_assist_DeadlyFireArms");
+}
+
+function str UH_MugshotIndexName(str prefix, int amount) {
+  // SBARMugshot* stores palette+1; texture names are 000-255
+  int idx = amount - 1;
+  if (idx < 0) {idx = 0;}
+  if (idx > 255) {idx = 255;}
+  return StrParam(s:prefix, s:StrRight(StrParam(s:"000", i:idx), 3));
+}
+
+function void DrawUHClassMugshot(int cam) {
+  if (!CheckActorInventory(cam, "MugshotFlag")) {return;}
+  // Boss/Demoneye morph: keep Player.ScoreIcon (SBARINFO playericon) visible
+  if (CheckActorInventory(cam, "MorphedFlag")) {return;}
+
+  int mode = AssistDisplayBar_HUDMode();
+  int x, y;
+  if (mode == BAR_DISPLAY_HORI) {
+    x = 186.1;
+    y = 184.1;
+  } else if (mode == BAR_DISPLAY_VERT) {
+    x = 20.1;
+    y = 0.1;
+  } else {
+    return;
+  }
+
+  SetHudSize(320, 200, 0);
+
+  // Dust Crusher skin: static YustMan face over MegaMan mugshot slot
+  if (CheckActorInventory(cam, "YustManFlag")) {
+    BasicImageDisplay("YUSTMUG", UH_IMAGE_ID_BASE + 61, x, y);
+    return;
+  }
+
+  // Qwant_W ready: portrait (110, 130). Copy moves follow weapon dye (DrawBar2Color must not leak).
+  if (CheckActorInventory(cam, "UHMugshotQwant")) {
+    if (CheckActorInventory(cam, "Qwant_W") && CheckWeapon("Qwant_W")) {
+      SetMugshotColor(QWANT_MUG_CYAN, QWANT_MUG_BLUE);
+    } else {
+      int wc = CheckActorInventory(cam, "UHWepMugCyan");
+      int wb = CheckActorInventory(cam, "UHWepMugBlue");
+      if (wc >= 1 && wb >= 1) {
+        SetMugshotColor(wc - 1, wb - 1);
+      }
+    }
+  }
+
+  // Arcanist: crown PD — cyan=lightest, blue=mid, black=darkest (override DrawBar 250/253)
+  if (CheckActorInventory(cam, "UHMugshotArcanist")) {
+    int ac = CheckActorInventory(cam, "UHWepMugCyan");
+    int ab = CheckActorInventory(cam, "UHWepMugBlue");
+    int ak = CheckActorInventory(cam, "UHWepMugBlack");
+    if (ac >= 1 && ab >= 1 && ak >= 1) {
+      SetMugshotColorGlow(ac - 1, ab - 1, ak - 1);
+    } else {
+      SetMugshotColorGlow(57, 60, 79);
+    }
+  }
+
+  int cyan = CheckActorInventory(cam, "SBARMugshotCyan");
+  int blue = CheckActorInventory(cam, "SBARMugshotBlue");
+  int black = CheckActorInventory(cam, "SBARMugshotBlack");
+  int trans = CheckActorInventory(cam, "MugshotTransFlag");
+  str nblu = "";
+  str nblk = "";
+  str ncyn = "";
+
+  // HudMessage: lower IDs draw on top. BACK must use the highest ID so color layers stay visible.
+  if (CheckActorInventory(cam, "UHMugshotMegaMan")) {
+    if (trans) {
+      nblu = UH_MugshotIndexName("MGBLU", blue);
+      nblk = UH_MugshotIndexName("MGBLK", black);
+      ncyn = UH_MugshotIndexName("MGCYN", cyan);
+    } else {
+      nblu = "MGBLU198";
+      nblk = "MGBLK000";
+      ncyn = "MGCYN192";
+    }
+    BasicImageDisplay("MEGABCK", UH_IMAGE_ID_BASE + 73, x, y);
+    BasicImageDisplay(nblu, UH_IMAGE_ID_BASE + 72, x, y);
+    BasicImageDisplay(nblk, UH_IMAGE_ID_BASE + 71, x, y);
+    BasicImageDisplay(ncyn, UH_IMAGE_ID_BASE + 70, x, y);
+  } else if (CheckActorInventory(cam, "UHMugshotQwant")) {
+    if (trans) {
+      nblu = UH_MugshotIndexName("QWBLU", blue);
+      ncyn = UH_MugshotIndexName("QWCYN", cyan);
+    } else {
+      nblu = "QWBLU130";
+      ncyn = "QWCYN110";
+    }
+    BasicImageDisplay("QWNTBCK", UH_IMAGE_ID_BASE + 73, x, y);
+    BasicImageDisplay(nblu, UH_IMAGE_ID_BASE + 72, x, y);
+    BasicImageDisplay(ncyn, UH_IMAGE_ID_BASE + 70, x, y);
+  } else if (CheckActorInventory(cam, "UHMugshotNegaMan")) {
+    if (trans) {
+      ncyn = UH_MugshotIndexName("NGPUR", cyan);
+    } else {
+      // NegaMan_W / NEGAMAN_DYE purple (253→95)
+      ncyn = "NGPUR095";
+    }
+    BasicImageDisplay("NEGABCK", UH_IMAGE_ID_BASE + 73, x, y);
+    BasicImageDisplay(ncyn, UH_IMAGE_ID_BASE + 70, x, y);
+  } else if (CheckActorInventory(cam, "UHMugshotArcanist")) {
+    if (trans) {
+      // ARPD1=cyan(lightest), ARPD2=blue, ARPD3=black(darkest)
+      ncyn = UH_MugshotIndexName("ARPD1", black);
+      nblu = UH_MugshotIndexName("ARPD2", blue);
+      nblk = UH_MugshotIndexName("ARPD3", cyan);
+    } else {
+      ncyn = "ARPD1057";
+      nblu = "ARPD2060";
+      nblk = "ARPD3079";
+    }
+    BasicImageDisplay("ARCABCK", UH_IMAGE_ID_BASE + 73, x, y);
+    BasicImageDisplay(nblu, UH_IMAGE_ID_BASE + 72, x, y);
+    BasicImageDisplay(nblk, UH_IMAGE_ID_BASE + 71, x, y);
+    BasicImageDisplay(ncyn, UH_IMAGE_ID_BASE + 70, x, y);
+  }
+}
+
+function void DrawCrystrapSpyingHud(void) {
+  int spytid = 0;
+  int consoleplayer = ConsolePlayerNumber();
+  if (consoleplayer >= 0 && PlayerInGame(consoleplayer)) {
+    // DrawBar scripts run with the current camera as activator.  During
+    // Crystrap spying that is the target, so read the marker locally.
+    spytid = CheckActorInventory(consoleplayer + 1000, "CrystrapSpyingTID");
+  }
+
+  if (AssistDisplayBar_On() && spytid >= 1000 && spytid <= 1063) {
+    SetHudSize(320, 200, 0);
+    HudMessageBold(s:"Spying: ", n:spytid - 999;
+      HUDMSG_PLAIN, UH_CRYSTRAP_SPY_HUD_ID, CR_CYAN,
+      160.4, 4.1, 0.1, 1.0);
+  } else {
+    HudMessageBold(s:""; HUDMSG_PLAIN, UH_CRYSTRAP_SPY_HUD_ID,
+      CR_UNTRANSLATED, 0.0, 0.0, 0.01, 1.0);
+  }
+}
+
+script "uh_assist_General" (int cam) CLIENTSIDE {
+  SetActivator(cam);
+  // SetActivator(0,AAPTR_NULL);
+  Func_UH_BarFlags();
+  SetHudSize(320, 200, 0);
+  // AdjustedImageDisplayFlag("EMPTICON", "EMPTICON", UH_IMAGE_ID_BASE+100, UH_IMAGE_ID_BASE+101, 24.1, 64.1, 122.1, 184.1, HUDMSG_LAYER_UNDERHUD);
+  // Extra Life
+  if (CheckActorInventory(cam, "PlayerPropertyExtraLife")) {
+    AdjustedImageDisplayFlag("ARCBUD0X", "ARCBUD0X", UH_IMAGE_ID_BASE + 100, UH_IMAGE_ID_BASE + 101, 40.1, 22.1, 160.1, 169.1, HUDMSG_LAYER_UNDERHUD);
+    AdjustedDrawNumber("CMBHPFONT", "Green",
+                       CheckActorInventory(cam, "PlayerPropertyExtraLife"),
+                       UH_IMAGE_ID_BASE + 102, UH_IMAGE_ID_BASE + 103,
+                       47.1, 22.1,
+                       172.1, 169.1);
+  }
+  // Pharaoh 4MI Curse
+  if (CheckActorInventory(cam, "Pharaoh4MICurse_Reverse")) {
+    AdjustedImageDisplayFlag("CURSA0", "CURSA0", UH_IMAGE_ID_BASE + 104, UH_IMAGE_ID_BASE + 105, 31.1, 49.1, 125.1, 177.1, HUDMSG_LAYER_UNDERHUD);
+  }
+  if (CheckActorInventory(cam, "Pharaoh4MICurse_Hopping")) {
+    AdjustedImageDisplayFlag("CURSB0", "CURSB0", UH_IMAGE_ID_BASE + 104, UH_IMAGE_ID_BASE + 105, 31.1, 49.1, 125.1, 177.1, HUDMSG_LAYER_UNDERHUD);
+  }
+  if (CheckActorInventory(cam, "Pharaoh4MICurse_Fidget")) {
+    AdjustedImageDisplayFlag("CURSC0", "CURSC0", UH_IMAGE_ID_BASE + 104, UH_IMAGE_ID_BASE + 105, 31.1, 49.1, 125.1, 177.1, HUDMSG_LAYER_UNDERHUD);
+  }
+  if (CheckActorInventory(cam, "Pharaoh4MICurse_Darkness")) {
+    AdjustedImageDisplayFlag("CURSD0", "CURSD0", UH_IMAGE_ID_BASE + 104, UH_IMAGE_ID_BASE + 105, 31.1, 49.1, 125.1, 177.1, HUDMSG_LAYER_UNDERHUD);
+  }
+  if (CheckActorInventory(cam, "Pharaoh4MICurse_Unknown")) {
+    AdjustedImageDisplayFlag("CURSE0", "CURSE0", UH_IMAGE_ID_BASE + 104, UH_IMAGE_ID_BASE + 105, 31.1, 49.1, 125.1, 177.1, HUDMSG_LAYER_UNDERHUD);
+  }
+  if (CheckActorInventory(cam, "Pharaoh4MICurse_Roulette")) {
+    AdjustedImageDisplayFlag("CURSF0", "CURSF0", UH_IMAGE_ID_BASE + 104, UH_IMAGE_ID_BASE + 105, 31.1, 49.1, 125.1, 177.1, HUDMSG_LAYER_UNDERHUD);
+  }
+
+  // Class mugshots follow MugshotFlag (not AssistDisplayBar_On)
+  DrawUHClassMugshot(cam);
+
+  if (AssistDisplayBar_On()) {
+
+    if (CheckActorInventory(cam, "PowerDoubleDamageRune")) {BasicImageDisplay("strr[0", UH_IMAGE_ID_BASE + 50, 40.1, 1.1);}
+    if (CheckActorInventory(cam, "PowerDoubleFiringSpeedRune")) {BasicImageDisplay("ragr[0", UH_IMAGE_ID_BASE + 51, 47.1, 1.1);}  // 52
+    if (CheckActorInventory(cam, "PowerDrainRune")) {BasicImageDisplay("drar[0", UH_IMAGE_ID_BASE + 52, 57.1, 1.1);}  // 69
+    if (CheckActorInventory(cam, "PowerSpreadRune")) {BasicImageDisplay("sprr[0", UH_IMAGE_ID_BASE + 53, 68.1, 1.1);}  // 86
+    if (CheckActorInventory(cam, "PowerHalfDamageRune")) {BasicImageDisplay("resr[0", UH_IMAGE_ID_BASE + 54, 82.1, 1.1);}  // 94
+    if (CheckActorInventory(cam, "PowerRegenerationRune")) {BasicImageDisplay("regr[0", UH_IMAGE_ID_BASE + 55, 90.1, 1.1);}  // 104
+    if (CheckActorInventory(cam, "PowerProsperityRune")) {BasicImageDisplay("prsr[0", UH_IMAGE_ID_BASE + 56, 100.1, 1.1);}  // 120
+    if (CheckActorInventory(cam, "PowerReflectionRune")) {BasicImageDisplay("refr[0", UH_IMAGE_ID_BASE + 57, 108.1, 1.1);}  // 131
+    if (CheckActorInventory(cam, "PowerHighJumpRune")) {BasicImageDisplay("hijr[0", UH_IMAGE_ID_BASE + 58, 124.1, 1.1);}  // 140
+    if (CheckActorInventory(cam, "PowerSpeed25Rune")) {BasicImageDisplay("hasr[0", UH_IMAGE_ID_BASE + 59, 141.1, 1.1);}  // 155
+    if (CheckActorInventory(cam, "PowerEndlessAmmoRune")) {BasicImageDisplay("eamr[0", UH_IMAGE_ID_BASE + 60, 157.1, 1.1);}  // 161
+
+    if (CheckActorInventory(cam, "PowerTreeHuggerFlag")) {BasicImageDisplay("TREEHEAL", UH_IMAGE_ID_BASE + 63, 174.1, 2.1);}
+  }
+}
+

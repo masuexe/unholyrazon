@@ -1,0 +1,413 @@
+script "DrawBar_QwantMove" (int type) {
+  if (type < 0) {
+    type = 0;
+  }
+  if (type >= QWANT_TYPE_COUNT) {
+    type = QWANT_TYPE_NORMAL;
+  }
+
+  str wep = GetWeapon();
+  ResolveQwantFillAmmo(wep, type);
+  str ammo = uh_qwant_fill_ammo;
+  int max_var = uh_qwant_fill_max;
+  str name = StrParam(l:BuildQwantTagKey(wep));
+
+  DrawCustomBarString1(qwanttypebar[type], "BAREMPTY",
+                       qwanttypevar[type], "VAREMPTY",
+                       CheckInventory(ammo), max_var);
+  SetInventory("SBARAmmoOffset", 1);
+  DrawNormalAmmo();
+  // Pin mugshot before DrawBar2Color so MoveRelearnAmmo (138, 130) does not leak into the face.
+  if (CheckInventory("Qwant_W")) {
+    SetMugshotColor(QWANT_MUG_CYAN, QWANT_MUG_BLUE);
+  }
+  DrawBar2Color(QWANT_MOVE_BAR2_CYAN, QWANT_MOVE_BAR2_BLUE);
+  // Landscape: PKMNI 16px at (50,176)+Offset(8,0) → left edge 42; name box matches.
+  SetInventory("QwantAlignWepIcon", 1);
+  SetHudSize(320, 200, 0);
+  InitPkmnf7WidthTable();
+  DrawTextInPkmovBox(name, "PKMNFNT7", "Crayon4",
+    UH_IMAGE_ID_BASE - 4, UH_IMAGE_ID_BASE - 5,
+    UH_IMAGE_ID_BASE - 6, UH_IMAGE_ID_BASE - 7,
+    0.1, 80.1, 42.1, 158.1);
+}
+
+script "DrawBar_Qwant_W" (void) {
+  int ball = CheckInventory("QwantBallFlag");
+  DrawCustomBarString1("02__ZV00", "BAREMPTY", "02__ZH00", "VAREMPTY",
+                       CheckInventory("MyDestinyAmmo"), 28);
+  SetInventory("SBARAmmoOffset", 1);
+  DrawNormalAmmo();
+  SetMugshotColor(QWANT_MUG_CYAN, QWANT_MUG_BLUE);
+  DrawBar2Color(QWANT_MOVE_BAR2_CYAN, QWANT_MOVE_BAR2_BLUE);
+  SetInventory("QwantAlignWepIcon", 1);
+  SetHudSize(320, 200, 0);
+  InitPkmnf7WidthTable();
+  if (ball < 0) {
+    ball = 0;
+  }
+  if (ball > 38) {
+    ball = 38;
+  }
+  DrawTextInPkmovBox(qwant_ballname[ball], "PKMNFNT7", "Crayon4",
+    UH_IMAGE_ID_BASE - 4, UH_IMAGE_ID_BASE - 5,
+    UH_IMAGE_ID_BASE - 6, UH_IMAGE_ID_BASE - 7,
+    0.1, 80.1, 42.1, 158.1);
+}
+
+script "DrawBar_FlameWheelWep" (void) {
+  if (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
+    DrawCustomBarString1("03_2BAR", "NOBAR", "03_2VAR", "VNOBAR",
+                         CheckInventory("FlameWheelCharge"), 112);
+  }
+}
+
+script "uh_assist_CalmMind" (int cam) CLIENTSIDE {
+  if (AssistDisplayBar_On()) {
+    SetHudSize(320, 200, 0);
+    SetActivator(0, AAPTR_NULL);
+
+    int flag = CheckActorInventory(cam, "CalmMindFlag");
+    if (flag > 0) {
+      int pos = Get_And_Inc_AssistBarCount();
+      int x = Get_AssistDisplayBar_X(pos);
+      int y = Get_AssistDisplayBar_Y(pos);
+
+      BasicImageDisplay("C_A_01A", Get_And_Inc_AssistDisplayID(), x, y);
+      int timesec = flag;
+      timesec = timesec / 35 + (timesec % 35 > 0);
+      DrawBasicBarAndNumber("ASVS001A", "AS_VR_16",
+                            "ASHS001A", "AS_HR_16",
+                            x, y,
+                            Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(),
+                            ((flag * 8.0 / 350) + 0.5) >> 16,
+                            CheckActorInventory(cam, "AssistNumberFlag") > 0,
+                            timesec);
+    }
+  }
+}
+
+script "DrawBar_QwantShiny_W" (void) {
+  DrawCustomBarString1("02__ZV00", "BAREMPTY", "02__ZH00", "VAREMPTY",
+                       CheckInventory("MyDestinyAmmo"), 28);
+  SetInventory("SBARAmmoOffset", 1);
+  SetInventory("SBARUseAmmo1Disp", 1);
+  SetAmmoAmountAndCapacity("Ammo1Disp", CheckInventory("MyDestinyAmmo"), GetAmmoCapacity("MyDestinyAmmo"));
+  DrawNormalAmmo();
+}
+
+str uh_nega_fill_wep = "";
+str uh_nega_fill_ammo = "";
+int uh_nega_fill_max = 0;
+
+function void ResolveNegaManFillAmmo(str wep, int ammoid) {
+  if (uh_nega_fill_wep == wep && StrLen(uh_nega_fill_ammo) > 0) {
+    return;
+  }
+  uh_nega_fill_wep = wep;
+  uh_nega_fill_ammo = nega_mm_ammo[ammoid];
+  uh_nega_fill_max = 28;
+
+  int u = UniqueTID();
+  if (SpawnForced(StrParam(s:wep, s:"_NegaManBar"), 0, 0, 0, u, 0)) {
+    int custommax = ACS_NamedExecuteWithResult("core_GetActorArg", u, 2);
+    if (custommax > 0) {
+      str tag = GetActorProperty(u, APROP_Nametag);
+      int tagcap = 0;
+      if (StrLen(tag) > 0 && GetChar(tag, 0) != 36) {
+        tagcap = GetAmmoCapacity(tag);
+      }
+      if (tagcap > 0) {
+        uh_nega_fill_ammo = tag;
+        uh_nega_fill_max = tagcap;
+      }
+    }
+    Thing_Remove(u);
+  }
+}
+
+script "DrawBar_NegaManMove" (int ammoid, int cyan) {
+  if (ammoid < 0) {
+    ammoid = 0;
+  }
+  if (ammoid >= NEGA_MM_AMMO_COUNT) {
+    ammoid = 0;
+  }
+
+  str wep = GetWeapon();
+  ResolveNegaManFillAmmo(wep, ammoid);
+  DrawBarColorOwned(CheckInventory(uh_nega_fill_ammo), uh_nega_fill_max, cyan, NEGA_BAR_BLUE);
+  DrawCustomBarString2("02_A_BAR", "BAREMPTY", "02_A_VAR", "VAREMPTY",
+                       CheckInventory("NegaDuckAmmo"), 400);
+  SetInventory("SBARAmmoOffset", 2);
+  DrawSecondAmmo();
+}
+
+script "DrawBar_NegaMan_W" (void) {
+  // Bar uses body 192/198 (205/77); mugshot purple is NEGAMAN_DYE 253→95
+  SetMugshotColor(95, 77);
+  DrawBarColor(4, 204);
+  DrawCustomBarString2("02_A_BAR", "BAREMPTY", "02_B_VAR", "VAREMPTY",
+                       CheckInventory("NegaDuckAmmo"), 400);
+  SetInventory("SBARAmmoOffset", 2);
+  DrawSecondAmmo();
+}
+
+script "DrawBar_NegaTimeStopperWep" (void) {
+  DrawBarColor(239, 77);
+  DrawCustomBarStringLayer1("02_2EBAR", "NOBAR", "02_2EVAR", "VNOBAR",
+                            CheckInventory("NegaMM2_Flag"), 1, 1);
+  DrawCustomBarString2("02_A_BAR", "BAREMPTY", "02_A_VAR", "VAREMPTY",
+                       CheckInventory("NegaDuckAmmo"), 400);
+  SetInventory("SBARAmmoOffset", 2);
+  DrawSecondAmmo();
+}
+
+script "DrawBar_NegaTimeSlowWep" (void) {
+  if (CheckInventory("NegaTimeSlowCooldownFlag")) SetDarkenedBar();
+}
+
+script "DrawBar_NegaMagmaBazookaWep" (void) {
+  if (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
+    if (CheckInventory("WeaponCharge") >= 19) {
+      if (Timer() % 2 == 1) {
+        DrawBarColor(4, 77);
+      }
+    } else if (CheckInventory("WeaponCharge") >= 1) {
+      if (Timer() % 2 == 1) {
+        DrawBarColor(216, 77);
+      }
+    }
+  } else {
+    if (CheckInventory("WeaponCharge") >= 19) SetFlashingBar();
+  }
+}
+
+script "DrawBar_NegaManShiny_W" (void) {
+  DrawCustomBarString1("02_ASBAR", "BAREMPTY", "02_BSVAR", "VAREMPTY",
+                       CheckInventory("S_NegaDuckAmmo"), 200);
+  SetInventory("SBARAmmoOffset", 1);
+  SetInventory("SBARUseAmmo1Disp", 1);
+  SetAmmoAmountAndCapacity("Ammo1Disp", CheckInventory("S_NegaDuckAmmo"), GetAmmoCapacity("S_NegaDuckAmmo"));
+  DrawNormalAmmo();
+  str wepicon = "C_I_02B";
+  switch (CheckInventory("SNegaFlag")) {
+    case 1: wepicon = "THUNSI"; break;
+    case 2: wepicon = "FLASHSI"; break;
+    case 3: wepicon = "SNAKESI"; break;
+    case 4: wepicon = "SKLBSI"; break;
+    case 5: wepicon = "GRAVSI"; break;
+    case 6: wepicon = "FLMBSI"; break;
+    case 7: wepicon = "SCLASI"; break;
+    case 8: wepicon = "ICEWAVI"; break;
+    case 9: wepicon = "BLAKHOLI"; break;
+    case 10: wepicon = "CHILLI"; break;
+    case 11: wepicon = "LIGHTNI"; break;
+    case 12: wepicon = "BALLSI"; break;
+    case 13: wepicon = "GRABBI"; break;
+    case 14: wepicon = "TIMMI2"; break;
+    case 15: wepicon = "BUBBI"; break;
+    case 16: wepicon = "NEEDSI"; break;
+    case 17: wepicon = "RAINSI"; break;
+    case 18: wepicon = "NAPAI"; break;
+    case 19: wepicon = "YAMASI"; break;
+    case 20: wepicon = "WCOISI"; break;
+    case 21: wepicon = "FLSHBOMI"; break;
+    case 22: wepicon = "MAGMAI"; break;
+    case 23: wepicon = "BLAWI"; break;
+    case 24: wepicon = "IWALL"; break;
+    case 25: wepicon = "SCHSWI"; break;
+  }
+  SetHudSize(320, 200, 0);
+  AdjustedImageDisplay(wepicon, wepicon, UH_IMAGE_ID_BASE - 100, UH_IMAGE_ID_BASE - 101, 16.1, 64.1, 50.1, 184.1);
+}
+
+script "DrawBar_BusterMistress_W" (void) {
+  DrawBarColor(41, 3);
+  DrawCustomBarString1("04_F_BAR", "NOBAR", "04_F_VAR", "VNOBAR",
+                       CheckInventory("BusterMistressCloneFlag2"), 1);
+}
+
+script "DrawBar_BusterMistressShiny_W" (void) {
+  DrawBarColor(74, 3);
+  DrawCustomBarString1("04_F_BAR", "NOBAR", "04_F_VAR", "VNOBAR",
+                       CheckInventory("BusterMistressCloneFlag2"), 1);
+}
+
+script "DrawBar_LuckyLass_W" (void) {
+  DrawCustomBarString1("06_B_V77", "BAREMPTY", "06_B_H77", "VAREMPTY",
+                       CheckInventory("LuckyEnergyAmmo"), 400);
+  SetInventory("SBARAmmoOffset", 1);
+  DrawNormalAmmo();
+}
+script "DrawBar_LuckyLassShiny_W" (void) {
+  ACS_NamedExecuteWithResult("DrawBar_LuckyLass_W");
+}
+
+script "DrawBar_FrostBite_W" (void) {
+  DrawBarColor(196, 197);
+  DrawCustomBarString1("09_B_BAR", "NOBAR", "09_B_VAR", "VNOBAR",
+                       CheckInventory("FrostBiteFlag"), 28);
+}
+script "DrawBar_FrostBiteShiny_W" (void) {
+  DrawBarColor(220, 46);
+  DrawCustomBarString1("09_BSBAR", "NOBAR", "09_BSVAR", "VNOBAR",
+                       CheckInventory("FrostBiteFlag"), 28);
+}
+
+script "DrawBar_Igniter_W" (void) {
+  DrawBarColor(220, 46);
+  DrawCustomBarString1("10_B_BAR", "NOBAR", "10_B_VAR", "VNOBAR",
+                       CheckInventory("IgniterFlag"), 28);
+}
+script "DrawBar_IgniterShiny_W" (void) {
+  DrawBarColor(196, 197);
+  DrawCustomBarString1("10_BSBAR", "NOBAR", "10_BSVAR", "VNOBAR",
+                       CheckInventory("IgniterFlag"), 28);
+}
+
+script "DrawBar_Arcanist_W" (void) {
+  DrawBarColor(250, 253);
+  SetHudSize(320, 200, 0);
+  switch (CheckInventory("ArcanistCycle_F")) {
+    case 0:
+      AdjustedImageDisplay("C_I_12E", "C_I_12E", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 1:
+      AdjustedImageDisplay("C_I_12F", "C_I_12F", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 2:
+      AdjustedImageDisplay("C_I_12G", "C_I_12G", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 3:
+      AdjustedImageDisplay("C_I_12H", "C_I_12H", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+  }
+}
+script "DrawBar_Arcanist_W2" (void) {
+  DrawBarColor(250, 253);
+  SetHudSize(320, 200, 0);
+  switch (CheckInventory("ArcanistCycle_F")) {
+    case 0:
+      AdjustedImageDisplay("C_I_12I", "C_I_12I", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 1:
+      AdjustedImageDisplay("C_I_12J", "C_I_12J", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 2:
+      AdjustedImageDisplay("C_I_12K", "C_I_12K", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 3:
+      AdjustedImageDisplay("C_I_12L", "C_I_12L", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+  }
+}
+script "DrawBar_Arcanist_W3" (void) {
+  DrawBarColor(250, 253);
+  SetHudSize(320, 200, 0);
+  switch (CheckInventory("ArcanistCycle_F")) {
+    case 0:
+      AdjustedImageDisplay("C_I_12M", "C_I_12M", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 1:
+      AdjustedImageDisplay("C_I_12N", "C_I_12N", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 2:
+      AdjustedImageDisplay("C_I_12O", "C_I_12O", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 3:
+      AdjustedImageDisplay("C_I_12P", "C_I_12P", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+  }
+}
+script "DrawBar_Arcanist_W4" (void) {
+  DrawBarColor(250, 253);
+  SetHudSize(320, 200, 0);
+  switch (CheckInventory("ArcanistCycle_F")) {
+    case 0:
+      AdjustedImageDisplay("C_I_12Q", "C_I_12Q", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 1:
+      AdjustedImageDisplay("C_I_12R", "C_I_12R", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 2:
+      AdjustedImageDisplay("C_I_12S", "C_I_12S", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 3:
+      AdjustedImageDisplay("C_I_12T", "C_I_12T", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+  }
+}
+script "DrawBar_ArcanistShiny_W" (void) {
+  DrawBarColor(79, 6);
+  SetHudSize(320, 200, 0);
+  switch (CheckInventory("ArcanistCycle_F")) {
+    case 0:
+      AdjustedImageDisplay("C_I_12E", "C_I_12E", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 1:
+      AdjustedImageDisplay("C_I_12F", "C_I_12F", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 2:
+      AdjustedImageDisplay("C_I_12G", "C_I_12G", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 3:
+      AdjustedImageDisplay("C_I_12H", "C_I_12H", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+  }
+}
+script "DrawBar_ArcanistShiny_W2" (void) {
+  DrawBarColor(79, 6);
+  SetHudSize(320, 200, 0);
+  switch (CheckInventory("ArcanistCycle_F")) {
+    case 0:
+      AdjustedImageDisplay("C_I_12I", "C_I_12I", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 1:
+      AdjustedImageDisplay("C_I_12J", "C_I_12J", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 2:
+      AdjustedImageDisplay("C_I_12K", "C_I_12K", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 3:
+      AdjustedImageDisplay("C_I_12L", "C_I_12L", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+  }
+}
+script "DrawBar_ArcanistShiny_W3" (void) {
+  DrawBarColor(79, 6);
+  SetHudSize(320, 200, 0);
+  switch (CheckInventory("ArcanistCycle_F")) {
+    case 0:
+      AdjustedImageDisplay("C_I_12M", "C_I_12M", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 1:
+      AdjustedImageDisplay("C_I_12N", "C_I_12N", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 2:
+      AdjustedImageDisplay("C_I_12O", "C_I_12O", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 3:
+      AdjustedImageDisplay("C_I_12P", "C_I_12P", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+  }
+}
+script "DrawBar_ArcanistShiny_W4" (void) {
+  DrawBarColor(79, 6);
+  SetHudSize(320, 200, 0);
+  switch (CheckInventory("ArcanistCycle_F")) {
+    case 0:
+      AdjustedImageDisplay("C_I_12Q", "C_I_12Q", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 1:
+      AdjustedImageDisplay("C_I_12R", "C_I_12R", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 2:
+      AdjustedImageDisplay("C_I_12S", "C_I_12S", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+    case 3:
+      AdjustedImageDisplay("C_I_12T", "C_I_12T", UH_IMAGE_ID_BASE, UH_IMAGE_ID_BASE - 1, 0.1, 42.1, 98.1, 165.1);
+      break;
+  }
+}
+

@@ -1,0 +1,175 @@
+// ============================================================================
+// Shiny move-weapon runtime (dispatchers + return). Weapon states on clients
+// get 0 from non-CLIENTSIDE scripts; the server's GiveInventory/SetWeapon are
+// synced, so a handled roll self-corrects within a tick or two.
+// ============================================================================
+
+// Team-color dyes (must match UH_COLORS.acs / ConstIntList_Ucolors.dec).
+#define UH_MOVE_DYE_MEGA 30000
+#define UH_MOVE_DYE_QWANT 30001
+#define UH_MOVE_DYE_NEGA 30002
+#define UH_MOVE_DYE_DECOY 20050
+
+// Per-player dispatch records (indexed by PlayerNumber; -1 = not a player).
+str uh_movereturn[64];
+str uh_movecurrent[64];
+int uh_negachargelvl[64];
+int uh_shinymegawhich[64];
+int uh_decoywhich[64];
+
+// QwantShiny AltFire: flat weighted roll of the ACS table (vanilla + addon).
+// 1 = move weapon selected; 0 = empty table / failure.
+script "uh_QwantShinyMoveRoll" (void) {
+	int pn = PlayerNumber();
+	int total;
+	int roll;
+	int acc;
+	int i;
+	int pick;
+	str wep;
+
+	if (pn < 0 || uh_shinyqwantmovecount <= 0) {
+		SetResultValue(0);
+		terminate;
+	}
+
+	total = 0;
+	for (i = 0; i < uh_shinyqwantmovecount; i++)
+		total += uh_shinyqwantmoveweight[i];
+	if (total <= 0) {
+		SetResultValue(0);
+		terminate;
+	}
+
+	roll = random(0, total - 1);
+	acc = 0;
+	pick = -1;
+	for (i = 0; i < uh_shinyqwantmovecount; i++) {
+		acc += uh_shinyqwantmoveweight[i];
+		if (roll < acc) {
+			pick = i;
+			break;
+		}
+	}
+	if (pick < 0) {
+		SetResultValue(0);
+		terminate;
+	}
+
+	wep = uh_shinyqwantmovewep[pick];
+	uh_movereturn[pn] = GetWeapon();
+	uh_movecurrent[pn] = wep;
+	uh_negachargelvl[pn] = 0;
+	uh_decoywhich[pn] = 0;
+	SetInventory("UH_MoveHud_F", 1);
+	GiveInventory("NoWeaponSwitchSound", 1);
+	GiveInventory(wep, 1);
+	SetWeapon(wep);
+	SetResultValue(1);
+}
+
+// Legacy SetWeapon dispatch — unused; held cycle fires in place.
+script "uh_ShinyNegaCustomFire" (int lvl) {
+	SetResultValue(0);
+}
+
+// Full-charge end: Give next cycle wep (or buster), SilentSelect, Take current.
+// SNegaFlag stays as HUD sync only.
+script "uh_ShinyNegaAdvanceHeld" (void) {
+	int pn = PlayerNumber();
+	int slot;
+	int next;
+	int waits;
+	str old;
+	str neww;
+
+	if (pn < 0)
+		terminate;
+
+	waits = 0;
+	while (StrCmp(uh_shinynegaslotwep[1][0], "") == 0 && waits < 35) {
+		delay(1);
+		waits++;
+	}
+
+	slot = CheckInventory("SNegaFlag");
+	old = GetWeapon();
+	if (StrICmp(old, "NegaManShiny_W") == 0)
+		slot = 0;
+	else if (StrCmp(uh_negaheld[pn], "") != 0)
+		old = uh_negaheld[pn];
+
+	next = UH_ShinyNegaNextSlot(slot);
+
+	GiveInventory("NoWeaponSwitchSound", 1);
+	GiveInventory("UH_SilentSelect_F", 1);
+
+	if (next <= 0) {
+		neww = "NegaManShiny_W";
+		SetInventory("SNegaFlag", 0);
+	}
+	else {
+		neww = GetShinyNegaSlotWep(next, 1);
+		if (StrCmp(neww, "") == 0) {
+			neww = "NegaManShiny_W";
+			SetInventory("SNegaFlag", 0);
+			next = 0;
+		}
+		else
+			SetInventory("SNegaFlag", next);
+	}
+
+	GiveInventory(neww, 1);
+	SetWeapon(neww);
+	if (StrCmp(old, "") != 0 && StrICmp(old, neww) != 0)
+		TakeInventory(old, 1);
+	uh_negaheld[pn] = neww;
+	uh_negachargelvl[pn] = 0;
+	SetInventory("UH_MoveHud_F", 0);
+	TakeInventory("WeaponCharge", 999);
+}
+
+// For the move weapon's Select: which charge level launched it (1..3, 0 none).
+script "uh_ShinyNegaGetChargeLevel" (void) {
+	int pn = PlayerNumber();
+	SetResultValue(pn >= 0? uh_negachargelvl[pn]:0);
+}
+
+// Gate for docs / rare DECORATE checks: 1 = addon slots 26..33 present.
+script "uh_HasCustomNegaSlots" (void) {
+	SetResultValue(HasCustomNegaSlots());
+}
+
+function str UH_CopyParentFromHud(void) {
+	int hud = CheckInventory("UH_MoveHud_F");
+	if (hud == 1)
+		return "QwantShiny_W";
+	if (hud == 2)
+		return "NegaManShiny_W";
+	if (hud == 3)
+		return "DecoyBot_W";
+	if (hud == 4)
+		return "DecoyBot_W2";
+	if (hud == 5)
+		return "DecoyBot_W3";
+	return "";
+}
+
+// Client prediction: uh_ShinyMoveReturn is server-only, so SetWeapon never
+// runs locally. Without a pending parent, Deselect/A_Lower re-raises the copy
+// (6H50 A); a TNT1 wait holds the copy forever (gun vanishes). Set pending
+// here so A_Lower brings up the parent.
+script "uh_ShinyMoveReturn_cs" (void) CLIENTSIDE {
+	int pn = PlayerNumber();
+	int cons = ConsolePlayerNumber();
+	str ret;
+	if (cons >= 0 && pn != cons)
+		terminate;
+	ret = UH_CopyParentFromHud();
+	if (StrCmp(ret, "") == 0)
+		terminate;
+	GiveInventory("NoWeaponSwitchSound", 1);
+	GiveInventory("UH_SilentSelect_F", 1);
+	SetWeapon(ret);
+}
+

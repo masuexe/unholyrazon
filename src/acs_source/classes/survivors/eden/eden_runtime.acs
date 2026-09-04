@@ -1,0 +1,1128 @@
+// Eden body-color translations; keep these in sync with UH_COLORS and
+// ConstIntList_Ucolors.dec.  Formerly in time_stop.acs.
+#define EDEN_DYE 20060
+#define EDEN_SDYE 30060
+#define EDEN_BRIMSTONE_DYE 20062
+#define EDEN_IPECAC_DYE 20063
+#define EDEN_ANTIGRAVITY_DYE 20064
+
+#define EDEN_FORM_NONE 0
+#define EDEN_FORM_DEVIL 1
+#define EDEN_FORM_ANGEL 2
+
+// Void: consume all DefineUnholyItem except coins → random Eden attrs (razon3 rz_VoidConsuming).
+function int VoidConsumeActor(str actor) {
+  int count = CheckInventory(actor);
+  if (count <= 0)
+    return 0;
+  if (StrICmp(actor, "DLC_CoinItem") == 0)
+    return 0;
+  if (StrCmp(actor, "SuperGUHUItem") == 0 && CheckInventory("SuperGuhuDoomFlag"))
+    count--;
+  if (count <= 0)
+    return 0;
+  TakeInventory(actor, count);
+  return count;
+}
+
+script "rz_VoidConsuming" (void) {
+  int itemcount;
+  int i;
+  int id;
+  int slot;
+  int plus;
+  int attrplus[6];
+
+  itemcount = 0;
+  for (i = 0; i < 6; i++)
+    attrplus[i] = 0;
+
+  for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
+    if (uh_itemvanilladefined[id] == 0)
+      continue;
+    itemcount += VoidConsumeActor(uh_itemvanillastr[id][UHITEM_STR_ACTOR]);
+  }
+  for (i = 0; i < uh_itemcustomcount; i++)
+    itemcount += VoidConsumeActor(uh_itemcustomstr[i][UHITEM_STR_ACTOR]);
+
+  if (itemcount <= 0)
+    terminate;
+
+  PlaySound(0, "Isaac/voidconsumed");
+
+  for (i = 0; i < itemcount * 2; i++) {
+    slot = random(0, 5);
+    switch (slot) {
+      case 0: plus = 2; break;
+      case 1: plus = 1; break;
+      case 2: plus = 5; break;
+      case 3: plus = 20; break;
+      case 4: plus = 10; break;
+      case 5: plus = 10; break;
+      default: plus = 0; break;
+    }
+    attrplus[slot] += plus;
+  }
+  for (i = 0; i < 6; i++)
+    UpdateEdenAttr(i, attrplus[i], false, true);
+}
+
+// Cap must match UHEDENISAAC.acs.
+#define EDEN_ISAAC_MAIN_CAP 32
+
+int eden_normal_main_idx[EDEN_ISAAC_MAIN_CAP];
+int eden_normal_main_count = 0;
+
+#define EDEN_MAIN_COUNT_BUCKETS 5
+// Index = item count 0..4; bell curve — peaks at 2/3, tails at 0/4.
+int eden_main_count_weight[EDEN_MAIN_COUNT_BUCKETS] = {10, 20, 30, 30, 10};
+
+function void EdenClearMainSlots(void) {
+  SetInventory("EdenItemSlot1", 0);
+  SetInventory("EdenItemSlot2", 0);
+  SetInventory("EdenItemSlot3", 0);
+  SetInventory("EdenItemSlot4", 0);
+}
+
+function int EdenRollMainItemCount(int poolsize) {
+  int maxcount = min(4, poolsize);
+  int bucketcount = maxcount + 1;
+  int total;
+  int roll;
+  int acc;
+  int i;
+
+  if (bucketcount <= 0) {
+    return 0;
+  }
+
+  total = 0;
+  for (i = 0; i < bucketcount; i++) {
+    total += eden_main_count_weight[i];
+  }
+
+  roll = Random(0, total - 1);
+  acc = 0;
+  for (i = 0; i < bucketcount; i++) {
+    acc += eden_main_count_weight[i];
+    if (roll < acc) {
+      return i;
+    }
+  }
+  return maxcount;
+}
+
+function int EdenFindEquippedAlt(void) {
+  int i;
+  for (i = 0; i < edenisaac_alt_count; i++) {
+    if (CheckInventory(StrParam(s:"C", i:edenisaac_alt_id[i], s:"Flag"))) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+script "rz_EdenAltAmmoCost" (void) {
+  int i = EdenFindEquippedAlt();
+  int cost = 300;
+  if (i >= 0) {
+    cost = edenisaac_alt_ammo[i];
+  }
+  if (CheckInventory("PowerEndlessAmmoRune")) {
+    cost = cost / 2;
+  }
+  SetResultValue(cost);
+}
+
+// C042 can only hold two Bob bombs.  This gate is checked before Eden_W
+// spends active charge, so pressing M2 at full stock is a true no-op.
+script "rz_EdenCanUseAlt" (void) {
+  int i = EdenFindEquippedAlt();
+  if (i >= 0 && edenisaac_alt_id[i] == 42 && CheckInventory("BobHeadFlag") >= 2) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (i >= 0 && edenisaac_alt_id[i] == 396 &&
+      !ACS_NamedExecuteWithResult("core_CheckFooting")) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
+}
+
+function int EdenNormalizeAngle(int value) {
+  while (value < 0) {
+    value += 1.0;
+  }
+  while (value > 1.0) {
+    value -= 1.0;
+  }
+  return value;
+}
+
+// C396 Ventricle Razor teleport. The calling portal targets the player who
+// entered its radius; preserve the source momentum while rotating it by the
+// difference between the two portal angles.
+script "rz_RazorTeleport" (int totid, int thrustspeed) {
+  int momx;
+  int momy;
+  int nmomx;
+  int nmomy;
+  int oldangle;
+  int newangle;
+  int deltaangle;
+  int momangle;
+
+  SetActivatorToTarget(0);
+
+  momx = GetActorVelX(0);
+  momy = GetActorVelY(0);
+  oldangle = GetActorAngle(0);
+  newangle = GetActorAngle(totid);
+  momangle = VectorAngle(momx, momy);
+
+  deltaangle = EdenNormalizeAngle(oldangle - newangle);
+  momangle = EdenNormalizeAngle(momangle - deltaangle);
+
+  nmomx = FixedMul(cos(momangle), abs(momx)) + FixedMul(cos(momangle), abs(momy));
+  nmomy = FixedMul(sin(momangle), abs(momy)) + FixedMul(sin(momangle), abs(momx));
+
+  TakeInventory("JumpCancler", 1);
+  SetActorState(totid, "End");
+  SetActorPosition(0, GetActorX(totid), GetActorY(totid), GetActorZ(totid), 0);
+  SetActorVelocity(0, nmomx, nmomy, 0, false, false);
+  SetActorAngle(0, GetActorAngle(totid));
+  ThrustThingZ(0, thrustspeed, 0, 0);
+}
+
+// Server-side lifetime watcher for C042's hand-bomb warpers.  The base game
+// uses the same pattern for Deep Digger so the visual actor is removed even
+// when inventory state changes on the server or the owner dies/disconnects.
+script "rz_EdenBobHeadWarper" (int left) {
+  int player = ACS_NamedExecuteWithResult("core_gettarget", 0);
+
+  while (GetActorProperty(player, APROP_HEALTH) > 0 &&
+         CheckActorInventory(player, "BobHeadFlag") > 0 &&
+         (CheckActorInventory(player, "BobHeadFlag") >= 2 ||
+          (left == 0 && CheckActorInventory(player, "BobHeadLeft_F") == 0) ||
+          (left == 1 && CheckActorInventory(player, "BobHeadLeft_F") > 0))) {
+    Delay(1);
+  }
+
+  Thing_Remove(0);
+}
+
+script "rz_EdenUseAlt" (void) {
+  int i;
+  int hasbattery;
+
+  i = EdenFindEquippedAlt();
+  if (i < 0) {
+    terminate;
+  }
+
+  // Eden_W has already paid the active item's one use cost. Car Battery
+  // copies the effect, not the cost. If the first activation removes the
+  // battery, the second activation is skipped as in the original behavior.
+  hasbattery = CheckInventory("C356Flag");
+  GiveInventory(edenisaac_alt_pickup[i], 1);
+  if (hasbattery && CheckInventory("C356Flag")) {
+    GiveInventory(edenisaac_alt_pickup[i], 1);
+  }
+}
+
+// Standard Zandronum damage-event hook. Addons can compose with this by
+// declaring their own uniquely named EVENT script; no ClassPain override is
+// needed. The event activator is the damage target, and this script never
+// changes the shared damage result.
+script "rz_EdenPiggyBankDamage" (int evt, int dmg, int dmgtype) EVENT {
+  int effectivedamage;
+  if (evt != GAMEEVENT_ACTOR_DAMAGED || dmg <= 0)
+    terminate;
+  if (PlayerNumber() < 0 || !CheckInventory("C227Flag") || CheckInventory("IsDead"))
+    terminate;
+
+  // GAMEEVENT_ACTOR_DAMAGED runs after armor. Read the current shared result
+  // so earlier shield/damage EVENT scripts can cancel or modify the hit.
+  effectivedamage = GetEventResult();
+  if (effectivedamage <= 0)
+    terminate;
+  // razon3's ClassPain implementation did not run on lethal hits. Preserve
+  // that LMS-safe behavior, while allowing a Buddha-protected hit to proc.
+  if (!CheckInventory("PlayerPropertyBuddha") &&
+      GetActorProperty(0, APROP_Health) <= effectivedamage)
+    terminate;
+
+  GiveInventory("EdenPiggyBankHit_P", 1);
+}
+
+function bool EdenDamageTypeIsBomb(str dmgtype) {
+  int i;
+  int len = StrLen(dmgtype);
+  for (i = 0; i <= len - 4; i++) {
+    if (StrICmp(StrMid(dmgtype, i, 4), "Bomb") == 0)
+      return true;
+  }
+  return false;
+}
+
+// Curse of the Tower composes with other damage EVENT hooks and never changes
+// their shared damage result. Bomb damage is excluded so its own Troll Bombs
+// cannot recursively create another wave.
+script "rz_EdenCurseTowerDamage" (int evt, int dmg, int dmgtype) EVENT {
+  int effectivedamage;
+  if (evt != GAMEEVENT_ACTOR_DAMAGED || dmg <= 0)
+    terminate;
+  if (PlayerNumber() < 0 || !CheckInventory("C371Flag") || CheckInventory("IsDead"))
+    terminate;
+  if (CheckInventory("PowerC371Cooldown") || EdenDamageTypeIsBomb(dmgtype))
+    terminate;
+
+  effectivedamage = GetEventResult();
+  if (effectivedamage <= 0)
+    terminate;
+  if (!CheckInventory("PlayerPropertyBuddha") &&
+      GetActorProperty(0, APROP_Health) <= effectivedamage)
+    terminate;
+
+  GiveInventory("EdenCurseTowerHit_P", 1);
+  GiveInventory("PowerC371Cooldown", 1);
+}
+
+function bool EdenDamoclesSelfDmg(str dmgtype) {
+  if (!StrICmp(dmgtype, "GiveUpHope") ||
+      !StrICmp(dmgtype, "SuperGiveUpHope") ||
+      !StrICmp(dmgtype, "FortuneCoin") ||
+      !StrICmp(dmgtype, "OnFireB") ||
+      !StrICmp(dmgtype, "Damocles"))
+    return true;
+
+  if (IsPointerEqual(AAPTR_DAMAGE_TARGET, AAPTR_DAMAGE_SOURCE))
+    return true;
+
+  // Eden's own bomb actors can be ownerless during A_Explode, so the
+  // source==target check above is not sufficient for C371/Anarchist bombs.
+  if (SetActivator(0, AAPTR_DAMAGE_INFLICTOR)) {
+    if (CheckActorClass(0, "EdenBomb")) {
+      SetActivator(0, AAPTR_DAMAGE_TARGET);
+      return true;
+    }
+    SetActivator(0, AAPTR_DAMAGE_TARGET);
+  }
+  return false;
+}
+
+// C577 keeps razon3's escalating risk, but uses hit count rather than lost
+// health: the first hit gives 4/20000 per check and every later hit adds one
+// unit (a 25% increase over the first-hit risk).
+script "rz_EdenDamoclesDamage" (int evt, int dmg, int dmgtype) EVENT {
+  int effectivedamage;
+  int risk;
+
+  if (evt != GAMEEVENT_ACTOR_DAMAGED || dmg <= 0)
+    terminate;
+  if (PlayerNumber() < 0 || !CheckInventory("C577Flag") ||
+      !CheckInventory("EdenDamoclesActive_F") || CheckInventory("IsDead"))
+    terminate;
+  if (GetActorProperty(0, APROP_Invulnerable))
+    terminate;
+  if (EdenDamoclesSelfDmg(dmgtype))
+    terminate;
+
+  effectivedamage = GetEventResult();
+  if (effectivedamage <= 0)
+    terminate;
+  if (!CheckInventory("PlayerPropertyBuddha") &&
+      GetActorProperty(0, APROP_Health) <= effectivedamage)
+    terminate;
+
+  risk = CheckInventory("EdenDamoclesRisk");
+  if (risk <= 0)
+    GiveInventory("EdenDamoclesRisk", 4);
+  else
+    GiveInventory("EdenDamoclesRisk", 1);
+}
+
+// Called by the server-side watcher while its target is the Eden player.
+script "rz_EdenDamoclesShouldFall" (void) {
+  int risk;
+  if (!SetActivator(0, AAPTR_TARGET)) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (PlayerNumber() < 0 || CheckInventory("IsDead") ||
+      !CheckInventory("EdenDamoclesActive_F")) {
+    SetResultValue(0);
+    terminate;
+  }
+  risk = CheckInventory("EdenDamoclesRisk");
+  if (risk > 0 && Random(1, 20000) <= risk)
+    SetResultValue(1);
+  else
+    SetResultValue(0);
+}
+
+script "rz_EdenDamoclesKill" (void) {
+  if (PlayerNumber() < 0 || CheckInventory("IsDead") ||
+      GetActorProperty(0, APROP_Health) <= 0)
+    terminate;
+  Thing_Damage2(0, 30000, "Damocles");
+}
+
+function void EdenApplyIpecacStats(void) {
+  if (!CheckInventory("C149Flag"))
+    return;
+  GiveInventory("EdenDamageAttr", 70);
+  GiveInventory("EdenTearsAttr", 12);
+  SyncEdenTears(CONVERTTEARS_FIRE2TEARS);
+  TakeInventory("EdenShotSpeedAttr", CheckInventory("EdenShotSpeedAttr") / 5);
+}
+
+function void EdenApplyPiggyBankPickup(void) {
+  if (!CheckInventory("C227Flag"))
+    return;
+  if (CheckInventory("EdenPiggyBankPickup_F"))
+    return;
+  GiveInventory("DLC_CoinItem", 5);
+  GiveInventory("EdenPiggyBankPickup_F", 1);
+}
+
+function void EdenApplyGodheadStats(void) {
+  if (!CheckInventory("C331Flag"))
+    return;
+  GiveInventory("EdenDamageAttr", 30);
+  GiveInventory("EdenTearsAttr", 5);
+  SyncEdenTears(CONVERTTEARS_FIRE2TEARS);
+  TakeInventory("EdenShotSpeedAttr", 4);
+}
+
+function void EdenApplyDamocles(void) {
+  if (!CheckInventory("C577Flag") ||
+      CheckInventory("EdenDamoclesActive_F") ||
+      CheckInventory("EdenDamoclesSpent_F"))
+    return;
+  GiveInventory("EdenDamoclesStart_P", 1);
+}
+
+function void EdenApplyAntiGravityStats(void) {
+  int tears;
+  if (!CheckInventory("C222Flag"))
+    return;
+  if (CheckInventory("EdenAntiGravStats_F"))
+    return;
+  // EdenTearsAttr is tear-cooldown ticks: lower = faster (Isaac -2 tear delay).
+  tears = CheckInventory("EdenTearsAttr");
+  if (tears > 2)
+    TakeInventory("EdenTearsAttr", 2);
+  else
+    SetInventory("EdenTearsAttr", 1);
+  SyncEdenTears(CONVERTTEARS_FIRE2TEARS);
+  GiveInventory("EdenAntiGravStats_F", 1);
+}
+
+function int EdenGetColorDye(void) {
+  // Main-item color priority: Brimstone > Ipecac > Anti-Gravity > default.
+  if (CheckInventory("C118Flag"))
+    return EDEN_BRIMSTONE_DYE;
+  if (CheckInventory("C149Flag"))
+    return EDEN_IPECAC_DYE;
+  if (CheckInventory("C222Flag"))
+    return EDEN_ANTIGRAVITY_DYE;
+  if (CheckActorClass(0, "EdenShiny"))
+    return EDEN_SDYE;
+  return EDEN_DYE;
+}
+
+function void EdenApplyColor(void) {
+  // The Eden player has NoTeamTranslation, so this dye is applied directly.
+  ACS_NamedExecuteWithResult("core_weaponcolor", EdenGetColorDye());
+}
+
+function void EdenApplyCSectionSkin(void) {
+  int pn;
+  if (!CheckInventory("C678Flag"))
+    return;
+  pn = PlayerNumber();
+  if (pn < 0)
+    return;
+  SetPlayerSkin(pn, "Eden-CSection", 1);
+}
+
+function void EdenApplyMainPassives(void) {
+  EdenApplyIpecacStats();
+  EdenApplyGodheadStats();
+  EdenApplyDamocles();
+  EdenApplyPiggyBankPickup();
+  EdenApplyAntiGravityStats();
+  EdenApplyCSectionSkin();
+}
+
+script "rz_EdenApplyCSectionSkin" (void) {
+  EdenApplyCSectionSkin();
+}
+
+function void EdenClearMorphState(void) {
+  int i;
+  str flag;
+
+  EdenEnsureVanillaAltRegistered();
+  EdenEnsureVanillaMainRegistered();
+
+  for (i = 0; i < edenisaac_main_count; i++) {
+    flag = StrParam(s:"C", i:edenisaac_main_id[i], s:"Flag");
+    TakeInventory(flag, 1);
+  }
+  for (i = 0; i < edenisaac_alt_count; i++) {
+    flag = StrParam(s:"C", i:edenisaac_alt_id[i], s:"Flag");
+    TakeInventory(flag, 1);
+  }
+
+  EdenClearMainSlots();
+  TakeInventory("EdenInitFlag", 1);
+  TakeInventory("EdenMainRolled_F", 1);
+  TakeInventory("EdenShinyAngel_F", 1);
+  TakeInventory("EdenShinyDevil_F", 1);
+  TakeInventory("EdenAntiGravStats_F", 1);
+  TakeInventory("EdenPiggyBankPickup_F", 1);
+  TakeInventory("EdenDamoclesActive_F", 1);
+  TakeInventory("EdenDamoclesSpent_F", 1);
+  SetInventory("EdenDamoclesRisk", 0);
+  TakeInventory("BobHeadFlag", 2);
+  TakeInventory("BobHeadLeft_F", 1);
+  TakeInventory("D8InitFlag", 1);
+  TakeInventory("Eden118_W", 1);
+  TakeInventory("Eden678_W", 1);
+}
+
+function void EdenRollBaseStats(int shiny) {
+  int health;
+  int height;
+  int height_hud;
+  int speed;
+  int speed_hud;
+  int firerate;
+  int tears_hud;
+  int damage;
+  int range;
+  int shotspeed;
+  int luck;
+
+  if (shiny) {
+    health = Random(2000, 3000);
+    damage = Random(75, 300);
+  }
+  else {
+    health = Random(650, 2000);
+    damage = Random(50, 200);
+  }
+  height = Random(10.0, 17.5);
+  height_hud = RoundFixedToInt(height);
+  speed = Random(0.5, 1.5);
+  speed_hud = RoundFixedToInt(speed * 10);
+  firerate = Random(2, 12);
+  tears_hud = ConvertTears(firerate, 0);
+  range = Random(10, 60);
+  shotspeed = Random(15, 55);
+  luck = Random(0, 16);
+
+  SetActorProperty(0, APROP_Health, health);
+  SetActorProperty(0, APROP_SpawnHealth, health);
+  SetActorProperty(0, APROP_Speed, speed);
+  SetActorProperty(0, APROP_JumpZ, height);
+
+  SetInventory("EdenMaxHealthAttr", health);
+  SetInventory("EdenSpeedAttr", speed_hud);
+  SetInventory("EdenHeightAttr", height_hud);
+  SetInventory("EdenTearsAttr", firerate);
+  SetInventory("EdenTearsHUDAttr", tears_hud);
+  SetInventory("EdenDamageAttr", damage);
+  SetInventory("EdenRangeAttr", range);
+  SetInventory("EdenShotSpeedAttr", shotspeed);
+  SetInventory("EdenLuckAttr", luck);
+}
+
+function void EdenRebuildNormalMainPool(void) {
+  int count = 0;
+  int i;
+
+  for (i = 0; i < edenisaac_main_count; i++) {
+    if (edenisaac_main_form[i] == EDEN_FORM_NONE) {
+      eden_normal_main_idx[count] = i;
+      count++;
+    }
+  }
+  eden_normal_main_count = count;
+}
+
+function void EdenRollMainItemsShiny(void) {
+  int poolsize = edenisaac_main_count;
+  int pickcount = EdenRollMainItemCount(poolsize);
+  int normal_idx[EDEN_ISAAC_MAIN_CAP];
+  int normal_count = 0;
+  int rolled_ids[4];
+  int rolled_count = 0;
+  int isangel;
+  int forced_id;
+  int i;
+  int j;
+  int pick;
+  int total;
+  int roll;
+  int acc;
+  int id;
+  str flag;
+
+  EdenClearMainSlots();
+  TakeInventory("EdenShinyAngel_F", 1);
+  TakeInventory("EdenShinyDevil_F", 1);
+
+  if (pickcount < 1) {
+    pickcount = 1;
+  }
+
+  isangel = Random(0, 1);
+  if (isangel) {
+    GiveInventory("EdenShinyAngel_F", 1);
+    forced_id = 331;
+  }
+  else {
+    GiveInventory("EdenShinyDevil_F", 1);
+    forced_id = 118;
+  }
+
+  EdenRebuildNormalMainPool();
+  normal_count = eden_normal_main_count;
+  for (i = 0; i < normal_count; i++) {
+    normal_idx[i] = eden_normal_main_idx[i];
+  }
+
+  rolled_ids[0] = forced_id;
+  rolled_count = 1;
+
+  for (i = 1; i < pickcount; i++) {
+    if (normal_count <= 0) {
+      break;
+    }
+    total = 0;
+    for (j = 0; j < normal_count; j++) {
+      total += EdenGetMainPickWeight(edenisaac_main_quality[normal_idx[j]]);
+    }
+    roll = Random(0, total - 1);
+    pick = 0;
+    acc = 0;
+    for (j = 0; j < normal_count; j++) {
+      acc += EdenGetMainPickWeight(edenisaac_main_quality[normal_idx[j]]);
+      if (roll < acc) {
+        pick = j;
+        break;
+      }
+    }
+    id = edenisaac_main_id[normal_idx[pick]];
+    rolled_ids[rolled_count] = id;
+    rolled_count++;
+    for (j = pick; j < normal_count - 1; j++) {
+      normal_idx[j] = normal_idx[j + 1];
+    }
+    normal_count--;
+  }
+
+  for (i = 0; i < rolled_count; i++) {
+    id = rolled_ids[i];
+    flag = StrParam(s:"C", i:id, s:"Flag");
+    GiveInventory(flag, 1);
+    SetInventory(StrParam(s:"EdenItemSlot", i:i + 1), id);
+  }
+
+  EdenApplyMainPassives();
+  EdenApplyColor();
+  GiveInventory("EdenMainRolled_F", 1);
+}
+
+function void EdenRollMainItems(void) {
+  if (CheckActorClass(0, "EdenShiny")) {
+    EdenRollMainItemsShiny();
+    return;
+  }
+
+  int poolsize;
+  int pickcount;
+  int indices[EDEN_ISAAC_MAIN_CAP];
+  int i;
+  int j;
+  int pick;
+  int total;
+  int roll;
+  int acc;
+  int tmp;
+  int id;
+  str flag;
+
+  EdenClearMainSlots();
+
+  EdenRebuildNormalMainPool();
+  poolsize = eden_normal_main_count;
+  pickcount = EdenRollMainItemCount(poolsize);
+  for (i = 0; i < poolsize; i++) {
+    indices[i] = eden_normal_main_idx[i];
+  }
+
+  if (pickcount <= 0) {
+    GiveInventory("EdenMainRolled_F", 1);
+    return;
+  }
+
+  for (i = 0; i < pickcount; i++) {
+    total = 0;
+    for (j = i; j < poolsize; j++) {
+      total += EdenGetMainPickWeight(edenisaac_main_quality[indices[j]]);
+    }
+    roll = Random(0, total - 1);
+    pick = i;
+    acc = 0;
+    for (j = i; j < poolsize; j++) {
+      acc += EdenGetMainPickWeight(edenisaac_main_quality[indices[j]]);
+      if (roll < acc) {
+        pick = j;
+        break;
+      }
+    }
+    tmp = indices[i];
+    indices[i] = indices[pick];
+    indices[pick] = tmp;
+  }
+
+  for (i = 0; i < pickcount; i++) {
+    id = edenisaac_main_id[indices[i]];
+    flag = StrParam(s:"C", i:id, s:"Flag");
+    GiveInventory(flag, 1);
+    SetInventory(StrParam(s:"EdenItemSlot", i:i + 1), id);
+  }
+
+  EdenApplyMainPassives();
+  EdenApplyColor();
+  GiveInventory("EdenMainRolled_F", 1);
+}
+
+script "rz_InitEdenProperties" (void) {
+  EdenEnsureVanillaAltRegistered();
+  EdenEnsureVanillaMainRegistered();
+
+  int slot;
+  str flag;
+
+  // Recover: Init ran earlier with empty table → InitFlag set, no C*Flag.
+  if (CheckInventory("EdenInitFlag")) {
+    if (EdenFindEquippedAlt() < 0 && edenisaac_alt_count > 0) {
+      slot = Random(0, edenisaac_alt_count - 1);
+      flag = StrParam(s:"C", i:edenisaac_alt_id[slot], s:"Flag");
+      GiveInventory(flag, 1);
+    }
+    if (!CheckInventory("EdenMainRolled_F") && edenisaac_main_count > 0) {
+      EdenRollMainItems();
+      EdenSyncFireWeapon();
+    }
+    terminate;
+  }
+
+  EdenRollBaseStats(CheckActorClass(0, "EdenShiny"));
+
+  // Lock one alt item for the life; Flag persists via EdenInitFlag gate.
+  if (edenisaac_alt_count > 0) {
+    slot = Random(0, edenisaac_alt_count - 1);
+    flag = StrParam(s:"C", i:edenisaac_alt_id[slot], s:"Flag");
+    GiveInventory(flag, 1);
+  }
+
+  EdenRollMainItems();
+
+  EdenSyncFireWeapon();
+
+  GiveInventory("EdenInitFlag", 1);
+}
+
+script "rz_EdenShinyMorphInit" (void) {
+  int slot;
+  str flag;
+
+  if (!CheckActorClass(0, "EdenShiny")) {
+    terminate;
+  }
+
+  EdenEnsureVanillaAltRegistered();
+  EdenEnsureVanillaMainRegistered();
+  EdenClearMorphState();
+  EdenRollBaseStats(1);
+
+  if (edenisaac_alt_count > 0) {
+    slot = Random(0, edenisaac_alt_count - 1);
+    flag = StrParam(s:"C", i:edenisaac_alt_id[slot], s:"Flag");
+    GiveInventory(flag, 1);
+  }
+
+  EdenRollMainItems();
+  EdenSyncFireWeapon();
+  GiveInventory("EdenInitFlag", 1);
+}
+
+script "rz_EdenTearColor" (int colornum) {
+  Thing_SetTranslation(0, colornum);
+}
+
+script "rz_EdenWeaponColor" (void) {
+  EdenApplyColor();
+}
+
+// Attractor aura gate: MASTER is a tear (not a player). uh_PointerExists is wrong here.
+script "rz_EdenAttractMasterOk" (void) {
+  if (!SetActivator(0, AAPTR_MASTER)) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (CheckInventory("EdenTearSpent_F")) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
+}
+
+// Godhead aura gate: MASTER is its tear/fetus, not the player owner.
+script "rz_EdenGodheadMasterOk" (void) {
+  if (!SetActivator(0, AAPTR_MASTER)) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (CheckInventory("EdenTearSpent_F")) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
+}
+
+#define EDEN_ANTIGRAV_AUTO_TICS 105
+
+int eden_antigrav_washolding[64];
+int eden_antigrav_release_pulse[64];
+
+function int EdenAntiGravOwnerPn(void) {
+  int owner;
+  owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  if (owner == 0)
+    owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  if (owner < 1000 || owner > 1063)
+    return -1;
+  return owner - 1000;
+}
+
+function int EdenAntiGravReadFireHeld(int owner) {
+  int buttons;
+  if (owner < 1000 || owner > 1063)
+    return 0;
+  SetActivator(owner);
+  buttons = GetPlayerInput(-1, INPUT_BUTTONS);
+  if (buttons & BT_ATTACK)
+    return 1;
+  buttons = GetPlayerInput(-1, MODINPUT_BUTTONS);
+  if (buttons & BT_ATTACK)
+    return 1;
+  return 0;
+}
+
+function void EdenAntiGravUpdatePlayer(int owner) {
+  int pn;
+  int holding;
+  if (owner < 1000 || owner > 1063)
+    return;
+  pn = owner - 1000;
+  if (pn < 0 || pn >= 64)
+    return;
+  holding = EdenAntiGravReadFireHeld(owner);
+  if (holding) {
+    eden_antigrav_release_pulse[pn] = 0;
+    eden_antigrav_washolding[pn] = 1;
+  }
+  else {
+    if (eden_antigrav_washolding[pn])
+      eden_antigrav_release_pulse[pn] = 1;
+    eden_antigrav_washolding[pn] = 0;
+  }
+}
+
+script "rz_EdenAntiGravOwnerTickFromTear" (void) {
+  int owner;
+  owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  if (owner == 0)
+    owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  if (owner == 0)
+    terminate;
+  SetActivator(owner);
+  if (!CheckInventory("C222Flag"))
+    terminate;
+  EdenAntiGravUpdatePlayer(owner);
+}
+
+script "rz_EdenAntiGravEnterHover" (void) {
+  int owner;
+  int pn;
+  owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  if (owner == 0)
+    owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  if (owner == 0) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetActivator(owner);
+  if (!CheckInventory("C222Flag")) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (CheckInventory("IsBot")) {
+    SetResultValue(0);
+    terminate;
+  }
+  pn = owner - 1000;
+  if (pn >= 0 && pn < 64 && EdenAntiGravReadFireHeld(owner)) {
+    eden_antigrav_release_pulse[pn] = 0;
+    eden_antigrav_washolding[pn] = 1;
+  }
+  SetResultValue(1);
+}
+
+script "rz_EdenAntiGravShouldLaunch" (void) {
+  int pn;
+  pn = EdenAntiGravOwnerPn();
+  if (pn < 0 || pn >= 64) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (eden_antigrav_release_pulse[pn]) {
+    SetResultValue(1);
+    terminate;
+  }
+  SetResultValue(0);
+}
+
+script "rz_EdenAntiGravTick" (void) {
+  if (!CheckInventory("C222Flag"))
+    terminate;
+  EdenAntiGravUpdatePlayer(ActivatorTID());
+}
+
+// Tear death-mod registry (symmetric with rz_EdenTearPassiveSpawn).
+// Returns 1 if a death replace ran (skip normal splatter).
+script "rz_EdenTearRunDeath" (void) {
+  if (CheckInventory("EdenIpecacDeath_F")) {
+    GiveInventory("EdenIpecacDeath_P", 1);
+    SetResultValue(1);
+    terminate;
+  }
+  SetResultValue(0);
+}
+
+// Pending Ipecac poison shooter TID per victim player number (0 if none).
+int edenipecac_shootertid[64];
+
+script "rz_EdenIpecacMarkShooter" (void) {
+  int shooter;
+  int sx;
+  int sy;
+  int sz;
+  int p;
+  int tid;
+  int dx;
+  int dy;
+  int dz;
+  int dist;
+  int radius;
+
+  shooter = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  if (shooter == 0)
+    shooter = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  if (shooter < 1000 || shooter > 1063) {
+    SetResultValue(0);
+    terminate;
+  }
+
+  sx = GetActorX(0);
+  sy = GetActorY(0);
+  sz = GetActorZ(0);
+  radius = 140.0;
+
+  for (p = 0; p < 64; p++) {
+    edenipecac_shootertid[p] = 0;
+    if (!PlayerInGame(p))
+      continue;
+    tid = p + 1000;
+    if (tid == shooter)
+      continue;
+    if (CheckActorInventory(tid, "IsDead"))
+      continue;
+    if (IsTeamGame &&
+        GetPlayerInfo(p, PLAYERINFO_TEAM) == GetPlayerInfo(shooter - 1000, PLAYERINFO_TEAM))
+      continue;
+    dx = GetActorX(tid) - sx;
+    dy = GetActorY(tid) - sy;
+    dz = GetActorZ(tid) - sz;
+    dist = VectorLength(VectorLength(dx, dy), dz);
+    if (dist > radius)
+      continue;
+    edenipecac_shootertid[p] = shooter;
+  }
+  SetResultValue(1);
+}
+
+script "rz_EdenIpecacShouldPoison" (void) {
+  int pn = PlayerNumber();
+  if (pn < 0 || pn >= 64 || edenipecac_shootertid[pn] == 0)
+    SetResultValue(0);
+  else
+    SetResultValue(1);
+}
+
+script "rz_EdenIpecacSpawnDoT" (void) {
+  int pn = PlayerNumber();
+  int victim;
+  int shooter;
+  int u;
+
+  if (pn < 0 || pn >= 64) {
+    terminate;
+  }
+  shooter = edenipecac_shootertid[pn];
+  edenipecac_shootertid[pn] = 0;
+  if (shooter < 1000 || shooter > 1063) {
+    terminate;
+  }
+  victim = ActivatorTID();
+  if (victim == 0) {
+    victim = pn + 1000;
+  }
+
+  u = UniqueTID();
+  if (!SpawnForced("EdenIpecacPoisonDoT", GetActorX(0), GetActorY(0), GetActorZ(0) + 28.0, u, 0)) {
+    terminate;
+  }
+  SetActivator(u);
+  SetPointer(AAPTR_TARGET, shooter);
+  SetPointer(AAPTR_TRACER, victim);
+}
+
+script "rz_EdenApplyPassiveStats" (void) {
+  EdenApplyMainPassives();
+}
+
+#define EDENATTR_TEARS 1
+#define EDENATTR_DAMAGE 2
+#define EDENATTR_SHOTSPEED 3
+#define EDENATTR_LUCK 4
+#define EDENATTR_RANGE 5
+
+script "rz_GetEdenAttr" (int pointer, int attr, int hud, int useplayer) {
+  if (useplayer) {
+    SetActivatorToPlayer(pointer);
+  }
+  else if (pointer > 0) {
+    SetActivator(0, pointer);
+  }
+
+  switch (attr) {
+    case EDENATTR_TEARS:
+      if (hud) {
+        SetResultValue(CheckInventory("EdenTearsHUDAttr"));
+      }
+      else {
+        SetResultValue(CheckInventory("EdenTearsAttr"));
+      }
+      break;
+    case EDENATTR_DAMAGE:
+      SetResultValue(CheckInventory("EdenDamageAttr"));
+      break;
+    case EDENATTR_SHOTSPEED:
+      SetResultValue(CheckInventory("EdenShotSpeedAttr"));
+      break;
+    case EDENATTR_LUCK:
+      SetResultValue(CheckInventory("EdenLuckAttr"));
+      break;
+    case EDENATTR_RANGE:
+      SetResultValue(CheckInventory("EdenRangeAttr"));
+      break;
+  }
+}
+
+// Repentance Brimstone + Ipecac ignores Ipecac's flat damage and fire-delay
+// penalties while retaining every other Eden stat change.
+script "rz_GetEdenBrimstoneAttr" (int pointer, int attr) {
+  int value;
+  if (pointer > 0) {
+    SetActivator(0, pointer);
+  }
+
+  switch (attr) {
+    case EDENATTR_TEARS:
+      value = CheckInventory("EdenTearsAttr");
+      if (CheckInventory("C149Flag"))
+        value = max(1, value - 12);
+      break;
+    case EDENATTR_DAMAGE:
+      value = CheckInventory("EdenDamageAttr");
+      if (CheckInventory("C149Flag"))
+        value = max(1, value - 70);
+      break;
+    case EDENATTR_SHOTSPEED:
+      value = CheckInventory("EdenShotSpeedAttr");
+      break;
+    case EDENATTR_LUCK:
+      value = CheckInventory("EdenLuckAttr");
+      break;
+    case EDENATTR_RANGE:
+      value = CheckInventory("EdenRangeAttr");
+      break;
+  }
+  SetResultValue(value);
+}
+
+script "rz_EdenBrimstoneOwnerOK" (void) {
+  int pn;
+  if (!SetActivator(0, AAPTR_TARGET)) {
+    SetResultValue(0);
+    terminate;
+  }
+  pn = PlayerNumber();
+  if (pn < 0 || !PlayerInGame(pn) || CheckInventory("IsDead") || GetActorProperty(0, APROP_Health) <= 0) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
+}
+
+// razon3 D8: 5 uniforms → clamp-sum to ~2.5 → mul in [0.5,2] → set attrs from D8Init*
+script "rz_D8Rolling" (void) {
+  str attrinv[5] = {"EdenSpeedAttr", "EdenHeightAttr", "EdenTearsHUDAttr", "EdenDamageAttr", "EdenRangeAttr"};
+  str d8init_attrinv[5] = {"EdenD8InitSpeedAttr", "EdenD8InitHeightAttr", "EdenD8InitTearsAttr", "EdenD8InitDamageAttr", "EdenD8InitRangeAttr"};
+  int attr[5];
+  int temp[5];
+  int i, j;
+  for (i = 0; i < 5; i++) {
+    if (CheckInventory("D8InitFlag") == 0) {
+      GiveInventory(d8init_attrinv[i], CheckInventory(attrinv[i]));
+    }
+    temp[i] = random(0.0, 1.0);
+  }
+  GiveInventory("D8InitFlag", 1);
+
+  int tempsum = temp[0] + temp[1] + temp[2] + temp[3] + temp[4];
+  int temp_x2;
+  for (i = 0; i < 5; i++) {
+    temp_x2 = (2.5 - tempsum) / 5.0;
+    for (j = 0; j < 5; j++) {
+      temp[j] = min(1.0, max(0.0, temp[j] + temp_x2));
+    }
+    tempsum = temp[0] + temp[1] + temp[2] + temp[3] + temp[4];
+  }
+
+  int attrmul[5];
+  for (i = 0; i < 5; i++) {
+    attrmul[i] = temp[i] + max(temp[i], 0.5);
+    attr[i] = RoundFixedToInt(attrmul[i] * CheckInventory(d8init_attrinv[i]));
+    UpdateEdenAttr(i == 4? 5:i, attr[i], true, true);
+  }
+}

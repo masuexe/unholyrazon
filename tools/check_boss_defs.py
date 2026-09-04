@@ -7,7 +7,14 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BOSSDEFS = ROOT / "src" / "acs_source" / "uh_bossdefs.acs"
+BOSSDEFS = (
+    ROOT
+    / "src"
+    / "acs_source"
+    / "classes"
+    / "bosses"
+    / "boss_definition_table.acs"
+)
 ACTORS_DIR = ROOT / "src" / "actors"
 
 DEFINE_RE = re.compile(

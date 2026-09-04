@@ -1,0 +1,127 @@
+// Projectile Porting
+script "uh_ProjectilePort" (int maxdist) {
+  int target = ACS_NamedExecuteWithResult("core_getptrtid", 2);
+
+  if (GetActorProperty(0, APROP_HEALTH) <= 0 || GetActorProperty(target, APROP_HEALTH) <= 0) {
+    terminate;
+  }
+
+  maxdist = maxdist << 16;
+
+  int x_diff = GetActorX(0) - GetActorX(target);
+  int y_diff = GetActorY(0) - GetActorY(target);
+  int z_diff = GetActorZ(0) - GetActorZ(target);
+
+  if (FDistanceVal(x_diff, y_diff, z_diff) > maxdist) {
+    terminate;
+  }
+
+  while (true) {
+    x_diff += GetActorVelX(0);
+    y_diff += GetActorVelY(0);
+    z_diff += GetActorVelZ(0);
+    SetActorVelocity(target, x_diff, y_diff, z_diff, 0, 0);
+
+    delay(1);
+
+    if (GetActorProperty(0, APROP_HEALTH) <= 0 || GetActorProperty(target, APROP_HEALTH) <= 0 || CheckInventory("ProjectilePortDead")) {
+      // Log(s:"Someone is Dead");
+      GiveActorInventory(target, "ProjectilePortDead", 1);
+      terminate;
+    }
+    x_diff = GetActorX(0) - GetActorX(target);
+    y_diff = GetActorY(0) - GetActorY(target);
+    z_diff = GetActorZ(0) - GetActorZ(target);
+    if (FDistanceVal(x_diff, y_diff, z_diff) > maxdist ||  // Log(s:"Someone is too far");
+        CheckActorInventory(target, "FlightDisableFlag") >= 1 ||
+        CheckActorInventory(target, "TimeStoppedCounter") >= 1) {  // Log(s:"Someone is suffering");
+      SetActorState(0, "Death", 1);
+      GiveActorInventory(target, "ProjectilePortDead", 1);
+      terminate;
+    }
+  }
+}
+
+// PIK
+script "ub_enemypain" (void) {
+  if (CheckInventory("EnemyHP") > 0) {terminate;}  // Do not run twice for one monster
+  int hp = GetActorProperty(0, APROP_Health);
+  GiveInventory("EnemyHP", 1);
+
+  while (GetActorProperty(0, APROP_Health) > 0) {
+    if (hp != GetActorProperty(0, APROP_Health)) {
+      PlayActorSound(0, SOUND_Pain, CHAN_BODY, 1.0, false, ATTN_NORM);
+      // SetActorProperty(0, APROP_RenderStyle, STYLE_None);
+      // Delay(1);
+      // SetActorProperty(0, APROP_RenderStyle, STYLE_Normal); //Comment this back in for a MM style enemy blink damage effect, i guess?
+      hp = GetActorProperty(0, APROP_Health);
+    }
+    Delay(1);
+  }
+}
+
+script "UH_BeginXRayVision" (void) {
+  // Log(i:GetPlayerChasecam(0));
+  NamedExecuteClientScript("UH_XRayVisionManager", PlayerNumber());
+}
+
+script "UH_XRayVisionManager" (void) CLIENTSIDE {  // ENTER CLIENTSIDE
+  // Log(i:GetPlayerChasecam(0));
+  while (GetActorProperty(ActivatorTID(), APROP_Health) > 0) {
+    // Log(i:GetActorProperty(ActivatorTID(), APROP_Health));
+    for (int i = 1000; i < 1000 + ServerMAX; i++) {
+      if (PlayerInGame(i - 1000) && ActivatorTID() != i) {
+        HudMessageOnActor(i, i, 640, 480, 0, -24, 9028, -1, StrParam(n:i - 999), 0.1, CR_GREEN, 0);  // Displays nametags
+        HudMessageOnActor(i, i + 100, 640, 480, 0, -32, 9028, -1, "", 0.1, CR_GREEN, 1);  // Displays distance
+      }
+    }
+    Delay(1);
+  }
+}
+
+function void HudMessageOnActor(int tid, int messageid,
+                                int hudx, int hudy, int xoffset, int y_offset,
+                                int range, str sprite,
+                                str text, int holdtime, str colour, int swap_var) {
+  int dist, angle, vang, pitch, x, y;
+
+  if (hudx == 0) {hudx = 640;}
+  if (hudy == 0) {hudy = 480;}
+
+  if (sprite != -1) {
+    SetFont(sprite);
+    text = "A";
+    // offset = 0.1;
+  }
+  else {
+    SetFont("fakefntC");  // SMALLFONT
+  }
+
+  SetHudSize(hudx, hudy, 1);
+  x = GetActorX(tid) - GetActorX(0);
+  y = GetActorY(tid) - GetActorY(0);
+
+  vang = VectorAngle(x, y);
+  angle = (vang - GetActorAngle(0) + 1.0) % 1.0;
+
+  if (((vang + 0.125) % 0.5) > 0.25) dist = FixedDiv(y, sin(vang));
+  else dist = FixedDiv(x, cos(vang));
+
+  if ((angle < 0.2 || angle > 0.8) && (dist >> 16) < range) {
+    if (GetActorPitch(0) >= -0.25 && GetActorPitch(0) <= 0.25) {
+      pitch = VectorAngle(dist, GetActorZ(tid) - (GetActorZ(0) + 41.0));
+      pitch = (pitch + GetActorPitch(0) + 1.0) % 1.0;
+      if ((hudx / 2) * sin(angle) != 0 && cos(angle) != 0 && (hudx / 2) * sin(pitch) != 0 && cos(pitch) != 0) {  // Fixes divide by zero
+        x = hudx / 2 - ((hudx / 2) * sin(angle) / cos(angle));
+        y = hudy / 2 - ((hudx / 2) * sin(pitch) / cos(pitch));
+
+        x += xoffset;
+        y += y_offset;
+        if (swap_var) {HudMessage(i:dist >> 16; HUDMSG_PLAIN, messageid, colour, (x << 16), (y << 16), holdtime);}
+        else {HudMessage(s:text; HUDMSG_PLAIN, messageid, colour, (x << 16), (y << 16), holdtime);}
+      }
+    }
+  }
+}
+
+

@@ -1,0 +1,90 @@
+// Time Stopper field effect: world freeze (Unholy_BeginTimeStopper) plus
+// clientside camera/sound watchers.  Fragment of library UH_CLASSES.
+// Eden dye/form constants live in eden_runtime.acs; the BlazeKick critical
+// event lives in copy_weapons/copy_weapon_damage.acs.
+
+bool time_is_stopped = 0;
+
+//     ad88888ba
+//    d8"     "8b
+//    Y8,
+//    `Y8aaaaa,
+//      `"""""8b,
+//            `8b
+//    Y8a     a8P
+//     "Y88888P"
+script "Unholy_BeginTimeStopper" (int swapcheck) {
+  if (swapcheck) {
+    if (time_is_stopped || GetGameModeState() == 1)  // Countdown
+      SetResultValue(0);
+  }
+  else if (!time_is_stopped) {
+    int id = ActivatorTID();
+    SetActivator(0);
+    time_is_stopped = id - 999;
+    Delay(2);
+
+    if (GetActorProperty(id, APROP_Health) > 0)
+      GiveActorInventory(id, "UnholyTimeStopperFreezer", 1);
+
+    GiveInventory("TS_CameraControl_P", 1);
+
+    Delay(1);
+
+    // AmbientSound("", 127);
+
+    SetHudSize(256, 224, 0);
+    SetFont("FLASHS");
+    HudMessageBold(s:"A"; 0, 50, -1, 256.0, 112.0, 3.45);
+
+    int timestopdelay = 120;
+
+    while (CheckActorInventory(id, "PowerTimeStopperUFreezer") && timestopdelay > 0 && GetGameModeState() != 1) {
+      timestopdelay--;
+      Delay(1);
+    }
+
+    HudMessageBold(s:""; 0, 50, -1, 0.99, 0.01, 1873);
+    TakeActorInventory(id, "PowerTimeStopperUFreezer", 1);
+    Delay(10);
+
+    time_is_stopped = 0;
+  }
+}
+
+script "Unholy_TS_ClientSnd" (void) CLIENTSIDE {
+  // LocalAmbientSound("weapon/timestopper", 127);
+}
+
+script "Unholy_TS_CamWatch" (void)  // TSCameraControl Watcher
+{
+  ACS_NamedExecuteAlways("Unholy_TS_ClientSnd", 0);
+  if (PlayerNumber() == -1 || CheckInventory("IsDead") || !PlayerInGame(PlayerNumber()))
+    terminate;
+  if (IsTeamGame)
+    if (GetPlayerInfo(time_is_stopped - 1, PLAYERINFO_TEAM) == GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM))
+      terminate;
+
+  GiveInventory("TSCameraControlFlag", 1);
+  ACS_NamedExecuteAlways("Unholy_TS_ClientCameraControl", 0, 0);
+
+  do {
+    Delay(1);
+  } while (GetActorProperty(0, APROP_Health) > 0 && time_is_stopped);
+
+  TakeInventory("TSCameraControlFlag", 1);
+}
+
+script "Unholy_TS_ClientCameraControl" (int which) CLIENTSIDE {
+  switch (which) {
+    case 0:  // Actual TimeStopperWep
+      do {
+        if (!CheckInventory("PowerTimeStopperUFreezer")) {
+          SetActorAngle(0, GetActorAngle(0) + GetPlayerInput(-1, INPUT_YAW));
+          SetActorPitch(0, GetActorPitch(0) - GetPlayerInput(-1, INPUT_PITCH));
+        }
+        Delay(1);
+      } while (CheckInventory("TSCameraControlFlag"));
+      break;
+  }
+}

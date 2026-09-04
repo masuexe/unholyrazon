@@ -1,0 +1,59 @@
+script "uh_shinyclassmorpher" (int classnum) {
+  for (int i = 0; i <= 7; i++) {
+    if (i != 3)
+      StopSound(0, i);
+  }
+  str originalclass = GetActorClass(0);
+  str shinyclass = StrParam(s:originalclass, s:"Shiny");
+
+  if (ACS_NamedExecuteWithResult("core_checkmode", 0) == 2)  // Is it T/LMS ?
+    GiveInventory("UH_MorphLMSFix_P", 1);
+
+  ACS_NamedExecuteWithResult("uh_MorphPreReset");
+  delay(1);
+  if (MorphActor(0, shinyclass, "", 0x7ffffffd, MRF_FULLHEALTH | MRF_WHENINVULNERABLE | MRF_LOSEACTUALWEAPON | MRF_NEWTIDBEHAVIOUR, "ShinySparkleFlash", "FlashM_GenesisSparkleFX")) {
+    GiveInventory("RemoveWeaponsOfMortals_P", 1);
+    ShinyClassMultiWeaponGive();
+    ACS_NamedExecuteWithResult("uh_MorphPostReset", 1);
+    if (!StrICmp(GetActorClass(0), "EdenShiny")) {
+      ACS_NamedExecuteWithResult("rz_EdenShinyMorphInit");
+    }
+    GiveInventory("S_ClassSpawn_P", 1);
+    TakeInventory("MorphedFlag", 1);
+  }
+  else {
+    GiveInventory("UH_MorphLMSFixAbort_P", 1);
+    GiveInventory("S_ClassSpawnNo_P", 1);
+  }
+}
+
+function void ShinyClassMultiWeaponGive(void) {
+  str classname = GetActorClass(0);
+  if (!strICmp(classname, "QwantShiny")) {
+    GiveInventory("IsQwantSFlag", 1);
+  }
+  if (!strICmp(classname, "NegaManShiny")) {
+    TakeInventory("IsNegaManFlag", 1);
+    GiveInventory("IsNegaManSFlag", 1);
+  }
+  if (!strICmp(classname, "DecoyBotShiny")) {
+    TakeInventory("IsDecoyBotFlag", 1);
+    GiveInventory("IsDecoyBotSFlag", 1);
+    ACS_NamedExecuteWithResult("uh_DecoyBotShinyMorphSetup");
+  }
+  if (!strICmp(classname, "ArcanistShiny")) {
+    GiveInventory("ArcanistShiny_W2", 1);
+    GiveInventory("ArcanistShiny_W3", 1);
+    GiveInventory("ArcanistShiny_W4", 1);
+  }
+  if (!strICmp(classname, "RaiderShiny")) {
+    GiveInventory("RaiderShiny_W2", 1);
+  }
+  if (!strICmp(classname, "TidalManiacShiny")) {
+    GiveInventory("TidalManiacShiny_W2", 1);
+  }
+  if (!strICmp(classname, "KateShiny")) {
+    GiveInventory("KateShiny_W2", 1);
+  }
+}
+

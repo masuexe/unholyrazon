@@ -1,0 +1,254 @@
+// Contains scripts used by several classes
+
+script "uc_clientwarper" (int object) CLIENTSIDE {
+  int player = ACS_NamedExecuteWithResult("core_gettarget", 0);
+  // Log(s:"player = ",i:player);
+  str thestring = "Honk";
+  bool check = true;
+  switch (object) {
+    default:
+      check = false;
+      break;
+    case -77:
+      thestring = "WheelCount";
+      break;
+    case -39:
+      thestring = "ClientFXWarp_F";
+      break;
+    case -4:
+      thestring = "SuperArmTemp";
+      break;
+    case -28:
+      thestring = "Skull4MIFlag";
+      break;
+      // case -2:
+      // thestring = "StopShield";
+      // break;
+    case 1:
+    case -1:
+      thestring = "ShieldCheck";
+      break;
+      // case 91:
+      // thestring = "ConcreteBlockReady";
+      // break;
+  }
+
+  if (check) {
+    while (GetActorProperty(player, APROP_HEALTH) > 0) {
+      if (CheckActorInventory(player, thestring) == 0) {
+        break;
+      }
+      Delay(1);
+    }
+  }
+  else {
+    while (GetActorProperty(player, APROP_HEALTH) > 0) {
+      Delay(1);
+    }
+  }
+  Thing_Remove(0);
+}
+
+script "uc_clientwarper_jewel" (int jewelno) CLIENTSIDE {
+  int player = ACS_NamedExecuteWithResult("core_gettarget", 0);
+  while (GetActorProperty(player, APROP_HEALTH) > 0 && CheckActorInventory(player, "ShieldCheck") > 0 && CheckActorInventory(player, "JewelShieldCheck") >= jewelno) {
+    Delay(1);
+  }
+  Thing_Remove(0);
+}
+
+// Copy of vanilla script 247 with edits
+script "uh_radiusPull" (int maxforce, int maxrange, int nofalloff, int unholyteamcheck) {
+  if (maxrange == 0) {terminate;}
+
+  int targettid;
+  int angle;
+  int finalforce;
+  int distance;
+  int usertid;
+  int userteam = -1;
+  int usercount = 0;
+  int userunholyteam = -1;
+
+  if (ActivatorTID() == 0) {
+    usertid = ACS_NamedExecuteWithResult("core_gettarget", 0);
+    userteam = GetPlayerInfo(usertid - 1000, PLAYERINFO_TEAM);
+    userunholyteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", usertid - 1000);
+  } else {
+    usertid = ActivatorTID();
+  }
+
+  for (int p = 0; p < ServerMAX; p++) {
+    if (!PlayerInGame(p)) {
+      continue;
+    }
+    // switch (teamcheck) {
+    // 	default:
+    // 	case 0:
+    // 		break;
+    // 	case 1:
+    // 		if (CheckActorInventory(p+1000, "PowerProtectSurvivor")) {continue;}
+    // 		break;
+    // 	case 2:
+    // 		if (CheckActorInventory(p+1000, "PowerProtectBoss")) {continue;}
+    // 		break;
+    // }
+    if (IsTeamGame) {
+      if (userteam == GetPlayerInfo(p, PLAYERINFO_TEAM)) {
+        continue;
+      }
+    }
+    if (!IsTeamGame && unholyteamcheck) {
+      int punholyteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", p);
+      if (userunholyteam != 6 && punholyteam == userunholyteam) {  // PLS_EYE
+        continue;
+      }
+    }
+    targettid = p + 1000;
+    if (CheckActorInventory(targettid, "NoPushFlag") <= 0 && XyzDistance(0, targettid) < maxrange && usertid != targettid) {
+      usercount++;
+      distance = XyzDistance(0, targettid);
+      finalforce = Zanceil(FixedMul(maxforce << 16, 1.0 - FixedDiv(distance, maxrange)));
+      if (finalforce > maxforce || nofalloff > 0) {
+        finalforce = maxforce;
+      }
+
+      angle = VectorAngle(GetActorX(0) - GetActorX(targettid), GetActorY(0) - GetActorY(targettid)) >> 8;
+      if (distance > 40 || finalforce < 0) {
+        ThrustThing(angle, finalforce, false, targettid);
+      }
+    }
+  }
+  SetResultValue(usercount);
+}
+
+#define CIFC_INCLUDE_TEAM 1
+#define CIFC_INCLUDE_DEAD 2
+
+// Shared filters for front-cone player scans (count / stripe volley).
+function bool ConePlayerPasses(int usertid, int userteam, int userunholyteam, int p, int flags) {
+  if (!PlayerInGame(p)) {
+    return false;
+  }
+  int targettid = p + 1000;
+  if (usertid == targettid) {
+    return false;
+  }
+  if (!(flags & CIFC_INCLUDE_DEAD) && CheckActorInventory(targettid, "IsDead") > 0) {
+    return false;
+  }
+  if (!(flags & CIFC_INCLUDE_TEAM)) {
+    if (IsTeamGame) {
+      if (userteam == GetPlayerInfo(p, PLAYERINFO_TEAM)) {
+        return false;
+      }
+    } else {
+      int punholyteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", p);
+      if (userunholyteam != 6 && punholyteam == userunholyteam) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+// Activator must be the cone origin (boss). half = FixedDiv(theta << 16, 720.0).
+function bool ConePlayerInGeom(int targettid, int r, int half) {
+  int dx = GetActorX(targettid) - GetActorX(0);
+  int dy = GetActorY(targettid) - GetActorY(0);
+  if (VectorLength(dx, dy) > (r << 16)) {
+    return false;
+  }
+  int rel = (VectorAngle(dx, dy) - GetActorAngle(0) + 1.0) % 1.0;
+  return(rel <= half || rel >= 1.0 - half);
+}
+
+script "rz_CountPlayerInFrontCone" (int r, int theta, int flags) {
+  int usertid = (PlayerNumber() == -1)? ActivatorTID():PlayerNumber() + 1000;
+  int userteam = -1;
+  int userunholyteam = -1;
+  if (PlayerNumber() != -1) {
+    userteam = GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM);
+    userunholyteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", PlayerNumber());
+  }
+
+  int half = FixedDiv(theta << 16, 720.0);
+  int count = 0;
+
+  for (int p = 0; p < ServerMAX; p++) {
+    if (!ConePlayerPasses(usertid, userteam, userunholyteam, p, flags)) {
+      continue;
+    }
+    if (ConePlayerInGeom(p + 1000, r, half)) {
+      count++;
+    }
+  }
+  SetResultValue(count);
+}
+
+// Spawn ClownpieceStripeSpawner beside each cone enemy (same forward/height as E,
+// fixed lateral xOffset from E in boss frame), facing toward E.
+// r/theta match rz_CountPlayerInFrontCone; xOffset is map units (positive = boss-right of E).
+script "uh_ClownpieceStripeVolley" (int r, int theta, int xoffset) {
+  int bosstid = (PlayerNumber() == -1)? ActivatorTID():PlayerNumber() + 1000;
+  int userteam = -1;
+  int userunholyteam = -1;
+  if (PlayerNumber() != -1) {
+    userteam = GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM);
+    userunholyteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", PlayerNumber());
+  }
+
+  SetActivator(bosstid);
+  int ang = GetActorAngle(0);
+  int c = cos(ang);
+  int s = sin(ang);
+  int half = FixedDiv(theta << 16, 720.0);
+  // Boss-right unit: (sin, -cos). +xOffset = right of E, fire left (ang+0.25);
+  // -xOffset = left of E, fire right (ang-0.25).
+  int side = xoffset * 1.0;
+  if (side == 0) {
+    side = 128 * 1.0;
+  }
+  int fireang;
+  if (xoffset < 0) {
+    fireang = (ang - 0.25) >> 8;
+  } else {
+    fireang = (ang + 0.25) >> 8;
+  }
+  int spawned = 0;
+
+  for (int p = 0; p < ServerMAX; p++) {
+    SetActivator(bosstid);
+    if (!ConePlayerPasses(bosstid, userteam, userunholyteam, p, 0)) {
+      continue;
+    }
+    int targettid = p + 1000;
+    if (!ConePlayerInGeom(targettid, r, half)) {
+      continue;
+    }
+
+    // Same depth/height as enemy; offset to boss-right by xOffset.
+    int wx = GetActorX(targettid) + FixedMul(side, s);
+    int wy = GetActorY(targettid) + FixedMul(side, -c);
+    int wz = GetActorZ(targettid);
+
+    int u = UniqueTID();
+    if (SpawnForced("ClownpieceStripeSpawner", wx, wy, wz, u, fireang)) {
+      SetActivator(u);
+      SetPointer(AAPTR_TARGET, bosstid);
+      spawned++;
+    }
+  }
+
+  SetActivator(bosstid);
+  SetResultValue(spawned);
+}
+
+script "rz_WarpToTID" (int warptotid, int xoffset, int flags, int pointer) {
+  if (pointer > 0) {
+    SetActivator(0, pointer);
+  }
+  xoffset <<= 16;
+  Warp(warptotid, xoffset, 0, 0, 0, flags);
+}
+

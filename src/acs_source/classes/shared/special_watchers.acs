@@ -1,0 +1,639 @@
+// Local copies: ACC imports do not export #define values between libraries.
+// Mirrors systems/tools/health.acs (UHEALTH_HEAL) and
+// systems/player_properties/uh_aprop.acs (ELP_FLOOVY_*).
+#define UHEALTH_HEAL 6
+#define ELP_FLOOVY_G 3
+#define ELP_FLOOVY_D 4
+
+script "rz_LowHpWarning" (int soundtype) CLIENTSIDE {
+  str soundname;
+  int sounddelay;
+  switch (soundtype) {
+    case 0:
+      soundname = "MMBN6/LowHP";
+      sounddelay = 25;
+      break;
+    case 1:
+      soundname = "MMSF3/LowHP";
+      sounddelay = 25;
+      break;
+  }
+
+  int count = 0;
+  while (GetActorProperty(0, APROP_Health) > 0) {
+    int healthlimit = GetActorProperty(0, APROP_SpawnHealth) / 4;
+    if (GetActorProperty(0, APROP_Health) <= healthlimit && !CheckInventory("IsAFakeBoss")) {
+      GiveInventory("LowHealthFlag", 1);
+      int mode = ACS_NamedExecuteWithResult("core_Get_AssistDisplayBar_HUDMode");
+      if (mode == 1 || mode == 2) {
+        if (CheckInventory("HealthNumberFlag")) {
+          TakeInventory("HealthNumberFlag", 1);
+          GiveInventory("LowHealthNumHidden", 1);
+        }
+        if (CheckInventory("LowHealthNumHidden")) {
+          int hx;
+          int hy;
+          if (mode == 2) {
+            hx = 153.1;
+            hy = 177.1;
+          } else {
+            hx = 32.1;
+            hy = 31.1;
+          }
+          SetHudSize(320, 200, 0);
+          SetFont("8BDMAFONT");
+          HudMessage(i:GetActorProperty(0, APROP_Health);
+            HUDMSG_PLAIN, RZ_LOWHP_NUM_ID, CR_RED, hx, hy, 0.05);
+        }
+      }
+      if (count >= sounddelay) {
+        PlaySound(0, soundname, CHAN_AUTO);
+        count = 0;
+      } else {
+        count++;
+      }
+    } else {
+      TakeInventory("LowHealthFlag", 1);
+      if (CheckInventory("LowHealthNumHidden")) {
+        GiveInventory("HealthNumberFlag", 1);
+        TakeInventory("LowHealthNumHidden", 1);
+      }
+      HudMessage(s:""; HUDMSG_PLAIN, RZ_LOWHP_NUM_ID, CR_UNTRANSLATED, 0, 0, 0.01);
+    }
+    Delay(1);
+  }
+  if (CheckInventory("LowHealthNumHidden")) {
+    GiveInventory("HealthNumberFlag", 1);
+    TakeInventory("LowHealthNumHidden", 1);
+  }
+  TakeInventory("LowHealthFlag", 1);
+  HudMessage(s:""; HUDMSG_PLAIN, RZ_LOWHP_NUM_ID, CR_UNTRANSLATED, 0, 0, 0.01);
+}
+
+script "rz_CheckVoidWalkerWeapon" (void) {
+  SetActivator(0, AAPTR_TARGET);
+  if (CheckWeapon("VoidWalker_W")) {
+    SetResultValue(1);
+  } else if (CheckWeapon("VoidWalker_W2")) {
+    SetResultValue(2);
+  } else if (CheckWeapon("VoidWalker_W3")) {
+    SetResultValue(3);
+  } else if (CheckWeapon("VoidWalker_W4")) {
+    SetResultValue(4);
+  } else {
+    SetResultValue(0);
+  }
+}
+
+script "rz_LinRageWatcher" (void) {
+  int maxhp = CheckInventory("BossSpawnHealthFlag");
+  do {
+    int hp = GetActorProperty(0, APROP_Health);
+    if (hp <= maxhp / 2) {
+      GiveInventory("LinCheating_P", 1);
+      terminate;
+    }
+    Delay(1);
+  } while (hp > 0);
+}
+
+script "rz_CFakeChickenObesity" (void) {
+  int myspeed = GetActorProperty(0, APROP_Speed);
+  SetActorProperty(0, APROP_Speed, FixedMul(myspeed, 0.85));
+}
+
+script "rz_PurpleDestronHealth" (void) {
+  do {
+    int health = PlayerHealth();
+    int limdiff = CheckInventory("LimHealth") - health;
+    if (limdiff < 0) {
+      SetInventory("LimHealth", health);
+    }
+    else if (limdiff != 0) {
+      GiveInventory("DestronDotFire_P", 1);
+      SetInventory("LimHealth", health);
+    }
+    Delay(1);
+  } while (health > 0);
+}
+
+script "rz_BlueDestronShotCooldown" (void) {
+  while (PlayerHealth() > 0) {
+    if (Timer() % 32 == 0) {
+      GiveInventory("DestronDotFire_P", 1);
+    }
+    GiveInventory("BlueDestronAbility_P", 1);
+    Delay(1);
+  }
+}
+
+// cbm_DrawPlugCable
+script "rz_DrawFloovyPlugCable" (int grappletid, int playertid, int ang) CLIENTSIDE {
+  int plx; int ply; int plz;
+  int grx; int gry; int grz;
+  int vx; int vy; int vz;
+  int nx; int ny; int nz;
+  int bx; int by; int bz;
+  int magnitude;
+  int pointcount;
+  int pointoffset;
+  int density = 18;
+
+  int zoff;
+
+  int angle = GetActorAngle(playertid);
+  str spawnname = "FloovyPlugCableFX";
+
+  if (grappletid != 0) {zoff = 32.0;}
+  // if(grappletid!=0) {
+  // 	zoff = 32.0;
+  // 	spawnname = StrParam(s:"PlugCableFX",i:ACS_ExecuteWithResult(143,0));
+  // }
+  // else{
+  // 	spawnname = StrParam(s:"PlugCableFX",i:ACS_ExecuteWithResult(143,playertid,1));
+  // }
+
+  plx = GetActorX(playertid) + cos(angle + 0.75) * 17;
+  grx = GetActorX(grappletid);
+  ply = GetActorY(playertid) + sin(angle + 0.75) * 17;
+  gry = GetActorY(grappletid);
+  plz = GetActorZ(playertid) + 28.0;
+  grz = GetActorZ(grappletid) + zoff;
+
+  vx = grx - plx; vy = gry - ply; vz = grz - plz;
+
+  magnitude = MagnitudeThree(vx >> 16, vy >> 16, vz >> 16);
+
+  pointcount = magnitude / density;
+  pointoffset = magnitude - (pointcount * density);
+
+  if (magnitude != 0) {
+    nx = vx / magnitude; ny = vy / magnitude; nz = vz / magnitude;
+
+    for (int i = 0; i < pointcount; i++) {
+      int j = (i * density) + pointoffset;
+
+      bx = (nx * j) + plx;
+      by = (ny * j) + ply;
+      bz = (nz * j) + plz;  // +(16 << 16);
+
+      Spawn(spawnname, bx, by, bz, 0, ang);
+    }
+  }
+}
+
+// cbm_PlugLatch
+script "rz_FloovyPlugLatch" (int targettid, int tracertid) {
+  // int targettid = ACS_NamedExecuteWithResult("uh_GetPointerTID",8);//Tracer
+  // SetActivatorToTarget(0);
+  SetActivator(targettid);
+
+  if (tracertid == 0) {terminate;}
+
+  GiveInventory("FloovyPlugFlag", 1);
+
+  while (GetActorProperty(targettid, APROP_Health) > 0 &&
+         GetActorProperty(tracertid, APROP_Health) > 0 &&
+         CheckInventory("FloovyPlugFlag")) {
+    ACS_NamedExecuteAlways("rz_DrawFloovyPlugCable", 0, tracertid, targettid, 0);
+    Delay(1);
+  }
+
+  // SetPointer(AAPTR_TRACER, 0);
+  TakeInventory("FloovyPlugFlag", 1);
+}
+
+script "rz_FloovyGhostMoving" (int pointer) {
+  int selftid = ActivatorTID();
+  int buttons = ACS_NamedExecuteWithResult("uh_GetPointerButtonInput", pointer, 0);
+  bool moved = false;
+
+  if ((buttons & BT_FORWARD) && !(buttons & BT_BACK)) {
+    GiveInventory("FloovyGhostMoveForward", 1);
+    moved = true;
+  }
+  else if ((buttons & BT_BACK) && !(buttons & BT_FORWARD)) {
+    GiveInventory("FloovyGhostMoveBack", 1);
+    moved = true;
+  }
+  if ((buttons & BT_MOVELEFT) && !(buttons & BT_MOVERIGHT)) {
+    GiveInventory("FloovyGhostMoveLeft", 1);
+    moved = true;
+  }
+  else if ((buttons & BT_MOVERIGHT) && !(buttons & BT_MOVELEFT)) {
+    GiveInventory("FloovyGhostMoveRight", 1);
+    moved = true;
+  }
+  if ((buttons & BT_LEFT) && !(buttons & BT_RIGHT)) {
+    GiveInventory("FloovyGhostTurnLeft", 1);
+  }
+  else if ((buttons & BT_RIGHT) && !(buttons & BT_LEFT)) {
+    GiveInventory("FloovyGhostTurnRight", 1);
+  }
+  if (!moved) {
+    SetActorVelocity(0, FixedMul(GetActorVelX(0), 0.95), FixedMul(GetActorVelY(0), 0.95), FixedMul(GetActorVelZ(0), 0.95), 0, 0);
+  }
+  // Read the target through its pointer rather than converting it to a TID:
+  // a morphed player can legitimately have TID 0.  The ghost itself always
+  // has the positive per-effect link TID, so it is safe to restore it.
+  if (!SetActivator(0, pointer)) {
+    terminate;
+  }
+  int targetx = GetActorX(0);
+  int targety = GetActorY(0);
+  if (!SetActivator(selftid)) {
+    terminate;
+  }
+  int x = targetx - GetActorX(0);
+  int y = targety - GetActorY(0);
+  SetActorAngle(0, VectorAngle(x, y));
+}
+
+// uh_CopyPointerAnglePitch resolves the source through core_getptrtid, which
+// is intentionally not used here: a morphed player can have TID 0.  Preserve
+// the original movement actors' behavior by copying only the target pitch;
+// the ghost's angle is maintained by rz_FloovyGhostMoving.
+script "rz_FloovyGhostCopyPitch" (int pointer) {
+  int selftid = ActivatorTID();
+  if (selftid <= 0 || !SetActivator(0, pointer)) {
+    terminate;
+  }
+  int targetpitch = GetActorPitch(0);
+  if (!SetActivator(selftid)) {
+    terminate;
+  }
+  SetActorPitch(0, targetpitch);
+}
+
+// The DECORATE expression language has no CheckInventory() value expression;
+// keep the dynamic camera TID lookup in ACS instead.
+script "rz_FloovyGhostCameraOn" (void) {
+  int cameratid = CheckInventory("FloovyOutOfBodyViewTID");
+  if (cameratid > 0) {
+    ChangeCamera(cameratid, 0, 0);
+  }
+}
+
+// Interrupt an existing out-of-body link immediately when M1 retargets a
+// different player.  The old ghost will also observe the marker mismatch on
+// its next tic, but this direct path avoids leaving the previous player frozen
+// or on the old camera for those few tics.
+script "rz_FloovyGhostCancel" (int linktid) {
+  if (linktid <= 0 || !SetActivator(linktid) ||
+      !SetActivator(0, AAPTR_TRACER)) {
+    terminate;
+  }
+  if (CheckInventory("FloovyOutOfBodyViewTID") != linktid) {
+    terminate;
+  }
+  ChangeCamera(0, 0, 0);
+  ACS_NamedExecuteWithResult("core_freezeplayer", 0, false);
+  TakeInventory("FloovyOutOfBodyViewTID", 0x7fffffff);
+  TakeInventory("FloovyOutOfBodyProtect", 0x7fffffff);
+}
+
+// Only tear down the camera/freeze state if this exact ghost still owns the
+// target's view marker.  This prevents an old ghost from clearing a newer
+// effect after the target is hit again or the link is replaced.
+script "rz_FloovyGhostCleanup" (int pointer, int linktid) {
+  if (linktid <= 0) {
+    terminate;
+  }
+  int selftid = ActivatorTID();
+
+  // Clear the owner link only if it still belongs to this ghost.  A newer
+  // hit may have installed a different link and must not be disturbed.
+  if (SetActivator(0, AAPTR_TARGET) &&
+      CheckInventory("FloovyOutOfBodyTID") == linktid) {
+    TakeInventory("FloovyOutOfBodyTID", 0x7fffffff);
+  }
+
+  // Restore the ghost before resolving its tracer; otherwise the first
+  // SetActivator above would make the target pointer relative to the player.
+  if (selftid <= 0 || !SetActivator(selftid) || !SetActivator(0, pointer)) {
+    terminate;
+  }
+  if (CheckInventory("FloovyOutOfBodyViewTID") != linktid) {
+    terminate;
+  }
+  ChangeCamera(0, 0, 0);
+  ACS_NamedExecuteWithResult("core_freezeplayer", 0, false);
+  TakeInventory("FloovyOutOfBodyViewTID", 0x7fffffff);
+  TakeInventory("FloovyOutOfBodyProtect", 0x7fffffff);
+}
+
+// Check a Floovy link pointer without converting the pointed player to a TID.
+// A dead player actor can remain allocated for a short time, so pointer
+// existence alone is not enough to settle an extra-life watcher.
+script "rz_FloovyPointerAlive" (int pointer) {
+  if (!SetActivator(0, pointer) || PlayerNumber() < 0 ||
+      !PlayerInGame(PlayerNumber()) || PlayerIsSpectator(PlayerNumber()) || CheckInventory("IsDead") ||
+      GetActorProperty(0, APROP_Health) <= 0) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
+}
+
+script "rz_FloovyRageAmmoGiver" (int pointer) {
+  if (pointer > 0) {
+    SetActivator(0, pointer);
+  }
+  int rage_max = CheckInventory("UnholyPowerLimit_F");
+  if (rage_max > 0) {
+    str rage_name = StrParam(s:"UnholyPower", i:rage_max);
+    GiveInventory(rage_name, 1);
+  }
+}
+
+// Apply/remove one of Floovy's dedicated extra-life variants through a
+// direct actor pointer.  Player morphs can legitimately have TID 0, so the
+// usual `tid - 999` conversion is not safe here.
+script "rz_FloovyExtraLifePointer" (int pointer, int toggle, int type) {
+  if (!SetActivator(0, pointer)) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, toggle, type));
+}
+
+script "rz_FloovyDeath" (int tid, int type) {
+  // int i;
+  // for (i = 1000; i < 1064; i++) {
+  // 	if (CheckActorClass(i, "Floovy")) {
+  // 		Thing_Damage(i, 30000, 5);
+  // 	}
+  // }
+  int health;
+
+  if (type == ELP_FLOOVY_G) {
+    // Preserve Floovy as the healer activator while inspecting/killing the
+    // linked enemy.  Calling uh_IsPlayerAlive would otherwise leave ACS
+    // activated on the enemy and heal the wrong player.
+    int floovyplayer = PlayerNumber();
+    if (tid <= 0 || !SetActivator(tid) || !SetActivator(0, AAPTR_TRACER)) {
+      terminate;
+    }
+    if (PlayerNumber() < 0 || CheckInventory("IsDead") || !PlayerInGame(PlayerNumber()) ||
+        PlayerIsSpectator(PlayerNumber())) {
+      if (floovyplayer >= 0) SetActivatorToPlayer(floovyplayer);
+      terminate;
+    }
+    // The linked enemy's current HP is the amount exchanged back to Floovy.
+    // Read and damage it through the link actor's TRACER pointer so a target
+    // with TID 0 is still handled correctly.
+    health = GetActorProperty(0, APROP_Health);
+    // Keep the link actor as the activator while its kill state performs an
+    // A_Explode.  This preserves the link's direct pointers and makes the
+    // watcher the inflictor, allowing its custom obituary to use Floovy as
+    // %k instead of falling back to a generic Thing_Damage obituary.
+    if (!SetActivator(tid) || !SetActorState(0, "GoldExperienceKill", true)) {
+      if (floovyplayer >= 0) SetActivatorToPlayer(floovyplayer);
+      terminate;
+    }
+    if (floovyplayer < 0 || !SetActivatorToPlayer(floovyplayer)) {
+      terminate;
+    }
+    ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, health);
+    terminate;
+  }
+
+  if (type == ELP_FLOOVY_D) {
+    // `tid` is the dedicated link actor, not Floovy's player TID.  Resolve
+    // its TARGET pointer so a morphed Floovy (TID 0) is still killable.
+    int allyplayer = PlayerNumber();
+    int allymax = GetActorProperty(0, APROP_SpawnHealth);
+    int allycurrent = max(GetActorProperty(0, APROP_Health), 0);
+    if (tid <= 0 || !SetActivator(tid) || !SetActivator(0, AAPTR_TARGET)) {
+      terminate;
+    }
+    if (PlayerNumber() < 0 || CheckInventory("IsDead") || !PlayerInGame(PlayerNumber()) ||
+        PlayerIsSpectator(PlayerNumber())) {
+      if (allyplayer >= 0) SetActivatorToPlayer(allyplayer);
+      terminate;
+    }
+
+    // Trigger the link's synchronous kill state.  It warps to Floovy, keeps
+    // Floovy in MASTER, and temporarily selects the beneficiary in TRACER as
+    // A_Explode's source, so the obituary receives both %o and %k correctly.
+    if (!SetActivator(tid) || !SetActorState(0, "DieForMeKill", true)) {
+      if (allyplayer >= 0) SetActivatorToPlayer(allyplayer);
+      terminate;
+    }
+    if (allyplayer < 0 || !SetActivatorToPlayer(allyplayer)) {
+      terminate;
+    }
+    ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, max(allymax - allycurrent, 0));
+    terminate;
+  }
+
+  Log(s:"rz_FloovyDeath: unknown type ", i:type);
+}
+
+// Crystrap M2: find the nearest visible player in the eye's scan sphere.
+// The caller is the CrystrapEyeShot actor; its TARGET pointer is the owner.
+script "rz_CrystrapEyeAcquire" (int radius) {
+  int ownertid = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  int besttid = 0;
+  int bestdistance = radius + 1;
+
+  for (int p = 0; p < ServerMAX; p++) {
+    if (!PlayerInGame(p) || PlayerIsSpectator(p)) {
+      continue;
+    }
+
+    int tid = p + 1000;
+    if (tid == ownertid || CheckActorInventory(tid, "IsDead") ||
+        GetActorProperty(tid, APROP_Health) <= 0) {
+      continue;
+    }
+
+    int distance = XyzDistance(0, tid);
+    if (distance > radius || distance > bestdistance ||
+        !CheckSight(0, tid, 0)) {
+      continue;
+    }
+
+    if (distance < bestdistance || (distance == bestdistance &&
+        (besttid == 0 || tid < besttid))) {
+      besttid = tid;
+      bestdistance = distance;
+    }
+  }
+
+  if (besttid > 0) {
+    SetPointer(AAPTR_TRACER, besttid);
+  }
+  SetResultValue(besttid > 0);
+}
+
+// Crystrap M2: tag a hit player as a camera target, then AltFire looks through them.
+script "rz_CrystrapSpying" (int ownertid, int tracertid) {
+  if (ownertid < 1000 || ownertid > 1063 ||
+      tracertid < 1000 || tracertid > 1063) terminate;
+    SetActivator(ownertid);
+
+  int oldtid = CheckInventory("CrystrapSpyingTID");
+  int waslooking = CheckInventory("CrystrapIsLookingOnHisEye");
+  if (oldtid >= 1000 && oldtid <= 1063 && oldtid != tracertid) {
+    TakeActorInventory(oldtid, "CrystrapIsSpyingOnYou", 1);
+  }
+
+  SetInventory("CrystrapSpyingTID", tracertid);
+  GiveActorInventory(tracertid, "CrystrapIsSpyingOnYou", 1);
+  SetHudSize(600, 380, 0);
+  HudMessage(s:"You can spy on ", n:tracertid - 999, s:"!"; HUDMSG_FADEOUT | HUDMSG_COLORSTRING, 11400 + ownertid, "MenuWhite", 300.4, 50.0, 2.0, 0.5);
+  GiveActorInventory(ownertid, "CrystrapSpyingSound_P", 1);
+  GiveActorInventory(tracertid, "CrystrapSpyingSound_P", 1);
+  if (waslooking) {
+    ChangeCamera(tracertid, 0, 0);
+  }
+}
+
+script "rz_CrystrapSpyingReset" (void) {
+  TakeActorInventory(CheckInventory("CrystrapSpyingTID"), "CrystrapIsSpyingOnYou", 1);
+  TakeInventory("CrystrapSpyingTID", 1064);
+  TakeInventory("CrystrapIsLookingOnHisEye", 1);
+}
+
+script "rz_TimemanCLoliPornSpawner" (void) {
+  int self = ActivatorTID();
+  int chosen = 0;
+  int count = 0;
+  int tid;
+
+  for (int i = 0; i < ServerMAX; i++) {
+    if (!PlayerInGame(i) || PlayerIsSpectator(i)) {
+      continue;
+    }
+    tid = 1000 + i;
+    if (tid == self) {
+      continue;
+    }
+    if (!ACS_NamedExecuteWithResult("uh_IsPlayerAlive", tid)) {
+      continue;
+    }
+    if (CheckActorInventory(tid, "Is_UH_BossNum")) {
+      continue;
+    }
+    count++;
+    if (random(1, count) == 1) {
+      chosen = tid;
+    }
+  }
+  if (chosen > 0) {
+    GiveActorInventory(chosen, "LoliPornPicItem", 1);
+  }
+}
+
+script "rz_AirManInvis" (void) {
+  GiveInventory("CXAirManAltFlag", 1);
+  int cnt = CheckInventory("CXAirManAltFlag");
+  if (cnt >= 6) {
+    GiveInventory("CXAirManFlashOn_P", 1);
+  } else {
+    GiveInventory(StrParam(s:"UH_", i:6 - cnt, s:"0_AlphaPowerGiver"), 1);
+  }
+}
+
+script "rz_AirManWarp" (void) {
+  bool res = 0;
+  int retrycount = 0;
+  int warptotid = -1;
+  do {
+    warptotid = ACS_NamedExecuteWithResult("rz_RandomPlayerTID", 0, 4);
+    retrycount++;
+    if (warptotid == -1) {
+      break;
+    }
+    res = Warp(warptotid, Random(-128, 128) << 16, Random(-128, 128) << 16, Random(16, 32) << 16, 0, WARPF_USECALLERANGLE);
+  } while (!res && retrycount < 64);
+}
+
+script "rz_SinfulBusterExpertSinWatcher" (void) {
+  int tid = ActivatorTID();
+  int maxhp = GetActorProperty(tid, APROP_SpawnHealth);
+  if (maxhp <= 0) {
+    terminate;
+  }
+  int step = maxhp * 6 / 10 / 7;
+  int given = 0;
+  while (!CheckInventory("IsDead") && !CheckInventory("IsAFakeBoss")) {
+    int hp = GetActorProperty(tid, APROP_Health);
+    while (given < 7 && hp <= maxhp - (given + 1) * step) {
+      given++;
+      GiveInventory(StrParam(s:"SinfulBusterExpert_W", i:given + 1), 1);
+      PlaySound(0, "misc/eclipsegravitywellsummon", CHAN_AUTO);
+    }
+    Delay(1);
+  }
+}
+
+function bool HealthHasDigit(int hp, int digit) {
+  if (hp <= 0)
+    return false;
+  while (hp > 0) {
+    if ((hp % 10) == digit)
+      return true;
+    hp /= 10;
+  }
+  return false;
+}
+
+// Activator: GBeast_EraseCross (or Fury) on Crash — HPBug + digit-4 bonus
+script "rz_EraseCrossHit" (void) {
+  int tracer = ACS_NamedExecuteWithResult("core_gettracer");
+  int owner = ACS_NamedExecuteWithResult("core_gettarget");
+  if (tracer <= 0)
+    terminate;
+
+  ACS_NamedExecuteWithResult("rz_HpBugPlayer", tracer - 999, 1);
+
+  int hp = GetActorProperty(tracer, APROP_Health);
+  if (HealthHasDigit(hp, 4))
+    ACS_NamedExecuteWithResult("core_damageactor", "GBeast_EraseBonusDamager", 444, tracer, owner);
+}
+
+script "ub_MagicDevilFlingAcs" (int which) {
+  int usertid = ActivatorTID();
+  str theactor;
+  switch (which) {
+    case 2115:
+      theactor = "MagicDevilEye_RageFlingWarp";
+      break;
+    case 115:
+      theactor = "MagicDevilEye_RageUpWarp";
+      break;
+  }
+  for (int p = 0; p < ServerMAX; p++) {
+    if (!PlayerInGame(p)) {
+      continue;
+    }
+    SpawnProjectile(usertid, theactor, 0, 0, p, 0, 0);
+  }
+}
+
+//    88888888888
+//    88
+//    88
+//    88aaaaa
+//    88"""""
+//    88
+//    88
+//    88888888888
+
+script "rz_MosquitoEyeTurboTime" (void) {
+  int maxhealth = 800;
+  int health = PlayerHealth();
+  int speedmtp;
+  if (health <= 0) {
+    speedmtp = 10.0;
+  } else {
+    speedmtp = FixedDiv(maxhealth, health);
+    if (speedmtp > 10.0) {
+      speedmtp = 10.0;
+    }
+  }
+  SetActorProperty(0, APROP_Speed, speedmtp);
+}
+

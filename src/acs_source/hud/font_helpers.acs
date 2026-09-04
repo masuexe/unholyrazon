@@ -1,0 +1,163 @@
+// PKMN_BOX: text at +6 (border+3px). boxWidth = stringWidth + 12 so right pad matches left 3px.
+#define PKMNF7_TEXT_X_OFF 6
+#define PKMNF7_TEXT_Y_OFF 5
+#define PKMNF7_BOX_PAD 11
+#define PKMNF7_BOX_MIN 25
+#define PKMNF7_BOX_MAX 99
+
+int pkmnf7_width[128];
+int pkmnf7_width_ready = 0;
+
+function void InitPkmnf7WidthTable(void) {
+  if (pkmnf7_width_ready) {
+    return;
+  }
+  pkmnf7_width_ready = 1;
+  // Advances measured from PKMNFNT7 ("Poke Ball") + fitted to remaining ball names.
+  pkmnf7_width[32] = 4;  // space
+  pkmnf7_width[45] = 7;  // -
+  pkmnf7_width[48] = 8;  // 0
+  pkmnf7_width[49] = 7;  // 1
+  pkmnf7_width[50] = 8;  // 2
+  pkmnf7_width[51] = 8;  // 3
+  pkmnf7_width[52] = 8;  // 4
+  pkmnf7_width[53] = 8;  // 5
+  pkmnf7_width[54] = 8;  // 6
+  pkmnf7_width[55] = 8;  // 7
+  pkmnf7_width[56] = 8;  // 8
+  pkmnf7_width[57] = 8;  // 9
+  pkmnf7_width[65] = 8;  // A
+  pkmnf7_width[66] = 8;  // B
+  pkmnf7_width[67] = 8;  // C
+  pkmnf7_width[68] = 8;  // D
+  pkmnf7_width[69] = 8;  // E
+  pkmnf7_width[70] = 8;  // F
+  pkmnf7_width[71] = 9;  // G
+  pkmnf7_width[72] = 7;  // H
+  pkmnf7_width[73] = 6;  // I
+  pkmnf7_width[74] = 8;  // J
+  pkmnf7_width[75] = 8;  // K
+  pkmnf7_width[76] = 8;  // L
+  pkmnf7_width[77] = 9;  // M
+  pkmnf7_width[78] = 8;  // N
+  pkmnf7_width[79] = 8;  // O
+  pkmnf7_width[80] = 8;  // P
+  pkmnf7_width[81] = 7;  // Q
+  pkmnf7_width[82] = 10;  // R
+  pkmnf7_width[83] = 10;  // S
+  pkmnf7_width[84] = 7;  // T
+  pkmnf7_width[85] = 9;  // U
+  pkmnf7_width[86] = 8;  // V
+  pkmnf7_width[87] = 8;  // W
+  pkmnf7_width[88] = 8;  // X
+  pkmnf7_width[89] = 8;  // Y
+  pkmnf7_width[90] = 8;  // Z
+  pkmnf7_width[97] = 7;  // a
+  pkmnf7_width[98] = 7;  // b
+  pkmnf7_width[99] = 7;  // c
+  pkmnf7_width[100] = 8;  // d
+  pkmnf7_width[101] = 7;  // e
+  pkmnf7_width[102] = 7;  // f
+  pkmnf7_width[103] = 7;  // g
+  pkmnf7_width[104] = 6;  // h
+  pkmnf7_width[105] = 2;  // i
+  pkmnf7_width[106] = 5;  // j
+  pkmnf7_width[107] = 7;  // k
+  pkmnf7_width[108] = 2;  // l
+  pkmnf7_width[109] = 8;  // m
+  pkmnf7_width[110] = 6;  // n
+  pkmnf7_width[111] = 7;  // o
+  pkmnf7_width[112] = 7;  // p
+  pkmnf7_width[113] = 7;  // q
+  pkmnf7_width[114] = 7;  // r
+  pkmnf7_width[115] = 7;  // s
+  pkmnf7_width[116] = 6;  // t
+  pkmnf7_width[117] = 6;  // u
+  pkmnf7_width[118] = 6;  // v
+  pkmnf7_width[119] = 8;  // w
+  pkmnf7_width[120] = 8;  // x
+  pkmnf7_width[121] = 6;  // y
+  pkmnf7_width[122] = 7;  // z
+}
+
+function int FontCharWidth(int ch) {
+  int w = 0;
+  if (ch >= 0 && ch < 128) {
+    w = pkmnf7_width[ch];
+  }
+  if (w <= 0) {
+    w = 6;
+  }
+  return w;
+}
+
+function int FontStringWidth(str text) {
+  int total = 0;
+  int n = StrLen(text);
+  int i = 0;
+  for (; i < n; i++) {
+    total += FontCharWidth(GetChar(text, i));
+  }
+  return total;
+}
+
+function int TextBoxWidth(str text) {
+  int w = FontStringWidth(text) + PKMNF7_BOX_PAD;
+  if (w < PKMNF7_BOX_MIN) {
+    w = PKMNF7_BOX_MIN;
+  }
+  if (w > PKMNF7_BOX_MAX) {
+    w = PKMNF7_BOX_MAX;
+  }
+  return w;
+}
+
+function str PkmovName(int width) {
+  return StrParam(s:"PKMOV_", i:width);
+}
+
+// Draws PKMOV box + text with Gold/Silver 3px left/right inset inside the frame.
+function void DrawTextInPkmovBox(str text, str fontname, str colorname,
+  int boxid, int boxid2, int textid, int textid2,
+  int boxx1, int boxy1, int boxx2, int boxy2) {
+  // *1.0 keeps HudMessage alignment bits (.1 left) when adding pixel offsets.
+  str box = PkmovName(TextBoxWidth(text));
+  AdjustedImageDisplay(box, box, boxid, boxid2, boxx1, boxy1, boxx2, boxy2);
+  AdjustedDrawString(fontname, colorname, text, textid, textid2,
+    boxx1 + PKMNF7_TEXT_X_OFF * 1.0, boxy1 + PKMNF7_TEXT_Y_OFF * 1.0,
+    boxx2 + PKMNF7_TEXT_X_OFF * 1.0, boxy2 + PKMNF7_TEXT_Y_OFF * 1.0);
+}
+
+str uh_qwant_fill_wep = "";
+str uh_qwant_fill_ammo = "";
+int uh_qwant_fill_max = 0;
+
+// Resolve fill ammo: type table by default; if QwantBar args[1] > 0, Tag is ammo classname.
+function void ResolveQwantFillAmmo(str wep, int type) {
+  if (uh_qwant_fill_wep == wep && StrLen(uh_qwant_fill_ammo) > 0) {
+    return;
+  }
+  uh_qwant_fill_wep = wep;
+  uh_qwant_fill_ammo = qwant_type_ammo[type];
+  uh_qwant_fill_max = QwantTypeAmmoMax(type);
+
+  int u = UniqueTID();
+  if (SpawnForced(StrParam(s:wep, s:"_QwantBar"), 0, 0, 0, u, 0)) {
+    int custommax = ACS_NamedExecuteWithResult("core_GetActorArg", u, 1);
+    if (custommax > 0) {
+      str tag = GetActorProperty(u, APROP_Nametag);
+      // Only treat Tag as fill ammo when it is a real Ammo class (cap > 0).
+      // Unset Tag returns the actor classname via APROP_Nametag — must not use that.
+      int tagcap = 0;
+      if (StrLen(tag) > 0 && GetChar(tag, 0) != 36) {
+        tagcap = GetAmmoCapacity(tag);
+      }
+      if (tagcap > 0) {
+        uh_qwant_fill_ammo = tag;
+        uh_qwant_fill_max = tagcap;
+      }
+    }
+    Thing_Remove(u);
+  }
+}
+

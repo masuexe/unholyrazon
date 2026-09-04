@@ -1,0 +1,104 @@
+script "uh_GetPlayerInfo" (int prop) {
+  if (PlayerNumber() != -1 && PlayerInGame(PlayerNumber())) {
+    SetResultValue(GetPlayerInfo(PlayerNumber(), prop));
+  }
+  else {
+    SetResultValue(-2);
+  }
+}
+
+script "uh_istracerenemy" (int unholyteamcheck) {
+  int targettid = ACS_NamedExecuteWithResult("core_getptrtid", 2);
+  // int tracerTID = ACS_NamedExecuteWithResult("core_getptrtid", 8);
+  bool result = 0;
+
+  SetActivator(0, AAPTR_TRACER);
+
+  if (!(ClassifyActor(0) & ACTOR_PLAYER)) {
+    // Log(s:"Not a player");
+    result = 0;
+  }
+  else if (IsTeamGame &&
+           GetPlayerInfo(targettid - 1000, PLAYERINFO_TEAM) == GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM)) {
+    result = 0;
+    // Log(s:"Not different teams");
+  }
+  else if (!IsTeamGame && unholyteamcheck) {
+    int tracerteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", PlayerNumber());
+    int targetteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", targettid - 1000);
+    if (targetteam != 6 && tracerteam == targetteam) {  // PLS_EYE
+      result = 0;
+    }
+  }
+  else {
+    // Log(s:"SUCCESS");
+    result = 1;
+  }
+  SetResultValue(result);
+}
+
+script "uh_istracerally" (int unholyteamcheck) {
+  int targettid = ACS_NamedExecuteWithResult("core_getptrtid", 2);
+  bool result = 0;
+
+  SetActivator(0, AAPTR_TRACER);
+
+  if (!(ClassifyActor(0) & ACTOR_PLAYER)) {
+    result = 0;
+  }
+  else if (IsTeamGame &&
+           GetPlayerInfo(targettid - 1000, PLAYERINFO_TEAM) != GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM)) {
+    result = 0;
+  }
+  else if (!IsTeamGame && unholyteamcheck) {
+    int tracerteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", PlayerNumber());
+    int targetteam = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", targettid - 1000);
+    if (targetteam != 6 && tracerteam != targetteam) {
+      result = 0;
+    }
+  }
+  else {
+    result = 1;
+  }
+  SetResultValue(result);
+}
+
+script "uh_istracerplayer" (void) {
+  bool result = 0;
+  SetActivator(0, AAPTR_TRACER);
+
+  if (ClassifyActor(0) & ACTOR_PLAYER) {
+    if (PlayerNumber() == -1 || !PlayerInGame(PlayerNumber())) {
+      result = 0;
+    }
+    else {
+      result = 1;
+    }
+  }
+  SetResultValue(result);
+}
+
+script "uh_IsTracerAllyOrEnemy" (void) {
+  int targettid = ACS_NamedExecuteWithResult("core_getptrtid", 2);
+  bool result = 0;
+
+  SetActivator(0, AAPTR_TRACER);
+
+  if (!(ClassifyActor(0) & ACTOR_PLAYER)) {  // Not a player
+    result = 0;
+  }
+  else {
+    result = -1;  // IsFoe
+    if (ACS_NamedExecuteWithResult("core_checkmode", 1) == 1) {  // IsTeamGame
+      if (GetPlayerInfo(PlayerNumber(), PLAYERINFO_TEAM) == GetPlayerInfo(targettid - 1000, PLAYERINFO_TEAM)) {
+        // tracerTeam == targetTeam
+        result = 1;  // IsAlly!
+      }
+    }
+    else if (CheckInventory("PowerProtectSurvivor")) {
+      result = 1;  // IsAlly?
+    }
+  }
+  // Log(s:"uh_IsTracerAllyOrEnemy == ",i:result);
+  SetResultValue(result);
+}

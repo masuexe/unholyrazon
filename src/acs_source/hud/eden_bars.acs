@@ -1,0 +1,220 @@
+// razon3 SBARINFO.VB/HB IsSelected Eden_W: 64_B_BAR (192→110, 198→129),
+// 002B overlay TheBibleFlightFlag/180, C_I_64* stats + CMBHQFONT numbers,
+// active CI64C* / BobHeadFlag, passive EdenItemSlot1-4. Graphics are C_I_59* / CI59C*.
+// Icons: EdenLookup* in UHEDENISAAC (EdenRegisterMain/Alt at OPEN).
+
+function int EdenPassiveSlotAmount(int slotindex) {
+  switch (slotindex) {
+    case 0: return CheckInventory("EdenItemSlot1");
+    case 1: return CheckInventory("EdenItemSlot2");
+    case 2: return CheckInventory("EdenItemSlot3");
+    case 3: return CheckInventory("EdenItemSlot4");
+  }
+  return 0;
+}
+
+function void DrawEdenPassiveSlots(int baseid) {
+  // razon3 SBARINFO fullscreenoffsets: negative x is from the RIGHT edge.
+  // HudMessage SetHudSize(320,200): x=0 is left, so -64 → 320-64=256.
+  int slotx[4] = {256, 272, 288, 305};
+  int i;
+  int amt;
+  str icon;
+  int xhud;
+
+  for (i = 0; i < 4; i++) {
+    amt = EdenPassiveSlotAmount(i);
+    icon = EdenLookupMainIconByAmount(amt);
+    if (!StrCmp(icon, "TNT1A0")) {
+      continue;
+    }
+    // ACS: int+fixed does NOT promote; 256+0.1 → ~0.10 (left). Convert with *1.0.
+    xhud = (slotx[i] * 1.0) + 0.1;
+    AdjustedImageDisplay(icon, icon,
+      baseid - 28 - i * 2, baseid - 29 - i * 2,
+      xhud, 106.1,
+      xhud, 106.1);
+  }
+}
+
+function void DrawEdenStatHud(void) {
+  SetHudSize(320, 200, 0);
+  int baseid = UH_IMAGE_ID_BASE - 130;
+  // Stats/active stay with the ammo bar (VB top-left / HB bottom, razon3 +center).
+  // Passives: right-side row like razon3 DrawImage -64..-15,106 (fullscreenoffsets).
+  AdjustedImageDisplay("C_I_59A", "C_I_59A", baseid, baseid - 1, -18.1, 9.1, 53.1, 155.1);
+  AdjustedImageDisplay("C_I_59B", "C_I_59B", baseid - 2, baseid - 3, -18.1, 18.1, 53.1, 163.1);
+  AdjustedImageDisplay("C_I_59C", "C_I_59C", baseid - 4, baseid - 5, -18.1, 27.1, 53.1, 171.1);
+  AdjustedImageDisplay("C_I_59D", "C_I_59D", baseid - 6, baseid - 7, -18.1, 36.1, 80.1, 155.1);
+  AdjustedImageDisplay("C_I_59E", "C_I_59E", baseid - 8, baseid - 9, -18.1, 45.1, 80.1, 163.1);
+  AdjustedImageDisplay("C_I_59F", "C_I_59F", baseid - 10, baseid - 11, -18.1, 54.1, 80.1, 171.1);
+  AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenSpeedAttr"),
+    baseid - 12, baseid - 13, -9.1, 11.1, 62.1, 156.1);
+  AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenHeightAttr"),
+    baseid - 14, baseid - 15, -9.1, 20.1, 62.1, 164.1);
+  AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenTearsHUDAttr"),
+    baseid - 16, baseid - 17, -9.1, 29.1, 62.1, 172.1);
+  AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenDamageAttr"),
+    baseid - 18, baseid - 19, -9.1, 38.1, 89.1, 156.1);
+  AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenRangeAttr"),
+    baseid - 20, baseid - 21, -9.1, 47.1, 89.1, 164.1);
+  AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenShotSpeedAttr"),
+    baseid - 22, baseid - 23, -9.1, 56.1, 89.1, 172.1);
+
+  str active = EdenLookupActiveItemIcon();
+  if (StrCmp(active, "TNT1A0")) {
+    AdjustedImageDisplay(active, active, baseid - 24, baseid - 25, -18.1, 64.1, 40.1, 181.1);
+  }
+
+  int bob = CheckInventory("BobHeadFlag");
+  if (bob > 0) {
+    AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, bob,
+      baseid - 26, baseid - 27, 16.1, 72.1, 124.1, 192.1);
+  }
+
+  DrawEdenPassiveSlots(baseid);
+}
+
+script "DrawBar_Eden_W" (void) {
+  DrawBarColor(110, 129);
+  SetOverlayBar(CheckInventory("TheBibleFlightFlag"), 180);
+  DrawEdenStatHud();
+}
+
+script "DrawBar_Eden678_W" (void) {
+  ACS_NamedExecuteWithResult("DrawBar_Eden_W");
+}
+
+script "DrawBar_Eden118_W" (void) {
+  ACS_NamedExecuteWithResult("DrawBar_Eden_W");
+}
+
+script "DrawBar_TrueBusterExpert_W" (void) {
+  if (CheckInventory("IsPissedFlag")) {
+    DrawBarColor(184, 189);
+  }
+  else {
+    DrawBarColor(95, 6);
+  }
+  DrawReloadIcon("R000B0");
+}
+
+script "DrawBar_HunterHawkeye_W" (void) {
+  DrawBarColor(229, 41);
+  SetOverlayBar(CheckInventory("Hawkeye_Exhaust"), 120);
+  DrawBar2Color(4, 94);
+  DrawBar3Color(CheckInventory("UnholyPower1000"), 1000, 180, 5);
+  DrawReloadIcon("R001B0");
+}
+
+script "DrawBar_DonJavier_W" (void) {
+  DrawBarColor(68, 94);
+  DrawBar2Color(218, 5);
+  DrawReloadIcon("R002B0");
+}
+
+script "DrawBar_ColonelKachidonga_W" (void) {
+  DrawBarColor(4, 197);
+  DrawBar2Color(178, 5);
+  if (CheckInventory("UnholyPower1500") == 1500) {
+    DrawReloadIcon("R004B2");
+  } else {
+    DrawReloadIcon("R004B1");
+  }
+}
+
+script "DrawBar_TricksterGiovanni_W" (void) {
+  DrawUHOffsetBar(CUST_TRICKSTERGIOVANNI, CheckInventory("TricksterGiovanniAmmo"), 4);
+  SetInventory("SBARAmmoOffset", 1);
+  DrawNormalAmmo();
+  DrawBar2Color(4, 5);
+  DrawBar3Color(CheckInventory("UnholyPower1500"), 1500, 95, 8);
+  DrawReloadIcon("R010B0");
+}
+
+script "DrawBar_IronCurtain_W" (void) {
+  DrawBarColor(4, 110);
+  DrawBar2Color(130, 126);
+  DrawUHOffsetBar(CUST_STEALTHSNIPER_CHARGEMAX, CheckInventory("IronCurtainHiddenFuel"), 25);
+  DrawUHOffsetBar(CUST_ASTRONAUT_OLD, CheckInventory("IronCurtainRamTime"), 100);
+  SetOverlayBar(CheckInventory("IronCurtainItemTime"), 100);
+  DrawReloadIcon("R011B0");
+}
+
+script "DrawBar_CaptainBlitzkrieg_W" (void) {
+  DrawBarColor(223, 5);
+  DrawBar2Color(23, 184);
+  if (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
+    DrawUHOffsetBar(CUST_ASTRONAUT_OLD, CheckInventory("Blitzkrieg_Charge"), 25);
+  }
+  DrawReloadIcon("R012B0");
+}
+
+script "DrawBar_RNCClashman_W" (void) {
+  DrawBarColor(192, 62);
+  DrawUHOffsetBar(CUST_RNCCLASHMAN, CheckInventory("UnholyBossAmmo200"), 200);
+  DrawBar2Color(204, 61);
+}
+
+script "DrawBar_Dixieandoff_W" (void) {
+  DrawBarColor(162, 164);
+  DrawUHOffsetBar(CUST_DIXIEANDOFF, CheckInventory("UnholyPower1000"), 1000);
+  SetInventory("SBARAmmoOffset", 2);
+  DrawSecondAmmo();
+}
+
+script "DrawBar_JuggerbroGold_W" (void) {
+  DrawBarColorGlow(161, 163, 167);
+  if (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
+    DrawUHOffsetBar(CUST_JUGGERBROGOLD, CheckInventory("UnholyBossAmmo100"), 100);
+  }
+}
+
+script "DrawBar_JuggerbroSilver_W" (void) {
+  DrawBarColorGlow(83, 90, 3);
+  if (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
+    DrawUHOffsetBar(CUST_JUGGERBROSILVER, CheckInventory("UnholyBossAmmo100"), 100);
+  }
+}
+
+script "DrawBar_RedHero_W" (void) {
+  DrawBarColor(171, 41);
+  DrawUHOffsetBar(CUST_GRANITEMAULER, CheckInventory("RedHero_Empower"), 250);
+}
+
+script "DrawBar_RedSpeciman_W" (void) {
+  DrawBarColor(218, 40);
+  if (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
+    SetOverlayBar(CheckInventory("ASPFireCharge"), 50);
+  }
+  DrawBar2Color(4, 94);
+  DrawReloadIcon("R042B0");
+}
+
+script "DrawBar_Troutius_W" (void) {
+  DrawUHOffsetBar(CUST_TROUTIUS, CheckInventory("UnholyBossAmmo100"), 100);
+  SetInventory("SBARAmmoOffset", 1);
+  DrawNormalAmmo();
+  DrawBar2Color(4, 109);
+  DrawBar3Color(CheckInventory("UnholyPower1500"), 1500, 223, 3);
+}
+script "DrawBar_Troutius_W_Pissed" (void) {
+  ACS_NamedExecuteWithResult("DrawBar_Troutius_W");
+}
+
+script "DrawBar_HalfPressHardman_W" (void) {
+  DrawBarColor(4, 94);
+  if (CheckInventory("UnholyPower1000") >= 250) {
+    DrawBar2ColorGlow(228, 163, 235);
+  } else {
+    DrawBar2Color(163, 235);
+  }
+  DrawReloadIcon("R050B0");
+  int flag = CheckInventory("HalfPressHardman_F");
+  if (flag > 0) {
+    AdjustedImageDisplay("8H50Z0", "8H50Z0", UH_IMAGE_ID_BASE - 120, UH_IMAGE_ID_BASE - 121,
+                         1.1, 78.1, 60.1, 163.1);
+    AdjustedDrawNumberC("CMBHQFONT", CR_YELLOW, flag, UH_IMAGE_ID_BASE - 122, UH_IMAGE_ID_BASE - 123,
+                        21.1, 79.1, 80.0, 164.1);
+  }
+}

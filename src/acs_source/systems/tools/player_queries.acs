@@ -1,0 +1,63 @@
+#define MAX_HEALTH 30000
+#define CAPROP_AirJumpZ 64
+#define CAPROP_WallJumpZ 65
+
+script "uh_IsBot" (void) {
+  SetResultValue(PlayerIsBot(PlayerNumber()) || CheckInventory("IsBot"));
+}
+
+script "uh_SyncPitchFix" (void) {
+  SetActorPitch(0, GetActorPitch(0));
+}
+
+// Used to adjust deselect Death
+script "uh_IsItOnline" (void) {
+  if (IsNetworkGame()) {
+    SetResultValue(0);
+  }
+}
+
+// This is for projectiles to check if their owner spectated, disconnected, or is dead.
+script "uh_PointerExists" (int point) {
+  SetActivator(0, point);
+  // log(s:"Player #? ",i:PlayerInGame(PlayerNumber()));
+  // log(s:"Is Dead? ",i:CheckInventory("IsDead"));
+  // log(s:"In Game? ",i:PlayerInGame(PlayerNumber()));
+  if (PlayerNumber() == -1 || CheckInventory("IsDead") || !PlayerInGame(PlayerNumber())) {
+    SetResultValue(0);
+  }
+}
+
+script "uh_IsPlayerAlive" (int tid) {
+  SetActivator(tid);
+  if (PlayerNumber() == -1 || CheckInventory("IsDead") || !PlayerInGame(PlayerNumber())) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
+}
+
+script "uh_PointerIsABoss" (int pointer) {
+  SetActivator(0, pointer);
+  if (PlayerNumber() == -1 || CheckInventory("IsDead") ||
+      !PlayerInGame(PlayerNumber()) || CheckInventory("IsAFakeBoss")) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
+}
+
+// Only use for weapon flash states
+script "uh_PointerIsABoss_CheckInv" (int pointer) {
+  SetActivator(0, pointer);
+  if (CheckInventory("IsDead") || CheckInventory("IsAFakeBoss")) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
+}
+
+script "uh_PointerMorphed" (int point) {
+  SetActivator(0, point);
+  SetResultValue(CheckInventory("MorphedFlag"));
+}

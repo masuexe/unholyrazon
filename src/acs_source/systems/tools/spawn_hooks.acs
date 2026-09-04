@@ -1,0 +1,66 @@
+// ProjSpawnFunc hook: invert missile gravity when the firer is gravity-flipped.
+// Eden tear passives on spawn (Ipecac / Strange Attractor / Godhead).
+script "rz_spawnfuncs" OPEN {
+  AddSpawnFunc(DTADD_SFT_PROJ, "rz_projflipgrav");
+  AddSpawnFunc(DTADD_SFT_PROJ, "rz_EdenTearPassiveSpawn");
+}
+
+script "rz_projflipgrav" (void) {
+  if (CheckFlag(0, "NOGRAVITY"))
+    terminate;
+  int grav = GetActorProperty(0, APROP_Gravity);
+  if (grav == 0)
+    terminate;
+  int owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  if (owner == 0)
+    owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  if (owner == 0)
+    terminate;
+  if (!(CheckActorInventory(owner, "CeilingFlag") ||
+        GetActorProperty(owner, APROP_Gravity) < 0))
+    terminate;
+  SetActorProperty(0, APROP_Gravity, -grav);
+}
+
+script "rz_EdenTearPassiveSpawn" (void) {
+  int owner;
+  int brimstone;
+  int fetus;
+  brimstone = CheckActorClass(0, "EdenBrimstone") ||
+  CheckActorClass(0, "EdenBrimstoneDelayed");
+  fetus = CheckActorClass(0, "EdenFetusTear") ||
+  CheckActorClass(0, "EdenBrimstoneDelayedFetus");
+  if (!CheckActorClass(0, "EdenTear") &&
+      !CheckActorClass(0, "EdenSpectralTear") &&
+      !CheckActorClass(0, "EdenFetusTear") &&
+      !CheckActorClass(0, "EdenBrimstoneDelayedFetus") &&
+      !brimstone)
+    terminate;
+  owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  if (owner == 0)
+    owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  if (owner == 0)
+    terminate;
+  // Brimstone receives Godhead homing but never its damaging aura.
+  // Strange Attractor is applied first so Ipecac's green dye has priority.
+  if (brimstone) {
+    if (CheckActorInventory(owner, "C315Flag"))
+      GiveInventory("EdenTearStrangeAttractorApply_P", 1);
+    if (CheckActorInventory(owner, "C149Flag"))
+      GiveInventory("EdenBrimstoneIpecacApply_P", 1);
+    if (CheckActorInventory(owner, "C331Flag"))
+      GiveInventory("EdenGodheadHomingApply_P", 1);
+    terminate;
+  }
+  // Order matches razon3 SpawnCheck: Ipecac then Strange Attractor.
+  if (CheckActorInventory(owner, "C149Flag"))
+    GiveInventory("EdenTearIpecacApply_P", 1);
+  if (CheckActorInventory(owner, "C315Flag"))
+    GiveInventory("EdenTearStrangeAttractorApply_P", 1);
+  if (CheckActorInventory(owner, "C331Flag")) {
+    if (fetus)
+      GiveInventory("EdenGodheadAuraApply_P", 1);
+    else
+      GiveInventory("EdenGodheadTearApply_P", 1);
+  }
+}

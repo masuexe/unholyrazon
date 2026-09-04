@@ -1,0 +1,242 @@
+function void DrawDecoyBotHud(void) {
+  SetHudSize(320, 200, 0);
+  int baseid = UH_IMAGE_ID_BASE - 110;
+  // Held DecoyCopy_*_W1/_W2/_W3 (and legacy parents): slot from weapon suffix.
+  int sel = 1;
+  int wlen;
+  int d;
+  str wep = GetWeapon();
+  wlen = StrLen(wep);
+  if (wlen >= 4
+    && GetChar(wep, wlen - 3) == '_'
+    && GetChar(wep, wlen - 2) == 'W') {
+    d = GetChar(wep, wlen - 1);
+    if (d == '2')
+      sel = 2;
+    else if (d == '3')
+      sel = 3;
+    else
+      sel = 1;
+  }
+  else if (!StrCmp(wep, "DecoyBot_W2")) {
+    sel = 2;
+  } else if (!StrCmp(wep, "DecoyBot_W3")) {
+    sel = 3;
+  }
+
+  int f1 = CheckInventory("DecoyBotFlag1");
+  int f2 = CheckInventory("DecoyBotFlag2");
+  int f3 = CheckInventory("DecoyBotFlag3");
+  if (f1 < 0) {f1 = 0;}
+  if (f2 < 0) {f2 = 0;}
+  if (f3 < 0) {f3 = 0;}
+
+  int c1 = CR_UNTRANSLATED;
+  int c2 = CR_UNTRANSLATED;
+  int c3 = CR_UNTRANSLATED;
+  if (sel == 1) {c1 = CR_RED;}
+  else if (sel == 2) {c2 = CR_YELLOW;}
+  else {c3 = CR_GREEN;}
+
+  str n1;
+  str n2;
+  str n3;
+  if (f1 < 10) {n1 = StrParam(s:"0", i:f1);} else {n1 = StrParam(i:f1);}
+  if (f2 < 10) {n2 = StrParam(s:"0", i:f2);} else {n2 = StrParam(i:f2);}
+  if (f3 < 10) {n3 = StrParam(s:"0", i:f3);} else {n3 = StrParam(i:f3);}
+
+  // Layer (bottom→top): C_I_50G → C_I_50D/E/F box → UCNUM portrait.
+  // HudMessage stacks by id (more negative = on top), so UCNUM ids sit below D/E/F ids.
+  // Vert x shifted further left so Ammo1 "200" (right-align x=15) keeps its leading digit clear.
+  AdjustedImageDisplay("C_I_50G", "C_I_50G", baseid, baseid - 1, -17.1, 9.1, 55.1, 158.1);
+  AdjustedImageDisplay("C_I_50G", "C_I_50G", baseid - 2, baseid - 3, -17.1, 29.1, 73.1, 158.1);
+  AdjustedImageDisplay("C_I_50G", "C_I_50G", baseid - 4, baseid - 5, -17.1, 49.1, 91.1, 158.1);
+
+  str sel1 = "TNT1A0";
+  str sel2 = "TNT1A0";
+  str sel3 = "TNT1A0";
+  if (sel == 1) {sel1 = "C_I_50D";}
+  else if (sel == 2) {sel2 = "C_I_50E";}
+  else {sel3 = "C_I_50F";}
+  AdjustedImageDisplay(sel1, sel1, baseid - 6, baseid - 7, -17.1, 9.1, 55.1, 158.1);
+  AdjustedImageDisplay(sel2, sel2, baseid - 8, baseid - 9, -17.1, 29.1, 73.1, 158.1);
+  AdjustedImageDisplay(sel3, sel3, baseid - 10, baseid - 11, -17.1, 49.1, 91.1, 158.1);
+
+  AdjustedImageDisplay(f1 >= UH_DECOY_SLOTBASE? "TNT1A0":StrParam(s:"UCNUM_", i:f1),
+    f1 >= UH_DECOY_SLOTBASE? "TNT1A0":StrParam(s:"UCNUM_", i:f1),
+    baseid - 26, baseid - 27, -16.1, 10.1, 56.1, 159.1);
+  AdjustedImageDisplay(f2 >= UH_DECOY_SLOTBASE? "TNT1A0":StrParam(s:"UCNUM_", i:f2),
+    f2 >= UH_DECOY_SLOTBASE? "TNT1A0":StrParam(s:"UCNUM_", i:f2),
+    baseid - 28, baseid - 29, -16.1, 30.1, 74.1, 159.1);
+  AdjustedImageDisplay(f3 >= UH_DECOY_SLOTBASE? "TNT1A0":StrParam(s:"UCNUM_", i:f3),
+    f3 >= UH_DECOY_SLOTBASE? "TNT1A0":StrParam(s:"UCNUM_", i:f3),
+    baseid - 30, baseid - 31, -16.1, 50.1, 92.1, 159.1);
+
+  AdjustedDrawStringC("CMBHQFONT", c1, n1, baseid - 12, baseid - 13, -8.2, 23.1, 64.2, 153.1);
+  AdjustedDrawStringC("CMBHQFONT", c2, n2, baseid - 14, baseid - 15, -8.2, 43.1, 82.2, 153.1);
+  AdjustedDrawStringC("CMBHQFONT", c3, n3, baseid - 16, baseid - 17, -8.2, 63.1, 100.2, 153.1);
+
+  AdjustedImageDisplay("50_L_B_R", "50_L_V_R", baseid - 18, baseid - 19, -17.1, 70.1, 44.1, 159.1);
+  int fluky = CheckInventory("FlukyNumberAmmo");
+  str pipv = "TNT1A0";
+  str piph = "TNT1A0";
+  if (fluky >= 100) {
+    pipv = "50_L_BAR";
+    piph = "50_L_VAR";
+  }
+  AdjustedImageDisplay(pipv, piph, baseid - 20, baseid - 21, -13.1, 73.1, 47.1, 163.1);
+  pipv = "TNT1A0";
+  piph = "TNT1A0";
+  if (fluky >= 200) {
+    pipv = "50_L_BAR";
+    piph = "50_L_VAR";
+  }
+  AdjustedImageDisplay(pipv, piph, baseid - 22, baseid - 23, -11.1, 73.1, 47.1, 165.1);
+  pipv = "TNT1A0";
+  piph = "TNT1A0";
+  if (fluky >= 300) {
+    pipv = "50_L_BAR";
+    piph = "50_L_VAR";
+  }
+  AdjustedImageDisplay(pipv, piph, baseid - 24, baseid - 25, -9.1, 73.1, 47.1, 167.1);
+}
+
+script "DrawBar_DecoyBot_W" (void) {
+  // Ammo1Disp proxy: fill/number do not depend on ReadyWeapon Ammo1 (avoids switch flash).
+  DrawBarColorOwned(CheckInventory("DecoyEnergyAmmo"), GetAmmoCapacity("DecoyEnergyAmmo"), 68, 78);
+  DrawDecoyBotHud();
+}
+script "DrawBar_DecoyBot_W2" (void) {
+  ACS_NamedExecuteWithResult("DrawBar_DecoyBot_W");
+}
+script "DrawBar_DecoyBot_W3" (void) {
+  ACS_NamedExecuteWithResult("DrawBar_DecoyBot_W");
+}
+script "DrawBar_DecoyBotShiny_W" (void) {
+  ACS_NamedExecuteWithResult("DrawBar_DecoyBot_W");
+}
+
+script "DrawBar_Zangief_W" (void) {
+  DrawBarColor(214, 166);
+  if (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars") && CheckInventory("AtomicBusterCharge") > 0) {
+    DrawCustomBarStringLayer1("BARAMM13", "NOBAR", "VARAMM13", "VNOBAR",
+                              CheckInventory("AtomicBusterCharge"), 16, 1);
+  } else {
+    DrawCustomBarStringLayer1("BARFLS1", "NOBAR", "VARFLS1", "VNOBAR",
+                              CheckInventory("ZangiefHoldFlag"), 60, 1);
+  }
+}
+script "DrawBar_ZangiefShiny_W" (void) {
+  DrawBarColor(80, 92);
+  if (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars") && CheckInventory("AtomicBusterCharge") > 0) {
+    DrawCustomBarStringLayer1("BARAMM13", "NOBAR", "VARAMM13", "VNOBAR",
+                              CheckInventory("AtomicBusterCharge"), 16, 1);
+  } else {
+    DrawCustomBarStringLayer1("BARFLS1", "NOBAR", "VARFLS1", "VNOBAR",
+                              CheckInventory("ZangiefHoldFlag"), 60, 1);
+  }
+}
+
+script "DrawBar_Amber_W" (void) {
+  DrawCustomBarString1("52_C_BAR", "BAREMPTY", "52_C_VAR", "VAREMPTY",
+                       CheckInventory("VixenScuttleAmmo"), 280);
+  SetInventory("SBARAmmoOffset", 1);
+  DrawNormalAmmo();
+  DrawBar2Color(31, 47);
+  if (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars") &&
+      CheckInventory("AmberChargeFlag") >= 70) {
+    DrawCustomBarStringLayer1("52_E_BAR", "NOBAR", "52_E_VAR", "VNOBAR", 1, 1, 1);
+  } else {
+    DrawCustomBarStringLayer1("52_B_BAR", "NOBAR", "52_B_VAR", "VNOBAR",
+                              CheckInventory("AmberChargeFlag"), 70, 1);
+  }
+}
+
+script "DrawBar_AmberShiny_W" (void) {
+  DrawCustomBarString1("52_CSBAR", "BAREMPTY", "52_CSVAR", "VAREMPTY",
+                       CheckInventory("VixenScuttleAmmo"), 280);
+  SetInventory("SBARAmmoOffset", 1);
+  DrawNormalAmmo();
+  DrawBar2Color(171, 43);
+  if (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars") &&
+      CheckInventory("AmberChargeFlag") >= 70) {
+    DrawCustomBarStringLayer1("BARFLS1", "NOBAR", "VARFLS1", "VNOBAR", 1, 1, 1);
+  } else {
+    DrawCustomBarStringLayer1("52_BSBAR", "NOBAR", "52_BSVAR", "VNOBAR",
+                              CheckInventory("AmberChargeFlag"), 70, 1);
+  }
+}
+
+script "DrawBar_Claire_W" (void) {
+  DrawCustomBarString1("54_C_BAR", "BAREMPTY", "54_C_VAR", "VAREMPTY",
+                       CheckInventory("ClaireEnergyAmmo"), 28);
+  SetInventory("SBARAmmoOffset", 1);
+  DrawNormalAmmo();
+  DrawBar2Color(107, 110);
+}
+script "DrawBar_ClaireShiny_W" (void) {
+  DrawCustomBarString1("54_C_BAR", "BAREMPTY", "54_C_VAR", "VAREMPTY",
+                       CheckInventory("ClaireEnergyAmmo"), 28);
+  SetInventory("SBARAmmoOffset", 1);
+  DrawNormalAmmo();
+  DrawBar2Color(108, 130);
+}
+
+script "DrawBar_Wisp_W" (void) {
+  DrawCustomBarString1("55_X_BAR", "55_Y_BAR", "55_X_VAR", "55_Y_VAR",
+                       CheckInventory("WispSpiritAmmo"), 3);
+  SetInventory("SBARAmmoOffset", 1);
+  DrawNormalAmmo();
+  DrawBar2Color(43, 47);
+  if (CheckInventory("PowerWispPortal")) {
+    DrawCustomBarStringLayer2("55_G_BAR", "NOBAR", "55_G_VAR", "VNOBAR",
+                              CheckInventory("BewitchingHexAmmo"), 56, 1);
+  }
+}
+script "DrawBar_WispShiny_W" (void) {
+  DrawCustomBarString1("55_XSBAR", "55_YSBAR", "55_XSVAR", "55_YSVAR",
+                       CheckInventory("WispSpiritAmmo"), 3);
+  SetInventory("SBARAmmoOffset", 1);
+  DrawNormalAmmo();
+  DrawBar2Color(56, 61);
+  if (CheckInventory("PowerWispPortal")) {
+    DrawCustomBarStringLayer2("55_G_BAR", "NOBAR", "55_G_VAR", "VNOBAR",
+                              CheckInventory("BewitchingHexAmmo"), 56, 1);
+  }
+}
+
+script "DrawBar_Miu_W" (void) {
+  if (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
+    DrawCustomBarStringLayer1("56_B_BAR", "NOBAR", "56_B_VAR", "VNOBAR",
+                              CheckInventory("WeaponCharge"), 20, 1);
+  }
+  DrawBarColor(161, 248);
+  DrawBar2Color(74, 3);
+  SetOverlayBar2(CheckInventory("MiuDashFlag"), 28);
+}
+script "DrawBar_Miu_W2" (void) {
+  ACS_NamedExecuteWithResult("DrawBar_Miu_W");
+}
+
+script "DrawBar_MiuShiny_W" (void) {
+  if (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars")) {
+    DrawCustomBarStringLayer1("56_B_BAR", "NOBAR", "56_B_VAR", "VNOBAR",
+                              CheckInventory("WeaponCharge"), 20, 1);
+  }
+  DrawBarColor(248, 164);
+  DrawBar2Color(66, 60);
+  SetOverlayBar2(CheckInventory("MiuDashFlag"), 28);
+}
+
+script "DrawBar_KickChamp_W" (void) {
+  DrawBarColor(228, 194);
+  if (!CheckInventory("MasterFootAmmo")) {
+    SetFlashingBar();
+  }
+}
+script "DrawBar_KickChampShiny_W" (void) {
+  DrawBarColor(160, 204);
+  if (!CheckInventory("MasterFootAmmo")) {
+    SetFlashingBar();
+  }
+}

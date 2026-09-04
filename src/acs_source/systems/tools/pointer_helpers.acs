@@ -1,0 +1,75 @@
+script "uh_IsPointerClient" (int pointer, int playernum, int chasecam) CLIENTSIDE {
+  if (pointer > 0) {
+    SetActivator(0, pointer);
+    playernum = PlayerNumber();
+  }
+  // Log(i:consoleplayernumber(),s:" = Console -uh_IsPointerClient- Player =",i:PlayerNum);
+  if (ConsolePlayerNumber() == playernum) {
+    if (chasecam)
+      SetResultValue(!GetPlayerChasecam(playernum));
+    else
+      SetResultValue(1);
+  }
+  else {
+    SetResultValue(0);
+  }
+}
+
+script "uh_SetPtrCoordToArgs" (int pointer) {
+  int tid = ACS_NamedExecuteWithResult("core_getptrtid", pointer);
+
+  int x = 80.0;
+  int y = 0.0;
+  int z = 33.0;
+
+  if (tid != 0) {
+    x = (GetActorX(0) - GetActorX(tid)) >> 16;
+    y = (GetActorY(0) - GetActorY(tid)) >> 16;
+    z = (GetActorZ(0) - GetActorZ(tid)) >> 16;
+  }
+
+  SetThingSpecial(0, 0, x, y, z);
+}
+
+script "uh_WarpToPlayerCenter" (int warptid) {
+  if (ClassifyActor(warptid) & ACTOR_PLAYER)
+    Warp(warptid, 0, 0, GetActorProperty(warptid, APROP_Height / 2), 0, WARPF_NOCHECKPOSITION);
+}
+
+script "uh_SetClassCustomState" (int statenum) {
+  if (GetActorProperty(0, APROP_Health) <= 0 || CheckInventory("IsDead")) {
+    SetResultValue(-1);
+    terminate;
+  }
+  SetResultValue(SetActorState(0, StrParam(s:"CustomState", i:statenum), true));
+}
+
+script "rz_CheckPointerFooting" (int pointer, int thruplayer) {
+  SetActivator(0, pointer);
+  if (!thruplayer) {
+    SetResultValue(ACS_NamedExecuteWithResult("core_CheckFooting"));
+  } else {
+    SetResultValue(ACS_NamedExecuteWithResult("core_CheckFooting_ThruPlayer"));
+  }
+}
+
+#define RPT_INCLUDESELF 1
+script "rz_RandomPlayerTID" (int flags, int retrycount) {
+  int tid = 0;
+  int callertid = ActivatorTID();
+  for (int i = 0; i < retrycount; i++) {
+    tid = random(1000, 1000 + ServerMAX);
+    if (!(flags & RPT_INCLUDESELF) && tid == callertid) {
+      continue;
+    }
+    SetActivator(tid);
+    if (PlayerNumber() == -1 || CheckInventory("IsDead") ||
+        !PlayerInGame(PlayerNumber()) || CheckInventory("IsAFakeBoss")) {
+      continue;
+    }
+    SetResultValue(tid);
+    terminate;
+  }
+  SetResultValue(-1);
+}
+

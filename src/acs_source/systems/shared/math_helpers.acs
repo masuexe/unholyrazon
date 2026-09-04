@@ -1,0 +1,96 @@
+function int ZanSqrt(int number) {
+  if (number <= 3) {
+    if (number > 0) {
+      return 1;
+    }
+    return 0;
+  }
+
+  int oldans = number >> 1;
+  int newans = (oldans + number / oldans) >> 1;
+
+  while (newans < oldans) {
+    oldans = newans;
+    newans = (oldans + number / oldans) >> 1;
+  }
+
+  return oldans;
+}
+
+function int Zanceil(int fixedin) {
+  return(fixedin + 65535) >> 16;
+}
+
+function int XyDistance(int tid1, int tid2) {
+  int x, y, d;
+  x = GetActorX(tid1) - GetActorX(tid2);
+  y = GetActorY(tid1) - GetActorY(tid2);
+  d = VectorLength(x, y) >> 16;
+  return d;
+}
+
+function int Zdistance(int tid1, int tid2) {
+  int z;
+  z = GetActorZ(tid1) - GetActorZ(tid2) >> 16;
+  return z;
+}
+
+function int XyzDistance(int tid1, int tid2) {
+  int x = GetActorX(tid1) - GetActorX(tid2) >> 16;
+  int y = GetActorY(tid1) - GetActorY(tid2) >> 16;
+  int z = GetActorZ(tid1) - GetActorZ(tid2) >> 16;
+  int d = ZanSqrt(x * x + y * y + z * z);
+  return d;
+}
+
+// Similar to XYZDistance, except first TID has tweaked values
+function int DistanceVal(int tid1x, int tid1y, int tid1z, int tid2) {
+  int x, y, z, d;
+  x = tid1x - GetActorX(tid2);
+  y = tid1y - GetActorY(tid2);
+  z = tid1z - GetActorZ(tid2);
+  d = VectorLength(VectorLength(x, y), z) >> 16;
+  return d;
+}
+
+function int FDistanceVal(int x, int y, int z) {
+  int len;
+
+  int ang = VectorAngle(x, y);
+  if (((ang + 0.125) % 0.5) > 0.25) len = FixedDiv(y, sin(ang));
+  else len = FixedDiv(x, cos(ang));
+
+  ang = VectorAngle(len, z);
+  if (((ang + 0.125) % 0.5) > 0.25) len = FixedDiv(z, sin(ang));
+  else len = FixedDiv(len, cos(ang));
+
+  return len;
+}
+
+function bool IsDifferentTeams(int team, int targetnumber) {
+  return(team != GetPlayerInfo(targetnumber, PLAYERINFO_TEAM));
+}
+
+function int PitchAdjust(int i) {
+  if (i > 0.0) return 1.0 - i;
+  return -i;
+}
+
+function int WrapAround(int i) {
+  if (i < -0.5) return i + 1.0;
+  if (i > 0.5) return i - 1.0;
+  return i;
+}
+
+function int FDistanceVal1(int ang, int x, int y) {
+  int len;
+  if (((ang + 0.125) % 0.5) > 0.25) len = FixedDiv(y, sin(ang));
+  else len = FixedDiv(x, cos(ang));
+  return len;
+}
+
+function int FDistanceVal2(int ang, int len, int z) {
+  if (((ang + 0.125) % 0.5) > 0.25) len = FixedDiv(z, sin(ang));
+  else len = FixedDiv(len, cos(ang));
+  return len;
+}

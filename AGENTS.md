@@ -103,14 +103,42 @@ The `actors/player/classbase/customslots/` directory (referenced by `classbase2_
 
 ## ACS
 
-UH libraries in `src/acs_source/`:
+The two public UH library entry points remain in the `acs_source/` root:
 
 | File | Library | What |
 |------|---------|------|
-| `UH_COLOR.acs` | `UH_COLORS` | Team color translations, dye defs, RGB translations |
-| `UH_TOOLS.acs` | `UH_TOOLS` | IsBot, IsItOnline, PointerExists, button/movement input helpers |
+| `uh_colors.acs` | `UH_COLORS` | Team color translations, dye defs, RGB translations |
+| `uh_tools.acs` | `UH_TOOLS` | IsBot, IsItOnline, PointerExists, input and player-state helpers |
 
-UH-owned shared includes live under `acs_source/_includes/mod_api/`. Modified v6b shared includes live under `acs_source/v6b_overrides/_includes/` (`common/` and `mod_api/`). When compiling, search the v6b override include directories before the UH-owned include directory. Compiled `.o` files go in `src/acs/` (gitignored).
+Other ACS libraries are grouped by responsibility under `hud/`, `classes/`,
+`items/`, `systems/`, `coopenemies/`, `compat/`, `debug/`, and
+`v6b_overrides/`. Large libraries keep their original `#library` file as an
+aggregator and include implementation fragments in dependency order; those
+fragments do not declare additional libraries. Within `systems/tools/`, `input.acs`
+is reserved for button/WASD input detection, while `motion_helpers.acs` contains
+player velocity and angle helpers; weather and spawn hooks are kept in separate
+`weather.acs` and `spawn_hooks.acs` fragments. `rz_countinv.acs` (DECORATE-facing
+inventory queries) and the `rz_tools.acs` aggregator also live there; the
+Eden-only C396 TID reservation stays at
+`classes/survivors/eden/eden_tid_reserve.acs`. Generic math/geometry helpers
+imported via `#import` live in `_imports/uh_acsutils.acs` (Unholy additions
+section); `systems/shared/math_helpers.acs` keeps same-named helpers with
+different semantics — do not unify them blindly. Color implementation fragments
+live under `systems/colors/`.
+
+Survivor, boss, and demoneye class logic belongs under `classes/`. GemBanker’s
+user-option bridge is kept in `classes/bosses/gem_banker_hud.acs`, while the
+shared weapon roulette remains in `classes/shared/class_weapon_roulette.acs`.
+Modified v6b ACS remains under `v6b_overrides/`; `uh_corereplace.acs` is a
+v6b-derived library replacement that belongs there because it replaces v6b
+rune/knockback scripts.
+
+UH-owned shared includes live under `acs_source/_includes/mod_api/`. Modified
+v6b shared includes live under `acs_source/v6b_overrides/_includes/`
+(`common/` and `mod_api/`). When compiling, search the v6b override include
+directories before the UH-owned include directory. Compiled `.o` files go in
+`src/acs/` (gitignored). `LOADACS` contains library names, not source paths,
+so its order and entries must remain unchanged when ACS source files move.
 
 ## Naming conventions
 

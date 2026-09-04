@@ -1,0 +1,109 @@
+script "uc_DecoyBotWepSwap" (int max_rng) {
+  // Custom copy slots (59+) extend the vanilla pool; the DECORATE caller
+  // still passes 58 for compatibility — override with the live count when
+  // the table is already registered. On singleplayer spawn, startitem can
+  // run before UH_COPYDEFS OPEN fills uh_decoyMoveCount — wait briefly.
+  int n;
+  int waits;
+  int p1;
+  int p2;
+  int p3;
+  int n1;
+  int n2;
+  int n3;
+
+  waits = 0;
+  n = ACS_NamedExecuteWithResult("uh_CountDecoyBotSlots");
+  while (n <= 0 && waits < 35) {
+    Delay(1);
+    waits++;
+    n = ACS_NamedExecuteWithResult("uh_CountDecoyBotSlots");
+  }
+  if (n > 0)
+    max_rng = n - 1;
+  else if (max_rng < 0)
+    terminate;
+
+  p1 = CheckInventory("DecoyBotFlag1");
+  p2 = CheckInventory("DecoyBotFlag2");
+  p3 = CheckInventory("DecoyBotFlag3");
+
+  n1 = DecoyBotWepCheckRng(max_rng, p1, p2, p3, -1, -1);
+  n2 = DecoyBotWepCheckRng(max_rng, p1, p2, p3, n1, -1);
+  n3 = DecoyBotWepCheckRng(max_rng, p1, p2, p3, n1, n2);
+
+  switch (Random(0, 5)) {
+    case 0: p1 = n1; p2 = n2; p3 = n3; break;
+    case 1: p1 = n1; p2 = n3; p3 = n2; break;
+    case 2: p1 = n2; p2 = n1; p3 = n3; break;
+    case 3: p1 = n2; p2 = n3; p3 = n1; break;
+    case 4: p1 = n3; p2 = n1; p3 = n2; break;
+    case 5: p1 = n3; p2 = n2; p3 = n1; break;
+  }
+
+  SetInventory("DecoyBotFlag1", p1);
+  SetInventory("DecoyBotFlag2", p2);
+  SetInventory("DecoyBotFlag3", p3);
+  ACS_NamedExecuteWithResult("uh_DecoyBotApplyHeldWeps");
+}
+
+function int DecoyBotWepCheckRng(int max_r,
+                                 int p1, int p2, int p3, int p4, int p5) {
+  int dwep;
+  int tries;
+
+  if (max_r < 0)
+    return 0;
+  // Cap retries so an over-excluded pool cannot runaway the script.
+  tries = 0;
+  do {
+    dwep = Random(0, max_r);
+    tries++;
+  } while (tries < 64 &&
+           (dwep == p1 ||
+            dwep == p2 ||
+            dwep == p3 ||
+            dwep == p4 ||
+            dwep == p5));
+
+  return dwep;
+}
+
+function int Tally_WispHex(void) {
+  int total;
+  int curr_arr;
+  for (int i = 0; i < 64; i++) {
+    curr_arr = GetUserArray(0, "user_wispHex", i);
+    total += curr_arr;
+    if (curr_arr != 0)
+      SetUserArray(0, "user_wispHex", i, 0);
+  }
+  return total;
+}
+function void Clear_WispHex(void) {
+  for (int i = 0; i < 64; i++) {
+    SetUserArray(0, "user_wispHex", i, 0);
+  }
+}
+
+script "uc_WispHex" (int mode, int igniter) {
+  switch (mode) {
+    default:
+      Log(i:mode, s:" >> Invalid Mode for uc_WispHex");
+      break;
+    case -1:  // Reset Entire Array to 0
+      SetActivatorToTarget(0);
+      Clear_WispHex();
+      break;
+    case 0:  // Increase burn count
+      if (igniter < 0 || igniter > 63)  // Don't do anything if not a PlayerNum
+        break;
+      SetUserArray(0, "user_wispHex", igniter, GetUserArray(0, "user_wispHex", igniter) + 1);
+      break;
+    case 1:
+      SetActivatorToTarget(0);
+      SetResultValue(Tally_WispHex());
+      break;
+  }
+}
+

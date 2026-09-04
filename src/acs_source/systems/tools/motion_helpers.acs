@@ -1,0 +1,130 @@
+script "uh_GetPointerSpeed" (int p1, int p2, int includez) {
+  SetActivator(0, p1);
+  if (p2 > 0) {SetActivator(0, p2);}
+  int speed = VectorLength(GetActorVelX(0), GetActorVelY(0));
+  if (includez) {speed = VectorLength(speed, GetActorVelZ(0));}
+  SetResultValue(speed);
+}
+
+script "uh_FaceMovementDirection" (void) {
+  SetActorAngle(0, VectorAngle(GetActorVelX(0), GetActorVelY(0)));
+}
+
+script "uh_FetchPointerAngle" (int pointer) {
+  SetResultValue(GetActorAngle(ACS_NamedExecuteWithResult("core_getptrtid", pointer)) >> 8);
+}
+
+script "uh_CopyPointerAnglePitch" (int pointer, int anglepitch) {
+  int source = ACS_NamedExecuteWithResult("core_getptrtid", pointer);
+  int p_pitch = GetActorPitch(source);
+  int p_angle = GetActorAngle(source);
+  switch (anglepitch) {
+    case 0:
+      SetActorPitch(0, p_pitch);
+      break;
+    case 1:
+      SetActorPitch(0, p_pitch);
+      SetActorAngle(0, p_angle);
+      break;
+    case 2:
+      SetActorAngle(0, p_angle);
+      break;
+  }
+}
+
+script "uh_pointerheightfromground" (int swap_var) {
+  switch (swap_var) {
+    case 3:
+      SetActivator(0, AAPTR_FRIENDPLAYER);
+      break;
+    case 2:
+      SetActivator(0, AAPTR_MASTER);
+      break;
+    case 1:
+      SetActivator(0, AAPTR_TRACER);
+      break;
+    case 0:
+      SetActivatorToTarget(0);
+      break;
+  }
+  SetResultValue((GetActorZ(0) - GetActorFloorZ(0)) >> 16);
+}
+
+// Example users Topman/Heatman
+script "uh_getplayervelocity" (int cap, int includez) {
+  int x, y, z, speed, result;
+  x = GetActorVelX(0);
+  y = GetActorVelY(0);
+  if (includez) {z = GetActorVelZ(0);} else {z = 0;}
+  speed = FixedMul(x, x) + FixedMul(y, y) + FixedMul(z, z);
+
+  result = fixedSqrt(speed) >> 16;
+  // Log(i:result);
+  if (result > cap) {result = cap;}
+  SetResultValue(result);
+}
+
+script "uh_getfixedangle" (void)  // BBA uses this
+{
+  SetResultValue(GetActorAngle(0));
+}
+
+script "uh_FetchVectorAngle" (int which) {
+  switch (which) {
+    case 2:
+      SetActivator(0, AAPTR_TARGET);
+      break;
+    case 4:
+      SetActivator(0, AAPTR_MASTER);
+      break;
+    case 8:
+      SetActivator(0, AAPTR_TRACER);
+      break;
+  }
+  // Log(s:"GetActorVelX = ",f:GetActorVelX(0),s:" <> GetActorVelY = ",f:GetActorVelY(0));
+  SetResultValue(VectorAngle(GetActorVelX(0), GetActorVelY(0)));
+}
+
+script "uh_TellVectorAngle" (int theangle, int thethrust) {
+  Log(s:"TheAngle = ", f:theangle, s:" Cos >> ", f:cos(theangle), s:" Sin >> ", f:sin(theangle), s:" FixedMulC >> ", f:FixedMul(cos(theangle), thethrust << 16), s:" FixedMulS >> ", f:FixedMul(sin(theangle), thethrust << 16));
+}
+
+
+script "uh_GradualAngleTurn" (int currang, int inputang, int turnanglimit, int angmax) {
+  setResultValue(Func_AngleWrapAround(currang, inputang, turnanglimit, angmax));
+}
+
+function int Func_AngleWrapAround(int currang, int inputang, int turnanglimit, int angmax) {
+  int angledif = inputang - currang;
+  // Log(i:angleDif);
+  int retang;
+
+  if (angledif > angmax / 2) {
+    if ((angledif - angmax) < -turnanglimit) {
+      retang = currang - turnanglimit;
+      if (retang < 0) {retang += angmax;}
+    }
+    else {retang = inputang;}
+  }
+  else if (angledif < -angmax / 2) {
+    if ((angledif + angmax) > turnanglimit) {
+      retang = currang + turnanglimit;
+      if (retang >= angmax) {retang -= angmax;}
+    }
+    else {retang = inputang;}
+  }
+  else if (angledif < -turnanglimit) {
+    retang = currang - turnanglimit;
+    if (retang < 0) {retang += angmax;}
+  }
+  else if (angledif > turnanglimit) {
+    retang = currang + turnanglimit;
+    if (retang >= angmax) {retang -= angmax;}
+  }
+  else {retang = inputang;}
+
+  // Log(i:currAng);
+  return retang;
+}
+
+

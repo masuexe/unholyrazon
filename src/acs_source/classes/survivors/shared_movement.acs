@@ -1,0 +1,185 @@
+// Script called by Deep Digger
+script "uh_ShieldWarper_DeepDiggerU" (int left, int amount) CLIENTSIDE {
+  int player = ACS_NamedExecuteWithResult("core_gettarget", 0);
+  str checkactor = "DeepDiggerFlagL";
+  if (!left) {
+    checkactor = "DeepDiggerFlagR";
+  }
+  while (GetActorProperty(player, APROP_Health) > 0 &&
+      CheckActorInventory(player, checkactor) >= amount) {
+    Delay(1);
+  }
+  Thing_Remove(0);
+}
+
+script "uc_AnchorShot_mob" (int vel) {
+  int nx, ny, nz;
+
+  int myx = GetActorX(0);
+  int myy = GetActorY(0);
+  int myz = GetActorZ(0);
+
+  int playerid = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+
+  int vx = myx - GetActorX(playerid);
+  int vy = myy - GetActorY(playerid);
+  int vz = myz - (GetActorZ(playerid) + 28 << 16);
+
+  int magnitude = MagnitudeThree(vx >> 16, vy >> 16, vz >> 16);
+
+  if (magnitude != 0) {
+    nx = vx / magnitude;
+    ny = vy / magnitude;
+    nz = vz / magnitude;
+  }
+  else {
+    nx = 0;
+    ny = 0;
+    nz = 0;
+  }
+  SetActorvelocity(playerid, nx * vel, ny * vel, nz * vel, true, true);
+}
+
+script "uh_RaiderHitSplat" (int len)  // CLIENTSIDE
+{
+  Spawn(StrParam(s:"RS_HitSplat", s:StrRight(GetActorClass(0), len)), GetActorX(0), GetActorY(0), GetActorZ(0));
+}
+
+script "uh_ArcanistSmokeWarp" (void) {
+  if (ACS_NamedExecuteWithResult("uh_istracerplayer")) {
+    int tracer = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TRACER);
+    Warp(tracer, 0, 0, GetActorProperty(tracer, APROP_Height) / 2, 0, WARPF_NOCHECKPOSITION);
+  }
+}
+
+script "uh_HomingSeekerPushPull" (int limit, int swapper) {
+  int targetid = ACS_NamedExecuteWithResult("core_getptrtid", 2);
+  int tracerid = ACS_NamedExecuteWithResult("core_getptrtid", 8);
+
+  if (CheckActorInventory(tracerid, "NoPushFlag") == 1) {terminate;}
+
+  int force = XyDistance(targetid, tracerid);
+
+  int forcexyz = XyzDistance(targetid, tracerid);
+
+  // Log(s:"FORCE DIST = ", i:force);
+  // Log(s:"swapper = ", i:swapper);
+
+  // Log(s:" forcexyz i = ", i:forcexyz);
+  // Log(s:" forcexyz f = ",f:forcexyz);
+
+  switch (swapper) {
+    default:
+      break;
+    case 1:  // Push
+      force = max(4, limit + 5 - forcexyz / 10) * -1;
+      break;
+    case -1:  // Pull
+      force = min(limit, forcexyz / 10);
+      break;
+  }
+
+  // Log(s:"FORCE DIST = ", i:force);
+  if (CheckActorInventory(tracerid, "HalfPushFlag") == 1) {
+    force = (force * 0.5) >> 16;
+  }
+
+  ActorPull(targetid, tracerid, force, 0, 0, -12 << 16);
+
+  SetResultValue(abs(force));
+}
+
+script "uh_raiderhookshot" (int playerid, int vel, int moving) {
+  int myx, myy, myz;
+  int vx, vy, vz, magnitude, nx, ny, nz;
+  int letgo = false;
+
+  myx = GetActorX(0);
+  myy = GetActorY(0);
+  myz = GetActorZ(0);
+
+  while (!letgo) {
+    if (moving > 0) {  // If the hook is set to move, the positions need to be updated.
+      myx = GetActorX(0);
+      myy = GetActorY(0);
+      myz = GetActorZ(0);
+    }
+    vx = myx - GetActorX(playerid);
+    vy = myy - GetActorY(playerid);
+    vz = myz - GetActorZ(playerid);
+
+    magnitude = MagnitudeThree(vx >> 16, vy >> 16, vz >> 16);
+
+    if (magnitude != 0) {
+      nx = vx / magnitude; ny = vy / magnitude; nz = vz / magnitude;
+    }
+    else {
+      nx = 0; ny = 0; nz = 0;
+    }
+
+    // if (XYDistance(playerid, 0)>1500) {letgo = true;}
+    // Thing_Stop(0);
+    SetActorvelocity(playerid, nx * vel, ny * vel, nz * vel, true, true);
+    TakeActorInventory(playerid, "HookshotStamina", 2 - CheckActorInventory(playerid, "PlayerPropertyEndlessAmmo"));
+
+    Delay(1);
+    if (CheckActorInventory(playerid, "RaiderHookRelease_F") || CheckActorInventory(playerid, "IsDead")) {letgo = true;}
+    else if (CheckActorInventory(playerid, "HookshotStamina") < 1) {
+      ActivatorSound("S3_K/MetalSpark", 127);
+      letgo = True;
+    }
+  }
+  Delay(1);
+  // GiveActorInventory(playerid, "YesGravityPickup", 1);
+  // ACS_NamedExecuteWithResult("core_stopplayer", 0, false);
+  TakeActorInventory(playerid, "RaiderHookedFlag", 9);
+  GiveActorInventory(playerid, "RaiderHookRelease_F", 1);
+}
+
+script "uc_TrapistBombJump" (int thrust, int radius, int zoff, int zthrust) {
+  int targettid = ACS_NamedExecuteWithResult("core_getptrtid", 2);
+  int targetteam = GetPlayerInfo(targettid - 1000, PLAYERINFO_TEAM);
+
+  // Log(i:XYZDistance(0, target)); powerPro
+
+  for (int p = 0; p < ServerMAX; p++) {
+    // Not in game? Skip
+    if (!PlayerInGame(p)) {
+      continue;
+    }
+    // If bomb owner, skip this
+    // 	if (p+1000 != targettid) {
+    // 		if (CheckActorInventory(p+1000, "PowerProtectSurvivor")) {
+    // 			continue;
+    // 		}
+    // 	}
+    // Is a team game? //Same Teams? Skip
+    if (IsTeamGame) {
+      if (targetteam == GetPlayerInfo(p, PLAYERINFO_TEAM)) {
+        continue;
+      }
+    }
+    // Within range and can see each other? Thrust them
+    if (XyzDistance(0, p + 1000) <= radius + 16 && CheckSight(0, p + 1000, CSF_NOBLOCKALL)) {
+      SetResultValue(0);
+      ActorPullTrapist(0, p + 1000, -thrust, zoff << 16, zthrust);
+      GiveActorInventory(p + 1000, "TrapistThrustWeaken", 1);
+    }
+  }
+}
+function void ActorPullTrapist(int puller, int pullee, int force, int zoff, int zthrust) {  // Edit from ActorPull
+  int angle = VectorAngle((GetActorX(puller)) - GetActorX(pullee), (GetActorY(puller)) - GetActorY(pullee));
+  int pitch = PitchBetween(puller, pullee, 0, 0, zoff);
+
+  angle = angle >> 8;
+  int horizforce = FixedMul(cos(pitch), force << 16) >> 16;
+  int vertiforce = FixedMul(sin(pitch), force << 16) >> 16;
+  if (CheckActorInventory(pullee, "TrapistThrustWeaken")) {
+    zthrust /= 2;
+    vertiforce /= 2;
+  }
+  ThrustThing(angle, horizforce, 1, pullee);
+  ThrustThingZ(pullee, vertiforce * (1 + (zthrust == 0) * 2) + zthrust * 4, 0, 1);
+}
+
+

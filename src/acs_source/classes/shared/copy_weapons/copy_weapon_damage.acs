@@ -1,0 +1,218 @@
+// --- Daily copywep damage mul (server local calendar date as seed) ---
+// Official ids 1..officialCount from Mega DefineCopyWep order (frozen after vanilla).
+// DECORATE: damage (CallACS("uh_TodayDmgMul", base)); ACS infers wep from activator.
+
+// Helpers whose class / DamageType do not prefix-match an official stem.
+#define UH_COPYWEP_ALIAS_MAX 37
+str uh_copywepaliasclass[UH_COPYWEP_ALIAS_MAX] = {
+	"BlastRuneAU",
+	"BlastRuneExplosionU",
+	"StarRadiusU",
+	"FireShieldDamageU",
+	"OilBlobFlameU",
+	"ReturningCutterFuncU",
+	"GutrockDebrisU",
+	"ChillShotU",
+	"WallSpikeU",
+	"CeilingSpikeU",
+	"SolarWaveU",
+	"AirShotU",
+	"NeedleU",
+	"DustBit1U",
+	"DustBitRU",
+	"PharaohFXU",
+	"GyroRadiusU",
+	"FlameWallPillarU",
+	"FlamePillarU",
+	"WrapExplosionU",
+	"FreezeBitU",
+	"JunkProjectileU",
+	"JunkProjectile2U",
+	"HoldingTornadoU",
+	"JewelShotU",
+	"CopyShotU",
+	"MediumDrill1U",
+	"MediumDrill2U",
+	"SmallDrill1U",
+	"SmallDrill2U",
+	"TenguDashU",
+	"TenguSlash1U",
+	"TenguSlash2U",
+	"WaveBurnU",
+	"MirrorShotSmallU",
+	"MirrorShotMediumU",
+	"MirrorShotLargeU",
+};
+str uh_copywepaliasname[UH_COPYWEP_ALIAS_MAX] = {
+	"DawnBreaker",
+	"DawnBreaker",
+	"StarCrash",
+	"FireStorm",
+	"OilSlider",
+	"RollingCutter",
+	"SuperArm",
+	"ChillSpike",
+	"ChillSpike",
+	"ChillSpike",
+	"SolarBlaze",
+	"AirShooter",
+	"NeedleCannon",
+	"DustCrusher",
+	"DustCrusher",
+	"PharaohShot",
+	"GyroAttack",
+	"FlameBlast",
+	"FlameBlast",
+	"DangerWrap",
+	"FreezeCracker",
+	"JunkShield",
+	"JunkShield",
+	"TornadoHold",
+	"JewelSatellite",
+	"CopyVision",
+	"SpreadDrill",
+	"SpreadDrill",
+	"SpreadDrill",
+	"SpreadDrill",
+	"TenguBlade",
+	"TenguBlade",
+	"TenguBlade",
+	"WaveBurner",
+	"MirrorBuster",
+	"MirrorBuster",
+	"MirrorBuster",
+};
+
+function int UH_DateToInt(void) {
+	int time = SystemTime();
+	return GetTimeProperty(time, TM_YEAR) * 10000
+	+(GetTimeProperty(time, TM_MONTH) + 1) * 100
+	+GetTimeProperty(time, TM_DAY);
+}
+
+function int UH_SeedRandom(int seed, int minval, int maxval) {
+	int a = 1919810;
+	int b = 114514;
+	int n = (a * seed + b) & 0x7FFFFFFF;
+	if (maxval < minval) {
+		int temp = maxval;
+		maxval = minval;
+		minval = temp;
+	}
+	return n % (maxval - minval + 1) + minval;
+}
+
+function int UH_HashStr(str s) {
+	int h = 0;
+	int len = StrLen(s);
+	for (int i = 0; i < len; i++)
+		h = (h * 31 + GetChar(s, i)) & 0x7FFFFFFF;
+	return h;
+}
+
+function int UH_CopywepIdFromAlias(str cls) {
+	for (int i = 0; i < UH_COPYWEP_ALIAS_MAX; i++) {
+		if (StrCmp(cls, uh_copywepaliasclass[i]) == 0)
+			return FindMegaCopyIdByStemPrefix(uh_copywepaliasname[i]);
+	}
+	return 0;
+}
+
+function int UH_CopywepIdFromActivator(void) {
+	str cls = GetActorClass(0);
+	int id = FindMegaCopyIdByStemPrefix(cls);
+	if (id > 0)
+		return id;
+
+	id = UH_CopywepIdFromAlias(cls);
+	if (id > 0)
+		return id;
+
+	str dtype = GetActorProperty(0, APROP_DamageType);
+	if (StrLen(dtype) > 0) {
+		id = FindMegaCopyIdByStemPrefix(dtype);
+		if (id > 0)
+			return id;
+	}
+	return 0;
+}
+
+function int UH_CopywepDmgMul(int wep) {
+	int date = UH_DateToInt();
+	int mul;
+	int i;
+	int lucky;
+	int maxpool;
+	int official = GetMegaOfficialCopyCount();
+
+	if (official < 1)
+		official = 103;
+
+	if (wep < 1 || wep > official) {
+		return UH_SeedRandom(date + UH_HashStr(GetActorClass(0)) * 893, 0.0, 2.0);
+	}
+
+	mul = UH_SeedRandom(date + wep * 893, 0.0, 2.0);
+
+	maxpool = official + official / 2;
+	for (i = 1; i <= 4; i++) {
+		lucky = UH_SeedRandom(date + 127 * 5 * i, 1, maxpool);
+		if (lucky == wep)
+			mul = UH_SeedRandom(date + 1234 * 50, 4.0, 6.0);
+	}
+	maxpool = official * 2;
+	for (i = 1; i <= 2; i++) {
+		lucky = UH_SeedRandom(date + 721 * 10 * i, 1, maxpool);
+		if (lucky == wep)
+			mul = UH_SeedRandom(date + 1234 * 100, 8.0, 12.0);
+	}
+	lucky = UH_SeedRandom(date + 1234 * 50, 1, official * 50);
+	if (lucky == wep)
+		mul = UH_SeedRandom(date + 1234 * 500, 40.0, 60.0);
+	lucky = UH_SeedRandom(date + 567 * 100, 1, official * 100);
+	if (lucky == wep)
+		mul = UH_SeedRandom(date + 1234 * 1000, 80.0, 120.0);
+
+	return mul;
+}
+
+script "uh_TodayDmgMul" (int damage, int allowneg) {
+	if (!GetCVar("rz_sv_randMegaManCopywepDmg")) {
+		SetResultValue(damage);
+		terminate;
+	}
+	int wep = UH_CopywepIdFromActivator();
+	int mul = UH_CopywepDmgMul(wep);
+	if (allowneg) {
+		int date = UH_DateToInt();
+		int seedkey = wep;
+		if (seedkey < 1)
+			seedkey = UH_HashStr(GetActorClass(0));
+		if (UH_SeedRandom(date + 309 + seedkey * 17, 0.0, 1.0) < 0.5)
+			mul = -mul;
+	}
+	SetResultValue(FixedMul(mul, damage));
+}
+
+script "uh_debug_ShowTodayDmgMul" (void) {
+	int date = UH_DateToInt();
+	int official = GetMegaOfficialCopyCount();
+	Log(s:"uh_debug_ShowTodayDmgMul date=", i:date,
+		s:" official=", i:official,
+		s:" rz_sv_randMegaManCopywepDmg=", i:GetCVar("rz_sv_randMegaManCopywepDmg"));
+	for (int i = 1; i <= official; i++) {
+		Log(s:GetCopyWepDmgStemByMegaId(i), s:" [", i:i, s:"] mul=", f:UH_CopywepDmgMul(i));
+	}
+}
+
+
+// --- BlazeKick critical hits (1/24 on damaged event) -----------------------
+// Formerly in time_stop.acs; keyed on the copywep DamageType.
+script "uh_CriticalHitRng" (int evt, int dmg, int dmgtype) EVENT {
+  if (evt == GAMEEVENT_ACTOR_DAMAGED) {
+    if (!StrICmp(dmgtype, "BlazeKick") && Random(1, 24) <= 1) {
+      GiveInventory("CriticalPain_P", 1);
+      SetResultValue(dmg * 2);
+    }
+  }
+}

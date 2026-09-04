@@ -1,0 +1,195 @@
+// Cache JumpZ before UH_DisableJumpPower zeroes it; inventory as second store.
+int pharaoh4mi_hop_jumpz[64];
+
+script "rz_HopCacheJumpZ" (void) {
+  int p = PlayerNumber();
+  int jz = GetActorProperty(0, APROP_JumpZ) >> 16;
+  if (p < 0 || p >= 64) {
+    SetResultValue(0);
+    terminate;
+  }
+  pharaoh4mi_hop_jumpz[p] = jz;
+  SetInventory("Pharaoh4MIHopJumpCache", jz);
+  SetResultValue(jz);
+}
+
+// Activator: HoppingWatcher; thrust TARGET using cached JumpZ
+script "rz_HopDoThrust" (void) {
+  if (!SetActivator(0, AAPTR_TARGET) || PlayerNumber() < 0)
+    terminate;
+  int p = PlayerNumber();
+  int jz = 0;
+  if (p >= 0 && p < 64)
+    jz = pharaoh4mi_hop_jumpz[p];
+  if (jz == 0)
+    jz = CheckInventory("Pharaoh4MIHopJumpCache");
+  ThrustThingZ(0, jz * 4, 0, 0);
+  GiveInventory("JumpSound", 1);
+}
+
+// Activator: player receiving a Pharaoh 4MI curse roll
+script "rz_ApplyPharaoh4MICurse" (void) {
+  TakeInventory("Pharaoh4MICurse_Reverse", 1);
+  TakeInventory("Pharaoh4MICurse_Hopping", 1);
+  TakeInventory("Pharaoh4MICurse_Fidget", 1);
+  TakeInventory("Pharaoh4MICurse_Darkness", 1);
+  TakeInventory("Pharaoh4MICurse_Unknown", 1);
+  TakeInventory("Pharaoh4MICurse_Roulette", 1);
+
+  int pool = 5;
+  if (CountClassWeapons() >= 2)
+    pool = 6;
+  int pick = Random(0, pool - 1);
+  switch (pick) {
+    case 0: GiveInventory("Pharaoh4MICurse_Reverse_P", 1); break;
+    case 1: GiveInventory("Pharaoh4MICurse_Hopping_P", 1); break;
+    case 2: GiveInventory("Pharaoh4MICurse_Fidget_P", 1); break;
+    case 3: GiveInventory("Pharaoh4MICurse_Darkness_P", 1); break;
+    case 4: GiveInventory("Pharaoh4MICurse_Unknown_P", 1); break;
+    case 5: GiveInventory("Pharaoh4MICurse_Roulette_P", 1); break;
+  }
+}
+
+// Give/take an inventory item to every connected player (single caller:
+// rzc_Pharaoh4MICurse below).  Formerly in math_and_eden_helpers.acs.
+function void GiveMeTheFunc(str hungry, int thebill) {
+  if (thebill == 0) {thebill = 1;}
+
+  if (thebill < 0) {
+    for (int i; i < ServerMAX; i++) {
+      if (PlayerInGame(i)) {TakeActorInventory(i + 1000, hungry, -thebill);}
+    }
+  }
+  else {
+    for (int j; j < ServerMAX; j++) {
+      if (PlayerInGame(j)) {GiveActorInventory(j + 1000, hungry, thebill);}
+    }
+  }
+}
+
+script "rzc_Pharaoh4MICurse" (int toggle) {
+  if (toggle) {
+    AmbientSound("weapon/upsidedown", 127);
+    ACS_NamedExecuteWithResult("uh_GiveEveryoneInventoryExceptBossesACS", "GivePharaoh4MICurse_P", 1);
+  } else {
+    GiveMeTheFunc("RemovePharaoh4MICurse_P", 1);
+  }
+}
+
+script "ub_RedeadGutsHpDrain" (int adddrainbool) {
+  int currhp = GetActorProperty(0, APROP_Health);
+  if (currhp <= 1)
+    terminate;
+  int hpdrain = CheckInventory("RedeadGutsHealthDrain") + 1;
+  if (currhp < hpdrain) {
+    SetActorProperty(0, APROP_Health, 1);
+    terminate;
+  }
+  if (adddrainbool)
+    GiveInventory("RedeadGutsHealthDrain", 1);
+  SetActorProperty(0, APROP_Health, currhp - hpdrain);
+}
+
+int hphm_temparr[65] = {-1};
+
+script "uh_Hphm_WarpChecker" (void) {
+  int ownertid = ACS_NamedExecuteWithResult("core_getptrtid", 2);
+  int maxarray = -1;
+  for (int i; i < ServerMAX; i++) {
+    if (PlayerInGame(i) && i + 1000 != ownertid) {
+      maxarray++;
+      hphm_temparr[maxarray] = i + 1000;
+    }
+  }
+  if (maxarray < 0) {
+    SetResultValue(ownertid);
+  }
+  else {
+    SetResultValue(hphm_temparr[Random(0, maxarray)]);
+  }
+}
+
+#define MMSF_MAX_CARDS 11
+str mmsf_cards[MMSF_MAX_CARDS + 1][2] = {
+  // ! = can't lock on
+  {"", "!"},
+  {"RadarMissile", ""},
+  {"PuffBlast", ""},
+  {"GhostPulse", ""},
+  {"Shuriken", ""},
+  {"StunKnuckle", ""},
+  {"MoaiFall", "!"},
+  {"TyphoonDance", ""},
+  {"MagicCrystal1", ""},
+  {"MagicCrystal2", ""},
+  {"MagicCrystal3", ""},
+  {"ElectricSlash", ""},
+};
+
+int mmsf_card_queue[64][6];
+
+function void ClearSfCards(void) {
+  for (int i = 1; i <= MMSF_MAX_CARDS; i++) {
+    TakeInventory(StrParam(s:mmsf_cards[i][0], s:"_BCFlag"), 1);
+    TakeInventory("SF_CanLockOn", 1);
+  }
+}
+
+function void SyncSfCardsToInv(int player) {
+  for (int i = 0; i < 6; i++) {
+    SetInventory(StrParam(s:"SF_CardQ", i:i), mmsf_card_queue[player][i]);
+  }
+}
+
+function int GetSfCard(int player, int index) {
+  int frominv = CheckInventory(StrParam(s:"SF_CardQ", i:index));
+  if (frominv > 0)
+    return frominv;
+  return mmsf_card_queue[player][index];
+}
+
+function int GiveSfCard(int player, int index) {
+  ClearSfCards();
+  int card_id = mmsf_card_queue[player][index];
+  if (card_id != 0) {
+    GiveInventory(StrParam(s:mmsf_cards[card_id][0], s:"_BCFlag"), 1);
+    if (StrCmp(mmsf_cards[card_id][1], "!") != 0) {
+      GiveInventory("SF_CanLockOn", 1);
+    } else {
+      TakeInventory("SF_CanLockOn", 1);
+      TakeInventory("WR_LockOnFlag", 1);
+    }
+  } else {
+    TakeInventory("SF_CanLockOn", 1);
+    TakeInventory("WR_LockOnFlag", 1);
+  }
+  return card_id;
+}
+
+script "rz_GetSfCard" (int index) {
+  int player = PlayerNumber();
+  SetResultValue(GetSfCard(player, index));
+}
+
+script "rz_DrawSfCards" (void) {
+  int player = PlayerNumber();
+  for (int i = 0; i < 6; i++) {
+    mmsf_card_queue[player][i] = Random(1, MMSF_MAX_CARDS);
+  }
+  SyncSfCardsToInv(player);
+  GiveSfCard(player, 0);
+}
+
+script "rz_MoveSfCardQueue" (void) {
+  int player = PlayerNumber();
+  for (int i = 0; i < 6; i++) {
+    if (mmsf_card_queue[player][i] != 0) {
+      mmsf_card_queue[player][i] = mmsf_card_queue[player][i + 1];
+    }
+  }
+  SyncSfCardsToInv(player);
+  GiveSfCard(player, 0);
+}
+
+#define RZ_LOWHP_NUM_ID -19729900
+

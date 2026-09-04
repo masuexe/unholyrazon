@@ -1,0 +1,109 @@
+script "UH_AntiDamageHP" (int swap_var) {
+  if (swap_var) {  // Adjust AntiDamageHealth to match current HP
+    SetInventory("AntiDamageHealth", max(PlayerHealth(), 0));
+  } else {  // Reset player HP based on AntiDamageHealth
+    SetActorProperty(0, APROP_HEALTH, CheckInventory("AntiDamageHealth"));
+  }
+}
+
+// Query
+#define UHEALTH_GET_INV 0  // CheckInventory("Health")
+#define UHEALTH_GET_MAX -1  // SpawnHealth
+#define UHEALTH_GET_CURRENT 1
+#define UHEALTH_IS_FULL 2  // 1=full, 0=can gain
+
+// Modify
+#define UHEALTH_HEAL 6  // Heal up to max; returns 0 if dead/full, 1 if healed
+#define UHEALTH_HEAL_EXPAND_MAX 7  // 750/1000 > +500 > 1250/1500; always returns 1
+#define UHEALTH_HEAL_ADD_MAX -7  // 750/1000 > +500 > 1250/1250; always returns 1
+
+// Damage
+#define UHEALTH_DAMAGE_BURN  9
+
+script "uh_Health" (int swap_var, int hpboost, int pointer) {
+  // Log(s:"uh_Health called with...",i:Swap,s:" and ",i:HPBoost);
+  if (pointer > 0) {
+    SetActivator(0, pointer);
+  }
+  int h = max(PlayerHealth(), 0);
+  int s_h = GetActorProperty(0, APROP_SPAWNHEALTH);
+  switch (swap_var) {
+    default:
+      Log(s:"Invalid Swap Number for script uh_Health >> ", i:swap_var);
+      break;
+    case UHEALTH_GET_INV:  // Return Health
+      SetResultValue(CheckInventory("Health"));
+      break;
+    case UHEALTH_GET_MAX:  // Returns MaxHp
+      SetResultValue(s_h);
+      break;
+    case UHEALTH_GET_CURRENT:  // Return Health
+      SetResultValue(h);
+      break;
+    case UHEALTH_IS_FULL:  // 1=full, 0=can gain
+      SetResultValue(h >= s_h);
+      break;
+
+      // HealThing(HPBoost,s_h);
+    case UHEALTH_HEAL:
+    case UHEALTH_HEAL_ADD_MAX:
+    case UHEALTH_HEAL_EXPAND_MAX:
+      if (h <= 0) {SetResultValue(0); break;}
+      if (swap_var == UHEALTH_HEAL && h >= s_h) {SetResultValue(0); break;}
+
+      if (swap_var == UHEALTH_HEAL_ADD_MAX) {
+        s_h = min(s_h + hpboost, MAX_HEALTH);
+        SetActorProperty(0, APROP_SPAWNHEALTH, s_h);
+      }
+      else if (swap_var == UHEALTH_HEAL_EXPAND_MAX) {
+        int hpadd = min(h + hpboost, MAX_HEALTH);
+        if (hpadd > s_h) {
+          s_h = hpadd;
+          SetActorProperty(0, APROP_SPAWNHEALTH, s_h);
+        }
+      }
+
+      HealThing(hpboost, s_h);
+      if (CheckInventory("AntiDamageTime") != 300) {  // Check if AntiDamage is on
+        SetInventory("AntiDamageHealth", PlayerHealth());
+      }
+      SetResultValue(1);
+      break;
+
+    case UHEALTH_DAMAGE_BURN:  // Burning damage
+      if (h >= hpboost + 1) {
+        SetActorProperty(0, APROP_HEALTH, (h - hpboost));
+        break;
+      }
+      SetResultValue(2);
+      break;
+  }
+}
+
+script "UB_GetPointerHealth" (int pointer, int which) {
+  SetActivator(0, pointer);
+  switch (which) {
+    default:
+      Log(s:"Invalid Number for script GetPointerHealth >> ", i:which);
+      break;
+    case 0:
+      SetResultValue(GetActorProperty(0, APROP_HEALTH));
+      break;
+    case 1:
+      SetResultValue(GetActorProperty(0, APROP_SPAWNHEALTH));
+      break;
+    case 2:  // Percent
+      int currhp = GetActorProperty(0, APROP_HEALTH);
+      int spawnhp = GetActorProperty(0, APROP_SPAWNHEALTH);
+      if (currhp > spawnhp)
+        currhp = spawnhp;
+      else if (currhp < 0)
+        currhp = 0;
+      if (spawnhp == 0) {
+        spawnhp = 1;
+        // Log(s:"Online is being stupid again");
+      }
+      SetResultValue(currhp * 100 / spawnhp);
+      break;
+  }
+}

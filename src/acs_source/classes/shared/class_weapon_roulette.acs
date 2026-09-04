@@ -1,0 +1,91 @@
+// Strip trailing _W / _W1.._W9 from a weapon classname
+function str WeaponFamilyBase(str weap) {
+  int len = StrLen(weap);
+  if (len < 3)
+    return weap;
+  // *_W1 .. *_W9
+  if (len >= 4 &&
+      GetChar(weap, len - 3) == '_' &&
+      GetChar(weap, len - 2) == 'W') {
+    int d = GetChar(weap, len - 1);
+    if (d >= '1' && d <= '9')
+      return StrLeft(weap, len - 3);
+  }
+  // *_W
+  if (GetChar(weap, len - 2) == '_' && GetChar(weap, len - 1) == 'W')
+    return StrLeft(weap, len - 2);
+  return weap;
+}
+
+function int CountNativeWepFamily(void) {
+  str weap = GetWeapon();
+  if (StrLen(weap) == 0)
+    return 0;
+  str base = WeaponFamilyBase(weap);
+  int count = 0;
+  if (CheckInventory(StrParam(s:base, s:"_W")))
+    count++;
+  for (int i = 1; i <= 6; i++) {
+    if (CheckInventory(StrParam(s:base, s:"_W", i:i)))
+      count++;
+  }
+  return count;
+}
+
+function int CountClassWeapons(void) {
+  int native = CountNativeWepFamily();
+  if (native >= 2)
+    return native;
+  return ACS_NamedExecuteWithResult("rz_CountCopyWeapons");
+}
+
+script "rz_CountClassWeapons" (void) {
+  SetResultValue(CountClassWeapons());
+}
+
+// Activator: player — SetWeapon to another owned weapon (_W family, else Mega/Qwant/Nega copy pool)
+script "rz_RoulettePickOtherWeapon" (void) {
+  str weap = GetWeapon();
+  if (StrLen(weap) == 0) {
+    SetResultValue(0);
+    terminate;
+  }
+
+  // Prefer class-native *_W / *_W# siblings when that family has 2+
+  if (CountNativeWepFamily() >= 2) {
+    str base = WeaponFamilyBase(weap);
+    str owned[7];
+    int n = 0;
+    str cand = StrParam(s:base, s:"_W");
+    if (CheckInventory(cand)) {
+      owned[n] = cand;
+      n++;
+    }
+    for (int i = 1; i <= 6; i++) {
+      cand = StrParam(s:base, s:"_W", i:i);
+      if (CheckInventory(cand)) {
+        owned[n] = cand;
+        n++;
+      }
+    }
+    for (int tries = 0; tries < 16; tries++) {
+      int idx = Random(0, n - 1);
+      if (StrCmp(owned[idx], weap) != 0) {
+        SetWeapon(owned[idx]);
+        SetResultValue(1);
+        terminate;
+      }
+    }
+    for (int j = 0; j < n; j++) {
+      if (StrCmp(owned[j], weap) != 0) {
+        SetWeapon(owned[j]);
+        SetResultValue(1);
+        terminate;
+      }
+    }
+    SetResultValue(0);
+    terminate;
+  }
+
+  SetResultValue(ACS_NamedExecuteWithResult("rz_RoulettePickCopyWeapon"));
+}

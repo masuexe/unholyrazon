@@ -1,0 +1,68 @@
+script "uh_translations_deluxe" OPEN CLIENTSIDE {
+  UH_CreateDeluxeTranslations();
+}
+
+script "uh_translations_deluxe_sv" OPEN {
+  UH_CreateDeluxeTranslations();
+}
+
+// Mirror CreateTranslation / crown PD tables for mugshot layers.
+// ACS cannot query translation tables at runtime.
+// Stores palette index + 1 in UHWepMugCyan / UHWepMugBlue / UHWepMugBlack (0 = unset).
+script "uh_SyncMugFromWeaponDye" (int dye) {
+  int cyan = -1;
+  int blue = -1;
+  int black = -1;
+
+  if (dye == QWANT_DYE) {cyan = 138; blue = 130;}
+  else if (dye == QWANT_SDYE) {cyan = 208; blue = 89;}
+  else if (dye == Q_ROCKSLIDE_DYE) {cyan = 232; blue = 234;}
+  else if (dye == Q_NIGHTSLASH_DYE) {cyan = 5; blue = 2;}
+  else if (dye == Q_DRAGONBREATH_DYE) {cyan = 72; blue = 74;}
+  else if (dye == Q_SHADOWPUNCH_DYE) {cyan = 63; blue = 8;}
+  else if (dye == Q_TOXIC_DYE) {cyan = 252; blue = 254;}
+  else if (dye == Q_GUST_DYE) {cyan = 168; blue = 200;}
+  else if (dye == Q_SHADOWFORCE_DYE) {cyan = 3; blue = 5;}
+  else if (dye == Q_NORMAL_DYE) {cyan = 4; blue = 144;}
+  else if (dye == Q_FIRE_DYE) {cyan = 4; blue = 176;}
+  else if (dye == Q_WATER_DYE) {cyan = 4; blue = 198;}
+  else if (dye == Q_ELECTRIC_DYE) {cyan = 4; blue = 228;}
+  else if (dye == Q_GRASS_DYE) {cyan = 4; blue = 129;}
+  else if (dye == Q_ICE_DYE) {cyan = 4; blue = 196;}
+  else if (dye == Q_FIGHTING_DYE) {cyan = 4; blue = 220;}
+  else if (dye == Q_POISON_DYE) {cyan = 4; blue = 251;}
+  else if (dye == Q_GROUND_DYE) {cyan = 4; blue = 232;}
+  else if (dye == Q_FLYING_DYE) {cyan = 4; blue = 205;}
+  else if (dye == Q_PSYCHIC_DYE) {cyan = 4; blue = 39;}
+  else if (dye == Q_BUG_DYE) {cyan = 4; blue = 139;}
+  else if (dye == Q_ROCK_DYE) {cyan = 4; blue = 166;}
+  else if (dye == Q_GHOST_DYE) {cyan = 4; blue = 60;}
+  else if (dye == Q_DRAGON_DYE) {cyan = 4; blue = 43;}
+  else if (dye == Q_DARK_DYE) {cyan = 4; blue = 95;}
+  else if (dye == Q_STEEL_DYE) {cyan = 4; blue = 152;}
+  else if (dye == Q_FAIRY_DYE) {cyan = 4; blue = 35;}
+  else if (dye == ARCANIST_DYE1) {cyan = 202; blue = 205; black = 198;}
+  else if (dye == ARCANIST_DYE2) {cyan = 42; blue = 44; black = 47;}
+  else if (dye == ARCANIST_DYE3) {cyan = 95; blue = 3; black = 5;}
+  else if (dye == ARCANIST_DYE4) {cyan = 80; blue = 85; black = 90;}
+
+  if (cyan < 0) {
+    if (CheckInventory("UHMugshotArcanist") > 0) {
+			// lightest / mid / darkest
+      cyan = 57; blue = 60; black = 79;
+    } else if (CheckInventory("UHMugshotQwant") > 0) {
+      cyan = 110; blue = 130;
+    } else {
+      terminate;
+    }
+  }
+	// UH_COLORS has no SetInventory; Take+Give stores palette+1
+  TakeInventory("UHWepMugCyan", 256);
+  TakeInventory("UHWepMugBlue", 256);
+  TakeInventory("UHWepMugBlack", 256);
+  GiveInventory("UHWepMugCyan", cyan + 1);
+  GiveInventory("UHWepMugBlue", blue + 1);
+  if (black >= 0) {
+    GiveInventory("UHWepMugBlack", black + 1);
+  }
+}
