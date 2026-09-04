@@ -4,30 +4,26 @@
 // TODO: optimize hud sprites: replace buster with torch sprites
 
 // TEMP Phase 1 test helpers (give from console)
-actor UH_SpellCardCapture_P : CustomInventory
-{
-+INVENTORY.AUTOACTIVATE
-+INVENTORY.ALWAYSPICKUP
-+INVENTORY.QUIET
-States
-{
-Pickup:
-TNT1 A 0 ACS_NamedExecuteAlways("uh_SpellCardCapture", 0)
-stop
-}
+actor UH_SpellCardCapture_P : CustomInventory {
+  +INVENTORY.AUTOACTIVATE
+  +INVENTORY.ALWAYSPICKUP
+  +INVENTORY.QUIET
+  States {
+   Pickup:
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_SpellCardCapture", 0)
+    stop
+  }
 }
 
-actor UH_SpellCardFail_P : CustomInventory
-{
-+INVENTORY.AUTOACTIVATE
-+INVENTORY.ALWAYSPICKUP
-+INVENTORY.QUIET
-States
-{
-Pickup:
-TNT1 A 0 ACS_NamedExecuteAlways("uh_SpellCardFail", 0)
-stop
-}
+actor UH_SpellCardFail_P : CustomInventory {
+  +INVENTORY.AUTOACTIVATE
+  +INVENTORY.ALWAYSPICKUP
+  +INVENTORY.QUIET
+  States {
+   Pickup:
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_SpellCardFail", 0)
+    stop
+  }
 }
 
 actor Clownpiece_W_ScriptBar : ScriptBar {}
@@ -39,702 +35,664 @@ actor Clownpiece_W5_ScriptBar : ScriptBar {}
 actor Clownpiece_W6_ScriptBar : ScriptBar {}
 actor Clownpiece_W7_ScriptBar : ScriptBar {}
 actor Clownpiece_W8_ScriptBar : ScriptBar {}
-actor Clownpiece_W : BaseUnholyBossWep
-{
-Tag "$TAG_Boss112_W"
-Obituary "%o went insane from touching %k's torch."
-Inventory.Pickupmessage "The moon is property of the United States."
-Weapon.AmmoGive 400
-Weapon.AmmoType "UnholyBossAmmo200"
-States
-{
-Spawn:
-8I12 [ 1
-wait
+actor Clownpiece_W : BaseUnholyBossWep {
+  Tag "$TAG_Boss112_W"
+  Obituary "%o went insane from touching %k's torch."
+  Inventory.Pickupmessage "The moon is property of the United States."
+  Weapon.AmmoGive 400
+  Weapon.AmmoType "UnholyBossAmmo200"
+  States {
+   Spawn:
+    8I12 [ 1
+    wait
 
-Deselect:
-8I12 A 0
-goto DeselectSwap
-Select:
-8I12 A 0
-goto SelectSwap
+   Deselect:
+    8I12 A 0
+    goto DeselectSwap
+   Select:
+    8I12 A 0
+    goto SelectSwap
 
-Ready:
-8I12 A 0 A_JumpIfInventory("ClownpieceGetUpDone_F", 1, "ReadyAfterGetUp")
-goto FirstSpawn
-// W2–W8 override Ready to jump here after a life break (GetUpDone cleared).
-ReadySpell:
-8I12 A 0 A_JumpIfInventory("ClownpieceGetUpDone_F", 1, "ReadyAfterGetUp")
-goto SpellBreak
-FirstSpawn:
-8I12 A 0 A_GiveInventory("ClownpieceGetUpDone_F")
-// 7 ExtraLife + this W1 = 8 lives. Skip if morphActorToBoss already granted.
-8I12 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "FirstSpawnHud")
-8I12 A 0 ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, 7, ELP_NATIVE)
-FirstSpawnHud:
-8I12 A 0 ACS_NamedExecuteAlways("core_weaponcolor", 0, CLOWNPIECE_DYE)
-8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 1, 30)
-8I12 A 0 A_GunFlash("Flash", true)
-Goto Ready2
-SpellBreak:
-8I12 A 0 A_GiveInventory("ClownpieceGetUpDone_F")
-8I12 A 0 A_GiveInventory("ClownpiecePainFlag")
-8I12 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true)
-8I12 A 0 ACS_NamedExecuteWithResult("core_freezeplayer", 0, true)
-8I12 A 0 A_Stop
-8I12 A 0 A_TakeInventory("GenericBossFlag200")
-SpellBreakHeal:
-8I12 A 0 ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, 200)
-8I12 A 1 A_JumpIf(CallACS("uh_Health", UHEALTH_IS_FULL), "SpellBreakEnd")
-loop
-SpellBreakEnd:
-8I12 A 0 A_TakeInventory("ClownpiecePainFlag")
-8I12 A 0 ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, 0, ELP_NATIVE)
-// Dynamic jump so W2–W8 StartSpell overrides are used (static goto binds parent)
-8I12 A 0 A_Jump(256, "StartSpell")
-Stop
-StartSpell:
-8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 1, 30)
-goto SpellBreakDone
-SpellBreakDone:
-8I12 A 0 ACS_NamedExecuteWithResult("core_freezeplayer", 0, false)
-// End 时符 invuln if leaving W2/W8; then start normal 3s phase invuln
-8I12 A 0 A_TakeInventory("ClownpieceSurvivalInvuln_F")
-8I12 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics")
-8I12 A 0 A_GiveInventory("ClownpiecePhaseInvulnTics", 105)  // 3s @ 35tic
-8I12 A 0 A_GiveInventory("UnholyBossAmmo200", 200)
-8I12 A 0 A_GunFlash("Flash", true)
-Goto Ready2
-ReadyAfterGetUp:
-8I12 A 0 ACS_NamedExecuteAlways("core_weaponcolor", 0, CLOWNPIECE_DYE)
-8I12 A 0 A_GunFlash("Flash", true)
-Goto Ready2
-Flash:
-TNT1 A 1 A_GiveInventory("ClownpieceHealthCheck_P")
-loop
-Ready1:
-8I12 A 0 A_JumpIfHealthLower(2, "TryLifeBreak")
-8I12 A 2 A_GiveInventory("Clownpiece_Ready8_P")
-Goto Ready2
-Ready2:
-8I12 A 0 A_GunFlash("Flash", true)
-8I12 A 0 A_JumpIfHealthLower(2, "TryLifeBreak")
-8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200",200,"Ready3")
-8I12 A 2 A_GiveInventory("Clownpiece_Ready8_P")
-loop
-Ready3:
-8I12 A 0 A_JumpIfHealthLower(2, "TryLifeBreak")
-8I12 A 0 A_JumpIfInventory("VivifyDelay4",1,"Ready1")
-8I12 A 2 A_GiveInventory("Clownpiece_Ready0_P")
-loop
-TryLifeBreak:
-8I12 A 1 A_GunFlash("Flash", true)
-goto Ready2
+   Ready:
+    8I12 A 0 A_JumpIfInventory("ClownpieceGetUpDone_F", 1, "ReadyAfterGetUp")
+    goto FirstSpawn
+    // W2–W8 override Ready to jump here after a life break (GetUpDone cleared).
+   ReadySpell:
+    8I12 A 0 A_JumpIfInventory("ClownpieceGetUpDone_F", 1, "ReadyAfterGetUp")
+    goto SpellBreak
+   FirstSpawn:
+    8I12 A 0 A_GiveInventory("ClownpieceGetUpDone_F")
+    // 7 ExtraLife + this W1 = 8 lives. Skip if morphActorToBoss already granted.
+    8I12 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "FirstSpawnHud")
+    8I12 A 0 ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, 7, ELP_NATIVE)
+   FirstSpawnHud:
+    8I12 A 0 ACS_NamedExecuteAlways("core_weaponcolor", 0, CLOWNPIECE_DYE)
+    8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 1, 30)
+    8I12 A 0 A_GunFlash("Flash", true)
+    Goto Ready2
+   SpellBreak:
+    8I12 A 0 A_GiveInventory("ClownpieceGetUpDone_F")
+    8I12 A 0 A_GiveInventory("ClownpiecePainFlag")
+    8I12 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true)
+    8I12 A 0 ACS_NamedExecuteWithResult("core_freezeplayer", 0, true)
+    8I12 A 0 A_Stop
+    8I12 A 0 A_TakeInventory("GenericBossFlag200")
+   SpellBreakHeal:
+    8I12 A 0 ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, 200)
+    8I12 A 1 A_JumpIf(CallACS("uh_Health", UHEALTH_IS_FULL), "SpellBreakEnd")
+    loop
+   SpellBreakEnd:
+    8I12 A 0 A_TakeInventory("ClownpiecePainFlag")
+    8I12 A 0 ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, 0, ELP_NATIVE)
+    // Dynamic jump so W2–W8 StartSpell overrides are used (static goto binds parent)
+    8I12 A 0 A_Jump(256, "StartSpell")
+    Stop
+   StartSpell:
+    8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 1, 30)
+    goto SpellBreakDone
+   SpellBreakDone:
+    8I12 A 0 ACS_NamedExecuteWithResult("core_freezeplayer", 0, false)
+    // End 时符 invuln if leaving W2/W8; then start normal 3s phase invuln
+    8I12 A 0 A_TakeInventory("ClownpieceSurvivalInvuln_F")
+    8I12 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics")
+    8I12 A 0 A_GiveInventory("ClownpiecePhaseInvulnTics", 105)  // 3s @ 35tic
+    8I12 A 0 A_GiveInventory("UnholyBossAmmo200", 200)
+    8I12 A 0 A_GunFlash("Flash", true)
+    Goto Ready2
+   ReadyAfterGetUp:
+    8I12 A 0 ACS_NamedExecuteAlways("core_weaponcolor", 0, CLOWNPIECE_DYE)
+    8I12 A 0 A_GunFlash("Flash", true)
+    Goto Ready2
+   Flash:
+    TNT1 A 1 A_GiveInventory("ClownpieceHealthCheck_P")
+    loop
+   Ready1:
+    8I12 A 0 A_JumpIfHealthLower(2, "TryLifeBreak")
+    8I12 A 2 A_GiveInventory("Clownpiece_Ready8_P")
+    Goto Ready2
+   Ready2:
+    8I12 A 0 A_GunFlash("Flash", true)
+    8I12 A 0 A_JumpIfHealthLower(2, "TryLifeBreak")
+    8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "Ready3")
+    8I12 A 2 A_GiveInventory("Clownpiece_Ready8_P")
+    loop
+   Ready3:
+    8I12 A 0 A_JumpIfHealthLower(2, "TryLifeBreak")
+    8I12 A 0 A_JumpIfInventory("VivifyDelay4", 1, "Ready1")
+    8I12 A 2 A_GiveInventory("Clownpiece_Ready0_P")
+    loop
+   TryLifeBreak:
+    8I12 A 1 A_GunFlash("Flash", true)
+    goto Ready2
 
-// Reload:
-// 8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200", 67, "DollarGive")
-// Goto Ready2
-// DollarGive:
-// 8I12 A 0 A_GiveInventory("VivifyDelay4")
-// 8I12 A 0 A_TakeInventory("UnholyBossAmmo200",67)
-// 8I12 A 2 A_FireCustomMissile("ClownpieceItemRNG_H",0,0,0,0)
-// 8I12 A 1
-// Goto Ready2
+    // Reload:
+    // 8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200", 67, "DollarGive")
+    // Goto Ready2
+    // DollarGive:
+    // 8I12 A 0 A_GiveInventory("VivifyDelay4")
+    // 8I12 A 0 A_TakeInventory("UnholyBossAmmo200",67)
+    // 8I12 A 2 A_FireCustomMissile("ClownpieceItemRNG_H",0,0,0,0)
+    // 8I12 A 1
+    // Goto Ready2
 
-Fire:
-8I12 A 0 A_GiveInventory("ClownpieceHealthCheck_P")
-8I12 A 0 A_JumpIfInventory("DuoBusterFlag",1,"FireBlueStart")
-8I12 A 0 A_GiveInventory("DuoBusterFlag",1)
-FireRed:
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar",0,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire(1)
-goto FireEndDelay
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar",7,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire(1)
-goto FireEndDelay
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar",14,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire(1)
-goto FireEndDelay
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar",7,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire(1)
-goto FireEndDelay
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar",0,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire(1)
-goto FireEndDelay
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar",-7,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire(1)
-goto FireEndDelay
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar",-14,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire(1)
-goto FireEndDelay
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar",-7,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire("FireRed")
-goto FireEndDelay
+   Fire:
+    8I12 A 0 A_GiveInventory("ClownpieceHealthCheck_P")
+    8I12 A 0 A_JumpIfInventory("DuoBusterFlag", 1, "FireBlueStart")
+    8I12 A 0 A_GiveInventory("DuoBusterFlag", 1)
+   FireRed:
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 0, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire(1)
+    goto FireEndDelay
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 7, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire(1)
+    goto FireEndDelay
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 14, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire(1)
+    goto FireEndDelay
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 7, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire(1)
+    goto FireEndDelay
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 0, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire(1)
+    goto FireEndDelay
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", -7, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire(1)
+    goto FireEndDelay
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", -14, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire(1)
+    goto FireEndDelay
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", -7, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire("FireRed")
+    goto FireEndDelay
 
-FireBlueStart:
-8I12 C 0 A_TakeInventory("DuoBusterFlag")
-FireBlue:
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",0,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire(1)
-goto FireEndDelay
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",-7,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire(1)
-goto FireEndDelay
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",-14,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire(1)
-goto FireEndDelay
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",-7,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire(1)
-goto FireEndDelay
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",0,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire(1)
-goto FireEndDelay
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",7,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire(1)
-goto FireEndDelay
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",14,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire(1)
-goto FireEndDelay
-8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",7,0,0,0)
-8I12 B 1
-8I12 B 0 A_Refire("FireBlue")
-goto FireEndDelay
+   FireBlueStart:
+    8I12 C 0 A_TakeInventory("DuoBusterFlag")
+   FireBlue:
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", 0, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire(1)
+    goto FireEndDelay
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", -7, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire(1)
+    goto FireEndDelay
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", -14, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire(1)
+    goto FireEndDelay
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", -7, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire(1)
+    goto FireEndDelay
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", 0, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire(1)
+    goto FireEndDelay
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", 7, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire(1)
+    goto FireEndDelay
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", 14, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire(1)
+    goto FireEndDelay
+    8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", 7, 0, 0, 0)
+    8I12 B 1
+    8I12 B 0 A_Refire("FireBlue")
+    goto FireEndDelay
 
-FireEndDelay:
-// 8I12 C 0 A_TakeInventory("GenericBossFlag100")
-8I12 B 2
-8I12 A 4
-Goto Ready2
+   FireEndDelay:
+    // 8I12 C 0 A_TakeInventory("GenericBossFlag100")
+    8I12 B 2
+    8I12 A 4
+    Goto Ready2
 
-FireMoon:
-8I12 A 0 A_PlaySoundEx("misc_L/darkthrow","Weapon")
-8I12 A 0 A_GiveInventory("GenericBossFlag200",200)
+   FireMoon:
+    8I12 A 0 A_PlaySoundEx("misc_L/darkthrow", "Weapon")
+    8I12 A 0 A_GiveInventory("GenericBossFlag200", 200)
 
-8I12 E 0 ACS_NamedExecuteWithResult("core_nogravityplayer", 0, true)
-8I12 E 2 ThrustThingZ(0,20,0,0)
-8I12 F 2
-8I12 A 0 A_SpawnItemEx("Clownpiece_MOON_H",100,0,32)
-8I12 A 0 A_FireCustomMissile("Clownpiece_MOON",0,0,0,0)
-8I12 A 0 A_FireCustomMissile("Clownpiece_MOON",120,0,0,0)
-8I12 A 0 A_FireCustomMissile("Clownpiece_MOON",240,0,0,0)
-8I12 FE 2
-8I12 D 5
-goto MoonReady2
-MoonReady1:
-8I12 D 2 A_WeaponReady(14)
-8I12 D 0 A_FireCustomMissile("Clownpiece_MOONGravity",0,0,0,0)
-8I12 D 0 A_GiveInventory("UnholyBossAmmo200",2)
-8I12 D 0 A_TakeInventory("GenericBossFlag200",1)
-8I12 D 0 A_JumpIfInventory("GenericBossFlag200",1,"MoonReady2")
-goto MoonEnd
-MoonReady2:
-8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200",200,"MoonReady3")
-8I12 D 2 A_WeaponReady(14)
-8I12 D 0 A_FireCustomMissile("Clownpiece_MOONGravity",0,0,0,0)
-8I12 D 0 A_GiveInventory("UnholyBossAmmo200",2)
-8I12 D 0 A_TakeInventory("GenericBossFlag200",1)
-8I12 D 0 A_JumpIfInventory("GenericBossFlag200",1,"MoonReady2")
-goto MoonEnd
-MoonReady3:
-8I12 D 0 A_JumpIfInventory("VivifyDelay4",1,"MoonReady1")
-8I12 D 2 A_WeaponReady(6)
-8I12 D 0 A_FireCustomMissile("Clownpiece_MOONGravity",0,0,0,0)
-8I12 D 0 A_GiveInventory("UnholyBossAmmo200",2)
-8I12 D 0 A_TakeInventory("GenericBossFlag200",1)
-8I12 D 0 A_JumpIfInventory("GenericBossFlag200",1,"MoonReady3")
-goto MoonEnd
-AltfireMoon:
-8T12 D 0 A_TakeInventory("UnholyBossAmmo200",200)
-8I12 D 0 A_PlaySoundEx("wep_L/ThLunaNight123","Weapon")
-8I12 D 0 A_FireCustomMissile("ClownpieceOrberinoPurple",0,0,0,0)
-8I12 D 0 A_FireCustomMissile("ClownpieceStarSpiralPurple_H",0,0,0,0)
-8I12 F 3
-8I12 E 3 A_TakeInventory("GenericBossFlag200",3)
-8I12 D 0 A_JumpIfInventory("GenericBossFlag200",1,"MoonReady2")
-goto MoonEnd
+    8I12 E 0 ACS_NamedExecuteWithResult("core_nogravityplayer", 0, true)
+    8I12 E 2 ThrustThingZ(0, 20, 0, 0)
+    8I12 F 2
+    8I12 A 0 A_SpawnItemEx("Clownpiece_MOON_H", 100, 0, 32)
+    8I12 A 0 A_FireCustomMissile("Clownpiece_MOON", 0, 0, 0, 0)
+    8I12 A 0 A_FireCustomMissile("Clownpiece_MOON", 120, 0, 0, 0)
+    8I12 A 0 A_FireCustomMissile("Clownpiece_MOON", 240, 0, 0, 0)
+    8I12 FE 2
+    8I12 D 5
+    goto MoonReady2
+   MoonReady1:
+    8I12 D 2 A_WeaponReady(14)
+    8I12 D 0 A_FireCustomMissile("Clownpiece_MOONGravity", 0, 0, 0, 0)
+    8I12 D 0 A_GiveInventory("UnholyBossAmmo200", 2)
+    8I12 D 0 A_TakeInventory("GenericBossFlag200", 1)
+    8I12 D 0 A_JumpIfInventory("GenericBossFlag200", 1, "MoonReady2")
+    goto MoonEnd
+   MoonReady2:
+    8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "MoonReady3")
+    8I12 D 2 A_WeaponReady(14)
+    8I12 D 0 A_FireCustomMissile("Clownpiece_MOONGravity", 0, 0, 0, 0)
+    8I12 D 0 A_GiveInventory("UnholyBossAmmo200", 2)
+    8I12 D 0 A_TakeInventory("GenericBossFlag200", 1)
+    8I12 D 0 A_JumpIfInventory("GenericBossFlag200", 1, "MoonReady2")
+    goto MoonEnd
+   MoonReady3:
+    8I12 D 0 A_JumpIfInventory("VivifyDelay4", 1, "MoonReady1")
+    8I12 D 2 A_WeaponReady(6)
+    8I12 D 0 A_FireCustomMissile("Clownpiece_MOONGravity", 0, 0, 0, 0)
+    8I12 D 0 A_GiveInventory("UnholyBossAmmo200", 2)
+    8I12 D 0 A_TakeInventory("GenericBossFlag200", 1)
+    8I12 D 0 A_JumpIfInventory("GenericBossFlag200", 1, "MoonReady3")
+    goto MoonEnd
+   AltfireMoon:
+    8T12 D 0 A_TakeInventory("UnholyBossAmmo200", 200)
+    8I12 D 0 A_PlaySoundEx("wep_L/ThLunaNight123", "Weapon")
+    8I12 D 0 A_FireCustomMissile("ClownpieceOrberinoPurple", 0, 0, 0, 0)
+    8I12 D 0 A_FireCustomMissile("ClownpieceStarSpiralPurple_H", 0, 0, 0, 0)
+    8I12 F 3
+    8I12 E 3 A_TakeInventory("GenericBossFlag200", 3)
+    8I12 D 0 A_JumpIfInventory("GenericBossFlag200", 1, "MoonReady2")
+    goto MoonEnd
 
-MoonEnd:
-8I12 A 2
-8I12 D 2 ACS_NamedExecuteWithResult("core_nogravityplayer", 0, false)
-8I12 AD 2
-Goto Ready2
+   MoonEnd:
+    8I12 A 2
+    8I12 D 2 ACS_NamedExecuteWithResult("core_nogravityplayer", 0, false)
+    8I12 AD 2
+    Goto Ready2
 
-Altfire:
-8I12 A 0 A_JumpIfInventory("GenericBossFlag200",1,"AltfireMoon")
-8T12 A 0 A_TakeInventory("UnholyBossAmmo200",200)
-8I12 A 0 A_PlaySoundEx("wep_L/ThLunaNight123","Weapon")
-8I12 A 0 A_JumpIfInventory("DuoBusterFlag",1,"AltfireBlue")
-8I12 A 0 A_GiveInventory("DuoBusterFlag",1)
-AltfireRed:
-8I12 A 0 A_FireCustomMissile("ClownpieceOrberinoRed",0,0,0,0)
-8I12 A 0 A_FireCustomMissile("ClownpieceStarSpiralRed_H",0,0,0,0)
-8I12 CBCBCB 2
-8I12 A 0 A_FireCustomMissile("ClownpieceStarSpiralRed_H",0,0,0,0)
-8I12 CBCBCB 2
-8I12 A 0 A_FireCustomMissile("ClownpieceStarSpiralRed_H",0,0,0,0)
-8I12 CBCBCB 2
-8I12 A 10
-Goto Ready2
+   Altfire:
+    8I12 A 0 A_JumpIfInventory("GenericBossFlag200", 1, "AltfireMoon")
+    8T12 A 0 A_TakeInventory("UnholyBossAmmo200", 200)
+    8I12 A 0 A_PlaySoundEx("wep_L/ThLunaNight123", "Weapon")
+    8I12 A 0 A_JumpIfInventory("DuoBusterFlag", 1, "AltfireBlue")
+    8I12 A 0 A_GiveInventory("DuoBusterFlag", 1)
+   AltfireRed:
+    8I12 A 0 A_FireCustomMissile("ClownpieceOrberinoRed", 0, 0, 0, 0)
+    8I12 A 0 A_FireCustomMissile("ClownpieceStarSpiralRed_H", 0, 0, 0, 0)
+    8I12 CBCBCB 2
+    8I12 A 0 A_FireCustomMissile("ClownpieceStarSpiralRed_H", 0, 0, 0, 0)
+    8I12 CBCBCB 2
+    8I12 A 0 A_FireCustomMissile("ClownpieceStarSpiralRed_H", 0, 0, 0, 0)
+    8I12 CBCBCB 2
+    8I12 A 10
+    Goto Ready2
 
-AltfireBlue:
-8I12 A 0 A_TakeInventory("DuoBusterFlag")
-8I12 A 0 A_FireCustomMissile("ClownpieceOrberinoBlue",0,0,0,0)
-8I12 A 0 A_FireCustomMissile("ClownpieceStarSpiralBlue_H",0,0,0,0)
-8I12 CBCBCB 2
-8I12 A 0 A_FireCustomMissile("ClownpieceStarSpiralBlue_H",0,0,0,0)
-8I12 CBCBCB 2
-8I12 A 0 A_FireCustomMissile("ClownpieceStarSpiralBlue_H",0,0,0,0)
-8I12 CBCBCB 2
-8I12 A 10
-Goto Ready2
-
-}
+   AltfireBlue:
+    8I12 A 0 A_TakeInventory("DuoBusterFlag")
+    8I12 A 0 A_FireCustomMissile("ClownpieceOrberinoBlue", 0, 0, 0, 0)
+    8I12 A 0 A_FireCustomMissile("ClownpieceStarSpiralBlue_H", 0, 0, 0, 0)
+    8I12 CBCBCB 2
+    8I12 A 0 A_FireCustomMissile("ClownpieceStarSpiralBlue_H", 0, 0, 0, 0)
+    8I12 CBCBCB 2
+    8I12 A 0 A_FireCustomMissile("ClownpieceStarSpiralBlue_H", 0, 0, 0, 0)
+    8I12 CBCBCB 2
+    8I12 A 10
+    Goto Ready2
+  }
 }
 
-actor ClownpieceGetUpDone_F : UOnce {}
-actor ClownpiecePainFlag : UOnce {}
-actor ClownpieceOrbFlag : UOnce {}
+actor ClownpieceGetUpDone_F : Once {}
+actor ClownpiecePainFlag : Once {}
+actor ClownpieceOrbFlag : Once {}
 // Survival spell (时符 W2/W8): boss stays invuln until timer ends
-actor ClownpieceSurvivalInvuln_F : UOnce {}
+actor ClownpieceSurvivalInvuln_F : Once {}
 // Post-phase invuln timer (105 = 3s). Drained 1/tic by HealthCheck while Flash runs.
-actor ClownpiecePhaseInvulnTics : Inventory
-{
-inventory.amount 1
-inventory.maxamount 105
-+INVENTORY.UNDROPPABLE
+actor ClownpiecePhaseInvulnTics : Inventory {
+  inventory.amount 1
+  inventory.maxamount 105
+  +INVENTORY.UNDROPPABLE
 }
 // Shared HP poll. DoSwapGo is a no-op (W8 / inherited Fire+Ready). Each Wn Flash gives HealthCheck_Wn_P.
-actor ClownpieceHealthCheck_P : CustomInventory
-{
-+INVENTORY.AUTOACTIVATE
-+INVENTORY.ALWAYSPICKUP
-+INVENTORY.QUIET
-States
-{
-Pickup:
-TNT1 A 0 A_JumpIfInventory("ClownpieceSurvivalInvuln_F", 1, "SurvivalHold")
-TNT1 A 0 A_JumpIfInventory("ClownpiecePhaseInvulnTics", 1, "TickInvuln")
-goto CheckSwap
-SurvivalHold:
-// Do NOT call core_invulnerableplayer here — it STACKS (+1/Give). SpellBreak already enabled invuln once.
-TNT1 A 0
-stop
-TickInvuln:
-TNT1 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics", 1)
-TNT1 A 0 A_JumpIfInventory("ClownpiecePhaseInvulnTics", 1, "CheckSwap")
-TNT1 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false)
-CheckSwap:
-TNT1 A 0 A_JumpIfHealthLower(2, "DoSwap")
-stop
-DoSwap:
-TNT1 A 0 A_JumpIfInventory("IsDead", 1, "NoSwap")
-TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "NoSwap")
-TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwapGo")
-goto NoSwap
-DoSwapGo:
-TNT1 A 0
-stop
-NoSwap:
-TNT1 A 0
-stop
-}
+actor ClownpieceHealthCheck_P : CustomInventory {
+  +INVENTORY.AUTOACTIVATE
+  +INVENTORY.ALWAYSPICKUP
+  +INVENTORY.QUIET
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("ClownpieceSurvivalInvuln_F", 1, "SurvivalHold")
+    TNT1 A 0 A_JumpIfInventory("ClownpiecePhaseInvulnTics", 1, "TickInvuln")
+    goto CheckSwap
+   SurvivalHold:
+    // Do NOT call core_invulnerableplayer here — it STACKS (+1/Give). SpellBreak already enabled invuln once.
+    TNT1 A 0
+    stop
+   TickInvuln:
+    TNT1 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics", 1)
+    TNT1 A 0 A_JumpIfInventory("ClownpiecePhaseInvulnTics", 1, "CheckSwap")
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false)
+   CheckSwap:
+    TNT1 A 0 A_JumpIfHealthLower(2, "DoSwap")
+    stop
+   DoSwap:
+    TNT1 A 0 A_JumpIfInventory("IsDead", 1, "NoSwap")
+    TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "NoSwap")
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwapGo")
+    goto NoSwap
+   DoSwapGo:
+    TNT1 A 0
+    stop
+   NoSwap:
+    TNT1 A 0
+    stop
+  }
 }
 
 // Drop 时符 invuln when the survival timer ends (before ForceSwap / kill).
-actor ClownpieceClearSurvivalInvuln_P : CustomInventory
-{
-+INVENTORY.AUTOACTIVATE
-+INVENTORY.ALWAYSPICKUP
-+INVENTORY.QUIET
-States
-{
-Pickup:
-TNT1 A 0 A_JumpIfInventory("ClownpieceSurvivalInvuln_F", 1, "ClearGo")
-stop
-ClearGo:
-TNT1 A 0 A_TakeInventory("ClownpieceSurvivalInvuln_F")
-TNT1 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics", 999)
-TNT1 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false)
-stop
-}
+actor ClownpieceClearSurvivalInvuln_P : CustomInventory {
+  +INVENTORY.AUTOACTIVATE
+  +INVENTORY.ALWAYSPICKUP
+  +INVENTORY.QUIET
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("ClownpieceSurvivalInvuln_F", 1, "ClearGo")
+    stop
+   ClearGo:
+    TNT1 A 0 A_TakeInventory("ClownpieceSurvivalInvuln_F")
+    TNT1 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics", 999)
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false)
+    stop
+  }
 }
 
-actor ClownpieceHealthCheck_W1_P : ClownpieceHealthCheck_P
-{
-States
-{
-DoSwapGo:
-TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
-TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
-TNT1 A 0 A_GiveInventory("Clownpiece_W2")
-TNT1 A 0 A_TakeInventory("Clownpiece_W1")
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 2)
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, 2)
-stop
-}
+actor ClownpieceHealthCheck_W1_P : ClownpieceHealthCheck_P {
+  States {
+   DoSwapGo:
+    TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
+    TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
+    TNT1 A 0 A_GiveInventory("Clownpiece_W2")
+    TNT1 A 0 A_TakeInventory("Clownpiece_W1")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 2)
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, 2)
+    stop
+  }
 }
 
-actor ClownpieceHealthCheck_W2_P : ClownpieceHealthCheck_P
-{
-States
-{
-// 时符: never advance by HP
-DoSwap:
-TNT1 A 0
-goto NoSwap
-DoSwapGo:
-TNT1 A 0
-stop
-}
+actor ClownpieceHealthCheck_W2_P : ClownpieceHealthCheck_P {
+  States {
+    // 时符: never advance by HP
+   DoSwap:
+    TNT1 A 0
+    goto NoSwap
+   DoSwapGo:
+    TNT1 A 0
+    stop
+  }
 }
 
-actor ClownpieceHealthCheck_W3_P : ClownpieceHealthCheck_P
-{
-States
-{
-DoSwapGo:
-TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
-TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
-TNT1 A 0 A_GiveInventory("Clownpiece_W4")
-TNT1 A 0 A_TakeInventory("Clownpiece_W3")
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 4)
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, 4)
-stop
-}
+actor ClownpieceHealthCheck_W3_P : ClownpieceHealthCheck_P {
+  States {
+   DoSwapGo:
+    TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
+    TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
+    TNT1 A 0 A_GiveInventory("Clownpiece_W4")
+    TNT1 A 0 A_TakeInventory("Clownpiece_W3")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 4)
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, 4)
+    stop
+  }
 }
 
-actor ClownpieceHealthCheck_W4_P : ClownpieceHealthCheck_P
-{
-States
-{
-DoSwapGo:
-TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
-TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
-TNT1 A 0 A_GiveInventory("Clownpiece_W5")
-TNT1 A 0 A_TakeInventory("Clownpiece_W4")
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 5)
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, 5)
-stop
-}
+actor ClownpieceHealthCheck_W4_P : ClownpieceHealthCheck_P {
+  States {
+   DoSwapGo:
+    TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
+    TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
+    TNT1 A 0 A_GiveInventory("Clownpiece_W5")
+    TNT1 A 0 A_TakeInventory("Clownpiece_W4")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 5)
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, 5)
+    stop
+  }
 }
 
-actor ClownpieceHealthCheck_W5_P : ClownpieceHealthCheck_P
-{
-States
-{
-DoSwapGo:
-TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
-TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
-TNT1 A 0 A_GiveInventory("Clownpiece_W6")
-TNT1 A 0 A_TakeInventory("Clownpiece_W5")
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 6)
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, 6)
-stop
-}
+actor ClownpieceHealthCheck_W5_P : ClownpieceHealthCheck_P {
+  States {
+   DoSwapGo:
+    TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
+    TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
+    TNT1 A 0 A_GiveInventory("Clownpiece_W6")
+    TNT1 A 0 A_TakeInventory("Clownpiece_W5")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 6)
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, 6)
+    stop
+  }
 }
 
-actor ClownpieceHealthCheck_W6_P : ClownpieceHealthCheck_P
-{
-States
-{
-DoSwapGo:
-TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
-TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
-TNT1 A 0 A_GiveInventory("Clownpiece_W7")
-TNT1 A 0 A_TakeInventory("Clownpiece_W6")
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 7)
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, 7)
-stop
-}
+actor ClownpieceHealthCheck_W6_P : ClownpieceHealthCheck_P {
+  States {
+   DoSwapGo:
+    TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
+    TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
+    TNT1 A 0 A_GiveInventory("Clownpiece_W7")
+    TNT1 A 0 A_TakeInventory("Clownpiece_W6")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 7)
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, 7)
+    stop
+  }
 }
 
-actor ClownpieceHealthCheck_W7_P : ClownpieceHealthCheck_P
-{
-States
-{
-DoSwapGo:
-TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
-TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
-TNT1 A 0 A_GiveInventory("Clownpiece_W8")
-TNT1 A 0 A_TakeInventory("Clownpiece_W7")
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 8)
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, 8)
-stop
-}
+actor ClownpieceHealthCheck_W7_P : ClownpieceHealthCheck_P {
+  States {
+   DoSwapGo:
+    TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
+    TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
+    TNT1 A 0 A_GiveInventory("Clownpiece_W8")
+    TNT1 A 0 A_TakeInventory("Clownpiece_W7")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 8)
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, 8)
+    stop
+  }
 }
 
 // Multi-Clownpiece shared phase: give to other survivors still on Wn-1.
 // Skip if already on target gun, dead, mid-break, or no ExtraLife (W8 true-death path).
-actor ClownpieceForceSwap_W2_P : CustomInventory
-{
-+INVENTORY.AUTOACTIVATE
-+INVENTORY.ALWAYSPICKUP
-+INVENTORY.QUIET
-States
-{
-Pickup:
-TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W2", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwap")
-goto Skip
-DoSwap:
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W1", 1, "Swap")
-goto Skip
-Swap:
-TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
-TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
-TNT1 A 0 A_GiveInventory("Clownpiece_W2")
-TNT1 A 0 A_TakeInventory("Clownpiece_W1")
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 2)
-stop
-Skip:
-TNT1 A 0
-stop
-}
+actor ClownpieceForceSwap_W2_P : CustomInventory {
+  +INVENTORY.AUTOACTIVATE
+  +INVENTORY.ALWAYSPICKUP
+  +INVENTORY.QUIET
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W2", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwap")
+    goto Skip
+   DoSwap:
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W1", 1, "Swap")
+    goto Skip
+   Swap:
+    TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
+    TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
+    TNT1 A 0 A_GiveInventory("Clownpiece_W2")
+    TNT1 A 0 A_TakeInventory("Clownpiece_W1")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 2)
+    stop
+   Skip:
+    TNT1 A 0
+    stop
+  }
 }
 
-actor ClownpieceForceSwap_W3_P : CustomInventory
-{
-+INVENTORY.AUTOACTIVATE
-+INVENTORY.ALWAYSPICKUP
-+INVENTORY.QUIET
-States
-{
-Pickup:
-TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W3", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwap")
-goto Skip
-DoSwap:
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W2", 1, "Swap")
-goto Skip
-Swap:
-TNT1 A 0 A_TakeInventory("ClownpieceSurvivalInvuln_F")
-TNT1 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics", 999)
-TNT1 A 0 ACS_NamedExecuteWithResult("uh_StripInvulnStacks", 0)
-TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
-TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
-TNT1 A 0 A_GiveInventory("Clownpiece_W3")
-TNT1 A 0 A_TakeInventory("Clownpiece_W2")
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 3)
-stop
-Skip:
-TNT1 A 0
-stop
-}
+actor ClownpieceForceSwap_W3_P : CustomInventory {
+  +INVENTORY.AUTOACTIVATE
+  +INVENTORY.ALWAYSPICKUP
+  +INVENTORY.QUIET
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W3", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwap")
+    goto Skip
+   DoSwap:
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W2", 1, "Swap")
+    goto Skip
+   Swap:
+    TNT1 A 0 A_TakeInventory("ClownpieceSurvivalInvuln_F")
+    TNT1 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics", 999)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_StripInvulnStacks", 0)
+    TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
+    TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
+    TNT1 A 0 A_GiveInventory("Clownpiece_W3")
+    TNT1 A 0 A_TakeInventory("Clownpiece_W2")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 3)
+    stop
+   Skip:
+    TNT1 A 0
+    stop
+  }
 }
 
-actor ClownpieceForceSwap_W4_P : CustomInventory
-{
-+INVENTORY.AUTOACTIVATE
-+INVENTORY.ALWAYSPICKUP
-+INVENTORY.QUIET
-States
-{
-Pickup:
-TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W4", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwap")
-goto Skip
-DoSwap:
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W3", 1, "Swap")
-goto Skip
-Swap:
-TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
-TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
-TNT1 A 0 A_GiveInventory("Clownpiece_W4")
-TNT1 A 0 A_TakeInventory("Clownpiece_W3")
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 4)
-stop
-Skip:
-TNT1 A 0
-stop
-}
+actor ClownpieceForceSwap_W4_P : CustomInventory {
+  +INVENTORY.AUTOACTIVATE
+  +INVENTORY.ALWAYSPICKUP
+  +INVENTORY.QUIET
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W4", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwap")
+    goto Skip
+   DoSwap:
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W3", 1, "Swap")
+    goto Skip
+   Swap:
+    TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
+    TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
+    TNT1 A 0 A_GiveInventory("Clownpiece_W4")
+    TNT1 A 0 A_TakeInventory("Clownpiece_W3")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 4)
+    stop
+   Skip:
+    TNT1 A 0
+    stop
+  }
 }
 
-actor ClownpieceForceSwap_W5_P : CustomInventory
-{
-+INVENTORY.AUTOACTIVATE
-+INVENTORY.ALWAYSPICKUP
-+INVENTORY.QUIET
-States
-{
-Pickup:
-TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W5", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwap")
-goto Skip
-DoSwap:
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W4", 1, "Swap")
-goto Skip
-Swap:
-TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
-TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
-TNT1 A 0 A_GiveInventory("Clownpiece_W5")
-TNT1 A 0 A_TakeInventory("Clownpiece_W4")
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 5)
-stop
-Skip:
-TNT1 A 0
-stop
-}
+actor ClownpieceForceSwap_W5_P : CustomInventory {
+  +INVENTORY.AUTOACTIVATE
+  +INVENTORY.ALWAYSPICKUP
+  +INVENTORY.QUIET
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W5", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwap")
+    goto Skip
+   DoSwap:
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W4", 1, "Swap")
+    goto Skip
+   Swap:
+    TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
+    TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
+    TNT1 A 0 A_GiveInventory("Clownpiece_W5")
+    TNT1 A 0 A_TakeInventory("Clownpiece_W4")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 5)
+    stop
+   Skip:
+    TNT1 A 0
+    stop
+  }
 }
 
-actor ClownpieceForceSwap_W6_P : CustomInventory
-{
-+INVENTORY.AUTOACTIVATE
-+INVENTORY.ALWAYSPICKUP
-+INVENTORY.QUIET
-States
-{
-Pickup:
-TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W6", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwap")
-goto Skip
-DoSwap:
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W5", 1, "Swap")
-goto Skip
-Swap:
-TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
-TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
-TNT1 A 0 A_GiveInventory("Clownpiece_W6")
-TNT1 A 0 A_TakeInventory("Clownpiece_W5")
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 6)
-stop
-Skip:
-TNT1 A 0
-stop
-}
+actor ClownpieceForceSwap_W6_P : CustomInventory {
+  +INVENTORY.AUTOACTIVATE
+  +INVENTORY.ALWAYSPICKUP
+  +INVENTORY.QUIET
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W6", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwap")
+    goto Skip
+   DoSwap:
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W5", 1, "Swap")
+    goto Skip
+   Swap:
+    TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
+    TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
+    TNT1 A 0 A_GiveInventory("Clownpiece_W6")
+    TNT1 A 0 A_TakeInventory("Clownpiece_W5")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 6)
+    stop
+   Skip:
+    TNT1 A 0
+    stop
+  }
 }
 
-actor ClownpieceForceSwap_W7_P : CustomInventory
-{
-+INVENTORY.AUTOACTIVATE
-+INVENTORY.ALWAYSPICKUP
-+INVENTORY.QUIET
-States
-{
-Pickup:
-TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W7", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwap")
-goto Skip
-DoSwap:
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W6", 1, "Swap")
-goto Skip
-Swap:
-TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
-TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
-TNT1 A 0 A_GiveInventory("Clownpiece_W7")
-TNT1 A 0 A_TakeInventory("Clownpiece_W6")
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 7)
-stop
-Skip:
-TNT1 A 0
-stop
-}
+actor ClownpieceForceSwap_W7_P : CustomInventory {
+  +INVENTORY.AUTOACTIVATE
+  +INVENTORY.ALWAYSPICKUP
+  +INVENTORY.QUIET
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W7", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwap")
+    goto Skip
+   DoSwap:
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W6", 1, "Swap")
+    goto Skip
+   Swap:
+    TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
+    TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
+    TNT1 A 0 A_GiveInventory("Clownpiece_W7")
+    TNT1 A 0 A_TakeInventory("Clownpiece_W6")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 7)
+    stop
+   Skip:
+    TNT1 A 0
+    stop
+  }
 }
 
-actor ClownpieceForceSwap_W8_P : CustomInventory
-{
-+INVENTORY.AUTOACTIVATE
-+INVENTORY.ALWAYSPICKUP
-+INVENTORY.QUIET
-States
-{
-Pickup:
-TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W8", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwap")
-goto Skip
-DoSwap:
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W7", 1, "Swap")
-goto Skip
-Swap:
-TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
-TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
-TNT1 A 0 A_GiveInventory("Clownpiece_W8")
-TNT1 A 0 A_TakeInventory("Clownpiece_W7")
-TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 8)
-stop
-Skip:
-TNT1 A 0
-stop
-}
+actor ClownpieceForceSwap_W8_P : CustomInventory {
+  +INVENTORY.AUTOACTIVATE
+  +INVENTORY.ALWAYSPICKUP
+  +INVENTORY.QUIET
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W8", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("ClownpiecePainFlag", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertyExtraLife", 1, "DoSwap")
+    goto Skip
+   DoSwap:
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W7", 1, "Swap")
+    goto Skip
+   Swap:
+    TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
+    TNT1 A 0 A_TakeInventory("ClownpieceGetUpDone_F")
+    TNT1 A 0 A_GiveInventory("Clownpiece_W8")
+    TNT1 A 0 A_TakeInventory("Clownpiece_W7")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ClownpieceSelectW", 0, 8)
+    stop
+   Skip:
+    TNT1 A 0
+    stop
+  }
 }
 
 // Spell-card timeout on W8: strip revive powers then kill (any Clownpiece_Wn).
-actor ClownpieceTimeoutKill_P : CustomInventory
-{
-+INVENTORY.AUTOACTIVATE
-+INVENTORY.ALWAYSPICKUP
-+INVENTORY.QUIET
-States
-{
-Pickup:
-TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W1", 1, "KillGo")
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W2", 1, "KillGo")
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W3", 1, "KillGo")
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W4", 1, "KillGo")
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W5", 1, "KillGo")
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W6", 1, "KillGo")
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W7", 1, "KillGo")
-TNT1 A 0 A_JumpIfInventory("Clownpiece_W8", 1, "KillGo")
-goto Skip
-KillGo:
-TNT1 A 0 A_TakeInventory("ClownpieceSurvivalInvuln_F")
-TNT1 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics", 999)
-TNT1 A 0 A_TakeInventory("PlayerPropertyExtraLife", 999)
-TNT1 A 0 A_TakeInventory("PlayerPropertyExtraLifeNative", 999)
-TNT1 A 0 A_TakeInventory("PlayerPropertyBuddha", 999)
-TNT1 A 0 A_TakeInventory("PlayerPropertyBuddhaOn", 999)
-TNT1 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false)
-TNT1 A 0 DamageThing(10000)
-stop
-Skip:
-TNT1 A 0
-stop
-}
+actor ClownpieceTimeoutKill_P : CustomInventory {
+  +INVENTORY.AUTOACTIVATE
+  +INVENTORY.ALWAYSPICKUP
+  +INVENTORY.QUIET
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("IsDead", 1, "Skip")
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W1", 1, "KillGo")
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W2", 1, "KillGo")
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W3", 1, "KillGo")
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W4", 1, "KillGo")
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W5", 1, "KillGo")
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W6", 1, "KillGo")
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W7", 1, "KillGo")
+    TNT1 A 0 A_JumpIfInventory("Clownpiece_W8", 1, "KillGo")
+    goto Skip
+   KillGo:
+    TNT1 A 0 A_TakeInventory("ClownpieceSurvivalInvuln_F")
+    TNT1 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics", 999)
+    TNT1 A 0 A_TakeInventory("PlayerPropertyExtraLife", 999)
+    TNT1 A 0 A_TakeInventory("PlayerPropertyExtraLifeNative", 999)
+    TNT1 A 0 A_TakeInventory("PlayerPropertyBuddha", 999)
+    TNT1 A 0 A_TakeInventory("PlayerPropertyBuddhaOn", 999)
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false)
+    TNT1 A 0 DamageThing(10000)
+    stop
+   Skip:
+    TNT1 A 0
+    stop
+  }
 }
 
 actor Clownpiece_W1 : Clownpiece_W {
@@ -746,42 +704,42 @@ actor Clownpiece_W1 : Clownpiece_W {
     8I12 A 0 A_GiveInventory("ClownpieceHealthCheck_W1_P")
    FireRed:
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",0,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 0, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",7,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 7, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",14,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 14, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",7,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 7, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",0,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 0, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",-7,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", -7, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",-14,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", -14, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",-7,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", -7, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire("FireRed")
     goto FireEndDelay
@@ -820,7 +778,7 @@ actor Clownpiece_W2 : Clownpiece_SpellWep {
    StartSpell:
     8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 2, 30)
     goto SpellBreakDone
-   // 时符: keep SpellBreak invuln for the whole timer (do not re-stack invuln)
+    // 时符: keep SpellBreak invuln for the whole timer (do not re-stack invuln)
    SpellBreakDone:
     8I12 A 0 ACS_NamedExecuteWithResult("core_freezeplayer", 0, false)
     8I12 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics")
@@ -836,7 +794,7 @@ actor Clownpiece_W2 : Clownpiece_SpellWep {
    AltFire:
     8I12 A 0 A_GiveInventory("ClownpieceHealthCheck_W2_P")
     8I12 A 0 A_JumpIfInventory("ClownpieceOrbFlag", 1, "OrbDie")
-    8I12 A 0 A_PlaySoundEx("wep_L/ThLunaNight123","Weapon")
+    8I12 A 0 A_PlaySoundEx("wep_L/ThLunaNight123", "Weapon")
     8I12 A 0 A_GiveInventory("DuoBusterFlag")
    AltfireRed:
     8I12 A 0 A_GiveInventory("ClownpieceOrbFlag")
@@ -870,62 +828,62 @@ actor Clownpiece_W3 : Clownpiece_W1 {
     8I12 A 0 A_GiveInventory("ClownpieceHealthCheck_W3_P")
    FireRed:
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",0,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 0, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",7,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 7, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",14,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 14, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",21,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 21, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",14,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 14, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",7,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 7, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",0,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", 0, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",-7,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", -7, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",-14,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", -14, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",-21,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", -21, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",-14,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", -14, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar",-7,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar", -7, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire("FireRed")
     goto FireEndDelay
@@ -986,82 +944,82 @@ actor Clownpiece_W5 : Clownpiece_W1 {
     8I12 A 0 A_GiveInventory("ClownpieceHealthCheck_W5_P")
    FireRed:
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",0,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", 0, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",7,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", 7, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",14,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", 14, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",21,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", 21, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",28,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", 28, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",21,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", 21, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",14,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", 14, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",7,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", 7, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",0,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", 0, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",-7,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", -7, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",-14,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", -14, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",-21,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", -21, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",-28,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", -28, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",-21,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", -21, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",-14,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", -14, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire(1)
     goto FireEndDelay
     8I12 C 0 A_GiveInventory("ClownpieceMainfire_P")
-    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B",-7,0,0,0)
+    8I12 C 2 A_FireCustomMissile("ClownpieceStar_B", -7, 0, 0, 0)
     8I12 B 1
     8I12 B 0 A_Refire("FireRed")
     goto FireEndDelay
@@ -1099,10 +1057,10 @@ actor Clownpiece_W6 : Clownpiece_SpellWep {
     8I12 A 0 A_GiveInventory("VivifyDelay4")
     8I12 A 0 A_TakeInventory("UnholyBossAmmo200", 67)
     8I12 A 0 A_PlaySoundEx("Touhou/Tan0", "Weapon")
-    8I12 A 0 A_FireCustomMissile("ClownpieceItemShotRed24_H",0,0,0,0)
+    8I12 A 0 A_FireCustomMissile("ClownpieceItemShotRed24_H", 0, 0, 0, 0)
     8I12 BCAAAAAAAA 2
     8I12 A 0 A_PlaySoundEx("Touhou/Tan0", "Weapon")
-    8I12 A 0 A_FireCustomMissile("ClownpieceItemShotRed12_H",0,0,0,0)
+    8I12 A 0 A_FireCustomMissile("ClownpieceItemShotRed12_H", 0, 0, 0, 0)
     8I12 BCAAAAAAAA 2
     Goto Ready2
   }
@@ -1170,7 +1128,7 @@ actor Clownpiece_W8 : Clownpiece_W {
    StartSpell:
     8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 8, 30)
     goto SpellBreakDone
-   // 时符: keep SpellBreak invuln for the whole timer; only timeout ends the fight
+    // 时符: keep SpellBreak invuln for the whole timer; only timeout ends the fight
    SpellBreakDone:
     8I12 A 0 ACS_NamedExecuteWithResult("core_freezeplayer", 0, false)
     8I12 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics")
@@ -1185,43 +1143,43 @@ actor Clownpiece_W8 : Clownpiece_W {
    Fire:
    FireMoon:
     8I12 A 0 A_GiveInventory("ClownpieceHealthCheck_P")
-    8I12 A 0 A_PlaySoundEx("misc_L/darkthrow","Weapon")
+    8I12 A 0 A_PlaySoundEx("misc_L/darkthrow", "Weapon")
     8I12 E 0 ACS_NamedExecuteWithResult("core_flyplayer", 0, true)
-    8I12 E 2 ThrustThingZ(0,20,0,0)
+    8I12 E 2 ThrustThingZ(0, 20, 0, 0)
     8I12 F 2
-    8I12 A 0 A_SpawnItemEx("Clownpiece_MOON_H",100,0,32)
-    8I12 A 0 A_FireCustomMissile("Clownpiece_MOON",0,0,0,0)
-    8I12 A 0 A_FireCustomMissile("Clownpiece_MOON",120,0,0,0)
-    8I12 A 0 A_FireCustomMissile("Clownpiece_MOON",240,0,0,0)
+    8I12 A 0 A_SpawnItemEx("Clownpiece_MOON_H", 100, 0, 32)
+    8I12 A 0 A_FireCustomMissile("Clownpiece_MOON", 0, 0, 0, 0)
+    8I12 A 0 A_FireCustomMissile("Clownpiece_MOON", 120, 0, 0, 0)
+    8I12 A 0 A_FireCustomMissile("Clownpiece_MOON", 240, 0, 0, 0)
     8I12 FE 2
     8I12 D 5
     goto MoonReady2
    MoonReady1:
     8I12 D 0 A_GiveInventory("ClownpieceHealthCheck_P")
     8I12 D 2 A_WeaponReady(14)
-    8I12 D 0 A_FireCustomMissile("Clownpiece_MOONGravity",0,0,0,0)
-    8I12 D 0 A_GiveInventory("UnholyBossAmmo200",2)
+    8I12 D 0 A_FireCustomMissile("Clownpiece_MOONGravity", 0, 0, 0, 0)
+    8I12 D 0 A_GiveInventory("UnholyBossAmmo200", 2)
     goto MoonReady2
    MoonReady2:
     8I12 A 0 A_GiveInventory("ClownpieceHealthCheck_P")
-    8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200",200,"MoonReady3")
+    8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "MoonReady3")
     8I12 D 2 A_WeaponReady(14)
-    8I12 D 0 A_FireCustomMissile("Clownpiece_MOONGravity",0,0,0,0)
-    8I12 D 0 A_GiveInventory("UnholyBossAmmo200",2)
+    8I12 D 0 A_FireCustomMissile("Clownpiece_MOONGravity", 0, 0, 0, 0)
+    8I12 D 0 A_GiveInventory("UnholyBossAmmo200", 2)
     goto MoonReady2
    MoonReady3:
     8I12 D 0 A_GiveInventory("ClownpieceHealthCheck_P")
-    8I12 D 0 A_JumpIfInventory("VivifyDelay4",1,"MoonReady1")
+    8I12 D 0 A_JumpIfInventory("VivifyDelay4", 1, "MoonReady1")
     8I12 D 2 A_WeaponReady(6)
-    8I12 D 0 A_FireCustomMissile("Clownpiece_MOONGravity",0,0,0,0)
-    8I12 D 0 A_GiveInventory("UnholyBossAmmo200",2)
+    8I12 D 0 A_FireCustomMissile("Clownpiece_MOONGravity", 0, 0, 0, 0)
+    8I12 D 0 A_GiveInventory("UnholyBossAmmo200", 2)
     goto MoonReady3
    Altfire:
    AltfireMoon:
-    8T12 D 0 A_TakeInventory("UnholyBossAmmo200",200)
-    8I12 D 0 A_PlaySoundEx("wep_L/ThLunaNight123","Weapon")
-    8I12 D 0 A_FireCustomMissile("ClownpieceOrberinoPurple",0,0,0,0)
-    8I12 D 0 A_FireCustomMissile("ClownpieceStarSpiralPurple_H",0,0,0,0)
+    8T12 D 0 A_TakeInventory("UnholyBossAmmo200", 200)
+    8I12 D 0 A_PlaySoundEx("wep_L/ThLunaNight123", "Weapon")
+    8I12 D 0 A_FireCustomMissile("ClownpieceOrberinoPurple", 0, 0, 0, 0)
+    8I12 D 0 A_FireCustomMissile("ClownpieceStarSpiralPurple_H", 0, 0, 0, 0)
     8I12 F 3
     8I12 E 3
     goto MoonReady2
@@ -1256,225 +1214,209 @@ actor Clownpiece_Ready8_P : Clownpiece_Ready0_P {
   }
 }
 
-actor ClownpieceMainfire_P : CustomInventory
-{
-States
-{
-Pickup:
-TNT1 A 0 A_GiveInventory("ClownpieceHealthCheck_P")
-TNT1 A 0 A_PlaySound("Touhou/Tan1", 1)
-TNT1 A 0 A_GiveInventory("UnholyBossAmmo200",1)
-// TNT1 A 0 A_JumpIfInventory("GenericBossFlag100",100,"Kicker")
-TNT1 A 0 A_GiveInventory("GenericBossFlag100", 5)
-stop
-}
+actor ClownpieceMainfire_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_GiveInventory("ClownpieceHealthCheck_P")
+    TNT1 A 0 A_PlaySound("Touhou/Tan1", 1)
+    TNT1 A 0 A_GiveInventory("UnholyBossAmmo200", 1)
+    // TNT1 A 0 A_JumpIfInventory("GenericBossFlag100",100,"Kicker")
+    TNT1 A 0 A_GiveInventory("GenericBossFlag100", 5)
+    stop
+  }
 }
 
-actor ClownpieceKickerfire_P : CustomInventory
-{
-States
-{
-Pickup:
-TNT1 A 0 A_TakeInventory("GenericBossFlag100")
-Kicker:
-// TNT1 A 0 A_PlaySoundEx("Touhou/Lazer0","Auto")
-TNT1 A 0 A_TakeInventory("GenericBossFlag100")
-TNT1 A 0 A_FireCustomMissile("ClownpieceLaserBlue_H",0,0,0,0)
-stop
-}
+actor ClownpieceKickerfire_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_TakeInventory("GenericBossFlag100")
+   Kicker:
+    // TNT1 A 0 A_PlaySoundEx("Touhou/Lazer0","Auto")
+    TNT1 A 0 A_TakeInventory("GenericBossFlag100")
+    TNT1 A 0 A_FireCustomMissile("ClownpieceLaserBlue_H", 0, 0, 0, 0)
+    stop
+  }
 }
 
-actor ClownpieceKickerfire2_P : ClownpieceKickerfire_P
-{
-States
-{
-Pickup:
-// TNT1 A 0 A_PlaySoundEx("Touhou/Lazer0","Auto")
-TNT1 A 0 A_TakeInventory("GenericBossFlag100")
-TNT1 A 0 A_SpawnItemEx("ClownpieceLaser2_H")
-stop
-}
+actor ClownpieceKickerfire2_P : ClownpieceKickerfire_P {
+  States {
+   Pickup:
+    // TNT1 A 0 A_PlaySoundEx("Touhou/Lazer0","Auto")
+    TNT1 A 0 A_TakeInventory("GenericBossFlag100")
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaser2_H")
+    stop
+  }
 }
 
-actor ClownpieceKickerfire3_P : ClownpieceKickerfire_P
-{
-States
-{
-Pickup:
-// TNT1 A 0 A_PlaySoundEx("Touhou/Lazer0","Auto")
-TNT1 A 0 A_TakeInventory("GenericBossFlag100", 10)
-TNT1 A 0 A_FireCustomMissile("ClownpieceLaser3_H", 0, 0, 0, 0)
-stop
-}
+actor ClownpieceKickerfire3_P : ClownpieceKickerfire_P {
+  States {
+   Pickup:
+    // TNT1 A 0 A_PlaySoundEx("Touhou/Lazer0","Auto")
+    TNT1 A 0 A_TakeInventory("GenericBossFlag100", 10)
+    TNT1 A 0 A_FireCustomMissile("ClownpieceLaser3_H", 0, 0, 0, 0)
+    stop
+  }
 }
 
-actor ClownpieceItemShotRed12_H : BasicWatcher
-{
-Translation "192:192=170:170","198:198=43:43"
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,0,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,30,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,60,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,90,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,120,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,150,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,180,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,210,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,240,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,270,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,300,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,330,1+8192)
-TNT1 A 2
-stop
-}
+actor ClownpieceItemShotRed12_H : BasicWatcher {
+  Translation "192:192=170:170", "198:198=43:43"
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 0, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 30, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 60, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 90, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 120, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 150, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 180, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 210, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 240, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 270, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 300, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 330, 1+8192)
+    TNT1 A 2
+    stop
+  }
 }
 
-actor ClownpieceItemShotRed24_H : BasicWatcher
-{
-Translation "192:192=170:170","198:198=43:43"
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,0,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,15,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,30,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,45,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,60,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,75,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,90,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,105,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,120,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,135,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,150,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,165,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,180,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,195,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,210,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,225,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,240,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,255,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,270,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,285,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,300,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,315,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,330,1+8192)
-TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot",10,0,6,1,0,0,345,1+8192)
-TNT1 A 2
-stop
-}
+actor ClownpieceItemShotRed24_H : BasicWatcher {
+  Translation "192:192=170:170", "198:198=43:43"
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 0, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 15, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 30, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 45, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 60, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 75, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 90, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 105, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 120, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 135, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 150, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 165, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 180, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 195, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 210, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 225, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 240, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 255, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 270, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 285, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 300, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 315, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 330, 1+8192)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceItemShot", 10, 0, 6, 1, 0, 0, 345, 1+8192)
+    TNT1 A 2
+    stop
+  }
 }
 
-//Hellfire "Graze Inferno"
-//Hellfire "Infernal Essence of Grazing"
+// Hellfire "Graze Inferno"
+// Hellfire "Infernal Essence of Grazing"
 actor ClownpieceItemShot : ProjSpawnFuncActor  // BasicProjectile
 {
-Damagetype "Clownpiece"
-Obituary "%o went insane from touching %k's Graze Inferno."
-+MISSILE
--SOLID
-+NOTELEPORT
-+SHOOTABLE
-+NOBLOOD
-+RIPPER
--NOGRAVITY
-+FORCEXYBILLBOARD
-+ALLOWBOUNCEONACTORS
-+BOUNCEONFLOORS
-+BOUNCEONWALLS
-+BOUNCEONCEILINGS
-+CANBOUNCEWATER
-renderstyle "translucent"
-species "Clownpiece_GrazeInferno"
-Painchance 0
-Damagefactor "Clownpiece", 0.0
-Damagefactor "ignition", 0.0
-mass 0x7ffffffc
-health 1500
-bouncecount 10
-bouncefactor 1.0
-wallbouncefactor 1.0
-Reactiontime 20
-damage (11)
-Radius 16
-Height 16
-speed 4
-scale 2.5
-States
-{
-Spawn:
-6P06 A 0
-6P06 A 0 ACS_NamedExecuteWithResult("core_alphaprojectile", CallACS("core_getptrtid", AAPTR_TARGET), APROJ_TEAM, 6553, 192)
-6P06 A 0 ThrustThingZ(0,4,0,1)
-Spawn2:
-6P06 ABCD 3 A_SpawnItemEx("OilPitIgnite", 0, 0, 8)
-6P06 A 0 A_CountDown
-Loop
-Death:
-TMFX A 0 A_SetGravity(0.0)
-TMFX ABCD 3
-stop
-}
+  Damagetype "Clownpiece"
+  Obituary "%o went insane from touching %k's Graze Inferno."
+  +MISSILE
+  -SOLID
+  +NOTELEPORT
+  +SHOOTABLE
+  +NOBLOOD
+  +RIPPER
+  -NOGRAVITY
+  +FORCEXYBILLBOARD
+  +ALLOWBOUNCEONACTORS
+  +BOUNCEONFLOORS
+  +BOUNCEONWALLS
+  +BOUNCEONCEILINGS
+  +CANBOUNCEWATER
+  renderstyle "translucent"
+  species "Clownpiece_GrazeInferno"
+  Painchance 0
+  Damagefactor "Clownpiece", 0.0
+  Damagefactor "ignition", 0.0
+  mass 0x7ffffffc
+  health 1500
+  bouncecount 10
+  bouncefactor 1.0
+  wallbouncefactor 1.0
+  Reactiontime 20
+  damage (11)
+  Radius 16
+  Height 16
+  speed 4
+  scale 2.5
+  States {
+   Spawn:
+    6P06 A 0
+    6P06 A 0 ACS_NamedExecuteWithResult("core_alphaprojectile", CallACS("core_getptrtid", AAPTR_TARGET), APROJ_TEAM, 6553, 192)
+    6P06 A 0 ThrustThingZ(0, 4, 0, 1)
+   Spawn2:
+    6P06 ABCD 3 A_SpawnItemEx("OilPitIgnite", 0, 0, 8)
+    6P06 A 0 A_CountDown
+    Loop
+   Death:
+    TMFX A 0 A_SetGravity(0.0)
+    TMFX ABCD 3
+    stop
+  }
 }
 
 //
-actor ClownpieceStar : BasicProjectile
-{
-Translation "4:4=169:169","192:192=16:16","198:198=40:40", "0:0=191:191"
-Damagetype "Clownpiece"
-Obituary "%o went insane from touching %k's Spangled Stars."
-RenderStyle "Translucent"
-Alpha 0.95
-Damage (25)//10 ~ 50
-Radius 16
-Height 16
-Speed 35//70
-Scale 0.5
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 1
-TNT1 A 0 A_Jump(256,"S_1","S_2","S_3","S_4","S_5","S_6","S_7","S_8","T_1","T_2","T_3","T_4","T_5","T_6","T_7","T_8")
-S_1:
-8Q12 SSTTUUVV 1 A_SetScale(ScaleX+0.25)
-goto S_L
-S_2:8Q12 SSTTUUVV 1 A_SetScale(ScaleX+0.25)goto S_L+1
-S_3:8Q12 STTUUVVS 1 A_SetScale(ScaleX+0.25)goto S_L+2
-S_4:8Q12 TTUUVVSS 1 A_SetScale(ScaleX+0.25)goto S_L+3
-S_5:8Q12 TUUVVSST 1 A_SetScale(ScaleX+0.25)goto S_L+4
-S_6:8Q12 UUVVSSTT 1 A_SetScale(ScaleX+0.25)goto S_L+5
-S_7:8Q12 UVVSSTTU 1 A_SetScale(ScaleX+0.25)goto S_L+6
-S_8:8Q12 VVSSTTUU 1 A_SetScale(ScaleX+0.25)goto S_L+7
-T_1:8Q12 VVUUTTSS 1 A_SetScale(ScaleX+0.25)goto T_L
-T_2:8Q12 VUUTTSSV 1 A_SetScale(ScaleX+0.25)goto T_L+1
-T_3:8Q12 UUTTSSVV 1 A_SetScale(ScaleX+0.25)goto T_L+2
-T_4:8Q12 UTTSSVVU 1 A_SetScale(ScaleX+0.25)goto T_L+3
-T_5:8Q12 TTSSVVUU 1 A_SetScale(ScaleX+0.25)goto T_L+4
-T_6:8Q12 TSSVVUUT 1 A_SetScale(ScaleX+0.25)goto T_L+5
-T_7:8Q12 SSVVUUTT 1 A_SetScale(ScaleX+0.25)goto T_L+6
-T_8:8Q12 SVVUUTTS 1 A_SetScale(ScaleX+0.25)goto T_L+7
+actor ClownpieceStar : BasicProjectile {
+  Translation "4:4=169:169", "192:192=16:16", "198:198=40:40", "0:0=191:191"
+  Damagetype "Clownpiece"
+  Obituary "%o went insane from touching %k's Spangled Stars."
+  RenderStyle "Translucent"
+  Alpha 0.95
+  Damage (25)  // 10 ~ 50
+  Radius 16
+  Height 16
+  Speed 35  // 70
+  Scale 0.5
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1
+    TNT1 A 0 A_Jump(256, "S_1", "S_2", "S_3", "S_4", "S_5", "S_6", "S_7", "S_8", "T_1", "T_2", "T_3", "T_4", "T_5", "T_6", "T_7", "T_8")
+   S_1:
+    8Q12 SSTTUUVV 1 A_SetScale(ScaleX+0.25)
+    goto S_L
+   S_2: 8Q12 SSTTUUVV 1 A_SetScale(ScaleX+0.25)goto S_L+1
+   S_3: 8Q12 STTUUVVS 1 A_SetScale(ScaleX+0.25)goto S_L+2
+   S_4: 8Q12 TTUUVVSS 1 A_SetScale(ScaleX+0.25)goto S_L+3
+   S_5: 8Q12 TUUVVSST 1 A_SetScale(ScaleX+0.25)goto S_L+4
+   S_6: 8Q12 UUVVSSTT 1 A_SetScale(ScaleX+0.25)goto S_L+5
+   S_7: 8Q12 UVVSSTTU 1 A_SetScale(ScaleX+0.25)goto S_L+6
+   S_8: 8Q12 VVSSTTUU 1 A_SetScale(ScaleX+0.25)goto S_L+7
+   T_1: 8Q12 VVUUTTSS 1 A_SetScale(ScaleX+0.25)goto T_L
+   T_2: 8Q12 VUUTTSSV 1 A_SetScale(ScaleX+0.25)goto T_L+1
+   T_3: 8Q12 UUTTSSVV 1 A_SetScale(ScaleX+0.25)goto T_L+2
+   T_4: 8Q12 UTTSSVVU 1 A_SetScale(ScaleX+0.25)goto T_L+3
+   T_5: 8Q12 TTSSVVUU 1 A_SetScale(ScaleX+0.25)goto T_L+4
+   T_6: 8Q12 TSSVVUUT 1 A_SetScale(ScaleX+0.25)goto T_L+5
+   T_7: 8Q12 SSVVUUTT 1 A_SetScale(ScaleX+0.25)goto T_L+6
+   T_8: 8Q12 SVVUUTTS 1 A_SetScale(ScaleX+0.25)goto T_L+7
 
-S_L:
-8Q12 SSTTUUVV 1
-loop
-T_L:
-8Q12 VVUUTTSS 1
-loop
+   S_L:
+    8Q12 SSTTUUVV 1
+    loop
+   T_L:
+    8Q12 VVUUTTSS 1
+    loop
 
-Death:
-6P0K I 0 A_SetScale(2.5)
-6P0K IKJ 2
-stop
-}
+   Death:
+    6P0K I 0 A_SetScale(2.5)
+    6P0K IKJ 2
+    stop
+  }
 }
 
-actor ClownpieceStar_B : ClownpieceStar
-{
-Translation "4:4=196:196","192:192=205:205","198:198=75:75","0:0=244:244"
+actor ClownpieceStar_B : ClownpieceStar {
+  Translation "4:4=196:196", "192:192=205:205", "198:198=75:75", "0:0=244:244"
 }
 
 // Hell Sign "Star and Stripe" — forward curtain drops L/R horizontal stripe walls (coverage, not aim)
@@ -1513,42 +1455,40 @@ actor ClownpieceStripeCurtainShot {
 }
 
 // Base emitter: warn then stream horizontal beams (Args[0] = yaw offset)
-actor ClownpieceStripeEmitter
-{
-+NOINTERACTION
-+NOCLIP
-+NOGRAVITY
-+MISSILE
-+FORCEXYBILLBOARD
-+BRIGHT
-Height 0
-Radius 0
-Speed 0
-Scale 1.25
-Reactiontime 12
-Args 0
-States
-{
-Spawn:
-TNT1 A 0
-Warn:
-MXP1 E 2
-MXP1 D 2
-MXP1 C 2
-MXP1 B 2
-MXP1 A 2 A_PlaySoundEx("misc/quicktrap", "Auto")
-Fire:
-MXP1 A 0 A_CustomMissile("ClownpieceStripeBeam", 0, 0, Args[0], CMF_AIMDIRECTION, 0)
-MXP1 A 1 A_CustomMissile("ClownpieceStripeBeamFX", 0, 0, Args[0], CMF_AIMDIRECTION, 0)
-MXP1 A 0 A_Countdown
-MXP1 B 0 A_CustomMissile("ClownpieceStripeBeam", 0, 0, Args[0], CMF_AIMDIRECTION, 0)
-MXP1 B 1 A_CustomMissile("ClownpieceStripeBeamFX", 0, 0, Args[0], CMF_AIMDIRECTION, 0)
-MXP1 B 0 A_Countdown
-Goto Fire
-Death:
-TNT1 A 1
-Stop
-}
+actor ClownpieceStripeEmitter {
+  +NOINTERACTION
+  +NOCLIP
+  +NOGRAVITY
+  +MISSILE
+  +FORCEXYBILLBOARD
+  +BRIGHT
+  Height 0
+  Radius 0
+  Speed 0
+  Scale 1.25
+  Reactiontime 12
+  Args 0
+  States {
+   Spawn:
+    TNT1 A 0
+   Warn:
+    MXP1 E 2
+    MXP1 D 2
+    MXP1 C 2
+    MXP1 B 2
+    MXP1 A 2 A_PlaySoundEx("misc/quicktrap", "Auto")
+   Fire:
+    MXP1 A 0 A_CustomMissile("ClownpieceStripeBeam", 0, 0, Args[0], CMF_AIMDIRECTION, 0)
+    MXP1 A 1 A_CustomMissile("ClownpieceStripeBeamFX", 0, 0, Args[0], CMF_AIMDIRECTION, 0)
+    MXP1 A 0 A_Countdown
+    MXP1 B 0 A_CustomMissile("ClownpieceStripeBeam", 0, 0, Args[0], CMF_AIMDIRECTION, 0)
+    MXP1 B 1 A_CustomMissile("ClownpieceStripeBeamFX", 0, 0, Args[0], CMF_AIMDIRECTION, 0)
+    MXP1 B 0 A_Countdown
+    Goto Fire
+   Death:
+    TNT1 A 1
+    Stop
+  }
 }
 
 // Left of curtain → beams right (-90)
@@ -1558,13 +1498,12 @@ actor ClownpieceStripeEmitterL : ClownpieceStripeEmitter {Args -90}
 actor ClownpieceStripeEmitterR : ClownpieceStripeEmitter {Args 90}
 
 // Legacy ACS uh_ClownpieceStripeVolley spawn name — warn then fire toward facing (unused by W4)
-actor ClownpieceStripeSpawner : ClownpieceStripeEmitter
-{
-Args 0
+actor ClownpieceStripeSpawner : ClownpieceStripeEmitter {
+  Args 0
 }
 
 actor ClownpieceStripeBeam : BasicProjectile {
-  Translation "192:192=39:39","198:198=175:175"
+  Translation "192:192=39:39", "198:198=175:175"
   Damage (45)
   Damagetype "Clownpiece"
   Obituary "%o went insane from touching %k's Star and Stripe."
@@ -1592,50 +1531,47 @@ actor ClownpieceStripeBeam : BasicProjectile {
   }
 }
 
-actor ClownpieceStripeBeamFX : ClownpieceStripeBeam
-{
-Damage (0)
-+CLIENTSIDEONLY
-+BLOODLESSIMPACT
+actor ClownpieceStripeBeamFX : ClownpieceStripeBeam {
+  Damage (0)
+  +CLIENTSIDEONLY
+  +BLOODLESSIMPACT
 }
 
 // Inferno "Striped Abyss" — dual red horizontal stripe walls flanking a long channel
-actor ClownpieceAbyssWall
-{
-PROJECTILE
-+NOINTERACTION
-+NOCLIP
-+NOGRAVITY
-+FORCEXYBILLBOARD
-+BRIGHT
-Height 0
-Radius 0
-Speed 20
-Scale 1.5
-Reactiontime 70
-Args 0
-Damagetype "Clownpiece"
-Obituary "%o went insane from touching %k's Striped Abyss."
-States
-{
-Spawn:
-TNT1 A 0
-Warn:
-MXP1 E 2
-MXP1 D 2
-MXP1 C 2
-MXP1 B 2
-MXP1 A 2 A_PlaySoundEx("misc/quicktrap", "Auto")
-Fire:
-// One red band at this runner's height (spawnheight set by FireCustomMissile)
-MXP1 A 0 A_CustomMissile("ClownpieceAbyssBeam", 0, 0, Args[0], CMF_AIMDIRECTION, 0)
-MXP1 A 1 A_CustomMissile("ClownpieceAbyssBeamFX", 0, 0, Args[0], CMF_AIMDIRECTION, 0)
-MXP1 A 0 A_Countdown
-Goto Fire
-Death:
-TNT1 A 1
-Stop
-}
+actor ClownpieceAbyssWall {
+  PROJECTILE
+  +NOINTERACTION
+  +NOCLIP
+  +NOGRAVITY
+  +FORCEXYBILLBOARD
+  +BRIGHT
+  Height 0
+  Radius 0
+  Speed 20
+  Scale 1.5
+  Reactiontime 70
+  Args 0
+  Damagetype "Clownpiece"
+  Obituary "%o went insane from touching %k's Striped Abyss."
+  States {
+   Spawn:
+    TNT1 A 0
+   Warn:
+    MXP1 E 2
+    MXP1 D 2
+    MXP1 C 2
+    MXP1 B 2
+    MXP1 A 2 A_PlaySoundEx("misc/quicktrap", "Auto")
+   Fire:
+    // One red band at this runner's height (spawnheight set by FireCustomMissile)
+    MXP1 A 0 A_CustomMissile("ClownpieceAbyssBeam", 0, 0, Args[0], CMF_AIMDIRECTION, 0)
+    MXP1 A 1 A_CustomMissile("ClownpieceAbyssBeamFX", 0, 0, Args[0], CMF_AIMDIRECTION, 0)
+    MXP1 A 0 A_Countdown
+    Goto Fire
+   Death:
+    TNT1 A 1
+    Stop
+  }
 }
 
 // Left of channel → horizontal beams right (into corridor)
@@ -1644,73 +1580,68 @@ actor ClownpieceAbyssWallL : ClownpieceAbyssWall {Args -90}
 // Right of channel → horizontal beams left (into corridor)
 actor ClownpieceAbyssWallR : ClownpieceAbyssWall {Args 90}
 
-actor ClownpieceAbyssBeam : ClownpieceStripeBeam
-{
-Obituary "%o went insane from touching %k's Striped Abyss."
-Damage (40)
-Speed 40
-Reactiontime 50
+actor ClownpieceAbyssBeam : ClownpieceStripeBeam {
+  Obituary "%o went insane from touching %k's Striped Abyss."
+  Damage (40)
+  Speed 40
+  Reactiontime 50
 }
 
-actor ClownpieceAbyssBeamFX : ClownpieceAbyssBeam
-{
-Damage (0)
-+CLIENTSIDEONLY
-+BLOODLESSIMPACT
+actor ClownpieceAbyssBeamFX : ClownpieceAbyssBeam {
+  Damage (0)
+  +CLIENTSIDEONLY
+  +BLOODLESSIMPACT
 }
 
-//Hell Sign "Flash and Stripe" / charged kick lasers (W1 alt etc.)
-//Inferno "Striped Abyss"
-//Hell Sign "Bursting Grudge"
-//Hell Sign "Double Stripe"
-actor ClownpieceLaserBlue_H : BasicWatcher
-{
-Translation "192:192=4:4","198:198=196:196","4:4=196:196","202:202=75:75"
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertySpread",1,"SpawnSpread")
-TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp1",0,0,0,0,0,0,0,5)
-TNT1 A 8 A_SpawnItemEx("ClownpieceLaserWarp4",0,0,0,0,0,0,0,5)
-TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2",0,0,0,0,0,0,0,5)
-TNT1 A 8 A_SpawnItemEx("ClownpieceLaserWarp3",0,0,0,0,0,0,0,5)
-stop
-SpawnSpread:
-TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp1",0,0,0,0,0,0,0,5)
-TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp1",0,0,0,0,0,0,15,5)
-TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp1",0,0,0,0,0,0,-15,5)
-TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp4",0,0,0,0,0,0,0,5)
-TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp4",0,0,0,0,0,0,15,5)
-TNT1 A 8 A_SpawnItemEx("ClownpieceLaserWarp4",0,0,0,0,0,0,-15,5)
-TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2",0,0,0,0,0,0,0,5)
-TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2",0,0,0,0,0,0,15,5)
-TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2",0,0,0,0,0,0,-15,5)
-TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp3",0,0,0,0,0,0,0,5)
-TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp3",0,0,0,0,0,0,15,5)
-TNT1 A 8 A_SpawnItemEx("ClownpieceLaserWarp3",0,0,0,0,0,0,-15,5)
-stop
+// Hell Sign "Flash and Stripe" / charged kick lasers (W1 alt etc.)
+// Inferno "Striped Abyss"
+// Hell Sign "Bursting Grudge"
+// Hell Sign "Double Stripe"
+actor ClownpieceLaserBlue_H : BasicWatcher {
+  Translation "192:192=4:4", "198:198=196:196", "4:4=196:196", "202:202=75:75"
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertySpread", 1, "SpawnSpread")
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp1", 0, 0, 0, 0, 0, 0, 0, 5)
+    TNT1 A 8 A_SpawnItemEx("ClownpieceLaserWarp4", 0, 0, 0, 0, 0, 0, 0, 5)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2", 0, 0, 0, 0, 0, 0, 0, 5)
+    TNT1 A 8 A_SpawnItemEx("ClownpieceLaserWarp3", 0, 0, 0, 0, 0, 0, 0, 5)
+    stop
+   SpawnSpread:
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp1", 0, 0, 0, 0, 0, 0, 0, 5)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp1", 0, 0, 0, 0, 0, 0, 15, 5)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp1", 0, 0, 0, 0, 0, 0, -15, 5)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp4", 0, 0, 0, 0, 0, 0, 0, 5)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp4", 0, 0, 0, 0, 0, 0, 15, 5)
+    TNT1 A 8 A_SpawnItemEx("ClownpieceLaserWarp4", 0, 0, 0, 0, 0, 0, -15, 5)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2", 0, 0, 0, 0, 0, 0, 0, 5)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2", 0, 0, 0, 0, 0, 0, 15, 5)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2", 0, 0, 0, 0, 0, 0, -15, 5)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp3", 0, 0, 0, 0, 0, 0, 0, 5)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp3", 0, 0, 0, 0, 0, 0, 15, 5)
+    TNT1 A 8 A_SpawnItemEx("ClownpieceLaserWarp3", 0, 0, 0, 0, 0, 0, -15, 5)
+    stop
+  }
 }
-}
-actor ClownpieceLaserRed_H : ClownpieceLaserBlue_H
-{
-Translation "192:192=4:4","198:198=170:170","4:4=170:170","202:202=40:40"
+actor ClownpieceLaserRed_H : ClownpieceLaserBlue_H {
+  Translation "192:192=4:4", "198:198=170:170", "4:4=170:170", "202:202=40:40"
 }
 
 actor ClownpieceLaser2_H : ClownpieceLaserBlue_H {
   States {
    Spawn:
     TNT1 A 0
-    TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertySpread",1,"SpawnSpread")
-    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_1L",0,0,0,0,0,0,0,4)
-    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_1R",0,0,0,0,0,0,0,4)
-    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_2L",0,0,0,0,0,0,0,4)
-    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_2R",0,0,0,0,0,0,0,4)
+    TNT1 A 0 A_JumpIfInTargetInventory("PlayerPropertySpread", 1, "SpawnSpread")
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_1L", 0, 0, 0, 0, 0, 0, 0, 4)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_1R", 0, 0, 0, 0, 0, 0, 0, 4)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_2L", 0, 0, 0, 0, 0, 0, 0, 4)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_2R", 0, 0, 0, 0, 0, 0, 0, 4)
     TNT1 A 8
-    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_3L",0,0,0,0,0,0,0,4)
-    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_3R",0,0,0,0,0,0,0,4)
-    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_4L",0,0,0,0,0,0,0,4)
-    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_4R",0,0,0,0,0,0,0,4)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_3L", 0, 0, 0, 0, 0, 0, 0, 4)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_3R", 0, 0, 0, 0, 0, 0, 0, 4)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_4L", 0, 0, 0, 0, 0, 0, 0, 4)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp2_4R", 0, 0, 0, 0, 0, 0, 0, 4)
     TNT1 A 8
     stop
   }
@@ -1726,41 +1657,39 @@ actor ClownpieceLaser3_H : ClownpieceLaserRed_H {
     TNT1 A 0 A_SetUserVar("user_x", random(-Args[0], Args[0]))
     TNT1 A 0 A_SetUserVar("user_y", random(-Args[1], Args[1]))
     TNT1 A 0 A_Warp(2, user_x, user_y, 32, 0, 8)
-    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp_3",0,0,0,0,0,0,0,5)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp_3", 0, 0, 0, 0, 0, 0, 0, 5)
     TNT1 A 0 A_Warp(2, user_x, -user_y, 32, 0, 8)
-    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp_3",0,0,0,0,0,0,0,5)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceLaserWarp_3", 0, 0, 0, 0, 0, 0, 0, 5)
     TNT1 A 8
     stop
   }
 }
 
-actor ClownpieceLaserWarp1 : BasicExplosion
-{
-Damagetype "Clownpiece"
-Obituary "%o went insane from touching %k's Flash and Stripe."
-Reactiontime 1
-+FORCEXYBILLBOARD
-Args 0, -100
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 0 A_SetArg(3,angle)
-TNT1 A 0 A_Warp(2, Args[0], Args[1], 32, 0, 8)
-SpawnFrame:
-Y_8G AABB 1 //A_Warp(2,0,Args[0],32,0,24)
-Y_8G CCBBAABBCCBBAABBCCC 1 //A_Warp(2,0,Args[0],32,0,24)
-Y_8G C 0 ACS_NamedExecuteAlways("core_targetyawpitch", 0, 1)
-Y_8G C 0 //A_PlaySoundEx("weapon/lshot","Voice")
-Y_8G C 1 //A_Warp(2,0,Args[0],32,0,24)
-Y_8G C 0 A_PlaySoundEx("Touhou/Lazer0", "Auto")
-Y_8G C 0 A_SpawnItemEx("ClownpieceLaser",0,0,0,cos(-pitch)*50,0,sin(-pitch)*50,0+Args[3],33)
-Y_8G C 1 A_Countdown
-wait
-Death:
-Y_8G IJK 2
-Stop
-}
+actor ClownpieceLaserWarp1 : BasicExplosion {
+  Damagetype "Clownpiece"
+  Obituary "%o went insane from touching %k's Flash and Stripe."
+  Reactiontime 1
+  +FORCEXYBILLBOARD
+  Args 0, -100
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SetArg(3, angle)
+    TNT1 A 0 A_Warp(2, Args[0], Args[1], 32, 0, 8)
+   SpawnFrame:
+    Y_8G AABB 1  // A_Warp(2,0,Args[0],32,0,24)
+    Y_8G CCBBAABBCCBBAABBCCC 1  // A_Warp(2,0,Args[0],32,0,24)
+    Y_8G C 0 ACS_NamedExecuteAlways("core_targetyawpitch", 0, 1)
+    Y_8G C 0  // A_PlaySoundEx("weapon/lshot","Voice")
+    Y_8G C 1  // A_Warp(2,0,Args[0],32,0,24)
+    Y_8G C 0 A_PlaySoundEx("Touhou/Lazer0", "Auto")
+    Y_8G C 0 A_SpawnItemEx("ClownpieceLaser", 0, 0, 0, cos(-pitch)*50, 0, sin(-pitch)*50, 0+Args[3], 33)
+    Y_8G C 1 A_Countdown
+    wait
+   Death:
+    Y_8G IJK 2
+    Stop
+  }
 }
 
 actor ClownpieceLaserWarp2 : ClownpieceLaserWarp1 {Args 0, -50}
@@ -1788,66 +1717,60 @@ actor ClownpieceLaserWarp_3 : ClownpieceLaserWarp1 {
     Y_8G C 1 A_GiveToTarget("UH_TargetMarker")
     Y_8G C 1 ACS_NamedExecuteAlways("core_aimattargetcursor", 0, CallACS("core_gettarget") + PLN_TARGETPOINT_OFFSET, 32)
     Y_8G C 0 A_PlaySoundEx("Touhou/Lazer0", "Auto")
-    Y_8G C 0 A_SpawnItemEx("ClownpieceLaser",0,0,0,cos(-pitch)*50,0,sin(-pitch)*50,0+Args[3],33)
+    Y_8G C 0 A_SpawnItemEx("ClownpieceLaser", 0, 0, 0, cos(-pitch)*50, 0, sin(-pitch)*50, 0+Args[3], 33)
     Y_8G C 1 A_Countdown
     wait
   }
 }
 
-actor ClownpieceLaser : BasicProjectile
-{
-Damagetype "Clownpiece"
-Obituary "%o went insane from touching %k's Bursting Grudge."
-+THRUACTORS
-Renderstyle "None"
-damage (0)
-Radius 6
-Height 6
-speed 50
-scale 4.0
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 0 A_Explode(30,32,0,0,16)
-TNT1 A 1 A_SpawnItemEx("ClownpieceLaser2",0,0,0,0,0,0,0,1)
-loop
-}
+actor ClownpieceLaser : BasicProjectile {
+  Damagetype "Clownpiece"
+  Obituary "%o went insane from touching %k's Bursting Grudge."
+  +THRUACTORS
+  Renderstyle "None"
+  damage (0)
+  Radius 6
+  Height 6
+  speed 50
+  scale 4.0
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_Explode(30, 32, 0, 0, 16)
+    TNT1 A 1 A_SpawnItemEx("ClownpieceLaser2", 0, 0, 0, 0, 0, 0, 0, 1)
+    loop
+  }
 }
 
-actor ClownpieceLaser2 : ClownpieceLaser
-{
-Obituary "%o went insane from touching %k's Striped Abyss."
-+FORCEXYBILLBOARD
-+DONTBLAST
-Renderstyle "Normal"
-reactiontime 28
-speed 0
-States
-{
-Spawn:
-X_3C A 0
-X_3C A 0 A_Explode(10,32,0,0,16)
-X_3C A 1 A_Countdown
-loop
-Death:
-TNT1 A 1 A_SpawnItemEx("ClownpieceLaserFX",0,0,0,0,0,0,0,1)
-stop
-}
+actor ClownpieceLaser2 : ClownpieceLaser {
+  Obituary "%o went insane from touching %k's Striped Abyss."
+  +FORCEXYBILLBOARD
+  +DONTBLAST
+  Renderstyle "Normal"
+  reactiontime 28
+  speed 0
+  States {
+   Spawn:
+    X_3C A 0
+    X_3C A 0 A_Explode(10, 32, 0, 0, 16)
+    X_3C A 1 A_Countdown
+    loop
+   Death:
+    TNT1 A 1 A_SpawnItemEx("ClownpieceLaserFX", 0, 0, 0, 0, 0, 0, 0, 1)
+    stop
+  }
 }
 
-actor ClownpieceLaserFX : BasicGraphicEffect
-{
-+FORCEXYBILLBOARD
-reactiontime 28
-scale 4.0
-States
-{
-SpawnFrame:
-//X_3C A 28
-X_3C AAAAAAA 1 A_SetScale(scalex-0.5)
-stop
-}
+actor ClownpieceLaserFX : BasicGraphicEffect {
+  +FORCEXYBILLBOARD
+  reactiontime 28
+  scale 4.0
+  States {
+   SpawnFrame:
+    // X_3C A 28
+    X_3C AAAAAAA 1 A_SetScale(scalex-0.5)
+    stop
+  }
 }
 
 actor SpawnClownpieceOrberinoRed_H : BasicWatcher {
@@ -1874,447 +1797,416 @@ actor SpawnClownpieceOrberinoRed_H : BasicWatcher {
   }
 }
 
-//Hell Sign "Hell Eclipse"
-//Hell Sign "Eclipse of Hell"
-actor ClownpieceOrberinoRed : BasicProjectile
-{
-Translation "4:4=169:169","192:192=170:170","198:198=40:40","0:0=191:191"
-//Translation "192:192=170:170","198:198=40:40","202:202=4:4","199:199=43:43"
-//Translation "4:4=169:169","192:192=16:16","198:198=40:40", "0:0=191:191"
-Damagetype "Clownpiece"
-Obituary "%o went insane from touching %k's Hell Eclipse."
-+RIPPER
-+FORCEXYBILLBOARD
-// +BOUNCEONFLOORS
-// +BOUNCEONWALLS
-// +BOUNCEONCEILINGS
-// +CANBOUNCEWATER
-// +USEBOUNCESTATE
-bouncecount 16
-bouncefactor 1.0
-wallbouncefactor 1.0
-reactiontime 180//360
-Damage (50)
-Radius 16
-Height 20
-Speed 15
-Scale 3.0
-Args 2
-States
-{
-Spawn:
-8Q12 J 0
-8Q12 J 0 ACS_NamedExecuteWithResult("core_alphaprojectile", CallACS("core_getptrtid", AAPTR_TARGET), APROJ_TEAM, 13106, 100)
-SpawnL:
-8Q12 J 0 A_JumpIfInTargetInventory("ClownpieceOrbFlag", 1, 1)
-goto Death
-8Q12 J 0 A_Warp(2, 96, 0, 32, 2, 28)
-8Q12 J 0 A_PlaySound("Touhou/Kira0",1,0.75)
-8Q12 J 1
-8Q12 K 0 A_GiveInventory("SpawnClownpieceOrbPew_P")
-8Q12 K 0 A_Warp(2, 96, 0, 32, 2, 28)
-8Q12 K 0 A_PlaySound("Touhou/Kira0",1,0.75)
-8Q12 K 1 A_JumpIfInTargetInventory("ClownpieceOrbFlag", 1, 1)
-goto Death
-8Q12 K 0 A_GiveInventory("SpawnClownpieceOrbPew_P")
-loop
-// Bounce.Floor:
-// 8Q12 J 0 A_ChangeVelocity(15,0,0,3)
-// goto Spawn
+// Hell Sign "Hell Eclipse"
+// Hell Sign "Eclipse of Hell"
+actor ClownpieceOrberinoRed : BasicProjectile {
+  Translation "4:4=169:169", "192:192=170:170", "198:198=40:40", "0:0=191:191"
+  // Translation "192:192=170:170","198:198=40:40","202:202=4:4","199:199=43:43"
+  // Translation "4:4=169:169","192:192=16:16","198:198=40:40", "0:0=191:191"
+  Damagetype "Clownpiece"
+  Obituary "%o went insane from touching %k's Hell Eclipse."
+  +RIPPER
+  +FORCEXYBILLBOARD
+  // +BOUNCEONFLOORS
+  // +BOUNCEONWALLS
+  // +BOUNCEONCEILINGS
+  // +CANBOUNCEWATER
+  // +USEBOUNCESTATE
+  bouncecount 16
+  bouncefactor 1.0
+  wallbouncefactor 1.0
+  reactiontime 180  // 360
+  Damage (50)
+  Radius 16
+  Height 20
+  Speed 15
+  Scale 3.0
+  Args 2
+  States {
+   Spawn:
+    8Q12 J 0
+    8Q12 J 0 ACS_NamedExecuteWithResult("core_alphaprojectile", CallACS("core_getptrtid", AAPTR_TARGET), APROJ_TEAM, 13106, 100)
+   SpawnL:
+    8Q12 J 0 A_JumpIfInTargetInventory("ClownpieceOrbFlag", 1, 1)
+    goto Death
+    8Q12 J 0 A_Warp(2, 96, 0, 32, 2, 28)
+    8Q12 J 0 A_PlaySound("Touhou/Kira0", 1, 0.75)
+    8Q12 J 1
+    8Q12 K 0 A_GiveInventory("SpawnClownpieceOrbPew_P")
+    8Q12 K 0 A_Warp(2, 96, 0, 32, 2, 28)
+    8Q12 K 0 A_PlaySound("Touhou/Kira0", 1, 0.75)
+    8Q12 K 1 A_JumpIfInTargetInventory("ClownpieceOrbFlag", 1, 1)
+    goto Death
+    8Q12 K 0 A_GiveInventory("SpawnClownpieceOrbPew_P")
+    loop
+    // Bounce.Floor:
+    // 8Q12 J 0 A_ChangeVelocity(15,0,0,3)
+    // goto Spawn
 
-Death:
-TNT1 A 0
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,42.2f,0,15.4f,0-9,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,43.46f,0,11.6f,0,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,44.3f,0,7.8f,0+9,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,42.2f,0,15.4f,45-9,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,43.46f,0,11.6f,45,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,44.3f,0,7.8f,45+9,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,42.2f,0,15.4f,90-9,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,43.46f,0,11.6f,90,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,44.3f,0,7.8f,90+9,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,42.2f,0,15.4f,135-9,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,43.46f,0,11.6f,135,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,44.3f,0,7.8f,135+9,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,42.2f,0,15.4f,180-9,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,43.46f,0,11.6f,180,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,44.3f,0,7.8f,180+9,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,42.2f,0,15.4f,225-9,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,43.46f,0,11.6f,225,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,44.3f,0,7.8f,225+9,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,42.2f,0,15.4f,270-9,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,43.46f,0,11.6f,270,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,44.3f,0,7.8f,270+9,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,42.2f,0,15.4f,315-9,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,43.46f,0,11.6f,315,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar",0,0,0,44.3f,0,7.8f,315+9,1)
-TNT1 A 0 A_PlaySound("Touhou/Kira0",1)
-TNT1 A 2
-stop
-}
+   Death:
+    TNT1 A 0
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 42.2f, 0, 15.4f, 0-9, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 43.46f, 0, 11.6f, 0, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 44.3f, 0, 7.8f, 0+9, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 42.2f, 0, 15.4f, 45-9, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 43.46f, 0, 11.6f, 45, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 44.3f, 0, 7.8f, 45+9, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 42.2f, 0, 15.4f, 90-9, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 43.46f, 0, 11.6f, 90, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 44.3f, 0, 7.8f, 90+9, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 42.2f, 0, 15.4f, 135-9, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 43.46f, 0, 11.6f, 135, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 44.3f, 0, 7.8f, 135+9, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 42.2f, 0, 15.4f, 180-9, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 43.46f, 0, 11.6f, 180, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 44.3f, 0, 7.8f, 180+9, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 42.2f, 0, 15.4f, 225-9, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 43.46f, 0, 11.6f, 225, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 44.3f, 0, 7.8f, 225+9, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 42.2f, 0, 15.4f, 270-9, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 43.46f, 0, 11.6f, 270, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 44.3f, 0, 7.8f, 270+9, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 42.2f, 0, 15.4f, 315-9, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 43.46f, 0, 11.6f, 315, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbStar", 0, 0, 0, 44.3f, 0, 7.8f, 315+9, 1)
+    TNT1 A 0 A_PlaySound("Touhou/Kira0", 1)
+    TNT1 A 2
+    stop
+  }
 }
 
 actor SpawnClownpieceOrbPew_P : CustomInventory {
   States {
    Pickup:
-    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbPew",0,0,0,60,0,0,0,1)
-    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbPew",0,0,0,60,0,0,60,1)
-    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbPew",0,0,0,60,0,0,120,1)
-    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbPew",0,0,0,60,0,0,180,1)
-    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbPew",0,0,0,60,0,0,240,1)
-    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbPew",0,0,0,60,0,0,300,1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbPew", 0, 0, 0, 60, 0, 0, 0, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbPew", 0, 0, 0, 60, 0, 0, 60, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbPew", 0, 0, 0, 60, 0, 0, 120, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbPew", 0, 0, 0, 60, 0, 0, 180, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbPew", 0, 0, 0, 60, 0, 0, 240, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceOrbPew", 0, 0, 0, 60, 0, 0, 300, 1)
     stop
   }
 }
 
-actor ClownpieceOrberinoBlue : ClownpieceOrberinoRed
-{
-Translation "4:4=196:196","192:192=205:205","198:198=75:75","0:0=244:244"
-Args -2
+actor ClownpieceOrberinoBlue : ClownpieceOrberinoRed {
+  Translation "4:4=196:196", "192:192=205:205", "198:198=75:75", "0:0=244:244"
+  Args -2
 }
 
-actor ClownpieceOrberinoPurple : ClownpieceOrberinoRed
-{
-Translation "4:4=56:56","192:192=57:57","198:198=62:62","0:0=63:63"
-Args 4
+actor ClownpieceOrberinoPurple : ClownpieceOrberinoRed {
+  Translation "4:4=56:56", "192:192=57:57", "198:198=62:62", "0:0=63:63"
+  Args 4
 }
 
-actor ClownpieceOrbPew : BasicProjectile
-{
-Damagetype "Clownpiece"
-Obituary "%o went insane from touching %k's Hell Eclipse."
-+RIPPER
-+FORCEXYBILLBOARD
-// +BOUNCEONFLOORS
-// +BOUNCEONWALLS
-// +BOUNCEONCEILINGS
-// +CANBOUNCEWATER
-bouncecount 3
-bouncefactor 0.975
-wallbouncefactor 0.975
+actor ClownpieceOrbPew : BasicProjectile {
+  Damagetype "Clownpiece"
+  Obituary "%o went insane from touching %k's Hell Eclipse."
+  +RIPPER
+  +FORCEXYBILLBOARD
+  // +BOUNCEONFLOORS
+  // +BOUNCEONWALLS
+  // +BOUNCEONCEILINGS
+  // +CANBOUNCEWATER
+  bouncecount 3
+  bouncefactor 0.975
+  wallbouncefactor 0.975
 
-Damage (10) //20
-radius 12
-height 12
-Speed 60
-States
-{
-Spawn:
-6P07 RSTU 1
-loop
-Death:
-TMFX QRS 1
-SMFX D 1
-stop
-}
+  Damage (10)  // 20
+  radius 12
+  height 12
+  Speed 60
+  States {
+   Spawn:
+    6P07 RSTU 1
+    loop
+   Death:
+    TMFX QRS 1
+    SMFX D 1
+    stop
+  }
 }
 
-actor ClownpieceOrbStar : BasicProjectile
-{
-Damagetype "Clownpiece"
-Obituary "%o went insane from touching %k's Eclipse of Hell."
--NOGRAVITY
--EXPLODEONWATER
-+DOOMBOUNCE
-+DONTSPLASH
-bouncecount 20//20
-bouncefactor 1.0
-wallbouncefactor 1.0
-RenderStyle "Translucent"
-Alpha 0.9
-reactiontime 240//Adjust
-Damage (20)
-Radius 16
-Height 16
-Speed 45
-Scale 5
-States
-{
-Spawn:
-8P30 HKNQ 2
-8P30 H 0 A_CountDown
-loop
-Death:
-X_BF A 0 //A_Stop
-X_BF A 0 A_SpawnItemEx("ClownpieceOrbStarFX",0,0,0,0,0,0,0,1)//A_SetGravity(0.0)
-//X_BF ANOP 2 A_Fadeout(0.15)
-stop
+actor ClownpieceOrbStar : BasicProjectile {
+  Damagetype "Clownpiece"
+  Obituary "%o went insane from touching %k's Eclipse of Hell."
+  -NOGRAVITY
+  -EXPLODEONWATER
+  +DOOMBOUNCE
+  +DONTSPLASH
+  bouncecount 20  // 20
+  bouncefactor 1.0
+  wallbouncefactor 1.0
+  RenderStyle "Translucent"
+  Alpha 0.9
+  reactiontime 240  // Adjust
+  Damage (20)
+  Radius 16
+  Height 16
+  Speed 45
+  Scale 5
+  States {
+   Spawn:
+    8P30 HKNQ 2
+    8P30 H 0 A_CountDown
+    loop
+   Death:
+    X_BF A 0  // A_Stop
+    X_BF A 0 A_SpawnItemEx("ClownpieceOrbStarFX", 0, 0, 0, 0, 0, 0, 0, 1)  // A_SetGravity(0.0)
+    // X_BF ANOP 2 A_Fadeout(0.15)
+    stop
+  }
 }
-}
-actor ClownpieceOrbStarFX : BasicGraphicEffect
-{
-Alpha 0.9
-States
-{
-SpawnFrame:
-X_BF ANOP 2 A_Fadeout(0.15)
-stop
-}
+actor ClownpieceOrbStarFX : BasicGraphicEffect {
+  Alpha 0.9
+  States {
+   SpawnFrame:
+    X_BF ANOP 2 A_Fadeout(0.15)
+    stop
+  }
 }
 
-actor ClownpieceStarSpiral : BasicProjectile
-{
-Damagetype "Clownpiece"
-Obituary "%o went insane from touching %k's Eclipse of Hell."
-damage (20)
-Radius 16
-Height 16
-speed 0
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 0 //A_Jump(256,"S_1","S_2","S_3","S_4")
-TNT1 A 0 A_Jump(256,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40)
-S_1:
-8P30 HIJKLMNOPQRS 2
-loop
-S_2:
-8P30 SRQPONMLKJIH 2
-loop
-S_3:
-8P30 HTKUNVQW 2
-loop
-S_4:
-8P30 WQVNUKTH 2
-loop
-Spawn2:
-8P30 HKNQ 1
-loop
-Death:
-X_BF ANOP 2 //A_Fadeout(0.15)
-stop
-}
+actor ClownpieceStarSpiral : BasicProjectile {
+  Damagetype "Clownpiece"
+  Obituary "%o went insane from touching %k's Eclipse of Hell."
+  damage (20)
+  Radius 16
+  Height 16
+  speed 0
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0  // A_Jump(256,"S_1","S_2","S_3","S_4")
+    TNT1 A 0 A_Jump(256, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40)
+   S_1:
+    8P30 HIJKLMNOPQRS 2
+    loop
+   S_2:
+    8P30 SRQPONMLKJIH 2
+    loop
+   S_3:
+    8P30 HTKUNVQW 2
+    loop
+   S_4:
+    8P30 WQVNUKTH 2
+    loop
+   Spawn2:
+    8P30 HKNQ 1
+    loop
+   Death:
+    X_BF ANOP 2  // A_Fadeout(0.15)
+    stop
+  }
 }
 
-actor ClownpieceStarSpiralRed_H : BasicWatcher
-{
-Translation "4:4=169:169","192:192=170:170","198:198=40:40","0:0=191:191"
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral",0,0,8,10,0,0,0,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral",0,0,8,10,0,0,30,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral",0,0,8,10,0,0,60,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral",0,0,8,10,0,0,90,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral",0,0,8,10,0,0,120,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral",0,0,8,10,0,0,150,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral",0,0,8,10,0,0,180,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral",0,0,8,10,0,0,210,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral",0,0,8,10,0,0,240,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral",0,0,8,10,0,0,270,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral",0,0,8,10,0,0,300,1)
-TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral",0,0,8,10,0,0,330,1)
-TNT1 A 2 //A_PlaySoundEx("","Weapon")
-stop
-}
+actor ClownpieceStarSpiralRed_H : BasicWatcher {
+  Translation "4:4=169:169", "192:192=170:170", "198:198=40:40", "0:0=191:191"
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral", 0, 0, 8, 10, 0, 0, 0, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral", 0, 0, 8, 10, 0, 0, 30, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral", 0, 0, 8, 10, 0, 0, 60, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral", 0, 0, 8, 10, 0, 0, 90, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral", 0, 0, 8, 10, 0, 0, 120, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral", 0, 0, 8, 10, 0, 0, 150, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral", 0, 0, 8, 10, 0, 0, 180, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral", 0, 0, 8, 10, 0, 0, 210, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral", 0, 0, 8, 10, 0, 0, 240, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral", 0, 0, 8, 10, 0, 0, 270, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral", 0, 0, 8, 10, 0, 0, 300, 1)
+    TNT1 A 0 A_SpawnItemEx("ClownpieceStarSpiral", 0, 0, 8, 10, 0, 0, 330, 1)
+    TNT1 A 2  // A_PlaySoundEx("","Weapon")
+    stop
+  }
 }
 
-actor ClownpieceStarSpiralBlue_H : ClownpieceStarSpiralRed_H
-{
-Translation "4:4=196:196","192:192=205:205","198:198=75:75","0:0=244:244"
+actor ClownpieceStarSpiralBlue_H : ClownpieceStarSpiralRed_H {
+  Translation "4:4=196:196", "192:192=205:205", "198:198=75:75", "0:0=244:244"
 }
 
-actor ClownpieceStarSpiralPurple_H : ClownpieceStarSpiralRed_H
-{
-Translation "4:4=56:56","192:192=57:57","198:198=62:62","0:0=63:63"
+actor ClownpieceStarSpiralPurple_H : ClownpieceStarSpiralRed_H {
+  Translation "4:4=56:56", "192:192=57:57", "198:198=62:62", "0:0=63:63"
 }
 
-actor Clownpiece_MOONGravity : BasicExplosion
-{
-Damagetype "Clownpiece"
-Obituary "%k told %o that it is safe within the clown."
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 1 A_Explode(50,15,0,0,15)
-stop
-}
+actor Clownpiece_MOONGravity : BasicExplosion {
+  Damagetype "Clownpiece"
+  Obituary "%k told %o that it is safe within the clown."
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 A_Explode(50, 15, 0, 0, 15)
+    stop
+  }
 }
 
-//"Fake Apollo"
-//"Apollo Hoax Theory"
-//Moon Dream "Eclipse Nightmare"
+// "Fake Apollo"
+// "Apollo Hoax Theory"
+// Moon Dream "Eclipse Nightmare"
 
 // Ring burst cooldown; drained 1 per orbit tic (higher = longer gap between rings)
-actor Clownpiece_MOON_BurstCD : Inventory
-{
-inventory.amount 1
-inventory.maxamount 80
-+INVENTORY.UNDROPPABLE
+actor Clownpiece_MOON_BurstCD : Inventory {
+  inventory.amount 1
+  inventory.maxamount 80
+  +INVENTORY.UNDROPPABLE
 }
 
 actor Clownpiece_MOON : ProjSpawnFuncActor  // BasicExplosion
 {
-var int user_age; // M1-held age; BurstCD arm length = max(20, 80 - user_age/16)
-Translation "0:0=42:42","192:192=48:48","198:198=224:224","195:195=144:144"
-Damagetype "Clownpiece"
-Obituary "%o went insane from touching %k's Apollo Hoax Theory."
-+FORCEXYBILLBOARD
--SOLID
-+MISSILE
-+DONTSPLASH
-+DONTBLAST
-+DONTDRAIN
-+DONTREFLECT
-+DONTRIP
-+GHOST
-+SHOOTABLE
-+NOBLOOD
-+NOCLIP
-+NORADIUSDMG
-+NOTIMEFREEZE
-+NOGRAVITY
-+NOTARGETSWITCH
-+BRIGHT
-PainChance 0
-Species "Clownpiece_MOON"
-Health 0x7ffffffd
-Renderstyle "Translucent"
-Alpha 0.75
-Scale 2.5
-Args 60  // max of user_age
-states
-{
-Spawn:
-8Q12 N 0
-// FireMoon + hold/press M1 while orbiting; BurstCD arms from 80 → 20 as M1-held age rises
-BurstOnce:
-8Q12 N 0 A_PlaySoundEx("Touhou/Tan0","Auto")
-8Q12 N 0 A_SpawnItemEx("ClownpieceMoonShot12_H",0,0,0,0,0,0,0,32)
-8Q12 N 0 A_JumpIf(user_age >= Args[0]-20, "ArmFloor")
-8Q12 N 0 A_SetUserVar("user_age", user_age+2)
-8Q12 N 0 A_GiveInventory("Clownpiece_MOON_BurstCD", Args[0] - user_age)
-Goto Orbit
-ArmFloor:
-8Q12 N 0 A_GiveInventory("Clownpiece_MOON_BurstCD", 20)
-Orbit:
-8Q12 N 0 A_Explode(random(45,55),32,0,0,32)
-8Q12 N 1 A_Warp(2,100,0,32,3,28)
-8Q12 N 0 A_JumpIf(!CallACS("uh_PointerIsABoss", 2), "Death")
-8Q12 N 0 A_TakeInventory("Clownpiece_MOON_BurstCD",1)
-OrbitBtn:
-8Q12 N 0 A_JumpIf(!(CallACS("uh_GetPointerButtonInput", 2, 0) & BT_ATTACK), "Orbit")
-8Q12 N 0 A_JumpIfInventory("Clownpiece_MOON_BurstCD",1,"Orbit")
-Goto BurstOnce
-Death:
-// Boss died: fly outward as Clownpiece_FULLMOON
-TNT1 A 0 A_FaceTarget
-TNT1 A 0 A_SetAngle(angle+180.0)
-TNT1 A 0 A_PlaySoundEx("wep_L/ThLunaNightPew","Auto")
-TNT1 A 0 A_CustomMissile("Clownpiece_FULLMOON", 0, 0, 0, CMF_AIMDIRECTION, 0)
-TNT1 A 2
-Stop
-}
-}
-
-
-actor ClownpieceMoonShot12_H : BasicWatcher
-{
-Translation "192:192=170:170","198:198=43:43"
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3",10,0,6,1,0,0,0,8192)
-TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3",10,0,6,1,0,0,30,8192)
-TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3",10,0,6,1,0,0,60,8192)
-TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3",10,0,6,1,0,0,90,8192)
-TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3",10,0,6,1,0,0,120,8192)
-TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3",10,0,6,1,0,0,150,8192)
-TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3",10,0,6,1,0,0,180,8192)
-TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3",10,0,6,1,0,0,210,8192)
-TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3",10,0,6,1,0,0,240,8192)
-TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3",10,0,6,1,0,0,270,8192)
-TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3",10,0,6,1,0,0,300,8192)
-TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3",10,0,6,1,0,0,330,8192)
-TNT1 A 2
-stop
-}
+  var int user_age;  // M1-held age; BurstCD arm length = max(20, 80 - user_age/16)
+  Translation "0:0=42:42", "192:192=48:48", "198:198=224:224", "195:195=144:144"
+  Damagetype "Clownpiece"
+  Obituary "%o went insane from touching %k's Apollo Hoax Theory."
+  +FORCEXYBILLBOARD
+  -SOLID
+  +MISSILE
+  +DONTSPLASH
+  +DONTBLAST
+  +DONTDRAIN
+  +DONTREFLECT
+  +DONTRIP
+  +GHOST
+  +SHOOTABLE
+  +NOBLOOD
+  +NOCLIP
+  +NORADIUSDMG
+  +NOTIMEFREEZE
+  +NOGRAVITY
+  +NOTARGETSWITCH
+  +BRIGHT
+  PainChance 0
+  Species "Clownpiece_MOON"
+  Health 0x7ffffffd
+  Renderstyle "Translucent"
+  Alpha 0.75
+  Scale 2.5
+  Args 60  // max of user_age
+  states {
+   Spawn:
+    8Q12 N 0
+    // FireMoon + hold/press M1 while orbiting; BurstCD arms from 80 → 20 as M1-held age rises
+   BurstOnce:
+    8Q12 N 0 A_PlaySoundEx("Touhou/Tan0", "Auto")
+    8Q12 N 0 A_SpawnItemEx("ClownpieceMoonShot12_H", 0, 0, 0, 0, 0, 0, 0, 32)
+    8Q12 N 0 A_JumpIf(user_age >= Args[0]-20, "ArmFloor")
+    8Q12 N 0 A_SetUserVar("user_age", user_age+2)
+    8Q12 N 0 A_GiveInventory("Clownpiece_MOON_BurstCD", Args[0] - user_age)
+    Goto Orbit
+   ArmFloor:
+    8Q12 N 0 A_GiveInventory("Clownpiece_MOON_BurstCD", 20)
+   Orbit:
+    8Q12 N 0 A_Explode(random(45, 55), 32, 0, 0, 32)
+    8Q12 N 1 A_Warp(2, 100, 0, 32, 3, 28)
+    8Q12 N 0 A_JumpIf(!CallACS("uh_PointerIsABoss", 2), "Death")
+    8Q12 N 0 A_TakeInventory("Clownpiece_MOON_BurstCD", 1)
+   OrbitBtn:
+    8Q12 N 0 A_JumpIf(!(CallACS("uh_GetPointerButtonInput", 2, 0) & BT_ATTACK), "Orbit")
+    8Q12 N 0 A_JumpIfInventory("Clownpiece_MOON_BurstCD", 1, "Orbit")
+    Goto BurstOnce
+   Death:
+    // Boss died: fly outward as Clownpiece_FULLMOON
+    TNT1 A 0 A_FaceTarget
+    TNT1 A 0 A_SetAngle(angle+180.0)
+    TNT1 A 0 A_PlaySoundEx("wep_L/ThLunaNightPew", "Auto")
+    TNT1 A 0 A_CustomMissile("Clownpiece_FULLMOON", 0, 0, 0, CMF_AIMDIRECTION, 0)
+    TNT1 A 2
+    Stop
+  }
 }
 
-actor Clownpiece_MOON_H : BasicWatcher
-{
-states
-{
-Spawn:
-TNT1 A 0
-TNT1 A 0 A_PlaySoundEx("Touhou/Boon1", "Weapon")
-SpawnL:
-TNT1 A 1 A_Warp(2,100,0,32,15,28)//A_Warp(2,0,0,32,0,24)
-TNT1 A 0 A_JumpIf(!CallACS("uh_PointerIsABoss", 2), "Death")
-loop
-Death:
-TNT1 A 0
-Stop
-}
+
+actor ClownpieceMoonShot12_H : BasicWatcher {
+  Translation "192:192=170:170", "198:198=43:43"
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3", 10, 0, 6, 1, 0, 0, 0, 8192)
+    TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3", 10, 0, 6, 1, 0, 0, 30, 8192)
+    TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3", 10, 0, 6, 1, 0, 0, 60, 8192)
+    TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3", 10, 0, 6, 1, 0, 0, 90, 8192)
+    TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3", 10, 0, 6, 1, 0, 0, 120, 8192)
+    TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3", 10, 0, 6, 1, 0, 0, 150, 8192)
+    TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3", 10, 0, 6, 1, 0, 0, 180, 8192)
+    TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3", 10, 0, 6, 1, 0, 0, 210, 8192)
+    TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3", 10, 0, 6, 1, 0, 0, 240, 8192)
+    TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3", 10, 0, 6, 1, 0, 0, 270, 8192)
+    TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3", 10, 0, 6, 1, 0, 0, 300, 8192)
+    TNT1 A 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT3", 10, 0, 6, 1, 0, 0, 330, 8192)
+    TNT1 A 2
+    stop
+  }
 }
 
-actor Clownpiece_FULLMOON : BasicProjectile
-{
-Translation "0:0=42:42","192:192=48:48","198:198=224:224","195:195=144:144"
-//Translation "1:255=4:4","0:0=90:90"
-Damagetype "Clownpiece"
-Obituary "%o went insane from touching %k's Fake Apollo."
-+THRUACTORS
-+HEXENBOUNCE
-+CANBOUNCEWATER
-BounceFactor 1.0
-WallBounceFactor 1.0
-reactiontime 375
-Damage (0)
-Radius 32 //
-Height 32 //
-Speed 30
-Scale 2.0
-States
-{
-Spawn:
-8Q12 M 0
-8Q12 M 0 A_SpawnItemEx("Clownpiece_FULLMOON_BOX",0,0,64,0,0,0,0,0)
-8Q12 MM 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT2",0,0,-(ceilingz-z < 76)*(76-(ceilingz-z))+64,random(10,35),0,random(-35,35),random(0,35)*10,0)
-8Q12 M 1 A_CountDown
-loop
-
-Death:
-8Q12 MMMM 3 A_FadeOut(0.2)
-stop
-}
+actor Clownpiece_MOON_H : BasicWatcher {
+  states {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_PlaySoundEx("Touhou/Boon1", "Weapon")
+   SpawnL:
+    TNT1 A 1 A_Warp(2, 100, 0, 32, 15, 28)  // A_Warp(2,0,0,32,0,24)
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerIsABoss", 2), "Death")
+    loop
+   Death:
+    TNT1 A 0
+    Stop
+  }
 }
 
-actor Clownpiece_FULLMOON_BOX : BasicExplosion
-{
-Damagetype "Clownpiece"
-Obituary "%o went insane from touching %k's Fake Apollo."
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 1 A_Explode(random(95,105),96,0,0,96)
-stop
-}
+actor Clownpiece_FULLMOON : BasicProjectile {
+  Translation "0:0=42:42", "192:192=48:48", "198:198=224:224", "195:195=144:144"
+  // Translation "1:255=4:4","0:0=90:90"
+  Damagetype "Clownpiece"
+  Obituary "%o went insane from touching %k's Fake Apollo."
+  +THRUACTORS
+  +HEXENBOUNCE
+  +CANBOUNCEWATER
+  BounceFactor 1.0
+  WallBounceFactor 1.0
+  reactiontime 375
+  Damage (0)
+  Radius 32  //
+  Height 32  //
+  Speed 30
+  Scale 2.0
+  States {
+   Spawn:
+    8Q12 M 0
+    8Q12 M 0 A_SpawnItemEx("Clownpiece_FULLMOON_BOX", 0, 0, 64, 0, 0, 0, 0, 0)
+    8Q12 MM 0 A_SpawnItemEx("Clownpiece_FULLMOON_SHOT2", 0, 0, -(ceilingz-z < 76)*(76-(ceilingz-z))+64, random(10, 35), 0, random(-35, 35), random(0, 35)*10, 0)
+    8Q12 M 1 A_CountDown
+    loop
+
+   Death:
+    8Q12 MMMM 3 A_FadeOut(0.2)
+    stop
+  }
 }
 
-actor Clownpiece_FULLMOON_SHOT : ClownpieceOrbPew
-{
-Translation "192:192=56:56", "198:198=63:63", "202:202=4:4", "199:199=63:63"
-Obituary "%o went insane from touching %k's Eclipse Nightmare."
-Damage (22)
-Speed 60
-Species "Clownpiece_MOON"
-+THRUSPECIES
+actor Clownpiece_FULLMOON_BOX : BasicExplosion {
+  Damagetype "Clownpiece"
+  Obituary "%o went insane from touching %k's Fake Apollo."
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 A_Explode(random(95, 105), 96, 0, 0, 96)
+    stop
+  }
 }
-actor Clownpiece_FULLMOON_SHOT2 : Clownpiece_FULLMOON_SHOT
-{
--RIPPER
-Damage (55)
-Speed 35
+
+actor Clownpiece_FULLMOON_SHOT : ClownpieceOrbPew {
+  Translation "192:192=56:56", "198:198=63:63", "202:202=4:4", "199:199=63:63"
+  Obituary "%o went insane from touching %k's Eclipse Nightmare."
+  Damage (22)
+  Speed 60
+  Species "Clownpiece_MOON"
+  +THRUSPECIES
 }
-actor Clownpiece_FULLMOON_SHOT3 : Clownpiece_FULLMOON_SHOT
-{
--RIPPER
-Damage (55)
-Speed 10
+actor Clownpiece_FULLMOON_SHOT2 : Clownpiece_FULLMOON_SHOT {
+  -RIPPER
+  Damage (55)
+  Speed 35
+}
+actor Clownpiece_FULLMOON_SHOT3 : Clownpiece_FULLMOON_SHOT {
+  -RIPPER
+  Damage (55)
+  Speed 10
 }

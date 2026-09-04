@@ -1,1008 +1,934 @@
 actor SiteWorker_W_ScriptBar : ScriptBar {}
 
-actor SiteWorker_W : BaseMM8BDMWep_UH
-{
-Weapon.AmmoUse 0
-Weapon.AmmoGive 100
-Inventory.Pickupmessage "$PU_35"
-Obituary "$OB_35W"
-Tag "$TAG_SiteWorker_W"
-weapon.ammotype "SteroidEnergyAmmo"
-+WEAPON.NOAUTOAIM
-States
-{
-Spawn:
-6H35 [ 6
-loop
-
-Deselect:
-6H35 A 0 A_JumpIfInventory("SiteWorkerRockFlag",1,1)
-goto DeselectSwap
-6H35 F 0 A_GunFlash("NoFlash",1)
-6H35 F 0 A_GiveInventory("SiteWorker_Fire_P")
-6H35 FGHIJK 2
-6H35 ZZZLMA 2 A_Lower
-Goto DeselectSwap
-
-Select:
-6H35 A 0
-goto SelectSwap
-
-Ready:
-6H35 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", NO_DYE)//SITEWORKER_DYE
-6H35 A 0 A_GunFlash("NoFlash",1)
-6H35 A 0 A_GiveInventory("SiteWorkerFlagRNG_P")
-goto Ready2
-Ready2:
-6H35 A 2 A_GiveInventory("SiteWorker_Ready_P")
-loop
-
-Flash:
-TNT1 A 1
-TNT1 A 1 A_SpawnItemEx("TetrisRock_FX",0,0,70,0,0,0,0,1)
-loop
-
-Fire:
-6H35 A 0 A_JumpIfInventory("SiteWorkerRockFlag",1,"Throw")
-6H35 A 0 A_JumpIfInventory("IsBot",1,"BotFire")
-6H35 B 0 A_GiveInventory("VivifyFlag1")
-6H35 B 0 A_ReFire(1)
-6H35 B 2 A_GiveInventory("SiteWorker_FireStart_P")
-6H35 CDEZZ 2 A_GiveInventory("SiteWorker_FireStart2_P")
-6H35 B 0 A_TakeInventory("VivifyFlag1")
-TNT1 A 0 A_GunFlash("Flash",1)
-goto Holding
-
-HoldingAlt:
-TNT1 A 3 A_WeaponReady(8)
-TNT1 AAAAA 4 A_WeaponReady(8)
-Holding:
-TNT1 A 2 A_GiveInventory("SiteWorker_Ready_P")
-//TNT1 A 2 A_WeaponReady
-//TNT1 A 0 A_GiveInventory("SteroidEnergyAmmo",1)
-loop
-
-HoldingSwap:
-TNT1 A 1 A_GiveInventory("SiteWorkerSaveFlags_P")
-goto HoldingAlt
-Throw:
-6H35 F 0 A_JumpIfInventory("IsBot",1,"BotFire2")
-6H35 F 0 A_GunFlash("NoFlash",1)
-6H35 F 2 A_GiveInventory("SiteWorker_Fire_P")
-6H35 G 2 A_GiveInventory("SiteWorkerFlagRNG_P")
-6H35 HIJK 2
-6H35 Z 6
-6H35 LMA 2
-Goto Ready2
-
-Altfire:
-6H35 A 0 A_JumpIfInventory("SiteWorkerRockFlag",1,"HoldingSwap")
-//6H35 A 0 A_JumpIfInventory("SteroidEnergyAmmo",50,"Altfire2")
-//Goto Ready2
-Altfire2:
-6H35 Q 1 A_PlaySound("Tetris/Pause",2,0.75)
-6H35 R 2 A_GiveInventory("SiteWorker_Alt_P")
-6H35 S 2
-6H35 R 2
-6H35 S 2
-6H35 R 4
-6H35 Q 3
-6H35 A 2
-Goto Ready2
-
-
-BotFire:
-6H35 A 0 A_JumpIfInventory("SteroidEnergyAmmo",50,2)
-6H35 A 0 A_Jump(8,"Altfire2")
-goto Fire+2
-6H35 A 0 A_Jump(128,"Altfire2")
-goto Fire+2
-BotFire2:
-6H35 A 0 A_Jump(24,1)
-goto Throw+1
-BotFireX:
-6H35 F 0 A_GiveInventory("SiteWorker_Fire_P")
-6H35 G 0 A_GiveInventory("SiteWorkerRockFlag",1)
-6H35 H 0 A_PlaySoundEx("taunt/D_35","Voice")
-6H35 I 0 A_GiveInventory("SiteWorker_FlagCycle_P")
-6H35 J 0 A_RailWait
-6H35 FGHIJK 2
-TNT1 A 9 A_GiveInventory("BotFlag1",1)
-TNT1 A 0 A_JumpIfInventory("BotFlag1",6,2)
-TNT1 A 0 A_ReFire("BotFireX")
-TNT1 A 66 A_TakeInventory("BotFlag1")
-goto Holding
-
-}
-}
-
-actor SteroidEnergyAmmo : Ammo
-{
-inventory.amount 1
-inventory.maxamount 200
-+INVENTORY.IGNORESKILL
-}
-
-actor SiteWorkerRockFlag : UOnce {}
-
-actor SiteWorkerTetris_F : Inventory
-{
-inventory.maxamount 7
-}
-actor SiteWorkerSaved_F : SiteWorkerTetris_F{}
-
-actor SiteWorker_Ready_P : CustomInventory
-{
-States
-{
-Pickup:
-6H35 A 0 A_JumpIfInventory("SiteWorkerRockFlag",1,"Holding")
-TNT1 A 0 A_JumpIfInventory("SteroidEnergyAmmo",50,2)
-TNT1 A 0 A_WeaponReady(WRF_NOSECONDARY)
-goto Ammo
-TNT1 A 0 A_WeaponReady
-goto Ammo
-
-Holding:
-TNT1 A 0 A_WeaponReady
-TNT1 A 0 A_GiveInventory("SteroidEnergyAmmo",1)
-stop
-
-Ammo:
-TNT1 A 0 A_GiveInventory("SteroidEnergyAmmo",2)
-stop
-}
-}
-
-actor SiteWorker_TetrisBase_P : CustomInventory
-{
-States
-{
-Pickup:
-Tetris:
-TNT1 A 0 A_JumpIfInventory("SiteWorkerTetris_F",7,"P_Z")
-TNT1 A 0 A_JumpIfInventory("SiteWorkerTetris_F",6,"P_T")
-TNT1 A 0 A_JumpIfInventory("SiteWorkerTetris_F",5,"P_S")
-TNT1 A 0 A_JumpIfInventory("SiteWorkerTetris_F",4,"P_O")
-TNT1 A 0 A_JumpIfInventory("SiteWorkerTetris_F",3,"P_L")
-TNT1 A 0 A_JumpIfInventory("SiteWorkerTetris_F",2,"P_J")
-TNT1 A 0 A_JumpIfInventory("SiteWorkerTetris_F",1,"P_I")
-
-TNT1 A 0 A_Jump(256,"P__I","P__J","P__L","P__O","P__S","P__T","P__Z")
-stop
-
-P__I:TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F",1)stop
-P__J:TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F",2)stop
-P__L:TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F",3)stop
-P__O:TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F",4)stop
-P__S:TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F",5)stop
-P__T:TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F",6)stop
-P__Z:TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F",7)stop
-}
-}
-
-
-actor SiteWorker_FlagCycle_P : SiteWorker_TetrisBase_P
-{
-States
-{
-P_I:TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")goto P__J
-P_J:TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")goto P__L
-P_L:TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")goto P__O
-P_O:TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")goto P__S
-P_S:TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")goto P__T
-P_T:TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")goto P__Z
-P_Z:TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")goto P__I
-}
-}
-
-actor SiteWorkerFlagRNG_P : SiteWorker_TetrisBase_P
-{
-States
-{
-P_I:TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")TNT1 A 0 A_Jump(256,"P__J","P__L","P__O","P__S","P__T","P__Z")stop
-P_J:TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")TNT1 A 0 A_Jump(256,"P__I","P__L","P__O","P__S","P__T","P__Z")stop
-P_L:TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")TNT1 A 0 A_Jump(256,"P__I","P__J","P__O","P__S","P__T","P__Z")stop
-P_O:TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")TNT1 A 0 A_Jump(256,"P__I","P__J","P__L","P__S","P__T","P__Z")stop
-P_S:TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")TNT1 A 0 A_Jump(256,"P__I","P__J","P__L","P__O","P__T","P__Z")stop
-P_T:TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")TNT1 A 0 A_Jump(256,"P__I","P__J","P__L","P__O","P__S","P__Z")stop
-P_Z:TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")TNT1 A 0 A_Jump(256,"P__I","P__J","P__L","P__O","P__S","P__T")stop
-}
-}
-
-actor SiteWorkerSaveFlags_P : CustomInventory
-{
-States
-{
-Pickup:
-TNT1 A 0 A_PlaySound("Tetris/Swap",1)
-TNT1 A 0 A_SetArg(0,CallACS("rz_CountInv_SiteWorkerTetris_F",0))
-TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F",1,"Swap")
-TNT1 A 0 A_GiveInventory("SiteWorkerFlagRNG_P")
-goto Swap+2
-Swap:
-TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")
-TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F",CallACS("rz_CountInv_SiteWorkerSaved_F",0))
-TNT1 A 0 A_TakeInventory("SiteWorkerSaved_F")
-TNT1 A 0 A_GiveInventory("SiteWorkerSaved_F",Args[0])
-stop
-}
-}
-
-
-actor SiteWorker_FireStart_P : CustomInventory
-{
-States
-{
-Pickup:
-TNT1 A 0 A_PlaySound("misc/hugequake2",1)
-TNT1 A 0 A_GiveInventory("SiteWorkerRockFlag",1)
-TNT1 A 0 A_SetArg(3,322)
-goto Fall+1
-Fall:
-TNT1 A 0 A_GiveInventory("SteroidEnergyAmmo",1)
-TNT1 A 0 A_SetArg(3,Args[3]-36)
-TNT1 A 0 A_SpawnItemEx("TetrisRock_FX",8,0,Args[3],0,0,0,0,1+32)
-stop
-}
-}
-actor SiteWorker_FireStart2_P : SiteWorker_FireStart_P
-{
-States
-{
-Pickup:
-goto Fall
-}
-}
-
-
-actor SiteWorker_Fire_P : SiteWorker_TetrisBase_P
-{
-States
-{
-Pickup:
-TNT1 A 0 A_TakeInventory("SiteWorkerRockFlag")
-TNT1 A 0 A_PlaySound("Tetris/Swap",1)
-TNT1 A 0 A_GiveInventory("SteroidEnergyAmmo",8)
-goto Tetris
-
-//2 = distance away, 60 = projectile speed
-P_I:TNT1 A 0 A_SpawnItemEx("TetrisRock_I",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),0,1+32+SXF_MULTIPLYSPEED)//8192
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"S_I")stop
-P_J:TNT1 A 0 A_SpawnItemEx("TetrisRock_J",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),0,1+32+8192)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"S_J")stop
-P_L:TNT1 A 0 A_SpawnItemEx("TetrisRock_L",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),0,1+32+8192)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"S_L")stop
-P_O:TNT1 A 0 A_SpawnItemEx("TetrisRock_O",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),0,1+32+8192)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"S_O")stop
-P_S:TNT1 A 0 A_SpawnItemEx("TetrisRock_S",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),0,1+32+8192)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"S_S")stop
-P_T:TNT1 A 0 A_SpawnItemEx("TetrisRock_T",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),0,1+32+8192)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"S_T")stop
-P_Z:TNT1 A 0 A_SpawnItemEx("TetrisRock_Z",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),0,1+32+8192)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"S_Z")stop
-
-S_I:TNT1 A 0 A_SpawnItemEx("TetrisRock_I",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),15,1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisRock_I",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),-15,1+32+8192)stop
-S_J:TNT1 A 0 A_SpawnItemEx("TetrisRock_J",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),15,1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisRock_J",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),-15,1+32+8192)stop
-S_L:TNT1 A 0 A_SpawnItemEx("TetrisRock_L",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),15,1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisRock_L",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),-15,1+32+8192)stop
-S_O:TNT1 A 0 A_SpawnItemEx("TetrisRock_O",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),15,1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisRock_O",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),-15,1+32+8192)stop
-S_S:TNT1 A 0 A_SpawnItemEx("TetrisRock_S",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),15,1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisRock_S",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),-15,1+32+8192)stop
-S_T:TNT1 A 0 A_SpawnItemEx("TetrisRock_T",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),15,1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisRock_T",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),-15,1+32+8192)stop
-S_Z:TNT1 A 0 A_SpawnItemEx("TetrisRock_Z",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),15,1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisRock_Z",cos(-pitch)*2,0,32+38+(sin(-pitch)*2),cos(-pitch)*5,0,sin(-pitch)*5,-15,1+32+8192)stop
-
-}
-}
-
-actor SiteWorker_Alt_P : SiteWorker_TetrisBase_P
-{
-States
-{
-Pickup:
-TNT1 A 0 A_TakeInventory("SteroidEnergyAmmo",25,1)
-TNT1 A 0 A_TakeInventory("SteroidEnergyAmmo",25)
-TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F",1,"PickupSave")
-goto Tetris
-PickupSave:
-TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F",7,"P_Z")
-TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F",6,"P_T")
-TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F",5,"P_S")
-TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F",4,"P_O")
-TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F",3,"P_L")
-TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F",2,"P_J")
-//TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F",1,"P_I")
-goto P_I
-//1000 = projectile speed
-P_I:TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_I",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),0,1+32+8192)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"S_I")goto End
-P_J:TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_J",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),0,1+32+8192)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"S_J")goto End
-P_L:TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_L",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),0,1+32+8192)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"S_L")goto End
-P_O:TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_O",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),0,1+32+8192)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"S_O")goto End
-P_S:TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_S",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),0,1+32+8192)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"S_S")goto End
-P_T:TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_T",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),0,1+32+8192)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"S_T")goto End
-P_Z:TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_Z",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),0,1+32+8192)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"S_Z")goto End
-
-S_I:TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_I",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),15,1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_I",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),-15,1+32+8192)goto End
-S_J:TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_J",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),15,1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_J",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),-15,1+32+8192)goto End
-S_L:TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_L",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),15,1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_L",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),-15,1+32+8192)goto End
-S_O:TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_O",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),15,1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_O",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),-15,1+32+8192)goto End
-S_S:TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_S",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),15,1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_S",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),-15,1+32+8192)goto End
-S_T:TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_T",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),15,1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_T",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),-15,1+32+8192)goto End
-S_Z:TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_Z",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),15,1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_Z",0,0,33+(sin(-pitch)*2),cos(-pitch),0,sin(-pitch),-15,1+32+8192)goto End
-
-End:
-TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F",1,2)
-TNT1 A 0 A_GiveInventory("SiteWorkerFlagRNG_P")
-stop
-TNT1 A 0 A_TakeInventory("SiteWorkerSaved_F")
-stop
-}
-}
-
-
-actor TempGreatRock : BasicClientSide
-{
-States
-{
-Spawn:
-SHBO A 0
-SHBO A 1
-stop
-}
-}
-
-actor TetrisRock_FX : BasicExplosion
-{
-+NOTIMEFREEZE
-+FORCEXYBILLBOARD
-Speed 0
-Scale 2.5
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 0 A_JumpIfInTargetInventory("SiteWorkerTetris_F",7,"S_Z")
-TNT1 A 0 A_JumpIfInTargetInventory("SiteWorkerTetris_F",6,"S_T")
-TNT1 A 0 A_JumpIfInTargetInventory("SiteWorkerTetris_F",5,"S_S")
-TNT1 A 0 A_JumpIfInTargetInventory("SiteWorkerTetris_F",4,"S_O")
-TNT1 A 0 A_JumpIfInTargetInventory("SiteWorkerTetris_F",3,"S_L")
-TNT1 A 0 A_JumpIfInTargetInventory("SiteWorkerTetris_F",2,"S_J")
-//TNT1 A 0 A_JumpIfInTargetInventory("SiteWorkerTetris_F",1,"P_I")
-
-S_I:
-6P35 A 1 A_SpawnItemEx("TetrisRock_FX1",0,0,0,0,0,0,0,1)
-stop
-S_J:
-6P35 C 1 A_SpawnItemEx("TetrisRock_FX2",0,0,0,0,0,0,0,1)
-stop
-S_L:
-6P35 G 1 A_SpawnItemEx("TetrisRock_FX3",0,0,0,0,0,0,0,1)
-stop
-S_O:
-6P35 K 1 A_SpawnItemEx("TetrisRock_FX4",0,0,0,0,0,0,0,1)
-stop
-S_S:
-6P35 L 1 A_SpawnItemEx("TetrisRock_FX5",0,0,0,0,0,0,0,1)
-stop
-S_T:
-6P35 N 1 A_SpawnItemEx("TetrisRock_FX6",0,0,0,0,0,0,0,1)
-stop
-S_Z:
-6P35 R 1 A_SpawnItemEx("TetrisRock_FX7",0,0,0,0,0,0,0,1)
-stop
-}
-}
-
-actor TetrisRock_FX1 : BasicClientSide
-{
-+NOTIMEFREEZE
-+FORCEXYBILLBOARD
-States
-{
-Spawn:
-6P35 A 1 A_FadeOut(0.15)
-wait
-}
-}
-actor TetrisRock_FX2 : TetrisRock_FX1{States{Spawn:6P35 C 1 A_FadeOut(0.15)wait}}
-actor TetrisRock_FX3 : TetrisRock_FX1{States{Spawn:6P35 G 1 A_FadeOut(0.15)wait}}
-actor TetrisRock_FX4 : TetrisRock_FX1{States{Spawn:6P35 K 1 A_FadeOut(0.15)wait}}
-actor TetrisRock_FX5 : TetrisRock_FX1{States{Spawn:6P35 L 1 A_FadeOut(0.15)wait}}
-actor TetrisRock_FX6 : TetrisRock_FX1{States{Spawn:6P35 N 1 A_FadeOut(0.15)wait}}
-actor TetrisRock_FX7 : TetrisRock_FX1{States{Spawn:6P35 R 1 A_FadeOut(0.15)wait}}
-
-actor SiteWorkerRock : BasicProjectile
-{
-damagetype "SiteWorker"
-Obituary "$OB_35M0"
--NOGRAVITY
-+SKYEXPLODE
-+EXPLODEONWATER
-+FORCEXYBILLBOARD
-Damage (300)
-Radius 28
-Height 28
-Speed 50
-scale 2.5
-}
-
-actor TetrisRockDebris : BasicProjectile
-{
-damagetype "SiteWorker"
-Obituary "$OB_35M1"
--NOGRAVITY
-+FORCEXYBILLBOARD
-Damage (85)
-Radius 14
-Height 14
-Speed 50//20
-scale 2.5
-States
-{
-Spawn:
-6P35 T 1
-loop
-Death:
-TNT1 A 0 A_SetGravity(0.0)
-6P35 UVW 2 Bright
-stop
-}
-}
-
-actor TetrisRockDebrisFX
-{
--SOLID
--NOGRAVITY
-+THRUACTORS
-+CLIENTSIDEONLY
-+HEXENBOUNCE
-+PAINLESS
-damage (0)
-Radius 2
-Height 2
-scale 2.5
-States
-{
-Spawn:
-6P35 TXTXTXTXTXT 2
-stop
-}
-}
-
-actor TetrisRockBoomFX : BasicBoom8FX_ColorX
-{
-States
-{
-Spawn:
-6P35 Y 0
-6P35 "YZ[" 4
-stop
-SpawnOld:
-X_8B AB 2
-X_8L C 2
-X_8B DEF 2
-stop
-}
-}
-actor TetrisRockBoomFX2 : TetrisRockBoomFX{Scale 2.0}
-actor TetrisRockBoomFX3 : TetrisRockBoomFX{Scale 1.5}
-
-//Explode
-actor TetrisRock_I : SiteWorkerRock
-{
-Obituary "$OB_35M2"
-Damage(225)
-Args 225,144,18
-States
-{
-Spawn:
-6P35 A 0
-6P35 A 0 A_JumpIfInTargetInventory("IsBot",1,"SpawnB")
-6P35 A 0 ThrustThingZ(0,30,0,1)
-6P35 A 1
-wait
-SpawnB:
-6P35 A 0 ThrustThingZ(0,-20,0,1)
-6P35 A 1
-wait
-Crash:
-"####" A 0 A_PlaySoundEx("Tetris/Line","Voice")
-Death:
-"####" A 0 A_PlaySoundEx("Tetris/Death","Weapon")
-"####" A 0 A_SetGravity(0.0)
-"####" A 0 A_SpawnItemEx("TetrisRockBoomFX",0,0,24,0,0,0,0,1)
-"####" A 0 A_Explode(Args[0],Args[1],0,0,Args[2])
-"####" AXAXAXA 2
-stop
-}
-}
-
-actor TetrisRock_IA : TetrisRock_I
-{
-Obituary "$OB_35A2"
-Radius 22
-Height 32
-Args 275,144,30
-States
-{
-Spawn:
-6P35 B 1
-loop
-Crash:
-"####" B 0 A_PlaySoundEx("Tetris/Line","Voice")
-Death:
-"####" B 0 A_PlaySoundEx("Tetris/Death","Weapon")
-"####" B 0 A_SetGravity(0.0)
-"####" B 0 A_SpawnItemEx("TetrisRockBoomFX",0,0,24,0,0,0,0,1)
-"####" B 0 A_Explode(Args[0],Args[1],0,0,Args[2])
-"####" BXBXBXB 2
-stop
-}
-}
-
-//Sticks
-actor TetrisRock_J : SiteWorkerRock
-{
-Obituary "$OB_35M3"
-States
-{
-Spawn:
-6P35 C 0
-6P35 C 0 A_JumpIfInTargetInventory("IsBot",1,"SpawnB")
-6P35 C 0 ThrustThingZ(0,30,0,1)
-6P35 C 1
-wait
-SpawnB:
-6P35 C 0 ThrustThingZ(0,-20,0,1)
-6P35 C 1
-wait
-Crash:
-"####" C 0 A_PlaySoundEx("Tetris/Line","Voice")
-"####" C 0 A_SetGravity(0.0)
-"####" CXCXCXC 2
-stop
-Death:
-TNT1 A 0 A_PlaySoundEx("TetrisU/Menu2","Weapon")
-TNT1 A 1 A_SpawnItemEx("TetrisRock_JDead",0,0,0,0,0,0,0,1)
-stop
-}
-}
-
-actor TetrisRock_JDead : BasicProjectile
-{
-damagetype "SiteWorker"
-Obituary "$OB_35M32"
-+FORCEXYBILLBOARD
-+THRUGHOST
-+DONTSPLASH
-+DONTBLAST
-ReactionTime 1
-Damage (200)
-Radius 28
-Height 28
-Speed 50
-scale 2.5
-States
-{
-Spawn:
-6P35 C 0
-6P35 C 210
-6P35 C 1 A_CountDown
-wait
-Crash:
-"####" C 0 A_PlaySoundEx("Tetris/Line","Voice")
-Death:
-"####" C 0 A_PlaySoundEx("TetrisU/Menu1","Weapon")
-"####" CXCXCXC 2
-stop
-}
-}
-
-actor TetrisRock_JA : TetrisRock_J
-{
-Radius 22
-Height 32
-States
-{
-Spawn:
-6P35 D 1
-loop
-Crash:
-"####" D 0 A_PlaySoundEx("Tetris/Line","Voice")
-"####" D 0 A_SetGravity(0.0)
-"####" DXDXDXD 2
-stop
-Death:
-TNT1 A 0 A_PlaySoundEx("TetrisU/Menu2","Weapon")
-TNT1 A 1 A_SpawnItemEx("TetrisRock_JADead",0,0,0,0,0,0,0,1)
-stop
-}
-}
-
-actor TetrisRock_JADead : TetrisRock_JDead
-{
-Radius 22
-Height 32
-States
-{
-Spawn:
-6P35 D 0
-6P35 D 315
-6P35 D 1 A_CountDown
-wait
-Crash:
-"####" D 0 A_PlaySoundEx("Tetris/Line","Voice")
-Death:
-"####" D 0 A_PlaySoundEx("TetrisU/Menu1","Weapon")
-"####" DXDXDXD 2
-stop
-}
-}
-
-//Ripper
-actor TetrisRock_L : SiteWorkerRock
-{
-SeeSound "Tetris/Move"
-Obituary "$OB_35M4"
-+RIPPER
-+BOUNCEONWALLS
-+BOUNCEONFLOORS
-+BOUNCEONCEILINGS
-+DONTSPLASH
-+CANBOUNCEWATER
--EXPLODEONWATER
-bouncefactor 0.48
-wallbouncefactor 0.6
-BounceCount 8
-Damage(random(90,110))
-States
-{
-Spawn:
-6P35 G 0
-6P35 G 0 A_JumpIfInTargetInventory("IsBot",1,"SpawnB")
-6P35 G 0 ThrustThingZ(0,30,0,1)
-6P35 G 1
-wait
-SpawnB:
-6P35 G 0 ThrustThingZ(0,-20,0,1)
-6P35 G 1
-wait
-Death:
-"####" G 0 A_PlaySoundEx("TetrisU/Line","Weapon")
-"####" G 0 A_SetGravity(0.0)
-"####" GXGXGXG 2
-stop
-}
-}
-
-actor TetrisRock_LA : TetrisRock_L
-{
-Obituary "$OB_35A4"
-Radius 22
-Height 32
-bouncefactor 0.4
-BounceCount 9
-Damage(random(100,120))
-States
-{
-Spawn:
-6P35 H 1
-loop
-Death:
-"####" H 0 A_PlaySoundEx("TetrisU/Line","Weapon")
-"####" H 0 A_SetGravity(0.0)
-"####" HXHXHXH 2
-stop
-}
-}
-
-//Split
-actor TetrisRock_O : SiteWorkerRock
-{
-Obituary "$OB_35M5"
-Damage(400)
-States
-{
-Spawn:
-6P35 K 0
-6P35 K 0 A_JumpIfInTargetInventory("IsBot",1,"SpawnB")
-6P35 K 0 ThrustThingZ(0,30,0,1)
-6P35 K 1
-wait
-SpawnB:
-6P35 K 0 ThrustThingZ(0,-20,0,1)
-6P35 K 1
-wait
-
-Crash:
-TNT1 A 0 A_SetGravity(0.0)
-TNT1 AAAA 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,random(-14,14),0,random(3,14),random(0,359),1)
-TNT1 AAAAAAAA 0 A_SpawnItemEx("TetrisRockDebrisFX",0,0,0,random(-10,10),0,random(5,10),random(0,359),1)
-TNT1 A 0 A_PlaySoundEx("Tetris/Line","Voice")
-TNT1 A 0 A_PlaySoundEx("weapon/superarmhit","Weapon")
-TNT1 A 2
-stop
-Death:
-TNT1 A 0 A_SetGravity(0.0)
-TNT1 A 0 A_SpawnItemEx("TetrisRockBoomFX3",0,0,24,0,0,0,0,1)
-TNT1 A 0 A_PlaySoundEx("weapon/superarmhit","Weapon")
-TNT1 A 0 A_SetArg(4,1-(ceilingz-z<=height)*2)
-TNT1 AAAAAAAAAAAA 0 A_SpawnItemEx("TetrisRockDebris",0,0,8*Args[4],random(-14,14),0,random(3,14)*Args[4],random(0,359),1)
-TNT1 A 2
-stop
-
-}
-}
-
-actor TetrisRock_OA : TetrisRock_O
-{
-Obituary "$OB_35A5"
-Damage(450)
-Radius 22
-Height 32
-States
-{
-Spawn:
-6P35 K 1
-loop
-/*
-Crash:
-TNT1 A 0 A_SetGravity(0.0)
-TNT1 AAAAAAAA 0 A_SpawnItemEx("TetrisRockDebrisFX",0,0,0,random(-10,10),random(-10,10),random(5,10),random(0,360),1)
-TNT1 A 0 A_PlaySoundEx("weapon/superarmhit","Weapon")
-TNT1 A 2 A_PlaySoundEx("Tetris/Line","Voice")
-stop
-Death:
-TNT1 A 0 A_SetGravity(0.0)
-TNT1 A 0 A_SpawnItemEx("TetrisRockBoomFX3",0,0,24,0,0,0,0,1)
-TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,0,1)
-TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,45,1)
-TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,-45,1)
-TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,90,1)
-TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,-90,1)
-TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,135,1)
-TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,-135,1)
-TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,180,1)
-TNT1 A 2 A_PlaySoundEx("weapon/superarmhit","Weapon")
-stop
-*/
-}
-}
-
-//Stun and Weak
-actor TetrisRock_S : SiteWorkerRock
-{
-damagetype "SiteWorkerStun"
-Obituary "$OB_35M6"
-Damage(0)
-Args 150,128,48
-States
-{
-Spawn:
-6P35 L 0
-6P35 L 0 A_JumpIfInTargetInventory("IsBot",1,"SpawnB")
-6P35 L 0 ThrustThingZ(0,30,0,1)
-6P35 L 1
-wait
-SpawnB:
-6P35 L 0 ThrustThingZ(0,-20,0,1)
-6P35 L 1
-wait
-Crash:
-"####" L 0 A_PlaySoundEx("Tetris/Line","Voice")
-Death:
-"####" L 0 A_PlaySoundEx("Tetris/Death","Weapon")
-"####" L 0 A_SetGravity(0.0)
-"####" L 0 A_SpawnItemEx("TetrisRockBoomFX2",0,0,16,0,0,0,0,1)
-"####" L 0 A_Explode(Args[0],Args[1],0,0,Args[2])
-"####" LXLXLXL 2
-stop
-}
-}
-
-actor TetrisRock_SA : TetrisRock_S
-{
-damagetype "SiteWorkerStunW"
-Obituary "$OB_35A6"
-Damage(0)
-Radius 22
-Height 32
-Args 175,128,48
-States
-{
-Spawn:
-6P35 M 1
-loop
-Crash:
-"####" M 0 A_PlaySoundEx("Tetris/Line","Voice")
-Death:
-"####" M 0 A_PlaySoundEx("Tetris/Death","Weapon")
-"####" M 0 A_SetGravity(0.0)
-"####" M 0 A_SpawnItemEx("TetrisRockBoomFX2",0,0,16,0,0,0,0,1)
-"####" M 0 A_Explode(Args[0],Args[1],0,0,Args[2])
-"####" MXMXMXM 2
-stop
-}
-}
-
-//Bounce
-actor TetrisRock_T : SiteWorkerRock
-{
-SeeSound "TetrisU/LandX"
-Obituary "$OB_35M7"
-+HEXENBOUNCE
--ALLOWBOUNCEONACTORS
-+DONTSPLASH
-+CANBOUNCEWATER
-bouncefactor 0.85
-wallbouncefactor 0.85
-BounceCount 8
-Damage(300)
-States
-{
-Spawn:
-6P35 N 0
-6P35 N 0 A_JumpIfInTargetInventory("IsBot",1,"SpawnB")
-6P35 N 0 ThrustThingZ(0,30,0,1)
-6P35 N 1
-wait
-SpawnB:
-6P35 N 0 ThrustThingZ(0,-20,0,1)
-6P35 N 1
-wait
-Crash:
-"####" N 0 A_PlaySoundEx("Tetris/Line","Voice")
-Death:
-"####" N 0 A_PlaySoundEx("TetrisU/Menu1","Weapon")
-"####" N 0 A_SetGravity(0.0)
-"####" NXNXNXN 2
-stop
-}
-}
-
-actor TetrisRock_TA : TetrisRock_T
-{
-Obituary "$OB_35A7"
-bouncefactor 0.8
-BounceCount 12
-Damage(400)
-Radius 22
-Height 32
-States
-{
-Spawn:
-6P35 O 1
-loop
-Crash:
-"####" O 0 A_PlaySoundEx("Tetris/Line","Voice")
-Death:
-"####" O 0 A_PlaySoundEx("TetrisU/Menu1","Weapon")
-"####" O 0 A_SetGravity(0.0)
-"####" OXOXOXO 2
-stop
-}
-}
-
-//Slow
-actor TetrisRock_Z : SiteWorkerRock
-{
-Obituary "$OB_35M8"
-Gravity 0.0083333
-Damage(750)
-Speed 5
-States
-{
-Spawn:
-6P35 R 0
-6P35 R 0 A_JumpIfInTargetInventory("IsBot",1,"SpawnB")
-6P35 R 0 ThrustThingZ(0,3,0,1)
-SpawnL:
-6P35 R 35
-6Q35 R 1 Bright
-loop
-SpawnB:
-6P35 R 0 ThrustThingZ(0,-2,0,1)//-4
-SpawnL2:
-6P35 R 35
-6Q35 R 1 Bright
-loop
-Crash:
-"####" R 0 A_PlaySoundEx("Tetris/4Line","Voice")
-goto Death+1
-Death:
-"####" R 0 A_PlaySoundEx("TetrisU/Line","Weapon")
-"####" R 0 A_SetGravity(0.0)
-"####" RXRXRXR 2
-stop
-}
-}
-
-actor TetrisRock_ZA : TetrisRock_Z
-{
-Obituary "$OB_35A8"
-+NOGRAVITY
-Damage(895)
-Radius 22
-Height 32
-States
-{
-Spawn:
-6P35 S 16 ThrustThingZ(0,1,1,1)
-6P35 S 15 ThrustThingZ(0,1,1,1)
-6Q35 S 1 Bright
-loop
-Crash:
-"####" S 0 A_PlaySoundEx("Tetris/4Line","Voice")
-goto Death+1
-Death:
-"####" S 0 A_PlaySoundEx("TetrisU/Line","Weapon")
-"####" S 0 A_SetGravity(0.0)
-"####" SXSXSXS 2
-stop
-}
-}
-
-
-actor SiteWorkerPinpoint : ProjSpawnFuncActorFast
-{
-var int user_Height;
-var int user_NoTranslation;
-+SKYEXPLODE
-+EXPLODEONWATER
-+DONTBLAST
-//+RIPPER
-+BLOODLESSIMPACT
-+THRUGHOST
-reactiontime 1
-damage (0)
-Radius 22
-height 32
-speed 1000
-States
-{
-Spawn:
-TNT1 A 8
-TNT1 A 7 A_CountDown
-wait
-XDeath:
-TNT1 A 0 A_SetArg(0,16)
-goto Death
-Death:
-TNT1 A 0 A_GiveToTarget("UH_TargetMarker")
-TNT1 A 0 A_JumpIf(z-ceilingz>=-16,"DeathC")
-TNT1 A 0 A_JumpIf(z-ceilingz<=-512,"DeathC2")
-TNT1 A 0 A_SetUserVar("user_Height",ceilingz-z-Height)
-TNT1 A 0 A_Jump(256,"Death2")
-Death2:
-TNT1 A 1 A_SpawnItemEx("SiteWorkerRock",Args[0],0,user_Height,0,0,-20,0,1+32)
-stop
-DeathC:
-TNT1 A 0 A_SetUserVar("user_Height",-0)
-goto Death+3
-DeathC2:
-TNT1 A 0 A_SetUserVar("user_Height",496)
-goto Death+3
-}
-}
-
-actor TetrisPinpoint_I : SiteWorkerPinpoint
-{
-States
-{
-Death2:
-TNT1 A 1 A_SpawnItemEx("TetrisRock_IA",Args[0],0,user_Height,0,0,-20,0,1+32)
-stop
-}
-}
-
-actor TetrisPinpoint_O : SiteWorkerPinpoint{States{Death2:TNT1 A 1 A_SpawnItemEx("TetrisRock_OA",Args[0],0,user_Height,0,0,-20,0,1+32)stop}}
-actor TetrisPinpoint_S : SiteWorkerPinpoint{States{Death2:TNT1 A 1 A_SpawnItemEx("TetrisRock_SA",Args[0],0,user_Height,0,0,-20,0,1+32)stop}}
-actor TetrisPinpoint_Z : SiteWorkerPinpoint{States{Death2:TNT1 A 1 A_SpawnItemEx("TetrisRock_ZA",Args[0],0,user_Height,0,0,-20/12,0,1+32)stop}}
-actor TetrisPinpoint_T : SiteWorkerPinpoint{States{Death2:TNT1 A 1 A_SpawnItemEx("TetrisRock_TA",Args[0],0,user_Height,0,0,-20,0,1+32)stop}}
-actor TetrisPinpoint_J : SiteWorkerPinpoint{States{Death2:TNT1 A 1 A_SpawnItemEx("TetrisRock_JA",Args[0],0,user_Height,0,0,-20,0,1+32)stop}}
-actor TetrisPinpoint_L : SiteWorkerPinpoint{States{Death2:TNT1 A 1 A_SpawnItemEx("TetrisRock_LA",Args[0],0,user_Height,0,0,-20,0,1+32)stop}}
+actor SiteWorker_W : BaseMM8BDMWep_UH {
+  Weapon.AmmoUse 0
+  Weapon.AmmoGive 100
+  Inventory.Pickupmessage "$PU_35"
+  Obituary "$OB_35W"
+  Tag "$TAG_SiteWorker_W"
+  weapon.ammotype "SteroidEnergyAmmo"
+  +WEAPON.NOAUTOAIM
+  States {
+   Spawn:
+    6H35 [ 6
+    loop
+
+   Deselect:
+    6H35 A 0 A_JumpIfInventory("SiteWorkerRockFlag", 1, 1)
+    goto DeselectSwap
+    6H35 F 0 A_GunFlash("NoFlash", 1)
+    6H35 F 0 A_GiveInventory("SiteWorker_Fire_P")
+    6H35 FGHIJK 2
+    6H35 ZZZLMA 2 A_Lower
+    Goto DeselectSwap
+
+   Select:
+    6H35 A 0
+    goto SelectSwap
+
+   Ready:
+    6H35 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", NO_DYE)  // SITEWORKER_DYE
+    6H35 A 0 A_GunFlash("NoFlash", 1)
+    6H35 A 0 A_GiveInventory("SiteWorkerFlagRNG_P")
+    goto Ready2
+   Ready2:
+    6H35 A 2 A_GiveInventory("SiteWorker_Ready_P")
+    loop
+
+   Flash:
+    TNT1 A 1
+    TNT1 A 1 A_SpawnItemEx("TetrisRock_FX", 0, 0, 70, 0, 0, 0, 0, 1)
+    loop
+
+   Fire:
+    6H35 A 0 A_JumpIfInventory("SiteWorkerRockFlag", 1, "Throw")
+    6H35 A 0 A_JumpIfInventory("IsBot", 1, "BotFire")
+    6H35 B 0 A_GiveInventory("VivifyFlag1")
+    6H35 B 0 A_ReFire(1)
+    6H35 B 2 A_GiveInventory("SiteWorker_FireStart_P")
+    6H35 CDEZZ 2 A_GiveInventory("SiteWorker_FireStart2_P")
+    6H35 B 0 A_TakeInventory("VivifyFlag1")
+    TNT1 A 0 A_GunFlash("Flash", 1)
+    goto Holding
+
+   HoldingAlt:
+    TNT1 A 3 A_WeaponReady(8)
+    TNT1 AAAAA 4 A_WeaponReady(8)
+   Holding:
+    TNT1 A 2 A_GiveInventory("SiteWorker_Ready_P")
+    // TNT1 A 2 A_WeaponReady
+    // TNT1 A 0 A_GiveInventory("SteroidEnergyAmmo",1)
+    loop
+
+   HoldingSwap:
+    TNT1 A 1 A_GiveInventory("SiteWorkerSaveFlags_P")
+    goto HoldingAlt
+   Throw:
+    6H35 F 0 A_JumpIfInventory("IsBot", 1, "BotFire2")
+    6H35 F 0 A_GunFlash("NoFlash", 1)
+    6H35 F 2 A_GiveInventory("SiteWorker_Fire_P")
+    6H35 G 2 A_GiveInventory("SiteWorkerFlagRNG_P")
+    6H35 HIJK 2
+    6H35 Z 6
+    6H35 LMA 2
+    Goto Ready2
+
+   Altfire:
+    6H35 A 0 A_JumpIfInventory("SiteWorkerRockFlag", 1, "HoldingSwap")
+    // 6H35 A 0 A_JumpIfInventory("SteroidEnergyAmmo",50,"Altfire2")
+    // Goto Ready2
+   Altfire2:
+    6H35 Q 1 A_PlaySound("Tetris/Pause", 2, 0.75)
+    6H35 R 2 A_GiveInventory("SiteWorker_Alt_P")
+    6H35 S 2
+    6H35 R 2
+    6H35 S 2
+    6H35 R 4
+    6H35 Q 3
+    6H35 A 2
+    Goto Ready2
+
+
+   BotFire:
+    6H35 A 0 A_JumpIfInventory("SteroidEnergyAmmo", 50, 2)
+    6H35 A 0 A_Jump(8, "Altfire2")
+    goto Fire+2
+    6H35 A 0 A_Jump(128, "Altfire2")
+    goto Fire+2
+   BotFire2:
+    6H35 A 0 A_Jump(24, 1)
+    goto Throw+1
+   BotFireX:
+    6H35 F 0 A_GiveInventory("SiteWorker_Fire_P")
+    6H35 G 0 A_GiveInventory("SiteWorkerRockFlag", 1)
+    6H35 H 0 A_PlaySoundEx("taunt/D_35", "Voice")
+    6H35 I 0 A_GiveInventory("SiteWorker_FlagCycle_P")
+    6H35 J 0 A_RailWait
+    6H35 FGHIJK 2
+    TNT1 A 9 A_GiveInventory("BotFlag1", 1)
+    TNT1 A 0 A_JumpIfInventory("BotFlag1", 6, 2)
+    TNT1 A 0 A_ReFire("BotFireX")
+    TNT1 A 66 A_TakeInventory("BotFlag1")
+    goto Holding
+  }
+}
+
+actor SteroidEnergyAmmo : Ammo {
+  inventory.amount 1
+  inventory.maxamount 200
+  +INVENTORY.IGNORESKILL
+}
+
+actor SiteWorkerRockFlag : Once {}
+
+actor SiteWorkerTetris_F : Inventory {
+  inventory.maxamount 7
+}
+actor SiteWorkerSaved_F : SiteWorkerTetris_F {}
+
+actor SiteWorker_Ready_P : CustomInventory {
+  States {
+   Pickup:
+    6H35 A 0 A_JumpIfInventory("SiteWorkerRockFlag", 1, "Holding")
+    TNT1 A 0 A_JumpIfInventory("SteroidEnergyAmmo", 50, 2)
+    TNT1 A 0 A_WeaponReady(WRF_NOSECONDARY)
+    goto Ammo
+    TNT1 A 0 A_WeaponReady
+    goto Ammo
+
+   Holding:
+    TNT1 A 0 A_WeaponReady
+    TNT1 A 0 A_GiveInventory("SteroidEnergyAmmo", 1)
+    stop
+
+   Ammo:
+    TNT1 A 0 A_GiveInventory("SteroidEnergyAmmo", 2)
+    stop
+  }
+}
+
+actor SiteWorker_TetrisBase_P : CustomInventory {
+  States {
+   Pickup:
+   Tetris:
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerTetris_F", 7, "P_Z")
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerTetris_F", 6, "P_T")
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerTetris_F", 5, "P_S")
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerTetris_F", 4, "P_O")
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerTetris_F", 3, "P_L")
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerTetris_F", 2, "P_J")
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerTetris_F", 1, "P_I")
+
+    TNT1 A 0 A_Jump(256, "P__I", "P__J", "P__L", "P__O", "P__S", "P__T", "P__Z")
+    stop
+
+   P__I: TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F", 1)stop
+   P__J: TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F", 2)stop
+   P__L: TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F", 3)stop
+   P__O: TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F", 4)stop
+   P__S: TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F", 5)stop
+   P__T: TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F", 6)stop
+   P__Z: TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F", 7)stop
+  }
+}
+
+
+actor SiteWorker_FlagCycle_P : SiteWorker_TetrisBase_P {
+  States {
+   P_I: TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")goto P__J
+   P_J: TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")goto P__L
+   P_L: TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")goto P__O
+   P_O: TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")goto P__S
+   P_S: TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")goto P__T
+   P_T: TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")goto P__Z
+   P_Z: TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")goto P__I
+  }
+}
+
+actor SiteWorkerFlagRNG_P : SiteWorker_TetrisBase_P {
+  States {
+   P_I: TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")TNT1 A 0 A_Jump(256, "P__J", "P__L", "P__O", "P__S", "P__T", "P__Z")stop
+   P_J: TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")TNT1 A 0 A_Jump(256, "P__I", "P__L", "P__O", "P__S", "P__T", "P__Z")stop
+   P_L: TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")TNT1 A 0 A_Jump(256, "P__I", "P__J", "P__O", "P__S", "P__T", "P__Z")stop
+   P_O: TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")TNT1 A 0 A_Jump(256, "P__I", "P__J", "P__L", "P__S", "P__T", "P__Z")stop
+   P_S: TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")TNT1 A 0 A_Jump(256, "P__I", "P__J", "P__L", "P__O", "P__T", "P__Z")stop
+   P_T: TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")TNT1 A 0 A_Jump(256, "P__I", "P__J", "P__L", "P__O", "P__S", "P__Z")stop
+   P_Z: TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")TNT1 A 0 A_Jump(256, "P__I", "P__J", "P__L", "P__O", "P__S", "P__T")stop
+  }
+}
+
+actor SiteWorkerSaveFlags_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_PlaySound("Tetris/Swap", 1)
+    TNT1 A 0 A_SetArg(0, CallACS("rz_CountInv_SiteWorkerTetris_F", 0))
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F", 1, "Swap")
+    TNT1 A 0 A_GiveInventory("SiteWorkerFlagRNG_P")
+    goto Swap+2
+   Swap:
+    TNT1 A 0 A_TakeInventory("SiteWorkerTetris_F")
+    TNT1 A 0 A_GiveInventory("SiteWorkerTetris_F", CallACS("rz_CountInv_SiteWorkerSaved_F", 0))
+    TNT1 A 0 A_TakeInventory("SiteWorkerSaved_F")
+    TNT1 A 0 A_GiveInventory("SiteWorkerSaved_F", Args[0])
+    stop
+  }
+}
+
+
+actor SiteWorker_FireStart_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_PlaySound("misc/hugequake2", 1)
+    TNT1 A 0 A_GiveInventory("SiteWorkerRockFlag", 1)
+    TNT1 A 0 A_SetArg(3, 322)
+    goto Fall+1
+   Fall:
+    TNT1 A 0 A_GiveInventory("SteroidEnergyAmmo", 1)
+    TNT1 A 0 A_SetArg(3, Args[3]-36)
+    TNT1 A 0 A_SpawnItemEx("TetrisRock_FX", 8, 0, Args[3], 0, 0, 0, 0, 1+32)
+    stop
+  }
+}
+actor SiteWorker_FireStart2_P : SiteWorker_FireStart_P {
+  States {
+   Pickup:
+    goto Fall
+  }
+}
+
+
+actor SiteWorker_Fire_P : SiteWorker_TetrisBase_P {
+  States {
+   Pickup:
+    TNT1 A 0 A_TakeInventory("SiteWorkerRockFlag")
+    TNT1 A 0 A_PlaySound("Tetris/Swap", 1)
+    TNT1 A 0 A_GiveInventory("SteroidEnergyAmmo", 8)
+    goto Tetris
+
+    // 2 = distance away, 60 = projectile speed
+   P_I: TNT1 A 0 A_SpawnItemEx("TetrisRock_I", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 0, 1+32+SXF_MULTIPLYSPEED)  // 8192
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "S_I")stop
+   P_J: TNT1 A 0 A_SpawnItemEx("TetrisRock_J", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 0, 1+32+8192)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "S_J")stop
+   P_L: TNT1 A 0 A_SpawnItemEx("TetrisRock_L", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 0, 1+32+8192)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "S_L")stop
+   P_O: TNT1 A 0 A_SpawnItemEx("TetrisRock_O", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 0, 1+32+8192)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "S_O")stop
+   P_S: TNT1 A 0 A_SpawnItemEx("TetrisRock_S", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 0, 1+32+8192)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "S_S")stop
+   P_T: TNT1 A 0 A_SpawnItemEx("TetrisRock_T", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 0, 1+32+8192)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "S_T")stop
+   P_Z: TNT1 A 0 A_SpawnItemEx("TetrisRock_Z", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 0, 1+32+8192)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "S_Z")stop
+
+   S_I: TNT1 A 0 A_SpawnItemEx("TetrisRock_I", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 15, 1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisRock_I", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), -15, 1+32+8192)stop
+   S_J: TNT1 A 0 A_SpawnItemEx("TetrisRock_J", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 15, 1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisRock_J", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), -15, 1+32+8192)stop
+   S_L: TNT1 A 0 A_SpawnItemEx("TetrisRock_L", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 15, 1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisRock_L", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), -15, 1+32+8192)stop
+   S_O: TNT1 A 0 A_SpawnItemEx("TetrisRock_O", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 15, 1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisRock_O", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), -15, 1+32+8192)stop
+   S_S: TNT1 A 0 A_SpawnItemEx("TetrisRock_S", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 15, 1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisRock_S", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), -15, 1+32+8192)stop
+   S_T: TNT1 A 0 A_SpawnItemEx("TetrisRock_T", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 15, 1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisRock_T", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), -15, 1+32+8192)stop
+   S_Z: TNT1 A 0 A_SpawnItemEx("TetrisRock_Z", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 15, 1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisRock_Z", cos(-pitch)*2, 0, 32+38+(sin(-pitch)*2), cos(-pitch)*5, 0, sin(-pitch)*5, -15, 1+32+8192)stop
+  }
+}
+
+actor SiteWorker_Alt_P : SiteWorker_TetrisBase_P {
+  States {
+   Pickup:
+    TNT1 A 0 A_TakeInventory("SteroidEnergyAmmo", 25, 1)
+    TNT1 A 0 A_TakeInventory("SteroidEnergyAmmo", 25)
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F", 1, "PickupSave")
+    goto Tetris
+   PickupSave:
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F", 7, "P_Z")
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F", 6, "P_T")
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F", 5, "P_S")
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F", 4, "P_O")
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F", 3, "P_L")
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F", 2, "P_J")
+    // TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F",1,"P_I")
+    goto P_I
+    // 1000 = projectile speed
+   P_I: TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_I", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 0, 1+32+8192)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "S_I")goto End
+   P_J: TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_J", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 0, 1+32+8192)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "S_J")goto End
+   P_L: TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_L", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 0, 1+32+8192)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "S_L")goto End
+   P_O: TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_O", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 0, 1+32+8192)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "S_O")goto End
+   P_S: TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_S", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 0, 1+32+8192)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "S_S")goto End
+   P_T: TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_T", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 0, 1+32+8192)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "S_T")goto End
+   P_Z: TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_Z", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 0, 1+32+8192)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "S_Z")goto End
+
+   S_I: TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_I", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 15, 1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_I", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), -15, 1+32+8192)goto End
+   S_J: TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_J", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 15, 1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_J", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), -15, 1+32+8192)goto End
+   S_L: TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_L", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 15, 1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_L", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), -15, 1+32+8192)goto End
+   S_O: TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_O", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 15, 1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_O", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), -15, 1+32+8192)goto End
+   S_S: TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_S", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 15, 1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_S", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), -15, 1+32+8192)goto End
+   S_T: TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_T", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 15, 1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_T", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), -15, 1+32+8192)goto End
+   S_Z: TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_Z", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), 15, 1+32+8192)TNT1 A 0 A_SpawnItemEx("TetrisPinpoint_Z", 0, 0, 33+(sin(-pitch)*2), cos(-pitch), 0, sin(-pitch), -15, 1+32+8192)goto End
+
+   End:
+    TNT1 A 0 A_JumpIfInventory("SiteWorkerSaved_F", 1, 2)
+    TNT1 A 0 A_GiveInventory("SiteWorkerFlagRNG_P")
+    stop
+    TNT1 A 0 A_TakeInventory("SiteWorkerSaved_F")
+    stop
+  }
+}
+
+
+actor TempGreatRock : BasicClientSide {
+  States {
+   Spawn:
+    SHBO A 0
+    SHBO A 1
+    stop
+  }
+}
+
+actor TetrisRock_FX : BasicExplosion {
+  +NOTIMEFREEZE
+  +FORCEXYBILLBOARD
+  Speed 0
+  Scale 2.5
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_JumpIfInTargetInventory("SiteWorkerTetris_F", 7, "S_Z")
+    TNT1 A 0 A_JumpIfInTargetInventory("SiteWorkerTetris_F", 6, "S_T")
+    TNT1 A 0 A_JumpIfInTargetInventory("SiteWorkerTetris_F", 5, "S_S")
+    TNT1 A 0 A_JumpIfInTargetInventory("SiteWorkerTetris_F", 4, "S_O")
+    TNT1 A 0 A_JumpIfInTargetInventory("SiteWorkerTetris_F", 3, "S_L")
+    TNT1 A 0 A_JumpIfInTargetInventory("SiteWorkerTetris_F", 2, "S_J")
+    // TNT1 A 0 A_JumpIfInTargetInventory("SiteWorkerTetris_F",1,"P_I")
+
+   S_I:
+    6P35 A 1 A_SpawnItemEx("TetrisRock_FX1", 0, 0, 0, 0, 0, 0, 0, 1)
+    stop
+   S_J:
+    6P35 C 1 A_SpawnItemEx("TetrisRock_FX2", 0, 0, 0, 0, 0, 0, 0, 1)
+    stop
+   S_L:
+    6P35 G 1 A_SpawnItemEx("TetrisRock_FX3", 0, 0, 0, 0, 0, 0, 0, 1)
+    stop
+   S_O:
+    6P35 K 1 A_SpawnItemEx("TetrisRock_FX4", 0, 0, 0, 0, 0, 0, 0, 1)
+    stop
+   S_S:
+    6P35 L 1 A_SpawnItemEx("TetrisRock_FX5", 0, 0, 0, 0, 0, 0, 0, 1)
+    stop
+   S_T:
+    6P35 N 1 A_SpawnItemEx("TetrisRock_FX6", 0, 0, 0, 0, 0, 0, 0, 1)
+    stop
+   S_Z:
+    6P35 R 1 A_SpawnItemEx("TetrisRock_FX7", 0, 0, 0, 0, 0, 0, 0, 1)
+    stop
+  }
+}
+
+actor TetrisRock_FX1 : BasicClientSide {
+  +NOTIMEFREEZE
+  +FORCEXYBILLBOARD
+  States {
+   Spawn:
+    6P35 A 1 A_FadeOut(0.15)
+    wait
+  }
+}
+actor TetrisRock_FX2 : TetrisRock_FX1 {States {Spawn: 6P35 C 1 A_FadeOut(0.15)wait}}
+actor TetrisRock_FX3 : TetrisRock_FX1 {States {Spawn: 6P35 G 1 A_FadeOut(0.15)wait}}
+actor TetrisRock_FX4 : TetrisRock_FX1 {States {Spawn: 6P35 K 1 A_FadeOut(0.15)wait}}
+actor TetrisRock_FX5 : TetrisRock_FX1 {States {Spawn: 6P35 L 1 A_FadeOut(0.15)wait}}
+actor TetrisRock_FX6 : TetrisRock_FX1 {States {Spawn: 6P35 N 1 A_FadeOut(0.15)wait}}
+actor TetrisRock_FX7 : TetrisRock_FX1 {States {Spawn: 6P35 R 1 A_FadeOut(0.15)wait}}
+
+actor SiteWorkerRock : BasicProjectile {
+  damagetype "SiteWorker"
+  Obituary "$OB_35M0"
+  -NOGRAVITY
+  +SKYEXPLODE
+  +EXPLODEONWATER
+  +FORCEXYBILLBOARD
+  Damage (300)
+  Radius 28
+  Height 28
+  Speed 50
+  scale 2.5
+}
+
+actor TetrisRockDebris : BasicProjectile {
+  damagetype "SiteWorker"
+  Obituary "$OB_35M1"
+  -NOGRAVITY
+  +FORCEXYBILLBOARD
+  Damage (85)
+  Radius 14
+  Height 14
+  Speed 50  // 20
+  scale 2.5
+  States {
+   Spawn:
+    6P35 T 1
+    loop
+   Death:
+    TNT1 A 0 A_SetGravity(0.0)
+    6P35 UVW 2 Bright
+    stop
+  }
+}
+
+actor TetrisRockDebrisFX {
+  -SOLID
+  -NOGRAVITY
+  +THRUACTORS
+  +CLIENTSIDEONLY
+  +HEXENBOUNCE
+  +PAINLESS
+  damage (0)
+  Radius 2
+  Height 2
+  scale 2.5
+  States {
+   Spawn:
+    6P35 TXTXTXTXTXT 2
+    stop
+  }
+}
+
+actor TetrisRockBoomFX : BasicBoom8FX_ColorX {
+  States {
+   Spawn:
+    6P35 Y 0
+    6P35 "YZ[" 4
+    stop
+   SpawnOld:
+    X_8B AB 2
+    X_8L C 2
+    X_8B DEF 2
+    stop
+  }
+}
+actor TetrisRockBoomFX2 : TetrisRockBoomFX {Scale 2.0}
+actor TetrisRockBoomFX3 : TetrisRockBoomFX {Scale 1.5}
+
+// Explode
+actor TetrisRock_I : SiteWorkerRock {
+  Obituary "$OB_35M2"
+  Damage (225)
+  Args 225, 144, 18
+  States {
+   Spawn:
+    6P35 A 0
+    6P35 A 0 A_JumpIfInTargetInventory("IsBot", 1, "SpawnB")
+    6P35 A 0 ThrustThingZ(0, 30, 0, 1)
+    6P35 A 1
+    wait
+   SpawnB:
+    6P35 A 0 ThrustThingZ(0, -20, 0, 1)
+    6P35 A 1
+    wait
+   Crash:
+    "####" A 0 A_PlaySoundEx("Tetris/Line", "Voice")
+   Death:
+    "####" A 0 A_PlaySoundEx("Tetris/Death", "Weapon")
+    "####" A 0 A_SetGravity(0.0)
+    "####" A 0 A_SpawnItemEx("TetrisRockBoomFX", 0, 0, 24, 0, 0, 0, 0, 1)
+    "####" A 0 A_Explode(Args[0], Args[1], 0, 0, Args[2])
+    "####" AXAXAXA 2
+    stop
+  }
+}
+
+actor TetrisRock_IA : TetrisRock_I {
+  Obituary "$OB_35A2"
+  Radius 22
+  Height 32
+  Args 275, 144, 30
+  States {
+   Spawn:
+    6P35 B 1
+    loop
+   Crash:
+    "####" B 0 A_PlaySoundEx("Tetris/Line", "Voice")
+   Death:
+    "####" B 0 A_PlaySoundEx("Tetris/Death", "Weapon")
+    "####" B 0 A_SetGravity(0.0)
+    "####" B 0 A_SpawnItemEx("TetrisRockBoomFX", 0, 0, 24, 0, 0, 0, 0, 1)
+    "####" B 0 A_Explode(Args[0], Args[1], 0, 0, Args[2])
+    "####" BXBXBXB 2
+    stop
+  }
+}
+
+// Sticks
+actor TetrisRock_J : SiteWorkerRock {
+  Obituary "$OB_35M3"
+  States {
+   Spawn:
+    6P35 C 0
+    6P35 C 0 A_JumpIfInTargetInventory("IsBot", 1, "SpawnB")
+    6P35 C 0 ThrustThingZ(0, 30, 0, 1)
+    6P35 C 1
+    wait
+   SpawnB:
+    6P35 C 0 ThrustThingZ(0, -20, 0, 1)
+    6P35 C 1
+    wait
+   Crash:
+    "####" C 0 A_PlaySoundEx("Tetris/Line", "Voice")
+    "####" C 0 A_SetGravity(0.0)
+    "####" CXCXCXC 2
+    stop
+   Death:
+    TNT1 A 0 A_PlaySoundEx("TetrisU/Menu2", "Weapon")
+    TNT1 A 1 A_SpawnItemEx("TetrisRock_JDead", 0, 0, 0, 0, 0, 0, 0, 1)
+    stop
+  }
+}
+
+actor TetrisRock_JDead : BasicProjectile {
+  damagetype "SiteWorker"
+  Obituary "$OB_35M32"
+  +FORCEXYBILLBOARD
+  +THRUGHOST
+  +DONTSPLASH
+  +DONTBLAST
+  ReactionTime 1
+  Damage (200)
+  Radius 28
+  Height 28
+  Speed 50
+  scale 2.5
+  States {
+   Spawn:
+    6P35 C 0
+    6P35 C 210
+    6P35 C 1 A_CountDown
+    wait
+   Crash:
+    "####" C 0 A_PlaySoundEx("Tetris/Line", "Voice")
+   Death:
+    "####" C 0 A_PlaySoundEx("TetrisU/Menu1", "Weapon")
+    "####" CXCXCXC 2
+    stop
+  }
+}
+
+actor TetrisRock_JA : TetrisRock_J {
+  Radius 22
+  Height 32
+  States {
+   Spawn:
+    6P35 D 1
+    loop
+   Crash:
+    "####" D 0 A_PlaySoundEx("Tetris/Line", "Voice")
+    "####" D 0 A_SetGravity(0.0)
+    "####" DXDXDXD 2
+    stop
+   Death:
+    TNT1 A 0 A_PlaySoundEx("TetrisU/Menu2", "Weapon")
+    TNT1 A 1 A_SpawnItemEx("TetrisRock_JADead", 0, 0, 0, 0, 0, 0, 0, 1)
+    stop
+  }
+}
+
+actor TetrisRock_JADead : TetrisRock_JDead {
+  Radius 22
+  Height 32
+  States {
+   Spawn:
+    6P35 D 0
+    6P35 D 315
+    6P35 D 1 A_CountDown
+    wait
+   Crash:
+    "####" D 0 A_PlaySoundEx("Tetris/Line", "Voice")
+   Death:
+    "####" D 0 A_PlaySoundEx("TetrisU/Menu1", "Weapon")
+    "####" DXDXDXD 2
+    stop
+  }
+}
+
+// Ripper
+actor TetrisRock_L : SiteWorkerRock {
+  SeeSound "Tetris/Move"
+  Obituary "$OB_35M4"
+  +RIPPER
+  +BOUNCEONWALLS
+  +BOUNCEONFLOORS
+  +BOUNCEONCEILINGS
+  +DONTSPLASH
+  +CANBOUNCEWATER
+  -EXPLODEONWATER
+  bouncefactor 0.48
+  wallbouncefactor 0.6
+  BounceCount 8
+  Damage (random(90, 110))
+  States {
+   Spawn:
+    6P35 G 0
+    6P35 G 0 A_JumpIfInTargetInventory("IsBot", 1, "SpawnB")
+    6P35 G 0 ThrustThingZ(0, 30, 0, 1)
+    6P35 G 1
+    wait
+   SpawnB:
+    6P35 G 0 ThrustThingZ(0, -20, 0, 1)
+    6P35 G 1
+    wait
+   Death:
+    "####" G 0 A_PlaySoundEx("TetrisU/Line", "Weapon")
+    "####" G 0 A_SetGravity(0.0)
+    "####" GXGXGXG 2
+    stop
+  }
+}
+
+actor TetrisRock_LA : TetrisRock_L {
+  Obituary "$OB_35A4"
+  Radius 22
+  Height 32
+  bouncefactor 0.4
+  BounceCount 9
+  Damage (random(100, 120))
+  States {
+   Spawn:
+    6P35 H 1
+    loop
+   Death:
+    "####" H 0 A_PlaySoundEx("TetrisU/Line", "Weapon")
+    "####" H 0 A_SetGravity(0.0)
+    "####" HXHXHXH 2
+    stop
+  }
+}
+
+// Split
+actor TetrisRock_O : SiteWorkerRock {
+  Obituary "$OB_35M5"
+  Damage (400)
+  States {
+   Spawn:
+    6P35 K 0
+    6P35 K 0 A_JumpIfInTargetInventory("IsBot", 1, "SpawnB")
+    6P35 K 0 ThrustThingZ(0, 30, 0, 1)
+    6P35 K 1
+    wait
+   SpawnB:
+    6P35 K 0 ThrustThingZ(0, -20, 0, 1)
+    6P35 K 1
+    wait
+
+   Crash:
+    TNT1 A 0 A_SetGravity(0.0)
+    TNT1 AAAA 0 A_SpawnItemEx("TetrisRockDebris", 0, 0, 8, random(-14, 14), 0, random(3, 14), random(0, 359), 1)
+    TNT1 AAAAAAAA 0 A_SpawnItemEx("TetrisRockDebrisFX", 0, 0, 0, random(-10, 10), 0, random(5, 10), random(0, 359), 1)
+    TNT1 A 0 A_PlaySoundEx("Tetris/Line", "Voice")
+    TNT1 A 0 A_PlaySoundEx("weapon/superarmhit", "Weapon")
+    TNT1 A 2
+    stop
+   Death:
+    TNT1 A 0 A_SetGravity(0.0)
+    TNT1 A 0 A_SpawnItemEx("TetrisRockBoomFX3", 0, 0, 24, 0, 0, 0, 0, 1)
+    TNT1 A 0 A_PlaySoundEx("weapon/superarmhit", "Weapon")
+    TNT1 A 0 A_SetArg(4, 1-(ceilingz-z<=height)*2)
+    TNT1 AAAAAAAAAAAA 0 A_SpawnItemEx("TetrisRockDebris", 0, 0, 8*Args[4], random(-14, 14), 0, random(3, 14)*Args[4], random(0, 359), 1)
+    TNT1 A 2
+    stop
+  }
+}
+
+actor TetrisRock_OA : TetrisRock_O {
+  Obituary "$OB_35A5"
+  Damage (450)
+  Radius 22
+  Height 32
+  States {
+   Spawn:
+    6P35 K 1
+    loop
+    /*
+    Crash:
+    TNT1 A 0 A_SetGravity(0.0)
+    TNT1 AAAAAAAA 0 A_SpawnItemEx("TetrisRockDebrisFX",0,0,0,random(-10,10),random(-10,10),random(5,10),random(0,360),1)
+    TNT1 A 0 A_PlaySoundEx("weapon/superarmhit","Weapon")
+    TNT1 A 2 A_PlaySoundEx("Tetris/Line","Voice")
+    stop
+    Death:
+    TNT1 A 0 A_SetGravity(0.0)
+    TNT1 A 0 A_SpawnItemEx("TetrisRockBoomFX3",0,0,24,0,0,0,0,1)
+    TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,0,1)
+    TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,45,1)
+    TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,-45,1)
+    TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,90,1)
+    TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,-90,1)
+    TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,135,1)
+    TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,-135,1)
+    TNT1 A 0 A_SpawnItemEx("TetrisRockDebris",0,0,8,40,0,0,180,1)
+    TNT1 A 2 A_PlaySoundEx("weapon/superarmhit","Weapon")
+    stop
+    */
+  }
+}
+
+// Stun and Weak
+actor TetrisRock_S : SiteWorkerRock {
+  damagetype "SiteWorkerStun"
+  Obituary "$OB_35M6"
+  Damage (0)
+  Args 150, 128, 48
+  States {
+   Spawn:
+    6P35 L 0
+    6P35 L 0 A_JumpIfInTargetInventory("IsBot", 1, "SpawnB")
+    6P35 L 0 ThrustThingZ(0, 30, 0, 1)
+    6P35 L 1
+    wait
+   SpawnB:
+    6P35 L 0 ThrustThingZ(0, -20, 0, 1)
+    6P35 L 1
+    wait
+   Crash:
+    "####" L 0 A_PlaySoundEx("Tetris/Line", "Voice")
+   Death:
+    "####" L 0 A_PlaySoundEx("Tetris/Death", "Weapon")
+    "####" L 0 A_SetGravity(0.0)
+    "####" L 0 A_SpawnItemEx("TetrisRockBoomFX2", 0, 0, 16, 0, 0, 0, 0, 1)
+    "####" L 0 A_Explode(Args[0], Args[1], 0, 0, Args[2])
+    "####" LXLXLXL 2
+    stop
+  }
+}
+
+actor TetrisRock_SA : TetrisRock_S {
+  damagetype "SiteWorkerStunW"
+  Obituary "$OB_35A6"
+  Damage (0)
+  Radius 22
+  Height 32
+  Args 175, 128, 48
+  States {
+   Spawn:
+    6P35 M 1
+    loop
+   Crash:
+    "####" M 0 A_PlaySoundEx("Tetris/Line", "Voice")
+   Death:
+    "####" M 0 A_PlaySoundEx("Tetris/Death", "Weapon")
+    "####" M 0 A_SetGravity(0.0)
+    "####" M 0 A_SpawnItemEx("TetrisRockBoomFX2", 0, 0, 16, 0, 0, 0, 0, 1)
+    "####" M 0 A_Explode(Args[0], Args[1], 0, 0, Args[2])
+    "####" MXMXMXM 2
+    stop
+  }
+}
+
+// Bounce
+actor TetrisRock_T : SiteWorkerRock {
+  SeeSound "TetrisU/LandX"
+  Obituary "$OB_35M7"
+  +HEXENBOUNCE
+  -ALLOWBOUNCEONACTORS
+  +DONTSPLASH
+  +CANBOUNCEWATER
+  bouncefactor 0.85
+  wallbouncefactor 0.85
+  BounceCount 8
+  Damage (300)
+  States {
+   Spawn:
+    6P35 N 0
+    6P35 N 0 A_JumpIfInTargetInventory("IsBot", 1, "SpawnB")
+    6P35 N 0 ThrustThingZ(0, 30, 0, 1)
+    6P35 N 1
+    wait
+   SpawnB:
+    6P35 N 0 ThrustThingZ(0, -20, 0, 1)
+    6P35 N 1
+    wait
+   Crash:
+    "####" N 0 A_PlaySoundEx("Tetris/Line", "Voice")
+   Death:
+    "####" N 0 A_PlaySoundEx("TetrisU/Menu1", "Weapon")
+    "####" N 0 A_SetGravity(0.0)
+    "####" NXNXNXN 2
+    stop
+  }
+}
+
+actor TetrisRock_TA : TetrisRock_T {
+  Obituary "$OB_35A7"
+  bouncefactor 0.8
+  BounceCount 12
+  Damage (400)
+  Radius 22
+  Height 32
+  States {
+   Spawn:
+    6P35 O 1
+    loop
+   Crash:
+    "####" O 0 A_PlaySoundEx("Tetris/Line", "Voice")
+   Death:
+    "####" O 0 A_PlaySoundEx("TetrisU/Menu1", "Weapon")
+    "####" O 0 A_SetGravity(0.0)
+    "####" OXOXOXO 2
+    stop
+  }
+}
+
+// Slow
+actor TetrisRock_Z : SiteWorkerRock {
+  Obituary "$OB_35M8"
+  Gravity 0.0083333
+  Damage (750)
+  Speed 5
+  States {
+   Spawn:
+    6P35 R 0
+    6P35 R 0 A_JumpIfInTargetInventory("IsBot", 1, "SpawnB")
+    6P35 R 0 ThrustThingZ(0, 3, 0, 1)
+   SpawnL:
+    6P35 R 35
+    6Q35 R 1 Bright
+    loop
+   SpawnB:
+    6P35 R 0 ThrustThingZ(0, -2, 0, 1)  // -4
+   SpawnL2:
+    6P35 R 35
+    6Q35 R 1 Bright
+    loop
+   Crash:
+    "####" R 0 A_PlaySoundEx("Tetris/4Line", "Voice")
+    goto Death+1
+   Death:
+    "####" R 0 A_PlaySoundEx("TetrisU/Line", "Weapon")
+    "####" R 0 A_SetGravity(0.0)
+    "####" RXRXRXR 2
+    stop
+  }
+}
+
+actor TetrisRock_ZA : TetrisRock_Z {
+  Obituary "$OB_35A8"
+  +NOGRAVITY
+  Damage (895)
+  Radius 22
+  Height 32
+  States {
+   Spawn:
+    6P35 S 16 ThrustThingZ(0, 1, 1, 1)
+    6P35 S 15 ThrustThingZ(0, 1, 1, 1)
+    6Q35 S 1 Bright
+    loop
+   Crash:
+    "####" S 0 A_PlaySoundEx("Tetris/4Line", "Voice")
+    goto Death+1
+   Death:
+    "####" S 0 A_PlaySoundEx("TetrisU/Line", "Weapon")
+    "####" S 0 A_SetGravity(0.0)
+    "####" SXSXSXS 2
+    stop
+  }
+}
+
+
+actor SiteWorkerPinpoint : ProjSpawnFuncActorFast {
+  var int user_Height;
+  var int user_NoTranslation;
+  +SKYEXPLODE
+  +EXPLODEONWATER
+  +DONTBLAST
+  // +RIPPER
+  +BLOODLESSIMPACT
+  +THRUGHOST
+  reactiontime 1
+  damage (0)
+  Radius 22
+  height 32
+  speed 1000
+  States {
+   Spawn:
+    TNT1 A 8
+    TNT1 A 7 A_CountDown
+    wait
+   XDeath:
+    TNT1 A 0 A_SetArg(0, 16)
+    goto Death
+   Death:
+    TNT1 A 0 A_GiveToTarget("UH_TargetMarker")
+    TNT1 A 0 A_JumpIf(z-ceilingz>=-16, "DeathC")
+    TNT1 A 0 A_JumpIf(z-ceilingz<=-512, "DeathC2")
+    TNT1 A 0 A_SetUserVar("user_Height", ceilingz-z-Height)
+    TNT1 A 0 A_Jump(256, "Death2")
+   Death2:
+    TNT1 A 1 A_SpawnItemEx("SiteWorkerRock", Args[0], 0, user_Height, 0, 0, -20, 0, 1+32)
+    stop
+   DeathC:
+    TNT1 A 0 A_SetUserVar("user_Height", -0)
+    goto Death+3
+   DeathC2:
+    TNT1 A 0 A_SetUserVar("user_Height", 496)
+    goto Death+3
+  }
+}
+
+actor TetrisPinpoint_I : SiteWorkerPinpoint {
+  States {
+   Death2:
+    TNT1 A 1 A_SpawnItemEx("TetrisRock_IA", Args[0], 0, user_Height, 0, 0, -20, 0, 1+32)
+    stop
+  }
+}
+
+actor TetrisPinpoint_O : SiteWorkerPinpoint {States {Death2: TNT1 A 1 A_SpawnItemEx("TetrisRock_OA", Args[0], 0, user_Height, 0, 0, -20, 0, 1+32)stop}}
+actor TetrisPinpoint_S : SiteWorkerPinpoint {States {Death2: TNT1 A 1 A_SpawnItemEx("TetrisRock_SA", Args[0], 0, user_Height, 0, 0, -20, 0, 1+32)stop}}
+actor TetrisPinpoint_Z : SiteWorkerPinpoint {States {Death2: TNT1 A 1 A_SpawnItemEx("TetrisRock_ZA", Args[0], 0, user_Height, 0, 0, -20/12, 0, 1+32)stop}}
+actor TetrisPinpoint_T : SiteWorkerPinpoint {States {Death2: TNT1 A 1 A_SpawnItemEx("TetrisRock_TA", Args[0], 0, user_Height, 0, 0, -20, 0, 1+32)stop}}
+actor TetrisPinpoint_J : SiteWorkerPinpoint {States {Death2: TNT1 A 1 A_SpawnItemEx("TetrisRock_JA", Args[0], 0, user_Height, 0, 0, -20, 0, 1+32)stop}}
+actor TetrisPinpoint_L : SiteWorkerPinpoint {States {Death2: TNT1 A 1 A_SpawnItemEx("TetrisRock_LA", Args[0], 0, user_Height, 0, 0, -20, 0, 1+32)stop}}
