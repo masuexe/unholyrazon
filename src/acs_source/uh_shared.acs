@@ -590,22 +590,6 @@ function void HudMessageOnActor(int tid, int messageid,
 #define GRAB_DISTANCE 100  // how far to position the grabbed away from zangief
 #define GRAB_DISTANCE_LIMIT 100000  // how far away to give up on the grabbed, squared
 
-#define ZCI_WALRUSSLIDEANGLE 0
-#define ZCI_ZANGIEFANGLE 1
-#define ZCI_SUPLEXID 2
-str zangief_count_item[3] = {
-  "WalrusSlideAngle",
-  "ZangiefAngle",
-  "SuplexID"
-};
-
-script "uh_ZangiefCountInv" (int itemid, int pointer) {
-  if (pointer > 0) {
-    SetActivator(0, pointer);
-  }
-  SetResultValue(CheckInventory(zangief_count_item[itemid]));
-}
-
 str zangief_give_item[2] = {
   "AntiInvincible_P",
   "AirSuplexGroundCheck"
@@ -613,7 +597,11 @@ str zangief_give_item[2] = {
 
 script "uh_ZangiefGiver" (int i, int target) {
   // log(i:i,s:" & ",i:target);
-  if (target == 999) {terminate;}
+  // zangief_give_item was reduced to the two entries actually used by the
+  // current grab code.  Keep malformed/stale callers from indexing into the
+  // neighboring ACS string data (which can turn a map string into an item
+  // name and make GiveActorInventory report a misleading class error).
+  if (target == 999 || i < 0 || i >= 2) {terminate;}
   GiveActorInventory(target, zangief_give_item[i], 1);
 }
 
@@ -657,7 +645,7 @@ script "uh_ZangiefStartGrab" (int target, int grabdist, int grablimit) {
 
 // Pitch is given as x/360, Angle is given as x/255
 script "uh_ZangiefGrab" (int pitch, int angle, int grab_d, int grablimit) {
-  int target = ACS_NamedExecuteWithResult("uh_ZangiefCountInv", 2) + 999;
+  int target = ACS_NamedExecuteWithResult("rz_CountInv_SuplexID") + 999;
   if (target == 999) {
     SetResultValue(1);
     terminate;
@@ -691,7 +679,7 @@ script "uh_ZangiefSetThrow" (int target, int force, int zforce) {
 }
 
 script "uh_ZangiefGrabReverse" (int pitch, int angle, int grab_d, int grablimit) {
-  int target = ACS_namedExecuteWithResult("core_getptrtid", AAPTR_TARGET);  // ACS_NamedExecuteWithResult("uh_ZangiefCountInv", 2, 2) + 999;
+  int target = ACS_namedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
   SetActivator(0, 8);
   if (target == 999) {
     SetResultValue(1);

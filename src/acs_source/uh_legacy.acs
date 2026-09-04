@@ -226,10 +226,28 @@ script "uh_FetchPointerPitch" (int pointer) {
 	SetResultValue(ACS_NamedExecuteWithResult("core_GetPtrPitch", pointer, 0, true));
 }
 
-// script "uh_ZangiefCountInv" (int itemid, int pointer) {
-// 	LegacyWarnNamedScript("uh_ZangiefCountInv", "itemid", itemid, "pointer", pointer, "", 0, "Removed, use \"rz_CountInv_<InventoryName>\" instead");
-// 	SetResultValue(ACS_NamedExecuteWithResult("uh_ZangiefCountInv", itemid, pointer));
-// }
+// Legacy compatibility for the former dynamic Zangief inventory query.
+// New code should call the corresponding rz_CountInv_<InventoryName> script.
+script "uh_ZangiefCountInv" (int itemid, int pointer) {
+  LegacyWarnNamedScript("uh_ZangiefCountInv", "itemid", itemid, "pointer", pointer, "", 0, "Removed, use \"rz_CountInv_<InventoryName>\" instead");
+  switch (itemid) {
+    case 0:
+      if (pointer > 0) {
+        SetActivator(0, pointer);
+      }
+      SetResultValue(CheckInventory("WalrusSlideAngle"));
+      break;
+    case 1:
+      SetResultValue(ACS_NamedExecuteWithResult("rz_CountInv_ZangiefAngle", pointer));
+      break;
+    case 2:
+      SetResultValue(ACS_NamedExecuteWithResult("rz_CountInv_SuplexID", pointer));
+      break;
+    default:
+      SetResultValue(0);
+      break;
+  }
+}
 
 // script "UB_GUHU_SelfDamage" (int Pain, int Type) {
 // 	LegacyWarnNamedScript("UB_GUHU_SelfDamage", "Pain", Pointer, "Type", Type, "", 0, "Removed, use \"rz_ThingDamage_<DamageType>\" instead");
