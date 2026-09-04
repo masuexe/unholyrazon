@@ -1,217 +1,201 @@
-actor ContrabandItem2Item : UnholyItem
-{
-Tag "$TAG_P_BOX34"
-inventory.amount 2
-inventory.pickupmessage "Support Item? Item 2?"
-inventory.icon "PANBOX34"
-States
-{
-Spawn:
-I_BB I 6
-loop
-UseX:
-TNT1 A 0
-TNT1 A 0 A_PlaySoundEx("items/CB_Item2","Item")
-UseX_Silent:
-TNT1 A 0 A_Jumpif(floorz<z,"UseX_U")
-TNT1 A 0 A_SpawnItemEx("CB_Item2Platform",56,0,32,1,0,0,0,1)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"UseX_2")
-goto End
-UseX_2:
-TNT1 A 0 A_SpawnItemEx("CB_Item2Platform",56,-32,32,0,0,0,15,33)
-TNT1 A 0 A_SpawnItemEx("CB_Item2Platform",56,32,32,0,0,0,-15,33)
-goto End
-UseX_U:
-TNT1 A 0 A_Stop
-TNT1 A 0 A_SpawnItemEx("CB_Item2Platform",0,0,0,1,0,0,0,33)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"UseX_U2")
-goto End
-UseX_U2:
-TNT1 A 0 A_SpawnItemEx("CB_Item2Platform_InstantGo",0,-48,0,0,0,0,15,33)
-TNT1 A 0 A_SpawnItemEx("CB_Item2Platform_InstantGo",0,48,0,0,0,0,-15,33)
-goto End
-
-
-}
+actor ContrabandItem2Item : UnholyItem {
+  Tag "$TAG_P_BOX34"
+  inventory.amount 2
+  inventory.pickupmessage "Support Item? Item 2?"
+  inventory.icon "PANBOX34"
+  States {
+   Spawn:
+    I_BB I 6
+    loop
+   UseX:
+    TNT1 A 0
+    TNT1 A 0 A_PlaySoundEx("items/CB_Item2", "Item")
+   UseX_Silent:
+    TNT1 A 0 A_Jumpif(floorz<z, "UseX_U")
+    TNT1 A 0 A_SpawnItemEx("CB_Item2Platform", 56, 0, 32, 1, 0, 0, 0, 1)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "UseX_2")
+    goto End
+   UseX_2:
+    TNT1 A 0 A_SpawnItemEx("CB_Item2Platform", 56, -32, 32, 0, 0, 0, 15, 33)
+    TNT1 A 0 A_SpawnItemEx("CB_Item2Platform", 56, 32, 32, 0, 0, 0, -15, 33)
+    goto End
+   UseX_U:
+    TNT1 A 0 A_Stop
+    TNT1 A 0 A_SpawnItemEx("CB_Item2Platform", 0, 0, 0, 1, 0, 0, 0, 33)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "UseX_U2")
+    goto End
+   UseX_U2:
+    TNT1 A 0 A_SpawnItemEx("CB_Item2Platform_InstantGo", 0, -48, 0, 0, 0, 0, 15, 33)
+    TNT1 A 0 A_SpawnItemEx("CB_Item2Platform_InstantGo", 0, 48, 0, 0, 0, 0, -15, 33)
+    goto End
+  }
 }
 actor AutoContrabandItem2Item : ContrabandItem2Item {
-    Inventory.PickupSound ""
-    Inventory.MaxAmount 0
-    +ALWAYSPICKUP
-    States {
-        Pickup:
-            goto UseX
-    }
+  Inventory.PickupSound ""
+  Inventory.MaxAmount 0
+  +ALWAYSPICKUP
+  States {
+   Pickup:
+    goto UseX
+  }
 }
 actor AutoContrabandItem2ItemSilent : AutoContrabandItem2Item {
-    States {
-        Pickup:
-            goto UseX_Silent
-    }
+  States {
+   Pickup:
+    goto UseX_Silent
+  }
 }
 actor ContrabandItem2ItemFX : UnholyItemFX {
-    States {
-        Spawn: 
-            I_BB I 0
-            goto Spawn2
-    }
+  States {
+   Spawn:
+    I_BB I 0
+    goto Spawn2
+  }
 }
 
 
 
-actor CB_Item2Platform : ProjSpawnFuncActor
-{
-Damagetype "ContrabandItem2"
-Obituary "%k road Contraband Item 2 into %o."
-+FORCEYBILLBOARD
-+NOGRAVITY
-+SHOOTABLE
-+THRUSPECIES
-+THRUGHOST
-+CANPASS
-+NOBLOCKMONST
-+DONTBLAST
-+SOLID
-+DONTREFLECT
-+MISSILE
-+NODAMAGE
-+NOTAUTOAIMED
-species "MovingPlatform"
-+THRUSPECIES
-+INVULNERABLE
-+NEVERTARGET
-+DONTDRAIN
-var int user_playerRiding[64];
-mass 0x7ffffffc
-//ReactionTime 50
-Args 25
-var int user_C;
-maxstepheight 0
-height 4
-radius 24
-scale 2.5
-States
-{
-Spawn:
-I_CI A 0
-I_CI A 0 ACS_NamedExecuteWithResult("core_copytranslation_client")
-I_CI A 0 A_RearrangePointers(0,0,2)//Target >> Tracer
-I_CI A 0 A_GiveInventory("WeaponCharge",1)
-I_CI A 0 A_Stop
-I_CI A 0 //A_ChangeFlag(RIPPER,1)
-I_CI A 0 A_Cleartarget
-Waiting:
-I_CI A 0 A_SpawnItemEx("CB_Item2Detect",0,0,8)//32
-I_CI AAAAAAAAAA 1 A_JumpIfInventory("Item2Flag",1,"MoveStart")
-I_CI A 0 A_JumpIf(Args[0]<=1,"MoveStart")
-I_CI A 0 A_CountDownArg(0)
-Loop
-MoveStart:
-I_CI B 0 ACS_NamedExecuteAlways("core_stickyLifts",0,STICKYMODE_GUTSLIFT)
-I_CI B 0 A_PlaySoundEx("weapon/superboost", "weapon")
-I_CI B 2 A_ChangeVelocity(24,0,0,3)//3
-I_CI C 2 //A_ChangeVelocity(5,0,0,3)
-I_CI B 2 //A_ChangeVelocity(14,0,0,3)
-I_CI C 2 A_ChangeVelocity(24,0,0,3)//21
-Spawn2:
-I_CI BC 2
-//I_CI C 2 A_ChangeVelocity(24,0,0,3)
-loop
-DeathT:
-TNT1 A 0 A_RearrangePointers(8,0,0)//Tracer >> Target
-goto Death+1
-Death:
-TNT1 A 0 A_JumpIfInventory("WeaponCharge",1,"DeathT")
-TNT1 A 0 A_Stop
-TNT1 A 0 A_TakeInventory("CutterFlag",1)
-TNT1 A 0 A_ChangeFlag("SOLID",0)
-TNT1 A 0 A_ChangeFlag("NoInteraction",1)
-TNT1 A 0 A_ChangeFlag("NoClip",1)
-TNT1 A 0 A_PlaySoundEx("Shin_1/Explode","Weapon")
-TNT1 A 0 A_Explode(350,128,0,0,48)
-TNT1 A 0 A_Stop
-TNT1 A 0 A_SpawnItemEx("CB_Item2PlatformFX1",0,0,-12,0,0,5,0,0)
-TNT1 A 0 A_SpawnItemEx("CB_Item2PlatformFX2",0,6,-4,0,2.5f,15,0,0)
-TNT1 A 0 A_SpawnItemEx("CB_Item2PlatformFX2",0,-6,-4,0,-2.5f,15,0,0)
-TNT1 A 0 A_SpawnItemEx("CB_Item2PlatformFX2",0,10,-8,0,4.5f,11,0,0)
-TNT1 A 0 A_SpawnItemEx("CB_Item2PlatformFX2",0,-10,-8,0,-4.5f,11,0,0)
-TNT1 A 20
-stop
-}
+actor CB_Item2Platform : ProjSpawnFuncActor {
+  Damagetype "ContrabandItem2"
+  Obituary "%k road Contraband Item 2 into %o."
+  +FORCEYBILLBOARD
+  +NOGRAVITY
+  +SHOOTABLE
+  +THRUSPECIES
+  +THRUGHOST
+  +CANPASS
+  +NOBLOCKMONST
+  +DONTBLAST
+  +SOLID
+  +DONTREFLECT
+  +MISSILE
+  +NODAMAGE
+  +NOTAUTOAIMED
+  species "MovingPlatform"
+  +THRUSPECIES
+  +INVULNERABLE
+  +NEVERTARGET
+  +DONTDRAIN
+  var int user_playerRiding[64];
+  mass 0x7ffffffd
+  // ReactionTime 50
+  Args 25
+  var int user_C;
+  maxstepheight 0
+  height 4
+  radius 24
+  scale 2.5
+  States {
+   Spawn:
+    I_CI A 0
+    I_CI A 0 ACS_NamedExecuteWithResult("core_copytranslation_client")
+    I_CI A 0 A_RearrangePointers(0, 0, 2)  // Target >> Tracer
+    I_CI A 0 A_GiveInventory("WeaponCharge", 1)
+    I_CI A 0 A_Stop
+    I_CI A 0  // A_ChangeFlag(RIPPER,1)
+    I_CI A 0 A_Cleartarget
+   Waiting:
+    I_CI A 0 A_SpawnItemEx("CB_Item2Detect", 0, 0, 8)  // 32
+    I_CI AAAAAAAAAA 1 A_JumpIfInventory("Item2Flag", 1, "MoveStart")
+    I_CI A 0 A_JumpIf(Args[0]<=1, "MoveStart")
+    I_CI A 0 A_CountDownArg(0)
+    Loop
+   MoveStart:
+    I_CI B 0 ACS_NamedExecuteAlways("core_stickyLifts", 0, STICKYMODE_GUTSLIFT)
+    I_CI B 0 A_PlaySoundEx("weapon/superboost", "weapon")
+    I_CI B 2 A_ChangeVelocity(24, 0, 0, 3)  // 3
+    I_CI C 2  // A_ChangeVelocity(5,0,0,3)
+    I_CI B 2  // A_ChangeVelocity(14,0,0,3)
+    I_CI C 2 A_ChangeVelocity(24, 0, 0, 3)  // 21
+   Spawn2:
+    I_CI BC 2
+    // I_CI C 2 A_ChangeVelocity(24,0,0,3)
+    loop
+   DeathT:
+    TNT1 A 0 A_RearrangePointers(8, 0, 0)  // Tracer >> Target
+    goto Death+1
+   Death:
+    TNT1 A 0 A_JumpIfInventory("WeaponCharge", 1, "DeathT")
+    TNT1 A 0 A_Stop
+    TNT1 A 0 A_TakeInventory("CutterFlag", 1)
+    TNT1 A 0 A_ChangeFlag("SOLID", 0)
+    TNT1 A 0 A_ChangeFlag("NoInteraction", 1)
+    TNT1 A 0 A_ChangeFlag("NoClip", 1)
+    TNT1 A 0 A_PlaySoundEx("Shin_1/Explode", "Weapon")
+    TNT1 A 0 A_Explode(350, 128, 0, 0, 48)
+    TNT1 A 0 A_Stop
+    TNT1 A 0 A_SpawnItemEx("CB_Item2PlatformFX1", 0, 0, -12, 0, 0, 5, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("CB_Item2PlatformFX2", 0, 6, -4, 0, 2.5f, 15, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("CB_Item2PlatformFX2", 0, -6, -4, 0, -2.5f, 15, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("CB_Item2PlatformFX2", 0, 10, -8, 0, 4.5f, 11, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("CB_Item2PlatformFX2", 0, -10, -8, 0, -4.5f, 11, 0, 0)
+    TNT1 A 20
+    stop
+  }
 }
 
-actor CB_Item2Platform_InstantGo : CB_Item2Platform
-{
-States
-{
-Spawn:
-I_CI A 0
-I_CI A 0 A_RearrangePointers(0,0,2)
-I_CI A 0 A_GiveInventory("WeaponCharge",1)
-I_CI A 0 A_Stop
-I_CI A 0 A_Cleartarget
-goto MoveStart
-}
+actor CB_Item2Platform_InstantGo : CB_Item2Platform {
+  States {
+   Spawn:
+    I_CI A 0
+    I_CI A 0 A_RearrangePointers(0, 0, 2)
+    I_CI A 0 A_GiveInventory("WeaponCharge", 1)
+    I_CI A 0 A_Stop
+    I_CI A 0 A_Cleartarget
+    goto MoveStart
+  }
 }
 
-actor CB_Item2Detect_P : CustomInventory
-{
-States
-{
-Pickup:
-TNT1 A 0 A_JumpIf(tid!=0,1)
-stop
-TNT1 A 0 A_ChangeVelocity(0,0,-20,3)
-stop
-}
+actor CB_Item2Detect_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIf(tid!=0, 1)
+    stop
+    TNT1 A 0 A_ChangeVelocity(0, 0, -20, 3)
+    stop
+  }
 }
 
-actor CB_Item2Detect
-{
-PROJECTILE
-+SKYEXPLODE
-+DONTBLAST
-+DONTREFLECT
-+DONTSPLASH
-+HITTRACER
-Damage (0)
-radius 6
-height 4
-Speed 0
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 10
-stop
-Death:
-TNT1 A 0 A_GiveInventory("CB_Item2Detect_P",1,8)
-TNT1 A 0 A_GiveToTarget("Item2Flag",1)
-stop
-}
+actor CB_Item2Detect {
+  PROJECTILE
+  +SKYEXPLODE
+  +DONTBLAST
+  +DONTREFLECT
+  +DONTSPLASH
+  +HITTRACER
+  Damage (0)
+  radius 6
+  height 4
+  Speed 0
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 10
+    stop
+   Death:
+    TNT1 A 0 A_GiveInventory("CB_Item2Detect_P", 1, 8)
+    TNT1 A 0 A_GiveToTarget("Item2Flag", 1)
+    stop
+  }
 }
 
-actor CB_Item2PlatformFX1 : BasicNoClassTranslationGraphicEffect
-{
-Translation "202:202=160:160","192:192=218:218","198:198=227:227","199:199=167:167"
-States
-{
-SpawnFrame:
-6PRS A 3
-6PRS BCDEFGH 4
-6PRS I 4//8
-6PRS J 5//9
-stop
-}
+actor CB_Item2PlatformFX1 : BasicNoClassTranslationGraphicEffect {
+  Translation "202:202=160:160", "192:192=218:218", "198:198=227:227", "199:199=167:167"
+  States {
+   SpawnFrame:
+    6PRS A 3
+    6PRS BCDEFGH 4
+    6PRS I 4  // 8
+    6PRS J 5  // 9
+    stop
+  }
 }
 
-actor CB_Item2PlatformFX2 : CB_Item2PlatformFX1
-{
-States
-{
-Spawn:
-6PRS K 0
-6PRS KKKLLLLLLLLMMMMNNNNOOOOPPPP 1 ThrustThingZ(0,3,1,1)
-stop
-}
+actor CB_Item2PlatformFX2 : CB_Item2PlatformFX1 {
+  States {
+   Spawn:
+    6PRS K 0
+    6PRS KKKLLLLLLLLMMMMNNNNOOOOPPPP 1 ThrustThingZ(0, 3, 1, 1)
+    stop
+  }
 }
