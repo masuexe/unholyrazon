@@ -18,8 +18,9 @@ Compile ACS first:
 ```powershell
 New-Item -ItemType Directory -Force -Path acs | Out-Null
 & "D:\AppFiles\ACC\acc.exe" `
+  -i "..\..\src\acs_source\v6b_overrides\_includes\mod_api" `
+  -i "..\..\src\acs_source\v6b_overrides\_includes\common" `
   -i "..\..\src\acs_source\_includes\mod_api" `
-  -i "..\..\src\acs_source\_includes\common" `
   -i "D:\AppFiles\ACC" `
   acs_source\uh_exsurv.acs `
   acs\uh_exsurv.o

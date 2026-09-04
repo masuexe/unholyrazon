@@ -49,8 +49,9 @@ Compile the ACS from the project root with ACC (the include directory contains
 ```powershell
 New-Item -ItemType Directory -Force -Path examples\eyemorph_addon\acs | Out-Null
 & "D:\AppFiles\ACC\acc.exe" `
+  -i "src\acs_source\v6b_overrides\_includes\mod_api" `
+  -i "src\acs_source\v6b_overrides\_includes\common" `
   -i "src\acs_source\_includes\mod_api" `
-  -i "src\acs_source\_includes\common" `
   -i "D:\AppFiles\ACC" `
   examples\eyemorph_addon\acs_source\uh_exeyemorph.acs `
   examples\eyemorph_addon\acs\uh_exeyemorph.o
