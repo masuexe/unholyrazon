@@ -212,13 +212,20 @@ function int GetAspectRatio(void) {
 // (-208/-207/-209), so calls compile to stubs that silently return 0
 // (acc distributions that comment the entries out are unaffected).
 // Use RoundFixedToInt for fixed-to-int rounding.
-// NOTE: UH_SHARED keeps same-named helpers with different semantics in
-// systems/shared/math_helpers.acs (turn-based WrapAround, VectorLength
-// distances); do not unify them blindly.
+// NOTE: systems/shared/math_helpers.acs keeps same-named distance helpers
+// (XyDistance/XyzDistance/Zdistance) with deliberate VectorLength/ZanSqrt
+// implementations instead of these Sqrt8-based ones; do not unify blindly.
 // ---------------------------------------------------------------------------
-function int WrapAround(int i) {
-  if (i < -180.0) return i + 360.0;
-  if (i > 180.0) return i - 360.0;
+// Generalized angle fold: steps i one window-span toward [lo, hi] when just
+// outside it (single-step semantics shared by the legacy Unholy degrees
+// variant and CBM's turns / 0..360 variants; no full normalization).
+// Canonical windows:
+//   WrapAround(x, -180.0, 180.0)  // degrees, symmetric (Samurai aim drag)
+//   WrapAround(x, -0.5, 0.5)      // ACS turns, symmetric
+//   WrapAround(x, 0.0, 360.0)     // degrees, positive range
+function int WrapAround(int i, int lo, int hi) {
+  if (i < lo) return i + (hi - lo);
+  if (i > hi) return i - (hi - lo);
   return i;
 }
 

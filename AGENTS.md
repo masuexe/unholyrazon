@@ -122,8 +122,11 @@ inventory queries) and the `rz_tools.acs` aggregator also live there; the
 Eden-only C396 TID reservation stays at
 `classes/survivors/eden/eden_tid_reserve.acs`. Generic math/geometry helpers
 imported via `#import` live in `_imports/uh_acsutils.acs` (Unholy additions
-section); `systems/shared/math_helpers.acs` keeps same-named helpers with
-different semantics — do not unify them blindly. Color implementation fragments
+section); `WrapAround(i, lo, hi)` there is the single generalized angle fold —
+never reintroduce unit-specific WrapAround variants (they collided across the
+Unholy and CBM lineages). `systems/shared/math_helpers.acs` keeps same-named
+distance helpers with deliberate VectorLength/ZanSqrt implementations — do not
+unify them blindly. Color implementation fragments
 live under `systems/colors/`.
 
 Survivor, boss, and demoneye class logic belongs under `classes/`. GemBanker’s
