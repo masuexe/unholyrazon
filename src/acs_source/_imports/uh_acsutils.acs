@@ -211,7 +211,8 @@ function int GetAspectRatio(void) {
 // zspecial.acs reserves those names as unimplemented engine specials
 // (-208/-207/-209), so calls compile to stubs that silently return 0
 // (acc distributions that comment the entries out are unaffected).
-// Use RoundFixedToInt for fixed-to-int rounding.
+// Use RoundFixedToInt for fixed-to-int rounding.  For the same reason the
+// ceil helper below is named CeilFixedToInt, not Ceil (special -209).
 // NOTE: the XYDistance/XYZDistance/ZDistance family is unified here.
 // XYDistance uses the precise VectorLength builtin; XYZDistance/ZDistance
 // keep integer-unit math (3D fixed-point squaring would overflow 32-bit
@@ -259,6 +260,14 @@ function int XYDistance(int tid1, int tid2) {
   int x = GetActorX(tid1) - GetActorX(tid2);
   int y = GetActorY(tid1) - GetActorY(tid2);
   return VectorLength(x, y) >> 16;
+}
+
+// Ceiling of a fixed-point number into an integer.  Named CeilFixedToInt:
+// "Ceil" is reserved as unimplemented special -209 in the default ACC
+// zspecial.acs (silently returns 0 there).  Mathematically identical to the
+// base game's 8bdmmath.acs zanCiel and to the former uh_shared Zanceil.
+function int CeilFixedToInt(int fixedin) {
+  return (fixedin + 65535) >> 16;
 }
 
 function int ZDistance(int tid1, int tid2) {
