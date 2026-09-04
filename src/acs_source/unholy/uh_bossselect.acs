@@ -1,0 +1,392 @@
+// Boss selection & morphing round flow: pick the round's boss/event,
+// morph the chosen bosses (with retry/fallback), the shadow-boss
+// manager, and the LMS event picker (ub_LMS_EventTime).
+// Fragment of library unholy; selection/morph helpers live in uh_funclib.acs.
+
+script "ub_SelectBossAndEvent" (void) {
+//This makes specific bosses/events happen
+  MultiBossFunction(1);
+  SetUpBossSelection_Func();
+
+  ACS_NamedExecute("ub_MorphSelectedBosses", 0);  //Begin the morphing!
+}
+
+//This is the main script for managing who becomes the boss, as well as morphing them.
+script "ub_MorphSelectedBosses" (void) {
+  Delay(1);  //Wait a tic so the engine processes boss selection script
+
+  SetUpPlayerSelection_Func();
+
+  totalplayersarr[PLS_SURVIVOR] -= multibosscheck;
+  totalplayersarr[PLS_BOSS] += multibosscheck;
+
+  if (shadowfakeoutactive) {
+    ACS_NamedExecute("ub_ShadowBossManager", 0);
+  }  //End of Shadowman
+
+	//Morphing area
+  for (int i = 0; i < multibosscheck; i++) {
+    bossdataarr[i][BOSSDATA_MORPHED] = MorphActorToBoss(bossdataarr[i][BOSSDATA_TID], bossdataarr[i][BOSSDATA_NUM], "GigaAstroExplode");
+    DebugLog(strParam(s:"Morphed Boss ", i:i + 1, s:": ", i:bossdataarr[i][BOSSDATA_MORPHED]));
+  }
+
+	//Musical setting
+  ACS_NamedExecute("ub_PlayVariantMusic", 0, bossdataarr[random(0, multibosscheck - 1)][BOSSDATA_NUM]);
+
+  GiveMeTheFuncExceptBosses("BasicSurvivorItem", 0);
+  SetPlayerProperty(1, 0, 4);  //Allows players to move.
+  ACS_NamedExecuteWait("ub_BossMorphRetryWait", 0, -1);
+
+  ACS_NamedExecute("ub_WatchSurvivors", 0);
+  Delay(1);
+
+  int tempboss1 = bossdataarr[0][BOSSDATA_NUM];
+
+  if (!GetCVAR("uh_sv_NoItems")) {
+    GiveMeTheFuncExceptBosses("SurvivorBoxItems_P", 1);  //Give Items
+  }
+}
+
+script "ub_BossMorphRetryWait" (int failure, int failure2, int failure3, int failure4) {
+  int i;
+  int morphretrycount = 0;
+  while (morphretrycount <= 70) {
+    bool morphingsuccess = true;
+
+    for (i = 0; i < multibosscheck; i++) {
+      if (!bossdataarr[i][BOSSDATA_MORPHED])
+        morphingsuccess = false;
+    }
+    if (morphingsuccess)
+      break;
+    for (i = 0; i < multibosscheck; i++) {
+      if (!bossdataarr[i][BOSSDATA_MORPHED])
+        bossdataarr[i][BOSSDATA_MORPHED] = MorphActorToBoss(bossdataarr[i][BOSSDATA_TID], bossdataarr[i][BOSSDATA_NUM], "GigaAstroExplode");
+    }
+    Delay(1);
+    morphretrycount++;
+  }
+  if (morphretrycount >= 70) {
+    ACS_NamedExecute("ub_MorphFailureFallback", 0, failure);
+		//Football Time
+  }
+
+  if (failure == -1)
+    DebugLog(strParam(s:"Boss Morph FINISHED! --- Retry count = ", i:morphretrycount));
+  if (failure == 0)
+    DebugLog(strParam(s:"Shadow Morph FINISHED! --- Retry count = ", i:morphretrycount));
+}
+
+script "ub_MorphFailureFallback" (int jump) {
+  bool hailmary = false;
+  switch (jump) {
+    case -1:
+      hailmary = true;
+      break;
+    case 0:
+      if (gameover) {terminate;}
+
+      for (int i = 0; i < multibosscheck; i++)
+        if (shadowtricksarr[i])
+          if (ThingCount(0, bossdataarr[i][BOSSDATA_TID]) == 0)
+            hailmary = true;
+
+      break;
+  }
+
+  if (hailmary) {  //Log(s:"Special Left!");// Terminate;}
+
+    ACS_NamedTerminate("ub_WatchSurvivors", 0);
+    ACS_NamedTerminate("ub_WatchBossesAndEyes", 0);
+    SetHudSize(640, 480, 0);
+    SetFont("BIGFONT");
+    HudMessageBold(s:"OH NO, a boss morph failed! ITS TIME FOR \csFOOTBALL\c-!"; HUDMSG_FADEOUT, 51, CR_YELLOW, 320.4, 416.2, 5.0, 0.2);  //432.2
+    PlayMusic(bonuseventlist[13][BONUS_MUSICLUMP]);
+    MusicCredits(bonuseventlist[13][BONUS_MUSICCREDITS], 0);
+
+    GiveMeTheFunc("TheFootBallItemX", 1);
+
+    standardlmseventlocked = true;
+  }
+}
+
+script "ub_UnMorphThisTID" (int w) {
+  SetActivator(w);
+  ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false);
+  UnMorphActor(w, 1);
+  ACS_NamedExecuteWithResult("uh_MorphDemorphReset");
+}
+
+script "ub_TestShadowBoss" (int tid, int bossid) {
+  Delay(1);
+  ACS_NamedExecuteAlways("ub_UnMorphThisTID", 0, tid);
+  Delay(1);
+  ClearActorInventory(tid);
+  GiveActorInventory(tid, "ShadowPreRoundStart", 1);
+  Delay(35 * 5);
+  GiveActorInventory(tid, "ShadowPreRoundEnd", 1);
+  MorphActorToBoss(tid, bossid, "GigaAstroExplode");
+}
+
+script "ub_ShadowBossManager" (void) {
+  SetActivator(0, AAPTR_NULL);
+
+  int delayshad = 0;
+  until (delayshad >= 10) {  //Bot checks are needed because they can cause crashes through this script.
+    bool ninjaexists = false;
+    for (int i = 0; i < multibosscheck; i++) {
+      if (shadowtricksarr[i]) {
+        if (ThingCount(0, bossdataarr[i][BOSSDATA_TID]) == 0 || PlayerIsBot(bossdataarr[i][BOSSDATA_TID] - 1000))
+          shadowtricksarr[i] = false;
+        else
+          ninjaexists = true;
+      }
+    }
+    if (!ninjaexists)
+      terminate;
+    Delay(35 * 1);
+    delayshad++;
+  }
+
+	//If(shadowFakeoutActive){
+	//	GiveActorInventory(669,"PURPLEPOTIONITEM",2);
+	//	ACS_Terminate(836,0);
+	//	////////////shadowFakeoutActive=false;
+	//}
+	//else {
+	//Delay(35*8);}
+	//if(ThingCount(0,666)==0) {Terminate;}//Prevent Shadowman from spawning in multibosses if the leader is dead
+	////////////SetActivator(666);
+
+	//
+  DebugLog(strParam(s:"Begin shadow fakeout"));
+
+  MusicSaveFunc();
+  PlayMusic("");
+  MusicCredits("Something is lurking", 1);
+
+  AmbientSound("misc/devildeath", 127);
+
+  ClearHudMessage(166);  //Timer
+  ClearHudMessage(167);  //Timer
+  ClearHudMessage(59);  //Boss Weapon Info
+
+  shadowrevealactive = true;
+
+  int tempboss;
+  for (i = 0; i < multibosscheck; i++) {
+
+    if (shadowtricksarr[i]) {
+      ClearHudMessage(91 + i);  //Boss Healths
+      ACS_NamedExecuteAlways("ub_UnMorphThisTID", 0, bossdataarr[i][BOSSDATA_TID]);
+
+      tempboss = ForceBossChange(strparam(s:"uh_sv_ForcedShadowBoss", i:i + 1), false);
+			//ShowMeTheRCON("Shadow Boss",TempBoss);
+      if (tempboss == UHBOSS_FAIL) {
+        if (RandomPercent(5))
+          tempboss = bossdataarr[i][BOSSDATA_NUM];  //No Change
+				// else if(RandomPercent(40))
+				// 	TempBoss = 301;//AbePenny
+				// else if(RandomPercent(55))
+				// 	TempBoss = random(303,305);
+        else
+          tempboss = TrueRandomBoss();
+      }
+      bossdataarr[i][BOSSDATA_MORPHED] = tempboss;  //Borrow this Array
+    }
+  }
+
+  Delay(1);  //Delay needed otherwise unmorph doesn't happen correctly
+
+  for (i = 0; i < multibosscheck; i++) {
+    if (shadowtricksarr[i]) {
+      ClearActorInventory(bossdataarr[i][BOSSDATA_TID]);
+      GiveActorInventory(bossdataarr[i][BOSSDATA_TID], "ShadowPreRoundStart", 1);
+    }
+  }
+
+  Delay(35 * 2);
+
+	//NEW#BOSS
+	//if(ShadowTricksArr[0] && UnholyBoss1 == 300){ UnholyBoss1 = random(100,BOSSRNGMAX_100_199); }
+
+	//	If(shadowFakeoutActive){
+	//		MusicCredits("Super Mario Sunshine - Shadow Mario (Sped-up)",0);
+	//		PlayMusic("SHADSHAD");
+	//		shadowFakeoutActive = false;
+	//	}
+	//	break;
+
+	//If(shadowFakeoutActive){
+	//	Delay(35*2);
+	//	AmbientSound("items/GoldTank",127);
+	//	GiveActorInventory(669,"PTankItem",1);
+	//	GiveActorInventory(669,"PowerSTank",1);
+	//	GiveActorInventory(669,"SpeedTrailofEnvy",1);
+	//	SetActorProperty(669, APROP_JumpZ, 15.0);
+	//	SetActorProperty(669, APROP_SPEED, 1.25);
+	//	Delay(35*3);
+	//	//shadowFakeoutActive=false;
+	//}
+	//else {Delay(35*5);}
+
+  Delay(35 * 3);
+  DebugLog(strParam(s:"Shadow Delay is over"));
+
+  int shadowtunesnum = -1;
+
+  for (i = 0; i < multibosscheck; i++) {
+    if (shadowtricksarr[i]) {
+      if (PlayerInGame(bossdataarr[i][BOSSDATA_TID] - 1000)) {
+        GiveActorInventory(bossdataarr[i][BOSSDATA_TID], "ShadowPreRoundEnd", 1);
+        bossdataarr[i][BOSSDATA_NUM] = bossdataarr[i][BOSSDATA_MORPHED];  //Use borrowed Array
+        bossdataarr[i][BOSSDATA_MORPHED] = MorphActorToBoss(bossdataarr[i][BOSSDATA_TID], bossdataarr[i][BOSSDATA_NUM], "GigaAstroExplode");
+        if (shadowtunesnum == -1)
+          shadowtunesnum = bossdataarr[i][BOSSDATA_NUM];
+      }
+      else {shadowtricksarr[i] = false;}
+    }
+  }
+
+  if (shadowtunesnum == -1) {
+    PlayMusic(musicaleventindex[8][0]);
+    MusicCredits(musicaleventindex[8][1], 0);
+  }
+  else {
+    ACS_NamedExecute("ub_PlayVariantMusic", 0, shadowtunesnum);
+  }
+
+  Delay(1);
+
+  ACS_NamedExecuteWait("ub_BossMorphRetryWait", 0, 0);
+
+  shadowrevealactive = false;
+  refreshhudmessage = true;
+	//ACS_Execute(WATCHER_BOSS_HP,0,0);
+}
+
+
+//The LMS script
+script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
+  bool rareitemcheck = false;
+  int therunenumber = -1;
+  int therunenumberx = -1;
+  int musrow;
+  int dualrune;
+
+  int lmscount = 0;
+  until (lmscount == 64) {  //Find the lone survivor!
+    if (playerlifestatusarr[lmscount] == PLS_SURVIVOR) {
+      thelmsdude = lmscount + 1000;  //Record the player number!
+      break;
+    }
+    lmscount++;
+  }
+
+  Delay(1);
+
+  int lms_cvar = CheckClearCvar("uh_sv_LMSEvent", -1);
+  if (lms_cvar >= 0 && IsLMSEventDefined(lms_cvar)) {
+    lmsnum = lms_cvar;
+    ShowMeTheRCON("The LMS Event", lms_cvar);
+  }
+  else if (!IsLMSEventDefined(lmsnum)) {
+    lmsnum = PickLMSEvent();
+    if (lmsnum == UHLMS_FAIL)
+      terminate;
+  }
+
+  if (RandomPercent(rarelmsrune)) {  //
+    therunenumber = RandomRune(RANDRUNE_RARE);
+    rarelmsrune = 10;
+  }
+  else {
+    therunenumber = RandomRune(RANDRUNE_COMMON);
+    rarelmsrune += random(2, 6);
+  }
+
+  if (random(rarelmstime, 20) >= 20 || forcerare == 7) {
+    rarelmstime = 0;
+    rareitemcheck = true;
+  }
+  else {
+    rarelmstime++;
+  }
+
+  dualrune = (GetLMSEventFlags(lmsnum) & UHLMS_FLAG_DUALRUNE) != 0;
+  if (dualrune) {
+    do {
+      if (rareitemcheck) {
+        therunenumberx = RandomRune(RANDRUNE_RARE);
+      }
+      else {
+        therunenumberx = RandomRune(RANDRUNE_COMMON);
+      }
+    } while (therunenumber == therunenumberx);
+  }
+
+
+  SetFont("BIGFONT");
+  SetHudSize(640, 480, 0);
+
+  str therune_str = StrParam(s:"\c- got a ", s:runeoftheday[therunenumber]);
+  if (dualrune) {
+    therune_str = StrParam(s:therune_str, s:" & ", s:runeoftheday[therunenumberx], s:" Rune!\n");
+  }
+  else {
+    therune_str = StrParam(s:therune_str, s:" Rune!\n");
+  }
+
+  str itemmessage;
+  if (rareitemcheck) {itemmessage = GetLMSEventraremessage(lmsnum);}
+  else {itemmessage = GetLMSEventMessage(lmsnum);}
+
+  HudMessageBold(n:thelmsdude - 999, s:therune_str, s:itemmessage; HUDMSG_FADEOUT | HUDMSG_LOG, 70, CR_YELLOW, 320.4, 336.2, 1.8, 0.2);  //396.2
+
+  ACS_NamedExecuteAlways("ub_LMS_EventIconStart", 0, lmsnum, rareitemcheck);  //4836
+
+  musrow = PickEventMusicRow(UHMUS_KIND_LMS, lmsnum);
+  if (musrow >= 0) {
+    PlayMusic(GetBossMusicLumpByRow(musrow));
+    MusicCredits(GetBossMusicCreditByRow(musrow), 0);
+  }
+  else if (lmsnum >= 0 && lmsnum <= 11) {
+    PlayMusic(lmslistarray[lmsnum][LMS_MUSICLUMP]);
+    MusicCredits(lmslistarray[lmsnum][LMS_MUSICCREDITS], 0);
+  }
+  survwinwithlms = true;
+
+  while (CheckActorInventory(thelmsdude, "IsBlessedWithLMSPower") == 0) {
+
+		//Failsafe for a player not getting the LMS
+    GiveActorInventory(thelmsdude, "IsBlessedWithLMSPower", 1);
+
+    if (therunenumber == RUNE_DRAIN || therunenumberx == RUNE_DRAIN && CheckActorInventory(thelmsdude, "PowerPeriwinkleDrain") >= 1) {  //Drain
+      TakeActorInventory(thelmsdude, "PowerPeriwinkleDrain", 99);  //Prevent Ptanks from conflicting with drain rune!
+    }
+    if (therunenumber == RUNE_RESISTANCE || therunenumberx == RUNE_RESISTANCE) {  //Resistance
+      GiveActorInventory(thelmsdude, "AutoHamburgerFoodItem", 1);  //Force 2000 healing on player
+    }
+
+		// GiveActorInventory(TheLMSDude,StrParam(s:RuneOfTheDay[TheRuneNumber],s:"Rune_ST"),1);
+    ACS_NamedExecuteWithResult("uh_runeplayer", thelmsdude - 999, 1, therunenumber);
+    if (dualrune) {ACS_NamedExecuteWithResult("uh_runeplayer", thelmsdude - 999, 1, therunenumberx);}
+
+    if (therunenumber == 0 || therunenumberx == 0) {  //Prosperity
+      GiveActorInventory(thelmsdude, "AutoSundaeFoodItem", 1);
+      if (RandomPercent(15)) {GiveActorInventory(thelmsdude, "MysticBoxItem", 1);}
+      else {GiveActorInventory(thelmsdude, "PandoraBoxItem", 2);}
+    }
+
+    GrantLMSEventDrops(thelmsdude, lmsnum, rareitemcheck);
+
+    for (int i = 0; i < 35; i++) {
+      if (!PlayerInGame(thelmsdude - 1000) ||
+         CheckActorInventory(thelmsdude, "IsDead") ||
+         CheckActorInventory(thelmsdude, "IsBlessedWithLMSPower"))
+        break;
+      Delay(2);
+    }
+  }  //While End
+}
+

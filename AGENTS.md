@@ -134,6 +134,20 @@ reserved `Ceil`/`Floor`/`Round` names).
 Color implementation fragments
 live under `systems/colors/`.
 
+`unholy/` is the LMS round-core module, compiled as the single `unholy`
+library (its LOADACS entry must stay; do not split it into multiple
+libraries). Fragments map to responsibility clusters: `uh_def` (unit state
+header), `uh_funclib` (shared function drawer), `uh_lifecycle`,
+`uh_bossselect` and `uh_dickhead_revival` (round flow, split from the former
+monolithic aggregator), `uh_events` (round event system, ex-`uh_bonus`),
+`uh_bosscore` + `uh_arena_fx` (ex-`uh_bspecial`),
+`clownpiece_spellcard.acs` (Clownpiece-only spell-card flow; sole caller
+`Clownpiece_W.dec`), `uh_display`/`uh_aspect` (boss/round HUD), `uh_music`
+(music runtime; registration lives in `systems/music/`), and `uh_access`
+(named-script API used by other libraries). `debug/rz_debug.acs` also
+includes `uh_def` and `uh_funclib` — keep them unrenamed or update that
+include list.
+
 Survivor, boss, and demoneye class logic belongs under `classes/`. GemBanker’s
 user-option bridge is kept in `classes/bosses/gem_banker_hud.acs`, while the
 shared weapon roulette remains in `classes/shared/class_weapon_roulette.acs`.
