@@ -277,6 +277,24 @@ function int ZDistance(int tid1, int tid2) {
   return z;
 }
 
+// XYZDistance variant whose first anchor is a raw fixed-point position
+// instead of a TID; returns integer map units.  (Former uh_shared
+// DistanceVal; live caller: FloorQuake radius checks in status_effects.acs.)
+function int XYZDistanceFromPoint(int x, int y, int z, int tid2) {
+  int dx, dy, dz, d;
+  dx = x - GetActorX(tid2);
+  dy = y - GetActorY(tid2);
+  dz = z - GetActorZ(tid2);
+  d = VectorLength(VectorLength(dx, dy), dz) >> 16;
+  return d;
+}
+
+// Team convenience check: true when the given team differs from the target
+// player's team.  Currently no callers; kept for future use.
+function bool IsDifferentTeams(int team, int targetnumber) {
+  return (team != GetPlayerInfo(targetnumber, PLAYERINFO_TEAM));
+}
+
 // Fixed-point cousins of the XY/XYZ/ZDistance family above: they take raw
 // offset components (not TIDs) and return fixed point (compare against
 // fixed maxdist, or >>16 for map units).  CBM lineage (BUGFIX_F.acs
