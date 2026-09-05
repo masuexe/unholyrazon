@@ -91,6 +91,34 @@ script "uh_ZangiefSetThrow" (int target, int force, int zforce) {
   ThrustThingZ(target, zforce, 0, 0);
 }
 
+// Flight watch for the SuperArm throw, called once per tic by the flying
+// NegaSuperArmSlam (activator = the slam). Shadows the thrown player
+// (tid = suplexid-1+1000) so the slam rides on them mid-air, and reports when
+// to detonate: 0 = still flying, 1 = landed or wall-hit (or forced while
+// present), 2 = victim gone or dead -> the slam fizzles without a boom.
+// A thrown player never bounces: their horizontal velocity collapsing to ~0
+// while still airborne means they slammed into a wall.
+script "rz_NegaSuperArmThrowFollow" (int tid, int force) {
+  if (!ThingCount(T_NONE, tid) || GetActorProperty(tid, APROP_HEALTH) <= 0) {
+    setResultValue(2);
+    terminate;
+  }
+  // AntiInvincible_P strips the victim's own protections (Zangief parity: the
+  // slam is MEANT to hurt the thrown player). Refresh per tic so protection
+  // they pick up mid-flight cannot eat the landing boom.
+  GiveActorInventory(tid, "AntiInvincible_P", 1);
+  // Thing_Move's third arg is NOFOG (p_lnspec.cpp: arg2 ? false : true) —
+  // 0 would spawn teleport fog on every per-tic shadow move.
+  Thing_Move(0, tid, 1);
+  int wallhit = abs(GetActorVelX(tid)) + abs(GetActorVelY(tid)) < 1.0;
+  int landed = GetActorVelZ(tid) <= 0 && GetActorZ(tid) <= GetActorFloorZ(tid) + 4.0;
+  if (force || wallhit || landed) {
+    setResultValue(1);
+    terminate;
+  }
+  setResultValue(0);
+}
+
 script "uh_ZangiefGrabReverse" (int pitch, int angle, int grab_d, int grablimit) {
   int target = ACS_namedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
   SetActivator(0, 8);
@@ -118,5 +146,3 @@ script "uh_ZangiefGrabReverse" (int pitch, int angle, int grab_d, int grablimit)
     setResultValue(0);
   }
 }
-
-
