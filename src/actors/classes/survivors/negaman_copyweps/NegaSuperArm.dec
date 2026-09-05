@@ -6,7 +6,7 @@ actor NegaSuperArmWep : BaseNegaManWep {
   Weapon.SlotNumber 4
   Inventory.Pickupmessage "$PU_02_MM2z"
   Obituary "$OB_SuperArm"
-  Tag "$TAG_NegaMan_W2c"
+  Tag "$TAG_NegaMan_W1e"
   weapon.ammotype "NegaMM1_Ammo"
   inventory.icon "NEG_SARM"
   States {
@@ -15,7 +15,13 @@ actor NegaSuperArmWep : BaseNegaManWep {
     loop
 
    Deselect:
-    6K02 P 0
+    6K02 P 0 A_JumpIfInventory("ZangiefHoldFlag", 1, "DeselectThrow")
+    goto DeselectSwap
+   DeselectThrow:
+    6K02 P 0 A_TakeInventory("ZangiefHoldFlag")
+    6K02 P 0 A_GiveInventory("NegaSuperArmThrow_P")
+    6K02 P 2
+    6K02 P 0 A_GiveInventory("ZangiefResetFlags_P")
     goto DeselectSwap
    Select:
     6K02 P 0
@@ -27,7 +33,7 @@ actor NegaSuperArmWep : BaseNegaManWep {
     6K02 P 0 A_JumpIfNoAmmo("NoAmmo")
     6K02 P 8 A_WeaponReady
     6K02 P 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
-    Goto Ready+2
+    Goto ReadyX
    ReadyNoAmmo:
     6K02 P 8 A_WeaponReady(4)
     6K02 P 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
@@ -35,70 +41,44 @@ actor NegaSuperArmWep : BaseNegaManWep {
     Goto ReadyX
 
    Fire:
-    6H51 B 0 A_JumpIfInventory("ZangiefHoldFlag", 1, "SuplexThrow")
+    6K02 P 0 A_JumpIfInventory("ZangiefHoldFlag", 1, "Throw")
+   FireX:
     6K02 P 0 A_JumpIfNoAmmo("NoAmmo")
     6K02 P 0 A_PlaySoundEx("weapons/mm1/superarmload", "Weapon")
-    6K02 P 1 A_FireCustomMissile("NegaSuperArmGrab", 0, 0, 0, 0, 1, 0)
-    6K02 P 0 A_JumpIfInventory("SuplexID", 1, "Suplex")
-    6K02 P 1 A_FireCustomMissile("NegaSuperArmGrab", 0, 0, 0, 0, 1, 0)
-    6K02 P 0 A_JumpIfInventory("SuplexID", 1, "Suplex")
-    6K02 P 1 A_FireCustomMissile("NegaSuperArmGrab", 0, 0, 0, 0, 1, 0)
-    6K02 P 0 A_JumpIfInventory("SuplexID", 1, "Suplex")
-    6K02 P 1 A_FireCustomMissile("NegaSuperArmGrab", 0, 0, 0, 0, 1, 0)
-    6K02 P 0 A_JumpIfInventory("SuplexID", 1, "Suplex")
-    6K02 P 4
-    6K02 P 0 A_Refire
+    6K02 P 1 A_FireCustomMissile("NegaSuperArmGrab", 0, 1, 0, 0, 1, 0)
+    6K02 P 1 A_JumpIfInventory("SuplexID", 1, "CarryStart")
+    6K02 P 1 A_JumpIfInventory("SuplexID", 1, "CarryStart")
+    6K02 P 1 A_JumpIfInventory("SuplexID", 1, "CarryStart")
+    6K02 P 1 A_JumpIfInventory("SuplexID", 1, "CarryStart")
+    6K02 P 1 A_JumpIfInventory("SuplexID", 1, "CarryStart")
+    6K02 P 0 A_Refire("FireX")
     Goto ReadyX
-   Suplex:
-    6H51 E 1 A_GiveInventory("Zangief_SuplexStartG_P")
-    6H51 E 1 A_Jumpif(CallACS("uh_ZangiefGrab", 350, angle*256/360, 100)==0, "AtomicKaboom")
-    6H51 E 1 A_Jumpif(CallACS("uh_ZangiefGrab", 340, angle*256/360, 100)==0, "AtomicKaboom")
-    6H51 E 1 A_Jumpif(CallACS("uh_ZangiefGrab", 330, angle*256/360, 100)==0, "AtomicKaboom")
-    6H51 E 1 A_Jumpif(CallACS("uh_ZangiefGrab", 320, angle*256/360, 100)==0, "AtomicKaboom")
-    6H51 E 1 A_Jumpif(CallACS("uh_ZangiefGrab", 310, angle*256/360, 100)==0, "AtomicKaboom")
-    goto SuplexGroundHold+1
-   SuplexGroundHold:
-    6H51 E 0 A_Jumpif(CallACS("uh_ZangiefGrab", 300, angle*256/360, 100)==0, "AtomicKaboom")
-    6H51 E 1 A_GiveInventory("SuplexHold_P")
-    6H51 E 0 A_JumpIfInventory("ZangiefHoldFlag", 60, "SuplexGroundRelease")
-    loop
-   SuplexGroundRelease:
-    6H51 E 0 A_GiveInventory("VivifyDelay3")
-    6H51 E 1 A_Jumpif(CallACS("uh_ZangiefGrab", 310, angle*256/360, 92)==0, "AtomicKaboom")
-    6H51 E 1 A_Jumpif(CallACS("uh_ZangiefGrab", 320, angle*256/360, 84)==0, "AtomicKaboom")
-    6H51 E 1 A_Jumpif(CallACS("uh_ZangiefGrab", 330, angle*256/360, 76)==0, "AtomicKaboom")
-    6H51 E 1 A_Jumpif(CallACS("uh_ZangiefGrab", 340, angle*256/360, 68)==0, "AtomicKaboom")
-    6H51 E 1 A_Jumpif(CallACS("uh_ZangiefGrab", 350, angle*256/360, 60)==0, "AtomicKaboom")
-   AtomicKaboom:
-    6H51 E 0 A_GiveInventory("Zangief_FireSlam_P2")
-    6H51 E 2 A_GiveInventory("VivifyDelay4")
-    6H51 DC 2
-    6H51 B 0 A_GiveInventory("ZangiefResetFlags_P")
-    6H51 B 6 A_GiveInventory("AtomicSuplexAmmo", 3)
-    goto ReadyX
-   AtomicRelease:
-    6H51 E 0 A_GiveInventory("ZangiefHoldFlagRemover_P")  // A_TakeInventory("ZangiefHoldFlag")
-    goto AtomicKaboom+1
-   AtomicThrow:
-    6H51 E 0 A_GiveInventory("Zangief_FireSlam_P3")
-    goto AtomicKaboom+1
 
-   SuplexThrow:
-    6H51 E 1 A_Jumpif(CallACS("uh_ZangiefGrab", 315, angle*256/360, 90)==0, "AtomicKaboom")
-    6H51 E 1 A_Jumpif(CallACS("uh_ZangiefGrab", 330, angle*256/360, 80)==0, "AtomicKaboom")
-    6H51 E 1 A_Jumpif(CallACS("uh_ZangiefGrab", 345, angle*256/360, 70)==0, "AtomicKaboom")
-    6H51 E 0 A_JumpIf(momz<0, "SuplexThrowDown")
-   SuplexThrowUp:
-    6H51 E 0
-    6H51 E 1 A_Jumpif(CallACS("uh_ZangiefGrab", 359, angle*256/360, 65)==0, "AtomicKaboom")
-    6H51 E 0 A_JumpIf(CallACS("core_checkfooting"), "AtomicThrow")
-    6H51 E 0 A_JumpIf(momz>0, "SuplexThrowUp")  // GoingUp
-   SuplexThrowDown:
-    6H51 E 0
-    6H51 E 1 A_Jumpif(CallACS("uh_ZangiefGrab", 359, angle*256/360, 65)==0, "AtomicKaboom")
-    6H51 E 0 A_JumpIf(CallACS("core_checkfooting"), "AtomicThrow")
-    6H51 E 0 A_JumpIf(momz<0, "SuplexThrowDown")
-    goto AtomicThrow
+   CarryStart:
+    6K02 P 1 A_GiveInventory("NegaSuperArmCarryStart_P")
+    // uh_ZangiefGrab pitch = 360 - elevation: 330 = 30 deg up, 300 = 60 deg up,
+    // 270 = straight overhead. Pull the victim up over the head like the
+    // SuplexGroundHold does, ending at dist 64 (SuperArm rock height ~76).
+    6K02 P 1 A_JumpIf(CallACS("uh_ZangiefGrab", 330, angle*256/360, 96)==0, "GrabLost")
+    6K02 P 1 A_JumpIf(CallACS("uh_ZangiefGrab", 300, angle*256/360, 84)==0, "GrabLost")
+   CarryLoop:
+    6K02 P 0 A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle*256/360, 64)==0, "GrabLost")
+    6K02 P 1 A_GiveInventory("NegaSuperArmHold_P")
+    loop
+
+   Throw:
+    6K02 P 0 A_TakeInventory("ZangiefHoldFlag")
+    6K02 P 0 A_GiveInventory("NegaSuperArmThrow_P")
+    6K02 P 2
+   ThrowEnd:
+    6K02 P 0 A_GiveInventory("ZangiefResetFlags_P")
+    6K02 P 6
+    goto ReadyX
+
+   GrabLost:
+    6K02 P 0 A_GiveInventory("ZangiefResetFlags_P")
+    6K02 P 4
+    goto ReadyX
 
    NoAmmo:
     6K02 P 1 A_JumpIfInventory("IsBot", 1, "NoAmmo_B")
@@ -109,9 +89,11 @@ actor NegaSuperArmWep : BaseNegaManWep {
   }
 }
 
+// Grab bolt: a hit on a player feeds the shared Pain.Suplex -> PainSuplexHit ->
+// SuplexID pipeline (victim TID = SuplexID-1+1000); a miss explodes as a small poke.
 actor NegaSuperArmGrab : BasicFastProjectile {
   damagetype "Suplex"
-  Obituary "$OB_51M1"
+  Obituary "$OB_SuperArm"
   +DONTBLAST
   +DONTREFLECT
   +FORCEXYBILLBOARD
@@ -134,6 +116,68 @@ actor NegaSuperArmGrab : BasicFastProjectile {
    XDeath:
     6P51 E 0 A_Stop
     // 6P51 DEFED 2
+    stop
+  }
+}
+
+// Carry start: toggle the grabber stacks. Victim positioning is handled by the
+// per-tic uh_SuperArmCarry pull-in in the weapon states (overhead anchor).
+// Deliberately no invulnerable/nonshootable here: the carry has no time limit,
+// so the grabber must stay killable (Zangief's invuln is balanced by his
+// 60-tic hold cap).
+actor NegaSuperArmCarryStart_P : CustomInventory {
+  states {
+   Pickup:
+    TNT1 A 0 A_PlaySound("KirbyNES/FoeGrab", 1)
+    TNT1 A 0 A_GiveInventory("ZangiefHoldFlag", 1)
+    TNT1 A 0 A_GiveInventory("IsPerformingSuplex")
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_nopushplayer", 0, true)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_NoHitStunplayer", 0, true)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_cantuseitemsplayer", 0, true)
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_unsolidplayer", 0, USP_TOGGLEON)
+    stop
+  }
+}
+
+// Carry tick: hold marker (maxamount 60 caps itself) + weapon ready without the
+// Nega slide altfire; switching stays allowed so Deselect can auto-throw.
+actor NegaSuperArmHold_P : CustomInventory {
+  states {
+   Pickup:
+    TNT1 A 0 A_GiveInventory("ZangiefHoldFlag", 1)
+    TNT1 A 0 A_WeaponReady(WRF_NOSECONDARY)
+    stop
+  }
+}
+
+// Release: protect the victim from their own slam, spawn the slam at their center,
+// then hurl them along the SuperArm Gutrock arc (30 u/tic forward, velz set +5.0).
+actor NegaSuperArmThrow_P : CustomInventory {
+  states {
+   Pickup:
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ZangiefGiver", 0, 0, CallACS("rz_CountInv_SuplexID")-1+1000)
+    TNT1 A 0 A_SpawnItemEx("NegaSuperArmSlam", 0, 0, 0, 0, 0, 0, 0, 1+8+32)
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ZangiefSetThrow", 0, CallACS("rz_CountInv_SuplexID")-1+1000, 30, 20)
+    stop
+  }
+}
+
+actor NegaSuperArmSlam : BasicExplosion {
+  damagetype "SuperArm"
+  Obituary "$OB_NegaSuperArm"
+  +NOTARGETSWITCH
+  scale 2.5
+  Args 75, 75, 128, 64
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SetArg(4, 1+CallACS("uh_checkrune", RUNE_SPREAD, 2)*2)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_WarpToPlayerCenter", CallACS("rz_CountInv_SuplexID", 2)+999)
+    TNT1 A 0 A_Explode(random(Args[0]*Args[4], Args[1]*Args[4]), Args[2], 0, false, Args[3])
+   Boom:
+    TNT1 A 0 A_PlaySoundEx("weapons/mm1/superarmsplit", "Voice")
+    TNT1 AAAAAAAA 0 A_SpawnItemEx("GutrockFX", random(-16,16), random(-16,16), random(8,32), random(-10,10), random(-10,10), random(5,10), random(0,359), 1)
+    TNT1 A 4 A_SpawnItemEx("BasicBoom4FX_ColorX", 0, 0, 0, 0, 0, 0, 0, 1+16384)
     stop
   }
 }
