@@ -13,8 +13,10 @@
 #libdefine UH_MAX_CUSTOM_EYE 256
 #libdefine UH_MAX_VANILLA_ITEM 256
 #libdefine UH_MAX_CUSTOM_ITEM 256
+#libdefine UH_MAX_SURVWEP 256
 #libdefine UHBOSS_FAIL -9999
 #libdefine UHSURV_FAIL -9999
+#libdefine UHSURVWEP_FAIL -9999
 #libdefine UHEYE_FAIL -9999
 #libdefine UHITEM_FAIL -9999
 #libdefine UHEYE_FLAG_NOSUFFIX 1
@@ -600,6 +602,43 @@ function int SurvWriteCustom(str actor, str name, str mugshot) {
 	uh_survcustomstr[i][UHSURV_STR_MUGSHOT] = mugshot;
 	uh_survcustomcount++;
 	return survid;
+}
+
+function int GetSurvivorCustomCount(void) {
+	return uh_survcustomcount;
+}
+
+// --- Survivor weapon registry (uh_StripSurvivorWeps) -------------------------
+// Explicit rows for survivor-side weapons the <Actor>_W / _W1.._W9 family rule
+// cannot derive (e.g. Eden's item-named variants). Dedup compares StrICmp,
+// same as FindCopyWepByKindActor; store the DECORATE-canonical class name.
+
+int uh_survwepcount = 0;
+str uh_survwepactor[UH_MAX_SURVWEP];
+
+function int SurvWepRegister(str wepactor) {
+	int i;
+	if (StrCmp(wepactor, "") == 0)
+		return UHSURVWEP_FAIL;
+	for (i = 0; i < uh_survwepcount; i++) {
+		if (StrICmp(uh_survwepactor[i], wepactor) == 0)
+			return i;
+	}
+	if (uh_survwepcount >= UH_MAX_SURVWEP)
+		return UHSURVWEP_FAIL;
+	uh_survwepactor[uh_survwepcount] = wepactor;
+	uh_survwepcount++;
+	return uh_survwepcount - 1;
+}
+
+function int GetSurvivorWepCount(void) {
+	return uh_survwepcount;
+}
+
+function str GetSurvivorWepActor(int row) {
+	if (row < 0 || row >= uh_survwepcount)
+		return "";
+	return uh_survwepactor[row];
 }
 
 // --- DefineDemoneye tables ---------------------------------------------------
@@ -1470,6 +1509,16 @@ function int GetCopyWepRegenFlags(int row) {
 	if (row < 0 || row >= uh_copycount)
 		return 0;
 	return uh_copyregenflags[row];
+}
+
+function int GetCopyWepCount(void) {
+	return uh_copycount;
+}
+
+function str GetCopyWepActor(int row) {
+	if (row < 0 || row >= uh_copycount)
+		return "";
+	return uh_copyactor[row];
 }
 
 function int DefineCopyWepCore(int kind, int slot, str wepactor) {

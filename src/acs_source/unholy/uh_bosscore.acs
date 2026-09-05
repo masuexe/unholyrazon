@@ -260,7 +260,7 @@ script "uh_DemoneyeMorph" (int whoisit, int bonus) {
 
   // MorphProjectile copies survivor inventory — strip weapons + class-color flags
   // (DecoyBot IsDecoyBotFlag / DecoyBot_W* otherwise keep auto-color after eye Ready).
-  GiveInventory("RemoveWeaponsOfMortals_P", 1);
+  GiveInventory("RemoveSurvivorWeps_P", 1);
   TakeInventory("IsDecoyBotFlag", 1);
   TakeInventory("IsDecoyBotSFlag", 1);
   TakeInventory("IsNegaManFlag", 1);
@@ -297,5 +297,69 @@ script "uh_DemoneyeMorph" (int whoisit, int bonus) {
     if (StrCmp(paidname, "") == 0)
       paidname = StrParam(s:"\ckDemoneye #", i:whoisit);
     HudMessageBold(n:0, s:" \ckwas paid to become ", s:paidname, s:"\c-!"; HUDMSG_FADEOUT | HUDMSG_LOG, 49, CR_YELLOW, 320.4, 464.2, 1.8, 0.2);
+  }
+}
+
+// --- Survivor weapon strip (registry-driven) ---------------------------------
+// Called via RemoveSurvivorWeps_P from BasicBossItem, uh_DemoneyeMorph and
+// uh_shinyclassmorpher — all strip BEFORE giving boss/morph weapons, and boss
+// weapons (BaseUnholyBossWep family) are absent from every swept registry.
+// Take amount 1: weapons carry Amount 1, so one take destroys the item.
+// Runs alongside the legacy per-class A_TakeInventory list until it retires.
+
+function void UH_SweepSurvivorWepFamily(str survactor) {
+  int i;
+  if (StrLen(survactor) == 0)
+    return;
+  TakeInventory(StrParam(s:survactor, s:"_W"), 1);
+  for (i = 1; i <= 9; i++)
+    TakeInventory(StrParam(s:survactor, s:"_W", i:i), 1);
+}
+
+script "uh_StripSurvivorWeps" (void) {
+  int i;
+  int id;
+  int n;
+  str a;
+
+  // 1. Copy weapon registry: WepU / Nega / Qwant pools + DefineCopyWep addons.
+  n = GetCopyWepCount();
+  for (i = 0; i < n; i++) {
+    a = GetCopyWepActor(i);
+    if (StrLen(a) > 0)
+      TakeInventory(a, 1);
+  }
+
+  // 2. Survivor registry: <Actor>_W / _W1.._W9 weapon families (vanilla 0..60
+  // plus DefineSurvivor custom rows).
+  for (id = 0; id < UH_MAX_VANILLA_SURV; id++) {
+    if (IsSurvivorDefined(id))
+      UH_SweepSurvivorWepFamily(GetSurvivorActor(id));
+  }
+  n = GetSurvivorCustomCount();
+  for (i = 0; i < n; i++)
+    UH_SweepSurvivorWepFamily(GetSurvivorActor(-1 - i));
+
+  // 3. Survivor weapon registry: item-named variants (Eden118_W, Eden678_W)
+  // and DefineSurvivorWep addon rows.
+  n = GetSurvivorWepCount();
+  for (i = 0; i < n; i++) {
+    a = GetSurvivorWepActor(i);
+    if (StrLen(a) > 0)
+      TakeInventory(a, 1);
+  }
+
+  // 4. v6b DTADD rotation registry (DefineWeapon rows, incl. addons). Gated by
+  // uh_sv_StripDTADDWeps for troubleshooting. Row reads go through
+  // uh_GetDTADDWepActor_S — UH_TOOLS owns the 8bdt import (see
+  // systems/tools/dtadd_query.acs). 1000 = MAX_WEAPONS_GLOBAL_LIMIT; rows past
+  // the registered count return "" and skip.
+  if (GetCVar("uh_sv_StripDTADDWeps")) {
+    for (i = 0; i < 1000; i++) {
+      ACS_NamedExecuteWithResult("uh_GetDTADDWepActor_S", i);
+      a = GetCVarString("uh_dsw_out_str");
+      if (StrLen(a) > 0)
+        TakeInventory(a, 1);
+    }
   }
 }

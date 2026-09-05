@@ -2,9 +2,10 @@
 #include "zcommon.acs"
 #include "uhadd.acs"
 
-// Vanilla survivors: KEYCONF order == stable id 0..58. Hand-edit as needed.
+// Vanilla survivors: KEYCONF order == stable id 0..60. Hand-edit as needed.
 // Mugshot = BHW SetFont name (C@ICN{id}), same patches as TEXTURES.classes.faces.
 // Shiny class = actor + "Shiny" (not stored). DecoyBot has no player shiny.
+// Addon survivors append at KEYCONF 61+ via DefineSurvivor(-1, ...).
 
 function void RegisterVanillaSurvivors(void)
 {
@@ -67,6 +68,17 @@ function void RegisterVanillaSurvivors(void)
 	DefineSurvivor(56, "Miu", "\c[UH56]Miu", "C@ICN56");
 	DefineSurvivor(57, "GhostBuster", "\c[UH57]Ghost Buster", "C@ICN57");
 	DefineSurvivor(58, "KickChamp", "\c[UH58]Kick Champ", "C@ICN58");
+	DefineSurvivor(59, "Eden", "\c[UH59]Eden", "C@ICN59");
+	DefineSurvivor(60, "Crystrap", "\c[UH60]Crystrap", "C@ICN60");
+}
+
+// Survivor-side weapons the <Class>_W / _W1.._W9 family rule cannot derive.
+// Eden's variants are named after their Isaac items (C118 Brimstone, C678
+// CSection), so the strip sweep cannot derive them from the class actor.
+function void RegisterVanillaSurvivorWeps(void)
+{
+	DefineSurvivorWep("Eden118_W");
+	DefineSurvivorWep("Eden678_W");
 }
 
 script "uh_define_vanilla_survivors" OPEN
@@ -81,4 +93,12 @@ script "uh_define_vanilla_survivors_cs" OPEN CLIENTSIDE
 {
 	if (IsSurvivorDefined(0)) terminate;
 	RegisterVanillaSurvivors();
+}
+
+// Server-only: only uh_StripSurvivorWeps (server side) reads the weapon rows.
+// No UHInPlay guard — the registry must exist on any map the strip can fire on.
+script "uh_define_vanilla_survweps" OPEN
+{
+	if (UH_SurvivorWepCount() > 0) terminate;
+	RegisterVanillaSurvivorWeps();
 }

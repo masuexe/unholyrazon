@@ -96,7 +96,25 @@
 // 4. Shiny class (optional) = YourClass + "Shiny". Missing → MorphActor fails → S_ClassSpawnNo_P.
 // 5. Do not name non-player actors YourClassShiny (weapons use YourClassShiny_W).
 // 6. Look up by actor: FindSurvivorByActor — do not assume
-//    PlayerClass() == survivorId for addon classes (KEYCONF append is 59+).
+//    PlayerClass() == survivorId for addon classes (KEYCONF append is 61+).
+// 7. Weapons follow the <YourClass>_W / _W1.._W9 family rule and are swept by
+//    uh_StripSurvivorWeps automatically. Only register names outside that rule
+//    (item-named variants) via DefineSurvivorWep (next recipe).
+//
+// === DefineSurvivorWep addon recipe ==========================================
+// Registers one survivor-side weapon actor for uh_StripSurvivorWeps (boss /
+// Demoneye / shiny conversion strips). Needed ONLY for weapon class names that
+// do not match the <Class>_W / _W1.._W9 family rule of a registered survivor.
+// Dedup is StrICmp; store the DECORATE-canonical class name.
+//
+//      function void YourRegisterSurvivorWeps(void) {
+//          DefineSurvivorWep("YourWepVariant");
+//      }
+//      script "your_define_survweps" OPEN {
+//          if (!UHInPlay()) terminate;
+//          YourRegisterSurvivorWeps();
+//      }
+// Re-registering the same name (any case) returns the existing row.
 //
 // === DefineDemoneye addon recipe =============================================
 // 1. LOADACS after Unholy: YOUR_EYEDEFS
@@ -657,6 +675,20 @@ function str GetSurvivorName(int id) {
 function str GetSurvivorMugshot(int id) {
 	ACS_NamedExecuteWithResult("uh_GetSurvivorMugshot_S", id);
 	return GetCVarString("uh_ds_out_str");
+}
+
+function int DefineSurvivorWep(str wepActor) {
+	SetCVarString("uh_dsw_actor", wepActor);
+	return ACS_NamedExecuteWithResult("uh_DefineSurvivorWep_S");
+}
+
+function int UH_SurvivorWepCount(void) {
+	return ACS_NamedExecuteWithResult("uh_SurvivorWepCount_S");
+}
+
+function str UH_GetSurvivorWep(int row) {
+	ACS_NamedExecuteWithResult("uh_GetSurvivorWep_S", row);
+	return GetCVarString("uh_dsw_out_str");
 }
 
 // === DefineDemoneye ==========================================================
