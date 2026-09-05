@@ -81,6 +81,13 @@ function void RegisterVanillaSurvivorWeps(void)
 	DefineSurvivorWep("Eden678_W");
 }
 
+// Per-survivor cleanup givers for conversion leftovers the weapon sweep can't
+// see (Eden's Isaac-style runtime state: attrs, item flags, toy ammo).
+function void RegisterVanillaSurvivorCleanups(void)
+{
+	DefineSurvivorCleanup("Eden", "EdenStripCleanup_P");
+}
+
 script "uh_define_vanilla_survivors" OPEN
 {
 	if (!UHInPlay()) terminate;
@@ -95,10 +102,11 @@ script "uh_define_vanilla_survivors_cs" OPEN CLIENTSIDE
 	RegisterVanillaSurvivors();
 }
 
-// Server-only: only uh_StripSurvivorWeps (server side) reads the weapon rows.
-// No UHInPlay guard — the registry must exist on any map the strip can fire on.
+// Server-only: only uh_StripSurvivorWeps (server side) reads these tables.
+// No UHInPlay guard — the registries must exist on any map the strip fires on.
 script "uh_define_vanilla_survweps" OPEN
 {
-	if (UH_SurvivorWepCount() > 0) terminate;
-	RegisterVanillaSurvivorWeps();
+	if (UH_SurvivorWepCount() == 0)
+		RegisterVanillaSurvivorWeps();
+	RegisterVanillaSurvivorCleanups();
 }

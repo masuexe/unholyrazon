@@ -641,6 +641,57 @@ function str GetSurvivorWepActor(int row) {
 	return uh_survwepactor[row];
 }
 
+// --- Survivor strip-cleanup registry -----------------------------------------
+// Per-survivor CustomInventory givers that clear class runtime leftovers
+// (attrs, counters, item flags) during boss/Demoneye/shiny conversion. Keys
+// are survivor player-class actors; "Shiny" keys fall back to the base.
+
+#libdefine UH_MAX_SURVCLEANUP 128
+
+int uh_survcleanupcount = 0;
+str uh_survcleanupkey[UH_MAX_SURVCLEANUP];
+str uh_survcleanupactor[UH_MAX_SURVCLEANUP];
+
+function int SurvCleanupRegister(str survactor, str cleanupactor) {
+	int i;
+	if (StrCmp(survactor, "") == 0 || StrCmp(cleanupactor, "") == 0)
+		return UHSURVWEP_FAIL;
+	for (i = 0; i < uh_survcleanupcount; i++) {
+		if (StrICmp(uh_survcleanupkey[i], survactor) == 0) {
+			uh_survcleanupactor[i] = cleanupactor;
+			return i;
+		}
+	}
+	if (uh_survcleanupcount >= UH_MAX_SURVCLEANUP)
+		return UHSURVWEP_FAIL;
+	uh_survcleanupkey[uh_survcleanupcount] = survactor;
+	uh_survcleanupactor[uh_survcleanupcount] = cleanupactor;
+	uh_survcleanupcount++;
+	return uh_survcleanupcount - 1;
+}
+
+function str GetSurvCleanupFor(str survactor) {
+	int i;
+	int len;
+	str base;
+	if (StrLen(survactor) == 0)
+		return "";
+	for (i = 0; i < uh_survcleanupcount; i++) {
+		if (StrICmp(uh_survcleanupkey[i], survactor) == 0)
+			return uh_survcleanupactor[i];
+	}
+	// Shiny morphs strip after MorphActor — fall back to the base class key.
+	len = StrLen(survactor);
+	if (len > 5 && StrICmp(StrRight(survactor, 5), "Shiny") == 0) {
+		base = StrLeft(survactor, len - 5);
+		for (i = 0; i < uh_survcleanupcount; i++) {
+			if (StrICmp(uh_survcleanupkey[i], base) == 0)
+				return uh_survcleanupactor[i];
+		}
+	}
+	return "";
+}
+
 // --- DefineDemoneye tables ---------------------------------------------------
 
 #libdefine UHEYE_STR_ACTOR 0
