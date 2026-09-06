@@ -65,24 +65,55 @@ actor NegaSuperArmWep : BaseNegaManWep {
     Goto ReadyX
 
    CarryStart:
+    6K02 R 0 A_JumpIfInventory("PlayerPropertyRage", 1, "CarryStartR")
     6K02 R 1 A_GiveInventory("NegaSuperArmCarryStart_P")
     // uh_ZangiefGrab pitch = 360 - elevation: 330 = 30 deg up, 300 = 60 deg up,
-    // 270 = straight overhead. Pull the victim up over the head like the
-    // SuplexGroundHold does, ending at dist 64 (SuperArm rock height ~76).
-    6K02 R 1 A_JumpIf(CallACS("uh_ZangiefGrab", 330, angle*256/360, 96)==0, "GrabLost")
-    6K02 R 1 A_JumpIf(CallACS("uh_ZangiefGrab", 300, angle*256/360, 84)==0, "GrabLost")
+    // 270 = straight overhead. Scoop then lift in small steps so the arm and
+    // victim arc match (SuperArm rock height ~76; final dist 64).
+    6K02 R 1 Offset(12, 28) A_JumpIf(CallACS("uh_ZangiefGrab", 340, angle*256/360, 100)==0, "GrabLost")
+    6K02 R 1 Offset(26, 13) A_JumpIf(CallACS("uh_ZangiefGrab", 335, angle*256/360, 98)==0, "GrabLost")
+    6K02 R 1 Offset(40, -8) A_JumpIf(CallACS("uh_ZangiefGrab", 330, angle*256/360, 96)==0, "GrabLost")
+    6K02 R 1 Offset(54, -32) A_JumpIf(CallACS("uh_ZangiefGrab", 320, angle*256/360, 90)==0, "GrabLost")
+    6K02 R 1 Offset(68, -56) A_JumpIf(CallACS("uh_ZangiefGrab", 310, angle*256/360, 84)==0, "GrabLost")
+    6K02 R 1 Offset(80, -78) A_JumpIf(CallACS("uh_ZangiefGrab", 300, angle*256/360, 76)==0, "GrabLost")
+    6K02 R 1 Offset(90, -96) A_JumpIf(CallACS("uh_ZangiefGrab", 285, angle*256/360, 70)==0, "GrabLost")
+    6K02 R 1 Offset(98, -110) A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle*256/360, 64)==0, "GrabLost")
+    TNT1 A 1 Offset(98, -110) A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle*256/360, 64)==0, "GrabLost")
+    goto CarryLoop
+   CarryStartR:
+    // Duration-1 frames ignore Rage's double-decrement; play every other
+    // lift keyframe so the scoop finishes in about half the normal time.
+    6K02 R 1 A_GiveInventory("NegaSuperArmCarryStart_P")
+    6K02 R 1 Offset(12, 28) A_JumpIf(CallACS("uh_ZangiefGrab", 340, angle*256/360, 100)==0, "GrabLost")
+    6K02 R 1 Offset(40, -8) A_JumpIf(CallACS("uh_ZangiefGrab", 330, angle*256/360, 96)==0, "GrabLost")
+    6K02 R 1 Offset(68, -56) A_JumpIf(CallACS("uh_ZangiefGrab", 310, angle*256/360, 84)==0, "GrabLost")
+    6K02 R 1 Offset(98, -110) A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle*256/360, 64)==0, "GrabLost")
+    TNT1 A 1 Offset(98, -110) A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle*256/360, 64)==0, "GrabLost")
+    goto CarryLoop
    CarryLoop:
-    6K02 R 0 A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle*256/360, 64)==0, "GrabLost")
-    6K02 R 1 A_GiveInventory("NegaSuperArmHold_P")
+    // Hold_P calls A_WeaponReady, which resets psprite Offset — keep TNT1 here.
+    TNT1 A 0 A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle*256/360, 64)==0, "GrabLost")
+    TNT1 A 1 A_GiveInventory("NegaSuperArmHold_P")
     loop
 
    Throw:
-    6K02 Q 0 A_TakeInventory("ZangiefHoldFlag")
+    6K02 R 0 A_TakeInventory("ZangiefHoldFlag")
+    // Wind-up from the overhead hold, release as the arm comes forward, then
+    // follow through R -> Q -> P (same weight as GutsBuddy / RussianGuts).
+    6K02 R 1 Offset(98, -110)
+    6K02 R 1 Offset(80, -90)
     6K02 Q 0 A_GiveInventory("NegaSuperArmThrow_P")
-    6K02 Q 2
+    6K02 Q 2 Offset(52, -46)
+    6K02 Q 2 Offset(12, -12)
+    6K02 Q 2 Offset(-42, 16)
+    6K02 P 2 Offset(-84, 48)
+    6K02 P 2 Offset(-112, 72)
+    6K02 P 2 Offset(-133, 96)
+    TNT1 A 10 A_WeaponReady(14)
    ThrowEnd:
     6K02 P 0 A_GiveInventory("ZangiefResetFlags_P")
-    6K02 P 6
+    6K02 P 2 Offset(0, 72)
+    6K02 P 2 Offset(0, 52)
     goto ReadyX
 
    GrabLost:
@@ -210,7 +241,7 @@ actor NegaSuperArmSlam : BasicExplosion {
   }
 }
 
-//== Shiny ==//
+// == Shiny ==//
 // Charge tier is chosen before the grab (base shiny ladder) and carried
 // through the carry phase as inventory markers; the throw dispatches on them.
 // Shiny throws cost no NegaMM1_Ammo (the held gun runs on the shiny cycle).
