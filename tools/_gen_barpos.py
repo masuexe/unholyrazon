@@ -200,8 +200,9 @@ def sbar_layer_line(horiz, slot_inv, ammo_inv, cat_i, fill, empty, x, y):
     orient = "horizontal" if horiz else "vertical"
     lo = cat_i + 1
     hi = cat_i + 2
+    # Keep quotes/spacing identical to committed SBARINFO.*.uhappend.
     return (
-        f"\t\t\t\tInInventory {slot_inv}, {lo}{{InInventory not {slot_inv}, {hi}"
+        f'\t\t\t\tInInventory "{slot_inv}", {lo} {{InInventory not "{slot_inv}", {hi} '
         f'{{DrawBar "{fill}", "{empty}", {ammo_inv}, {orient}, {x}, {y};}}}}'
     )
 
@@ -222,7 +223,7 @@ def offset_line(horiz, oid, names):
         if empty not in names:
             empty = "NOBAR"
     return (
-        f"\t\t\t\tInInventory UHOffBar{oid}, 1{{DrawBar "
+        f'\t\t\t\tInInventory "UHOffBar{oid}", 1 {{DrawBar '
         f'"{fill}", "{empty}", UHOffBarAmmo{oid}, {orient}, 0, 0;}}'
     )
 
@@ -250,9 +251,9 @@ def strip_main_layer_banks():
 def gen_append_files(pairs, offset_ids, names):
     def body(horiz: bool) -> list:
         lines = [
-            "\tInInventory DrawStatusBarFlag, 1 {",
-            "\t\tInInventory not NoHud, 1 {",
-            "\t\t\tInInventory not NoHealthBar, 1 {",
+            '\tInInventory "DrawStatusBarFlag", 1 {',
+            '\t\tInInventory not "NoHud", 1 {',
+            '\t\t\tInInventory not "NoHealthBar", 1 {',
             "\t\t\t\t// UH offset bars (DrawUHOffsetBar)",
         ]
         for oid in offset_ids:
@@ -263,7 +264,7 @@ def gen_append_files(pairs, offset_ids, names):
             x, y = (hx, hy) if horiz else (vx, vy)
             for layer in range(UH_BAR_LAYER_MAX):
                 slot_inv, ammo_inv = inv_names(pos_key, layer)
-                lines.append(f"\t\t\t\t//{label} layer {layer}")
+                lines.append(f"\t\t\t\t// {label} layer {layer}")
                 for cat_i, (vf, ve, hf, he) in enumerate(pairs):
                     fill, empty = (hf, he) if horiz else (vf, ve)
                     lines.append(
