@@ -9,8 +9,9 @@ This does not define BRSLT/BZSLT. Main SBARINFO.H/V keep v6b
 CustSbarSlotFlag + BRSLT lines for other mods.
 
 The hand-authored tools/bars.toml adds namespaced bars without a hard-coded
-layer ceiling. Sparse priorities are emitted in ascending order, and only the
-position/priority banks that actually occur in the TOML are generated.
+layer ceiling. Each bar may override the top-level namespace and clear callback
+to keep independent class groups isolated. API IDs follow declaration order
+inside each namespace; sparse priorities control SBARINFO draw order.
 
 With --check, regenerate everything in memory and compare against the files
 on disk; exit 1 with a per-file report on any drift (never writes).
@@ -31,7 +32,7 @@ SBAR_VZ = ROOT / "SBARINFO.v.uhappend"
 TEX_BARS = ROOT / "TEXTURES.bars"
 ANIM_BARS = ROOT / "ANIMDEFS.bars"
 CONFIG = Path(__file__).resolve().parent / "bars.toml"
-GENERATED_ACS = ROOT / "acs_source" / "hud" / "stealthsniper_generated.acs"
+GENERATED_ACS = ROOT / "acs_source" / "hud" / "class_bars_generated.acs"
 
 UH_BAR_LAYER_MAX = 4
 KIND_RENAME = {
@@ -53,8 +54,18 @@ ACTOR_NAME_RX = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 COMMON_BAR_GRAPHICS = {"BAREMPTY", "VAREMPTY", "NOBAR", "VNOBAR"}
 INT32_MAX = 0x7FFFFFFF
 
+
+def pascal_id(value: str) -> str:
+    return "".join(part[:1].upper() + part[1:] for part in value.split("_") if part)
+
+
+def bar_constant(bar: dict) -> str:
+    suffix = bar["_constant_suffix"]
+    return bar["_namespace"].upper() + (f"_{suffix}" if suffix else "")
+
 STALE_GENERATED = (
     ROOT / "actors" / "inventory" / "sbar" / "BarFX.txt",
+    ROOT / "acs_source" / "hud" / "stealthsniper_generated.acs",
     ROOT / "TEXTURES.barscat",
     ROOT / "TEXTURES.barspos",
     ROOT / "TEXTURES.barpos",
@@ -103,6 +114,9 @@ def load_bar_config() -> dict:
     if not isinstance(callback, str) or not ACTOR_NAME_RX.fullmatch(callback):
         raise SystemExit(f"{CONFIG}: invalid clear_callback")
     seen_ids = set()
+    seen_constants = set()
+    callbacks = {}
+    namespace_callbacks = {}
     for bar in bars:
         if not isinstance(bar, dict):
             raise SystemExit(f"{CONFIG}: each [[bars]] entry must be a table")
@@ -112,10 +126,41 @@ def load_bar_config() -> dict:
                 raise SystemExit(f"{CONFIG}: bar is missing {key!r}")
         if not isinstance(bar["id"], str) or not ACTOR_NAME_RX.fullmatch(bar["id"]):
             raise SystemExit(f"{CONFIG}: invalid bar id {bar['id']!r}")
-        folded_id = bar["id"].casefold()
+        constant_suffix = bar.get("constant_suffix", "")
+        if not isinstance(constant_suffix, str) or (
+            constant_suffix and not ACTOR_NAME_RX.fullmatch(constant_suffix)
+        ):
+            raise SystemExit(f"{CONFIG}: {bar['id']}: invalid constant_suffix")
+        bar_namespace = bar.get("namespace", namespace)
+        bar_callback = bar.get("clear_callback", callback)
+        if not isinstance(bar_namespace, str) or not ACTOR_NAME_RX.fullmatch(bar_namespace):
+            raise SystemExit(f"{CONFIG}: {bar['id']}: invalid namespace")
+        if not isinstance(bar_callback, str) or not ACTOR_NAME_RX.fullmatch(bar_callback):
+            raise SystemExit(f"{CONFIG}: {bar['id']}: invalid clear_callback")
+        folded_id = (bar_namespace.casefold(), bar["id"].casefold())
         if folded_id in seen_ids:
             raise SystemExit(f"{CONFIG}: duplicate bar id {bar['id']!r}")
         seen_ids.add(folded_id)
+        constant = bar_namespace.upper() + (
+            f"_{constant_suffix.upper()}" if constant_suffix else ""
+        )
+        if constant.casefold() in seen_constants:
+            raise SystemExit(f"{CONFIG}: duplicate generated constant {constant!r}")
+        seen_constants.add(constant.casefold())
+        callback_key = bar_callback.casefold()
+        namespace_key = bar_namespace.casefold()
+        previous_namespace = callbacks.get(callback_key)
+        if previous_namespace is not None and previous_namespace.casefold() != namespace_key:
+            raise SystemExit(
+                f"{CONFIG}: clear_callback {bar_callback!r} is used by multiple namespaces"
+            )
+        callbacks[callback_key] = bar_namespace
+        previous_callback = namespace_callbacks.get(namespace_key)
+        if previous_callback is not None and previous_callback.casefold() != callback_key:
+            raise SystemExit(
+                f"{CONFIG}: namespace {bar_namespace!r} uses multiple clear callbacks"
+            )
+        namespace_callbacks[namespace_key] = bar_callback
         if bar["position"] not in {p[0] for p in POS_BANKS}:
             raise SystemExit(f"{CONFIG}: invalid position {bar['position']!r}")
         priority = bar["priority"]
@@ -136,12 +181,9 @@ def load_bar_config() -> dict:
             if image.casefold() not in known_graphics:
                 raise SystemExit(f"{CONFIG}: {bar['id']}: missing image reference {image!r}")
     for bar in bars:
-        bar["_namespace"] = config["namespace"]
-    position_order = {pos[0]: index for index, pos in enumerate(POS_BANKS)}
-    config["bars"] = sorted(
-        bars,
-        key=lambda b: (b["priority"], position_order[b["position"]], b["id"].casefold()),
-    )
+        bar["_namespace"] = bar.get("namespace", namespace)
+        bar["_clear_callback"] = bar.get("clear_callback", callback)
+        bar["_constant_suffix"] = bar.get("constant_suffix", "").upper()
     return config
 
 
@@ -296,26 +338,34 @@ def namespaced_selector(bar: dict) -> str:
 
 
 def namespaced_ammo(bar: dict) -> str:
-    return f"{bar['_namespace']}_P{bar['position']}L{bar['priority']}_{bar['id']}Ammo"
+    return f"{bar['_namespace']}_P{bar['position']}L{bar['priority']}_{pascal_id(bar['id'])}Ammo"
 
 
 def layer_selector_id(config: dict, bar: dict) -> int:
     """Dense selector amount; layer priority is never an inventory amount."""
-    bank = (bar["position"], bar["priority"])
+    bank = (bar["_namespace"].casefold(), bar["position"], bar["priority"])
     return 1 + sum(1 for other in config["bars"]
-                   if (other["position"], other["priority"]) == bank
+                   if (other["_namespace"].casefold(), other["position"],
+                       other["priority"]) == bank
                    and other["id"].casefold() < bar["id"].casefold())
 
 
 def layer_selector_capacity(config: dict, bar: dict) -> int:
-    bank = (bar["position"], bar["priority"])
+    bank = (bar["_namespace"].casefold(), bar["position"], bar["priority"])
     return sum(1 for other in config["bars"]
-               if (other["position"], other["priority"]) == bank)
+               if (other["_namespace"].casefold(), other["position"],
+                   other["priority"]) == bank)
 
 
 def gen_namespaced_append_lines(config: dict, horiz: bool) -> list:
     lines = ["\t\t\t\t// Generated namespaced TOML bars"]
-    for bar in config["bars"]:
+    position_order = {pos[0]: index for index, pos in enumerate(POS_BANKS)}
+    bars = sorted(
+        config["bars"],
+        key=lambda b: (b["priority"], position_order[b["position"]],
+                       b["_namespace"].casefold(), b["id"].casefold()),
+    )
+    for bar in bars:
         selector = namespaced_selector(bar)
         ammo = namespaced_ammo(bar)
         selector_id = layer_selector_id(config, bar)
@@ -436,51 +486,58 @@ def gen_generated_acs(config: dict) -> str:
         "// Namespaced SBARINFO bars; do not edit by hand.",
         "",
     ]
-    prefix = config["namespace"].upper()
-    for index, bar in enumerate(config["bars"]):
-        macro = re.sub(r"[^A-Za-z0-9_]", "_", bar["id"]).upper()
-        lines.append(f"#define {prefix}_BAR_{macro}_ID {index + 1}")
-    lines += [
-        "",
-        f"function void {prefix}_DrawBar(int id, int amount, int capacity) {{",
-        "  if (capacity <= 0) { return; }",
-        "  if (amount < 0) { amount = 0; }",
-        "  if (amount > capacity) { amount = capacity; }",
-        "  switch (id) {",
-    ]
+    namespaces = {}
     for bar in config["bars"]:
-        selector = namespaced_selector(bar)
-        ammo = namespaced_ammo(bar)
-        macro = re.sub(r"[^A-Za-z0-9_]", "_", bar["id"]).upper()
+        namespaces.setdefault(bar["_namespace"].casefold(), []).append(bar)
+    for bars in namespaces.values():
+        namespace = bars[0]["_namespace"]
+        for index, bar in enumerate(bars, 1):
+            lines.append(f"#define {bar_constant(bar)} {index}")
         lines += [
-            f"    case {prefix}_BAR_{macro}_ID:",
-            f'      SetInventory("{selector}", {layer_selector_id(config, bar)});',
-            f'      SetAmmoAmountAndCapacity("{ammo}", amount, capacity);',
-            "      break;",
+            "",
+            f"function void {namespace}_DrawBar(int id, int amount, int capacity) {{",
+            "  if (capacity <= 0) { return; }",
+            "  if (amount < 0) { amount = 0; }",
+            "  if (amount > capacity) { amount = capacity; }",
+            "  switch (id) {",
         ]
-    lines += [
-        "    default:",
-        "      break;",
-        "  }",
-        "}",
-        "",
-        f'script "{config["clear_callback"]}" (int cam) CLIENTSIDE {{',
-    ]
-    cleared_selectors = set()
+        for bar in bars:
+            selector = namespaced_selector(bar)
+            ammo = namespaced_ammo(bar)
+            lines += [
+                f"    case {bar_constant(bar)}:",
+                f'      SetInventory("{selector}", {layer_selector_id(config, bar)});',
+                f'      SetAmmoAmountAndCapacity("{ammo}", amount, capacity);',
+                "      break;",
+            ]
+        lines += [
+            "    default:",
+            "      break;",
+            "  }",
+            "}",
+            "",
+        ]
+
+    callbacks = {}
     for bar in config["bars"]:
-        selector = namespaced_selector(bar)
-        if selector not in cleared_selectors:
-            lines.append(f'  SetActorInventory(cam, "{selector}", 0);')
-            cleared_selectors.add(selector)
-        lines.append(f'  SetActorInventory(cam, "{namespaced_ammo(bar)}", 0);')
-    lines += [
-        "}",
-        "",
-        f'script "{config["clear_callback"]}_Register" OPEN CLIENTSIDE {{',
-        f'  ACS_NamedExecuteWithResult("core_DrawBar_RegisterClear", "{config["clear_callback"]}");',
-        "}",
-        "",
-    ]
+        callbacks.setdefault(bar["_clear_callback"].casefold(), []).append(bar)
+    for bars in callbacks.values():
+        callback = bars[0]["_clear_callback"]
+        lines.append(f'script "{callback}" (int cam) CLIENTSIDE {{')
+        cleared_selectors = set()
+        for bar in bars:
+            selector = namespaced_selector(bar)
+            if selector not in cleared_selectors:
+                lines.append(f'  SetActorInventory(cam, "{selector}", 0);')
+                cleared_selectors.add(selector)
+            lines.append(f'  SetActorInventory(cam, "{namespaced_ammo(bar)}", 0);')
+        lines += ["}", "",]
+        lines += [
+            f'script "{callback}_Register" OPEN CLIENTSIDE {{',
+            f'  ACS_NamedExecuteWithResult("core_DrawBar_RegisterClear", "{callback}");',
+            "}",
+            "",
+        ]
     return "\n".join(lines)
 
 

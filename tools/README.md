@@ -55,6 +55,12 @@ DECORATE/ACS diagnostics.
   `python3 tools/_gen_barpos.py --check` verifies its checked-in numeric ACS
   helper, namespaced selector/ammo actors in `UH_BarFX.dec`, and sparse-priority
   AppendStatusBar output. The base game's `BarFX.txt` must not be overridden.
+  Each `[[bars]]` entry may override the top-level `namespace` and
+  `clear_callback`; selector IDs are dense within each namespace/position/
+  priority bank. Variants of one class share a namespace and callback; use a
+  separate pair only for an independent class group. `constant_suffix` controls
+  the optional suffix on the public `UHBAR_<CLASSNAME>[_<VARIANT>]` constant;
+  omit it for the class's default bar.
   Set `legacy_catalog = true` only when a migrated string-API pair must
   remain in the compatibility catalog. Clear callbacks register from
   `OPEN CLIENTSIDE` through `core_DrawBar_RegisterClear`; duplicate names
