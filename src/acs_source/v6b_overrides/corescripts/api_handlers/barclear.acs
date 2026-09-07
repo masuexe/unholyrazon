@@ -4,8 +4,54 @@
 
 #include "barlib.acs"
 
+// Public clear-callback registry.  Registration returns a stable row index;
+// duplicate names return the existing row.  Negative results are invalid name
+// (-1), capacity exhausted (-2), or a missing named script (-3).  The registry
+// is client-local because HUD bar state and the OPEN registration are clientside.
+#define UH_BAR_CLEAR_MAX 32
+#define UH_BAR_CLEAR_INVALID -1
+#define UH_BAR_CLEAR_FULL -2
+#define UH_BAR_CLEAR_MISSING -3
+
+int uh_bar_clear_count = 0;
+str uh_bar_clear_callback[UH_BAR_CLEAR_MAX];
+
+script "core_DrawBar_RegisterClear" (int callback) CLIENTSIDE {
+	str callback_name = callback;
+	int i;
+	if (StrLen(callback_name) == 0) {
+		SetResultValue(UH_BAR_CLEAR_INVALID);
+		terminate;
+	}
+	if (!CheckScript(callback_name, true)) {
+		SetResultValue(UH_BAR_CLEAR_MISSING);
+		terminate;
+	}
+	for (i = 0; i < uh_bar_clear_count; i++) {
+		if (StrICmp(uh_bar_clear_callback[i], callback_name) == 0) {
+			SetResultValue(i);
+			terminate;
+		}
+	}
+	if (uh_bar_clear_count >= UH_BAR_CLEAR_MAX) {
+		SetResultValue(UH_BAR_CLEAR_FULL);
+		terminate;
+	}
+	uh_bar_clear_callback[uh_bar_clear_count] = callback_name;
+	SetResultValue(uh_bar_clear_count);
+	uh_bar_clear_count++;
+}
+
+function void DispatchBarClearCallbacks(int cam) {
+	int i;
+	for (i = 0; i < uh_bar_clear_count; i++) {
+		ACS_NamedExecuteWithResult(uh_bar_clear_callback[i], cam);
+	}
+}
+
 script "core_DrawBar_Clear" (int cam) CLIENTSIDE {
 	ClearBarFlags(cam);
+	DispatchBarClearCallbacks(cam);
 }
 
 function void ClearBarFlags(int cam) {

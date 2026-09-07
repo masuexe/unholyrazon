@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Generate Unholy bar catalog ACS, HZ/VZ AppendStatusBar, and BarFX actors.
+"""Generate Unholy bar ACS, HZ/VZ AppendStatusBar, and BarFX actors.
 
-Unholy DrawBar uses real graphic names (layer pool). Every bar drawn at the
-standard bar1/bar2/bar3/HP slots goes through DrawCustomBarString* and is
-collected here into the uh_barcat.acs catalog; SBARINFO.*.uhappend expands
-each catalog pair into InInventory-banded DrawBar lines (4 slots x 4 layers
-x 2 HUD modes). Does not define BRSLT/BZSLT. Main SBARINFO.H/V keep v6b
+Legacy Unholy bars at the standard bar1/bar2/bar3/HP slots use real graphic
+names through DrawCustomBarString*. Those calls are collected into the
+uh_barcat.acs compatibility catalog; SBARINFO.*.uhappend expands each pair
+into InInventory-banded DrawBar lines (4 slots x 4 layers x 2 HUD modes).
+This does not define BRSLT/BZSLT. Main SBARINFO.H/V keep v6b
 CustSbarSlotFlag + BRSLT lines for other mods.
+
+The hand-authored tools/bars.toml adds namespaced bars without a hard-coded
+layer ceiling. Sparse priorities are emitted in ascending order, and only the
+position/priority banks that actually occur in the TOML are generated.
 
 With --check, regenerate everything in memory and compare against the files
 on disk; exit 1 with a per-file report on any drift (never writes).
@@ -14,6 +18,7 @@ on disk; exit 1 with a per-file report on any drift (never writes).
 import argparse
 import re
 import sys
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "src"
@@ -25,6 +30,8 @@ SBAR_HZ = ROOT / "SBARINFO.h.uhappend"
 SBAR_VZ = ROOT / "SBARINFO.v.uhappend"
 TEX_BARS = ROOT / "TEXTURES.bars"
 ANIM_BARS = ROOT / "ANIMDEFS.bars"
+CONFIG = Path(__file__).resolve().parent / "bars.toml"
+GENERATED_ACS = ROOT / "acs_source" / "hud" / "stealthsniper_generated.acs"
 
 UH_BAR_LAYER_MAX = 4
 KIND_RENAME = {
@@ -41,6 +48,10 @@ POS_BANKS = [
     ("3", "Custom Bar Pos3 (bar3)", 58, 168, 0, 8),
     ("HP", "Custom Bar PosHP", 130, 184, 24, 8),
 ]
+
+ACTOR_NAME_RX = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+COMMON_BAR_GRAPHICS = {"BAREMPTY", "VAREMPTY", "NOBAR", "VNOBAR"}
+INT32_MAX = 0x7FFFFFFF
 
 STALE_GENERATED = (
     ROOT / "TEXTURES.barscat",
@@ -67,7 +78,83 @@ def parse_str_array(text: str, name: str) -> list:
     return re.findall(r'"([^"]+)"', m.group(1))
 
 
-def collect_string_bar_pairs() -> list:
+def load_bar_config() -> dict:
+    """Load and validate the hand-authored TOML bar definitions."""
+    with CONFIG.open("rb") as fp:
+        config = tomllib.load(fp)
+    if type(config.get("schema_version")) is not int or config["schema_version"] != 1:
+        raise SystemExit(f"{CONFIG}: schema_version must be 1")
+    bars = config.get("bars")
+    if not isinstance(bars, list) or not bars:
+        raise SystemExit(f"{CONFIG}: expected at least one [[bars]] entry")
+    graphic_text = "\n".join(
+        path.read_text(encoding="utf-8", errors="ignore")
+        for pattern in ("TEXTURES*", "ANIMDEFS*")
+        for path in ROOT.glob(pattern)
+    )
+    known_graphics = {name.casefold() for name in re.findall(
+        r"\b(?:graphic|patch|texture)\s+([A-Za-z0-9_]+)", graphic_text,
+    )} | {name.casefold() for name in COMMON_BAR_GRAPHICS}
+    namespace = config.get("namespace")
+    callback = config.get("clear_callback")
+    if not isinstance(namespace, str) or not ACTOR_NAME_RX.fullmatch(namespace):
+        raise SystemExit(f"{CONFIG}: invalid namespace")
+    if not isinstance(callback, str) or not ACTOR_NAME_RX.fullmatch(callback):
+        raise SystemExit(f"{CONFIG}: invalid clear_callback")
+    seen_ids = set()
+    for bar in bars:
+        if not isinstance(bar, dict):
+            raise SystemExit(f"{CONFIG}: each [[bars]] entry must be a table")
+        for key in ("id", "position", "priority", "vertical_full", "vertical_empty",
+                    "horizontal_full", "horizontal_empty", "capacity"):
+            if key not in bar:
+                raise SystemExit(f"{CONFIG}: bar is missing {key!r}")
+        if not isinstance(bar["id"], str) or not ACTOR_NAME_RX.fullmatch(bar["id"]):
+            raise SystemExit(f"{CONFIG}: invalid bar id {bar['id']!r}")
+        folded_id = bar["id"].casefold()
+        if folded_id in seen_ids:
+            raise SystemExit(f"{CONFIG}: duplicate bar id {bar['id']!r}")
+        seen_ids.add(folded_id)
+        if bar["position"] not in {p[0] for p in POS_BANKS}:
+            raise SystemExit(f"{CONFIG}: invalid position {bar['position']!r}")
+        priority = bar["priority"]
+        if type(priority) is not int or priority < 0:
+            raise SystemExit(f"{CONFIG}: {bar['id']}: invalid layer priority")
+        capacity = bar["capacity"]
+        if type(capacity) is not int or capacity <= 0 or capacity > INT32_MAX:
+            raise SystemExit(
+                f"{CONFIG}: {bar['id']}: capacity must be an integer in 1..{INT32_MAX}"
+            )
+        legacy_catalog = bar.get("legacy_catalog", False)
+        if not isinstance(legacy_catalog, bool):
+            raise SystemExit(f"{CONFIG}: {bar['id']}: legacy_catalog must be boolean")
+        for key in ("vertical_full", "vertical_empty", "horizontal_full", "horizontal_empty"):
+            image = bar[key]
+            if not isinstance(image, str) or not image:
+                raise SystemExit(f"{CONFIG}: {bar['id']}: empty {key}")
+            if image.casefold() not in known_graphics:
+                raise SystemExit(f"{CONFIG}: {bar['id']}: missing image reference {image!r}")
+    for bar in bars:
+        bar["_namespace"] = config["namespace"]
+    position_order = {pos[0]: index for index, pos in enumerate(POS_BANKS)}
+    config["bars"] = sorted(
+        bars,
+        key=lambda b: (b["priority"], position_order[b["position"]], b["id"].casefold()),
+    )
+    return config
+
+
+def configured_legacy_pairs(config: dict) -> list:
+    pairs = []
+    for bar in config["bars"]:
+        if not bar.get("legacy_catalog", False):
+            continue
+        pairs.append((bar["vertical_full"], bar["vertical_empty"],
+                      bar["horizontal_full"], bar["horizontal_empty"]))
+    return pairs
+
+
+def collect_string_bar_pairs(config: dict) -> list:
     pairs = {}
 
     def add(vf, ve, hf, he):
@@ -109,6 +196,8 @@ def collect_string_bar_pairs() -> list:
             for vf, hf in zip(verts, hors):
                 add(vf, "BAREMPTY", hf, "VAREMPTY")
 
+    for pair in configured_legacy_pairs(config):
+        add(*pair)
     return sorted(pairs.keys())
 
 
@@ -201,7 +290,53 @@ def strip_main_layer_banks():
     return results
 
 
-def gen_append_files(pairs):
+def namespaced_selector(bar: dict) -> str:
+    return f"{bar['_namespace']}_P{bar['position']}L{bar['priority']}Selector"
+
+
+def namespaced_ammo(bar: dict) -> str:
+    return f"{bar['_namespace']}_P{bar['position']}L{bar['priority']}_{bar['id']}Ammo"
+
+
+def layer_selector_id(config: dict, bar: dict) -> int:
+    """Dense selector amount; layer priority is never an inventory amount."""
+    bank = (bar["position"], bar["priority"])
+    return 1 + sum(1 for other in config["bars"]
+                   if (other["position"], other["priority"]) == bank
+                   and other["id"].casefold() < bar["id"].casefold())
+
+
+def layer_selector_capacity(config: dict, bar: dict) -> int:
+    bank = (bar["position"], bar["priority"])
+    return sum(1 for other in config["bars"]
+               if (other["position"], other["priority"]) == bank)
+
+
+def gen_namespaced_append_lines(config: dict, horiz: bool) -> list:
+    lines = ["\t\t\t\t// Generated namespaced TOML bars"]
+    for bar in config["bars"]:
+        selector = namespaced_selector(bar)
+        ammo = namespaced_ammo(bar)
+        selector_id = layer_selector_id(config, bar)
+        if horiz:
+            fill, empty, x, y = (bar["horizontal_full"], bar["horizontal_empty"],
+                                 next(p[2] for p in POS_BANKS if p[0] == bar["position"]),
+                                 next(p[3] for p in POS_BANKS if p[0] == bar["position"]))
+            orientation = "horizontal"
+        else:
+            fill, empty, x, y = (bar["vertical_full"], bar["vertical_empty"],
+                                 next(p[4] for p in POS_BANKS if p[0] == bar["position"]),
+                                 next(p[5] for p in POS_BANKS if p[0] == bar["position"]))
+            orientation = "vertical"
+        lines.append(
+            f'\t\t\t\tInInventory "{selector}", {selector_id} '
+            f'{{InInventory not "{selector}", {selector_id + 1} '
+            f'{{DrawBar "{fill}", "{empty}", {ammo}, {orientation}, {x}, {y};}}}}'
+        )
+    return lines
+
+
+def gen_append_files(pairs, config):
     def body(horiz: bool) -> list:
         lines = [
             '\tInInventory "DrawStatusBarFlag", 1 {',
@@ -220,6 +355,7 @@ def gen_append_files(pairs):
                             horiz, slot_inv, ammo_inv, cat_i, fill, empty, x, y
                         )
                     )
+        lines += gen_namespaced_append_lines(config, horiz)
         lines += ["\t\t\t}", "\t\t}", "\t}"]
         return lines
 
@@ -265,12 +401,86 @@ def gen_barfx_actors():
     return "\n".join(block).rstrip() + "\n"
 
 
-def barfx_updated_text():
+def gen_namespaced_barfx_actors(config: dict) -> str:
+    block = ["//$UH — TOML namespaced bar selectors / ammo"]
+    seen = set()
+    for bar in config["bars"]:
+        for actor, parent, extra in (
+            (namespaced_selector(bar), "Inventory", [
+                "inventory.amount 1",
+                f"inventory.maxamount {layer_selector_capacity(config, bar)}"]),
+            (namespaced_ammo(bar), "Ammo", [
+                "+INVENTORY.IGNORESKILL", "inventory.amount 0",
+                f"inventory.maxamount {bar['capacity']}"]),
+        ):
+            if actor in seen:
+                continue
+            seen.add(actor)
+            block += [f"actor {actor} : {parent}", "{", *extra, "}", ""]
+    return "\n".join(block)
+
+
+def barfx_updated_text(config):
     text = BARFX.read_text(encoding="utf-8")
     m = re.search(r"(?m)^\s*//\s*\$UH — DrawCustomBar1/2/HP position banks.*$", text)
     if not m:
         raise SystemExit("BarFX.txt missing DrawCustomBar marker")
-    return text[:m.start()] + gen_barfx_actors()
+    return text[:m.start()] + gen_barfx_actors() + gen_namespaced_barfx_actors(config)
+
+
+def gen_generated_acs(config: dict) -> str:
+    """Generate numeric selector IDs, draw helpers, and clear registration."""
+    lines = [
+        "// Generated by tools/_gen_barpos.py from tools/bars.toml.",
+        "// Namespaced SBARINFO bars; do not edit by hand.",
+        "",
+    ]
+    prefix = config["namespace"].upper()
+    for index, bar in enumerate(config["bars"]):
+        macro = re.sub(r"[^A-Za-z0-9_]", "_", bar["id"]).upper()
+        lines.append(f"#define {prefix}_BAR_{macro}_ID {index + 1}")
+    lines += [
+        "",
+        f"function void {prefix}_DrawBar(int id, int amount, int capacity) {{",
+        "  if (capacity <= 0) { return; }",
+        "  if (amount < 0) { amount = 0; }",
+        "  if (amount > capacity) { amount = capacity; }",
+        "  switch (id) {",
+    ]
+    for bar in config["bars"]:
+        selector = namespaced_selector(bar)
+        ammo = namespaced_ammo(bar)
+        macro = re.sub(r"[^A-Za-z0-9_]", "_", bar["id"]).upper()
+        lines += [
+            f"    case {prefix}_BAR_{macro}_ID:",
+            f'      SetInventory("{selector}", {layer_selector_id(config, bar)});',
+            f'      SetAmmoAmountAndCapacity("{ammo}", amount, capacity);',
+            "      break;",
+        ]
+    lines += [
+        "    default:",
+        "      break;",
+        "  }",
+        "}",
+        "",
+        f'script "{config["clear_callback"]}" (int cam) CLIENTSIDE {{',
+    ]
+    cleared_selectors = set()
+    for bar in config["bars"]:
+        selector = namespaced_selector(bar)
+        if selector not in cleared_selectors:
+            lines.append(f'  SetActorInventory(cam, "{selector}", 0);')
+            cleared_selectors.add(selector)
+        lines.append(f'  SetActorInventory(cam, "{namespaced_ammo(bar)}", 0);')
+    lines += [
+        "}",
+        "",
+        f'script "{config["clear_callback"]}_Register" OPEN CLIENTSIDE {{',
+        f'  ACS_NamedExecuteWithResult("core_DrawBar_RegisterClear", "{config["clear_callback"]}");',
+        "}",
+        "",
+    ]
+    return "\n".join(lines)
 
 
 def main():
@@ -279,17 +489,19 @@ def main():
                     help="verify generated files are up to date; exit 1 on drift")
     args = ap.parse_args()
 
-    pairs = collect_string_bar_pairs()
+    config = load_bar_config()
+    pairs = collect_string_bar_pairs(config)
     if len(pairs) > 255:
         raise SystemExit(f"catalog too large for inventory amount: {len(pairs)}")
     print(f"string-bar pairs: {len(pairs)}")
 
-    hz, vz = gen_append_files(pairs)
+    hz, vz = gen_append_files(pairs, config)
     outputs = {
         ACS_CAT: gen_catalog(pairs),
         SBAR_HZ: hz,
         SBAR_VZ: vz,
-        BARFX: barfx_updated_text(),
+        BARFX: barfx_updated_text(config),
+        GENERATED_ACS: gen_generated_acs(config),
         TEX_BARS: renamed_bars_text(TEX_BARS),
         ANIM_BARS: renamed_bars_text(ANIM_BARS),
         **strip_main_layer_banks(),
@@ -298,7 +510,7 @@ def main():
     if args.check:
         drift = []
         for path, new in outputs.items():
-            old = path.read_text(encoding="utf-8")
+            old = path.read_text(encoding="utf-8") if path.exists() else None
             if old != new:
                 drift.append(path.name)
         for p in STALE_GENERATED:
@@ -313,7 +525,7 @@ def main():
         return
 
     for path, new in outputs.items():
-        if path.read_text(encoding="utf-8") != new:
+        if not path.exists() or path.read_text(encoding="utf-8") != new:
             path.write_text(new, encoding="utf-8")
             print(f"wrote {path.name}")
     for p in STALE_GENERATED:
