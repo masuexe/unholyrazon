@@ -85,6 +85,20 @@ script "uh_FetchVectorAngle" (int which) {
   SetResultValue(VectorAngle(GetActorVelX(0), GetActorVelY(0)));
 }
 
+// Byte angle of the pointer's XY velocity, or -1 when it is (nearly) stopped.
+// Callers use -1 to freeze on their last heading instead of snapping.
+script "uh_GetPointerVelocityAngle" (int pointer) {
+  SetActivator(0, pointer);
+  int vx = GetActorVelX(0);
+  int vy = GetActorVelY(0);
+  // < 0.5 map units per tic of XY speed (fixed 1073741824 = (0.5 << 16)^2).
+  if (FixedMul(vx, vx) + FixedMul(vy, vy) < 1073741824) {
+    SetResultValue(-1);
+    terminate;
+  }
+  SetResultValue(VectorAngle(vx, vy) >> 8);
+}
+
 script "uh_TellVectorAngle" (int theangle, int thethrust) {
   Log(s:"TheAngle = ", f:theangle, s:" Cos >> ", f:cos(theangle), s:" Sin >> ", f:sin(theangle), s:" FixedMulC >> ", f:FixedMul(cos(theangle), thethrust << 16), s:" FixedMulS >> ", f:FixedMul(sin(theangle), thethrust << 16));
 }

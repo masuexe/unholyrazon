@@ -229,6 +229,18 @@ actor DLCCentaurWepStack : Inventory {
   inventory.maxamount 2
 }
 
+// Recca-style Option satellites.  Mode: 1=B, 2=C, 3=F, 4=R, 5=S.
+// Stack: option count level; switching mode keeps the level.
+actor DLCCentaurOptionMode : Inventory {
+  inventory.amount 1
+  inventory.maxamount 5
+}
+
+actor DLCCentaurOptionStack : Inventory {
+  inventory.amount 1
+  inventory.maxamount 2
+}
+
 actor DLCCentaurmanRageDelay : PowerUp {
   Powerup.Duration -7
   powerup.color green 0.30
@@ -490,6 +502,223 @@ actor DLCCentaurWepPickupH : DLCCentaurWepPickupV {
   }
 }
 
+// --- Recca-style Option mode pickups (independent B -> C -> F -> R -> S cycle) ---
+// Same letter while below 2 options: raise the count level.  Different letter:
+// switch mode, keep the level.  First letter: mode + one option.
+
+actor DLCCentaurOptionPickup : BasicHelper {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_Jump(256, 1, 2, 3, 4, 5)
+    TNT1 A 0 A_SpawnItemEx("DLCCentaurOptionPickupB")
+    stop
+    TNT1 A 0 A_SpawnItemEx("DLCCentaurOptionPickupC")
+    stop
+    TNT1 A 0 A_SpawnItemEx("DLCCentaurOptionPickupF")
+    stop
+    TNT1 A 0 A_SpawnItemEx("DLCCentaurOptionPickupR")
+    stop
+    TNT1 A 0 A_SpawnItemEx("DLCCentaurOptionPickupS")
+    stop
+  }
+}
+
+actor DLCCentaurOptionPickupB : CustomInventory {
+  inventory.pickupmessage "Option! Backwards!"
+  args 100
+  Scale 2.5
+  Translation "192:192=176:176"
+  States {
+   Spawn:
+    TNT1 A 0
+    8I11 D 30
+    8I11 D 0 A_CountdownArg(0)
+    8I11 D 0 A_JumpIf(args[0] == 0, "Expired")
+    goto Death
+   Death:
+    TNT1 A 0 A_SpawnItemEx("DLCCentaurOptionPickupC", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERSPECIAL)
+    stop
+   Expired:
+    TNT1 A 0
+    stop
+   Pickup:
+    TNT1 A 0 A_JumpIf(!CheckClass("DLCCentaurman"), "No")
+    TNT1 A 0 A_PlaySound("Recca/WepPickup", 3, 1.0)
+    TNT1 A 0 A_JumpIfInventory("DLCCentaurOptionMode", 1, "HaveSome")
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionMode", 1)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionStack", 1)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionSync_P", 1)
+    stop
+   HaveSome:
+    TNT1 A 0 A_JumpIfInventory("DLCCentaurOptionMode", 2, "PickupSwitch")
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionStack", 1)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionSync_P", 1)
+    stop
+   PickupSwitch:
+    TNT1 A 0 A_TakeInventory("DLCCentaurOptionMode")
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionMode", 1)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionSync_P", 1)
+    stop
+   No:
+    TNT1 A 0
+    fail
+  }
+}
+
+actor DLCCentaurOptionPickupC : DLCCentaurOptionPickupB {
+  inventory.pickupmessage "Option! Circling!"
+  Translation "192:192=161:161"
+  States {
+   Spawn:
+    TNT1 A 0
+    8I11 E 30
+    8I11 E 0 A_CountdownArg(0)
+    8I11 E 0 A_JumpIf(args[0] == 0, "Expired")
+    goto Death
+   Death:
+    TNT1 A 0 A_SpawnItemEx("DLCCentaurOptionPickupF", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERSPECIAL)
+    stop
+   Pickup:
+    TNT1 A 0 A_JumpIf(!CheckClass("DLCCentaurman"), "No")
+    TNT1 A 0 A_PlaySound("Recca/WepPickup", 3, 1.0)
+    TNT1 A 0 A_JumpIfInventory("DLCCentaurOptionMode", 2, "HaveSome")
+    TNT1 A 0 A_JumpIfInventory("DLCCentaurOptionMode", 1, "PickupSwitch")
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionMode", 2)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionStack", 1)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionSync_P", 1)
+    stop
+   HaveSome:
+    TNT1 A 0 A_JumpIfInventory("DLCCentaurOptionMode", 3, "PickupSwitch")
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionStack", 1)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionSync_P", 1)
+    stop
+   PickupSwitch:
+    TNT1 A 0 A_TakeInventory("DLCCentaurOptionMode")
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionMode", 2)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionSync_P", 1)
+    stop
+  }
+}
+
+actor DLCCentaurOptionPickupF : DLCCentaurOptionPickupB {
+  inventory.pickupmessage "Option! Forward!"
+  Translation "192:192=205:205"
+  States {
+   Spawn:
+    TNT1 A 0
+    8I11 F 30
+    8I11 F 0 A_CountdownArg(0)
+    8I11 F 0 A_JumpIf(args[0] == 0, "Expired")
+    goto Death
+   Death:
+    TNT1 A 0 A_SpawnItemEx("DLCCentaurOptionPickupR", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERSPECIAL)
+    stop
+   Pickup:
+    TNT1 A 0 A_JumpIf(!CheckClass("DLCCentaurman"), "No")
+    TNT1 A 0 A_PlaySound("Recca/WepPickup", 3, 1.0)
+    TNT1 A 0 A_JumpIfInventory("DLCCentaurOptionMode", 3, "HaveSome")
+    TNT1 A 0 A_JumpIfInventory("DLCCentaurOptionMode", 1, "PickupSwitch")
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionMode", 3)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionStack", 1)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionSync_P", 1)
+    stop
+   HaveSome:
+    TNT1 A 0 A_JumpIfInventory("DLCCentaurOptionMode", 4, "PickupSwitch")
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionStack", 1)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionSync_P", 1)
+    stop
+   PickupSwitch:
+    TNT1 A 0 A_TakeInventory("DLCCentaurOptionMode")
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionMode", 3)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionSync_P", 1)
+    stop
+  }
+}
+
+actor DLCCentaurOptionPickupR : DLCCentaurOptionPickupB {
+  inventory.pickupmessage "Option! Rotate!"
+  Translation "192:192=186:186"
+  States {
+   Spawn:
+    TNT1 A 0
+    8I11 G 30
+    8I11 G 0 A_CountdownArg(0)
+    8I11 G 0 A_JumpIf(args[0] == 0, "Expired")
+    goto Death
+   Death:
+    TNT1 A 0 A_SpawnItemEx("DLCCentaurOptionPickupS", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERSPECIAL)
+    stop
+   Pickup:
+    TNT1 A 0 A_JumpIf(!CheckClass("DLCCentaurman"), "No")
+    TNT1 A 0 A_PlaySound("Recca/WepPickup", 3, 1.0)
+    TNT1 A 0 A_JumpIfInventory("DLCCentaurOptionMode", 4, "HaveSome")
+    TNT1 A 0 A_JumpIfInventory("DLCCentaurOptionMode", 1, "PickupSwitch")
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionMode", 4)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionStack", 1)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionSync_P", 1)
+    stop
+   HaveSome:
+    TNT1 A 0 A_JumpIfInventory("DLCCentaurOptionMode", 5, "PickupSwitch")
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionStack", 1)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionSync_P", 1)
+    stop
+   PickupSwitch:
+    TNT1 A 0 A_TakeInventory("DLCCentaurOptionMode")
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionMode", 4)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionSync_P", 1)
+    stop
+  }
+}
+
+actor DLCCentaurOptionPickupS : DLCCentaurOptionPickupB {
+  inventory.pickupmessage "Option! Seeker!"
+  Translation "192:192=216:216"
+  States {
+   Spawn:
+    TNT1 A 0
+    8I11 H 30
+    8I11 H 0 A_CountdownArg(0)
+    8I11 H 0 A_JumpIf(args[0] == 0, "Expired")
+    goto Death
+   Death:
+    TNT1 A 0 A_SpawnItemEx("DLCCentaurOptionPickupB", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERSPECIAL)
+    stop
+   Pickup:
+    TNT1 A 0 A_JumpIf(!CheckClass("DLCCentaurman"), "No")
+    TNT1 A 0 A_PlaySound("Recca/WepPickup", 3, 1.0)
+    TNT1 A 0 A_JumpIfInventory("DLCCentaurOptionMode", 5, "HaveSome")
+    TNT1 A 0 A_JumpIfInventory("DLCCentaurOptionMode", 1, "PickupSwitch")
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionMode", 5)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionStack", 1)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionSync_P", 1)
+    stop
+   HaveSome:
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionStack", 1)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionSync_P", 1)
+    stop
+   PickupSwitch:
+    TNT1 A 0 A_TakeInventory("DLCCentaurOptionMode")
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionMode", 5)
+    TNT1 A 0 A_GiveInventory("DLCCentaurOptionSync_P", 1)
+    stop
+  }
+}
+
+// Idempotent option spawner: fills the map up to the owned option count.
+// Count at first tick decides the slot (1st spawned = right, 2nd = left).
+actor DLCCentaurOptionSync_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIf(!CallACS("rz_CentaurOptionSyncNeeded"), "Nothing")
+    TNT1 A 0 A_SpawnItemEx("DLCCentaurOption", 0, 0, 32, 0, 0, 0, 0, SXF_SETMASTER | SXF_NOCHECKPOSITION)
+    stop
+   Nothing:
+    TNT1 A 0
+    stop
+  }
+}
+
 actor DLCCentaurArrow1 : BasicProjectile {
   Translation "192:192=104:104", "198:198=128:128"
   Damage (81)
@@ -683,6 +912,129 @@ actor DLCCentaurArrowRage2 : DLCCentaurArrowRage {
    Spawn:
     8Q11 B 1
     wait
+  }
+}
+
+// Recca-style option satellite.  One actor class serves both slots; the spawn
+// angle (absolute) marks the side: 64 = right option, 16384 = left option.
+// Byte-angle slot values are shifted << 8 for A_Warp/A_SetAngle (BAM).
+actor DLCCentaurOption : ProjSpawnFuncActor {
+  -SOLID
+  +MISSILE
+  +NOBLOOD
+  +NOGRAVITY
+  +SHOOTABLE
+  +THRUSPECIES
+  +THRUGHOST
+  +DONTBLAST
+  +NOCLIP
+  +INVULNERABLE
+  +NODAMAGE
+  +NOPAIN
+  Species "DLCCentaurOption"
+  Damage (0)
+  Radius 5
+  Height 5
+  Scale 2.5
+  var int user_idx;    // 0 = right slot, 1 = left slot
+  var int user_theta;  // orbit slot angle, byte angle 0-255
+  var int user_tmp;
+  var int user_cool;
+  var int user_rep;    // periodic repair counter
+  States {
+   Spawn:
+    X_4G B 0 A_SetUserVar("user_idx", CallACS("rz_CentaurOptionCount") > 1)
+    goto LoopHead
+
+   LoopHead:
+    X_4G B 0 A_JumpIf(!CallACS("uh_PointerIsABoss", 2), "Cleanup")
+    X_4G B 0 A_SetUserVar("user_rep", (user_rep + 1) % 71)
+    X_4G B 0 A_JumpIf(user_rep > 0, "ModeDispatch")
+    X_4G B 0 A_JumpIf(user_idx > 0, "ModeDispatch")
+    X_4G B 0 A_GiveToTarget("DLCCentaurOptionSync_P")
+   ModeDispatch:
+    X_4G B 0 A_JumpIfInTargetInventory("DLCCentaurOptionMode", 5, "ModeS")
+    X_4G B 0 A_JumpIfInTargetInventory("DLCCentaurOptionMode", 4, "ModeR")
+    X_4G B 0 A_JumpIfInTargetInventory("DLCCentaurOptionMode", 3, "ModeF")
+    X_4G B 0 A_JumpIfInTargetInventory("DLCCentaurOptionMode", 2, "ModeC")
+    X_4G B 0 A_JumpIfInTargetInventory("DLCCentaurOptionMode", 1, "ModeB")
+    goto Cleanup
+
+   // B: rear diagonals relative to master facing (right = -135).
+   ModeB:
+    X_4G B 0 A_SetUserVar("user_theta", (CallACS("uh_FetchPointerAngle", 4) + 160 + user_idx * 192) % 256)
+    goto WarpSlot
+   // F: front diagonals relative to master facing (right = -45).
+   ModeF:
+    X_4G B 0 A_SetUserVar("user_theta", (CallACS("uh_FetchPointerAngle", 4) + 224 + user_idx * 64) % 256)
+    goto WarpSlot
+   // R: fast shared rotation, opposite phases.
+   ModeR:
+    X_4G B 0 A_SetUserVar("user_theta", (CallACS("rz_CentaurTic") * 12 + user_idx * 128) % 256)
+    goto WarpSlot
+   // C: rear diagonals of the velocity direction; freezes when the master stops.
+   ModeC:
+    X_4G B 0 A_SetUserVar("user_tmp", CallACS("uh_GetPointerVelocityAngle", 4))
+    X_4G B 0 A_JumpIf(user_tmp < 0, "ModeCWarp")
+    X_4G B 0 A_SetUserVar("user_theta", (user_tmp + 160 + user_idx * 192) % 256)
+   ModeCWarp:
+    X_4G B 0 A_Warp(AAPTR_MASTER, 48, 0, 32, user_theta << 8, WARPF_ABSOLUTEANGLE | WARPF_NOCHECKPOSITION | WARPF_INTERPOLATE)
+    goto Tail
+   // S: slide the slot toward its tangent aim point; muzzle rides the tangent.
+   ModeS:
+    X_4G B 0 A_SetUserVar("user_theta", CallACS("uh_GradualAngleTurn", user_theta, CallACS("rz_CentaurOptionSeek", user_idx, 896), 2, 256))
+    X_4G B 0 A_Warp(AAPTR_MASTER, 48, 0, 32, user_theta << 8, WARPF_ABSOLUTEANGLE | WARPF_NOCHECKPOSITION | WARPF_INTERPOLATE)
+    X_4G B 0 A_SetAngle((user_theta << 8) + (64 - user_idx * 128) * 256)
+    goto Tail
+
+   WarpSlot:
+    X_4G B 0 A_Warp(AAPTR_MASTER, 48, 0, 32, user_theta << 8, WARPF_ABSOLUTEANGLE | WARPF_NOCHECKPOSITION | WARPF_INTERPOLATE)
+
+   // Listen for the master's AltFire; cooldown paces the shots while held.
+   Tail:
+    X_4G B 0 A_JumpIf(CallACS("uh_GetPointerButtonInput", 4, 0) & BT_ALTATTACK, "TailFire")
+    X_4G B 0 A_SetUserVar("user_cool", 0)
+    goto LoopHead
+   TailFire:
+    X_4G B 0 A_JumpIf(user_cool > 0, "TailCool")
+    X_4G B 0 A_SetUserVar("user_cool", 8)
+    X_4G B 0 A_PlaySoundEx("Recca/ShotV", "Weapon")
+    X_4G B 0 A_CustomMissile("DLCCentaurOptionArrow", 0, 0, 0, 2, 0)
+   TailCool:
+    X_4G B 0 A_SetUserVar("user_cool", user_cool - 1)
+    goto LoopHead
+
+   Cleanup:
+    X_4G B 0 ACS_NamedExecute("rz_CentaurOptionKill", 0)
+    X_4G B 1
+    stop
+   Death:
+    TNT1 A 1
+    stop
+  }
+}
+
+// Plain projectile on purpose: do NOT inherit DLCCentaurArrow1/BasicProjectile
+// here — their USESPAWNEVENTSCRIPT hook expects a weapon-spawn context, which
+// an option-launched missile does not have, and crashes this engine build.
+actor DLCCentaurOptionArrow : BasicProjectile {
+  +THRUSPECIES
+  Translation "192:192=104:104", "198:198=128:128"
+  damagetype "DLCCent"
+  Obituary "%o was picked off by \cdDLC Centaurman\c- (%k)'s Option."
+  Damage (7)
+  Speed 60
+  Radius 4
+  Height 4
+  Scale 1.25
+  Species "DLCCentaurOption"
+  States {
+   Spawn:
+    8Q11 A 1
+    loop
+   Death:
+    TNT1 A 1
+    stop
   }
 }
 

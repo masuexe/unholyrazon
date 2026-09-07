@@ -1,0 +1,138 @@
+// Fragment of library uh_classes.
+// DLCCentaurOption (Recca-style option satellites) support scripts.
+
+#define CENTOPT_ORBIT_R 48   // orbit radius around the master, map units
+#define CENTOPT_REST_OFF 192 // byte-angle offset for the right-hand rest slot
+
+// Shared R-mode phase so both options rotate in lockstep (left is +128).
+script "rz_CentaurTic" (void) {
+  SetResultValue(Timer() % 256);
+}
+
+// DECORATE-facing count of live option satellites on the map.
+script "rz_CentaurOptionCount" (void) {
+  SetResultValue(ThingCountName("DLCCentaurOption", 0));
+}
+
+// DLCCentaurOption S-mode: byte angle the right(0)/left(1) option's orbit slot
+// should slide toward.  With a visible enemy inside `radius` (fixed) of the
+// master, that is the tangent point whose muzzle (slot angle +/- 90 degrees)
+// fires along the tangent through the enemy; without one it is the rest slot
+// beside the master (right = master angle -90, left = +90).
+script "rz_CentaurOptionSeek" (int side, int radius) {
+  if (!SetActivator(0, AAPTR_MASTER)) {
+    SetResultValue(0);
+    terminate;
+  }
+  int mastertid = ActivatorTID();
+  if (mastertid <= 0) {
+    SetResultValue(0);
+    terminate;
+  }
+
+  int ox = GetActorX(0);
+  int oy = GetActorY(0);
+  int rmax = radius << 16;
+  int userteam = GetPlayerInfo(mastertid - 1000, PLAYERINFO_TEAM);
+  int userpls = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", mastertid - 1000);
+
+  int besttid = 0;
+  int bestfixed = rmax + 1;
+
+  for (int p = 0; p < ServerMAX; p++) {
+    if (!PlayerInGame(p) || PlayerIsSpectator(p)) {
+      continue;
+    }
+    int tid = p + 1000;
+    if (tid == mastertid || CheckActorInventory(tid, "IsDead") ||
+        GetActorProperty(tid, APROP_Health) <= 0) {
+      continue;
+    }
+    if (IsTeamGame && GetPlayerInfo(p, PLAYERINFO_TEAM) == userteam) {
+      continue;
+    }
+    if (!IsTeamGame) {
+      int pls = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", p);
+      if (userpls != 6 && pls == userpls) {  // PLS_EYE
+        continue;
+      }
+    }
+    int dx = GetActorX(tid) - ox;
+    int dy = GetActorY(tid) - oy;
+    // Clamp before squaring: keeps FixedMul inputs inside 32-bit for any
+    // target that could pass the radius test anyway.
+    if (dx > rmax || dx < -rmax || dy > rmax || dy < -rmax) {
+      continue;
+    }
+    int dfixed = Sqrt8(FixedMul(dx, dx) + FixedMul(dy, dy)) >> 8;
+    if (dfixed > rmax || dfixed >= bestfixed || !CheckSight(0, tid, 0)) {
+      continue;
+    }
+    besttid = tid;
+    bestfixed = dfixed;
+  }
+
+  int theta;
+  if (besttid > 0) {
+    int edx = GetActorX(besttid) - ox;
+    int edy = GetActorY(besttid) - oy;
+    // Tangent geometry in whole map units; d^2 caps out at ~803k for the
+    // scan radius, so plain ints are overflow-safe here (fixed d^2 is not).
+    int dxu = edx >> 16;
+    int dyu = edy >> 16;
+    int du2 = dxu * dxu + dyu * dyu;
+    int du = Sqrt8(du2);
+    if (du <= CENTOPT_ORBIT_R) {
+      // No tangent exists inside the orbit circle; aim the muzzle straight
+      // at the foe instead.
+      int phi = VectorAngle(edx, edy) >> 8;
+      theta = (phi + CENTOPT_REST_OFF + side * 128) % 256;
+    } else {
+      // Tangent point P = (R^2*dx +/- R*t*dy, R^2*dy -/+ R*t*dx) / d^2 with
+      // t = sqrt(d^2 - R^2); single FixedDiv keeps the result in fixed.
+      int sgn = 1 - 2 * side;
+      int rt = CENTOPT_ORBIT_R * Sqrt8(du2 - CENTOPT_ORBIT_R * CENTOPT_ORBIT_R);
+      int px = FixedDiv(CENTOPT_ORBIT_R * CENTOPT_ORBIT_R * dxu + sgn * rt * dyu, du2);
+      int py = FixedDiv(CENTOPT_ORBIT_R * CENTOPT_ORBIT_R * dyu - sgn * rt * dxu, du2);
+      theta = VectorAngle(px, py) >> 8;
+    }
+  } else {
+    int a = GetActorAngle(0) >> 8;
+    theta = (a + CENTOPT_REST_OFF + side * 128) % 256;
+  }
+  SetResultValue(theta);
+}
+
+// Removes the calling option satellite.  DECORATE A_Die on a MISSILE-flagged
+// actor crashes this engine build (observed 3.3-alpha at every master death),
+// so Cleanup routes through here instead.
+script "rz_CentaurOptionKill" (void) {
+  Thing_Remove(0);
+}
+
+// True while live options are fewer than the master's owned count level.
+script "rz_CentaurOptionSyncNeeded" (void) {
+  SetResultValue(ThingCountName("DLCCentaurOption", 0) < CheckInventory("DLCCentaurOptionStack"));
+}
+
+// Offline debug / quick-tune helper:
+//   pukename rz_CentaurOptDebug <player 0-based> <mode 0-5> <stack 0-2>
+// mode 0 clears the option state (satellites clean themselves up); otherwise
+// sets the mode + count level and pulses DLCCentaurOptionSync_P to respawn.
+script "rz_CentaurOptDebug" (int pnum, int mode, int stack) {
+  if (pnum < 0 || pnum >= ServerMAX) {
+    Log(s:"[CentOpt] bad player ", i:pnum);
+    terminate;
+  }
+  int tid = 1000 + pnum;
+  TakeActorInventory(tid, "DLCCentaurOptionMode", 5);
+  TakeActorInventory(tid, "DLCCentaurOptionStack", 2);
+  if (mode > 0) {
+    GiveActorInventory(tid, "DLCCentaurOptionMode", mode);
+    GiveActorInventory(tid, "DLCCentaurOptionStack", stack > 0 ? stack : 1);
+    GiveActorInventory(tid, "DLCCentaurOptionSync_P", 1);
+  }
+  Log(s:"[CentOpt] p", i:pnum, s:" mode=", i:CheckActorInventory(tid, "DLCCentaurOptionMode"),
+      s:" stack=", i:CheckActorInventory(tid, "DLCCentaurOptionStack"),
+      s:" live=", i:ThingCountName("DLCCentaurOption", 0));
+}
