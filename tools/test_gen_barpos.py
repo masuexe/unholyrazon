@@ -2,6 +2,7 @@
 """Deterministic validation fixtures for _gen_barpos.py."""
 
 from pathlib import Path
+import re
 import sys
 import tempfile
 
@@ -123,6 +124,116 @@ def main():
     assert "NegaMan_DrawBar(UHBAR_NEGAMAN_MOVE,\n                  CheckInventory(uh_nega_fill_ammo)" not in hud_source
     timestopper = hud_source.split('script "DrawBar_NegaTimeStopperWep"', 1)[1]
     assert 'NegaMan_DrawBar(UHBAR_NEGAMAN_MOVE, CheckInventory("NegaDuckAmmo"), 400);' in timestopper
+
+    # Qwant's type enum, TOML visual definitions, and ACS switch must stay in
+    # lockstep. The move's real fill ammo/capacity are runtime-resolved, so
+    # every type is a proxy row rather than a direct source row.
+    type_source = (generator.ROOT / "acs_source" / "hud" / "bar_types.acs").read_text(
+        encoding="utf-8"
+    )
+    qwant_type_count = int(re.search(
+        r"#define\s+QWANT_TYPE_COUNT\s+(\d+)", type_source
+    ).group(1))
+    qwant_types = [
+        (name.lower(), int(value))
+        for name, value in re.findall(
+            r"#define\s+QWANT_TYPE_(?!COUNT\b)([A-Z]+)\s+(\d+)", type_source
+        )
+    ]
+    assert [value for _name, value in qwant_types] == list(range(qwant_type_count))
+    qwant_bars = [
+        item for item in real_config["bars"] if item["_namespace"] == "UHBar_Qwant"
+    ]
+    qwant_moves = [item for item in qwant_bars if item["id"].startswith("move_")]
+    assert len(qwant_moves) == qwant_type_count
+    assert {item["id"] for item in qwant_moves} == {
+        f"move_{name}" for name, _value in qwant_types
+    }
+    for name, value in qwant_types:
+        item = next(bar for bar in qwant_moves if bar["id"] == f"move_{name}")
+        letter = chr(ord("A") + value)
+        assert item["vertical_full"] == f"02__{letter}_00"
+        assert item["horizontal_full"] == f"02__{letter}_50"
+        assert "source" not in item and item["capacity"] == 56
+        assert (
+            f"case QWANT_TYPE_{name.upper()}:\n"
+            f"      Qwant_DrawBar(UHBAR_QWANT_MOVE_{name.upper()}, "
+            "CheckInventory(ammo), max_var);"
+        ) in hud_source
+    assert "qwanttypebar[type]" not in hud_source
+    assert "qwanttypevar[type]" not in hud_source
+
+    # Player-health visuals intentionally use runtime proxy capacities. Do not
+    # replace these with SBARINFO Health: BARLIB reads APROP_SpawnHealth while
+    # the engine's Health bar includes stamina in its maximum.
+    health_bars = [
+        item for item in real_config["bars"]
+        if item["_namespace"] == "UHBar_PlayerHealthState"
+    ]
+    assert {
+        item["id"] for item in health_bars
+    } == {"invulnerable", "guard_strengthened", "guard_weakened", "burning"}
+    assert all("source" not in item and item["capacity"] == 100 for item in health_bars)
+    health_source = (generator.ROOT / "acs_source" / "hud" / "common_bars.acs").read_text(
+        encoding="utf-8"
+    )
+    assert re.findall(
+        r"PlayerHealthState_DrawBar\((UHBAR_PLAYERHEALTH_[A-Z]+), hp, maxhp\)",
+        health_source,
+    ) == [
+        "UHBAR_PLAYERHEALTH_INVULNERABLE",
+        "UHBAR_PLAYERHEALTH_STRENGTHENED",
+        "UHBAR_PLAYERHEALTH_WEAKENED",
+        "UHBAR_PLAYERHEALTH_WEAKENED",
+        "UHBAR_PLAYERHEALTH_STRENGTHENED",
+        "UHBAR_PLAYERHEALTH_BURNING",
+    ]
+
+    # Atomic Fire retains its cvar/threshold/timer control flow. All variants
+    # use the old position-1/layer-0 bank, so the later charge-meter selection
+    # overwrites a threshold selection when charge bars are enabled.
+    atomic_bars = [
+        item for item in real_config["bars"]
+        if item["_namespace"] == "UHBar_AtomicFireWepU"
+    ]
+    assert {
+        (item["id"], item["source"], item["position"], item["priority"])
+        for item in atomic_bars
+    } == {
+        ("charge_meter", "AtomicFireCharge_F", "1", 0),
+        ("ammo_maximum", "AtomicFireAmmo", "1", 0),
+        ("ammo_high", "AtomicFireAmmo", "1", 0),
+        ("ammo_medium", "AtomicFireAmmo", "1", 0),
+    }
+    assert len({generator.namespaced_selector(item) for item in atomic_bars}) == 1
+    atomic_source = (generator.ROOT / "acs_source" / "hud" / "uh_cwepbar.acs").read_text(
+        encoding="utf-8"
+    )
+    for threshold, constant in ((50, "MAXIMUM"), (40, "HIGH"), (30, "MEDIUM")):
+        assert (
+            f'CheckInventory("WeaponCharge") >= {threshold}' in atomic_source
+            and f"AtomicFireWepU_DrawBar(UHBAR_ATOMICFIRE_{constant});" in atomic_source
+        )
+    assert atomic_source.count("AtomicFireWepU_DrawBar(UHBAR_ATOMICFIRE_MAXIMUM);") == 2
+    assert "AtomicFireWepU_DrawBar(UHBAR_ATOMICFIRE_CHARGE);" in atomic_source
+    charge_call = atomic_source.index("AtomicFireWepU_DrawBar(UHBAR_ATOMICFIRE_CHARGE);")
+    for constant in ("MAXIMUM", "HIGH", "MEDIUM"):
+        assert atomic_source.index(
+            f"AtomicFireWepU_DrawBar(UHBAR_ATOMICFIRE_{constant});"
+        ) < charge_call
+    assert 'GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars")' in atomic_source
+    assert "Timer() % 2 == 1" in atomic_source
+
+    # Public declarations remain, but no live internal string-bar invocation
+    # may remain after TOML migration.
+    live_call = re.compile(
+        r"^[ \t]*DrawCustomBarString(?:Layer)?(?:1|2|3|HP)\s*\(", re.MULTILINE
+    )
+    live_paths = [
+        path for path in (generator.ROOT / "acs_source" / "hud").rglob("*.acs")
+        if live_call.search(path.read_text(encoding="utf-8"))
+    ]
+    assert not live_paths, live_paths
 
     base_graphics = load_fixture([("UHBar_BaseGraphics", [bar(
         "body", "UHBAR_BASEGRAPHICS",
