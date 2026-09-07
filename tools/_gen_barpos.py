@@ -141,7 +141,7 @@ def load_bar_config() -> dict:
     for bar in bars:
         label = bar_label(bar)
         for key in ("id", "position", "priority", "vertical_full", "vertical_empty",
-                    "horizontal_full", "horizontal_empty", "capacity"):
+                    "horizontal_full", "horizontal_empty"):
             if key not in bar:
                 raise SystemExit(f"{CONFIG}: {label}: missing {key!r}")
         if not isinstance(bar["id"], str) or not ACTOR_NAME_RX.fullmatch(bar["id"]):
@@ -182,11 +182,22 @@ def load_bar_config() -> dict:
         priority = bar["priority"]
         if type(priority) is not int or priority < 0:
             raise SystemExit(f"{CONFIG}: {label}: invalid layer priority")
-        capacity = bar["capacity"]
-        if type(capacity) is not int or capacity <= 0 or capacity > INT32_MAX:
-            raise SystemExit(
-                f"{CONFIG}: {label}: capacity must be an integer in 1..{INT32_MAX}"
-            )
+        has_source = "source" in bar
+        has_capacity = "capacity" in bar
+        if has_source and has_capacity:
+            raise SystemExit(f"{CONFIG}: {label}: source and capacity are mutually exclusive")
+        if has_source:
+            source = bar["source"]
+            if not isinstance(source, str) or not ACTOR_NAME_RX.fullmatch(source):
+                raise SystemExit(f"{CONFIG}: {label}: source must be a valid identifier")
+        else:
+            if not has_capacity:
+                raise SystemExit(f"{CONFIG}: {label}: missing 'capacity'")
+            capacity = bar["capacity"]
+            if type(capacity) is not int or capacity <= 0 or capacity > INT32_MAX:
+                raise SystemExit(
+                    f"{CONFIG}: {label}: capacity must be an integer in 1..{INT32_MAX}"
+                )
         legacy_catalog = bar.get("legacy_catalog", False)
         if not isinstance(legacy_catalog, bool):
             raise SystemExit(f"{CONFIG}: {label}: legacy_catalog must be boolean")
@@ -405,8 +416,10 @@ def validate_generated_actor_names(config: dict):
     seen = {}
     for bar in config["bars"]:
         bank = (bar["_namespace"].casefold(), bar["position"], bar["priority"])
-        for kind, actor in (("selector", namespaced_selector(bar)),
-                            ("ammo", namespaced_ammo(bar))):
+        actors = [("selector", namespaced_selector(bar))]
+        if "source" not in bar:
+            actors.append(("ammo", namespaced_ammo(bar)))
+        for kind, actor in actors:
             key = actor.casefold()
             previous = seen.get(key)
             if previous is not None:
@@ -431,7 +444,7 @@ def gen_namespaced_append_lines(config: dict, horiz: bool) -> list:
     )
     for bar in bars:
         selector = namespaced_selector(bar)
-        ammo = namespaced_ammo(bar)
+        ammo = bar["source"] if "source" in bar else namespaced_ammo(bar)
         selector_id = layer_selector_id(config, bar)
         if horiz:
             fill, empty, x, y = (bar["horizontal_full"], bar["horizontal_empty"],
@@ -520,14 +533,16 @@ def gen_namespaced_barfx_actors(config: dict) -> str:
     block = ["//$UH — TOML namespaced bar selectors / ammo"]
     seen = set()
     for bar in config["bars"]:
-        for actor, parent, extra in (
-            (namespaced_selector(bar), "Inventory", [
+        actors = [(
+            namespaced_selector(bar), "Inventory", [
                 "inventory.amount 1",
-                f"inventory.maxamount {layer_selector_capacity(config, bar)}"]),
-            (namespaced_ammo(bar), "Ammo", [
-                "+INVENTORY.IGNORESKILL", "inventory.amount 0",
-                f"inventory.maxamount {bar['capacity']}"]),
-        ):
+                f"inventory.maxamount {layer_selector_capacity(config, bar)}"])]
+        if "source" not in bar:
+            actors.append((
+                namespaced_ammo(bar), "Ammo", [
+                    "+INVENTORY.IGNORESKILL", "inventory.amount 0",
+                    f"inventory.maxamount {bar['capacity']}"]))
+        for actor, parent, extra in actors:
             actor_key = actor.casefold()
             if actor_key in seen:
                 continue
@@ -556,25 +571,34 @@ def gen_generated_acs(config: dict) -> str:
         namespaces.setdefault(bar["_namespace"].casefold(), []).append(bar)
     for bars in namespaces.values():
         namespace = bars[0]["_namespace"]
+        direct_source = all("source" in bar for bar in bars)
         for index, bar in enumerate(bars, 1):
             lines.append(f"#define {bar_constant(bar)} {index}")
+        signature = "(int id)" if direct_source else "(int id, int amount, int capacity)"
         lines += [
             "",
-            f"function void {draw_helper(namespace)}(int id, int amount, int capacity) {{",
-            "  if (capacity <= 0) { return; }",
-            "  if (amount < 0) { amount = 0; }",
-            "  if (amount > capacity) { amount = capacity; }",
+            f"function void {draw_helper(namespace)}{signature} {{",
+        ]
+        if not direct_source:
+            lines += [
+                "  if (capacity <= 0) { return; }",
+                "  if (amount < 0) { amount = 0; }",
+                "  if (amount > capacity) { amount = capacity; }",
+            ]
+        lines += [
             "  switch (id) {",
         ]
         for bar in bars:
             selector = namespaced_selector(bar)
-            ammo = namespaced_ammo(bar)
             lines += [
                 f"    case {bar_constant(bar)}:",
                 f'      SetInventory("{selector}", {layer_selector_id(config, bar)});',
-                f'      SetAmmoAmountAndCapacity("{ammo}", amount, capacity);',
-                "      break;",
             ]
+            if "source" not in bar:
+                lines.append(
+                    f'      SetAmmoAmountAndCapacity("{namespaced_ammo(bar)}", amount, capacity);'
+                )
+            lines.append("      break;")
         lines += [
             "    default:",
             "      break;",
@@ -595,7 +619,8 @@ def gen_generated_acs(config: dict) -> str:
             if selector not in cleared_selectors:
                 lines.append(f'  SetActorInventory(cam, "{selector}", 0);')
                 cleared_selectors.add(selector)
-            lines.append(f'  SetActorInventory(cam, "{namespaced_ammo(bar)}", 0);')
+            if "source" not in bar:
+                lines.append(f'  SetActorInventory(cam, "{namespaced_ammo(bar)}", 0);')
         lines += ["}", "",]
         lines += [
             f'script "{callback}_Register" OPEN CLIENTSIDE {{',

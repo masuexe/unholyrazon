@@ -83,6 +83,21 @@ def main():
     assert "actor UHBar_FixtureOne_P1L0Selector" in generated
     assert "actor UHBar_FixtureTwo_P1L0Selector" in generated
 
+    source_bar = bar("body", "UHBAR_SOURCE", source="Ammo1")
+    del source_bar["capacity"]
+    source_config = load_fixture([("UHBar_Source", [source_bar])])
+    append_lines = generator.gen_namespaced_append_lines(source_config, True)
+    assert any("DrawBar \"002B_VAR\", \"VNOBAR\", Ammo1," in line
+               for line in append_lines)
+    source_actors = generator.gen_namespaced_barfx_actors(source_config)
+    assert "actor UHBar_Source_P1L0Selector" in source_actors
+    assert "UHBar_Source_P1L0_BodyAmmo" not in source_actors
+    source_acs = generator.gen_generated_acs(source_config)
+    assert "function void Source_DrawBar(int id)" in source_acs
+    assert "SetAmmoAmountAndCapacity" not in source_acs
+    assert 'SetActorInventory(cam, "UHBar_Source_P1L0Selector", 0);' in source_acs
+    assert "UHBar_Source_P1L0_BodyAmmo" not in source_acs
+
     expect_failure([
         ("UHBar_Fixture", [bar("body", "UHBAR_FIXTURE")]),
         ("uhbar_fixture", [bar("body", "UHBAR_FIXTURE_TWO")]),
@@ -115,6 +130,18 @@ def main():
     expect_failure([
         ("UHBar_Fixture", [bar("body", "UHBAR_FIXTURE", capacity=0)]),
     ], "invalid capacity")
+    expect_failure([
+        ("UHBar_Fixture", [bar("body", "UHBAR_FIXTURE", source="Ammo-1")]),
+    ], "invalid source")
+    source_with_capacity = bar("body", "UHBAR_FIXTURE", source="Ammo1")
+    expect_failure([
+        ("UHBar_Fixture", [source_with_capacity]),
+    ], "source with capacity")
+    no_capacity = bar("body", "UHBAR_FIXTURE")
+    del no_capacity["capacity"]
+    expect_failure([
+        ("UHBar_Fixture", [no_capacity]),
+    ], "missing capacity")
     expect_failure([
         ("UHBar_Fixture", [bar("body", "UHBAR_FIXTURE", vertical_full="MISSING")]),
     ], "missing graphics")
