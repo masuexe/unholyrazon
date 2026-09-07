@@ -53,8 +53,9 @@ DECORATE/ACS diagnostics.
   writing; exits 1 on drift. Run after adding String-bar graphics.
 - `bars.toml` is the schema-versioned hand-authored input for namespaced bars.
   `python3 tools/_gen_barpos.py --check` verifies its checked-in numeric ACS
-  helper, namespaced selector/ammo actors, and sparse-priority AppendStatusBar
-  output. Set `legacy_catalog = true` only when a migrated string-API pair must
+  helper, namespaced selector/ammo actors in `UH_BarFX.dec`, and sparse-priority
+  AppendStatusBar output. The base game's `BarFX.txt` must not be overridden.
+  Set `legacy_catalog = true` only when a migrated string-API pair must
   remain in the compatibility catalog. Clear callbacks register from
   `OPEN CLIENTSIDE` through `core_DrawBar_RegisterClear`; duplicate names
   return the existing row, `-1` is empty, `-2` is registry-full, and `-3` is a

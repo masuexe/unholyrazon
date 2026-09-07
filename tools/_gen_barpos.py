@@ -23,7 +23,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "src"
 ACS_CAT = ROOT / "acs_source" / "_includes" / "mod_api" / "uh_barcat.acs"
-BARFX = ROOT / "actors" / "inventory" / "sbar" / "BarFX.txt"
+UH_BARFX = ROOT / "actors" / "inventory" / "sbar" / "UH_BarFX.dec"
 SBAR_H = ROOT / "SBARINFO.h._core"
 SBAR_V = ROOT / "SBARINFO.v._core"
 SBAR_HZ = ROOT / "SBARINFO.h.uhappend"
@@ -54,6 +54,7 @@ COMMON_BAR_GRAPHICS = {"BAREMPTY", "VAREMPTY", "NOBAR", "VNOBAR"}
 INT32_MAX = 0x7FFFFFFF
 
 STALE_GENERATED = (
+    ROOT / "actors" / "inventory" / "sbar" / "BarFX.txt",
     ROOT / "TEXTURES.barscat",
     ROOT / "TEXTURES.barspos",
     ROOT / "TEXTURES.barpos",
@@ -421,10 +422,10 @@ def gen_namespaced_barfx_actors(config: dict) -> str:
 
 
 def barfx_updated_text(config):
-    text = BARFX.read_text(encoding="utf-8")
+    text = UH_BARFX.read_text(encoding="utf-8")
     m = re.search(r"(?m)^\s*//\s*\$UH — DrawCustomBar1/2/HP position banks.*$", text)
     if not m:
-        raise SystemExit("BarFX.txt missing DrawCustomBar marker")
+        raise SystemExit("UH_BarFX.dec missing DrawCustomBar marker")
     return text[:m.start()] + gen_barfx_actors() + gen_namespaced_barfx_actors(config)
 
 
@@ -500,7 +501,7 @@ def main():
         ACS_CAT: gen_catalog(pairs),
         SBAR_HZ: hz,
         SBAR_VZ: vz,
-        BARFX: barfx_updated_text(config),
+        UH_BARFX: barfx_updated_text(config),
         GENERATED_ACS: gen_generated_acs(config),
         TEX_BARS: renamed_bars_text(TEX_BARS),
         ANIM_BARS: renamed_bars_text(ANIM_BARS),
