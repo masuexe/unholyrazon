@@ -46,7 +46,8 @@ DECORATE/ACS diagnostics.
   fragments from their source actors.
 - `_gen_barpos.py` — regenerate `uh_barcat.acs`, `SBARINFO.h.uhappend` /
   `SBARINFO.v.uhappend` (AppendStatusBar), and the BarFX layer-pool actors
-  from the `DrawCustomBarString*` calls found in `src/acs_source`. Renames
+  from unmigrated `DrawCustomBarString*` calls and TOML entries marked for
+  compatibility in `src/acs_source`. Renames
   leftover `BRSLT` wrappers in `TEXTURES.bars` / `ANIMDEFS.bars` to
   `UHVT`/`UHHT` and strips the legacy layer banks from `SBARINFO.*._core`.
   `--check` verifies all generated outputs (and stale-file absence) without
@@ -62,6 +63,8 @@ DECORATE/ACS diagnostics.
   `constant_name` is the complete public ACS constant and must begin with
   `UHBAR_`; the generator enforces ACC's 31-character identifier limit and
   case-insensitive uniqueness.
+- `test_gen_barpos.py` — deterministic generator validation fixtures. Run with
+  `python3 tools/test_gen_barpos.py` after changing the TOML schema or generator.
   Set `legacy_catalog = true` only when a migrated string-API pair must
   remain in the compatibility catalog. Clear callbacks register from
   `OPEN CLIENTSIDE` through `core_DrawBar_RegisterClear`; duplicate names

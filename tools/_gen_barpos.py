@@ -139,60 +139,65 @@ def load_bar_config() -> dict:
     seen_constants = set()
     seen_helpers = {}
     for bar in bars:
+        label = bar_label(bar)
         for key in ("id", "position", "priority", "vertical_full", "vertical_empty",
                     "horizontal_full", "horizontal_empty", "capacity"):
             if key not in bar:
-                raise SystemExit(f"{CONFIG}: bar is missing {key!r}")
+                raise SystemExit(f"{CONFIG}: {label}: missing {key!r}")
         if not isinstance(bar["id"], str) or not ACTOR_NAME_RX.fullmatch(bar["id"]):
-            raise SystemExit(f"{CONFIG}: invalid bar id {bar['id']!r}")
+            raise SystemExit(f"{CONFIG}: {label}: invalid bar id {bar['id']!r}")
         constant_name = bar.get("constant_name")
         if not isinstance(constant_name, str) or not ACTOR_NAME_RX.fullmatch(constant_name):
-            raise SystemExit(f"{CONFIG}: {bar['id']}: invalid constant_name")
+            raise SystemExit(f"{CONFIG}: {label}: invalid constant_name")
         if len(constant_name) >= 32:
             raise SystemExit(
-                f"{CONFIG}: {bar['id']}: constant_name exceeds ACC's 31-character limit"
+                f"{CONFIG}: {label}: constant_name exceeds ACC's 31-character limit"
             )
         if not constant_name.upper().startswith("UHBAR_"):
-            raise SystemExit(f"{CONFIG}: {bar['id']}: constant_name must start with UHBAR_")
+            raise SystemExit(f"{CONFIG}: {label}: constant_name must start with UHBAR_")
         bar_namespace = bar["_namespace"]
         folded_id = (bar_namespace.casefold(), bar["id"].casefold())
         if folded_id in seen_ids:
-            raise SystemExit(f"{CONFIG}: duplicate bar id {bar['id']!r}")
+            raise SystemExit(f"{CONFIG}: duplicate bar id {label!r}")
         seen_ids.add(folded_id)
         if constant_name.casefold() in seen_constants:
-            raise SystemExit(f"{CONFIG}: duplicate constant_name {constant_name!r}")
+            raise SystemExit(f"{CONFIG}: {label}: duplicate constant_name {constant_name!r}")
         seen_constants.add(constant_name.casefold())
         namespace_key = bar_namespace.casefold()
         helper = draw_helper(bar_namespace)
         if len(helper) >= 32:
             raise SystemExit(
-                f"{CONFIG}: {bar['id']}: generated draw helper exceeds ACC's "
+                f"{CONFIG}: {label}: generated draw helper exceeds ACC's "
                 "31-character limit"
             )
         previous_helper_namespace = seen_helpers.get(helper.casefold())
         if (previous_helper_namespace is not None
                 and previous_helper_namespace.casefold() != namespace_key):
-            raise SystemExit(f"{CONFIG}: generated draw helper {helper!r} is not unique")
+            raise SystemExit(
+                f"{CONFIG}: {label}: generated draw helper {helper!r} is not unique"
+            )
         seen_helpers[helper.casefold()] = bar_namespace
         if bar["position"] not in {p[0] for p in POS_BANKS}:
-            raise SystemExit(f"{CONFIG}: invalid position {bar['position']!r}")
+            raise SystemExit(f"{CONFIG}: {label}: invalid position {bar['position']!r}")
         priority = bar["priority"]
         if type(priority) is not int or priority < 0:
-            raise SystemExit(f"{CONFIG}: {bar['id']}: invalid layer priority")
+            raise SystemExit(f"{CONFIG}: {label}: invalid layer priority")
         capacity = bar["capacity"]
         if type(capacity) is not int or capacity <= 0 or capacity > INT32_MAX:
             raise SystemExit(
-                f"{CONFIG}: {bar['id']}: capacity must be an integer in 1..{INT32_MAX}"
+                f"{CONFIG}: {label}: capacity must be an integer in 1..{INT32_MAX}"
             )
         legacy_catalog = bar.get("legacy_catalog", False)
         if not isinstance(legacy_catalog, bool):
-            raise SystemExit(f"{CONFIG}: {bar['id']}: legacy_catalog must be boolean")
+            raise SystemExit(f"{CONFIG}: {label}: legacy_catalog must be boolean")
         for key in ("vertical_full", "vertical_empty", "horizontal_full", "horizontal_empty"):
             image = bar[key]
             if not isinstance(image, str) or not image:
-                raise SystemExit(f"{CONFIG}: {bar['id']}: empty {key}")
+                raise SystemExit(f"{CONFIG}: {label}: empty {key}")
             if image.casefold() not in known_graphics:
-                raise SystemExit(f"{CONFIG}: {bar['id']}: missing image reference {image!r}")
+                raise SystemExit(f"{CONFIG}: {label}: missing image reference {image!r}")
+    validate_selector_banks(config)
+    validate_generated_actor_names(config)
     return config
 
 
@@ -208,9 +213,16 @@ def configured_legacy_pairs(config: dict) -> list:
 
 def collect_string_bar_pairs(config: dict) -> list:
     pairs = {}
+    configured_pairs = {
+        (bar["vertical_full"], bar["vertical_empty"],
+         bar["horizontal_full"], bar["horizontal_empty"])
+        for bar in config["bars"]
+    }
 
-    def add(vf, ve, hf, he):
+    def add(vf, ve, hf, he, source=False):
         key = (vf, ve, hf, he)
+        if source and key in configured_pairs:
+            return
         if all(key) and key not in pairs:
             pairs[key] = None
 
@@ -224,13 +236,13 @@ def collect_string_bar_pairs(config: dict) -> list:
     for path in acs_files:
         text = path.read_text(encoding="utf-8", errors="ignore")
         for m in call_rx.finditer(text):
-            add(m.group(1), m.group(2), m.group(3), m.group(4))
+            add(m.group(1), m.group(2), m.group(3), m.group(4), source=True)
 
         bars = parse_str_array(text, "qwanttypebar")
         vars_ = parse_str_array(text, "qwanttypevar")
         for i, vf in enumerate(bars):
             hf = vars_[i] if i < len(vars_) else vf
-            add(vf, "BAREMPTY", hf, "VAREMPTY")
+            add(vf, "BAREMPTY", hf, "VAREMPTY", source=True)
 
         v_names = assign_rx.findall(text)
         if v_names:
@@ -246,7 +258,7 @@ def collect_string_bar_pairs(config: dict) -> list:
                     for n in verts
                 ]
             for vf, hf in zip(verts, hors):
-                add(vf, "BAREMPTY", hf, "VAREMPTY")
+                add(vf, "BAREMPTY", hf, "VAREMPTY", source=True)
 
     for pair in configured_legacy_pairs(config):
         add(*pair)
@@ -350,6 +362,12 @@ def namespaced_ammo(bar: dict) -> str:
     return f"{bar['_namespace']}_P{bar['position']}L{bar['priority']}_{pascal_id(bar['id'])}Ammo"
 
 
+def bar_label(bar: dict) -> str:
+    namespace = bar.get("_namespace", "<unknown namespace>")
+    bar_id = bar.get("id", "<unknown id>")
+    return f"{namespace}.{bar_id}"
+
+
 def layer_selector_id(config: dict, bar: dict) -> int:
     """Dense selector amount; layer priority is never an inventory amount."""
     bank = (bar["_namespace"].casefold(), bar["position"], bar["priority"])
@@ -364,6 +382,43 @@ def layer_selector_capacity(config: dict, bar: dict) -> int:
     return sum(1 for other in config["bars"]
                if (other["_namespace"].casefold(), other["position"],
                    other["priority"]) == bank)
+
+
+def validate_selector_banks(config: dict):
+    """Ensure shared selector banks receive dense, deterministic amounts."""
+    banks = {}
+    for bar in config["bars"]:
+        bank = (bar["_namespace"].casefold(), bar["position"], bar["priority"])
+        banks.setdefault(bank, []).append(bar)
+    for bars in banks.values():
+        actual = sorted(layer_selector_id(config, bar) for bar in bars)
+        expected = list(range(1, len(bars) + 1))
+        if actual != expected:
+            names = ", ".join(bar_label(bar) for bar in bars)
+            raise SystemExit(
+                f"{CONFIG}: selector bank numbering is not dense for {names}"
+            )
+
+
+def validate_generated_actor_names(config: dict):
+    """Match Zandronum's case-insensitive actor-name collision behavior."""
+    seen = {}
+    for bar in config["bars"]:
+        bank = (bar["_namespace"].casefold(), bar["position"], bar["priority"])
+        for kind, actor in (("selector", namespaced_selector(bar)),
+                            ("ammo", namespaced_ammo(bar))):
+            key = actor.casefold()
+            previous = seen.get(key)
+            if previous is not None:
+                previous_kind, previous_label, previous_bank = previous
+                if (kind == "selector" and previous_kind == "selector"
+                        and bank == previous_bank):
+                    continue
+                raise SystemExit(
+                    f"{CONFIG}: generated actor collision {actor!r} ({kind}) "
+                    f"between {previous_label} and {bar_label(bar)}"
+                )
+            seen[key] = (kind, bar_label(bar), bank)
 
 
 def gen_namespaced_append_lines(config: dict, horiz: bool) -> list:
@@ -473,9 +528,10 @@ def gen_namespaced_barfx_actors(config: dict) -> str:
                 "+INVENTORY.IGNORESKILL", "inventory.amount 0",
                 f"inventory.maxamount {bar['capacity']}"]),
         ):
-            if actor in seen:
+            actor_key = actor.casefold()
+            if actor_key in seen:
                 continue
-            seen.add(actor)
+            seen.add(actor_key)
             block += [f"actor {actor} : {parent}", "{", *extra, "}", ""]
     return "\n".join(block)
 
