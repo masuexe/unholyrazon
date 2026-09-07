@@ -98,6 +98,32 @@ def main():
     assert 'SetActorInventory(cam, "UHBar_Source_P1L0Selector", 0);' in source_acs
     assert "UHBar_Source_P1L0_BodyAmmo" not in source_acs
 
+    # NegaMan's move bar is a direct real-ammo source inside a mixed namespace.
+    # Its caller must not feed the dynamic copied-weapon ammo into this bar.
+    real_config = generator.load_bar_config()
+    nega_move = next(
+        item for item in real_config["bars"]
+        if item["_namespace"] == "UHBar_NegaMan" and item["id"] == "move"
+    )
+    assert nega_move["source"] == "NegaDuckAmmo"
+    assert "capacity" not in nega_move
+    real_acs = generator.gen_generated_acs(real_config)
+    move_case = real_acs.split("case UHBAR_NEGAMAN_MOVE:", 1)[1].split(
+        "case UHBAR_NEGAMAN_BODY:", 1
+    )[0]
+    assert 'SetInventory("UHBar_NegaMan_P2L0Selector", 2);' in move_case
+    assert "SetAmmoAmountAndCapacity" not in move_case
+    hud_source = (generator.ROOT / "acs_source" / "hud" / "copy_weapon_bars.acs").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        'NegaMan_DrawBar(UHBAR_NEGAMAN_MOVE,\n'
+        '                  CheckInventory("NegaDuckAmmo"), 400);'
+    ) in hud_source
+    assert "NegaMan_DrawBar(UHBAR_NEGAMAN_MOVE,\n                  CheckInventory(uh_nega_fill_ammo)" not in hud_source
+    timestopper = hud_source.split('script "DrawBar_NegaTimeStopperWep"', 1)[1]
+    assert 'NegaMan_DrawBar(UHBAR_NEGAMAN_MOVE, CheckInventory("NegaDuckAmmo"), 400);' in timestopper
+
     base_graphics = load_fixture([("UHBar_BaseGraphics", [bar(
         "body", "UHBAR_BASEGRAPHICS",
         vertical_full="BARAMM13", horizontal_full="VARAMM13",
