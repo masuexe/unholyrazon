@@ -8,10 +8,10 @@ into InInventory-banded DrawBar lines (4 slots x 4 layers x 2 HUD modes).
 This does not define BRSLT/BZSLT. Main SBARINFO.H/V keep v6b
 CustSbarSlotFlag + BRSLT lines for other mods.
 
-The hand-authored tools/bars.toml adds namespaced bars without a hard-coded
-layer ceiling. Each bar may override the top-level namespace and clear callback
-to keep independent class groups isolated. API IDs follow declaration order
-inside each namespace; sparse priorities control SBARINFO draw order.
+The hand-authored tools/bars.toml adds namespaced bar groups without a
+hard-coded layer ceiling. Each group owns one namespace; its clear callback is
+derived from that namespace. API IDs follow bar declaration order inside each
+group; sparse priorities control SBARINFO draw order.
 
 With --check, regenerate everything in memory and compare against the files
 on disk; exit 1 with a per-file report on any drift (never writes).
@@ -60,8 +60,12 @@ def pascal_id(value: str) -> str:
 
 
 def bar_constant(bar: dict) -> str:
-    suffix = bar["_constant_suffix"]
-    return bar["_namespace"].upper() + (f"_{suffix}" if suffix else "")
+    return bar["constant_name"]
+
+
+def draw_helper(namespace: str) -> str:
+    stem = namespace[6:] if namespace.casefold().startswith("uhbar_") else namespace
+    return f"{stem}_DrawBar"
 
 STALE_GENERATED = (
     ROOT / "actors" / "inventory" / "sbar" / "BarFX.txt",
@@ -96,9 +100,33 @@ def load_bar_config() -> dict:
         config = tomllib.load(fp)
     if type(config.get("schema_version")) is not int or config["schema_version"] != 1:
         raise SystemExit(f"{CONFIG}: schema_version must be 1")
-    bars = config.get("bars")
-    if not isinstance(bars, list) or not bars:
-        raise SystemExit(f"{CONFIG}: expected at least one [[bars]] entry")
+    groups = config.get("groups")
+    if not isinstance(groups, list) or not groups:
+        raise SystemExit(f"{CONFIG}: expected at least one [[groups]] entry")
+    bars = []
+    seen_namespaces = set()
+    for group in groups:
+        if not isinstance(group, dict):
+            raise SystemExit(f"{CONFIG}: each [[groups]] entry must be a table")
+        namespace = group.get("namespace")
+        if not isinstance(namespace, str) or not ACTOR_NAME_RX.fullmatch(namespace):
+            raise SystemExit(f"{CONFIG}: group has invalid namespace")
+        namespace_key = namespace.casefold()
+        if namespace_key in seen_namespaces:
+            raise SystemExit(f"{CONFIG}: duplicate group namespace {namespace!r}")
+        seen_namespaces.add(namespace_key)
+        group_bars = group.get("bars")
+        if not isinstance(group_bars, list) or not group_bars:
+            raise SystemExit(f"{CONFIG}: {namespace}: expected [[groups.bars]] entries")
+        callback = f"{namespace}_Clear"
+        for source_bar in group_bars:
+            if not isinstance(source_bar, dict):
+                raise SystemExit(f"{CONFIG}: each [[groups.bars]] entry must be a table")
+            bar = dict(source_bar)
+            bar["_namespace"] = namespace
+            bar["_clear_callback"] = callback
+            bars.append(bar)
+    config["bars"] = bars
     graphic_text = "\n".join(
         path.read_text(encoding="utf-8", errors="ignore")
         for pattern in ("TEXTURES*", "ANIMDEFS*")
@@ -107,60 +135,45 @@ def load_bar_config() -> dict:
     known_graphics = {name.casefold() for name in re.findall(
         r"\b(?:graphic|patch|texture)\s+([A-Za-z0-9_]+)", graphic_text,
     )} | {name.casefold() for name in COMMON_BAR_GRAPHICS}
-    namespace = config.get("namespace")
-    callback = config.get("clear_callback")
-    if not isinstance(namespace, str) or not ACTOR_NAME_RX.fullmatch(namespace):
-        raise SystemExit(f"{CONFIG}: invalid namespace")
-    if not isinstance(callback, str) or not ACTOR_NAME_RX.fullmatch(callback):
-        raise SystemExit(f"{CONFIG}: invalid clear_callback")
     seen_ids = set()
     seen_constants = set()
-    callbacks = {}
-    namespace_callbacks = {}
+    seen_helpers = {}
     for bar in bars:
-        if not isinstance(bar, dict):
-            raise SystemExit(f"{CONFIG}: each [[bars]] entry must be a table")
         for key in ("id", "position", "priority", "vertical_full", "vertical_empty",
                     "horizontal_full", "horizontal_empty", "capacity"):
             if key not in bar:
                 raise SystemExit(f"{CONFIG}: bar is missing {key!r}")
         if not isinstance(bar["id"], str) or not ACTOR_NAME_RX.fullmatch(bar["id"]):
             raise SystemExit(f"{CONFIG}: invalid bar id {bar['id']!r}")
-        constant_suffix = bar.get("constant_suffix", "")
-        if not isinstance(constant_suffix, str) or (
-            constant_suffix and not ACTOR_NAME_RX.fullmatch(constant_suffix)
-        ):
-            raise SystemExit(f"{CONFIG}: {bar['id']}: invalid constant_suffix")
-        bar_namespace = bar.get("namespace", namespace)
-        bar_callback = bar.get("clear_callback", callback)
-        if not isinstance(bar_namespace, str) or not ACTOR_NAME_RX.fullmatch(bar_namespace):
-            raise SystemExit(f"{CONFIG}: {bar['id']}: invalid namespace")
-        if not isinstance(bar_callback, str) or not ACTOR_NAME_RX.fullmatch(bar_callback):
-            raise SystemExit(f"{CONFIG}: {bar['id']}: invalid clear_callback")
+        constant_name = bar.get("constant_name")
+        if not isinstance(constant_name, str) or not ACTOR_NAME_RX.fullmatch(constant_name):
+            raise SystemExit(f"{CONFIG}: {bar['id']}: invalid constant_name")
+        if len(constant_name) >= 32:
+            raise SystemExit(
+                f"{CONFIG}: {bar['id']}: constant_name exceeds ACC's 31-character limit"
+            )
+        if not constant_name.upper().startswith("UHBAR_"):
+            raise SystemExit(f"{CONFIG}: {bar['id']}: constant_name must start with UHBAR_")
+        bar_namespace = bar["_namespace"]
         folded_id = (bar_namespace.casefold(), bar["id"].casefold())
         if folded_id in seen_ids:
             raise SystemExit(f"{CONFIG}: duplicate bar id {bar['id']!r}")
         seen_ids.add(folded_id)
-        constant = bar_namespace.upper() + (
-            f"_{constant_suffix.upper()}" if constant_suffix else ""
-        )
-        if constant.casefold() in seen_constants:
-            raise SystemExit(f"{CONFIG}: duplicate generated constant {constant!r}")
-        seen_constants.add(constant.casefold())
-        callback_key = bar_callback.casefold()
+        if constant_name.casefold() in seen_constants:
+            raise SystemExit(f"{CONFIG}: duplicate constant_name {constant_name!r}")
+        seen_constants.add(constant_name.casefold())
         namespace_key = bar_namespace.casefold()
-        previous_namespace = callbacks.get(callback_key)
-        if previous_namespace is not None and previous_namespace.casefold() != namespace_key:
+        helper = draw_helper(bar_namespace)
+        if len(helper) >= 32:
             raise SystemExit(
-                f"{CONFIG}: clear_callback {bar_callback!r} is used by multiple namespaces"
+                f"{CONFIG}: {bar['id']}: generated draw helper exceeds ACC's "
+                "31-character limit"
             )
-        callbacks[callback_key] = bar_namespace
-        previous_callback = namespace_callbacks.get(namespace_key)
-        if previous_callback is not None and previous_callback.casefold() != callback_key:
-            raise SystemExit(
-                f"{CONFIG}: namespace {bar_namespace!r} uses multiple clear callbacks"
-            )
-        namespace_callbacks[namespace_key] = bar_callback
+        previous_helper_namespace = seen_helpers.get(helper.casefold())
+        if (previous_helper_namespace is not None
+                and previous_helper_namespace.casefold() != namespace_key):
+            raise SystemExit(f"{CONFIG}: generated draw helper {helper!r} is not unique")
+        seen_helpers[helper.casefold()] = bar_namespace
         if bar["position"] not in {p[0] for p in POS_BANKS}:
             raise SystemExit(f"{CONFIG}: invalid position {bar['position']!r}")
         priority = bar["priority"]
@@ -180,10 +193,6 @@ def load_bar_config() -> dict:
                 raise SystemExit(f"{CONFIG}: {bar['id']}: empty {key}")
             if image.casefold() not in known_graphics:
                 raise SystemExit(f"{CONFIG}: {bar['id']}: missing image reference {image!r}")
-    for bar in bars:
-        bar["_namespace"] = bar.get("namespace", namespace)
-        bar["_clear_callback"] = bar.get("clear_callback", callback)
-        bar["_constant_suffix"] = bar.get("constant_suffix", "").upper()
     return config
 
 
@@ -495,7 +504,7 @@ def gen_generated_acs(config: dict) -> str:
             lines.append(f"#define {bar_constant(bar)} {index}")
         lines += [
             "",
-            f"function void {namespace}_DrawBar(int id, int amount, int capacity) {{",
+            f"function void {draw_helper(namespace)}(int id, int amount, int capacity) {{",
             "  if (capacity <= 0) { return; }",
             "  if (amount < 0) { amount = 0; }",
             "  if (amount > capacity) { amount = capacity; }",
