@@ -919,7 +919,8 @@ actor DLCCentaurArrowRage2 : DLCCentaurArrowRage {
 
 // Recca-style option satellite.  One actor class serves both slots; the spawn
 // angle (absolute) marks the side: 64 = right option, 16384 = left option.
-// Byte-angle slot values are shifted << 8 for A_Warp/A_SetAngle (BAM).
+// ACS helpers store slot angles as byte angles; DECORATE angle parameters use
+// degrees, so convert with the exact 360/256 factor (1.40625).
 actor DLCCentaurOption : ProjSpawnFuncActor {
   -SOLID
   +MISSILE
@@ -945,6 +946,7 @@ actor DLCCentaurOption : ProjSpawnFuncActor {
   var int user_rep;    // periodic repair counter
   States {
    Spawn:
+    TNT1 A 0
     X_4G B 0 A_SetUserVar("user_idx", CallACS("rz_CentaurOptionCount") > 1)
     goto LoopHead
 
@@ -964,8 +966,8 @@ actor DLCCentaurOption : ProjSpawnFuncActor {
 
    // B: rear diagonals relative to master facing (right = -135).
    ModeB:
-    X_4G B 0 A_SetUserVar("user_theta", (CallACS("uh_FetchPointerAngle", AAPTR_TARGET) + 160 + user_idx * 192) % 256)
-    goto WarpSlot
+    X_4G B 0 A_Warp(AAPTR_TARGET, 48, 0, 32, 225 - user_idx * 90, WARPF_NOCHECKPOSITION | WARPF_INTERPOLATE)
+    goto Tail
    // F: front diagonals relative to master facing (right = -45).
    ModeF:
     X_4G B 0 A_SetUserVar("user_theta", (CallACS("uh_FetchPointerAngle", AAPTR_TARGET) + 224 + user_idx * 64) % 256)
@@ -980,17 +982,17 @@ actor DLCCentaurOption : ProjSpawnFuncActor {
     X_4G B 0 A_JumpIf(user_tmp < 0, "ModeCWarp")
     X_4G B 0 A_SetUserVar("user_theta", (user_tmp + 160 + user_idx * 192) % 256)
    ModeCWarp:
-    X_4G B 0 A_Warp(AAPTR_TARGET, 48, 0, 32, user_theta << 8, WARPF_ABSOLUTEANGLE | WARPF_NOCHECKPOSITION | WARPF_INTERPOLATE)
+    X_4G B 0 A_Warp(AAPTR_TARGET, 48, 0, 32, user_theta * 1.40625, WARPF_ABSOLUTEANGLE | WARPF_NOCHECKPOSITION | WARPF_INTERPOLATE)
     goto Tail
    // S: slide the slot toward its tangent aim point; muzzle rides the tangent.
    ModeS:
     X_4G B 0 A_SetUserVar("user_theta", CallACS("uh_GradualAngleTurn", user_theta, CallACS("rz_CentaurOptionSeek", user_idx, 896), 2, 256))
-    X_4G B 0 A_Warp(AAPTR_TARGET, 48, 0, 32, user_theta << 8, WARPF_ABSOLUTEANGLE | WARPF_NOCHECKPOSITION | WARPF_INTERPOLATE)
-    X_4G B 0 A_SetAngle((user_theta << 8) + (64 - user_idx * 128) * 256)
+    X_4G B 0 A_Warp(AAPTR_TARGET, 48, 0, 32, user_theta * 1.40625, WARPF_ABSOLUTEANGLE | WARPF_NOCHECKPOSITION | WARPF_INTERPOLATE)
+    X_4G B 0 A_SetAngle((user_theta + 64 - user_idx * 128) * 1.40625)
     goto Tail
 
    WarpSlot:
-    X_4G B 0 A_Warp(AAPTR_TARGET, 48, 0, 32, user_theta << 8, WARPF_ABSOLUTEANGLE | WARPF_NOCHECKPOSITION | WARPF_INTERPOLATE)
+    X_4G B 0 A_Warp(AAPTR_TARGET, 48, 0, 32, user_theta * 1.40625, WARPF_ABSOLUTEANGLE | WARPF_NOCHECKPOSITION | WARPF_INTERPOLATE)
 
    // Listen for the master's AltFire; cooldown paces the shots while held.
    // Must spend >=1 tic per orbit cycle — all-0tic LoopHead/Tail crashes Zandronum.
