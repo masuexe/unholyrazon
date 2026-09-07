@@ -52,6 +52,12 @@ POS_BANKS = [
 
 ACTOR_NAME_RX = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 COMMON_BAR_GRAPHICS = {"BAREMPTY", "VAREMPTY", "NOBAR", "VNOBAR"}
+# Graphics supplied by the v6b base package rather than this addon. They are
+# valid DrawBar graphics, but are intentionally absent from src/TEXTURES.
+BASE_BAR_GRAPHICS = {
+    "BARAMM13", "VARAMM13", "BARFLS1", "VARFLS1",
+    "02_B_VAR", "02_BSVAR",
+}
 INT32_MAX = 0x7FFFFFFF
 
 
@@ -134,7 +140,7 @@ def load_bar_config() -> dict:
     )
     known_graphics = {name.casefold() for name in re.findall(
         r"\b(?:graphic|patch|texture)\s+([A-Za-z0-9_]+)", graphic_text,
-    )} | {name.casefold() for name in COMMON_BAR_GRAPHICS}
+    )} | {name.casefold() for name in COMMON_BAR_GRAPHICS | BASE_BAR_GRAPHICS}
     seen_ids = set()
     seen_constants = set()
     seen_helpers = {}

@@ -98,6 +98,12 @@ def main():
     assert 'SetActorInventory(cam, "UHBar_Source_P1L0Selector", 0);' in source_acs
     assert "UHBar_Source_P1L0_BodyAmmo" not in source_acs
 
+    base_graphics = load_fixture([("UHBar_BaseGraphics", [bar(
+        "body", "UHBAR_BASEGRAPHICS",
+        vertical_full="BARAMM13", horizontal_full="VARAMM13",
+    )])])
+    assert base_graphics["bars"][0]["vertical_full"] == "BARAMM13"
+
     expect_failure([
         ("UHBar_Fixture", [bar("body", "UHBAR_FIXTURE")]),
         ("uhbar_fixture", [bar("body", "UHBAR_FIXTURE_TWO")]),
