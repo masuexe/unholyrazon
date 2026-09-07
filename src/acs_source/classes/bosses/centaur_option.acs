@@ -15,10 +15,11 @@ script "rz_CentaurOptionCount" (void) {
 }
 
 // DLCCentaurOption S-mode: byte angle the right(0)/left(1) option's orbit slot
-// should slide toward.  With a visible enemy inside `radius` (fixed) of the
-// master, that is the tangent point whose muzzle (slot angle +/- 90 degrees)
-// fires along the tangent through the enemy; without one it is the rest slot
-// beside the master (right = master angle -90, left = +90).
+// should slide toward. With a visible enemy between the orbit radius and
+// `radius` (whole map units) from the master, that is the tangent point whose
+// muzzle (slot angle +/- 90 degrees) fires along the tangent through the enemy.
+// Enemies inside the orbit are in the blind spot. Without a target, use the
+// player-relative rest slot (right = master angle -90, left = +90).
 script "rz_CentaurOptionSeek" (int side, int radius) {
   // Spawner sets TARGET=player (non-monster A_SpawnItemEx). SXF_SETMASTER
   // only applies to MF3_ISMONSTER, so MASTER stays null — orbit on TARGET.
@@ -35,6 +36,7 @@ script "rz_CentaurOptionSeek" (int side, int radius) {
   int ox = GetActorX(0);
   int oy = GetActorY(0);
   int rmax = radius << 16;
+  int rblind = CENTOPT_ORBIT_R << 16;
   int userteam = GetPlayerInfo(mastertid - 1000, PLAYERINFO_TEAM);
   int userpls = ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", mastertid - 1000);
 
@@ -61,13 +63,21 @@ script "rz_CentaurOptionSeek" (int side, int radius) {
     }
     int dx = GetActorX(tid) - ox;
     int dy = GetActorY(tid) - oy;
-    // Clamp before squaring: keeps FixedMul inputs inside 32-bit for any
-    // target that could pass the radius test anyway.
+    // The coarse bounds avoid needless work. VectorLength supplies the actual
+    // circular test in fixed units; do not compare a whole-unit sqrt to rmax.
     if (dx > rmax || dx < -rmax || dy > rmax || dy < -rmax) {
       continue;
     }
-    int dfixed = Sqrt8(FixedMul(dx, dx) + FixedMul(dy, dy)) >> 8;
-    if (dfixed > rmax || dfixed >= bestfixed || !CheckSight(0, tid, 0)) {
+    int dfixed = VectorLength(dx, dy);
+    int scanxu = dx >> 16;
+    int scanyu = dy >> 16;
+    int scand2 = scanxu * scanxu + scanyu * scanyu;
+    // The fixed check defines the r1 blind spot. The whole-unit check also
+    // guarantees that the tangent calculation below has a positive radicand
+    // after converting coordinates to whole units.
+    if (dfixed <= rblind || dfixed > rmax ||
+        scand2 <= CENTOPT_ORBIT_R * CENTOPT_ORBIT_R ||
+        dfixed >= bestfixed || !CheckSight(0, tid, 0)) {
       continue;
     }
     besttid = tid;
@@ -83,21 +93,13 @@ script "rz_CentaurOptionSeek" (int side, int radius) {
     int dxu = edx >> 16;
     int dyu = edy >> 16;
     int du2 = dxu * dxu + dyu * dyu;
-    int du = Sqrt8(du2);
-    if (du <= CENTOPT_ORBIT_R) {
-      // No tangent exists inside the orbit circle; aim the muzzle straight
-      // at the foe instead.
-      int phi = VectorAngle(edx, edy) >> 8;
-      theta = (phi + CENTOPT_REST_OFF + side * 128) % 256;
-    } else {
-      // Tangent point P = (R^2*dx +/- R*t*dy, R^2*dy -/+ R*t*dx) / d^2 with
-      // t = sqrt(d^2 - R^2); single FixedDiv keeps the result in fixed.
-      int sgn = 1 - 2 * side;
-      int rt = CENTOPT_ORBIT_R * Sqrt8(du2 - CENTOPT_ORBIT_R * CENTOPT_ORBIT_R);
-      int px = FixedDiv(CENTOPT_ORBIT_R * CENTOPT_ORBIT_R * dxu + sgn * rt * dyu, du2);
-      int py = FixedDiv(CENTOPT_ORBIT_R * CENTOPT_ORBIT_R * dyu - sgn * rt * dxu, du2);
-      theta = VectorAngle(px, py) >> 8;
-    }
+    // Tangent point P = (R^2*dx +/- R*t*dy, R^2*dy -/+ R*t*dx) / d^2 with
+    // t = sqrt(d^2 - R^2); single FixedDiv keeps the result in fixed.
+    int sgn = 1 - 2 * side;
+    int rt = CENTOPT_ORBIT_R * Sqrt8(du2 - CENTOPT_ORBIT_R * CENTOPT_ORBIT_R);
+    int px = FixedDiv(CENTOPT_ORBIT_R * CENTOPT_ORBIT_R * dxu + sgn * rt * dyu, du2);
+    int py = FixedDiv(CENTOPT_ORBIT_R * CENTOPT_ORBIT_R * dyu - sgn * rt * dxu, du2);
+    theta = VectorAngle(px, py) >> 8;
   } else {
     int a = GetActorAngle(0) >> 8;
     theta = (a + CENTOPT_REST_OFF + side * 128) % 256;
