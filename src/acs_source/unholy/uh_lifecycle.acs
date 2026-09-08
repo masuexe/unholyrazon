@@ -31,6 +31,8 @@ script "ub_Death_ChangeIsAlive" DEATH {
     PlayerLifeStatusArr_UpdateFunc(pn, 0);
     if (CheckInventory("IsSpecimanFlag"))
       ACS_NamedExecuteAlways("ub_InitiateUltraBoss", 0, 404);
+    if (CheckInventory("IsAMujicaMember"))
+      ACS_NamedExecuteAlways("rz_MujicaFallen", 0);
     if (dickheadwatchcount > 0)
       ACS_NamedExecuteAlways("rz_DickheadWatchDeath", 0, pn);
   }
@@ -39,6 +41,8 @@ script "ub_Disconnect_ChangeIsAlive" (int playernum) DISCONNECT {
   if (GetCvar("lastmanstanding") == 1) {
     DebugLog(strParam(i:playernum, s:" has disconnected!!"));
     PlayerLifeStatusArr_UpdateFunc(playernum, 0);
+    if (CheckActorInventory(playernum + 1000, "IsAMujicaMember"))
+      ACS_NamedExecuteAlways("rz_MujicaFallen", 0);
   }
 }
 
@@ -77,6 +81,10 @@ script "ub_StartUpSettings" OPEN  //These are start up variables so that they ar
   survwinwithlms = false;
 
   isbonuseventactive = false;
+
+  mujicamembers = 0;
+  sakikocounted = false;
+  twoplayersxrayenabled = false;
 
   ACS_NamedExecuteWithResult("core_bossmusicstate", 1, 669);  //Disables boss music for maps, that is if they use this script
   MusicSaveFunc();
@@ -162,7 +170,7 @@ script "ub_CountdownStartup" OPEN {
 
     SetHudSize(480, 360, 0);
     SetFont("BIGFONT");
-    if (eventdataarr[EVENTDATA_DELAY] >= 8) {
+    if (eventdataarr[EVENTDATA_DELAY] >= GetClampedCvar("uh_sv_BonusEventLimit", 1, 100)) {
       ACS_NamedExecute("ub_EventManagementACS", 0, -2);
       Delay(20);
       AmbientSound("misc/BonusTime", 127);
@@ -183,7 +191,7 @@ script "ub_CountdownStartup" OPEN {
 
   SetHudSize(480, 360, 0);
   SetFont("BIGFONT");
-  if (eventdataarr[EVENTDATA_DELAY] < 8 && strongmancheck[0] >= 0) {
+  if (eventdataarr[EVENTDATA_DELAY] < GetClampedCvar("uh_sv_BonusEventLimit", 1, 100) && strongmancheck[0] >= 0) {
     HudMessageBold(s:"A powerful foe approaches!"; HUDMSG_FADEOUT, 66, CR_DARKRED, 240.4, 36.0, 0.5, 2.0);
   }
   else {
@@ -192,7 +200,7 @@ script "ub_CountdownStartup" OPEN {
 
   SetPlayerProperty(1, 1, 4);
   Delay(35 * 1);
-  if (eventdataarr[EVENTDATA_DELAY] >= 8) {
+  if (eventdataarr[EVENTDATA_DELAY] >= GetClampedCvar("uh_sv_BonusEventLimit", 1, 100)) {
     ACS_NamedExecute("ub_EventManagementACS", 0, -1);  //Select the event!
   }
   else {
@@ -332,9 +340,22 @@ script "ub_WatchSurvivors" (int skipacs) {
 }
 
 
+// Razon3-style limited X-Ray once exactly two players remain alive.
+script "rz_WatchTwoPlayerLeft" (void) {
+  while (totalplayersarr[PLS_SURVIVOR] + totalplayersarr[PLS_BOSS] + totalplayersarr[PLS_EYE] != 2 || twoplayersxrayenabled) {
+    if (gameover) {terminate;}
+    Delay(2);
+  }
+  GiveMeTheFunc("XRayVisionEnableLimited_P", 1);
+  twoplayersxrayenabled = true;
+}
+
 // Checks if all bosses are dead
 script "ub_WatchBossesAndEyes" (void) {
   int extratimer = Timer();
+  int hellmarklimit = GetClampedCvar("uh_sv_HellMarkLimit", 1, 100);
+  int fastkilltime = GetClampedCvar("uh_sv_FastKillTime", 0, 300);
+  int battletime;
   while (totalplayersarr[PLS_BOSS] >= 1 || totalplayersarr[PLS_EYE] >= 1) {
     if (gameover) {terminate;}
     Delay(2);
@@ -365,16 +386,32 @@ script "ub_WatchBossesAndEyes" (void) {
   PlayMusic_Winner(-1);
   HudMessageBold(s:"The survivors are victorious!"; HUDMSG_FADEOUT, 66, CR_GREEN, 240.4, 54.0, 5.0, 2.0);
 
+  battletime = (Timer() - extratimer) / 35;
+
   if (survwinwithlms) {
     hellmarkfrags++;
-    if (hellmarkfrags >= 10) {
+    if (hellmarkfrags >= hellmarklimit) {
       AmbientSound("misc/SampiRises", 127);
       HudMessageBold(s:"The Helltatoru knows no limits..."; HUDMSG_FADEOUT, 60, CR_DARKRED, 240.4, 72.0, 5.0, 2.0);
       ACS_NamedExecuteAlways("ub_InitiateUltraBoss", 0, 402);
     }
     else
-      HudMessageBold(s:"Marks of Helltatoru ", d:hellmarkfrags, s:"/10 collected."; HUDMSG_FADEOUT, 60, CR_DARKRED, 240.4, 72.0, 5.0, 2.0);
+      HudMessageBold(s:"Marks of Helltatoru ", d:hellmarkfrags, s:"/", d:hellmarklimit, s:" collected."; HUDMSG_FADEOUT, 60, CR_DARKRED, 240.4, 72.0, 5.0, 2.0);
   }
+
+  if (fastkilltime > 0 && battletime <= fastkilltime) {
+    eventdataarr[EVENTDATA_DELAY] += 1;
+    HudMessageBold(s:"Good job! You defeated all bosses in ", d:battletime, s:"s."; HUDMSG_FADEOUT, 100, CR_GOLD, 240.4, 90.0, 5.0, 2.0);
+  }
+  else {
+    HudMessageBold(s:"Battle Time: ", d:battletime, s:"s"; HUDMSG_FADEOUT, 100, CR_GRAY, 240.4, 90.0, 5.0, 2.0);
+  }
+
+  if (roundstartsurvivors > 0 && totalplayersarr[PLS_SURVIVOR] == roundstartsurvivors) {
+    eventdataarr[EVENTDATA_DELAY] += 2;
+    HudMessageBold(s:"PERFECT! No survivors were lost."; HUDMSG_FADEOUT, 101, CR_GREEN, 240.4, 108.0, 5.0, 2.0);
+  }
+
   Delay(36 * 10);
   Exit_Normal(0);
   Delay(36 * 6);

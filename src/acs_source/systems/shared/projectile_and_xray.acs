@@ -65,6 +65,25 @@ script "UH_BeginXRayVision" (void) {
   NamedExecuteClientScript("UH_XRayVisionManager", PlayerNumber());
 }
 
+#define TWO_PLAYER_XRAY_DURATION (35 * 30)
+
+script "UH_BeginLimitedXRayVision" (void) {
+  NamedExecuteClientScript("UH_LimitedXRayVisionManager", PlayerNumber(), TWO_PLAYER_XRAY_DURATION);
+}
+
+script "UH_LimitedXRayVisionManager" (int playernum, int duration) CLIENTSIDE {
+  while (duration > 0 && GetActorProperty(ActivatorTID(), APROP_Health) > 0) {
+    for (int i = 1000; i < 1000 + ServerMAX; i++) {
+      if (PlayerInGame(i - 1000) && ActivatorTID() != i) {
+        HudMessageOnActor(i, i, 640, 480, 0, -24, 9028, -1, StrParam(n:i - 999), 0.1, CR_GREEN, 0);  // Displays nametags
+        HudMessageOnActor(i, i + 100, 640, 480, 0, -32, 9028, -1, "", 0.1, CR_GREEN, 1);  // Displays distance
+      }
+    }
+    duration--;
+    Delay(1);
+  }
+}
+
 script "UH_XRayVisionManager" (void) CLIENTSIDE {  // ENTER CLIENTSIDE
   // Log(i:GetPlayerChasecam(0));
   while (GetActorProperty(ActivatorTID(), APROP_Health) > 0) {

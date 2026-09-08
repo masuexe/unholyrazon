@@ -1,0 +1,144 @@
+// SakikoTogawa / Ave Mujica lifecycle fragment.
+// Keeps Mujica membership, color assignment, revival, death/disconnect
+// cleanup and the Sora no Musica finisher inside the unholy library so the
+// round-state globals and watcher termination stay available.
+
+#define MUJICA_MEMBER_LIMIT 5
+#define MUJICA_DYE_BASE 31120
+
+int mujicamembers;
+bool sakikocounted;
+
+function int DressMeForMujica(void) {
+  int startingcolor = random(0, 3);
+
+  for (int i = 0; i < 4; i++) {
+    int colorindex = (startingcolor + i) % 4;
+    bool isused = false;
+
+    for (int j = 1000; j < 1064; j++) {
+      if (CheckActorInventory(j, StrParam(s:"PowerMujicaColor", i:colorindex))) {
+        isused = true;
+        break;
+      }
+    }
+
+    if (!isused) {
+      Thing_SetTranslation(0, MUJICA_DYE_BASE + colorindex * 1000);
+      GiveInventory(StrParam(s:"PowerMujicaColor", i:colorindex), 1);
+      if (colorindex == 1) {  // Mortis
+        GiveInventory("MortisBlessing_P", 1);
+      }
+      return colorindex;
+    }
+  }
+
+  return -1;
+}
+
+script "rz_SakiInit" (void) {
+  if (sakikocounted) terminate;
+  sakikocounted = true;
+  mujicamembers++;
+}
+
+script "rz_MujicaRevival" (void) {
+  if (CheckInventory("IsAMujicaMember")) terminate;
+  if (mujicamembers >= MUJICA_MEMBER_LIMIT) terminate;
+
+  int mynumber = DressMeForMujica();
+  if (mynumber == -1) terminate;
+
+  str mujicaname[4] = {
+    "\c[x0]Doloris",
+    "\c[s7]Mortis",
+    "\c[m7]Timoris",
+    "\c[c7]Amoris"
+  };
+
+  SetFont("BIGFONT");
+  SetHudSize(640, 480, 0);
+  HudMessageBold(s:StrParam(n:0, s:"\ck is now ", s:mujicaname[mynumber], s:"\ck!"); HUDMSG_FADEOUT | HUDMSG_LOG, 50, 10, 320.4, 352.2, 1.8, 0.2);
+
+  GiveInventory("IsAMujicaMember", 1);
+  mujicamembers++;
+
+  if (mujicamembers >= MUJICA_MEMBER_LIMIT) {
+    ACS_NamedExecute("rz_SoraNoMusica", 0);
+    terminate;
+  }
+}
+
+script "rz_SoraNoMusica" (void) {
+  zankoragecheck = true;
+  DebugLog(strParam(s:"Ave Mujica Sora no Musica started."));
+
+  MusicSaveFunc();
+  PlayMusic("SORAMUS");
+  MusicCredits("Ave Mujica - Sora no Musica", 1);
+
+  FadeLightChange(10, 245);
+  for (int i = 0; i < 280; i++) {
+    Delay(1);
+  }
+
+  GiveActorInventory(ActivatorTID(), "InvulnerableOn_Pickup", 1);
+
+  int deadtid = 1000;
+  until (deadtid == 1064) {
+    if (CheckActorInventory(deadtid, "IsAMujicaMember") || ZHellAllyCheckFunc(deadtid)) {
+      // Mujica members and existing hell allies survive the masquerade.
+    }
+    else {
+      GiveActorInventory(deadtid, "AntiInvincible_P", 1);
+      Thing_Damage(deadtid, 6000000, 5);
+    }
+    deadtid++;
+  }
+
+  ACS_NamedTerminate("ub_WatchSurvivors", 0);
+  ACS_NamedTerminate("ub_WatchBossesAndEyes", 0);
+  gameover = true;
+  PlayMusic_Loss(2);
+
+  MakeAllPlayersInvun();
+  FadeLightChange(0, 210);
+
+  SetFont("BIGFONT");
+  SetHudSize(480, 360, 0);
+  HudMessageBold(s:"Let's get started,\ntonight's masquerade!"; HUDMSG_FADEOUT | HUDMSG_LOG, 66, CR_PURPLE, 240.4, 54.0, 3.0, 2.0);
+  AmbientSound("misc/hugequake", 127);
+  Radius_Quake(9, 70, 0, 150, ActivatorTID());
+  SetPlayerProperty(1, 1, 4);
+
+  Delay(35 * 6);
+  Exit_Normal(0);
+  Delay(35 * 6);
+}
+
+script "rz_SoraNoMusicaCancel" (int z) {
+  switch (z) {
+    case 0:
+      if (zankoragecheck) {SetResultValue(0);}
+      else {SetResultValue(1);}
+      break;
+    case 1:
+      zankoragecheck = false;
+      ACS_NamedTerminate("rz_SoraNoMusica", 0);
+      if (StrCmp(currentmusiclump, "SORAMUS") == 0) {
+        PlayMusic(savedmusiclump);
+        MusicCredits(savedmusiccredit, 1);
+      }
+      InstantLightChange(lightleveltrack);
+      break;
+  }
+}
+
+script "rz_MujicaFallen" (void) {
+  if (mujicamembers >= MUJICA_MEMBER_LIMIT) {
+    ACS_NamedExecuteAlways("rz_SoraNoMusicaCancel", 0, 1);
+  }
+  if (mujicamembers > 0) {
+    mujicamembers--;
+  }
+}
