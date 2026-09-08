@@ -6,8 +6,22 @@
 script "ub_SelectBossAndEvent" (void) {
 //This makes specific bosses/events happen
   survivorstartitem = "SurvivorBoxItems_P";
-  MultiBossFunction(1);
-  SetUpBossSelection_Func();
+
+  // Strongman/Ultra queue overrides normal selection and forces a single boss.
+  while (strongmancheck[0] >= 0 && !CheckBossList(strongmancheck[0]))
+    Minus_StrongmanCheckArray();
+
+  if (strongmancheck[0] >= 0) {
+    bossdataarr[0][BOSSDATA_NUM] = strongmancheck[0];
+    Minus_StrongmanCheckArray();
+    multibosscheck = 1;
+    bossslotalive[0] = true;
+    DebugLog(strParam(s:"Strongman boss selected: ", i:bossdataarr[0][BOSSDATA_NUM]));
+  }
+  else {
+    MultiBossFunction(1);
+    SetUpBossSelection_Func();
+  }
 
   ACS_NamedExecute("ub_MorphSelectedBosses", 0);  //Begin the morphing!
 }
@@ -33,6 +47,8 @@ script "ub_MorphSelectedBosses" (void) {
 
 	//Musical setting
   ACS_NamedExecute("ub_PlayVariantMusic", 0, bossdataarr[random(0, multibosscheck - 1)][BOSSDATA_NUM]);
+
+  eventdataarr[EVENTDATA_DELAY]++;  // Normal round counts toward the next bonus event.
 
   GiveMeTheFuncExceptBosses("BasicSurvivorItem", 0);
   SetPlayerProperty(1, 0, 4);  //Allows players to move.
@@ -371,7 +387,7 @@ script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
     ACS_NamedExecuteWithResult("uh_runeplayer", thelmsdude - 999, 1, therunenumber);
     if (dualrune) {ACS_NamedExecuteWithResult("uh_runeplayer", thelmsdude - 999, 1, therunenumberx);}
 
-    if (therunenumber == 0 || therunenumberx == 0) {  //Prosperity
+    if (therunenumber == RUNE_PROSPERITY || therunenumberx == RUNE_PROSPERITY) {  //Prosperity
       GiveActorInventory(thelmsdude, "AutoSundaeFoodItem", 1);
       if (RandomPercent(15)) {GiveActorInventory(thelmsdude, "MysticBoxItem", 1);}
       else {GiveActorInventory(thelmsdude, "PandoraBoxItem", 2);}

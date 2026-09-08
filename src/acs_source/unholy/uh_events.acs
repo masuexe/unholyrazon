@@ -2,6 +2,40 @@
 // demoneye events, special-event tracking and endings.  Fragment of
 // library unholy (ex-uh_bonus); event predicates live in uh_funclib.acs
 // (CheckEventList / ExEventChecker / IsDemoneyeEvent), EVENTDATA_* in uh_def.acs.
+script "ub_InitiateUltraBoss" (int Ultra) {
+  switch (Ultra) {
+    default:
+      DebugLog(strParam(s:"ub_InitiateUltraBoss called with an invalid id."));
+      break;
+    case 400:  // Zankokuna Hellbot
+      if (helltimer >= 1)
+        Add_StrongmanCheckArray(400);
+      break;
+    case 401:  // Eyelento Major
+      Add_StrongmanCheckArray(401);
+      break;
+    case 402:  // FinalSampi
+      if (hellmarkfrags >= 10) {
+        hellmarkfrags = 0;
+        Add_StrongmanCheckArray(402);
+      }
+      break;
+    case 403:  // Higlur
+      Add_StrongmanCheckArray(403);
+      break;
+    case 404:  // FinalSpeciman
+      specimanfrags++;
+      if (specimanfrags >= 15) {
+        AmbientSound("misc/gammadeath1", 51);
+        ActivatorSound("E_B/SMAAAASH", 127);
+        specimanfrags = 0;
+        Add_StrongmanCheckArray(404);
+      }
+      break;
+  }
+}
+
+
 script "ub_EventManagementACS" (int perform) {
   if (perform == -2) {
     eventdataarr[EVENTDATA_MAINEVENT] = random(0, 12);
@@ -26,15 +60,13 @@ script "ub_EventManagementACS" (int perform) {
         }
         Delay(1);
       } while (eventdataarr[EVENTDATA_MAINEVENT] == eventdataarr[EVENTDATA_LASTEVENT]);
-      // EventDataArr[EVENTDATA_MAINEVENT] = EXEventChecker(EventDataArr[EVENTDATA_MAINEVENT]);
+      eventdataarr[EVENTDATA_MAINEVENT] = ExEventChecker(eventdataarr[EVENTDATA_MAINEVENT]);
     }
   }
 
   else if (perform != -2) {
     eventdataarr[EVENTDATA_DELAY] = 0;  // RNG EVENT DELAY
-    // if(Debug_TXT){Log(s:"DEBUG TXT\nLastEventWas = ",i:EventDataArr[EVENTDATA_LASTEVENT],s:"/// TheBonusEvent = ",i:EventDataArr[EVENTDATA_MAINEVENT],s:"/// EventDelay = ",i:EventDataArr[EVENTDATA_DELAY]);}
-    // EventDataArr[EVENTDATA_LASTEVENT] = EventDataArr[EVENTDATA_MAINEVENT];
-    // //EventDataArr[EVENTDATA_FORCED] = -1;
+    eventdataarr[EVENTDATA_LASTEVENT] = eventdataarr[EVENTDATA_MAINEVENT];
     Delay(1);
 
     switch (eventdataarr[EVENTDATA_MAINEVENT]) {
