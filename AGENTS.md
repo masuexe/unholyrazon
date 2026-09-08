@@ -48,7 +48,7 @@ Load MM8BDM test content in this order:
 
 0. IWAD: `megagame.wad` (usually `/mnt/d/wads/megagame.wad` on this machine)
 1. One base-game package named in the `mm8bdm-vXY` form, normally `mm8bdm-v6b.pk3` (v6a may be used when requested; v6c may be used after release)
-2. When step 1 is `mm8bdm-v6b.pk3`, mandatory fix package `/mnt/d/wads/8bdm-v6b-miscfixes-v5.pk3`
+2. When step 1 is `mm8bdm-v6b.pk3`, mandatory fix package `/mnt/d/wads/8bdm-v6b-miscfixes-v6.pk3`
 3. All other mods, including this project's `out/build.pk3`
 
 Optional debugging mods, loaded in step 3 when relevant:

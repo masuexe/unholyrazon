@@ -62,7 +62,7 @@ load in this order:
 
 1. `megagame.wad`
 2. `mm8bdm-v6b.pk3`
-3. `8bdm-v6b-miscfixes-v5.pk3`
+3. `8bdm-v6b-miscfixes-v6.pk3`
 4. Unholy `build.pk3`
 5. this addon PK3
 
