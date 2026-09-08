@@ -7,7 +7,14 @@
 #define MUJICA_DYE_BASE 31120
 
 int mujicamembers;
-bool sakikocounted;
+
+function void ClearMujicaState(void) {
+  mujicamembers = 0;
+  GiveMeTheFunc("IsAMujicaMember", -1);
+  for (int i = 0; i < 4; i++) {
+    GiveMeTheFunc(StrParam(s:"PowerMujicaColor", i:i), -1);
+  }
+}
 
 function int DressMeForMujica(void) {
   int startingcolor = random(0, 3);
@@ -37,8 +44,8 @@ function int DressMeForMujica(void) {
 }
 
 script "rz_SakiInit" (void) {
-  if (sakikocounted) terminate;
-  sakikocounted = true;
+  if (CheckInventory("IsAMujicaMember")) terminate;
+  GiveInventory("IsAMujicaMember", 1);
   mujicamembers++;
 }
 
@@ -79,8 +86,11 @@ script "rz_SoraNoMusica" (void) {
 
   FadeLightChange(10, 245);
   for (int i = 0; i < 280; i++) {
+    if (gameover) {terminate;}
     Delay(1);
   }
+
+  if (gameover) {terminate;}
 
   GiveActorInventory(ActivatorTID(), "InvulnerableOn_Pickup", 1);
 
