@@ -42,26 +42,39 @@ script "ub_InitiateUltraBoss" (int Ultra) {
 
 script "ub_EventManagementACS" (int perform) {
   if (perform == -2) {
-    eventdataarr[EVENTDATA_MAINEVENT] = random(0, 12);
-    int uex = CheckClearCvar("uh_sv_BonusEventNum", -1);
-    if (CheckEventList(uex)) {
+    eventdataarr[EVENTDATA_MAINEVENT] = PickRandomBonusEvent();
+    bool eventselected = false;
+
+    int rawcvar = CheckClearCvar("uh_sv_BonusEventNum", -1);
+    int uex = ResolveForcedBonusEvent(rawcvar);
+    if (uex >= 0) {
       eventdataarr[EVENTDATA_MAINEVENT] = uex;
       eventdataarr[EVENTDATA_LASTEVENT] = 77;
       ShowMeTheRCON("The Bonus Event", uex);
+      eventselected = true;
     }
-    else if (eventdataarr[EVENTDATA_FORCED] >= 0) {
-      eventdataarr[EVENTDATA_MAINEVENT] = eventdataarr[EVENTDATA_FORCED];
+    else if (rawcvar != -1) {
+      DebugLog(strParam(s:"Invalid forced bonus event CVAR: ", i:rawcvar));
+    }
+
+    if (!eventselected && eventdataarr[EVENTDATA_FORCED] >= 0) {
+      int rawworldforced = eventdataarr[EVENTDATA_FORCED];
       eventdataarr[EVENTDATA_FORCED] = -1;
-      eventdataarr[EVENTDATA_LASTEVENT] = 77;
+      int worldforced = ResolveForcedBonusEvent(rawworldforced);
+      if (worldforced >= 0) {
+        eventdataarr[EVENTDATA_MAINEVENT] = worldforced;
+        eventdataarr[EVENTDATA_LASTEVENT] = 77;
+        ShowMeTheRCON("Forced Bonus Event", worldforced);
+        eventselected = true;
+      }
+      else {
+        DebugLog(strParam(s:"Invalid forced bonus event world value: ", i:rawworldforced));
+      }
     }
-    else {
+
+    if (!eventselected) {
       do {
-        if (PlayerCount() >= MULTIB_PLAYERLIMIT3) {
-          eventdataarr[EVENTDATA_MAINEVENT] = random(0, 13);
-        }
-        else {
-          eventdataarr[EVENTDATA_MAINEVENT] = random(0, 10);
-        }
+        eventdataarr[EVENTDATA_MAINEVENT] = PickRandomBonusEvent();
         Delay(1);
       } while (eventdataarr[EVENTDATA_MAINEVENT] == eventdataarr[EVENTDATA_LASTEVENT]);
       eventdataarr[EVENTDATA_MAINEVENT] = ExEventChecker(eventdataarr[EVENTDATA_MAINEVENT]);
@@ -80,22 +93,22 @@ script "ub_EventManagementACS" (int perform) {
 
     switch (eventdataarr[EVENTDATA_MAINEVENT]) {
       default:
-      case 0:  // Free For All
+      case UHEVENT_FFA:  // Free For All
         ACS_NamedExecute("ub_FreeForAll", 0, 0);
         break;
-      case 1:  // MLG
+      case UHEVENT_MLG:  // MLG
         ACS_NamedExecute("ub_DemoneyeEvent", 0, 1);
         break;
-      case 2:  // SPOOK
+      case UHEVENT_GHOST:  // SPOOK
         ACS_NamedExecute("ub_DemoneyeEvent", 0, 2);
         break;
-      case 3:  // Joust
+      case UHEVENT_JOUST:  // Joust
         ACS_NamedExecute("ub_DemoneyeEvent", 0, 3);
         break;
-      case 4:  // Sumo
+      case UHEVENT_SUMO:  // Sumo
         ACS_NamedExecute("ub_DemoneyeEvent", 0, 4);
         break;
-      case 5:  // Kamikaze
+      case UHEVENT_KAMIKAZE:  // Kamikaze
         ACS_NamedExecute("ub_DemoneyeEvent", 0, 5);
         break;
         // case 6://Rich Devil//Rich
@@ -110,44 +123,44 @@ script "ub_EventManagementACS" (int perform) {
         // 	Delay(1);
         // 	ACS_NamedExecute("ub_MorphSelectedBosses",0);
         // 	break;
-      case 7:  // Bomber
+      case UHEVENT_BOMBER:  // Bomber
         ACS_NamedExecute("ub_DemoneyeEvent", 0, 7);
         break;
-      case 8:  // Business
+      case UHEVENT_BUSINESS:  // Business
         ACS_NamedExecute("ub_DemoneyeEvent", 0, 8);
         break;
-      case 9:  // Quick
+      case UHEVENT_QUICK:  // Quick
         ACS_NamedExecute("ub_DemoneyeEvent", 0, 9);
         break;
-      case 10:  // Tank
+      case UHEVENT_TANK:  // Tank
         ACS_NamedExecute("ub_DemoneyeEvent", 0, 10);
         break;
-      case 11:  // Eye Parade
+      case UHEVENT_EYEPARADE:  // Eye Parade
         ACS_NamedExecute("ub_OneVsAllEvent", 0, 0);
         break;
-      case 12:  // Clone Parade
+      case UHEVENT_CLONEPARADE:  // Clone Parade
         ACS_NamedExecute("ub_OneVsAllEvent", 0, 1);
         break;
-      case 13:  // Free For All (Football)
+      case UHEVENT_FOOTBALL:  // Free For All (Football)
         ACS_NamedExecute("ub_FreeForAll", 0, 1);
         break;
         // case 14://Boss for all
         // 	//
         // 	break;
 
-      case 100:  // Free For All (TruePower)
+      case UHEVENT_TRUEPOWER:  // Free For All (TruePower)
         ACS_NamedExecute("ub_FreeForAll", 0, 100);
         break;
-      case 106:  // Eyelento of Pain
+      case UHEVENT_EYELENTO:  // Eyelento of Pain
         ACS_NamedExecute("ub_EyelentoOfPain", 0, 6);
         break;
-      case 111:  // Eye Parade vs Furry Runner
+      case UHEVENT_CATCHFURRY:  // Eye Parade vs Furry Runner
         ACS_NamedExecute("ub_OneVsAllEvent", 0, 50);
         break;
-      case 112:  // Eye Parade vs Foxeye Killer
+      case UHEVENT_RUNAWAYFOX:  // Eye Parade vs Foxeye Killer
         ACS_NamedExecute("ub_OneVsAllEvent", 0, 51);
         break;
-      case 113:  // Free For All (Runes)
+      case UHEVENT_RUNES:  // Free For All (Runes)
         ACS_NamedExecute("ub_FreeForAll", 0, 113);
         break;
     }

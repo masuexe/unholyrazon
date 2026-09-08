@@ -239,6 +239,12 @@ function void MultiBossFunction(bool reset) {
     multibosscheck = random(1, max(plc / 4, 1));
   }
 
+  // Safety rails: never exceed the slot array and never consume every player
+  // as a boss (one survivor must remain when more than one player is in game).
+  if (multibosscheck > MAX_BOSSES) {multibosscheck = MAX_BOSSES;}
+  if (plc > 1 && multibosscheck >= plc) {multibosscheck = plc - 1;}
+  if (multibosscheck < 1) {multibosscheck = 1;}
+
   for (int i = 0; i < multibosscheck; i++) {
     bossslotalive[i] = true;
   }
@@ -268,10 +274,10 @@ function bool CheckBossList(int checkme) {
   return IsBossDefined(checkme);
 }
 function int ExEventChecker(int inputevent) {
-  if (CheckEventList(inputevent + 100)) {
+  if (CheckEventList(inputevent + UHEVENT_EX_OFFSET)) {
     if (eventexcountarray[inputevent] >= 3) {
       eventexcountarray[inputevent] = 0;
-      inputevent += 100;
+      inputevent += UHEVENT_EX_OFFSET;
     }
     else {
       eventexcountarray[inputevent] += 1;
@@ -285,27 +291,73 @@ function bool CheckEventList(int checkme) {
 
   // Explicit list of events the dispatcher actually handles.
   switch (checkme) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-    case 4:
-    case 5:
-    case 7:
-    case 8:
-    case 9:
-    case 10:
-    case 11:
-    case 12:
-    case 13:
-    case 100:
-    case 106:
-    case 111:
-    case 112:
-    case 113:
+    case UHEVENT_FFA:
+    case UHEVENT_MLG:
+    case UHEVENT_GHOST:
+    case UHEVENT_JOUST:
+    case UHEVENT_SUMO:
+    case UHEVENT_KAMIKAZE:
+    case UHEVENT_BOMBER:
+    case UHEVENT_BUSINESS:
+    case UHEVENT_QUICK:
+    case UHEVENT_TANK:
+    case UHEVENT_EYEPARADE:
+    case UHEVENT_CLONEPARADE:
+    case UHEVENT_FOOTBALL:
+    case UHEVENT_TRUEPOWER:
+    case UHEVENT_EYELENTO:
+    case UHEVENT_CATCHFURRY:
+    case UHEVENT_RUNAWAYFOX:
+    case UHEVENT_RUNES:
       return true;
   }
   return false;
+}
+
+// Map Razon3's forced-event input ids to the frozen v4 canonical ids.
+function int NormalizeForcedBonusEvent(int eventid) {
+  if (eventid == 50) {return UHEVENT_FOOTBALL;}
+  if (eventid == 150) {return UHEVENT_RUNES;}
+  return eventid;
+}
+
+// Returns a canonical, CheckEventList-approved event id, or -1 on failure.
+function int ResolveForcedBonusEvent(int eventid) {
+  int normalized = NormalizeForcedBonusEvent(eventid);
+  if (CheckEventList(normalized)) {
+    return normalized;
+  }
+  return -1;
+}
+
+// Explicit random pool: no holes such as the old event 6, and high-player
+// rounds may draw the Football slot while low-player rounds use 0-10 only.
+function int PickRandomBonusEvent(void) {
+  if (PlayerCount() >= MULTIB_PLAYERLIMIT3) {
+    return bonuseventcandidates[random(0, BONUS_EVENT_CANDIDATE_COUNT - 1)];
+  }
+  return bonuseventlowcandidates[random(0, BONUS_EVENT_LOW_COUNT - 1)];
+}
+
+// D0 guard: surface missing event/eye metadata only in debug mode.
+function void DebugValidateRoundStart(void) {
+  if (!debug_txt) {return;}
+
+  for (int i = 0; i < BONUS_EVENT_CANDIDATE_COUNT; i++) {
+    int eventid = bonuseventcandidates[i];
+    if (StrCmp(bonuseventlist[eventid][BONUS_EVENTNAME], "") == 0) {
+      DebugLog(strParam(s:"Bonus event missing name: ", i:eventid));
+    }
+    if (StrCmp(bonuseventlist[eventid][BONUS_MUSICLUMP], "") == 0) {
+      DebugLog(strParam(s:"Bonus event missing music: ", i:eventid));
+    }
+  }
+
+  for (int eyeid = 0; eyeid < 16; eyeid++) {
+    if (IsEyeDefined(eyeid) && StrCmp(GetEyeEventStem(eyeid), "") == 0) {
+      DebugLog(strParam(s:"Eye event stem missing: ", i:eyeid));
+    }
+  }
 }
 
 // NEW#BOSS — pool-based pick (no BOSSRNGMAX holes)
@@ -517,18 +569,18 @@ function int DickheadWatchClaim(void) {
 function bool IsDemoneyeEvent(void) {
   if (isbonuseventactive) {
     switch (eventdataarr[EVENTDATA_MAINEVENT]) {
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-      case 5:
-      case 6:
-      case 7:
-      case 8:
-      case 9:
-      case 10:
-      case 11:
-      case 12:
+      case UHEVENT_MLG:
+      case UHEVENT_GHOST:
+      case UHEVENT_JOUST:
+      case UHEVENT_SUMO:
+      case UHEVENT_KAMIKAZE:
+      case UHEVENT_RICH:
+      case UHEVENT_BOMBER:
+      case UHEVENT_BUSINESS:
+      case UHEVENT_QUICK:
+      case UHEVENT_TANK:
+      case UHEVENT_EYEPARADE:
+      case UHEVENT_CLONEPARADE:
         return true;
     }
   }
