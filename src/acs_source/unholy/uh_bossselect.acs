@@ -64,6 +64,10 @@ script "ub_MorphSelectedBosses" (void) {
   if (!GetCVAR("uh_sv_NoItems") && StrCmp(survivorstartitem, "") != 0) {
     GiveMeTheFuncExceptBosses(survivorstartitem, 1);
   }
+
+  if (mercygiven) {
+    ACS_NamedExecute("rz_MercyRuneGiver", 0);
+  }
 }
 
 script "ub_BossMorphRetryWait" (int failure, int failure2, int failure3, int failure4) {
@@ -292,6 +296,7 @@ script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
   int therunenumberx = -1;
   int musrow;
   int dualrune;
+  bool badlms = false;
 
   int lmscount = 0;
   until (lmscount == 64) {  //Find the lone survivor!
@@ -300,6 +305,14 @@ script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
       break;
     }
     lmscount++;
+  }
+
+  if (lmscount < 64) {
+    lmsdudearr[lmscount]++;
+    if (lmsdudearr[lmscount] >= GetClampedCvar("uh_sv_LMSCountLimit", 1, 100)) {
+      lmsdudearr[lmscount] = 0;
+      badlms = true;
+    }
   }
 
   Delay(1);
@@ -324,12 +337,15 @@ script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
     rarelmsrune += random(2, 6);
   }
 
-  if (random(rarelmstime, 20) >= 20 || forcerare == 7) {
+  if (!badlms && (random(rarelmstime, 20) >= 20 || forcerare == 7)) {
     rarelmstime = 0;
     rareitemcheck = true;
   }
-  else {
+  else if (!badlms) {
     rarelmstime++;
+  }
+  else {
+    rareitemcheck = false;
   }
 
   dualrune = (GetLMSEventFlags(lmsnum) & UHLMS_FLAG_DUALRUNE) != 0;
@@ -348,21 +364,31 @@ script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
   SetFont("BIGFONT");
   SetHudSize(640, 480, 0);
 
-  str therune_str = StrParam(s:"\c- got a ", s:runeoftheday[therunenumber]);
-  if (dualrune) {
-    therune_str = StrParam(s:therune_str, s:" & ", s:runeoftheday[therunenumberx], s:" Rune!\n");
+  str therune_str;
+  if (badlms) {
+    therune_str = "\chYou are the last one too many times!\n";
   }
   else {
-    therune_str = StrParam(s:therune_str, s:" Rune!\n");
+    therune_str = StrParam(s:"\c- got a ", s:runeoftheday[therunenumber]);
+    if (dualrune) {
+      therune_str = StrParam(s:therune_str, s:" & ", s:runeoftheday[therunenumberx], s:" Rune!\n");
+    }
+    else {
+      therune_str = StrParam(s:therune_str, s:" Rune!\n");
+    }
   }
 
   str itemmessage;
-  if (rareitemcheck) {itemmessage = GetLMSEventraremessage(lmsnum);}
+  if (badlms) {
+    if (lmsnum >= 0 && lmsnum <= 12) {itemmessage = badlmsmessage[lmsnum];}
+    else {itemmessage = "\chBad LMS!";}
+  }
+  else if (rareitemcheck) {itemmessage = GetLMSEventraremessage(lmsnum);}
   else {itemmessage = GetLMSEventMessage(lmsnum);}
 
   HudMessageBold(n:thelmsdude - 999, s:therune_str, s:itemmessage; HUDMSG_FADEOUT | HUDMSG_LOG, 70, CR_YELLOW, 320.4, 336.2, 1.8, 0.2);  //396.2
 
-  ACS_NamedExecuteAlways("ub_LMS_EventIconStart", 0, lmsnum, rareitemcheck);  //4836
+  ACS_NamedExecuteAlways("ub_LMS_EventIconStart", 0, lmsnum, rareitemcheck, badlms);  //4836
 
   musrow = PickEventMusicRow(UHMUS_KIND_LMS, lmsnum);
   if (musrow >= 0) {
@@ -380,24 +406,40 @@ script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
 		//Failsafe for a player not getting the LMS
     GiveActorInventory(thelmsdude, "IsBlessedWithLMSPower", 1);
 
-    if (therunenumber == RUNE_DRAIN || therunenumberx == RUNE_DRAIN && CheckActorInventory(thelmsdude, "PowerPeriwinkleDrain") >= 1) {  //Drain
-      TakeActorInventory(thelmsdude, "PowerPeriwinkleDrain", 99);  //Prevent Ptanks from conflicting with drain rune!
+    if (!badlms) {
+      if (therunenumber == RUNE_DRAIN || therunenumberx == RUNE_DRAIN && CheckActorInventory(thelmsdude, "PowerPeriwinkleDrain") >= 1) {  //Drain
+        TakeActorInventory(thelmsdude, "PowerPeriwinkleDrain", 99);  //Prevent Ptanks from conflicting with drain rune!
+      }
+      if (therunenumber == RUNE_RESISTANCE || therunenumberx == RUNE_RESISTANCE) {  //Resistance
+        GiveActorInventory(thelmsdude, "AutoHamburgerFoodItem", 1);  //Force 2000 healing on player
+      }
+
+      // GiveActorInventory(TheLMSDude,StrParam(s:RuneOfTheDay[TheRuneNumber],s:"Rune_ST"),1);
+      ACS_NamedExecuteWithResult("uh_runeplayer", thelmsdude - 999, 1, therunenumber);
+      if (dualrune) {ACS_NamedExecuteWithResult("uh_runeplayer", thelmsdude - 999, 1, therunenumberx);}
+
+      if (therunenumber == RUNE_PROSPERITY || therunenumberx == RUNE_PROSPERITY) {  //Prosperity
+        GiveActorInventory(thelmsdude, "AutoSundaeFoodItem", 1);
+        if (RandomPercent(15)) {GiveActorInventory(thelmsdude, "MysticBoxItem", 1);}
+        else {GiveActorInventory(thelmsdude, "PandoraBoxItem", 2);}
+      }
     }
-    if (therunenumber == RUNE_RESISTANCE || therunenumberx == RUNE_RESISTANCE) {  //Resistance
-      GiveActorInventory(thelmsdude, "AutoHamburgerFoodItem", 1);  //Force 2000 healing on player
+    else {
+      GiveBossesRune(therunenumber);
+      if (dualrune) {GiveBossesRune(therunenumberx);}
+      if (therunenumber == RUNE_PROSPERITY || therunenumberx == RUNE_PROSPERITY) {
+        GiveBossesTheFunc("AutoSundaeFoodItem", 1);
+        if (RandomPercent(15)) {GiveBossesTheFunc("MysticBoxItem", 1);}
+        else {GiveBossesTheFunc("PandoraBoxItem", 2);}
+      }
     }
 
-		// GiveActorInventory(TheLMSDude,StrParam(s:RuneOfTheDay[TheRuneNumber],s:"Rune_ST"),1);
-    ACS_NamedExecuteWithResult("uh_runeplayer", thelmsdude - 999, 1, therunenumber);
-    if (dualrune) {ACS_NamedExecuteWithResult("uh_runeplayer", thelmsdude - 999, 1, therunenumberx);}
-
-    if (therunenumber == RUNE_PROSPERITY || therunenumberx == RUNE_PROSPERITY) {  //Prosperity
-      GiveActorInventory(thelmsdude, "AutoSundaeFoodItem", 1);
-      if (RandomPercent(15)) {GiveActorInventory(thelmsdude, "MysticBoxItem", 1);}
-      else {GiveActorInventory(thelmsdude, "PandoraBoxItem", 2);}
+    if (badlms) {
+      GrantBadLMSEventDrops(thelmsdude, lmsnum);
     }
-
-    GrantLMSEventDrops(thelmsdude, lmsnum, rareitemcheck);
+    else {
+      GrantLMSEventDrops(thelmsdude, lmsnum, rareitemcheck);
+    }
 
     for (int i = 0; i < 35; i++) {
       if (!PlayerInGame(thelmsdude - 1000) ||

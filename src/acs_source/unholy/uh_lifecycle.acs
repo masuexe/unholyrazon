@@ -128,6 +128,11 @@ script "ub_StartUpSettings" OPEN  //These are start up variables so that they ar
     eventdataarr[EVENTDATA_LASTEVENT] = -1;
     rarelmsrune = 45;
     rarelmstime = 9;
+    winstreak = 0;
+    mercygiven = false;
+    for (int i = 0; i < 64; i++) {
+      lmsdudearr[i] = 0;
+    }
     startupvariables = true;
   }
   ACS_NamedExecute("ub_RefreshHudMessageLoop", 0);
@@ -332,6 +337,16 @@ script "ub_WatchSurvivors" (int skipacs) {
   SetHudSize(480, 360, 0);
   HudMessageBold(s:"The survivors have been defeated..."; HUDMSG_FADEOUT, 66, CR_RED, 240.4, 54.0, 5.0, 2.0);
 
+  if (winstreak > 0) {winstreak = -1;}
+  else {winstreak--;}
+  if (winstreak % GetClampedCvar("uh_sv_LoseStreakLimit", 1, 100) == 0 && winstreak < 0) {
+    HudMessageBold(s:"We have been defeated too many times!\nLet Helltatoru give you mercy..."; HUDMSG_FADEOUT, 67, CR_DARKRED, 240.4, 108.0, 5.0, 2.0);
+    mercygiven = true;
+  }
+  else {
+    mercygiven = false;
+  }
+
   survwinwithlms = false;
   Delay(35 * 9);
   Exit_Normal(0);
@@ -347,6 +362,105 @@ script "rz_WatchTwoPlayerLeft" (void) {
   }
   GiveMeTheFunc("XRayVisionEnableLimited_P", 1);
   twoplayersxrayenabled = true;
+}
+
+// Boss streak compensation: five distinct runes per player without MercyFlag.
+function void GiveMercyRunesToPlayer(int tid) {
+  int pool[12];
+  int mi;
+  int mr;
+  int mt;
+
+  for (mi = 0; mi < 12; mi++) {
+    pool[mi] = mi;
+  }
+  for (mi = 0; mi < 12; mi++) {
+    mr = random(mi, 11);
+    mt = pool[mi];
+    pool[mi] = pool[mr];
+    pool[mr] = mt;
+  }
+  for (mi = 0; mi < 5; mi++) {
+    ACS_NamedExecuteWithResult("uh_runeplayer", tid - 999, 1, pool[mi]);
+  }
+  GiveActorInventory(tid, "MercyFlag", 1);
+}
+
+script "rz_MercyRuneGiver" (int tid) {
+  if (tid >= 1000 && tid <= 1063) {
+    if (playerlifestatusarr[tid - 1000] == PLS_SURVIVOR && !CheckActorInventory(tid, "MercyFlag")) {
+      GiveMercyRunesToPlayer(tid);
+    }
+    terminate;
+  }
+
+  for (int pi = 1000; pi < 1064; pi++) {
+    if (PlayerInGame(pi - 1000) && playerlifestatusarr[pi - 1000] == PLS_SURVIVOR && !CheckActorInventory(pi, "MercyFlag")) {
+      GiveMercyRunesToPlayer(pi);
+    }
+  }
+}
+
+// Reverse rewards for Bad LMS.  The original event id is preserved so each
+// vanilla event can punish the last survivor in its own Razon3-style way.
+function void GrantBadLMSEventDrops(int tid, int lmsnum) {
+  int itemid;
+  switch (lmsnum) {
+    case 0:
+      GiveActorInventory(tid, "AutoSuperGUHUItem", 1);
+      break;
+    case 1:
+      GiveActorInventory(tid, "PowerLMSBadProtection", 1);
+      break;
+    case 2:
+      GiveBossesTheFunc("BadEventBossProtection", 1);
+      break;
+    case 3:
+      break;
+    case 4:
+      GiveBossesTheFunc("GoldenWaspBombItem", 1);
+      break;
+    case 5:
+      for (itemid = 0; itemid < 256; itemid++) {
+        if (IsItemDefined(itemid)) {
+          TakeActorInventory(tid, GetItemActor(itemid), 9999);
+        }
+      }
+      itemid = -1;
+      while (IsItemDefined(itemid)) {
+        TakeActorInventory(tid, GetItemActor(itemid), 9999);
+        itemid--;
+      }
+      break;
+    case 6:
+      GiveBossesTheFunc("InfiniteRocketItem", 1);
+      break;
+    case 7:
+      GiveBossesTheFunc("PancakeFoodItem", 1);
+      GiveBossesTheFunc("CakeFoodItem", 1);
+      GiveBossesTheFunc("HotdogFoodItem", 1);
+      GiveBossesTheFunc("SundaeFoodItem", 1);
+      GiveBossesTheFunc("HamburgerFoodItem", 1);
+      break;
+    case 8:
+      GiveBossesTheFunc("InfiniteRubberBandItem", 1);
+      break;
+    case 9:
+      break;
+    case 10:
+      GiveActorInventory(tid, "PowerLMSDarkness", 1);
+      break;
+    case 11:
+      GiveActorInventory(tid, "HorseMorphGiver", 1);
+      break;
+    case 12:
+      GiveActorInventory(tid, "LMSBadGuyAppears_P", 1);
+      break;
+    default:
+      GiveActorInventory(tid, "PowerLMSBadProtection", 1);
+      GiveActorInventory(tid, "LMSBadGuyAppears_P", 1);
+      break;
+  }
 }
 
 // Checks if all bosses are dead
@@ -384,6 +498,17 @@ script "ub_WatchBossesAndEyes" (void) {
 	//PlayMusic_Win(0);
   PlayMusic_Winner(-1);
   HudMessageBold(s:"The survivors are victorious!"; HUDMSG_FADEOUT, 66, CR_GREEN, 240.4, 54.0, 5.0, 2.0);
+
+  if (winstreak < 0) {winstreak = 1;}
+  else {winstreak++;}
+  mercygiven = false;
+  if (winstreak % GetClampedCvar("uh_sv_WinStreakLimit", 1, 100) == 0) {
+    HudMessageBold(s:"Survivor win streak: ", d:winstreak; HUDMSG_FADEOUT, 67, CR_DARKRED, 240.4, 90.0, 5.0, 2.0);
+    ACS_NamedExecuteAlways("ub_InitiateUltraBoss", 0, 1);
+  }
+  else {
+    HudMessageBold(s:"Survivor win streak: ", d:winstreak; HUDMSG_FADEOUT, 67, CR_GREEN, 240.4, 90.0, 5.0, 2.0);
+  }
 
   battletime = (Timer() - extratimer) / 35;
 
