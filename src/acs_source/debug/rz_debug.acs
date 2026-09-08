@@ -39,6 +39,40 @@ script "rz_debug_MorphMe" (int type, int num) {
   }
 }
 
+// Real, non-extreme player death for testing class death effects.
+// SetActorProperty(APROP_Health, 0) calls AActor::Die, so this preserves the
+// engine's player-death bookkeeping while avoiding `kill`'s gib health.
+// Clear MM8BDM/UH route markers first so ClassDeath reaches MegamanDeath0.
+script "rz_debug_NormalSuicide" (void) {
+  int playernum = PlayerNumber();
+  if (playernum < 0) {
+    playernum = ConsolePlayerNumber();
+    if (playernum < 0) {
+      playernum = 0;
+    }
+    if (!SetActivatorToPlayer(playernum)) {
+      Log(s:"rz_debug_NormalSuicide: no live player");
+      terminate;
+    }
+  }
+
+  if (PlayerIsSpectator(playernum) || GetActorProperty(0, APROP_Health) <= 0) {
+    Log(s:"rz_debug_NormalSuicide: player is dead or spectating");
+    terminate;
+  }
+
+  TakeInventory("CriticalDeath", 1);
+  TakeInventory("CorpseFlag", 1);
+  TakeInventory("ExplodeDeathFlag", 1);
+  TakeInventory("FallingDeathFlag", 1);
+  TakeInventory("FlingDeathFlag", 1);
+  TakeInventory("RisingDeathFlag", 1);
+  TakeInventory("IceDeathFlag", 1);
+  TakeInventory("FireDeathFlag", 1);
+  TakeInventory("ShrinkDeathFlag", 1);
+  SetActorProperty(0, APROP_Health, 0);
+}
+
 function bool MorphMeToBoss(int type, int bossnum) {
   int tid = ActivatorTID();
   if (tid == 0)
