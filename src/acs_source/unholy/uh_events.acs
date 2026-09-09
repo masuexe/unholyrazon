@@ -172,6 +172,12 @@ script "ub_EventManagementACS" (int perform) {
       case UHEVENT_RUNES:  // Free For All (Runes)
         ACS_NamedExecute("ub_FreeForAll", 0, 113);
         break;
+      case UHEVENT_BOSSEFFA:  // Boss FFA (force-only until soak test)
+        ACS_NamedExecute("ub_BossFFAEvent", 0);
+        break;
+      case UHEVENT_SATANSEAL:  // Satan Seal FFA (force-only until soak test)
+        ACS_NamedExecute("ub_SatanSealFFA", 0);
+        break;
     }
     isbonuseventactive = true;
   }
@@ -295,6 +301,122 @@ function void GiveRuneFFAState(int tid) {
     ACS_NamedExecuteWithResult("uh_runeplayer", tid - 999, 1, runes[i]);
   }
   GiveActorInventory(tid, "PancakeFoodItem", 1);
+}
+
+// Boss FFA eligibility: a positive, individually audited whitelist.  Registry
+// membership in COMMON/RARE alone is NOT eligibility — bosses added to those
+// pools later stay out until audited in here.  Opt-out criteria (anything
+// these break a boss-morphed FFA): extra-life setups or weapon-granted extra
+// lives, registry watchers (rage / low-HP / sin), survivor-start-item
+// overrides, spell-card round flow, and deaths with global round side effects
+// (Speciman family summons an ultra boss, HellBot's end state spawns
+// ZankokunaHellbot — Razon3 excluded Sakiko for the same reason).
+// Kept in despite having setup scripts: 5 KakusaretaSutoka, 18 ArchArcanist
+// and 54 VoidWalker grant inventory only; 25 TrueBusterMistress is inert
+// here because her copy-vise boxes come only from the standard uh_BossMorph
+// pipeline, which this event does not run.
+int bossffapool[74] = {
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+  10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+  20, 21, 22, 23, 24, 25, 27, 28, 29, 30,
+  31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+  41, 46, 47, 50, 52, 53, 54, 55, 56, 57,
+  58, 59, 60, 61, 63, 65, 66, 68, 70, 71,
+  72, 73, 74, 75, 91,
+  101, 107, 110, 111, 113, 114, 115, 116, 117
+};
+#define BOSSFFA_POOL_COUNT 74
+
+function bool IsBossFFAEligible(int bossid) {
+  for (int i = 0; i < BOSSFFA_POOL_COUNT; i++) {
+    if (bossffapool[i] == bossid) {return true;}
+  }
+  return false;
+}
+
+function int PickBossFFABoss(void) {
+  return bossffapool[random(0, BOSSFFA_POOL_COUNT - 1)];  // 0 (TrueBusterExpert) is in the pool: single fallback source
+}
+
+// Registry morph without the standard boss pipeline: no bossdataarr or
+// multibosscheck use, no boss HUD, no selection announcement, class default
+// health (1000) like Razon3's Boss FFA.  BasicBossItem still runs the shared
+// boss cleanup — Zandronum's player morph transfers the old pawn inventory,
+// and MRF_LOSEACTUALWEAPON alone does not strip every survivor weapon.
+function void BossFFAMorphPlayer(int tid, int bossid) {
+  if (!IsBossDefined(bossid)) {return;}
+  if (!SetActivator(tid)) {return;}
+  ACS_NamedExecuteWithResult("uh_MorphPreReset");
+  bool ok = MorphActor(tid, GetBossActor(bossid), "", 0x7ffffffd,
+                       MRF_FULLHEALTH | MRF_WHENINVULNERABLE | MRF_LOSEACTUALWEAPON | MRF_NEWTIDBEHAVIOUR,
+                       "GigaAstroExplode", "");
+  if (!ok) {return;}
+  SetActivator(tid);
+  ACS_NamedExecuteWithResult("uh_MorphPostReset", 1);
+  GiveInventory("BasicBossItem", 1);
+  // Non-HUD boss markers the standard pipeline sets in uh_BossMorph.
+  // BossSpawnHealthFlag feeds rage/phase/healing thresholds in several
+  // whitelisted kits (Blitzkrieg, ShinNegaman, 4MI, Hero family, Berserker,
+  // Rogue); use the pawn's full class health without player-count scaling.
+  // No Is_UH_BossNum: that denotes a standard bossdataarr slot.
+  GiveInventory("BAWS", 1);
+  GiveInventory("MorphedFlag", 1);
+  SetInventory("BossSpawnHealthFlag", GetActorProperty(0, APROP_HEALTH));
+  str setup = GetBossMorphSetup(bossid);
+  if (StrCmp(setup, "") != 0 && CheckScript(setup, true)) {
+    ACS_NamedExecuteWithResult(setup, bossid, tid);
+  }
+}
+
+// Boss FFA (event 51): everyone becomes their own rolled boss; the round is
+// resolved by the engine's LMS last-man-standing flow like other FFAs.
+script "ub_BossFFAEvent" (void) {
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    eventbossid[p] = -1;
+    if (PlayerInGame(p) && PlayerIsSpectator(p) == 0) {
+      int bossid = PickBossFFABoss();
+      eventbossid[p] = bossid;
+      BossFFAMorphPlayer(p + 1000, bossid);
+    }
+  }
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    if (PlayerInGame(c)) {ClearFFAProtections(c + 1000);}
+  }
+
+  PlayMusic(bonuseventlist[UHEVENT_BOSSEFFA][BONUS_MUSICLUMP]);
+  Delay(2);
+  MusicCredits(bonuseventlist[UHEVENT_BOSSEFFA][BONUS_MUSICCREDITS], 0);
+
+  SetFont("BIGFONT");
+  SetHudSize(640, 480, 0);
+  HudMessageBold(s:"Meanwhile, in Dixieland of 1840..."; HUDMSG_FADEOUT, 66, CR_GRAY, 320.4, 72.2, 3.0, 2.0);
+  SetPlayerProperty(1, 0, 4);
+  ACS_NamedExecute("ub_WhoWonTheRound", 0);
+}
+
+// Satan Seal FFA state, shared by event start and revival rebuild.
+function void GiveSatanSealState(int tid) {
+  GiveActorInventory(tid, "SatanSealItem", 1);
+  GiveActorInventory(tid, "AutoUnholyInsuranceItem", 1);
+}
+
+script "ub_SatanSealFFA" (void) {
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    if (PlayerInGame(c)) {
+      ClearFFAProtections(c + 1000);
+      GiveSatanSealState(c + 1000);
+    }
+  }
+
+  PlayMusic(bonuseventlist[UHEVENT_SATANSEAL][BONUS_MUSICLUMP]);
+  Delay(2);
+  MusicCredits(bonuseventlist[UHEVENT_SATANSEAL][BONUS_MUSICCREDITS], 0);
+
+  SetFont("BIGFONT");
+  SetHudSize(640, 480, 0);
+  HudMessageBold(s:"Meanwhile, in Dixieland of 1840..."; HUDMSG_FADEOUT, 66, CR_GRAY, 320.4, 72.2, 3.0, 2.0);
+  SetPlayerProperty(1, 0, 4);
+  ACS_NamedExecute("ub_WhoWonTheRound", 0);
 }
 
 // FREE FOR ALL SCRIPT
@@ -667,8 +789,16 @@ function bool RebuildActiveRoundState(int tid, int reason) {
       DebugLog(strParam(s:"RebuildActiveRoundState: Eyelento event is morph-managed; no inventory rebuild."));
       break;
     case UHEVENT_BOSSEFFA:
+      // Restore the boss rolled at round start; never reroll.
+      if (eventbossid[pn] >= 0) {
+        BossFFAMorphPlayer(tid, eventbossid[pn]);
+      }
+      else {
+        DebugLog(strParam(s:"RebuildActiveRoundState: Boss FFA player ", i:pn, s:" has no round-start boss; skipped."));
+      }
+      break;
     case UHEVENT_SATANSEAL:
-      DebugLog(strParam(s:"RebuildActiveRoundState: event ", i:eventid, s:" rebuild pending D4."));
+      GiveSatanSealState(tid);
       break;
     default:
       DebugLog(strParam(s:"RebuildActiveRoundState: no rule for event ", i:eventid, s:" reason ", i:reason));
