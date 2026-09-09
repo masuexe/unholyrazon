@@ -8,6 +8,7 @@ script "ub_SelectBossAndEvent" (void) {
   survivorstartitem = "SurvivorBoxItems_P";
   ClearMujicaState();
   twoplayersxrayenabled = false;
+  ResetBossComboState();  // D6: combo state clears at every round start.
   for (int i = 0; i < MAX_PLAYERS; i++) {
     roundstatebuilt[i] = false;
   }
@@ -25,7 +26,11 @@ script "ub_SelectBossAndEvent" (void) {
   }
   else {
     MultiBossFunction(1);
-    SetUpBossSelection_Func();
+    // D6: boss-event pity roll fills bossdataarr itself on a hit; combos
+    // override the per-slot forced boss cvars for this round.
+    if (!TryBossComboRoll()) {
+      SetUpBossSelection_Func();
+    }
   }
 
   ACS_NamedExecute("ub_MorphSelectedBosses", 0);  //Begin the morphing!
@@ -121,6 +126,7 @@ script "ub_MorphFailureFallback" (int jump) {
   }
 
   if (hailmary) {  //Log(s:"Special Left!");// Terminate;}
+    ResetBossComboState();  // D6: the football takeover ends any combo.
 
     ACS_NamedTerminate("ub_WatchSurvivors", 0);
     ACS_NamedTerminate("ub_WatchBossesAndEyes", 0);

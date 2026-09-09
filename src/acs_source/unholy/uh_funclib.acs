@@ -236,6 +236,24 @@ function int AutoBossCountForPlayers(int plc) {
   return random(1, maxcount);
 }
 
+// Shared boss-count capacity rule: a standard round needs one survivor
+// remaining (count + 2 <= players), capped at MAX_BOSSES, at least one boss.
+// Both the forced MultiBoss path and D6 combos go through this so the two
+// cannot drift.
+function int MaxBossCountForPlayers(int plc) {
+  int cap = plc - 2;
+  if (cap > MAX_BOSSES) {cap = MAX_BOSSES;}
+  if (cap < 1) {cap = 1;}
+  return cap;
+}
+
+// Single authoritative reset for D6 boss-combo state: round start, morph
+// fallback, and both normal result endings call this.
+function void ResetBossComboState(void) {
+  isbosseventactive = false;
+  activebosscombo = -1;
+}
+
 // Check and decide what MultiBoss is possible.
 function void MultiBossFunction(bool reset) {
   multibosscheck = 1;
@@ -243,9 +261,8 @@ function void MultiBossFunction(bool reset) {
   int svforce = CheckClearCvar("uh_sv_MultiBoss", 0);
   if (svforce >= 1 && svforce <= MAX_BOSSES) {
     ShowMeTheRCON("uh_sv_MultiBoss", svforce);
-    while (plc <= svforce + 1) {
-      svforce--;
-    }
+    int cap = MaxBossCountForPlayers(plc);
+    if (svforce > cap) {svforce = cap;}
     multibosscheck = svforce;
   }
   else {
@@ -278,6 +295,132 @@ function bool AnyBossSlotAlive(void) {
 // variables are not a client's source of truth).
 function int BossHudRowStep(void) {
   return 32.0;
+}
+
+// D6: every boss id referenced by the combo table must still be registered,
+// otherwise the combo is rejected for the round (invalid combos fall back to
+// the normal roll).
+function bool BossComboFullyRegistered(int combo) {
+  for (int i = 0; i < bosscombodata[combo][6]; i++) {
+    if (!IsBossDefined(bosscombobossids[bosscombodata[combo][5] + i])) {return false;}
+  }
+  return true;
+}
+
+// Weighted pick among combos matching the rolled boss count, its minimum
+// players and full registry integrity.  -1 when nothing qualifies.
+function int PickBossCombo(int wantcount, int plc) {
+  int total = 0;
+  int i;
+  for (i = 0; i < BOSSCOMBO_MAX; i++) {
+    if (bosscombodata[i][1] != wantcount) {continue;}
+    if (plc < bosscombodata[i][2]) {continue;}
+    if (!BossComboFullyRegistered(i)) {continue;}
+    total += bosscombodata[i][3];
+  }
+  if (total <= 0) {return -1;}
+
+  int roll = random(1, total);
+  for (i = 0; i < BOSSCOMBO_MAX; i++) {
+    if (bosscombodata[i][1] != wantcount) {continue;}
+    if (plc < bosscombodata[i][2]) {continue;}
+    if (!BossComboFullyRegistered(i)) {continue;}
+    roll -= bosscombodata[i][3];
+    if (roll <= 0) {return i;}
+  }
+  return -1;
+}
+
+// Write the combo into bossdataarr and align the slot bookkeeping.  Only the
+// standard selection flow consumes bossdataarr afterwards, so the morph,
+// HP HUD, watchers, music and Dickhead revival all keep working unchanged.
+function void ApplyBossCombo(int combo) {
+  int count = bosscombodata[combo][1];
+  int first = bosscombodata[combo][5];
+  int i;
+  int s;
+  // Clear every slot first: a forced combo may be smaller than the initially
+  // rolled count, and stale alive/shadow/data slots would never be marked
+  // dead (the HUD only iterates the new count) and would keep the health
+  // watcher running forever.
+  for (i = 0; i < MAX_BOSSES; i++) {
+    bossslotalive[i] = false;
+    shadowtricksarr[i] = false;
+    bossdataarr[i][BOSSDATA_TID] = 0;
+    bossdataarr[i][BOSSDATA_NUM] = 0;
+    bossdataarr[i][BOSSDATA_MORPHED] = 0;
+  }
+  shadowfakeoutactive = false;
+  if (bosscombodata[combo][4] == BOSSCOMBO_MODE_POOL) {
+    int pooln = bosscombodata[combo][6];
+    for (i = 0; i < count; i++) {
+      bossdataarr[i][BOSSDATA_NUM] = bosscombobossids[first + random(0, pooln - 1)];
+    }
+  }
+  else {
+    for (i = 0; i < count; i++) {
+      bossdataarr[i][BOSSDATA_NUM] = bosscombobossids[first + i];
+    }
+  }
+  multibosscheck = count;
+  for (s = 0; s < count; s++) {bossslotalive[s] = true;}
+  isbosseventactive = true;
+  activebosscombo = combo;
+}
+
+// D6 pity roll, called from ub_SelectBossAndEvent after MultiBossFunction.
+// Returns true when this round is a boss combo (bossdataarr already filled).
+function bool TryBossComboRoll(void) {
+  int plc = PlayerCount();
+  int cap = MaxBossCountForPlayers(plc);
+
+  // A forced combo applies immediately, before any pity logic (the CVAR and
+  // menu both say "Force").  Invalid requests log and fall back to ordinary
+  // selection without activating the event.
+  int forced = CheckClearCvar("uh_sv_BossEventNum", -1);
+  if (forced >= 0) {
+    for (int i = 0; i < BOSSCOMBO_MAX; i++) {
+      if (bosscombodata[i][0] != forced) {continue;}
+      if (bosscombodata[i][1] > cap) {
+        DebugLog(strParam(s:"Boss combo ", i:forced, s:" rejected: ", i:bosscombodata[i][1], s:" bosses need ", i:bosscombodata[i][2], s:" players."));
+        return false;
+      }
+      if (!BossComboFullyRegistered(i)) {
+        DebugLog(strParam(s:"Boss combo ", i:forced, s:" rejected: unregistered boss."));
+        return false;
+      }
+      ApplyBossCombo(i);
+      bosseventcounter = 0;
+      ShowMeTheRCON("Boss Combo", forced);
+      return true;
+    }
+    DebugLog(strParam(s:"Boss combo ", i:forced, s:" is not defined; falling back to the normal roll."));
+    return false;
+  }
+
+  // Forced pity counter (uh_sv_BossEventCounter >= 0 presets the state).
+  int bec = CheckClearCvar("uh_sv_BossEventCounter", -1);
+  if (bec >= 0) {
+    bosseventcounter = bec;
+    ShowMeTheRCON("Boss Event Counter", bec);
+  }
+
+  // Rounds accumulate pity; random(counter, 20) >= 20 fires (Razon3 rule).
+  if (random(bosseventcounter, 20) < 20) {
+    bosseventcounter++;
+    return false;
+  }
+
+  int combo = PickBossCombo(multibosscheck, plc);
+  if (combo < 0) {
+    // No combo matches this count: retry sooner instead of burning all pity.
+    bosseventcounter += 2;
+    return false;
+  }
+  ApplyBossCombo(combo);
+  bosseventcounter = 0;
+  ShowMeTheRCON("Boss Combo", bosscombodata[combo][0]);
+  return true;
 }
 
 // This checks for specific CVAR numbers for boss selection and returns the BossNum if it matches the check
