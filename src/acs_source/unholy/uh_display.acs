@@ -146,10 +146,10 @@ function void Func_DemoneyeNumDisplay(int eyecount) {
 script "ub_BossHealthWatcher" (void) {
 	SetActivator(0, AAPTR_NULL);
 
-	until (bossslotalive[0] || bossslotalive[1] || bossslotalive[2] || bossslotalive[3]) {
+	until (AnyBossSlotAlive()) {
 		Delay(1);
 	}
-	while (bossslotalive[0] || bossslotalive[1] || bossslotalive[2] || bossslotalive[3]) {
+	while (AnyBossSlotAlive()) {
 
 		Func_BHW_ShowHudMess(false);
 		Delay(1);
@@ -280,11 +280,11 @@ function void Func_BHW_HudMess2(int theboss, int bossnumb, int health, int armor
 		x_aspect = 0;
 		y_aspect = 0;
 	}
-	int addtoy = theboss * 32.0 + y_aspect;
+	int addtoy = theboss * BossHudRowStep() + y_aspect;
 
 	Func_BHW_SetFontMug(bossnumb);
 
-	HudMessage(s:"A"; 0, -1000 - theboss, -1, 10.1 + x_aspect, 306.1 + addtoy, 0, 1.0);
+	HudMessage(s:"A"; 0, -1000 - theboss, -1, 10.1 + x_aspect, 280.1 + addtoy, 0, 1.0);
 	SetFont("SMALLFONT");
 	str namestr;
 	if (IsSurvivorBossNumb(bossnumb))
@@ -293,13 +293,13 @@ function void Func_BHW_HudMess2(int theboss, int bossnumb, int health, int armor
 		namestr = GetEyeHudName(DecodeEyeBossNumb(bossnumb));
 	else
 		namestr = GetBossName(bossnumb);
-	HudMessage(s:namestr; 0, -990 - theboss, -1, 48.1 + x_aspect, 310.1 + addtoy, 0, 1.0);
-	HudMessage(s:"\c[UB0HP]", i:health; 0, -1010 - theboss, -1, 48.1 + x_aspect, 320.1 + addtoy, 0, 1.0);
+	HudMessage(s:namestr; 0, -990 - theboss, -1, 48.1 + x_aspect, 284.1 + addtoy, 0, 1.0);
+	HudMessage(s:"\c[UB0HP]", i:health; 0, -1010 - theboss, -1, 48.1 + x_aspect, 294.1 + addtoy, 0, 1.0);
 	if (armor >= 1) {
-		HudMessage(s:"\c[UB0AR]", i:armor; 0, -1020 - theboss, -1, 48.1 + x_aspect, 330.1 + addtoy, 0, 1.0);
+		HudMessage(s:"\c[UB0AR]", i:armor; 0, -1020 - theboss, -1, 48.1 + x_aspect, 304.1 + addtoy, 0, 1.0);
 	}
 	else {
-		HudMessage(s:" "; 0, -1020 - theboss, -1, 48.1 + x_aspect, 330.1 + addtoy, 0.1, 1.0);
+		HudMessage(s:" "; 0, -1020 - theboss, -1, 48.1 + x_aspect, 304.1 + addtoy, 0.1, 1.0);
 	}
 }
 
@@ -370,17 +370,17 @@ function void Func_BHW_DeadHudMess2(int theboss, int bossnumb, int demisetype) {
 		x_aspect = 0;
 		y_aspect = 0;
 	}
-	int addtoy = theboss * 32.0 + y_aspect;
+	int addtoy = theboss * BossHudRowStep() + y_aspect;
 
 	HudMessage(s:""; 0, -1060 - theboss, -1, 0.99, 0.01, 1873);  // Rage
 
 	Func_BHW_SetFontMug(bossnumb);
 
-	HudMessage(s:"A"; 0, -1000 - theboss, -1, 10.1 + x_aspect, 306.1 + addtoy, 0, 1.0);
+	HudMessage(s:"A"; 0, -1000 - theboss, -1, 10.1 + x_aspect, 280.1 + addtoy, 0, 1.0);
 	SetFont(StrParam(s:"UFACE0", i:demisetype * 11));  // Tint
-	HudMessage(s:"A"; 0, -1010 - theboss, -1, 10.1 + x_aspect, 306.1 + addtoy, 0, 1.0);
+	HudMessage(s:"A"; 0, -1010 - theboss, -1, 10.1 + x_aspect, 280.1 + addtoy, 0, 1.0);
 	SetFont(StrParam(s:"UFACE00", i:demisetype));  // Icon
-	HudMessage(s:"A"; 0, -1020 - theboss, -1, 10.1 + x_aspect, 306.1 + addtoy, 0, 1.0);
+	HudMessage(s:"A"; 0, -1020 - theboss, -1, 10.1 + x_aspect, 280.1 + addtoy, 0, 1.0);
 }
 
 script "ub_RageDisplay" (void) {
@@ -395,7 +395,7 @@ script "ub_RageDisplay" (void) {
 	int diff_hp;
 
 	int boss_spacing = CheckActorInventory(act_tid, "Is_UH_BossNum");
-	if (boss_spacing > 4 || CheckActorInventory(act_tid, "UnholyPowerDisableRazzle_F"))
+	if (boss_spacing > MAX_BOSSES || CheckActorInventory(act_tid, "UnholyPowerDisableRazzle_F"))
 		boss_spacing = 0;
 
 
@@ -419,7 +419,7 @@ script "ub_RageDisplay" (void) {
 			if (CheckActorInventory(act_tid, rage_name) >= rage_max || CheckActorInventory(act_tid, "UnholyPowerDazzle_F")) {
 				if (rage_boxbool) {
 					if (refreshhudmessage) {
-						// HudMessageBold(s:"A"; 0, -1060-boss_Spacing,-1, 10.1, 306.1+boss_Spacing*32.0, 0,1.0);
+						// HudMessageBold(s:"A"; 0, -1060-boss_Spacing,-1, 10.1, 280.1+boss_Spacing*32.0, 0,1.0);
 						Func_BHW_RageHudMess(boss_spacing);
 					}
 				}
@@ -459,7 +459,7 @@ function void Func_BHW_RageHudMess2(int theboss) {
 		y_aspect = 0;
 	}
 	SetFont("UFACE0RR");  // X_Aspect
-	HudMessage(s:"A"; 0, -1060 - theboss, -1, 10.1 + x_aspect, 306.1 + theboss * 32.0 + y_aspect, 0, 1.0);
+	HudMessage(s:"A"; 0, -1060 - theboss, -1, 10.1 + x_aspect, 280.1 + theboss * BossHudRowStep() + y_aspect, 0, 1.0);
 }
 
 

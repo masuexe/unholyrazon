@@ -39,31 +39,19 @@ script "uh_BossMorph" (int whoisit, int basehp, int addhp) {
   ACS_NamedExecuteAlways("ub_RageDisplay", 0);
 
   int hudid = 5;  // ID to display the text //-10000
-  int hudoffsety = 4;  // Text Y offset, 384 + Y * 32
-  // Sets up boss player name spacing and Face spacing. IE X has been selected to be Y.
-  if (CheckInventory("Is_UH_BossNum") == 1) {
-    hudid = 1;  // -10001
-    if (multibosscheck == 4) {hudoffsety = 0;}
-    else if (multibosscheck == 3) {hudoffsety = 1;}
-    else if (multibosscheck == 2) {hudoffsety = 2;}
-    else if (multibosscheck == 1) {hudoffsety = 2;}
+  int hudoffsety = 4;  // Text row index; multiplied by the compact step below.
+  // Row layout, formula-driven (replaces the per-N branch table):
+  //   2-4 bosses: rows sit low, slot i at row (i-1)+(4-N); single boss at row 2.
+  //   5 bosses: rows 0..4 use the separate 26px selection-text step.
+  int bossslot = CheckInventory("Is_UH_BossNum");
+  if (bossslot >= 1 && bossslot <= multibosscheck) {
+    hudid = bossslot;  // -10001..-10005
+    if (multibosscheck >= 5) {hudoffsety = bossslot - 1;}
+    else {hudoffsety = (bossslot - 1) + (4 - max(multibosscheck, 2));}
   }
-  else if (CheckInventory("Is_UH_BossNum") == 2) {
-    hudid = 2;  // -10002
-    if (multibosscheck == 4) {hudoffsety = 1;}
-    else if (multibosscheck == 3) {hudoffsety = 2;}
-    else if (multibosscheck == 2) {hudoffsety = 3;}
-  }
-  else if (CheckInventory("Is_UH_BossNum") == 3) {
-    hudid = 3;  // -10003
-    if (multibosscheck == 4) {hudoffsety = 2;}
-    else if (multibosscheck == 3) {hudoffsety = 3;}
-  }
-  else if (CheckInventory("Is_UH_BossNum") == 4) {
-    hudid = 4;  // -10004
-    hudoffsety = 3;
-  }
-  hudoffsety *= 32.0;  // 24.0
+  // Selection announcements are text-only and use their own compact layout;
+  // BossHudRowStep() remains reserved for the persistent 32px portrait rows.
+  hudoffsety *= 26.0;
 
   str b_namestr = GetBossName(whoisit);  // 'Boss' name
   int b_chr0 = GetChar(GetBossSpawnMsgType(whoisit), 0);  // Message style
