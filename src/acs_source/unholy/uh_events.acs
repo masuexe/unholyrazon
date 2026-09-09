@@ -100,19 +100,19 @@ script "ub_EventManagementACS" (int perform) {
         ACS_NamedExecute("ub_FreeForAll", 0, 0);
         break;
       case UHEVENT_MLG:  // MLG
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 1);
+        ACS_NamedExecute("ub_DemoneyeEvent", 0, 1, 1);
         break;
       case UHEVENT_GHOST:  // SPOOK
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 2);
+        ACS_NamedExecute("ub_DemoneyeEvent", 0, 2, 2);
         break;
       case UHEVENT_JOUST:  // Joust
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 3);
+        ACS_NamedExecute("ub_DemoneyeEvent", 0, 3, 3);
         break;
       case UHEVENT_SUMO:  // Sumo
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 4);
+        ACS_NamedExecute("ub_DemoneyeEvent", 0, 4, 4);
         break;
       case UHEVENT_KAMIKAZE:  // Kamikaze
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 5);
+        ACS_NamedExecute("ub_DemoneyeEvent", 0, 5, 5);
         break;
         // case 6://Rich Devil//Rich
         // 	//ACS_NamedExecute("ub_DemoneyeEvent", 0, 6);
@@ -127,16 +127,16 @@ script "ub_EventManagementACS" (int perform) {
         // 	ACS_NamedExecute("ub_MorphSelectedBosses",0);
         // 	break;
       case UHEVENT_BOMBER:  // Bomber
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 7);
+        ACS_NamedExecute("ub_DemoneyeEvent", 0, 7, 7);
         break;
       case UHEVENT_BUSINESS:  // Business
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 8);
+        ACS_NamedExecute("ub_DemoneyeEvent", 0, 8, 8);
         break;
       case UHEVENT_QUICK:  // Quick
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 9);
+        ACS_NamedExecute("ub_DemoneyeEvent", 0, 9, 9);
         break;
       case UHEVENT_TANK:  // Tank
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 10);
+        ACS_NamedExecute("ub_DemoneyeEvent", 0, 10, 10);
         break;
       case UHEVENT_EYEPARADE:  // Eye Parade
         ACS_NamedExecute("ub_OneVsAllEvent", 0, 0);
@@ -147,9 +147,15 @@ script "ub_EventManagementACS" (int perform) {
       case UHEVENT_FOOTBALL:  // Free For All (Football)
         ACS_NamedExecute("ub_FreeForAll", 0, 1);
         break;
-        // case 14://Boss for all
-        // 	//
-        // 	break;
+      case UHEVENT_BRICK:  // Brick one-vs-all
+        ACS_NamedExecute("ub_OneVsAllEvent", 0, 14);
+        break;
+      case UHEVENT_MOSQUITO:  // Mosquito one-vs-all
+        ACS_NamedExecute("ub_OneVsAllEvent", 0, 15);
+        break;
+      case UHEVENT_TYPHOON:  // Typhoon all-eye
+        ACS_NamedExecute("ub_DemoneyeEvent", 0, UHEVENT_TYPHOON, 13);
+        break;
 
       case UHEVENT_TRUEPOWER:  // Free For All (TruePower)
         ACS_NamedExecute("ub_FreeForAll", 0, 100);
@@ -226,6 +232,24 @@ function void ApplyOneVsAllState(int tid, int which, int istarget) {
       GiveActorInventory(tid, "PlaineyeEventProtect", 1);
     }
   }
+  else if (which == 14) {
+    if (istarget) {
+      GiveActorInventory(tid, "SurvivorBoxItems_P", 1);
+    }
+    else {
+      GiveActorInventory(tid, "Brick_MoolaGiver", 1);
+      GiveActorInventory(tid, "BrickeyeEventProtect", 1);
+    }
+  }
+  else if (which == 15) {
+    if (istarget) {
+      GiveActorInventory(tid, "SurvivorBoxItems_P", 1);
+    }
+    else {
+      GiveActorInventory(tid, "Mosquito_MoolaGiver", 1);
+      GiveActorInventory(tid, "MosquitoeyeEventProtect", 1);
+    }
+  }
 }
 
 function void ApplySumoState(int tid) {
@@ -255,6 +279,8 @@ function int OneVsAllRawFromEvent(int eventid) {
     case UHEVENT_CLONEPARADE: return 1;
     case UHEVENT_CATCHFURRY: return 50;
     case UHEVENT_RUNAWAYFOX: return 51;
+    case UHEVENT_BRICK: return 14;
+    case UHEVENT_MOSQUITO: return 15;
   }
   return -1;
 }
@@ -347,36 +373,36 @@ script "ub_WhoWonTheRound" (void) {
 
 
 // Demoneye event script
-script "ub_DemoneyeEvent" (int which) {
-  str stem = GetEyeEventStem(which);
+script "ub_DemoneyeEvent" (int eventid, int eyeid) {
+  str stem = GetEyeEventStem(eyeid);
   str eyemorphstr = StrParam(s:stem, s:"_MoolaGiver");
   str eyebonusstr = StrParam(s:stem, s:"_EventD_P");
 
   GiveMeTheFunc(eyemorphstr, 1);
   GiveMeTheFunc(eyebonusstr, 1);
 
-  if (which == 4) {
+  if (eventid == UHEVENT_SUMO) {
     for (int si = 0; si < MAX_PLAYERS; si++) {
       if (PlayerInGame(si)) {ApplySumoState(si + 1000);}
     }
   }
-  if (which == 9) {
+  if (eventid == UHEVENT_QUICK) {
     for (int qi = 0; qi < MAX_PLAYERS; qi++) {
       if (PlayerInGame(qi)) {ApplyQuickState(qi + 1000);}
     }
   }
 
-  if (which == 2) {
+  if (eventid == UHEVENT_GHOST) {
     // SectorColorChange(50,50,50,0);
     VariableLightChange(160, 0);
     InstantLightChange(160);
   }
 
   ACS_NamedExecute("ub_WhoWonTheRound", 0);
-  PlayMusic(bonuseventlist[which][BONUS_MUSICLUMP]);
+  PlayMusic(bonuseventlist[eventid][BONUS_MUSICLUMP]);
   Delay(2);
-  MusicCredits(bonuseventlist[which][BONUS_MUSICCREDITS], 0);
-  ACS_NamedExecute("uh_DemoneyeEventTextDelay", 0, which, 105);
+  MusicCredits(bonuseventlist[eventid][BONUS_MUSICCREDITS], 0);
+  ACS_NamedExecute("uh_DemoneyeEventTextDelay", 0, eventid, 105);
   Delay(33);
   while (totalplayersarr[PLS_SURVIVOR] > 0) {  // If player(s) are not morphed, find and attempt to morph them.
     DemoneyeEventMorphCheckFunc(eyemorphstr, eyebonusstr);
@@ -425,6 +451,8 @@ script "ub_OneVsAllEvent" (int which) {
   if (which == 1) {eventid = UHEVENT_CLONEPARADE;}
   else if (which == 50) {eventid = UHEVENT_CATCHFURRY;}
   else if (which == 51) {eventid = UHEVENT_RUNAWAYFOX;}
+  else if (which == 14) {eventid = UHEVENT_BRICK;}
+  else if (which == 15) {eventid = UHEVENT_MOSQUITO;}
   Delay(1);
 
   multibosscheck = 1;
@@ -457,6 +485,18 @@ script "ub_OneVsAllEvent" (int which) {
       mainhealth = 150;
       Delay(1);
       ACS_NamedExecute("ub_SpecialEventEnding", 0, 1);
+      VariableLightChange(125, 0);
+      InstantLightChange(125);
+      break;
+    case 14:
+      mainhealth = 230;
+      Delay(1);
+      ACS_NamedExecute("ub_SpecialEventEnding", 0, 14);
+      break;
+    case 15:
+      mainhealth = 230;
+      Delay(1);
+      ACS_NamedExecute("ub_SpecialEventEnding", 0, 15);
       VariableLightChange(125, 0);
       InstantLightChange(125);
       break;
@@ -498,6 +538,14 @@ script "ub_OneVsAllEvent" (int which) {
     case 51:
       eventstring = "\caUH OH! AN ANGRY FOXEYE! RUN OR KILL IT!";
       ACS_NamedExecute("ub_SpecialEventTracker", 0, 51);
+      break;
+    case 14:
+      ACS_NamedExecute("ub_SpecialEventTracker", 0);
+      eventstring = "\cvWatch your head! Bricks incoming!";
+      break;
+    case 15:
+      ACS_NamedExecute("ub_SpecialEventTracker", 0);
+      eventstring = "\cyMosquitoes swarm the room!";
       break;
   }
 
@@ -550,7 +598,8 @@ function bool RebuildActiveRoundState(int tid, int reason) {
   if (!CheckEventList(eventid)) {return false;}
 
   bool onevsall = (eventid == UHEVENT_EYEPARADE || eventid == UHEVENT_CLONEPARADE ||
-                   eventid == UHEVENT_CATCHFURRY || eventid == UHEVENT_RUNAWAYFOX);
+                   eventid == UHEVENT_CATCHFURRY || eventid == UHEVENT_RUNAWAYFOX ||
+                   eventid == UHEVENT_BRICK || eventid == UHEVENT_MOSQUITO);
 
   if (IsFFAEvent(eventid)) {
     ClearFFAProtections(tid);
@@ -590,9 +639,19 @@ function bool RebuildActiveRoundState(int tid, int reason) {
     case UHEVENT_CLONEPARADE:
     case UHEVENT_CATCHFURRY:
     case UHEVENT_RUNAWAYFOX:
+    case UHEVENT_BRICK:
+    case UHEVENT_MOSQUITO:
       raw = OneVsAllRawFromEvent(eventid);
       if (raw >= 0) {
         ApplyOneVsAllState(tid, raw, tid == bossdataarr[0][BOSSDATA_TID]);
+      }
+      break;
+    case UHEVENT_TYPHOON:
+      // All-eye event: the morph actors key off eye ID 13, not event ID 16.
+      stem = GetEyeEventStem(13);
+      if (StrCmp(stem, "") != 0) {
+        GiveActorInventory(tid, StrParam(s:stem, s:"_MoolaGiver"), 1);
+        GiveActorInventory(tid, StrParam(s:stem, s:"_EventD_P"), 1);
       }
       break;
     case UHEVENT_FOOTBALL:
@@ -607,12 +666,9 @@ function bool RebuildActiveRoundState(int tid, int reason) {
     case UHEVENT_EYELENTO:
       DebugLog(strParam(s:"RebuildActiveRoundState: Eyelento event is morph-managed; no inventory rebuild."));
       break;
-    case UHEVENT_BRICK:
-    case UHEVENT_MOSQUITO:
-    case UHEVENT_TYPHOON:
     case UHEVENT_BOSSEFFA:
     case UHEVENT_SATANSEAL:
-      DebugLog(strParam(s:"RebuildActiveRoundState: event ", i:eventid, s:" rebuild pending D3/D4."));
+      DebugLog(strParam(s:"RebuildActiveRoundState: event ", i:eventid, s:" rebuild pending D4."));
       break;
     default:
       DebugLog(strParam(s:"RebuildActiveRoundState: no rule for event ", i:eventid, s:" reason ", i:reason));
@@ -631,6 +687,9 @@ function bool RebuildActiveRoundState(int tid, int reason) {
 script "ub_SpecialEventEnding" (int which) {
   SetActivator(0, AAPTR_NULL);
   int exitdelay = 10;
+  int bricktimer;
+  int brickcountdown;
+  bool bricktimeup;
   str endingstring = "Null";
   switch (which) {
     case 0:
@@ -648,6 +707,46 @@ script "ub_SpecialEventEnding" (int which) {
       while (ThingCountName("EyelentoMajorDemoneye", 0) >= 1) {Delay(2);}
       ACS_NamedExecuteAlways("ub_InitiateUltraBoss", 0, 401);
       exitdelay = 8;
+      break;
+    case 14:
+      endingstring = "The bricks finally built a castle.";
+      SetHudSize(640, 480, 0);
+      bricktimer = 60 + (PlayerCount() * 2);
+      if (bricktimer < 21) {bricktimer = 20;}
+      brickcountdown = 35;
+      bricktimeup = false;
+      while (ThingCount(0, bossdataarr[0][BOSSDATA_TID]) >= 1) {
+        if (bricktimer > 0) {
+          SetFont("HELTIMR1");
+          HudMessage(s:"A"; 0, 167, -1, 300.1, 49.1, 0, 3.0);
+          SetFont("fakefntC");
+          HudMessageBold(i:bricktimer; 0, 166, CR_GOLD, 317.1, 54.1, 0, 3.0);
+          if (brickcountdown > 0) {brickcountdown--;}
+          else {bricktimer--; brickcountdown = 35;}
+        }
+        else if (!bricktimeup) {
+          SetFont("HELTIMR0");
+          HudMessage(s:"A"; 1, 167, -1, 300.1, 49.1, 4.0, 1.0);
+          SetFont("fakefntC");
+          HudMessageBold(i:bricktimer; 1, 166, CR_RED, 317.1, 54.1, 4.0, 1.0);
+          GiveActorInventory(bossdataarr[0][BOSSDATA_TID], "SGEXDItem", 1);
+          bricktimeup = true;
+        }
+        Delay(1);
+        if (gameover || GetGameModeState() == GAMESTATE_INRESULTSEQUENCE) {
+          ClearHudMessage(166);
+          ClearHudMessage(167);
+          terminate;
+        }
+      }
+      ClearHudMessage(166);
+      ClearHudMessage(167);
+      PlayMusic_Win(1);
+      break;
+    case 15:
+      endingstring = "Mosquitoes swarm, buzzing loudly in the silent room.";
+      while (ThingCount(0, bossdataarr[0][BOSSDATA_TID]) >= 1) {Delay(2);}
+      PlayMusic_Win(1);
       break;
   }
   SetHudSize(480, 360, 0);
