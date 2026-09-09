@@ -535,6 +535,20 @@ function void DebugValidateRoundStart(void) {
       DebugLog(strParam(s:"Eye event stem missing: ", i:eyeid));
     }
   }
+
+  // D0 round-start validation: every boss referenced by every combo must be
+  // registered.  Reports combo ID, name, and the missing boss id so a broken
+  // combo table surfaces deterministically here instead of at selection time.
+  for (int combo = 0; combo < BOSSCOMBO_MAX; combo++) {
+    for (int slot = 0; slot < bosscombodata[combo][6]; slot++) {
+      int bossid = bosscombobossids[bosscombodata[combo][5] + slot];
+      if (!IsBossDefined(bossid)) {
+        DebugLog(strParam(s:"Boss combo ", i:bosscombodata[combo][0],
+                          s:" (", s:bosscomboname[combo],
+                          s:") references unregistered boss ", i:bossid));
+      }
+    }
+  }
 }
 
 // NEW#BOSS — pool-based pick (no BOSSRNGMAX holes)
