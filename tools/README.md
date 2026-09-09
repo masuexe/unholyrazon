@@ -25,6 +25,20 @@ Linux paths with `ZANDRONUM_NODE`, `ZANDRONUM_MCP_DIR`, `ZANDRONUM_MCP_SERVER`,
 Use direct MCP calls when the next decision depends on live actor state or a
 specific log line; use this wrapper for a deterministic regression check.
 
+For a local authoritative network smoke test:
+
+```bash
+node tools/mcp/network-test.mjs --json
+node tools/mcp/network-test.mjs --dry-run
+```
+
+It launches one dedicated server, one MCP-controlled client, and one directly
+observed client over loopback. The clients authenticate serially; both names
+must appear in the authoritative server log and both clients must complete
+level authentication and snapshot receipt. Temporary isolated engine folders
+prevent shared runtime/config files and are removed during cleanup. It requires
+permission to open local TCP/UDP ports.
+
 ## PK3 validation
 
 Before launching after a packaging change, run the read-only archive check:
@@ -74,3 +88,30 @@ DECORATE/ACS diagnostics.
 Scripts should accept paths or environment overrides where practical, return a
 non-zero exit code on failure, and print a concise summary. Do not commit MCP
 logs, generated build output, or Python bytecode.
+
+## Batch D acceptance
+
+Run the repeatable Batch D gates from one entry point:
+
+```bash
+./tools/batch-d-acceptance.sh quick
+./tools/batch-d-acceptance.sh runtime
+./tools/batch-d-acceptance.sh full
+```
+
+`quick` checks the two currently disputed definition requirements, the external
+music archive, boss actor registration, and the existing packaged mod. `runtime`
+runs a short direct-engine startup and then attempts the MCP smoke test; an MCP
+transport failure is reported as infrastructure rather than hiding the direct
+startup result. `full` runs the quick checks followed by a 30-second full-profile
+startup with both external music packages and optional debugging addons.
+
+The scripts deliberately leave multiplayer gameplay as an explicit manual gate:
+one server plus two clients, forced event/combo paths, disconnect/reconnect,
+two-round cleanup, player-count soak, and live HUD aspect-ratio inspection cannot
+be proved by a startup-only process.
+
+- `check_batch_d.py` accepts `--music-pk3 PATH` and `--json`.
+- `direct-startup-test.mjs` accepts `--profile`, `--duration-sec`, `--dry-run`,
+  and `--json`; paths may be overridden with the same engine/profile environment
+  variables as the MCP smoke script.

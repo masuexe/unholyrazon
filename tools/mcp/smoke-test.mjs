@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 
-import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const DEFAULT_NODE = "/home/user/.nvm/versions/node/v22.23.2/bin/node";
 const DEFAULT_MCP_DIR = "/home/user/projects/zandronum/zandronum-mcp";
 const DEFAULT_ENGINE = "/home/user/appfiles/zandronum-mcp-linux-x64/zandronum";
 const DEFAULT_PROFILE = join(PROJECT_ROOT, "tools/mm8bdm-v6b-linux.launch.json");
-const MAX_CAPTURE = 12000;
+const SERVER_RUNNER = join(PROJECT_ROOT, "tools/mcp/server-runner.mjs");
 
 function usage() {
   return `Usage: smoke-test.sh [options]
@@ -139,117 +138,8 @@ function tail(value, max = 1600) {
   return text.length <= max ? text : `…${text.slice(-max)}`;
 }
 
-class RpcClient {
-  constructor(child) {
-    this.child = child;
-    this.nextId = 1;
-    this.pending = new Map();
-    this.stdoutBuffer = "";
-    this.stderr = "";
-    this.protocolNoise = [];
-    this.closed = false;
-
-    child.stdout.on("data", (chunk) => this.ingestStdout(chunk));
-    child.stderr.on("data", (chunk) => {
-      this.stderr = `${this.stderr}${chunk}`.slice(-MAX_CAPTURE);
-    });
-    child.on("error", (error) => this.failPending(error));
-    child.on("close", (code, signal) => {
-      this.closed = true;
-      this.failPending(new Error(`MCP server exited (${signal || `code ${code}`})`));
-    });
-  }
-
-  ingestStdout(chunk) {
-    this.stdoutBuffer += chunk.toString();
-    let newline;
-    while ((newline = this.stdoutBuffer.indexOf("\n")) !== -1) {
-      const line = this.stdoutBuffer.slice(0, newline).trim();
-      this.stdoutBuffer = this.stdoutBuffer.slice(newline + 1);
-      if (!line) continue;
-      let message;
-      try {
-        message = JSON.parse(line);
-      } catch {
-        this.protocolNoise.push(line);
-        continue;
-      }
-      if (message.id === undefined || !this.pending.has(message.id)) continue;
-      const pending = this.pending.get(message.id);
-      this.pending.delete(message.id);
-      clearTimeout(pending.timer);
-      pending.resolve(message);
-    }
-  }
-
-  failPending(error) {
-    for (const pending of this.pending.values()) {
-      clearTimeout(pending.timer);
-      pending.reject(error);
-    }
-    this.pending.clear();
-  }
-
-  write(message) {
-    if (this.closed || this.child.stdin.destroyed) throw new Error("MCP server stdin is closed");
-    this.child.stdin.write(`${JSON.stringify(message)}\n`);
-  }
-
-  request(method, params, timeoutMs) {
-    const id = this.nextId++;
-    return new Promise((resolveRequest, rejectRequest) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(id);
-        rejectRequest(new Error(`timeout waiting for ${method}`));
-      }, timeoutMs);
-      this.pending.set(id, { resolve: resolveRequest, reject: rejectRequest, timer });
-      try {
-        this.write({ jsonrpc: "2.0", id, method, params });
-      } catch (error) {
-        clearTimeout(timer);
-        this.pending.delete(id);
-        rejectRequest(error);
-      }
-    });
-  }
-
-  notify(method, params) {
-    this.write({ jsonrpc: "2.0", method, params });
-  }
-
-  async shutdown() {
-    if (this.closed) return;
-    this.child.stdin.end();
-    await new Promise((resolveShutdown) => {
-      let finished = false;
-      let forceTimer;
-      let hardKillTimer;
-      let finalTimer;
-      const finish = () => {
-        if (finished) return;
-        finished = true;
-        clearTimeout(forceTimer);
-        clearTimeout(hardKillTimer);
-        clearTimeout(finalTimer);
-        resolveShutdown();
-      };
-      this.child.once("close", finish);
-      forceTimer = setTimeout(() => {
-        if (this.closed) return;
-        this.child.kill("SIGTERM");
-        hardKillTimer = setTimeout(() => {
-          if (!this.closed) this.child.kill("SIGKILL");
-        }, 1500);
-      }, 5000);
-      finalTimer = setTimeout(finish, 7500);
-    });
-  }
-}
-
 async function callTool(client, name, args, timeoutMs) {
-  const response = await client.request("tools/call", { name, arguments: args }, timeoutMs);
-  if (response.error) throw new Error(`${name}: ${response.error.message || JSON.stringify(response.error)}`);
-  const result = response.result;
+  const result = await client.callTool({ name, arguments: args }, undefined, { timeout: timeoutMs });
   if (!result) throw new Error(`${name}: MCP returned no result`);
   if (result.isError) {
     const error = new Error(`${name}: ${textFromResult(result) || "tool returned an error"}`);
@@ -314,7 +204,14 @@ async function run(options) {
   if (!existsSync(config.engine)) throw new Error(`Zandronum engine not found: ${config.engine}`);
   if (options.dryRun) return dryRun(options, config, selected);
 
-  const child = spawn(config.node, [config.server], {
+  const sdkRoot = join(config.mcpDir, "node_modules/@modelcontextprotocol/sdk/dist/esm");
+  const [{ Client }, { StdioClientTransport }] = await Promise.all([
+    import(pathToFileURL(join(sdkRoot, "client/index.js"))),
+    import(pathToFileURL(join(sdkRoot, "client/stdio.js"))),
+  ]);
+  const transport = new StdioClientTransport({
+    command: config.node,
+    args: [SERVER_RUNNER, config.server],
     cwd: config.mcpDir,
     env: {
       ...process.env,
@@ -322,22 +219,16 @@ async function run(options) {
       ZANDRONUM_EXE: config.engine,
       ZANDRONUM_LAUNCH_PROFILES: config.profileFile,
     },
-    stdio: ["pipe", "pipe", "pipe"],
+    stderr: "pipe",
   });
-  const client = new RpcClient(child);
+  let serverStderr = "";
+  transport.stderr?.on("data", (chunk) => {
+    serverStderr = tail(`${serverStderr}${chunk}`, 12000);
+  });
+  const client = new Client({ name: "mm8bdm-mcp-smoke", version: "1.0.0" });
   let cleanup = "not attempted";
   try {
-    const initialized = await client.request(
-      "initialize",
-      {
-        protocolVersion: "2024-11-05",
-        capabilities: {},
-        clientInfo: { name: "mm8bdm-mcp-smoke", version: "1.0.0" },
-      },
-      10000,
-    );
-    if (initialized.error) throw new Error(`initialize: ${initialized.error.message || JSON.stringify(initialized.error)}`);
-    client.notify("notifications/initialized", {});
+    await client.connect(transport);
 
     const launchResult = await callTool(
       client,
@@ -379,14 +270,11 @@ async function run(options) {
     };
   } catch (error) {
     if (error instanceof Error) {
-      error.serverStderr = tail(client.stderr);
-      if (client.protocolNoise.length) error.protocolNoise = client.protocolNoise.slice(-3).join("\n");
+      error.serverStderr = tail(serverStderr);
     }
     throw error;
   } finally {
-    // Closing stdin lets the MCP server run its own cleanup handler. This also
-    // handles a failed launch without exposing a second destructive reset call.
-    await client.shutdown();
+    await client.close();
   }
 }
 
