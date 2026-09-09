@@ -114,7 +114,11 @@ script "ub_StartUpSettings" OPEN  //These are start up variables so that they ar
     debug_txt = 0;
   }
 
-  DebugValidateRoundStart();
+  // OPEN scripts from every library run in the same tic with no guaranteed
+  // completion order, so the boss registry may still be empty here.  Validate
+  // from a deferred script that waits (bounded) for the registry instead of
+  // blocking this OPEN script.
+  if (debug_txt) {ACS_NamedExecuteAlways("ub_ValidateBossCombosDeferred", 0);}
 
   if (!startupvariables) {  //These are the true startup variables, only done ONCE on server start.
     if (GetCvar("sv_forcerandomclass") == 1) {ConsoleCommandWithWarn("sv_forcerandomclass 0", "Forced random class is disabled.");}  //This breaks classes somehow, disabled.
@@ -150,6 +154,31 @@ script "ub_StartUpSettings" OPEN  //These are start up variables so that they ar
   }
   ACS_NamedExecute("ub_RefreshHudMessageLoop", 0);
   ACS_NamedExecute("uh_BackgroundTimer", 0);
+}
+
+// Deferred D0 validation.  ub_StartUpSettings can run before uh_bossdefs has
+// finished registering the boss table, so wait (bounded) until every combo
+// slice passes BossComboRegistryReady and only then run the existing detailed
+// validation.  On timeout the detailed pass still runs, preceded by one
+// readiness-timeout line, so genuinely missing ids are still reported.
+script "ub_ValidateBossCombosDeferred" (void) {
+  if (!debug_txt) {
+    terminate;
+  }
+
+  int waited = 0;
+  bool ready = BossComboRegistryReady();
+  while (!ready && waited < BOSSCOMBO_REGISTRY_WAIT_TICS) {
+    Delay(1);
+    waited++;
+    ready = BossComboRegistryReady();
+  }
+
+  if (!ready) {
+    DebugLog("boss registry readiness timeout");
+  }
+
+  DebugValidateRoundStart();
 }
 
 

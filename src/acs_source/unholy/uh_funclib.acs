@@ -307,6 +307,18 @@ function bool BossComboFullyRegistered(int combo) {
   return true;
 }
 
+// True once every combo slice passes BossComboFullyRegistered.  The UHDT boss
+// registry is repopulated by uh_bossdefs' OPEN script in the same tic as
+// ub_StartUpSettings, so round-start validation waits on this instead of
+// assuming registration already finished.  Checking boss 0 alone is not
+// enough: the table's first entry can be ready while the rest are not.
+function bool BossComboRegistryReady(void) {
+  for (int combo = 0; combo < BOSSCOMBO_MAX; combo++) {
+    if (!BossComboFullyRegistered(combo)) {return false;}
+  }
+  return true;
+}
+
 // Weighted pick among combos matching the rolled boss count, its minimum
 // players and full registry integrity.  -1 when nothing qualifies.
 function int PickBossCombo(int wantcount, int plc) {
