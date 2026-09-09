@@ -28,14 +28,15 @@ const RUNNER = join(ROOT, "tools/mcp/server-runner.mjs");
 const SDK = join(MCP_DIR, "node_modules/@modelcontextprotocol/sdk/dist/esm");
 
 function usage() {
-  return `Usage: versus-207-test.mjs [--profile NAME] [--game-port N] [--json] [--dry-run]
+  return `Usage: versus-207-test.mjs [--profile NAME] [--game-port N] [--combo N] [--expect A,B] [--json] [--dry-run]
 
-Launch a dedicated LMS server and two clients, force boss combo 207, and verify
-that Red Baron / Blue Jay spawn without PowerProtectBoss.
+Launch a dedicated LMS server and two clients, force a versus boss combo, and
+verify that its two bosses spawn without PowerProtectBoss.  Defaults to combo
+207 (Red Baron / Blue Jay).
 `;
 }
 
-const options = { profile: "mm8bdm-v6b-smoke", port: 10760, json: false, dryRun: false };
+const options = { profile: "mm8bdm-v6b-smoke", port: 10760, combo: 207, expect: ["RedBaronDuo", "BlueJayDuo"], resolveWait: 30000, json: false, dryRun: false };
 for (let i = 2; i < process.argv.length; i += 1) {
   const arg = process.argv[i];
   if (arg === "--help" || arg === "-h") { console.log(usage()); process.exit(0); }
@@ -43,9 +44,14 @@ for (let i = 2; i < process.argv.length; i += 1) {
   if (arg === "--dry-run") { options.dryRun = true; continue; }
   if (arg === "--profile") { options.profile = process.argv[++i] || ""; continue; }
   if (arg === "--game-port") { options.port = Number.parseInt(process.argv[++i], 10); continue; }
+  if (arg === "--combo") { options.combo = Number.parseInt(process.argv[++i], 10); continue; }
+  if (arg === "--expect") { options.expect = (process.argv[++i] || "").split(",").map(s => s.trim()).filter(Boolean); continue; }
+  if (arg === "--resolve-wait") { options.resolveWait = Number.parseInt(process.argv[++i], 10); continue; }
   throw new Error(`unknown option ${arg}`);
 }
 if (!options.profile || !Number.isInteger(options.port) || options.port < 1024 || options.port > 65535) throw new Error("invalid options");
+if (!Number.isInteger(options.combo) || options.combo < 0) throw new Error("invalid combo");
+if (options.expect.length !== 2) throw new Error("--expect needs exactly two class names");
 for (const path of [SERVER, ENGINE, PROFILES, RUNNER]) if (!existsSync(path)) throw new Error(`missing path: ${path}`);
 if (options.dryRun) {
   console.log(JSON.stringify({ status: "dry-run", profile: options.profile, gamePort: options.port, server: SERVER, engine: ENGINE }));
@@ -105,7 +111,7 @@ try {
     "+set", "sv_cheats", "1",
     "+set", "sv_updatemaster", "0",
     "+set", "sv_noplayertimeout", "1",
-    "+set", "uh_sv_BossEventNum", "207",
+    "+set", "uh_sv_BossEventNum", String(options.combo),
     "+set", "uh_sv_BossDebugText", "1",
   ];
   dedicated = spawn(serverEngine, serverArgs, { cwd: serverDir, env: { ...process.env, SDL_VIDEODRIVER: "offscreen", ZANDRONUM_BRIDGE_PORT: String(options.port + 100) }, stdio: ["pipe", "pipe", "pipe"] });
@@ -144,7 +150,7 @@ try {
   // Force the selection explicitly: the OPEN countdown script only selects
   // bosses when it observes GAMESTATE_INPROGRESS, which depends on when the
   // second player finishes connecting.
-  dedicated.stdin.write("uh_sv_BossEventNum 207\n");
+  dedicated.stdin.write(`uh_sv_BossEventNum ${options.combo}\n`);
   await sleep(1500);
   dedicated.stdin.write("puke ub_SelectBossAndEvent\n");
   console.error("[versus-207] server puke ub_SelectBossAndEvent");
@@ -169,7 +175,7 @@ try {
   // with a diagnostic line right before the two-slot Boss TID pair.  A later
   // ordinary multiboss round also prints two TIDs, so anchoring on the 207
   // line avoids inspecting the wrong round.
-  const vsMatches = [...dedicatedLog.matchAll(/uh_sv_BossEventNum' was '207'[\s\S]*?Boss 1 TID = (\d+)[\s\S]*?Boss 2 TID = (\d+)/g)];
+  const vsMatches = [...dedicatedLog.matchAll(new RegExp(`uh_sv_BossEventNum' was '${options.combo}'[\\s\\S]*?Boss 1 TID = (\\d+)[\\s\\S]*?Boss 2 TID = (\\d+)`, "g"))];
   const vsMatch = vsMatches.pop();
   const lastTids = vsMatch ? [Number(vsMatch[1]), Number(vsMatch[2])] : [];
   const bossStates = [];
@@ -189,19 +195,20 @@ try {
     }
   }
   dedicated.stdin.write("pause\n");
-  await sleep(20_000);
+  await sleep(options.resolveWait);
   // The versus round resolved if the log shows any ending after the versus
-  // selection: the engine's native LMS win limit, a map change, or the next
-  // round's selection.  A soft-locked watcher would show none of these.
+  // selection: the engine's native LMS win limit/winner, a map change, or the
+  // next round's selection.  A soft-locked watcher would show none of these.
   const vsStart = vsMatch ? dedicatedLog.indexOf(vsMatch[0]) : -1;
   const afterVs = vsStart >= 0 ? dedicatedLog.slice(vsStart + vsMatch[0].length) : "";
-  const versusResolved = /multiBossCheck|Winlimit hit|ACS scripts unloaded/i.test(afterVs);
+  const versusResolved = /multiBossCheck|Winlimit hit|ACS scripts unloaded|wins!/i.test(afterVs);
 
   const log = dedicatedLog;
   const names = ["VersusClient1", "VersusClient2"];
   const missing = names.filter(name => !log.includes(name));
   const classes = bossStates.map(entry => entry.className).sort();
-  const bothBossesSpawned = classes.length === 2 && classes[0] === "BlueJayDuo" && classes[1] === "RedBaronDuo";
+  const expected = [...options.expect].sort();
+  const bothBossesSpawned = classes.length === 2 && classes[0] === expected[0] && classes[1] === expected[1];
   const noProtection = bossStates.length === 2 && bossStates.every(entry => entry.hasPowerProtectBoss === false);
   let clientVars = {};
   for (const name of ["multibosscheck", "versusfightevent", "activebosscombo", "isbosseventactive"]) {
@@ -216,6 +223,8 @@ try {
     status: missing.length === 0 && bothBossesSpawned && noProtection && versusResolved ? "pass" : "fail",
     profile: options.profile,
     gamePort: options.port,
+    combo: options.combo,
+    expectedClasses: options.expect,
     connectedNames: names.filter(n => !missing.includes(n)),
     missingNames: missing,
     connectOutputs,

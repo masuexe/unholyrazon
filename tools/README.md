@@ -39,18 +39,21 @@ level authentication and snapshot receipt. Temporary isolated engine folders
 prevent shared runtime/config files and are removed during cleanup. It requires
 permission to open local TCP/UDP ports.
 
-For the boss-versus 207 directed probe:
+For the boss-versus combo directed probe:
 
 ```bash
 node tools/mcp/versus-207-test.mjs --json
 node tools/mcp/versus-207-test.mjs --dry-run
+node tools/mcp/versus-207-test.mjs --combo 210 --expect "DicksterDick,PricksterPrick" --json
 ```
 
 It launches a dedicated `-lastmanstanding` server plus two clients, adds four
-bots so combo 207 meets its four-player minimum, forces
-`uh_sv_BossEventNum 207`, and verifies on the live client that `RedBaronDuo`
-and `BlueJayDuo` spawn without `PowerProtectBoss`. It does not drive real
-projectiles or the round ending; that remains the manual gameplay gate.
+bots so the versus combo meets its four-player minimum, forces
+`uh_sv_BossEventNum <combo>`, and verifies on the live client that the two
+expected bosses spawn without `PowerProtectBoss` and that the round resolves.
+`--combo`/`--expect` default to 207 (Red Baron / Blue Jay); `--resolve-wait`
+raises the post-inspection window for long high-HP duels. It does not drive
+real projectiles; that remains the manual gameplay gate.
 
 ## PK3 validation
 

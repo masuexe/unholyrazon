@@ -16,6 +16,8 @@ FUNCS = ROOT / "src/acs_source/unholy/uh_funclib.acs"
 VERSUS = ROOT / "src/acs_source/unholy/uh_versus.acs"
 BOSSSELECT = ROOT / "src/acs_source/unholy/uh_bossselect.acs"
 DICKHEAD = ROOT / "src/acs_source/unholy/uh_dickhead_revival.acs"
+BOSSDEFS = ROOT / "src/acs_source/classes/bosses/boss_definition_table.acs"
+FACES = ROOT / "src/patches/faces/bosses"
 REQUIRED_MUSIC = {
     "M_EYE13", "M_EYE14", "M_EYE15", "SATANMUS",
     "M_UB029X", "M_UB038", "M_UB048X", "M_UB104X", "M_UB033",
@@ -86,6 +88,129 @@ def parse_combo_rows(text: str) -> list[list[str]] | None:
             return None
         rows.append(parts)
     return rows
+
+
+def split_top_level_args(body: str) -> list[str]:
+    parts: list[str] = []
+    depth = 0
+    cur = ""
+    in_quote = False
+    for ch in body:
+        if ch == '"':
+            in_quote = not in_quote
+            cur += ch
+        elif not in_quote and ch in "([":
+            depth += 1
+            cur += ch
+        elif not in_quote and ch in ")]":
+            depth -= 1
+            cur += ch
+        elif not in_quote and ch == "," and depth == 0:
+            parts.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    parts.append(cur.strip())
+    return parts
+
+
+def parse_define_bosses(text: str) -> dict[int, tuple[str, str]]:
+    result: dict[int, tuple[str, str]] = {}
+    for match in re.finditer(r"DefineBoss\((.*?)\);", text, re.S):
+        parts = split_top_level_args(match.group(1))
+        if len(parts) < 9:
+            continue
+        try:
+            bid = int(parts[0])
+        except ValueError:
+            continue
+        actor = parts[1].strip('"')
+        music = parts[8].strip('"')
+        result[bid] = (actor, music)
+    return result
+
+
+def parse_int_array(text: str, name: str) -> list[int] | None:
+    body = array_initializer_body(text, name)
+    if body is None:
+        return None
+    body = re.sub(r"//[^\n]*", "", body)
+    values: list[int] = []
+    for token in body.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        if not token.lstrip("-").isdigit():
+            return None
+        values.append(int(token))
+    return values
+
+
+def parse_str_array(text: str, name: str) -> list[str] | None:
+    body = array_initializer_body(text, name)
+    if body is None:
+        return None
+    body = re.sub(r"//[^\n]*", "", body)
+    return re.findall(r'"([^"]*)"', body)
+
+
+def collect_face_names() -> set[str]:
+    names: set[str] = set()
+    if not FACES.is_dir():
+        return names
+    for path in FACES.iterdir():
+        if path.suffix.lower() in {".png", ".bmp", ".pcx"}:
+            names.add(path.stem.upper())
+    return names
+
+
+def music_lump(field: str) -> str:
+    """DefineBoss / combo music may be "LUMP tracknum"; only the lump matters."""
+    parts = field.split()
+    return parts[0] if parts else ""
+
+
+def combo_resource_issues(
+    rows: list[list[str]],
+    bossids: list[int] | None,
+    combo_music: list[str] | None,
+    bosses: dict[int, tuple[str, str]],
+    face_names: set[str],
+    music_lumps: set[str],
+) -> list[tuple[str, str, int]]:
+    """Every combo row must reference registered actors, existing face patches
+    and audible music.  A combo whose music field is empty falls back to its
+    bosses' own music, so at least one of them must exist.  Returns
+    (combo id, issue, weight) so the caller can allow missing resources only
+    for force-only rows."""
+
+    issues: list[tuple[str, str, int]] = []
+    for idx, row in enumerate(rows):
+        combo_id = row[0]
+        weight = int(row[3]) if row[3].lstrip("-").isdigit() else 0
+        if not row[5].lstrip("-").isdigit() or not row[6].lstrip("-").isdigit():
+            issues.append((combo_id, "non-numeric slice", weight))
+            continue
+        first = int(row[5])
+        slice_count = int(row[6])
+        if bossids is None or first < 0 or first + slice_count > len(bossids):
+            issues.append((combo_id, "slice outside bosscombobossids", weight))
+            continue
+        ids = bossids[first:first + slice_count]
+        for bid in ids:
+            if bid not in bosses:
+                issues.append((combo_id, f"boss {bid} not registered", weight))
+            elif f"UFACE{bid}" not in face_names:
+                issues.append((combo_id, f"boss {bid} missing face UFACE{bid}", weight))
+        combo_track = combo_music[idx] if combo_music and idx < len(combo_music) else ""
+        if combo_track:
+            if music_lump(combo_track).upper() not in music_lumps:
+                issues.append((combo_id, f"combo music {combo_track} missing", weight))
+        else:
+            boss_tracks = [music_lump(bosses.get(bid, ("", ""))[1]) for bid in ids]
+            if not any(track and track.upper() in music_lumps for track in boss_tracks):
+                issues.append((combo_id, "no boss music present", weight))
+    return issues
 
 
 def combo_shape_error(row: list[str], defines: dict[str, int], max_bosses: int, bossid_count: int) -> str | None:
@@ -272,20 +397,20 @@ def main() -> int:
     )
 
     music = args.music_pk3.resolve()
+    music_lumps: set[str] = set()
     if not music.is_file():
         check("Batch D music resources", False, f"missing archive: {music}")
     else:
         try:
             with zipfile.ZipFile(music) as archive:
                 bad = archive.testzip()
-                lumps = set()
                 for name in archive.namelist():
                     if name.endswith("/"):
                         continue
                     leaf = Path(name).name
-                    lumps.add(leaf.upper())
-                    lumps.add(Path(leaf).stem.upper())
-            missing = sorted(REQUIRED_MUSIC - lumps)
+                    music_lumps.add(leaf.upper())
+                    music_lumps.add(Path(leaf).stem.upper())
+            missing = sorted(REQUIRED_MUSIC - music_lumps)
             check(
                 "Batch D music resources",
                 bad is None and not missing,
@@ -293,6 +418,52 @@ def main() -> int:
             )
         except (OSError, zipfile.BadZipFile) as exc:
             check("Batch D music resources", False, f"invalid archive: {exc}")
+
+    # V3: every combo row must have complete resources.  This is the static
+    # gate that keeps a missing actor / face / music track out of the random
+    # pool; new versus rows are force-only until they pass it.
+    try:
+        bossdefs_text = BOSSDEFS.read_text(encoding="utf-8")
+    except OSError as exc:
+        bossdefs_text = ""
+        print(f"warn: cannot read {BOSSDEFS}: {exc}", file=sys.stderr)
+    bosses = parse_define_bosses(bossdefs_text) if bossdefs_text else {}
+    bossids = parse_int_array(defs, "bosscombobossids")
+    combo_music = parse_str_array(defs, "bosscombomusic")
+    face_names = collect_face_names()
+    resource_issues: list[tuple[str, str, int]] = []
+    if rows and bosses and bossids and combo_music:
+        resource_issues = combo_resource_issues(rows, bossids, combo_music, bosses, face_names, music_lumps)
+    random_issues = [f"{cid}: {msg}" for cid, msg, weight in resource_issues if weight != 0]
+    forced_issues = [f"{cid}: {msg}" for cid, msg, weight in resource_issues if weight == 0]
+    check(
+        "random-eligible combos complete",
+        bool(rows and bosses and bossids and combo_music) and not random_issues,
+        "all random-eligible combos have actors/faces/music"
+        if not random_issues
+        else "; ".join(random_issues[:6]),
+    )
+    check(
+        "force-only combo resource gaps reported",
+        True,
+        "none" if not forced_issues else f"{len(forced_issues)} gap(s): " + "; ".join(forced_issues[:4]),
+    )
+
+    # Versus combos must stay force-only (weight 0) until the runtime damage /
+    # result gate is recorded; a nonzero weight here would let an untested duel
+    # into the random pool.
+    versus_weighted: list[str] = []
+    versus_flag = defines.get("BOSSCOMBO_FLAG_VERSUS", 1)
+    if rows:
+        for row in rows:
+            flags_val = int(row[7]) if row[7].lstrip("-").isdigit() else defines.get(row[7], 0)
+            if flags_val & versus_flag and row[3].strip() != "0":
+                versus_weighted.append(f"{row[0]} weight={row[3]}")
+    check(
+        "versus combos force-only",
+        not versus_weighted,
+        "every versus combo has weight 0" if not versus_weighted else "; ".join(versus_weighted),
+    )
 
     failed = [item for item in checks if item["status"] == "fail"]
     result = {"status": "pass" if not failed else "fail", "checks": checks, "failed": len(failed)}

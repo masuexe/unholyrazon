@@ -125,12 +125,13 @@ bool shadowfakeoutactive;  //ShadowTricksArr[72]
 // id slice; MODE_POOL rolls each slot from the slice.  Empty music falls back
 // to the selected boss's own music.  BOSSCOMBO_FLAG_VERSUS marks a
 // boss-vs-boss duel: both bosses damage each other and the versus watcher owns
-// the round ending.  Versus combos stay force-only (weight 0) until V3/V4.
-#define BOSSCOMBO_MAX 15
+// the round ending.  Versus combos stay force-only (weight 0) until their
+// runtime damage/result gate passes.
+#define BOSSCOMBO_MAX 22
 #define BOSSCOMBO_MODE_FIXED 0
 #define BOSSCOMBO_MODE_POOL 1
 #define BOSSCOMBO_FLAG_VERSUS 1
-#define BOSSCOMBO_BOSSID_COUNT 44
+#define BOSSCOMBO_BOSSID_COUNT 58
 // Shape error codes for BossComboShapeError (0 = valid).  Shape validity is
 // independent of player count and boss registration: it only proves the row
 // can be expanded into bossdataarr without out-of-bounds reads.
@@ -164,26 +165,51 @@ int bosscombodata[BOSSCOMBO_MAX][8] = {
   {401, 4, 6, 10, BOSSCOMBO_MODE_FIXED, 27, 4, 0},   // Anti-Unholy Heroes
   {501, 5, 7, 10, BOSSCOMBO_MODE_POOL, 31, 6, 0},    // Speciman Rush
   {502, 5, 7, 10, BOSSCOMBO_MODE_FIXED, 37, 5, 0},   // Ballade GB Quintet
-  {207, 2, 4, 0, BOSSCOMBO_MODE_FIXED, 42, 2, BOSSCOMBO_FLAG_VERSUS}  // Red Baron vs Blue Jay (force-only)
+  {207, 2, 4, 0, BOSSCOMBO_MODE_FIXED, 42, 2, BOSSCOMBO_FLAG_VERSUS},  // Red Baron vs Blue Jay (force-only)
+  // V3 fixed themed duels.  Weight stays 0 until each pair passes the runtime
+  // damage/result gate; the static resource check below must stay green for
+  // every row here (registered actors, face patch, and combo music).
+  {210, 2, 4, 0, BOSSCOMBO_MODE_FIXED, 44, 2, BOSSCOMBO_FLAG_VERSUS},  // Dickster Dick vs Prickster Prick
+  {211, 2, 4, 0, BOSSCOMBO_MODE_FIXED, 46, 2, BOSSCOMBO_FLAG_VERSUS},  // Captain Devileye vs Devileye Richman
+  {212, 2, 4, 0, BOSSCOMBO_MODE_FIXED, 48, 2, BOSSCOMBO_FLAG_VERSUS},  // Colonel Kachidonga vs Crazed Grenademan
+  {213, 2, 4, 0, BOSSCOMBO_MODE_FIXED, 50, 2, BOSSCOMBO_FLAG_VERSUS},  // Officer Johnson vs Scrotoman
+  {214, 2, 4, 0, BOSSCOMBO_MODE_FIXED, 52, 2, BOSSCOMBO_FLAG_VERSUS},  // Harp Strumm vs Sakiko Togawa
+  // Force-only until the music package carries their tracks (M_UB066/M_UB067
+  // and M_UB616/M_UB118 are absent), so they must not enter the random pool.
+  {215, 2, 4, 0, BOSSCOMBO_MODE_FIXED, 54, 2, BOSSCOMBO_FLAG_VERSUS},  // Super Megaman vs Lin
+  {216, 2, 4, 0, BOSSCOMBO_MODE_FIXED, 56, 2, BOSSCOMBO_FLAG_VERSUS}   // Blue Elephant vs Sakiko Togawa
 };
 str bosscomboname[BOSSCOMBO_MAX] = {
   "True Buster Duo", "Juggerbro Brothers", "Astromancer Twins", "4MI Front",
   "Balrog & Misery", "G/F Beast", "GENERIC March", "Tank Corps",
   "Guts Friends", "Shooting Stars", "Destron Squad", "Anti-Unholy Heroes",
-  "Speciman Rush", "Ballade GB Quintet", "Red Baron vs Blue Jay"
+  "Speciman Rush", "Ballade GB Quintet", "Red Baron vs Blue Jay",
+  "Dickster Dick vs Prickster Prick", "Captain Devileye vs Devileye Richman",
+  "Colonel Kachidonga vs Crazed Grenademan", "Officer Johnson vs Scrotoman",
+  "Harp Strumm vs Sakiko Togawa", "Super Megaman vs Lin",
+  "Blue Elephant vs Sakiko Togawa"
 };
 // Dedicated combo tracks (lumps shipped in the unholyrazon_music companion
 // package, music/boss/).  Empty entries exercise the boss-music fallback.
 str bosscombomusic[BOSSCOMBO_MAX] = {
   "", "", "", "", "", "", "",
-  "", "", "M_UB029X", "", "M_UB038", "M_UB048X", "M_UB104X",
-  "M_UB033"
+  "", "", "M_UB029X", "M_UB060", "M_UB038", "M_UB048X", "M_UB104X",
+  "M_UB033",
+  "M_UB013", "M_UB009", "M_UB004", "M_UB006", "M_UB051",
+  "", ""
 };
 str bosscombocredit[BOSSCOMBO_MAX] = {
   "", "", "", "", "", "", "",
-  "", "", "Jazz Jackrabbit 2 - Boss Theme", "", "Street Fighter 3: 2nd Impact - Urien Theme",
+  "", "", "Jazz Jackrabbit 2 - Boss Theme", "Undertale: Halloween Hack - No More Nuzzles", "Street Fighter 3: 2nd Impact - Urien Theme",
   "Zombies Ate My Neighbors - Boss Battle", "Pok\xE9mon Colosseum - Mirakle B.'s Imitation Groove",
-  "Contra III: The Alien Wars - Ground Zero"
+  "Contra III: The Alien Wars - Ground Zero",
+  "Wario Land 3 - Final Boss (Sped-Up)",
+  "Art of Fighting - Mr. Big's Theme (SNES)",
+  "F-Zero (Fire Field)",
+  "Marvel vs. Capcom 1 - Captain America's Theme",
+  "Mega Man Star Force 1 - Ride On",
+  "Bit Pop - Data Charge",
+  "Otto's Laugh Chronicles - Crush Crack Back (Suno Remix)"
 };
 int bosscombobossids[BOSSCOMBO_BOSSID_COUNT] = {
   0, 25,       // TrueBusterExpert + TrueBusterMistress
@@ -200,7 +226,14 @@ int bosscombobossids[BOSSCOMBO_BOSSID_COUNT] = {
   38, 39, 40, 41, // Red/Blue/Yellow/Purple Hero
   42, 43, 44, 45, 105, 106, // Speciman family pool
   68, 68, 68, 68, 68, // BalladeGB x5
-  33, 34       // RedBaronDuo + BlueJayDuo (versus 207)
+  33, 34,      // RedBaronDuo + BlueJayDuo (versus 207)
+  13, 513,     // DicksterDick + PricksterPrick (versus 210)
+  9, 302,      // CaptainDevilEye + RichDevilEye (versus 211)
+  4, 55,       // ColonelKachidonga + CrazedGrenademan (versus 212)
+  6, 113,      // OfficerJohnson + Scrotoman (versus 213)
+  52, 118,     // HarpStrumm + SakikoTogawa (versus 214)
+  66, 67,      // SuperMegaman + Lin (versus 215)
+  616, 118     // BlueElephant + SakikoTogawa (versus 216)
 };
 
 bool isbosseventactive;  // Current round runs a D6 boss combo.
