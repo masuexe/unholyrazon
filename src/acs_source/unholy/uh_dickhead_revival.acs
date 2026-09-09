@@ -14,23 +14,24 @@ function void DickheadDoRevive(int selftid, int revived_tid, int isbossrevival, 
   dropy = GetActorY(selftid);
   dropz = GetActorZ(selftid);
 
-  if (isbossrevival) {
-    bossnum = bossslot;
-    bossdataarr[bossnum][BOSSDATA_MORPHED] = MorphActorToBoss(bossdataarr[bossnum][BOSSDATA_TID], bossdataarr[bossnum][BOSSDATA_NUM], "GigaAstroExplode");
-    PlayerLifeStatusArr_UpdateFunc(pn, PLS_BOSS);
-    bossslotalive[bossnum] = true;
+  if (!isbonuseventactive) {
+    if (isbossrevival) {
+      bossnum = bossslot;
+      bossdataarr[bossnum][BOSSDATA_MORPHED] = MorphActorToBoss(bossdataarr[bossnum][BOSSDATA_TID], bossdataarr[bossnum][BOSSDATA_NUM], "GigaAstroExplode");
+      PlayerLifeStatusArr_UpdateFunc(pn, PLS_BOSS);
+      bossslotalive[bossnum] = true;
+    }
+    else {
+      PlayerLifeStatusArr_UpdateFunc(pn, PLS_SURVIVOR);
+    }
   }
-  else
-    PlayerLifeStatusArr_UpdateFunc(pn, PLS_SURVIVOR);
 
   SetActorPosition(revived_tid, dropx, dropy, dropz + 32.0, false);
 
   SetFont("BIGFONT");
   SetHudSize(640, 480, 0);
   HudMessageBold(n:pn + 1, s:" \cvhas been revived!"; HUDMSG_FADEOUT | HUDMSG_LOG, 49, CR_YELLOW, 320.4, 464.2, 1.8, 0.2);
-  if (mercygiven) {
-    ACS_NamedExecuteAlways("rz_MercyRuneGiver", 0, revived_tid);
-  }
+  RebuildActiveRoundState(revived_tid, 2);
   SetActorState(selftid, "UsedUp", 0);
 }
 

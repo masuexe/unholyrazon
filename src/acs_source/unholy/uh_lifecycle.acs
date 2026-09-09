@@ -2,17 +2,26 @@
 // startup settings, countdown, background timer, and the survivor/boss
 // watchers that end the round.  Fragment of library unholy.
 
-script "ub_BasicTLMSEnter" ENTER {
+function void BasicTLMSEnterState(void) {
   if (GetCvar("lastmanstanding") == 1) {
-
-		// GiveInventory("PowerSuicideStartProtect",1);
-    GiveInventory("ProtectSurvivor", 1);
-		// GiveInventory("ProtectUnholyItem",1);
+    // GiveInventory("PowerSuicideStartProtect",1);
+    if (!isbonuseventactive || !IsFFAEvent(eventdataarr[EVENTDATA_MAINEVENT])) {
+      GiveInventory("ProtectSurvivor", 1);
+    }
+    // GiveInventory("ProtectUnholyItem",1);
   }
 }
 
+script "ub_BasicTLMSEnter" ENTER {
+  BasicTLMSEnterState();
+}
+
 script "ub_BasicTLMSRespawn" RESPAWN {
-  ACS_NamedExecuteAlways("ub_BasicTLMSEnter", 0);
+  BasicTLMSEnterState();
+  int pn = PlayerNumber();
+  if (pn >= 0) {
+    RebuildActiveRoundState(pn + 1000, 1);
+  }
 }
 
 script "ub_Death_ChangeIsAlive" DEATH {
@@ -29,6 +38,7 @@ script "ub_Death_ChangeIsAlive" DEATH {
       ACS_NamedExecuteAlways("uh_SpellCardBreak", 0);
 		// W8 is a survival spell: capture only on timer end (not on death)
     PlayerLifeStatusArr_UpdateFunc(pn, 0);
+    roundstatebuilt[pn] = false;
     if (CheckInventory("IsSpecimanFlag"))
       ACS_NamedExecuteAlways("ub_InitiateUltraBoss", 0, 404);
     if (CheckInventory("IsAMujicaMember"))
@@ -41,6 +51,7 @@ script "ub_Disconnect_ChangeIsAlive" (int playernum) DISCONNECT {
   if (GetCvar("lastmanstanding") == 1) {
     DebugLog(strParam(i:playernum, s:" has disconnected!!"));
     PlayerLifeStatusArr_UpdateFunc(playernum, 0);
+    roundstatebuilt[playernum] = false;
     if (CheckActorInventory(playernum + 1000, "IsAMujicaMember"))
       ACS_NamedExecuteAlways("rz_MujicaFallen", 0);
   }
@@ -84,6 +95,9 @@ script "ub_StartUpSettings" OPEN  //These are start up variables so that they ar
 
   ClearMujicaState();
   twoplayersxrayenabled = false;
+  for (int rsi = 0; rsi < MAX_PLAYERS; rsi++) {
+    roundstatebuilt[rsi] = false;
+  }
 
   ACS_NamedExecuteWithResult("core_bossmusicstate", 1, 669);  //Disables boss music for maps, that is if they use this script
   MusicSaveFunc();
