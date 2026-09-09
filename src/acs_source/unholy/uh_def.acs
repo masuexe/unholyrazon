@@ -119,11 +119,23 @@ bool shadowfakeoutactive;  //ShadowTricksArr[72]
 // counter fires.  Stable combo IDs follow Razon3's variant+count*100 scheme
 // (201 = variant 1 with two bosses).  MODE_FIXED fills slots exactly from the
 // id slice; MODE_POOL rolls each slot from the slice.  Empty music falls back
-// to the selected boss's own music.  Versus fights and shadow/ultra combos
-// are deliberately absent until their dedicated flows exist (D6 tier 3/4).
-#define BOSSCOMBO_MAX 14
+// to the selected boss's own music.  BOSSCOMBO_FLAG_VERSUS marks a
+// boss-vs-boss duel: both bosses damage each other and the versus watcher owns
+// the round ending.  Versus combos stay force-only (weight 0) until V3/V4.
+#define BOSSCOMBO_MAX 15
 #define BOSSCOMBO_MODE_FIXED 0
 #define BOSSCOMBO_MODE_POOL 1
+#define BOSSCOMBO_FLAG_VERSUS 1
+#define BOSSCOMBO_BOSSID_COUNT 44
+// Shape error codes for BossComboShapeError (0 = valid).  Shape validity is
+// independent of player count and boss registration: it only proves the row
+// can be expanded into bossdataarr without out-of-bounds reads.
+#define BOSSCOMBO_SHAPE_OK 0
+#define BOSSCOMBO_SHAPE_RANGE 1       // combo index out of range
+#define BOSSCOMBO_SHAPE_COUNT 2       // boss count outside 1..MAX_BOSSES
+#define BOSSCOMBO_SHAPE_SLICE 3       // boss-id slice outside bosscombobossids
+#define BOSSCOMBO_SHAPE_FIXEDSLICE 4  // fixed mode needs slice count >= boss count
+#define BOSSCOMBO_SHAPE_VERSUS 5      // versus needs exactly 2 fixed slots
 // Bounded wait for the D0 registry check.  OPEN scripts from different ACS
 // libraries all run in the same tic with no guaranteed completion order, so
 // ub_StartUpSettings can observe an empty boss registry; uh_musicdefs uses the
@@ -132,41 +144,44 @@ bool shadowfakeoutactive;  //ShadowTricksArr[72]
 // Minimum players is the standard forced-boss safety rule: count + 2 (one
 // survivor must remain; five-boss combos need seven players, matching the D5
 // downgrade rule).  Enforced through MaxBossCountForPlayers in code.
-//{combo id, boss count, min players, weight, mode, id-slice first, id-slice count}
-int bosscombodata[BOSSCOMBO_MAX][7] = {
-  {201, 2, 4, 10, BOSSCOMBO_MODE_FIXED, 0, 2},    // True Buster Duo
-  {202, 2, 4, 10, BOSSCOMBO_MODE_FIXED, 2, 2},    // Juggerbro Brothers
-  {203, 2, 4, 10, BOSSCOMBO_MODE_FIXED, 4, 2},    // Astromancer Twins
-  {204, 2, 4, 10, BOSSCOMBO_MODE_FIXED, 6, 2},    // 4MI Front
-  {205, 2, 4, 10, BOSSCOMBO_MODE_FIXED, 8, 2},    // Balrog & Misery
-  {208, 2, 4, 10, BOSSCOMBO_MODE_FIXED, 10, 2},   // G/F Beast
-  {301, 3, 5, 10, BOSSCOMBO_MODE_FIXED, 12, 3},   // GENERIC March
-  {302, 3, 5, 10, BOSSCOMBO_MODE_FIXED, 15, 3},   // Tank Corps
-  {303, 3, 5, 10, BOSSCOMBO_MODE_FIXED, 18, 3},   // Guts Friends
-  {306, 3, 5, 10, BOSSCOMBO_MODE_FIXED, 21, 3},   // Shooting Stars
-  {307, 3, 5, 10, BOSSCOMBO_MODE_FIXED, 24, 3},   // Destron Squad
-  {401, 4, 6, 10, BOSSCOMBO_MODE_FIXED, 27, 4},   // Anti-Unholy Heroes
-  {501, 5, 7, 10, BOSSCOMBO_MODE_POOL, 31, 6},    // Speciman Rush
-  {502, 5, 7, 10, BOSSCOMBO_MODE_FIXED, 37, 5}    // Ballade GB Quintet
+//{combo id, boss count, min players, weight, mode, id-slice first, id-slice count, flags}
+int bosscombodata[BOSSCOMBO_MAX][8] = {
+  {201, 2, 4, 10, BOSSCOMBO_MODE_FIXED, 0, 2, 0},    // True Buster Duo
+  {202, 2, 4, 10, BOSSCOMBO_MODE_FIXED, 2, 2, 0},    // Juggerbro Brothers
+  {203, 2, 4, 10, BOSSCOMBO_MODE_FIXED, 4, 2, 0},    // Astromancer Twins
+  {204, 2, 4, 10, BOSSCOMBO_MODE_FIXED, 6, 2, 0},    // 4MI Front
+  {205, 2, 4, 10, BOSSCOMBO_MODE_FIXED, 8, 2, 0},    // Balrog & Misery
+  {208, 2, 4, 10, BOSSCOMBO_MODE_FIXED, 10, 2, 0},   // G/F Beast
+  {301, 3, 5, 10, BOSSCOMBO_MODE_FIXED, 12, 3, 0},   // GENERIC March
+  {302, 3, 5, 10, BOSSCOMBO_MODE_FIXED, 15, 3, 0},   // Tank Corps
+  {303, 3, 5, 10, BOSSCOMBO_MODE_FIXED, 18, 3, 0},   // Guts Friends
+  {306, 3, 5, 10, BOSSCOMBO_MODE_FIXED, 21, 3, 0},   // Shooting Stars
+  {307, 3, 5, 10, BOSSCOMBO_MODE_FIXED, 24, 3, 0},   // Destron Squad
+  {401, 4, 6, 10, BOSSCOMBO_MODE_FIXED, 27, 4, 0},   // Anti-Unholy Heroes
+  {501, 5, 7, 10, BOSSCOMBO_MODE_POOL, 31, 6, 0},    // Speciman Rush
+  {502, 5, 7, 10, BOSSCOMBO_MODE_FIXED, 37, 5, 0},   // Ballade GB Quintet
+  {207, 2, 4, 0, BOSSCOMBO_MODE_FIXED, 42, 2, BOSSCOMBO_FLAG_VERSUS}  // Red Baron vs Blue Jay (force-only)
 };
 str bosscomboname[BOSSCOMBO_MAX] = {
   "True Buster Duo", "Juggerbro Brothers", "Astromancer Twins", "4MI Front",
   "Balrog & Misery", "G/F Beast", "GENERIC March", "Tank Corps",
   "Guts Friends", "Shooting Stars", "Destron Squad", "Anti-Unholy Heroes",
-  "Speciman Rush", "Ballade GB Quintet"
+  "Speciman Rush", "Ballade GB Quintet", "Red Baron vs Blue Jay"
 };
 // Dedicated combo tracks (lumps shipped in the unholyrazon_music companion
 // package, music/boss/).  Empty entries exercise the boss-music fallback.
 str bosscombomusic[BOSSCOMBO_MAX] = {
   "", "", "", "", "", "", "",
-  "", "", "M_UB029X", "", "M_UB038", "M_UB048X", "M_UB104X"
+  "", "", "M_UB029X", "", "M_UB038", "M_UB048X", "M_UB104X",
+  "M_UB033"
 };
 str bosscombocredit[BOSSCOMBO_MAX] = {
   "", "", "", "", "", "", "",
   "", "", "Jazz Jackrabbit 2 - Boss Theme", "", "Street Fighter 3: 2nd Impact - Urien Theme",
-  "Zombies Ate My Neighbors - Boss Battle", "Pok\xE9mon Colosseum - Mirakle B.'s Imitation Groove"
+  "Zombies Ate My Neighbors - Boss Battle", "Pok\xE9mon Colosseum - Mirakle B.'s Imitation Groove",
+  "Contra III: The Alien Wars - Ground Zero"
 };
-int bosscombobossids[42] = {
+int bosscombobossids[BOSSCOMBO_BOSSID_COUNT] = {
   0, 25,       // TrueBusterExpert + TrueBusterMistress
   31, 32,      // Juggerbro Gold + Silver
   29, 30,      // Astromancer Complex + Simple
@@ -180,7 +195,8 @@ int bosscombobossids[42] = {
   70, 71, 72,  // Purple/Red/Blue Destron
   38, 39, 40, 41, // Red/Blue/Yellow/Purple Hero
   42, 43, 44, 45, 105, 106, // Speciman family pool
-  68, 68, 68, 68, 68 // BalladeGB x5
+  68, 68, 68, 68, 68, // BalladeGB x5
+  33, 34       // RedBaronDuo + BlueJayDuo (versus 207)
 };
 
 bool isbosseventactive;  // Current round runs a D6 boss combo.

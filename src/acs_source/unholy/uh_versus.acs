@@ -1,0 +1,93 @@
+// Boss-vs-boss versus event (forced combo 207): Red Baron vs Blue Jay.
+// Fragment of library unholy.  Selection and the versus flag live in
+// uh_funclib.acs; the PowerProtectBoss exception lives in uh_bosscore.acs.
+//
+// The watcher deliberately trusts only the two bossdataarr slots and
+// bossslotalive (maintained by ub_BossHealthWatcher for death, spectator and
+// disconnect).  It never inspects the normal Boss/Eye totals, so survivor
+// deaths cannot end the duel early and a fallen slot cannot be revived by the
+// normal result path.
+
+#define UHVS_HUD_NAME1 8001
+#define UHVS_HUD_NAME2 8002
+#define UHVS_HUD_ICON 8003
+#define UHVS_INTRO_TICS 105
+
+function void UHVS_ClearIntroHud(void) {
+  ClearHudMessageBold(UHVS_HUD_NAME1);
+  ClearHudMessageBold(UHVS_HUD_NAME2);
+  ClearHudMessageBold(UHVS_HUD_ICON);
+}
+
+// Both registered names plus the legacy VS graphic, matching the old
+// ub_ManageBossVsBossEvent layout.
+function void UHVS_ShowIntro(int boss1, int boss2) {
+  SetHudSize(640, 480, 0);
+  SetFont("BIGFONT");
+  HudMessageBold(s:GetBossName(boss1); HUDMSG_FADEOUT, UHVS_HUD_NAME1, -1, 294.6, 48.0, UHVS_INTRO_TICS / 35.0 + 2.0, 2.0);
+  HudMessageBold(s:GetBossName(boss2); HUDMSG_FADEOUT, UHVS_HUD_NAME2, -1, 346.5, 48.0, UHVS_INTRO_TICS / 35.0 + 2.0, 2.0);
+  SetFont("UFACEVS0");
+  HudMessageBold(s:"A"; HUDMSG_FADEOUT, UHVS_HUD_ICON, -1, 320.4, 48.0, UHVS_INTRO_TICS / 35.0 + 2.0, 2.0);
+}
+
+script "ub_ManageBossVsBossEvent" (void) {
+  SetActivator(0, AAPTR_NULL);
+
+  // Only the two-slot versus combo reaches this script.  Anything else is a
+  // selection bug: bail out instead of hanging on a slot that will never fall.
+  if (multibosscheck != 2) {
+    DebugLog(strParam(s:"ub_ManageBossVsBossEvent: expected 2 boss slots, got ", i:multibosscheck, s:"; aborting."));
+    terminate;
+  }
+
+  int boss1 = bossdataarr[0][BOSSDATA_NUM];
+  int boss2 = bossdataarr[1][BOSSDATA_NUM];
+
+  UHVS_ShowIntro(boss1, boss2);
+  Delay(1);
+
+  int introleft = UHVS_INTRO_TICS;
+  while (introleft > 0 && bossslotalive[0] && bossslotalive[1]) {
+    Delay(1);
+    introleft--;
+  }
+  UHVS_ClearIntroHud();
+
+  // Wait for at least one of the two slots to fall (death, spectator or
+  // disconnect all clear bossslotalive in ub_BossHealthWatcher).
+  while (bossslotalive[0] && bossslotalive[1]) {
+    Delay(1);
+  }
+
+  gameover = true;
+  ResetBossComboState();  // Clears versusfightevent for the next round.
+
+  SetHudSize(480, 360, 0);
+  SetFont("BIGFONT");
+
+  if (bossslotalive[0] != bossslotalive[1]) {
+    int winnertid;
+    int winnerboss;
+    if (bossslotalive[0]) {
+      winnertid = bossdataarr[0][BOSSDATA_TID];
+      winnerboss = boss1;
+    }
+    else {
+      winnertid = bossdataarr[1][BOSSDATA_TID];
+      winnerboss = boss2;
+    }
+    GiveActorInventory(winnertid, "PowerSuicideProtect", 1);
+    PlayMusic_Winner(-1);
+    HudMessageBold(s:GetBossName(winnerboss), s:" \c-Wins!"; HUDMSG_FADEOUT, 66, CR_WHITE, 240.4, 54.0, 5.0, 2.0);
+    Delay(35 * 9);
+  }
+  else {
+    // Both slots fell in the same window: a draw.  Higlur/Ultra branches stay
+    // out of scope for V1 and are reviewed separately.
+    HudMessageBold(s:"\cdDraw!"; HUDMSG_FADEOUT, 66, CR_GREEN, 240.4, 54.0, 5.0, 2.0);
+    Delay(35 * 3);
+  }
+
+  Exit_Normal(0);
+  Delay(35 * 3);
+}

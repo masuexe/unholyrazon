@@ -39,6 +39,19 @@ level authentication and snapshot receipt. Temporary isolated engine folders
 prevent shared runtime/config files and are removed during cleanup. It requires
 permission to open local TCP/UDP ports.
 
+For the boss-versus 207 directed probe:
+
+```bash
+node tools/mcp/versus-207-test.mjs --json
+node tools/mcp/versus-207-test.mjs --dry-run
+```
+
+It launches a dedicated `-lastmanstanding` server plus two clients, adds four
+bots so combo 207 meets its four-player minimum, forces
+`uh_sv_BossEventNum 207`, and verifies on the live client that `RedBaronDuo`
+and `BlueJayDuo` spawn without `PowerProtectBoss`. It does not drive real
+projectiles or the round ending; that remains the manual gameplay gate.
+
 ## PK3 validation
 
 Before launching after a packaging change, run the read-only archive check:

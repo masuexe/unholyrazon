@@ -252,6 +252,7 @@ function int MaxBossCountForPlayers(int plc) {
 function void ResetBossComboState(void) {
   isbosseventactive = false;
   activebosscombo = -1;
+  versusfightevent = false;
 }
 
 // Check and decide what MultiBoss is possible.
@@ -297,12 +298,50 @@ function int BossHudRowStep(void) {
   return 32.0;
 }
 
+// Shape validity: can this row be expanded safely?  Unlike registration or
+// player-count checks this is a pure table check, shared by selection,
+// forced-combo validation and the debug validator so the rules cannot drift.
+function int BossComboShapeError(int combo) {
+  if (combo < 0 || combo >= BOSSCOMBO_MAX) {return BOSSCOMBO_SHAPE_RANGE;}
+  int count = bosscombodata[combo][1];
+  int mode = bosscombodata[combo][4];
+  int first = bosscombodata[combo][5];
+  int slice = bosscombodata[combo][6];
+  if (count < 1 || count > MAX_BOSSES) {return BOSSCOMBO_SHAPE_COUNT;}
+  if (slice < 1 || first < 0 || first + slice > BOSSCOMBO_BOSSID_COUNT) {return BOSSCOMBO_SHAPE_SLICE;}
+  if (mode == BOSSCOMBO_MODE_FIXED && slice < count) {return BOSSCOMBO_SHAPE_FIXEDSLICE;}
+  if ((bosscombodata[combo][7] & BOSSCOMBO_FLAG_VERSUS) != 0) {
+    if (count != 2 || mode != BOSSCOMBO_MODE_FIXED || slice != 2) {return BOSSCOMBO_SHAPE_VERSUS;}
+  }
+  return BOSSCOMBO_SHAPE_OK;
+}
+
+function bool BossComboShapeValid(int combo) {
+  return BossComboShapeError(combo) == BOSSCOMBO_SHAPE_OK;
+}
+
+function str BossComboShapeErrorText(int err) {
+  switch (err) {
+    case BOSSCOMBO_SHAPE_RANGE: return "combo index out of range";
+    case BOSSCOMBO_SHAPE_COUNT: return "boss count must be 1..MAX_BOSSES";
+    case BOSSCOMBO_SHAPE_SLICE: return "boss-id slice out of bosscombobossids";
+    case BOSSCOMBO_SHAPE_FIXEDSLICE: return "fixed mode needs slice count >= boss count";
+    case BOSSCOMBO_SHAPE_VERSUS: return "versus needs exactly 2 fixed slots";
+  }
+  return "unknown shape error";
+}
+
 // D6: every boss id referenced by the combo table must still be registered,
 // otherwise the combo is rejected for the round (invalid combos fall back to
-// the normal roll).
+// the normal roll).  The bounds guard keeps a malformed row from reading past
+// bosscombobossids before BossComboShapeError gets a chance to report it.
 function bool BossComboFullyRegistered(int combo) {
-  for (int i = 0; i < bosscombodata[combo][6]; i++) {
-    if (!IsBossDefined(bosscombobossids[bosscombodata[combo][5] + i])) {return false;}
+  if (combo < 0 || combo >= BOSSCOMBO_MAX) {return false;}
+  int first = bosscombodata[combo][5];
+  int slice = bosscombodata[combo][6];
+  if (slice < 1 || first < 0 || first + slice > BOSSCOMBO_BOSSID_COUNT) {return false;}
+  for (int i = 0; i < slice; i++) {
+    if (!IsBossDefined(bosscombobossids[first + i])) {return false;}
   }
   return true;
 }
@@ -320,13 +359,15 @@ function bool BossComboRegistryReady(void) {
 }
 
 // Weighted pick among combos matching the rolled boss count, its minimum
-// players and full registry integrity.  -1 when nothing qualifies.
+// players, a valid shape and full registry integrity.  -1 when nothing
+// qualifies.
 function int PickBossCombo(int wantcount, int plc) {
   int total = 0;
   int i;
   for (i = 0; i < BOSSCOMBO_MAX; i++) {
     if (bosscombodata[i][1] != wantcount) {continue;}
     if (plc < bosscombodata[i][2]) {continue;}
+    if (!BossComboShapeValid(i)) {continue;}
     if (!BossComboFullyRegistered(i)) {continue;}
     total += bosscombodata[i][3];
   }
@@ -336,6 +377,7 @@ function int PickBossCombo(int wantcount, int plc) {
   for (i = 0; i < BOSSCOMBO_MAX; i++) {
     if (bosscombodata[i][1] != wantcount) {continue;}
     if (plc < bosscombodata[i][2]) {continue;}
+    if (!BossComboShapeValid(i)) {continue;}
     if (!BossComboFullyRegistered(i)) {continue;}
     roll -= bosscombodata[i][3];
     if (roll <= 0) {return i;}
@@ -346,7 +388,19 @@ function int PickBossCombo(int wantcount, int plc) {
 // Write the combo into bossdataarr and align the slot bookkeeping.  Only the
 // standard selection flow consumes bossdataarr afterwards, so the morph,
 // HP HUD, watchers, music and Dickhead revival all keep working unchanged.
-function void ApplyBossCombo(int combo) {
+// Returns false (and changes nothing) for a malformed row, so a caller that
+// forgot to validate cannot half-apply a broken combo.
+function bool ApplyBossCombo(int combo) {
+  if (combo < 0 || combo >= BOSSCOMBO_MAX) {
+    DebugLog("ApplyBossCombo refused: combo index out of range");
+    return false;
+  }
+  int shapeerr = BossComboShapeError(combo);
+  if (shapeerr != BOSSCOMBO_SHAPE_OK) {
+    DebugLog(strParam(s:"ApplyBossCombo refused malformed combo ", i:bosscombodata[combo][0],
+                      s:": ", s:BossComboShapeErrorText(shapeerr)));
+    return false;
+  }
   int count = bosscombodata[combo][1];
   int first = bosscombodata[combo][5];
   int i;
@@ -378,6 +432,16 @@ function void ApplyBossCombo(int combo) {
   for (s = 0; s < count; s++) {bossslotalive[s] = true;}
   isbosseventactive = true;
   activebosscombo = combo;
+  versusfightevent = (bosscombodata[combo][7] & BOSSCOMBO_FLAG_VERSUS) != 0;
+  // Versus 207 mirrors Razon3: the two fixed bosses swap slots at random so
+  // neither is always announced on the same side.  The damage rules are
+  // symmetric, so this is presentation only.
+  if (versusfightevent && count == 2 && random(0, 1)) {
+    int swaptmp = bossdataarr[0][BOSSDATA_NUM];
+    bossdataarr[0][BOSSDATA_NUM] = bossdataarr[1][BOSSDATA_NUM];
+    bossdataarr[1][BOSSDATA_NUM] = swaptmp;
+  }
+  return true;
 }
 
 // D6 pity roll, called from ub_SelectBossAndEvent after MultiBossFunction.
@@ -393,6 +457,11 @@ function bool TryBossComboRoll(void) {
   if (forced >= 0) {
     for (int i = 0; i < BOSSCOMBO_MAX; i++) {
       if (bosscombodata[i][0] != forced) {continue;}
+      int shapeerr = BossComboShapeError(i);
+      if (shapeerr != BOSSCOMBO_SHAPE_OK) {
+        DebugLog(strParam(s:"Boss combo ", i:forced, s:" rejected: ", s:BossComboShapeErrorText(shapeerr)));
+        return false;
+      }
       if (bosscombodata[i][1] > cap) {
         DebugLog(strParam(s:"Boss combo ", i:forced, s:" rejected: ", i:bosscombodata[i][1], s:" bosses need ", i:bosscombodata[i][2], s:" players."));
         return false;
@@ -401,7 +470,7 @@ function bool TryBossComboRoll(void) {
         DebugLog(strParam(s:"Boss combo ", i:forced, s:" rejected: unregistered boss."));
         return false;
       }
-      ApplyBossCombo(i);
+      if (!ApplyBossCombo(i)) {return false;}
       bosseventcounter = 0;
       ShowMeTheRCON("Boss Combo", forced);
       return true;
@@ -429,7 +498,10 @@ function bool TryBossComboRoll(void) {
     bosseventcounter += 2;
     return false;
   }
-  ApplyBossCombo(combo);
+  if (!ApplyBossCombo(combo)) {
+    bosseventcounter += 2;
+    return false;
+  }
   bosseventcounter = 0;
   ShowMeTheRCON("Boss Combo", bosscombodata[combo][0]);
   return true;
@@ -548,10 +620,20 @@ function void DebugValidateRoundStart(void) {
     }
   }
 
-  // D0 round-start validation: every boss referenced by every combo must be
-  // registered.  Reports combo ID, name, and the missing boss id so a broken
-  // combo table surfaces deterministically here instead of at selection time.
+  // D0 round-start validation: every combo must have a safely expandable
+  // shape, and every boss referenced by a valid combo must be registered.
+  // Reports combo ID, name, and the concrete reason so a broken combo table
+  // surfaces deterministically here instead of at selection time.  The same
+  // BossComboShapeError helper is used by PickBossCombo / TryBossComboRoll, so
+  // the debug report and the runtime rejection cannot drift.
   for (int combo = 0; combo < BOSSCOMBO_MAX; combo++) {
+    int shapeerr = BossComboShapeError(combo);
+    if (shapeerr != BOSSCOMBO_SHAPE_OK) {
+      DebugLog(strParam(s:"Boss combo ", i:bosscombodata[combo][0],
+                        s:" (", s:bosscomboname[combo],
+                        s:") malformed: ", s:BossComboShapeErrorText(shapeerr)));
+      continue;
+    }
     for (int slot = 0; slot < bosscombodata[combo][6]; slot++) {
       int bossid = bosscombobossids[bosscombodata[combo][5] + slot];
       if (!IsBossDefined(bossid)) {
