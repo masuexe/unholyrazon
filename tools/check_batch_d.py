@@ -13,6 +13,9 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MUSIC = Path("/home/user/projects/mm8bdm/unholyrazon_music/razon_soundtest.pk3")
 DEF = ROOT / "src/acs_source/unholy/uh_def.acs"
 FUNCS = ROOT / "src/acs_source/unholy/uh_funclib.acs"
+VERSUS = ROOT / "src/acs_source/unholy/uh_versus.acs"
+BOSSSELECT = ROOT / "src/acs_source/unholy/uh_bossselect.acs"
+DICKHEAD = ROOT / "src/acs_source/unholy/uh_dickhead_revival.acs"
 REQUIRED_MUSIC = {
     "M_EYE13", "M_EYE14", "M_EYE15", "SATANMUS",
     "M_UB029X", "M_UB038", "M_UB048X", "M_UB104X", "M_UB033",
@@ -21,6 +24,22 @@ REQUIRED_MUSIC = {
 
 def function_body(text: str, name: str) -> str:
     match = re.search(rf"function\s+\w+\s+{re.escape(name)}\s*\([^)]*\)\s*\{{", text)
+    if not match:
+        return ""
+    start = match.end()
+    depth = 1
+    for pos in range(start, len(text)):
+        if text[pos] == "{":
+            depth += 1
+        elif text[pos] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:pos]
+    return ""
+
+
+def script_body(text: str, name: str) -> str:
+    match = re.search(rf'script\s+"{re.escape(name)}"\s*\([^)]*\)\s*\{{', text)
     if not match:
         return ""
     start = match.end()
@@ -109,6 +128,9 @@ def main() -> int:
     try:
         defs = DEF.read_text(encoding="utf-8")
         funcs = FUNCS.read_text(encoding="utf-8")
+        versus = VERSUS.read_text(encoding="utf-8")
+        bossselect = BOSSSELECT.read_text(encoding="utf-8")
+        dickhead = DICKHEAD.read_text(encoding="utf-8")
     except OSError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
@@ -210,6 +232,43 @@ def main() -> int:
         "malformed versus rows rejected",
         valid_rows and not versus_malformed,
         "all three malformations rejected" if not versus_malformed else "not rejected: " + ", ".join(versus_malformed),
+    )
+
+    # V2 contract: the versus watcher owns the ending, blocks cross-slot boss
+    # revival, resolves morph failure itself, and leaves survivor stats alone.
+    claim = function_body(versus, "UHVS_ClaimGameover")
+    resolve = function_body(versus, "UHVS_Resolve")
+    watch = script_body(versus, "ub_ManageBossVsBossEvent")
+    check(
+        "versus atomic result claim",
+        "gameover" in claim and "UHVS_ClaimGameover" in resolve and "UHVS_StopConflictingScripts" in resolve,
+        "UHVS_Resolve must atomically claim gameover and stop conflicting scripts",
+    )
+    check(
+        "versus stops conflicting round enders",
+        all(
+            name in versus
+            for name in ("ub_WatchSurvivors", "ub_WatchBossesAndEyes", "rz_WatchTwoPlayerLeft", "uh_BackgroundTimer", "rz_DickheadRevival")
+        ),
+        "UHVS_StopConflictingScripts must terminate the other round-ending/revival scripts",
+    )
+    check(
+        "versus blocks cross-slot boss revival",
+        "versusblockrevive = true" in watch
+        and "versusblockrevive = false" in bossselect
+        and dickhead.count("versusblockrevive") >= 2,
+        "versusblockrevive must be set in the watcher, cleared per round, and checked by both Dickhead revival paths",
+    )
+    morph_guard = script_body(bossselect, "ub_MorphFailureFallback")
+    check(
+        "versus resolves morph failure itself",
+        "versusfightevent" in morph_guard and "terminate" in morph_guard and "BOSSDATA_MORPHED" in watch,
+        "ub_MorphFailureFallback must defer to the versus watcher, which checks BOSSDATA_MORPHED",
+    )
+    check(
+        "versus leaves survivor stats alone",
+        not any(f"{token} =" in resolve for token in ("winstreak", "mercygiven", "hellmarkfrags", "survwinwithlms")),
+        "UHVS_Resolve must not write survivor winstreak / mercy / hellmark",
     )
 
     music = args.music_pk3.resolve()

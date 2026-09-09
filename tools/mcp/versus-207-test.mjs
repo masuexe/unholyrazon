@@ -148,47 +148,61 @@ try {
   await sleep(1500);
   dedicated.stdin.write("puke ub_SelectBossAndEvent\n");
   console.error("[versus-207] server puke ub_SelectBossAndEvent");
-  await sleep(3000);
-  try {
-    await tool("run_script", { instance: 1, script: "ub_SelectBossAndEvent" }, 15_000);
-    console.error("[versus-207] client puke ub_SelectBossAndEvent");
-  } catch (error) {
-    console.error(`[versus-207] client puke failed: ${error instanceof Error ? error.message : String(error)}`);
-  }
-  await sleep(15_000);
 
-  const findBoss = async className => {
-    try {
-      const found = await tool("wait_for_actor", { instance: 1, className, timeoutTics: 350, intervalTics: 5 }, 120_000);
-      return found.structuredContent || JSON.parse(text(found));
-    } catch (error) {
-      return { className, error: error instanceof Error ? error.message : String(error) };
+  // Freeze the server as soon as both morphs are in the log so the bots cannot
+  // end the duel before we inspect the two actors.
+  let paused = false;
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if (/Boss 1 TID = \d+[\s\S]*?Boss 2 TID = \d+[\s\S]*?Morphed Boss 1: 1[\s\S]*?Morphed Boss 2: 1/.test(dedicatedLog)) {
+      dedicated.stdin.write("pause\n");
+      await sleep(1500);
+      paused = true;
+      break;
     }
-  };
-  const redBaron = await findBoss("RedBaronDuo");
-  const blueJay = await findBoss("BlueJayDuo");
-  const bossStates = [];
-  for (const [className, found] of [["RedBaronDuo", redBaron], ["BlueJayDuo", blueJay]]) {
-    if (!found || found.error || !found.tid) {
-      bossStates.push({ className, found });
-      continue;
-    }
-    const state = await tool("actor_state", { instance: 1, tid: found.tid }, 15_000);
-    const parsed = state.structuredContent || JSON.parse(text(state));
-    const inventory = Array.isArray(parsed.inventory) ? parsed.inventory : [];
-    bossStates.push({
-      className,
-      tid: found.tid,
-      hasPowerProtectBoss: inventory.some(item => item.class === "PowerProtectBoss"),
-      health: parsed.health,
-    });
+    await sleep(250);
   }
+  if (!paused) {
+    dedicated.stdin.write("pause\n");
+    await sleep(1500);
+  }
+  // Pick the versus selection specifically: the forced 207 clears the CVAR
+  // with a diagnostic line right before the two-slot Boss TID pair.  A later
+  // ordinary multiboss round also prints two TIDs, so anchoring on the 207
+  // line avoids inspecting the wrong round.
+  const vsMatches = [...dedicatedLog.matchAll(/uh_sv_BossEventNum' was '207'[\s\S]*?Boss 1 TID = (\d+)[\s\S]*?Boss 2 TID = (\d+)/g)];
+  const vsMatch = vsMatches.pop();
+  const lastTids = vsMatch ? [Number(vsMatch[1]), Number(vsMatch[2])] : [];
+  const bossStates = [];
+  for (const tid of lastTids) {
+    try {
+      const state = await tool("actor_state", { instance: 1, tid }, 15_000);
+      const parsed = state.structuredContent || JSON.parse(text(state));
+      const inventory = Array.isArray(parsed.inventory) ? parsed.inventory : [];
+      bossStates.push({
+        className: parsed.class,
+        tid,
+        hasPowerProtectBoss: inventory.some(item => item.class === "PowerProtectBoss"),
+        health: parsed.health,
+      });
+    } catch (error) {
+      bossStates.push({ tid, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  dedicated.stdin.write("pause\n");
+  await sleep(20_000);
+  // The versus round resolved if the log shows any ending after the versus
+  // selection: the engine's native LMS win limit, a map change, or the next
+  // round's selection.  A soft-locked watcher would show none of these.
+  const vsStart = vsMatch ? dedicatedLog.indexOf(vsMatch[0]) : -1;
+  const afterVs = vsStart >= 0 ? dedicatedLog.slice(vsStart + vsMatch[0].length) : "";
+  const versusResolved = /multiBossCheck|Winlimit hit|ACS scripts unloaded/i.test(afterVs);
 
   const log = dedicatedLog;
   const names = ["VersusClient1", "VersusClient2"];
   const missing = names.filter(name => !log.includes(name));
-  const bothBossesSpawned = bossStates.length === 2 && bossStates.every(entry => entry.tid);
-  const noProtection = bossStates.every(entry => entry.hasPowerProtectBoss === false);
+  const classes = bossStates.map(entry => entry.className).sort();
+  const bothBossesSpawned = classes.length === 2 && classes[0] === "BlueJayDuo" && classes[1] === "RedBaronDuo";
+  const noProtection = bossStates.length === 2 && bossStates.every(entry => entry.hasPowerProtectBoss === false);
   let clientVars = {};
   for (const name of ["multibosscheck", "versusfightevent", "activebosscombo", "isbosseventactive"]) {
     try {
@@ -199,7 +213,7 @@ try {
     }
   }
   result = {
-    status: missing.length === 0 && bothBossesSpawned && noProtection ? "pass" : "fail",
+    status: missing.length === 0 && bothBossesSpawned && noProtection && versusResolved ? "pass" : "fail",
     profile: options.profile,
     gamePort: options.port,
     connectedNames: names.filter(n => !missing.includes(n)),
@@ -208,6 +222,7 @@ try {
     bossStates,
     bothBossesSpawned,
     noProtection,
+    versusResolved,
     clientVars,
     serverMarkers: log.split(/\r?\n/).filter(line => /Unholy|Boss combo|UnholyBoss|Morphed|multiBoss|entered the game|Invalid bot|Bots cannot|Only the host/i.test(line)).slice(-40),
     serverLogTail: log.split(/\r?\n/).slice(-60),

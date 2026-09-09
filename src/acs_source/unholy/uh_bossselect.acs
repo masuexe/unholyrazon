@@ -9,6 +9,7 @@ script "ub_SelectBossAndEvent" (void) {
   ClearMujicaState();
   twoplayersxrayenabled = false;
   ResetBossComboState();  // D6: combo state clears at every round start.
+  versusblockrevive = false;  // Cleared per round, kept through the result sequence.
   for (int i = 0; i < MAX_PLAYERS; i++) {
     roundstatebuilt[i] = false;
   }
@@ -109,6 +110,14 @@ script "ub_BossMorphRetryWait" (int failure, int failure2, int failure3, int fai
 }
 
 script "ub_MorphFailureFallback" (int jump) {
+  // Versus duels resolve a failed morph themselves in uh_versus.acs (one side
+  // forfeits, both sides draw).  Running the football takeover here would
+  // announce a second, conflicting result before the versus watcher starts.
+  if (versusfightevent) {
+    DebugLog("ub_MorphFailureFallback: versus round defers to ub_ManageBossVsBossEvent");
+    terminate;
+  }
+
   bool hailmary = false;
   switch (jump) {
     case -1:

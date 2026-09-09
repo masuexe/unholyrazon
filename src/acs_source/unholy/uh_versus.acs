@@ -2,16 +2,40 @@
 // Fragment of library unholy.  Selection and the versus flag live in
 // uh_funclib.acs; the PowerProtectBoss exception lives in uh_bosscore.acs.
 //
+// V2 contract:
+//   - exactly four outcomes: slot 0 wins, slot 1 wins, same-window double
+//     death is a draw, and a disconnect/spectator slot forfeits;
+//   - the watcher atomically claims `gameover` and stops every other
+//     round-ending script before it announces, so only one result sequence
+//     and one Exit_Normal can run;
+//   - versus rounds never touch survivor winstreak / mercy / hellmark;
+//   - cross-slot Dickhead boss revival is blocked (versusblockrevive);
+//   - a failed boss morph forfeits that side; both sides failing is a draw,
+//     so the watcher can never hang on a slot that will not fall.
+//
 // The watcher deliberately trusts only the two bossdataarr slots and
 // bossslotalive (maintained by ub_BossHealthWatcher for death, spectator and
 // disconnect).  It never inspects the normal Boss/Eye totals, so survivor
-// deaths cannot end the duel early and a fallen slot cannot be revived by the
-// normal result path.
+// deaths cannot end the duel early.
 
 #define UHVS_HUD_NAME1 8001
 #define UHVS_HUD_NAME2 8002
 #define UHVS_HUD_ICON 8003
 #define UHVS_INTRO_TICS 105
+
+// Outcomes.
+#define UHVS_SLOT0 0
+#define UHVS_SLOT1 1
+#define UHVS_DRAW 2
+
+// Announcement reasons.
+#define UHVS_REASON_DEATH 0
+#define UHVS_REASON_FORFEIT 1
+#define UHVS_REASON_MORPHFAIL 2
+
+#define UHVS_WIN_DELAY (35 * 9)
+#define UHVS_FORFEIT_DELAY (35 * 6)
+#define UHVS_DRAW_DELAY (35 * 5)
 
 function void UHVS_ClearIntroHud(void) {
   ClearHudMessageBold(UHVS_HUD_NAME1);
@@ -30,6 +54,77 @@ function void UHVS_ShowIntro(int boss1, int boss2) {
   HudMessageBold(s:"A"; HUDMSG_FADEOUT, UHVS_HUD_ICON, -1, 320.4, 48.0, UHVS_INTRO_TICS / 35.0 + 2.0, 2.0);
 }
 
+// Atomically claim the round ending.  ACS is cooperative and single-threaded,
+// so a check-then-set inside one function cannot be interleaved with another
+// script's resolution; the first caller wins and every later caller bails.
+function bool UHVS_ClaimGameover(void) {
+  if (gameover) {return false;}
+  gameover = true;
+  return true;
+}
+
+// Stop every other script that could run a result sequence, revive a fallen
+// versus slot, or end the round on its own.  The boss health watcher is
+// included because after a result its slot bookkeeping is no longer useful.
+function void UHVS_StopConflictingScripts(void) {
+  ACS_NamedTerminate("ub_WatchSurvivors", 0);
+  ACS_NamedTerminate("ub_WatchBossesAndEyes", 0);
+  ACS_NamedTerminate("rz_WatchTwoPlayerLeft", 0);
+  ACS_NamedTerminate("ub_BossHealthWatcher", 0);
+  ACS_NamedTerminate("ub_DemoneyeNumWatcher", 0);
+  ACS_NamedTerminate("uh_BackgroundTimer", 0);
+  ACS_NamedTerminate("uh_ZankokunaRage", 0);
+  ACS_NamedTerminate("rz_DickheadRevival", 0);
+  ACS_NamedTerminate("rz_DickheadRevivalDelayed", 0);
+}
+
+// Synchronous half of the resolution: claim the ending, stop conflicting
+// scripts, clear the combo state and post the result HUD/music.  Returns the
+// number of tics the caller should wait before Exit_Normal, or -1 when another
+// script already claimed the ending.  Delay/Exit_Normal stay in the script
+// because ACS forbids latent calls inside functions.
+function int UHVS_Resolve(int result, int reason) {
+  if (!UHVS_ClaimGameover()) {return -1;}
+
+  UHVS_ClearIntroHud();
+  UHVS_StopConflictingScripts();
+  ResetBossComboState();  // Clears versusfightevent for the next round.
+
+  // Versus rounds deliberately do not touch winstreak / mercygiven /
+  // hellmarkfrags / survwinwithlms: this is a boss-vs-boss duel, not a
+  // survivor-vs-boss result.
+
+  SetHudSize(480, 360, 0);
+  SetFont("BIGFONT");
+
+  if (result == UHVS_DRAW) {
+    HudMessageBold(s:"\cdDraw!"; HUDMSG_FADEOUT, 66, CR_GREEN, 240.4, 54.0, 5.0, 2.0);
+    return UHVS_DRAW_DELAY;
+  }
+
+  int winnertid;
+  int winnerboss;
+  if (result == UHVS_SLOT0) {
+    winnertid = bossdataarr[0][BOSSDATA_TID];
+    winnerboss = bossdataarr[0][BOSSDATA_NUM];
+  }
+  else {
+    winnertid = bossdataarr[1][BOSSDATA_TID];
+    winnerboss = bossdataarr[1][BOSSDATA_NUM];
+  }
+  GiveActorInventory(winnertid, "PowerSuicideProtect", 1);
+  PlayMusic_Winner(-1);
+
+  if (reason == UHVS_REASON_DEATH) {
+    HudMessageBold(s:GetBossName(winnerboss), s:" \c-Wins!"; HUDMSG_FADEOUT, 66, CR_WHITE, 240.4, 54.0, 5.0, 2.0);
+    return UHVS_WIN_DELAY;
+  }
+  // Forfeit (disconnect/spectator) and morph failure share the default-win
+  // wording; both mean the opponent never had to be killed.
+  HudMessageBold(s:GetBossName(winnerboss), s:" \c-Wins by default!"; HUDMSG_FADEOUT, 66, CR_WHITE, 240.4, 54.0, 5.0, 2.0);
+  return UHVS_FORFEIT_DELAY;
+}
+
 script "ub_ManageBossVsBossEvent" (void) {
   SetActivator(0, AAPTR_NULL);
 
@@ -39,6 +134,18 @@ script "ub_ManageBossVsBossEvent" (void) {
     DebugLog(strParam(s:"ub_ManageBossVsBossEvent: expected 2 boss slots, got ", i:multibosscheck, s:"; aborting."));
     terminate;
   }
+  if (gameover) {terminate;}
+
+  // Block cross-slot Dickhead boss revival for the rest of this map.  The
+  // flag is cleared at the next round selection, not by ResetBossComboState,
+  // so a late revival cannot reopen the duel during the result sequence.
+  versusblockrevive = true;
+
+  // The versus watcher owns the ending: stop the X-Ray watcher and the
+  // background timer, which could otherwise end the round on its own.  The
+  // boss health watcher must stay alive because bossslotalive depends on it.
+  ACS_NamedTerminate("rz_WatchTwoPlayerLeft", 0);
+  ACS_NamedTerminate("uh_BackgroundTimer", 0);
 
   int boss1 = bossdataarr[0][BOSSDATA_NUM];
   int boss2 = bossdataarr[1][BOSSDATA_NUM];
@@ -46,48 +153,70 @@ script "ub_ManageBossVsBossEvent" (void) {
   UHVS_ShowIntro(boss1, boss2);
   Delay(1);
 
+  // Morph failure is decided before this watcher starts
+  // (ub_BossMorphRetryWait / ub_MorphFailureFallback).  Resolve instead of
+  // waiting on a slot that will never fall.
+  int morph0 = bossdataarr[0][BOSSDATA_MORPHED];
+  int morph1 = bossdataarr[1][BOSSDATA_MORPHED];
+  if (morph0 == 0 || morph1 == 0) {
+    Delay(35);
+    int mresult;
+    int mdelay;
+    if (morph0 == 0 && morph1 == 0) {mresult = UHVS_DRAW;}
+    else if (morph0 == 0) {mresult = UHVS_SLOT1;}
+    else {mresult = UHVS_SLOT0;}
+    mdelay = UHVS_Resolve(mresult, UHVS_REASON_MORPHFAIL);
+    if (mdelay >= 0) {
+      Delay(mdelay);
+      Exit_Normal(0);
+      Delay(35 * 3);
+    }
+    terminate;
+  }
+
+  // Intro countdown, cancelled early if a slot falls or another script ends
+  // the round.
   int introleft = UHVS_INTRO_TICS;
-  while (introleft > 0 && bossslotalive[0] && bossslotalive[1]) {
+  while (introleft > 0 && bossslotalive[0] && bossslotalive[1] && !gameover) {
     Delay(1);
     introleft--;
   }
   UHVS_ClearIntroHud();
+  if (gameover) {terminate;}
 
-  // Wait for at least one of the two slots to fall (death, spectator or
-  // disconnect all clear bossslotalive in ub_BossHealthWatcher).
-  while (bossslotalive[0] && bossslotalive[1]) {
+  // Wait for at least one slot to fall.  bossslotalive is cleared for death,
+  // spectator and disconnect; bosshparr[numb][BOSSHP_DEATH] distinguishes
+  // 5/6 (death) from 7 (spectator/disconnect) for the forfeit wording.
+  while (bossslotalive[0] && bossslotalive[1] && !gameover) {
     Delay(1);
   }
+  if (gameover) {terminate;}
 
-  gameover = true;
-  ResetBossComboState();  // Clears versusfightevent for the next round.
+  bool alive0 = bossslotalive[0];
+  bool alive1 = bossslotalive[1];
 
-  SetHudSize(480, 360, 0);
-  SetFont("BIGFONT");
-
-  if (bossslotalive[0] != bossslotalive[1]) {
-    int winnertid;
-    int winnerboss;
-    if (bossslotalive[0]) {
-      winnertid = bossdataarr[0][BOSSDATA_TID];
-      winnerboss = boss1;
-    }
-    else {
-      winnertid = bossdataarr[1][BOSSDATA_TID];
-      winnerboss = boss2;
-    }
-    GiveActorInventory(winnertid, "PowerSuicideProtect", 1);
-    PlayMusic_Winner(-1);
-    HudMessageBold(s:GetBossName(winnerboss), s:" \c-Wins!"; HUDMSG_FADEOUT, 66, CR_WHITE, 240.4, 54.0, 5.0, 2.0);
-    Delay(35 * 9);
+  int result;
+  int reason;
+  if (alive0 && !alive1) {
+    result = UHVS_SLOT0;
+    if (bosshparr[1][BOSSHP_DEATH] == 7) {reason = UHVS_REASON_FORFEIT;}
+    else {reason = UHVS_REASON_DEATH;}
+  }
+  else if (!alive0 && alive1) {
+    result = UHVS_SLOT1;
+    if (bosshparr[0][BOSSHP_DEATH] == 7) {reason = UHVS_REASON_FORFEIT;}
+    else {reason = UHVS_REASON_DEATH;}
   }
   else {
-    // Both slots fell in the same window: a draw.  Higlur/Ultra branches stay
-    // out of scope for V1 and are reviewed separately.
-    HudMessageBold(s:"\cdDraw!"; HUDMSG_FADEOUT, 66, CR_GREEN, 240.4, 54.0, 5.0, 2.0);
-    Delay(35 * 3);
+    // Both slots fell in the same window: draw.
+    result = UHVS_DRAW;
+    reason = UHVS_REASON_DEATH;
   }
 
-  Exit_Normal(0);
-  Delay(35 * 3);
+  int delaytics = UHVS_Resolve(result, reason);
+  if (delaytics >= 0) {
+    Delay(delaytics);
+    Exit_Normal(0);
+    Delay(35 * 3);
+  }
 }
