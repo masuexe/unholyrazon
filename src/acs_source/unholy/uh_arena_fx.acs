@@ -57,6 +57,25 @@ function bool ZHellAllyCheckFunc(int deadtid) {
 }
 
 script "uh_ZankokunaRage" (void) {
+  // In the dedicated Zankokuna-versus branch, rage belongs to the duel
+  // watcher: damage only the opposing boss and let bossslotalive resolve the
+  // winner.  The normal arena-wide massacre would otherwise set gameover and
+  // Exit_Normal before the versus result owner can announce a winner.
+  if (versusfightevent && BossComboHasFlag(BOSSCOMBO_FLAG_ZANKOKUNA)) {
+    int rageowner = ActivatorTID();
+    int opponent = BossVersusOpponentTID(rageowner);
+    zankoragecheck = true;
+    if (opponent > 0) {
+      GiveActorInventory(opponent, "AntiInvincible_P", 1);
+      Thing_Damage(opponent, 6000000, 5);
+      DebugLog(strParam(s:"Versus Zankokuna rage defeated opponent TID ", d:opponent));
+    }
+    else {
+      DebugLog(strParam(s:"Versus Zankokuna rage had no opponent for TID ", d:rageowner));
+    }
+    terminate;
+  }
+
   zankoragecheck = true;
   DebugLog(strParam(s:"This TID used Zankokuna rage: ", d:ActivatorTID()));
 

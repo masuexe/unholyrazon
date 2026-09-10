@@ -255,6 +255,23 @@ function void ResetBossComboState(void) {
   versusfightevent = false;
 }
 
+// Semantic combo policy lookup.  Special branches use this instead of
+// inferring behavior from a numeric combo-id range.
+function bool BossComboHasFlag(int flag) {
+  if (activebosscombo < 0 || activebosscombo >= BOSSCOMBO_MAX) {return false;}
+  return (bosscombodata[activebosscombo][7] & flag) != 0;
+}
+
+function int BossVersusOpponentTID(int tid) {
+  if (!versusfightevent || multibosscheck != 2) {return 0;}
+  int slot = -1;
+  for (int i = 0; i < 2; i++) {
+    if (bossdataarr[i][BOSSDATA_TID] == tid) {slot = i;}
+  }
+  if (slot < 0) {return 0;}
+  return bossdataarr[1 - slot][BOSSDATA_TID];
+}
+
 // Check and decide what MultiBoss is possible.
 function void MultiBossFunction(bool reset) {
   multibosscheck = 1;
@@ -310,12 +327,14 @@ function int BossComboShapeError(int combo) {
   bool versus = (bosscombodata[combo][7] & BOSSCOMBO_FLAG_VERSUS) != 0;
   if (count < 1 || count > MAX_BOSSES) {return BOSSCOMBO_SHAPE_COUNT;}
   if (mode != BOSSCOMBO_MODE_FIXED && mode != BOSSCOMBO_MODE_POOL &&
-      mode != BOSSCOMBO_MODE_FORCED && mode != BOSSCOMBO_MODE_RANDOM_PAIR) {
+      mode != BOSSCOMBO_MODE_FORCED && mode != BOSSCOMBO_MODE_RANDOM_PAIR &&
+      mode != BOSSCOMBO_MODE_SHADOW_PAIR && mode != BOSSCOMBO_MODE_ZANKOKUNA_PAIR) {
     return BOSSCOMBO_SHAPE_MODE;
   }
   // Dynamic modes expand at selection time and must use the reserved zero
   // slice.  ApplyBossCombo always writes exactly slots 0 and 1 for them.
-  if (mode == BOSSCOMBO_MODE_FORCED || mode == BOSSCOMBO_MODE_RANDOM_PAIR) {
+  if (mode == BOSSCOMBO_MODE_FORCED || mode == BOSSCOMBO_MODE_RANDOM_PAIR ||
+      mode == BOSSCOMBO_MODE_SHADOW_PAIR || mode == BOSSCOMBO_MODE_ZANKOKUNA_PAIR) {
     if (!versus || count != 2 || first != 0 || slice != 0) {
       return BOSSCOMBO_SHAPE_DYNAMIC;
     }
@@ -357,7 +376,10 @@ function bool BossComboFullyRegistered(int combo) {
   // Dynamic modes resolve their ids at selection time; ApplyBossCombo owns
   // their registration and eligibility validation, so the table has no ids
   // to check here after its reserved zero slice passed shape validation.
-  if (mode == BOSSCOMBO_MODE_FORCED || mode == BOSSCOMBO_MODE_RANDOM_PAIR) {return true;}
+  if (mode == BOSSCOMBO_MODE_FORCED || mode == BOSSCOMBO_MODE_RANDOM_PAIR ||
+      mode == BOSSCOMBO_MODE_SHADOW_PAIR || mode == BOSSCOMBO_MODE_ZANKOKUNA_PAIR) {
+    return true;
+  }
   int first = bosscombodata[combo][5];
   int slice = bosscombodata[combo][6];
   if (slice < 1 || first < 0 || first + slice > BOSSCOMBO_BOSSID_COUNT) {return false;}
@@ -425,6 +447,74 @@ function int PickRandomVersusBoss(int avoid) {
   return pick;
 }
 
+// Special versus branches have their own positive allowlist.  These bosses
+// are not admitted to ordinary 209 random duels because their arena scripts
+// need the dedicated Zankokuna policy below.
+function bool BossZankokunaVersusEligible(int id) {
+  if (!IsBossDefined(id)) {return false;}
+  switch (id) {
+    case 65:   // Arena Demoneye
+    case 300:  // Fox Demoneye
+    case 400:  // Zankokuna Hellbot
+    case 401:  // Eyelento Major
+    case 402:  // Final Sampi
+    case 403:  // Higlur
+      return true;
+  }
+  return false;
+}
+
+function bool BossZankokunaPrimaryEligible(int id) {
+  return id == 300 || id == 400;
+}
+
+function int PickZankokunaVersusBoss(int avoid) {
+  for (int attempt = 0; attempt < 32; attempt++) {
+    int pick;
+    switch (random(0, 5)) {
+      case 0: pick = 65; break;
+      case 1: pick = 300; break;
+      case 2: pick = 400; break;
+      case 3: pick = 401; break;
+      case 4: pick = 402; break;
+      default: pick = 403; break;
+    }
+    if (pick != avoid && BossZankokunaVersusEligible(pick)) {return pick;}
+  }
+  return UHBOSS_FAIL;
+}
+
+function int ResolveConfiguredVersusBoss(str cvar, int avoid) {
+  int raw = GetCVAR(cvar);
+  int id = ForceBossChange(cvar, false);
+  if (raw == UHBOSS_FAIL) {return PickRandomVersusBoss(avoid);}
+  if (!BossVersusEligible(id) || id == avoid) {return UHBOSS_FAIL;}
+  return id;
+}
+
+function int ResolveConfiguredZankokunaBoss(str cvar, int avoid) {
+  int raw = GetCVAR(cvar);
+  int id = ForceBossChange(cvar, false);
+  if (raw == UHBOSS_FAIL) {return PickZankokunaVersusBoss(avoid);}
+  if (!BossZankokunaVersusEligible(id) || id == avoid) {return UHBOSS_FAIL;}
+  return id;
+}
+
+// Shadow-versus overrides use the same reviewed ordinary-versus allowlist as
+// the base pair.  This is a side-effect-free peek used before ApplyBossCombo
+// consumes the cvars in the Shadow manager.
+function int BossShadowOverrideTarget(str cvar, int fallback) {
+  int raw = GetCVAR(cvar);
+  if (raw != UHBOSS_FAIL && BossVersusEligible(raw)) {return raw;}
+  return fallback;
+}
+
+function bool BossShadowPairTargetsDistinct(int first, int second) {
+  int target0 = BossShadowOverrideTarget("uh_sv_ForcedShadowBoss1", first);
+  int target1 = BossShadowOverrideTarget("uh_sv_ForcedShadowBoss2", second);
+  return target0 != target1;
+}
+
 // Weighted pick among combos matching the rolled boss count, its minimum
 // players, a valid shape and full registry integrity.  -1 when nothing
 // qualifies.
@@ -473,7 +563,8 @@ function bool ApplyBossCombo(int combo) {
   int first = bosscombodata[combo][5];
   int i;
   int s;
-  // Resolve dynamic modes before touching any state: a rejected 206/209 must
+  // Resolve dynamic modes before touching any state: a rejected 206/209 or
+  // special branch must
   // not clear bossslotalive and break the fallback normal selection.
   int dyn0 = 0;
   int dyn1 = 0;
@@ -496,6 +587,40 @@ function bool ApplyBossCombo(int combo) {
     }
     DebugLog(strParam(s:"Boss combo 209 resolved: ", i:dyn0, s:" vs ", i:dyn1));
   }
+  else if (mode == BOSSCOMBO_MODE_SHADOW_PAIR) {
+    dyn0 = ResolveConfiguredVersusBoss("uh_sv_ForcedBoss1", -1);
+    dyn1 = ResolveConfiguredVersusBoss("uh_sv_ForcedBoss2", dyn0);
+    if (dyn0 == UHBOSS_FAIL || dyn1 == UHBOSS_FAIL || dyn0 == dyn1) {
+      DebugLog("Boss combo 217 rejected: shadow pair needs two distinct reviewed versus bosses.");
+      return false;
+    }
+    if (!BossShadowPairTargetsDistinct(dyn0, dyn1)) {
+      DebugLog("Boss combo 217 rejected: shadow replacement targets must remain distinct.");
+      return false;
+    }
+    DebugLog(strParam(s:"Boss combo 217 resolved: ", i:dyn0, s:" vs ", i:dyn1));
+  }
+  else if (mode == BOSSCOMBO_MODE_ZANKOKUNA_PAIR) {
+    int rawprimary = GetCVAR("uh_sv_ForcedBoss1");
+    dyn0 = ResolveConfiguredZankokunaBoss("uh_sv_ForcedBoss1", -1);
+    if (dyn0 == UHBOSS_FAIL || !BossZankokunaPrimaryEligible(dyn0)) {
+      // This branch is intentionally bounded to the two legacy primary
+      // choices; a forced non-primary id is rejected rather than silently
+      // broadening the special allowlist.
+      if (rawprimary != UHBOSS_FAIL) {
+        DebugLog("Boss combo 218 rejected: ForcedBoss1 must be Zankokuna or Fox Demoneye.");
+        return false;
+      }
+      if (random(0, 1)) {dyn0 = 400;}
+      else {dyn0 = 300;}
+    }
+    dyn1 = ResolveConfiguredZankokunaBoss("uh_sv_ForcedBoss2", dyn0);
+    if (dyn1 == UHBOSS_FAIL || dyn0 == dyn1) {
+      DebugLog("Boss combo 218 rejected: special pair needs two distinct reviewed bosses.");
+      return false;
+    }
+    DebugLog(strParam(s:"Boss combo 218 resolved: ", i:dyn0, s:" vs ", i:dyn1));
+  }
   else if ((bosscombodata[combo][7] & BOSSCOMBO_FLAG_VERSUS) != 0 &&
            bosscombobossids[first] == bosscombobossids[first + 1]) {
     DebugLog(strParam(s:"Boss combo ", i:bosscombodata[combo][0],
@@ -514,7 +639,8 @@ function bool ApplyBossCombo(int combo) {
     bossdataarr[i][BOSSDATA_MORPHED] = 0;
   }
   shadowfakeoutactive = false;
-  if (mode == BOSSCOMBO_MODE_FORCED || mode == BOSSCOMBO_MODE_RANDOM_PAIR) {
+  if (mode == BOSSCOMBO_MODE_FORCED || mode == BOSSCOMBO_MODE_RANDOM_PAIR ||
+      mode == BOSSCOMBO_MODE_SHADOW_PAIR || mode == BOSSCOMBO_MODE_ZANKOKUNA_PAIR) {
     bossdataarr[0][BOSSDATA_NUM] = dyn0;
     bossdataarr[1][BOSSDATA_NUM] = dyn1;
   }
@@ -534,6 +660,11 @@ function bool ApplyBossCombo(int combo) {
   isbosseventactive = true;
   activebosscombo = combo;
   versusfightevent = (bosscombodata[combo][7] & BOSSCOMBO_FLAG_VERSUS) != 0;
+  if ((bosscombodata[combo][7] & BOSSCOMBO_FLAG_SHADOW) != 0) {
+    shadowtricksarr[0] = true;
+    shadowtricksarr[1] = true;
+    shadowfakeoutactive = true;
+  }
   // Versus 207 mirrors Razon3: the two fixed bosses swap slots at random so
   // neither is always announced on the same side.  The damage rules are
   // symmetric, so this is presentation only.

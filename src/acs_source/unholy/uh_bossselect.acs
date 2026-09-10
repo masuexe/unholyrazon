@@ -47,7 +47,9 @@ script "ub_MorphSelectedBosses" (void) {
   totalplayersarr[PLS_BOSS] += multibosscheck;
   roundstartsurvivors = totalplayersarr[PLS_SURVIVOR];
 
-  if (shadowfakeoutactive) {
+  // The versus Shadow branch owns this setup synchronously after the initial
+  // morph.  Ordinary Shadow Tricks keeps its legacy asynchronous manager.
+  if (shadowfakeoutactive && !BossComboHasFlag(BOSSCOMBO_FLAG_SHADOW)) {
     ACS_NamedExecute("ub_ShadowBossManager", 0);
   }  //End of Shadowman
 
@@ -55,6 +57,14 @@ script "ub_MorphSelectedBosses" (void) {
   for (int i = 0; i < multibosscheck; i++) {
     bossdataarr[i][BOSSDATA_MORPHED] = MorphActorToBoss(bossdataarr[i][BOSSDATA_TID], bossdataarr[i][BOSSDATA_NUM], "GigaAstroExplode");
     DebugLog(strParam(s:"Morphed Boss ", i:i + 1, s:": ", i:bossdataarr[i][BOSSDATA_MORPHED]));
+  }
+
+  // A versus Shadow round must finish its fakeout/reveal before the generic
+  // morph retry and versus watcher start, so it has one setup owner and no
+  // concurrent ordinary-versus watcher race.
+  if (shadowfakeoutactive && BossComboHasFlag(BOSSCOMBO_FLAG_SHADOW)) {
+    ACS_NamedExecuteWait("ub_ShadowBossManager", 0);
+    shadowfakeoutactive = false;
   }
 
 	//Musical setting
@@ -215,26 +225,68 @@ script "ub_ShadowBossManager" (void) {
   shadowrevealactive = true;
 
   int tempboss;
+  int shadowtarget0 = bossdataarr[0][BOSSDATA_NUM];
+  int shadowtarget1 = bossdataarr[1][BOSSDATA_NUM];
+  bool shadowversus = BossComboHasFlag(BOSSCOMBO_FLAG_SHADOW);
   for (i = 0; i < multibosscheck; i++) {
 
     if (shadowtricksarr[i]) {
       ClearHudMessage(91 + i);  //Boss Healths
       ACS_NamedExecuteAlways("ub_UnMorphThisTID", 0, bossdataarr[i][BOSSDATA_TID]);
 
-      tempboss = ForceBossChange(strparam(s:"uh_sv_ForcedShadowBoss", i:i + 1), false);
+      str shadowcvar = strparam(s:"uh_sv_ForcedShadowBoss", i:i + 1);
+      int rawshadow = GetCVAR(shadowcvar);
+      tempboss = ForceBossChange(shadowcvar, false);
 			//ShowMeTheRCON("Shadow Boss",TempBoss);
-      if (tempboss == UHBOSS_FAIL) {
-        if (RandomPercent(5))
-          tempboss = bossdataarr[i][BOSSDATA_NUM];  //No Change
-				// else if(RandomPercent(40))
-				// 	TempBoss = 301;//AbePenny
-				// else if(RandomPercent(55))
-				// 	TempBoss = random(303,305);
-        else
-          tempboss = TrueRandomBoss();
+      if (shadowversus) {
+        // The special branch only accepts the reviewed versus allowlist.  An
+        // unset override keeps the already-reviewed base boss; an invalid or
+        // duplicate override is ignored rather than widening the duel.  Keep
+        // both resolved ids local until the pair has been checked below.
+        if (rawshadow == UHBOSS_FAIL || !BossVersusEligible(tempboss))
+          tempboss = bossdataarr[i][BOSSDATA_NUM];
+        if (i == 0) {shadowtarget0 = tempboss;}
+        else {shadowtarget1 = tempboss;}
       }
-      bossdataarr[i][BOSSDATA_MORPHED] = tempboss;  //Borrow this Array
+      else {
+        if (tempboss == UHBOSS_FAIL) {
+          if (RandomPercent(5))
+            tempboss = bossdataarr[i][BOSSDATA_NUM];  //No Change
+				  // else if(RandomPercent(40))
+				  // 	TempBoss = 301;//AbePenny
+				  // else if(RandomPercent(55))
+				  // 	TempBoss = random(303,305);
+          else
+            tempboss = TrueRandomBoss();
+        }
+        bossdataarr[i][BOSSDATA_MORPHED] = tempboss;  //Borrow this Array
+      }
     }
+  }
+
+  if (shadowversus) {
+    if (shadowtarget0 == shadowtarget1) {
+      // ApplyBossCombo rejects the normal cvar race before setup.  This second
+      // guard handles a cvar mutation during setup: restore the reviewed base
+      // pair, clear the special combo identity, and continue as ordinary
+      // versus rather than leaving either player unmorphed.
+      DebugLog(strParam(s:"Boss combo 217 rejected after shadow fallback: duplicate target ", i:shadowtarget0));
+      Delay(1);
+      for (i = 0; i < multibosscheck; i++) {
+        shadowtricksarr[i] = false;
+        ClearActorInventory(bossdataarr[i][BOSSDATA_TID]);
+        bossdataarr[i][BOSSDATA_MORPHED] = MorphActorToBoss(bossdataarr[i][BOSSDATA_TID], bossdataarr[i][BOSSDATA_NUM], "GigaAstroExplode");
+      }
+      shadowfakeoutactive = false;
+      shadowrevealactive = false;
+      activebosscombo = -1;
+      PlayMusic(savedmusiclump);
+      MusicCredits(savedmusiccredit, 1);
+      terminate;
+    }
+    // Only the validated pair is copied into the shared morph-result slots.
+    bossdataarr[0][BOSSDATA_MORPHED] = shadowtarget0;
+    bossdataarr[1][BOSSDATA_MORPHED] = shadowtarget1;
   }
 
   Delay(1);  //Delay needed otherwise unmorph doesn't happen correctly
@@ -468,4 +520,3 @@ script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
     }
   }  //While End
 }
-

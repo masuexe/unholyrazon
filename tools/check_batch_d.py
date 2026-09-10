@@ -56,6 +56,21 @@ def script_body(text: str, name: str) -> str:
     return ""
 
 
+def braced_block(text: str, open_pos: int) -> str:
+    """Return the contents of the brace opened at open_pos, or empty."""
+    if open_pos < 0 or open_pos >= len(text) or text[open_pos] != "{":
+        return ""
+    depth = 1
+    for pos in range(open_pos + 1, len(text)):
+        if text[pos] == "{":
+            depth += 1
+        elif text[pos] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[open_pos + 1:pos]
+    return ""
+
+
 def define_int(text: str, name: str) -> int | None:
     match = re.search(rf"#define\s+{re.escape(name)}\s+(-?\d+)\b", text)
     return int(match.group(1)) if match else None
@@ -235,10 +250,17 @@ def combo_shape_error(row: list[str], defines: dict[str, int], max_bosses: int, 
         defines["BOSSCOMBO_MODE_POOL"],
         defines["BOSSCOMBO_MODE_FORCED"],
         defines["BOSSCOMBO_MODE_RANDOM_PAIR"],
+        defines["BOSSCOMBO_MODE_SHADOW_PAIR"],
+        defines["BOSSCOMBO_MODE_ZANKOKUNA_PAIR"],
     }
     if mode not in known_modes:
         return "mode"
-    if mode in (defines["BOSSCOMBO_MODE_FORCED"], defines["BOSSCOMBO_MODE_RANDOM_PAIR"]):
+    if mode in (
+        defines["BOSSCOMBO_MODE_FORCED"],
+        defines["BOSSCOMBO_MODE_RANDOM_PAIR"],
+        defines["BOSSCOMBO_MODE_SHADOW_PAIR"],
+        defines["BOSSCOMBO_MODE_ZANKOKUNA_PAIR"],
+    ):
         # Dynamic modes resolve exactly slots 0 and 1; their slice is unused.
         if not versus or count != 2 or first != 0 or slice_count != 0:
             return "dynamic"
@@ -251,6 +273,53 @@ def combo_shape_error(row: list[str], defines: dict[str, int], max_bosses: int, 
         if count != 2 or mode != defines["BOSSCOMBO_MODE_FIXED"] or slice_count != 2:
             return "versus"
     return None
+
+
+def versus_death_gate_contract(text: str) -> bool:
+    """Require the Higlur terminal path to distinguish death from forfeits."""
+    normal = function_body(text, "UHVS_IsNormalDeathState")
+    both = function_body(text, "UHVS_BothSlotsDiedNormally")
+    watch = script_body(text, "ub_ManageBossVsBossEvent")
+    higlur_gate = bool(
+        re.search(
+            r"result\s*==\s*UHVS_DRAW\s*&&\s*bothnormaldeath\s*&&\s*"
+            r"BossComboHasFlag\(BOSSCOMBO_FLAG_HIGLUR\)",
+            watch,
+            re.S,
+        )
+    )
+    return (
+        "deathstate == 5" in normal
+        and "deathstate == 6" in normal
+        and both.count("UHVS_IsNormalDeathState(") >= 2
+        and "BOSSHP_DEATH" in both
+        and "bool bothnormaldeath = UHVS_BothSlotsDiedNormally();" in watch
+        and "reason = bothnormaldeath ? UHVS_REASON_DEATH : UHVS_REASON_FORFEIT;" in watch
+        and higlur_gate
+    )
+
+
+def shadow_target_order_contract(text: str) -> bool:
+    """Require Shadow targets to be local until pair validation completes."""
+    body = script_body(text, "ub_ShadowBossManager")
+    special_start = body.find("if (shadowversus) {")
+    special_open = body.find("{", special_start)
+    special = braced_block(body, special_open)
+    duplicate = body.find("if (shadowtarget0 == shadowtarget1)", special_open)
+    write0 = body.find("bossdataarr[0][BOSSDATA_MORPHED] = shadowtarget0;", duplicate)
+    write1 = body.find("bossdataarr[1][BOSSDATA_MORPHED] = shadowtarget1;", duplicate)
+    return (
+        "int shadowtarget0 = bossdataarr[0][BOSSDATA_NUM];" in body
+        and "int shadowtarget1 = bossdataarr[1][BOSSDATA_NUM];" in body
+        and "if (i == 0) {shadowtarget0 = tempboss;}" in special
+        and "else {shadowtarget1 = tempboss;}" in special
+        and "bossdataarr[i][BOSSDATA_MORPHED] = tempboss;" not in special
+        and duplicate > special_open
+        and write0 > duplicate
+        and write1 > duplicate
+        and "Boss combo 217 rejected after shadow fallback" in body
+        and "activebosscombo = -1;" in body
+    )
 
 
 def main() -> int:
@@ -302,7 +371,7 @@ def main() -> int:
     )
 
     versus_row = bool(
-        re.search(r"\{\s*207\s*,\s*2\s*,\s*4\s*,\s*0\s*,.*BOSSCOMBO_FLAG_VERSUS", defs)
+        re.search(r"\{\s*207\s*,\s*2\s*,\s*4\s*,\s*0\s*,.*BOSSCOMBO_FLAGS_HIGLUR", defs)
     )
     check(
         "forced versus combo 207",
@@ -318,7 +387,15 @@ def main() -> int:
         "BOSSCOMBO_MODE_POOL",
         "BOSSCOMBO_MODE_FORCED",
         "BOSSCOMBO_MODE_RANDOM_PAIR",
+        "BOSSCOMBO_MODE_SHADOW_PAIR",
+        "BOSSCOMBO_MODE_ZANKOKUNA_PAIR",
         "BOSSCOMBO_FLAG_VERSUS",
+        "BOSSCOMBO_FLAG_SHADOW",
+        "BOSSCOMBO_FLAG_ZANKOKUNA",
+        "BOSSCOMBO_FLAG_HIGLUR",
+        "BOSSCOMBO_FLAGS_SHADOW",
+        "BOSSCOMBO_FLAGS_ZANKOKUNA",
+        "BOSSCOMBO_FLAGS_HIGLUR",
     ]
     defines = {name: define_int(defs, name) for name in define_names}
     max_bosses = define_int(defs, "MAX_BOSSES")
@@ -475,6 +552,61 @@ def main() -> int:
         "same-boss duels must append the player number to the HUD/winner name",
     )
 
+    special_modes = {
+        "shadow": bool(re.search(r"\{\s*217\s*,\s*2\s*,\s*4\s*,\s*0\s*,\s*BOSSCOMBO_MODE_SHADOW_PAIR", defs)),
+        "zankokuna": bool(re.search(r"\{\s*218\s*,\s*2\s*,\s*4\s*,\s*0\s*,\s*BOSSCOMBO_MODE_ZANKOKUNA_PAIR", defs)),
+        "higlur": "BOSSCOMBO_FLAGS_HIGLUR" in defs and "UHVS_ResolveHiglurDraw" in versus,
+        "shadow_setup": 'ACS_NamedExecuteWait("ub_ShadowBossManager"' in bossselect and "BOSSCOMBO_FLAG_SHADOW" in bossselect,
+        "zankokuna_setup": "BossZankokunaVersusEligible" in funcs and "BOSSCOMBO_FLAG_ZANKOKUNA" in (ROOT / "src/acs_source/unholy/uh_arena_fx.acs").read_text(encoding="utf-8"),
+        "higlur_queue": 'ub_InitiateUltraBoss", 0, 403' in versus,
+    }
+    check(
+        "semantic special versus branches",
+        all(special_modes.values()) and "BossComboHasFlag" in funcs,
+        "Shadow, Zankokuna and Red/Blue-Higlur branches need semantic modes/flags and owned setup/terminal hooks",
+    )
+    higlur_reason_mutation = versus.replace(
+        "reason = bothnormaldeath ? UHVS_REASON_DEATH : UHVS_REASON_FORFEIT;",
+        "reason = UHVS_REASON_DEATH;",
+        1,
+    )
+    higlur_gate_mutation = versus.replace(
+        "result == UHVS_DRAW && bothnormaldeath &&",
+        "result == UHVS_DRAW &&",
+        1,
+    )
+    check(
+        "Higlur death-state mutation guard",
+        versus_death_gate_contract(versus)
+        and not versus_death_gate_contract(higlur_reason_mutation)
+        and not versus_death_gate_contract(higlur_gate_mutation),
+        "Higlur may queue only when both BOSSHP_DEATH values are normal death states 5/6, never simultaneous forfeits",
+    )
+    shadow_order_mutation = bossselect.replace(
+        "if (i == 0) {shadowtarget0 = tempboss;}",
+        "if (i == 0) {bossdataarr[i][BOSSDATA_MORPHED] = tempboss;}",
+        1,
+    )
+    check(
+        "Shadow target ordering mutation guard",
+        shadow_target_order_contract(bossselect)
+        and not shadow_target_order_contract(shadow_order_mutation),
+        "Shadow must validate both independent targets and duplicates before writing BOSSDATA_MORPHED",
+    )
+    check(
+        "special versus allowlist is closed",
+        "function bool BossZankokunaVersusEligible" in funcs
+        and "BossZankokunaPrimaryEligible" in funcs
+        and "BossZankokunaVersusEligible" in funcs
+        and function_body(funcs, "BossZankokunaVersusEligible").rstrip().endswith("return false;"),
+        "special bosses must use an explicit allowlist with a default reject",
+    )
+    check(
+        "legacy BossEvent777 not restored",
+        "BossEvent777" not in funcs and "BossEvent777" not in versus,
+        "special branches must not use the ambiguous legacy BossEvent777 hook",
+    )
+
     music = args.music_pk3.resolve()
     music_lumps: set[str] = set()
     if not music.is_file():
@@ -528,20 +660,27 @@ def main() -> int:
         "none" if not forced_issues else f"{len(forced_issues)} gap(s): " + "; ".join(forced_issues[:4]),
     )
 
-    # Versus combos must stay force-only (weight 0) until the runtime damage /
-    # result gate is recorded; a nonzero weight here would let an untested duel
-    # into the random pool.
+    # Release decision: only the reviewed/resource-complete fixed themed rows
+    # 210-216 enter the low-weight random pool.  206/207/209 and the semantic
+    # special branches remain force-only, independently of forceability.
     versus_weighted: list[str] = []
+    released_versus = {str(value) for value in range(210, 217)}
     versus_flag = defines.get("BOSSCOMBO_FLAG_VERSUS", 1)
     if rows:
         for row in rows:
             flags_val = int(row[7]) if row[7].lstrip("-").isdigit() else defines.get(row[7], 0)
-            if flags_val & versus_flag and row[3].strip() != "0":
-                versus_weighted.append(f"{row[0]} weight={row[3]}")
+            if not flags_val & versus_flag:
+                continue
+            if row[0] in released_versus:
+                if row[3].strip() != "1":
+                    versus_weighted.append(f"{row[0]} released weight={row[3]}")
+            elif row[3].strip() != "0":
+                versus_weighted.append(f"{row[0]} force-only weight={row[3]}")
     check(
-        "versus combos force-only",
+        "versus random-pool release policy",
         not versus_weighted,
-        "every versus combo has weight 0" if not versus_weighted else "; ".join(versus_weighted),
+        "only reviewed fixed duels 210-216 have weight 1; 206/207/209/217/218 stay force-only"
+        if not versus_weighted else "; ".join(versus_weighted),
     )
 
     failed = [item for item in checks if item["status"] == "fail"]

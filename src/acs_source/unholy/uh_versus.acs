@@ -1,4 +1,6 @@
-// Boss-vs-boss versus event (forced combo 207): Red Baron vs Blue Jay.
+// Boss-vs-boss versus event.  Ordinary fixed/dynamic pairs use the common
+// watcher; semantic combo flags route Shadow, Zankokuna and Higlur behavior
+// through their own setup/terminal hooks.
 // Fragment of library unholy.  Selection and the versus flag live in
 // uh_funclib.acs; the PowerProtectBoss exception lives in uh_bosscore.acs.
 //
@@ -60,6 +62,15 @@ function void UHVS_ShowIntro(int boss1, int boss2, int tid1, int tid2) {
   HudMessageBold(s:UHVS_DisplayName(boss2, tid2, sameboss); HUDMSG_FADEOUT, UHVS_HUD_NAME2, -1, 346.5, 48.0, UHVS_INTRO_TICS / 35.0 + 2.0, 2.0);
   SetFont("UFACEVS0");
   HudMessageBold(s:"A"; HUDMSG_FADEOUT, UHVS_HUD_ICON, -1, 320.4, 48.0, UHVS_INTRO_TICS / 35.0 + 2.0, 2.0);
+}
+
+function bool UHVS_IsNormalDeathState(int deathstate) {
+  return deathstate == 5 || deathstate == 6;
+}
+
+function bool UHVS_BothSlotsDiedNormally(void) {
+  return UHVS_IsNormalDeathState(bosshparr[0][BOSSHP_DEATH]) &&
+         UHVS_IsNormalDeathState(bosshparr[1][BOSSHP_DEATH]);
 }
 
 // Atomically claim the round ending.  ACS is cooperative and single-threaded,
@@ -135,6 +146,23 @@ function int UHVS_Resolve(int result, int reason) {
   return UHVS_FORFEIT_DELAY;
 }
 
+// Red Baron + Blue Jay have a distinct terminal branch: a normal double death
+// queues Higlur for the next round.  It still has one atomic owner and one
+// Exit_Normal, so the ordinary draw result cannot race the summon.
+function int UHVS_ResolveHiglurDraw(void) {
+  if (!UHVS_ClaimGameover()) {return -1;}
+
+  UHVS_ClearIntroHud();
+  UHVS_StopConflictingScripts();
+  ACS_NamedExecuteAlways("ub_InitiateUltraBoss", 0, 403);
+  ResetBossComboState();
+
+  SetHudSize(480, 360, 0);
+  SetFont("BIGFONT");
+  HudMessageBold(s:"\cmYOU HEAR SOMETHING SCREAMING IN THE DISTANCE!"; HUDMSG_FADEOUT, 66, CR_BLACK, 240.4, 54.0, 3.0, 2.0);
+  return UHVS_DRAW_DELAY;
+}
+
 script "ub_ManageBossVsBossEvent" (void) {
   SetActivator(0, AAPTR_NULL);
 
@@ -204,6 +232,7 @@ script "ub_ManageBossVsBossEvent" (void) {
 
   bool alive0 = bossslotalive[0];
   bool alive1 = bossslotalive[1];
+  bool bothnormaldeath = UHVS_BothSlotsDiedNormally();
 
   int result;
   int reason;
@@ -220,10 +249,17 @@ script "ub_ManageBossVsBossEvent" (void) {
   else {
     // Both slots fell in the same window: draw.
     result = UHVS_DRAW;
-    reason = UHVS_REASON_DEATH;
+    reason = bothnormaldeath ? UHVS_REASON_DEATH : UHVS_REASON_FORFEIT;
   }
 
-  int delaytics = UHVS_Resolve(result, reason);
+  int delaytics;
+  if (result == UHVS_DRAW && bothnormaldeath &&
+      BossComboHasFlag(BOSSCOMBO_FLAG_HIGLUR)) {
+    delaytics = UHVS_ResolveHiglurDraw();
+  }
+  else {
+    delaytics = UHVS_Resolve(result, reason);
+  }
   if (delaytics >= 0) {
     Delay(delaytics);
     Exit_Normal(0);
