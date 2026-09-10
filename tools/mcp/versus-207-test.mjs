@@ -36,7 +36,7 @@ verify that its two bosses spawn without PowerProtectBoss.  Defaults to combo
 `;
 }
 
-const options = { profile: "mm8bdm-v6b-smoke", port: 10760, combo: 207, expect: ["RedBaronDuo", "BlueJayDuo"], resolveWait: 30000, json: false, dryRun: false };
+const options = { profile: "mm8bdm-v6b-smoke", port: 10760, combo: 207, expect: ["RedBaronDuo", "BlueJayDuo"], forced1: null, forced2: null, resolveWait: 30000, json: false, dryRun: false };
 for (let i = 2; i < process.argv.length; i += 1) {
   const arg = process.argv[i];
   if (arg === "--help" || arg === "-h") { console.log(usage()); process.exit(0); }
@@ -47,11 +47,13 @@ for (let i = 2; i < process.argv.length; i += 1) {
   if (arg === "--combo") { options.combo = Number.parseInt(process.argv[++i], 10); continue; }
   if (arg === "--expect") { options.expect = (process.argv[++i] || "").split(",").map(s => s.trim()).filter(Boolean); continue; }
   if (arg === "--resolve-wait") { options.resolveWait = Number.parseInt(process.argv[++i], 10); continue; }
+  if (arg === "--forced1") { options.forced1 = Number.parseInt(process.argv[++i], 10); continue; }
+  if (arg === "--forced2") { options.forced2 = Number.parseInt(process.argv[++i], 10); continue; }
   throw new Error(`unknown option ${arg}`);
 }
 if (!options.profile || !Number.isInteger(options.port) || options.port < 1024 || options.port > 65535) throw new Error("invalid options");
 if (!Number.isInteger(options.combo) || options.combo < 0) throw new Error("invalid combo");
-if (options.expect.length !== 2) throw new Error("--expect needs exactly two class names");
+if (options.expect.length !== 2 && !(options.expect.length === 1 && (options.expect[0] === "any" || options.expect[0] === "*"))) throw new Error("--expect needs two class names (or 'any')");
 for (const path of [SERVER, ENGINE, PROFILES, RUNNER]) if (!existsSync(path)) throw new Error(`missing path: ${path}`);
 if (options.dryRun) {
   console.log(JSON.stringify({ status: "dry-run", profile: options.profile, gamePort: options.port, server: SERVER, engine: ENGINE }));
@@ -111,7 +113,6 @@ try {
     "+set", "sv_cheats", "1",
     "+set", "sv_updatemaster", "0",
     "+set", "sv_noplayertimeout", "1",
-    "+set", "uh_sv_BossEventNum", String(options.combo),
     "+set", "uh_sv_BossDebugText", "1",
   ];
   dedicated = spawn(serverEngine, serverArgs, { cwd: serverDir, env: { ...process.env, SDL_VIDEODRIVER: "offscreen", ZANDRONUM_BRIDGE_PORT: String(options.port + 100) }, stdio: ["pipe", "pipe", "pipe"] });
@@ -152,63 +153,65 @@ try {
   // second player finishes connecting.
   dedicated.stdin.write(`uh_sv_BossEventNum ${options.combo}\n`);
   await sleep(1500);
+  if (Number.isInteger(options.forced1)) { dedicated.stdin.write(`uh_sv_ForcedBoss1 ${options.forced1}\n`); await sleep(1000); }
+  if (Number.isInteger(options.forced2)) { dedicated.stdin.write(`uh_sv_ForcedBoss2 ${options.forced2}\n`); await sleep(1000); }
   dedicated.stdin.write("puke ub_SelectBossAndEvent\n");
   console.error("[versus-207] server puke ub_SelectBossAndEvent");
 
-  // Freeze the server as soon as both morphs are in the log so the bots cannot
-  // end the duel before we inspect the two actors.
-  let paused = false;
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    if (/Boss 1 TID = \d+[\s\S]*?Boss 2 TID = \d+[\s\S]*?Morphed Boss 1: 1[\s\S]*?Morphed Boss 2: 1/.test(dedicatedLog)) {
-      dedicated.stdin.write("pause\n");
-      await sleep(1500);
-      paused = true;
-      break;
+  // Wait for the forced combo's selection to reach the authoritative server
+  // log (its stdout is buffered), then read the two boss TIDs from it.  Anchor
+  // on the forced CVAR line so an earlier automatic two-boss round is ignored.
+  let selectionText = "";
+  for (let attempt = 0; attempt < 240 && !selectionText; attempt += 1) {
+    const logText = existsSync(serverLogPath) ? readFileSync(serverLogPath, "utf8") : dedicatedLog;
+    const idx = logText.lastIndexOf(`uh_sv_BossEventNum' was '${options.combo}'`);
+    if (idx >= 0) {
+      const tail = logText.slice(idx);
+      if (/Boss 1 TID = \d+[\s\S]*?Boss 2 TID = \d+/.test(tail)) selectionText = tail;
     }
-    await sleep(250);
+    if (!selectionText) await sleep(500);
   }
-  if (!paused) {
-    dedicated.stdin.write("pause\n");
-    await sleep(1500);
-  }
-  // Pick the versus selection specifically: the forced 207 clears the CVAR
-  // with a diagnostic line right before the two-slot Boss TID pair.  A later
-  // ordinary multiboss round also prints two TIDs, so anchoring on the 207
-  // line avoids inspecting the wrong round.
-  const vsMatches = [...dedicatedLog.matchAll(new RegExp(`uh_sv_BossEventNum' was '${options.combo}'[\\s\\S]*?Boss 1 TID = (\\d+)[\\s\\S]*?Boss 2 TID = (\\d+)`, "g"))];
-  const vsMatch = vsMatches.pop();
-  const lastTids = vsMatch ? [Number(vsMatch[1]), Number(vsMatch[2])] : [];
+  const tidMatch = selectionText.match(/Boss 1 TID = (\d+)[\s\S]*?Boss 2 TID = (\d+)/);
+  const resolvedMatch = selectionText.match(new RegExp(`Boss combo ${options.combo} resolved: (-?\\d+) vs (-?\\d+)`));
+  const lastTids = tidMatch ? [Number(tidMatch[1]), Number(tidMatch[2])] : [];
+  const resolvedIds = resolvedMatch ? [Number(resolvedMatch[1]), Number(resolvedMatch[2])] : [];
   const bossStates = [];
   for (const tid of lastTids) {
     try {
-      const state = await tool("actor_state", { instance: 1, tid }, 15_000);
-      const parsed = state.structuredContent || JSON.parse(text(state));
-      const inventory = Array.isArray(parsed.inventory) ? parsed.inventory : [];
+      const stateResult = await tool("actor_state", { instance: 1, tid }, 15_000);
+      const state = stateResult.structuredContent || JSON.parse(text(stateResult));
+      const inventory = Array.isArray(state.inventory) ? state.inventory : [];
       bossStates.push({
-        className: parsed.class,
+        className: state.class,
         tid,
         hasPowerProtectBoss: inventory.some(item => item.class === "PowerProtectBoss"),
-        health: parsed.health,
+        health: state.health,
       });
     } catch (error) {
       bossStates.push({ tid, error: error instanceof Error ? error.message : String(error) });
     }
   }
-  dedicated.stdin.write("pause\n");
   await sleep(options.resolveWait);
-  // The versus round resolved if the log shows any ending after the versus
-  // selection: the engine's native LMS win limit/winner, a map change, or the
+  // The versus round resolved if the log shows any ending after the forced
+  // combo's CVAR line: the engine's LMS winner/win limit, a map change, or the
   // next round's selection.  A soft-locked watcher would show none of these.
-  const vsStart = vsMatch ? dedicatedLog.indexOf(vsMatch[0]) : -1;
-  const afterVs = vsStart >= 0 ? dedicatedLog.slice(vsStart + vsMatch[0].length) : "";
+  const finalLog = existsSync(serverLogPath) ? readFileSync(serverLogPath, "utf8") : dedicatedLog;
+  const anchorIdx = finalLog.lastIndexOf(`uh_sv_BossEventNum' was '${options.combo}'`);
+  const afterVs = anchorIdx >= 0 ? finalLog.slice(anchorIdx) : "";
   const versusResolved = /multiBossCheck|Winlimit hit|ACS scripts unloaded|wins!/i.test(afterVs);
 
   const log = dedicatedLog;
   const names = ["VersusClient1", "VersusClient2"];
   const missing = names.filter(name => !log.includes(name));
-  const classes = bossStates.map(entry => entry.className).sort();
-  const expected = [...options.expect].sort();
-  const bothBossesSpawned = classes.length === 2 && classes[0] === expected[0] && classes[1] === expected[1];
+  const expectAny = options.expect.length === 1 && (options.expect[0] === "any" || options.expect[0] === "*");
+  let bothBossesSpawned;
+  if (expectAny) {
+    bothBossesSpawned = bossStates.length === 2 && bossStates.every(entry => !entry.error && entry.className);
+  } else {
+    const classes = bossStates.map(entry => entry.className).sort();
+    const expected = [...options.expect].sort();
+    bothBossesSpawned = classes.length === 2 && classes[0] === expected[0] && classes[1] === expected[1] && bossStates.every(entry => !entry.error);
+  }
   const noProtection = bossStates.length === 2 && bossStates.every(entry => entry.hasPowerProtectBoss === false);
   let clientVars = {};
   for (const name of ["multibosscheck", "versusfightevent", "activebosscombo", "isbosseventactive"]) {
@@ -225,6 +228,7 @@ try {
     gamePort: options.port,
     combo: options.combo,
     expectedClasses: options.expect,
+    resolvedIds,
     connectedNames: names.filter(n => !missing.includes(n)),
     missingNames: missing,
     connectOutputs,

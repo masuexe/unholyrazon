@@ -127,9 +127,13 @@ bool shadowfakeoutactive;  //ShadowTricksArr[72]
 // boss-vs-boss duel: both bosses damage each other and the versus watcher owns
 // the round ending.  Versus combos stay force-only (weight 0) until their
 // runtime damage/result gate passes.
-#define BOSSCOMBO_MAX 22
+#define BOSSCOMBO_MAX 24
 #define BOSSCOMBO_MODE_FIXED 0
 #define BOSSCOMBO_MODE_POOL 1
+// V4 dynamic modes: no fixed id slice.  FORCED reads uh_sv_ForcedBoss1/2 and
+// validates them; RANDOM_PAIR picks two eligible bosses from the registry.
+#define BOSSCOMBO_MODE_FORCED 2
+#define BOSSCOMBO_MODE_RANDOM_PAIR 3
 #define BOSSCOMBO_FLAG_VERSUS 1
 #define BOSSCOMBO_BOSSID_COUNT 58
 // Shape error codes for BossComboShapeError (0 = valid).  Shape validity is
@@ -141,6 +145,8 @@ bool shadowfakeoutactive;  //ShadowTricksArr[72]
 #define BOSSCOMBO_SHAPE_SLICE 3       // boss-id slice outside bosscombobossids
 #define BOSSCOMBO_SHAPE_FIXEDSLICE 4  // fixed mode needs slice count >= boss count
 #define BOSSCOMBO_SHAPE_VERSUS 5      // versus needs exactly 2 fixed slots
+#define BOSSCOMBO_SHAPE_MODE 6        // mode is not one of the four known modes
+#define BOSSCOMBO_SHAPE_DYNAMIC 7     // dynamic mode has the reserved zero slice
 // Bounded wait for the D0 registry check.  OPEN scripts from different ACS
 // libraries all run in the same tic with no guaranteed completion order, so
 // ub_StartUpSettings can observe an empty boss registry; uh_musicdefs uses the
@@ -177,7 +183,11 @@ int bosscombodata[BOSSCOMBO_MAX][8] = {
   // Force-only until the music package carries their tracks (M_UB066/M_UB067
   // and M_UB616/M_UB118 are absent), so they must not enter the random pool.
   {215, 2, 4, 0, BOSSCOMBO_MODE_FIXED, 54, 2, BOSSCOMBO_FLAG_VERSUS},  // Super Megaman vs Lin
-  {216, 2, 4, 0, BOSSCOMBO_MODE_FIXED, 56, 2, BOSSCOMBO_FLAG_VERSUS}   // Blue Elephant vs Sakiko Togawa
+  {216, 2, 4, 0, BOSSCOMBO_MODE_FIXED, 56, 2, BOSSCOMBO_FLAG_VERSUS},  // Blue Elephant vs Sakiko Togawa
+  // V4 dynamic duels.  Force-only until the special-branch whitelist and the
+  // multiplayer regression are reviewed; FORCED/RANDOM_PAIR have no id slice.
+  {206, 2, 4, 0, BOSSCOMBO_MODE_FORCED, 0, 0, BOSSCOMBO_FLAG_VERSUS},       // admin-forced (uh_sv_ForcedBoss1/2)
+  {209, 2, 4, 0, BOSSCOMBO_MODE_RANDOM_PAIR, 0, 0, BOSSCOMBO_FLAG_VERSUS}   // random eligible pair
 };
 str bosscomboname[BOSSCOMBO_MAX] = {
   "True Buster Duo", "Juggerbro Brothers", "Astromancer Twins", "4MI Front",
@@ -187,7 +197,7 @@ str bosscomboname[BOSSCOMBO_MAX] = {
   "Dickster Dick vs Prickster Prick", "Captain Devileye vs Devileye Richman",
   "Colonel Kachidonga vs Crazed Grenademan", "Officer Johnson vs Scrotoman",
   "Harp Strumm vs Sakiko Togawa", "Super Megaman vs Lin",
-  "Blue Elephant vs Sakiko Togawa"
+  "Blue Elephant vs Sakiko Togawa", "Admin-Forced Duel", "Random Duel"
 };
 // Dedicated combo tracks (lumps shipped in the unholyrazon_music companion
 // package, music/boss/).  Empty entries exercise the boss-music fallback.
@@ -196,7 +206,8 @@ str bosscombomusic[BOSSCOMBO_MAX] = {
   "", "", "M_UB029X", "M_UB060", "M_UB038", "M_UB048X", "M_UB104X",
   "M_UB033",
   "M_UB013", "M_UB009", "M_UB004", "M_UB006", "M_UB051",
-  "", ""
+  "", "",
+  "M_UB060", "M_UB060"
 };
 str bosscombocredit[BOSSCOMBO_MAX] = {
   "", "", "", "", "", "", "",
@@ -209,7 +220,9 @@ str bosscombocredit[BOSSCOMBO_MAX] = {
   "Marvel vs. Capcom 1 - Captain America's Theme",
   "Mega Man Star Force 1 - Ride On",
   "Bit Pop - Data Charge",
-  "Otto's Laugh Chronicles - Crush Crack Back (Suno Remix)"
+  "Otto's Laugh Chronicles - Crush Crack Back (Suno Remix)",
+  "Undertale: Halloween Hack - No More Nuzzles",
+  "Undertale: Halloween Hack - No More Nuzzles"
 };
 int bosscombobossids[BOSSCOMBO_BOSSID_COUNT] = {
   0, 25,       // TrueBusterExpert + TrueBusterMistress

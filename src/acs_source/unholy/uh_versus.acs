@@ -43,13 +43,21 @@ function void UHVS_ClearIntroHud(void) {
   ClearHudMessageBold(UHVS_HUD_ICON);
 }
 
+// Same-boss duels would otherwise show one identical name twice; append the
+// player number so the HUD and winner announcement stay unambiguous.
+function str UHVS_DisplayName(int bossid, int tid, bool sameboss) {
+  if (!sameboss) {return GetBossName(bossid);}
+  return StrParam(s:GetBossName(bossid), s:" (P", i:(tid - 999), s:")");
+}
+
 // Both registered names plus the legacy VS graphic, matching the old
 // ub_ManageBossVsBossEvent layout.
-function void UHVS_ShowIntro(int boss1, int boss2) {
+function void UHVS_ShowIntro(int boss1, int boss2, int tid1, int tid2) {
+  bool sameboss = (boss1 == boss2);
   SetHudSize(640, 480, 0);
   SetFont("BIGFONT");
-  HudMessageBold(s:GetBossName(boss1); HUDMSG_FADEOUT, UHVS_HUD_NAME1, -1, 294.6, 48.0, UHVS_INTRO_TICS / 35.0 + 2.0, 2.0);
-  HudMessageBold(s:GetBossName(boss2); HUDMSG_FADEOUT, UHVS_HUD_NAME2, -1, 346.5, 48.0, UHVS_INTRO_TICS / 35.0 + 2.0, 2.0);
+  HudMessageBold(s:UHVS_DisplayName(boss1, tid1, sameboss); HUDMSG_FADEOUT, UHVS_HUD_NAME1, -1, 294.6, 48.0, UHVS_INTRO_TICS / 35.0 + 2.0, 2.0);
+  HudMessageBold(s:UHVS_DisplayName(boss2, tid2, sameboss); HUDMSG_FADEOUT, UHVS_HUD_NAME2, -1, 346.5, 48.0, UHVS_INTRO_TICS / 35.0 + 2.0, 2.0);
   SetFont("UFACEVS0");
   HudMessageBold(s:"A"; HUDMSG_FADEOUT, UHVS_HUD_ICON, -1, 320.4, 48.0, UHVS_INTRO_TICS / 35.0 + 2.0, 2.0);
 }
@@ -114,14 +122,16 @@ function int UHVS_Resolve(int result, int reason) {
   }
   GiveActorInventory(winnertid, "PowerSuicideProtect", 1);
   PlayMusic_Winner(-1);
+  bool sameboss = (bossdataarr[0][BOSSDATA_NUM] == bossdataarr[1][BOSSDATA_NUM]);
+  str winnername = UHVS_DisplayName(winnerboss, winnertid, sameboss);
 
   if (reason == UHVS_REASON_DEATH) {
-    HudMessageBold(s:GetBossName(winnerboss), s:" \c-Wins!"; HUDMSG_FADEOUT, 66, CR_WHITE, 240.4, 54.0, 5.0, 2.0);
+    HudMessageBold(s:winnername, s:" \c-Wins!"; HUDMSG_FADEOUT, 66, CR_WHITE, 240.4, 54.0, 5.0, 2.0);
     return UHVS_WIN_DELAY;
   }
   // Forfeit (disconnect/spectator) and morph failure share the default-win
   // wording; both mean the opponent never had to be killed.
-  HudMessageBold(s:GetBossName(winnerboss), s:" \c-Wins by default!"; HUDMSG_FADEOUT, 66, CR_WHITE, 240.4, 54.0, 5.0, 2.0);
+  HudMessageBold(s:winnername, s:" \c-Wins by default!"; HUDMSG_FADEOUT, 66, CR_WHITE, 240.4, 54.0, 5.0, 2.0);
   return UHVS_FORFEIT_DELAY;
 }
 
@@ -150,7 +160,7 @@ script "ub_ManageBossVsBossEvent" (void) {
   int boss1 = bossdataarr[0][BOSSDATA_NUM];
   int boss2 = bossdataarr[1][BOSSDATA_NUM];
 
-  UHVS_ShowIntro(boss1, boss2);
+  UHVS_ShowIntro(boss1, boss2, bossdataarr[0][BOSSDATA_TID], bossdataarr[1][BOSSDATA_TID]);
   Delay(1);
 
   // Morph failure is decided before this watcher starts

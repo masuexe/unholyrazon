@@ -307,10 +307,23 @@ function int BossComboShapeError(int combo) {
   int mode = bosscombodata[combo][4];
   int first = bosscombodata[combo][5];
   int slice = bosscombodata[combo][6];
+  bool versus = (bosscombodata[combo][7] & BOSSCOMBO_FLAG_VERSUS) != 0;
   if (count < 1 || count > MAX_BOSSES) {return BOSSCOMBO_SHAPE_COUNT;}
+  if (mode != BOSSCOMBO_MODE_FIXED && mode != BOSSCOMBO_MODE_POOL &&
+      mode != BOSSCOMBO_MODE_FORCED && mode != BOSSCOMBO_MODE_RANDOM_PAIR) {
+    return BOSSCOMBO_SHAPE_MODE;
+  }
+  // Dynamic modes expand at selection time and must use the reserved zero
+  // slice.  ApplyBossCombo always writes exactly slots 0 and 1 for them.
+  if (mode == BOSSCOMBO_MODE_FORCED || mode == BOSSCOMBO_MODE_RANDOM_PAIR) {
+    if (!versus || count != 2 || first != 0 || slice != 0) {
+      return BOSSCOMBO_SHAPE_DYNAMIC;
+    }
+    return BOSSCOMBO_SHAPE_OK;
+  }
   if (slice < 1 || first < 0 || first + slice > BOSSCOMBO_BOSSID_COUNT) {return BOSSCOMBO_SHAPE_SLICE;}
   if (mode == BOSSCOMBO_MODE_FIXED && slice < count) {return BOSSCOMBO_SHAPE_FIXEDSLICE;}
-  if ((bosscombodata[combo][7] & BOSSCOMBO_FLAG_VERSUS) != 0) {
+  if (versus) {
     if (count != 2 || mode != BOSSCOMBO_MODE_FIXED || slice != 2) {return BOSSCOMBO_SHAPE_VERSUS;}
   }
   return BOSSCOMBO_SHAPE_OK;
@@ -327,6 +340,8 @@ function str BossComboShapeErrorText(int err) {
     case BOSSCOMBO_SHAPE_SLICE: return "boss-id slice out of bosscombobossids";
     case BOSSCOMBO_SHAPE_FIXEDSLICE: return "fixed mode needs slice count >= boss count";
     case BOSSCOMBO_SHAPE_VERSUS: return "versus needs exactly 2 fixed slots";
+    case BOSSCOMBO_SHAPE_MODE: return "unknown combo mode";
+    case BOSSCOMBO_SHAPE_DYNAMIC: return "dynamic mode needs versus, 2 slots, first 0 and slice 0";
   }
   return "unknown shape error";
 }
@@ -337,6 +352,12 @@ function str BossComboShapeErrorText(int err) {
 // bosscombobossids before BossComboShapeError gets a chance to report it.
 function bool BossComboFullyRegistered(int combo) {
   if (combo < 0 || combo >= BOSSCOMBO_MAX) {return false;}
+  if (!BossComboShapeValid(combo)) {return false;}
+  int mode = bosscombodata[combo][4];
+  // Dynamic modes resolve their ids at selection time; ApplyBossCombo owns
+  // their registration and eligibility validation, so the table has no ids
+  // to check here after its reserved zero slice passed shape validation.
+  if (mode == BOSSCOMBO_MODE_FORCED || mode == BOSSCOMBO_MODE_RANDOM_PAIR) {return true;}
   int first = bosscombodata[combo][5];
   int slice = bosscombodata[combo][6];
   if (slice < 1 || first < 0 || first + slice > BOSSCOMBO_BOSSID_COUNT) {return false;}
@@ -356,6 +377,52 @@ function bool BossComboRegistryReady(void) {
     if (!BossComboFullyRegistered(combo)) {return false;}
   }
   return true;
+}
+
+// V4: only bosses with a reviewed versus path may enter a boss-vs-boss duel.
+// This is an allowlist, not a blacklist: unreviewed future/custom ids remain
+// rejected until their damage, watcher and round-ending behavior is audited.
+function bool BossVersusEligible(int id) {
+  if (!IsBossDefined(id)) {return false;}
+  switch (id) {
+    case 4:    // Colonel Kachidonga
+    case 6:    // Officer Johnson
+    case 9:    // Captain DevilEye
+    case 13:   // Dickster Dick
+    case 33:   // Red Baron Duo
+    case 34:   // Blue Jay Duo
+    case 52:   // Harp Strumm
+    case 55:   // Crazed Grenademan
+    case 66:   // Super Megaman
+    case 67:   // Lin
+    case 69:   // KFC Dragon 756
+    case 113:  // Scrotoman
+    case 118:  // Sakiko Togawa
+    case 302:  // RichDevilEye
+    case 513:  // Prickster Prick
+    case 616:  // Blue Elephant
+      return true;
+  }
+  return false;
+}
+
+// Reservoir-sample one versus-eligible boss so no fixed candidate array is
+// needed.  Passing the first result as avoid makes the second sample distinct;
+// if the registry has fewer than two eligible bosses, the caller rejects.
+function int PickRandomVersusBoss(int avoid) {
+  int pick = UHBOSS_FAIL;
+  int seen = 0;
+  for (int rarity = UHBOSS_POOL_COMMON; rarity < UHBOSS_POOL_COUNT; rarity++) {
+    int pooln = GetBossPoolCount(rarity);
+    for (int i = 0; i < pooln; i++) {
+      int id = GetBossPoolId(rarity, i);
+      if (id == avoid) {continue;}
+      if (!BossVersusEligible(id)) {continue;}
+      seen++;
+      if (random(1, seen) == 1) {pick = id;}
+    }
+  }
+  return pick;
 }
 
 // Weighted pick among combos matching the rolled boss count, its minimum
@@ -402,9 +469,39 @@ function bool ApplyBossCombo(int combo) {
     return false;
   }
   int count = bosscombodata[combo][1];
+  int mode = bosscombodata[combo][4];
   int first = bosscombodata[combo][5];
   int i;
   int s;
+  // Resolve dynamic modes before touching any state: a rejected 206/209 must
+  // not clear bossslotalive and break the fallback normal selection.
+  int dyn0 = 0;
+  int dyn1 = 0;
+  if (mode == BOSSCOMBO_MODE_FORCED) {
+    dyn0 = ForceBossChange("uh_sv_ForcedBoss1", false);
+    dyn1 = ForceBossChange("uh_sv_ForcedBoss2", false);
+    if (!BossVersusEligible(dyn0) || !BossVersusEligible(dyn1) || dyn0 == dyn1) {
+      DebugLog(strParam(s:"Boss combo 206 rejected: forced pair ", i:dyn0, s:"/", i:dyn1,
+                        s:" must be two distinct registered versus-eligible bosses."));
+      return false;
+    }
+    DebugLog(strParam(s:"Boss combo 206 resolved: ", i:dyn0, s:" vs ", i:dyn1));
+  }
+  else if (mode == BOSSCOMBO_MODE_RANDOM_PAIR) {
+    dyn0 = PickRandomVersusBoss(-1);
+    dyn1 = PickRandomVersusBoss(dyn0);
+    if (dyn0 == UHBOSS_FAIL || dyn1 == UHBOSS_FAIL) {
+      DebugLog("Boss combo 209 rejected: fewer than two distinct versus-eligible bosses.");
+      return false;
+    }
+    DebugLog(strParam(s:"Boss combo 209 resolved: ", i:dyn0, s:" vs ", i:dyn1));
+  }
+  else if ((bosscombodata[combo][7] & BOSSCOMBO_FLAG_VERSUS) != 0 &&
+           bosscombobossids[first] == bosscombobossids[first + 1]) {
+    DebugLog(strParam(s:"Boss combo ", i:bosscombodata[combo][0],
+                      s:" rejected: versus pair contains the same boss twice."));
+    return false;
+  }
   // Clear every slot first: a forced combo may be smaller than the initially
   // rolled count, and stale alive/shadow/data slots would never be marked
   // dead (the HUD only iterates the new count) and would keep the health
@@ -417,7 +514,11 @@ function bool ApplyBossCombo(int combo) {
     bossdataarr[i][BOSSDATA_MORPHED] = 0;
   }
   shadowfakeoutactive = false;
-  if (bosscombodata[combo][4] == BOSSCOMBO_MODE_POOL) {
+  if (mode == BOSSCOMBO_MODE_FORCED || mode == BOSSCOMBO_MODE_RANDOM_PAIR) {
+    bossdataarr[0][BOSSDATA_NUM] = dyn0;
+    bossdataarr[1][BOSSDATA_NUM] = dyn1;
+  }
+  else if (mode == BOSSCOMBO_MODE_POOL) {
     int pooln = bosscombodata[combo][6];
     for (i = 0; i < count; i++) {
       bossdataarr[i][BOSSDATA_NUM] = bosscombobossids[first + random(0, pooln - 1)];

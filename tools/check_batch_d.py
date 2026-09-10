@@ -229,11 +229,25 @@ def combo_shape_error(row: list[str], defines: dict[str, int], max_bosses: int, 
         return "unresolved-token"
     if count < 1 or count > max_bosses:
         return "count"
+    versus = bool(flags & defines["BOSSCOMBO_FLAG_VERSUS"])
+    known_modes = {
+        defines["BOSSCOMBO_MODE_FIXED"],
+        defines["BOSSCOMBO_MODE_POOL"],
+        defines["BOSSCOMBO_MODE_FORCED"],
+        defines["BOSSCOMBO_MODE_RANDOM_PAIR"],
+    }
+    if mode not in known_modes:
+        return "mode"
+    if mode in (defines["BOSSCOMBO_MODE_FORCED"], defines["BOSSCOMBO_MODE_RANDOM_PAIR"]):
+        # Dynamic modes resolve exactly slots 0 and 1; their slice is unused.
+        if not versus or count != 2 or first != 0 or slice_count != 0:
+            return "dynamic"
+        return None
     if slice_count < 1 or first < 0 or first + slice_count > bossid_count:
         return "slice"
     if mode == defines["BOSSCOMBO_MODE_FIXED"] and slice_count < count:
         return "fixedslice"
-    if flags & defines["BOSSCOMBO_FLAG_VERSUS"]:
+    if versus:
         if count != 2 or mode != defines["BOSSCOMBO_MODE_FIXED"] or slice_count != 2:
             return "versus"
     return None
@@ -297,11 +311,13 @@ def main() -> int:
     )
 
     # Shape regression: the ACS BossComboShapeError rules are mirrored here so
-    # the three malformed-versus cases are rejected statically even though they
-    # are only reachable by editing the combo table.
+    # malformed rows are rejected statically even though they are only reachable
+    # by editing the combo table.
     define_names = [
         "BOSSCOMBO_MODE_FIXED",
         "BOSSCOMBO_MODE_POOL",
+        "BOSSCOMBO_MODE_FORCED",
+        "BOSSCOMBO_MODE_RANDOM_PAIR",
         "BOSSCOMBO_FLAG_VERSUS",
     ]
     defines = {name: define_int(defs, name) for name in define_names}
@@ -353,10 +369,25 @@ def main() -> int:
                     mutated[idx] = replacement
                 if combo_shape_error(mutated, defines, max_bosses, bossid_count) is None:
                     versus_malformed.append(label)
+        dynamic = next((row for row in rows if row[0] == "206"), None)
+        if dynamic is None:
+            versus_malformed.append("missing-206-row")
+        else:
+            dynamic_cases = {
+                "dynamic-no-versus": {7: "0"},
+                "dynamic-nonzero-slice": {6: "1"},
+                "dynamic-unknown-mode": {4: "99"},
+            }
+            for label, edits in dynamic_cases.items():
+                mutated = list(dynamic)
+                for idx, replacement in edits.items():
+                    mutated[idx] = replacement
+                if combo_shape_error(mutated, defines, max_bosses, bossid_count) is None:
+                    versus_malformed.append(label)
     check(
         "malformed versus rows rejected",
         valid_rows and not versus_malformed,
-        "all three malformations rejected" if not versus_malformed else "not rejected: " + ", ".join(versus_malformed),
+        "all malformed versus/dynamic rows rejected" if not versus_malformed else "not rejected: " + ", ".join(versus_malformed),
     )
 
     # V2 contract: the versus watcher owns the ending, blocks cross-slot boss
@@ -394,6 +425,54 @@ def main() -> int:
         "versus leaves survivor stats alone",
         not any(f"{token} =" in resolve for token in ("winstreak", "mercygiven", "hellmarkfrags", "survwinwithlms")),
         "UHVS_Resolve must not write survivor winstreak / mercy / hellmark",
+    )
+
+    # V4 contract: dynamic duels use an explicit reviewed allowlist, validate
+    # distinct pairs before touching state, and retain same-boss name handling.
+    eligible = function_body(funcs, "BossVersusEligible")
+    random_pick = function_body(funcs, "PickRandomVersusBoss")
+    apply = function_body(funcs, "ApplyBossCombo")
+    eligible_case_ids = {
+        int(value) for value in re.findall(r"\bcase\s+(-?\d+)\s*:", eligible)
+    }
+    try:
+        registered_reject_probe = bool(
+            re.search(r"DefineBoss\(\s*400\s*,", BOSSDEFS.read_text(encoding="utf-8"), re.S)
+        )
+    except OSError:
+        registered_reject_probe = False
+    check(
+        "versus explicit eligibility allowlist",
+        bool(eligible)
+        and "IsBossDefined" in eligible
+        and eligible.rstrip().endswith("return false;")
+        and 33 in eligible_case_ids
+        and registered_reject_probe
+        and 400 not in eligible_case_ids
+        and -1 not in eligible_case_ids
+        and "BossVersusUnsafe" not in funcs
+        and "BossVersusEligible" in random_pick
+        and "BossVersusEligible" in apply,
+        "BossVersusEligible must default-reject a registered unapproved id and custom ids",
+    )
+    check(
+        "dynamic duel modes present",
+        "BOSSCOMBO_MODE_FORCED" in defs
+        and "BOSSCOMBO_MODE_RANDOM_PAIR" in defs
+        and bool(re.search(r"\{\s*206\s*,\s*2\s*,\s*4\s*,\s*0\s*,\s*BOSSCOMBO_MODE_FORCED", defs))
+        and bool(re.search(r"\{\s*209\s*,\s*2\s*,\s*4\s*,\s*0\s*,\s*BOSSCOMBO_MODE_RANDOM_PAIR", defs)),
+        "206 (FORCED) and 209 (RANDOM_PAIR) must exist as force-only versus rows",
+    )
+    check(
+        "random pair avoids first boss",
+        bool(re.search(r"PickRandomVersusBoss\s*\(\s*dyn0\s*\)", apply))
+        and "dyn0 == dyn1" in apply,
+        "209 must pass dyn0 to its second sample and reject duplicate resolved ids",
+    )
+    check(
+        "same-boss disambiguation retained",
+        "sameboss" in versus and "UHVS_DisplayName" in versus,
+        "same-boss duels must append the player number to the HUD/winner name",
     )
 
     music = args.music_pk3.resolve()

@@ -45,15 +45,19 @@ For the boss-versus combo directed probe:
 node tools/mcp/versus-207-test.mjs --json
 node tools/mcp/versus-207-test.mjs --dry-run
 node tools/mcp/versus-207-test.mjs --combo 210 --expect "DicksterDick,PricksterPrick" --json
+node tools/mcp/versus-207-test.mjs --combo 206 --forced1 66 --forced2 67 --expect "SuperMegaman,Lin" --json
+node tools/mcp/versus-207-test.mjs --combo 209 --expect any --json
 ```
 
 It launches a dedicated `-lastmanstanding` server plus two clients, adds four
 bots so the versus combo meets its four-player minimum, forces
 `uh_sv_BossEventNum <combo>`, and verifies on the live client that the two
 expected bosses spawn without `PowerProtectBoss` and that the round resolves.
-`--combo`/`--expect` default to 207 (Red Baron / Blue Jay); `--resolve-wait`
-raises the post-inspection window for long high-HP duels. It does not drive
-real projectiles; that remains the manual gameplay gate.
+`--combo`/`--expect` default to 207 (Red Baron / Blue Jay); `--expect any`
+accepts the two random bosses of combo 209; `--forced1`/`--forced2` supply the
+`uh_sv_ForcedBoss1/2` pair for combo 206; `--resolve-wait` raises the
+post-inspection window for long high-HP duels. It does not drive real
+projectiles; that remains the manual gameplay gate.
 
 ## PK3 validation
 
