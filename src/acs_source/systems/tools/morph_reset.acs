@@ -32,6 +32,35 @@ function void DefineDefaultProperties(void) {
   }
 }
 
+// Jump-inventory snapshot taken before a morph.  BasicBossItem wipes
+// AirJumpLimit/WallJumpLimit and the boss setup grants its own amount;
+// P_UndoPlayerMorph then transfers the morph pawn's inventory back, so the
+// survivor's original values must be saved here and restored in
+// uh_MorphDemorphReset.  Do not blanket-zero on demorph: survivors can
+// legitimately own air/wall jumps via Player.StartItem (AeroUnit, GreenElf,
+// SamuraiSam, Kate, ...).
+// Plain top-level int arrays are per-module map variables (MapVarStore): kept
+// for the current level only, not synced to clients.  The snapshot is server
+// side and lives for a single unmorph, so world/global storage is unnecessary.
+int uh_morphsavedairjump[MAX_PLAYERS];
+int uh_morphsavedwalljump[MAX_PLAYERS];
+
+function void UH_SaveMorphJumpInventory(void) {
+  int p = PlayerNumber();
+  if (p < 0 || p >= MAX_PLAYERS)
+    return;
+  uh_morphsavedairjump[p] = CheckInventory("AirJumpLimit");
+  uh_morphsavedwalljump[p] = CheckInventory("WallJumpLimit");
+}
+
+function void UH_RestoreMorphJumpInventory(void) {
+  int p = PlayerNumber();
+  if (p < 0 || p >= MAX_PLAYERS)
+    return;
+  SetInventory("AirJumpLimit", uh_morphsavedairjump[p]);
+  SetInventory("WallJumpLimit", uh_morphsavedwalljump[p]);
+}
+
 // GenericBoss owns at most one DisabledAirJumps stack while morphed, marked by
 // GenericBossAirDisable_F.  Its weapon's Deselect_ClearAir does not run on
 // UnMorphActor or on a direct re-morph, so the morph pipeline clears only that
@@ -49,6 +78,7 @@ script "uh_MorphPreReset" (void) {
     terminate;
   ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
   UH_ClearGenericBossAirDisable();
+  UH_SaveMorphJumpInventory();
   GiveInventory("UH_MorphFlagReset_P", 1);
   GiveInventory("Core_MorphFlagReset_P", 1);
   GiveInventory("Core_MorphFlagReset2_P", 1);
@@ -56,6 +86,8 @@ script "uh_MorphPreReset" (void) {
   TakeInventory("AirJumpZDecimal", 99999);
   TakeInventory("WallJumpZ", 99999);
   TakeInventory("WallJumpZDecimal", 99999);
+  TakeInventory("AirJumpsUsed", 99999);
+  TakeInventory("WallJumpsUsed", 99999);
 }
 
 // Post-MorphActor: redefine defaults → strip PowerAprop → water gravity.
@@ -78,6 +110,9 @@ script "uh_MorphDemorphReset" (void) {
     terminate;
   ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
   UH_ClearGenericBossAirDisable();
+  UH_RestoreMorphJumpInventory();
+  TakeInventory("AirJumpsUsed", 99999);
+  TakeInventory("WallJumpsUsed", 99999);
   GiveInventory("UH_UnMorphSuperFlagReset_P", 1);
   TakeInventory("BAWS", 1);
   TakeInventory("MorphedFlag", 1);
