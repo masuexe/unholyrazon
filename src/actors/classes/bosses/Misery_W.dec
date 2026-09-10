@@ -7,7 +7,13 @@ actor MiseryFlashStarter_P : CustomInventory {
   States {
    Pickup:
     TNT1 A 0 ACS_NamedExecuteWithResult("core_SetCustomActorProperty", 0, CAPROP_AirJumpZ, 400000)
-    TNT1 A 0 A_GunFlash("Flash", GFF_NOEXTCHANGE)
+    // Drop the morph spawn-protection StopShield before the Flash spawns the
+    // orbs; otherwise Misery_Orb_Spinner.Spawn takes its StopShield branch and
+    // immediately despawns (Unholy Unbound removed it in Ready for this reason).
+    TNT1 A 0 A_TakeInventory("StopShield", 99)
+    // Explicit "" is a NULL state, so A_GunFlash falls back to the ready
+    // weapon's Flash instead of resolving "Flash" against this starter.
+    TNT1 A 0 A_GunFlash("", GFF_NOEXTCHANGE)
     stop
   }
 }
