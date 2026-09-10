@@ -16,10 +16,10 @@ script "core_DrawBar_Run" (int cam) CLIENTSIDE {
 #define BARSTYLE_SECONDBAR  1<<3
 #define BARSTYLE_NORMALAMMO 1<<4
 #define BARSTYLE_SECONDAMMO 1<<5
-#define BARSTYLE_QWANT      1<<6  //$UH
-#define BARSTYLE_NEGAMAN    1<<7  //$UH
-#define BARSTYLE_RELOADICON 1<<8  //$UH
-#define BARSTYLE_MEGAMANU   1<<9  //$UH — RockNRollAmmo reroll bar
+#define BARSTYLE_QWANT      1<<6  // $UH
+#define BARSTYLE_NEGAMAN    1<<7  // $UH
+#define BARSTYLE_RELOADICON 1<<8  // $UH
+#define BARSTYLE_MEGAMANU   1<<9  // $UH — RockNRollAmmo reroll bar
 
 #define UH_ROCKNROLL_MAX 28
 #define UH_ROCKNROLL_CYAN 192
@@ -31,18 +31,16 @@ int barstyle = BARSTYLE_NONE;
 int mugcyan, mugblue;
 int bar1cyan, bar1blue;
 int bar2cyan, bar2blue;
-int qwanttype;  //$UH
-int negaammoid; //$UH
-int negacyan;   //$UH
+int qwanttype;  // $UH
+int negaammoid;  // $UH
+int negacyan;  // $UH
 
-function void DrawMegaManURerollBar(void)
-{
+function void DrawMegaManURerollBar(void) {
 	int owned = CheckInventory("RockNRollAmmo");
 	int bar2busy = (barstyle & (BARSTYLE_SECONDBAR | BARSTYLE_SECONDAMMO))
 		|| CheckInventory("SBARDrawBar2");
 
-	if (!bar2busy)
-	{
+	if (!bar2busy) {
 		DrawBar2ColorOwned(owned, UH_ROCKNROLL_MAX, UH_ROCKNROLL_CYAN, UH_ROCKNROLL_BLUE);
 		return;
 	}
@@ -83,8 +81,7 @@ function str UH_DecoyHeldBarWep(str wep) {
 	len = StrLen(wep);
 	if (len >= 4
 		&& GetChar(wep, len - 3) == '_'
-		&& GetChar(wep, len - 2) == 'W')
-	{
+		&& GetChar(wep, len - 2) == 'W') {
 		d = GetChar(wep, len - 1);
 		if (d == '1')
 			return "DecoyBot_W";
@@ -109,37 +106,33 @@ function void DrawBarRun(void) {
 	str parent = UH_MoveHudParentWep();
 	if (StrLen(parent) > 0)
 		wep = parent;
-	else
-	{
+	else {
 		wep = UH_DecoyHeldBarWep(wep);
 		wep = UH_NegaHeldBarWep(wep);
 	}
 
-	if(oldwep != wep) {
+	if (oldwep != wep) {
 		oldwep = wep;
 		barstyle = GetWepBarStyle(wep);
 	}
 
-	if(barstyle & BARSTYLE_MUGSHOT)
-	{
+	if (barstyle & BARSTYLE_MUGSHOT) {
 		SetMugshotColor(mugcyan, mugblue);
 	}
 
-	if(barstyle & BARSTYLE_NORMALBAR)
-	{
+	if (barstyle & BARSTYLE_NORMALBAR) {
 		DrawBarColor(bar1cyan, bar1blue);
 	} else if (barstyle & BARSTYLE_NORMALAMMO) {
 		DrawNormalAmmo();
 	}
 
-	if(barstyle & BARSTYLE_SECONDBAR)
-	{
+	if (barstyle & BARSTYLE_SECONDBAR) {
 		DrawBar2Color(bar2cyan, bar2blue);
 	} else if (barstyle & BARSTYLE_SECONDAMMO) {
 		DrawSecondAmmo();
 	}
 
-	//$UH — Qwant/NegaMan primary bar; ScriptBar may also overlay (e.g. FlameWheel charge)
+	// $UH — Qwant/NegaMan primary bar; ScriptBar may also overlay (e.g. FlameWheel charge)
 	if (barstyle & BARSTYLE_QWANT) {
 		ACS_NamedExecuteWithResult("DrawBar_QwantMove", qwanttype);
 	} else if (barstyle & BARSTYLE_NEGAMAN) {
@@ -148,7 +141,7 @@ function void DrawBarRun(void) {
 	if (barstyle & BARSTYLE_SCRIPT) {
 		ACS_NamedExecuteWithResult(StrParam(s:"DrawBar_", s:wep));
 	}
-	//$UH — after ScriptBar so SBARDrawBar2 from scripts is visible
+	// $UH — after ScriptBar so SBARDrawBar2 from scripts is visible
 	if (barstyle & BARSTYLE_MEGAMANU) {
 		DrawMegaManURerollBar();
 	}
@@ -161,7 +154,7 @@ function int GetWepBarStyle(str wep) {
 
 	int u = UniqueTID();
 	int ret = BARSTYLE_NONE;
-	//$UH
+	// $UH
 	if (SpawnForced(StrParam(s:wep, s:"_QwantBar"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_QWANT;
 		qwanttype = GetActorArg(u, 0);
@@ -180,25 +173,25 @@ function int GetWepBarStyle(str wep) {
 		Thing_Remove(u);
 	}
 
-	if(SpawnForced(StrParam(s:wep, s:"_ScriptBar"), 0, 0, 0, 0, 0)) {
+	if (SpawnForced(StrParam(s:wep, s:"_ScriptBar"), 0, 0, 0, 0, 0)) {
 		ret |= BARSTYLE_SCRIPT;
 		Thing_Remove(u);
 	}
 
-	if(SpawnForced(StrParam(s:wep, s:"_MugshotColor"), 0, 0, 0, u, 0)) {
+	if (SpawnForced(StrParam(s:wep, s:"_MugshotColor"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_MUGSHOT;
 		mugcyan = GetActorArg(u, 0);
 		mugblue = GetActorArg(u, 1);
 		Thing_Remove(u);
 	}
 
-	//$UH — MegaManUBar supplies bar1 colors + RockNRoll reroll (prefer over _NormalBar)
+	// $UH — MegaManUBar supplies bar1 colors + RockNRoll reroll (prefer over _NormalBar)
 	if (SpawnForced(StrParam(s:wep, s:"_MegaManUBar"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_NORMALBAR | BARSTYLE_MEGAMANU;
 		bar1cyan = GetActorArg(u, 0);
 		bar1blue = GetActorArg(u, 1);
 		Thing_Remove(u);
-	} else if(SpawnForced(StrParam(s:wep, s:"_NormalBar"), 0, 0, 0, u, 0)) {
+	} else if (SpawnForced(StrParam(s:wep, s:"_NormalBar"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_NORMALBAR;
 		bar1cyan = GetActorArg(u, 0);
 		bar1blue = GetActorArg(u, 1);
@@ -208,7 +201,7 @@ function int GetWepBarStyle(str wep) {
 		Thing_Remove(u);
 	}
 
-	if(SpawnForced(StrParam(s:wep, s:"_SecondBar"), 0, 0, 0, u, 0)) {
+	if (SpawnForced(StrParam(s:wep, s:"_SecondBar"), 0, 0, 0, u, 0)) {
 		ret |= BARSTYLE_SECONDBAR;
 		bar2cyan = GetActorArg(u, 0);
 		bar2blue = GetActorArg(u, 1);
@@ -221,4 +214,4 @@ function int GetWepBarStyle(str wep) {
 	return ret;
 }
 
-function int GetActorArg(int t, int a) { return ACS_NamedExecuteWithResult("core_GetActorArg", t, a); }
+function int GetActorArg(int t, int a) {return ACS_NamedExecuteWithResult("core_GetActorArg", t, a);}

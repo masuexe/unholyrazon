@@ -1,10 +1,11 @@
 // Copy of v6b 'TEAMCOL.acs'
 // Any area with the following line
-   //$UH
+// $UH
 // Means that area is edited for UH
 
 #library "teamcol"
 #include "zcommon.acs"
+#import "uh_log.acs"
 
 // Handles clientside team color definition as well as projectile team colors, be very careful! [Trill]
 
@@ -15,15 +16,15 @@
 #include "8bdmefct.acs"
 #include "megapal.acs"
 
-#define TEAM_COUNT 18  //$UH
-#define TEAM_NATIVE_COUNT 4  //$UH
+#define TEAM_COUNT 18  // $UH
+#define TEAM_NATIVE_COUNT 4  // $UH
 #define COLORVALS_PER_TEAM 6
 #define TRANS_PER_TEAM 3
 #define TEAM_ALLY 4
 #define TEAM_ENEMY 5
 
 int team_color_input[TEAM_COUNT][COLORVALS_PER_TEAM];
-int team_color_palette[TEAM_COUNT][TRANS_PER_TEAM - 1] = {  //let's initalize these to be safe
+int team_color_palette[TEAM_COUNT][TRANS_PER_TEAM - 1] = {  // let's initalize these to be safe
   {0, 0}, {0, 0}, {0, 0},
   {0, 0}, {0, 0}, {0, 0},
   {0, 0}, {0, 0}, {0, 0},
@@ -93,8 +94,8 @@ function void ReadTeamColCVars(void) {
   ReadTeamColCVars2(conp, "mm8bdm_allycolor_primary", "mm8bdm_allycolor_secondary", TEAM_ALLY);
   ReadTeamColCVars2(conp, "mm8bdm_enemycolor_primary", "mm8bdm_enemycolor_secondary", TEAM_ENEMY);
 
-	//$UH
-	///Shiny MegaMan
+  // $UH
+  /// Shiny MegaMan
   ReadTeamColString(conp, "9b 00 00", "ff 3f 3f", 6);
   ReadTeamColString(conp, "e0 50 00", "ff 78 30", 7);
   ReadTeamColString(conp, "c0 70 00", "e8 d0 20", 8);
@@ -102,15 +103,15 @@ function void ReadTeamColCVars(void) {
   ReadTeamColString(conp, "40 90 c0", "60 d0 e0", 10);
   ReadTeamColString(conp, "00 58 f8", "38 c0 fc", 11);
   ReadTeamColString(conp, "80 00 f0", "d8 00 cc", 12);
-	///Shiny Qwant
+  /// Shiny Qwant
   ReadTeamColString(conp, "b3 b3 b3", "f8 f8 f8", 13);
-	///NegaMan
+  /// NegaMan
   ReadTeamColString(conp, "30 50 80", "38 b8 f8", 14);
-	///Shiny NegaMan
+  /// Shiny NegaMan
   ReadTeamColString(conp, "ac 7c 00", "e8 d0 20", 15);
-	///DecoyBot
+  /// DecoyBot
   ReadTeamColString(conp, "18 38 58", "a0 b8 ff", 16);
-	///Shiny DecoyBot
+  /// Shiny DecoyBot
   ReadTeamColString(conp, "ec b8 44", "eb db 57", 17);
 }
 
@@ -127,7 +128,7 @@ function void ReadTeamColCVars2(int conp, str primaryvar, str secondaryvar, int 
   team_color_input[teamnum][5] = unpackByte3(primary);
 }
 
-function void ReadTeamColString(int conp, str primaryvar, str secondaryvar, int teamnum) {  //$UH
+function void ReadTeamColString(int conp, str primaryvar, str secondaryvar, int teamnum) {  // $UH
   int primary = RGBHex2Dec(primaryvar);
   int secondary = RGBHex2Dec(secondaryvar);
   team_color_palette[teamnum][0] = PaletteMap(secondary);
@@ -150,7 +151,7 @@ function void InitializePaletteDataLum(void) {
 function int GetPaletteiLum(int i) {
   int lum = 0;
   for (int j = 0; j < PALETTE_VAL; j++) lum += palette_data[i][j];
-  return(lum / PALETTE_VAL);
+  return (lum / PALETTE_VAL);
 }
 
 script "core_callteamtranslations_open" OPEN CLIENTSIDE {
@@ -174,7 +175,7 @@ script "core_callteamtranslations_disconnect" (int gone) DISCONNECT CLIENTSIDE {
 script "core_callteamtranslations_net" (void) NET CLIENTSIDE {
   Delay(1);
   if (ConsolePlayerNumber() != PlayerNumber()) {terminate;}
-  Log(s:"\cvApplied color changes.");
+  UH_Log(UH_LOG_INFO, "Applied color changes.");
   ACS_NamedExecuteAlways("core_callteamtranslations_enter", 0);
 }
 
@@ -199,9 +200,9 @@ script "core_callteamtranslations" (void) CLIENTSIDE {
         ACS_NamedExecuteAlways(getTeamColorDef(i), 0, j, j);
       }
     }
-		//$UH Class-palette slots 6-17: build projectile + UH_TCLR tables only.
-		// Do NOT run core_defineteamcolors here — TCLR_DEFAULT+6..9 stomps
-		// CLR_DAWNBREAKER / charge slots 236-239.
+    // $UH Class-palette slots 6-17: build projectile + UH_TCLR tables only.
+    // Do NOT run core_defineteamcolors here — TCLR_DEFAULT+6..9 stomps
+    // CLR_DAWNBREAKER / charge slots 236-239.
     if (i == 0) {
       for (int k = TEAM_NATIVE_COUNT + 2; k < TEAM_COUNT; k++) {
         ACS_NamedExecuteAlways("core_defineprojectileteamcolors", 0, k, k);
@@ -358,7 +359,7 @@ script "core_resetcolors" (void) NET CLIENTSIDE {
   int cpn = ConsolePlayerNumber();
   if (cpn != PlayerNumber()) {terminate;}
 
-  Log(s:"\cvReset presets to default.");
+  UH_Log(UH_LOG_INFO, "Reset presets to default.");
   SetUserCvarString(cpn, "mm8bdm_colorpreset_1_name", "Deuteranopia");
   SetUserCvarString(cpn, "mm8bdm_colorpreset_1", "00 70 e8|38 b8 f8|48 a8 10|b8 f8 18|3f 47 2b|db 7b 7b|00 80 88|00 f8 fc|00 70 e8|38 b8 f8|48 a8 10|b8 f8 18|");
   SetUserCvarString(cpn, "mm8bdm_colorpreset_2_name", "Protanopia");
@@ -503,7 +504,7 @@ function void FillTTArrayLumRange(int team, int darkest, int brightest) {
   for (i = 0; i < PALETTE_SIZE; i++) {
     lum = palette_data_lum[i];
     if (lum >= darkest && lum <= brightest) for (j = 0; j < PALETTE_VAL; j++) total_tran_array[i][j] = TeamColor(lum, team, j);
-    else for(j = 0; j < PALETTE_VAL; j++) total_tran_array[i][j] = lum;
+    else for (j = 0; j < PALETTE_VAL; j++) total_tran_array[i][j] = lum;
   }
 }
 
@@ -523,7 +524,7 @@ function int GradientFunc(int lum, int lum1, int color1, int lum2, int color2) {
   int colrange = col1amount + col2amount;
 
   if (colrange < 1) return color1;  // this basically only happens when all white is given, so doesn't matter what the result is, it's all white
-  return(col1amount * color1 + col2amount * color2) / colrange;
+  return (col1amount * color1 + col2amount * color2) / colrange;
 }
 
 // Copied from UH_ACSUTILS because TEAMCOL must retain its vanilla 8BDT

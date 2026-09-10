@@ -31,12 +31,12 @@ script "ub_Death_ChangeIsAlive" DEATH {
   if (GetCvar("lastmanstanding") == 1) {
     pn = PlayerNumber();
     oldstatus = playerlifestatusarr[pn];
-    DebugLog(strParam(i:pn, s:" is dead!!"));
+    UH_Log(UH_LOG_DEBUG, StrParam(i:pn, s:" is dead!!"));
     GiveInventory("DropItemsOnDeath_P", 1);
-		// Survivor death breaks current spell-card capture
+    // Survivor death breaks current spell-card capture
     if (oldstatus == PLS_SURVIVOR)
       ACS_NamedExecuteAlways("uh_SpellCardBreak", 0);
-		// W8 is a survival spell: capture only on timer end (not on death)
+    // W8 is a survival spell: capture only on timer end (not on death)
     PlayerLifeStatusArr_UpdateFunc(pn, 0);
     roundstatebuilt[pn] = false;
     if (CheckInventory("IsSpecimanFlag"))
@@ -49,7 +49,7 @@ script "ub_Death_ChangeIsAlive" DEATH {
 }
 script "ub_Disconnect_ChangeIsAlive" (int playernum) DISCONNECT {
   if (GetCvar("lastmanstanding") == 1) {
-    DebugLog(strParam(i:playernum, s:" has disconnected!!"));
+    UH_Log(UH_LOG_DEBUG, StrParam(i:playernum, s:" has disconnected!!"));
     PlayerLifeStatusArr_UpdateFunc(playernum, 0);
     roundstatebuilt[playernum] = false;
     if (CheckActorInventory(playernum + 1000, "IsAMujicaMember"))
@@ -57,8 +57,8 @@ script "ub_Disconnect_ChangeIsAlive" (int playernum) DISCONNECT {
   }
 }
 
-script "ub_StartUpSettings" OPEN  //These are start up variables so that they are valid numbers
-//This also resets variables at round start (such as the bossDataArr[][])
+script "ub_StartUpSettings" OPEN  // These are start up variables so that they are valid numbers
+// This also resets variables at round start (such as the bossDataArr[][])
 {
   if (GetCvar("lastmanstanding") == 0) {
     PrintBold(s:"Gamemode must be set to \cgLast Man Standing\c- in order to play Unholy Razon!");
@@ -67,20 +67,20 @@ script "ub_StartUpSettings" OPEN  //These are start up variables so that they ar
   }
 
   if (GetGameModeState() == 1 || GetGameModeState() == 0) {
-		//
+    //
   }
   else {
-    if (GetCvar("sv_forcerandomclass") == 1) {ConsoleCommandWithWarn("sv_forcerandomclass 0", "Forced random class is disabled.");}  //This breaks classes somehow, disabled.
-    if (GetCvar("sv_noexit") == 1) {ConsoleCommandWithWarn("sv_noexit 0", "No exit is disabled.");}  //Needed for exit map commands.
-    if (GetCvar("winlimit") != 1) {ConsoleCommandWithWarn("winlimit 1", "Win limit is set to 1.");}  //Someone won? Then nextmap.
-		//SetGameModeLimit(GAMELIMIT_WINS,1);//GAMELIMIT_WINS = 4
-		//if(GetCvar("sv_forcerespawn")==0){consolecommand("sv_forcerespawn 1");}//Unsure if needed, legacy?
-    if (GetCvar("mm8bdm_sv_respawnprotection") > 0) {ConsoleCommandWithWarn("mm8bdm_sv_respawnprotection 0", "Respawn protection is disabled.");}  //Since the morphing starts within one second, sometimes a player would have invun from the pre-round.
-		//if(GetCvar("sv_NoBossMusic")==0){SetCVar("sv_NoBossMusic",1);}//Might be legacy?
-    if (GetCvar("Compat_NoLand") == 0) {ConsoleCommandWithWarn("Compat_NoLand 1", "No land is enabled.");}  //Land is a dangerous tool
-    if (GetCvar("sv_lmscountdowntime") < 4) {ConsoleCommandWithWarn("sv_lmscountdowntime 4", "LMS countdown time is set to 4 seconds.");}  //At least 4 seconds are needed for pre-round scripts!
+    if (GetCvar("sv_forcerandomclass") == 1) {ConsoleCommandWithWarn("sv_forcerandomclass 0", "Forced random class is disabled.");}  // This breaks classes somehow, disabled.
+    if (GetCvar("sv_noexit") == 1) {ConsoleCommandWithWarn("sv_noexit 0", "No exit is disabled.");}  // Needed for exit map commands.
+    if (GetCvar("winlimit") != 1) {ConsoleCommandWithWarn("winlimit 1", "Win limit is set to 1.");}  // Someone won? Then nextmap.
+    // SetGameModeLimit(GAMELIMIT_WINS,1);//GAMELIMIT_WINS = 4
+    // if(GetCvar("sv_forcerespawn")==0){consolecommand("sv_forcerespawn 1");}//Unsure if needed, legacy?
+    if (GetCvar("mm8bdm_sv_respawnprotection") > 0) {ConsoleCommandWithWarn("mm8bdm_sv_respawnprotection 0", "Respawn protection is disabled.");}  // Since the morphing starts within one second, sometimes a player would have invun from the pre-round.
+    // if(GetCvar("sv_NoBossMusic")==0){SetCVar("sv_NoBossMusic",1);}//Might be legacy?
+    if (GetCvar("Compat_NoLand") == 0) {ConsoleCommandWithWarn("Compat_NoLand 1", "No land is enabled.");}  // Land is a dangerous tool
+    if (GetCvar("sv_lmscountdowntime") < 4) {ConsoleCommandWithWarn("sv_lmscountdowntime 4", "LMS countdown time is set to 4 seconds.");}  // At least 4 seconds are needed for pre-round scripts!
   }
-	//Most variables are redundant
+  // Most variables are redundant
 
   gameover = false;
 
@@ -99,11 +99,11 @@ script "ub_StartUpSettings" OPEN  //These are start up variables so that they ar
     roundstatebuilt[rsi] = false;
   }
 
-  ACS_NamedExecuteWithResult("core_bossmusicstate", 1, 669);  //Disables boss music for maps, that is if they use this script
+  ACS_NamedExecuteWithResult("core_bossmusicstate", 1, 669);  // Disables boss music for maps, that is if they use this script
   MusicSaveFunc();
 
-  u_maplevelname = strParam(n:PRINTNAME_LEVELNAME);
-  u_maplevelcode = strParam(n:PRINTNAME_LEVEL);
+  u_maplevelname = StrParam(n:PRINTNAME_LEVELNAME);
+  u_maplevelcode = StrParam(n:PRINTNAME_LEVEL);
 
   if (GetCvar("uh_sv_BossDebugText") == 1 && debug_txt == 0) {
     PrintBold(s:"Debug_TXT ACTIVATED");
@@ -120,28 +120,28 @@ script "ub_StartUpSettings" OPEN  //These are start up variables so that they ar
   // blocking this OPEN script.
   if (debug_txt) {ACS_NamedExecuteAlways("ub_ValidateBossCombosDeferred", 0);}
 
-  if (!startupvariables) {  //These are the true startup variables, only done ONCE on server start.
-    if (GetCvar("sv_forcerandomclass") == 1) {ConsoleCommandWithWarn("sv_forcerandomclass 0", "Forced random class is disabled.");}  //This breaks classes somehow, disabled.
-    if (GetCvar("sv_noexit") == 1) {ConsoleCommandWithWarn("sv_noexit 0", "No exit is disabled.");}  //Needed for exit map commands.
-    if (GetCvar("winlimit") != 1) {ConsoleCommandWithWarn("winlimit 1", "Win limit is set to 1.");}  //Someone won? Then nextmap.
-    if (GetCvar("mm8bdm_sv_respawnprotection") > 0) {ConsoleCommandWithWarn("mm8bdm_sv_respawnprotection 0", "No respawn invulnerability is enabled.");}  //Since the morphing starts within one second, sometimes a player would have invun from the pre-round.
-    if (GetCvar("Compat_NoLand") == 0) {ConsoleCommandWithWarn("Compat_NoLand 1", "No land is enabled.");}  //Land is a dangerous tool
+  if (!startupvariables) {  // These are the true startup variables, only done ONCE on server start.
+    if (GetCvar("sv_forcerandomclass") == 1) {ConsoleCommandWithWarn("sv_forcerandomclass 0", "Forced random class is disabled.");}  // This breaks classes somehow, disabled.
+    if (GetCvar("sv_noexit") == 1) {ConsoleCommandWithWarn("sv_noexit 0", "No exit is disabled.");}  // Needed for exit map commands.
+    if (GetCvar("winlimit") != 1) {ConsoleCommandWithWarn("winlimit 1", "Win limit is set to 1.");}  // Someone won? Then nextmap.
+    if (GetCvar("mm8bdm_sv_respawnprotection") > 0) {ConsoleCommandWithWarn("mm8bdm_sv_respawnprotection 0", "No respawn invulnerability is enabled.");}  // Since the morphing starts within one second, sometimes a player would have invun from the pre-round.
+    if (GetCvar("Compat_NoLand") == 0) {ConsoleCommandWithWarn("Compat_NoLand 1", "No land is enabled.");}  // Land is a dangerous tool
     if (GetCvar("sv_lmscountdowntime") < 4) {ConsoleCommandWithWarn("sv_lmscountdowntime 6", "LMS countdown time is set to 6 seconds.");}
-		//6 seconds sometimes causes a DRAW to go to the next map.
+    // 6 seconds sometimes causes a DRAW to go to the next map.
     if (GetCvar("mm8bdm_sv_nolmsweapons") == 0) {ConsoleCommandWithWarn("mm8bdm_sv_nolmsweapons 1", "LMS weapons are disabled.");}
 
 
     bosseventcounter = 0;
     ResetBossComboState();
 
-    BossEXCountArr_Setter(500, 1, 3);  //Randomize EX Boss Counters
+    BossEXCountArr_Setter(500, 1, 3);  // Randomize EX Boss Counters
 
     rarebosschance = 15;
     hellmarkfrags = 0;
     specimanfrags = 0;
 
     eventdataarr[EVENTDATA_FORCED] = -1;
-    PresetStrongmanCheck(-1, 99);  //StrongmanCheck
+    PresetStrongmanCheck(-1, 99);  // StrongmanCheck
     eventdataarr[EVENTDATA_LASTEVENT] = -1;
     rarelmsrune = 45;
     rarelmstime = 9;
@@ -175,7 +175,7 @@ script "ub_ValidateBossCombosDeferred" (void) {
   }
 
   if (!ready) {
-    DebugLog("boss registry readiness timeout");
+    UH_Log(UH_LOG_ERROR, "boss registry readiness timeout");
   }
 
   DebugValidateRoundStart();
@@ -189,7 +189,7 @@ script "ub_ValidateBossCombosDeferred" (void) {
 // 	GiveMeTheFunc("BasicSoundFollowDisable",0,0);
 // }
 
-//Scripts related to boss morphing
+// Scripts related to boss morphing
 script "ub_CountdownStartup" OPEN {
   if (GetCvar("lastmanstanding") == 0) {
     terminate;
@@ -201,17 +201,17 @@ script "ub_CountdownStartup" OPEN {
 
   if (GetGameModeState() == 1 || GetGameModeState() == 0) {
 
-		// ACS_NamedExecute("ub_AttemptSoundFollowFix",0);
+    // ACS_NamedExecute("ub_AttemptSoundFollowFix",0);
 
     int ued = CheckClearCvar("uh_sv_BonusEventDelay", -1);
-    if (ued >= 0 && eventdataarr[EVENTDATA_DELAY] != 77) {  //Sets EventDelay if forced
+    if (ued >= 0 && eventdataarr[EVENTDATA_DELAY] != 77) {  // Sets EventDelay if forced
       eventdataarr[EVENTDATA_DELAY] = ued;
       ShowMeTheRCON("Bonus Event Delay", ued);
     }
     Delay(11);
 
     if (!GetCVAR("uh_sv_NoItems")) {
-      GiveMeTheFunc("SurvivorBoxItems_P", 1);  //Give Pre-Round Items
+      GiveMeTheFunc("SurvivorBoxItems_P", 1);  // Give Pre-Round Items
     }
 
     SetHudSize(480, 360, 0);
@@ -233,7 +233,7 @@ script "ub_CountdownStartup" OPEN {
     terminate;
   }
 
-	//Delay(5);
+  // Delay(5);
 
   SetHudSize(480, 360, 0);
   SetFont("BIGFONT");
@@ -247,15 +247,15 @@ script "ub_CountdownStartup" OPEN {
   SetPlayerProperty(1, 1, 4);
   Delay(35 * 1);
   if (eventdataarr[EVENTDATA_DELAY] >= GetClampedCvar("uh_sv_BonusEventLimit", 1, 100)) {
-    ACS_NamedExecute("ub_EventManagementACS", 0, -1);  //Select the event!
+    ACS_NamedExecute("ub_EventManagementACS", 0, -1);  // Select the event!
   }
   else {
-    ACS_NamedExecute("ub_SelectBossAndEvent", 0);  //Select the bosses!
+    ACS_NamedExecute("ub_SelectBossAndEvent", 0);  // Select the bosses!
   }
 }
 
-//This is a basic countdown timer, lasts X time. After X time, attempt to end the round.
-script "uh_BackgroundTimer" (void)  //OPEN
+// This is a basic countdown timer, lasts X time. After X time, attempt to end the round.
+script "uh_BackgroundTimer" (void)  // OPEN
 {
   int deathchance = random(1, 4);
 
@@ -266,9 +266,9 @@ script "uh_BackgroundTimer" (void)  //OPEN
     timeleft = -6;
   SetFont("BIGFONT");
   SetHudSize(640, 480, 0);
-  until (timeleft <= 0 || gameover) {  //Countdown
-		//HudMessageBold(d:TimeLeft; HUDMSG_FADEOUT, 888, CR_DARKGREEN,0.5, 0.10, 3.0,2.0);
-		//Log(d:TimeLeft);
+  until (timeleft <= 0 || gameover) {  // Countdown
+    // HudMessageBold(d:TimeLeft; HUDMSG_FADEOUT, 888, CR_DARKGREEN,0.5, 0.10, 3.0,2.0);
+    // Log(d:TimeLeft);
     if (GetCVar("UE_TimerEnd") != 0) {
       if (GetCVar("UE_TimerEnd") < 0 || GetCVar("UE_TimerEnd") > 4) {
         CheckClearCvar("UE_TimerEnd", 0);
@@ -298,7 +298,7 @@ script "uh_BackgroundTimer" (void)  //OPEN
     Delay(35);
     timeleft--;
   }
-  while (timeleft < 0 && !gameover) {  //If Timer is disabled
+  while (timeleft < 0 && !gameover) {  // If Timer is disabled
     if (GetCVar("UE_TimerEnd") != 0) {
       deathchance = CheckClearCvar("UE_TimerEnd", 0);
       if (deathchance >= 0 && deathchance <= 4) {
@@ -310,25 +310,25 @@ script "uh_BackgroundTimer" (void)  //OPEN
     }
     Delay(35);
   }
-  if (gameover) {  //Games over, clear messages
+  if (gameover) {  // Games over, clear messages
     ClearHudMessageBold(610);
     terminate;
   }
   switch (deathchance) {
-    case 1:  //SuperGuhu
+    case 1:  // SuperGuhu
       GiveMeTheFunc("SGEXDItem", 1);
       break;
-    case 2:  //Zankokuna
+    case 2:  // Zankokuna
       ACS_NamedTerminate("uh_ZankokunaRage", 0);
       ACS_NamedExecute("uh_ZankokunaRage", 0);
       break;
-    case 3:  //InstaKill
+    case 3:  // InstaKill
       SpawnForced("WishingStar_Help1_Server", 0, 0, 0);
       break;
-    case 4:  //Exe
+    case 4:  // Exe
       SpawnForced("WishingStar_Help2_Server", 0, 0, 0);
       break;
-    case 5:  //Reset
+    case 5:  // Reset
       SpawnForced("WishingStar_Help3_Server", 0, 0, 0);
       break;
   }
@@ -337,14 +337,14 @@ script "uh_BackgroundTimer" (void)  //OPEN
 
 
 
-//Script used to end the round for no survivors
+// Script used to end the round for no survivors
 script "ub_WatchSurvivors" (int skipacs) {
 
-  Delay(1);  //Important! Otherwise the BossDataArr[][] isn't set correctly from another script!
+  Delay(1);  // Important! Otherwise the BossDataArr[][] isn't set correctly from another script!
 
   if (!skipacs) {
     ACS_NamedExecute("ub_BossHealthWatcher", 0);
-    ACS_NamedExecute("ub_DemoneyeNumWatcher", 0);  //Does this fix Boss VS??
+    ACS_NamedExecute("ub_DemoneyeNumWatcher", 0);  // Does this fix Boss VS??
     // Versus duels own their own ending: the two-slot watcher waits on the
     // boss slots and never runs the normal survivor-vs-boss result sequence.
     if (versusfightevent) {
@@ -358,7 +358,7 @@ script "ub_WatchSurvivors" (int skipacs) {
     Delay(1);
     if (totalplayersarr[PLS_SURVIVOR] == 1) {
       ACS_NamedExecute("ub_LMS_EventTime", 0, -1);
-      DebugLog(strParam(s:"Last Man Standing!"));
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"Last Man Standing!"));
       standardlmseventlocked = true;
     }
   }
@@ -372,9 +372,9 @@ script "ub_WatchSurvivors" (int skipacs) {
   Delay(1);
 
   ACS_NamedTerminate("ub_WatchBossesAndEyes", 0);
-	//PlayMusic_Loss(0);
+  // PlayMusic_Loss(0);
   PlayMusic_Loser(-1);
-	// MakeAllPlayersInvun();
+  // MakeAllPlayersInvun();
   gameover = true;
   ResetBossComboState();  // D6: clear combo state for the result sequence.
 
@@ -528,7 +528,7 @@ script "ub_WatchBossesAndEyes" (void) {
   ACS_NamedTerminate("ub_WatchSurvivors", 0);
   gameover = true;
   ResetBossComboState();  // D6: clear combo state for the result sequence.
-	//Log(i:PlayerInGame(BossDataArr[0][BOSSDATA_TID]-1000));
+  // Log(i:PlayerInGame(BossDataArr[0][BOSSDATA_TID]-1000));
 
   SetFont("BIGFONT");
   SetHudSize(480, 360, 0);
@@ -541,7 +541,7 @@ script "ub_WatchBossesAndEyes" (void) {
     Delay(35);
     terminate;
   }
-	//PlayMusic_Win(0);
+  // PlayMusic_Win(0);
   PlayMusic_Winner(-1);
   HudMessageBold(s:"The survivors are victorious!"; HUDMSG_FADEOUT, 66, CR_GREEN, 240.4, 54.0, 5.0, 2.0);
 

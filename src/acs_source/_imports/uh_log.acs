@@ -1,0 +1,46 @@
+#library "uh_log"
+
+// UH_LOG — unified four-level diagnostic logger.
+//
+// Deliberately a separate, minimal library instead of part of uh_acsutils:
+// several v6b-derived libraries that need UH_Log already define names
+// uh_acsutils also exports (MAX_PLAYERS, ZDistance, SetInventory,
+// SetActorInventory, ...), so importing uh_acsutils there fails with
+// "Function already has a body" / "Invalid identifier".  A dedicated logger
+// lets every Unholy library import one logger without pulling in the whole
+// math/utility surface.
+//
+// ACS has no variadic functions, so callers build the message with
+// StrParam(...).  The textual level prefix is part of the message because the
+// engine strips colour escapes when writing the logfile, so severity must not
+// rely on colour alone.  DEBUG prints only when the server CVAR is enabled;
+// INFO/WARN/ERROR always print.
+#include "zcommon.acs"
+
+#libdefine UH_LOG_DEBUG 0
+#libdefine UH_LOG_INFO  1
+#libdefine UH_LOG_WARN  2
+#libdefine UH_LOG_ERROR 3
+
+function void UH_Log(int level, str message) {
+  if (level == UH_LOG_DEBUG && GetCvar("uh_sv_BossDebugText") != 1)
+    return;
+
+  switch (level) {
+    case UH_LOG_DEBUG:
+      Log(s:"\c[LightBlue][Unholy] [DEBUG] \c-", s:message);
+      break;
+    case UH_LOG_INFO:
+      Log(s:"\c[Green][Unholy] [INFO] \c-", s:message);
+      break;
+    case UH_LOG_WARN:
+      Log(s:"\c[Gold][Unholy] [WARN] \c-", s:message);
+      break;
+    case UH_LOG_ERROR:
+      Log(s:"\c[Red][Unholy] [ERROR] \c-", s:message);
+      break;
+    default:
+      Log(s:"\c[Red][Unholy] [ERROR] \c-UH_Log: invalid level ", i:level, s:"; ", s:message);
+      break;
+  }
+}

@@ -10,13 +10,7 @@
 
 function void ConsoleCommandWithWarn(str command, str warning) {
   consoleCommand(command);
-  Log(s:"\ci[Unholy] Warning: ", s:warning, s:" (", s:command, s:")");
-}
-
-function void DebugLog(str message) {
-  if (debug_txt) {
-    Log(s:"\ca[Unholy] Debug: ", s:message);
-  }
+  UH_Log(UH_LOG_WARN, StrParam(s:warning, s:" (", s:command, s:")"));
 }
 
 function void ShowMeTheRCON(str var, int num) {
@@ -27,7 +21,7 @@ function void ShowMeTheRCON(str var, int num) {
 // This gathers a CVAR info, resets to NUM, and returns it.
 function int CheckClearCvar(str check, int num) {
   int checked = GetCVAR(check);
-  if (checked != num) {DebugLog(strParam(s:"CVAR '", s:check, s:"' was '", i:checked, s:"' and was set to '", i:num, s:"'"));}
+  if (checked != num) {UH_Log(UH_LOG_DEBUG, StrParam(s:"CVAR '", s:check, s:"' was '", i:checked, s:"' and was set to '", i:num, s:"'"));}
   SetCVar(check, num);
   return checked;
 }
@@ -47,11 +41,11 @@ function void PlayerLifeStatusArr_GatherFunc(void) {
   int p_total = PlayerCount();
   for (int i = 0; i < MAX_PLAYERS; i++) {
     if (PlayerInGame(i)) {
-      DebugLog(strParam(s:"Player ", i:i, s:" is alive"));
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"Player ", i:i, s:" is alive"));
       playerlifestatusarr[i] = 1;
       if (p_total <= 1) {
         playerlifestatusarr[MAX_PLAYERS] = i;
-        DebugLog(strParam(s:"Done collecting alive players. Max ID = ", i:playerlifestatusarr[MAX_PLAYERS]));
+        UH_Log(UH_LOG_DEBUG, StrParam(s:"Done collecting alive players. Max ID = ", i:playerlifestatusarr[MAX_PLAYERS]));
         break;
       }
       p_total--;
@@ -159,21 +153,21 @@ function void BossEXCountArr_Setter(int maxcount, int ran1, int ran2) {
   for (int i = 0; i < maxcount; i++) {
     bossexcountarray[i] = random(ran1, ran2);
   }
-  // debugLog(strParam(s:"BossEXCountArray randomized between values [",i:Ran1,s:"] and [",i:Ran2,s:"]!");}
+  // debugLog(StrParam(s:"BossEXCountArray randomized between values [",i:Ran1,s:"] and [",i:Ran2,s:"]!");}
 }
 
 function void PresetStrongmanCheck(int setter, int howfar) {
   for (int i = 0; i <= howfar; i++) {
     strongmancheck[i] = setter;
   }
-  DebugLog(strParam(s:"StrongmanCheck Array set to value ", i:setter, s:" with a size of ", i:howfar, s:"."));
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"StrongmanCheck Array set to value ", i:setter, s:" with a size of ", i:howfar, s:"."));
 }
 
 function void Add_StrongmanCheckArray(int thenum) {
   for (int i = 0; i <= 99; i++) {
     if (strongmancheck[i] == -1) {
       strongmancheck[i] = thenum;
-      DebugLog(strParam(s:"StrongmanCheck value [", i:i, s:"] set to ", i:thenum, s:"."));
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"StrongmanCheck value [", i:i, s:"] set to ", i:thenum, s:"."));
       break;
     }
   }
@@ -184,7 +178,7 @@ function void Minus_StrongmanCheckArray(void) {
       strongmancheck[i] = strongmancheck[i + 1];
     }
     else {
-      DebugLog(strParam(s:"StrongmanCheck shifted over ", i:i, s:" time(s)."));
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"StrongmanCheck shifted over ", i:i, s:" time(s)."));
       break;
     }
   }
@@ -200,7 +194,7 @@ function void AdjustPlayerForceNumArray(int swapper) {
           playerforcenum[i] = playerforcenum[i + 1];
         }
         else {
-          DebugLog(strParam(s:"PlayerForceNum shifted over ", i:i, s:" time(s)."));
+          UH_Log(UH_LOG_DEBUG, StrParam(s:"PlayerForceNum shifted over ", i:i, s:" time(s)."));
           break;
         }
       }
@@ -209,13 +203,13 @@ function void AdjustPlayerForceNumArray(int swapper) {
       for (i = 0; i <= 64; i++) {
         playerforcenum[i] = 0;
       }
-      DebugLog(strParam(s:"Reset all PlayerForceNum to 0."));
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"Reset all PlayerForceNum to 0."));
       break;
     default:  // Add
       for (i = 0; i <= 64; i++) {
         if (playerforcenum[i] == 0) {
           playerforcenum[i] = swapper;
-          DebugLog(strParam(s:"PlayerForceNum value [", i:i, s:"] set to ", i:swapper, s:"."));
+          UH_Log(UH_LOG_DEBUG, StrParam(s:"PlayerForceNum value [", i:i, s:"] set to ", i:swapper, s:"."));
           break;
         }
       }
@@ -296,7 +290,7 @@ function void MultiBossFunction(bool reset) {
   for (int i = 0; i < multibosscheck; i++) {
     bossslotalive[i] = true;
   }
-  DebugLog(strParam(s:"multiBossCheck = ", i:multibosscheck, s:" (threshold auto pick, plc = ", i:plc, s:")"));
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"multiBossCheck = ", i:multibosscheck, s:" (threshold auto pick, plc = ", i:plc, s:")"));
 }
 
 // True while any standard boss slot is still alive (no hardcoded slot range).
@@ -407,17 +401,17 @@ function bool BossComboRegistryReady(void) {
 function bool BossVersusEligible(int id) {
   if (!IsBossDefined(id)) {return false;}
   switch (id) {
-    case 4:    // Colonel Kachidonga
-    case 6:    // Officer Johnson
-    case 9:    // Captain DevilEye
-    case 13:   // Dickster Dick
-    case 33:   // Red Baron Duo
-    case 34:   // Blue Jay Duo
-    case 52:   // Harp Strumm
-    case 55:   // Crazed Grenademan
-    case 66:   // Super Megaman
-    case 67:   // Lin
-    case 69:   // KFC Dragon 756
+    case 4:  // Colonel Kachidonga
+    case 6:  // Officer Johnson
+    case 9:  // Captain DevilEye
+    case 13:  // Dickster Dick
+    case 33:  // Red Baron Duo
+    case 34:  // Blue Jay Duo
+    case 52:  // Harp Strumm
+    case 55:  // Crazed Grenademan
+    case 66:  // Super Megaman
+    case 67:  // Lin
+    case 69:  // KFC Dragon 756
     case 113:  // Scrotoman
     case 118:  // Sakiko Togawa
     case 302:  // RichDevilEye
@@ -453,7 +447,7 @@ function int PickRandomVersusBoss(int avoid) {
 function bool BossZankokunaVersusEligible(int id) {
   if (!IsBossDefined(id)) {return false;}
   switch (id) {
-    case 65:   // Arena Demoneye
+    case 65:  // Arena Demoneye
     case 300:  // Fox Demoneye
     case 400:  // Zankokuna Hellbot
     case 401:  // Eyelento Major
@@ -549,12 +543,12 @@ function int PickBossCombo(int wantcount, int plc) {
 // forgot to validate cannot half-apply a broken combo.
 function bool ApplyBossCombo(int combo) {
   if (combo < 0 || combo >= BOSSCOMBO_MAX) {
-    DebugLog("ApplyBossCombo refused: combo index out of range");
+    UH_Log(UH_LOG_ERROR, "ApplyBossCombo refused: combo index out of range");
     return false;
   }
   int shapeerr = BossComboShapeError(combo);
   if (shapeerr != BOSSCOMBO_SHAPE_OK) {
-    DebugLog(strParam(s:"ApplyBossCombo refused malformed combo ", i:bosscombodata[combo][0],
+    UH_Log(UH_LOG_ERROR, StrParam(s:"ApplyBossCombo refused malformed combo ", i:bosscombodata[combo][0],
                       s:": ", s:BossComboShapeErrorText(shapeerr)));
     return false;
   }
@@ -572,33 +566,33 @@ function bool ApplyBossCombo(int combo) {
     dyn0 = ForceBossChange("uh_sv_ForcedBoss1", false);
     dyn1 = ForceBossChange("uh_sv_ForcedBoss2", false);
     if (!BossVersusEligible(dyn0) || !BossVersusEligible(dyn1) || dyn0 == dyn1) {
-      DebugLog(strParam(s:"Boss combo 206 rejected: forced pair ", i:dyn0, s:"/", i:dyn1,
+      UH_Log(UH_LOG_WARN, StrParam(s:"Boss combo 206 rejected: forced pair ", i:dyn0, s:"/", i:dyn1,
                         s:" must be two distinct registered versus-eligible bosses."));
       return false;
     }
-    DebugLog(strParam(s:"Boss combo 206 resolved: ", i:dyn0, s:" vs ", i:dyn1));
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Boss combo 206 resolved: ", i:dyn0, s:" vs ", i:dyn1));
   }
   else if (mode == BOSSCOMBO_MODE_RANDOM_PAIR) {
     dyn0 = PickRandomVersusBoss(-1);
     dyn1 = PickRandomVersusBoss(dyn0);
     if (dyn0 == UHBOSS_FAIL || dyn1 == UHBOSS_FAIL) {
-      DebugLog("Boss combo 209 rejected: fewer than two distinct versus-eligible bosses.");
+      UH_Log(UH_LOG_WARN, "Boss combo 209 rejected: fewer than two distinct versus-eligible bosses.");
       return false;
     }
-    DebugLog(strParam(s:"Boss combo 209 resolved: ", i:dyn0, s:" vs ", i:dyn1));
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Boss combo 209 resolved: ", i:dyn0, s:" vs ", i:dyn1));
   }
   else if (mode == BOSSCOMBO_MODE_SHADOW_PAIR) {
     dyn0 = ResolveConfiguredVersusBoss("uh_sv_ForcedBoss1", -1);
     dyn1 = ResolveConfiguredVersusBoss("uh_sv_ForcedBoss2", dyn0);
     if (dyn0 == UHBOSS_FAIL || dyn1 == UHBOSS_FAIL || dyn0 == dyn1) {
-      DebugLog("Boss combo 217 rejected: shadow pair needs two distinct reviewed versus bosses.");
+      UH_Log(UH_LOG_WARN, "Boss combo 217 rejected: shadow pair needs two distinct reviewed versus bosses.");
       return false;
     }
     if (!BossShadowPairTargetsDistinct(dyn0, dyn1)) {
-      DebugLog("Boss combo 217 rejected: shadow replacement targets must remain distinct.");
+      UH_Log(UH_LOG_WARN, "Boss combo 217 rejected: shadow replacement targets must remain distinct.");
       return false;
     }
-    DebugLog(strParam(s:"Boss combo 217 resolved: ", i:dyn0, s:" vs ", i:dyn1));
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Boss combo 217 resolved: ", i:dyn0, s:" vs ", i:dyn1));
   }
   else if (mode == BOSSCOMBO_MODE_ZANKOKUNA_PAIR) {
     int rawprimary = GetCVAR("uh_sv_ForcedBoss1");
@@ -608,7 +602,7 @@ function bool ApplyBossCombo(int combo) {
       // choices; a forced non-primary id is rejected rather than silently
       // broadening the special allowlist.
       if (rawprimary != UHBOSS_FAIL) {
-        DebugLog("Boss combo 218 rejected: ForcedBoss1 must be Zankokuna or Fox Demoneye.");
+        UH_Log(UH_LOG_WARN, "Boss combo 218 rejected: ForcedBoss1 must be Zankokuna or Fox Demoneye.");
         return false;
       }
       if (random(0, 1)) {dyn0 = 400;}
@@ -616,14 +610,14 @@ function bool ApplyBossCombo(int combo) {
     }
     dyn1 = ResolveConfiguredZankokunaBoss("uh_sv_ForcedBoss2", dyn0);
     if (dyn1 == UHBOSS_FAIL || dyn0 == dyn1) {
-      DebugLog("Boss combo 218 rejected: special pair needs two distinct reviewed bosses.");
+      UH_Log(UH_LOG_WARN, "Boss combo 218 rejected: special pair needs two distinct reviewed bosses.");
       return false;
     }
-    DebugLog(strParam(s:"Boss combo 218 resolved: ", i:dyn0, s:" vs ", i:dyn1));
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Boss combo 218 resolved: ", i:dyn0, s:" vs ", i:dyn1));
   }
   else if ((bosscombodata[combo][7] & BOSSCOMBO_FLAG_VERSUS) != 0 &&
            bosscombobossids[first] == bosscombobossids[first + 1]) {
-    DebugLog(strParam(s:"Boss combo ", i:bosscombodata[combo][0],
+    UH_Log(UH_LOG_WARN, StrParam(s:"Boss combo ", i:bosscombodata[combo][0],
                       s:" rejected: versus pair contains the same boss twice."));
     return false;
   }
@@ -691,15 +685,15 @@ function bool TryBossComboRoll(void) {
       if (bosscombodata[i][0] != forced) {continue;}
       int shapeerr = BossComboShapeError(i);
       if (shapeerr != BOSSCOMBO_SHAPE_OK) {
-        DebugLog(strParam(s:"Boss combo ", i:forced, s:" rejected: ", s:BossComboShapeErrorText(shapeerr)));
+        UH_Log(UH_LOG_WARN, StrParam(s:"Boss combo ", i:forced, s:" rejected: ", s:BossComboShapeErrorText(shapeerr)));
         return false;
       }
       if (bosscombodata[i][1] > cap) {
-        DebugLog(strParam(s:"Boss combo ", i:forced, s:" rejected: ", i:bosscombodata[i][1], s:" bosses need ", i:bosscombodata[i][2], s:" players."));
+        UH_Log(UH_LOG_WARN, StrParam(s:"Boss combo ", i:forced, s:" rejected: ", i:bosscombodata[i][1], s:" bosses need ", i:bosscombodata[i][2], s:" players."));
         return false;
       }
       if (!BossComboFullyRegistered(i)) {
-        DebugLog(strParam(s:"Boss combo ", i:forced, s:" rejected: unregistered boss."));
+        UH_Log(UH_LOG_WARN, StrParam(s:"Boss combo ", i:forced, s:" rejected: unregistered boss."));
         return false;
       }
       if (!ApplyBossCombo(i)) {return false;}
@@ -707,7 +701,7 @@ function bool TryBossComboRoll(void) {
       ShowMeTheRCON("Boss Combo", forced);
       return true;
     }
-    DebugLog(strParam(s:"Boss combo ", i:forced, s:" is not defined; falling back to the normal roll."));
+    UH_Log(UH_LOG_WARN, StrParam(s:"Boss combo ", i:forced, s:" is not defined; falling back to the normal roll."));
     return false;
   }
 
@@ -839,16 +833,16 @@ function void DebugValidateRoundStart(void) {
   for (int i = 0; i < BONUS_EVENT_CANDIDATE_COUNT; i++) {
     int eventid = bonuseventcandidates[i];
     if (StrCmp(bonuseventlist[eventid][BONUS_EVENTNAME], "") == 0) {
-      DebugLog(strParam(s:"Bonus event missing name: ", i:eventid));
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event missing name: ", i:eventid));
     }
     if (StrCmp(bonuseventlist[eventid][BONUS_MUSICLUMP], "") == 0) {
-      DebugLog(strParam(s:"Bonus event missing music: ", i:eventid));
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event missing music: ", i:eventid));
     }
   }
 
   for (int eyeid = 0; eyeid < 16; eyeid++) {
     if (IsEyeDefined(eyeid) && StrCmp(GetEyeEventStem(eyeid), "") == 0) {
-      DebugLog(strParam(s:"Eye event stem missing: ", i:eyeid));
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Eye event stem missing: ", i:eyeid));
     }
   }
 
@@ -861,7 +855,7 @@ function void DebugValidateRoundStart(void) {
   for (int combo = 0; combo < BOSSCOMBO_MAX; combo++) {
     int shapeerr = BossComboShapeError(combo);
     if (shapeerr != BOSSCOMBO_SHAPE_OK) {
-      DebugLog(strParam(s:"Boss combo ", i:bosscombodata[combo][0],
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Boss combo ", i:bosscombodata[combo][0],
                         s:" (", s:bosscomboname[combo],
                         s:") malformed: ", s:BossComboShapeErrorText(shapeerr)));
       continue;
@@ -869,7 +863,7 @@ function void DebugValidateRoundStart(void) {
     for (int slot = 0; slot < bosscombodata[combo][6]; slot++) {
       int bossid = bosscombobossids[bosscombodata[combo][5] + slot];
       if (!IsBossDefined(bossid)) {
-        DebugLog(strParam(s:"Boss combo ", i:bosscombodata[combo][0],
+        UH_Log(UH_LOG_ERROR, StrParam(s:"Boss combo ", i:bosscombodata[combo][0],
                           s:" (", s:bosscomboname[combo],
                           s:") references unregistered boss ", i:bossid));
       }
@@ -903,7 +897,7 @@ function int TrueRandomBoss(void) {
 function void SetUpBossSelection_Func(void) {
   int tempboss;
   for (int i = 0; i < multibosscheck; i++) {
-    tempboss = ForceBossChange(strParam(s:"uh_sv_ForcedBoss", i:i + 1), false);
+    tempboss = ForceBossChange(StrParam(s:"uh_sv_ForcedBoss", i:i + 1), false);
     if (IsBossDefined(tempboss)) {
       bossdataarr[i][BOSSDATA_NUM] = tempboss;
     }
@@ -919,16 +913,16 @@ function void SetUpBossSelection_Func(void) {
     else
       bossdataarr[i][BOSSDATA_NUM] = bossdataarr[i][BOSSDATA_NUM];  // EXBossChecker
 
-    DebugLog(strParam(s:"UnholyBoss", i:i + 1, s:" = ", i:bossdataarr[i][BOSSDATA_NUM]));
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"UnholyBoss", i:i + 1, s:" = ", i:bossdataarr[i][BOSSDATA_NUM]));
   }
-  // debugLog(strParam(s:"DEBUG TXT: RareBossChance = ",d:RareBossChance);}
+  // debugLog(StrParam(s:"DEBUG TXT: RareBossChance = ",d:RareBossChance);}
 }
 
 // Assigns players as Bosses
 function void SetUpPlayerSelection_Func(bool updateaggregate) {
   int tempplayer = 0;
   for (int i = 0; i < multibosscheck; i++) {
-    tempplayer = CheckClearCvar(strParam(s:"uh_sv_ForceBossPlayer", i:i + 1), -1);
+    tempplayer = CheckClearCvar(StrParam(s:"uh_sv_ForceBossPlayer", i:i + 1), -1);
     if (tempplayer >= 0 && tempplayer <= MAX_PLAYERS) {
       tempplayer += 1000;
     }
@@ -948,7 +942,7 @@ function void SetUpPlayerSelection_Func(bool updateaggregate) {
     if (shadowtricksarr[i]) {
       GiveActorInventory(tempplayer, "IsGonnaBeFake", 1);  // Specifically for Shadow boss
     }
-    DebugLog(strParam(s:"Boss ", i:i + 1, s:" TID = ", i:tempplayer));
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Boss ", i:i + 1, s:" TID = ", i:tempplayer));
     if (updateaggregate && playerlifestatusarr[tempplayer - 1000] == PLS_SURVIVOR) {
       totalplayersarr[PLS_SURVIVOR]--;
       totalplayersarr[PLS_BOSS]++;
@@ -1007,7 +1001,7 @@ function bool MorphActorToBoss(int tid, int boss, str flash) {
       ACS_NamedExecuteWithResult(setup, boss, tid);
     }
     else {
-      DebugLog(StrParam(s:"Missing boss morph setup script: ", s:setup));
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Missing boss morph setup script: ", s:setup));
     }
   }
   int basehp = GetBossHPBase(boss);

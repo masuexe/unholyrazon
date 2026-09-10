@@ -5,7 +5,7 @@
 script "ub_InitiateUltraBoss" (int Ultra) {
   switch (Ultra) {
     default:
-      DebugLog(strParam(s:"ub_InitiateUltraBoss called with an invalid id."));
+      UH_Log(UH_LOG_WARN, StrParam(s:"ub_InitiateUltraBoss called with an invalid id."));
       break;
     case 1:  // Survivor win-streak reward
       if (winstreak >= GetClampedCvar("uh_sv_WinStreakLimit", 1, 100))
@@ -54,7 +54,7 @@ script "ub_EventManagementACS" (int perform) {
       eventselected = true;
     }
     else if (rawcvar != -1) {
-      DebugLog(strParam(s:"Invalid forced bonus event CVAR: ", i:rawcvar));
+      UH_Log(UH_LOG_WARN, StrParam(s:"Invalid forced bonus event CVAR: ", i:rawcvar));
     }
 
     if (!eventselected && eventdataarr[EVENTDATA_FORCED] >= 0) {
@@ -68,7 +68,7 @@ script "ub_EventManagementACS" (int perform) {
         eventselected = true;
       }
       else {
-        DebugLog(strParam(s:"Invalid forced bonus event world value: ", i:rawworldforced));
+        UH_Log(UH_LOG_WARN, StrParam(s:"Invalid forced bonus event world value: ", i:rawworldforced));
       }
     }
 
@@ -275,8 +275,8 @@ function void ApplyQuickState(int tid) {
 
 function bool IsFFAEvent(int eventid) {
   return eventid == UHEVENT_FFA || eventid == UHEVENT_FOOTBALL ||
-         eventid == UHEVENT_TRUEPOWER || eventid == UHEVENT_RUNES ||
-         eventid == UHEVENT_BOSSEFFA || eventid == UHEVENT_SATANSEAL;
+  eventid == UHEVENT_TRUEPOWER || eventid == UHEVENT_RUNES ||
+  eventid == UHEVENT_BOSSEFFA || eventid == UHEVENT_SATANSEAL;
 }
 
 function int OneVsAllRawFromEvent(int eventid) {
@@ -485,12 +485,12 @@ script "ub_WhoWonTheRound" (void) {
   until (findtid == 64) {
     if (PlayerInGame(findtid) && CheckActorInventory(findtid + 1000, "IsDead") != 1) {
       AdjustPlayerForceNumArray(findtid + 1000);
-      DebugLog(strParam(s:"Player ", i:findtid, s:" (", n:findtid + 1, s:") won the round! "));
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"Player ", i:findtid, s:" (", n:findtid + 1, s:") won the round! "));
       terminate;
     }
     findtid++;
   }
-  DebugLog(strParam(s:"Match was a draw! No winner set."));
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"Match was a draw! No winner set."));
 }
 
 
@@ -530,7 +530,7 @@ script "ub_DemoneyeEvent" (int eventid, int eyeid) {
     DemoneyeEventMorphCheckFunc(eyemorphstr, eyebonusstr);
     Delay(70);
   }
-  DebugLog(strParam(s:"Demoneye event script finished!"));
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"Demoneye event script finished!"));
 
   // if (which == 2) {
   // 	while (timer() < 1050) {
@@ -584,7 +584,7 @@ script "ub_OneVsAllEvent" (int which) {
   // If(UnholyBoss == 300){GiveActorInventory(BossTID1,"Is_UH_BossNum",1);}
 
   Delay(1);
-  DebugLog(strParam(s:"The 1 vs. all target: ", d:bossdataarr[0][BOSSDATA_TID]));
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"The 1 vs. all target: ", d:bossdataarr[0][BOSSDATA_TID]));
 
   Delay(1);
 
@@ -786,7 +786,7 @@ function bool RebuildActiveRoundState(int tid, int reason) {
       GiveRuneFFAState(tid);
       break;
     case UHEVENT_EYELENTO:
-      DebugLog(strParam(s:"RebuildActiveRoundState: Eyelento event is morph-managed; no inventory rebuild."));
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"RebuildActiveRoundState: Eyelento event is morph-managed; no inventory rebuild."));
       break;
     case UHEVENT_BOSSEFFA:
       // Restore the boss rolled at round start; never reroll.
@@ -794,14 +794,14 @@ function bool RebuildActiveRoundState(int tid, int reason) {
         BossFFAMorphPlayer(tid, eventbossid[pn]);
       }
       else {
-        DebugLog(strParam(s:"RebuildActiveRoundState: Boss FFA player ", i:pn, s:" has no round-start boss; skipped."));
+        UH_Log(UH_LOG_WARN, StrParam(s:"RebuildActiveRoundState: Boss FFA player ", i:pn, s:" has no round-start boss; skipped."));
       }
       break;
     case UHEVENT_SATANSEAL:
       GiveSatanSealState(tid);
       break;
     default:
-      DebugLog(strParam(s:"RebuildActiveRoundState: no rule for event ", i:eventid, s:" reason ", i:reason));
+      UH_Log(UH_LOG_WARN, StrParam(s:"RebuildActiveRoundState: no rule for event ", i:eventid, s:" reason ", i:reason));
       break;
   }
 

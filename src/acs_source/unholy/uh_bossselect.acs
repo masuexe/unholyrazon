@@ -4,7 +4,7 @@
 // Fragment of library unholy; selection/morph helpers live in uh_funclib.acs.
 
 script "ub_SelectBossAndEvent" (void) {
-//This makes specific bosses/events happen
+  // This makes specific bosses/events happen
   survivorstartitem = "SurvivorBoxItems_P";
   ClearMujicaState();
   twoplayersxrayenabled = false;
@@ -23,7 +23,7 @@ script "ub_SelectBossAndEvent" (void) {
     Minus_StrongmanCheckArray();
     multibosscheck = 1;
     bossslotalive[0] = true;
-    DebugLog(strParam(s:"Strongman boss selected: ", i:bossdataarr[0][BOSSDATA_NUM]));
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Strongman boss selected: ", i:bossdataarr[0][BOSSDATA_NUM]));
   }
   else {
     MultiBossFunction(1);
@@ -34,12 +34,12 @@ script "ub_SelectBossAndEvent" (void) {
     }
   }
 
-  ACS_NamedExecute("ub_MorphSelectedBosses", 0);  //Begin the morphing!
+  ACS_NamedExecute("ub_MorphSelectedBosses", 0);  // Begin the morphing!
 }
 
-//This is the main script for managing who becomes the boss, as well as morphing them.
+// This is the main script for managing who becomes the boss, as well as morphing them.
 script "ub_MorphSelectedBosses" (void) {
-  Delay(1);  //Wait a tic so the engine processes boss selection script
+  Delay(1);  // Wait a tic so the engine processes boss selection script
 
   SetUpPlayerSelection_Func(false);
 
@@ -51,12 +51,12 @@ script "ub_MorphSelectedBosses" (void) {
   // morph.  Ordinary Shadow Tricks keeps its legacy asynchronous manager.
   if (shadowfakeoutactive && !BossComboHasFlag(BOSSCOMBO_FLAG_SHADOW)) {
     ACS_NamedExecute("ub_ShadowBossManager", 0);
-  }  //End of Shadowman
+  }  // End of Shadowman
 
-	//Morphing area
+  // Morphing area
   for (int i = 0; i < multibosscheck; i++) {
     bossdataarr[i][BOSSDATA_MORPHED] = MorphActorToBoss(bossdataarr[i][BOSSDATA_TID], bossdataarr[i][BOSSDATA_NUM], "GigaAstroExplode");
-    DebugLog(strParam(s:"Morphed Boss ", i:i + 1, s:": ", i:bossdataarr[i][BOSSDATA_MORPHED]));
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Morphed Boss ", i:i + 1, s:": ", i:bossdataarr[i][BOSSDATA_MORPHED]));
   }
 
   // A versus Shadow round must finish its fakeout/reveal before the generic
@@ -67,13 +67,13 @@ script "ub_MorphSelectedBosses" (void) {
     shadowfakeoutactive = false;
   }
 
-	//Musical setting
+  // Musical setting
   ACS_NamedExecute("ub_PlayVariantMusic", 0, bossdataarr[random(0, multibosscheck - 1)][BOSSDATA_NUM]);
 
   eventdataarr[EVENTDATA_DELAY]++;  // Normal round counts toward the next bonus event.
 
   GiveMeTheFuncExceptBosses("BasicSurvivorItem", 0);
-  SetPlayerProperty(1, 0, 4);  //Allows players to move.
+  SetPlayerProperty(1, 0, 4);  // Allows players to move.
   ACS_NamedExecuteWait("ub_BossMorphRetryWait", 0, -1);
 
   ACS_NamedExecute("ub_WatchSurvivors", 0);
@@ -110,13 +110,13 @@ script "ub_BossMorphRetryWait" (int failure, int failure2, int failure3, int fai
   }
   if (morphretrycount >= 70) {
     ACS_NamedExecute("ub_MorphFailureFallback", 0, failure);
-		//Football Time
+    // Football Time
   }
 
   if (failure == -1)
-    DebugLog(strParam(s:"Boss Morph FINISHED! --- Retry count = ", i:morphretrycount));
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Boss Morph FINISHED! --- Retry count = ", i:morphretrycount));
   if (failure == 0)
-    DebugLog(strParam(s:"Shadow Morph FINISHED! --- Retry count = ", i:morphretrycount));
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Shadow Morph FINISHED! --- Retry count = ", i:morphretrycount));
 }
 
 script "ub_MorphFailureFallback" (int jump) {
@@ -124,7 +124,7 @@ script "ub_MorphFailureFallback" (int jump) {
   // forfeits, both sides draw).  Running the football takeover here would
   // announce a second, conflicting result before the versus watcher starts.
   if (versusfightevent) {
-    DebugLog("ub_MorphFailureFallback: versus round defers to ub_ManageBossVsBossEvent");
+    UH_Log(UH_LOG_DEBUG, "ub_MorphFailureFallback: versus round defers to ub_ManageBossVsBossEvent");
     terminate;
   }
 
@@ -144,14 +144,14 @@ script "ub_MorphFailureFallback" (int jump) {
       break;
   }
 
-  if (hailmary) {  //Log(s:"Special Left!");// Terminate;}
+  if (hailmary) {  // Log(s:"Special Left!");// Terminate;}
     ResetBossComboState();  // D6: the football takeover ends any combo.
 
     ACS_NamedTerminate("ub_WatchSurvivors", 0);
     ACS_NamedTerminate("ub_WatchBossesAndEyes", 0);
     SetHudSize(640, 480, 0);
     SetFont("BIGFONT");
-    HudMessageBold(s:"OH NO, a boss morph failed! ITS TIME FOR \csFOOTBALL\c-!"; HUDMSG_FADEOUT, 51, CR_YELLOW, 320.4, 416.2, 5.0, 0.2);  //432.2
+    HudMessageBold(s:"OH NO, a boss morph failed! ITS TIME FOR \csFOOTBALL\c-!"; HUDMSG_FADEOUT, 51, CR_YELLOW, 320.4, 416.2, 5.0, 0.2);  // 432.2
     PlayMusic(bonuseventlist[13][BONUS_MUSICLUMP]);
     MusicCredits(bonuseventlist[13][BONUS_MUSICCREDITS], 0);
 
@@ -183,7 +183,7 @@ script "ub_ShadowBossManager" (void) {
   SetActivator(0, AAPTR_NULL);
 
   int delayshad = 0;
-  until (delayshad >= 10) {  //Bot checks are needed because they can cause crashes through this script.
+  until (delayshad >= 10) {  // Bot checks are needed because they can cause crashes through this script.
     bool ninjaexists = false;
     for (int i = 0; i < multibosscheck; i++) {
       if (shadowtricksarr[i]) {
@@ -199,18 +199,18 @@ script "ub_ShadowBossManager" (void) {
     delayshad++;
   }
 
-	//If(shadowFakeoutActive){
-	//	GiveActorInventory(669,"PURPLEPOTIONITEM",2);
-	//	ACS_Terminate(836,0);
-	//	////////////shadowFakeoutActive=false;
-	//}
-	//else {
-	//Delay(35*8);}
-	//if(ThingCount(0,666)==0) {Terminate;}//Prevent Shadowman from spawning in multibosses if the leader is dead
-	////////////SetActivator(666);
+  // If(shadowFakeoutActive){
+  // GiveActorInventory(669,"PURPLEPOTIONITEM",2);
+  // ACS_Terminate(836,0);
+  // ////////////shadowFakeoutActive=false;
+  // }
+  // else {
+  // Delay(35*8);}
+  // if(ThingCount(0,666)==0) {Terminate;}//Prevent Shadowman from spawning in multibosses if the leader is dead
+  /// /////////SetActivator(666);
 
-	//
-  DebugLog(strParam(s:"Begin shadow fakeout"));
+  //
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"Begin shadow fakeout"));
 
   MusicSaveFunc();
   PlayMusic("");
@@ -218,9 +218,9 @@ script "ub_ShadowBossManager" (void) {
 
   AmbientSound("misc/devildeath", 127);
 
-  ClearHudMessage(166);  //Timer
-  ClearHudMessage(167);  //Timer
-  ClearHudMessage(59);  //Boss Weapon Info
+  ClearHudMessage(166);  // Timer
+  ClearHudMessage(167);  // Timer
+  ClearHudMessage(59);  // Boss Weapon Info
 
   shadowrevealactive = true;
 
@@ -231,13 +231,13 @@ script "ub_ShadowBossManager" (void) {
   for (i = 0; i < multibosscheck; i++) {
 
     if (shadowtricksarr[i]) {
-      ClearHudMessage(91 + i);  //Boss Healths
+      ClearHudMessage(91 + i);  // Boss Healths
       ACS_NamedExecuteAlways("ub_UnMorphThisTID", 0, bossdataarr[i][BOSSDATA_TID]);
 
-      str shadowcvar = strparam(s:"uh_sv_ForcedShadowBoss", i:i + 1);
+      str shadowcvar = StrParam(s:"uh_sv_ForcedShadowBoss", i:i + 1);
       int rawshadow = GetCVAR(shadowcvar);
       tempboss = ForceBossChange(shadowcvar, false);
-			//ShowMeTheRCON("Shadow Boss",TempBoss);
+      // ShowMeTheRCON("Shadow Boss",TempBoss);
       if (shadowversus) {
         // The special branch only accepts the reviewed versus allowlist.  An
         // unset override keeps the already-reviewed base boss; an invalid or
@@ -251,15 +251,15 @@ script "ub_ShadowBossManager" (void) {
       else {
         if (tempboss == UHBOSS_FAIL) {
           if (RandomPercent(5))
-            tempboss = bossdataarr[i][BOSSDATA_NUM];  //No Change
-				  // else if(RandomPercent(40))
-				  // 	TempBoss = 301;//AbePenny
-				  // else if(RandomPercent(55))
-				  // 	TempBoss = random(303,305);
+            tempboss = bossdataarr[i][BOSSDATA_NUM];  // No Change
+          // else if(RandomPercent(40))
+          // 	TempBoss = 301;//AbePenny
+          // else if(RandomPercent(55))
+          // 	TempBoss = random(303,305);
           else
             tempboss = TrueRandomBoss();
         }
-        bossdataarr[i][BOSSDATA_MORPHED] = tempboss;  //Borrow this Array
+        bossdataarr[i][BOSSDATA_MORPHED] = tempboss;  // Borrow this Array
       }
     }
   }
@@ -270,7 +270,7 @@ script "ub_ShadowBossManager" (void) {
       // guard handles a cvar mutation during setup: restore the reviewed base
       // pair, clear the special combo identity, and continue as ordinary
       // versus rather than leaving either player unmorphed.
-      DebugLog(strParam(s:"Boss combo 217 rejected after shadow fallback: duplicate target ", i:shadowtarget0));
+      UH_Log(UH_LOG_WARN, StrParam(s:"Boss combo 217 rejected after shadow fallback: duplicate target ", i:shadowtarget0));
       Delay(1);
       for (i = 0; i < multibosscheck; i++) {
         shadowtricksarr[i] = false;
@@ -289,7 +289,7 @@ script "ub_ShadowBossManager" (void) {
     bossdataarr[1][BOSSDATA_MORPHED] = shadowtarget1;
   }
 
-  Delay(1);  //Delay needed otherwise unmorph doesn't happen correctly
+  Delay(1);  // Delay needed otherwise unmorph doesn't happen correctly
 
   for (i = 0; i < multibosscheck; i++) {
     if (shadowtricksarr[i]) {
@@ -300,31 +300,31 @@ script "ub_ShadowBossManager" (void) {
 
   Delay(35 * 2);
 
-	//NEW#BOSS
-	//if(ShadowTricksArr[0] && UnholyBoss1 == 300){ UnholyBoss1 = random(100,BOSSRNGMAX_100_199); }
+  // NEW#BOSS
+  // if(ShadowTricksArr[0] && UnholyBoss1 == 300){ UnholyBoss1 = random(100,BOSSRNGMAX_100_199); }
 
-	//	If(shadowFakeoutActive){
-	//		MusicCredits("Super Mario Sunshine - Shadow Mario (Sped-up)",0);
-	//		PlayMusic("SHADSHAD");
-	//		shadowFakeoutActive = false;
-	//	}
-	//	break;
+  // If(shadowFakeoutActive){
+  //		MusicCredits("Super Mario Sunshine - Shadow Mario (Sped-up)",0);
+  //		PlayMusic("SHADSHAD");
+  //		shadowFakeoutActive = false;
+  // }
+  // break;
 
-	//If(shadowFakeoutActive){
-	//	Delay(35*2);
-	//	AmbientSound("items/GoldTank",127);
-	//	GiveActorInventory(669,"PTankItem",1);
-	//	GiveActorInventory(669,"PowerSTank",1);
-	//	GiveActorInventory(669,"SpeedTrailofEnvy",1);
-	//	SetActorProperty(669, APROP_JumpZ, 15.0);
-	//	SetActorProperty(669, APROP_SPEED, 1.25);
-	//	Delay(35*3);
-	//	//shadowFakeoutActive=false;
-	//}
-	//else {Delay(35*5);}
+  // If(shadowFakeoutActive){
+  // Delay(35*2);
+  // AmbientSound("items/GoldTank",127);
+  // GiveActorInventory(669,"PTankItem",1);
+  // GiveActorInventory(669,"PowerSTank",1);
+  // GiveActorInventory(669,"SpeedTrailofEnvy",1);
+  // SetActorProperty(669, APROP_JumpZ, 15.0);
+  // SetActorProperty(669, APROP_SPEED, 1.25);
+  // Delay(35*3);
+  // //shadowFakeoutActive=false;
+  // }
+  // else {Delay(35*5);}
 
   Delay(35 * 3);
-  DebugLog(strParam(s:"Shadow Delay is over"));
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"Shadow Delay is over"));
 
   int shadowtunesnum = -1;
 
@@ -332,7 +332,7 @@ script "ub_ShadowBossManager" (void) {
     if (shadowtricksarr[i]) {
       if (PlayerInGame(bossdataarr[i][BOSSDATA_TID] - 1000)) {
         GiveActorInventory(bossdataarr[i][BOSSDATA_TID], "ShadowPreRoundEnd", 1);
-        bossdataarr[i][BOSSDATA_NUM] = bossdataarr[i][BOSSDATA_MORPHED];  //Use borrowed Array
+        bossdataarr[i][BOSSDATA_NUM] = bossdataarr[i][BOSSDATA_MORPHED];  // Use borrowed Array
         bossdataarr[i][BOSSDATA_MORPHED] = MorphActorToBoss(bossdataarr[i][BOSSDATA_TID], bossdataarr[i][BOSSDATA_NUM], "GigaAstroExplode");
         if (shadowtunesnum == -1)
           shadowtunesnum = bossdataarr[i][BOSSDATA_NUM];
@@ -355,11 +355,11 @@ script "ub_ShadowBossManager" (void) {
 
   shadowrevealactive = false;
   refreshhudmessage = true;
-	//ACS_Execute(WATCHER_BOSS_HP,0,0);
+  // ACS_Execute(WATCHER_BOSS_HP,0,0);
 }
 
 
-//The LMS script
+// The LMS script
 script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
   bool rareitemcheck = false;
   int therunenumber = -1;
@@ -369,9 +369,9 @@ script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
   bool badlms = false;
 
   int lmscount = 0;
-  until (lmscount == 64) {  //Find the lone survivor!
+  until (lmscount == 64) {  // Find the lone survivor!
     if (playerlifestatusarr[lmscount] == PLS_SURVIVOR) {
-      thelmsdude = lmscount + 1000;  //Record the player number!
+      thelmsdude = lmscount + 1000;  // Record the player number!
       break;
     }
     lmscount++;
@@ -456,9 +456,9 @@ script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
   else if (rareitemcheck) {itemmessage = GetLMSEventraremessage(lmsnum);}
   else {itemmessage = GetLMSEventMessage(lmsnum);}
 
-  HudMessageBold(n:thelmsdude - 999, s:therune_str, s:itemmessage; HUDMSG_FADEOUT | HUDMSG_LOG, 70, CR_YELLOW, 320.4, 336.2, 1.8, 0.2);  //396.2
+  HudMessageBold(n:thelmsdude - 999, s:therune_str, s:itemmessage; HUDMSG_FADEOUT | HUDMSG_LOG, 70, CR_YELLOW, 320.4, 336.2, 1.8, 0.2);  // 396.2
 
-  ACS_NamedExecuteAlways("ub_LMS_EventIconStart", 0, lmsnum, rareitemcheck, badlms);  //4836
+  ACS_NamedExecuteAlways("ub_LMS_EventIconStart", 0, lmsnum, rareitemcheck, badlms);  // 4836
 
   musrow = PickEventMusicRow(UHMUS_KIND_LMS, lmsnum);
   if (musrow >= 0) {
@@ -473,22 +473,22 @@ script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
 
   while (CheckActorInventory(thelmsdude, "IsBlessedWithLMSPower") == 0) {
 
-		//Failsafe for a player not getting the LMS
+    // Failsafe for a player not getting the LMS
     GiveActorInventory(thelmsdude, "IsBlessedWithLMSPower", 1);
 
     if (!badlms) {
-      if (therunenumber == RUNE_DRAIN || therunenumberx == RUNE_DRAIN && CheckActorInventory(thelmsdude, "PowerPeriwinkleDrain") >= 1) {  //Drain
-        TakeActorInventory(thelmsdude, "PowerPeriwinkleDrain", 99);  //Prevent Ptanks from conflicting with drain rune!
+      if (therunenumber == RUNE_DRAIN || therunenumberx == RUNE_DRAIN && CheckActorInventory(thelmsdude, "PowerPeriwinkleDrain") >= 1) {  // Drain
+        TakeActorInventory(thelmsdude, "PowerPeriwinkleDrain", 99);  // Prevent Ptanks from conflicting with drain rune!
       }
-      if (therunenumber == RUNE_RESISTANCE || therunenumberx == RUNE_RESISTANCE) {  //Resistance
-        GiveActorInventory(thelmsdude, "AutoHamburgerFoodItem", 1);  //Force 2000 healing on player
+      if (therunenumber == RUNE_RESISTANCE || therunenumberx == RUNE_RESISTANCE) {  // Resistance
+        GiveActorInventory(thelmsdude, "AutoHamburgerFoodItem", 1);  // Force 2000 healing on player
       }
 
       // GiveActorInventory(TheLMSDude,StrParam(s:RuneOfTheDay[TheRuneNumber],s:"Rune_ST"),1);
       ACS_NamedExecuteWithResult("uh_runeplayer", thelmsdude - 999, 1, therunenumber);
       if (dualrune) {ACS_NamedExecuteWithResult("uh_runeplayer", thelmsdude - 999, 1, therunenumberx);}
 
-      if (therunenumber == RUNE_PROSPERITY || therunenumberx == RUNE_PROSPERITY) {  //Prosperity
+      if (therunenumber == RUNE_PROSPERITY || therunenumberx == RUNE_PROSPERITY) {  // Prosperity
         GiveActorInventory(thelmsdude, "AutoSundaeFoodItem", 1);
         if (RandomPercent(15)) {GiveActorInventory(thelmsdude, "MysticBoxItem", 1);}
         else {GiveActorInventory(thelmsdude, "PandoraBoxItem", 2);}
@@ -518,5 +518,5 @@ script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
         break;
       Delay(2);
     }
-  }  //While End
+  }  // While End
 }

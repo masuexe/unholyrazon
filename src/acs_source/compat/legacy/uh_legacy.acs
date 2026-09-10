@@ -1,14 +1,15 @@
 #library "uh_legacy"
 #include "zcommon.acs"
 #include "8bdmdefs.acs"
+#import "uh_log.acs"
 
-//Old script numbers/names
-//For debuging changes
+// Old script numbers/names
+// For debuging changes
 
-//Borrow of core LEGACY.acs functions so warnings are similar
+// Borrow of core LEGACY.acs functions so warnings are similar
 
 function void LegacyWarnNumScript(int scr, str arg1str, int arg1, str arg2str, int arg2, str arg3str, int arg3, str notes) {
-	LegacyWarnNamedScript(strParam(i:scr), arg1str, arg1, arg2str, arg2, arg3str, arg3, notes);
+	LegacyWarnNamedScript(StrParam(i:scr), arg1str, arg1, arg2str, arg2, arg3str, arg3, notes);
 }
 
 function void LegacyWarnNumScriptNoArgs(int scr, str notes) {
@@ -29,14 +30,14 @@ function void LegacyWarnNamedScript(str scr, str arg1str, int arg1, str arg2str,
 	if (StrLen(notes) != 0) {
 		ret = StrParam(s:ret, s:"(", s:notes, s:")");
 	}
-	Log(s:ret);
-	if (IsNetworkGame() && ConsolePlayerNumber() ==-1) {
+	UH_Log(UH_LOG_WARN, ret);
+	if (IsNetworkGame() && ConsolePlayerNumber() == -1) {
 		NamedSendNetworkString("core_legacywarning", ret);
 	}
 }
 
 script "uh_legacywarning" (int ret) CLIENTSIDE {
-	Log(s:ret);
+	UH_Log(UH_LOG_WARN, ret);
 }
 
 function void LegacyWarnNamedScriptNoArgs(str scr, str notes) {
@@ -47,7 +48,7 @@ function void LegacyWarnNamedScriptNoArgs(str scr, str notes) {
 #define U_CHECK_TARGET_OOC 6649
 #define U_CHECK_TRACER_OOC 6650
 #define U_CHECK_MASTER_OOC 6651
-script U_CHECK_TARGET_OOC(void)  //This is for projectiles to check if their owner spectated, disconnected, or is dead.
+script U_CHECK_TARGET_OOC(void)  // This is for projectiles to check if their owner spectated, disconnected, or is dead.
 {
 	LegacyWarnNumScriptNoArgs(6649, "Superceded by \"uh_PointerExists\"");
 	SetResultValue(ACS_NamedExecuteWithResult("uh_PointerExists", 2));
@@ -78,10 +79,10 @@ script "UH_FetchMyHealth" (int which, int hpboost) {
 	int swap_var;
 	switch (which) {
 		case 0: swap_var = 1; break;  // UHEALTH_GET_CURRENT
-		case 1: swap_var =-1; break;  // UHEALTH_GET_MAX
+		case 1: swap_var = -1; break;  // UHEALTH_GET_MAX
 		case 2: swap_var = 2; break;  // UHEALTH_IS_FULL
 		default:
-			Log(s:"Invalid Number for legacy UH_FetchMyHealth");
+			UH_Log(UH_LOG_WARN, "Invalid Number for legacy UH_FetchMyHealth");
 			terminate;
 	}
 	SetResultValue(ACS_NamedExecuteWithResult("uh_Health", swap_var, hpboost));
@@ -98,7 +99,7 @@ script "uh_CheckForSpread" (int pointer) {
 }
 
 #define U_BOSS_GETINVENTORY 7445
-script U_BOSS_GETINVENTORY (int which) {
+script U_BOSS_GETINVENTORY(int which) {
 	LegacyWarnNumScript(7445, "Which", which, "", 0, "", 0, "Removed, use \"rz_CountInv_<InventoryName>\" instead");
 	switch (which) {
 		case 1:
@@ -242,24 +243,24 @@ script "uh_FetchPointerPitch" (int pointer) {
 // Legacy compatibility for the former dynamic Zangief inventory query.
 // New code should call the corresponding rz_CountInv_<InventoryName> script.
 script "uh_ZangiefCountInv" (int itemid, int pointer) {
-  LegacyWarnNamedScript("uh_ZangiefCountInv", "itemid", itemid, "pointer", pointer, "", 0, "Removed, use \"rz_CountInv_<InventoryName>\" instead");
-  switch (itemid) {
-    case 0:
-      if (pointer > 0) {
-        SetActivator(0, pointer);
-      }
-      SetResultValue(CheckInventory("WalrusSlideAngle"));
-      break;
-    case 1:
-      SetResultValue(ACS_NamedExecuteWithResult("rz_CountInv_ZangiefAngle", pointer));
-      break;
-    case 2:
-      SetResultValue(ACS_NamedExecuteWithResult("rz_CountInv_SuplexID", pointer));
-      break;
-    default:
-      SetResultValue(0);
-      break;
-  }
+	LegacyWarnNamedScript("uh_ZangiefCountInv", "itemid", itemid, "pointer", pointer, "", 0, "Removed, use \"rz_CountInv_<InventoryName>\" instead");
+	switch (itemid) {
+		case 0:
+			if (pointer > 0) {
+				SetActivator(0, pointer);
+			}
+			SetResultValue(CheckInventory("WalrusSlideAngle"));
+			break;
+		case 1:
+			SetResultValue(ACS_NamedExecuteWithResult("rz_CountInv_ZangiefAngle", pointer));
+			break;
+		case 2:
+			SetResultValue(ACS_NamedExecuteWithResult("rz_CountInv_SuplexID", pointer));
+			break;
+		default:
+			SetResultValue(0);
+			break;
+	}
 }
 
 script "rz_GroundCheck" (void) {

@@ -1,6 +1,7 @@
 #library "rz_debug"
 #include "zcommon.acs"
 #import "uh_acsutils.acs"
+#import "uh_log.acs"
 #import "uhdt.acs"
 #include "uh_def.acs"
 #include "uh_funclib.acs"
@@ -14,7 +15,7 @@ script "rz_debug_FloovyOutOfBody" (void) {
     playernum = 0;
   }
   if (!SetActivatorToPlayer(playernum)) {
-    Log(s:"rz_debug_FloovyOutOfBody: no live player");
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"rz_debug_FloovyOutOfBody: no live player"));
     terminate;
   }
   // The item's Use state deliberately ends in `fail` so the reusable debug
@@ -22,7 +23,7 @@ script "rz_debug_FloovyOutOfBody" (void) {
   // failure signal here.
   if (CheckInventory("FloovyOutOfBodyDebugItem") <= 0 ||
       CheckInventory("FloovyOutOfBodyProtect") > 0) {
-    Log(s:"rz_debug_FloovyOutOfBody: item unavailable or already active");
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"rz_debug_FloovyOutOfBody: item unavailable or already active"));
     terminate;
   }
   UseInventory("FloovyOutOfBodyDebugItem");
@@ -32,10 +33,10 @@ script "rz_debug_MorphMe" (int type, int num) {
   ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false);
   bool res = MorphMeToBoss(type, num);
   if (res) {
-    Log(s:"Morph successful!");
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Morph successful!"));
   }
   else {
-    Log(s:"Morph failed!");
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Morph failed!"));
   }
 }
 
@@ -51,13 +52,13 @@ script "rz_debug_NormalSuicide" (void) {
       playernum = 0;
     }
     if (!SetActivatorToPlayer(playernum)) {
-      Log(s:"rz_debug_NormalSuicide: no live player");
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"rz_debug_NormalSuicide: no live player"));
       terminate;
     }
   }
 
   if (PlayerIsSpectator(playernum) || GetActorProperty(0, APROP_Health) <= 0) {
-    Log(s:"rz_debug_NormalSuicide: player is dead or spectating");
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"rz_debug_NormalSuicide: player is dead or spectating"));
     terminate;
   }
 
@@ -91,7 +92,7 @@ function bool MorphMeToBoss(int type, int bossnum) {
     ACS_NamedExecuteWithResult("uh_MorphPreReset");
     bool okoverride = MorphActor(0, morphname, "", 0x7ffffffd, MRF_FULLHEALTH | MRF_WHENINVULNERABLE | MRF_LOSEACTUALWEAPON | MRF_NEWTIDBEHAVIOUR, "GigaAstroExplode", "");
     if (!okoverride) {
-      Log(s:"rz_debug_MorphMe: MorphActor failed for ", s:morphname);
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"rz_debug_MorphMe: MorphActor failed for ", s:morphname));
       return false;
     }
     SetActivator(tid);
@@ -104,12 +105,12 @@ function bool MorphMeToBoss(int type, int bossnum) {
 
   str eyeactor = GetEyeActor(bossnum);
   if (StrCmp(eyeactor, "") == 0) {
-    Log(s:"rz_debug_MorphMe: GetEyeActor(", i:bossnum, s:") empty (IsEyeDefined=", i:IsEyeDefined(bossnum), s:")");
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"rz_debug_MorphMe: GetEyeActor(", i:bossnum, s:") empty (IsEyeDefined=", i:IsEyeDefined(bossnum), s:")"));
     return false;
   }
   bool ok = MorphActor(0, eyeactor, "", 0x7ffffffd, MRF_FULLHEALTH | MRF_WHENINVULNERABLE | MRF_LOSEACTUALWEAPON | MRF_NEWTIDBEHAVIOUR, "GigaAstroExplode", "");
   if (!ok) {
-    Log(s:"rz_debug_MorphMe: MorphActor failed for ", s:eyeactor);
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"rz_debug_MorphMe: MorphActor failed for ", s:eyeactor));
     return false;
   }
   SetActivator(tid);
@@ -122,21 +123,21 @@ function bool MorphMeToBoss(int type, int bossnum) {
 //   pukename rz_debug_GBAirTest
 script "rz_debug_GBAirTest" (void) {
   if (StrCmp(GetWeapon(), "GENERICBOSS_W") != 0) {
-    Log(s:"[GBTest] not holding GENERICBOSS_W");
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"[GBTest] not holding GENERICBOSS_W"));
     terminate;
   }
-  Log(s:"[GBTest] start ammo=", i:CheckInventory("UnholyBossAmmo100"));
-  Log(s:"[GBTest] airjumpz=", i:ACS_NamedExecuteWithResult("core_GetCustomActorProperty", 0, 64), s:" (1966080 = 30.0)");
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"[GBTest] start ammo=", i:CheckInventory("UnholyBossAmmo100")));
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"[GBTest] airjumpz=", i:ACS_NamedExecuteWithResult("core_GetCustomActorProperty", 0, 64), s:" (1966080 = 30.0)"));
   TakeInventory("UnholyBossAmmo100", 99);
   Delay(4);
-  Log(s:"[GBTest] low: ammo=", i:CheckInventory("UnholyBossAmmo100"),
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"[GBTest] low: ammo=", i:CheckInventory("UnholyBossAmmo100"),
       s:" DisabledAirJumps=", i:CheckInventory("DisabledAirJumps"),
-      s:" OurFlag=", i:CheckInventory("GenericBossAirDisable_F"));
+      s:" OurFlag=", i:CheckInventory("GenericBossAirDisable_F")));
   GiveInventory("UnholyBossAmmo100", 100);
   Delay(4);
-  Log(s:"[GBTest] refilled: ammo=", i:CheckInventory("UnholyBossAmmo100"),
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"[GBTest] refilled: ammo=", i:CheckInventory("UnholyBossAmmo100"),
       s:" DisabledAirJumps=", i:CheckInventory("DisabledAirJumps"),
-      s:" OurFlag=", i:CheckInventory("GenericBossAirDisable_F"));
+      s:" OurFlag=", i:CheckInventory("GenericBossAirDisable_F")));
 }
 
 // Prepare a carrier spawned by FloovyOutOfBodyDebugItem.  The carrier's
@@ -208,7 +209,7 @@ script "rz_debug_ShowTodayTeamFF" (void) {
 script "rz_debug_SpawnEx" (int xofs, int yofs, int zofs) {
   str cls = GetCVarString("rz_dbg_spawnactor");
   if (StrCmp(cls, "") == 0) {
-    Log(s:"rz_debug_SpawnEx: set rz_dbg_spawnactor first");
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"rz_debug_SpawnEx: set rz_dbg_spawnactor first"));
     terminate;
   }
 
@@ -216,7 +217,7 @@ script "rz_debug_SpawnEx" (int xofs, int yofs, int zofs) {
   if (ptid == 0)
     ptid = PlayerNumber() + 1000;
   if (!SetActivator(ptid)) {
-    Log(s:"rz_debug_SpawnEx: no activator");
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"rz_debug_SpawnEx: no activator"));
     terminate;
   }
 
@@ -231,12 +232,12 @@ script "rz_debug_SpawnEx" (int xofs, int yofs, int zofs) {
 
   int tid = UniqueTID();
   if (!SpawnForced(cls, px, py, pz, tid, facing >> 8)) {
-    Log(s:"rz_debug_SpawnEx: SpawnForced failed for ", s:cls);
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"rz_debug_SpawnEx: SpawnForced failed for ", s:cls));
     terminate;
   }
   SetActorAngle(tid, facing);
   SetActivator(tid);
   SetPointer(AAPTR_TARGET, ptid);
   SetActivator(ptid);
-  Log(s:"rz_debug_SpawnEx: spawned ", s:cls, s:" tid=", i:tid);
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"rz_debug_SpawnEx: spawned ", s:cls, s:" tid=", i:tid));
 }
