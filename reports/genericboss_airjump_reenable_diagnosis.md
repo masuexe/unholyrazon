@@ -135,3 +135,43 @@ MCP 验收（`pukename rz_debug_GBAirTest`，脚本已留在 `debug/rz_debug.acs
 4. 回满 100：两者成对移除（0/0）。
 
 未覆盖：真实按键的空中跳跃高度与落地流程（无输入注入，属人工门）。死亡/unmorph 清理路径本次未改动。
+
+## 后续验收（2026-09-10，本次）
+
+### 报告引用解耦与代码留档
+
+- `debug/rz_debug.acs` 的注释不再引用本报告路径，改为直接说明 probe 对象
+  （`GenericBossFlashStarter_P -> GENERICBOSS_W.Flash`）。
+- `GENERICBOSS_W.dec` 的 `GenericBossFlashStarter_P` 注释完整保留时序原因：
+  `ActivateMorphWeapon()` 执行首个 `Ready` 零 tic 链后会无条件清空 `ps_flash`，
+  所以 Flash 必须由 morph setup 的 starter 在清空之后启动；
+  `uh_MorphPostReset` 会重置 `CAPROP_AirJumpZ`，starter 同时重设 30.0。
+  `boss_morph_setups.acs` 有指向该注释的交叉引用。
+
+### 真实按键空中跳跃（本次完成）
+
+MCP bridge 无 gameplay 键位注入，但 Zandronum 控制台 `+jump`/`-jump` 可设置
+`BT_JUMP`，因此完成了真实按键验收（mm8bdm-v6b-smoke，GENERICBOSS）：
+
+1. 地面跳：`velz≈11.2`（Pawn 默认 `JumpZ`）。
+2. 空中再按：`velz≈29.2`（`CAPROP_AirJumpZ = 30.0`），`AirJumpsUsed=1`，
+   `UnholyBossAmmo100 100 → 0`，`DisabledAirJumps=1` + `GenericBossAirDisable_F=1`。
+3. 落地后 `ReadyX` 回蓝，`ammo` 到 100 时两者成对移除。
+
+### 死亡 / unmorph 清理（本次完成，并修复一处缺口）
+
+- **死亡**：`DisabledAirJumps=1` + `GenericBossAirDisable_F=1` 在死亡后由
+  `Deselect_ClearAir` 成对清除；外部来源的 `DisabledAirJumps`（无 flag）不受影响。
+- **unmorph 缺口**：`UnMorphActor` 不会触达武器 `Deselect`，导致两库存被带到
+  还原后的 Pawn（实测 `NegaMan` 仍带 `DisabledAirJumps=1`），会额外禁用幸存者空跳。
+- **修复**：`systems/tools/morph_reset.acs` 新增 `UH_ClearGenericBossAirDisable()`，
+  仅在 `GenericBossAirDisable_F` 存在时移除 1 层 `DisabledAirJumps` 与该 flag，
+  并在 `uh_MorphPreReset` 与 `uh_MorphDemorphReset` 中调用。
+- 修复后复测：unmorph 后两库存均清除；外部无 flag 的 `DisabledAirJumps` 仍保留 1。
+  （已 morph 时引擎拒绝再次 morph：`Morph failed!`，所以实际路径总是先 unmorph；
+  `uh_MorphPreReset` 的清理作为安全网。）
+
+### 结论
+
+三项前置条件（解耦引用、代码留档、真机验收 + 清理修复）均已完成，本报告现在
+可以删除；关键时序原因已固化在 `GENERICBOSS_W.dec` 代码注释中。

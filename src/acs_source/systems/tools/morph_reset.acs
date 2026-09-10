@@ -32,11 +32,23 @@ function void DefineDefaultProperties(void) {
   }
 }
 
+// GenericBoss owns at most one DisabledAirJumps stack while morphed, marked by
+// GenericBossAirDisable_F.  Its weapon's Deselect_ClearAir does not run on
+// UnMorphActor or on a direct re-morph, so the morph pipeline clears only that
+// owned stack; an external DisabledAirJumps without the flag is left untouched.
+function void UH_ClearGenericBossAirDisable(void) {
+  if (CheckInventory("GenericBossAirDisable_F") > 0) {
+    TakeInventory("DisabledAirJumps", 1);
+    TakeInventory("GenericBossAirDisable_F", 1);
+  }
+}
+
 // Pre-MorphActor: flag sweeps + strip jump-mod inventory (Bearer CTF morph).
 script "uh_MorphPreReset" (void) {
   if (PlayerNumber() == -1)
     terminate;
   ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
+  UH_ClearGenericBossAirDisable();
   GiveInventory("UH_MorphFlagReset_P", 1);
   GiveInventory("Core_MorphFlagReset_P", 1);
   GiveInventory("Core_MorphFlagReset2_P", 1);
@@ -65,6 +77,7 @@ script "uh_MorphDemorphReset" (void) {
   if (PlayerNumber() == -1)
     terminate;
   ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
+  UH_ClearGenericBossAirDisable();
   GiveInventory("UH_UnMorphSuperFlagReset_P", 1);
   TakeInventory("BAWS", 1);
   TakeInventory("MorphedFlag", 1);

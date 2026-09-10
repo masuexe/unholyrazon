@@ -4,10 +4,14 @@ actor GENERICBOSS_W_SecondBar : SecondBar {args 204, 132}
 // Marks DisabledAirJumps granted by GENERICBOSS_W Flash for low ammo (not external).
 actor GenericBossAirDisable_F : Once {}
 
-// Runs from uh_BossMorphSetup_GENERICBOSS, after MorphActor() and
-// uh_MorphPostReset: re-applies GENERICBOSS's 30.0 air jump height (PostReset
-// resets it to the pawn default) and starts the weapon's Flash monitor, which
-// ActivateMorphWeapon() would otherwise clear right after Ready starts it.
+// Runs from uh_BossMorphSetup_GENERICBOSS after MorphActor() returns.
+// Why this starter exists instead of starting the Flash from Ready:
+// ActivateMorphWeapon() runs the weapon's first Ready zero-tic chain and then
+// unconditionally clears ps_flash, so a Flash monitor started from Ready is
+// wiped immediately.  This Pickup runs after that clear, so its A_GunFlash
+// (empty state -> ReadyWeapon->Flash fallback) keeps the monitor alive.
+// It also re-applies the 30.0 air-jump height because uh_MorphPostReset has
+// already reset CAPROP_AirJumpZ to the pawn default.
 actor GenericBossFlashStarter_P : CustomInventory
 {
 States
