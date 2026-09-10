@@ -117,6 +117,28 @@ function bool MorphMeToBoss(int type, int bossnum) {
   return true;
 }
 
+// Server-side probe for the GENERICBOSS_W Flash air-jump gate (see
+// reports/genericboss_airjump_reenable_diagnosis.md). Run while morphed:
+//   pukename rz_debug_GBAirTest
+script "rz_debug_GBAirTest" (void) {
+  if (StrCmp(GetWeapon(), "GENERICBOSS_W") != 0) {
+    Log(s:"[GBTest] not holding GENERICBOSS_W");
+    terminate;
+  }
+  Log(s:"[GBTest] start ammo=", i:CheckInventory("UnholyBossAmmo100"));
+  Log(s:"[GBTest] airjumpz=", i:ACS_NamedExecuteWithResult("core_GetCustomActorProperty", 0, 64), s:" (1966080 = 30.0)");
+  TakeInventory("UnholyBossAmmo100", 99);
+  Delay(4);
+  Log(s:"[GBTest] low: ammo=", i:CheckInventory("UnholyBossAmmo100"),
+      s:" DisabledAirJumps=", i:CheckInventory("DisabledAirJumps"),
+      s:" OurFlag=", i:CheckInventory("GenericBossAirDisable_F"));
+  GiveInventory("UnholyBossAmmo100", 100);
+  Delay(4);
+  Log(s:"[GBTest] refilled: ammo=", i:CheckInventory("UnholyBossAmmo100"),
+      s:" DisabledAirJumps=", i:CheckInventory("DisabledAirJumps"),
+      s:" OurFlag=", i:CheckInventory("GenericBossAirDisable_F"));
+}
+
 // Prepare a carrier spawned by FloovyOutOfBodyDebugItem.  The carrier's
 // TARGET pointer is the item owner, so this remains valid for a morphed
 // player whose current actor has TID 0.  The carrier then transfers both
