@@ -1,0 +1,164 @@
+// Boss selection and morph helpers for library unholy.
+// This fragment is textually included by uh_funclib.acs.
+
+// This checks for specific CVAR numbers for boss selection and returns the BossNum if it matches the check
+function int ForceBossChange(str force, bool truerandom) {
+  int bossnum = GetCVAR(force);
+  // if(!GetCVAR("UH_NoResetCVars"))
+  // UHBOSS_FAIL (-9999) = unset. Do not use -1: that is a valid custom boss id.
+  SetCVar(force, UHBOSS_FAIL);
+  if (bossnum != UHBOSS_FAIL && CheckBossList(bossnum)) {
+    bossnum = bossnum;
+    ShowMeTheRCON(StrParam(s:"Boss ", s:StrRight(force, 1)), bossnum);
+  }
+  else {
+    if (truerandom || bossnum == -666) {bossnum = TrueRandomBoss();}
+    else {bossnum = UHBOSS_FAIL;}
+  }
+
+  return bossnum;
+}
+
+// Check if Boss # is even in the list
+function bool CheckBossList(int checkme) {
+  return IsBossDefined(checkme);
+}
+
+// NEW#BOSS — pool-based pick (no BOSSRNGMAX holes)
+function int TrueRandomBoss(void) {
+  int rngpick;
+  if (RandomPercent(5))
+    rngpick = RandomBossFromPool(UHBOSS_POOL_ULTRA);
+  else if (RandomPercent(1))
+    rngpick = RandomBossFromPool(UHBOSS_POOL_SPECIAL);
+  else if (RandomPercent(15))
+    rngpick = RandomBossFromPool(UHBOSS_POOL_EX);
+  else if (RandomPercent(30))
+    rngpick = RandomBossFromPool(UHBOSS_POOL_RARE);
+  else
+    rngpick = RandomBossFromPool(UHBOSS_POOL_COMMON);
+
+  if (rngpick == UHBOSS_FAIL || !IsBossDefined(rngpick))
+    rngpick = RandomBossFromPool(UHBOSS_POOL_COMMON);
+  if (rngpick == UHBOSS_FAIL || !IsBossDefined(rngpick))
+    rngpick = 0;
+  return rngpick;
+}
+
+
+// Select Bosses
+function void SetUpBossSelection_Func(void) {
+  int tempboss;
+  for (int i = 0; i < multibosscheck; i++) {
+    tempboss = ForceBossChange(StrParam(s:"uh_sv_ForcedBoss", i:i + 1), false);
+    if (IsBossDefined(tempboss)) {
+      bossdataarr[i][BOSSDATA_NUM] = tempboss;
+    }
+    else {
+      bossdataarr[i][BOSSDATA_NUM] = TrueRandomBoss();
+    }
+
+    if (tempboss == 300 || shadowtricksarr[i]) {
+      shadowtricksarr[i] = true;
+      shadowfakeoutactive = true;
+      bossdataarr[i][BOSSDATA_NUM] = TrueRandomBoss();
+    }
+    else
+      bossdataarr[i][BOSSDATA_NUM] = bossdataarr[i][BOSSDATA_NUM];  // EXBossChecker
+
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"UnholyBoss", i:i + 1, s:" = ", i:bossdataarr[i][BOSSDATA_NUM]));
+  }
+  // debugLog(StrParam(s:"DEBUG TXT: RareBossChance = ",d:RareBossChance);}
+}
+
+// Assigns players as Bosses
+function void SetUpPlayerSelection_Func(bool updateaggregate) {
+  int tempplayer = 0;
+  for (int i = 0; i < multibosscheck; i++) {
+    tempplayer = CheckClearCvar(StrParam(s:"uh_sv_ForceBossPlayer", i:i + 1), -1);
+    if (tempplayer >= 0 && tempplayer <= MAX_PLAYERS) {
+      tempplayer += 1000;
+    }
+    if (PlayerPickCheck(tempplayer, i)) {  // If above check isn't -1, is a player number, and is in the game
+      bossdataarr[i][BOSSDATA_TID] = tempplayer;
+      ShowMeTheRCON(StrParam(s:"Boss-Forced Player ", i:i + 1), tempplayer);
+    }
+    else if (PlayerPickCheck(playerforcenum[0], i)) {  // Check if scripts wants a player
+      bossdataarr[i][BOSSDATA_TID] = playerforcenum[0];
+      AdjustPlayerForceNumArray(-1);
+    }
+    else {  // If above never happens, RNG a player as boss
+      bossdataarr[i][BOSSDATA_TID] = RngPickCheck(i);
+    }
+    tempplayer = bossdataarr[i][BOSSDATA_TID];
+    GiveActorInventory(tempplayer, "Is_UH_BossNum", i + 1);  // Basic flag to track who is what boss
+    if (shadowtricksarr[i]) {
+      GiveActorInventory(tempplayer, "IsGonnaBeFake", 1);  // Specifically for Shadow boss
+    }
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Boss ", i:i + 1, s:" TID = ", i:tempplayer));
+    if (updateaggregate && playerlifestatusarr[tempplayer - 1000] == PLS_SURVIVOR) {
+      totalplayersarr[PLS_SURVIVOR]--;
+      totalplayersarr[PLS_BOSS]++;
+    }
+    playerlifestatusarr[tempplayer - 1000] = PLS_BOSS;
+  }
+}
+
+// Randomly pick a player, if they are not ingame or are in use TID's, pick another random player.
+function int RngPickCheck(int pastcheck) {
+  int check;
+  do {
+    check = random(1000, playerlifestatusarr[MAX_PLAYERS] + 1000);  // 1063
+  } while (!PlayerInGame(check - 1000) || CheckActorInventory(check, "IsDead") ||
+      !CheckBossDataTIDFunc(check, pastcheck));
+
+  return check;
+}
+// One time check similar to above.
+function bool PlayerPickCheck(int tid, int pastcheck) {
+  if (tid < 1) {
+    return false;
+  }
+  else if (PlayerInGame(tid - 1000) && !CheckActorInventory(tid, "IsDead") &&
+      tid >= 1000 && tid <= 1063 && CheckBossDataTIDFunc(tid, pastcheck)) {
+    return true;
+  }
+  return false;
+}
+
+// Check if TID matches in use Boss TID
+function bool CheckBossDataTIDFunc(int tid, int pastcheck) {
+  for (int i = 0; i < pastcheck; i++) {
+    if (tid == bossdataarr[i][BOSSDATA_TID]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function int MorphMeFunc(int tid, int boss, str flash) {
+  return MorphActor(tid, GetBossActor(boss), "", 0x7ffffffd, MRF_FULLHEALTH | MRF_WHENINVULNERABLE | MRF_LOSEACTUALWEAPON | MRF_NEWTIDBEHAVIOUR, flash, "");
+}
+function bool MorphActorToBoss(int tid, int boss, str flash) {
+  if (!SetActivator(tid))
+    return false;
+  ACS_NamedExecuteWithResult("uh_MorphPreReset");
+  bool success = MorphMeFunc(tid, boss, flash);
+  if (!success) return false;
+  SetActivator(tid);
+  ACS_NamedExecuteWithResult("uh_MorphPostReset", 1);
+  GiveInventory("BasicBossItem", 1);
+  str setup = GetBossMorphSetup(boss);
+  if (StrCmp(setup, "") != 0) {
+    if (CheckScript(setup, true)) {
+      ACS_NamedExecuteWithResult(setup, boss, tid);
+    }
+    else {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Missing boss morph setup script: ", s:setup));
+    }
+  }
+  int basehp = GetBossHPBase(boss);
+  if (basehp > 0)
+    ACS_NamedExecuteWithResult("uh_BossMorph", boss, basehp, GetBossHPAdd(boss));
+  return true;
+}
