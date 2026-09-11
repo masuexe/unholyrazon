@@ -1,11 +1,16 @@
 # RNCClashman 隐身机制改造实施计划 — Reload 键主动隐身
 
-- 日期：2026-09-11
-- 状态：待实施（计划已含用户拍板结果）
-- 涉及文件：`src/actors/classes/bosses/RNCClashman.dec`、`src/actors/classes/bosses/RNCClashman_W.dec`、`src/acs_source/classes/uh_classes.acs`、`src/acs_source/v6b_overrides/corescripts/utilities/footchec.acs`（加可选 tol 参数）、新增 `src/acs_source/classes/bosses/rnc_clashman.acs`
-- 不改动：`LOADACS`、`KEYCONF`、`TEAMINFO`、bar/HUD（可选增强除外）
+- 日期：2026-09-11（v2，见下）
+- 状态：**v1 已实施**（commit `a1a9b387`，用户自测基础逻辑通过）；本文档 §9 为 v2 增量变更，§1-§8 已按 v1 实测经验修订
+- v1 涉及文件：`src/actors/classes/bosses/RNCClashman.dec`、`src/actors/classes/bosses/RNCClashman_W.dec`、`src/acs_source/classes/uh_classes.acs`、`src/acs_source/v6b_overrides/corescripts/utilities/footchec.acs`（加可选 tol 参数）、新增 `src/acs_source/classes/bosses/rnc_clashman.acs`
+- v2 增量涉及文件：`RNCClashman_W.dec`（隐身改 AlphaPower、冷却改 Inventory）、`rnc_clashman.acs`（圆环生成/清理、冷却计时）、`hud/boss_bars.acs` 的 `DrawBar_RNCClashman_W`（冷却条）
+- 不改动：`LOADACS`、`KEYCONF`、`TEAMINFO`
 
-## 1. 现状
+**v1 实施时对原计划的两处修正（已并入正文）**：
+1. `Powerup.Duration` 负值在 Zandronum 语义是**秒**不是永续（`thingdef_properties.cpp`），永续应写 `Duration 0`（`APowerup::Tick` 只在 EffectTics>0 时倒数）。原计划的 `-1` 是 bug。
+2. 原计划的 `FixedMul(r, r)` 定点平方在 r=256 时溢出 32 位（256²=65536=0x10000，<<16 超出符号位），圆判定改用整数单位比较：`dx = (x-cx)>>16` 后 `dx*dx + dy*dy > 256²`（≤65536，int 安全）。
+
+## 1. 现状（v1 实施前）
 
 `RNCClashman.dec` 目前是"走路自动隐身"：`See:` 状态逐帧 `A_SetShadow`（走路时进入 SHADOW 半透明 0.5），`Spawn:`/`Missile:`/`ClassPain:` 用 `A_ClearShadow` 显形。该行为继承自 Unholy v7b pb1（参考包 `unholy_bosses_unbound_v7b_pb1/actors/MainBoss/RNCClashman.txt:502`），无任何主动按键参与，隐身/显形完全由移动与开火状态被动驱动。
 
@@ -18,13 +23,13 @@
 | 项目 | 决定 |
 |------|------|
 | 触发方式 | 删除 See/Spawn/Missile/ClassPain 的自动 SetShadow/ClearShadow，改由武器 `Reload:` 状态触发 |
-| 判定圈 | 激活瞬间以当时玩家 XY 为圆心（快照，不跟随），`floorz` 为 z，半径 **r = 256** 地图单位；纯逻辑判定区域，不做可见光圈（后续可加） |
+| 判定圈 | 激活瞬间以当时玩家 XY 为圆心（快照，不跟随），`floorz` 为 z，半径 **r = 256** 地图单位；v1 纯逻辑判定，v2 加可见圆环边界（§9.2） |
 | 破隐条件 A | 玩家 XY 距圆心超过 r（出圆），从激活瞬间起即生效，不考虑 z |
 | 破隐条件 B | 玩家在空中（`z - floorz` 大于容差）。**空中激活例外**：激活时在空中则立即隐身，此条件在首次落地后才"武装"；落地后再离地（跳跃、坠落、被击飞均算）即破隐 |
-| 消耗/冷却 | 无弹药消耗；破隐后 **5 秒冷却**（175 tics，调参入口见 §4.4 常量） |
+| 消耗/冷却 | 无弹药消耗；破隐后 **5 秒冷却**（175 tics，调参入口见 §4.4 常量）；v2 在 `DrawBar_RNCClashman_W` 显示冷却余量（§9.3） |
 | 开火 | Fire / AltFire 立即破隐（然后正常执行攻击） |
 | 隐身期间加成 | **无敌**（`core_invulnerableplayer`，APROP_Invulnerable 栈）+ **unsolid**（`core_unsolidplayer`，不可阻挡/不可选中） |
-| 视觉 | **完全隐身**（PowerInvisibility，Strength 100） |
+| 视觉 | **完全隐身**；v1 用 PowerInvisibility，v2 改 mod 统一通道 `UH_00_AlphaPowerGiver`（APROP_Alpha=0，队友/观战者 0.25 下限，§9.1） |
 | 隐身中再按 Reload | 无效果（不改圆心、不取消） |
 | 时长上限 | 无，直到破隐条件触发或死亡 |
 
@@ -33,15 +38,17 @@
 1. **Reload 键 → 武器状态**：引擎在 `WF_WEAPONRELOADOK` 置位且玩家按住 `BT_RELOAD`（=64）时调用 `P_ReloadWeapon` 跳入武器 `Reload:` 状态（`zandronum-stable-branch-default/src/p_pspr.cpp:1002-1014`）。`P_ReloadWeapon` 无 `Reload:` 状态时不跳转（同文件 :439-462）。
 2. **WRF_ALLOWRELOAD 必须显式传**：`A_WeaponReady` 仅在参数含 `WRF_AllowReload`(16) 时调用 `DoReadyWeaponToReload` 置位 `WF_WEAPONRELOADOK`（`p_pspr.cpp:872,915`）。裸 `A_WeaponReady`（参数 0）**不**启用。标志在状态切换时被清（:210），随后被 Ready 循环重新置位——2-tic Ready 循环下等效每刻检测，不会漏按。
 3. **本 mod 先例**：DLCCentaurman 4.0 的"Reload 维度跳跃"即此模式（`DLCCentaurman_W.dec:50` 的 `Reload:` 状态 + `:261-288` 的 `_Ready*_P` 在弹药充足时调 `A_WeaponReady(WRF_ALLOWRELOAD)`）。RNCClashman 无弹药门槛，可直接在武器 Ready 循环里加 flag，不需要 CustomInventory 中转。
-4. **完全隐身**：`PowerInvisibility` 的 `DoEffect` 每刻设 `alpha = 1 - Strength/100`（`a_artifacts.cpp:635-636`），Strength 100 → alpha 0；`EndEffect` 正确还原 flags/RenderStyle/alpha（:669-698），拿走即显形。mod 先例 `Power_ShadMan`（`TheShadowManMythBoss_W.dec:737`），其注释确认**不要** `+CANTSEEK`（会破坏 Shadowblade 类追踪武器）。
+4. **完全隐身（v2 改用 DTADD AlphaPower）**：mod 的统一隐身通道是 `UH_00_AlphaPowerGiver`/`UH_00_AlphaPower`（注册于 `uh_aprop.acs:311`，`DefinePowerAprop(..., APROP_Alpha, 0.0, NO)`），底层为 v6b DTADD 的 PowerAprop 系统（v6b `corescripts/api handlers/PUAPROP.acs:65-117`）：Giver 是 AUTOACTIVATE CustomInventory，激活时同步把 `APROP_Alpha × factor(0.0)` 应用到玩家；`core_clampalpha_client`（:148-160）附带**队友/观战者最低 0.25 可见度**（`ALPHA_MIN`）——同队玩家和观战者始终能看到 25% 轮廓，敌对玩家看到全透明。`A_TakeInventory("UH_00_AlphaPower")` 后系统的 watcher 自动恢复默认 alpha，且多 alpha 来源（GhostEye、Hellbot 等）叠加时撤销逻辑正确重算，不会互相踩踏。mod 先例：CXAirman、GBeast、BlueSpeciman（boss）、Kate（survivor）、ShadowPunch（copy weapon）。v1 用 `PowerInvisibility`（`a_artifacts.cpp:635-636,669-698`，Strength 100 → alpha 0）功能等价但不走 mod 统一系统，v2 换成 AlphaPower。
 5. **无敌**：v6b 核心脚本 `core_invulnerableplayer`（v6b `acs_source/corescripts/utilities/PROPUTIL.acs:211-226`）——`toggle=true` 给 `PlayerPropertyInvulnerable` 标记（可叠加）并置 `APROP_Invulnerable`；`false` 弹一层，栈清零才解除属性。直接设 APROP，**没有** PowerInvulnerable 的 colormap 滤镜问题。栈语义与出生保护（SPWNPROT）等其他无敌来源正确叠加；mod 在 DECORATE 侧直接调用的先例：`UnholyInsurance.dec:63`、`InvincibleCandy.dec:67`。注意（mod 内 `clownpiece_spellcard.acs:123` 已注明）：`false` 只弹一层，这是栈的既定语义而非缺陷。
 6. **unsolid**：v6b 核心脚本 `core_unsolidplayer`（v6b `acs_source/corescripts/utilities/PROPUTIL.acs:632-663`）。`USP_TOGGLEON` 给 `PlayerPropertyUnsolid` 标记；`USP_TOGGLEOFF_DAMAGE` 恢复固体，若恢复时与其他 actor 重叠则扣 `damage` 血（mod 惯例传 `core_getmaxhealth()/10`）。`USP_*` 常量在 DECORATE 中可用（v6b `actors/acspropconstants.txt:59` 起，`const int` 声明）——Balrog/EyelentoMajor/ShadowMan 等 boss 均直接在 DECORATE 里这样调用。
-7. **冷却 token**：用无效果 `Powerup { powerup.duration N }` 自过期（先例：v6b `ResolidDamageIndicator`，`megaman-flags.txt:791`）。比 ACS 计时器简单且天然网络同步。
+7. **冷却 token（v2 改为可读余量的 Inventory + ACS 计时）**：v1 的自过期 `Powerup` 无法从 DECORATE/ACS 读取剩余时间（Zandronum 无 GetPowerupTicsLeft），冷却条需要余量。改为 mod 惯例：普通 `Inventory { maxamount 175 }`，破隐时给满 175，由每刻 `A_TakeInventory(...,1)` 的计时脚本递减（Balrog 先例 `Balrog_Cooldown : Inventory` + Flash 状态递减，`Balrog_W.dec:397,48`；`TorontoCalifornia` 的cloak冷却 `The_Cloak_From_Harry_Potter` 同款）。守卫 `A_JumpIfInventory` 对 amount 语义不变。
 8. **空中判定**：`GetActorZ(0) - GetActorFloorZ(0)`，mod 先例 `motion_helpers.acs:50`。
 9. **圆判定**：定点数平方距离比较，无需开方：`FixedMul(dx,dx)+FixedMul(dy,dy) > FixedMul(r,r)`。
 10. **存活检测**：Zandronum ACC 无 `ActivatorIsAlive`，用 `GetActorProperty(0, APROP_Health) > 0`（mod 先例 `shared_movement.acs:8`）。
 11. **着地判定**：用核心脚本 `core_CheckFooting`（本 mod 的 UH override：`v6b_overrides/corescripts/utilities/footchec.acs:29`）。语义：`z-floorz==0`，或在脚下 1 单位处 Spawn 探针 `8bdmFootholdCheck` 失败（被地面挡住）→ 着地；否则 airborne。选它而非裸 `z-floorz` 的理由：a) mod 权威着地判定（`uh-BasePain.dec:122`、`eden_runtime.acs:146` 等在用）；b) UH override 内含 `CheckCeilingFootingFunc`——本 mod 存在反重力来源（GravityHold、Kamilia `CeilingFlag`），玩家贴天花板行走时裸 z-floorz 会误判空中而误破隐，`core_CheckFooting` 正确处理。每次调用含一次 Spawn+Remove，每刻一次×单个 boss，开销可忽略。
 12. **着地容差参数（UH 扩展 core_CheckFooting）**：给 override 版 `core_CheckFooting` 加可选参数 `tol`——`tol=0` 走现有逻辑（位不变）；`tol>0` 时额外把 `z - floorz <= tol` 判为着地（正常重力），反重力分支对称放宽为 `ceilingz - z <= 58 + tol`。数值依据：下楼梯时玩家离脚下 floorz 至多一级台阶高（典型 8~32），而 jumpz 14 的跳跃顶点 = 14²/2 = **98 单位**（Zandronum 每刻重力恒 1.0 u/tic²），tol=32 即可让全部楼梯场景不离地、跳跃照常破隐。**兼容性已核实**：Zandronum ACS 命名脚本少传参时缺省读 0（v6b 核心自身先例：`core_unsolidplayer` 声明 3 参、DECORATE 只传 2 参，`damage` 读 0 走默认分支），故 mod 源码、v6b 编译库、DECORATE `CallACS("core_CheckFooting")` 等现存零参调用全部落到 tol=0 旧行为，无需改动。**实现要点**：tol>0 分支用 floorz 比较而非把探针 Spawn 到 `z-tol`——探针 actor 有半径，贴墙跳跃时深探针会撞墙误报着地，且 floorz 已正确处理 3D floor。
+13. **冷却条（SetOverlayBar / BARFLS1）**：BARLIB 的 `SetOverlayBar(owned, capacity)` 写 `SBARFlashOverlayAmmo`，SBARINFO 把它画成 ammo bar 上的闪烁 overlay（H 布局用 VARFLS1、V 布局用 BARFLS1 图形；`v6b_overrides/_includes/mod_api/barlib.acs:2-4`）。boss bar + 生成选择器 + SetOverlayBar 组合的现成先例：Misery（`boss_bars.acs:174-183`，`Misery_DrawBar(UHBAR_*)` 与 `SetOverlayBar` 并存）、TorontoCalifornia 的 cloak 冷却（`:197`，`SetOverlayBar(CheckInventory("The_Cloak_From_Harry_Potter"), 200)` 无条件显示）。若要落在 CustSbarPos1 自定义条坐标上，备选走目录 slot：`SBARINFO.v.uhappend:83` 的 slot 77 即 `BARFLS1` 样式（`DrawCustomBar1(76, amount, capacity)`，slot+1=77）——实施时在游戏内确认哪个位置正确。
+14. **圆边界可视化的硬约束**：Zandronum 3.x **不支持 `+FLATSPRITE`**（引擎源码无此 flag，GZDoom 特性），"单张贴图平躺地面"方案不可行；可行方案是**圆周标记点环**（N 个小 actor 等角分布）。可见范围：Zandronum 世界 actor 无按玩家过滤的可见性（服务端 authoritative 复制），clientside 脚本 Spawn 不在支持范围、易出视觉问题——**"仅自己可见"实际不可实现**，圆环必然全场可见（这不必然是坏事，见 §9.2 的取舍分析）。
 
 ## 4. 设计
 
@@ -308,8 +315,7 @@ MCP 冒烟（profile `mm8bdm-v6b-smoke`，`playerclass RNCClashman` 后重载地
 
 ## 8. 明确不做（后续可选）
 
-- 可见光圈 FX（激活点地板显示判定圈）
-- 破隐/隐身音效与 HUD 冷却图标（`boss_bars.acs` 的 `DrawBar_RNCClashman_W` 可挂 `DrawReloadIcon` 样式提示）
+- 破隐/隐身**音效**（HUD 冷却显示与圆环 FX 已列入 v2 §9）
 - Bots 使用该技能的 AI 钩子
 - "仅 velz>0 判空中"语义（彻底豁免楼梯与坠落，见 §5.1 备选 b，需用户拍板）
 
@@ -368,3 +374,175 @@ MCP 冒烟（profile `mm8bdm-v6b-smoke`，`playerclass RNCClashman` 后重载地
   `RNCStealthBegin_P`，与按键等价，按键链按代码审查（`Reload:` +
   `WRF_ALLOWRELOAD`）。
 - 调试中发现从近墙点开火会自伤；与本特性无关，未处理。
+
+---
+
+## 9. v2 增量变更（2026-09-11 第二轮，基于 v1 实测反馈）
+
+用户自测通过基础逻辑后提出三项变更：隐身换用 mod 统一 AlphaPower 通道、
+判定圈可视化、冷却在 boss bar 上显示。
+
+### 9.1 隐身改用 `UH_00_AlphaPower(Giver)`
+
+依据见 §3.4（DTADD PowerAprop 系统）。改动：
+
+- 删除 `Power_RNCStealth` actor。
+- `RNCStealthBegin_P`：`A_GiveInventory("Power_RNCStealth")` →
+  `A_GiveInventory("UH_00_AlphaPowerGiver")`（AUTOACTIVATE，激活链同步把
+  alpha 置 0；先例 `CXAirman_W.dec:180`）。
+- `RNCStealthBreak_P`：`A_TakeInventory("Power_RNCStealth")` →
+  `A_TakeInventory("UH_00_AlphaPower")`（DTADD watcher 自动恢复默认 alpha，
+  且与其他 alpha 来源叠加时正确重算；先例 `CXAirman_W.dec:212`）。
+
+**语义变化**（相对 v1 的 PowerInvisibility）：`core_clampalpha_client` 的
+`ALPHA_MIN=0.25` 下限——**队友与观战者始终可见 25% 轮廓**，敌对玩家全透明。
+与 mod 全体隐身职业（CXAirman/GBeast/Kate/BlueSpeciman/ShadowPunch）行为一致。
+Unholy LMS 中 boss 独占 Bosses 队 → 幸存者（敌对）看到全透明，符合"完全隐身"
+需求；观战者能看到微弱轮廓属可接受甚至有利（观战体验）。
+
+### 9.2 判定圈可视化（圆环标记点）
+
+硬约束见 §3.14（无 FLATSPRITE → 标记点环；无按玩家过滤的世界 actor 可见性）。
+**新发现的引擎能力使"仅自己可见"成为可行方案**：
+`ACS_NamedExecuteClientScript(script, client, args...)`（ACC `zspecial.acs:431`
+`-145`；引擎 `p_acs.cpp:1758-1806`）允许**服务端脚本对单个指定客户端**执行
+CLIENTSIDE 脚本（`SVCF_ONLYTHISCLIENT`）；CLIENTSIDE 脚本内 `Spawn` 的 actor
+自动标记 `NETFL_CLIENTSIDEONLY`（`p_acs.cpp:4209-4212`）——纯本地、不广播、
+其他客户端无此 actor。单机模式直接本地执行（`p_acs.cpp:1766-1771`）。
+
+**方案 A（推荐）：仅 boss 自己可见。**
+
+- `RNCStealthBegin_P` 末尾：
+  `ACS_NamedExecuteClientScript("uh_rncstealth_ring", PlayerNumber(), cx, cy)`
+  ——实际由 monitor 启动更顺（monitor 已持有 cx/cy）：monitor 首刻发一次。
+- 新增 CLIENTSIDE 脚本（`rnc_clashman.acs`）：
+
+```acs
+#define RNCSTEALTH_RING_TID 3970   // 32 个点：3970-4001；实施前对 eden_tid_reserve.acs 确认无冲突
+#define RNCSTEALTH_RING_DOTS 32
+
+script "uh_rncstealth_ring" (int cx, int cy) clientside
+{
+    int cz = GetActorFloorZ(0);          // activator = boss 玩家（ExecuteClientScript 透传）
+    for (int i = 0; i < RNCSTEALTH_RING_DOTS; i++) {
+        int ang = i * (1.0 / RNCSTEALTH_RING_DOTS);
+        Spawn("RNCStealthRingDot",
+              cx + FixedMul(RNCSTEALTH_RADIUS << 16, cos(ang)),
+              cy + FixedMul(RNCSTEALTH_RADIUS << 16, sin(ang)),
+              cz + 8.0, RNCSTEALTH_RING_TID + i);
+    }
+    while (CheckInventory("RNCStealthActive_F"))   // 本地玩家自身 inventory 客户端已知
+        Delay(2);
+    for (int j = 0; j < RNCSTEALTH_RING_DOTS; j++)
+        Thing_Remove(RNCSTEALTH_RING_TID + j);
+}
+```
+
+  - 自清理：不需显式 remove 消息——marker 被任意破隐路径取走后，客户端循环
+    自行观察到并删点；换图由引擎统一清 CLIENTSIDEONLY actor/重置脚本
+    （`g_game.cpp:3428-3431,3453`）；玩家掉线同理无残留。
+  - bot 持有 boss 时不显示（bot 无客户端；且 bot 本不触发 reload）——可接受。
+  - 注意（skill 已载明）：CLIENTSIDE 脚本不能当 `A_JumpIf(CallACS(...))` 条件
+    （服务端恒 false）——本设计不依赖该用法。
+
+**方案 B（备选）：全场可见。** monitor 直接服务端 `Spawn` 同样的点（TID 同上），
+破隐退出路径 `Thing_Remove`。给幸存者反制信息（知道 boss 被钉在哪个口袋），
+实现更少一层。若联机环境下 CLIENTSIDE 环出问题，回退到 B。
+
+**取舍**：A 保住伏击体验、圆环定位为"自我约束提示"；B 把圆环变成双方博弈
+信息。默认 A。
+
+**圆点实现（两方案共用）**：
+
+- 贴图：TEXTURES 新增 `RNCSTEALTHDOT`——`__DOT.png`（mod 自带 1×1 点，
+  `src/graphics/__DOT.png`）放大 + ClashMan 染色 Translation，无需新美术。
+- actor `RNCStealthRingDot`：`+NOBLOCKMAP +NOSHOOTABLE +NOGRAVITY +BRIGHT`、
+  RenderStyle Translucent、Alpha 0.55、scale ≈2（≈16 单位点）、慢脉冲
+  （`A_FadeTo` 往返，纯装饰）；默认重力关闭、固定在激活平面 cz+8（抬升地面
+  处允许被遮挡；若实测坡地/楼梯观感差再改带重力"垂坠"变体）。
+- 32 点 / 11.25° 间距约 50 单位。
+
+### 9.3 冷却显示（`DrawBar_RNCClashman_W` + `SetOverlayBar`）
+
+- **前置：`RNCStealthCooldown` 改为可读余量的普通 Inventory**（v1 的自过期
+  Powerup 读不到剩余时间，Zandronum 无 GetPowerupTicsLeft）：
+  `actor RNCStealthCooldown : Inventory { inventory.maxamount 175 }`，
+  `RNCStealthBreak_P` 给满 175，另起
+  `ACS_NamedExecuteAlways("uh_rncstealth_cooldowntick", 0)`。
+  不放 Flash 状态递减（RNCClashman 的 Flash 循环帧长 2/1-tic 不均匀，速率会漂；
+  Balrog 的 Flash 递减不适用于本武器结构）。
+- 新增计时脚本：`while (CheckInventory("RNCStealthCooldown")) { TakeInventory(...,1); Delay(1); }`
+  ——每刻精确递减、自动终止；Break_P 幂等保证最多一个实例。
+- `boss_bars.acs` 的 `DrawBar_RNCClashman_W` 加：
+  `SetOverlayBar(CheckInventory("RNCStealthCooldown"), 175);`
+  （cloak 冷却同款先例 `boss_bars.acs:197` 无条件显示；H/V 布局自动用
+  VARFLS1/BARFLS1 图形。若 overlay 落点与 CustSbarPos1 自定义条不重合，
+  备选 `DrawCustomBar1(76, amount, 175)` 走 slot 77=BARFLS1 目录样式，
+  `SBARINFO.v.uhappend:83`——实测二选一。）
+- 可选配套：`DrawReloadIcon("R017B0")` + 新增
+  `src/graphics/ReloadIcons/R017B0.png`（本 mod reload 技能图标的既有惯例，
+  依 DLCCentaurman `Reload:` 先例配图）。
+
+### 9.4 v2 修改文件清单
+
+| 文件 | 改动 |
+|------|------|
+| `RNCClashman_W.dec` | 删 `Power_RNCStealth`；Begin/Break 改 AlphaPower；`RNCStealthCooldown` 改 Inventory；新增 `RNCStealthRingDot` |
+| `classes/bosses/rnc_clashman.acs` | 新增 `uh_rncstealth_ring`（CLIENTSIDE）与 `uh_rncstealth_cooldowntick`；monitor 首刻触发圆环 |
+| `hud/boss_bars.acs` | `DrawBar_RNCClashman_W` 加 `SetOverlayBar`（可选 `DrawReloadIcon`） |
+| `src/TEXTURES`（或 `TEXTURES.bars`） | 新增 `RNCSTEALTHDOT`（`__DOT` 放大 + 染色） |
+| `src/graphics/ReloadIcons/R017B0.png` | 可选新增 |
+
+### 9.5 v2 测试与验收补充
+
+- [ ] 破隐后 alpha 完全恢复 1.0；激活期间敌对视角全透明（方案 A 联机或双端验证）、观战/队友视角 0.25 轮廓
+- [ ] 圆环：激活即现、任意破隐路径（出圆/空中/开火/死亡）即消；换图/掉线无残留；仅 boss 客户端可见（方案 A）
+- [ ] 冷却条从满格每刻递减、5 秒归零消失；归零前 reload 拒绝、归零后可用
+- [ ] 冷却递减不受开火动画影响（ACS 计时而非 Flash/Ready 递减）
+- [ ] 单机与联机（net mode）各验一遍 CLIENTSIDE 环
+
+---
+
+## 10. v2 执行结果（2026-09-11）
+
+### 已实现
+
+- **9.1**：删除 `Power_RNCStealth`；`RNCStealthBegin_P` 改给
+  `UH_00_AlphaPowerGiver`，`RNCStealthBreak_P` 改取 `UH_00_AlphaPower`。
+- **9.2**：`TEXTURES` 新增 `sprite RNCXA0`（`__DOT` ×8 + `Translation "4:4=204:204"`）；
+  `RNCStealthRingDot` actor（`+NOBLOCKMAP -SHOOTABLE +NOGRAVITY +BRIGHT`、
+  Translucent 0.55、Scale 2、`A_FadeTo` 脉冲）；`rnc_clashman.acs` 新增
+  `uh_rncstealth_ring` CLIENTSIDE（32 点，TID 3970-4001，标记消失即自清），
+  monitor 首刻用 `NamedExecuteClientScript` 触发。
+- **9.3**：`RNCStealthCooldown` 改为 `Inventory { maxamount 175 }`；
+  `RNCStealthBreak_P` 给满 175 并启动 `uh_rncstealth_cooldowntick`（每刻 -1）；
+  `DrawBar_RNCClashman_W` 加 `SetOverlayBar(CheckInventory("RNCStealthCooldown"), 175)`。
+- 未做可选项 `DrawReloadIcon("R017B0")`（需要新美术）。
+
+### 与计划的偏差（实现/运行期发现）
+
+1. **内置函数名是 `NamedExecuteClientScript`，没有 `ACS_` 前缀**
+   （ACC `zspecial.acs:431` `-145:NamedExecuteClientScript`；mod 先例
+   `uh_bosscore.acs:40`）。计划写的 `ACS_NamedExecuteClientScript` 编译不过。
+2. **`+NOSHOOTABLE` 不是 flag**（引擎报 unknown flag），用 `-SHOOTABLE`。
+3. 圆点用普通 `Spawn`（与计划一致）：`DoSpawn(force=false)` 会
+   `P_TestMobjLocation`，落在墙里的点被销毁，所以狭窄房间内不会满 32 点
+   （实测出生小房间 8 点）；开阔处才完整。若要恒定 32 点需改 `SpawnForced`。
+4. `TEXTURES` 用 `sprite` 关键字而非 `graphic`：只有 `sprite` 类型的
+   TEXTURES 定义会被 sprite 查找命中（`texturemanager.cpp` 顶层关键字）。
+
+### MCP 验收（mm8bdm-v6b-smoke）
+
+| 项 | 结果 |
+|---|---|
+| 激活 | `alpha=0`、`UH_00_AlphaPower=1`、`RNCStealthActive_F=1`、invuln/unsolid=1 |
+| 圆环 | 激活即生成 `RNCStealthRingDot`（开间内可满 32；墙内点按引擎规则剔除） |
+| 圆环清理 | 开火破隐后圆点数 = 0 |
+| alpha 恢复 | 破隐后 `alpha=1`、`UH_00_AlphaPower=0` |
+| 冷却 | `RNCStealthCooldown` 175→0，每刻 -1；`SBARFlashOverlayAmmo` 同步 175→0 |
+| 启动 | 无编译/致命错误；`smoke-test.sh --profile mm8bdm-v6b-full` status=ok、reportedLines=0 |
+
+### 未覆盖
+
+- 联机双端验证 CLIENTSIDE 环的"仅自己可见"（需真实双客户端；单机路径已验）。
+- `DrawReloadIcon` 图标美术。

@@ -11,45 +11,79 @@
 #define RNCSTEALTH_RADIUS 256        // circle radius in map units
 #define RNCSTEALTH_FOOTING_TOL 32    // core_CheckFooting tol: <= one stair step, << jump apex 98
 #define RNCSTEALTH_AIR_DEBOUNCE 4    // consecutive airborne tics before breaking (stairs handled by TOL)
-#define RNCSTEALTH_COOLDOWN 175      // 5 s @35 tics; keep in sync with RNCStealthCooldown.powerup.duration
+#define RNCSTEALTH_COOLDOWN 175      // 5 s @35 tics; keep in sync with RNCStealthCooldown maxamount
+#define RNCSTEALTH_RING_TID 3970     // marker dots occupy 3970..4001 (32 dots; checked against eden reserve)
+#define RNCSTEALTH_RING_DOTS 32
 
-script "uh_rncstealth_monitor" (void)
-{
-    int cx = GetActorX(0);
-    int cy = GetActorY(0);
-    // Compare squared distance in integer map units: a 256-unit radius squared
-    // is 65536, but as 16.16 fixed it overflows 32-bit, so do NOT FixedMul the
-    // raw fixed coordinates here.
-    bool landed = ACS_NamedExecuteWithResult("core_CheckFooting", RNCSTEALTH_FOOTING_TOL);
-    int airtics = 0;
+script "uh_rncstealth_monitor" (void) {
+  int cx = GetActorX(0);
+  int cy = GetActorY(0);
 
-    while (CheckInventory("RNCStealthActive_F"))
-    {
-        if (GetActorProperty(0, APROP_Health) <= 0)
-            terminate;  // ClassDeath gives RNCStealthBreak_P for cleanup
+  // Judgement-circle ring marker, clientside on the boss's own client only
+  // (singleplayer runs it locally).
+  NamedExecuteClientScript("uh_rncstealth_ring", PlayerNumber(), cx, cy);
 
-        int dx = (GetActorX(0) - cx) >> 16;
-        int dy = (GetActorY(0) - cy) >> 16;
-        if (dx * dx + dy * dy > RNCSTEALTH_RADIUS * RNCSTEALTH_RADIUS)
-            break;  // left the activation circle
+  // Compare squared distance in integer map units: a 256-unit radius squared
+  // is 65536, but as 16.16 fixed it overflows 32-bit, so do NOT FixedMul the
+  // raw fixed coordinates here.
+  bool landed = ACS_NamedExecuteWithResult("core_CheckFooting", RNCSTEALTH_FOOTING_TOL);
+  int airtics = 0;
 
-        if (ACS_NamedExecuteWithResult("core_CheckFooting", RNCSTEALTH_FOOTING_TOL))
-        {
-            landed = true;  // first landing arms the airborne check
-            airtics = 0;
-        }
-        else if (landed)
-        {
-            airtics++;
-            if (airtics > RNCSTEALTH_AIR_DEBOUNCE)
-                break;  // jump / fall / knock-up
-        }
+  while (CheckInventory("RNCStealthActive_F")) {
+    if (GetActorProperty(0, APROP_Health) <= 0)
+      terminate;  // ClassDeath gives RNCStealthBreak_P for cleanup
 
-        Delay(1);
+    int dx = (GetActorX(0) - cx) >> 16;
+    int dy = (GetActorY(0) - cy) >> 16;
+    if (dx * dx + dy * dy > RNCSTEALTH_RADIUS * RNCSTEALTH_RADIUS)
+      break;  // left the activation circle
+
+    if (ACS_NamedExecuteWithResult("core_CheckFooting", RNCSTEALTH_FOOTING_TOL)) {
+      landed = true;  // first landing arms the airborne check
+      airtics = 0;
+    }
+    else if (landed) {
+      airtics++;
+      if (airtics > RNCSTEALTH_AIR_DEBOUNCE)
+        break;  // jump / fall / knock-up
     }
 
-    // Loop exited with the marker still present -> the monitor detected the
-    // break.  Other break paths already removed it, so this is a no-op then.
-    if (CheckInventory("RNCStealthActive_F"))
-        GiveInventory("RNCStealthBreak_P", 1);
+    Delay(1);
+  }
+
+  // Loop exited with the marker still present -> the monitor detected the
+  // break.  Other break paths already removed it, so this is a no-op then.
+  if (CheckInventory("RNCStealthActive_F"))
+    GiveInventory("RNCStealthBreak_P", 1);
+}
+
+// Judgement-circle ring: 32 marker dots on the activation circle.  CLIENTSIDE
+// so it only exists on the boss's own client (NamedExecuteClientScript sends it
+// to one client; Spawn there tags the actors NETFL_CLIENTSIDEONLY).  It
+// self-cleans as soon as the marker disappears; level changes/drops also clear
+// clientside-only actors, so no explicit removal is needed elsewhere.
+script "uh_rncstealth_ring" (int cx, int cy) CLIENTSIDE {
+  int cz = GetActorFloorZ(0);
+  for (int i = 0; i < RNCSTEALTH_RING_DOTS; i++) {
+    int ang = i * (1.0 / RNCSTEALTH_RING_DOTS);
+    Spawn("RNCStealthRingDot",
+              cx + FixedMul(RNCSTEALTH_RADIUS << 16, cos(ang)),
+              cy + FixedMul(RNCSTEALTH_RADIUS << 16, sin(ang)),
+              cz + 8.0, RNCSTEALTH_RING_TID + i);
+  }
+
+  while (CheckInventory("RNCStealthActive_F"))
+    Delay(2);
+
+  for (int j = 0; j < RNCSTEALTH_RING_DOTS; j++)
+    Thing_Remove(RNCSTEALTH_RING_TID + j);
+}
+
+// Per-tic cooldown drain (started by RNCStealthBreak_P).  Exact 1/tick rate
+// independent of the weapon's Flash/Ready timing; exits at 0.
+script "uh_rncstealth_cooldowntick" (void) {
+  while (CheckInventory("RNCStealthCooldown") > 0) {
+    TakeInventory("RNCStealthCooldown", 1);
+    Delay(1);
+  }
 }
