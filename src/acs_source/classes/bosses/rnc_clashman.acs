@@ -1,0 +1,55 @@
+// RNCClashman reload-driven active stealth monitor.
+//
+// Started by RNCStealthBegin_P with the player as activator; exits as soon as
+// RNCStealthActive_F is gone (any break path) or on death.  Included by
+// uh_classes.acs, so zcommon/core_* are already available.
+//
+// 2026-09-11 design: activation snapshots the player's XY as the circle centre
+// (does not follow); leaving the circle always breaks.  Air detection is only
+// armed after the first landing so activating mid-air is allowed.
+
+#define RNCSTEALTH_RADIUS 256        // circle radius in map units
+#define RNCSTEALTH_FOOTING_TOL 32    // core_CheckFooting tol: <= one stair step, << jump apex 98
+#define RNCSTEALTH_AIR_DEBOUNCE 4    // consecutive airborne tics before breaking (stairs handled by TOL)
+#define RNCSTEALTH_COOLDOWN 175      // 5 s @35 tics; keep in sync with RNCStealthCooldown.powerup.duration
+
+script "uh_rncstealth_monitor" (void)
+{
+    int cx = GetActorX(0);
+    int cy = GetActorY(0);
+    // Compare squared distance in integer map units: a 256-unit radius squared
+    // is 65536, but as 16.16 fixed it overflows 32-bit, so do NOT FixedMul the
+    // raw fixed coordinates here.
+    bool landed = ACS_NamedExecuteWithResult("core_CheckFooting", RNCSTEALTH_FOOTING_TOL);
+    int airtics = 0;
+
+    while (CheckInventory("RNCStealthActive_F"))
+    {
+        if (GetActorProperty(0, APROP_Health) <= 0)
+            terminate;  // ClassDeath gives RNCStealthBreak_P for cleanup
+
+        int dx = (GetActorX(0) - cx) >> 16;
+        int dy = (GetActorY(0) - cy) >> 16;
+        if (dx * dx + dy * dy > RNCSTEALTH_RADIUS * RNCSTEALTH_RADIUS)
+            break;  // left the activation circle
+
+        if (ACS_NamedExecuteWithResult("core_CheckFooting", RNCSTEALTH_FOOTING_TOL))
+        {
+            landed = true;  // first landing arms the airborne check
+            airtics = 0;
+        }
+        else if (landed)
+        {
+            airtics++;
+            if (airtics > RNCSTEALTH_AIR_DEBOUNCE)
+                break;  // jump / fall / knock-up
+        }
+
+        Delay(1);
+    }
+
+    // Loop exited with the marker still present -> the monitor detected the
+    // break.  Other break paths already removed it, so this is a no-op then.
+    if (CheckInventory("RNCStealthActive_F"))
+        GiveInventory("RNCStealthBreak_P", 1);
+}
