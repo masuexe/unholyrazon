@@ -91,8 +91,9 @@ DECORATE/ACS diagnostics.
   helper, namespaced selector/ammo actors in `UH_BarFX.dec`, and sparse-priority
   AppendStatusBar output. The base game's `BarFX.txt` must not be overridden.
   Each `[[groups]]` entry declares one namespace and contains one or more
-  `[[groups.bars]]` entries. The clear callback is generated as
-  `<namespace>_Clear`; selector IDs are dense within each namespace/position/
+  `[[groups.bars]]` entries. All namespaces share the single generated
+  `UHBar_ClearAll` callback (one `core_DrawBar_RegisterClear` slot for the
+  whole addon); selector IDs are dense within each namespace/position/
   priority bank. Use a separate group for an independently named class form.
   `constant_name` is the complete public ACS constant and must begin with
   `UHBAR_`; the generator enforces ACC's 31-character identifier limit and
@@ -100,10 +101,11 @@ DECORATE/ACS diagnostics.
 - `test_gen_barpos.py` — deterministic generator validation fixtures. Run with
   `python3 tools/test_gen_barpos.py` after changing the TOML schema or generator.
   Set `legacy_catalog = true` only when a migrated string-API pair must
-  remain in the compatibility catalog. Clear callbacks register from
-  `OPEN CLIENTSIDE` through `core_DrawBar_RegisterClear`; duplicate names
-  return the existing row, `-1` is empty, `-2` is registry-full, and `-3` is a
-  missing named script.
+  remain in the compatibility catalog. `UHBar_ClearAll_Register` registers the
+  shared clear callback from `OPEN CLIENTSIDE` through
+  `core_DrawBar_RegisterClear` and logs the return value on failure; duplicate
+  names return the existing row, `-1` is empty, `-2` is registry-full, and
+  `-3` is a missing named script.
 
 Scripts should accept paths or environment overrides where practical, return a
 non-zero exit code on failure, and print a concise summary. Do not commit MCP
