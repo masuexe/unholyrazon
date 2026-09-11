@@ -512,23 +512,29 @@ actor RNCStealthActive_F : Once {}
 actor RNCStealthCooldown : Inventory {inventory.maxamount 80}
 
 // Judgement-circle sweep dot (clientside; see uh_rncstealth_ring).
-// 2026-09-12: static dot -> one-shot "shrink and vanish" particle (MXP1 B..E ->
-// stop).  The ring script spawns one per tic at each of the two intersections
-// of the circle with the rotating line, so the 4-frame animation itself draws
-// the comet tail.  Lifetime = 4 frames x 2 tics = 8 tics; keep in sync with
-// RNCSTEALTH_RING_SPAWN_TICS (rnc_clashman.acs).
+// 2026-09-12: static dot -> one-shot "shrink and vanish" particle (NCXP A, then
+// MXP1 C..E -> stop).  The ring script spawns one per tic at each of the two
+// intersections of the circle with the rotating line, so the frame animation
+// itself draws the comet tail.  It is spawned with NO TID (tid 0) and deletes
+// itself through stop, so nothing has to track or clean it up - and it can
+// never collide with a map's or another mod's TID scheme.
+// Lifetime = 4 frames x 6 tics = 24 tics; keep in sync with
+// RNCSTEALTH_RING_SPAWN_TICS (rnc_clashman.acs).  With
+// RNCSTEALTH_RING_STEPS 48 (7.5 deg/tic) that makes each tail span
+// 24 x 7.5 = 180 deg, i.e. the two tails meet and the whole ring is dotted.
 // Do NOT use loop/wait: the dot would never die and the tail would pile up
-// into a solid ring.  Scale 1.5 -> 24 map units wide (base class is 2.5 = 40).
+// into a solid ring.  Scale 2.0 -> 32 map units wide, which covers the 33.5 u
+// arc gap left by RING_STEPS 48 (base class scale is 2.5 = 40).
 actor RNCStealthRingDot : BasicGraphicEffect {
   +FORCEXYBILLBOARD
   Alpha 0.55
-  Scale 1.5
+  Scale 2.0
   States {
    Spawn:
-    NCXP A 2
-    MXP1 C 2
-    MXP1 D 2
-    MXP1 E 2
+    NCXP A 6
+    MXP1 C 6
+    MXP1 D 6
+    MXP1 E 6
     stop
   }
 }

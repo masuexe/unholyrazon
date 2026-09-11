@@ -12,11 +12,14 @@
 #define RNCSTEALTH_FOOTING_TOL 32    // core_CheckFooting tol: <= one stair step, << jump apex 98
 #define RNCSTEALTH_AIR_DEBOUNCE 4    // consecutive airborne tics before breaking (stairs handled by TOL)
 #define RNCSTEALTH_COOLDOWN 175      // 5 s @35 tics; keep in sync with RNCStealthCooldown maxamount
-#define RNCSTEALTH_RING_TID 3970     // sweep dots cycle 3970..4001 (32 slots; checked against eden reserve)
-#define RNCSTEALTH_RING_SLOTS 32     // TID pool size; must match the width of the range above
-#define RNCSTEALTH_RING_STEPS 96     // angle steps per revolution (each step = 1.0/96 turn)
+#define RNCSTEALTH_RING_STEPS 48     // angle steps per revolution (each step = 1.0/48 turn = 7.5 deg)
 #define RNCSTEALTH_RING_STEP (1.0 / RNCSTEALTH_RING_STEPS)
 #define RNCSTEALTH_RING_SPAWN_TICS 1 // tics between each pair of intersection dots
+// The sweep dots carry NO TID (Spawn's tid argument is 0): they stop themselves
+// after one animation, so the trail needs no lifecycle bookkeeping at all, and
+// nothing here can collide with a map's or another mod's TID scheme (no fixed
+// range, no UniqueTID() whose number the server could later reuse for a real
+// actor - clientside dots are invisible to the server's allocator).
 
 script "uh_rncstealth_monitor" (void) {
   int cx = GetActorX(0);
@@ -63,31 +66,28 @@ script "uh_rncstealth_monitor" (void) {
 // Judgement-circle sweep: spawn one trail dot at each of the two intersections
 // of the circle with the line rotating about the circle centre (theta and
 // theta+180).  CLIENTSIDE, so every dot is NETFL_CLIENTSIDEONLY on the boss's
-// own client.  The dots stop themselves after 8 tics (see RNCStealthRingDot),
-// so the trail needs no upkeep; the TID pool only exists so the exit path can
-// clear the few dots still alive.
+// own client.  The dots carry no TID and stop themselves after one animation
+// (see RNCStealthRingDot), so the trail needs no upkeep: when stealth ends the
+// spawner exits and the dots still alive shrink away within one lifetime.
 // NOTE: ACS cos/sin take a fixed angle where 1.0 == one full turn (not one
 // degree): p_acs.cpp PCD_COS/PCD_SIN index finesine by (raw >> 3).  Hence the
 // step is written as 1.0/RNCSTEALTH_RING_STEPS - never as "degrees".
 script "uh_rncstealth_ring" (int cx, int cy) CLIENTSIDE {
   int cz = GetActorFloorZ(0);
   int ang = 0;      // fixed angle, 1.0 = 360 degrees
-  int slot = 0;     // rotating TID slot
 
   while (CheckInventory("RNCStealthActive_F")) {
-    // intersection 1: theta
+    // intersection 1: theta  (tid 0: the dot needs no TID, see the header)
     Spawn("RNCStealthRingDot",
               cx + FixedMul(RNCSTEALTH_RADIUS << 16, cos(ang)),
               cy + FixedMul(RNCSTEALTH_RADIUS << 16, sin(ang)),
-              cz + 8.0, RNCSTEALTH_RING_TID + slot);
-    slot = (slot + 1) % RNCSTEALTH_RING_SLOTS;
+              cz + 8.0, 0);
 
     // intersection 2: theta + 180 (0.5 == half a turn in fixed point)
     Spawn("RNCStealthRingDot",
               cx + FixedMul(RNCSTEALTH_RADIUS << 16, cos(ang + 0.5)),
               cy + FixedMul(RNCSTEALTH_RADIUS << 16, sin(ang + 0.5)),
-              cz + 8.0, RNCSTEALTH_RING_TID + slot);
-    slot = (slot + 1) % RNCSTEALTH_RING_SLOTS;
+              cz + 8.0, 0);
 
     ang += RNCSTEALTH_RING_STEP;
     if (ang >= 1.0)
@@ -95,12 +95,9 @@ script "uh_rncstealth_ring" (int cx, int cy) CLIENTSIDE {
 
     Delay(RNCSTEALTH_RING_SPAWN_TICS);
   }
-
-  // Stealth over (broke, died, or left the circle): drop whatever is still
-  // alive.  A slot is reused only every 16 tics while the dots live 8, so no
-  // dot can hide in a slot that still holds an older one.
-  for (int j = 0; j < RNCSTEALTH_RING_SLOTS; j++)
-    Thing_Remove(RNCSTEALTH_RING_TID + j);
+  // No cleanup pass: leaving the loop only stops new spawns, and the dots still
+  // alive finish their 4-frame animation on their own (<= one lifetime, i.e.
+  // 4 x frame tics).  Level changes/drops clear clientside actors anyway.
 }
 
 // Per-tic cooldown drain (started by RNCStealthBreak_P).  Exact 1/tick rate

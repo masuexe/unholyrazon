@@ -358,3 +358,67 @@ script "uh_rncstealth_ring" (int cx, int cy) CLIENTSIDE {
 2. 破隐是**立即**清空（脚本退出时 `Thing_Remove`），不是自然缩小消失——主方案（TID 池）的既定行为；想要 0.23 s 柔和淡出就用 §4.5-A。
 3. **成品截图未取到**：smoke 档出生点的视野里当时存活的弧段被墙/栅栏挡住（点不会穿墙显示），而背景窗口的转向输入不稳定。观感是本方案唯一需要人眼判断的验收项，请在自己的客户端确认。
 4. 与本次改动无关的既有不一致（未改动）：`#define RNCSTEALTH_COOLDOWN 175`（`rnc_clashman.acs:14`）已无人引用，而 `RNCStealthCooldown` 的 `inventory.maxamount` 是 80（`RNCClashman_W.dec:512`）。
+
+## 11. 调参记录：转速 ×2（2026-09-12，第二轮）
+
+用户确认 §10 观感无误（并已把实现提交为 `533ba4b2`，其中把首帧 `MXP1 B` 换成 `NCXP A`），随后要求加快扫描速度。
+
+### 改动
+
+| 文件 | 改动 | 理由 |
+|---|---|---|
+| `rnc_clashman.acs:17` | `RNCSTEALTH_RING_STEPS 96 → 48` | 生成间隔已是 1 tic 的下限，转速只能靠"一圈步数"调；每 tic 3.75° → **7.5°**，一圈 48~49 tics ≈ **1.4 s**（原 2.77 s） |
+| `RNCClashman_W.dec` | `Scale 1.5 → 2.0` | 相邻点弧距随步长变大到 2π·256/48 ≈ **33.5 u**，点宽由 24 u → 32 u 才能盖住缝隙 |
+
+编译（ACC 1.60）→ `src/acs/uh_classes.o`；重建 `out/build.pk3`（16563 项，条目零差异，`validate-build-pk3.sh` status=ok）。
+
+### MCP 复测
+
+- 同一段拖尾相邻点圆心角实测 **7.5°**（本轮之前为 3.75°）→ 转速确为 ×2；
+- 点属性：`scale = 2`、`alpha = 0.549988`、`networkFlags = 16`（NETFL_CLIENTSIDEONLY）、状态 `MXP1 D tics 6`（与 actor 定义一致）；
+- 圆弧半径仍为 256（实测各点到激活圆心 255.7~256.2 u）。
+
+### 两个必须知道的耦合（本次实测到）
+
+1. **寿命 × 每 tic 角度 = 单侧拖尾跨度**。用户把每帧时长改成 **6 tics**（寿命 24 tics），在 2× 速度下单侧跨度 = 24 × 7.5° = **180°** —— 两条对跖尾巴正好首尾相接，**圆周会重新被点铺满**（整体仍在旋转，两个头部最大最亮，但不再有"空档"）。
+   - 想要彗尾观感，2× 速度下建议每帧 **2~3 tics**（寿命 8~12 tics → 跨度 60°~90°）；4 tics → 120°（两尾接近相接）；6 tics → 180°（接死）。
+   - 参考：改速度前 6 tics 时跨度是 24 × 3.75° = 90°，所以那时看起来没问题。
+2. **TID 池被超额占用**：32 槽 vs 24 tics 寿命 × 每 tic 2 点 = **48 个同屏点** → 每个 TID 平均被 1.5 个活点共用（实测 `actorsnear` 中 TID 3994/3996/3998 各出现两次，分别为 `MXP1` 与 `NCXP` 两代）。
+   - 破隐清理**仍然正确**（`Thing_Remove(tid)` 删除同 TID 的全部匹配，`p_lnspec.cpp:1310-1332`）；
+   - 但"一个槽最多一个活点"的前提不再成立。要恢复，就把寿命压到 ≤16 tics（每帧 ≤4 tics），或把池扩到 64 槽（`3970..4033`，需要重新核对 Eden 等 TID 预留，并同步 `RNCSTEALTH_RING_SLOTS`）。
+
+## 12. TID 方案调整：完全不使用 TID（2026-09-12，第三轮）
+
+起因：`RNCSTEALTH_RING_TID 3970..4001` 是硬编码区间，用户担心与其他 mod / 地图的 TID 冲突。
+
+### 核实结论
+
+| 结论 | 出处 |
+|---|---|
+| `UniqueTID()` 无参调用走**随机分支**，只返回正整数（`pr_uniquetid.GenRand32() & INT_MAX`） | `p_mobj.cpp:3651-3697` |
+| `UniqueTID(start, limit)` 才是从 start 起线性找 limit 个；全占用返回 0 | 同上 |
+| `DefineReservedTIDRange` 是 v6b/DTADD 的**注册表**，不是引擎功能；**不约束**引擎的 `UniqueTID()` | `DTADDR.acs:296-303`、`8BDT.acs:581-593` |
+| 生态惯例：固定 FX TID 段放**负数区**（CBM `-3263..-3200` 等），正因为引擎随机分配器永不返回负数 | `classes-v9gh_/acs_source/cbm_core/CBM_TRAINING.acs:62-68` |
+| `tid == 0` 的 actor 不进入 TID 哈希（等于"完全无 TID"） | `p_mobj.cpp:3575-3582` |
+
+**为什么不用 `UniqueTID()`**：① 返回值随机、不可预期 → 想清理就必须把每个点的 TID 存进数组（32~48 个）再逐个删；② clientside 的点在服务端不存在，服务端 `UniqueTID()` 之后完全可能把同一个号发给真实 actor，我们的 `Thing_Remove` 会把它在**该客户端本地**删掉且服务端不会补发（永久不可见）；③ 每 tic 2 次全 actor 列表扫描。负 TID 段（方案 B）能规避 ②，但方案 A 连号都不用。
+
+### 改动（方案 A）
+
+- 删除 `RNCSTEALTH_RING_TID` / `RNCSTEALTH_RING_SLOTS` 两个宏（连同"checked against eden reserve"注释）。
+- `uh_rncstealth_ring`：两处改为 `Spawn("RNCStealthRingDot", x, y, z, 0)`（tid 0）；删除 `slot` 轮转与退出时的 `Thing_Remove` 循环；注释说明"停止生成后残余点自行消失"。
+- `.dec` actor 注释补充："spawned with NO TID (tid 0) and deletes itself through stop"。
+- **`3970..4001` 从此不再被本 mod 占用**（如需它用可直接取）。
+
+**行为变化**：破隐不再是"立即清空"，而是停止生成 + 残余点在一个寿命内缩没（当前 4 帧 × 6 tics = **24 tics ≈ 0.7 s**，观感是尾巴自然收尾）。§11 提到的"32 槽 < 48 活点"超额占用问题也随池一起消失。
+
+### MCP 验收（profile `mm8bdm-v6b-smoke`，地图 MM2DW1）
+
+| 项 | 结果 |
+|---|---|
+| 生成 | 激活后同屏 `RNCStealthRingDot` 的 TID **全部为 0**；两段弧（半径 256）同时存在 |
+| 破隐后 3 tics | 残留 14 点，无新点生成（继续播动画） |
+| 破隐后 15 tics | 残留 **2** 点 |
+| 破隐后 ~29 tics | 点数 **0**（寿命耗尽自动消失，无需任何清理） |
+| 破隐其余路径 | alpha 恢复 1、`UH_00_AlphaPower`/invuln/unsolid 已移除、`RNCStealthCooldown` 正常递减 |
+| 编译/打包 | 0 error / 0 warning；`uh_classes.o` 27377 → **27297 B**；`out/build.pk3` 16563 项条目零差异、`validate-build-pk3.sh` status=ok |
