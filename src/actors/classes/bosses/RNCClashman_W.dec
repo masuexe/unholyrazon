@@ -511,15 +511,25 @@ actor RNCStealthActive_F : Once {}
 // RNCSTEALTH_COOLDOWN in rnc_clashman.acs).
 actor RNCStealthCooldown : Inventory {inventory.maxamount 80}
 
-// Judgement-circle marker dot (clientside; see uh_rncstealth_ring).
+// Judgement-circle sweep dot (clientside; see uh_rncstealth_ring).
+// 2026-09-12: static dot -> one-shot "shrink and vanish" particle (MXP1 B..E ->
+// stop).  The ring script spawns one per tic at each of the two intersections
+// of the circle with the rotating line, so the 4-frame animation itself draws
+// the comet tail.  Lifetime = 4 frames x 2 tics = 8 tics; keep in sync with
+// RNCSTEALTH_RING_SPAWN_TICS (rnc_clashman.acs).
+// Do NOT use loop/wait: the dot would never die and the tail would pile up
+// into a solid ring.  Scale 1.5 -> 24 map units wide (base class is 2.5 = 40).
 actor RNCStealthRingDot : BasicGraphicEffect {
   +FORCEXYBILLBOARD
   Alpha 0.55
+  Scale 1.5
   States {
    Spawn:
-    MMFX B 4  // A_FadeTo(0.15, 0.1)
-    MMFX B 4  // A_FadeTo(0.55, 0.1)
-    loop
+    NCXP A 2
+    MXP1 C 2
+    MXP1 D 2
+    MXP1 E 2
+    stop
   }
 }
 
