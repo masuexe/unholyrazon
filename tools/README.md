@@ -72,6 +72,54 @@ It checks ZIP integrity and the required `DECORATE`, `KEYCONF`, and `LOADACS`
 lumps. It does not build or rewrite the PK3, and it cannot replace engine-level
 DECORATE/ACS diagnostics.
 
+## Rebuilding ACS and the PK3 locally
+
+ACS edits only take effect once the affected library is recompiled with the
+native Linux ACC into `src/acs/` and the PK3 is repackaged:
+
+```bash
+/home/user/appfiles/acc-1.60-linux64/acc \
+  -i ../references/zandronum/acc-branch-zandronum \
+  -i src/acs_source/v6b_overrides/_includes/mod_api \
+  -i src/acs_source/v6b_overrides/_includes/common \
+  -i src/acs_source/_includes/mod_api \
+  -i src/acs_source/_imports \
+  -i src/acs_source/hud \
+  src/acs_source/classes/uh_classes.acs src/acs/uh_classes.o
+```
+
+Package `src/` as a fresh archive (never update an existing ZIP in place), then
+validate. The file-list form below excludes what `src/.pk3ignore` excludes and
+adds no directory entries, so the entry list comes out identical to the previous
+`out/build.pk3` (16563 entries as of 2026-09-12):
+
+```bash
+cd src && find . -type f ! -path "./acs_source/*" ! -name "*.err" ! -name ".*" \
+  | sed 's|^\./||' > /tmp/pk3files.txt
+rm -f /tmp/build.pk3 && zip -X -9 -q /tmp/build.pk3 -@ < /tmp/pk3files.txt
+cp /tmp/build.pk3 ../out/build.pk3 && cd .. && ./tools/validate-build-pk3.sh
+```
+
+## Build/test loop traps
+
+Three of these cost a debugging round each; check them before blaming the mod:
+
+- **Never repackage `out/build.pk3` while an MCP instance is running.** The
+  engine reads the ZIP lazily, so replacing it under a live instance floods the
+  log with `Corrupt zlib stream` and `Missing string (unexpected end of file)`.
+  Kill the instance, repackage, then relaunch.
+- **ACS libraries load only at engine startup.** Editing anything under
+  `src/acs_source/` does nothing until the library is recompiled *and* the
+  instance is restarted; `load_map` does not reload libraries. DECORATE is
+  reread from the PK3 on a map load, so actor edits only need `load_map`.
+- **`launch_instance`'s `extraArgs` replaces the profile's `extraArgs`**, it does
+  not append (`zandronum-mcp/src/tools.ts`). Passing `["-host"]` silently drops
+  the profile's `-nosound`, `vid_renderer 0` and `sv_cheats 1`, after which
+  bridge console commands (`currentpos`, `give`) time out. Repeat the profile
+  args you still need. `-host` (listen server) also answers console commands
+  poorly through the bridge, so keep multiplayer checks for the dedicated-server
+  scripts above.
+
 ## Existing validators and generators
 
 - `validate-build-pk3.sh` — read-only PK3 integrity and entry-point check.
