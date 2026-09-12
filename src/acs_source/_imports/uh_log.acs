@@ -22,11 +22,19 @@
 // Filtering — the threshold is the local player's setting `uh_cl_LogLevel`, a
 // CVARINFO `user` cvar that Zandronum syncs into the player's userinfo
 // (d_netinfo.cpp: D_UserInfoChanged), so each player chooses how noisy their
-// own log is.  An event prints when
+// own log is.  Severity and threshold run in opposite directions (severity
+// 0=DEBUG .. 3=ERROR, verbosity 0=OFF .. 4=ALL), so the filter converts first:
 //
-//   level <= threshold
+//   UH_LogRequiredVerbosity(severity) <= threshold
 //
-// and the threshold is read with GetUserCVar() for the script activator's
+// i.e. ERROR needs "Errors only", WARN "+ Warnings", INFO "+ Info" and DEBUG
+// "ALL".  Comparing the raw severity (the previous `level <= threshold`) made
+// every menu level above OFF behave backwards.  The two groups of constants are
+// deliberately NOT merged: the severity values are a published caller interface
+// and the verbosity values are stored in players' configs, so each keeps its
+// historical numbering and the conversion happens only at the filter boundary.
+//
+// The threshold is read with GetUserCVar() for the script activator's
 // player, which is the player the call is about for the common case
 // (weapon/class/item scripts executed by a player, ENTER scripts, key-bound
 // PUKE).  When the activator is not a player (OPEN/RESPAWN/event scripts,
@@ -81,14 +89,28 @@ function int UH_LogLevel(void) {
   return level;
 }
 
-function void UH_Log(int level, str message) {
-  if (level > UH_LogLevel())
+// Historical severity -> "how verbose must the player be to see this".
+// The formula only holds for the historical 0..3 range, which UH_Log checks
+// below before converting: an out-of-range value must not slip through the
+// filter just because it happens to map onto a passing number.
+function int UH_LogRequiredVerbosity(int severity) {
+  return UH_LOG_ERROR - severity + UH_LOG_ONLY_ERROR;
+}
+
+function void UH_Log(int severity, str message) {
+  if (severity < UH_LOG_DEBUG || severity > UH_LOG_ERROR) {
+    Log(s:"\c[Red][Unholy ERROR] \c-UH_Log: invalid level ",
+        i:severity, s:"; ", s:message);
+    return;
+  }
+
+  if (UH_LogRequiredVerbosity(severity) > UH_LogLevel())
     return;
 
-  if (level == UH_LOG_DEBUG && GetCvar("uh_sv_BossDebugText") != 1)
+  if (severity == UH_LOG_DEBUG && GetCvar("uh_sv_BossDebugText") != 1)
     return;
 
-  switch (level) {
+  switch (severity) {
     case UH_LOG_DEBUG:
       Log(s:"\c[LightBlue][Unholy DEBUG] \c-", s:message);
       break;
@@ -101,8 +123,10 @@ function void UH_Log(int level, str message) {
     case UH_LOG_ERROR:
       Log(s:"\c[Red][Unholy ERROR] \c-", s:message);
       break;
+    // Unreachable: the range check above rejects anything outside 0..3.  Kept
+    // as a defensive fallback so a future renumbering still logs something.
     default:
-      Log(s:"\c[Red][Unholy ERROR] \c-UH_Log: invalid level ", i:level, s:"; ", s:message);
+      Log(s:"\c[Red][Unholy ERROR] \c-UH_Log: invalid level ", i:severity, s:"; ", s:message);
       break;
   }
 }
