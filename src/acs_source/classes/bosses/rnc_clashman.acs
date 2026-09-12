@@ -1,0 +1,126 @@
+// RNCClashman reload-driven active stealth monitor.
+//
+// Started by RNCStealthBegin_P with the player as activator; exits as soon as
+// RNCStealthActive_F is gone (any break path) or on death.  Included by
+// uh_classes.acs, so zcommon/core_* are already available.
+//
+// 2026-09-11 design: activation snapshots the player's XY as the circle centre
+// (does not follow); leaving the circle always breaks.  Air detection is only
+// armed after the first landing so activating mid-air is allowed.
+
+#define RNCSTEALTH_RADIUS 256        // circle radius in map units
+#define RNCSTEALTH_FOOTING_TOL 32    // core_CheckFooting tol: <= one stair step, << jump apex 98
+#define RNCSTEALTH_AIR_DEBOUNCE 4    // consecutive airborne tics before breaking (stairs handled by TOL)
+#define RNCSTEALTH_RING_STEPS 48     // angle steps per revolution (each step = 1.0/48 turn = 7.5 deg)
+#define RNCSTEALTH_RING_STEP (1.0 / RNCSTEALTH_RING_STEPS)
+#define RNCSTEALTH_RING_SPAWN_TICS 1 // tics between each pair of intersection dots
+// The sweep dots carry NO TID (Spawn's tid argument is 0): they stop themselves
+// after one animation, so the trail needs no lifecycle bookkeeping at all, and
+// nothing here can collide with a map's or another mod's TID scheme (no fixed
+// range, no UniqueTID() whose number the server could later reuse for a real
+// actor - clientside dots are invisible to the server's allocator).
+
+script "uh_rncstealth_monitor" (void) {
+  int cx = GetActorX(0);
+  int cy = GetActorY(0);
+
+  // Judgement-circle ring marker, clientside on the boss's own client only
+  // (singleplayer runs it locally).
+  NamedExecuteClientScript("uh_rncstealth_ring", PlayerNumber(), cx, cy);
+
+  // Compare squared distance in integer map units: a 256-unit radius squared
+  // is 65536, but as 16.16 fixed it overflows 32-bit, so do NOT FixedMul the
+  // raw fixed coordinates here.
+  bool landed = ACS_NamedExecuteWithResult("core_CheckFooting", RNCSTEALTH_FOOTING_TOL);
+  int airtics = 0;
+
+  while (CheckInventory("RNCStealthActive_F")) {
+    if (GetActorProperty(0, APROP_Health) <= 0)
+      terminate;  // ClassDeath gives RNCStealthBreak_P for cleanup
+
+    int dx = (GetActorX(0) - cx) >> 16;
+    int dy = (GetActorY(0) - cy) >> 16;
+    if (dx * dx + dy * dy > RNCSTEALTH_RADIUS * RNCSTEALTH_RADIUS)
+      break;  // left the activation circle
+
+    if (ACS_NamedExecuteWithResult("core_CheckFooting", RNCSTEALTH_FOOTING_TOL)) {
+      landed = true;  // first landing arms the airborne check
+      airtics = 0;
+    }
+    else if (landed) {
+      airtics++;
+      if (airtics > RNCSTEALTH_AIR_DEBOUNCE)
+        break;  // jump / fall / knock-up
+    }
+
+    Delay(1);
+  }
+
+  // Loop exited with the marker still present -> the monitor detected the
+  // break.  Other break paths already removed it, so this is a no-op then.
+  if (CheckInventory("RNCStealthActive_F"))
+    GiveInventory("RNCStealthBreak_P", 1);
+}
+
+// Judgement-circle sweep: spawn one trail dot at each of the two intersections
+// of the circle with the line rotating about the circle centre (theta and
+// theta+180).  CLIENTSIDE, so every dot is NETFL_CLIENTSIDEONLY on the boss's
+// own client.  The dots carry no TID and stop themselves after one animation
+// (see RNCStealthRingDot), so the trail needs no upkeep: when stealth ends the
+// spawner exits and the dots still alive shrink away within one lifetime.
+// NOTE: ACS cos/sin take a fixed angle where 1.0 == one full turn (not one
+// degree): p_acs.cpp PCD_COS/PCD_SIN index finesine by (raw >> 3).  Hence the
+// step is written as 1.0/RNCSTEALTH_RING_STEPS - never as "degrees".
+script "uh_rncstealth_ring" (int cx, int cy) CLIENTSIDE {
+  int cz = GetActorFloorZ(0);
+  int ang = 0;      // fixed angle, 1.0 = 360 degrees
+
+  while (CheckInventory("RNCStealthActive_F")) {
+    // intersection 1: theta  (tid 0: the dot needs no TID, see the header)
+    Spawn("RNCStealthRingDot",
+              cx + FixedMul(RNCSTEALTH_RADIUS << 16, cos(ang)),
+              cy + FixedMul(RNCSTEALTH_RADIUS << 16, sin(ang)),
+              cz + 8.0, 0);
+
+    // intersection 2: theta + 180 (0.5 == half a turn in fixed point)
+    Spawn("RNCStealthRingDot",
+              cx + FixedMul(RNCSTEALTH_RADIUS << 16, cos(ang + 0.5)),
+              cy + FixedMul(RNCSTEALTH_RADIUS << 16, sin(ang + 0.5)),
+              cz + 8.0, 0);
+
+    ang += RNCSTEALTH_RING_STEP;
+    if (ang >= 1.0)
+      ang -= 1.0;   // wrap so the fixed accumulator cannot grow forever
+
+    Delay(RNCSTEALTH_RING_SPAWN_TICS);
+  }
+  // No cleanup pass: leaving the loop only stops new spawns, and the dots still
+  // alive finish their 4-frame animation on their own (<= one lifetime, i.e.
+  // 4 x frame tics).  Level changes/drops clear clientside actors anyway.
+}
+
+// Cloak transform: spawn one MXP1 pop on the boss and point it at them, so its
+// A_Warp keeps the pop glued to the body while the boss turns invisible.
+// SERVER-SIDE on purpose (started from RNCStealthBegin_P): every player sees the
+// boss become MXP1 and vanish, unlike the private judgement-circle ring.
+// The pop drops its TID right after the pointer is wired (same idiom as
+// item_effects.acs:51), so this leaves no TID footprint at all.
+script "uh_rncstealth_transform" (void) {
+  int bosstid = ActivatorTID();   // the boss: RNCStealthBegin_P's activator
+  int fx = UniqueTID();
+  if (SpawnForced("RNCCloakTransformFX",
+                  GetActorX(0), GetActorY(0), GetActorZ(0) + 32.0, fx, 0)) {
+    SetActivator(fx);
+    SetPointer(AAPTR_TARGET, bosstid);   // A_Warp offsets are feet-relative +32
+    Thing_ChangeTID(fx, 0);
+  }
+}
+
+// Per-tic cooldown drain (started by RNCStealthBreak_P).  Exact 1/tick rate
+// independent of the weapon's Flash/Ready timing; exits at 0.
+script "uh_rncstealth_cooldowntick" (void) {
+  while (CheckInventory("RNCStealthCooldown") > 0) {
+    TakeInventory("RNCStealthCooldown", 1);
+    Delay(1);
+  }
+}

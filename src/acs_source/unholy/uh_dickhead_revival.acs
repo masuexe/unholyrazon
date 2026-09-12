@@ -1,6 +1,45 @@
 // Dickhead self-revival mechanic: watch list, revival queue and the
 // delayed-revival scripts.  Fragment of library unholy; watch-array
-// helpers live in uh_funclib.acs, state/defines in uh_def.acs.
+// helpers live here, state/defines in uh_def.acs.
+
+function void ShuffleRevivalPlayerOrder(void) {
+  int i;
+  int r;
+  int temp;
+
+  for (i = 0; i < MAX_PLAYERS; i++)
+    revivalplayerorder[i] = i;
+  for (i = 0; i < MAX_PLAYERS; i++) {
+    r = Random(0, MAX_PLAYERS - 1);
+    temp = revivalplayerorder[i];
+    revivalplayerorder[i] = revivalplayerorder[r];
+    revivalplayerorder[r] = temp;
+  }
+}
+
+function void DickheadWatchRemoveAt(int index) {
+  dickheadwatchcount--;
+  dickheadwatchtid[index] = dickheadwatchtid[dickheadwatchcount];
+}
+
+function void DickheadWatchAdd(int tid) {
+  if (dickheadwatchcount >= DICKHEAD_WATCH_MAX)
+    return;
+  dickheadwatchtid[dickheadwatchcount] = tid;
+  dickheadwatchcount++;
+}
+
+function int DickheadWatchClaim(void) {
+  int tid;
+
+  while (dickheadwatchcount > 0) {
+    tid = dickheadwatchtid[0];
+    DickheadWatchRemoveAt(0);
+    if (ClassifyActor(tid) != ACTOR_NONE)
+      return tid;
+  }
+  return 0;
+}
 
 function void DickheadDoRevive(int selftid, int revived_tid, int isbossrevival, int bossslot) {
   int dropx;

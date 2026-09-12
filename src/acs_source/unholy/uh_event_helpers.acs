@@ -1,0 +1,163 @@
+// Bonus-event validation and event-state helpers for library unholy.
+// This fragment is textually included by uh_funclib.acs.
+
+function int ExEventChecker(int inputevent) {
+  if (CheckEventList(inputevent + UHEVENT_EX_OFFSET)) {
+    if (eventexcountarray[inputevent] >= 3) {
+      eventexcountarray[inputevent] = 0;
+      inputevent += UHEVENT_EX_OFFSET;
+    }
+    else {
+      eventexcountarray[inputevent] += 1;
+    }
+  }
+  return inputevent;
+}
+function bool CheckEventList(int checkme) {
+  if (checkme < 0 || checkme >= 200)
+    return false;
+
+  // Explicit list of events the dispatcher actually handles.
+  switch (checkme) {
+    case UHEVENT_FFA:
+    case UHEVENT_MLG:
+    case UHEVENT_GHOST:
+    case UHEVENT_JOUST:
+    case UHEVENT_SUMO:
+    case UHEVENT_KAMIKAZE:
+    case UHEVENT_BOMBER:
+    case UHEVENT_BUSINESS:
+    case UHEVENT_QUICK:
+    case UHEVENT_TANK:
+    case UHEVENT_EYEPARADE:
+    case UHEVENT_CLONEPARADE:
+    case UHEVENT_FOOTBALL:
+    case UHEVENT_BRICK:
+    case UHEVENT_MOSQUITO:
+    case UHEVENT_TYPHOON:
+    case UHEVENT_TRUEPOWER:
+    case UHEVENT_EYELENTO:
+    case UHEVENT_CATCHFURRY:
+    case UHEVENT_RUNAWAYFOX:
+    case UHEVENT_RUNES:
+    case UHEVENT_BOSSEFFA:
+    case UHEVENT_SATANSEAL:
+      return true;
+  }
+  return false;
+}
+
+// Map Razon3's forced-event input ids to the frozen v4 canonical ids.
+function int NormalizeForcedBonusEvent(int eventid) {
+  if (eventid == 50) {return UHEVENT_FOOTBALL;}
+  if (eventid == 150) {return UHEVENT_RUNES;}
+  return eventid;
+}
+
+// Returns a canonical, CheckEventList-approved event id, or -1 on failure.
+function int ResolveForcedBonusEvent(int eventid) {
+  int normalized = NormalizeForcedBonusEvent(eventid);
+  if (CheckEventList(normalized)) {
+    return normalized;
+  }
+  return -1;
+}
+
+// Explicit random pool: no holes such as the old event 6, and high-player
+// rounds may draw the Football slot while low-player rounds use 0-10 only.
+function int PickRandomBonusEvent(void) {
+  if (PlayerCount() >= MULTIB_PLAYERLIMIT3) {
+    return bonuseventcandidates[random(0, BONUS_EVENT_CANDIDATE_COUNT - 1)];
+  }
+  return bonuseventlowcandidates[random(0, BONUS_EVENT_LOW_COUNT - 1)];
+}
+
+// D0 guard: surface missing event/eye metadata only in debug mode.
+function void DebugValidateRoundStart(void) {
+  if (!debug_txt) {return;}
+
+  for (int i = 0; i < BONUS_EVENT_CANDIDATE_COUNT; i++) {
+    int eventid = bonuseventcandidates[i];
+    if (StrCmp(bonuseventlist[eventid][BONUS_EVENTNAME], "") == 0) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event missing name: ", i:eventid));
+    }
+    if (StrCmp(bonuseventlist[eventid][BONUS_MUSICLUMP], "") == 0) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event missing music: ", i:eventid));
+    }
+  }
+
+  for (int eyeid = 0; eyeid < 16; eyeid++) {
+    if (IsEyeDefined(eyeid) && StrCmp(GetEyeEventStem(eyeid), "") == 0) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Eye event stem missing: ", i:eyeid));
+    }
+  }
+
+  // D0 round-start validation: every combo must have a safely expandable
+  // shape, and every boss referenced by a valid combo must be registered.
+  // Reports combo ID, name, and the concrete reason so a broken combo table
+  // surfaces deterministically here instead of at selection time.  The same
+  // BossComboShapeError helper is used by PickBossCombo / TryBossComboRoll, so
+  // the debug report and the runtime rejection cannot drift.
+  for (int combo = 0; combo < BOSSCOMBO_MAX; combo++) {
+    int shapeerr = BossComboShapeError(combo);
+    if (shapeerr != BOSSCOMBO_SHAPE_OK) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Boss combo ", i:bosscombodata[combo][0],
+                        s:" (", s:bosscomboname[combo],
+                        s:") malformed: ", s:BossComboShapeErrorText(shapeerr)));
+      continue;
+    }
+    for (int slot = 0; slot < bosscombodata[combo][6]; slot++) {
+      int bossid = bosscombobossids[bosscombodata[combo][5] + slot];
+      if (!IsBossDefined(bossid)) {
+        UH_Log(UH_LOG_ERROR, StrParam(s:"Boss combo ", i:bosscombodata[combo][0],
+                          s:" (", s:bosscomboname[combo],
+                          s:") references unregistered boss ", i:bossid));
+      }
+    }
+  }
+}
+
+function bool IsAllEyeEvent(void) {
+  switch (eventdataarr[EVENTDATA_MAINEVENT]) {
+    case UHEVENT_MLG:
+    case UHEVENT_GHOST:
+    case UHEVENT_JOUST:
+    case UHEVENT_SUMO:
+    case UHEVENT_KAMIKAZE:
+    case UHEVENT_BOMBER:
+    case UHEVENT_BUSINESS:
+    case UHEVENT_QUICK:
+    case UHEVENT_TANK:
+    case UHEVENT_TYPHOON:
+      return isbonuseventactive;
+  }
+  return false;
+}
+
+function bool HasEyeTeamEvent(void) {
+  switch (eventdataarr[EVENTDATA_MAINEVENT]) {
+    case UHEVENT_MLG:
+    case UHEVENT_GHOST:
+    case UHEVENT_JOUST:
+    case UHEVENT_SUMO:
+    case UHEVENT_KAMIKAZE:
+    case UHEVENT_RICH:
+    case UHEVENT_BOMBER:
+    case UHEVENT_BUSINESS:
+    case UHEVENT_QUICK:
+    case UHEVENT_TANK:
+    case UHEVENT_EYEPARADE:
+    case UHEVENT_CLONEPARADE:
+    case UHEVENT_BRICK:
+    case UHEVENT_MOSQUITO:
+    case UHEVENT_TYPHOON:
+    case UHEVENT_CATCHFURRY:
+    case UHEVENT_RUNAWAYFOX:
+      return true;
+  }
+  return false;
+}
+
+function bool IsDemoneyeEvent(void) {
+  return isbonuseventactive && HasEyeTeamEvent();
+}

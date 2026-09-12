@@ -9,9 +9,11 @@ This does not define BRSLT/BZSLT. Main SBARINFO.H/V keep v6b
 CustSbarSlotFlag + BRSLT lines for other mods.
 
 The hand-authored tools/bars.toml adds namespaced bar groups without a
-hard-coded layer ceiling. Each group owns one namespace; its clear callback is
-derived from that namespace. API IDs follow bar declaration order inside each
-group; sparse priorities control SBARINFO draw order.
+hard-coded layer ceiling. Each group owns one namespace. API IDs follow bar
+declaration order inside each group; sparse priorities control SBARINFO draw
+order. All namespaces share one clear callback (`UHBar_ClearAll`) that is
+registered once; core_DrawBar_RegisterClear's capacity must not scale with
+the number of TOML groups.
 
 With --check, regenerate everything in memory and compare against the files
 on disk; exit 1 with a per-file report on any drift (never writes).
@@ -124,13 +126,11 @@ def load_bar_config() -> dict:
         group_bars = group.get("bars")
         if not isinstance(group_bars, list) or not group_bars:
             raise SystemExit(f"{CONFIG}: {namespace}: expected [[groups.bars]] entries")
-        callback = f"{namespace}_Clear"
         for source_bar in group_bars:
             if not isinstance(source_bar, dict):
                 raise SystemExit(f"{CONFIG}: each [[groups.bars]] entry must be a table")
             bar = dict(source_bar)
             bar["_namespace"] = namespace
-            bar["_clear_callback"] = callback
             bars.append(bar)
     config["bars"] = bars
     graphic_text = "\n".join(
@@ -613,27 +613,37 @@ def gen_generated_acs(config: dict) -> str:
             "",
         ]
 
-    callbacks = {}
+    # One clear callback for every generated namespace: core_DrawBar_RegisterClear
+    # holds at most UH_BAR_CLEAR_MAX entries, and per-namespace registration would
+    # silently overflow it, leaving selectors latched across class/weapon/morph
+    # changes. Latched selectors are reset here by name, deduped in declaration
+    # order (shared banks keep one selector inventory).
+    clear_inventories = []
+    seen_clear = set()
     for bar in config["bars"]:
-        callbacks.setdefault(bar["_clear_callback"].casefold(), []).append(bar)
-    for bars in callbacks.values():
-        callback = bars[0]["_clear_callback"]
-        lines.append(f'script "{callback}" (int cam) CLIENTSIDE {{')
-        cleared_selectors = set()
-        for bar in bars:
-            selector = namespaced_selector(bar)
-            if selector not in cleared_selectors:
-                lines.append(f'  SetActorInventory(cam, "{selector}", 0);')
-                cleared_selectors.add(selector)
-            if "source" not in bar:
-                lines.append(f'  SetActorInventory(cam, "{namespaced_ammo(bar)}", 0);')
-        lines += ["}", "",]
-        lines += [
-            f'script "{callback}_Register" OPEN CLIENTSIDE {{',
-            f'  ACS_NamedExecuteWithResult("core_DrawBar_RegisterClear", "{callback}");',
-            "}",
-            "",
-        ]
+        for name in (namespaced_selector(bar),) + (
+            () if "source" in bar else (namespaced_ammo(bar),)
+        ):
+            if name not in seen_clear:
+                seen_clear.add(name)
+                clear_inventories.append(name)
+    lines += [
+        'script "UHBar_ClearAll" (int cam) CLIENTSIDE {',
+    ]
+    lines += [f'  SetActorInventory(cam, "{name}", 0);' for name in clear_inventories]
+    lines += [
+        "}",
+        "",
+        'script "UHBar_ClearAll_Register" OPEN CLIENTSIDE {',
+        '  int result = ACS_NamedExecuteWithResult(',
+        '      "core_DrawBar_RegisterClear", "UHBar_ClearAll");',
+        "  if (result < 0) {",
+        '    Log(s:"UHBar_ClearAll_Register: core_DrawBar_RegisterClear failed: ",',
+        '        i:result);',
+        "  }",
+        "}",
+        "",
+    ]
     return "\n".join(lines)
 
 

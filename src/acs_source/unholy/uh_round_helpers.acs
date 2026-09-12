@@ -1,0 +1,215 @@
+// Shared round/player helpers for library unholy.
+// This fragment is textually included by uh_funclib.acs.
+
+function void ConsoleCommandWithWarn(str command, str warning) {
+  consoleCommand(command);
+  UH_Log(UH_LOG_WARN, StrParam(s:warning, s:" (", s:command, s:")"));
+}
+
+function void ShowMeTheRCON(str var, int num) {
+  SetFont("fakefntC");  // SMALLFONT
+  HudMessageBold(s:"\c[MenuYellow]RCON set ", s:var, s:" to ", i:num; HUDMSG_LOG, 447266, CR_WHITE, 0.99, 0.99, 6.0);  // 0.06 0.70
+}
+
+// This gathers a CVAR info, resets to NUM, and returns it.
+function int CheckClearCvar(str check, int num) {
+  int checked = GetCVAR(check);
+  if (checked != num) {UH_Log(UH_LOG_DEBUG, StrParam(s:"CVAR '", s:check, s:"' was '", i:checked, s:"' and was set to '", i:num, s:"'"));}
+  SetCVar(check, num);
+  return checked;
+}
+
+// Read a user CVAR and clamp it to a safe range.
+function int GetClampedCvar(str check, int minval, int maxval) {
+  int value = GetCVar(check);
+  if (value < minval) {value = minval;}
+  if (value > maxval) {value = maxval;}
+  return value;
+}
+
+// Marks which player numbers are ingame
+function void PlayerLifeStatusArr_GatherFunc(void) {
+  totalplayersarr[1] = PlayerCount();
+
+  int p_total = PlayerCount();
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (PlayerInGame(i)) {
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"Player ", i:i, s:" is alive"));
+      playerlifestatusarr[i] = 1;
+      if (p_total <= 1) {
+        playerlifestatusarr[MAX_PLAYERS] = i;
+        UH_Log(UH_LOG_DEBUG, StrParam(s:"Done collecting alive players. Max ID = ", i:playerlifestatusarr[MAX_PLAYERS]));
+        break;
+      }
+      p_total--;
+    }
+  }
+}
+// Updates player status and total players with status
+function void PlayerLifeStatusArr_UpdateFunc(int thedude, int newstatus) {
+  totalplayersarr[playerlifestatusarr[thedude]]--;
+  playerlifestatusarr[thedude] = newstatus;
+  totalplayersarr[newstatus]++;
+}
+
+// Give/Take Inventory items to/from EVERY ingame player.
+function void GiveMeTheFunc(str hungry, int thebill) {
+  if (thebill == 0) {thebill = 1;}
+
+  if (thebill < 0) {
+    for (int i; i < MAX_PLAYERS; i++) {
+      if (PlayerInGame(i)) {TakeActorInventory(i + 1000, hungry, -thebill);}
+    }
+  }
+  else {
+    for (int j; j < MAX_PLAYERS; j++) {
+      if (PlayerInGame(j)) {GiveActorInventory(j + 1000, hungry, thebill);}
+    }
+  }
+}
+
+// Similar to above except it doesn't give/take to/from the specific TID, TheDude.
+function void GiveMeTheFuncExcept(str h, int xx, int thedude) {
+  if (xx == 0) {xx = 1;}
+  if (xx < 0) {
+    for (int i; i < MAX_PLAYERS; i++) {
+      if (PlayerInGame(i) && i + 1000 != thedude) {
+        TakeActorInventory(i + 1000, h, -xx);
+      }
+    }
+  }
+  else {
+    for (int j; j < MAX_PLAYERS; j++) {
+      if (PlayerInGame(j) && j + 1000 != thedude) {
+        GiveActorInventory(j + 1000, h, xx);
+      }
+    }
+  }
+}
+
+// Similar to above except bosses
+function void GiveMeTheFuncExceptBosses(str h, int xx) {
+  if (xx == 0) {xx = 1;}
+  if (xx < 0) {
+    for (int i; i < MAX_PLAYERS; i++) {
+      if (PlayerInGame(i) && playerlifestatusarr[i] != PLS_BOSS) {
+        TakeActorInventory(i + 1000, h, -xx);
+      }
+    }
+  }
+  else {
+    for (int j; j < MAX_PLAYERS; j++) {
+      if (PlayerInGame(j) && playerlifestatusarr[j] != PLS_BOSS) {
+        GiveActorInventory(j + 1000, h, xx);
+      }
+    }
+  }
+}
+
+// Give/take inventory to/from the boss team.
+function void GiveBossesTheFunc(str item, int amount) {
+  if (amount == 0) {amount = 1;}
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (PlayerInGame(i) && playerlifestatusarr[i] == PLS_BOSS) {
+      GiveActorInventory(i + 1000, item, amount);
+    }
+  }
+}
+
+// Apply a rune mode to the boss team (Bad LMS reverse reward).
+function void GiveBossesRune(int mode) {
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (PlayerInGame(i) && playerlifestatusarr[i] == PLS_BOSS) {
+      ACS_NamedExecuteWithResult("uh_runeplayer", i + 1, 1, mode);
+    }
+  }
+}
+
+// Execute the script for each player.
+function void ScriptMeTheFunc(str scriptname, int arg1, int arg2, int arg3, int arg4) {
+  for (int i = 0; i < ServerMAX; i++) {
+    SetActivator(i + 1000);
+    ACS_NamedExecuteWithResult(scriptname, arg1, arg2, arg3, arg4);
+  }
+}
+
+function void MakeAllPlayersInvun(void) {
+  int playernum = 1000;
+  until (playernum == 1064) {
+    SetActorProperty(playernum, APROP_DamageFactor, 0.0);
+    playernum++;
+  }
+}
+
+// Presets a random number for EX Bosses delay
+function void BossEXCountArr_Setter(int maxcount, int ran1, int ran2) {
+  for (int i = 0; i < maxcount; i++) {
+    bossexcountarray[i] = random(ran1, ran2);
+  }
+  // debugLog(StrParam(s:"BossEXCountArray randomized between values [",i:Ran1,s:"] and [",i:Ran2,s:"]!");}
+}
+
+function void PresetStrongmanCheck(int setter, int howfar) {
+  for (int i = 0; i <= howfar; i++) {
+    strongmancheck[i] = setter;
+  }
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"StrongmanCheck Array set to value ", i:setter, s:" with a size of ", i:howfar, s:"."));
+}
+
+function void Add_StrongmanCheckArray(int thenum) {
+  for (int i = 0; i <= 99; i++) {
+    if (strongmancheck[i] == -1) {
+      strongmancheck[i] = thenum;
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"StrongmanCheck value [", i:i, s:"] set to ", i:thenum, s:"."));
+      break;
+    }
+  }
+}
+function void Minus_StrongmanCheckArray(void) {
+  for (int i = 0; i < 99; i++) {
+    if (strongmancheck[i] != -1) {
+      strongmancheck[i] = strongmancheck[i + 1];
+    }
+    else {
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"StrongmanCheck shifted over ", i:i, s:" time(s)."));
+      break;
+    }
+  }
+  strongmancheck[99] = -1;  // Keep the queue tail inside the documented 0-99 range.
+}
+
+function void AdjustPlayerForceNumArray(int swapper) {
+  int i;
+  switch (swapper) {
+    case -1:  // Minus
+      for (i = 0; i <= 64; i++) {
+        if (playerforcenum[i] != 0) {
+          playerforcenum[i] = playerforcenum[i + 1];
+        }
+        else {
+          UH_Log(UH_LOG_DEBUG, StrParam(s:"PlayerForceNum shifted over ", i:i, s:" time(s)."));
+          break;
+        }
+      }
+      break;
+    case 0:  // Reset
+      for (i = 0; i <= 64; i++) {
+        playerforcenum[i] = 0;
+      }
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"Reset all PlayerForceNum to 0."));
+      break;
+    default:  // Add
+      for (i = 0; i <= 64; i++) {
+        if (playerforcenum[i] == 0) {
+          playerforcenum[i] = swapper;
+          UH_Log(UH_LOG_DEBUG, StrParam(s:"PlayerForceNum value [", i:i, s:"] set to ", i:swapper, s:"."));
+          break;
+        }
+      }
+      break;
+  }
+}
+
+function bool RandomPercent(int chance) {
+  return (random(1, 100) <= chance);
+}

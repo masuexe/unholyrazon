@@ -24,6 +24,19 @@ REQUIRED_MUSIC = {
 }
 
 
+def read_acs_with_local_includes(path: Path) -> str:
+    """Read an ACS file and expand include files beside it when available."""
+    text = path.read_text(encoding="utf-8")
+
+    def expand(match: re.Match[str]) -> str:
+        include_path = path.parent / match.group(1)
+        if not include_path.is_file():
+            return match.group(0)
+        return read_acs_with_local_includes(include_path)
+
+    return re.sub(r'#include\s+"([^"]+)"', expand, text)
+
+
 def function_body(text: str, name: str) -> str:
     match = re.search(rf"function\s+\w+\s+{re.escape(name)}\s*\([^)]*\)\s*\{{", text)
     if not match:
@@ -335,7 +348,7 @@ def main() -> int:
 
     try:
         defs = DEF.read_text(encoding="utf-8")
-        funcs = FUNCS.read_text(encoding="utf-8")
+        funcs = read_acs_with_local_includes(FUNCS)
         versus = VERSUS.read_text(encoding="utf-8")
         bossselect = BOSSSELECT.read_text(encoding="utf-8")
         dickhead = DICKHEAD.read_text(encoding="utf-8")
