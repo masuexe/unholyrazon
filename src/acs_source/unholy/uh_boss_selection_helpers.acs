@@ -25,10 +25,12 @@ function bool CheckBossList(int checkme) {
 }
 
 // --- Boss pick history (phase A: storage + accessors) -----------------------
-// Infrastructure for Razon 3-style least-seen fairness.  This phase ships only
-// the persistent counts and the validated accessors: the fairness picker, the
-// selection wiring and the per-round commit point are phases B/C, so nothing
-// calls IncrementBossPickCount yet and current selection is unchanged.
+// Razon 3-style least-seen fairness.  Phase A added the persistent counts and
+// the validated accessors; phase B wired PickLeastSeenBossFromPool into
+// TrueRandomBoss and added the per-round temporary delta below.  The permanent
+// commit point (CommitSelectedBossHistory) is phase C, so nothing calls
+// IncrementBossPickCount yet and every count still reads 0 — until then the
+// picker is only as fair as the per-round delta.
 // Counts live in the world arrays declared in uh_def.acs.  Signed boss ids must
 // never index an array directly: vanilla ids use their own slot, custom ids go
 // through UH_BossCustomIndex, and anything unregistered or out of range reports
@@ -75,22 +77,90 @@ function void IncrementBossPickCount(int id) {
   }
 }
 
-// NEW#BOSS — pool-based pick (no BOSSRNGMAX holes)
+// Slots already chosen for THIS round.  They count as +1 while selecting so a
+// multi-boss line-up spreads across equally-seen bosses; the permanent world
+// count is only written by the phase C commit point, so a retry or an abandoned
+// line-up cannot corrupt history.
+#define UH_BOSSROUND_MAX 8
+int uh_bossroundpicked[UH_BOSSROUND_MAX];
+int uh_bossroundpickedcount;
+
+function void UH_BossRoundReset(void) {
+  uh_bossroundpickedcount = 0;
+}
+
+function void UH_BossRoundRecord(int id) {
+  if (id == UHBOSS_FAIL)
+    return;
+  if (uh_bossroundpickedcount >= UH_BOSSROUND_MAX)
+    return;
+  uh_bossroundpicked[uh_bossroundpickedcount] = id;
+  uh_bossroundpickedcount++;
+}
+
+function int UH_BossRoundSeen(int id) {
+  int seen = 0;
+  for (int i = 0; i < uh_bossroundpickedcount; i++) {
+    if (uh_bossroundpicked[i] == id)
+      seen++;
+  }
+  return seen;
+}
+
+// Lowest-count random pick inside one rarity pool.  Single-pass reservoir
+// sampling: keep the minimum, and among equal-lowest candidates replace the
+// current pick with probability 1/ties, so the registry order never biases the
+// tie.  avoid is reserved for paths that must not repeat a boss (versus pairs).
+// Plain rounds pass UHBOSS_FAIL: the loop already skips that value as "no
+// candidate", so it excludes nothing.  Do NOT use -1 as "no exclusion" — -1 is
+// a valid custom boss id (the first auto-registered custom boss) and passing it
+// would silently drop that boss from every plain round.  A caller that must
+// genuinely exclude custom boss -1 passes -1.
+function int PickLeastSeenBossFromPool(int rarity, int avoid) {
+  int n = GetBossPoolCount(rarity);
+  int best = UHBOSS_FAIL;
+  int bestcount = 0;
+  int ties = 0;
+  for (int i = 0; i < n; i++) {
+    int id = GetBossPoolId(rarity, i);
+    if (id == UHBOSS_FAIL || id == avoid)
+      continue;
+    int count = GetBossPickCount(id);
+    if (count < 0)
+      continue;
+    count += UH_BossRoundSeen(id);
+    if (best == UHBOSS_FAIL || count < bestcount) {
+      best = id;
+      bestcount = count;
+      ties = 1;
+    }
+    else if (count == bestcount) {
+      ties++;
+      if (random(1, ties) == 1)
+        best = id;
+    }
+  }
+  return best;
+}
+
+// NEW#BOSS — pool-based pick (no BOSSRNGMAX holes).  The rarity draw order and
+// probabilities are unchanged; only the in-pool pick now prefers the least-seen
+// boss.  Forced boss and -666 true-random semantics are untouched.
 function int TrueRandomBoss(void) {
   int rngpick;
   if (RandomPercent(5))
-    rngpick = RandomBossFromPool(UHBOSS_POOL_ULTRA);
+    rngpick = PickLeastSeenBossFromPool(UHBOSS_POOL_ULTRA, UHBOSS_FAIL);
   else if (RandomPercent(1))
-    rngpick = RandomBossFromPool(UHBOSS_POOL_SPECIAL);
+    rngpick = PickLeastSeenBossFromPool(UHBOSS_POOL_SPECIAL, UHBOSS_FAIL);
   else if (RandomPercent(15))
-    rngpick = RandomBossFromPool(UHBOSS_POOL_EX);
+    rngpick = PickLeastSeenBossFromPool(UHBOSS_POOL_EX, UHBOSS_FAIL);
   else if (RandomPercent(30))
-    rngpick = RandomBossFromPool(UHBOSS_POOL_RARE);
+    rngpick = PickLeastSeenBossFromPool(UHBOSS_POOL_RARE, UHBOSS_FAIL);
   else
-    rngpick = RandomBossFromPool(UHBOSS_POOL_COMMON);
+    rngpick = PickLeastSeenBossFromPool(UHBOSS_POOL_COMMON, UHBOSS_FAIL);
 
   if (rngpick == UHBOSS_FAIL || !IsBossDefined(rngpick))
-    rngpick = RandomBossFromPool(UHBOSS_POOL_COMMON);
+    rngpick = PickLeastSeenBossFromPool(UHBOSS_POOL_COMMON, UHBOSS_FAIL);
   if (rngpick == UHBOSS_FAIL || !IsBossDefined(rngpick))
     rngpick = 0;
   return rngpick;
@@ -117,6 +187,11 @@ function void SetUpBossSelection_Func(void) {
     else
       bossdataarr[i][BOSSDATA_NUM] = bossdataarr[i][BOSSDATA_NUM];  // EXBossChecker
 
+    // Feed this slot back into the round-scoped delta so the next slot prefers
+    // a different equally-seen boss.  Shadow placeholders are not the final
+    // identity, so they are excluded and left to the shadow commit path.
+    if (!shadowtricksarr[i])
+      UH_BossRoundRecord(bossdataarr[i][BOSSDATA_NUM]);
     UH_Log(UH_LOG_DEBUG, StrParam(s:"UnholyBoss", i:i + 1, s:" = ", i:bossdataarr[i][BOSSDATA_NUM]));
   }
   // debugLog(StrParam(s:"DEBUG TXT: RareBossChance = ",d:RareBossChance);}
