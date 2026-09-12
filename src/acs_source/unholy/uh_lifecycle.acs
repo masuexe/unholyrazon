@@ -400,11 +400,21 @@ script "ub_WatchSurvivors" (int skipacs) {
 
 
 // Razon3-style limited X-Ray once exactly two players remain alive.
+// Server switch uh_sv_TwoPlayerXRay (default 1 = historical behaviour):
+//   0 -> the watcher ends before waiting, so no nametags are granted and
+//        twoplayersxrayenabled stays false;
+//   1 -> unchanged.
+// The value is read again just before the grant so toggling the cvar mid-round
+// still takes effect (the loop already wakes every 2 tics).
 script "rz_WatchTwoPlayerLeft" (void) {
+  if (GetCVar("uh_sv_TwoPlayerXRay") != 1)
+    terminate;
   while (totalplayersarr[PLS_SURVIVOR] + totalplayersarr[PLS_BOSS] + totalplayersarr[PLS_EYE] != 2 || twoplayersxrayenabled) {
     if (gameover) {terminate;}
     Delay(2);
   }
+  if (GetCVar("uh_sv_TwoPlayerXRay") != 1)
+    terminate;
   GiveMeTheFunc("XRayVisionEnableLimited_P", 1);
   twoplayersxrayenabled = true;
 }
