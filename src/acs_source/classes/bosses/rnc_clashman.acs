@@ -100,6 +100,23 @@ script "uh_rncstealth_ring" (int cx, int cy) CLIENTSIDE {
   // 4 x frame tics).  Level changes/drops clear clientside actors anyway.
 }
 
+// Cloak transform: spawn one MXP1 pop on the boss and point it at them, so its
+// A_Warp keeps the pop glued to the body while the boss turns invisible.
+// SERVER-SIDE on purpose (started from RNCStealthBegin_P): every player sees the
+// boss become MXP1 and vanish, unlike the private judgement-circle ring.
+// The pop drops its TID right after the pointer is wired (same idiom as
+// item_effects.acs:51), so this leaves no TID footprint at all.
+script "uh_rncstealth_transform" (void) {
+  int bosstid = ActivatorTID();   // the boss: RNCStealthBegin_P's activator
+  int fx = UniqueTID();
+  if (SpawnForced("RNCCloakTransformFX",
+                  GetActorX(0), GetActorY(0), GetActorZ(0) + 32.0, fx, 0)) {
+    SetActivator(fx);
+    SetPointer(AAPTR_TARGET, bosstid);   // A_Warp offsets are feet-relative +32
+    Thing_ChangeTID(fx, 0);
+  }
+}
+
 // Per-tic cooldown drain (started by RNCStealthBreak_P).  Exact 1/tick rate
 // independent of the weapon's Flash/Ready timing; exits at 0.
 script "uh_rncstealth_cooldowntick" (void) {

@@ -539,12 +539,43 @@ actor RNCStealthRingDot : BasicGraphicEffect {
   }
 }
 
+// Cloak transform FX: one MXP1 B..E pop (2 tics per frame) that rides the boss,
+// so the body appears to become MXP1 and then vanish together with the cloak.
+// uh_rncstealth_transform spawns it on the boss and points its target at them.
+// A_Warp is an INSTANT reposition to target + offset (thingdef_codeptr.cpp:5640)
+// and WARPF_COPYINTERPOLATION slides the rendered position along with the boss.
+//
+// -CLIENTSIDEONLY is the only deviation from the rest of this mod's FX, and it
+// is NOT about visibility: a clientside-only actor exists as one local copy per
+// client (NETWORK_IsActorClientHandled, network.cpp:1598) and each copy is
+// created from a bare position command - CLIENT_SpawnThing receives no pointers
+// (cl_main.cpp:2809, sv_commands.cpp:1464) - so its A_Warp(AAPTR_TARGET) would
+// find no target and silently do nothing, leaving the pop behind whenever the
+// boss moves.  Keeping this one server-side lets the server run the warp and
+// broadcast the movement (thingdef_codeptr.cpp:5684); everyone sees it either
+// way.  Everything else (NOINTERACTION / NOGRAVITY / -SOLID / DONTBLAST /
+// Translucent / alpha 1.0 / scale 2.5) comes from BasicGraphicEffect.
+actor RNCCloakTransformFX : BasicGraphicEffect {
+  -CLIENTSIDEONLY
+  +FORCEXYBILLBOARD
+  +BRIGHT
+  States {
+   Spawn:
+    NCXP A 2 A_Warp(AAPTR_TARGET, 0, 0, 32, 0, WARPF_COPYINTERPOLATION|WARPF_NOCHECKPOSITION)
+    MXP1 C 2 A_Warp(AAPTR_TARGET, 0, 0, 32, 0, WARPF_COPYINTERPOLATION|WARPF_NOCHECKPOSITION)
+    MXP1 D 2 A_Warp(AAPTR_TARGET, 0, 0, 32, 0, WARPF_COPYINTERPOLATION|WARPF_NOCHECKPOSITION)
+    MXP1 E 2 A_Warp(AAPTR_TARGET, 0, 0, 32, 0, WARPF_COPYINTERPOLATION|WARPF_NOCHECKPOSITION)
+    stop
+  }
+}
+
 // Reload entry point.  Silently refuses while already active or cooling down.
 actor RNCStealthBegin_P : CustomInventory {
   States {
    Pickup:
     TNT1 A 0 A_JumpIfInventory("RNCStealthActive_F", 1, "NoOp")
     TNT1 A 0 A_JumpIfInventory("RNCStealthCooldown", 1, "NoOp")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_rncstealth_transform", 0)
     TNT1 A 0 A_GiveInventory("UH_00_AlphaPowerGiver")
     TNT1 A 0 ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true)
     TNT1 A 0 ACS_NamedExecuteWithResult("core_unsolidplayer", 0, USP_TOGGLEON)

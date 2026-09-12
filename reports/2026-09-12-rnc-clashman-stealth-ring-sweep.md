@@ -422,3 +422,109 @@ script "uh_rncstealth_ring" (int cx, int cy) CLIENTSIDE {
 | 破隐后 ~29 tics | 点数 **0**（寿命耗尽自动消失，无需任何清理） |
 | 破隐其余路径 | alpha 恢复 1、`UH_00_AlphaPower`/invuln/unsolid 已移除、`RNCStealthCooldown` 正常递减 |
 | 编译/打包 | 0 error / 0 warning；`uh_classes.o` 27377 → **27297 B**；`out/build.pk3` 16563 项条目零差异、`validate-build-pk3.sh` status=ok |
+
+## 13. 隐身变身特效：MXP1 BCDE + A_Warp（2026-09-12，第四轮）
+
+需求：boss 隐身时播放一个 `MXP1 BCDE 2` 特效，**用 warp** 模拟"boss 变成 MXP1 然后一起消失"。
+选型（用户拍板）：**全场可见**（服务端特效，敌人也看得到这一瞬）。
+
+### 实现
+
+**新 actor `RNCCloakTransformFX`**（`RNCClashman_W.dec`，紧跟 `RNCStealthRingDot`）——**派生自 `BasicGraphicEffect`**，只清掉一个 flag：
+
+```decorate
+actor RNCCloakTransformFX : BasicGraphicEffect {
+  -CLIENTSIDEONLY          // 唯一与本 mod 其他 FX 不同之处，原因见下
+  +FORCEXYBILLBOARD
+  +BRIGHT
+  States {
+   Spawn:
+    NCXP A 2 A_Warp(AAPTR_TARGET, 0, 0, 32, 0, WARPF_COPYINTERPOLATION|WARPF_NOCHECKPOSITION)
+    MXP1 C 2 A_Warp(...)   // 同上
+    MXP1 D 2 A_Warp(...)
+    MXP1 E 2 A_Warp(...)
+    stop
+  }
+}
+```
+
+（`+NOINTERACTION +NOGRAVITY -SOLID +DONTBLAST`、`Translucent`、`Alpha 1.0`、`Scale 2.5`、`radius/height 2` 全部继承自 `BasicGraphicEffect`。）
+
+- **每帧 A_Warp 把自己贴回 boss 身上**（脚底 +32 = 胸口），`COPYINTERPOLATION` 让渲染位置跟着 boss 的插值一起滑动；boss 边走边隐身时，MXP1 球是"贴在人身上"而不是留在原地。
+
+#### ⚠️ 更正（2026-09-12，用户指出后复核）
+
+本文档早先写过"**不能用 `BasicGraphicEffect`，因为它 `+CLIENTSIDEONLY`，服务端生成即销毁，所以别人看不到**"——**这个结论是错的**，实测与源码都推翻了它：
+
+- clientside-only 的 actor 在**每个客户端各有一份本地副本**：服务端 `DoSpawn` 先发 `SERVERCOMMANDS_SpawnThing` 再把服务端自己那份销毁（`p_acs.cpp:4194-4206`），客户端收到后由 `CLIENT_SpawnThing` 建一份本地 actor（`cl_main.cpp:2809`）。
+- 而 `NETWORK_IsActorClientHandled(actor) = (NetworkFlags & NETFL_CLIENTSIDEONLY) || (NetID == 0)`（`network.cpp:1598-1605`）→ 这类副本在客户端**由客户端自己跑状态机与 action 函数**。所以 MM8BDM / 本项目大量 `BasicGraphicEffect` 特效（爆炸 pop、弹道特效）对所有人都是可见的，只是"每人一份、各自本地模拟"。
+
+**真正需要服务端 actor 的原因不是可见性，而是指针**：`SERVERCOMMANDS_SpawnThing` 只带 class/x/y/z(/NetID)（`sv_commands.cpp:1464-1470`），`CLIENT_SpawnThing` 也不会设置任何指针 → 各客户端的副本 `target == NULL` → `A_Warp` 会在 `if (!reference)` 提前返回（`thingdef_codeptr.cpp:5581-5585`），**pop 就钉死在出生点、不会跟着移动中的 boss**。而本项目这次要的正是"A_Warp 跟人"，所以这一份 actor 必须由服务端持有并模拟：服务端跑 warp，再靠 `SERVERCOMMANDS_MoveThingIfChanged`（`thingdef_codeptr.cpp:5684-5685`）把每刻位置广播给所有客户端。
+
+结论：**基类照用 `BasicGraphicEffect`，只把 `+CLIENTSIDEONLY` 清掉**（`-CLIENTSIDEONLY`），既与项目风格一致，又拿到服务端模拟。
+
+#### ⚠️ 更正二（同日晚，用户举 `LeafShieldWep`/`BasicShieldWarper` 反例后复核）
+
+用户指出：`BasicShieldWarper` 也是 clientside 的，也用了 `A_Warp(AAPTR_TARGET, …)`，所以"清掉 `-CLIENTSIDEONLY`"没必要。**反例成立**（v6b `actors/basicactors.txt:172-195`：`+CLIENTSIDEONLY` + `STAR AABBCCDD 1 A_Warp(AAPTR_TARGET, 0, 0, 16, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)`），但它能跑通的原因不是"clientside 也能 warp"，而是**生成它的那条 DECORATE 自己带出了指针**：
+
+| 生成路径 | 指针从哪来 |
+|---|---|
+| DECORATE `A_SpawnItemEx` | 引擎默认 `mo->target = originator ? originator : self`（`thingdef_codeptr.cpp:2476-2479`）；且 `+MISSILE` 时服务端还会 `SERVERCOMMANDS_SetThingTarget` 把指针同步给客户端（`:2692-2694`）。`BasicShieldWarper` 正带 `+MISSILE` |
+| ACS `Spawn`/`SpawnForced`（**本项目这条路**） | `DoSpawn` 只发 type/x/y/z/tid/angle，**完全没有指针同步**（`p_acs.cpp:4194-4206`、`sv_commands.cpp:1464-1470`） |
+
+所以：pop 若改成 `+CLIENTSIDEONLY`，各客户端副本 `target == NULL` → `A_Warp` 在 `if (!reference)` 提前返回（`thingdef_codeptr.cpp:5581-5585`）→ **单机跟着人走、联机时客户端上的 pop 钉在出生点不动**（最难查的"单机好联机坏"）。`-CLIENTSIDEONLY` 换来的正是"服务端跑 warp + `SERVERCOMMANDS_MoveThingIfChanged` 广播（`:5684-5685`）"，让 host/客户端行为一致。
+
+**决定（用户确认）：保持 `-CLIENTSIDEONLY`（服务端持有）。** 另一条可行路线记录在此备查：pop 的 `Spawn:` 里调一个 CLIENTSIDE 脚本，扫 `PLN_TID + i` 找带 `RNCStealthActive_F` 的玩家并 `SetPointer(AAPTR_TARGET, 该 tid)`，这样每份客户端副本能本地 warp、服务端不需要该 actor（代价：多一个脚本 + 一次 64 次扫描）。
+
+**未验证项**：listen server 的 host 对"服务端 ACS 生成的 clientside-only actor"是否可见。代码上 `SERVER_DestroyActorIfClientsidedOnly` 会在派发后销毁服务端那份（`sv_main.cpp:5653-5667`），host 渲染的就是服务端世界 → 推测 host 看不到；但用 `-host` 起 listen server 后用 MCP 验证失败（server 模式下 `currentpos`/`give` 全部超时），所以仅作推断。
+
+**新 ACS 脚本 `uh_rncstealth_transform`**（`rnc_clashman.acs`）：
+
+```acs
+script "uh_rncstealth_transform" (void) {
+  int bosstid = ActivatorTID();   // RNCStealthBegin_P 的 activator = boss
+  int fx = UniqueTID();
+  if (SpawnForced("RNCCloakTransformFX",
+                  GetActorX(0), GetActorY(0), GetActorZ(0) + 32.0, fx, 0)) {
+    SetActivator(fx);
+    SetPointer(AAPTR_TARGET, bosstid);   // A_Warp 的偏移是"相对 boss 脚底 +32"
+    Thing_ChangeTID(fx, 0);
+  }
+}
+```
+
+- 沿用本 mod 既有范式：`SetActivator(u)` + `SetPointer(AAPTR_TARGET, …)`（`weather.acs:18-23`、`shared_warp_and_cone.acs:236-240`）、事后清 TID（`item_effects.acs:44-52`）——所以这个 pop **不留任何 TID**。
+- `RNCStealthBegin_P` 在两个守卫**之后**、给 `UH_00_AlphaPowerGiver` **之前**调用它 → 冷却中/已隐身时是 NoOp，不会白放特效。
+
+### 技术依据（已核实）
+
+| 结论 | 出处 |
+|---|---|
+| `A_Warp` 是**瞬移**到 `reference + offset`，不是逐刻位移；`WARPF_INTERPOLATE/COPYINTERPOLATION` 只改渲染插值 | `thingdef_codeptr.cpp:5640-5680` |
+| `WARPF_NOCHECKPOSITION` 必需：否则目标点被 boss 自己的碰撞体挡住会静默失败 | 同上 `:5646` |
+| 服务端 `A_Warp` 会广播位移（`SERVERCOMMANDS_MoveThingIfChanged`） | 同上 `:5684-5685` |
+| 服务端生成的 `+CLIENTSIDEONLY` actor：服务端只当派发器（发 SpawnThing 后销毁自己那份），客户端各建一份本地副本并**本地模拟** → 全场可见 | `p_acs.cpp:4194-4206`、`cl_main.cpp:2809`、`network.cpp:1598-1605` |
+| `SpawnThing` 命令**不带任何指针** → 客户端副本 `target == NULL` → `A_Warp` 静默失效（DECORATE `A_SpawnItemEx` 则相反：自带 `target = originator` 且 `+MISSILE` 会同步） | `sv_commands.cpp:1464-1470`、`thingdef_codeptr.cpp:2476-2479,2692-2694,5581-5585` |
+| `SetPointer` 只能改 **activator** 的指针，必须先 `SetActivator(fx)` | `p_acs.cpp:5940-5952` |
+| `ActivatorTID()` 取 activator 的 TID（玩家 = 1000+n） | mod 先例 `item_effects.acs:9`、`weather.acs:28` |
+| `tid == 0` 的 actor 不进 TID 哈希 | `p_mobj.cpp:3575-3582` |
+
+### MCP 验收（profile `mm8bdm-v6b-smoke`，地图 MM2DW1）
+
+| 项 | 结果 |
+|---|---|
+| 生成 | `give RNCStealthBegin_P` 后 1 tic 内出现 `RNCCloakTransformFX`；坐标 = boss 的 XY，z = 脚底 + 32 ✓ |
+| 指针 | 调试日志实测 `boss=1000 fx=840276687 ptr=1` → `SetPointer(AAPTR_TARGET, 玩家)` 成功 |
+| 继承与 flag | `actor_state`（临时保留 TID 观察）：`networkFlags = 0`（`-CLIENTSIDEONLY` 生效）、`target = 1000 LuckyLass`、`renderStyle Translucent`、`alpha 1`、`scale 2.5`、`size 2/2`、状态 `NCXP A(2) → MXP1 C(2)` —— 全部继承自 `BasicGraphicEffect` ✓ |
+| 跟随（warp 生效） | 按住前进走动：玩家 y −1182.1 → −1178.6，pop 同步 −1182 → −1179；另一次 x 97.3 → 99.9 / pop 97 → 100 ✓（每 2 tics 一次 warp，其余由插值补平） |
+| 无 TID 残留 | 该 actor 在 `actorsnear` 里 TID 恒为 **0** ✓ |
+| 自毁 | 4 帧播完自动消失，无残留、引擎日志无 error |
+| 观感 | 第三人称（`chase`）截图：boss 身上是一整个白色 MXP1 球 ✓；**第一人称自己看不到**（贴脸 sprite 被近平面裁掉）→ "别人看得见、自己不糊屏"，如需自己也看到可调 z 偏移或 Scale |
+
+### 备注 / 可调项
+
+- 亮度：`+BRIGHT` + Translucent + Alpha 1.0（基游戏 `ExplosionEffect1` 观感）；嫌亮就去 `+BRIGHT` 或降 Alpha。
+- 尺寸：`Scale 2.5` = 40 单位；想更夸张可 3.0。
+- **z 偏移在两处**：ACS 的 `+ 32.0` 与 actor 里 `A_Warp(..., 32, ...)` 必须一致，改一处要改两处。
+- 破隐时目前**不放**特效（需求只说"隐身时"）。要破隐也来一发，就在 `RNCStealthBreak_P` 的 `BreakStealth:` 里加同一行 `ACS_NamedExecuteAlways("uh_rncstealth_transform", 0)`。
+- 测试注意（本轮踩到）：**不要在实例运行期间重建 `out/build.pk3`**——引擎会边跑边读 ZIP，热替换会导致 `Corrupt zlib stream` 刷屏；而且 ACS 只在**启动时**加载，改了 `.acs` 必须重启实例（`load_map` 不会重载库）。
