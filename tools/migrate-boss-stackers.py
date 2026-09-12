@@ -2,9 +2,12 @@
 """Migrate boss stacker and PowerAprop call sites onto the ownership-ledger wrappers.
 
 Two passes:
-  1. property stackers: ("core_*player", 0, toggle) -> uh_BossStackOn/Off(family)
+  1. property stackers: ("core_*player", player, toggle) -> matching uh_*player wrapper
   2. PowerAprop:        A_GiveInventory("<Power>Giver"[, n]) -> uh_BossPowerGive(idx[, n])
                         A_TakeInventory("<Power>"[, n])       -> uh_BossPowerTake(idx[, n])
+
+The generated property calls preserve the base API's player/toggle/extra
+argument order; numeric family IDs remain internal to morph_reset.acs.
 
 The PowerAprop index table is parsed from uh_morphpowername in
 systems/tools/morph_reset.acs, so the tool cannot drift from the runtime table.
@@ -21,16 +24,32 @@ SIMPLE = {
     "core_buddhaplayer": 7, "core_nonshootableplayer": 8, "core_nopushplayer": 9,
     "core_cantseekplayer": 10, "core_notargetplayer": 11, "core_monsterblockplayer": 12,
     "core_invisibleplayer": 13, "core_dontidentifytargetplayer": 14,
-    "uh_nohitstunplayer": 16, "uh_halfhitstunplayer": 17, "uh_halfpushplayer": 18,
-    "uh_cantuseitemsplayer": 19, "rz_noparalyzeplayer": 20, "uh_noradiusdmgplayer": 21,
-    "uh_cantpushwallsplayer": 22, "uh_noteleportplayer": 23, "uh_pickupdisableplayer": 24,
-    "uh_brightplayer": 25, "uh_shadowplayer": 26,
 }
 FLY, FLY_FORCED, NOGRAV, NOGRAV_FORCED = 4, 3, 6, 5
+
+WRAPPER = {
+    0: "uh_freezeplayer", 1: "uh_stopplayer", 2: "uh_invulnerableplayer",
+    3: "uh_flyplayer", 4: "uh_flyplayer", 5: "uh_nogravityplayer",
+    6: "uh_nogravityplayer", 7: "uh_buddhaplayer", 8: "uh_nonshootableplayer",
+    9: "uh_nopushplayer", 10: "uh_cantseekplayer", 11: "uh_notargetplayer",
+    12: "uh_monsterblockplayer", 13: "uh_invisibleplayer",
+    14: "uh_dontidentifytargetplayer", 15: "uh_unsolidplayer",
+    16: "uh_NoHitStunplayer", 17: "uh_HalfHitStunplayer", 18: "uh_halfpushplayer",
+    19: "uh_cantuseitemsplayer", 20: "rz_NoParalyzePlayer",
+    21: "uh_noradiusdmgplayer", 22: "uh_cantpushwallsplayer",
+    23: "uh_noteleportplayer", 24: "uh_pickupdisableplayer",
+    25: "uh_brightplayer", 26: "uh_shadowplayer",
+}
 
 CALL = re.compile(
     r'^(?P<pre>.*?)(?P<func>ACS_NamedExecute(?:WithResult|Always))\("'
     r'(?P<name>[A-Za-z0-9_]+)"\s*,\s*0\s*,\s*(?P<args>.*?)\)\s*$', re.I)
+OLD_WRAPPER_CALL = re.compile(
+    r'^(?P<pre>.*?)(?P<func>ACS_NamedExecute(?:WithResult|Always))\("'
+    r'(?P<name>uh_BossStackOn|uh_BossStackOff)"\s*,\s*(?P<family>\d+)\s*\)\s*$', re.I)
+OLD_UNSOLID_CALL = re.compile(
+    r'^(?P<pre>.*?)(?P<func>ACS_NamedExecute(?:WithResult|Always))\("'
+    r'(?P<name>uh_BossUnsolidOn|uh_BossUnsolidOffDmg)"(?:\s*,\s*(?P<damage>.*?))?\)\s*$', re.I)
 ON, OFF = {"true", "1"}, {"false", "0"}
 
 DEFAULT_TARGETS = [
@@ -56,29 +75,29 @@ def classify(name, args):
     head = parts[0]
     if low == "core_flyplayer":
         if len(parts) == 1 and (head in ON or head in OFF):
-            return ("uh_BossStackOn" if head in ON else "uh_BossStackOff", [str(FLY)])
+            return (WRAPPER[FLY], ["0", head, "0"])
         if len(parts) == 2 and parts[1] == "1" and (head in ON or head in OFF):
-            return ("uh_BossStackOn" if head in ON else "uh_BossStackOff", [str(FLY_FORCED)])
+            return (WRAPPER[FLY_FORCED], ["0", head, "1"])
         return None
     if low == "core_nogravityplayer":
         if len(parts) == 1 and (head in ON or head in OFF):
-            return ("uh_BossStackOn" if head in ON else "uh_BossStackOff", [str(NOGRAV)])
+            return (WRAPPER[NOGRAV], ["0", head, "0"])
         if len(parts) == 2 and parts[1] == "1" and (head in ON or head in OFF):
-            return ("uh_BossStackOn" if head in ON else "uh_BossStackOff", [str(NOGRAV_FORCED)])
+            return (WRAPPER[NOGRAV_FORCED], ["0", head, "1"])
         return None
     if low == "core_unsolidplayer":
         if head == "USP_TOGGLEON" or head in ON:
-            return ("uh_BossUnsolidOn", [])
+            return (WRAPPER[15], ["0", head, "0"])
         if head.startswith("USP_TOGGLEOFF_") and head != "USP_TOGGLEOFF_DAMAGE":
             return None
         if head in OFF or head == "USP_TOGGLEOFF_DAMAGE":
-            return ("uh_BossUnsolidOffDmg", ["0"] if len(parts) == 1 else ["1", parts[1]])
+            return (WRAPPER[15], ["0", head, "0" if len(parts) == 1 else parts[1]])
         return None
     if low in SIMPLE:
         if len(parts) == 1 and head in ON:
-            return ("uh_BossStackOn", [str(SIMPLE[low])])
+            return (WRAPPER[SIMPLE[low]], ["0", head])
         if len(parts) == 1 and head in OFF:
-            return ("uh_BossStackOff", [str(SIMPLE[low])])
+            return (WRAPPER[SIMPLE[low]], ["0", head])
         return None
     return None
 
@@ -111,16 +130,30 @@ def main():
         for lineno, line in enumerate(open(path, errors="ignore").read().split("\n"), 1):
             code, _, comment = line.partition("//")
             new = None
+            old = OLD_WRAPPER_CALL.match(code)
+            if old:
+                family = int(old.group("family"))
+                toggle = "1" if old.group("name").lower().endswith("on") else "0"
+                extra = ", 1" if family in (FLY_FORCED, NOGRAV_FORCED) else (", 0" if family in (FLY, NOGRAV) else "")
+                new = '%s%s("%s", 0, %s%s)' % (
+                    old.group("pre"), old.group("func"), WRAPPER[family], toggle, extra)
+                stats[WRAPPER[family]] = stats.get(WRAPPER[family], 0) + 1
+            old_unsolid = OLD_UNSOLID_CALL.match(code)
+            if new is None and old_unsolid:
+                is_on = old_unsolid.group("name").lower().endswith("on")
+                toggle = "USP_TOGGLEON" if is_on else "USP_TOGGLEOFF_DAMAGE"
+                damage = "0" if is_on else (old_unsolid.group("damage") or "0").strip()
+                new = '%s%s("uh_unsolidplayer", 0, %s, %s)' % (
+                    old_unsolid.group("pre"), old_unsolid.group("func"), toggle, damage)
+                stats["uh_unsolidplayer"] = stats.get("uh_unsolidplayer", 0) + 1
             m = CALL.match(code)
-            if m:
+            if new is None and m:
                 res = classify(m.group("name"), m.group("args"))
                 if res:
                     script, extra = res
                     call = m.group("func") + '("' + script + '"'
-                    if script.startswith("uh_BossStack"):
-                        call += ", " + extra[0]
-                    elif script == "uh_BossUnsolidOffDmg" and extra and extra[0] == "1":
-                        call += ", " + extra[1]
+                    if extra:
+                        call += ", " + ", ".join(extra)
                     new = m.group("pre") + call + ")"
                     stats[script] = stats.get(script, 0) + 1
             if new is None:

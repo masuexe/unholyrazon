@@ -181,15 +181,15 @@ int uh_morphpropstackfloor[UH_MORPH_PROPSTACK_COUNT] = {
 int uh_morphsavedpropstack[MAX_PLAYERS][UH_MORPH_PROPSTACK_COUNT];
 
 // --- Boss-owned layer ledger -------------------------------------------------
-// tools/migrate-boss-stackers.py rewrote the boss DECORATE acquisition and
-// release sites (and the shared grant/release actors bosses use) onto the
-// wrappers below.  Because only those sites were converted, an increment here
-// means "a boss action acquired this layer": a layer a map, an item or another
-// mod granted during the morph never touches the ledger and therefore survives
-// the demorph.  The release loop returns exactly these layers and is further
-// clamped by the pre-morph baseline so a drifted ledger can never walk a count
-// below what the survivor owned.
+// tools/migrate-boss-stackers.py rewrote boss DECORATE onto the v6b-shaped
+// uh_*player wrappers below.  UH-owned stackers notify the same ledger from
+// their implementations.  Callers retain the familiar player/toggle/extra
+// arguments and never need to know the numeric family used internally here.
+// The release loop returns exactly the recorded layers and is further clamped
+// by the pre-morph baseline so a drifted ledger can never walk a count below
+// what the survivor owned.
 int uh_bossstackowned[MAX_PLAYERS][UH_MORPH_PROPSTACK_COUNT];
+int uh_bossstacknotesuspended[MAX_PLAYERS];
 
 function void UH_BossStackNote(int family, int delta) {
   int p = PlayerNumber();
@@ -203,35 +203,48 @@ function void UH_BossStackNote(int family, int delta) {
   // morph and would delete a layer that morph never owned).
   if (!uh_morphbaselinevalid[p])
     return;
+  if (uh_bossstacknotesuspended[p])
+    return;
   uh_bossstackowned[p][family] += delta;
   if (uh_bossstackowned[p][family] < 0)
     uh_bossstackowned[p][family] = 0;
 }
 
-script "uh_BossStackOn" (int family) {
-  if (family < 0 || family >= UH_MORPH_PROPSTACK_COUNT)
-    terminate;
-  ACS_NamedExecuteWithResult(uh_morphpropstackscript[family], 0, 1, uh_morphpropstackextra[family]);
-  UH_BossStackNote(family, 1);
+// Cross-library implementation detail used by uh_aprop; not a modder API.
+script "uh_BossStackNote" (int family, int delta) {
+  UH_BossStackNote(family, delta);
 }
 
-script "uh_BossStackOff" (int family) {
-  if (family < 0 || family >= UH_MORPH_PROPSTACK_COUNT)
-    terminate;
-  ACS_NamedExecuteWithResult(uh_morphpropstackscript[family], 0, uh_morphpropstackoff[family], uh_morphpropstackextra[family]);
-  UH_BossStackNote(family, -1);
+function void UH_CallBossCoreStacker(str scriptname, int family, int player, int toggle, int extra) {
+  int target = player;
+  ACS_NamedExecuteWithResult(scriptname, player, toggle, extra);
+  if (target == 0)
+    target = PlayerNumber() + 1;
+  if (target > 0 && SetActivatorToPlayer(target - 1))
+    UH_BossStackNote(family, toggle > 0 ? 1 : -1);
 }
 
-script "uh_BossUnsolidOn" (void) {
-  ACS_NamedExecuteWithResult("core_unsolidplayer", 0, USP_TOGGLEON);
-  UH_BossStackNote(15, 1);
-}
+script "uh_freezeplayer" (int player, int toggle) { UH_CallBossCoreStacker("core_freezeplayer", 0, player, toggle, 0); }
+script "uh_stopplayer" (int player, int toggle) { UH_CallBossCoreStacker("core_stopplayer", 1, player, toggle, 0); }
+script "uh_invulnerableplayer" (int player, int toggle) { UH_CallBossCoreStacker("core_invulnerableplayer", 2, player, toggle, 0); }
+script "uh_flyplayer" (int player, int toggle, int forced) { UH_CallBossCoreStacker("core_flyplayer", forced ? 3 : 4, player, toggle, forced); }
+script "uh_nogravityplayer" (int player, int toggle, int forced) { UH_CallBossCoreStacker("core_nogravityplayer", forced ? 5 : 6, player, toggle, forced); }
+script "uh_buddhaplayer" (int player, int toggle) { UH_CallBossCoreStacker("core_buddhaplayer", 7, player, toggle, 0); }
+script "uh_nonshootableplayer" (int player, int toggle) { UH_CallBossCoreStacker("core_nonshootableplayer", 8, player, toggle, 0); }
+script "uh_nopushplayer" (int player, int toggle) { UH_CallBossCoreStacker("core_nopushplayer", 9, player, toggle, 0); }
+script "uh_cantseekplayer" (int player, int toggle) { UH_CallBossCoreStacker("core_cantseekplayer", 10, player, toggle, 0); }
+script "uh_notargetplayer" (int player, int toggle) { UH_CallBossCoreStacker("core_notargetplayer", 11, player, toggle, 0); }
+script "uh_monsterblockplayer" (int player, int toggle) { UH_CallBossCoreStacker("core_monsterblockplayer", 12, player, toggle, 0); }
+script "uh_invisibleplayer" (int player, int toggle) { UH_CallBossCoreStacker("core_invisibleplayer", 13, player, toggle, 0); }
+script "uh_dontidentifytargetplayer" (int player, int toggle) { UH_CallBossCoreStacker("core_dontidentifytargetplayer", 14, player, toggle, 0); }
 
-// dmg 0 keeps the base game's "1/10 of max health" default, so a converted bare
-// core_unsolidplayer(0,false) keeps its original resolidify behaviour.
-script "uh_BossUnsolidOffDmg" (int dmg) {
-  ACS_NamedExecuteWithResult("core_unsolidplayer", 0, 0, dmg);
-  UH_BossStackNote(15, -1);
+script "uh_unsolidplayer" (int player, int toggle, int damage) {
+  int target = player;
+  ACS_NamedExecuteWithResult("core_unsolidplayer", player, toggle, damage);
+  if (target == 0)
+    target = PlayerNumber() + 1;
+  if (target > 0 && SetActivatorToPlayer(target - 1))
+    UH_BossStackNote(15, toggle == USP_TOGGLEON ? 1 : -1);
 }
 
 function void UH_SavePropStackBaseline(void) {
@@ -270,6 +283,7 @@ function void UH_RestorePropStackBaseline(int ownedfams) {
     return;
   if (!uh_morphbaselinevalid[p])
     return;
+  uh_bossstacknotesuspended[p] = 1;
   for (i = 0; i < UH_MORPH_PROPSTACK_COUNT; i++) {
     want = uh_morphsavedpropstack[p][i];
     cur = CheckInventory(uh_morphpropstackname[i]);
@@ -317,6 +331,7 @@ function void UH_RestorePropStackBaseline(int ownedfams) {
       }
     }
   }
+  uh_bossstacknotesuspended[p] = 0;
 }
 
 // --- PowerAprop baseline -----------------------------------------------------
