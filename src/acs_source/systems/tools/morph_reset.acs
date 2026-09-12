@@ -1,3 +1,8 @@
+// Local copy: 8BDMDEFS is not on this library's include chain (ACC imports do not
+// export #define values between libraries).
+#define USP_TOGGLEON 1        // core_unsolidplayer desolidify
+#define USP_TOGGLEOFF_NONE 4  // core_unsolidplayer resolidify without side effects
+
 // Morph resets APROP_Gravity; core_commonwater only re-applies on feet/eyes transitions.
 script "uh_IsUnderWaterGravity" (void) {
   if (PlayerNumber() == -1)
@@ -32,22 +37,43 @@ function void DefineDefaultProperties(void) {
   }
 }
 
-// Jump-inventory snapshot taken before a morph.  BasicBossItem wipes
-// AirJumpLimit/WallJumpLimit and the boss setup grants its own amount;
-// P_UndoPlayerMorph then transfers the morph pawn's inventory back, so the
-// survivor's original values must be saved here and restored in
-// uh_MorphDemorphReset.  Do not blanket-zero on demorph: survivors can
-// legitimately own air/wall jumps via Player.StartItem (AeroUnit, GreenElf,
-// SamuraiSam, Kate, ...).
-// Plain top-level int arrays are per-module map variables (MapVarStore): kept
-// for the current level only, not synced to clients.  The snapshot is server
-// side and lives for a single unmorph, so world/global storage is unnecessary.
+// ============================================================================
+// Morph baseline snapshots
+//
+// A shadow fakeout can UnMorphActor a boss in the middle of any weapon state,
+// so no boss action's own end-of-state cleanup can be trusted.  Everything the
+// morph pipeline restores is therefore saved as a *baseline* before MorphActor
+// and put back after UnMorphActor:
+//
+//   - jump limits          (BasicBossItem and every boss setup rewrite them)
+//   - property stackers    (core_*player / uh_*player are reference counted)
+//   - UH PowerAprop Powers (boss speed/jump values, incl. types the generic
+//                           UH_MorphPowerPropReset_P list cannot cover)
+//
+// Restoring a baseline is safe for state the survivor legitimately owns (map
+// effects, items, StartItem, other mods) because it never forces a value to
+// zero; it only removes what the morph added and returns what the morph ate.
+// A direct re-morph while already morphed (boss revival, retry) must not
+// overwrite the survivor's baseline with the outgoing boss's values, so every
+// snapshot is skipped while MorphedFlag is present.
+//
+// Plain top-level arrays are per-module map variables (MapVarStore): kept for
+// the current level only and never synced to clients.  The baselines are server
+// side and live for a single morph, so world/global storage is unnecessary.
+// ============================================================================
+
 int uh_morphsavedairjump[MAX_PLAYERS];
 int uh_morphsavedwalljump[MAX_PLAYERS];
+// Set only when uh_MorphPreReset actually took a snapshot.  Morphs that never
+// run that script (demoneye/clone PowerMorph, engine death-unmorph) would
+// otherwise demorph against zero-initialised arrays and wipe real player state.
+int uh_morphbaselinevalid[MAX_PLAYERS];
 
 function void UH_SaveMorphJumpInventory(void) {
   int p = PlayerNumber();
   if (p < 0 || p >= MAX_PLAYERS)
+    return;
+  if (CheckInventory("MorphedFlag"))
     return;
   uh_morphsavedairjump[p] = CheckInventory("AirJumpLimit");
   uh_morphsavedwalljump[p] = CheckInventory("WallJumpLimit");
@@ -57,8 +83,396 @@ function void UH_RestoreMorphJumpInventory(void) {
   int p = PlayerNumber();
   if (p < 0 || p >= MAX_PLAYERS)
     return;
+  if (!uh_morphbaselinevalid[p])
+    return;
   SetInventory("AirJumpLimit", uh_morphsavedairjump[p]);
   SetInventory("WallJumpLimit", uh_morphsavedwalljump[p]);
+}
+
+// --- Property stacker baseline ----------------------------------------------
+// Inventory names come from the base game's PROPUTIL (mm8bdm-v6b.pk3), so the
+// stacker count is the authoritative layer count.  Each entry restores by
+// calling the stacker script itself, which is what keeps the derived property
+// or actor flag in sync (a bare Give/TakeInventory would move the counter but
+// leave PROP_FROZEN / MF2_FLY / ... behind).
+//   script  = stacker script name
+//   off     = toggle value that pops one layer (core_unsolidplayer uses
+//             USP_TOGGLEOFF_NONE so a failed resolidify cannot damage or kill)
+//   extra   = third argument (1 = forced variant for fly / no gravity)
+#define UH_MORPH_PROPSTACK_COUNT 27
+str uh_morphpropstackname[UH_MORPH_PROPSTACK_COUNT] = {
+  "PlayerPropertyFrozen",
+  "PlayerPropertyStopped",
+  "PlayerPropertyInvulnerable",
+  "PlayerPropertyFlightForced",
+  "PlayerPropertyFlight",
+  "PlayerPropertyNoGravityForced",
+  "PlayerPropertyNoGravity",
+  "PlayerPropertyBuddha",
+  "PlayerPropertyNonshootable",
+  "NoPushFlag",
+  "PlayerPropertyCantseek",
+  "PlayerPropertyNoTarget",
+  "PlayerPropertyMonsterBlock",
+  "PlayerPropertyInvisible",
+  "PlayerPropertyNoIdentify",
+  "PlayerPropertyUnsolid",
+  "NoHitStunFlag",
+  "HalfHitStunFlag",
+  "HalfPushFlag",
+  "PlayerPropertyCantUseItems",
+  "PlayerPropertyNoParalyze",
+  "PlayerPropertyNoRadiusDmg",
+  "PlayerPropertyCantPushWalls",
+  "PlayerPropertyNoTeleport",
+  "PlayerPropertyPickupDisable",
+  "PlayerPropertyBright",
+  "PlayerPropertyShadow"
+};
+str uh_morphpropstackscript[UH_MORPH_PROPSTACK_COUNT] = {
+  "core_freezeplayer",
+  "core_stopplayer",
+  "core_invulnerableplayer",
+  "core_flyplayer",
+  "core_flyplayer",
+  "core_nogravityplayer",
+  "core_nogravityplayer",
+  "core_buddhaplayer",
+  "core_nonshootableplayer",
+  "core_nopushplayer",
+  "core_cantseekplayer",
+  "core_notargetplayer",
+  "core_monsterblockplayer",
+  "core_invisibleplayer",
+  "core_dontidentifytargetplayer",
+  "core_unsolidplayer",
+  "uh_NoHitStunplayer",
+  "uh_HalfHitStunplayer",
+  "uh_halfpushplayer",
+  "uh_cantuseitemsplayer",
+  "rz_NoParalyzePlayer",
+  "uh_noradiusdmgplayer",
+  "uh_cantpushwallsplayer",
+  "uh_noteleportplayer",
+  "uh_pickupdisableplayer",
+  "uh_brightplayer",
+  "uh_shadowplayer"
+};
+int uh_morphpropstackoff[UH_MORPH_PROPSTACK_COUNT] = {
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  USP_TOGGLEOFF_NONE,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+int uh_morphpropstackextra[UH_MORPH_PROPSTACK_COUNT] = {
+  0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0
+};
+// Entries whose derived flag is also written by the raw
+// UH_UnMorphSuperFlagReset_P floor (PROP_BUDDHA, PROP_NOTARGET, NOGRAVITY,
+// NONSHOOTABLE, CANTSEEK, INVISIBLE, DONTIDENTIFYTARGET, CANPUSHWALLS,
+// NORADIUSDMG and the forced SOLID).  For those, matching the count is not
+// enough: the floor cleared the flag, and the stacker scripts only apply it on
+// their ON path (they clear it only when their own count reaches zero), so a
+// nonzero baseline must be refreshed explicitly.
+int uh_morphpropstackfloor[UH_MORPH_PROPSTACK_COUNT] = {
+  0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0,
+  0, 0, 0
+};
+int uh_morphsavedpropstack[MAX_PLAYERS][UH_MORPH_PROPSTACK_COUNT];
+
+// --- Boss-owned layer ledger -------------------------------------------------
+// tools/migrate-boss-stackers.py rewrote the boss DECORATE acquisition and
+// release sites (and the shared grant/release actors bosses use) onto the
+// wrappers below.  Because only those sites were converted, an increment here
+// means "a boss action acquired this layer": a layer a map, an item or another
+// mod granted during the morph never touches the ledger and therefore survives
+// the demorph.  The release loop returns exactly these layers and is further
+// clamped by the pre-morph baseline so a drifted ledger can never walk a count
+// below what the survivor owned.
+int uh_bossstackowned[MAX_PLAYERS][UH_MORPH_PROPSTACK_COUNT];
+
+function void UH_BossStackNote(int family, int delta) {
+  int p = PlayerNumber();
+  if (p < 0 || p >= MAX_PLAYERS)
+    return;
+  if (family < 0 || family >= UH_MORPH_PROPSTACK_COUNT)
+    return;
+  // Only a live pipeline morph can own layers.  Survivor weapon use, shared
+  // grant actors and the shadow pre-round actors all run outside that window
+  // and must not charge the ledger (their entries would be spent on a later
+  // morph and would delete a layer that morph never owned).
+  if (!uh_morphbaselinevalid[p])
+    return;
+  uh_bossstackowned[p][family] += delta;
+  if (uh_bossstackowned[p][family] < 0)
+    uh_bossstackowned[p][family] = 0;
+}
+
+script "uh_BossStackOn" (int family) {
+  if (family < 0 || family >= UH_MORPH_PROPSTACK_COUNT)
+    terminate;
+  ACS_NamedExecuteWithResult(uh_morphpropstackscript[family], 0, 1, uh_morphpropstackextra[family]);
+  UH_BossStackNote(family, 1);
+}
+
+script "uh_BossStackOff" (int family) {
+  if (family < 0 || family >= UH_MORPH_PROPSTACK_COUNT)
+    terminate;
+  ACS_NamedExecuteWithResult(uh_morphpropstackscript[family], 0, uh_morphpropstackoff[family], uh_morphpropstackextra[family]);
+  UH_BossStackNote(family, -1);
+}
+
+script "uh_BossUnsolidOn" (void) {
+  ACS_NamedExecuteWithResult("core_unsolidplayer", 0, USP_TOGGLEON);
+  UH_BossStackNote(15, 1);
+}
+
+// dmg 0 keeps the base game's "1/10 of max health" default, so a converted bare
+// core_unsolidplayer(0,false) keeps its original resolidify behaviour.
+script "uh_BossUnsolidOffDmg" (int dmg) {
+  ACS_NamedExecuteWithResult("core_unsolidplayer", 0, 0, dmg);
+  UH_BossStackNote(15, -1);
+}
+
+function void UH_SavePropStackBaseline(void) {
+  int p = PlayerNumber();
+  int i;
+  if (p < 0 || p >= MAX_PLAYERS)
+    return;
+  if (CheckInventory("MorphedFlag"))
+    return;
+  for (i = 0; i < UH_MORPH_PROPSTACK_COUNT; i++)
+    uh_morphsavedpropstack[p][i] = CheckInventory(uh_morphpropstackname[i]);
+}
+
+// Walk the count back to the survivor baseline one layer at a time so the
+// stacker script clears the derived property exactly when its own count hits
+// zero.  Layers the boss added are returned; layers the morph or a boss pop
+// removed are re-applied; external layers are never touched.
+//
+// Matching the count is NOT sufficient by itself: this runs after the raw
+// UH_UnMorphSuperFlagReset_P floor, which force-clears flags the stackers own.
+// If the baseline count already equals the current count (the common case for
+// properties BasicBossItem never popped, e.g. Buddha, NoTarget, Invisible,
+// CantPushWalls, NoRadiusDmg), no stacker call would happen and the survivor
+// would end with a correct count but a cleared flag.  The same happens when a
+// boss-added layer is popped from 2 to 1, because the stacker only clears on
+// zero.  Every floor-clobbered entry with a nonzero baseline is therefore
+// refreshed explicitly: ON applies the property and bumps the count, then a
+// direct Take restores the count without running the OFF side effects (a count
+// that never reaches zero cannot start resolidify/off events).
+function void UH_RestorePropStackBaseline(int ownedfams) {
+  int p = PlayerNumber();
+  int i;
+  int cur;
+  int want;
+  if (p < 0 || p >= MAX_PLAYERS)
+    return;
+  if (!uh_morphbaselinevalid[p])
+    return;
+  for (i = 0; i < UH_MORPH_PROPSTACK_COUNT; i++) {
+    want = uh_morphsavedpropstack[p][i];
+    cur = CheckInventory(uh_morphpropstackname[i]);
+    while (cur < want) {
+      ACS_NamedExecuteWithResult(uh_morphpropstackscript[i], 0, 1, uh_morphpropstackextra[i]);
+      cur++;
+    }
+    // Return only the layers this boss's own actions recorded.  The ledger is
+    // the ownership authority; the pre-morph baseline is the floor, so a
+    // drifted-high ledger can never remove survivor-owned state either.
+    // Ledger-only: the pre-morph baseline is the floor, the recorded boss
+    // layers are the authority.  The per-boss family mask is advisory (addon
+    // API) and deliberately does NOT gate this loop, because a boss can also
+    // acquire a family through a shared grant actor it never calls itself.
+    while (uh_bossstackowned[p][i] > 0 && cur > want) {
+      if (i == 15)
+        ACS_NamedExecuteWithResult("core_unsolidplayer", 0, USP_TOGGLEOFF_NONE);
+      else
+        ACS_NamedExecuteWithResult(uh_morphpropstackscript[i], 0, uh_morphpropstackoff[i], uh_morphpropstackextra[i]);
+      uh_bossstackowned[p][i]--;
+      cur--;
+    }
+    uh_bossstackowned[p][i] = 0;
+    if (want > 0 && uh_morphpropstackfloor[i]) {
+      int before = CheckInventory(uh_morphpropstackname[i]);
+      // Entries 3 (FlightForced) and 5 (NoGravityForced) share their script
+      // with the base entry that follows them, and the forced branch bumps the
+      // base counter as well; reconcile both or the survivor keeps an
+      // un-owned +1 base layer (a permanent float).
+      int beforebase = -1;
+      if (i == 3 || i == 5)
+        beforebase = CheckInventory(uh_morphpropstackname[i + 1]);
+      ACS_NamedExecuteWithResult(uh_morphpropstackscript[i], 0, 1, uh_morphpropstackextra[i]);
+      int added = CheckInventory(uh_morphpropstackname[i]) - before;
+      // The stacker sets the property before it gives the counter, and a
+      // counter already at Inventory.MaxAmount is not increased.  Only take
+      // back what was actually added, otherwise the count would drop below the
+      // baseline and the flag could be cleared later by an unrelated OFF call.
+      if (added > 0)
+        TakeInventory(uh_morphpropstackname[i], added);
+      if (beforebase >= 0) {
+        int addedbase = CheckInventory(uh_morphpropstackname[i + 1]) - beforebase;
+        if (addedbase > 0)
+          TakeInventory(uh_morphpropstackname[i + 1], addedbase);
+      }
+    }
+  }
+}
+
+// --- PowerAprop baseline -----------------------------------------------------
+// UH_MorphPowerPropReset_P is a hand-maintained type list and cannot cover every
+// boss speed/jump value (PlasmaSpark 35, Balrog 40/82, SakikoTogawa 50, Neru
+// 135/145/150, KFC/Skullman/MeisterWahwee 150, GraniteMauler 160,
+// TheShadowManMythBoss 225, MeisterWahwee/RepairManEdward 140+200 jump, ...).
+// Widening that global blacklist would delete Powers a survivor legitimately
+// owns, so this snapshots the whole UH PowerAprop family instead.  The type list
+// only has to be wide enough to include every UH PowerAprop that exists; an
+// over-wide list is harmless because the baseline is restored, not zeroed.
+#define UH_MORPH_POWER_COUNT 40
+str uh_morphpowername[UH_MORPH_POWER_COUNT] = {
+  // Jump
+  "UH_DisableJumpPower",
+  "UH_FlipJumpPower",
+  "UH_Ratio5_6JumpPower",
+  "UH_Ratio8JumpPower",
+  "UH_Ratio7JumpPower",
+  "UH_Ratio1JumpPower",
+  "UH_Ratio7_6JumpPower",
+  "UH_140_JumpPower",
+  "UH_150_JumpPower",
+  "UH_200_JumpPower",
+  // Speed
+  "UH_DisableSpeedPower",
+  "UH_BotFlipSpeedPower",
+  "UH_35_SpeedPower",
+  "UH_40_SpeedPower",
+  "UH_50_SpeedPower",
+  "UH_82_SpeedPower",
+  "UH_120_SpeedPower",
+  "UH_125_SpeedPower",
+  "UH_130_SpeedPower",
+  "UH_135_SpeedPower",
+  "UH_140_SpeedPower",
+  "UH_145_SpeedPower",
+  "UH_150_SpeedPower",
+  "UH_160_SpeedPower",
+  "UH_165_SpeedPower",
+  "UH_175_SpeedPower",
+  "UH_185_SpeedPower",
+  "UH_200_SpeedPower",
+  "UH_225_SpeedPower",
+  "UH_250_SpeedPower",
+  // Alpha
+  "UH_00_AlphaPower",
+  "UH_10_AlphaPower",
+  "UH_20_AlphaPower",
+  "UH_30_AlphaPower",
+  "UH_40_AlphaPower",
+  "UH_50_AlphaPower",
+  "UH_60_AlphaPower",
+  "UH_70_AlphaPower",
+  "UH_80_AlphaPower",
+  "UH_90_AlphaPower"
+};
+int uh_morphsavedpower[MAX_PLAYERS][UH_MORPH_POWER_COUNT];
+
+// Boss-owned PowerAprop ledger.  Same ownership rule as the stacker ledger:
+// only grants made while a pipeline morph is live are recorded, and the demorph
+// removes exactly those.  A power a map, an item or another mod granted during
+// the morph never appears here and therefore survives.
+int uh_bosspowerowned[MAX_PLAYERS][UH_MORPH_POWER_COUNT];
+
+function void UH_BossPowerNote(int index, int delta) {
+  int p = PlayerNumber();
+  if (p < 0 || p >= MAX_PLAYERS)
+    return;
+  if (index < 0 || index >= UH_MORPH_POWER_COUNT)
+    return;
+  if (!uh_morphbaselinevalid[p])
+    return;
+  uh_bosspowerowned[p][index] += delta;
+  if (uh_bosspowerowned[p][index] < 0)
+    uh_bosspowerowned[p][index] = 0;
+}
+
+// Replaces A_GiveInventory("<Power>Giver", n) in boss DECORATE.  amount 0 keeps
+// the DECORATE default of 1.
+script "uh_BossPowerGive" (int index, int amount) {
+  int before;
+  int added;
+  if (index < 0 || index >= UH_MORPH_POWER_COUNT)
+    terminate;
+  if (amount < 1)
+    amount = 1;
+  before = CheckInventory(uh_morphpowername[index]);
+  GiveInventory(StrParam(s:uh_morphpowername[index], s:"Giver"), amount);
+  added = CheckInventory(uh_morphpowername[index]) - before;
+  if (added > 0)
+    UH_BossPowerNote(index, added);
+}
+
+// Replaces A_TakeInventory("<Power>", n) in boss DECORATE.  amount 0 = take all,
+// matching A_TakeInventory without an explicit amount.
+script "uh_BossPowerTake" (int index, int amount) {
+  int before;
+  int removed;
+  if (index < 0 || index >= UH_MORPH_POWER_COUNT)
+    terminate;
+  before = CheckInventory(uh_morphpowername[index]);
+  if (amount < 1)
+    TakeInventory(uh_morphpowername[index], 9999);
+  else
+    TakeInventory(uh_morphpowername[index], amount);
+  removed = before - CheckInventory(uh_morphpowername[index]);
+  if (removed > 0)
+    UH_BossPowerNote(index, -removed);
+}
+
+function void UH_SaveMorphPowerBaseline(void) {
+  int p = PlayerNumber();
+  int i;
+  if (p < 0 || p >= MAX_PLAYERS)
+    return;
+  if (CheckInventory("MorphedFlag"))
+    return;
+  for (i = 0; i < UH_MORPH_POWER_COUNT; i++)
+    uh_morphsavedpower[p][i] = CheckInventory(uh_morphpowername[i]);
+}
+
+// PowerAprop markers are single-layer (PowerUp, MaxAmount 1).  A missing layer
+// must be re-granted through its Giver: the giver pickup is the only path that
+// runs core_aproppoweractivator and applies the APROP.  Writing the marker back
+// with SetInventory would restore the count while leaving the power inert, and
+// a nonzero inert marker would then swallow the next real giver pickup.  Surplus
+// layers are boss-owned and are dropped with the same marker removal that the
+// mod's UH_MorphPowerPropReset_P already performs.
+function void UH_RestoreMorphPowerBaseline(void) {
+  int p = PlayerNumber();
+  int i;
+  int cur;
+  int want;
+  if (p < 0 || p >= MAX_PLAYERS)
+    return;
+  if (!uh_morphbaselinevalid[p])
+    return;
+  for (i = 0; i < UH_MORPH_POWER_COUNT; i++) {
+    want = uh_morphsavedpower[p][i];
+    cur = CheckInventory(uh_morphpowername[i]);
+    // Remove exactly the powers this boss granted; the baseline is the floor so
+    // a drifted ledger can never strip a survivor-owned or external power.
+    while (uh_bosspowerowned[p][i] > 0 && cur > want) {
+      TakeInventory(uh_morphpowername[i], 1);
+      uh_bosspowerowned[p][i]--;
+      cur--;
+    }
+    uh_bosspowerowned[p][i] = 0;
+    // A survivor power the morph phase swept away comes back through its Giver,
+    // which is the only path that applies the APROP.
+    while (cur < want) {
+      GiveInventory(StrParam(s:uh_morphpowername[i], s:"Giver"), 1);
+      cur++;
+    }
+  }
 }
 
 // GenericBoss owns at most one DisabledAirJumps stack while morphed, marked by
@@ -77,8 +491,27 @@ script "uh_MorphPreReset" (void) {
   if (PlayerNumber() == -1)
     terminate;
   ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
+  // Direct re-morph (no unmorph in between) also arrives here, and the
+  // GenericBoss air-disable marker is not a stacker the baselines cover, so it
+  // must keep being cleared before every morph.
   UH_ClearGenericBossAirDisable();
-  UH_SaveMorphJumpInventory();
+  // Mark the baselines valid only when they are actually (re)taken.  A morph
+  // that never runs this script (PowerMorph demoneye/clone, engine
+  // death-unmorph) must not make the demorph reset write zeroes over the
+  // player's real state.
+  int morphplayer = PlayerNumber();
+  if (morphplayer >= 0 && morphplayer < MAX_PLAYERS && !CheckInventory("MorphedFlag")) {
+    uh_morphbaselinevalid[morphplayer] = 1;
+    // A fresh morph starts with an empty ledger: any entry left by an earlier
+    // interrupted morph or by a shared actor must not be charged to this boss.
+    for (int led = 0; led < UH_MORPH_PROPSTACK_COUNT; led++)
+      uh_bossstackowned[morphplayer][led] = 0;
+    for (led = 0; led < UH_MORPH_POWER_COUNT; led++)
+      uh_bosspowerowned[morphplayer][led] = 0;
+    UH_SaveMorphJumpInventory();
+    UH_SavePropStackBaseline();
+    UH_SaveMorphPowerBaseline();
+  }
   GiveInventory("UH_MorphFlagReset_P", 1);
   GiveInventory("Core_MorphFlagReset_P", 1);
   GiveInventory("Core_MorphFlagReset2_P", 1);
@@ -105,7 +538,9 @@ script "uh_MorphPostReset" (int force) {
   GiveInventory("UH_MorphPipelineDone_F", 1);
 }
 
-script "uh_MorphDemorphReset" (void) {
+// arg0 ownedfams: bitmask of stacker families the unmorphing boss can acquire
+// (see uh_bossunmorphfams in UHDT); -1 = unknown, clamp all families.
+script "uh_MorphDemorphReset" (int ownedfams) {
   if (PlayerNumber() == -1)
     terminate;
   ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
@@ -113,13 +548,24 @@ script "uh_MorphDemorphReset" (void) {
   UH_RestoreMorphJumpInventory();
   TakeInventory("AirJumpsUsed", 99999);
   TakeInventory("WallJumpsUsed", 99999);
+  // Raw actor-flag floor first (boss-only flags such as NONSHOOTABLE, SOLID or
+  // NOGRAVITY), then the stacker baseline: restoring after the floor re-applies
+  // every layer the survivor legitimately owned and returns every layer the
+  // boss added, whatever state the shadow fakeout interrupted.
   GiveInventory("UH_UnMorphSuperFlagReset_P", 1);
   TakeInventory("BAWS", 1);
   TakeInventory("MorphedFlag", 1);
   TakeInventory("IsAnEye", 1);
   TakeInventory("TruePowerItemFlag", 1);
   TakeInventory("UH_MorphPipelineDone_F", 1);
+  UH_RestorePropStackBaseline(ownedfams);
   DefineDefaultProperties();
-  GiveInventory("UH_MorphPowerPropReset_P", 1);
+  // No blanket PowerAprop wipe here any more: it would delete a power a map, an
+  // item or another mod granted during the morph before the ledger could tell
+  // the difference.  UH_RestoreMorphPowerBaseline removes exactly the layers
+  // this boss granted and re-grants the survivor baseline through the Givers.
+  UH_RestoreMorphPowerBaseline();
+  // One snapshot serves one demorph; a later morph must take a fresh one.
+  uh_morphbaselinevalid[PlayerNumber()] = 0;
   ACS_NamedExecuteAlways("uh_IsUnderWaterGravity", 0);
 }

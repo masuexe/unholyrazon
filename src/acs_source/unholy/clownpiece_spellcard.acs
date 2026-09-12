@@ -323,3 +323,19 @@ script "uh_StripInvulnStacks" (void) {
 	TakeInventory("PlayerPropertyInvulnerable", 999);
 	SetActorProperty(0, APROP_INVULNERABLE, false);
 }
+
+// Boss unmorph: the spell-card session is library-global (phase, timer
+// generation, HUD), so a shadow fakeout must cancel it here.  Otherwise the
+// stale session keeps its timer running, keeps handing out phase swaps and
+// would make a later Clownpiece's uh_SpellCardStart silently refuse to start.
+// Only this player's own phase markers are dropped; the PlayerProperty stack
+// layers themselves are returned by the generic demorph baseline.
+script "uh_ClownpieceUnmorphCancel" (void) {
+	UH_SpellCardEndQuiet();
+	TakeInventory("ClownpiecePhaseInvulnTics", 999);
+	TakeInventory("ClownpieceSurvivalInvuln_F", 1);
+	TakeInventory("ClownpieceGetUpDone_F", 1);
+	TakeInventory("ClownpiecePainFlag", 1);
+	TakeInventory("ClownpieceOrbFlag", 1);
+	TakeInventory("DuoBusterFlag", 1);
+}

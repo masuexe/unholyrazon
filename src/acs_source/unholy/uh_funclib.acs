@@ -993,6 +993,10 @@ function bool MorphActorToBoss(int tid, int boss, str flash) {
   bool success = MorphMeFunc(tid, boss, flash);
   if (!success) return false;
   SetActivator(tid);
+  // Record identity/generation before the morph setup starts its watchers, so
+  // every watcher captures the generation of this exact morph.  A later
+  // UnMorphActor or re-morph bumps it and retires the stale watchers.
+  BeginPlayerBossMorph(PlayerNumber(), boss);
   ACS_NamedExecuteWithResult("uh_MorphPostReset", 1);
   GiveInventory("BasicBossItem", 1);
   str setup = GetBossMorphSetup(boss);

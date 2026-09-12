@@ -160,6 +160,67 @@ function int GetPlayerBossId(int playernum) {
 	return uh_playerbossid[playernum];
 }
 
+// --- Boss morph identity / generation ----------------------------------------
+// A shadow fakeout can unmorph a boss at any moment, so asynchronous watchers
+// and cleanup hooks cannot infer "am I still the boss I was started for" from
+// health or actor class.  Every successful morph and every unmorph bumps the
+// per-player generation; watchers capture it at start and exit when it no
+// longer matches.  This is multiplayer-safe: it never terminates a shared
+// named script, it only lets stale instances retire themselves.
+int uh_playermorphgen[UH_MAX_PLAYERS];
+int uh_playeractiveboss[UH_MAX_PLAYERS];
+
+script "uh_MorphIdStorageInit" OPEN {
+	int i;
+	for (i = 0; i < UH_MAX_PLAYERS; i++) {
+		uh_playermorphgen[i] = 0;
+		uh_playeractiveboss[i] = UHBOSS_FAIL;
+	}
+}
+
+// Joining clients never run non-CLIENTSIDE OPEN; init the local copy as well.
+script "uh_MorphIdStorageInit_cs" OPEN CLIENTSIDE {
+	int i;
+	for (i = 0; i < UH_MAX_PLAYERS; i++) {
+		uh_playermorphgen[i] = 0;
+		uh_playeractiveboss[i] = UHBOSS_FAIL;
+	}
+}
+
+function bool PlayerMorphIdValid(int playernum) {
+	return playernum >= 0 && playernum < UH_MAX_PLAYERS;
+}
+
+// Records a completed morph and returns the generation new watchers must hold.
+function int BeginPlayerBossMorph(int playernum, int bossid) {
+	if (!PlayerMorphIdValid(playernum))
+		return 0;
+	uh_playeractiveboss[playernum] = bossid;
+	uh_playermorphgen[playernum]++;
+	return uh_playermorphgen[playernum];
+}
+
+// Invalidates every watcher/cleanup bound to the previous morph generation.
+function int EndPlayerBossMorph(int playernum) {
+	if (!PlayerMorphIdValid(playernum))
+		return 0;
+	uh_playeractiveboss[playernum] = UHBOSS_FAIL;
+	uh_playermorphgen[playernum]++;
+	return uh_playermorphgen[playernum];
+}
+
+function int GetPlayerMorphGen(int playernum) {
+	if (!PlayerMorphIdValid(playernum))
+		return 0;
+	return uh_playermorphgen[playernum];
+}
+
+function int GetPlayerActiveBossId(int playernum) {
+	if (!PlayerMorphIdValid(playernum))
+		return UHBOSS_FAIL;
+	return uh_playeractiveboss[playernum];
+}
+
 function bool IsBossDefined(int id) {
 	if (id >= 0) {
 		if (id >= UH_MAX_VANILLA_BOSS)
@@ -291,6 +352,90 @@ function bool SetBossMorphSetup(int id, str setupscript) {
 	else
 		uh_bosscustomstr[slot][UHBOSS_STR_MORPHSETUP] = setupscript;
 	return true;
+}
+
+// --- Boss unmorph cleanup registry -------------------------------------------
+// Symmetric to UHBOSS_STR_MORPHSETUP.  A boss may register two named scripts,
+// both called as (<script>, bossid, tid) with the boss player as activator:
+//   pre  — before UnMorphActor: return boss-owned property stacks, release
+//          grab targets/helper pointers, expire watchers, cancel boss/global
+//          state (spell cards, Mujica membership, ...).
+//   post — after the generic demorph reset: only residue that becomes safe
+//          once P_UndoPlayerMorph has transferred the morph inventory back.
+// Registered rows are keyed by signed boss id and live in shared UHDT storage,
+// so the unholy library can dispatch them and addons can register their own.
+#libdefine UH_MAX_BOSS_UNMORPH 128
+
+int uh_bossunmorphcount = 0;
+int uh_bossunmorphid[UH_MAX_BOSS_UNMORPH];
+str uh_bossunmorphpre[UH_MAX_BOSS_UNMORPH];
+str uh_bossunmorphpost[UH_MAX_BOSS_UNMORPH];
+
+// Ownership mask for the property-stacker baseline clamp: bit N means this boss
+// can acquire the baseline-table family N (see uh_morphpropstackname in
+// systems/tools/morph_reset.acs).  The demorph restore may only walk a family's
+// count DOWN for families the boss actually uses; a surplus in any other family
+// was granted by a map, an item or another mod during the morph and must be
+// preserved.  -1 keeps the legacy "all families" behaviour for unregistered or
+// addon bosses whose acquisition sites were never analysed.
+int uh_bossunmorphfams[UH_MAX_BOSS_UNMORPH];
+
+function int FindBossUnmorphRow(int id) {
+	int i;
+	for (i = 0; i < uh_bossunmorphcount; i++) {
+		if (uh_bossunmorphid[i] == id)
+			return i;
+	}
+	return -1;
+}
+
+function bool SetBossUnmorphCleanup(int id, str prescript, str postscript) {
+	int row;
+	if (!IsBossDefined(id))
+		return false;
+	row = FindBossUnmorphRow(id);
+	if (row < 0) {
+		if (uh_bossunmorphcount >= UH_MAX_BOSS_UNMORPH)
+			return false;
+		row = uh_bossunmorphcount;
+		uh_bossunmorphcount++;
+		uh_bossunmorphid[row] = id;
+		uh_bossunmorphfams[row] = -1;
+	}
+	uh_bossunmorphpre[row] = prescript;
+	uh_bossunmorphpost[row] = postscript;
+	return true;
+}
+
+// Restrict the demorph stacker clamp to the families this boss can own.
+// -1 = unknown / all families (legacy behaviour).
+function bool SetBossUnmorphOwnedFamilies(int id, int mask) {
+	int row = FindBossUnmorphRow(id);
+	if (row < 0)
+		return false;
+	uh_bossunmorphfams[row] = mask;
+	return true;
+}
+
+function int GetBossUnmorphOwnedFamilies(int id) {
+	int row = FindBossUnmorphRow(id);
+	if (row < 0)
+		return -1;
+	return uh_bossunmorphfams[row];
+}
+
+function str GetBossUnmorphPre(int id) {
+	int row = FindBossUnmorphRow(id);
+	if (row < 0)
+		return "";
+	return uh_bossunmorphpre[row];
+}
+
+function str GetBossUnmorphPost(int id) {
+	int row = FindBossUnmorphRow(id);
+	if (row < 0)
+		return "";
+	return uh_bossunmorphpost[row];
 }
 
 function int GetBossRarity(int id) {

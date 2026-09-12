@@ -37,10 +37,18 @@ script "uh_IsPlayerAlive" (int tid) {
   SetResultValue(1);
 }
 
+// True while the pointed player is a live, real boss.  The MorphedFlag test is
+// what makes boss helper actors and DECORATE watchers retire when a shadow
+// fakeout unmorphs their owner mid-action: IsAFakeBoss only marks the decoy, so
+// without it a Cloak/Smoke/Rooted/Rage watcher keeps following the demorphed
+// survivor until that player dies.  A real morphed boss always carries
+// MorphedFlag (uh_bosscore.acs, uh_events.acs), and it is removed by
+// uh_MorphDemorphReset.
 script "uh_PointerIsABoss" (int pointer) {
   SetActivator(0, pointer);
   if (PlayerNumber() == -1 || CheckInventory("IsDead") ||
-      !PlayerInGame(PlayerNumber()) || CheckInventory("IsAFakeBoss")) {
+      !PlayerInGame(PlayerNumber()) || CheckInventory("IsAFakeBoss") ||
+      !CheckInventory("MorphedFlag")) {
     SetResultValue(0);
     terminate;
   }

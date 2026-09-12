@@ -85,9 +85,25 @@ script "rz_CheckVoidWalkerWeapon" (void) {
   }
 }
 
+// Asynchronous boss watchers.  A shadow fakeout can unmorph the boss at any
+// moment, so these scripts must never settle for "still alive": they capture
+// the morph generation they were started for (BeginPlayerBossMorph bumps it on
+// every morph and unmorph) and retire as soon as it no longer matches.  The
+// same test also covers a re-morph into a different boss, and it is safe in
+// multiplayer because it never terminates a shared named script.
+function bool UH_WatcherStillOwnsBoss(int mygen, int player) {
+  if (mygen != GetPlayerMorphGen(player))
+    return false;
+  return GetPlayerActiveBossId(player) != UHBOSS_FAIL;
+}
+
 script "rz_LinRageWatcher" (void) {
+  int player = PlayerNumber();
+  int mygen = GetPlayerMorphGen(player);
   int maxhp = CheckInventory("BossSpawnHealthFlag");
   do {
+    if (!UH_WatcherStillOwnsBoss(mygen, player))
+      terminate;
     int hp = GetActorProperty(0, APROP_Health);
     if (hp <= maxhp / 2) {
       GiveInventory("LinCheating_P", 1);
@@ -103,7 +119,11 @@ script "rz_CFakeChickenObesity" (void) {
 }
 
 script "rz_PurpleDestronHealth" (void) {
+  int player = PlayerNumber();
+  int mygen = GetPlayerMorphGen(player);
   do {
+    if (!UH_WatcherStillOwnsBoss(mygen, player))
+      terminate;
     int health = PlayerHealth();
     int limdiff = CheckInventory("LimHealth") - health;
     if (limdiff < 0) {
@@ -118,7 +138,11 @@ script "rz_PurpleDestronHealth" (void) {
 }
 
 script "rz_BlueDestronShotCooldown" (void) {
+  int player = PlayerNumber();
+  int mygen = GetPlayerMorphGen(player);
   while (PlayerHealth() > 0) {
+    if (!UH_WatcherStillOwnsBoss(mygen, player))
+      terminate;
     if (Timer() % 32 == 0) {
       GiveInventory("DestronDotFire_P", 1);
     }
@@ -552,6 +576,8 @@ script "rz_AirManWarp" (void) {
 
 script "rz_SinfulBusterExpertSinWatcher" (void) {
   int tid = ActivatorTID();
+  int player = PlayerNumber();
+  int mygen = GetPlayerMorphGen(player);
   int maxhp = GetActorProperty(tid, APROP_SpawnHealth);
   if (maxhp <= 0) {
     terminate;
@@ -559,6 +585,11 @@ script "rz_SinfulBusterExpertSinWatcher" (void) {
   int step = maxhp * 6 / 10 / 7;
   int given = 0;
   while (!CheckInventory("IsDead") && !CheckInventory("IsAFakeBoss")) {
+    // IsAFakeBoss only marks the shadow decoy; it is absent on a real morphed
+    // boss, so the morph generation is what retires this watcher after an
+    // unmorph or a re-morph into a different boss.
+    if (!UH_WatcherStillOwnsBoss(mygen, player))
+      terminate;
     int hp = GetActorProperty(tid, APROP_Health);
     while (given < 7 && hp <= maxhp - (given + 1) * step) {
       given++;

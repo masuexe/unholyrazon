@@ -61,6 +61,21 @@ actor UH_MorphPowerPropReset_P : CustomInventory {
   }
 }
 
+// Raw actor-flag floor for the demorph.  It runs BEFORE
+// UH_RestorePropStackBaseline (systems/tools/morph_reset.acs), which walks every
+// property-stacker count back to the survivor's pre-morph baseline AND, for
+// every flag this actor clears that has a stacker (BUDDHA / NOTARGET /
+// NONSHOOTABLE / CANTSEEK / INVISIBLE / DONTIDENTIFYTARGET / NOGRAVITY /
+// CANPUSHWALLS / NORADIUSDMG / SOLID), explicitly re-asserts a nonzero
+// baseline.  Matching the stack count alone is not enough here: a stacker only
+// applies its property on the ON path and only clears it at count zero, so a
+// baseline whose count already matched would otherwise stay flagged-off.  That
+// ordering is the contract.
+//
+// These entries only cover writers that bypass the stackers (e.g.
+// GraniteMauler's raw A_ChangeFlag("NONSHOOTABLE",1)), so they are a floor and
+// never the primary cleanup.  Reviewing/removing individual entries needs a
+// runtime pass over non-stacker invisibility/unsolid sources.
 actor UH_UnMorphSuperFlagReset_P : CustomInventory {
   States {
    Pickup:
@@ -79,6 +94,13 @@ actor UH_UnMorphSuperFlagReset_P : CustomInventory {
     stop
   }
 }
+
+// Boss property-stacker ownership is handled by the per-player baseline
+// snapshot in systems/tools/morph_reset.acs (UH_SaveMorphPropStackBaseline /
+// UH_RestoreMorphPropStackBaseline): the count of every stacker inventory is
+// saved before MorphActor and restored after UnMorphActor.  That covers every
+// boss and every stacker without a per-acquisition marker, and it also returns
+// the survivor layers the morph itself consumed.
 
 actor UH_MorphPipelineDone_F : Once {}
 

@@ -144,6 +144,23 @@ script "rz_SoraNoMusicaCancel" (int z) {
   }
 }
 
+// Boss unmorph: release ONE player's Mujica membership and keep the map-global
+// member count in sync, so a shadow fakeout cannot leave the survivor holding
+// IsAMujicaMember while mujicamembers still counts them (which would also block
+// rz_SoraNoMusicaCancel and mis-report the group size).
+script "uh_MujicaRelease" (int tid) {
+  SetActivator(tid);
+  if (!CheckInventory("IsAMujicaMember"))
+    terminate;
+  TakeInventory("IsAMujicaMember", 1);
+  for (int i = 0; i < 4; i++)
+    TakeInventory(StrParam(s:"PowerMujicaColor", i:i), 1);
+  if (mujicamembers > 0)
+    mujicamembers--;
+  if (mujicamembers < MUJICA_MEMBER_LIMIT)
+    ACS_NamedExecuteAlways("rz_SoraNoMusicaCancel", 0, 1);
+}
+
 script "rz_MujicaFallen" (void) {
   if (mujicamembers >= MUJICA_MEMBER_LIMIT) {
     ACS_NamedExecuteAlways("rz_SoraNoMusicaCancel", 0, 1);

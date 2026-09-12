@@ -7,6 +7,10 @@ script "ub_SelectBossAndEvent" (void) {
   // This makes specific bosses/events happen
   survivorstartitem = "SurvivorBoxItems_P";
   ClearMujicaState();
+  // The spell-card session is map-scoped shared state; a Clownpiece that died
+  // mid-spell (rather than being unmorphed) would otherwise leave its phase and
+  // timer for the next round on the same map.
+  ACS_NamedExecuteWithResult("uh_SpellCardStop");
   twoplayersxrayenabled = false;
   ResetBossComboState();  // D6: combo state clears at every round start.
   versusblockrevive = false;  // Cleared per round, kept through the result sequence.
@@ -161,16 +165,83 @@ script "ub_MorphFailureFallback" (int jump) {
   }
 }
 
-script "ub_UnMorphThisTID" (int w) {
+// Boss unmorph pipeline.  bossid identifies the boss being unmorphed and must
+// be supplied by the caller while it still knows it (bossdataarr is overwritten
+// during the shadow fakeout); UHBOSS_FAIL falls back to the saved active boss.
+// Order matters:
+//   1. boss pre-cleanup   — boss weapons/markers still present, so the script
+//                           can test ownership and release stacks/grabs/state.
+//   2. generation invalidate — every watcher started for that boss retires.
+//   3. UnMorphActor + generic demorph reset.
+//   4. boss post-cleanup  — residue that needs the survivor pawn back.
+script "ub_UnMorphThisTID" (int w, int bossid) {
+  int player;
+  str cleanup;
+
+  SetActivator(w);
+  player = PlayerNumber();
+  if (bossid == UHBOSS_FAIL)
+    bossid = GetPlayerActiveBossId(player);
+
+  // Boss-only rage bookkeeping is not a stacker and has no survivor meaning:
+  // drop it while the boss pawn is still active (the morph inventory transfer
+  // happens inside UnMorphActor, so anything left here would reach the
+  // survivor).
+  TakeInventory("UnholyPowerLimit_F", 999);
+  TakeInventory("UnholyPowerDisableRazzle_F", 999);
+
+  if (bossid != UHBOSS_FAIL) {
+    cleanup = GetBossUnmorphPre(bossid);
+    if (StrCmp(cleanup, "") != 0) {
+      if (CheckScript(cleanup, true))
+        ACS_NamedExecuteWithResult(cleanup, bossid, w);
+      else
+        UH_Log(UH_LOG_ERROR, StrParam(s:"Missing boss unmorph pre script: ", s:cleanup));
+    }
+  }
+
+  // Retire watchers before the class changes: they only observe the mismatch.
+  EndPlayerBossMorph(player);
+
   SetActivator(w);
   ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false);
   UnMorphActor(w, 1);
-  ACS_NamedExecuteWithResult("uh_MorphDemorphReset");
+  // Pass the boss's stacker ownership mask so the baseline clamp cannot remove
+  // layers a map/item/mod added during the morph (see uh_bossunmorphfams).
+  int ownedfams = -1;
+  if (bossid != UHBOSS_FAIL)
+    ownedfams = GetBossUnmorphOwnedFamilies(bossid);
+  ACS_NamedExecuteWithResult("uh_MorphDemorphReset", ownedfams);
+
+  if (bossid == UHBOSS_FAIL)
+    terminate;
+
+  // Generic post step: P_UndoPlayerMorph transfers the morph pawn's inventory
+  // back, so the boss weapon family <BossActor>_W/_W1.._W9 is now on the
+  // survivor and must be removed before the next morph (ClearActorInventory is
+  // only called by the shadow manager, not by every unmorph caller).
+  str bossactor = GetBossActor(bossid);
+  if (StrCmp(bossactor, "") != 0) {
+    TakeInventory(StrParam(s:bossactor, s:"_W"), 999);
+    for (int wi = 1; wi <= 9; wi++)
+      TakeInventory(StrParam(s:bossactor, s:"_W", i:wi), 999);
+  }
+
+  cleanup = GetBossUnmorphPost(bossid);
+  if (StrCmp(cleanup, "") == 0)
+    terminate;
+  if (CheckScript(cleanup, true))
+    ACS_NamedExecuteWithResult(cleanup, bossid, w);
+  else
+    UH_Log(UH_LOG_ERROR, StrParam(s:"Missing boss unmorph post script: ", s:cleanup));
 }
 
 script "ub_TestShadowBoss" (int tid, int bossid) {
   Delay(1);
-  ACS_NamedExecuteAlways("ub_UnMorphThisTID", 0, tid);
+  int oldboss = UHBOSS_FAIL;
+  if (SetActivator(tid))
+    oldboss = GetPlayerActiveBossId(PlayerNumber());
+  ACS_NamedExecuteAlways("ub_UnMorphThisTID", 0, tid, oldboss);
   Delay(1);
   ClearActorInventory(tid);
   GiveActorInventory(tid, "ShadowPreRoundStart", 1);
@@ -232,7 +303,9 @@ script "ub_ShadowBossManager" (void) {
 
     if (shadowtricksarr[i]) {
       ClearHudMessage(91 + i);  // Boss Healths
-      ACS_NamedExecuteAlways("ub_UnMorphThisTID", 0, bossdataarr[i][BOSSDATA_TID]);
+      // Pass the fake boss id explicitly: bossdataarr[BOSSDATA_NUM] is rewritten
+      // to the reveal target below, so the async unmorph cannot re-read it.
+      ACS_NamedExecuteAlways("ub_UnMorphThisTID", 0, bossdataarr[i][BOSSDATA_TID], bossdataarr[i][BOSSDATA_NUM]);
 
       str shadowcvar = StrParam(s:"uh_sv_ForcedShadowBoss", i:i + 1);
       int rawshadow = GetCVAR(shadowcvar);

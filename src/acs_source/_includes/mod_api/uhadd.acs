@@ -617,6 +617,48 @@ function bool SetBossMorphSetupByActor(str actor, str setupscript) {
 	return SetBossMorphSetupById(id, setupscript);
 }
 
+// Internal helper: id is the signed UHDT boss id. Modders should use
+// SetBossUnmorphCleanupByActor instead; custom ids are not stable across PK3s.
+function bool SetBossUnmorphCleanupById(int id, str prescript, str postscript) {
+	SetCVar("uh_db_id", id);
+	SetCVarString("uh_db_unmorphpre", prescript);
+	SetCVarString("uh_db_unmorphpost", postscript);
+	return ACS_NamedExecuteWithResult("uh_SetBossUnmorphCleanup_S");
+}
+
+// Public API: register the symmetric unmorph cleanup for a boss.  Both scripts
+// are called as (<script>, bossid, tid) with the boss player as activator:
+//   preScript  — runs BEFORE UnMorphActor, while the boss weapons/markers are
+//                still in the player's inventory: return boss-owned property
+//                stacks, release grab targets and helper pointers, expire
+//                watchers, cancel boss/global state (spell cards, Mujica, ...).
+//   postScript — runs AFTER the generic demorph reset, for residue that is only
+//                safe to touch once P_UndoPlayerMorph transferred inventory.
+// Pass "" for a stage that is not needed.  Unregistered bosses simply skip the
+// dispatch, so this is optional for every boss.
+// Public API: restrict the demorph property-stacker baseline clamp to the
+// families this boss can actually acquire (bit N = the family index documented
+// at uh_morphpropstackname in systems/tools/morph_reset.acs; -1 = all).  A
+// surplus in a family the boss does not use was granted by a map, an item or
+// another mod during the morph, so the clamp must leave it alone.
+function bool SetBossUnmorphFamsByActor(str actor, int mask) {
+	int id = UH_FindBossByActor(actor);
+	if (id == UHBOSS_FAIL) {
+		UH_Log(UH_LOG_ERROR, StrParam(s:"SetBossUnmorphFamsByActor: boss not found: ", s:actor));
+		return false;
+	}
+	return ACS_NamedExecuteWithResult("uh_SetBossUnmorphOwnedFamilies_S", id, mask);
+}
+
+function bool SetBossUnmorphCleanupByActor(str actor, str prescript, str postscript) {
+	int id = UH_FindBossByActor(actor);
+	if (id == UHBOSS_FAIL) {
+		UH_Log(UH_LOG_ERROR, StrParam(s:"SetBossUnmorphCleanupByActor: boss not found: ", s:actor));
+		return false;
+	}
+	return SetBossUnmorphCleanupById(id, prescript, postscript);
+}
+
 function str UH_GetBossActor(int id) {
 	ACS_NamedExecuteWithResult("uh_GetBossActor_S", id);
 	return GetCVarString("uh_db_out_str");
