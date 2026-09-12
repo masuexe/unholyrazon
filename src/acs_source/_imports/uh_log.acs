@@ -13,34 +13,96 @@
 // ACS has no variadic functions, so callers build the message with
 // StrParam(...).  The textual level prefix is part of the message because the
 // engine strips colour escapes when writing the logfile, so severity must not
-// rely on colour alone.  DEBUG prints only when the server CVAR is enabled;
-// INFO/WARN/ERROR always print.
+// rely on colour alone.
+//
+// Constants keep the historical severity order (DEBUG 0 .. ERROR 3) so existing
+// callers stay valid; the *threshold* uses the opposite order (OFF 0 .. DEBUG 4)
+// so that "bigger = noisier" matches the user-facing menu this feeds.
+//
+// Filtering — the threshold is the local player's setting `uh_cl_LogLevel`, a
+// CVARINFO `user` cvar that Zandronum syncs into the player's userinfo
+// (d_netinfo.cpp: D_UserInfoChanged), so each player chooses how noisy their
+// own log is.  An event prints when
+//
+//   level <= threshold
+//
+// and the threshold is read with GetUserCVar() for the script activator's
+// player, which is the player the call is about for the common case
+// (weapon/class/item scripts executed by a player, ENTER scripts, key-bound
+// PUKE).  When the activator is not a player (OPEN/RESPAWN/event scripts,
+// world watchers) the threshold is read for ConsolePlayerNumber() instead, so
+// a locally hosted session still honours the host's setting rather than
+// silently dropping output.  An out-of-game index makes GetUserCVar() return 0
+// (= UH_LOG_OFF), so those calls print nothing; callers that must reach the
+// log unconditionally should use Log() directly.
+//
+// DEBUG keeps its historical second gate, the server-only `uh_sv_BossDebugText`
+// cvar: that switch suppresses the noisiest level server-wide, while
+// `uh_cl_LogLevel` tunes everything else per player.
 #include "zcommon.acs"
 
+// Severity of an event (historical values — do not renumber).
 #libdefine UH_LOG_DEBUG 0
 #libdefine UH_LOG_INFO  1
 #libdefine UH_LOG_WARN  2
 #libdefine UH_LOG_ERROR 3
 
+// Threshold values, as stored in `uh_cl_LogLevel` and shown by the menu.
+#libdefine UH_LOG_OFF   0
+#libdefine UH_LOG_ONLY_ERROR 1
+#libdefine UH_LOG_ONLY_WARN  2
+#libdefine UH_LOG_ONLY_INFO  3
+#libdefine UH_LOG_ALL         4
+
+// Default threshold, matching `user int uh_cl_LogLevel` in CVARINFO. This is
+// the pre-existing behaviour: UH_LOG_INFO/WARN/ERROR were always printed and
+// only DEBUG was gated, so the out-of-the-box log is unchanged and players
+// opt into quieter levels (or more noise) from the Unholy user options menu.
+#libdefine UH_LOG_DEFAULT_LEVEL UH_LOG_ONLY_INFO
+
+// Player whose local setting governs this call.
+function int UH_LogPlayer(void) {
+  int playernum = PlayerNumber();
+  if (playernum >= 0) {
+    return playernum;
+  }
+  // Non-player activator (or none at all): fall back to the console player so
+  // a locally hosted session still uses the host's own setting.
+  return ConsolePlayerNumber();
+}
+
+// Reads the acting player's threshold.  An invalid or missing value falls back
+// to the CVARINFO default so a typo in the cvar cannot silence every message.
+function int UH_LogLevel(void) {
+  int level = GetUserCVar(UH_LogPlayer(), "uh_cl_LogLevel");
+  if (level < UH_LOG_OFF || level > UH_LOG_ALL) {
+    return UH_LOG_DEFAULT_LEVEL;
+  }
+  return level;
+}
+
 function void UH_Log(int level, str message) {
+  if (level > UH_LogLevel())
+    return;
+
   if (level == UH_LOG_DEBUG && GetCvar("uh_sv_BossDebugText") != 1)
     return;
 
   switch (level) {
     case UH_LOG_DEBUG:
-      Log(s:"\c[LightBlue][Unholy] [DEBUG] \c-", s:message);
+      Log(s:"\c[LightBlue][Unholy DEBUG] \c-", s:message);
       break;
     case UH_LOG_INFO:
-      Log(s:"\c[Green][Unholy] [INFO] \c-", s:message);
+      Log(s:"\c[Green][Unholy INFO] \c-", s:message);
       break;
     case UH_LOG_WARN:
-      Log(s:"\c[Gold][Unholy] [WARN] \c-", s:message);
+      Log(s:"\c[Gold][Unholy WARN] \c-", s:message);
       break;
     case UH_LOG_ERROR:
-      Log(s:"\c[Red][Unholy] [ERROR] \c-", s:message);
+      Log(s:"\c[Red][Unholy ERROR] \c-", s:message);
       break;
     default:
-      Log(s:"\c[Red][Unholy] [ERROR] \c-UH_Log: invalid level ", i:level, s:"; ", s:message);
+      Log(s:"\c[Red][Unholy ERROR] \c-UH_Log: invalid level ", i:level, s:"; ", s:message);
       break;
   }
 }
