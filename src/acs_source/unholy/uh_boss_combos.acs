@@ -195,15 +195,26 @@ function bool BossVersusEligible(int id) {
 // if the registry has fewer than two eligible bosses, the caller rejects.
 function int PickRandomVersusBoss(int avoid) {
   int pick = UHBOSS_FAIL;
-  int seen = 0;
+  int bestcount = 0;
+  int ties = 0;
   for (int rarity = UHBOSS_POOL_COMMON; rarity < UHBOSS_POOL_COUNT; rarity++) {
     int pooln = GetBossPoolCount(rarity);
     for (int i = 0; i < pooln; i++) {
       int id = GetBossPoolId(rarity, i);
+      // avoid is excluded before the count comparison, so the second slot of a
+      // pair never re-picks the first one.
       if (id == avoid) {continue;}
       if (!BossVersusEligible(id)) {continue;}
-      seen++;
-      if (random(1, seen) == 1) {pick = id;}
+      int c = GetBossPickCount(id);
+      if (c < 0) {continue;}
+      c += UH_BossRoundSeen(id);
+      if (pick == UHBOSS_FAIL || c < bestcount) {
+        pick = id; bestcount = c; ties = 1;
+      }
+      else if (c == bestcount) {
+        ties++;
+        if (random(1, ties) == 1) {pick = id;}
+      }
     }
   }
   return pick;
@@ -230,20 +241,58 @@ function bool BossZankokunaPrimaryEligible(int id) {
   return id == 300 || id == 400;
 }
 
+// Same lowest-count rule as PickRandomVersusBoss, but the candidate set is the
+// six-entry Zankokuna allowlist (the retry loop is unnecessary: the allowlist is
+// deterministic and unregistered entries are skipped).
 function int PickZankokunaVersusBoss(int avoid) {
-  for (int attempt = 0; attempt < 32; attempt++) {
-    int pick;
-    switch (random(0, 5)) {
-      case 0: pick = 65; break;
-      case 1: pick = 300; break;
-      case 2: pick = 400; break;
-      case 3: pick = 401; break;
-      case 4: pick = 402; break;
-      default: pick = 403; break;
+  int pick = UHBOSS_FAIL;
+  int bestcount = 0;
+  int ties = 0;
+  for (int i = 0; i < 6; i++) {
+    int id;
+    switch (i) {
+      case 0: id = 65; break;
+      case 1: id = 300; break;
+      case 2: id = 400; break;
+      case 3: id = 401; break;
+      case 4: id = 402; break;
+      default: id = 403; break;
     }
-    if (pick != avoid && BossZankokunaVersusEligible(pick)) {return pick;}
+    if (id == avoid || !BossZankokunaVersusEligible(id)) {continue;}
+    int c = GetBossPickCount(id);
+    if (c < 0) {continue;}
+    c += UH_BossRoundSeen(id);
+    if (pick == UHBOSS_FAIL || c < bestcount) {
+      pick = id; bestcount = c; ties = 1;
+    }
+    else if (c == bestcount) {
+      ties++;
+      if (random(1, ties) == 1) {pick = id;}
+    }
   }
-  return UHBOSS_FAIL;
+  return pick;
+}
+
+// Combo 218 primary slot: lowest-count of the two primary-eligible candidates.
+function int PickZankokunaPrimaryBoss(int avoid) {
+  int pick = UHBOSS_FAIL;
+  int bestcount = 0;
+  int ties = 0;
+  for (int i = 0; i < 2; i++) {
+    int id = (i == 0) ? 300 : 400;
+    if (id == avoid || !BossZankokunaPrimaryEligible(id)) {continue;}
+    int c = GetBossPickCount(id);
+    if (c < 0) {continue;}
+    c += UH_BossRoundSeen(id);
+    if (pick == UHBOSS_FAIL || c < bestcount) {
+      pick = id; bestcount = c; ties = 1;
+    }
+    else if (c == bestcount) {
+      ties++;
+      if (random(1, ties) == 1) {pick = id;}
+    }
+  }
+  return pick;
 }
 
 function int ResolveConfiguredVersusBoss(str cvar, int avoid) {
@@ -373,8 +422,13 @@ function bool ApplyBossCombo(int combo) {
         UH_Log(UH_LOG_WARN, "Boss combo 218 rejected: ForcedBoss1 must be Zankokuna or Fox Demoneye.");
         return false;
       }
-      if (random(0, 1)) {dyn0 = 400;}
-      else {dyn0 = 300;}
+      // Lowest-count of the two primary candidates (ties reservoir-sampled),
+      // instead of a coin flip that ignores the pick history.
+      dyn0 = PickZankokunaPrimaryBoss(-1);
+      if (dyn0 == UHBOSS_FAIL) {
+        UH_Log(UH_LOG_WARN, "Boss combo 218 rejected: no primary candidate registered.");
+        return false;
+      }
     }
     dyn1 = ResolveConfiguredZankokunaBoss("uh_sv_ForcedBoss2", dyn0);
     if (dyn1 == UHBOSS_FAIL || dyn0 == dyn1) {
@@ -409,7 +463,14 @@ function bool ApplyBossCombo(int combo) {
   else if (mode == BOSSCOMBO_MODE_POOL) {
     int pooln = bosscombodata[combo][6];
     for (i = 0; i < count; i++) {
-      bossdataarr[i][BOSSDATA_NUM] = bosscombobossids[first + random(0, pooln - 1)];
+      // Phase C: lowest-count pick inside the combo's own slice, with the
+      // round-scoped delta so the slots of this combo spread out too.  The
+      // historical uniform roll stays as the fallback for an unusable slice.
+      int dynpick = PickLeastSeenBossFromIds(first, pooln, UHBOSS_FAIL);
+      if (dynpick == UHBOSS_FAIL)
+        dynpick = bosscombobossids[first + random(0, pooln - 1)];
+      bossdataarr[i][BOSSDATA_NUM] = dynpick;
+      UH_BossRoundRecord(dynpick);
     }
   }
   else {

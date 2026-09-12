@@ -60,6 +60,10 @@ script "ub_SelectBossAndEvent" (void) {
     }
   }
 
+  // Phase C: single commit point for every non-shadow line-up (standard,
+  // forced, Strongman and Boss Combo all fill bossdataarr above).
+  CommitSelectedBossHistory();
+
   ACS_NamedExecute("ub_MorphSelectedBosses", 0);  // Begin the morphing!
 }
 
@@ -280,8 +284,13 @@ script "ub_ShadowBossManager" (void) {
     bool ninjaexists = false;
     for (int i = 0; i < multibosscheck; i++) {
       if (shadowtricksarr[i]) {
-        if (ThingCount(0, bossdataarr[i][BOSSDATA_TID]) == 0 || PlayerIsBot(bossdataarr[i][BOSSDATA_TID] - 1000))
+        if (ThingCount(0, bossdataarr[i][BOSSDATA_TID]) == 0 || PlayerIsBot(bossdataarr[i][BOSSDATA_TID] - 1000)) {
           shadowtricksarr[i] = false;
+          // This slot keeps its original boss, which is now its final identity:
+          // the central commit skipped it while the flag was set and the reveal
+          // loop below will not see it any more.
+          CommitBossHistorySlot(bossdataarr[i][BOSSDATA_NUM]);
+        }
         else
           ninjaexists = true;
       }
@@ -355,6 +364,10 @@ script "ub_ShadowBossManager" (void) {
             tempboss = TrueRandomBoss();
         }
         bossdataarr[i][BOSSDATA_MORPHED] = tempboss;  // Borrow this Array
+        // Feed the chosen reveal id into the round delta so a later Shadow slot
+        // does not repeat it.  This is only the selection delta; the permanent
+        // count is still committed once by the reveal loop below.
+        UH_BossRoundRecord(tempboss);
       }
     }
   }
@@ -370,6 +383,10 @@ script "ub_ShadowBossManager" (void) {
       for (i = 0; i < multibosscheck; i++) {
         shadowtricksarr[i] = false;
         ClearActorInventory(bossdataarr[i][BOSSDATA_TID]);
+        // Falling back to the original pair makes these ids final: the central
+        // commit skipped them as shadow slots, and this branch exits before the
+        // reveal loop, so count them here exactly once.
+        CommitBossHistorySlot(bossdataarr[i][BOSSDATA_NUM]);
         bossdataarr[i][BOSSDATA_MORPHED] = MorphActorToBoss(bossdataarr[i][BOSSDATA_TID], bossdataarr[i][BOSSDATA_NUM], "GigaAstroExplode");
       }
       shadowfakeoutactive = false;
@@ -428,6 +445,9 @@ script "ub_ShadowBossManager" (void) {
       if (PlayerInGame(bossdataarr[i][BOSSDATA_TID] - 1000)) {
         GiveActorInventory(bossdataarr[i][BOSSDATA_TID], "ShadowPreRoundEnd", 1);
         bossdataarr[i][BOSSDATA_NUM] = bossdataarr[i][BOSSDATA_MORPHED];  // Use borrowed Array
+        // Shadow commit: this is the final identity for the slot, so count it
+        // exactly once here (the pre-reveal placeholder was never counted).
+        CommitBossHistorySlot(bossdataarr[i][BOSSDATA_NUM]);
         bossdataarr[i][BOSSDATA_MORPHED] = MorphActorToBoss(bossdataarr[i][BOSSDATA_TID], bossdataarr[i][BOSSDATA_NUM], "GigaAstroExplode");
         if (shadowtunesnum == -1)
           shadowtunesnum = bossdataarr[i][BOSSDATA_NUM];

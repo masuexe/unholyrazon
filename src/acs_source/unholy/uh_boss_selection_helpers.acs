@@ -77,6 +77,56 @@ function void IncrementBossPickCount(int id) {
   }
 }
 
+// Phase C commit point: IncrementBossPickCount is only reached from here and
+// from the shadow manager, so every final line-up slot is counted exactly once
+// and morph retries, revivals and abandoned picks never count.
+function void CommitBossHistorySlot(int id) {
+  if (!IsBossDefined(id))
+    return;  // also rejects UHBOSS_FAIL and out-of-range ids
+  IncrementBossPickCount(id);
+}
+
+// Standard, forced, Strongman and every Boss Combo mode all end up in
+// bossdataarr before ub_MorphSelectedBosses starts, so one call covers them.
+// Shadow slots are skipped: their final identity is only known after the reveal
+// and is committed by ub_ShadowBossManager instead (never the placeholder).
+function void CommitSelectedBossHistory(void) {
+  for (int i = 0; i < multibosscheck; i++) {
+    if (shadowtricksarr[i])
+      continue;
+    CommitBossHistorySlot(bossdataarr[i][BOSSDATA_NUM]);
+  }
+}
+
+// Combo POOL mode picks inside its own id slice; same lowest-count rule, but the
+// candidate set is given explicitly instead of by rarity.  avoid uses the same
+// "UHBOSS_FAIL excludes nothing" rule as PickLeastSeenBossFromPool.
+function int PickLeastSeenBossFromIds(int first, int count, int avoid) {
+  int best = UHBOSS_FAIL;
+  int bestcount = 0;
+  int ties = 0;
+  for (int i = 0; i < count; i++) {
+    int id = bosscombobossids[first + i];
+    if (!IsBossDefined(id) || id == avoid)
+      continue;
+    int c = GetBossPickCount(id);
+    if (c < 0)
+      continue;
+    c += UH_BossRoundSeen(id);
+    if (best == UHBOSS_FAIL || c < bestcount) {
+      best = id;
+      bestcount = c;
+      ties = 1;
+    }
+    else if (c == bestcount) {
+      ties++;
+      if (random(1, ties) == 1)
+        best = id;
+    }
+  }
+  return best;
+}
+
 // Slots already chosen for THIS round.  They count as +1 while selecting so a
 // multi-boss line-up spreads across equally-seen bosses; the permanent world
 // count is only written by the phase C commit point, so a retry or an abandoned
@@ -185,7 +235,7 @@ function void SetUpBossSelection_Func(void) {
       bossdataarr[i][BOSSDATA_NUM] = TrueRandomBoss();
     }
     else
-      bossdataarr[i][BOSSDATA_NUM] = bossdataarr[i][BOSSDATA_NUM];  // EXBossChecker
+      bossdataarr[i][BOSSDATA_NUM] = bossdataarr[i][BOSSDATA_NUM];  // no conversion here: EX bosses are separate UHBOSS_POOL_EX registrations, so the selected id is already the final one
 
     // Feed this slot back into the round-scoped delta so the next slot prefers
     // a different equally-seen boss.  Shadow placeholders are not the final
