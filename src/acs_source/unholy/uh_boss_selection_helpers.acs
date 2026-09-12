@@ -24,6 +24,57 @@ function bool CheckBossList(int checkme) {
   return IsBossDefined(checkme);
 }
 
+// --- Boss pick history (phase A: storage + accessors) -----------------------
+// Infrastructure for Razon 3-style least-seen fairness.  This phase ships only
+// the persistent counts and the validated accessors: the fairness picker, the
+// selection wiring and the per-round commit point are phases B/C, so nothing
+// calls IncrementBossPickCount yet and current selection is unchanged.
+// Counts live in the world arrays declared in uh_def.acs.  Signed boss ids must
+// never index an array directly: vanilla ids use their own slot, custom ids go
+// through UH_BossCustomIndex, and anything unregistered or out of range reports
+// failure instead of reading/writing memory.
+
+function int GetBossPickCount(int id) {
+  int idx;
+  if (id >= 0) {
+    if (id >= UH_MAX_VANILLA_BOSS || !IsBossDefined(id))
+      return -1;
+    return uh_bosspickcount[id];
+  }
+  if (id <= -1) {
+    idx = UH_BossCustomIndex(id);
+    if (idx < 0 || idx >= uh_bosscustomcount)
+      return -1;
+    return uh_bosspickcustom[idx];
+  }
+  return -1;
+}
+
+// Phase A logs every commit (signed id, name, old -> new) at DEBUG level, which
+// uh_sv_BossDebugText already gates server-wide, so a normal server stays quiet.
+function void IncrementBossPickCount(int id) {
+  int idx;
+  int old;
+  if (id >= 0) {
+    if (id >= UH_MAX_VANILLA_BOSS || !IsBossDefined(id))
+      return;
+    old = uh_bosspickcount[id];
+    uh_bosspickcount[id] = old + 1;
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Boss pick count ", s:GetBossName(id), s:" (id ", i:id,
+        s:") ", i:old, s:" -> ", i:old + 1));
+    return;
+  }
+  if (id <= -1) {
+    idx = UH_BossCustomIndex(id);
+    if (idx < 0 || idx >= uh_bosscustomcount)
+      return;
+    old = uh_bosspickcustom[idx];
+    uh_bosspickcustom[idx] = old + 1;
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Boss pick count ", s:GetBossName(id), s:" (id ", i:id,
+        s:") ", i:old, s:" -> ", i:old + 1));
+  }
+}
+
 // NEW#BOSS — pool-based pick (no BOSSRNGMAX holes)
 function int TrueRandomBoss(void) {
   int rngpick;
