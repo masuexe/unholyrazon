@@ -21,12 +21,15 @@
 // actor - clientside dots are invisible to the server's allocator).
 
 script "uh_rncstealth_monitor" (void) {
+  int pn = PlayerNumber();
+  if (pn < 0)
+    terminate;
   int cx = GetActorX(0);
   int cy = GetActorY(0);
 
   // Judgement-circle ring marker, clientside on the boss's own client only
   // (singleplayer runs it locally).
-  NamedExecuteClientScript("uh_rncstealth_ring", PlayerNumber(), cx, cy);
+  NamedExecuteClientScript("uh_rncstealth_ring", pn, cx, cy);
 
   // Compare squared distance in integer map units: a 256-unit radius squared
   // is 65536, but as 16.16 fixed it overflows 32-bit, so do NOT FixedMul the
@@ -34,7 +37,16 @@ script "uh_rncstealth_monitor" (void) {
   bool landed = ACS_NamedExecuteWithResult("core_CheckFooting", RNCSTEALTH_FOOTING_TOL);
   int airtics = 0;
 
-  while (CheckInventory("RNCStealthActive_F")) {
+  while (true) {
+    // Re-resolve the activator every tic: a morph/unmorph replaces the player's
+    // pawn (UnMorphActor destroys the old one), so holding the original pointer
+    // would leave this loop reading a freed actor.
+    if (!SetActivatorToPlayer(pn))
+      terminate;
+
+    if (!CheckInventory("RNCStealthActive_F"))
+      break;  // any break path removed the marker
+
     if (GetActorProperty(0, APROP_Health) <= 0)
       terminate;  // ClassDeath gives RNCStealthBreak_P for cleanup
 
@@ -58,7 +70,7 @@ script "uh_rncstealth_monitor" (void) {
 
   // Loop exited with the marker still present -> the monitor detected the
   // break.  Other break paths already removed it, so this is a no-op then.
-  if (CheckInventory("RNCStealthActive_F"))
+  if (SetActivatorToPlayer(pn) && CheckInventory("RNCStealthActive_F"))
     GiveInventory("RNCStealthBreak_P", 1);
 }
 
@@ -72,10 +84,17 @@ script "uh_rncstealth_monitor" (void) {
 // degree): p_acs.cpp PCD_COS/PCD_SIN index finesine by (raw >> 3).  Hence the
 // step is written as 1.0/RNCSTEALTH_RING_STEPS - never as "degrees".
 script "uh_rncstealth_ring" (int cx, int cy) CLIENTSIDE {
+  int pn = PlayerNumber();
   int cz = GetActorFloorZ(0);
   int ang = 0;      // fixed angle, 1.0 = 360 degrees
 
-  while (CheckInventory("RNCStealthActive_F")) {
+  while (true) {
+    // Re-resolve the activator: morph/unmorph replaces the player's pawn.
+    if (!SetActivatorToPlayer(pn))
+      break;
+    if (!CheckInventory("RNCStealthActive_F"))
+      break;
+
     // intersection 1: theta  (tid 0: the dot needs no TID, see the header)
     Spawn("RNCStealthRingDot",
               cx + FixedMul(RNCSTEALTH_RADIUS << 16, cos(ang)),
@@ -119,7 +138,12 @@ script "uh_rncstealth_transform" (void) {
 // Per-tic cooldown drain (started by RNCStealthBreak_P).  Exact 1/tick rate
 // independent of the weapon's Flash/Ready timing; exits at 0.
 script "uh_rncstealth_cooldowntick" (void) {
-  while (CheckInventory("RNCStealthCooldown") > 0) {
+  int pn = PlayerNumber();
+  // The cooldown token is plain inventory and survives a morph, but the pawn it
+  // lives on does not: re-resolve it every tic (a demorph destroys the pawn this
+  // script started on) and bail out if the player has no pawn right now.
+  while (pn >= 0 && SetActivatorToPlayer(pn)
+         && CheckInventory("RNCStealthCooldown") > 0) {
     TakeInventory("RNCStealthCooldown", 1);
     Delay(1);
   }

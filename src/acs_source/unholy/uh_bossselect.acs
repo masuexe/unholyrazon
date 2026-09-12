@@ -230,8 +230,17 @@ script "ub_UnMorphThisTID" (int w, int bossid) {
   EndPlayerBossMorph(player);
 
   SetActivator(w);
+  int pn = PlayerNumber();   // survives the pawn swap below
+  // A cloak must not survive a demorph: P_UndoPlayerMorph hands the morph pawn's
+  // whole inventory to the original pawn (a_morph.cpp:275 mo->ObtainInventory),
+  // so RNCStealthActive_F, the alpha power and PlayerPropertyUnsolid would leak
+  // onto the survivor and onto the next boss morph.  Break while this pawn still
+  // exists - RNCStealthBreak_P is a no-op for every other class.
+  GiveInventory("RNCStealthBreak_P", 1);
   ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false);
   UnMorphActor(w, 1);
+  if (pn >= 0)
+    SetActivatorToPlayer(pn);   // UnMorphActor destroyed the pawn we started on
   // Pass the boss's stacker ownership mask so the baseline clamp cannot remove
   // layers a map/item/mod added during the morph (see uh_bossunmorphfams).
   int ownedfams = -1;

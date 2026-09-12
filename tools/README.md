@@ -75,18 +75,30 @@ DECORATE/ACS diagnostics.
 ## Rebuilding ACS and the PK3 locally
 
 ACS edits only take effect once the affected library is recompiled with the
-native Linux ACC into `src/acs/` and the PK3 is repackaged:
+native Linux ACC into `src/acs/` and the PK3 is repackaged. Pick the aggregator
+that includes the file you edited — `src/LOADACS` lists every library, and each
+aggregator has the matching `#library` name:
 
 ```bash
-${ACC:-acc} \
-  -i ../references/zandronum/acc-branch-zandronum \
-  -i src/acs_source/v6b_overrides/_includes/mod_api \
-  -i src/acs_source/v6b_overrides/_includes/common \
-  -i src/acs_source/_includes/mod_api \
-  -i src/acs_source/_imports \
-  -i src/acs_source/hud \
-  src/acs_source/classes/uh_classes.acs src/acs/uh_classes.o
+ACC=${ACC:-acc}
+INC="-i ../references/zandronum/acc-branch-zandronum
+  -i src/acs_source/v6b_overrides/_includes/mod_api
+  -i src/acs_source/v6b_overrides/_includes/common
+  -i src/acs_source/_includes/mod_api
+  -i src/acs_source/_imports
+  -i src/acs_source/hud"
+
+# src/acs_source/classes/**  -> uh_classes.o   (weapons, class logic, rnc_clashman.acs)
+$ACC $INC src/acs_source/classes/uh_classes.acs src/acs/uh_classes.o
+
+# src/acs_source/unholy/**   -> unholy.o       (round flow, boss select, uh_bossselect.acs)
+$ACC $INC src/acs_source/unholy/unholy.acs src/acs/unholy.o
 ```
+
+Compiling the wrong aggregator silently leaves the old object in `src/acs/`, so
+the change simply does not happen in game (it cost a debugging round on
+2026-09-12). `src/acs_source/hud/**` builds `uh_bars.o` from
+`src/acs_source/hud/uh_bars.acs` the same way.
 
 Package `src/` as a fresh archive (never update an existing ZIP in place), then
 validate. The file-list form below excludes what `src/.pk3ignore` excludes and
