@@ -42,7 +42,10 @@ script "ub_InitiateUltraBoss" (int Ultra) {
 
 script "ub_EventManagementACS" (int perform) {
   if (perform == -2) {
-    eventdataarr[EVENTDATA_MAINEVENT] = PickRandomBonusEvent();
+    // Database pick: weight/player-count filtering and last-event exclusion
+    // happen inside PickBonusEvent (a single-candidate pool repeats the last
+    // event instead of looping — documented in UHDT).
+    eventdataarr[EVENTDATA_MAINEVENT] = PickBonusEvent(PlayerCount(), eventdataarr[EVENTDATA_LASTEVENT]);
     bool eventselected = false;
 
     int rawcvar = CheckClearCvar("uh_sv_BonusEventNum", -1);
@@ -73,18 +76,20 @@ script "ub_EventManagementACS" (int perform) {
     }
 
     if (!eventselected) {
-      do {
-        eventdataarr[EVENTDATA_MAINEVENT] = PickRandomBonusEvent();
-        Delay(1);
-      } while (eventdataarr[EVENTDATA_MAINEVENT] == eventdataarr[EVENTDATA_LASTEVENT]);
+      // EX upgrade resolves per registered relation; forced events skip it.
       eventdataarr[EVENTDATA_MAINEVENT] = ExEventChecker(eventdataarr[EVENTDATA_MAINEVENT]);
     }
+
+    // Resolve before announcement/RCON echo so the round never previews an
+    // event it cannot start.
+    eventdataarr[EVENTDATA_MAINEVENT] = UH_ResolveStartableBonusEvent(eventdataarr[EVENTDATA_MAINEVENT]);
   }
 
   else if (perform != -2) {
     eventdataarr[EVENTDATA_DELAY] = 0;  // RNG EVENT DELAY
     eventdataarr[EVENTDATA_LASTEVENT] = eventdataarr[EVENTDATA_MAINEVENT];
     twoplayersxrayenabled = false;
+    bonuseventended = false;
     for (int i = 0; i < MAX_PLAYERS; i++) {
       roundstatebuilt[i] = false;
     }
@@ -94,92 +99,25 @@ script "ub_EventManagementACS" (int perform) {
     }
     ACS_NamedExecute("rz_WatchTwoPlayerLeft", 0);
 
-    switch (eventdataarr[EVENTDATA_MAINEVENT]) {
-      default:
-      case UHEVENT_FFA:  // Free For All
-        ACS_NamedExecute("ub_FreeForAll", 0, 0);
-        break;
-      case UHEVENT_MLG:  // MLG
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 1, 1);
-        break;
-      case UHEVENT_GHOST:  // SPOOK
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 2, 2);
-        break;
-      case UHEVENT_JOUST:  // Joust
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 3, 3);
-        break;
-      case UHEVENT_SUMO:  // Sumo
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 4, 4);
-        break;
-      case UHEVENT_KAMIKAZE:  // Kamikaze
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 5, 5);
-        break;
-        // case 6://Rich Devil//Rich
-        // 	//ACS_NamedExecute("ub_DemoneyeEvent", 0, 6);
-        // 	if(RandomPercent(15)){
-        // 		MultiBossFunction(0);
-        // 	}
-        // 	else{
-        // 		bossSlotAlive[0] = true;
-        // 	}
-        // 	SimpleBossChange(302,302,302,302);
-        // 	Delay(1);
-        // 	ACS_NamedExecute("ub_MorphSelectedBosses",0);
-        // 	break;
-      case UHEVENT_BOMBER:  // Bomber
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 7, 7);
-        break;
-      case UHEVENT_BUSINESS:  // Business
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 8, 8);
-        break;
-      case UHEVENT_QUICK:  // Quick
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 9, 9);
-        break;
-      case UHEVENT_TANK:  // Tank
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, 10, 10);
-        break;
-      case UHEVENT_EYEPARADE:  // Eye Parade
-        ACS_NamedExecute("ub_OneVsAllEvent", 0, 0);
-        break;
-      case UHEVENT_CLONEPARADE:  // Clone Parade
-        ACS_NamedExecute("ub_OneVsAllEvent", 0, 1);
-        break;
-      case UHEVENT_FOOTBALL:  // Free For All (Football)
-        ACS_NamedExecute("ub_FreeForAll", 0, 1);
-        break;
-      case UHEVENT_BRICK:  // Brick one-vs-all
-        ACS_NamedExecute("ub_OneVsAllEvent", 0, 14);
-        break;
-      case UHEVENT_MOSQUITO:  // Mosquito one-vs-all
-        ACS_NamedExecute("ub_OneVsAllEvent", 0, 15);
-        break;
-      case UHEVENT_TYPHOON:  // Typhoon all-eye
-        ACS_NamedExecute("ub_DemoneyeEvent", 0, UHEVENT_TYPHOON, 13);
-        break;
-
-      case UHEVENT_TRUEPOWER:  // Free For All (TruePower)
-        ACS_NamedExecute("ub_FreeForAll", 0, 100);
-        break;
-      case UHEVENT_EYELENTO:  // Eyelento of Pain
-        ACS_NamedExecute("ub_EyelentoOfPain", 0, 6);
-        break;
-      case UHEVENT_CATCHFURRY:  // Eye Parade vs Furry Runner
-        ACS_NamedExecute("ub_OneVsAllEvent", 0, 50);
-        break;
-      case UHEVENT_RUNAWAYFOX:  // Eye Parade vs Foxeye Killer
-        ACS_NamedExecute("ub_OneVsAllEvent", 0, 51);
-        break;
-      case UHEVENT_RUNES:  // Free For All (Runes)
-        ACS_NamedExecute("ub_FreeForAll", 0, 113);
-        break;
-      case UHEVENT_BOSSEFFA:  // Boss FFA (force-only until soak test)
-        ACS_NamedExecute("ub_BossFFAEvent", 0);
-        break;
-      case UHEVENT_SATANSEAL:  // Satan Seal FFA (force-only until soak test)
-        ACS_NamedExecute("ub_SatanSealFFA", 0);
-        break;
-    }
+    // Registered start callback (eventId, arg1, arg2) owns the per-round
+    // setup; the generic event scripts it names carry their own watchers.
+    // Commit active state BEFORE dispatching: the callback may immediately
+    // arm the standard watcher or query active-event state.  Roll back on a
+    // failed dispatch (unreachable today — startability was resolved above
+    // with no intervening Delay — kept as a guard for future edits).
+    int startevent = UH_ResolveStartableBonusEvent(eventdataarr[EVENTDATA_MAINEVENT]);
+    eventdataarr[EVENTDATA_MAINEVENT] = startevent;
     isbonuseventactive = true;
+    if (RunBonusEventStart(startevent)) {
+      // Core-owned end-callback observer: covers the engine-driven LMS ending
+      // path (FFA / all-eye) that has no ACS ending script.  Idempotent with
+      // UH_StartStandardBonusWatcher — the one-shot guard dedupes.
+      ACS_NamedExecute("ub_BonusStandardWatcher", 0, startevent);
+    }
+    else {
+      isbonuseventactive = false;
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event ", i:startevent, s:" start dispatch failed; round continues without an event."));
+    }
   }
 }
 
@@ -274,21 +212,7 @@ function void ApplyQuickState(int tid) {
 }
 
 function bool IsFFAEvent(int eventid) {
-  return eventid == UHEVENT_FFA || eventid == UHEVENT_FOOTBALL ||
-  eventid == UHEVENT_TRUEPOWER || eventid == UHEVENT_RUNES ||
-  eventid == UHEVENT_BOSSEFFA || eventid == UHEVENT_SATANSEAL;
-}
-
-function int OneVsAllRawFromEvent(int eventid) {
-  switch (eventid) {
-    case UHEVENT_EYEPARADE: return 0;
-    case UHEVENT_CLONEPARADE: return 1;
-    case UHEVENT_CATCHFURRY: return 50;
-    case UHEVENT_RUNAWAYFOX: return 51;
-    case UHEVENT_BRICK: return 14;
-    case UHEVENT_MOSQUITO: return 15;
-  }
-  return -1;
+  return (GetBonusEventFlags(eventid) & UHBE_FLAG_FFA) != 0;
 }
 
 // Complete Rune FFA state, shared by event start and revival rebuild.
@@ -386,9 +310,9 @@ script "ub_BossFFAEvent" (void) {
     if (PlayerInGame(c)) {ClearFFAProtections(c + 1000);}
   }
 
-  PlayMusic(bonuseventlist[UHEVENT_BOSSEFFA][BONUS_MUSICLUMP]);
+  PlayMusic(GetBonusEventMusic(UHEVENT_BOSSEFFA));
   Delay(2);
-  MusicCredits(bonuseventlist[UHEVENT_BOSSEFFA][BONUS_MUSICCREDITS], 0);
+  MusicCredits(GetBonusEventMusicCredit(UHEVENT_BOSSEFFA), 0);
 
   SetFont("BIGFONT");
   SetHudSize(640, 480, 0);
@@ -411,9 +335,9 @@ script "ub_SatanSealFFA" (void) {
     }
   }
 
-  PlayMusic(bonuseventlist[UHEVENT_SATANSEAL][BONUS_MUSICLUMP]);
+  PlayMusic(GetBonusEventMusic(UHEVENT_SATANSEAL));
   Delay(2);
-  MusicCredits(bonuseventlist[UHEVENT_SATANSEAL][BONUS_MUSICCREDITS], 0);
+  MusicCredits(GetBonusEventMusicCredit(UHEVENT_SATANSEAL), 0);
 
   SetFont("BIGFONT");
   SetHudSize(640, 480, 0);
@@ -451,25 +375,22 @@ script "ub_FreeForAll" (int freechance) {
   }
   else {AmbientSound("misc/DixieLandStart", 127);}
 
-  switch (freechance) {
-    default:
-    case 0:
-      PlayMusic(bonuseventlist[0][BONUS_MUSICLUMP]);
-      MusicCredits(bonuseventlist[0][BONUS_MUSICCREDITS], 0);
-      break;
-    case 100:
-      GiveMeTheFunc("AutoTruePowerItemSilent", 1);
-      PlayMusic(bonuseventlist[100][BONUS_MUSICLUMP]);
-      MusicCredits(bonuseventlist[100][BONUS_MUSICCREDITS], 0);
-      break;
-    case 113:
-      for (int rfi = 0; rfi < MAX_PLAYERS; rfi++) {
-        if (PlayerInGame(rfi)) {GiveRuneFFAState(rfi + 1000);}
-      }
-      PlayMusic(bonuseventlist[113][BONUS_MUSICLUMP]);
-      MusicCredits(bonuseventlist[113][BONUS_MUSICCREDITS], 0);
-      break;
+  // Music keys off the FFA variant selector exactly as before: the Football
+  // variant historically played the plain FFA track, so variant 1 maps to it.
+  // Variant-specific setup (TruePower item, Rune state) stays in this script.
+  int musevent = UHEVENT_FFA;
+  if (freechance == 100) {
+    GiveMeTheFunc("AutoTruePowerItemSilent", 1);
+    musevent = UHEVENT_TRUEPOWER;
   }
+  else if (freechance == 113) {
+    for (int rfi = 0; rfi < MAX_PLAYERS; rfi++) {
+      if (PlayerInGame(rfi)) {GiveRuneFFAState(rfi + 1000);}
+    }
+    musevent = UHEVENT_RUNES;
+  }
+  PlayMusic(GetBonusEventMusic(musevent));
+  MusicCredits(GetBonusEventMusicCredit(musevent), 0);
 
   SetFont("BIGFONT");
   ClearHudMessage(49);
@@ -524,9 +445,9 @@ script "ub_DemoneyeEvent" (int eventid, int eyeid) {
   }
 
   ACS_NamedExecute("ub_WhoWonTheRound", 0);
-  PlayMusic(bonuseventlist[eventid][BONUS_MUSICLUMP]);
+  PlayMusic(GetBonusEventMusic(eventid));
   Delay(2);
-  MusicCredits(bonuseventlist[eventid][BONUS_MUSICCREDITS], 0);
+  MusicCredits(GetBonusEventMusicCredit(eventid), 0);
   ACS_NamedExecute("uh_DemoneyeEventTextDelay", 0, eventid, 105);
   Delay(33);
   while (totalplayersarr[PLS_SURVIVOR] > 0) {  // If player(s) are not morphed, find and attempt to morph them.
@@ -553,15 +474,18 @@ function void DemoneyeEventMorphCheckFunc(str eyetype, str eyepickup) {
 }
 
 script "uh_DemoneyeEventTextDelay" (int which, int delaytime) {
+  str bonussound = GetBonusEventSound(which);
+  str hudmess1 = GetBonusEventHudMessage1(which);
+  str hudmess2 = GetBonusEventHudMessage2(which);
   SetFont("BIGFONT");
-  AmbientSound(bonuseventlist[which][BONUS_BONUSSOUND], 127);
+  AmbientSound(bonussound, 127);
   SetHudSize(640, 480, 0);
-  HudMessageBold(s:bonuseventlist[which][BONUS_HUDMESS1]; HUDMSG_FADEOUT, 49, CR_WHITE, 320.4, 432.2, 4.0, 2.0);
+  HudMessageBold(s:hudmess1; HUDMSG_FADEOUT, 49, CR_WHITE, 320.4, 432.2, 4.0, 2.0);
   SetPlayerProperty(1, 0, 4);
-  if (GetChar(bonuseventlist[which][BONUS_HUDMESS2], 0) != 0) {
+  if (GetChar(hudmess2, 0) != 0) {
     Delay(delaytime);
     SetFont("SMALLFONT");
-    HudMessageBold(s:bonuseventlist[which][BONUS_HUDMESS2]; HUDMSG_FADEOUT, 66, CR_WHITE, 320.4, 456.2, 1.0, 2.0);
+    HudMessageBold(s:hudmess2; HUDMSG_FADEOUT, 66, CR_WHITE, 320.4, 456.2, 1.0, 2.0);
   }
 }
 
@@ -630,8 +554,8 @@ script "ub_OneVsAllEvent" (int which) {
       break;
   }
 
-  PlayMusic(bonuseventlist[eventid][BONUS_MUSICLUMP]);
-  MusicCredits(bonuseventlist[eventid][BONUS_MUSICCREDITS], 0);
+  PlayMusic(GetBonusEventMusic(eventid));
+  MusicCredits(GetBonusEventMusicCredit(eventid), 0);
 
   if (which != 50 && which != 51 && which == 100) {
     bossdataarr[0][BOSSDATA_NUM] = TrueRandomBoss();
@@ -681,8 +605,8 @@ script "ub_OneVsAllEvent" (int which) {
 
 // Eyelento of Pain bonus event (ported from unbound Script 827)
 script "ub_EyelentoOfPain" (int eyelentoamount) {
-  PlayMusic(bonuseventlist[106][BONUS_MUSICLUMP]);
-  MusicCredits(bonuseventlist[106][BONUS_MUSICCREDITS], 0);
+  PlayMusic(GetBonusEventMusic(UHEVENT_EYELENTO));
+  MusicCredits(GetBonusEventMusicCredit(UHEVENT_EYELENTO), 0);
 
   ACS_NamedExecute("ub_WatchSurvivors", 0, true);
 
@@ -701,11 +625,12 @@ script "ub_EyelentoOfPain" (int eyelentoamount) {
 }
 
 // D2: idempotent server-side revival rebuild for the active bonus event.
+// Generic pre-processing is flag-driven (FFA protection clear, one-vs-all life
+// status); everything event-specific belongs to the registered rebuild
+// callback (eventId, tid, reason), which must be idempotent.
 function bool RebuildActiveRoundState(int tid, int reason) {
   if (tid < 1000 || tid > 1063) {return false;}
   int pn = tid - 1000;
-  str stem;
-  int raw;
   if (!PlayerInGame(pn)) {return false;}
   if (PlayerIsSpectator(pn) != 0) {return false;}
   if (GetGameModeState() == GAMESTATE_INRESULTSEQUENCE) {return false;}
@@ -717,20 +642,18 @@ function bool RebuildActiveRoundState(int tid, int reason) {
     }
     return true;
   }
+  if (bonuseventended) {return false;}  // End entry already ran; no more rebuilds.
   if (roundstatebuilt[pn]) {return true;}
 
   int eventid = eventdataarr[EVENTDATA_MAINEVENT];
-  if (!CheckEventList(eventid)) {return false;}
+  if (!IsBonusEventDefined(eventid)) {return false;}
+  int eventflags = GetBonusEventFlags(eventid);
 
-  bool onevsall = (eventid == UHEVENT_EYEPARADE || eventid == UHEVENT_CLONEPARADE ||
-                   eventid == UHEVENT_CATCHFURRY || eventid == UHEVENT_RUNAWAYFOX ||
-                   eventid == UHEVENT_BRICK || eventid == UHEVENT_MOSQUITO);
-
-  if (IsFFAEvent(eventid)) {
+  if (eventflags & UHBE_FLAG_FFA) {
     ClearFFAProtections(tid);
   }
 
-  if (onevsall) {
+  if (eventflags & UHBE_FLAG_ONEVSALL) {
     if (tid == bossdataarr[0][BOSSDATA_TID]) {
       PlayerLifeStatusArr_UpdateFunc(pn, PLS_BOSS);
     }
@@ -742,70 +665,9 @@ function bool RebuildActiveRoundState(int tid, int reason) {
     PlayerLifeStatusArr_UpdateFunc(pn, PLS_SURVIVOR);
   }
 
-  switch (eventid) {
-    case UHEVENT_MLG:
-    case UHEVENT_GHOST:
-    case UHEVENT_JOUST:
-    case UHEVENT_SUMO:
-    case UHEVENT_KAMIKAZE:
-    case UHEVENT_BOMBER:
-    case UHEVENT_BUSINESS:
-    case UHEVENT_QUICK:
-    case UHEVENT_TANK:
-      stem = GetEyeEventStem(eventid);
-      if (StrCmp(stem, "") != 0) {
-        GiveActorInventory(tid, StrParam(s:stem, s:"_MoolaGiver"), 1);
-        GiveActorInventory(tid, StrParam(s:stem, s:"_EventD_P"), 1);
-      }
-      if (eventid == UHEVENT_SUMO) {ApplySumoState(tid);}
-      if (eventid == UHEVENT_QUICK) {ApplyQuickState(tid);}
-      break;
-    case UHEVENT_EYEPARADE:
-    case UHEVENT_CLONEPARADE:
-    case UHEVENT_CATCHFURRY:
-    case UHEVENT_RUNAWAYFOX:
-    case UHEVENT_BRICK:
-    case UHEVENT_MOSQUITO:
-      raw = OneVsAllRawFromEvent(eventid);
-      if (raw >= 0) {
-        ApplyOneVsAllState(tid, raw, tid == bossdataarr[0][BOSSDATA_TID]);
-      }
-      break;
-    case UHEVENT_TYPHOON:
-      // All-eye event: the morph actors key off eye ID 13, not event ID 16.
-      stem = GetEyeEventStem(13);
-      if (StrCmp(stem, "") != 0) {
-        GiveActorInventory(tid, StrParam(s:stem, s:"_MoolaGiver"), 1);
-        GiveActorInventory(tid, StrParam(s:stem, s:"_EventD_P"), 1);
-      }
-      break;
-    case UHEVENT_FOOTBALL:
-      GiveActorInventory(tid, "TheFootBallItemX", 1);
-      break;
-    case UHEVENT_TRUEPOWER:
-      GiveActorInventory(tid, "AutoTruePowerItemSilent", 1);
-      break;
-    case UHEVENT_RUNES:
-      GiveRuneFFAState(tid);
-      break;
-    case UHEVENT_EYELENTO:
-      UH_Log(UH_LOG_DEBUG, StrParam(s:"RebuildActiveRoundState: Eyelento event is morph-managed; no inventory rebuild."));
-      break;
-    case UHEVENT_BOSSEFFA:
-      // Restore the boss rolled at round start; never reroll.
-      if (eventbossid[pn] >= 0) {
-        BossFFAMorphPlayer(tid, eventbossid[pn]);
-      }
-      else {
-        UH_Log(UH_LOG_WARN, StrParam(s:"RebuildActiveRoundState: Boss FFA player ", i:pn, s:" has no round-start boss; skipped."));
-      }
-      break;
-    case UHEVENT_SATANSEAL:
-      GiveSatanSealState(tid);
-      break;
-    default:
-      UH_Log(UH_LOG_WARN, StrParam(s:"RebuildActiveRoundState: no rule for event ", i:eventid, s:" reason ", i:reason));
-      break;
+  str rebuildcb = GetBonusEventRebuildCallback(eventid);
+  if (!RunBonusEventRebuild(eventid, tid, reason) && StrCmp(rebuildcb, "") != 0) {
+    UH_Log(UH_LOG_WARN, StrParam(s:"RebuildActiveRoundState: rebuild callback missing: ", s:rebuildcb));
   }
 
   if (mercygiven && playerlifestatusarr[pn] == PLS_SURVIVOR) {
@@ -813,6 +675,160 @@ function bool RebuildActiveRoundState(int tid, int reason) {
   }
 
   roundstatebuilt[pn] = true;
+  return true;
+}
+
+// --- Built-in rebuild callbacks ---------------------------------------------
+// Each script below carries one event family's per-life state and is
+// registered as that event's rebuildCallback in uh_bonusdefs.acs.
+
+// Shared all-eye state: the morph actors key off the eye id (arg2), which
+// differs from the event id only for Typhoon (event 16, eye 13).
+function void ApplyEyeEventState(int tid, int eyeid) {
+  str stem = GetEyeEventStem(eyeid);
+  if (StrCmp(stem, "") == 0) {return;}
+  GiveActorInventory(tid, StrParam(s:stem, s:"_MoolaGiver"), 1);
+  GiveActorInventory(tid, StrParam(s:stem, s:"_EventD_P"), 1);
+}
+
+script "uh_RebuildEyeEvent" (int eventid, int tid, int reason) {
+  int eyeid = GetBonusEventArg2(eventid);
+  if (eyeid <= 0) {eyeid = eventid;}
+  ApplyEyeEventState(tid, eyeid);
+}
+
+script "uh_RebuildSumoEye" (int eventid, int tid, int reason) {
+  ApplyEyeEventState(tid, UHEVENT_SUMO);
+  ApplySumoState(tid);
+}
+
+script "uh_RebuildQuickEye" (int eventid, int tid, int reason) {
+  ApplyEyeEventState(tid, UHEVENT_QUICK);
+  ApplyQuickState(tid);
+}
+
+// One-vs-all state via the legacy raw selector stored in arg1
+// (0=Eye Parade, 1=Clone Parade, 14=Brick, 15=Mosquito, 50=Furry, 51=Fox).
+script "uh_RebuildOneVsAllEvent" (int eventid, int tid, int reason) {
+  int which = GetBonusEventArg1(eventid);
+  if (which < 0) {terminate;}
+  ApplyOneVsAllState(tid, which, tid == bossdataarr[0][BOSSDATA_TID]);
+}
+
+script "uh_RebuildFootballFFA" (int eventid, int tid, int reason) {
+  GiveActorInventory(tid, "TheFootBallItemX", 1);
+}
+
+script "uh_RebuildTruePowerFFA" (int eventid, int tid, int reason) {
+  GiveActorInventory(tid, "AutoTruePowerItemSilent", 1);
+}
+
+script "uh_RebuildRuneFFA" (int eventid, int tid, int reason) {
+  GiveRuneFFAState(tid);
+}
+
+script "uh_RebuildBossFFA" (int eventid, int tid, int reason) {
+  // Restore the boss rolled at round start; never reroll.
+  int pn = tid - 1000;
+  if (eventbossid[pn] >= 0) {
+    BossFFAMorphPlayer(tid, eventbossid[pn]);
+  }
+  else {
+    UH_Log(UH_LOG_WARN, StrParam(s:"uh_RebuildBossFFA: player ", i:pn, s:" has no round-start boss; skipped."));
+  }
+}
+
+script "uh_RebuildSatanSealFFA" (int eventid, int tid, int reason) {
+  GiveSatanSealState(tid);
+}
+
+// --- Unified end entry -------------------------------------------------------
+// One round-level guard feeds every ending path: custom watchers via
+// UH_EndBonusEvent, the standard engine-LMS flow via ub_BonusStandardWatcher.
+// The end callback runs at most once per round; afterwards rebuilds are
+// refused (see RebuildActiveRoundState).
+function bool UH_TryFinishBonusEvent(int eventid, int result, bool runsequence) {
+  if (!isbonuseventactive) {return false;}
+  if (eventid != eventdataarr[EVENTDATA_MAINEVENT]) {return false;}
+  if (bonuseventended) {return false;}
+  bonuseventended = true;
+
+  str endcb = GetBonusEventEndCallback(eventid);
+  if (!RunBonusEventEnd(eventid, result) && StrCmp(endcb, "") != 0) {
+    UH_Log(UH_LOG_WARN, StrParam(s:"Bonus event end callback missing: ", s:endcb));
+  }
+  if (runsequence) {
+    // Unified result sequence for custom-watcher events, run as its own
+    // script (latent actions are script-only); on the standard path the
+    // engine's LMS flow owns the transition (runsequence = false).
+    ACS_NamedExecute("ub_BonusResultSequence", 0, result);
+  }
+  return true;
+}
+
+// Result sequence for custom-watcher bonus events (survivor win / boss win /
+// draw).  Mirrors the bookkeeping of the standard watchers minimally: win
+// clears mercy, streak flips and bumps follow the core watcher rules.
+script "ub_BonusResultSequence" (int result) {
+  SetActivator(0, AAPTR_NULL);
+  gameover = true;
+  SetFont("BIGFONT");
+  SetHudSize(480, 360, 0);
+  if (result == UHBE_RESULT_SURVIVOR) {
+    PlayMusic_Winner(-1);
+    HudMessageBold(s:"The survivors are victorious!"; HUDMSG_FADEOUT, 66, CR_GREEN, 240.4, 54.0, 5.0, 2.0);
+    if (winstreak < 0) {winstreak = 1;}
+    else {winstreak++;}
+    mercygiven = false;
+  }
+  else if (result == UHBE_RESULT_BOSS) {
+    PlayMusic_Loser(-1);
+    HudMessageBold(s:"The survivors have been defeated..."; HUDMSG_FADEOUT, 66, CR_RED, 240.4, 54.0, 5.0, 2.0);
+    if (winstreak > 0) {winstreak = -1;}
+    else {winstreak--;}
+  }
+  else {
+    HudMessageBold(s:"The event has ended."; HUDMSG_FADEOUT, 66, CR_GRAY, 240.4, 54.0, 5.0, 2.0);
+  }
+  Delay(35 * 9);
+  Exit_Normal(0);
+  Delay(35 * 6);
+}
+
+// Public end entry for custom watchers (uh_EndBonusEvent).  ABORTED skips the
+// result sequence: the caller (admin abort, map teardown) owns the exit.
+function bool UH_EndBonusEventCore(int eventid, int result) {
+  return UH_TryFinishBonusEvent(eventid, result, result != UHBE_RESULT_ABORTED);
+}
+
+// Standard watcher for engine-LMS-style events (FFA / all-eye): wait for the
+// round to end, classify the result, then run the end entry without exiting
+// (the engine is already transitioning).
+script "ub_BonusStandardWatcher" (int eventid) {
+  SetActivator(0, AAPTR_NULL);
+  until (gameover || GetGameModeState() == GAMESTATE_INRESULTSEQUENCE) {
+    Delay(2);
+  }
+  if (!isbonuseventactive || bonuseventended || eventid != eventdataarr[EVENTDATA_MAINEVENT]) {
+    terminate;
+  }
+  int result = UHBE_RESULT_DRAW;
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    if (PlayerInGame(p) && CheckActorInventory(p + 1000, "IsDead") != 1) {
+      result = UHBE_RESULT_SURVIVOR;
+      break;
+    }
+  }
+  UH_TryFinishBonusEvent(eventid, result, false);
+}
+
+// Public standard-watcher entry (uh_StartStandardBonusWatcher): validates the
+// caller owns the active event before arming the watcher.
+function bool UH_StartStdBonusWatcherCore(int eventid) {
+  if (!isbonuseventactive || bonuseventended || eventid != eventdataarr[EVENTDATA_MAINEVENT]) {
+    return false;
+  }
+  ACS_NamedExecute("ub_BonusStandardWatcher", 0, eventid);
   return true;
 }
 
@@ -882,6 +898,8 @@ script "ub_SpecialEventEnding" (int which) {
       PlayMusic_Win(1);
       break;
   }
+  // Unified bonus-event end entry: the one-vs-all target was defeated.
+  UH_TryFinishBonusEvent(eventdataarr[EVENTDATA_MAINEVENT], UHBE_RESULT_SURVIVOR, false);
   SetHudSize(480, 360, 0);
   SetFont("BIGFONT");
   HudMessageBold(s:endingstring; HUDMSG_FADEOUT, 66, CR_WHITE, 240.4, 54.0, 3.0, 2.0);
@@ -968,6 +986,8 @@ script "ub_SpecialEventTracker" (int which) {
       HudMessageBold(s:"\caThe Furry Escaped!"; HUDMSG_FADEOUT, 49, CR_WHITE, 240.4, 72.0, 4.0, 1.0, 1.0);
       MakeAllPlayersInvun();
       SetPlayerProperty(1, 1, 4);
+      // Unified bonus-event end entry: the target side (furry) escaped.
+      UH_TryFinishBonusEvent(eventdataarr[EVENTDATA_MAINEVENT], UHBE_RESULT_BOSS, false);
       gameover = true;
       Delay(35 * 6);
       Exit_Normal(0);
@@ -1004,6 +1024,8 @@ script "ub_SpecialEventTracker" (int which) {
       SetFont("BIGFONT");
       HudMessageBold(s:"The \ctDemoneyes\cj Survived!"; HUDMSG_FADEOUT, 49, CR_WHITE, 240.4, 72.0, 4.0, 1.0, 1.0);
       MakeAllPlayersInvun();
+      // Unified bonus-event end entry: the demoneye side survived.
+      UH_TryFinishBonusEvent(eventdataarr[EVENTDATA_MAINEVENT], UHBE_RESULT_BOSS, false);
       gameover = true;
       Delay(35 * 6);
       Exit_Normal(0);

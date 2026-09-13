@@ -1,88 +1,94 @@
 // Bonus-event validation and event-state helpers for library unholy.
 // This fragment is textually included by uh_funclib.acs.
+// Event data lives in the UHDT dynamic table (DefineBonusEvent); these helpers
+// only read it — validity, eligibility and classification are database-driven.
 
+// EX counter tick: called after a RANDOM pick only (forced events bypass it).
+// The counter stays in the world array (per base event id, survives map
+// changes); the base -> EX relation and its threshold come from UHDT.
 function int ExEventChecker(int inputevent) {
-  if (CheckEventList(inputevent + UHEVENT_EX_OFFSET)) {
-    if (eventexcountarray[inputevent] >= 3) {
-      eventexcountarray[inputevent] = 0;
-      inputevent += UHEVENT_EX_OFFSET;
-    }
-    else {
-      eventexcountarray[inputevent] += 1;
-    }
+  int exid = ResolveBonusEventEX(inputevent);
+  if (exid == UHBE_FAIL) {
+    return inputevent;
   }
+  if (eventexcountarray[inputevent] >= GetBonusEventEXThreshold(inputevent)) {
+    eventexcountarray[inputevent] = 0;
+    return exid;
+  }
+  eventexcountarray[inputevent] += 1;
   return inputevent;
-}
-function bool CheckEventList(int checkme) {
-  if (checkme < 0 || checkme >= 200)
-    return false;
-
-  // Explicit list of events the dispatcher actually handles.
-  switch (checkme) {
-    case UHEVENT_FFA:
-    case UHEVENT_MLG:
-    case UHEVENT_GHOST:
-    case UHEVENT_JOUST:
-    case UHEVENT_SUMO:
-    case UHEVENT_KAMIKAZE:
-    case UHEVENT_BOMBER:
-    case UHEVENT_BUSINESS:
-    case UHEVENT_QUICK:
-    case UHEVENT_TANK:
-    case UHEVENT_EYEPARADE:
-    case UHEVENT_CLONEPARADE:
-    case UHEVENT_FOOTBALL:
-    case UHEVENT_BRICK:
-    case UHEVENT_MOSQUITO:
-    case UHEVENT_TYPHOON:
-    case UHEVENT_TRUEPOWER:
-    case UHEVENT_EYELENTO:
-    case UHEVENT_CATCHFURRY:
-    case UHEVENT_RUNAWAYFOX:
-    case UHEVENT_RUNES:
-    case UHEVENT_BOSSEFFA:
-    case UHEVENT_SATANSEAL:
-      return true;
-  }
-  return false;
 }
 
 // Map Razon3's forced-event input ids to the frozen v4 canonical ids.
+// Legacy input alias — do not add new numeric aliases; identity is the stem.
 function int NormalizeForcedBonusEvent(int eventid) {
   if (eventid == 50) {return UHEVENT_FOOTBALL;}
   if (eventid == 150) {return UHEVENT_RUNES;}
   return eventid;
 }
 
-// Returns a canonical, CheckEventList-approved event id, or -1 on failure.
+// Returns a registered bonus event id, or -1 on failure.
 function int ResolveForcedBonusEvent(int eventid) {
   int normalized = NormalizeForcedBonusEvent(eventid);
-  if (CheckEventList(normalized)) {
+  if (IsBonusEventDefined(normalized)) {
     return normalized;
   }
   return -1;
 }
 
-// Explicit random pool: no holes such as the old event 6, and high-player
-// rounds may draw the Football slot while low-player rounds use 0-10 only.
-function int PickRandomBonusEvent(void) {
-  if (PlayerCount() >= MULTIB_PLAYERLIMIT3) {
-    return bonuseventcandidates[random(0, BONUS_EVENT_CANDIDATE_COUNT - 1)];
+// A selected event must be startable.  Anything else (unregistered id, or a
+// registered row without a start callback — e.g. a weight-0 addon entry forced
+// via RCON) degrades to the registered Free For All row so the round never
+// mixes one event's behaviour with another's database row.  Last-event state
+// is synced to what will actually run.
+function int UH_ResolveStartableBonusEvent(int eventid) {
+  str cb = "";
+  if (IsBonusEventDefined(eventid)) {
+    cb = GetBonusEventStartCallback(eventid);
   }
-  return bonuseventlowcandidates[random(0, BONUS_EVENT_LOW_COUNT - 1)];
+  if (StrCmp(cb, "") != 0) {
+    if (CheckScript(cb, true)) {
+      return eventid;
+    }
+    UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event ", i:eventid, s:" start callback does not exist: ", s:cb));
+  }
+  else {
+    UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event ", i:eventid, s:" is not startable (no start callback); falling back to the registered Free For All entry."));
+  }
+  eventdataarr[EVENTDATA_LASTEVENT] = UHEVENT_FFA;
+  return UHEVENT_FFA;
 }
 
 // D0 guard: surface missing event/eye metadata only in debug mode.
 function void DebugValidateRoundStart(void) {
-  if (!debug_txt) {return;}
+  int eventid;
 
-  for (int i = 0; i < BONUS_EVENT_CANDIDATE_COUNT; i++) {
-    int eventid = bonuseventcandidates[i];
-    if (StrCmp(bonuseventlist[eventid][BONUS_EVENTNAME], "") == 0) {
+  for (eventid = 0; eventid < 256; eventid++) {
+    if (!IsBonusEventDefined(eventid)) {continue;}
+
+    if (StrCmp(GetBonusEventStem(eventid), "") != 0
+        && FindBonusEventByStem(GetBonusEventStem(eventid)) != eventid) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event stem collision: ", i:eventid));
+    }
+    if (StrCmp(GetBonusEventName(eventid), "") == 0) {
       UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event missing name: ", i:eventid));
     }
-    if (StrCmp(bonuseventlist[eventid][BONUS_MUSICLUMP], "") == 0) {
+    // Force-only rows (weight 0) may legitimately omit music; random rows may
+    // not (every pick plays its own track).
+    if (GetBonusEventWeight(eventid) >= 1 && StrCmp(GetBonusEventMusic(eventid), "") == 0) {
       UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event missing music: ", i:eventid));
+    }
+    if (GetBonusEventWeight(eventid) >= 1 && StrCmp(GetBonusEventStartCallback(eventid), "") == 0) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Random bonus event missing start callback: ", i:eventid));
+    }
+    if (StrCmp(GetBonusEventStartCallback(eventid), "") != 0 && !CheckScript(GetBonusEventStartCallback(eventid), true)) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event start callback missing: ", s:GetBonusEventStartCallback(eventid)));
+    }
+    if (StrCmp(GetBonusEventRebuildCallback(eventid), "") != 0 && !CheckScript(GetBonusEventRebuildCallback(eventid), true)) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event rebuild callback missing: ", s:GetBonusEventRebuildCallback(eventid)));
+    }
+    if (GetBonusEventEXThreshold(eventid) > 0 && ResolveBonusEventEX(eventid) == UHBE_FAIL) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event EX target missing: ", i:eventid));
     }
   }
 
@@ -118,44 +124,12 @@ function void DebugValidateRoundStart(void) {
 }
 
 function bool IsAllEyeEvent(void) {
-  switch (eventdataarr[EVENTDATA_MAINEVENT]) {
-    case UHEVENT_MLG:
-    case UHEVENT_GHOST:
-    case UHEVENT_JOUST:
-    case UHEVENT_SUMO:
-    case UHEVENT_KAMIKAZE:
-    case UHEVENT_BOMBER:
-    case UHEVENT_BUSINESS:
-    case UHEVENT_QUICK:
-    case UHEVENT_TANK:
-    case UHEVENT_TYPHOON:
-      return isbonuseventactive;
-  }
-  return false;
+  return isbonuseventactive
+    && (GetBonusEventFlags(eventdataarr[EVENTDATA_MAINEVENT]) & UHBE_FLAG_ALL_EYE) != 0;
 }
 
 function bool HasEyeTeamEvent(void) {
-  switch (eventdataarr[EVENTDATA_MAINEVENT]) {
-    case UHEVENT_MLG:
-    case UHEVENT_GHOST:
-    case UHEVENT_JOUST:
-    case UHEVENT_SUMO:
-    case UHEVENT_KAMIKAZE:
-    case UHEVENT_RICH:
-    case UHEVENT_BOMBER:
-    case UHEVENT_BUSINESS:
-    case UHEVENT_QUICK:
-    case UHEVENT_TANK:
-    case UHEVENT_EYEPARADE:
-    case UHEVENT_CLONEPARADE:
-    case UHEVENT_BRICK:
-    case UHEVENT_MOSQUITO:
-    case UHEVENT_TYPHOON:
-    case UHEVENT_CATCHFURRY:
-    case UHEVENT_RUNAWAYFOX:
-      return true;
-  }
-  return false;
+  return (GetBonusEventFlags(eventdataarr[EVENTDATA_MAINEVENT]) & UHBE_FLAG_EYE_TEAM) != 0;
 }
 
 function bool IsDemoneyeEvent(void) {

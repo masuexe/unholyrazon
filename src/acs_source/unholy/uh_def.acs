@@ -32,7 +32,6 @@ world int 14:eventdataarr[];  //{MainEvent, EventDelay, LastEvent, ForcedEvent}
 #define UHEVENT_RUNAWAYFOX 112
 #define UHEVENT_RUNES 113
 #define UHEVENT_SATANSEAL 151
-#define UHEVENT_EX_OFFSET 100
 world int 15:rarebosschance;
 world int 16:strongmancheck[];
 world int 17:hellmarkfrags;
@@ -78,6 +77,7 @@ int thelmsdude;
 bool survwinwithlms;  //LastManChecker
 
 bool isbonuseventactive;  // Formerly InABonusStage: current round is a bonus event.
+bool bonuseventended;  // Round-level one-shot guard: end callback + result sequence already ran.
 bool versusfightevent;
 // Set while a versus duel is live (from selection until the map changes).
 // Unlike versusfightevent it is NOT cleared by ResetBossComboState, so the
@@ -282,82 +282,14 @@ str u_maplevelcode;
 // Demoneye metadata lives in UHDT via UH_EYEDEFS DefineDemoneye.
 // Item metadata lives in UHDT via UH_ITEMDEFS DefineUnholyItem (no BossNumb).
 
-#define BONUS_EVENTNAME 0
-#define BONUS_MUSICLUMP 1
-#define BONUS_MUSICCREDITS 2
-#define BONUS_BONUSSOUND 3
-#define BONUS_HUDMESS1 4
-#define BONUS_HUDMESS2 5
-str bonuseventlist[200][6] = {  //"Null", "Event Mess", "Music", "Music Info", "Bonus sound", "HudMess1", "HudMess2"
-  {"Free for All", "DIXIEMUS", "Mario Golf: Advance Tour - Link's Tourney (Sped-up)", "", "", ""},
-  {"MLG eyes", "M_EYE01 10", "Snake's Revenge (NES) - Enemy Alert Lv.1 Theme", "", "\cjMLG Tourney! Last one standing gets paid!", ""},
-  {"Ghost eyes", "M_EYE02", "Luigi's Mansion - Dancing Shy-Guys (Sped-up)", "misc/BOO", "\ccBOO! Haunted House!", "\ccNow please scream."},
-  {"Joust eyes", "M_EYE03", "Mario Golf GBC - Putts Theme (Sped-up)", "misc/JoustStart", "\cjDixieland Jousting!!! Now with real \ctDemoneyes\cj begins!", ""},
-  {"Sumo eyes", "M_EYE04", "Street Fighter 1 - Bonus Stage 2", "", "\cjLecture 5 start:", "\ccHow to kiss properly."},  //Wrestle
-  {"Kamikaze eyes", "M_EYE05", "Mother 3 - Stringent", "", "\cg\"Explosive Loving\"", ""},  //Suicide Bombing 101
-  {"Rich Devileye", "", "", "", "", ""},
-  {"Bomber eyes", "M_EYE07", "Bomberman 2 DS - Battle Theme", "", "\cjBattle Start!", ""},
-  {"Business eyes", "M_EYE08", "Streets of Rage Remake V5 - Dance Club", "", "\cmTime for a Business meeting!", ""},
-  {"Quick eyes", "M_EYE09", "Battletoads (MD/GEN) - Turbo Tunnel Race", "", "\cgGotta go fast!", "\cgTime is ticking!"},
-//10
-  {"Tank eyes", "M_EYE10", "Advance Wars 2 Dual Strike - Colin Theme", "", "\cjCONFEDERATE WARFARE!", ""},
-  {"Demoneye parade", "EYEMUS", "Super Mario Sunshine - Speed Test", "", "", ""},
-  {"Clone Darkness", "CLNEVMUS", "Kirby's Return to Dream Land - Looming Darkness (Sped Up)", "", "", ""},
-  {"\csFree for All", "FOOTBALL", "John Madden Football '93 - Title Theme", "", "", ""},  //Football
-  {"Brick eyes", "M_EYE14", "BUTOUDENKI: The Weapon Throwing Hero - Stage 1 Theme (Thow 2A03 Remix)", "", "", ""},
-  {"Mosquito eyes", "M_EYE15 7", "G.I.Joe: A Real American Hero - Boss Battle 1", "", "Oh no! The room is noisy!", ""},
-  {"Typhoon eyes", "M_EYE13", "Touhou 10 - Dark Side of Fate (40nix Remix)", "", "Typhoon disaster! The parking center is waiting for everyone!", ""},
-  {}, {}, {},
-//20
-  {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-  {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-  {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-  {}, {"\cmFree for All", "M_LMS777", "Pok\xE9mon Emerald - Frontier Brain Battle", "", "", ""}, {}, {}, {}, {}, {}, {}, {}, {},
-  {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-  {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-  {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-  {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-//100
-  {"\caF\cgr\cie\cke \cdf\cqo\cnr \cmA\cvl\ctl", "HA_BEATO", "Disgaea 5 - Stepping Hard Beat", "", "", ""},  //TruePower
-  {}, {}, {}, {}, {},
-  {"Eyelento of Pain", "M_EYE11X", "Final Fight Arcade - Rolento's Theme", "", "", ""},  //106
-  {}, {}, {},
-//110
-  {},
-  {"Get that Furry", "EYEMUS", "Super Mario Sunshine - Speed Test", "", "", ""},
-  {"Angry Foxeye", "EYEMUS", "Super Mario Sunshine - Speed Test", "", "", ""},
-  {"\c[MenuGreen]Free for All", "DIXIENUS", "Super Bonk - Engine Room", "", "", ""},  //Runes
-  {}, {}, {}, {}, {}, {},
-  {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-  {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-  {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-  {}, {"\cgFree for All", "SATANMUS", "The Binding of Isaac: Rebirth - Hericide (Satan Fight)", "", "", ""}, {}, {}, {}, {}, {}, {}, {}, {},
-  {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-  {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-  {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-  {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
-};
-
+// Bonus event metadata/eligibility moved to the UHDT dynamic table via
+// DefineBonusEvent (see systems/bonus_events/definitions/uh_bonusdefs.acs).
+// UHEVENT_* above remain compatibility constants for RCON and legacy addons.
 // I will use cvar to replace this later
 #define MULTIB_PLAYERLIMIT2 8  //6
 #define MULTIB_PLAYERLIMIT3 12  //8
 #define MULTIB_PLAYERLIMIT4 16  //10
 #define MULTIB_PLAYERLIMIT5 20  //Razon3 used 15 (6/9/12/15); v4 rescales +4 per tier
-
-#define BONUS_EVENT_CANDIDATE_COUNT 16
-int bonuseventcandidates[BONUS_EVENT_CANDIDATE_COUNT] = {
-  UHEVENT_FFA, UHEVENT_MLG, UHEVENT_GHOST, UHEVENT_JOUST, UHEVENT_SUMO,
-  UHEVENT_KAMIKAZE, UHEVENT_BOMBER, UHEVENT_BUSINESS, UHEVENT_QUICK,
-  UHEVENT_TANK, UHEVENT_EYEPARADE, UHEVENT_CLONEPARADE, UHEVENT_FOOTBALL,
-  UHEVENT_BRICK, UHEVENT_MOSQUITO, UHEVENT_TYPHOON
-};
-
-#define BONUS_EVENT_LOW_COUNT 10
-int bonuseventlowcandidates[BONUS_EVENT_LOW_COUNT] = {
-  UHEVENT_FFA, UHEVENT_MLG, UHEVENT_GHOST, UHEVENT_JOUST, UHEVENT_SUMO,
-  UHEVENT_KAMIKAZE, UHEVENT_BOMBER, UHEVENT_BUSINESS, UHEVENT_QUICK,
-  UHEVENT_TANK
-};
 
 #define RUNE_STRENGTH 0
 #define RUNE_RAGE 1

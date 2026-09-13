@@ -473,6 +473,100 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 // 6. Drops optional (vanilla dual-rune event has none). rare 0=normal, 1=rare fire.
 // 7. Do not pass -1 to AddLMSEventDrop — use the stem string.
 
+// === DefineBonusEvent addon recipe ==========================================
+// Full round-level bonus event: metadata, random eligibility, EX relation and
+// three named-script behaviour callbacks (start / rebuild / end).  Replace the
+// old hardcoded candidate arrays — an addon registers everything through this
+// API and never touches Unholy internals.
+//
+// 1. LOADACS after Unholy: YOUR_BONUSDEFS
+// 2. ACS:
+//      #library "YOUR_BONUSDEFS"
+//      #include "zcommon.acs"
+//      #include "UHADD.acs"
+//
+//      function void MyBonusApplyState(int tid) {
+//          if (tid < 1000 || tid >= 1064) return;
+//          GiveActorInventory(tid, "MyBonusEventLoadout_P", 1);
+//      }
+//
+//      script "mybonus_start" (int eventId, int arg1, int arg2) {
+//          int pn;
+//          for (pn = 0; pn < 64; pn++) {
+//              if (!PlayerInGame(pn) || PlayerIsSpectator(pn)) continue;
+//              MyBonusApplyState(pn + 1000);
+//          }
+//          UH_StartStandardBonusWatcher(eventId);
+//      }
+//
+//      script "mybonus_rebuild" (int eventId, int tid, int reason) {
+//          if (!UH_IsActiveBonusEvent(eventId)) terminate;
+//          MyBonusApplyState(tid);
+//      }
+//
+//      script "mybonus_end" (int eventId, int result, int unused) {
+//          // Only undo what the event owns (inventory, actors, own state).
+//          // Never decide the winner and never Exit_Normal here.
+//      }
+//
+//      function void MyBonusRegister(void) {
+//          DefineBonusEvent(
+//              -1, "example_my_bonus", "\\cgExperimental FFA",
+//              "MYBGM", "Example Game - Battle",
+//              "misc/MyBonusStart",
+//              "\\cgExperimental battle!", "\\ccLast player wins.",
+//              "mybonus_start", "mybonus_rebuild", "mybonus_end",
+//              0, 0, 0,
+//              UHBE_FLAG_FFA,
+//              1, 2, 0);
+//          // Optional EX relation (both events by stem, threshold >= 1):
+//          // SetBonusEventEX("ffa", "example_my_bonus", 3);
+//      }
+//      script "mybonus_register" OPEN {
+//          if (!UHInPlay()) terminate;
+//          MyBonusRegister();
+//      }
+//      script "mybonus_register_cs" OPEN CLIENTSIDE {
+//          MyBonusRegister();
+//      }
+// 3. id: built-in stable ids own 0..199 (13=Football, 113=Runes, 51/151 force-only);
+//    -1 = auto >= UHBE_ADDON_ID_START (200).  Same (id, stem) again updates the
+//    whole row, and a repeated DefineBonusEvent(-1, sameStem, ...) reuses the
+//    existing row (server/client double registration and reloads are idempotent);
+//    same stem with a different id, or same id with a different stem, returns
+//    UHBE_FAIL.
+// 4. stem is the stable cross-PK3 identity (case-insensitive).  Never hardcode
+//    another PK3's auto-assigned integer id — resolve with UH_FindBonusEventByStem.
+// 5. weight 0 = force/RCON only; >=1 = random pool (cap UHBE_MAX_WEIGHT).
+//    minPlayers/maxPlayers gate the random pick; maxPlayers 0 = no upper bound.
+// 6. Callback rules:
+//    - start (eventId, arg1, arg2): once per round; initialise and RETURN —
+//      long-running watchers are separate scripts you launch yourself.  Roll
+//      any per-round randomness (e.g. Boss FFA boss ids) HERE and freeze it.
+//    - rebuild (eventId, tid, reason): once per player per life; MUST be
+//      idempotent and only re-read frozen round results.
+//    - end (eventId, result, unused): at most once per round; undo the event's
+//      own side effects.  result: UHBE_RESULT_DRAW/SURVIVOR/BOSS/ABORTED.
+//    - All three are plain SERVER scripts (no CLIENTSIDE), names must carry
+//      your addon prefix (same-named static scripts resolve by module order).
+//      Callback names are existence-checked (CheckScript) before dispatch: a
+//      missing start callback degrades the round to the registered FFA row,
+//      and missing rebuild/end callbacks log a warning and are skipped.
+//    - Do not Exit_Normal: standard LMS/FFA events let the engine flow end the
+//      round — the core arms the end-callback observer automatically at event
+//      start (calling UH_StartStandardBonusWatcher is optional and idempotent).
+//      Custom watchers call UH_EndBonusEvent(eventId, result) when their own
+//      win condition fires.  Normal win/loss, draw and admin abort all funnel
+//      through the same one-shot end entry.
+// 7. Core flag handling before rebuild: UHBE_FLAG_FFA clears the three
+//    survivor protections; UHBE_FLAG_ONEVSALL restores boss/survivor life
+//    status (target = UH_SetBonusEventTarget / bossdataarr slot 0).  Do not add
+//    flags for one-event details — handle them in the rebuild callback.
+// 8. Runtime reads: UH_IsActiveBonusEvent / UH_GetActiveBonusEvent /
+//    UH_GetBonusEventArg are authoritative server state (callbacks run on the
+//    server only).  Metadata getters (name/music/...) work on clients too via
+//    the OPEN CLIENTSIDE registration copy.
+
 #define UHBOSS_FAIL -9999
 #define UHSURV_FAIL -9999
 #define UHEYE_FAIL -9999
@@ -481,6 +575,44 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 #define UHCOPY_FAIL -9999
 #define UHMUS_FAIL -9999
 #define UHLMS_FAIL -9999
+#define UHBE_FAIL -9999
+// Bonus event public constants (mirror the UHDT libdefines).
+#define UHBE_ADDON_ID_START 200
+#define UHBE_MAX_WEIGHT 1000000
+#define UHBE_FLAG_FFA 1
+#define UHBE_FLAG_ONEVSALL 2
+#define UHBE_FLAG_ALL_EYE 4
+#define UHBE_FLAG_EYE_TEAM 8
+#define UHBE_RESULT_DRAW 0
+#define UHBE_RESULT_SURVIVOR 1
+#define UHBE_RESULT_BOSS 2
+#define UHBE_RESULT_ABORTED 3
+// Built-in bonus event stable ids (compat constants only — registration
+// identity is the stem).  Mirrors uh_def.acs; keep both lists in sync.
+#define UHEVENT_FFA 0
+#define UHEVENT_MLG 1
+#define UHEVENT_GHOST 2
+#define UHEVENT_JOUST 3
+#define UHEVENT_SUMO 4
+#define UHEVENT_KAMIKAZE 5
+#define UHEVENT_RICH 6
+#define UHEVENT_BOMBER 7
+#define UHEVENT_BUSINESS 8
+#define UHEVENT_QUICK 9
+#define UHEVENT_TANK 10
+#define UHEVENT_EYEPARADE 11
+#define UHEVENT_CLONEPARADE 12
+#define UHEVENT_FOOTBALL 13
+#define UHEVENT_BRICK 14
+#define UHEVENT_MOSQUITO 15
+#define UHEVENT_TYPHOON 16
+#define UHEVENT_BOSSEFFA 51
+#define UHEVENT_TRUEPOWER 100
+#define UHEVENT_EYELENTO 106
+#define UHEVENT_CATCHFURRY 111
+#define UHEVENT_RUNAWAYFOX 112
+#define UHEVENT_RUNES 113
+#define UHEVENT_SATANSEAL 151
 #define UHMUS_KIND_SPAWN 0
 #define UHMUS_KIND_ENRAGE 1
 #define UHMUS_KIND_WINNER 2
@@ -1100,6 +1232,174 @@ function int UH_GetLMSEventFlags(int id) {
 
 function int UH_PickLMSEvent(void) {
 	return ACS_NamedExecuteWithResult("uh_PickLMSEvent_S");
+}
+
+// === Bonus event public API ==================================================
+// Define one round-level bonus event (see the recipe above for the callback
+// contract).  id -1 auto-assigns >= UHBE_ADDON_ID_START.
+function int DefineBonusEvent(
+	int id,
+	str stem,
+	str name,
+	str music,
+	str credit,
+	str sound,
+	str hud1,
+	str hud2,
+	str startCallback,
+	str rebuildCallback,
+	str endCallback,
+	int arg1,
+	int arg2,
+	int arg3,
+	int flags,
+	int weight,
+	int minPlayers,
+	int maxPlayers) {
+	SetCVar("uh_be_id", id);
+	SetCVarString("uh_be_stem", stem);
+	SetCVarString("uh_be_name", name);
+	SetCVarString("uh_be_music", music);
+	SetCVarString("uh_be_credit", credit);
+	SetCVarString("uh_be_sound", sound);
+	SetCVarString("uh_be_hud1", hud1);
+	SetCVarString("uh_be_hud2", hud2);
+	SetCVarString("uh_be_startcb", startCallback);
+	SetCVarString("uh_be_rebuildcb", rebuildCallback);
+	SetCVarString("uh_be_endcb", endCallback);
+	SetCVar("uh_be_arg1", arg1);
+	SetCVar("uh_be_arg2", arg2);
+	SetCVar("uh_be_arg3", arg3);
+	SetCVar("uh_be_flags", flags);
+	SetCVar("uh_be_weight", weight);
+	SetCVar("uh_be_minp", minPlayers);
+	SetCVar("uh_be_maxp", maxPlayers);
+	return ACS_NamedExecuteWithResult("uh_DefineBonusEvent_S");
+}
+
+// Bind base -> EX by stem (both events must be defined; threshold >= 1).
+// Rebinding the same base updates the row.
+function int SetBonusEventEX(str baseStem, str exStem, int threshold) {
+	SetCVarString("uh_bex_base", baseStem);
+	SetCVarString("uh_bex_ex", exStem);
+	SetCVar("uh_bex_threshold", threshold);
+	return ACS_NamedExecuteWithResult("uh_SetBonusEventEX_S");
+}
+
+function int UH_IsBonusEventDefined(int id) {
+	return ACS_NamedExecuteWithResult("uh_IsBonusEventDefined_S", id);
+}
+
+function int UH_FindBonusEventByStem(str stem) {
+	SetCVarString("uh_be_stem", stem);
+	return ACS_NamedExecuteWithResult("uh_FindBonusEventByStem_S");
+}
+
+function str UH_GetBonusEventStem(int id) {
+	ACS_NamedExecuteWithResult("uh_GetBonusEventStem_S", id);
+	return GetCVarString("uh_be_out_str");
+}
+
+function str UH_GetBonusEventName(int id) {
+	ACS_NamedExecuteWithResult("uh_GetBonusEventName_S", id);
+	return GetCVarString("uh_be_out_str");
+}
+
+function str UH_GetBonusEventMusic(int id) {
+	ACS_NamedExecuteWithResult("uh_GetBonusEventMusic_S", id);
+	return GetCVarString("uh_be_out_str");
+}
+
+function str UH_GetBonusEventMusicCredit(int id) {
+	ACS_NamedExecuteWithResult("uh_GetBonusEventMusicCredit_S", id);
+	return GetCVarString("uh_be_out_str");
+}
+
+function str UH_GetBonusEventSound(int id) {
+	ACS_NamedExecuteWithResult("uh_GetBonusEventSound_S", id);
+	return GetCVarString("uh_be_out_str");
+}
+
+function str UH_GetBonusEventHudMessage1(int id) {
+	ACS_NamedExecuteWithResult("uh_GetBonusEventHudMessage1_S", id);
+	return GetCVarString("uh_be_out_str");
+}
+
+function str UH_GetBonusEventHudMessage2(int id) {
+	ACS_NamedExecuteWithResult("uh_GetBonusEventHudMessage2_S", id);
+	return GetCVarString("uh_be_out_str");
+}
+
+function str UH_GetBonusEventStartCallback(int id) {
+	ACS_NamedExecuteWithResult("uh_GetBonusEventStartCallback_S", id);
+	return GetCVarString("uh_be_out_str");
+}
+
+function str UH_GetBonusEventRebuildCallback(int id) {
+	ACS_NamedExecuteWithResult("uh_GetBonusEventRebuildCallback_S", id);
+	return GetCVarString("uh_be_out_str");
+}
+
+function str UH_GetBonusEventEndCallback(int id) {
+	ACS_NamedExecuteWithResult("uh_GetBonusEventEndCallback_S", id);
+	return GetCVarString("uh_be_out_str");
+}
+
+function int UH_GetBonusEventFlags(int id) {
+	return ACS_NamedExecuteWithResult("uh_GetBonusEventFlags_S", id);
+}
+
+function int UH_GetBonusEventWeight(int id) {
+	return ACS_NamedExecuteWithResult("uh_GetBonusEventWeight_S", id);
+}
+
+function int UH_GetBonusEventMinPlayers(int id) {
+	return ACS_NamedExecuteWithResult("uh_GetBonusEventMinPlayers_S", id);
+}
+
+function int UH_GetBonusEventMaxPlayers(int id) {
+	return ACS_NamedExecuteWithResult("uh_GetBonusEventMaxPlayers_S", id);
+}
+
+// slot: 0 = arg1, 1 = arg2, 2 = arg3; other slots return UHBE_FAIL.
+function int UH_GetBonusEventArg(int id, int slot) {
+	return ACS_NamedExecuteWithResult("uh_GetBonusEventArg_S", id, slot);
+}
+
+// --- Bonus event runtime API (authoritative server state; the scripts live in
+// the unholy library).  Behaviour callbacks run on the server only — pure
+// clients must not call these.
+function int UH_IsActiveBonusEvent(int eventid) {
+	return ACS_NamedExecuteWithResult("uh_IsActiveBonusEvent", eventid);
+}
+
+function int UH_GetActiveBonusEvent(void) {
+	return ACS_NamedExecuteWithResult("uh_GetActiveBonusEvent");
+}
+
+// Let the core end a standard LMS/FFA event by player survival state.  The
+// core already arms this observer when the event starts, so calling it is
+// optional; the call is idempotent and validates that the caller owns the
+// active event.
+function bool UH_StartStandardBonusWatcher(int eventid) {
+	return ACS_NamedExecuteWithResult("uh_StartStandardBonusWatcher", eventid);
+}
+
+// Custom-watcher end entry: validates the id is the active event, runs the end
+// callback once, then plays the result sequence and exits the map.  Addons
+// must not Exit_Normal themselves.
+function bool UH_EndBonusEvent(int eventid, int result) {
+	return ACS_NamedExecuteWithResult("uh_EndBonusEvent", eventid, result);
+}
+
+// One-vs-all target (the "boss" side) for UHBE_FLAG_ONEVSALL events.  The core
+// seeds the target from normal boss selection; events may reassign it.
+function bool UH_SetBonusEventTarget(int eventid, int playerTid) {
+	return ACS_NamedExecuteWithResult("uh_SetBonusEventTarget", eventid, playerTid);
+}
+
+function int UH_GetBonusEventTarget(int eventid) {
+	return ACS_NamedExecuteWithResult("uh_GetBonusEventTarget", eventid);
 }
 
 // === Shiny move-weapon addon recipe =========================================

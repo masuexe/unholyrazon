@@ -92,6 +92,7 @@ script "ub_StartUpSettings" OPEN  // These are start up variables so that they a
   survwinwithlms = false;
 
   isbonuseventactive = false;
+  bonuseventended = false;
 
   ClearMujicaState();
   twoplayersxrayenabled = false;
@@ -220,7 +221,7 @@ script "ub_CountdownStartup" OPEN {
       ACS_NamedExecute("ub_EventManagementACS", 0, -2);
       Delay(20);
       AmbientSound("misc/BonusTime", 127);
-      HudMessageBold(s:"\c[MenuYellow]The ", s:bonuseventlist[eventdataarr[EVENTDATA_MAINEVENT]][BONUS_EVENTNAME], s:"\c[MenuYellow] event is about to happen!"; HUDMSG_FADEOUT, 66, CR_RED, 240.4, 36.0, 20.0, 2.0);
+      HudMessageBold(s:"\c[MenuYellow]The ", s:GetBonusEventName(eventdataarr[EVENTDATA_MAINEVENT]), s:"\c[MenuYellow] event is about to happen!"; HUDMSG_FADEOUT, 66, CR_RED, 240.4, 36.0, 20.0, 2.0);
     }
     else if (strongmancheck[0] >= 0) {
       HudMessageBold(s:"A powerful foe approaches!"; HUDMSG_FADEOUT, 66, CR_DARKRED, 240.4, 36.0, 20.0, 2.0);
@@ -372,6 +373,9 @@ script "ub_WatchSurvivors" (int skipacs) {
   Delay(1);
 
   ACS_NamedTerminate("ub_WatchBossesAndEyes", 0);
+  // Unified bonus-event end entry: boss side took the round.  No-op outside
+  // bonus rounds; the one-shot guard keeps it single-fire.
+  UH_TryFinishBonusEvent(eventdataarr[EVENTDATA_MAINEVENT], UHBE_RESULT_BOSS, false);
   // PlayMusic_Loss(0);
   PlayMusic_Loser(-1);
   // MakeAllPlayersInvun();
@@ -536,6 +540,8 @@ script "ub_WatchBossesAndEyes" (void) {
   GiveMeTheFunc("PowerProtectUnholyItem", -1);
 
   ACS_NamedTerminate("ub_WatchSurvivors", 0);
+  // Unified bonus-event end entry: survivors took the round.
+  UH_TryFinishBonusEvent(eventdataarr[EVENTDATA_MAINEVENT], UHBE_RESULT_SURVIVOR, false);
   gameover = true;
   ResetBossComboState();  // D6: clear combo state for the result sequence.
   // Log(i:PlayerInGame(BossDataArr[0][BOSSDATA_TID]-1000));

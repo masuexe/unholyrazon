@@ -36,3 +36,52 @@ script "uh_SetSurvivorStartItem" (int item, int tid) {
   if (multibosscheck == 1 && !shadowtricksarr[0] && !CheckActorInventory(tid, "IsGonnaBeFake"))
     survivorstartitem = item;
 }
+
+// --- Bonus event runtime API (server-authoritative state) --------------------
+// Used through the UHADD wrappers (UH_IsActiveBonusEvent etc.).  Behaviour
+// callbacks run only on the server; pure clients have no live eventdataarr.
+
+script "uh_IsActiveBonusEvent" (int eventid) {
+  SetResultValue(isbonuseventactive && !bonuseventended
+    && eventid == eventdataarr[EVENTDATA_MAINEVENT]);
+}
+
+script "uh_GetActiveBonusEvent" (void) {
+  if (!isbonuseventactive || bonuseventended) {
+    SetResultValue(UHBE_FAIL);
+    terminate;
+  }
+  SetResultValue(eventdataarr[EVENTDATA_MAINEVENT]);
+}
+
+script "uh_StartStandardBonusWatcher" (int eventid) {
+  SetResultValue(UH_StartStdBonusWatcherCore(eventid));
+}
+
+script "uh_EndBonusEvent" (int eventid, int result) {
+  SetResultValue(UH_EndBonusEventCore(eventid, result));
+}
+
+// One-vs-all target accessors for UHBE_FLAG_ONEVSALL events.  The core seeds
+// the target from normal boss selection; events may reassign it at start.
+script "uh_SetBonusEventTarget" (int eventid, int tid) {
+  if (!isbonuseventactive || bonuseventended
+      || eventid != eventdataarr[EVENTDATA_MAINEVENT]
+      || (GetBonusEventFlags(eventid) & UHBE_FLAG_ONEVSALL) == 0
+      || tid < 1000 || tid > 1063) {
+    SetResultValue(false);
+    terminate;
+  }
+  bossdataarr[0][BOSSDATA_TID] = tid;
+  SetResultValue(true);
+}
+
+script "uh_GetBonusEventTarget" (int eventid) {
+  if (!isbonuseventactive
+      || eventid != eventdataarr[EVENTDATA_MAINEVENT]
+      || (GetBonusEventFlags(eventid) & UHBE_FLAG_ONEVSALL) == 0) {
+    SetResultValue(UHBE_FAIL);
+    terminate;
+  }
+  SetResultValue(bossdataarr[0][BOSSDATA_TID]);
+}

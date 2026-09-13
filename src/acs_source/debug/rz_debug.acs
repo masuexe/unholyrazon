@@ -249,3 +249,104 @@ script "rz_debug_SpawnEx" (int xofs, int yofs, int zofs) {
   SetActivator(ptid);
   UH_Log(UH_LOG_DEBUG, StrParam(s:"rz_debug_SpawnEx: spawned ", s:cls, s:" tid=", i:tid));
 }
+
+// Database unit checks for the dynamic bonus event table.  Run on the server
+// (puke rz_debug_BonusEventDBCheck); returns the number of failed checks.
+// Re-registrations below are idempotent same-(id,stem) updates or expected
+// failures, so running this never mutates registered rows.
+script "rz_debug_BonusEventDBCheck" (void) {
+  int fails = 0;
+  int vanillaids[23] = {
+    UHEVENT_FFA, UHEVENT_MLG, UHEVENT_GHOST, UHEVENT_JOUST, UHEVENT_SUMO,
+    UHEVENT_KAMIKAZE, UHEVENT_BOMBER, UHEVENT_BUSINESS, UHEVENT_QUICK,
+    UHEVENT_TANK, UHEVENT_EYEPARADE, UHEVENT_CLONEPARADE, UHEVENT_FOOTBALL,
+    UHEVENT_BRICK, UHEVENT_MOSQUITO, UHEVENT_TYPHOON, UHEVENT_BOSSEFFA,
+    UHEVENT_TRUEPOWER, UHEVENT_EYELENTO, UHEVENT_CATCHFURRY,
+    UHEVENT_RUNAWAYFOX, UHEVENT_RUNES, UHEVENT_SATANSEAL
+  };
+
+  if (GetCvar("lastmanstanding") == 0) {
+    UH_Log(UH_LOG_WARN, "BonusEventDBCheck: LMS only");
+    terminate;
+  }
+
+  // 1. All built-in stable ids defined, stems resolve back to themselves.
+  for (int i = 0; i < 23; i++) {
+    int id = vanillaids[i];
+    if (!IsBonusEventDefined(id)) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"DBCheck: built-in id not defined: ", i:id));
+      fails++;
+      continue;
+    }
+    if (FindBonusEventByStem(GetBonusEventStem(id)) != id) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"DBCheck: stem does not resolve: ", i:id));
+      fails++;
+    }
+  }
+
+  // 2. Low-player picks stay inside the low pool (no minPlayers 12 rows,
+  //    no weight-0 rows).  High-player picks may reach them.
+  bool sawtier3 = false;
+  for (int roll = 0; roll < 400; roll++) {
+    int lowpick = PickBonusEvent(4, -1);
+    if (lowpick == UHBE_FAIL) {
+      UH_Log(UH_LOG_ERROR, "DBCheck: low-player pick failed");
+      fails++;
+      break;
+    }
+    if (GetBonusEventWeight(lowpick) < 1 || GetBonusEventMinPlayers(lowpick) > 4) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"DBCheck: ineligible low pick ", i:lowpick));
+      fails++;
+      break;
+    }
+    int hipick = PickBonusEvent(MULTIB_PLAYERLIMIT3, -1);
+    if (hipick != UHBE_FAIL && GetBonusEventMinPlayers(hipick) >= MULTIB_PLAYERLIMIT3) {
+      sawtier3 = true;
+    }
+  }
+  if (!sawtier3) {
+    UH_Log(UH_LOG_ERROR, "DBCheck: high-player pool never reached a tier-3 event");
+    fails++;
+  }
+
+  // 3. EX relations resolve to the expected targets.
+  if (ResolveBonusEventEX(UHEVENT_FFA) != UHEVENT_TRUEPOWER) {UH_Log(UH_LOG_ERROR, "DBCheck: EX ffa->truepower broken"); fails++;}
+  if (ResolveBonusEventEX(UHEVENT_EYEPARADE) != UHEVENT_CATCHFURRY) {UH_Log(UH_LOG_ERROR, "DBCheck: EX parade->furry broken"); fails++;}
+  if (ResolveBonusEventEX(UHEVENT_CLONEPARADE) != UHEVENT_RUNAWAYFOX) {UH_Log(UH_LOG_ERROR, "DBCheck: EX clone->fox broken"); fails++;}
+  if (ResolveBonusEventEX(UHEVENT_FOOTBALL) != UHEVENT_RUNES) {UH_Log(UH_LOG_ERROR, "DBCheck: EX football->runes broken"); fails++;}
+  if (ResolveBonusEventEX(UHEVENT_MLG) != UHBE_FAIL) {UH_Log(UH_LOG_ERROR, "DBCheck: MLG must have no EX relation"); fails++;}
+
+  // 4. Registration idempotency and conflict rejection (no row mutations).
+  if (DefineBonusEventCore(UHEVENT_FFA, "ffa", "Free for All",
+      "DIXIEMUS", "Mario Golf: Advance Tour - Link's Tourney (Sped-up)",
+      "", "", "", "ub_FreeForAll", "", "",
+      0, 0, 0, UHBE_FLAG_FFA, 1, 0, 0) != UHEVENT_FFA) {
+    UH_Log(UH_LOG_ERROR, "DBCheck: same (id, stem) re-registration must update");
+    fails++;
+  }
+  if (DefineBonusEventCore(250, "ffa", "X", "", "", "", "", "", "", "", "", 0, 0, 0, 0, 0, 0, 0) != UHBE_FAIL) {
+    UH_Log(UH_LOG_ERROR, "DBCheck: same stem with different id must fail");
+    fails++;
+  }
+  // Repeated id -1 registration with a known stem must reuse that row.
+  if (DefineBonusEventCore(-1, "ffa", "Free for All",
+      "DIXIEMUS", "Mario Golf: Advance Tour - Link's Tourney (Sped-up)",
+      "", "", "", "ub_FreeForAll", "", "",
+      0, 0, 0, UHBE_FLAG_FFA, 1, 0, 0) != UHEVENT_FFA) {
+    UH_Log(UH_LOG_ERROR, "DBCheck: id -1 with a known stem must reuse the row");
+    fails++;
+  }
+  if (DefineBonusEventCore(UHEVENT_FFA, "ffa_fake", "X", "", "", "", "", "", "", "", "", 0, 0, 0, 0, 0, 0, 0) != UHBE_FAIL) {
+    UH_Log(UH_LOG_ERROR, "DBCheck: same id with different stem must fail");
+    fails++;
+  }
+  if (IsBonusEventDefined(250)) {
+    UH_Log(UH_LOG_ERROR, "DBCheck: failed registration leaked a row");
+    fails++;
+  }
+
+  if (fails == 0) {
+    UH_Log(UH_LOG_INFO, "BonusEventDBCheck: all checks passed");
+  }
+  SetResultValue(fails);
+}
