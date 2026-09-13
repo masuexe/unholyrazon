@@ -614,36 +614,8 @@ script "uh_displaycurrentmusic" (void) NET CLIENTSIDE {
 	if (ConsolePlayerNumber() != PlayerNumber()) {
 		terminate;
 	}
-	str tunecode_str = GetCVarString("_uh_ServMusicLump");
-	str musical_str = GetCVarString("_uh_ServMusicCredits");
 
-	str charline2_str = StrParam(c:1);  // Top line start
-	str charline8_str = StrParam(c:7);  // Bottom line start
-
-	str charline22_str = StrParam(c:1);
-	str charline88_str = StrParam(c:7);
-
-	for (int i = 0; i < StrLen(musical_str); i++)  // Extend the lines to Music String Length
-	{
-		charline2_str = StrParam(s:charline2_str, c:2);
-		charline8_str = StrParam(s:charline8_str, c:8);
-	}
-	charline2_str = StrParam(s:charline2_str, c:3);  // Top line end
-	charline8_str = StrParam(s:charline8_str, c:9);  // Bottom line end
-
-	for (i = 0; i < StrLen(tunecode_str); i++)  // Extend for Music Code Length
-	{
-		charline22_str = StrParam(s:charline22_str, c:2);
-		charline88_str = StrParam(s:charline88_str, c:8);
-	}
-	charline22_str = StrParam(s:charline22_str, c:3);
-	charline88_str = StrParam(s:charline88_str, c:9);
-
-	SetFont("CONFONT");
-	HudMessage(s:"\cd",
-		s:charline22_str, s:"\n", c:4, s:"\cl", s:tunecode_str, s:"\cd", c:6, s:"\n", s:charline88_str, c:5, s:"\n",
-		s:charline2_str, s:"\n", c:4, s:"\cl", s:musical_str, s:"\cd", c:6, s:"\n", s:charline8_str;
-		HUDMSG_LOG | HUDMSG_ALPHA, -68740, CR_GREEN, 0, 1000.1, 1873, 0.0);
+	ACS_NamedExecuteAlways("ub_FancyDisplayMusic", 0, 0);
 }
 
 
@@ -665,10 +637,6 @@ script "ub_FancyDisplayMusicStart" (int garbagetext) {
 }
 
 script "ub_FancyDisplayMusic" (int togglegarbage) CLIENTSIDE {
-	if (!GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicDisplay")) {
-		terminate;
-	}
-
 	str tunecode_str = GetCVarString("_uh_ServMusicLump");
 	str musical_str = GetCVarString("_uh_ServMusicCredits");
 
@@ -677,8 +645,12 @@ script "ub_FancyDisplayMusic" (int togglegarbage) CLIENTSIDE {
 		musical_str = "Corrupted - Unknown Track";
 	}
 
-	// Console copy for player reference
+	// Console copy for player reference (always logged even if HUD card is disabled)
 	Log(s:"\c[Gold]Now Playing: \c[White]", s:musical_str, s:" \c[LightBlue][", s:tunecode_str, s:"]");
+
+	if (!GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicDisplay")) {
+		terminate;
+	}
 
 	// Three-line card: split "origin - title" so line 2 is the track name and
 	// line 3 is the origin/album (empty -> line 3 is not drawn).
