@@ -10,7 +10,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_MUSIC = Path("/home/user/projects/mm8bdm/unholyrazon_music/razon_soundtest.pk3")
+DEFAULT_MUSIC = ROOT.parent / "unholyrazon_music" / "razon_soundtest.pk3"
 DEF = ROOT / "src/acs_source/unholy/uh_def.acs"
 FUNCS = ROOT / "src/acs_source/unholy/uh_funclib.acs"
 VERSUS = ROOT / "src/acs_source/unholy/uh_versus.acs"

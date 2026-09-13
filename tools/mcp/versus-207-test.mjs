@@ -18,14 +18,11 @@ import { appendFileSync, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { launchInstanceArgs, loadResolvedProfile } from "../resolve-launch-profile.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const MCP_DIR = process.env.ZANDRONUM_MCP_DIR || "/home/user/projects/zandronum/zandronum-mcp";
-const SERVER = process.env.ZANDRONUM_MCP_SERVER || join(MCP_DIR, "dist/server.js");
-const ENGINE = process.env.ZANDRONUM_EXE || "/home/user/appfiles/zandronum-mcp-linux-x64/zandronum";
 const PROFILES = process.env.ZANDRONUM_LAUNCH_PROFILES || join(ROOT, "tools/mm8bdm-v6b-linux.launch.json");
 const RUNNER = join(ROOT, "tools/mcp/server-runner.mjs");
-const SDK = join(MCP_DIR, "node_modules/@modelcontextprotocol/sdk/dist/esm");
 
 function usage() {
   return `Usage: versus-207-test.mjs [--profile NAME] [--game-port N] [--combo N] [--expect A,B] [--json] [--dry-run]
@@ -54,6 +51,12 @@ for (let i = 2; i < process.argv.length; i += 1) {
 if (!options.profile || !Number.isInteger(options.port) || options.port < 1024 || options.port > 65535) throw new Error("invalid options");
 if (!Number.isInteger(options.combo) || options.combo < 0) throw new Error("invalid combo");
 if (options.expect.length !== 2 && !(options.expect.length === 1 && (options.expect[0] === "any" || options.expect[0] === "*"))) throw new Error("--expect needs two class names (or 'any')");
+const MCP_DIR = process.env.ZANDRONUM_MCP_DIR;
+if (!MCP_DIR) throw new Error("set ZANDRONUM_MCP_DIR to your ZandronumMCP checkout");
+const SERVER = process.env.ZANDRONUM_MCP_SERVER || join(MCP_DIR, "dist/server.js");
+const ENGINE = process.env.ZANDRONUM_EXE;
+if (!ENGINE) throw new Error("set ZANDRONUM_EXE to the bridge-patched Zandronum binary");
+const SDK = join(MCP_DIR, "node_modules/@modelcontextprotocol/sdk/dist/esm");
 for (const path of [SERVER, ENGINE, PROFILES, RUNNER]) if (!existsSync(path)) throw new Error(`missing path: ${path}`);
 if (options.dryRun) {
   console.log(JSON.stringify({ status: "dry-run", profile: options.profile, gamePort: options.port, server: SERVER, engine: ENGINE }));
@@ -91,12 +94,11 @@ const common = ["-nosound", "+set", "vid_renderer", "0", "+set", "fullscreen", "
 let result;
 try {
   await client.connect(transport);
-  const profileData = JSON.parse(readFileSync(PROFILES, "utf8"))[options.profile];
-  if (!profileData) throw new Error(`unknown profile: ${options.profile}`);
+  const { profile: profileData } = loadResolvedProfile(ROOT, PROFILES, options.profile);
 
   // Bridge-controlled client first (see network-test.mjs for why).
   launched.push(1);
-  await tool("launch_instance", { instance: 1, profile: options.profile, extraArgs: [...common, "-port", String(options.port + 1), "+name", "VersusClient1"] });
+  await tool("launch_instance", launchInstanceArgs(1, profileData, [...(profileData.extraArgs || []), ...common, "-port", String(options.port + 1), "+name", "VersusClient1"]));
 
   isolatedRoot = mkdtempSync(join(tmpdir(), "unholy-versus-"));
   const serverDir = join(isolatedRoot, "server");

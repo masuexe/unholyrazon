@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadResolvedProfile } from "./resolve-launch-profile.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const DEFAULT_ENGINE = "/home/user/appfiles/zandronum-mcp-linux-x64/zandronum";
 const DEFAULT_PROFILES = join(ROOT, "tools/mm8bdm-v6b-linux.launch.json");
 
 function usage() {
@@ -38,15 +38,12 @@ for (let i = 2; i < process.argv.length; i += 1) {
 }
 if (!options.profile || !Number.isInteger(options.duration) || options.duration < 1) throw new Error("invalid option value");
 
-const engine = process.env.ZANDRONUM_EXE || DEFAULT_ENGINE;
+const engine = process.env.ZANDRONUM_EXE;
+if (!engine) throw new Error("set ZANDRONUM_EXE to the bridge-patched Zandronum binary");
 const profileFile = resolve(process.env.ZANDRONUM_LAUNCH_PROFILES || DEFAULT_PROFILES);
 if (!existsSync(engine)) throw new Error(`engine not found: ${engine}`);
 if (!existsSync(profileFile)) throw new Error(`profiles not found: ${profileFile}`);
-const profile = JSON.parse(readFileSync(profileFile, "utf8"))[options.profile];
-if (!profile) throw new Error(`unknown profile: ${options.profile}`);
-const referenced = [profile.iwad, ...(profile.files || [])].filter(Boolean);
-const missing = referenced.filter((path) => !existsSync(path));
-if (missing.length) throw new Error(`missing profile files: ${missing.join(", ")}`);
+const { profile, files: referenced } = loadResolvedProfile(ROOT, profileFile, options.profile);
 
 const argv = [];
 if (profile.config) argv.push("-config", profile.config);

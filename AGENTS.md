@@ -46,15 +46,21 @@ For Zandronum MCP tests, prefer the newest locally available Zandronum build; ni
 
 Load MM8BDM test content in this order:
 
-0. IWAD: `megagame.wad` (usually `/mnt/d/wads/megagame.wad` on this machine)
+0. IWAD: `megagame.wad`
 1. One base-game package named in the `mm8bdm-vXY` form, normally `mm8bdm-v6b.pk3` (v6a may be used when requested; v6c may be used after release)
-2. When step 1 is `mm8bdm-v6b.pk3`, mandatory fix package `/mnt/d/wads/8bdm-v6b-miscfixes-v6.pk3`
+2. When step 1 is `mm8bdm-v6b.pk3`, mandatory fix package `8bdm-v6b-miscfixes-v6.pk3`
 3. All other mods, including this project's `out/build.pk3`
+
+Launch profiles under `tools/*.launch.json` use paths **relative to the repo root**:
+`out/build.pk3` for this mod, and `../wads/…` for the shared IWAD/base packages
+(place or symlink the WAD directory as a sibling of this repo). Optional addons
+in the `mm8bdm-v6b-full` profile similarly live under `../wads/`, `../unholyrazon_music/`,
+and `../hudex/out/`.
 
 Optional debugging mods, loaded in step 3 when relevant:
 
-- `/mnt/d/wads/8bdm-hitvoxel-0.pk3` — visualize projectile hitboxes
-- `/mnt/d/projects/mm8bdm/hudex/out/hudex.pk3` — preview `HudMessage` layouts
+- `../wads/8bdm-hitvoxel-0.pk3` — visualize projectile hitboxes
+- `../hudex/out/hudex.pk3` — preview `HudMessage` layouts
 
 ## Entry points (in load order)
 
@@ -193,7 +199,7 @@ All override `DeselectDeath` to check `uh_IsItOnline` for net sync.
 
 ## Fast MCP debug loop
 
-The reusable MCP fork under `/home/user/projects/zandronum/zandronum-mcp/` supports named launch profiles,
+The reusable Zandronum MCP fork (set `ZANDRONUM_MCP_DIR`) supports named launch profiles,
 actor polling, detailed actor state, and incremental engine logs. Set
 `ZANDRONUM_LAUNCH_PROFILES` to `tools/mm8bdm-v6b-linux.launch.json` when using
 the configured Linux MCP. The Windows counterpart, `tools/mm8bdm-v6b.launch.json`,

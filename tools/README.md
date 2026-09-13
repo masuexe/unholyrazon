@@ -78,7 +78,7 @@ ACS edits only take effect once the affected library is recompiled with the
 native Linux ACC into `src/acs/` and the PK3 is repackaged:
 
 ```bash
-/home/user/appfiles/acc-1.60-linux64/acc \
+${ACC:-acc} \
   -i ../references/zandronum/acc-branch-zandronum \
   -i src/acs_source/v6b_overrides/_includes/mod_api \
   -i src/acs_source/v6b_overrides/_includes/common \

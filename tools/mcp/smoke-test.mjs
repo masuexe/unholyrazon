@@ -1,13 +1,11 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { launchInstanceArgs, loadResolvedProfile } from "../resolve-launch-profile.mjs";
 
 const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const DEFAULT_NODE = "/home/user/.nvm/versions/node/v22.23.2/bin/node";
-const DEFAULT_MCP_DIR = "/home/user/projects/zandronum/zandronum-mcp";
-const DEFAULT_ENGINE = "/home/user/appfiles/zandronum-mcp-linux-x64/zandronum";
 const DEFAULT_PROFILE = join(PROJECT_ROOT, "tools/mm8bdm-v6b-linux.launch.json");
 const SERVER_RUNNER = join(PROJECT_ROOT, "tools/mcp/server-runner.mjs");
 
@@ -78,13 +76,16 @@ function parseArgs(argv) {
 }
 
 function runtimeConfig() {
-  const mcpDir = process.env.ZANDRONUM_MCP_DIR || DEFAULT_MCP_DIR;
+  const mcpDir = process.env.ZANDRONUM_MCP_DIR;
+  if (!mcpDir) throw new Error("set ZANDRONUM_MCP_DIR to your ZandronumMCP checkout");
+  const engine = process.env.ZANDRONUM_EXE;
+  if (!engine) throw new Error("set ZANDRONUM_EXE to the bridge-patched Zandronum binary");
   const profileFile = process.env.ZANDRONUM_LAUNCH_PROFILES || DEFAULT_PROFILE;
   return {
-    node: process.env.ZANDRONUM_NODE || process.execPath || DEFAULT_NODE,
+    node: process.env.ZANDRONUM_NODE || process.execPath,
     mcpDir,
     server: process.env.ZANDRONUM_MCP_SERVER || join(mcpDir, "dist/server.js"),
-    engine: process.env.ZANDRONUM_EXE || DEFAULT_ENGINE,
+    engine,
     profileFile: resolve(profileFile),
     bridgePort: process.env.ZANDRONUM_BRIDGE_PORT || "7777",
   };
@@ -94,21 +95,11 @@ function loadProfile(config, name) {
   if (!existsSync(config.profileFile)) {
     throw new Error(`launch profile file not found: ${config.profileFile}`);
   }
-  let profiles;
   try {
-    profiles = JSON.parse(readFileSync(config.profileFile, "utf8"));
+    return loadResolvedProfile(PROJECT_ROOT, config.profileFile, name);
   } catch (error) {
     throw new Error(`invalid launch profile file ${config.profileFile}: ${error.message}`);
   }
-  const profile = profiles?.[name];
-  if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
-    const available = Object.keys(profiles ?? {});
-    throw new Error(`unknown profile ${name}${available.length ? ` (available: ${available.join(", ")})` : ""}`);
-  }
-  const files = [profile.iwad, ...(profile.files ?? [])].filter(Boolean);
-  const missing = files.filter((file) => !existsSync(file));
-  if (missing.length) throw new Error(`profile ${name} references missing file(s): ${missing.join(", ")}`);
-  return { profile, available: Object.keys(profiles), files };
 }
 
 function firstLine(value) {
@@ -230,20 +221,10 @@ async function run(options) {
   try {
     await client.connect(transport);
 
-    const launchArgs = {
-      instance: options.instance,
-      iwad: selected.profile.iwad,
-      files: selected.profile.files,
-      map: selected.profile.map,
-      fullscreen: selected.profile.fullscreen,
-      width: selected.profile.width,
-      height: selected.profile.height,
-      extraArgs: selected.profile.extraArgs,
-    };
     const launchResult = await callTool(
       client,
       "launch_instance",
-      launchArgs,
+      launchInstanceArgs(options.instance, selected.profile),
       options.timeoutSec * 1000,
     );
 
