@@ -648,7 +648,8 @@ script "ub_FancyDisplayMusic" (int togglegarbage) CLIENTSIDE {
 	// Console copy for player reference (always logged even if HUD card is disabled)
 	Log(s:"\c[Gold]Now Playing: \c[White]", s:musical_str, s:" \c[LightBlue][", s:tunecode_str, s:"]");
 
-	if (!GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicDisplay")) {
+	int display_mode = GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicDisplay");
+	if (display_mode <= 0) {
 		terminate;
 	}
 
@@ -699,6 +700,28 @@ script "ub_FancyDisplayMusic" (int togglegarbage) CLIENTSIDE {
 	if (GetScreenWidth() == 640 && GetScreenHeight() == 480) {
 		x_aspect = 640.0;
 		y_aspect = 480.0;
+	}
+
+	if (display_mode == 2) {
+		// Mode 2: Minimal Text (v7a style fast typewriter typeon & fadeout, right-aligned at bottom right)
+		fancytunedisplay_serial++;
+		int text_x = (RoundFixedToInt(x_aspect - 16.0) * 1.0) + 0.2;
+		int text_y = (RoundFixedToInt(y_aspect - 72.0) * 1.0) + 0.2;
+
+		str min_text = "";
+		if (StrLen(origin_str) > 0) {
+			min_text = StrParam(s:"\ckNow Playing: \c[White]", s:title_str, s:"\n\cd(", s:origin_str, s:") \cl[", s:tunecode_str, s:"]");
+		} else {
+			min_text = StrParam(s:"\ckNow Playing: \c[White]", s:title_str, s:" \cl[", s:tunecode_str, s:"]");
+		}
+
+		SetFont("SMALLFONT");
+		HudMessage(s:min_text; HUDMSG_TYPEON, -68741, -1, text_x, text_y, 4.0, 0.02, 1.5);
+		HudMessage(s:""; 0, -68742, -1, 0.0, 0.0, 0.0);
+		HudMessage(s:""; 0, -68743, -1, 0.0, 0.0, 0.0);
+		HudMessage(s:""; 0, -68744, -1, 0.0, 0.0, 0.0);
+		HudMessage(s:""; 0, -68745, -1, 0.0, 0.0, 0.0);
+		terminate;
 	}
 
 	int base_target_x = x_aspect + MUSIC_CARD_OFFSET_X;
