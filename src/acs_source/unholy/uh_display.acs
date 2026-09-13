@@ -648,153 +648,191 @@ script "uh_displaycurrentmusic" (void) NET CLIENTSIDE {
 
 
 
+#define MUSIC_CARD_WIDTH 270.0
+#define MUSIC_CARD_HEIGHT 42.0
+#define MUSIC_CARD_OFFSET_X -286.0
+#define MUSIC_CARD_OFFSET_Y -62.0
+#define MUSIC_CARD_SLIDE_DIST 36.0
+#define MUSIC_CARD_IN_TICS 10
+#define MUSIC_CARD_OUT_TICS 10
+#define MUSIC_CARD_HOLD_TICS (4 * 35 + 18)
+
+global int 33:fancytunedisplay_serial;
+
 script "ub_FancyDisplayMusicStart" (int garbagetext) {
 	SetActivator(0, AAPTR_NULL);
-	ACS_NamedExecuteAlways("ub_FancyDisplayMusic", 0);
+	ACS_NamedExecuteAlways("ub_FancyDisplayMusic", 0, garbagetext);
 }
 
-int fancytunedisplay_cl = 0;
-
 script "ub_FancyDisplayMusic" (int togglegarbage) CLIENTSIDE {
-	str tunecode_str = GetCVarString("_uh_ServMusicLump");
-	str musical_str = GetCVarString("_uh_ServMusicCredits");
-	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicDisplay")) {
-		fancytunedisplay_cl += 1;
-		if (fancytunedisplay_cl >= 2) {
-			int temp_delay = fancytunedisplay_cl;
-			while (fancytunedisplay_cl >= temp_delay) {
-				Delay(1);
-			}
-		}
-	}
-
-	int m_infolength = StrLen(musical_str);
-	int m_codelength = StrLen(tunecode_str);
-	if (togglegarbage) {
-		m_infolength = random(10, 64);
-		m_codelength = random(4, 10);
-	}
-
-	str fakespace_str = "";
-	str charline2_str = StrParam(c:1);
-	str charline8_str = StrParam(c:7);
-	str char_line_str2 = "";
-
-	str fakespace2_str = "";
-	str charline22_str = StrParam(c:1);
-	str charline88_str = StrParam(c:7);
-	str charline__str = "";
-
-	for (int i = 0; i < m_infolength; i++) {
-		fakespace_str = StrParam(s:fakespace_str, c:random(32, 255));  // 0,255
-		charline2_str = StrParam(s:charline2_str, c:2);
-		charline8_str = StrParam(s:charline8_str, c:8);
-		char_line_str2 = StrParam(s:char_line_str2, s:"A");
-	}
-	charline2_str = StrParam(s:charline2_str, c:3);
-	charline8_str = StrParam(s:charline8_str, c:9);
-
-	for (i = 0; i < m_codelength; i++) {
-		fakespace2_str = StrParam(s:fakespace2_str, c:random(32, 255));
-		charline22_str = StrParam(s:charline22_str, c:2);
-		charline88_str = StrParam(s:charline88_str, c:8);
-		charline__str = StrParam(s:charline__str, s:"A");
-	}
-	charline22_str = StrParam(s:charline22_str, c:3);
-	charline88_str = StrParam(s:charline88_str, c:9);  // 9
-
-	if (togglegarbage) {
-		musical_str = fakespace_str;
-		tunecode_str = fakespace2_str;
-	}
-
-	SetHudSize(800, 600, 0);
-	SetHudClipRect(-300, 0, 1100, 900, 1400);
-	int x_aspect = GetHudLeft(800);  // *1.0
-	int y_aspect = GetHudTop(600) * -1.0;
-
-	if (GetScreenWidth() == 800 && GetScreenHeight() == 600) {
-		x_aspect = 0;
-		y_aspect = 0;
-	}
-
-	SetFont("CONFONT");  // Char 5 below is needed to fix Char 9 not showing up if followed by line skip for actual HudMessage calls
-	HudMessage(s:"\cd",
-		s:charline22_str, s:"\n", c:4, s:"\cl", s:tunecode_str, s:"\cd", c:6, s:"\n", s:charline88_str, c:5, s:"\n",
-		s:charline2_str, s:"\n", c:4, s:"\cl", s:musical_str, s:"\cd", c:6, s:"\n", s:charline8_str;
-		HUDMSG_LOG | HUDMSG_ALPHA, -68740, CR_GREEN, 0, 1000.1, 1873, 0.0);
-
 	if (!GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicDisplay")) {
 		terminate;
 	}
 
-	int temp_x = m_infolength * 8;
-	int temp_y = 0;
-	int temp_start = x_aspect + m_infolength * -8 + m_infolength / 10;
-	int temp_store, temp_whole;
+	str tunecode_str = GetCVarString("_uh_ServMusicLump");
+	str musical_str = GetCVarString("_uh_ServMusicCredits");
 
-	for (i = 1; i < 21; i += 1) {
-		temp_y = temp_x;
-		temp_x = (temp_x * 0.825 + 0.75) >> 16;  // Where did this math even come from?? [C]
-		temp_store = temp_store + (temp_y - temp_x);
-		temp_whole = (temp_start + temp_store + i / 2) << 16;
-		// Log(s:"\nTemp_Y int = ",i:Temp_Y,s:" Fixed >> ",f:Temp_Y);
-		// Log(s:"Temp_X int = ",i:Temp_X,s:" Fixed >> ",f:Temp_X);
-		// Log(s:"Temp_Store int = ",i:Temp_Store,s:" Fixed >> ",f:Temp_Store);
-		// Log(s:"Temp_Whole int = ",i:Temp_Whole,s:" Fixed >> ",f:Temp_Whole);
-		// Log(s:"HudMess int = ",i:Temp_Whole - 0.1,s:" Fixed >> ",f:Temp_Whole - 0.1);
-		SetFont("CONFONT");  // CONFONT//LETFONT
-		HudMessage(s:"\cu",
-			s:charline22_str, s:"\n", c:4, s:"\cc", s:tunecode_str, s:"\cu", c:6, s:"\n", s:charline88_str, c:5, s:"\n",
-			s:charline2_str, s:"\n", c:4, s:"\cc", s:musical_str, s:"\cu", c:6, s:"\n", s:charline8_str;
-			HUDMSG_ALPHA, -68743, CR_DARKGRAY, temp_whole - 0.1, 334.1 + y_aspect, 2.0, 0.05 * i);
-		SetFont("STCFN606");
-		HudMessage(s:"\c- AA", s:charline__str, s:charline__str; HUDMSG_ALPHA, -68741, -1, temp_whole - 0.1, 336.1 + y_aspect, 2.0, 0.05 * i);
-		HudMessage(s:"\c- AA", s:char_line_str2, s:char_line_str2; HUDMSG_ALPHA, -68742, -1, temp_whole - 0.1, 360.1 + y_aspect, 2.0, 0.05 * i);
-		Delay(1);
+	if (togglegarbage) {
+		tunecode_str = "???";
+		musical_str = "Corrupted - Unknown Track";
 	}
-	SetFont("CONFONT");
-	HudMessage(s:"\cu",
-		s:charline22_str, s:"\n", c:4, s:"\cc", s:tunecode_str, s:"\cu", c:6, s:"\n", s:charline88_str, c:5, s:"\n",
-		s:charline2_str, s:"\n", c:4, s:"\cc", s:musical_str, s:"\cu", c:6, s:"\n", s:charline8_str;
-		0, -68743, CR_DARKGRAY, temp_whole - 0.1, 334.1 + y_aspect, 7.0, 1.0);
-	SetFont("STCFN606");
-	HudMessage(s:"\c- AA", s:charline__str, s:charline__str; 0, -68741, -1, temp_whole - 0.1, 336.1 + y_aspect, 7.0, 1.0);
-	HudMessage(s:"\c- AA", s:char_line_str2, s:char_line_str2; 0, -68742, -1, temp_whole - 0.1, 360.1 + y_aspect, 7.0, 1.0);
 
-	for (i = 0; i < 35 * 5; i += 1) {
-		if (fancytunedisplay_cl >= 2) {
+	// Console copy for player reference
+	Log(s:"\c[Gold]Now Playing: \c[White]", s:musical_str, s:" \c[LightBlue][", s:tunecode_str, s:"]");
+
+	// Three-line card: split "origin - title" so line 2 is the track name and
+	// line 3 is the origin/album (empty -> line 3 is not drawn).
+	str origin_str = "";
+	str title_str = "";
+	int len = StrLen(musical_str);
+	int split_pos = -1;
+	int c;
+
+	for (c = 0; c < len - 2; c++) {
+		if (GetChar(musical_str, c) == ' ' &&
+		    GetChar(musical_str, c + 1) == '-' &&
+		    GetChar(musical_str, c + 2) == ' ') {
+			split_pos = c;
 			break;
 		}
-		Delay(1);
-	}
-	// Delay(35*5);
-
-	temp_x = m_infolength * 8;
-	temp_y = 0;
-	temp_start = temp_whole >> 16;
-	temp_store = m_infolength / -10;
-	temp_whole = 0;
-	for (i = 1; i < 20; i += 1) {
-		temp_y = temp_x;
-		temp_x = (temp_x * 0.855 + 0.75) >> 16;
-		temp_store = temp_store - (temp_y - temp_x);
-		temp_whole = (temp_start + temp_store - i) << 16;
-
-		SetFont("CONFONT");
-		HudMessage(s:"\cu",
-			s:charline22_str, s:"\n", c:4, s:"\cc", s:tunecode_str, s:"\cu", c:6, s:"\n", s:charline88_str, c:5, s:"\n",
-			s:charline2_str, s:"\n", c:4, s:"\cc", s:musical_str, s:"\cu", c:6, s:"\n", s:charline8_str;
-			HUDMSG_ALPHA, -68743, CR_DARKGRAY, temp_whole - 0.1, 334.1 + y_aspect, 2.0, 0.05 * (20 - i));
-		SetFont("STCFN606");
-		HudMessage(s:"\c- AA", s:charline__str, s:charline__str; HUDMSG_ALPHA, -68741, -1, temp_whole - 0.1, 336.1 + y_aspect, 2.0, 0.05 * (20 - i));
-		HudMessage(s:"\c- AA", s:char_line_str2, s:char_line_str2; HUDMSG_ALPHA, -68742, -1, temp_whole - 0.1, 360.1 + y_aspect, 2.0, 0.05 * (20 - i));
-		Delay(1);
 	}
 
-	HudMessage(s:""; 0, -68743, -1, 0.99, 0.01, 1873);
-	HudMessage(s:""; 0, -68742, -1, 0.99, 0.01, 1873);
-	HudMessage(s:""; 0, -68741, -1, 0.99, 0.01, 1873);
+	if (split_pos >= 0) {
+		for (c = 0; c < split_pos; c++) {
+			origin_str = StrParam(s:origin_str, c:GetChar(musical_str, c));
+		}
+		for (c = split_pos + 3; c < len; c++) {
+			title_str = StrParam(s:title_str, c:GetChar(musical_str, c));
+		}
+	} else {
+		title_str = musical_str;
+		origin_str = "";
+	}
 
-	fancytunedisplay_cl -= 1;
+	// Safety truncation: a 270px line comfortably fits ~30 UIX chars.
+	if (StrLen(title_str) > 30) {
+		str trunc_t = "";
+		for (c = 0; c < 27; c++) { trunc_t = StrParam(s:trunc_t, c:GetChar(title_str, c)); }
+		title_str = StrParam(s:trunc_t, s:"...");
+	}
+	if (StrLen(origin_str) > 30) {
+		str trunc_o = "";
+		for (c = 0; c < 27; c++) { trunc_o = StrParam(s:trunc_o, c:GetChar(origin_str, c)); }
+		origin_str = StrParam(s:trunc_o, s:"...");
+	}
+
+	SetHudSize(640, 480, 0);
+	int x_aspect = GetHudRight(640) * 1.0;
+	int y_aspect = GetHudBot(480) * 1.0;
+	if (GetScreenWidth() == 640 && GetScreenHeight() == 480) {
+		x_aspect = 640.0;
+		y_aspect = 480.0;
+	}
+
+	int base_target_x = x_aspect + MUSIC_CARD_OFFSET_X;
+	int base_target_y = y_aspect + MUSIC_CARD_OFFSET_Y;
+
+	fancytunedisplay_serial++;
+	int my_serial = fancytunedisplay_serial;
+	int i;
+	int progress;
+	int inv_p;
+	int ease;
+	int raw_x;
+	int draw_x;
+	int draw_y;
+
+	// 1. Entrance: Slide in from right with Ease-Out Quad
+	for (i = 1; i <= MUSIC_CARD_IN_TICS; i++) {
+		if (my_serial != fancytunedisplay_serial) { terminate; }
+		progress = FixedDiv(i * 1.0, MUSIC_CARD_IN_TICS * 1.0);
+		inv_p = 1.0 - progress;
+		ease = 1.0 - FixedMul(inv_p, inv_p);
+		raw_x = base_target_x + FixedMul(MUSIC_CARD_SLIDE_DIST, 1.0 - ease);
+
+		draw_x = (RoundFixedToInt(raw_x) * 1.0) + 0.1;
+		draw_y = (RoundFixedToInt(base_target_y) * 1.0) + 0.1;
+
+		// Card background
+		SetFont("MUSCARD");
+		HudMessage(s:"A"; HUDMSG_ALPHA, -68741, -1, draw_x, draw_y, 0.2, FixedMul(0.85, ease));
+
+		// Music note symbol (STCFN600)
+		SetFont("STCFN600");
+		HudMessage(s:"A"; HUDMSG_ALPHA, -68742, -1, draw_x + 6.0, draw_y + 5.0, 0.2, ease);
+
+		// Line 1: NOW PLAYING [lump]
+		SetFont("SMALLFONT");
+		HudMessage(s:"\ckNOW PLAYING \cl[", s:tunecode_str, s:"]"; HUDMSG_ALPHA, -68743, -1, draw_x + 18.0, draw_y + 5.0, 0.2, ease);
+
+		// Line 2: track title
+		HudMessage(s:"\c[White]", s:title_str; HUDMSG_ALPHA, -68744, -1, draw_x + 18.0, draw_y + 17.0, 0.2, ease);
+
+		// Line 3: origin / album (omitted when empty)
+		if (StrLen(origin_str) > 0) {
+			HudMessage(s:"\cd", s:origin_str; HUDMSG_ALPHA, -68745, -1, draw_x + 18.0, draw_y + 29.0, 0.2, ease);
+		} else {
+			HudMessage(s:""; 0, -68745, -1, 0.0, 0.0, 0.0);
+		}
+
+		Delay(1);
+	}
+
+	// 2. Hold phase: fully settled in place
+	int final_x = (RoundFixedToInt(base_target_x) * 1.0) + 0.1;
+	int final_y = (RoundFixedToInt(base_target_y) * 1.0) + 0.1;
+	int hold_secs = FixedDiv(MUSIC_CARD_HOLD_TICS * 1.0, 35.0) + 0.5;
+
+	SetFont("MUSCARD");
+	HudMessage(s:"A"; HUDMSG_ALPHA, -68741, -1, final_x, final_y, hold_secs, 0.85);
+
+	SetFont("STCFN600");
+	HudMessage(s:"A"; HUDMSG_ALPHA, -68742, -1, final_x + 6.0, final_y + 5.0, hold_secs, 1.0);
+
+	SetFont("SMALLFONT");
+	HudMessage(s:"\ckNOW PLAYING \cl[", s:tunecode_str, s:"]"; HUDMSG_ALPHA, -68743, -1, final_x + 18.0, final_y + 5.0, hold_secs, 1.0);
+	HudMessage(s:"\c[White]", s:title_str; HUDMSG_ALPHA, -68744, -1, final_x + 18.0, final_y + 17.0, hold_secs, 1.0);
+	if (StrLen(origin_str) > 0) {
+		HudMessage(s:"\cd", s:origin_str; HUDMSG_ALPHA, -68745, -1, final_x + 18.0, final_y + 29.0, hold_secs, 1.0);
+	}
+
+	for (i = 0; i < MUSIC_CARD_HOLD_TICS; i++) {
+		if (my_serial != fancytunedisplay_serial) { terminate; }
+		Delay(1);
+	}
+
+	// 3. Exit: Slide out to right with Ease-In Quad & fade out
+	for (i = 1; i <= MUSIC_CARD_OUT_TICS; i++) {
+		if (my_serial != fancytunedisplay_serial) { terminate; }
+		progress = FixedDiv(i * 1.0, MUSIC_CARD_OUT_TICS * 1.0);
+		ease = FixedMul(progress, progress);
+		raw_x = base_target_x + FixedMul(MUSIC_CARD_SLIDE_DIST, ease);
+		int cur_alpha = 1.0 - progress;
+
+		draw_x = (RoundFixedToInt(raw_x) * 1.0) + 0.1;
+
+		SetFont("MUSCARD");
+		HudMessage(s:"A"; HUDMSG_ALPHA, -68741, -1, draw_x, final_y, 0.2, FixedMul(0.85, cur_alpha));
+
+		SetFont("STCFN600");
+		HudMessage(s:"A"; HUDMSG_ALPHA, -68742, -1, draw_x + 6.0, final_y + 5.0, 0.2, cur_alpha);
+
+		SetFont("SMALLFONT");
+		HudMessage(s:"\ckNOW PLAYING \cl[", s:tunecode_str, s:"]"; HUDMSG_ALPHA, -68743, -1, draw_x + 18.0, final_y + 5.0, 0.2, cur_alpha);
+		HudMessage(s:"\c[White]", s:title_str; HUDMSG_ALPHA, -68744, -1, draw_x + 18.0, final_y + 17.0, 0.2, cur_alpha);
+		if (StrLen(origin_str) > 0) {
+			HudMessage(s:"\cd", s:origin_str; HUDMSG_ALPHA, -68745, -1, draw_x + 18.0, final_y + 29.0, 0.2, cur_alpha);
+		}
+
+		Delay(1);
+	}
+
+	// Clear all 5 message layers
+	if (my_serial == fancytunedisplay_serial) {
+		HudMessage(s:""; 0, -68741, -1, 0.0, 0.0, 0.0);
+		HudMessage(s:""; 0, -68742, -1, 0.0, 0.0, 0.0);
+		HudMessage(s:""; 0, -68743, -1, 0.0, 0.0, 0.0);
+		HudMessage(s:""; 0, -68744, -1, 0.0, 0.0, 0.0);
+		HudMessage(s:""; 0, -68745, -1, 0.0, 0.0, 0.0);
+	}
 }
