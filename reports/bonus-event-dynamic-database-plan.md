@@ -4,7 +4,7 @@
 
 将 `bonus event` 拆成“可注册的数据”和“命名脚本回调”两层，并把数据库放进现有 `UHDT → UHADDR → UHADD` API 链，是当前工程中风险最低、也真正允许后加载 addon 扩展的做法。
 
-建议新增 `DefineBonusEvent` 作为主注册函数，以不区分大小写的 `stem` 作为跨 PK3 稳定身份；保留现有整数 ID 作为 v4/RCON 兼容入口。事件名称、音乐、提示、随机权重、人数范围、通用分类和 EX 关系进入 UHDT；事件启动与复活重建等特殊行为保存为命名 ACS 脚本回调。这样可以删除当前候选数组及大部分按事件 ID 分派的 `switch`，同时不假装 ACS 能储存函数指针。
+建议新增 `DefineBonusEvent` 作为主注册函数，以不区分大小写的 `stem` 作为跨 PK3 稳定身份；保留现有整数 ID 作为 v4/RCON 兼容入口。事件名称、音乐、提示、随机权重、人数范围、通用分类和 EX 关系进入 UHDT；事件启动、复活重建和结束清理等特殊行为保存为命名 ACS 脚本回调。这样可以删除当前候选数组及大部分按事件 ID 分派的 `switch`，同时不假装 ACS 能储存函数指针。
 
 不建议把 bonus event 并入现有 `DefineLMSEvent` 表。二者虽然都属于 LMS 流程，但生命周期不同：`DefineLMSEvent` 是普通回合中的 last-survivor 奖励，而 bonus event 会替换整轮选人、阵营、变形、胜负监听及复活恢复逻辑。应复用它的 API 架构，而不是复用同一张表。
 
@@ -61,6 +61,7 @@ Zandronum/ACC 源码也确认了此方案的语言边界：ACC 暴露 `ACS_Named
 | `hudMessage1/2[id]` | str | 通用开场提示 |
 | `startCallback[id]` | str | 服务端启动回调 |
 | `rebuildCallback[id]` | str | 服务端复活/重连状态重建回调 |
+| `endCallback[id]` | str | 服务端结束/异常中止清理回调 |
 | `arg1/arg2/arg3[id]` | int | 传给启动和重建回调的声明参数 |
 | `flags[id]` | int | 仅存核心流程确实需要查询的通用语义 |
 | `weight[id]` | int | 随机权重；0 表示仅强制 |
@@ -95,7 +96,7 @@ function int DefineBonusEvent(
     int id, str stem, str name,
     str music, str credit,
     str sound, str hud1, str hud2,
-    str startCallback, str rebuildCallback,
+    str startCallback, str rebuildCallback, str endCallback,
     int arg1, int arg2, int arg3,
     int flags, int weight,
     int minPlayers, int maxPlayers);
@@ -107,13 +108,14 @@ function int UH_IsBonusEventDefined(int id);
 
 ACS 脚本参数数量有限且上述定义含多个字符串，因此 `UHADD.acs` 应继续采用 v6b/UHADD 已验证的 cvar mailbox：逐字段写入 `uh_be_*` cvar，再调用 `uh_DefineBonusEvent_S`。handler 立即消费，不在 cvar 中保留数据库状态。
 
-内部 UHDT getter 至少包括 `GetBonusEventName/Music/Credit/Sound/HudMessage1/HudMessage2/Flags/StartCallback/RebuildCallback/Arg1..3`，另提供：
+内部 UHDT getter 至少包括 `GetBonusEventName/Music/Credit/Sound/HudMessage1/HudMessage2/Flags/StartCallback/RebuildCallback/EndCallback/Arg1..3`，另提供：
 
 ```acs
 PickBonusEvent(playerCount, excludedId)
 ResolveBonusEventEX(baseId)
 RunBonusEventStart(id)
 RunBonusEventRebuild(id, tid, reason)
+RunBonusEventEnd(id, result)
 ```
 
 `PickBonusEvent` 对所有 defined 行执行 `weight >= 1`、人数上下界和排除上一事件检查后做加权抽取。由此同时取代两个 candidate 数组以及当前“抽到上一项就 Delay(1) 重抽”的循环。
@@ -122,8 +124,188 @@ RunBonusEventRebuild(id, tid, reason)
 
 - 启动回调：`script "..." (int eventId, int arg1, int arg2)`；需要第三个自定义参数时可由 callback 根据 event ID 从 UHDT 读取 `arg3`，或把通用 handler 包成事件专用脚本。
 - 重建回调：`script "..." (int eventId, int tid, int reason)`；回调自行读取注册参数。
+- 结束回调：`script "..." (int eventId, int result, int unused)`；只撤销事件拥有的副作用，不再次决定胜者或退出地图。
 - 回调必须是普通服务端脚本，不能标记 `CLIENTSIDE`，也不能依赖调用者局部状态。
 - 调度使用 `ACS_NamedExecuteAlways`，允许多玩家重建并行；需要同步返回值的校验/查询才使用 `ACS_NamedExecuteWithResult`。
+
+## Bonus event 完整生命周期
+
+数据库必须覆盖事件的整个周期，而不只是“选择后调用一次脚本”：
+
+```text
+注册
+  ↓
+候选过滤 / 强制选择 / EX 解析
+  ↓
+预告（核心读取元数据）
+  ↓
+startCallback（每轮一次）
+  ↓
+ACTIVE
+  ├─ 玩家复活、revival 或状态重建 → rebuildCallback（每玩家每条命一次）
+  └─ 标准或自定义 watcher 判定胜负
+  ↓
+统一结束入口（原子 guard）
+  ↓
+endCallback（每轮至多一次）
+  ↓
+结果序列 / Exit_Normal
+```
+
+### 注册、选择与预告
+
+addon 只声明数据和 callback；核心负责随机池、人数过滤、上一事件排除、强制 cvar、EX 关系、当前 event ID、音乐、音效和 HUD 预告。modder 不应在 callback 内再次随机选择事件。
+
+### 启动阶段
+
+`startCallback` 每轮只执行一次，用于给初始玩家发放事件状态、生成目标/场景 actor、分配特殊阵营或目标、保存本轮只允许抽取一次的结果，以及启动标准或自定义胜负 watcher。
+
+callback 应完成初始化后返回。长期等待胜负的循环放进另一个命名脚本，并通过 `ACS_NamedExecuteAlways` 启动，不能长期阻塞启动 callback。Boss FFA 一类事件必须在这里抽取并保存每个玩家的 boss ID；`rebuildCallback` 只读取同一结果，不能重新随机。
+
+### 活跃与胜负监听
+
+公共 API 应提供两种方式：
+
+```acs
+function void UH_StartStandardBonusWatcher(int eventId);
+function int UH_EndBonusEvent(int eventId, int result);
+```
+
+普通 LMS/FFA 事件调用 `UH_StartStandardBonusWatcher`，由核心按照玩家存活状态结束。特殊目标事件启动自己的 watcher，并在条件达成时调用 `UH_EndBonusEvent`。
+
+`UH_EndBonusEvent` 必须验证传入 ID 等于当前活动事件，并用 round-level guard 保证只执行一次；随后停止接受 rebuild、执行 end callback、进入统一结果序列，最终由核心调用 `Exit_Normal`。addon 不得直接调用 `Exit_Normal(0)`，否则会绕过清理、胜负记录或音乐流程。
+
+建议定义公共结果常量：
+
+```acs
+#define UHBE_RESULT_DRAW      0
+#define UHBE_RESULT_SURVIVOR  1
+#define UHBE_RESULT_BOSS      2
+#define UHBE_RESULT_ABORTED   3
+```
+
+### 玩家状态重建
+
+核心先执行 flags 所代表的通用处理（例如 FFA 保护清理、one-vs-all 身份恢复），再调用 `rebuildCallback(eventId, tid, reason)`。回调必须幂等：重复调用不得重复叠加奖励、重新选目标或改变本轮固定随机结果。
+
+### 结束与异常清理
+
+`endCallback` 撤销该事件拥有的副作用，例如事件 inventory、专用 TID actor、灯光和 addon 自己的 world/global 状态。它不再次判定胜者、不调用 `UH_EndBonusEvent`、不启动下一张图。
+
+正常胜负、draw、管理员中止和地图异常退出都应汇入同一清理入口；异常路径传 `UHBE_RESULT_ABORTED`。核心必须保证 end callback 每轮至多执行一次。
+
+### Public runtime API
+
+为了避免 addon 依赖 `ub_*`、`bossdataarr` 等内部实现，至少公开：
+
+```acs
+function int UH_IsActiveBonusEvent(int eventId);
+function int UH_GetActiveBonusEvent(void);
+function int UH_GetBonusEventArg(int eventId, int slot);
+function void UH_StartStandardBonusWatcher(int eventId);
+function int UH_EndBonusEvent(int eventId, int result);
+```
+
+如果开放 one-vs-all 扩展，还应提供：
+
+```acs
+function int UH_SetBonusEventTarget(int eventId, int playerTid);
+function int UH_GetBonusEventTarget(int eventId);
+```
+
+不要要求 addon 直接写 `eventdataarr`、`bossdataarr`、`playerlifestatusarr` 或调用未承诺稳定的 `ub_*` 内部脚本。
+
+## Modder 编写模板
+
+addon 加载在 Unholy 之后，并在自己的 LOADACS 中加载编译库。注册库同时提供服务端与客户端 OPEN；三个行为 callback 只在权威服务端被核心调用。
+
+```acs
+#library "MYBONUS"
+#include "zcommon.acs"
+#include "UHADD.acs"
+
+function void MyBonusApplyState(int tid)
+{
+    if (tid < 1000 || tid >= 1064)
+        return;
+    GiveActorInventory(tid, "MyBonusEventLoadout_P", 1);
+}
+
+script "mybonus_start" (int eventId, int arg1, int arg2)
+{
+    int pn;
+    for (pn = 0; pn < 64; pn++) {
+        if (!PlayerInGame(pn) || PlayerIsSpectator(pn))
+            continue;
+        MyBonusApplyState(pn + 1000);
+    }
+    UH_StartStandardBonusWatcher(eventId);
+}
+
+script "mybonus_rebuild" (int eventId, int tid, int reason)
+{
+    if (!UH_IsActiveBonusEvent(eventId))
+        terminate;
+    MyBonusApplyState(tid);
+}
+
+script "mybonus_end" (int eventId, int result, int unused)
+{
+    int pn;
+    for (pn = 0; pn < 64; pn++) {
+        if (!PlayerInGame(pn))
+            continue;
+        TakeActorInventory(pn + 1000, "MyBonusEventState_F", 9999);
+        TakeActorInventory(pn + 1000, "MyBonusWeapon", 9999);
+    }
+}
+
+function void MyBonusRegister(void)
+{
+    DefineBonusEvent(
+        -1, "example_my_bonus", "\\cgExperimental FFA",
+        "MYBGM", "Example Game - Battle",
+        "misc/MyBonusStart",
+        "\\cgExperimental battle!", "\\ccLast player wins.",
+        "mybonus_start", "mybonus_rebuild", "mybonus_end",
+        0, 0, 0,
+        UHBE_FLAG_FFA,
+        1, 2, 0);
+}
+
+script "mybonus_register" OPEN
+{
+    if (!UHInPlay()) terminate;
+    MyBonusRegister();
+}
+
+script "mybonus_register_cs" OPEN CLIENTSIDE
+{
+    MyBonusRegister();
+}
+```
+
+对应 DECORATE 至少定义本 addon 自己的状态与 loadout；不得依赖可选第三方 PK3：
+
+```c
+actor MyBonusEventState_F : Inventory
+{
+    Inventory.MaxAmount 1
+}
+
+actor MyBonusEventLoadout_P : CustomInventory
+{
+    States
+    {
+    Pickup:
+        TNT1 A 0 A_GiveInventory("MyBonusEventState_F", 1)
+        TNT1 A 0 A_GiveInventory("MyBonusWeapon", 1)
+        stop
+    }
+}
+```
+
+自动分配的整数 ID 只用于本次注册返回值或 RCON 展示，其他 PK3 不得硬编码它；跨定义关系始终使用 stem。callback 名必须带 addon 前缀，避免不同静态 ACS 模块中的同名脚本被引擎按模块搜索顺序错误解析。
 
 ## 内建事件迁移方式
 
@@ -143,7 +325,7 @@ DefineBonusEvent(
     UHEVENT_MLG, "mlg_eyes", "MLG eyes",
     "M_EYE01 10", "Snake's Revenge (NES) - Enemy Alert Lv.1 Theme",
     "", "\\cjMLG Tourney! Last one standing gets paid!", "",
-    "ub_DemoneyeEvent", "uh_RebuildEyeEvent",
+    "ub_DemoneyeEvent", "uh_RebuildEyeEvent", "uh_EndEyeEvent",
     1, 1, 0,
     UHBE_FLAG_ALL_EYE | UHBE_FLAG_EYE_TEAM,
     1, 0, 0);
@@ -160,14 +342,15 @@ DefineBonusEvent(
 3. **替换纯元数据读取。** 将 `bonuseventlist[...]` 改为 getter，覆盖预告、音乐、credits、音效和 HUD 文本。确认后删除稀疏二维表。
 4. **替换选择与有效性。** `CheckEventList` 改为 `IsBonusEventDefined`；`PickRandomBonusEvent` 改为加权/人数过滤器；删除两个候选数组。强制事件仍接受稳定整数 ID，并新增按 stem 的内部查找能力。
 5. **替换启动分派。** `ub_EventManagementACS` 的事件 `switch` 改为取 `startCallback` 并执行。内建条目可以先继续指向现有通用脚本（`ub_FreeForAll`、`ub_DemoneyeEvent`、`ub_OneVsAllEvent` 等）及其参数，无需立刻重写事件本体。
-6. **替换分类与重建。** `IsFFAEvent`、`IsAllEyeEvent`、`HasEyeTeamEvent` 改查 flags；`RebuildActiveRoundState` 保留通用 FFA/one-vs-all 前处理，之后执行 `rebuildCallback`。把现有每个 case 的内容搬进小型命名脚本。
-7. **迁移 EX。** 用 `SetBonusEventEX` 替代 `+100` 推导；保留旧 ID 常量作为兼容别名，但核心不再依赖数值关系。
-8. **删除遗留硬编码。** 全库 `rg` 确认除内建定义、兼容常量和确有协议意义的地方外，不再出现事件 ID `switch` 或直接数组索引。
+6. **建立统一结束入口。** 新增 active/end guard、标准 watcher public wrapper 和 `UH_EndBonusEvent`；让正常胜负、draw 与中止路径先调用 `endCallback`，再进入核心结果序列。
+7. **替换分类与重建。** `IsFFAEvent`、`IsAllEyeEvent`、`HasEyeTeamEvent` 改查 flags；`RebuildActiveRoundState` 保留通用 FFA/one-vs-all 前处理，之后执行 `rebuildCallback`。把现有每个 case 的内容搬进小型命名脚本。
+8. **迁移 EX。** 用 `SetBonusEventEX` 替代 `+100` 推导；保留旧 ID 常量作为兼容别名，但核心不再依赖数值关系。
+9. **删除遗留硬编码。** 全库 `rg` 确认除内建定义、兼容常量和确有协议意义的地方外，不再出现事件 ID `switch` 或直接数组索引。
 
 ## 初始化与联网注意事项
 
 - 不要假定 LOADACS 列表顺序等于同 tic 内各库 `OPEN` 完成顺序。当前 boss combo 已明确处理过这个问题。bonus 选择发生在倒计时后，通常已有充足时间，但 debug 校验仍应使用有上限的等待（建议复用 35 tic 约定），不能永久等待。
-- 服务端数据库决定随机选择与行为。`OPEN CLIENTSIDE` 副本只服务本地 HUD/查询；客户端不能执行 start/rebuild callback。
+- 服务端数据库决定随机选择与行为。`OPEN CLIENTSIDE` 副本只服务本地 HUD/查询；客户端不能执行 start/rebuild/end callback。
 - `DefineBonusEvent` 重复注册同一 `(id, stem)` 应整行更新，以便 server/client 双注册和 addon 重载模式保持幂等；同 stem 不同 ID、同 ID 不同 stem 必须失败。
 - 字符串身份用 `StrICmp` 去重；原样保存 actor/script/lump 字符串。ACS 标识符大小写不敏感，但普通字符串比较默认大小写敏感。
 - 自动 ID 建议从一个明确的 addon 起点开始（例如 160 或 200），而不是“最大已有 ID + 1”；目前内建稳定 ID 已到 151，固定起点更能避免未来新增内建项抢占 addon 槽位。最终起点要在实现前冻结并写进 public API。
@@ -189,7 +372,7 @@ DefineBonusEvent(
 2. 搜索确认：
    - 不再存在 `bonuseventlist`、`bonuseventcandidates`、`bonuseventlowcandidates`。
    - `CheckEventList` 若为兼容 wrapper，只委托 `IsBonusEventDefined`。
-   - 启动和重建不再含列举全部事件的 `switch`。
+   - 启动、重建和结束清理不再含列举全部事件的 `switch`。
 3. 运行 `./tools/validate-build-pk3.sh` 检查成品入口和 ACS lumps。
 
 ### 数据库单元式检查（debug ACS）
@@ -201,6 +384,8 @@ DefineBonusEvent(
 - 排除 last event 后，只有一个候选时有明确行为：允许重复或返回 fail，必须在实现中选定并记录；建议允许重复，避免死循环。
 - EX 计数达到阈值时解析到已注册目标，缺失目标时安全回退到基础事件并记录 warning。
 - 重复注册幂等，冲突 ID/stem 和容量耗尽返回 `UHBE_FAIL`。
+- 同一事件的多个 watcher 同时请求结束时，只有第一次进入 end callback/结果序列。
+- 正常胜负、draw 与 aborted 路径各执行一次 end callback；其后拒绝 rebuild。
 
 ### 运行时回归
 
@@ -212,7 +397,7 @@ DefineBonusEvent(
 4. FFA（Football/Runes）：保护清除、物品/rune 重建。
 5. Boss FFA：复活后复用 `eventbossid`，不得重抽。
 6. force-only 事件和旧别名 50/150。
-7. 一个独立测试 addon 用 `DefineBonusEvent(-1, ...)` 注册新 stem，验证它可随机、可 RCON 查找/强制、可启动、可复活重建。
+7. 一个独立测试 addon 用 `DefineBonusEvent(-1, ...)` 注册新 stem，验证它可随机、可 RCON 查找/强制、可启动、可复活重建，并在正常/异常结束时只清理一次。
 8. 服务端 + 客户端各检查一次加入中途 HUD/名称读取，确认 client UHDT 已注册而不会在客户端执行行为 callback。
 
 ## 完成标准
@@ -220,7 +405,8 @@ DefineBonusEvent(
 只有同时满足以下条件，才能认为 bonus event 已真正动态化：
 
 - 新事件可由后加载 PK3 仅通过 public `UHADD` API 注册，无需修改 Unholy 的候选数组、白名单或 dispatcher。
-- 元数据、人数资格、权重、EX 关系、启动和复活重建均由注册项驱动。
+- 元数据、人数资格、权重、EX 关系、启动、复活重建和结束清理均由注册项驱动。
 - 内建稳定 ID 与 RCON 兼容行为不变。
 - 普通池不再依赖连续 ID、固定范围或 `+100` 关系。
-- 服务端行为与客户端显示数据库在联网环境均可用，且回调只在权威服务端执行。
+- 服务端行为与客户端显示数据库在联网环境均可用，且 start/rebuild/end 回调只在权威服务端执行。
+- addon 可以只通过稳定 public API 完成标准胜负监听或自定义 watcher，不需要直接调用 `ub_*`、写核心数组或自行 `Exit_Normal`。
