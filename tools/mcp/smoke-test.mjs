@@ -230,10 +230,20 @@ async function run(options) {
   try {
     await client.connect(transport);
 
+    const launchArgs = {
+      instance: options.instance,
+      iwad: selected.profile.iwad,
+      files: selected.profile.files,
+      map: selected.profile.map,
+      fullscreen: selected.profile.fullscreen,
+      width: selected.profile.width,
+      height: selected.profile.height,
+      extraArgs: selected.profile.extraArgs,
+    };
     const launchResult = await callTool(
       client,
       "launch_instance",
-      { instance: options.instance, profile: options.profile },
+      launchArgs,
       options.timeoutSec * 1000,
     );
 

@@ -9,8 +9,15 @@
 # differently named .o would not shadow the base lump.
 # Usage: compile-acs.sh [outdir]   (default: src/acs)
 set -u
-cd /home/user/projects/mm8bdm/unholyrazon4 || exit 1
-ACC="${ACC:-/home/user/appfiles/acc-zandronum/acc}"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$script_dir/.." || exit 1
+if [[ -z "${ACC:-}" ]]; then
+  ACC="$(command -v acc || true)"
+fi
+if [[ -z "$ACC" ]]; then
+  echo "acc not found on PATH; set ACC to your Zandronum ACC binary" >&2
+  exit 1
+fi
 OUT="${1:-src/acs}"
 mkdir -p "$OUT"
 INC="-i src/acs_source/v6b_overrides/_includes/common -i src/acs_source/v6b_overrides/_includes/mod_api -i src/acs_source/_includes/mod_api -i src/acs_source/_imports -i src/acs_source/v6b_overrides/_imports -i src/acs_source/unholy"
