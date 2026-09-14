@@ -117,7 +117,7 @@ script "uh_DrawTimerHud" (int timeleft, int type) CLIENTSIDE {
 			holdtime = 2.0; alerttime = 0;
 			break;
 		case 1:
-			x = 300.1; y = 49.1; holdtime = 0;
+			x = 300.1; y = 10.1 + y_aspect2;
 			holdtime = 1.0; alerttime = 60;
 			break;
 	}
@@ -497,6 +497,7 @@ function void Func_BHW_DeadHudMess2(int theboss, int bossnumb, int demisetype) {
 	int addtoy = BossHudYOffset(theboss, y_aspect);
 
 	ClearHudMessage(-1060 - theboss);  // Clear Rage
+	ClearHudMessage(-1070 - theboss);  // Clear Rage Banner
 	HudMessage(s:""; 0, -1060 - theboss, -1, 0.99, 0.01, 1873);
 
 	// 1. Mugshot, black backing, and border
@@ -600,8 +601,9 @@ script "ub_RageDisplay" (void) {
 					}
 				}
 				else {
-					// HudMessageBold
+					int boss_idx = boss_spacing - 1;
 					Func_BHW_RageHudMess(boss_spacing);
+					ACS_NamedExecuteWithResult("ub_BHW_RageBannerClientside", boss_spacing, bossdataarr[boss_idx][BOSSDATA_NUM]);
 					rage_boxbool = true;
 				}
 			}
@@ -650,7 +652,22 @@ function void Func_BHW_RageHudMess2(int theboss) {
 	}
 }
 
+script "ub_BHW_RageBannerClientside" (int theboss, int bossnumb) CLIENTSIDE {
+	AmbientSound("misc/mmpuwarning", 127);
+	SetHudSize(640, 480, 0);
 
+	str namestr;
+	if (IsEyeBossNumb(bossnumb))
+		namestr = GetEyeHudName(DecodeEyeBossNumb(bossnumb));
+	else
+		namestr = GetBossName(bossnumb);
+
+	int banner_y = 36.0 + (theboss - 1) * 16.0;
+
+	SetFont("BIGFONT");
+	HudMessage(s:"\cg*WARNING* \cr", s:namestr, s:" \cgIS ENRAGED! *WARNING*";
+	           HUDMSG_FADEOUT, -1070 - theboss, CR_UNTRANSLATED, 320.4, banner_y, 2.5, 0.8);
+}
 
 script "ub_BHW_TargetHudClientside" (int duration) CLIENTSIDE {
 	Func_BHW_TargetHudMess2(duration);
