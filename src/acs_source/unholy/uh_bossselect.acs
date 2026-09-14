@@ -89,6 +89,15 @@ script "ub_MorphSelectedBosses" (void) {
     UH_Log(UH_LOG_DEBUG, StrParam(s:"Morphed Boss ", i:i + 1, s:": ", i:bossdataarr[i][BOSSDATA_MORPHED]));
   }
 
+  // MorphActorToBoss ends with SetActivator(tid) and never restores the caller,
+  // so this script's activator is now the last morphed boss pawn.  Everything
+  // below is round-level scheduling (music, morph retry, the survivor/boss
+  // watchers, the X-Ray watcher) and ACS_NamedExecute hands this activator down
+  // to every script it starts (p_lnspec.cpp:1781 -> P_StartScript's `who`).
+  // Restore the world activator so no round-level script runs as a boss pawn;
+  // a caller that needs a player activator must SetActivator(tid) explicitly.
+  SetActivator(0, AAPTR_NULL);
+
   // A versus Shadow round must finish its fakeout/reveal before the generic
   // morph retry and versus watcher start, so it has one setup owner and no
   // concurrent ordinary-versus watcher race.
@@ -142,6 +151,12 @@ script "ub_BossMorphRetryWait" (int failure, int failure2, int failure3, int fai
     ACS_NamedExecute("ub_MorphFailureFallback", 0, failure);
     // Football Time
   }
+
+  // Same leak as ub_MorphSelectedBosses: the retry loop above calls
+  // MorphActorToBoss, which leaves the last morphed pawn as this script's
+  // activator.  Nothing below depends on it, so drop it here instead of letting
+  // it reach ub_MorphFailureFallback or the caller.
+  SetActivator(0, AAPTR_NULL);
 
   if (failure == -1)
     UH_Log(UH_LOG_DEBUG, StrParam(s:"Boss Morph FINISHED! --- Retry count = ", i:morphretrycount));
@@ -464,6 +479,10 @@ script "ub_ShadowBossManager" (void) {
       else {shadowtricksarr[i] = false;}
     }
   }
+
+  // The reveal loop above morphed bosses; drop the pawn it left as this script's
+  // activator before the music call and the morph-retry wait below.
+  SetActivator(0, AAPTR_NULL);
 
   if (shadowtunesnum == -1) {
     PlayMusic(musicaleventindex[8][0]);

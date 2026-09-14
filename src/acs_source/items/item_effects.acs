@@ -149,9 +149,18 @@ script "UB_I_WinACS" (void) {
 	PrintBold(s:"\ciYou're Winner!  \cj", c:169, s:" ", n:PlayerNumber() + 1);
 	if (GetGameModeState() == GAMESTATE_COUNTDOWN)
 		terminate;
-	if (GetCvar("sv_noexit") == 1)
-		SetActivator(AAPTR_NULL);
 	ACS_NamedExecuteWithResult("uh_SetGameOverState", 1);
+	// World-activated exit.  This is a core-initiated round settlement, not a
+	// player using an exit line, so it must not be blocked by DF_NO_EXIT /
+	// sv_noexit and must not telefrag the winner (CheckIfExitIsGood, p_spec.cpp).
+	// PlayerNumber() above needs the caller's activator, so the clear happens
+	// here, before the delay.  This library (uh_items) deliberately does not
+	// reach into the unholy library's ub_ExitFinishedRound, so it performs the
+	// same SetActivator(0, AAPTR_NULL) itself.
+	// Previous code cleared the activator only when sv_noexit was 1, and used
+	// the one-argument SetActivator form, which selects TID 1 instead of the
+	// world (zspecial.acs: SetActivator(1,2)).
+	SetActivator(0, AAPTR_NULL);
 	Delay(100);
 	Exit_Normal(0);
 }

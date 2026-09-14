@@ -213,3 +213,32 @@ function void AdjustPlayerForceNumArray(int swapper) {
 function bool RandomPercent(int chance) {
   return (random(1, 100) <= chance);
 }
+
+// --- Unified round-exit entry ------------------------------------------------
+// Every Unholy-owned round settlement funnels its final map change through this
+// script instead of calling Exit_Normal itself.
+//
+// Why: Exit_Normal runs CheckIfExitIsGood with the CALLING SCRIPT's activator
+// (p_lnspec.cpp:850 -> p_spec.cpp:184).  A NULL activator is the world and always
+// passes; any non-NULL actor is treated as "a player is using an exit line", so
+// DF_NO_EXIT / sv_noexit applies and the exit telefrags that actor.  A settlement
+// watcher can inherit a boss pawn as its activator (MorphActorToBoss ends with
+// SetActivator(tid) and the watchers are started from the same script), so the
+// round must never depend on whichever actor it happened to inherit.
+//
+// Contract:
+//   - the activator is cleared on entry, BEFORE the delay, so no stale pawn is
+//     acted on during the result window;
+//   - only a core settlement owner starts it: the gameover / one-shot guards
+//     stay with the callers;
+//   - ACS_NamedExecute is single-instance (p_acs.cpp:13097), so a duplicate
+//     start is a no-op and cannot reset the delay or race a second exit;
+//   - the caller keeps owning result text, music, streak and event cleanup;
+//   - never use ConsoleCommand("changemap"), and never rely on sv_noexit 0.
+script "ub_ExitFinishedRound" (int delaytics) {
+  SetActivator(0, AAPTR_NULL);
+  if (delaytics > 0) {
+    Delay(delaytics);
+  }
+  Exit_Normal(0);
+}

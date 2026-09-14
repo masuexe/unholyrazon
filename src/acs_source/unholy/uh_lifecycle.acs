@@ -372,6 +372,11 @@ script "ub_WatchSurvivors" (int skipacs) {
 
   Delay(1);
 
+  // Re-check after the yield: ub_WatchBossesAndEyes may have claimed the round
+  // while this script slept, and it terminates this watcher.  Without the
+  // re-check a stale instance could still start a second settlement.
+  if (gameover) {terminate;}
+
   ACS_NamedTerminate("ub_WatchBossesAndEyes", 0);
   // Unified bonus-event end entry: boss side took the round.  No-op outside
   // bonus rounds; the one-shot guard keeps it single-fire.
@@ -397,8 +402,10 @@ script "ub_WatchSurvivors" (int skipacs) {
   }
 
   survwinwithlms = false;
-  Delay(35 * 9);
-  Exit_Normal(0);
+  // World-activated exit: this watcher may have inherited a boss pawn as its
+  // activator, and a player activator would make the round exit subject to
+  // DF_NO_EXIT / sv_noexit and telefrag that pawn.
+  ACS_NamedExecute("ub_ExitFinishedRound", 0, 35 * 9);
   Delay(35 * 6);
 }
 
@@ -552,8 +559,7 @@ script "ub_WatchBossesAndEyes" (void) {
   if (multibosscheck == 1 && !PlayerInGame(bossdataarr[0][BOSSDATA_TID] - 1000) && timer() <= 35 * 7 + extratimer) {
     PlayMusic_Win(-2);
     HudMessageBold(s:"The boss has declined the duel!"; HUDMSG_FADEOUT, 66, CR_GREEN, 240.4, 54.0, 5.0, 2.0);
-    Delay(36 * 4);
-    Exit_Normal(0);
+    ACS_NamedExecute("ub_ExitFinishedRound", 0, 36 * 4);
     Delay(35);
     terminate;
   }
@@ -598,8 +604,7 @@ script "ub_WatchBossesAndEyes" (void) {
     HudMessageBold(s:"PERFECT! No survivors were lost."; HUDMSG_FADEOUT, 101, CR_GREEN, 240.4, 108.0, 5.0, 2.0);
   }
 
-  Delay(36 * 10);
-  Exit_Normal(0);
+  ACS_NamedExecute("ub_ExitFinishedRound", 0, 36 * 10);
   Delay(36 * 6);
 }
 

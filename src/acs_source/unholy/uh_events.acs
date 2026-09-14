@@ -562,6 +562,9 @@ script "ub_OneVsAllEvent" (int which) {
     // UnholyBoss1
     bossdataarr[0][BOSSDATA_MORPHED] = MorphActorToBoss(bossdataarr[0][BOSSDATA_TID], bossdataarr[0][BOSSDATA_NUM], "GigaAstroExplode");
 
+    // MorphActorToBoss left the boss pawn as this script's activator; the
+    // tracker scripts started below must not inherit it.
+    SetActivator(0, AAPTR_NULL);
     ACS_NamedExecuteWait("ub_BossMorphRetryWait", 0, -1);
   }
   else {
@@ -790,8 +793,8 @@ script "ub_BonusResultSequence" (int result) {
   else {
     HudMessageBold(s:"The event has ended."; HUDMSG_FADEOUT, 66, CR_GRAY, 240.4, 54.0, 5.0, 2.0);
   }
-  Delay(35 * 9);
-  Exit_Normal(0);
+  // Unified world-activated round exit.
+  ACS_NamedExecute("ub_ExitFinishedRound", 0, 35 * 9);
   Delay(35 * 6);
 }
 
@@ -904,8 +907,8 @@ script "ub_SpecialEventEnding" (int which) {
   SetFont("BIGFONT");
   HudMessageBold(s:endingstring; HUDMSG_FADEOUT, 66, CR_WHITE, 240.4, 54.0, 3.0, 2.0);
   gameover = true;
-  Delay(35 * exitdelay);
-  Exit_Normal(0);
+  // Unified world-activated round exit (exitdelay is 8 or 10, never 0).
+  ACS_NamedExecute("ub_ExitFinishedRound", 0, 35 * exitdelay);
   Delay(35 * exitdelay);
 }
 
@@ -989,8 +992,7 @@ script "ub_SpecialEventTracker" (int which) {
       // Unified bonus-event end entry: the target side (furry) escaped.
       UH_TryFinishBonusEvent(eventdataarr[EVENTDATA_MAINEVENT], UHBE_RESULT_BOSS, false);
       gameover = true;
-      Delay(35 * 6);
-      Exit_Normal(0);
+      ACS_NamedExecute("ub_ExitFinishedRound", 0, 35 * 6);
       Delay(36 * 6);
       break;
     case 51:
@@ -1027,8 +1029,7 @@ script "ub_SpecialEventTracker" (int which) {
       // Unified bonus-event end entry: the demoneye side survived.
       UH_TryFinishBonusEvent(eventdataarr[EVENTDATA_MAINEVENT], UHBE_RESULT_BOSS, false);
       gameover = true;
-      Delay(35 * 6);
-      Exit_Normal(0);
+      ACS_NamedExecute("ub_ExitFinishedRound", 0, 35 * 6);
       Delay(36 * 6);
       break;
   }
