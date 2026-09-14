@@ -593,22 +593,24 @@ script "ub_RageDisplay" (void) {
 		}
 
 		if (boss_spacing > 0) {
+			int boss_idx = boss_spacing - 1;
 			if (CheckActorInventory(act_tid, rage_name) >= rage_max || CheckActorInventory(act_tid, "UnholyPowerDazzle_F")) {
 				if (rage_boxbool) {
 					if (refreshhudmessage) {
 						// HudMessageBold(s:"A"; 0, -1060-boss_Spacing,-1, 10.1, 280.1+boss_Spacing*32.0, 0,1.0);
 						Func_BHW_RageHudMess(boss_spacing);
+						ACS_NamedExecuteWithResult("ub_BHW_RageBannerClientside", boss_spacing, bossdataarr[boss_idx][BOSSDATA_NUM], 2);
 					}
 				}
 				else {
-					int boss_idx = boss_spacing - 1;
 					Func_BHW_RageHudMess(boss_spacing);
-					ACS_NamedExecuteWithResult("ub_BHW_RageBannerClientside", boss_spacing, bossdataarr[boss_idx][BOSSDATA_NUM]);
+					ACS_NamedExecuteWithResult("ub_BHW_RageBannerClientside", boss_spacing, bossdataarr[boss_idx][BOSSDATA_NUM], 0);
 					rage_boxbool = true;
 				}
 			}
 			else if (rage_boxbool) {
 				HudMessageBold(s:""; 0, -1060 - boss_spacing, -1, 0.99, 0.01, 1873);
+				ACS_NamedExecuteWithResult("ub_BHW_RageBannerClientside", boss_spacing, bossdataarr[boss_idx][BOSSDATA_NUM], 1);
 				rage_boxbool = false;
 			}
 		}
@@ -617,6 +619,7 @@ script "ub_RageDisplay" (void) {
 	}
 	if (rage_boxbool) {  // Doesn't work for Spectators
 		HudMessageBold(s:""; 0, -1060 - boss_spacing, -1, 0.99, 0.01, 1873);
+		HudMessageBold(s:""; 0, -1070 - boss_spacing, -1, 0.99, 0.01, 1873);
 	}
 }
 
@@ -652,8 +655,7 @@ function void Func_BHW_RageHudMess2(int theboss) {
 	}
 }
 
-script "ub_BHW_RageBannerClientside" (int theboss, int bossnumb) CLIENTSIDE {
-	AmbientSound("misc/mmpuwarning", 127);
+script "ub_BHW_RageBannerClientside" (int theboss, int bossnumb, int action) CLIENTSIDE {
 	SetHudSize(640, 480, 0);
 
 	str namestr;
@@ -665,8 +667,17 @@ script "ub_BHW_RageBannerClientside" (int theboss, int bossnumb) CLIENTSIDE {
 	int banner_y = 36.0 + (theboss - 1) * 16.0;
 
 	SetFont("BIGFONT");
-	HudMessage(s:"\cg*WARNING* \cr", s:namestr, s:" \cgIS ENRAGED! *WARNING*";
-	           HUDMSG_FADEOUT, -1070 - theboss, CR_UNTRANSLATED, 320.4, banner_y, 2.5, 0.8);
+	if (action == 1) {
+		HudMessage(s:"\cg*WARNING* \cr", s:namestr, s:" \cgIS ENRAGED! *WARNING*";
+		           HUDMSG_FADEOUT, -1070 - theboss, CR_UNTRANSLATED, 320.4, banner_y, 0.0, 1.2);
+	}
+	else {
+		if (action == 0) {
+			AmbientSound("misc/mmpuwarning", 127);
+		}
+		HudMessage(s:"\cg*WARNING* \cr", s:namestr, s:" \cgIS ENRAGED! *WARNING*";
+		           0, -1070 - theboss, CR_UNTRANSLATED, 320.4, banner_y, 0);
+	}
 }
 
 script "ub_BHW_TargetHudClientside" (int duration) CLIENTSIDE {
