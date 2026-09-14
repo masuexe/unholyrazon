@@ -567,41 +567,46 @@ script "ub_WatchBossesAndEyes" (void) {
   PlayMusic_Winner(-1);
   HudMessageBold(s:"The survivors are victorious!"; HUDMSG_FADEOUT, 66, CR_GREEN, 240.4, 54.0, 5.0, 2.0);
 
+  int next_y = 72.0;
+
+  battletime = (Timer() - extratimer) / 35;
+  int battle_color = CR_GRAY;
+  if (fastkilltime > 0 && battletime <= fastkilltime) {
+    eventdataarr[EVENTDATA_DELAY] += 1;
+    battle_color = CR_GOLD;
+  }
+  HudMessageBold(s:"Battle Time: ", d:battletime, s:"s"; HUDMSG_FADEOUT, 100, battle_color, 240.4, next_y, 5.0, 2.0);
+  next_y += 18.0;
+
   if (winstreak < 0) {winstreak = 1;}
   else {winstreak++;}
   mercygiven = false;
   if (winstreak % GetClampedCvar("uh_sv_WinStreakLimit", 1, 100) == 0) {
-    HudMessageBold(s:"Survivor win streak: ", d:winstreak; HUDMSG_FADEOUT, 67, CR_DARKRED, 240.4, 90.0, 5.0, 2.0);
+    HudMessageBold(s:"Survivor win streak: ", d:winstreak; HUDMSG_FADEOUT, 67, CR_DARKRED, 240.4, next_y, 5.0, 2.0);
     ACS_NamedExecuteAlways("ub_InitiateUltraBoss", 0, 1);
   }
   else {
-    HudMessageBold(s:"Survivor win streak: ", d:winstreak; HUDMSG_FADEOUT, 67, CR_GREEN, 240.4, 90.0, 5.0, 2.0);
+    HudMessageBold(s:"Survivor win streak: ", d:winstreak; HUDMSG_FADEOUT, 67, CR_GREEN, 240.4, next_y, 5.0, 2.0);
   }
+  next_y += 18.0;
 
-  battletime = (Timer() - extratimer) / 35;
+  if (roundstartsurvivors > 0 && totalplayersarr[PLS_SURVIVOR] == roundstartsurvivors) {
+    eventdataarr[EVENTDATA_DELAY] += 2;
+    HudMessageBold(s:"PERFECT! No survivors were lost."; HUDMSG_FADEOUT, 101, CR_GREEN, 240.4, next_y, 5.0, 2.0);
+    next_y += 18.0;
+  }
 
   if (survwinwithlms) {
     hellmarkfrags++;
     if (hellmarkfrags >= hellmarklimit) {
       AmbientSound("misc/SampiRises", 127);
-      HudMessageBold(s:"The Helltatoru knows no limits..."; HUDMSG_FADEOUT, 60, CR_DARKRED, 240.4, 72.0, 5.0, 2.0);
+      HudMessageBold(s:"The Helltatoru knows no limits..."; HUDMSG_FADEOUT, 60, CR_DARKRED, 240.4, next_y, 5.0, 2.0);
       ACS_NamedExecuteAlways("ub_InitiateUltraBoss", 0, 402);
     }
-    else
-      HudMessageBold(s:"Marks of Helltatoru ", d:hellmarkfrags, s:"/", d:hellmarklimit, s:" collected."; HUDMSG_FADEOUT, 60, CR_DARKRED, 240.4, 72.0, 5.0, 2.0);
-  }
-
-  if (fastkilltime > 0 && battletime <= fastkilltime) {
-    eventdataarr[EVENTDATA_DELAY] += 1;
-    HudMessageBold(s:"Good job! You defeated all bosses in ", d:battletime, s:"s."; HUDMSG_FADEOUT, 100, CR_GOLD, 240.4, 90.0, 5.0, 2.0);
-  }
-  else {
-    HudMessageBold(s:"Battle Time: ", d:battletime, s:"s"; HUDMSG_FADEOUT, 100, CR_GRAY, 240.4, 90.0, 5.0, 2.0);
-  }
-
-  if (roundstartsurvivors > 0 && totalplayersarr[PLS_SURVIVOR] == roundstartsurvivors) {
-    eventdataarr[EVENTDATA_DELAY] += 2;
-    HudMessageBold(s:"PERFECT! No survivors were lost."; HUDMSG_FADEOUT, 101, CR_GREEN, 240.4, 108.0, 5.0, 2.0);
+    else {
+      HudMessageBold(s:"Marks of Helltatoru ", d:hellmarkfrags, s:"/", d:hellmarklimit, s:" collected."; HUDMSG_FADEOUT, 60, CR_DARKRED, 240.4, next_y, 5.0, 2.0);
+    }
+    next_y += 18.0;
   }
 
   ACS_NamedExecute("ub_ExitFinishedRound", 0, 36 * 10);
