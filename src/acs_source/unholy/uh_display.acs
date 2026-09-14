@@ -23,6 +23,29 @@ function int BossHudRowStep(void) {
 
 #define HUDMESSAGE_REFRESHER_RATE 175  // 404
 bool refreshhudmessage;
+int rage_banner_seq[MAX_BOSSES + 1];
+
+#define RAGE_BANNER_FRAMES 8
+str rage_banner_colors[RAGE_BANNER_FRAMES] = {
+	"\c[AlertRed]",
+	"\c[AlertRedTrans1]",
+	"\c[AlertRedTrans2]",
+	"\c[AlertRedTrans3]",
+	"\c[AlertWhite]",
+	"\c[AlertRedTrans3]",
+	"\c[AlertRedTrans2]",
+	"\c[AlertRedTrans1]"
+};
+int rage_banner_delays[RAGE_BANNER_FRAMES] = {
+	6,
+	1,
+	1,
+	1,
+	4,
+	1,
+	1,
+	1
+};
 
 script "ub_refreshHudMessageLoop" (void) {
 	int cycledelay;
@@ -496,6 +519,9 @@ function void Func_BHW_DeadHudMess2(int theboss, int bossnumb, int demisetype) {
 	int cur_x = BossHudXOffset(x_aspect);
 	int addtoy = BossHudYOffset(theboss, y_aspect);
 
+	if (theboss >= 1 && theboss <= MAX_BOSSES) {
+		rage_banner_seq[theboss] = 0;
+	}
 	ClearHudMessage(-1060 - theboss);  // Clear Rage
 	ClearHudMessage(-1070 - theboss);  // Clear Rage Banner
 	HudMessage(s:""; 0, -1060 - theboss, -1, 0.99, 0.01, 1873);
@@ -656,7 +682,11 @@ function void Func_BHW_RageHudMess2(int theboss) {
 }
 
 script "ub_BHW_RageBannerClientside" (int theboss, int bossnumb, int action) CLIENTSIDE {
+	if (theboss < 1 || theboss > MAX_BOSSES)
+		terminate;
+
 	if (!GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossRageWarning")) {
+		rage_banner_seq[theboss] = 0;
 		ClearHudMessage(-1070 - theboss);
 		terminate;
 	}
@@ -673,15 +703,37 @@ script "ub_BHW_RageBannerClientside" (int theboss, int bossnumb, int action) CLI
 
 	SetFont("BIGFONT");
 	if (action == 1) {
-		HudMessage(s:"\cg*WARNING* \cr", s:namestr, s:" \cgIS ENRAGED! *WARNING*";
+		rage_banner_seq[theboss] = 0;
+		HudMessage(s:"\c[AlertRed]*WARNING* \cr", s:namestr, s:" \c[AlertRed]IS ENRAGED! *WARNING*";
 		           HUDMSG_FADEOUT, -1070 - theboss, CR_UNTRANSLATED, 320.4, banner_y, 0.0, 1.2);
+		terminate;
 	}
-	else {
-		if (action == 0) {
-			AmbientSound("misc/mmpuwarning", 127);
+
+	if (action == 0) {
+		AmbientSound("misc/mmpuwarning", 127);
+	}
+	else if (action == 2) {
+		if (rage_banner_seq[theboss] > 0)
+			terminate;
+	}
+
+	rage_banner_seq[theboss]++;
+	int my_seq = rage_banner_seq[theboss];
+
+	int frame = 0;
+	while (rage_banner_seq[theboss] == my_seq) {
+		if (!GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossRageWarning")) {
+			ClearHudMessage(-1070 - theboss);
+			rage_banner_seq[theboss] = 0;
+			terminate;
 		}
-		HudMessage(s:"\cg*WARNING* \cr", s:namestr, s:" \cgIS ENRAGED! *WARNING*";
+
+		str col = rage_banner_colors[frame];
+		HudMessage(s:col, s:"*WARNING* \cr", s:namestr, s:" \c[AlertRed]IS ENRAGED! ", s:col, s:"*WARNING*";
 		           0, -1070 - theboss, CR_UNTRANSLATED, 320.4, banner_y, 0);
+
+		Delay(rage_banner_delays[frame]);
+		frame = (frame + 1) % RAGE_BANNER_FRAMES;
 	}
 }
 
