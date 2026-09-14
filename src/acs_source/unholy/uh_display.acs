@@ -12,14 +12,9 @@ function bool AnyBossSlotAlive(void) {
 // health/death/rage rows share this 32px portrait spacing, and client
 // placement stays independent of the server-side multibosscheck state (map
 // variables are not a client's source of truth).
-// Vertical row step for persistent boss HUD rows, in fixed pixels.
-// Dynamically matches the active border style so multi-boss frames never overlap.
-function int BossHudRowStep(void) {
-	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder") == 0) {
-		return 32.0;
-	}
-	return 37.0;
-}
+#define BOSSHUD_ROW_STEP 37.0
+#define BOSSHUD_BASE_Y_ADJ -27.0
+#define BOSSHUD_TEXT_X_BASE 48.1
 
 #define HUDMESSAGE_REFRESHER_RATE 175  // 404
 bool refreshhudmessage;
@@ -183,17 +178,9 @@ function void Func_DemoneyeNumDisplay(int eyecount) {
 	int custom_x = GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossHudX") * 1.0;
 	int custom_y = GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossHudY") * 1.0;
 	int eye_x = 10.1 + x_aspect + custom_x;
-	int eye_y;
-	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder") != 0) {
-		// Border top is at 251.1 + y_aspect + custom_y.
-		// Eye icon (height 16) at 231.1 leaves a clean 4px gap above the border.
-		eye_y = 231.1 + y_aspect + custom_y;
-	}
-	else {
-		// Without border, Boss 1 starts at 280.1 + y_aspect + custom_y.
-		// Eye icon at 258.1 leaves a clean 6px gap above Boss 1.
-		eye_y = 258.1 + y_aspect + custom_y;
-	}
+	// Border top is at 251.1 + y_aspect + custom_y.
+	// Eye icon (height 16) at 231.1 leaves a clean 4px gap above the border.
+	int eye_y = 231.1 + y_aspect + custom_y;
 
 	int fader = (eyecount == 0);  // If 0 Eyes, apply Fadeout
 	SetFont("EYE_F_0E");
@@ -368,23 +355,9 @@ function int BossHudXOffset(int x_aspect) {
 	return x_aspect + custom_x;
 }
 
-function int BossHudBaseYAdjustment(void) {
-	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder") == 0) {
-		return 0.0;
-	}
-	return -27.0;
-}
-
 function int BossHudYOffset(int theboss, int y_aspect) {
 	int custom_y = GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossHudY") * 1.0;
-	return theboss * BossHudRowStep() + BossHudBaseYAdjustment() + y_aspect + custom_y;
-}
-
-function int BossHudTextXOffset(int cur_x) {
-	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder") == 0) {
-		return 46.1 + cur_x;
-	}
-	return 48.1 + cur_x;
+	return theboss * BOSSHUD_ROW_STEP + BOSSHUD_BASE_Y_ADJ + y_aspect + custom_y;
 }
 
 function int BossHudTextYOffset(int addtoy) {
@@ -405,7 +378,7 @@ function void Func_BHW_DrawMugAndBorder(int theboss, int bossnumb, int x_aspect,
 	HudMessage(s:"A"; 0, -1000 - theboss, -1, 10.1 + x_aspect, 280.1 + addtoy, 0, 1.0);
 
 	// 3. Layer -1030: Boss Border Frame (36x36 compact border)
-	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder") != 0 && CheckFont("MG_OTL1S")) {
+	if (CheckFont("MG_OTL1S")) {
 		SetFont("MG_OTL1S");
 		HudMessage(s:"A"; 0, -1030 - theboss, -1, 10.1 - 2.0 + x_aspect, 280.1 - 2.0 + addtoy, 0, 1.0);
 	}
@@ -440,7 +413,7 @@ function void Func_BHW_HudMess2(int theboss, int bossnumb, int health, int armor
 	else
 		namestr = GetBossName(bossnumb);
 
-	int text_x = BossHudTextXOffset(cur_x);
+	int text_x = BOSSHUD_TEXT_X_BASE + cur_x;
 	int text_y = BossHudTextYOffset(addtoy);
 
 	if (extralife > 0) {
@@ -564,7 +537,7 @@ function void Func_BHW_DeadHudMess2(int theboss, int bossnumb, int demisetype) {
 		ClearHudMessage(-1050 - theboss);
 	}
 
-	int text_x = BossHudTextXOffset(cur_x);
+	int text_x = BOSSHUD_TEXT_X_BASE + cur_x;
 	int text_y = BossHudTextYOffset(addtoy);
 
 	// 4. Grayed-out boss name
@@ -679,7 +652,7 @@ function void Func_BHW_RageHudMess2(int theboss) {
 	int cur_x = BossHudXOffset(x_aspect);
 	int addtoy = BossHudYOffset(theboss, y_aspect);
 
-	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder") != 0 && CheckFont("MG_OT1RR")) {
+	if (CheckFont("MG_OT1RR")) {
 		SetFont("MG_OT1RR");
 		HudMessage(s:"A"; 0, -1060 - theboss, -1, 10.1 - 2.0 + cur_x, 280.1 - 2.0 + addtoy, 0, 1.0);
 	}
