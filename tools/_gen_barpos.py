@@ -102,6 +102,178 @@ def parse_str_array(text: str, name: str) -> list:
     return re.findall(r'"([^"]+)"', m.group(1))
 
 
+# --- DrawBar fill sanity -----------------------------------------------------
+# DrawBar draws its fill at the slot coordinates and clips it to the value
+# region, but the renderer still honours the fill texture's own left/top
+# offset (g_shared/sbarinfo.cpp DrawGraphic -> DTA_Left/Top default to the
+# texture offsets), so a fill whose texture -- or whose animation frames --
+# carry a non-zero offset renders displaced from its slot.
+#
+# A fill that is fully transparent over an opaque empty draws the *inverse* of
+# the value (the visible pixels come from the background), which is only ever
+# correct for a deliberate reverse/mask bar.
+#
+# Both hazards shipped once: bars.toml selected the slot-derived UHVT238/UHHT238
+# aliases, which ANIMDEFS animates over the 34_C_V1x/34_C_H1x group; those
+# frames carry offsets of (-16,-8) and (-58,-184), so the charge bars drew
+# displaced. The guards below keep that class of pairing out of the config.
+TEXTURE_DEF_RX = re.compile(
+    r"\b(?:graphic|texture)\s+([A-Za-z0-9_]+)\s*(?:,[^{}]*)?"
+    r"\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}",
+    re.IGNORECASE,
+)
+TEXTURE_OFFSET_RX = re.compile(r"\boffset\s*(-?\d+)\s*,\s*(-?\d+)", re.IGNORECASE)
+ANIMATION_HEAD_RX = re.compile(r"^(?:texture|flat)\s+([A-Za-z0-9_]+)\b(.*)$", re.IGNORECASE)
+ANIMATION_STOP_RX = re.compile(r"^(?:wall|sprite|graphic|warp|warp2|noise)\b", re.IGNORECASE)
+ANIMATION_PIC_RX = re.compile(r"\bpic\s+([A-Za-z0-9_]+)", re.IGNORECASE)
+ANIMATION_RANGE_RX = re.compile(r"\brange\s+([A-Za-z0-9_]+)\s+([A-Za-z0-9_]+)", re.IGNORECASE)
+TRANSPARENT_PATCH = "tnt1a0"
+
+
+def bar_graphics_text(pattern: str) -> str:
+    return "\n".join(
+        path.read_text(encoding="utf-8", errors="ignore")
+        for path in sorted(ROOT.glob(pattern))
+    )
+
+
+def parse_texture_defs(text: str) -> dict:
+    """name -> {"patches": [...], "offset": (x, y)} for every TEXTURES entry."""
+    defs = {}
+    for m in TEXTURE_DEF_RX.finditer(text):
+        name = m.group(1).casefold()
+        body = m.group(2)
+        entry = defs.setdefault(name, {"patches": [], "offset": (0, 0)})
+        entry["patches"].extend(
+            patch.casefold() for patch in re.findall(r"\bpatch\s+([A-Za-z0-9_]+)", body)
+        )
+        offset = TEXTURE_OFFSET_RX.search(body)
+        if offset:
+            entry["offset"] = (int(offset.group(1)), int(offset.group(2)))
+    return defs
+
+
+def parse_texture_animations(text: str) -> dict:
+    """name -> frame list for every ANIMDEFS animation with at least one frame.
+
+    Handles both the block form (`texture X` followed by `pic` lines) and the
+    inline form (`texture X range A B tics 2`). Only animations are recorded;
+    an ANIMDEFS entry without frames is not an animation.
+    """
+    animations = {}
+    current = None
+
+    def add_frames(frames, inline):
+        for frame in ANIMATION_PIC_RX.findall(inline):
+            frames.append(frame.casefold())
+        for first, last in ANIMATION_RANGE_RX.findall(inline):
+            frames.extend(range_frames(first, last))
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        head = ANIMATION_HEAD_RX.match(stripped)
+        if head:
+            current = head.group(1).casefold()
+            animations.setdefault(current, [])
+            add_frames(animations[current], head.group(2))
+            continue
+        if ANIMATION_STOP_RX.match(stripped):
+            current = None
+            continue
+        if current is not None:
+            add_frames(animations[current], stripped)
+    return {name: frames for name, frames in animations.items() if frames}
+
+
+def range_frames(first: str, last: str) -> list:
+    """`range 34_B_V11 34_B_V14` -> [34_b_v11, 34_b_v12, 34_b_v13, 34_b_v14]."""
+    head = re.match(r"^(.*?)(\d+)$", first)
+    tail = re.match(r"^(.*?)(\d+)$", last)
+    if not head or not tail or head.group(1).casefold() != tail.group(1).casefold():
+        return [first.casefold(), last.casefold()]
+    start, end = int(head.group(2)), int(tail.group(2))
+    if end < start:
+        start, end = end, start
+    width = len(head.group(2))
+    return [f"{head.group(1)}{index:0{width}d}".casefold()
+            for index in range(start, end + 1)]
+
+
+def fill_animation_frames(name: str, animations: dict) -> list:
+    frames = animations.get(name.casefold())
+    return frames if frames else [name.casefold()]
+
+
+def fill_offsets(name: str, defs: dict, animations: dict) -> list:
+    """Non-zero offsets reachable from a fill graphic, as (frame, x, y)."""
+    found = []
+    for frame in fill_animation_frames(name, animations):
+        offset = defs.get(frame, {}).get("offset", (0, 0))
+        if offset != (0, 0):
+            found.append((frame, offset[0], offset[1]))
+    return found
+
+
+def is_transparent_fill(name: str, defs: dict, animations: dict) -> bool:
+    """True only when every pixel of the fill is a known transparent patch."""
+    if name.casefold() in animations:
+        return False
+    entry = defs.get(name.casefold())
+    if entry is None:
+        return False  # unknown or base-package graphic: do not guess
+    patches = entry["patches"]
+    if not patches:
+        return True
+    return all(patch == TRANSPARENT_PATCH for patch in patches)
+
+
+def validate_fill_graphics(bars: list, defs: dict, animations: dict):
+    """Reject fill graphics that cannot render as a growing slot bar."""
+    for bar in bars:
+        label = bar_label(bar)
+        reverse_mask = bar.get("reverse_mask", False)
+        offset_fill_ack = bar.get("offset_fill_ack", False)
+        for full_key, empty_key, axis in (
+            ("vertical_full", "vertical_empty", "vertical"),
+            ("horizontal_full", "horizontal_empty", "horizontal"),
+        ):
+            fill = bar[full_key]
+            offsets = fill_offsets(fill, defs, animations)
+            if offsets and not offset_fill_ack:
+                frame, dx, dy = offsets[0]
+                raise SystemExit(
+                    f"{CONFIG}: {label}: {axis} fill {fill!r} renders at offset "
+                    f"({dx}, {dy}) via {frame!r}. DrawBar draws the fill at the slot "
+                    "coordinates and the renderer applies the texture offset "
+                    "(v_draw.cpp: parms->left/top default to GetScaledLeftOffset/"
+                    "TopOffset), so an offset fill is drawn displaced. Use a fill "
+                    "whose frames have no offset, or set offset_fill_ack = true to "
+                    "declare a reviewed exception."
+                )
+            if reverse_mask:
+                continue
+            if is_transparent_fill(fill, defs, animations) and not is_transparent_fill(
+                bar[empty_key], defs, animations
+            ):
+                raise SystemExit(
+                    f"{CONFIG}: {label}: {axis} fill {fill!r} is fully transparent "
+                    f"while empty {bar[empty_key]!r} is not, which draws the inverse "
+                    "of the value. Set reverse_mask = true if that is intended."
+                )
+
+
+def load_bar_graphics():
+    """Return (known graphics, texture definitions, animations)."""
+    textures = bar_graphics_text("TEXTURES*")
+    animdefs = bar_graphics_text("ANIMDEFS*")
+    known = {name.casefold() for name in re.findall(
+        r"\b(?:graphic|patch|texture)\s+([A-Za-z0-9_]+)", textures + "\n" + animdefs,
+    )} | {name.casefold() for name in COMMON_BAR_GRAPHICS | BASE_BAR_GRAPHICS}
+    return known, parse_texture_defs(textures), parse_texture_animations(animdefs)
+
+
 def load_bar_config() -> dict:
     """Load and validate the hand-authored TOML bar definitions."""
     with CONFIG.open("rb") as fp:
@@ -133,14 +305,7 @@ def load_bar_config() -> dict:
             bar["_namespace"] = namespace
             bars.append(bar)
     config["bars"] = bars
-    graphic_text = "\n".join(
-        path.read_text(encoding="utf-8", errors="ignore")
-        for pattern in ("TEXTURES*", "ANIMDEFS*")
-        for path in ROOT.glob(pattern)
-    )
-    known_graphics = {name.casefold() for name in re.findall(
-        r"\b(?:graphic|patch|texture)\s+([A-Za-z0-9_]+)", graphic_text,
-    )} | {name.casefold() for name in COMMON_BAR_GRAPHICS | BASE_BAR_GRAPHICS}
+    known_graphics, texture_defs, animations = load_bar_graphics()
     seen_ids = set()
     seen_constants = set()
     seen_helpers = {}
@@ -207,12 +372,19 @@ def load_bar_config() -> dict:
         legacy_catalog = bar.get("legacy_catalog", False)
         if not isinstance(legacy_catalog, bool):
             raise SystemExit(f"{CONFIG}: {label}: legacy_catalog must be boolean")
+        reverse_mask = bar.get("reverse_mask", False)
+        if not isinstance(reverse_mask, bool):
+            raise SystemExit(f"{CONFIG}: {label}: reverse_mask must be boolean")
+        offset_fill_ack = bar.get("offset_fill_ack", False)
+        if not isinstance(offset_fill_ack, bool):
+            raise SystemExit(f"{CONFIG}: {label}: offset_fill_ack must be boolean")
         for key in ("vertical_full", "vertical_empty", "horizontal_full", "horizontal_empty"):
             image = bar[key]
             if not isinstance(image, str) or not image:
                 raise SystemExit(f"{CONFIG}: {label}: empty {key}")
             if image.casefold() not in known_graphics:
                 raise SystemExit(f"{CONFIG}: {label}: missing image reference {image!r}")
+    validate_fill_graphics(bars, texture_defs, animations)
     validate_selector_banks(config)
     validate_generated_actor_names(config)
     return config

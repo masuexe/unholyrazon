@@ -288,6 +288,63 @@ def main():
     expect_failure([
         ("UHBar_Fixture", [bar("body", "UHBAR_FIXTURE", vertical_full="MISSING")]),
     ], "missing graphics")
+
+    # --- DrawBar fill sanity -------------------------------------------------
+    # The renderer takes the fill texture's own left/top offset as the default
+    # draw offset (v_draw.cpp: parms->left/top = img->GetScaledLeftOffset/
+    # TopOffset), so a fill whose frames carry an offset is drawn displaced from
+    # its slot. bars.toml shipped that once: UHVT238/UHHT238 are ANIMDEFS
+    # aliases over the 34_C_V1x group, whose frames carry offset -16,-8 and
+    # -58,-184.
+    _, texture_defs, animations = generator.load_bar_graphics()
+    assert generator.range_frames("34_B_V11", "34_B_V14") == [
+        "34_b_v11", "34_b_v12", "34_b_v13", "34_b_v14",
+    ]
+    assert generator.fill_offsets("34_C_V11", texture_defs, animations) == [
+        ("34_c_v11", -16, -8),
+    ]
+    assert generator.fill_offsets("34_B_V11", texture_defs, animations) == []
+    assert generator.fill_offsets("23_G_BAR", texture_defs, animations) == []
+    # An ANIMDEFS animation replaces the wrapper entirely, so an offset-free
+    # wrapper around offset frames still renders displaced.
+    assert generator.fill_offsets("UHHT145", texture_defs, animations)[0] == (
+        "083_b1vr", -58, -184,
+    )
+    # Animation-aware transparency: UHVT238's TEXTURES entry is a TNT1A0
+    # placeholder, but its animation makes it visible.
+    assert generator.is_transparent_fill("50_F_BAR", texture_defs, animations)
+    assert not generator.is_transparent_fill("UHVT238", texture_defs, animations)
+    assert not generator.is_transparent_fill("NOBAR", texture_defs, animations)
+
+    expect_failure([
+        ("UHBar_Fixture", [bar("body", "UHBAR_FIXTURE", vertical_full="34_C_V11")]),
+    ], "offset fill")
+    expect_failure([
+        ("UHBar_Fixture", [bar("body", "UHBAR_FIXTURE", horizontal_full="34_C_H11")]),
+    ], "offset horizontal fill")
+    ack_config = load_fixture([("UHBar_Ack", [bar(
+        "body", "UHBAR_ACK", vertical_full="34_C_V11", offset_fill_ack=True,
+    )])])
+    assert ack_config["bars"][0]["offset_fill_ack"] is True
+    expect_failure([
+        ("UHBar_Fixture", [bar("body", "UHBAR_FIXTURE", offset_fill_ack="yes")]),
+    ], "non-boolean offset_fill_ack")
+
+    expect_failure([
+        ("UHBar_Fixture", [bar(
+            "body", "UHBAR_FIXTURE",
+            vertical_full="50_F_BAR", horizontal_full="50_F_VAR",
+        )]),
+    ], "transparent fill over opaque empty")
+    reverse_config = load_fixture([("UHBar_Reverse", [bar(
+        "body", "UHBAR_REVERSE",
+        vertical_full="50_F_BAR", horizontal_full="50_F_VAR", reverse_mask=True,
+    )])])
+    assert reverse_config["bars"][0]["reverse_mask"] is True
+    expect_failure([
+        ("UHBar_Fixture", [bar("body", "UHBAR_FIXTURE", reverse_mask="yes")]),
+    ], "non-boolean reverse_mask")
+
     print("bar generator fixture checks: OK")
 
 
