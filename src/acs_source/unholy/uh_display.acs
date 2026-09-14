@@ -15,14 +15,8 @@ function bool AnyBossSlotAlive(void) {
 // Vertical row step for persistent boss HUD rows, in fixed pixels.
 // Dynamically matches the active border style so multi-boss frames never overlap.
 function int BossHudRowStep(void) {
-	int border_style = GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder");
-	switch (border_style) {
-		case 0:
-			return 32.0;
-		case 4:
-			return 44.0;
-		case 5:
-			return 48.0;
+	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder") == 0) {
+		return 32.0;
 	}
 	return 37.0;
 }
@@ -337,14 +331,8 @@ function int BossHudXOffset(int x_aspect) {
 }
 
 function int BossHudBaseYAdjustment(void) {
-	int border_style = GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder");
-	switch (border_style) {
-		case 0:
-			return 0.0;
-		case 4:
-			return -64.0;
-		case 5:
-			return -84.0;
+	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder") == 0) {
+		return 0.0;
 	}
 	return -27.0;
 }
@@ -355,14 +343,8 @@ function int BossHudYOffset(int theboss, int y_aspect) {
 }
 
 function int BossHudTextXOffset(int cur_x) {
-	int border_style = GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder");
-	switch (border_style) {
-		case 0:
-			return 46.1 + cur_x;
-		case 4:
-			return 52.1 + cur_x;
-		case 5:
-			return 54.1 + cur_x;
+	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder") == 0) {
+		return 46.1 + cur_x;
 	}
 	return 48.1 + cur_x;
 }
@@ -384,40 +366,10 @@ function void Func_BHW_DrawMugAndBorder(int theboss, int bossnumb, int x_aspect,
 	Func_BHW_SetFontMug(bossnumb);
 	HudMessage(s:"A"; 0, -1000 - theboss, -1, 10.1 + x_aspect, 280.1 + addtoy, 0, 1.0);
 
-	// 3. Layer -1030: Boss Border Frame (hollow center)
-	int border_style = GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder");
-	str borderfont;
-	int off_x = 0;
-	int off_y = 0;
-	switch (border_style) {
-		case 0:  // Disabled
-			ClearHudMessage(-1030 - theboss);
-			return;
-		case 2:  // MM4 Compact 36x36 (metallic pipe & corner brackets)
-			borderfont = "MG_OTL2S";
-			off_x = -2.0; off_y = -2.0;
-			break;
-		case 3:  // MM3 Compact 36x36 (cyan border with corner rivets)
-			borderfont = "MG_OTL3S";
-			off_x = -2.0; off_y = -2.0;
-			break;
-		case 4:  // MM2 Classic 44x44
-			borderfont = "MG_OTL1";
-			off_x = -6.0; off_y = -6.0;
-			break;
-		case 5:  // MM4 Classic 48x48
-			borderfont = "MG_OTL2";
-			off_x = -8.0; off_y = -8.0;
-			break;
-		case 1:  // MM2 Compact 36x36 (neon cyan double-line, default)
-		default:
-			borderfont = "MG_OTL1S";
-			off_x = -2.0; off_y = -2.0;
-			break;
-	}
-	if (CheckFont(borderfont)) {
-		SetFont(borderfont);
-		HudMessage(s:"A"; 0, -1030 - theboss, -1, 10.1 + off_x + x_aspect, 280.1 + off_y + addtoy, 0, 1.0);
+	// 3. Layer -1030: Boss Border Frame (36x36 compact border)
+	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder") != 0 && CheckFont("MG_OTL1S")) {
+		SetFont("MG_OTL1S");
+		HudMessage(s:"A"; 0, -1030 - theboss, -1, 10.1 - 2.0 + x_aspect, 280.1 - 2.0 + addtoy, 0, 1.0);
 	}
 	else {
 		ClearHudMessage(-1030 - theboss);
@@ -685,34 +637,9 @@ function void Func_BHW_RageHudMess2(int theboss) {
 	int cur_x = BossHudXOffset(x_aspect);
 	int addtoy = BossHudYOffset(theboss, y_aspect);
 
-	int border_style = GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder");
-	str ragefont = "";
-	int off_x = 0;
-	int off_y = 0;
-	switch (border_style) {
-		case 0:
-			ragefont = "UFACE0RR";
-			off_x = 0.0; off_y = 0.0;
-			break;
-		case 2:
-		case 3:
-		case 1:
-		default:
-			ragefont = "MG_OT1RR";
-			off_x = -2.0; off_y = -2.0;
-			break;
-		case 4:
-			ragefont = "MG_OT4RR";
-			off_x = -6.0; off_y = -6.0;
-			break;
-		case 5:
-			ragefont = "MG_OT5RR";
-			off_x = -8.0; off_y = -8.0;
-			break;
-	}
-	if (StrCmp(ragefont, "") != 0 && CheckFont(ragefont)) {
-		SetFont(ragefont);
-		HudMessage(s:"A"; 0, -1060 - theboss, -1, 10.1 + off_x + cur_x, 280.1 + off_y + addtoy, 0, 1.0);
+	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder") != 0 && CheckFont("MG_OT1RR")) {
+		SetFont("MG_OT1RR");
+		HudMessage(s:"A"; 0, -1060 - theboss, -1, 10.1 - 2.0 + cur_x, 280.1 - 2.0 + addtoy, 0, 1.0);
 	}
 	else if (CheckFont("UFACE0RR")) {
 		SetFont("UFACE0RR");
