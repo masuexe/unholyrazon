@@ -12,8 +12,19 @@ function bool AnyBossSlotAlive(void) {
 // health/death/rage rows share this 32px portrait spacing, and client
 // placement stays independent of the server-side multibosscheck state (map
 // variables are not a client's source of truth).
+// Vertical row step for persistent boss HUD rows, in fixed pixels.
+// Dynamically matches the active border style so multi-boss frames never overlap.
 function int BossHudRowStep(void) {
-  return 32.0;
+	int border_style = GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder");
+	switch (border_style) {
+		case 0:
+			return 32.0;
+		case 4:
+			return 44.0;
+		case 5:
+			return 48.0;
+	}
+	return 37.0;
 }
 
 #define HUDMESSAGE_REFRESHER_RATE 175  // 404
@@ -325,13 +336,40 @@ function int BossHudXOffset(int x_aspect) {
 	return x_aspect + custom_x;
 }
 
-function int BossHudYOffset(int theboss, int y_aspect) {
-	int uix_offset = 0;
-	if (GetUserCVar(ConsolePlayerNumber(), "UIX_CL_Enable")) {
-		uix_offset = -60.0;
+function int BossHudBaseYAdjustment(void) {
+	int border_style = GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder");
+	switch (border_style) {
+		case 0:
+			return 0.0;
+		case 4:
+			return -64.0;
+		case 5:
+			return -84.0;
 	}
-	int custom_y = (GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossHudY") * 1.0) + uix_offset;
-	return theboss * BossHudRowStep() + y_aspect + custom_y;
+	return -27.0;
+}
+
+function int BossHudYOffset(int theboss, int y_aspect) {
+	int custom_y = GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossHudY") * 1.0;
+	return theboss * BossHudRowStep() + BossHudBaseYAdjustment() + y_aspect + custom_y;
+}
+
+function int BossHudTextXOffset(int cur_x) {
+	int border_style = GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossBorder");
+	switch (border_style) {
+		case 0:
+			return 46.1 + cur_x;
+		case 4:
+			return 52.1 + cur_x;
+		case 5:
+			return 54.1 + cur_x;
+	}
+	return 48.1 + cur_x;
+}
+
+function int BossHudTextYOffset(int addtoy) {
+	int custom_text_y = GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossTextY") * 1.0;
+	return 280.1 + addtoy + custom_text_y;
 }
 
 function void Func_BHW_DrawMugAndBorder(int theboss, int bossnumb, int x_aspect, int addtoy) {
@@ -412,20 +450,23 @@ function void Func_BHW_HudMess2(int theboss, int bossnumb, int health, int armor
 	else
 		namestr = GetBossName(bossnumb);
 
+	int text_x = BossHudTextXOffset(cur_x);
+	int text_y = BossHudTextYOffset(addtoy);
+
 	if (extralife > 0) {
-		HudMessage(s:namestr, s:" \ck[+", i:extralife, s:"]"; 0, -990 - theboss, -1, 48.1 + cur_x, 284.1 + addtoy, 0, 1.0);
+		HudMessage(s:namestr, s:" \ck[+", i:extralife, s:"]"; 0, -990 - theboss, -1, text_x, text_y, 0, 1.0);
 	}
 	else {
-		HudMessage(s:namestr; 0, -990 - theboss, -1, 48.1 + cur_x, 284.1 + addtoy, 0, 1.0);
+		HudMessage(s:namestr; 0, -990 - theboss, -1, text_x, text_y, 0, 1.0);
 	}
 
-	HudMessage(s:"\c[UB0HP]", i:health; 0, -1010 - theboss, -1, 48.1 + cur_x, 294.1 + addtoy, 0, 1.0);
+	HudMessage(s:"\c[UB0HP]", i:health; 0, -1010 - theboss, -1, text_x, text_y + 10.0, 0, 1.0);
 	if (armor >= 1) {
 		if (armorsave > 0) {
-			HudMessage(s:"\c[UB0AR]", i:armor, s:" \cu(", i:armorsave, s:"%)"; 0, -1020 - theboss, -1, 48.1 + cur_x, 304.1 + addtoy, 0, 1.0);
+			HudMessage(s:"\c[UB0AR]", i:armor, s:" \cu(", i:armorsave, s:"%)"; 0, -1020 - theboss, -1, text_x, text_y + 20.0, 0, 1.0);
 		}
 		else {
-			HudMessage(s:"\c[UB0AR]", i:armor; 0, -1020 - theboss, -1, 48.1 + cur_x, 304.1 + addtoy, 0, 1.0);
+			HudMessage(s:"\c[UB0AR]", i:armor; 0, -1020 - theboss, -1, text_x, text_y + 20.0, 0, 1.0);
 		}
 	}
 	else {
@@ -529,6 +570,9 @@ function void Func_BHW_DeadHudMess2(int theboss, int bossnumb, int demisetype) {
 		ClearHudMessage(-1050 - theboss);
 	}
 
+	int text_x = BossHudTextXOffset(cur_x);
+	int text_y = BossHudTextYOffset(addtoy);
+
 	// 4. Grayed-out boss name
 	SetFont("SMALLFONT");
 	str namestr;
@@ -538,7 +582,7 @@ function void Func_BHW_DeadHudMess2(int theboss, int bossnumb, int demisetype) {
 		namestr = GetEyeHudName(DecodeEyeBossNumb(bossnumb));
 	else
 		namestr = GetBossName(bossnumb);
-	HudMessage(s:"\c[UB0DC]", s:namestr; 0, -990 - theboss, -1, 48.1 + cur_x, 284.1 + addtoy, 0, 1.0);
+	HudMessage(s:"\c[UB0DC]", s:namestr; 0, -990 - theboss, -1, text_x, text_y, 0, 1.0);
 
 	// 5. Status text in health line (-1010)
 	str statustext;
@@ -557,7 +601,7 @@ function void Func_BHW_DeadHudMess2(int theboss, int bossnumb, int demisetype) {
 			statustext = "\c[UB0DC]DEAD";
 			break;
 	}
-	HudMessage(s:statustext; 0, -1010 - theboss, -1, 48.1 + cur_x, 294.1 + addtoy, 0, 1.0);
+	HudMessage(s:statustext; 0, -1010 - theboss, -1, text_x, text_y + 10.0, 0, 1.0);
 
 	// 6. Clear armor line (-1020)
 	ClearHudMessage(-1020 - theboss);
@@ -647,28 +691,23 @@ function void Func_BHW_RageHudMess2(int theboss) {
 	int off_y = 0;
 	switch (border_style) {
 		case 0:
-			ragefont = "";
+			ragefont = "UFACE0RR";
+			off_x = 0.0; off_y = 0.0;
 			break;
 		case 2:
-			ragefont = "MG_R2S";
-			off_x = -2.0; off_y = -2.0;
-			break;
 		case 3:
-			ragefont = "MG_R3S";
+		case 1:
+		default:
+			ragefont = "MG_OT1RR";
 			off_x = -2.0; off_y = -2.0;
 			break;
 		case 4:
-			ragefont = "MG_OTL1R";
+			ragefont = "MG_OT4RR";
 			off_x = -6.0; off_y = -6.0;
 			break;
 		case 5:
-			ragefont = "MG_OTL2R";
+			ragefont = "MG_OT5RR";
 			off_x = -8.0; off_y = -8.0;
-			break;
-		case 1:
-		default:
-			ragefont = "MG_R1S";
-			off_x = -2.0; off_y = -2.0;
 			break;
 	}
 	if (StrCmp(ragefont, "") != 0 && CheckFont(ragefont)) {
