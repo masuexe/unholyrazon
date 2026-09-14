@@ -162,6 +162,13 @@ function void Func_DemoneyeNumDisplay(int eyecount) {
 script "ub_BossHealthWatcher" (void) {
 	SetActivator(0, AAPTR_NULL);
 
+	for (int b = 0; b < MAX_BOSSES; b++) {
+		bosshparr[b][BOSSHP_HPMEM] = -1;
+		bosshparr[b][BOSSHP_ARMORMEM] = -1;
+		bosshparr[b][BOSSHP_EXTRALIFEMEM] = -1;
+		bosshparr[b][BOSSHP_ARMORSAVEMEM] = -1;
+	}
+
 	until (AnyBossSlotAlive()) {
 		Delay(1);
 	}
@@ -197,13 +204,32 @@ function void Func_BHW_Checker(int numb, int tidofboss, int whichboss, bool forc
 		else if (shadowrevealactive && shadowtricksarr[numb]) {  // During Shadow, show Blue
 			Func_BHW_DeadHudMess(numb + 1, whichboss, 8);
 		}
-		else if (bosshparr[numb][BOSSHP_HPMEM] != bosshparr[numb][BOSSHP_CURRHP] || bosshparr[numb][BOSSHP_CURRARMOR] != bosshparr[numb][BOSSHP_ARMORMEM]) {
-			bosshparr[numb][BOSSHP_HPMEM] = bosshparr[numb][BOSSHP_CURRHP];
-			bosshparr[numb][BOSSHP_ARMORMEM] = bosshparr[numb][BOSSHP_CURRARMOR];
-			Func_BHW_HudMess(numb + 1, whichboss, bosshparr[numb][BOSSHP_HPMEM], bosshparr[numb][BOSSHP_ARMORMEM]);
-		}
-		else if (force) {
-			Func_BHW_HudMess(numb + 1, whichboss, bosshparr[numb][BOSSHP_HPMEM], bosshparr[numb][BOSSHP_ARMORMEM]);
+		else {
+			int extralife = CheckActorInventory(tidofboss, "PlayerPropertyExtraLife");
+			if (extralife < 0)
+				extralife = 0;
+			if (extralife > 15)
+				extralife = 15;
+
+			int armorsave = 0;
+			if (bosshparr[numb][BOSSHP_CURRARMOR] > 0) {
+				if (SetActivator(tidofboss)) {
+					armorsave = FixedMul(GetArmorInfo(ARMORINFO_SAVEPERCENT), 100.0) >> 16;
+					SetActivator(0, AAPTR_NULL);
+				}
+			}
+
+			if (bosshparr[numb][BOSSHP_HPMEM] != bosshparr[numb][BOSSHP_CURRHP] ||
+			    bosshparr[numb][BOSSHP_ARMORMEM] != bosshparr[numb][BOSSHP_CURRARMOR] ||
+			    bosshparr[numb][BOSSHP_EXTRALIFEMEM] != extralife ||
+			    bosshparr[numb][BOSSHP_ARMORSAVEMEM] != armorsave ||
+			    force) {
+				bosshparr[numb][BOSSHP_HPMEM] = bosshparr[numb][BOSSHP_CURRHP];
+				bosshparr[numb][BOSSHP_ARMORMEM] = bosshparr[numb][BOSSHP_CURRARMOR];
+				bosshparr[numb][BOSSHP_EXTRALIFEMEM] = extralife;
+				bosshparr[numb][BOSSHP_ARMORSAVEMEM] = armorsave;
+				Func_BHW_HudMess(numb + 1, whichboss, bosshparr[numb][BOSSHP_HPMEM], bosshparr[numb][BOSSHP_ARMORMEM], extralife, armorsave);
+			}
 		}
 	}
 	else if (bossslotalive[numb]) {  // Boss Spectated!
@@ -217,12 +243,18 @@ function void Func_BHW_Checker(int numb, int tidofboss, int whichboss, bool forc
 	}
 }
 
-script "ub_BHW_HudClientside" (int theboss, int bossnumb, int health, int armor) CLIENTSIDE {
-	Func_BHW_HudMess2(theboss, bossnumb, health, armor);
+script "ub_BHW_HudClientside" (int packed_boss, int bossnumb, int health, int packed_armor) CLIENTSIDE {
+	int theboss = packed_boss & 0x0F;
+	int extralife = (packed_boss >> 4) & 0x0F;
+	int armor = packed_armor >> 8;
+	int armorsave = packed_armor & 0xFF;
+	Func_BHW_HudMess2(theboss, bossnumb, health, armor, extralife, armorsave);
 }
 
-function void Func_BHW_HudMess(int theboss, int bossnumb, int health, int armor) {
-	ACS_NamedExecuteWithResult("ub_BHW_HudClientside", theboss, bossnumb, health, armor);
+function void Func_BHW_HudMess(int theboss, int bossnumb, int health, int armor, int extralife, int armorsave) {
+	int packed_boss = (theboss & 0x0F) | ((extralife & 0x0F) << 4);
+	int packed_armor = (armor << 8) | (armorsave & 0xFF);
+	ACS_NamedExecuteWithResult("ub_BHW_HudClientside", packed_boss, bossnumb, health, packed_armor);
 }
 
 // BossNumb survivor HUD packing (parade / class face):
@@ -288,7 +320,7 @@ function bool IsEyeBossNumb(int bossnumb) {
 	return bossnumb >= 1000;
 }
 
-function void Func_BHW_HudMess2(int theboss, int bossnumb, int health, int armor) {
+function void Func_BHW_HudMess2(int theboss, int bossnumb, int health, int armor, int extralife, int armorsave) {
 	SetHudSize(640, 480, 0);  // 640,512
 	int x_aspect = GetHudLeft(640) * 1.0;
 	int y_aspect = GetHudTop(480) * 1.0;
@@ -301,6 +333,11 @@ function void Func_BHW_HudMess2(int theboss, int bossnumb, int health, int armor
 	Func_BHW_SetFontMug(bossnumb);
 
 	HudMessage(s:"A"; 0, -1000 - theboss, -1, 10.1 + x_aspect, 280.1 + addtoy, 0, 1.0);
+
+	// Clear any death tint and icon overlays in case of revival
+	ClearHudMessage(-1040 - theboss);
+	ClearHudMessage(-1050 - theboss);
+
 	SetFont("SMALLFONT");
 	str namestr;
 	if (IsSurvivorBossNumb(bossnumb))
@@ -309,13 +346,25 @@ function void Func_BHW_HudMess2(int theboss, int bossnumb, int health, int armor
 		namestr = GetEyeHudName(DecodeEyeBossNumb(bossnumb));
 	else
 		namestr = GetBossName(bossnumb);
-	HudMessage(s:namestr; 0, -990 - theboss, -1, 48.1 + x_aspect, 284.1 + addtoy, 0, 1.0);
-	HudMessage(s:"\c[UB0HP]", i:health; 0, -1010 - theboss, -1, 48.1 + x_aspect, 294.1 + addtoy, 0, 1.0);
-	if (armor >= 1) {
-		HudMessage(s:"\c[UB0AR]", i:armor; 0, -1020 - theboss, -1, 48.1 + x_aspect, 304.1 + addtoy, 0, 1.0);
+
+	if (extralife > 0) {
+		HudMessage(s:namestr, s:" \ck[+", i:extralife, s:"]"; 0, -990 - theboss, -1, 48.1 + x_aspect, 284.1 + addtoy, 0, 1.0);
 	}
 	else {
-		HudMessage(s:" "; 0, -1020 - theboss, -1, 48.1 + x_aspect, 304.1 + addtoy, 0.1, 1.0);
+		HudMessage(s:namestr; 0, -990 - theboss, -1, 48.1 + x_aspect, 284.1 + addtoy, 0, 1.0);
+	}
+
+	HudMessage(s:"\c[UB0HP]", i:health; 0, -1010 - theboss, -1, 48.1 + x_aspect, 294.1 + addtoy, 0, 1.0);
+	if (armor >= 1) {
+		if (armorsave > 0) {
+			HudMessage(s:"\c[UB0AR]", i:armor, s:" \cu(", i:armorsave, s:"%)"; 0, -1020 - theboss, -1, 48.1 + x_aspect, 304.1 + addtoy, 0, 1.0);
+		}
+		else {
+			HudMessage(s:"\c[UB0AR]", i:armor; 0, -1020 - theboss, -1, 48.1 + x_aspect, 304.1 + addtoy, 0, 1.0);
+		}
+	}
+	else {
+		ClearHudMessage(-1020 - theboss);
 	}
 }
 
@@ -390,13 +439,62 @@ function void Func_BHW_DeadHudMess2(int theboss, int bossnumb, int demisetype) {
 
 	HudMessage(s:""; 0, -1060 - theboss, -1, 0.99, 0.01, 1873);  // Rage
 
+	// 1. Mugshot
 	Func_BHW_SetFontMug(bossnumb);
-
 	HudMessage(s:"A"; 0, -1000 - theboss, -1, 10.1 + x_aspect, 280.1 + addtoy, 0, 1.0);
-	SetFont(StrParam(s:"UFACE0", i:demisetype * 11));  // Tint
-	HudMessage(s:"A"; 0, -1010 - theboss, -1, 10.1 + x_aspect, 280.1 + addtoy, 0, 1.0);
-	SetFont(StrParam(s:"UFACE00", i:demisetype));  // Icon
-	HudMessage(s:"A"; 0, -1020 - theboss, -1, 10.1 + x_aspect, 280.1 + addtoy, 0, 1.0);
+
+	// 2. Tint overlay
+	str tintfont = StrParam(s:"UFACE0", i:demisetype * 11);
+	if (CheckFont(tintfont)) {
+		SetFont(tintfont);
+		HudMessage(s:"A"; 0, -1040 - theboss, -1, 10.1 + x_aspect, 280.1 + addtoy, 0, 1.0);
+	}
+	else {
+		ClearHudMessage(-1040 - theboss);
+	}
+
+	// 3. Demise icon
+	str iconfont = StrParam(s:"UFACE00", i:demisetype);
+	if (CheckFont(iconfont)) {
+		SetFont(iconfont);
+		HudMessage(s:"A"; 0, -1050 - theboss, -1, 10.1 + x_aspect, 280.1 + addtoy, 0, 1.0);
+	}
+	else {
+		ClearHudMessage(-1050 - theboss);
+	}
+
+	// 4. Grayed-out boss name
+	SetFont("SMALLFONT");
+	str namestr;
+	if (IsSurvivorBossNumb(bossnumb))
+		namestr = GetSurvivorName(DecodeSurvivorBossNumb(bossnumb));
+	else if (IsEyeBossNumb(bossnumb))
+		namestr = GetEyeHudName(DecodeEyeBossNumb(bossnumb));
+	else
+		namestr = GetBossName(bossnumb);
+	HudMessage(s:"\c[UB0DC]", s:namestr; 0, -990 - theboss, -1, 48.1 + x_aspect, 284.1 + addtoy, 0, 1.0);
+
+	// 5. Status text in health line (-1010)
+	str statustext;
+	switch (demisetype) {
+		case 6:  // Fast death (<= 30 seconds)
+			statustext = "\c[UB004]DESTROYED";
+			break;
+		case 7:  // Spectator / retired
+			statustext = "\c[UB105]RETIRED";
+			break;
+		case 8:  // Shadow reveal
+			statustext = "\c[UB0DC]???";
+			break;
+		case 5:  // Normal death
+		default:
+			statustext = "\c[UB0DC]DEAD";
+			break;
+	}
+	HudMessage(s:statustext; 0, -1010 - theboss, -1, 48.1 + x_aspect, 294.1 + addtoy, 0, 1.0);
+
+	// 6. Clear armor line (-1020)
+	ClearHudMessage(-1020 - theboss);
 }
 
 script "ub_RageDisplay" (void) {
