@@ -624,12 +624,12 @@ script "ub_RageDisplay" (void) {
 				if (rage_boxbool) {
 					if (refreshhudmessage) {
 						// HudMessageBold(s:"A"; 0, -1060-boss_Spacing,-1, 10.1, 280.1+boss_Spacing*32.0, 0,1.0);
-						Func_BHW_RageHudMess(boss_spacing);
+						ACS_NamedExecuteWithResult("ub_BHW_RageHudClientside", boss_spacing);
 						ACS_NamedExecuteWithResult("ub_BHW_RageBannerClientside", boss_spacing, bossdataarr[boss_idx][BOSSDATA_NUM], 2);
 					}
 				}
 				else {
-					Func_BHW_RageHudMess(boss_spacing);
+					ACS_NamedExecuteWithResult("ub_BHW_RageHudClientside", boss_spacing);
 					ACS_NamedExecuteWithResult("ub_BHW_RageBannerClientside", boss_spacing, bossdataarr[boss_idx][BOSSDATA_NUM], 0);
 					rage_boxbool = true;
 				}
@@ -647,10 +647,6 @@ script "ub_RageDisplay" (void) {
 		HudMessageBold(s:""; 0, -1060 - boss_spacing, -1, 0.99, 0.01, 1873);
 		HudMessageBold(s:""; 0, -1070 - boss_spacing, -1, 0.99, 0.01, 1873);
 	}
-}
-
-function void Func_BHW_RageHudMess(int theboss) {
-	ACS_NamedExecuteWithResult("ub_BHW_RageHudClientside", theboss);
 }
 
 script "ub_BHW_RageHudClientside" (int theboss) CLIENTSIDE {
@@ -681,6 +677,9 @@ function void Func_BHW_RageHudMess2(int theboss) {
 	}
 }
 
+// Note: the rage body composition lives in UHDT (GetBossRageWarningText) so
+// this library stays under ACC's 256-function cap.  The fadeout and the
+// blinking loop both consume the single value below.
 script "ub_BHW_RageBannerClientside" (int theboss, int bossnumb, int action) CLIENTSIDE {
 	if (theboss < 1 || theboss > MAX_BOSSES)
 		terminate;
@@ -691,20 +690,25 @@ script "ub_BHW_RageBannerClientside" (int theboss, int bossnumb, int action) CLI
 		terminate;
 	}
 
+	// Boss-only path: Demoneye (eye-encoded) and any non-DefineBoss id must not
+	// borrow a Boss rage banner.  Clear the slot and stop instead of falling
+	// back to GetEyeHudName / an empty generic name.
+	if (IsEyeBossNumb(bossnumb) || !IsBossDefined(bossnumb)) {
+		rage_banner_seq[theboss] = 0;
+		ClearHudMessage(-1070 - theboss);
+		terminate;
+	}
+
 	SetHudSize(640, 480, 0);
 
-	str namestr;
-	if (IsEyeBossNumb(bossnumb))
-		namestr = GetEyeHudName(DecodeEyeBossNumb(bossnumb));
-	else
-		namestr = GetBossName(bossnumb);
+	str ragebody = GetBossRageWarningText(bossnumb);
 
 	int banner_y = 36.0 + (theboss - 1) * 16.0;
 
 	SetFont("BIGFONT");
 	if (action == 1) {
 		rage_banner_seq[theboss] = 0;
-		HudMessage(s:"\c[AlertRed]*WARNING* \cr", s:namestr, s:" \c[AlertRed]IS ENRAGED! *WARNING*";
+		HudMessage(s:"\c[AlertRed]*WARNING* \cr", s:ragebody, s:" \c[AlertRed]*WARNING*";
 		           HUDMSG_FADEOUT, -1070 - theboss, CR_UNTRANSLATED, 320.4, banner_y, 0.0, 1.2);
 		terminate;
 	}
@@ -729,7 +733,7 @@ script "ub_BHW_RageBannerClientside" (int theboss, int bossnumb, int action) CLI
 		}
 
 		str col = rage_banner_colors[frame];
-		HudMessage(s:col, s:"*WARNING* \cr", s:namestr, s:" \c[AlertRed]IS ENRAGED! ", s:col, s:"*WARNING*";
+		HudMessage(s:col, s:"*WARNING* \cr", s:ragebody, s:" ", s:col, s:"*WARNING*";
 		           0, -1070 - theboss, CR_UNTRANSLATED, 320.4, banner_y, 0);
 
 		Delay(rage_banner_delays[frame]);

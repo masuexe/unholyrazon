@@ -106,7 +106,8 @@
 #libdefine UHBOSS_STR_SPAWNMSG 7
 #libdefine UHBOSS_STR_EXBASEACTOR 8
 #libdefine UHBOSS_STR_MORPHSETUP 9
-#libdefine UHBOSS_STR_COUNT 10
+#libdefine UHBOSS_STR_RAGEWARNING 10
+#libdefine UHBOSS_STR_COUNT 11
 
 // int fields per boss
 #libdefine UHBOSS_INT_RARITY 0
@@ -323,6 +324,28 @@ function str GetBossSpawnMsg(int id) {
 	if (id >= 0)
 		return uh_bossvanillastr[slot][UHBOSS_STR_SPAWNMSG];
 	return uh_bosscustomstr[slot][UHBOSS_STR_SPAWNMSG];
+}
+
+function str GetBossRageWarning(int id) {
+	int slot = UH_BossResolveSlot(id);
+	if (slot == UHBOSS_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_bossvanillastr[slot][UHBOSS_STR_RAGEWARNING];
+	return uh_bosscustomstr[slot][UHBOSS_STR_RAGEWARNING];
+}
+
+// Full rage-warning body for a DefineBoss-registered boss: the registered
+// text when non-empty, otherwise the generic "<Boss Name> IS ENRAGED!".
+// Returns "" for anything that is not a Boss (undefined id or an encoding
+// from another HUD band), so callers never print a nameless generic sentence.
+function str GetBossRageWarningText(int id) {
+	if (!IsBossDefined(id))
+		return "";
+	str custom = GetBossRageWarning(id);
+	if (StrCmp(custom, "") != 0)
+		return custom;
+	return StrParam(s:GetBossName(id), s:" \c[AlertRed]IS ENRAGED!");
 }
 
 function str GetBossExBaseActor(int id) {
@@ -570,7 +593,7 @@ function int RandomBossFromPool(int rarity) {
 
 function void UH_BossWriteVanilla(int id, str actor, str name, int rarity, int basehp, int addhp,
 	str exboss_baseactor, str mugshot, str musiclump, str musiccredit,
-	str instruction, str spawnmessagetype, str spawnmessage) {
+	str instruction, str spawnmessagetype, str spawnmessage, str ragewarningmessage) {
 	int baseid;
 	uh_bossvanilladefined[id] = 1;
 	uh_bossvanillastr[id][UHBOSS_STR_ACTOR] = actor;
@@ -583,6 +606,7 @@ function void UH_BossWriteVanilla(int id, str actor, str name, int rarity, int b
 	uh_bossvanillastr[id][UHBOSS_STR_SPAWNMSG] = spawnmessage;
 	uh_bossvanillastr[id][UHBOSS_STR_EXBASEACTOR] = exboss_baseactor;
 	uh_bossvanillastr[id][UHBOSS_STR_MORPHSETUP] = "";
+	uh_bossvanillastr[id][UHBOSS_STR_RAGEWARNING] = ragewarningmessage;
 	uh_bossvanillaint[id][UHBOSS_INT_RARITY] = rarity;
 	uh_bossvanillaint[id][UHBOSS_INT_BASEHP] = basehp;
 	uh_bossvanillaint[id][UHBOSS_INT_ADDHP] = addhp;
@@ -593,7 +617,7 @@ function void UH_BossWriteVanilla(int id, str actor, str name, int rarity, int b
 
 function int UH_BossWriteCustom(str actor, str name, int rarity, int basehp, int addhp,
 	str exboss_baseactor, str mugshot, str musiclump, str musiccredit,
-	str instruction, str spawnmessagetype, str spawnmessage) {
+	str instruction, str spawnmessagetype, str spawnmessage, str ragewarningmessage) {
 	int i = uh_bosscustomcount;
 	int bossid = -1 - i;
 	int baseid;
@@ -607,6 +631,7 @@ function int UH_BossWriteCustom(str actor, str name, int rarity, int basehp, int
 	uh_bosscustomstr[i][UHBOSS_STR_SPAWNMSG] = spawnmessage;
 	uh_bosscustomstr[i][UHBOSS_STR_EXBASEACTOR] = exboss_baseactor;
 	uh_bosscustomstr[i][UHBOSS_STR_MORPHSETUP] = "";
+	uh_bosscustomstr[i][UHBOSS_STR_RAGEWARNING] = ragewarningmessage;
 	uh_bosscustomint[i][UHBOSS_INT_RARITY] = rarity;
 	uh_bosscustomint[i][UHBOSS_INT_BASEHP] = basehp;
 	uh_bosscustomint[i][UHBOSS_INT_ADDHP] = addhp;
