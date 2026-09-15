@@ -300,17 +300,17 @@ def main():
     # The renderer takes the fill texture's own left/top offset as the default
     # draw offset (v_draw.cpp: parms->left/top = img->GetScaledLeftOffset/
     # TopOffset), so a fill whose frames carry an offset is drawn displaced from
-    # its slot. bars.toml shipped that once: UHVT238/UHHT238 were ANIMDEFS
-    # aliases over the 34_C_V1x group, whose frames carried offset -16,-8 and
-    # -58,-184. Those offsets were removed on 2026-09-15, so the shipped config
-    # must stay offset-free; the detection itself is exercised on synthetic data.
+    # its slot. bars.toml shipped that once via aliases over the 34_C_V1x
+    # group, whose frames carried offset -16,-8 and -58,-184. Those offsets
+    # were removed on 2026-09-15, so the shipped config must stay offset-free;
+    # the detection itself is exercised on synthetic data.
     _, texture_defs, animations = generator.load_bar_graphics()
     assert generator.range_frames("34_B_V11", "34_B_V14") == [
         "34_b_v11", "34_b_v12", "34_b_v13", "34_b_v14",
     ]
     # An ANIMDEFS animation replaces the wrapper entirely, so an offset-free
     # wrapper around offset frames would still render displaced.
-    assert generator.fill_animation_frames("UHHT145", animations) == [
+    assert generator.fill_animation_frames("083_B_VR", animations) == [
         "083_b1vr", "083_b2vr", "083_b3vr", "083_b4vr",
     ]
     for item in real_config["bars"]:
@@ -318,10 +318,16 @@ def main():
             assert generator.fill_offsets(item[key], texture_defs, animations) == [], (
                 item["_namespace"], item["id"], key,
             )
-    # Animation-aware transparency: UHVT238's TEXTURES entry is a TNT1A0
-    # placeholder, but its animation makes it visible.
-    assert generator.is_transparent_fill("UHVB145", texture_defs, animations)
-    assert not generator.is_transparent_fill("UHVT238", texture_defs, animations)
+    transparent_defs = {
+        "transparent_fill": {"patches": ["tnt1a0"], "offset": (0, 0)},
+        "animated_fill": {"patches": ["tnt1a0"], "offset": (0, 0)},
+    }
+    assert generator.is_transparent_fill("transparent_fill", transparent_defs, {})
+    # Animation-aware transparency: a transparent wrapper is visible when its
+    # animation supplies opaque frames.
+    assert not generator.is_transparent_fill(
+        "animated_fill", transparent_defs, {"animated_fill": ["b_bar01a"]}
+    )
     assert not generator.is_transparent_fill("NOBAR", texture_defs, animations)
     # A definition that only exists in a comment is not a graphic at all.
     assert "50_f_bar" not in texture_defs
@@ -330,6 +336,7 @@ def main():
         "fake_off": {"patches": ["b_bar01a"], "offset": (-16, -8)},
         "fake_off_h": {"patches": ["fake_off"], "offset": (-58, -184)},
         "fake_plain": {"patches": ["b_bar01a"], "offset": (0, 0)},
+        "fake_clear": {"patches": ["tnt1a0"], "offset": (0, 0)},
     }
     fake_anims = {"fake_wrap": ["fake_off"]}
     assert generator.fill_offsets("fake_wrap", fake_defs, fake_anims) == [
@@ -355,17 +362,19 @@ def main():
         ("UHBar_Fixture", [bar("body", "UHBAR_FIXTURE", offset_fill_ack="yes")]),
     ], "non-boolean offset_fill_ack")
 
-    expect_failure([
-        ("UHBar_Fixture", [bar(
-            "body", "UHBAR_FIXTURE",
-            vertical_full="UHVB145", horizontal_full="UHHB145",
-        )]),
-    ], "transparent fill over opaque empty")
-    reverse_config = load_fixture([("UHBar_Reverse", [bar(
-        "body", "UHBAR_REVERSE",
-        vertical_full="UHVB145", horizontal_full="UHHB145", reverse_mask=True,
-    )])])
-    assert reverse_config["bars"][0]["reverse_mask"] is True
+    clear_bar = bar(
+        "body", "UHBAR_FIXTURE",
+        vertical_full="fake_clear", horizontal_full="fake_clear",
+    )
+    try:
+        generator.validate_fill_graphics([clear_bar], fake_defs, fake_anims)
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("transparent fill over opaque empty unexpectedly passed")
+    generator.validate_fill_graphics(
+        [dict(clear_bar, reverse_mask=True)], fake_defs, fake_anims
+    )
     expect_failure([
         ("UHBar_Fixture", [bar("body", "UHBAR_FIXTURE", reverse_mask="yes")]),
     ], "non-boolean reverse_mask")

@@ -5,8 +5,7 @@ Legacy Unholy bars at the standard bar1/bar2/bar3/HP slots use real graphic
 names through DrawCustomBarString*. Those calls are collected into the
 uh_barcat.acs compatibility catalog; SBARINFO.*.uhappend expands each pair
 into InInventory-banded DrawBar lines (4 slots x 4 layers x 2 HUD modes).
-This does not define BRSLT/BZSLT. Main SBARINFO.H/V keep v6b
-CustSbarSlotFlag + BRSLT lines for other mods.
+Main SBARINFO.H/V keep the v6b CustSbarSlotFlag slot lines for other mods.
 
 The hand-authored tools/bars.toml adds namespaced bar groups without a
 hard-coded layer ceiling. Each group owns one namespace. API IDs follow bar
@@ -37,14 +36,6 @@ CONFIG = Path(__file__).resolve().parent / "bars.toml"
 GENERATED_ACS = ROOT / "acs_source" / "hud" / "class_bars_generated.acs"
 
 UH_BAR_LAYER_MAX = 4
-KIND_RENAME = {
-    "BRSLT": "UHVT",
-    "BRSLB": "UHVB",
-    "VRSLT": "UHHT",
-    "VRSLB": "UHHB",
-}
-BRSLT_NAME_RX = re.compile(r"\b(BRSLT|BRSLB|VRSLT|VRSLB)(\d{3})\b")
-
 POS_BANKS = [
     ("1", "Custom Bar Pos1 (bar1)", 58, 184, 16, 8),
     ("2", "Custom Bar Pos2 (bar2)", 58, 176, 8, 8),
@@ -86,12 +77,6 @@ STALE_GENERATED = (
 )
 
 
-def renamed_bars_text(path: Path) -> str:
-    """TEXTURES.bars / ANIMDEFS.bars: BRSLT### -> UHVT### (idempotent)."""
-    return BRSLT_NAME_RX.sub(lambda m: KIND_RENAME[m.group(1)] + m.group(2),
-                             path.read_text(encoding="utf-8"))
-
-
 def parse_str_array(text: str, name: str) -> list:
     m = re.search(
         rf"str\s+{re.escape(name)}\s*\[[^\]]+\]\s*=\s*\{{([^}}]*)\}}",
@@ -113,10 +98,10 @@ def parse_str_array(text: str, name: str) -> list:
 # the value (the visible pixels come from the background), which is only ever
 # correct for a deliberate reverse/mask bar.
 #
-# Both hazards shipped once: bars.toml selected the slot-derived UHVT238/UHHT238
-# aliases, which ANIMDEFS animates over the 34_C_V1x/34_C_H1x group; those
-# frames carry offsets of (-16,-8) and (-58,-184), so the charge bars drew
-# displaced. The guards below keep that class of pairing out of the config.
+# Both hazards shipped once when bars.toml selected aliases animated over the
+# 34_C_V1x/34_C_H1x group. Those frames carry offsets of (-16,-8) and
+# (-58,-184), so the charge bars drew displaced. The guards below keep that
+# class of pairing out of the config.
 TEXTURE_DEF_RX = re.compile(
     r"\b(?:graphic|texture)\s+([A-Za-z0-9_]+)\s*(?:,[^{}]*)?"
     r"\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}",
@@ -844,8 +829,6 @@ def main():
         SBAR_VZ: vz,
         UH_BARFX: barfx_updated_text(config),
         GENERATED_ACS: gen_generated_acs(config),
-        TEX_BARS: renamed_bars_text(TEX_BARS),
-        ANIM_BARS: renamed_bars_text(ANIM_BARS),
         **strip_main_layer_banks(),
     }
 
