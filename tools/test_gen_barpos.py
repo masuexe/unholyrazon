@@ -23,7 +23,6 @@ def bar(bar_id, constant_name, **overrides):
         "horizontal_full": "002B_VAR",
         "horizontal_empty": "VNOBAR",
         "capacity": 100,
-        "legacy_catalog": True,
     }
     values.update(overrides)
     return values
@@ -90,7 +89,7 @@ def main():
     append_lines = generator.gen_namespaced_append_lines(source_config, True)
     assert any('DrawBar"002B_VAR","VNOBAR",Ammo1,' in line
                for line in append_lines)
-    compact_h, compact_v = generator.gen_append_files([], source_config)
+    compact_h, compact_v = generator.gen_append_files(source_config)
     assert compact_h.startswith("AppendStatusBar normal,forcescaled{")
     assert compact_v.startswith("AppendStatusBar fullscreen,forcescaled{")
     assert "\n" not in compact_h and "\n" not in compact_v
@@ -230,17 +229,6 @@ def main():
         ) < charge_call
     assert 'GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars")' in atomic_source
     assert "Timer() % 2 == 1" in atomic_source
-
-    # Public declarations remain, but no live internal string-bar invocation
-    # may remain after TOML migration.
-    live_call = re.compile(
-        r"^[ \t]*DrawCustomBarString(?:Layer)?(?:1|2|3|HP)\s*\(", re.MULTILINE
-    )
-    live_paths = [
-        path for path in (generator.ROOT / "acs_source" / "hud").rglob("*.acs")
-        if live_call.search(path.read_text(encoding="utf-8"))
-    ]
-    assert not live_paths, live_paths
 
     base_graphics = load_fixture([("UHBar_BaseGraphics", [bar(
         "body", "UHBAR_BASEGRAPHICS",

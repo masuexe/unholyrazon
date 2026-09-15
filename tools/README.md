@@ -138,12 +138,10 @@ Three of these cost a debugging round each; check them before blaming the mod:
 - `check_boss_defs.py` — verify `DefineBoss` actor names against `src/actors`.
 - `gen_shiny_moves.py` / `gen_decoy_moves.py` — regenerate checked-in DECORATE
   fragments from their source actors.
-- `_gen_barpos.py` — regenerate `uh_barcat.acs`, `SBARINFO.h.uhappend` /
-  `SBARINFO.v.uhappend` (AppendStatusBar), and the BarFX layer-pool actors
-  from unmigrated `DrawCustomBarString*` calls and TOML entries marked for
-  compatibility in `src/acs_source`. Renames
-  leftover `BRSLT` wrappers in `TEXTURES.bars` / `ANIMDEFS.bars` to
-  `UHVT`/`UHHT` and strips the legacy layer banks from `SBARINFO.*._core`.
+- `_gen_barpos.py` — regenerate `SBARINFO.h.uhappend` /
+  `SBARINFO.v.uhappend` (AppendStatusBar) and the TOML bar actors/ACS from
+  `tools/bars.toml`. The v6b numeric `BRSL/VRSL` compatibility banks remain
+  hand-maintained in `SBARINFO.*._core`.
   `--check` verifies all generated outputs (and stale-file absence) without
   writing; exits 1 on drift. Run after adding String-bar graphics.
 - `bars.toml` is the schema-versioned hand-authored input for namespaced bars.
@@ -162,8 +160,7 @@ Three of these cost a debugging round each; check them before blaming the mod:
   case-insensitive uniqueness.
 - `test_gen_barpos.py` — deterministic generator validation fixtures. Run with
   `python3 tools/test_gen_barpos.py` after changing the TOML schema or generator.
-  Set `legacy_catalog = true` only when a migrated string-API pair must
-  remain in the compatibility catalog. `UHBar_ClearAll_Register` registers the
+  `UHBar_ClearAll_Register` registers the
   shared clear callback from `OPEN CLIENTSIDE` through
   `core_DrawBar_RegisterClear` and logs the return value on failure; duplicate
   names return the existing row, `-1` is empty, `-2` is registry-full, and

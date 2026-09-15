@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Generate Unholy bar ACS, HZ/VZ AppendStatusBar, and BarFX actors.
+"""Generate Unholy namespaced bar ACS, SBARINFO, and BarFX actors.
 
-Legacy Unholy bars at the standard bar1/bar2/bar3/HP slots use real graphic
-names through DrawCustomBarString*. Those calls are collected into the
-uh_barcat.acs compatibility catalog; SBARINFO.*.uhappend expands each pair
-into InInventory-banded DrawBar lines (4 slots x 4 layers x 2 HUD modes).
-Main SBARINFO.H/V keep the v6b CustSbarSlotFlag slot lines for other mods.
+TOML is the sole source for Unholy's named bars. SBARINFO.*.uhappend expands
+those declarations into InInventory-banded DrawBar lines. Main SBARINFO.H/V
+keep the v6b CustSbarSlotFlag slot lines for other mods.
 
 The hand-authored tools/bars.toml adds namespaced bar groups without a
 hard-coded layer ceiling. Each group owns one namespace. API IDs follow bar
@@ -24,10 +22,7 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "src"
-ACS_CAT = ROOT / "acs_source" / "_includes" / "mod_api" / "uh_barcat.acs"
 UH_BARFX = ROOT / "actors" / "inventory" / "sbar" / "UH_BarFX.dec"
-SBAR_H = ROOT / "SBARINFO.h._core"
-SBAR_V = ROOT / "SBARINFO.v._core"
 SBAR_HZ = ROOT / "SBARINFO.h.uhappend"
 SBAR_VZ = ROOT / "SBARINFO.v.uhappend"
 TEX_BARS = ROOT / "TEXTURES.bars"
@@ -35,7 +30,6 @@ ANIM_BARS = ROOT / "ANIMDEFS.bars"
 CONFIG = Path(__file__).resolve().parent / "bars.toml"
 GENERATED_ACS = ROOT / "acs_source" / "hud" / "class_bars_generated.acs"
 
-UH_BAR_LAYER_MAX = 4
 POS_BANKS = [
     ("1", "Custom Bar Pos1 (bar1)", 58, 184, 16, 8),
     ("2", "Custom Bar Pos2 (bar2)", 58, 176, 8, 8),
@@ -75,16 +69,6 @@ STALE_GENERATED = (
     ROOT / "ANIMDEFS.barscat",
     ROOT / "ANIMDEFS.barpos",
 )
-
-
-def parse_str_array(text: str, name: str) -> list:
-    m = re.search(
-        rf"str\s+{re.escape(name)}\s*\[[^\]]+\]\s*=\s*\{{([^}}]*)\}}",
-        text,
-    )
-    if not m:
-        return []
-    return re.findall(r'"([^"]+)"', m.group(1))
 
 
 # --- DrawBar fill sanity -----------------------------------------------------
@@ -369,9 +353,6 @@ def load_bar_config() -> dict:
                 raise SystemExit(
                     f"{CONFIG}: {label}: capacity must be an integer in 1..{INT32_MAX}"
                 )
-        legacy_catalog = bar.get("legacy_catalog", False)
-        if not isinstance(legacy_catalog, bool):
-            raise SystemExit(f"{CONFIG}: {label}: legacy_catalog must be boolean")
         reverse_mask = bar.get("reverse_mask", False)
         if not isinstance(reverse_mask, bool):
             raise SystemExit(f"{CONFIG}: {label}: reverse_mask must be boolean")
@@ -388,158 +369,6 @@ def load_bar_config() -> dict:
     validate_selector_banks(config)
     validate_generated_actor_names(config)
     return config
-
-
-def configured_legacy_pairs(config: dict) -> list:
-    pairs = []
-    for bar in config["bars"]:
-        if not bar.get("legacy_catalog", False):
-            continue
-        pairs.append((bar["vertical_full"], bar["vertical_empty"],
-                      bar["horizontal_full"], bar["horizontal_empty"]))
-    return pairs
-
-
-def collect_string_bar_pairs(config: dict) -> list:
-    pairs = {}
-    configured_pairs = {
-        (bar["vertical_full"], bar["vertical_empty"],
-         bar["horizontal_full"], bar["horizontal_empty"])
-        for bar in config["bars"]
-    }
-
-    def add(vf, ve, hf, he, source=False):
-        key = (vf, ve, hf, he)
-        if source and key in configured_pairs:
-            return
-        if all(key) and key not in pairs:
-            pairs[key] = None
-
-    acs_files = list((ROOT / "acs_source").rglob("*.acs"))
-    call_rx = re.compile(
-        r"DrawCustomBarString(?:Layer)?(?:1|2|3|HP|At)?\s*\(\s*"
-        r'"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"'
-    )
-    assign_rx = re.compile(r'\bbar_[vh]\s*=\s*"([^"]+)"')
-
-    for path in acs_files:
-        text = path.read_text(encoding="utf-8", errors="ignore")
-        for m in call_rx.finditer(text):
-            add(m.group(1), m.group(2), m.group(3), m.group(4), source=True)
-
-        bars = parse_str_array(text, "qwanttypebar")
-        vars_ = parse_str_array(text, "qwanttypevar")
-        for i, vf in enumerate(bars):
-            hf = vars_[i] if i < len(vars_) else vf
-            add(vf, "BAREMPTY", hf, "VAREMPTY", source=True)
-
-        v_names = assign_rx.findall(text)
-        if v_names:
-            verts = [n for n in v_names if n.endswith("BAR") or "_V" in n]
-            hors = [
-                n
-                for n in v_names
-                if n.endswith("VAR") or "_H" in n or n.endswith("SVAR")
-            ]
-            if not hors:
-                hors = [
-                    n.replace("BAR", "VAR") if n.endswith("BAR") else n
-                    for n in verts
-                ]
-            for vf, hf in zip(verts, hors):
-                add(vf, "BAREMPTY", hf, "VAREMPTY", source=True)
-
-    for pair in configured_legacy_pairs(config):
-        add(*pair)
-    return sorted(pairs.keys())
-
-
-def gen_catalog(pairs):
-    cap = max(128, len(pairs) + 8)
-    acs = [
-        "// Generated by tools/_gen_barpos.py — DrawCustomBarString catalog.",
-        "// Slot = catalog index (not a BRSLT number). DrawBar uses real names.",
-        f"#define UH_BARCAT_MAX {cap}",
-        "#define UH_BARCAT_NONE -1",
-        "",
-        "int uh_barcat_ready = 0;",
-        f"int uh_barcat_n = {len(pairs)};",
-        "str uh_barcat_full[UH_BARCAT_MAX];",
-        "str uh_barcat_empty[UH_BARCAT_MAX];",
-        "str uh_barcat_hfull[UH_BARCAT_MAX];",
-        "str uh_barcat_hempty[UH_BARCAT_MAX];",
-        "int uh_barcat_slot[UH_BARCAT_MAX];",
-        "",
-        "function void UH_BarCatalogInit(void) {",
-        "  if (uh_barcat_ready) {",
-        "    return;",
-        "  }",
-        "  uh_barcat_ready = 1;",
-    ]
-    for i, (vf, ve, hf, he) in enumerate(pairs):
-        acs.append(f'  uh_barcat_full[{i}] = "{vf}";')
-        acs.append(f'  uh_barcat_empty[{i}] = "{ve}";')
-        acs.append(f'  uh_barcat_hfull[{i}] = "{hf}";')
-        acs.append(f'  uh_barcat_hempty[{i}] = "{he}";')
-        acs.append(f"  uh_barcat_slot[{i}] = {i};")
-    acs += [
-        "}",
-        "",
-        "function int UH_FindBarCatalogSlot(str verticalfull, str verticalempty,",
-        "                                   str horizontalfull, str horizontalempty) {",
-        "  int i;",
-        "  UH_BarCatalogInit();",
-        "  for (i = 0; i < uh_barcat_n; i++) {",
-        "    if (uh_barcat_full[i] == verticalfull && uh_barcat_empty[i] == verticalempty",
-        "        && uh_barcat_hfull[i] == horizontalfull && uh_barcat_hempty[i] == horizontalempty) {",
-        "      return uh_barcat_slot[i];",
-        "    }",
-        "  }",
-        "  return UH_BARCAT_NONE;",
-        "}",
-        "",
-    ]
-    return "\n".join(acs) + "\n"
-
-
-def inv_names(pos_key: str, layer: int):
-    if layer == 0:
-        return f"CustSbarPos{pos_key}Slot", f"CustSbarPos{pos_key}Ammo"
-    return (
-        f"CustSbarPos{pos_key}L{layer}Slot",
-        f"CustSbarPos{pos_key}L{layer}Ammo",
-    )
-
-
-def sbar_layer_line(horiz, slot_inv, ammo_inv, cat_i, fill, empty, x, y):
-    orient = "horizontal" if horiz else "vertical"
-    lo = cat_i + 1
-    hi = cat_i + 2
-    return (
-        f'InInventory {slot_inv},{lo}{{InInventory not {slot_inv},{hi}'
-        f'{{DrawBar"{fill}","{empty}",{ammo_inv},{orient},{x},{y};}}}}'
-    )
-
-
-def strip_main_layer_banks():
-    """SBARINFO.h/v._core: remove legacy layer banks block (idempotent)."""
-    marker = "\t\t\t//Custom Bar Position Banks (DrawCustomBar1/2/3/HP)"
-    results = {}
-    for path in (SBAR_H, SBAR_V):
-        text = path.read_text(encoding="utf-8")
-        if marker not in text:
-            results[path] = text
-            continue
-        start = text.index(marker)
-        rest = text[start:]
-        m_end = re.search(
-            r"\n\t\t\tInInventory BasicArmor,|\n\t\t\t//mugshot",
-            rest,
-        )
-        if not m_end:
-            raise SystemExit(f"cannot find end of layer banks in {path}")
-        results[path] = text[:start] + rest[m_end.start() + 1:]
-    return results
 
 
 def namespaced_selector(bar: dict) -> str:
@@ -641,24 +470,13 @@ def gen_namespaced_append_lines(config: dict, horiz: bool) -> list:
     return lines
 
 
-def gen_append_files(pairs, config):
+def gen_append_files(config):
     def body(horiz: bool) -> list:
         lines = [
             'InInventory DrawStatusBarFlag,1{',
             'InInventory not NoHud,1{',
             'InInventory not NoHealthBar,1{',
         ]
-        for pos_key, _label, hx, hy, vx, vy in POS_BANKS:
-            x, y = (hx, hy) if horiz else (vx, vy)
-            for layer in range(UH_BAR_LAYER_MAX):
-                slot_inv, ammo_inv = inv_names(pos_key, layer)
-                for cat_i, (vf, ve, hf, he) in enumerate(pairs):
-                    fill, empty = (hf, he) if horiz else (vf, ve)
-                    lines.append(
-                        sbar_layer_line(
-                            horiz, slot_inv, ammo_inv, cat_i, fill, empty, x, y
-                        )
-                    )
         lines += gen_namespaced_append_lines(config, horiz)
         lines += ["}", "}", "}"]
         return lines
@@ -669,33 +487,6 @@ def gen_append_files(pairs, config):
     hz = "AppendStatusBar normal,forcescaled{" + "".join(body(True)) + "}"
     vz = "AppendStatusBar fullscreen,forcescaled{" + "".join(body(False)) + "}"
     return hz, vz
-
-
-def gen_barfx_actors():
-    block = ["//$UH — DrawCustomBar1/2/HP position banks / layer pool (amount = slot+1; 0 = off)"]
-    seen = set()
-    for pos_key, _label, *_rest in POS_BANKS:
-        for layer in range(UH_BAR_LAYER_MAX):
-            slot_n, ammo_n = inv_names(pos_key, layer)
-            if slot_n in seen:
-                continue
-            seen.add(slot_n)
-            block += [
-                f"actor {slot_n} : Inventory",
-                "{",
-                "inventory.amount 1",
-                "inventory.maxamount 256",
-                "}",
-                "",
-                f"actor {ammo_n} : Ammo",
-                "{",
-                "+INVENTORY.IGNORESKILL",
-                "inventory.amount 1",
-                "inventory.maxamount 1",
-                "}",
-                "",
-            ]
-    return "\n".join(block).rstrip() + "\n"
 
 
 def gen_namespaced_barfx_actors(config: dict) -> str:
@@ -722,10 +513,10 @@ def gen_namespaced_barfx_actors(config: dict) -> str:
 
 def barfx_updated_text(config):
     text = UH_BARFX.read_text(encoding="utf-8")
-    m = re.search(r"(?m)^\s*//\s*\$UH — DrawCustomBar1/2/HP position banks.*$", text)
+    m = re.search(r"(?m)^\s*//\s*\$UH — TOML namespaced bar selectors / ammo.*$", text)
     if not m:
-        raise SystemExit("UH_BarFX.dec missing DrawCustomBar marker")
-    return text[:m.start()] + gen_barfx_actors() + gen_namespaced_barfx_actors(config)
+        raise SystemExit("UH_BarFX.dec missing TOML bar marker")
+    return text[:m.start()] + gen_namespaced_barfx_actors(config)
 
 
 def gen_generated_acs(config: dict) -> str:
@@ -817,19 +608,12 @@ def main():
     args = ap.parse_args()
 
     config = load_bar_config()
-    pairs = collect_string_bar_pairs(config)
-    if len(pairs) > 255:
-        raise SystemExit(f"catalog too large for inventory amount: {len(pairs)}")
-    print(f"string-bar pairs: {len(pairs)}")
-
-    hz, vz = gen_append_files(pairs, config)
+    hz, vz = gen_append_files(config)
     outputs = {
-        ACS_CAT: gen_catalog(pairs),
         SBAR_HZ: hz,
         SBAR_VZ: vz,
         UH_BARFX: barfx_updated_text(config),
         GENERATED_ACS: gen_generated_acs(config),
-        **strip_main_layer_banks(),
     }
 
     if args.check:
