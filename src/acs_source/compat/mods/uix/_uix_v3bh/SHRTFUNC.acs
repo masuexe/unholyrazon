@@ -1,0 +1,426 @@
+// "Shortcut" functions
+
+#define ALIGN_LEFT 0.1
+#define ALIGN_RIGHT 0.24
+#define ALIGN_NEGRIGHT 1.0-ALIGN_RIGHT
+
+#define ALIGN_CENTER 0.0
+
+#define ALIGN_TOP 0.1
+#define ALIGN_BOTTOM 0.2
+// #define ALIGN_TOP 0.2
+
+#define BASE_RES_X 1280
+#define BASE_RES_Y 960
+
+#define BASE_ID 45931
+
+#define PLN_TID_SHRT 1000
+#define MAX_PLAYERS_SHRT 64
+
+#define MSG_TIME 1873
+
+#define MAX_INT 2147483647
+#define MIN_INT -2147483648
+
+global int 4:ServerMAX;
+
+int hudLayers[3] = {
+	HUDMSG_LAYER_OVERHUD,
+	HUDMSG_LAYER_UNDERHUD,
+	HUDMSG_LAYER_OVERMAP,
+};
+
+function int displayIcon(int layer, str icon, int offsX, int offsY, int scaleX, int scaleY, int alpha, int halign, int valign) {
+	int res = CheckFont(icon);
+	if (res) {
+		SetFont(icon);
+		displayMessage(layer, "A", offsX, offsY, scaleX, scaleY, alpha, halign, valign);
+	}
+	return res;
+}
+
+function int displayIconFade(int layer, str icon, int offsX, int offsY, int scaleX, int scaleY, int alpha, int halign, int valign, int fadeTime) {
+	int res = CheckFont(icon);
+	if (res) {
+		SetFont(icon);
+		displayMessageFade(layer, "A", offsX, offsY, scaleX, scaleY, alpha, halign, valign, fadeTime);
+	}
+	return res;
+}
+
+// [Russ] maybe
+// int virtScale = 1.0;
+// function void setVirtualScale(int scale)
+// {
+// 	virtScale = scale;
+// }
+
+int calcX, calcY, calcHAlign, calcvalign;
+function void calcMessageDisplayOffsets(int offsX, int offsY, int scaleX, int scaleY, int halign, int valign) {
+	int resX = FixedDiv(BASE_RES_X, scaleX);
+	int resY = FixedDiv(BASE_RES_Y, scaleY);
+	offsX = mask(FixedDiv(offsX << 16, scaleX));
+	offsY = mask(FixedDiv(offsY << 16, scaleY));
+	calcX = ((resX / 2) << 16) + offsX;
+	calcY = ((resY / 2) << 16) + offsY;
+
+	// calcX = mask(FixedMul(mask(FixedDiv(calcX, virtScale)), virtScale));
+	// calcY = mask(FixedMul(mask(FixedDiv(calcY, virtScale)), virtScale));
+
+
+	if (calcX < 0 && halign == ALIGN_RIGHT) {
+		calcHAlign = ALIGN_NEGRIGHT;
+	} else {
+		calcHAlign = halign;
+	}
+
+	calcVAlign = valign;
+	calcX += calcHAlign;
+	calcY += calcVAlign;
+
+	SetHudSize(resX, resY, 0);
+}
+
+function void displayMessage(int layer, str msg, int offsX, int offsY, int scaleX, int scaleY, int alpha, int halign, int valign) {
+	calcMessageDisplayOffsets(offsX, offsY, scaleX, scaleY, halign, valign);
+	HudMessage(s:msg; HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | layer, 0, CR_UNTRANSLATED, calcX, calcY, MSG_TIME, alpha);
+}
+
+function void displayMessageColor(int layer, str msg, int offsX, int offsY, int scaleX, int scaleY, int alpha, int halign, int valign, int color) {
+	calcMessageDisplayOffsets(offsX, offsY, scaleX, scaleY, halign, valign);
+	Log(i:color);
+	HudMessage(s:msg; HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | layer, 0, color, calcX, calcY, MSG_TIME, alpha);
+}
+
+function void displayMessageColorString(int layer, str msg, int offsX, int offsY, int scaleX, int scaleY, int alpha, int halign, int valign, int color) {
+	calcMessageDisplayOffsets(offsX, offsY, scaleX, scaleY, halign, valign);
+	HudMessage(s:msg; HUDMSG_COLORSTRING | HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | layer, 0, color, calcX, calcY, MSG_TIME, alpha);
+}
+
+function void displayMessageFade(int layer, str msg, int offsX, int offsY, int scaleX, int scaleY, int alpha, int halign, int valign, int fadeTime) {
+	calcMessageDisplayOffsets(offsX, offsY, scaleX, scaleY, halign, valign);
+	if (fadeTime > 0)
+		HudMessage(s:msg; HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | HUDMSG_FADEOUT | layer, 0, CR_UNTRANSLATED, calcX, calcY, MSG_TIME, fadeTime, alpha);
+	else
+		HudMessage(s:msg; HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | layer, 0, CR_UNTRANSLATED, calcX, calcY, MSG_TIME, alpha);
+}
+
+function void displayMessageColorFade(int layer, str msg, int offsX, int offsY, int scaleX, int scaleY, int alpha, int halign, int valign, int color, int fadeTime) {
+	calcMessageDisplayOffsets(offsX, offsY, scaleX, scaleY, halign, valign);
+	if (fadeTime > 0)
+		HudMessage(s:msg; HUDMSG_COLORSTRING | HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | HUDMSG_FADEOUT | layer, 0, color, calcX, calcY, MSG_TIME, fadeTime, alpha);
+	else
+		HudMessage(s:msg; HUDMSG_COLORSTRING | HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | layer, 0, color, calcX, calcY, MSG_TIME, alpha);
+}
+
+#define BAR_DISPLAY_NONE 0
+#define BAR_DISPLAY_VERT 1
+#define BAR_DISPLAY_HORI 2
+
+function void displayMessageColorFadeBar(int layer, str msg, int offsX, int offsY, int scaleX, int scaleY, int alpha, int halign, int valign, int color, int fadeTime, int width, int barAmt, int barMax) {
+	calcMessageDisplayOffsets(offsX, offsY, scaleX, scaleY, halign, valign);
+
+	// [Russ] this is a lazy copy-paste from the drawbar functions i made
+	// so i'm just gonna populate the parameters that aren't included in this VERY long function signature
+	// k? k.
+
+	int height = MAX_INT >> 2;
+
+	int clipOffsW = (halign == ALIGN_CENTER ? -width / 2 : (calchalign == ALIGN_RIGHT || calchalign == ALIGN_NEGRIGHT ? -width : 0));
+	int clipOffsH = (valign == ALIGN_CENTER ? -height / 2 : (calcvalign == ALIGN_BOTTOM ? -height : 0));
+
+	int clip = (barAmt * width) / barMax;
+	SetHudClipRect((calcX >> 16) + clipOffsW, (calcY >> 16) + clipOffsH, clip, height);
+
+	if (fadeTime > 0)
+		HudMessage(s:msg; HUDMSG_COLORSTRING | HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | HUDMSG_FADEOUT | layer, 0, color, calcX, calcY, MSG_TIME, fadeTime, alpha);
+	else
+		HudMessage(s:msg; HUDMSG_COLORSTRING | HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | layer, 0, color, calcX, calcY, MSG_TIME, alpha);
+
+	SetHudClipRect(0, 0, 0, 0, 0);
+}
+
+// Bar drawing stuff
+// Original concept by BinaryCode
+//
+function void drawLayeredBar(int layer, str bar1, str bar2, str empty, int offsx, int offsy, int width, int height, int scalex, int scaley, int alpha, int amount, int maxAmount, int mode, int reverse, int halign, int valign) {
+	calcMessageDisplayOffsets(offsX, offsY, scaleX, scaleY, halign, valign);
+
+	int clipOffsW = (halign == ALIGN_CENTER ? -width / 2 : (calchalign == ALIGN_RIGHT || calchalign == ALIGN_NEGRIGHT ? -width : 0));
+	int clipOffsH = (valign == ALIGN_CENTER ? -height / 2 : (calcvalign == ALIGN_BOTTOM ? -height : 0));
+
+	if (mode == BAR_DISPLAY_NONE)
+		return;
+
+	int clip;
+	if (mode == BAR_DISPLAY_VERT) {
+		clip = (amount * height) / maxAmount;
+		SetHudClipRect((calcX >> 16) + clipOffsW, (calcY >> 16) + clipOffsH + (height - clip), width, clip);
+	}
+	if (mode == BAR_DISPLAY_HORI) {
+		clip = (amount * width) / maxAmount;
+		SetHudClipRect((calcX >> 16) + clipOffsW, (calcY >> 16) + clipOffsH, clip, height);
+	}
+
+	SetFont(bar1);
+	HudMessage(s:"A"; HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | layer, 0, CR_UNTRANSLATED, calcX, calcY, MSG_TIME, alpha);
+	SetFont(bar2);
+	HudMessage(s:"A"; HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | layer, 0, CR_UNTRANSLATED, calcX, calcY, MSG_TIME, alpha);
+	// SetHudClipRect((calcX >> 16) + clipOffsW, (calcY >> 16) + clipOffsH, width, height);
+	SetHudClipRect(0, 0, 0, 0, 0);
+	SetFont(empty);
+	HudMessage(s:"A"; HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | layer, 0, CR_UNTRANSLATED, calcX, calcY, MSG_TIME, alpha);
+	SetHudClipRect(0, 0, 0, 0);
+}
+
+function void drawLayeredBarColor(int layer, str barFont, str bar1col, str bar2col, str emptycol, int offsx, int offsy, int width, int height, int scalex, int scaley, int alpha, int amount, int maxAmount, int mode, int reverse, int halign, int valign) {
+	calcMessageDisplayOffsets(offsX, offsY, scaleX, scaleY, halign, valign);
+
+	int clipOffsW = (halign == ALIGN_CENTER ? -width / 2 : (calchalign == ALIGN_RIGHT || calchalign == ALIGN_NEGRIGHT ? -width : 0));
+	int clipOffsH = (valign == ALIGN_CENTER ? -height / 2 : (calcvalign == ALIGN_BOTTOM ? -height : 0));
+
+	if (mode == BAR_DISPLAY_NONE)
+		return;
+
+	int clip;
+	if (mode == BAR_DISPLAY_VERT) {
+		clip = (amount * height) / maxAmount;
+		SetHudClipRect((calcX >> 16) + clipOffsW, (calcY >> 16) + clipOffsH + (height - clip), width, clip);
+	}
+	if (mode == BAR_DISPLAY_HORI) {
+		clip = (amount * width) / maxAmount;
+		SetHudClipRect((calcX >> 16) + clipOffsW, (calcY >> 16) + clipOffsH, clip, height);
+	}
+
+	SetFont(barFont);
+	HudMessage(s:"A"; HUDMSG_COLORSTRING | HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | layer, 0, bar1col, calcX, calcY, MSG_TIME, alpha);
+	HudMessage(s:"B"; HUDMSG_COLORSTRING | HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | layer, 0, bar2col, calcX, calcY, MSG_TIME, alpha);
+	// SetHudClipRect((calcX >> 16) + clipOffsW, (calcY >> 16) + clipOffsH, width, height);
+	SetHudClipRect(0, 0, 0, 0, 0);
+	HudMessage(s:"C"; HUDMSG_COLORSTRING | HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | layer, 0, emptycol, calcX, calcY, MSG_TIME, alpha);
+	SetHudClipRect(0, 0, 0, 0);
+}
+
+function void drawBar(int layer, str bar1, str empty, int offsx, int offsy, int width, int height, int scalex, int scaley, int alpha, int amount, int maxAmount, int mode, int reverse, int halign, int valign) {
+	calcMessageDisplayOffsets(offsX, offsY, scaleX, scaleY, halign, valign);
+
+	int clipOffsW = (calchalign == ALIGN_CENTER ? -width / 2 : (calchalign == ALIGN_RIGHT || calchalign == ALIGN_NEGRIGHT ? -width : 0));
+	int clipOffsH = (calcvalign == ALIGN_CENTER ? -height / 2 : (calcvalign == ALIGN_BOTTOM ? -height : 0));
+
+	if (mode == BAR_DISPLAY_NONE)
+		return;
+
+	int clip;
+	if (mode == BAR_DISPLAY_VERT) {
+		clip = (amount * height) / maxAmount;
+		SetHudClipRect((calcX >> 16) + clipOffsW, (calcY >> 16) + clipOffsH + (height - clip), width, clip);
+	}
+	if (mode == BAR_DISPLAY_HORI) {
+		clip = (amount * width) / maxAmount;
+		SetHudClipRect((calcX >> 16) + clipOffsW, (calcY >> 16) + clipOffsH, clip, height);
+	}
+
+	SetFont(bar1);
+	HudMessage(s:"A"; HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | layer, 0, CR_UNTRANSLATED, calcX, calcY, MSG_TIME, alpha);
+	// SetHudClipRect((calcX >> 16) + clipOffsW, (calcY >> 16) + clipOffsH, width, height);
+	SetHudClipRect(0, 0, 0, 0, 0);
+	SetFont(empty);
+	HudMessage(s:"A"; HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOWRAP | layer, 0, CR_UNTRANSLATED, calcX, calcY, MSG_TIME, alpha);
+	SetHudClipRect(0, 0, 0, 0);
+}
+
+function int abs(int x) {
+	if (x < 0)
+		return -x;
+	return x;
+}
+
+function int mask(int x) {
+	return (x & 0xffff0000);
+}
+
+function int parseInt(str in) {
+	int l = strLen(in);
+	int ret = 0;
+	for (int i = 0; i < l; i++) {
+		ret *= 10;
+		ret += char2Dec(getChar(in, i));
+	}
+	return ret;
+}
+
+function int char2Dec(int ch) {
+	if (numBetween('0', ch, '9')) {
+		return ch - '0';
+	}
+	return -1;
+}
+
+function bool numBetween(int mn, int x, int mx) {
+	return x >= mn && x <= mx;
+}
+
+// Script wrappers
+function int CallACS0(str scr) {return CallACS4(scr, 0, 0, 0, 0);}
+function int CallACS1(str scr, int a1) {return CallACS4(scr, a1, 0, 0, 0);}
+function int CallACS2(str scr, int a1, int a2) {return CallACS4(scr, a1, a2, 0, 0);}
+function int CallACS3(str scr, int a1, int a2, int a3) {return CallACS4(scr, a1, a2, a3, 0);}
+function int CallACS4(str scr, int a1, int a2, int a3, int a4) {return ACS_NamedExecuteWithResult(scr, a1, a2, a3, a4);}
+
+function bool StrEqual(str str1, str str2) {return StrCmp(str1, str2) == 0;}
+function bool StrMatches(str str1, str str2) {return StrICmp(str1, str2) == 0;}
+
+function int max(int x, int y) {return x > y ? x : y;}
+function int min(int x, int y) {return x < y ? x : y;}
+
+function int dist3D(int tid1, int tid2) {
+	int x, y, z, d;
+	x = GetActorX(tid1) - GetActorX(tid2);
+	y = GetActorY(tid1) - GetActorY(tid2);
+	z = GetActorZ(tid1) - GetActorZ(tid2);
+	d = VectorLength(VectorLength(x, y), z) >> 16;
+	return d;
+}
+
+function int actorExists(str which) {
+	int u = UniqueTID();
+	int sp = SpawnForced(which, 0, 0, 0, u, 0);
+	if (sp)
+		thing_Remove(u);
+
+	return sp;
+}
+
+function int new(str which) {
+	int u = UniqueTID(10000);  // start from a positive for safety
+	if (SpawnForced(which, 0, 0, 0, u, 0))
+		return u;
+
+	return 0;
+}
+
+function void destroy(int tid) {
+	Thing_Remove(tid);
+}
+
+function int GetActorArg(int tid, int argNum) {
+	return CallACS2("core_GetActorArg", tid, argNum);
+}
+
+int chars[64];
+function str Dec2Hex(int n, int minDigits) {
+	int count = countHexDigits(n);
+	int d = count;
+	for (int i = 0; i < (minDigits - count); i++) {
+		chars[i] = '0';
+		d++;
+	}
+	while (n > 0) {
+		int m = n % 16;
+		if (m < 10) {
+			chars[--d] = '0' + m;
+		} else {
+			chars[--d] = 'A' + (m - 10);
+		}
+		n = n >> 4;  // n/16
+	}
+	str ret = strParam(a:chars);
+
+	for (i = 0; i < count; i++) {
+		chars[i] = 0;
+	}
+
+	return ret;
+}
+
+function int countHexDigits(int n) {
+	int count = 0;
+	while (n > 0) {
+		count++;
+		n = n >> 4;
+	}
+	return count;
+}
+
+// stolen from cbm library since i don't want to populate this myself
+global int 31:cbmBeef;
+function bool cbmx10(void) {
+	if (cbmBeef == 0) {
+		cbmBeef = SpawnForced("Beef_CBMModderSupport_H", 0, 0, 0, 0, 0) + 1;
+	}
+	return cbmBeef - 1;
+}
+
+int isv6bFlag = -1;
+function bool isv6b(void) {
+	if (isv6bFlag == -1) {
+		int u = UniqueTID();
+		int ret = !SpawnForced("YellowSkullST", 0, 0, 0, u, 0);
+		Thing_Remove(u);
+		isv6bFlag = ret;
+	}
+	return isv6bFlag;
+}
+
+function void resetActivator(void) {SetActivator(0, AAPTR_NULL);}
+
+// Mugshot data pull, from pingbutton
+function str getMugshotGraphicFromTID(int tid) {
+	str class = GetActorClass(tid);
+
+	int u = UniqueTID();
+	if (!SpawnForced(StrParam(s:"PBMug_", s:class), 0, 0, 0, u, 0)) {
+		return "";
+	}
+	Thing_Remove(u);
+
+	return ACS_NamedExecuteWithResult(StrParam(s:"PBMug_", s:class), tid);
+}
+
+int readBlue1, readCyan1, readBlue2, readCyan2;
+function void readWeaponBars(str weap) {
+	// Log(s:"Called read weapon bars for weapon: ", s:weap);
+	readCyan1 = -1;
+	readBlue1 = -1;
+	readCyan2 = -1;
+	readBlue2 = -1;
+
+	int obj;
+	obj = new(StrParam(s:weap, s:"_NormalBar"));
+	if (!obj) {
+		obj = new(StrParam(s:weap, s:"_MugshotColor"));
+	}
+
+	if (!obj) {
+		obj = new(StrParam(s:weap, s:"_ArsenalBar"));
+	}
+
+	if (obj) {
+		readCyan1 = GetActorArg(obj, 0);
+		readBlue1 = GetActorArg(obj, 1);
+		destroy(obj);
+	}
+
+	obj = new(StrParam(s:weap, s:"_SecondBar"));
+	if (!obj) {
+		obj = new(StrParam(s:weap, s:"_SecondArsenalBar"));
+	}
+
+	if (obj) {
+		readCyan2 = GetActorArg(obj, 0);
+		readBlue2 = GetActorArg(obj, 1);
+		destroy(obj);
+	}
+	// Log(s:"Output: ", i:cyan1, s:", ", i:blue1, s:", ", i:cyan2, s:", ", i:blue2);
+}
+
+function int zanRound(int x) {
+	return (x + 0.5) >> 16;
+}
+
+function int normalize(int angle) {
+	while (angle < 0)
+		angle += 1.0;
+	return angle % 1.0;
+}
