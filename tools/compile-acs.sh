@@ -3,10 +3,11 @@
 # order as LOADACS with the documented include search order: modified v6b
 # shared includes first, then the UH-owned mod_api include dir, then the UH
 # _imports library sources (uh_acsutils, uh_log, uhdt, uhedenisaac) and the
-# v6b override imports (8bdt).
+# v6b override imports (8bdt compiled as CORE8BDT.o).
 # Output objects are named after the SOURCE lump (not the internal #library
 # name): the base game LOADACS lists lump names such as COLOTRNS, and a
-# differently named .o would not shadow the base lump.
+# differently named .o would not shadow the base lump. CORE8BDT.o and
+# DTADDR.o must keep those names so they replace v6b's Assist Item table.
 # Usage: compile-acs.sh [outdir]   (default: src/acs)
 set -u
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -88,8 +89,10 @@ echo "== unholy =="
 "$ACC" $INC "src/acs_source/unholy/unholy.acs" "$OUT/unholy.o" || fail=1
 echo "== rz_debug =="
 "$ACC" $INC "src/acs_source/debug/rz_debug.acs" "$OUT/rz_debug.o" || fail=1
-echo "== 8bdt =="
-"$ACC" $INC "src/acs_source/v6b_overrides/_imports/8bdt.acs" "$OUT/8bdt.o" || fail=1
+echo "== CORE8BDT =="
+"$ACC" $INC "src/acs_source/v6b_overrides/_imports/8bdt.acs" "$OUT/CORE8BDT.o" || fail=1
+echo "== DTADDR =="
+"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/api_handlers/dtaddr.acs" "$OUT/DTADDR.o" || fail=1
 echo "== barclear =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/api_handlers/barclear.acs" "$OUT/barclear.o" || fail=1
 echo "== barhndle =="

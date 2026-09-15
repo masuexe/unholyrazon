@@ -1,0 +1,510 @@
+// v6b DTADDR, recompiled so MAX_ITEMS_GLOBAL_LIMIT comes from Unholy 8bdt.
+// Logic unchanged; include paths are lowercase for Linux ACC. Output lump
+// must be DTADDR.o to shadow v6b acs/DTADDR.o. Do not add to LOADACS.
+#library "dtaddr"
+#include "zcommon.acs"
+
+#import "8bdt.acs"
+
+#include "megapal.acs"
+
+function int newWeaponCore(str wepName, str wepCode, str wepIcon, str wepAmmo, int wepMult, str wepAmmo2, int wepMult2, int wepSlot, int wepMap, int wepLms, int wepEddie)
+{
+	if(MAX_WEAPONS_GLOBAL < MAX_WEAPONS_GLOBAL_LIMIT) {
+		int idx = MAX_WEAPONS_GLOBAL;
+		setWeaponTag(idx, wepName);
+		setWeaponActor(idx, wepCode);
+		setWeaponIcon(idx, wepIcon);
+		setWeaponAmmoType(idx, wepAmmo);
+		setWeaponAmmoFactor(idx, wepMult);
+		setWeaponAmmo2Type(idx, wepAmmo2);
+		setWeaponAmmo2Factor(idx, wepMult2);
+		setWeaponSlot(idx, wepSlot);
+		setWeaponMapValid(idx, wepMap);
+		setWeaponLMSValid(idx, wepLms);
+		setWeaponEddieValid(idx, wepEddie);
+		MAX_WEAPONS_GLOBAL++;
+		weapons_slot_count[wepSlot]++;
+		return idx;
+	}
+	printbold(s:"Limit too low, need more ammo slots");
+	return -1;
+}
+
+function int randomWeaponCore(int slot, int mapValid, int LMSValid, int eddieValid)
+{
+    int firstRoll;
+    if(slot == -1) {
+        firstRoll = random(0, MAX_WEAPONS_GLOBAL-1);
+    } else {
+        firstRoll = random(0, weapons_slot_count[slot]-1);
+    }
+
+    int counter = firstRoll;
+
+    do
+    {
+        for(int i = 0; i < MAX_WEAPONS_GLOBAL; i++)
+        {
+            if(
+                compareTernary(slot, getWeaponSlot(i)) &&
+                compareTernary(mapValid, isWeaponMapValid(i)) &&
+                compareTernary(LMSValid, isWeaponLMSValid(i)) &&
+                compareTernary(eddieValid, isWeaponEddieValid(i))
+            ) {
+				if(counter > 0)
+					counter --;
+				else
+					return i;
+            }
+        }
+    }
+    while(counter != firstRoll && counter > -1);
+
+    return -1;
+}
+
+function bool compareTernary(int x, int y)
+{
+    if(x == -1)
+        return true;
+    return x == y;
+}
+
+function str BoolIsYesOrNo(bool val) {
+	if(val) return "YES";
+	return "NO";
+}
+
+Script "core_DefineWeapon_S" (void)
+{
+	int res = newWeaponCore(
+		GetCvarString("8bdm_wepTag"),
+		GetCvarString("8bdm_wepActor"),
+		GetCvarString("8bdm_wepIcon"),
+		GetCvarString("8bdm_wepAmmo"),
+		GetCvar("8bdm_wepMult"),
+		GetCvarString("8bdm_wepAmmo2"),
+		GetCvar("8bdm_wepMult2"),
+		GetCvar("8bdm_wepSlot"),
+		GetCvar("8bdm_wepMap"),
+		GetCvar("8bdm_wepLms"),
+		GetCvar("8bdm_wepEddie")
+	);
+	SetResultValue(res);
+}
+
+Script "core_RandomWeapon_S" (int slot, int mapValid, int LMSValid, int eddieValid)
+{
+	setResultValue(randomWeaponCore(slot, mapValid, LMSValid, eddieValid));
+}
+
+Script "core_DefineTranslation_S" (void) CLIENTSIDE
+{
+SetResultValue(DefineTransFunc(GetCvar("8bdmtranslation_id")));
+}
+
+function int DefineTransFunc(int id)
+{
+	if(MAX_TRANS<MAX_TRANS_LIMIT) {
+		if(MAX_TRANS == 0) {
+			TRANS_LOWEST = id;
+			TRANS_HIGHEST = id;
+		} else {
+			if(id < TRANS_LOWEST) {
+				TRANS_LOWEST = id;
+			} else if (id > TRANS_HIGHEST) {
+				TRANS_HIGHEST = id;
+			}
+		}
+		setTransId(MAX_TRANS, id);
+		MAX_TRANS++;
+	} else {
+		//team translations get added multiple times, but this is debug array anyway
+		//still can't printbold here tho
+		//printbold(s:"Limit too low, need more translation slots");
+	}
+	return id;
+}
+
+Script "core_DefineAssistDisplay_S" (void) CLIENTSIDE
+{
+DefineAssistDisplayFunc(GetCvarString("8bdmassistdisplay_name"));
+}
+
+function void DefineAssistDisplayFunc(str name)
+{
+	if(MAX_ASSISTD<MAX_ASSISTD_LIMIT) {
+		assist_displays[MAX_ASSISTD] = name;
+		MAX_ASSISTD++;
+	} else {
+		printbold(s:"Limit too low, need more bar assist display slots");
+	}
+}
+
+Script "core_DefineBusterUpgrade_S" (void)
+{
+SetResultValue(DefineBusterUpgradeFunc(GetCvarString("8bdm_busterTag"), GetCvarString("8bdm_busterActor"), GetCvarString("8bdm_busterUpgradeTag"), GetCvarString("8bdm_busterUpgrade"), GetCvarString("8bdm_busterIcon"), GetCvar("8bdm_busterMapValid"), GetCvar("8bdm_busterLMSValid"), GetCvar("8bdm_busterEddieValid")));
+}
+
+function int DefineBusterUpgradeFunc(str busterTag, str busterActor, str busterUpgradeTag, str busterUpgrade, str busterIcon, bool busterMapValid, bool busterLMSValid, bool busterEddieValid)
+{
+	if(MAX_BUSTERUPGRADES<MAX_BUSTER_LIMIT) {
+		int idx = MAX_BUSTERUPGRADES;
+		setBusterTag(idx, busterTag);
+		setBusterActor(idx, busterActor);
+		setBusterUpgradeTag(idx, busterUpgradeTag);
+		setBusterUpgrade(idx, busterUpgrade);
+		setBusterIcon(idx, busterIcon);
+		setBusterMapValid(idx, busterMapValid);
+		setBusterLMSValid(idx, busterLMSValid);
+		setBusterEddieValid(idx, busterEddieValid);
+		MAX_BUSTERUPGRADES++;
+		return idx;
+	} else {
+		printbold(s:"Limit too low, need more buster upgrade slots");
+	}
+	return -1;
+}
+
+Script "core_RandomBusterUpgrade_S" (int mapValid, int LMSValid, int eddieValid)
+{
+	setResultValue(randomBusterUpgradeCore(mapValid, LMSValid, eddieValid));
+}
+
+function int randomBusterUpgradeCore(int mapValid, int LMSValid, int eddieValid)
+{
+    int firstRoll = random(0, MAX_BUSTERUPGRADES-1);
+    int counter = firstRoll;
+
+    do
+    {
+        for(int i = 0; i < MAX_BUSTERUPGRADES; i++)
+        {
+            if(
+                compareTernary(mapValid, isBusterMapValid(i)) &&
+                compareTernary(LMSValid, isBusterLMSValid(i)) &&
+                compareTernary(eddieValid, isBusterEddieValid(i)) 
+            ) {
+				if(counter > 0)
+					counter --;
+				else
+					return i;
+            }
+        }
+    }
+    while(counter != firstRoll && counter > -1);
+
+    return -1;
+}
+
+Script "core_DefineBusterTake_S" (void)
+{
+SetResultValue(DefineBusterTakeFunc(GetCvarString("8bdm_bustertake")));
+}
+
+function int DefineBusterTakeFunc(str name)
+{
+	if(MAX_BUSTERTAKES<MAX_BUSTER_LIMIT) {
+		int idx = MAX_BUSTERTAKES;
+		setBusterTake(idx, name);
+		MAX_BUSTERTAKES++;
+		return idx;
+	} else {
+		printbold(s:"Limit too low, need more buster take slots");
+	}
+	return -1;
+}
+
+script "core_DefinePowerAprop_S" (void)
+{
+	int res = DefinePowerApropCore(
+		GetCvarString("8bdmpoweraprop_giver"),
+		GetCvarString("8bdmpoweraprop_powerUp"),
+		GetCvar("8bdmpoweraprop_property"),
+		GetCvar("8bdmpoweraprop_factor"),
+		GetCvar("8bdmpoweraprop_permanent")
+	);
+	SetResultValue(res);
+}
+
+function int DefinePowerApropCore(str giver, str powerUp, int property, int factor, int permanent)
+{
+    //Log(s:"DEFINING NEW POWERUP: ", s:giver);
+    int pid = getPropertyIndex(property);
+    if(pid != -1) {
+        if(MAX_POWER_PROPERTY<MAX_POWER_PROPERTY_LIMIT) {
+            int idx = MAX_POWER_PROPERTY++;
+            setPowerApropGiver(idx, giver);
+            setPowerApropPowerUp(idx, powerUp);
+            setPowerApropProperty(idx, property);
+            setPowerApropFactor(idx, factor);
+			setPowerApropPermanent(idx, permanent);
+            return idx;
+        } else {
+            printbold(s:"Error in defining property mapping for \"\cg", s:powerUp, s:"\c-\": Too many initializers.");
+            return -1;
+        }
+    } else {
+        printbold(s:"Error in defining property mapping for \"\cg", s:powerUp, s:"\c-\": Unsupported Actor Property.");
+        return -1;
+    }
+    return -1;
+}
+
+script "core_DefineSpawnFunc_S" (void)
+{
+	int res = DefineSpawnFuncCore(
+		GetCvar("8bdmspawnfunc_type"),
+		GetCvarString("8bdmspawnfunc_name")
+	);
+	SetResultValue(res);
+}
+
+function int DefineSpawnFuncCore(int type, int name)
+{
+    if(SpawnFuncs_Max[type] < MAX_SPAWNFUNC_LIMIT) {
+		int idx = SpawnFuncs_Max[type];
+		setSpawnFunc(type, idx, name);
+		SpawnFuncs_Max[type]++;
+		return idx;
+	} else {
+		printbold(s:"Limit too low, increase the limit on SpawnFuncs");
+	}
+	return -1;
+}
+
+script "core_DefineArtifactPickupFunc_S" (void)
+{
+	int res = DefineArtifactPickupFuncCore(
+		GetCvar("8bdmpickupfunc_type"),
+		GetCvarString("8bdmpickupfunc_name")
+	);
+	SetResultValue(res);
+}
+
+function int DefineArtifactPickupFuncCore(int type, int name)
+{
+    if(ArtiPickupFuncs_Max[type] < MAX_ARTIPICKUPFUNC_LIMIT) {
+		int idx = ArtiPickupFuncs_Max[type];
+		SetArtifactPickupFunc(type, idx, name);
+		ArtiPickupFuncs_Max[type]++;
+		return idx;
+	} else {
+		printbold(s:"Limit too low, increase the limit on ArtifactPickupFuncs");
+	}
+	return -1;
+}
+
+script "core_DefineReservedTID_S" (int tid, int tidMax)
+{
+	if(tidMax < tid) {
+		printbold(s:"Invalid tid range!!!");
+		terminate;
+	}
+	DefineReservedTIDFunc(tid, tidMax);
+}
+
+function void DefineReservedTIDFunc(int tid, int tidMax)
+{
+    if(MAX_TID < MAX_TID_LIMIT) {
+		if(MAX_TID == 0) {
+			TID_LOWEST = tid;
+			TID_HIGHEST = tidMax;
+		} else {
+			if(tid < TID_LOWEST) {
+				TID_LOWEST = tid;
+			} else if (tidMax > TID_HIGHEST) {
+				TID_HIGHEST = tidMax;
+			}
+		}
+		setTIDRange(MAX_TID, tid, tidMax);
+		MAX_TID++;
+	} else {
+		printbold(s:"Limit too low, increase the limit on tids");
+	}
+}
+
+script "core_RegisterTrainingDef_S" (void) {
+	int res = RegisterTrainingDefCore(
+		GetCvarString("8bdm_training_def")
+	);
+	SetResultValue(res);
+}
+
+function int RegisterTrainingDefCore(str callee) {
+	if(MAX_TRAIN_DEF < MAX_TRAIN_DEF_LIMIT) {
+		SetTrainingDef(MAX_TRAIN_DEF,callee);
+		MAX_TRAIN_DEF++;
+		return MAX_TRAIN_DEF - 1;
+	} else {
+		printbold(s:"TRAINING def limit too low, increase the limit");
+	}
+	return -1;
+}
+
+script "core_DefineTrainingEntry_S" (void) {
+	int res = DefineTrainingEntryCore(
+		GetCvarString("8bdm_training_version"),
+		GetCvar("8bdm_training_type"),
+		GetCvarString("8bdm_training_tag"),
+		GetCvarString("8bdm_training_desc"),
+		GetCvarString("8bdm_training_icon"),
+		GetCvarString("8bdm_training_actor"),
+		GetCvar("8bdm_training_amount")
+	);
+	SetResultValue(res);
+}
+
+#define TRAINING_MEGABUSTER -1 // Appears first always
+#define TRAINING_WEP 0         // Appears after Mega Buster
+#define TRAINING_BUSTER 1      // Appears after weapons
+#define TRAINING_ITEM 2        // Appears in its separate category
+
+function int DefineTrainingEntryCore(str version, int type, str tag, str desc, str icon, str actor, int amount)
+{
+	switch(type) {
+		case TRAINING_MEGABUSTER:
+			if(MAX_TRAIN_MB < MAX_TRAIN_MB_LIMIT) {
+				setMBVersionUpdated(MAX_TRAIN_MB, version);
+				setMBName(MAX_TRAIN_MB, tag);
+				setMBDesc(MAX_TRAIN_MB, desc);
+				setMBIcon(MAX_TRAIN_MB, icon);
+				setMBActor(MAX_TRAIN_MB, actor);
+				MAX_TRAIN_MB++;
+				return MAX_TRAIN_MB - 1;
+			} else {
+				printbold(s:"TRAINING MB limit too low, increase the limit");
+				return -1;
+			}
+		case TRAINING_WEP:
+			if(MAX_TRAIN_WEP < MAX_TRAIN_WEP_LIMIT) {
+				setWepVersionUpdated(MAX_TRAIN_WEP, version);
+				setWepName(MAX_TRAIN_WEP, tag);
+				setWepDesc(MAX_TRAIN_WEP, desc);
+				setWepIcon(MAX_TRAIN_WEP, icon);
+				setWepActor(MAX_TRAIN_WEP, actor);
+				MAX_TRAIN_WEP++;
+				return MAX_TRAIN_WEP - 1;
+			} else {
+				printbold(s:"TRAINING wep limit too low, increase the limit");
+				return -1;
+			}
+		case TRAINING_BUSTER:
+			if(MAX_TRAIN_BUST < MAX_TRAIN_BUST_LIMIT) {
+				setBustVersionUpdated(MAX_TRAIN_BUST, version);
+				setBustName(MAX_TRAIN_BUST, tag);
+				setBustDesc(MAX_TRAIN_BUST, desc);
+				setBustIcon(MAX_TRAIN_BUST, icon);
+				setBustActor(MAX_TRAIN_BUST, actor);
+				MAX_TRAIN_BUST++;
+				return MAX_TRAIN_BUST - 1;
+			} else {
+				printbold(s:"TRAINING buster limit too low, increase the limit");
+				return -1;
+			}
+		case TRAINING_ITEM:
+			if(MAX_TRAIN_ITEM < MAX_TRAIN_ITEM_LIMIT) {
+				setItemVersionUpdated(MAX_TRAIN_ITEM, version);
+				setItemName(MAX_TRAIN_ITEM, tag);
+				setItemDesc(MAX_TRAIN_ITEM, desc);
+				setItemIcon(MAX_TRAIN_ITEM, icon);
+				setItemActor(MAX_TRAIN_ITEM, actor);
+				setItemAmount(MAX_TRAIN_ITEM, amount);
+				MAX_TRAIN_ITEM++;
+				return MAX_TRAIN_ITEM - 1;
+			} else {
+				printbold(s:"TRAINING item limit too low, increase the limit");
+				return -1;
+			}
+		default:
+			printbold(s:"Invalid training add type???");
+			return -1;
+	}
+	return -1;
+}
+
+Script "core_DefineAssistItem_S" (void)
+{
+	int res = newAssistItemCore(
+		GetCvarString("8bdm_itemTag"),
+		GetCvarString("8bdm_itemActor"),
+		GetCvarString("8bdm_itemIcon"),
+		GetCvar("8bdm_itemAmount"),
+		GetCvar("8bdm_itemGroup"),
+		GetCvar("8bdm_itemMap")
+	);
+	SetResultValue(res);
+}
+
+Script "core_RandomAssistItem_S" (int group, int mapValid)
+{
+	setResultValue(randomAssistItemCore(group, mapValid));
+}
+
+function int newAssistItemCore(str itemName, str itemCode, str itemIcon, int itemAmount, int itemGroup, int itemMap)
+{
+	if(MAX_ITEMS_GLOBAL < MAX_ITEMS_GLOBAL_LIMIT) {
+		int idx = MAX_ITEMS_GLOBAL;
+		setAssistItemTag(idx, itemName);
+		setAssistItemActor(idx, itemCode);
+		setAssistItemIcon(idx, itemIcon);
+		setAssistItemAmount(idx, itemAmount);
+		setAssistItemGroup(idx, itemGroup);
+		setAssistItemMapValid(idx, itemMap);
+		MAX_ITEMS_GLOBAL++;
+		items_group_count[itemGroup]++;
+		return idx;
+	}
+	printbold(s:"Limit too low, need more item slots");
+	return -1;
+}
+
+function int randomAssistItemCore(int group, int mapValid)
+{
+    int firstRoll;
+    if(group == -1) {
+        firstRoll = random(0, MAX_ITEMS_GLOBAL-1);
+    } else {
+        firstRoll = random(0, items_group_count[group]-1);
+    }
+
+    int counter = firstRoll;
+
+    do
+    {
+        for(int i = 0; i < MAX_ITEMS_GLOBAL; i++)
+        {
+            if(
+                compareTernary(group, getAssistItemGroup(i)) &&
+                compareTernary(mapValid, isAssistItemMapValid(i))
+            ) {
+				if(counter > 0)
+					counter --;
+				else
+					return i;
+            }
+        }
+    }
+    while(counter != firstRoll && counter > -1);
+
+    return -1;
+}
+
+script "core_RegisterTeamColorDef_S" (void) {
+	int res = RegisterTeamColorDefCore(
+		GetCvarString("8bdm_teamcolor_def")
+	);
+	SetResultValue(res);
+}
+
+function int RegisterTeamColorDefCore(str callee) {
+	if(MAX_TEAMCOLOR_DEF < MAX_TEAMCOLOR_DEF_LIMIT) {
+		SetTeamColorDef(MAX_TEAMCOLOR_DEF,callee);
+		MAX_TEAMCOLOR_DEF++;
+		return MAX_TEAMCOLOR_DEF - 1;
+	} else {
+		printbold(s:"Team color definition limit too low, increase the limit");
+	}
+	return -1;
+}
