@@ -88,8 +88,15 @@ def main():
     del source_bar["capacity"]
     source_config = load_fixture([("UHBar_Source", [source_bar])])
     append_lines = generator.gen_namespaced_append_lines(source_config, True)
-    assert any("DrawBar \"002B_VAR\", \"VNOBAR\", Ammo1," in line
+    assert any('DrawBar"002B_VAR","VNOBAR",Ammo1,' in line
                for line in append_lines)
+    compact_h, compact_v = generator.gen_append_files([], source_config)
+    assert compact_h.startswith("AppendStatusBar normal,forcescaled{")
+    assert compact_v.startswith("AppendStatusBar fullscreen,forcescaled{")
+    assert "\n" not in compact_h and "\n" not in compact_v
+    assert "//" not in compact_h and "\t" not in compact_h
+    assert 'InInventory "' not in compact_h
+    assert 'DrawBar"002B_VAR","VNOBAR",Ammo1,horizontal,58,184;' in compact_h
     source_actors = generator.gen_namespaced_barfx_actors(source_config)
     assert "actor UHBar_Source_P1L0Selector" in source_actors
     assert "UHBar_Source_P1L0_BodyAmmo" not in source_actors

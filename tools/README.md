@@ -149,7 +149,9 @@ Three of these cost a debugging round each; check them before blaming the mod:
 - `bars.toml` is the schema-versioned hand-authored input for namespaced bars.
   `python3 tools/_gen_barpos.py --check` verifies its checked-in numeric ACS
   helper, namespaced selector/ammo actors in `UH_BarFX.dec`, and sparse-priority
-  AppendStatusBar output. The base game's `BarFX.txt` must not be overridden.
+  AppendStatusBar output. The two `.uhappend` files are deliberately emitted as
+  compact, single-line compiler output; edit `bars.toml` or the generator, never
+  format them by hand. The base game's `BarFX.txt` must not be overridden.
   Each `[[groups]]` entry declares one namespace and contains one or more
   `[[groups.bars]]` entries. All namespaces share the single generated
   `UHBar_ClearAll` callback (one `core_DrawBar_RegisterClear` slot for the
