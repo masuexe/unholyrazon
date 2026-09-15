@@ -6,6 +6,7 @@
 // 2. In YOUR_BOSSDEFS.acs:
 //      #library "YOUR_BOSSDEFS"
 //      #include "zcommon.acs"
+//      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
 //      #include "UHADD.acs"
 //
 //      function void YourRegisterBosses(void)
@@ -92,6 +93,7 @@
 // 3. ACS:
 //      #library "YOUR_SURVDEFS"
 //      #include "zcommon.acs"
+//      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
 //      #include "UHADD.acs"
 //      function void YourRegisterSurvivors(void) {
 //          DefineSurvivor(-1, "YourClass", "\cjName", "UMUG_6");
@@ -131,6 +133,7 @@
 // 2. ACS:
 //      #library "YOUR_EYEDEFS"
 //      #include "zcommon.acs"
+//      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
 //      #include "UHADD.acs"
 //      function void YourRegisterEyes(void) {
 //          DefineDemoneye(-1, "YourDemoneye", "\ctYour", "a ", 0, "EYE_F0", "Your");
@@ -278,6 +281,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 // 2. ACS:
 //      #library "YOUR_ITEMDEFS"
 //      #include "zcommon.acs"
+//      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
 //      #include "UHADD.acs"
 //      function void YourRegisterItems(void) {
 //          // Identity only; then AddUnholyItemDrop into a box.
@@ -341,6 +345,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 // 2. ACS:
 //      #library "YOUR_COPYDEFS"
 //      #include "zcommon.acs"
+//      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
 //      #include "UHADD.acs"
 //      function void YourRegisterCopyWeps(void) {
 //          DefineCopyWep(UHCOPY_MEGA, UHCOPY_SLOT_RANGED, "YourWepU");
@@ -368,6 +373,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 // 2. Same pk3 as your custom boss (no wait — DefineBoss then music):
 //      #library "YOUR_MUSICDEFS"
 //      #include "zcommon.acs"
+//      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
 //      #include "UHADD.acs"
 //      function void YourRegister(void) {
 //          int id = DefineBoss(
@@ -451,6 +457,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 // 2. ACS:
 //      #library "YOUR_LMSDEFS"
 //      #include "zcommon.acs"
+//      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
 //      #include "UHADD.acs"
 //      function void YourRegisterLMS(void) {
 //          DefineLMSEvent(-1, "my_lms", "Normal msg", "Rare msg",
@@ -482,6 +489,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 // 2. ACS:
 //      #library "YOUR_BONUSDEFS"
 //      #include "zcommon.acs"
+//      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
 //      #include "UHADD.acs"
 //
 //      function void MyBonusApplyState(int tid) {
@@ -689,6 +697,31 @@ function bool UHInPlay(void) {
 	return uh_inplay_cache;
 }
 
+// === UHADD <-> UHADDR cvar mailbox diagnostics ===============================
+// Every registration helper below stages its arguments in ephemeral cvars that
+// the matching UHADDR handler reads back.  SetCVar/SetCVarString return 0 and do
+// nothing when the name is not registered in CVARINFO.ipc, and the handler's
+// GetCVarString then reads int 0 instead of the argument — so an entire batch of
+// registrations fails with no usable cause, and it is never one bad data row.
+//
+// Two rules for every helper:
+//   1. Accumulate the SetCVar* return values with `&` — NOT `&&`, which
+//      short-circuits and would leave stale values in the mailboxes that follow
+//      the first failure.
+//   2. When the accumulator is 0, do NOT call the handler; report the root
+//      cause once per ACS VM (per library instance) so e.g. 23 bonus event
+//      definitions do not repeat the same message 23 times.
+int uh_add_ipcfail_reported = 0;
+
+function void UH_ReportIPCFailure(str entrypoint) {
+	if (uh_add_ipcfail_reported)
+		return;
+	uh_add_ipcfail_reported = 1;
+	UH_Log(UH_LOG_ERROR, StrParam(
+		s:"UHADD: ", s:entrypoint,
+		s:" mailbox cvars are not registered in CVARINFO.ipc; this and every later registration of the same kind is dropped."));
+}
+
 function int DefineBoss(
 	int id,
 	str actor,
@@ -753,9 +786,14 @@ function bool SetBossMorphSetupByActor(str actor, str setupscript) {
 // Internal helper: id is the signed UHDT boss id. Modders should use
 // SetBossUnmorphCleanupByActor instead; custom ids are not stable across PK3s.
 function bool SetBossUnmorphCleanupById(int id, str prescript, str postscript) {
-	SetCVar("uh_db_id", id);
-	SetCVarString("uh_db_unmorphpre", prescript);
-	SetCVarString("uh_db_unmorphpost", postscript);
+	int ipc;
+	ipc  = SetCVar("uh_db_id", id);
+	ipc = ipc & SetCVarString("uh_db_unmorphpre", prescript);
+	ipc = ipc & SetCVarString("uh_db_unmorphpost", postscript);
+	if (ipc == 0) {
+		UH_ReportIPCFailure("SetBossUnmorphCleanup");
+		return false;
+	}
 	return ACS_NamedExecuteWithResult("uh_SetBossUnmorphCleanup_S");
 }
 
@@ -1001,9 +1039,16 @@ function int DefineUnholyCoinSpend(int mincount, int takeamt, str giveactor, str
 // PowerProtection DamageFactor "Normal" for the Guard HP bar.
 // Call from OPEN CLIENTSIDE (HUD table is local). factor is fixed (2.0, 0.8).
 // Returns slot index, or UHGUARD_FAIL. Same actor overwrites.
+// Mailbox contract: see "UHADD <-> UHADDR cvar mailbox diagnostics" above —
+// a missing uh_gf_actor makes the handler StrLen() an invalid cell.
 function int DefineUnholyGuardFactor(str actor, int factor) {
-	SetCVarString("uh_gf_actor", actor);
-	SetCVar("uh_gf_factor", factor);
+	int ipc;
+	ipc  = SetCVarString("uh_gf_actor", actor);
+	ipc = ipc & SetCVar("uh_gf_factor", factor);
+	if (ipc == 0) {
+		UH_ReportIPCFailure("DefineUnholyGuardFactor");
+		return UHGUARD_FAIL;
+	}
 	return ACS_NamedExecuteWithResult("uh_DefineUnholyGuardFactor_S");
 }
 
@@ -1238,6 +1283,7 @@ function int UH_PickLMSEvent(void) {
 // === Bonus event public API ==================================================
 // Define one round-level bonus event (see the recipe above for the callback
 // contract).  id -1 auto-assigns >= UHBE_ADDON_ID_START.
+// Mailbox contract: see "UHADD <-> UHADDR cvar mailbox diagnostics" above.
 function int DefineBonusEvent(
 	int id,
 	str stem,
@@ -1257,33 +1303,43 @@ function int DefineBonusEvent(
 	int weight,
 	int minPlayers,
 	int maxPlayers) {
-	SetCVar("uh_be_id", id);
-	SetCVarString("uh_be_stem", stem);
-	SetCVarString("uh_be_name", name);
-	SetCVarString("uh_be_music", music);
-	SetCVarString("uh_be_credit", credit);
-	SetCVarString("uh_be_sound", sound);
-	SetCVarString("uh_be_hud1", hud1);
-	SetCVarString("uh_be_hud2", hud2);
-	SetCVarString("uh_be_startcb", startCallback);
-	SetCVarString("uh_be_rebuildcb", rebuildCallback);
-	SetCVarString("uh_be_endcb", endCallback);
-	SetCVar("uh_be_arg1", arg1);
-	SetCVar("uh_be_arg2", arg2);
-	SetCVar("uh_be_arg3", arg3);
-	SetCVar("uh_be_flags", flags);
-	SetCVar("uh_be_weight", weight);
-	SetCVar("uh_be_minp", minPlayers);
-	SetCVar("uh_be_maxp", maxPlayers);
+	int ipc;
+	ipc  = SetCVar("uh_be_id", id);
+	ipc = ipc & SetCVarString("uh_be_stem", stem);
+	ipc = ipc & SetCVarString("uh_be_name", name);
+	ipc = ipc & SetCVarString("uh_be_music", music);
+	ipc = ipc & SetCVarString("uh_be_credit", credit);
+	ipc = ipc & SetCVarString("uh_be_sound", sound);
+	ipc = ipc & SetCVarString("uh_be_hud1", hud1);
+	ipc = ipc & SetCVarString("uh_be_hud2", hud2);
+	ipc = ipc & SetCVarString("uh_be_startcb", startCallback);
+	ipc = ipc & SetCVarString("uh_be_rebuildcb", rebuildCallback);
+	ipc = ipc & SetCVarString("uh_be_endcb", endCallback);
+	ipc = ipc & SetCVar("uh_be_arg1", arg1);
+	ipc = ipc & SetCVar("uh_be_arg2", arg2);
+	ipc = ipc & SetCVar("uh_be_arg3", arg3);
+	ipc = ipc & SetCVar("uh_be_flags", flags);
+	ipc = ipc & SetCVar("uh_be_weight", weight);
+	ipc = ipc & SetCVar("uh_be_minp", minPlayers);
+	ipc = ipc & SetCVar("uh_be_maxp", maxPlayers);
+	if (ipc == 0) {
+		UH_ReportIPCFailure("DefineBonusEvent");
+		return UHBE_FAIL;
+	}
 	return ACS_NamedExecuteWithResult("uh_DefineBonusEvent_S");
 }
 
 // Bind base -> EX by stem (both events must be defined; threshold >= 1).
 // Rebinding the same base updates the row.
 function int SetBonusEventEX(str baseStem, str exStem, int threshold) {
-	SetCVarString("uh_bex_base", baseStem);
-	SetCVarString("uh_bex_ex", exStem);
-	SetCVar("uh_bex_threshold", threshold);
+	int ipc;
+	ipc  = SetCVarString("uh_bex_base", baseStem);
+	ipc = ipc & SetCVarString("uh_bex_ex", exStem);
+	ipc = ipc & SetCVar("uh_bex_threshold", threshold);
+	if (ipc == 0) {
+		UH_ReportIPCFailure("SetBonusEventEX");
+		return UHBE_FAIL;
+	}
 	return ACS_NamedExecuteWithResult("uh_SetBonusEventEX_S");
 }
 
@@ -1485,6 +1541,7 @@ function int UH_GetBonusEventTarget(int eventid) {
 // 2. ACS:
 //      #library "YOUR_SHINYDEFS"
 //      #include "zcommon.acs"
+//      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
 //      #include "UHADD.acs"
 //      function void YourRegister(void) {
 //          DefineShinyQwantMoveWep("YourMove_W", 3);
