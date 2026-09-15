@@ -128,6 +128,17 @@ ANIMATION_STOP_RX = re.compile(r"^(?:wall|sprite|graphic|warp|warp2|noise)\b", r
 ANIMATION_PIC_RX = re.compile(r"\bpic\s+([A-Za-z0-9_]+)", re.IGNORECASE)
 ANIMATION_RANGE_RX = re.compile(r"\brange\s+([A-Za-z0-9_]+)\s+([A-Za-z0-9_]+)", re.IGNORECASE)
 TRANSPARENT_PATCH = "tnt1a0"
+LINE_COMMENT_RX = re.compile(r"//[^\n]*")
+
+
+def strip_line_comments(text: str) -> str:
+    """TEXTURES/ANIMDEFS have no string literals, so `//` always starts a comment.
+
+    Commented-out definitions must not reach the parsers below: a commented
+    offset would otherwise be treated as live and could trip the fill guard on a
+    graphic that no longer exists.
+    """
+    return LINE_COMMENT_RX.sub("", text)
 
 
 def bar_graphics_text(pattern: str) -> str:
@@ -265,9 +276,13 @@ def validate_fill_graphics(bars: list, defs: dict, animations: dict):
 
 
 def load_bar_graphics():
-    """Return (known graphics, texture definitions, animations)."""
-    textures = bar_graphics_text("TEXTURES*")
-    animdefs = bar_graphics_text("ANIMDEFS*")
+    """Return (known graphics, texture definitions, animations).
+
+    Comments are stripped first so a commented-out definition neither counts as
+    a known graphic nor contributes patches/offsets/animation frames.
+    """
+    textures = strip_line_comments(bar_graphics_text("TEXTURES*"))
+    animdefs = strip_line_comments(bar_graphics_text("ANIMDEFS*"))
     known = {name.casefold() for name in re.findall(
         r"\b(?:graphic|patch|texture)\s+([A-Za-z0-9_]+)", textures + "\n" + animdefs,
     )} | {name.casefold() for name in COMMON_BAR_GRAPHICS | BASE_BAR_GRAPHICS}
