@@ -77,7 +77,9 @@ echo "== mmsp_script =="
 echo "== uh_corereplace =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/utilities/uh_corereplace.acs" "$OUT/uh_corereplace.o" || fail=1
 echo "== uh_modcheck =="
-"$ACC" $INC "src/acs_source/compat/rockforce/uh_modcheck.acs" "$OUT/uh_modcheck.o" || fail=1
+"$ACC" $INC "src/acs_source/compat/mods/rockforce/uh_modcheck.acs" "$OUT/uh_modcheck.o" || fail=1
+echo "== uh_uix =="
+"$ACC" $INC "src/acs_source/compat/mods/uix/uh_uix.acs" "$OUT/uh_uix.o" || fail=1
 echo "== uh_legacy =="
 "$ACC" $INC "src/acs_source/compat/legacy/uh_legacy.acs" "$OUT/uh_legacy.o" || fail=1
 echo "== rz_shared =="

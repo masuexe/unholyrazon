@@ -1,0 +1,66 @@
+#library "uh_uix"
+
+#include "zcommon.acs"
+#include "dtadd.acs"
+#import "uh_log.acs"
+
+// UIX v3bh item-wheel compatibility. UIX snapshots MM8BDM's Assist Item
+// table; Unholy items are otherwise only in DefineUnholyItem. Register an
+// explicit allowlist through DefineAssistItem. Do not delay: UIX_ItemWheelInit
+// waits three tics then snapshots once.
+
+function int UH_UIX_ActorExists(str which) {
+	int u;
+	int spawned;
+
+	u = UniqueTID();
+	spawned = SpawnForced(which, 0, 0, 0, u, 0);
+	if (spawned)
+		Thing_Remove(u);
+	return spawned;
+}
+
+function void UH_UIX_RegisterExperiment(void) {
+	int rubber;
+	int tank;
+
+	rubber = DefineAssistItem(
+		"Rubber Band",
+		"RubberBandItem",
+		"I_BAR0",
+		1,
+		DTADD_GRP_ATTACK,
+		false
+	);
+	tank = DefineAssistItem(
+		"Periwinkle Tank",
+		"PeriwinkleTankItem",
+		"I_MAB0",
+		1,
+		DTADD_GRP_HEAL,
+		false
+	);
+
+	if (rubber == -1 || tank == -1) {
+		UH_Log(UH_LOG_WARN, StrParam(
+			s:"uh_uix: DefineAssistItem failed (rubber=",
+			i:rubber,
+			s:" tank=",
+			i:tank,
+			s:")"));
+		return;
+	}
+
+	UH_Log(UH_LOG_INFO, StrParam(
+		s:"uh_uix: registered Rubber Band at ",
+		i:rubber,
+		s:", Periwinkle Tank at ",
+		i:tank));
+}
+
+script "uh_uix_register_items" OPEN CLIENTSIDE {
+	if (!UH_UIX_ActorExists("UIX_ItemSelected_PU"))
+		terminate;
+
+	UH_UIX_RegisterExperiment();
+}
