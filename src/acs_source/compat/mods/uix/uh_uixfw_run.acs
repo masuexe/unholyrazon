@@ -1,0 +1,125 @@
+#define UHFW_WHEEL_NAME "uhfixedweaponwheel"
+#define UHFW_IW_LABELPOS -9
+#define UHFW_IW_ICONX 8
+#define UHFW_IW_ICONY 16
+
+function int UHFW_ActorExists(str which) {
+	int u;
+	int spawned;
+
+	u = UniqueTID();
+	spawned = SpawnForced(which, 0, 0, 0, u, 0);
+	if (spawned)
+		Thing_Remove(u);
+	return spawned;
+}
+
+function int UHFW_CurrentWepIndex(int classidx) {
+	int i;
+	int n;
+
+	n = uhfw_classwepcount[classidx];
+	for (i = 0; i < n; i++) {
+		if (CheckWeapon(uhfw_wep[classidx][i][UHFW_STR_WEP]))
+			return i;
+	}
+	return 0;
+}
+
+function int UHFW_AllWepsHeld(int classidx) {
+	int i;
+	int n;
+
+	n = uhfw_classwepcount[classidx];
+	for (i = 0; i < n; i++) {
+		if (CheckInventory(uhfw_wep[classidx][i][UHFW_STR_WEP]) <= 0)
+			return 0;
+	}
+	return 1;
+}
+
+function void UHFW_AddWepItem(int classidx, int i) {
+	str wep;
+	str icon;
+	str tag;
+
+	wep = uhfw_wep[classidx][i][UHFW_STR_WEP];
+	icon = uhfw_wep[classidx][i][UHFW_STR_ICON];
+	tag = uhfw_wep[classidx][i][UHFW_STR_TAG];
+	addWheelItem(wep, i);
+	addWheelElement("A", icon, 0, WHEEL_MODE_UNSELECTED, UHFW_IW_ICONX, UHFW_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 0.5, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+	addWheelElement("A", "UXICB0", 0, WHEEL_MODE_UNSELECTED, UHFW_IW_ICONX, UHFW_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+	addWheelElement("A", icon, 0, WHEEL_MODE_SELECTED, UHFW_IW_ICONX, UHFW_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.5, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+	addWheelElement("A", icon, 0, WHEEL_MODE_MIDDLE, UHFW_IW_ICONX, UHFW_IW_ICONY + UHFW_IW_LABELPOS, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.5, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+	addWheelElement(StrParam(l:tag), "SMALLFNT", "Gold", WHEEL_MODE_MIDDLE, 0, -UHFW_IW_LABELPOS, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+}
+
+script "uh_fw_open" (void) NET CLIENTSIDE {
+	int cln;
+	int classidx;
+	int n;
+	int i;
+	int cur;
+
+	cln = ConsolePlayerNumber();
+	if (cln != PlayerNumber())
+		terminate;
+	if (!UHFW_ActorExists("UIX_ItemSelected_PU"))
+		terminate;
+	if (wheelName != -1)
+		terminate;
+
+	classidx = UHFW_FindClass(GetActorClass(0));
+	if (classidx == UHFW_FAIL)
+		terminate;
+	n = uhfw_classwepcount[classidx];
+	if (n < UHFW_MIN_WEAP)
+		terminate;
+	if (n > UHFW_MAX_WEAP) {
+		UH_Log(UH_LOG_WARN, StrParam(s:"uh_uixfw: ", s:GetActorClass(0), s:" has too many weapons"));
+		terminate;
+	}
+	if (!UHFW_AllWepsHeld(classidx)) {
+		UH_Log(UH_LOG_DEBUG, StrParam(s:"uh_uixfw: missing weapon for ", s:GetActorClass(0)));
+		terminate;
+	}
+
+	cur = UHFW_CurrentWepIndex(classidx);
+	newWheel(UHFW_WHEEL_NAME, n, cur);
+	emptyWheel();
+	WHEEL_GROUPS = n;
+	for (i = 0; i < n; i++)
+		UHFW_AddWepItem(classidx, i);
+	startWheel(-1, "uh_fw_select");
+}
+
+script "uh_fw_close" (void) NET CLIENTSIDE {
+	int cln;
+
+	cln = ConsolePlayerNumber();
+	if (cln != PlayerNumber())
+		terminate;
+	if (wheelName == -1)
+		terminate;
+	if (StrCmp(wheelName, UHFW_WHEEL_NAME) != 0)
+		terminate;
+	stopWheel();
+}
+
+script "uh_fw_select" (int idx) {
+	GiveInventory("UIX_WeaponSelected_PU", 1);
+	NamedSendNetworkString("uh_fw_sel_sv", getWheelItemName(idx));
+}
+
+script "uh_fw_sel_sv" (int wep) NET {
+	int classidx;
+
+	classidx = UHFW_FindClass(GetActorClass(0));
+	if (classidx == UHFW_FAIL)
+		terminate;
+	if (UHFW_FindWep(classidx, wep) == UHFW_FAIL)
+		terminate;
+	if (CheckInventory(wep) <= 0)
+		terminate;
+	SetWeapon(wep);
+}
