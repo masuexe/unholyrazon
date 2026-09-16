@@ -4,16 +4,17 @@
 #include "dtadd.acs"
 #import "uh_log.acs"
 
-// UIX v3bh item-wheel compatibility. UIX snapshots MM8BDM's Assist Item
-// table; Unholy items are otherwise only in DefineUnholyItem. Register an
-// explicit allowlist of the 88 identity actors through DefineAssistItem.
-// Do not delay: UIX_ItemWheelInit waits three tics then snapshots once, so
-// Unholy vs UIX package order does not matter at the current row count.
-// acs/UIXITEMS.o enlarges the wheel table when this pk3 loads after UIX.
-// Icons are spawn sprites (I_BAR0),
-// not SBARINFO composites. mapValid is false. Auto*/FX/helper actors stay
-// off the wheel. DTADD_GRP_PASSIVE is unused: UIX maps it to IWGRP_NULL
-// and hides the row.
+// UIX v3bh item-wheel and MegaManU weapon-wheel compatibility. UIX
+// snapshots MM8BDM Assist Item and weapon tables; Unholy items are
+// otherwise only in DefineUnholyItem, and MegaManU copy weps only in
+// DefineCopyWep. Register explicit allowlists through DefineAssistItem
+// and DefineWeapon. Do not delay: UIX_ItemWheelInit waits three tics
+// then snapshots once, and uixweap_init waits for MAX_WEAPONS_GLOBAL.
+// acs/UIXITEMS.o enlarges the item wheel when this pk3 loads after UIX.
+// Icons are spawn sprites (I_BAR0 / WEAPS0), not SBARINFO composites.
+// mapValid/lms/eddie are false. Auto*/FX/helper actors stay off the
+// item wheel. DTADD_GRP_PASSIVE is unused: UIX maps it to IWGRP_NULL
+// and hides the row. MegaManU_W is registered as DTADD slot 1 (buster).
 
 function int UH_UIX_ActorExists(str which) {
 	int u;
@@ -158,9 +159,12 @@ function void UH_UIX_RegisterItems(void) {
 	UH_Log(UH_LOG_INFO, "uh_uix: registered 88 Unholy items");
 }
 
+#include "uh_uix_megaweps.acs"
+
 script "uh_uix_register_items" OPEN CLIENTSIDE {
 	if (!UH_UIX_ActorExists("UIX_ItemSelected_PU"))
 		terminate;
 
 	UH_UIX_RegisterItems();
+	UH_UIX_RegisterMegaWeps();
 }

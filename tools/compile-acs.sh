@@ -82,7 +82,7 @@ echo "== uh_corereplace =="
 echo "== uh_modcheck =="
 "$ACC" $INC "src/acs_source/compat/mods/rockforce/uh_modcheck.acs" "$OUT/uh_modcheck.o" || fail=1
 echo "== uh_uix =="
-"$ACC" $INC "src/acs_source/compat/mods/uix/uh_uix.acs" "$OUT/uh_uix.o" || fail=1
+"$ACC" $INC -i src/acs_source/compat/mods/uix "src/acs_source/compat/mods/uix/uh_uix.acs" "$OUT/uh_uix.o" || fail=1
 echo "== UIXITEMS =="
 "$ACC" $INC -i src/acs_source/compat/mods/uix/_uix_v3bh "src/acs_source/compat/mods/uix/uixitems.acs" "$OUT/UIXITEMS.o" || fail=1
 echo "== uh_legacy =="
