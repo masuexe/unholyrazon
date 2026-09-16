@@ -1,0 +1,591 @@
+// Qwant 5-group weapon wheel: server MoveMem snapshot + display adapter.
+// Indices pack in 8 bits (0..254 valid, 255 unused). UHCOPY_QWANT == 2.
+
+#define UHFW_UHCOPY_QWANT 2
+#define UHFW_QW_SLOTS 4
+#define UHFW_QW_GROUPS 5
+#define UHFW_QW_WAIT 35
+#define UHFW_QW_IDXMAX 254
+#define UHFW_QW_PLAYERS 64
+#define UHFW_QW_CACHE 64
+#define UHFW_QW_TYPE_N 18
+#define UHFW_QW_BAR2_C 138
+#define UHFW_QW_BAR2_B 130
+#define UHFW_QW_BODY_C 138
+#define UHFW_QW_BODY_B 130
+
+int uhqw_svlife[UHFW_QW_PLAYERS];
+int uhqw_svseq[UHFW_QW_PLAYERS];
+
+int uhqw_clife = 0;
+int uhqw_pend_ok = 0;
+int uhqw_pend_seq = 0;
+int uhqw_pend_m[UHFW_QW_SLOTS];
+int uhqw_show_seq = -1;
+int uhqw_show_m[UHFW_QW_SLOTS];
+int uhqw_can[UHFW_QW_GROUPS];
+int uhqw_wait = 0;
+int uhqw_kind[UHFW_QW_GROUPS];
+
+int uhqw_cn = 0;
+str uhqw_cwep[UHFW_QW_CACHE];
+str uhqw_ctag[UHFW_QW_CACHE];
+str uhqw_cicon[UHFW_QW_CACHE];
+str uhqw_cammo[UHFW_QW_CACHE];
+int uhqw_cmax[UHFW_QW_CACHE];
+int uhqw_ctype[UHFW_QW_CACHE];
+int uhqw_ccyan[UHFW_QW_CACHE];
+int uhqw_cblue[UHFW_QW_CACHE];
+
+str uhqw_typeammo[UHFW_QW_TYPE_N] = {
+	"NormalTypeAmmo",
+	"FireTypeAmmo",
+	"WaterTypeAmmo",
+	"ElectricTypeAmmo",
+	"GrassTypeAmmo",
+	"IceTypeAmmo",
+	"FightingTypeAmmo",
+	"PoisonTypeAmmo",
+	"GroundTypeAmmo",
+	"FlyingTypeAmmo",
+	"PsychicTypeAmmo",
+	"BugTypeAmmo",
+	"RockTypeAmmo",
+	"GhostTypeAmmo",
+	"DragonTypeAmmo",
+	"DarkTypeAmmo",
+	"SteelTypeAmmo",
+	"FairyTypeAmmo"
+};
+
+int uhqw_typecyan[UHFW_QW_TYPE_N] = {
+	4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
+};
+
+int uhqw_typeblue[UHFW_QW_TYPE_N] = {
+	144, 176, 198, 228, 129, 196, 220, 251, 232, 205, 39, 139, 166, 60, 43, 95, 152, 35
+};
+
+function int UHFW_IsPlainQwant(void) {
+	if (StrICmp(GetActorClass(0), "Qwant") == 0)
+		return 1;
+	return 0;
+}
+
+function void UHFW_QwantClearClient(void) {
+	int i;
+
+	uhqw_pend_ok = 0;
+	uhqw_pend_seq = 0;
+	uhqw_show_seq = -1;
+	uhqw_wait = 0;
+	for (i = 0; i < UHFW_QW_SLOTS; i++) {
+		uhqw_pend_m[i] = -1;
+		uhqw_show_m[i] = -1;
+	}
+	for (i = 0; i < UHFW_QW_GROUPS; i++) {
+		uhqw_can[i] = 0;
+		uhqw_kind[i] = -1;
+	}
+}
+
+function str UHFW_QwantActor(int idx) {
+	if (idx < 0 || idx > UHFW_QW_IDXMAX)
+		return "";
+	return ACS_NamedExecuteWithResult("uh_copykind_actor", UHFW_UHCOPY_QWANT, idx);
+}
+
+function int UHFW_QwantTypeMax(int type) {
+	if (type == 10 || type == 14 || type == 17)
+		return 56;
+	return 28;
+}
+
+function str UHFW_QwantTypeIcon(int type) {
+	if (type == 1)
+		return "6N01B0";
+	if (type == 2)
+		return "6N01C0";
+	if (type == 3)
+		return "6N01D0";
+	if (type == 4)
+		return "6N01E0";
+	if (type == 5)
+		return "6N01F0";
+	if (type == 6)
+		return "6N01G0";
+	if (type == 7)
+		return "6N01H0";
+	if (type == 8)
+		return "6N01I0";
+	if (type == 9)
+		return "6N01J0";
+	if (type == 10)
+		return "6N01K0";
+	if (type == 11)
+		return "6N01L0";
+	if (type == 12)
+		return "6N01M0";
+	if (type == 13)
+		return "6N01N0";
+	if (type == 14)
+		return "6N01O0";
+	if (type == 15)
+		return "6N01P0";
+	if (type == 16)
+		return "6N01Q0";
+	if (type == 17)
+		return "6N01R0";
+	return "6N01A0";
+}
+
+function str UHFW_QwantTagOf(str wep, int tid) {
+	str tag;
+	int len;
+
+	tag = GetActorProperty(tid, APROP_Nametag);
+	if (StrLen(tag) > 0) {
+		if (GetChar(tag, 0) == 36)
+			return StrMid(tag, 1, StrLen(tag) - 1);
+		return tag;
+	}
+	len = StrLen(wep);
+	if (len >= 3) {
+		if (StrCmp(StrRight(wep, 3), "Wep") == 0)
+			wep = StrLeft(wep, len - 3);
+	}
+	return StrParam(s:"TAG_", s:wep);
+}
+
+function int UHFW_QwantCacheFind(str wep) {
+	int i;
+
+	for (i = 0; i < uhqw_cn; i++) {
+		if (StrICmp(uhqw_cwep[i], wep) == 0)
+			return i;
+	}
+	return UHFW_FAIL;
+}
+
+function int UHFW_QwantCacheWep(str wep) {
+	int i;
+	int u;
+	int bu;
+	int type;
+	int custom;
+	int tagcap;
+	str tag;
+	str ammo;
+	int mx;
+
+	i = UHFW_QwantCacheFind(wep);
+	if (i != UHFW_FAIL)
+		return i;
+	if (uhqw_cn >= UHFW_QW_CACHE)
+		return UHFW_FAIL;
+
+	i = uhqw_cn;
+	uhqw_cwep[i] = wep;
+	uhqw_ctag[i] = "";
+	uhqw_cicon[i] = "";
+	uhqw_cammo[i] = "";
+	uhqw_cmax[i] = 0;
+	uhqw_ctype[i] = 0;
+	uhqw_ccyan[i] = UHFW_QW_BODY_C;
+	uhqw_cblue[i] = UHFW_QW_BODY_B;
+
+	if (StrICmp(wep, "Qwant_W") == 0) {
+		uhqw_ctag[i] = "TAG_Qwant_W";
+		uhqw_cicon[i] = "6N01S0";
+		uhqw_cammo[i] = "MyDestinyAmmo";
+		uhqw_cmax[i] = GetAmmoCapacity("MyDestinyAmmo");
+		uhqw_cn++;
+		return i;
+	}
+
+	u = UniqueTID();
+	if (!SpawnForced(wep, 0, 0, 0, u, 0))
+		return UHFW_FAIL;
+	uhqw_ctag[i] = UHFW_QwantTagOf(wep, u);
+	Thing_Remove(u);
+
+	type = 0;
+	ammo = uhqw_typeammo[0];
+	mx = UHFW_QwantTypeMax(0);
+	bu = UniqueTID();
+	if (SpawnForced(StrParam(s:wep, s:"_QwantBar"), 0, 0, 0, bu, 0)) {
+		type = ACS_NamedExecuteWithResult("core_GetActorArg", bu, 0);
+		if (type < 0 || type >= UHFW_QW_TYPE_N)
+			type = 0;
+		ammo = uhqw_typeammo[type];
+		mx = UHFW_QwantTypeMax(type);
+		custom = ACS_NamedExecuteWithResult("core_GetActorArg", bu, 1);
+		if (custom > 0) {
+			tag = GetActorProperty(bu, APROP_Nametag);
+			tagcap = 0;
+			if (StrLen(tag) > 0) {
+				if (GetChar(tag, 0) != 36)
+					tagcap = GetAmmoCapacity(tag);
+			}
+			if (tagcap > 0) {
+				ammo = tag;
+				mx = tagcap;
+			}
+		}
+		Thing_Remove(bu);
+	}
+	uhqw_ctype[i] = type;
+	uhqw_cammo[i] = ammo;
+	uhqw_cmax[i] = mx;
+	uhqw_cicon[i] = UHFW_QwantTypeIcon(type);
+	uhqw_ccyan[i] = uhqw_typecyan[type];
+	uhqw_cblue[i] = uhqw_typeblue[type];
+	uhqw_cn++;
+	return i;
+}
+
+function int UHFW_QwantMovesOk(int m0, int m1, int m2, int m3) {
+	if (m0 < 0 || m1 < 0 || m2 < 0 || m3 < 0)
+		return 0;
+	if (m0 > UHFW_QW_IDXMAX || m1 > UHFW_QW_IDXMAX || m2 > UHFW_QW_IDXMAX || m3 > UHFW_QW_IDXMAX)
+		return 0;
+	if (m0 == m1 || m0 == m2 || m0 == m3 || m1 == m2 || m1 == m3 || m2 == m3)
+		return 0;
+	if (StrCmp(UHFW_QwantActor(m0), "") == 0)
+		return 0;
+	if (StrCmp(UHFW_QwantActor(m1), "") == 0)
+		return 0;
+	if (StrCmp(UHFW_QwantActor(m2), "") == 0)
+		return 0;
+	if (StrCmp(UHFW_QwantActor(m3), "") == 0)
+		return 0;
+	return 1;
+}
+
+function int UHFW_QwantInvMatch(int m0, int m1, int m2, int m3) {
+	if (CheckInventory("Qwant_W") <= 0)
+		return 0;
+	if (CheckInventory(UHFW_QwantActor(m0)) <= 0)
+		return 0;
+	if (CheckInventory(UHFW_QwantActor(m1)) <= 0)
+		return 0;
+	if (CheckInventory(UHFW_QwantActor(m2)) <= 0)
+		return 0;
+	if (CheckInventory(UHFW_QwantActor(m3)) <= 0)
+		return 0;
+	return 1;
+}
+
+function void UHFW_QwantPushCached(int c) {
+	int i;
+
+	if (uhfw_snapn >= UHFW_MAX_WEAP)
+		return;
+	if (c < 0 || StrCmp(uhqw_cicon[c], "") == 0) {
+		uhfw_metaok = 0;
+		return;
+	}
+	i = uhfw_snapn;
+	uhfw_snapwep[i] = uhqw_cwep[c];
+	uhfw_snaptag[i] = uhqw_ctag[c];
+	uhfw_snapicon[i] = uhqw_cicon[c];
+	uhfw_snapammo2[i] = "";
+	uhfw_cyan2[i] = UHFW_BAR_BLACK;
+	uhfw_blue2[i] = UHFW_BAR_BLACK;
+	if (StrICmp(uhqw_cwep[c], "Qwant_W") == 0) {
+		uhfw_snapammo1[i] = "MoveRelearnAmmo";
+		uhfw_cyan1[i] = UHFW_Pal(UHFW_QW_BAR2_C);
+		uhfw_blue1[i] = UHFW_Pal(UHFW_QW_BAR2_B);
+	} else {
+		uhfw_snapammo1[i] = uhqw_cammo[c];
+		uhfw_cyan1[i] = UHFW_Pal(uhqw_ccyan[c]);
+		uhfw_blue1[i] = UHFW_Pal(uhqw_cblue[c]);
+	}
+	UHFW_ReadAmmo(i);
+	if (uhfw_max1[i] <= 0 && uhqw_cmax[c] > 0)
+		uhfw_max1[i] = uhqw_cmax[c];
+	uhfw_snapn++;
+}
+
+function void UHFW_QwantLoadSnap(int m0, int m1, int m2, int m3) {
+	int c;
+	int i;
+
+	uhfw_snapn = 0;
+	uhfw_heldn = 5;
+	uhfw_metaok = 1;
+	c = UHFW_QwantCacheWep("Qwant_W");
+	UHFW_QwantPushCached(c);
+	uhqw_kind[0] = 0;
+	c = UHFW_QwantCacheWep(UHFW_QwantActor(m0));
+	UHFW_QwantPushCached(c);
+	uhqw_kind[1] = m0;
+	c = UHFW_QwantCacheWep(UHFW_QwantActor(m1));
+	UHFW_QwantPushCached(c);
+	uhqw_kind[2] = m1;
+	c = UHFW_QwantCacheWep(UHFW_QwantActor(m2));
+	UHFW_QwantPushCached(c);
+	uhqw_kind[3] = m2;
+	c = UHFW_QwantCacheWep(UHFW_QwantActor(m3));
+	UHFW_QwantPushCached(c);
+	uhqw_kind[4] = m3;
+	for (i = 0; i < UHFW_QW_GROUPS; i++)
+		uhqw_can[i] = 1;
+}
+
+function void UHFW_QwantPaintItems(void) {
+	int i;
+
+	emptyWheel();
+	WHEEL_GROUPS = UHFW_QW_GROUPS;
+	for (i = 0; i < uhfw_snapn; i++)
+		UHFW_AddSnapItem(i);
+}
+
+function int UHFW_QwantTryCommit(void) {
+	if (!uhqw_pend_ok)
+		return 0;
+	if (!UHFW_QwantMovesOk(uhqw_pend_m[0], uhqw_pend_m[1], uhqw_pend_m[2], uhqw_pend_m[3]))
+		return 0;
+	if (!UHFW_QwantInvMatch(uhqw_pend_m[0], uhqw_pend_m[1], uhqw_pend_m[2], uhqw_pend_m[3]))
+		return 0;
+	if (uhqw_show_seq == uhqw_pend_seq)
+		return 0;
+	uhqw_show_m[0] = uhqw_pend_m[0];
+	uhqw_show_m[1] = uhqw_pend_m[1];
+	uhqw_show_m[2] = uhqw_pend_m[2];
+	uhqw_show_m[3] = uhqw_pend_m[3];
+	uhqw_show_seq = uhqw_pend_seq;
+	uhqw_wait = 0;
+	UHFW_QwantLoadSnap(uhqw_show_m[0], uhqw_show_m[1], uhqw_show_m[2], uhqw_show_m[3]);
+	return 1;
+}
+
+function void UHFW_QwantMarkPending(void) {
+	int i;
+	int olda;
+	int newa;
+
+	if (!uhqw_pend_ok)
+		return;
+	if (uhqw_show_seq == uhqw_pend_seq)
+		return;
+	uhqw_can[0] = 1;
+	for (i = 0; i < UHFW_QW_SLOTS; i++) {
+		olda = uhqw_show_m[i];
+		newa = uhqw_pend_m[i];
+		if (olda == newa)
+			uhqw_can[i + 1] = 1;
+		else
+			uhqw_can[i + 1] = 0;
+	}
+}
+
+function void UHFW_QwantPublish(void) {
+	int pn;
+	int t1;
+	int t2;
+	int t3;
+	int t4;
+	int pack;
+	int life;
+	int seq;
+
+	if (!UHFW_IsPlainQwant())
+		return;
+	if (GetUserArray(0, "user_PKMN_MoveMem", 7) != 777)
+		return;
+	t1 = GetUserArray(0, "user_PKMN_MoveMem", 0);
+	t2 = GetUserArray(0, "user_PKMN_MoveMem", 1);
+	t3 = GetUserArray(0, "user_PKMN_MoveMem", 2);
+	t4 = GetUserArray(0, "user_PKMN_MoveMem", 3);
+	if (!UHFW_QwantMovesOk(t1, t2, t3, t4)) {
+		UH_Log(UH_LOG_WARN, "uh_uixfw: Qwant MoveMem snapshot rejected");
+		return;
+	}
+	pn = PlayerNumber();
+	if (pn < 0 || pn >= UHFW_QW_PLAYERS)
+		return;
+	uhqw_svseq[pn]++;
+	if (uhqw_svseq[pn] <= 0)
+		uhqw_svseq[pn] = 1;
+	if (uhqw_svlife[pn] <= 0)
+		uhqw_svlife[pn] = 1;
+	seq = uhqw_svseq[pn];
+	life = uhqw_svlife[pn];
+	pack = (t1 & 255) | ((t2 & 255) << 8) | ((t3 & 255) << 16) | ((t4 & 255) << 24);
+	ACS_NamedExecuteAlways("uh_qw_recv", 0, pack, seq, life);
+}
+
+function void UHFW_QwantBumpLife(void) {
+	int pn;
+
+	if (!UHFW_IsPlainQwant())
+		return;
+	pn = PlayerNumber();
+	if (pn < 0 || pn >= UHFW_QW_PLAYERS)
+		return;
+	uhqw_svlife[pn]++;
+	if (uhqw_svlife[pn] <= 0)
+		uhqw_svlife[pn] = 1;
+	uhqw_svseq[pn] = 0;
+	ACS_NamedExecuteAlways("uh_qw_newlife", 0, uhqw_svlife[pn]);
+}
+
+function int UHFW_OpenQwant(void) {
+	int cur;
+	int i;
+
+	if (uhqw_show_seq < 0) {
+		if (!UHFW_QwantTryCommit())
+			return -1;
+	}
+	if (uhfw_snapn != UHFW_QW_GROUPS)
+		UHFW_QwantLoadSnap(uhqw_show_m[0], uhqw_show_m[1], uhqw_show_m[2], uhqw_show_m[3]);
+	if (!uhfw_metaok || uhfw_snapn != UHFW_QW_GROUPS) {
+		Print(s:"Weapon wheel cannot open: missing weapon display data.");
+		UHFW_SnapClear();
+		uhww_own = UHFW_OWN_NONE;
+		uhww_pn = -1;
+		return -1;
+	}
+	uhfw_route = UHFW_ROUTE_QWANT;
+	uhfw_snapclass = "Qwant";
+	uhfw_cancel = 0;
+	uhww_own = UHFW_OWN_UH;
+	uhww_pn = PlayerNumber();
+	cur = UHFW_CurrentSnapIndex();
+	newWheel(UHFW_WHEEL_NAME, UHFW_QW_GROUPS, cur);
+	UHFW_QwantPaintItems();
+	startWheel("uh_ww_tick", "uh_ww_select");
+	for (i = 0; i < UHFW_QW_GROUPS; i++)
+		uhqw_can[i] = 1;
+	return 1;
+}
+
+function void UHFW_QwantTick(void) {
+	int rebuilt;
+
+	if (!UHFW_PlayerOk() || !UHFW_IsPlainQwant()) {
+		UHFW_DoCancel();
+		return;
+	}
+	rebuilt = UHFW_QwantTryCommit();
+	if (rebuilt) {
+		if (!uhfw_metaok || uhfw_snapn != UHFW_QW_GROUPS) {
+			UHFW_DoCancel();
+			return;
+		}
+		UHFW_QwantPaintItems();
+		return;
+	}
+	if (uhqw_pend_ok && uhqw_show_seq != uhqw_pend_seq) {
+		UHFW_QwantMarkPending();
+		uhqw_wait++;
+		if (uhqw_wait > UHFW_QW_WAIT) {
+			UH_Log(UH_LOG_WARN, "uh_uixfw: Qwant snapshot wait timed out");
+			UHFW_DoCancel();
+			return;
+		}
+	} else
+		uhqw_wait = 0;
+	UHFW_RefreshAmmo();
+}
+
+function void UHFW_QwantSelect(int idx) {
+	str wep;
+
+	UHFW_QwantTryCommit();
+	if (uhfw_cancel)
+		return;
+	if (idx < 0 || idx >= UHFW_QW_GROUPS)
+		return;
+	if (!uhqw_can[idx])
+		return;
+	wep = uhfw_snapwep[idx];
+	if (StrCmp(wep, "") == 0)
+		return;
+	GiveInventory("UIX_WeaponSelected_PU", 1);
+	NamedSendNetworkString("uh_qw_sel_sv", wep);
+}
+
+script "uh_qw_pub" (void) {
+	UHFW_QwantPublish();
+}
+
+script "uh_qw_req" (void) NET {
+	UHFW_QwantPublish();
+}
+
+script "uh_qw_newlife" (int life) CLIENTSIDE {
+	if (ConsolePlayerNumber() != PlayerNumber())
+		terminate;
+	uhqw_clife = life;
+	UHFW_QwantClearClient();
+}
+
+script "uh_qw_recv" (int pack, int seq, int life) CLIENTSIDE {
+	int t1;
+	int t2;
+	int t3;
+	int t4;
+
+	if (ConsolePlayerNumber() != PlayerNumber())
+		terminate;
+	if (!UHFW_IsPlainQwant())
+		terminate;
+	if (uhqw_clife != 0 && life != uhqw_clife)
+		terminate;
+	if (uhqw_clife == 0)
+		uhqw_clife = life;
+	t1 = pack & 255;
+	t2 = (pack >> 8) & 255;
+	t3 = (pack >> 16) & 255;
+	t4 = (pack >> 24) & 255;
+	if (!UHFW_QwantMovesOk(t1, t2, t3, t4))
+		terminate;
+	uhqw_pend_m[0] = t1;
+	uhqw_pend_m[1] = t2;
+	uhqw_pend_m[2] = t3;
+	uhqw_pend_m[3] = t4;
+	uhqw_pend_seq = seq;
+	uhqw_pend_ok = 1;
+}
+
+script "uh_qw_life" ENTER {
+	UHFW_QwantBumpLife();
+}
+
+script "uh_qw_respawn" RESPAWN {
+	UHFW_QwantBumpLife();
+}
+
+script "uh_qw_sel_sv" (int wep) NET {
+	int i;
+	int mem;
+	str actor;
+
+	if (!UHFW_IsPlainQwant())
+		terminate;
+	if (!UHFW_PlayerOk())
+		terminate;
+	if (GetUserArray(0, "user_PKMN_MoveMem", 7) != 777)
+		terminate;
+	if (StrCmp(wep, "") == 0)
+		terminate;
+	if (StrICmp(wep, "Qwant_W") == 0) {
+		if (CheckInventory("Qwant_W") > 0)
+			SetWeapon("Qwant_W");
+		terminate;
+	}
+	for (i = 0; i < UHFW_QW_SLOTS; i++) {
+		mem = GetUserArray(0, "user_PKMN_MoveMem", i);
+		actor = ACS_NamedExecuteWithResult("uh_copykind_actor", UHFW_UHCOPY_QWANT, mem);
+		if (StrICmp(actor, wep) != 0)
+			continue;
+		if (CheckInventory(wep) <= 0)
+			terminate;
+		SetWeapon(wep);
+		terminate;
+	}
+}
