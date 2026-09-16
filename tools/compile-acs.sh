@@ -3,7 +3,7 @@
 # order as LOADACS with the documented include search order: modified v6b
 # shared includes first, then the UH-owned mod_api include dir, then the UH
 # _imports library sources (uh_acsutils, uh_log, uhdt, uhedenisaac) and the
-# v6b override imports (8bdt compiled as CORE8BDT.o).
+# v6b override imports (8BDT compiled as CORE8BDT.o).
 # Output objects are named after the SOURCE lump (not the internal #library
 # name): the base game LOADACS lists lump names such as COLOTRNS, and a
 # differently named .o would not shadow the base lump. CORE8BDT.o and
@@ -94,22 +94,22 @@ echo "== unholy =="
 echo "== rz_debug =="
 "$ACC" $INC "src/acs_source/debug/rz_debug.acs" "$OUT/rz_debug.o" || fail=1
 echo "== CORE8BDT =="
-"$ACC" $INC "src/acs_source/v6b_overrides/_imports/8bdt.acs" "$OUT/CORE8BDT.o" || fail=1
+"$ACC" $INC "src/acs_source/v6b_overrides/_imports/8BDT.acs" "$OUT/CORE8BDT.o" || fail=1
 echo "== DTADDR =="
-"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/api_handlers/dtaddr.acs" "$OUT/DTADDR.o" || fail=1
-echo "== barclear =="
-"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/api_handlers/barclear.acs" "$OUT/barclear.o" || fail=1
-echo "== barhndle =="
-"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/api_handlers/barhndle.acs" "$OUT/barhndle.o" || fail=1
-echo "== colotrans =="
-"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/colotrns.acs" "$OUT/colotrns.o" || fail=1
-echo "== footchec =="
-"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/utilities/footchec.acs" "$OUT/footchec.o" || fail=1
-echo "== jumpcanc =="
-"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/jumpcanc.acs" "$OUT/jumpcanc.o" || fail=1
-echo "== projtran =="
-"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/teamcolors/projtran.acs" "$OUT/projtran.o" || fail=1
-echo "== teamcol =="
-"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/teamcolors/teamcol.acs" "$OUT/teamcol.o" || fail=1
+"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/api_handlers/DTADDR.acs" "$OUT/DTADDR.o" || fail=1
+echo "== BARCLEAR =="
+"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/api_handlers/BARCLEAR.acs" "$OUT/BARCLEAR.o" || fail=1
+echo "== BARHNDLE =="
+"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/api_handlers/BARHNDLE.acs" "$OUT/BARHNDLE.o" || fail=1
+echo "== COLOTRNS =="
+"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/COLOTRNS.acs" "$OUT/COLOTRNS.o" || fail=1
+echo "== FOOTCHEC =="
+"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/utilities/FOOTCHEC.acs" "$OUT/FOOTCHEC.o" || fail=1
+echo "== JUMPCANC =="
+"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/JUMPCANC.acs" "$OUT/JUMPCANC.o" || fail=1
+echo "== PROJTRAN =="
+"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/teamcolors/PROJTRAN.acs" "$OUT/PROJTRAN.o" || fail=1
+echo "== TEAMCOL =="
+"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/teamcolors/TEAMCOL.acs" "$OUT/TEAMCOL.o" || fail=1
 if [ "$fail" -ne 0 ]; then echo "ACS COMPILE FAILED"; else echo "ACS COMPILE OK"; fi
 exit $fail
