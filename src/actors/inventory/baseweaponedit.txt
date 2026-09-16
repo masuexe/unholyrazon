@@ -1,43 +1,39 @@
-//Copy of v6b 'baseweaponedit.txt'
-//...
+// Copy of v6b 'baseweaponedit.txt'
+// ...
 
-actor BaseMM8BDMWep : BaseMM8BDMWep0
-{
-Inventory.ForbiddenTo "CustWepClassBase"//,"UH_ClassBase"
-+INVENTORY.RESTRICTABSOLUTELY
-States
-{
-DeselectDeath:
-"----" "#" 0 A_GunFlash("NoFlash",GFF_NOEXTCHANGE)
-"----" "#" 1 A_SetTics(1-CallACS("uh_IsItOnline"))//$CBM change to 1 tic to sync online
-goto DeselectSwap+1
+actor BaseMM8BDMWep : BaseMM8BDMWep0 {
+  Inventory.ForbiddenTo "CustWepClassBase"  // ,"UH_ClassBase"
+  +INVENTORY.RESTRICTABSOLUTELY
+  States {
+   DeselectDeath:
+    "----" "#" 0 A_GunFlash("NoFlash", GFF_NOEXTCHANGE)
+    "----" "#" 1 A_SetTics(1-CallACS("uh_IsItOnline"))  // $CBM change to 1 tic to sync online
+    goto DeselectSwap+1
 
-NoAmmo_B:
-BUST Y 0
-BUST Y 0 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 1)
-BUST Y 15
-BUST Y 0 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 0)
-BUST Y 1 A_JumpIfInventory("IsBot",1,"BotAmmo")
-wait
-}
+   NoAmmo_B:
+    BUST Y 0
+    BUST Y 0 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 1)
+    BUST Y 15
+    BUST Y 0 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 0)
+    BUST Y 1 A_JumpIfInventory("IsBot", 1, "BotAmmo")
+    wait
+  }
 }
 
-actor BaseMM8BDMCustWep : BaseMM8BDMWep
-{
-Weapon.AmmoUse 0
-Weapon.AmmoGive 0
-Weapon.ammotype "BusterAmmo"
-Dropitem ""
-Inventory.ForbiddenTo ""
-Inventory.RestrictedTo "CustWepClassBase" //helpful with "Give Weapons"
-+INVENTORY.UNDROPPABLE
-States
-{
-DeselectDeath:
-"----" "#" 0 A_GunFlash("NoFlash",GFF_NOEXTCHANGE)
-"----" "#" 1 A_SetTics(1-CallACS("uh_IsItOnline"))
-goto DeselectSwap+1
-}
+actor BaseMM8BDMCustWep : BaseMM8BDMWep {
+  Weapon.AmmoUse 0
+  Weapon.AmmoGive 0
+  Weapon.ammotype "BusterAmmo"
+  Dropitem ""
+  Inventory.ForbiddenTo ""
+  Inventory.RestrictedTo "CustWepClassBase"  // helpful with "Give Weapons"
+  +INVENTORY.UNDROPPABLE
+  States {
+   DeselectDeath:
+    "----" "#" 0 A_GunFlash("NoFlash", GFF_NOEXTCHANGE)
+    "----" "#" 1 A_SetTics(1-CallACS("uh_IsItOnline"))
+    goto DeselectSwap+1
+  }
 }
 
 actor BaseMegaManUWep : BaseMM8BDMWep {
@@ -68,133 +64,150 @@ actor BaseMegaManUWep : BaseMM8BDMWep {
     // ReadyNoAmmo is inherited: goto Ready would resolve to *this* Ready
     // (core_weaponcolor 0), not the child's. ReadyX keeps the current sprite/color.
     goto ReadyX
-   // Most copyweps have no Altfire. A stub that jumps to NoAmmo makes holding
-   // M2 spam uh_MegaManUNoAmmo and bounce ReadyNoAmmo↔Ready forever.
+    // Most copyweps have no Altfire. A stub that jumps to NoAmmo makes holding
+    // M2 spam uh_MegaManUNoAmmo and bounce ReadyNoAmmo↔Ready forever.
    Fire:
-		"----" A 1 A_JumpIf(true, "NoAmmo")
-		wait
+    "----" A 1 A_JumpIf(true, "NoAmmo")
+    wait
   }
 }
-actor BaseQwantWep : BaseMM8BDMWep
-{
-Weapon.AmmoUse 0
-Weapon.AmmoGive 28
-// Match Unholy Qwant_BaseMove_W: moves alone in slot 0.
-// BaseMM8BDMWep_UH / BaseUnholyWep use slot 1 — do not put moves there.
-Weapon.SlotNumber 0
-Inventory.RestrictedTo "Qwant"
-weapon.ammotype2 "MoveRelearnAmmo"
-States
-{
-Altfire:
-AltfireMove:
-"####" "#" 0 A_GiveInventory("Qwant_AttemptMoveRelearn_P")
-"####" "#" 1 A_ReFire("ReadyX")
-wait
+actor BaseQwantWep : BaseMM8BDMWep {
+  Weapon.AmmoUse 0
+  Weapon.AmmoGive 28
+  // Match Unholy Qwant_BaseMove_W: moves alone in slot 0.
+  // BaseMM8BDMWep_UH / BaseUnholyWep use slot 1 — do not put moves there.
+  Weapon.SlotNumber 0
+  Inventory.RestrictedTo "Qwant"
+  weapon.ammotype2 "MoveRelearnAmmo"
+  States {
+   Altfire:
+   AltfireMove:
+    "####" "#" 0 A_GiveInventory("Qwant_AttemptMoveRelearn_P")
+    "####" "#" 1 A_ReFire("ReadyX")
+    wait
+  }
 }
-}
-actor BaseNegaManWep : BaseMM8BDMWep
-{
-Inventory.RestrictedTo "NegaMan"
-weapon.ammotype2 "NegaDuckAmmo"
-// BaseMM8BDMWep0 starts +THRUACTORS and only clears it in its Spawn.
-// Child Spawn overrides skip that, so world drops were un-touchable.
--THRUACTORS
-States
-{
-Spawn:
-6N02 A -1
-loop
-Deselect:
-"----" A 0
-goto DeselectSwap
-Select:
-"----" A 0
-goto SelectSwap
-Ready:
-"----" A 0 ACS_NamedExecuteWithResult("core_weaponcolor", 0)
-ReadyX:
-"----" A 1 A_WeaponReady
-wait
-Fire:
-6H02 A 0 A_TakeInventory("NegaManChargeAmmo")
-6H02 A 0 A_PlaySoundEx("items/rubberban","Weapon")
-6H02 A 0 A_FireCustomMissile("Rubberband",0,0,8,0)
-6H02 BC 2
-6H02 A 1 A_Jump(256,"ReadyX")
-wait
-Altfire:
-"----" "#" 0 A_JumpIfInventory("NegaDuckAmmo",100,"Altfire2")
-"----" "#" 0 A_GiveInventory("NegaDuckAmmo",1)
-"----" "#" 0 A_Jump(256,"AltFireEnd")
-goto AltFireEnd
-Altfire2:
-"----" "#" 0 A_GiveInventory("SlideVivifyFlag")
-"----" "#" 0 A_Refire(1)
-"----" "#" 0 A_GiveInventory("NegaSlideDelay")
-"----" "#" 0 A_GiveInventory("NegaSlideAmmo_P")
-"----" "#" 0 A_PlaySoundEx("weapon/chargekick","Weapon")
-"----" "#" 0 A_GiveInventory("NegaSlideBoost_P")
-"----" "#" 0 A_GunFlash("Flash_Slide")
-"----" "#" 1 Offset(8, 40) A_TakeInventory("SlideVivifyFlag")  // no feet
-"----" "#" 1 Offset(16, 48) A_FireCustomMissile("NegaSlideKick",0,0,0,0)  // feet start
-"----" "#" 1 Offset(24, 56)
-"----" "#" 1 Offset(40, 72)
-"----" "#" 1 Offset(56, 88)
-"----" "#" 1 Offset(74, 104)
-"----" "#" 1 Offset(74, 102)
-"----" "#" 1 Offset(70, 104)  // 5
-"----" "#" 1 Offset(70, 102)
-"----" "#" 3 Offset(54, 86)
-"----" "#" 2 Offset(38, 70)
-"----" "#" 2 Offset(22, 54)
-"----" "#" 1 Offset(14, 46)
-"----" "#" 1 Offset(6, 38)  // no feet
-"----" "#" 0 A_Jump(256,"AltFireEnd")
-goto AltFireEnd
-AltFireEnd:
-"----" "#" 0
-"----" "#" 1 A_Jump(256,"ReadyX")
-wait
-Flash_Slide:
-TNT1 A 1
-6S02 A 1  // Y T(-79,-81)              @ W(16,48)
-6S02 B 1  // Y T(-71,-73)              @ W(24,56)
-6S02 C 1  // Z T(-63,-81)              @ W(40,72)
-6S02 D 1  // Z T(-55,-73)              @ W(56,88)
-6S02 E 4  // Z T(-47,-65)+Offset bob   @ W(74,104)..(70,102)  // 8
-6S02 D 3  // Z T(-55,-73)+Offset(-2,30) @ W(54,86)
-6S02 C 2  // Z T(-63,-81)+Offset(-2,30) @ W(38,70)
-6S02 B 2  // Y T(-71,-73)+Offset(-2,30) @ W(22,54)
-6S02 A 1  // Y T(-79,-81)+Offset(-2,30) @ W(14,46)
-stop
-}
+actor BaseNegaManWep : BaseMM8BDMWep {
+  Inventory.RestrictedTo "NegaMan"
+  weapon.ammotype2 "NegaDuckAmmo"
+  // BaseMM8BDMWep0 starts +THRUACTORS and only clears it in its Spawn.
+  // Child Spawn overrides skip that, so world drops were un-touchable.
+  -THRUACTORS
+  States {
+   Spawn:
+    6N02 A 0
+    goto SpawnFrame
+   SpawnFrame:
+    "----" A 630
+    "----" A 3 A_SetTranslucent(0.25)
+    "----" A 3 A_SetTranslucent(1.0)
+    "----" A 3 A_SetTranslucent(0.25)
+    "----" A 3 A_SetTranslucent(1.0)
+    "----" A 3 A_SetTranslucent(0.25)
+    "----" A 3 A_SetTranslucent(1.0)
+    "----" A 3 A_SetTranslucent(0.25)
+    "----" A 3 A_SetTranslucent(1.0)
+    "----" A 3 A_SetTranslucent(0.25)
+    "----" A 3 A_SetTranslucent(1.0)
+    "----" A 3 A_SetTranslucent(0.25)
+    "----" A 3 A_SetTranslucent(1.0)
+    "----" A 3 A_SetTranslucent(0.25)
+    "----" A 3 A_SetTranslucent(1.0)
+    "----" A 3 A_SetTranslucent(0.25)
+    "----" A 3 A_SetTranslucent(1.0)
+    "----" A 3 A_SetTranslucent(0.25)
+    "----" A 3 A_SetTranslucent(1.0)
+    "----" A 3 A_SetTranslucent(0.25)
+    "----" A 3 A_SetTranslucent(1.0)
+    stop
+   Deselect:
+    "----" A 0
+    goto DeselectSwap
+   Select:
+    "----" A 0
+    goto SelectSwap
+   Ready:
+    "----" A 0 ACS_NamedExecuteWithResult("core_weaponcolor", 0)
+   ReadyX:
+    "----" A 1 A_WeaponReady
+    wait
+   Fire:
+    6H02 A 0 A_TakeInventory("NegaManChargeAmmo")
+    6H02 A 0 A_PlaySoundEx("items/rubberban", "Weapon")
+    6H02 A 0 A_FireCustomMissile("Rubberband", 0, 0, 8, 0)
+    6H02 BC 2
+    6H02 A 1 A_Jump(256, "ReadyX")
+    wait
+   Altfire:
+    "----" "#" 0 A_JumpIfInventory("NegaDuckAmmo", 100, "Altfire2")
+    "----" "#" 0 A_GiveInventory("NegaDuckAmmo", 1)
+    "----" "#" 0 A_Jump(256, "AltFireEnd")
+    goto AltFireEnd
+   Altfire2:
+    "----" "#" 0 A_GiveInventory("SlideVivifyFlag")
+    "----" "#" 0 A_Refire(1)
+    "----" "#" 0 A_GiveInventory("NegaSlideDelay")
+    "----" "#" 0 A_GiveInventory("NegaSlideAmmo_P")
+    "----" "#" 0 A_PlaySoundEx("weapon/chargekick", "Weapon")
+    "----" "#" 0 A_GiveInventory("NegaSlideBoost_P")
+    "----" "#" 0 A_GunFlash("Flash_Slide")
+    "----" "#" 1 Offset(8, 40) A_TakeInventory("SlideVivifyFlag")  // no feet
+    "----" "#" 1 Offset(16, 48) A_FireCustomMissile("NegaSlideKick", 0, 0, 0, 0)  // feet start
+    "----" "#" 1 Offset(24, 56)
+    "----" "#" 1 Offset(40, 72)
+    "----" "#" 1 Offset(56, 88)
+    "----" "#" 1 Offset(74, 104)
+    "----" "#" 1 Offset(74, 102)
+    "----" "#" 1 Offset(70, 104)  // 5
+    "----" "#" 1 Offset(70, 102)
+    "----" "#" 3 Offset(54, 86)
+    "----" "#" 2 Offset(38, 70)
+    "----" "#" 2 Offset(22, 54)
+    "----" "#" 1 Offset(14, 46)
+    "----" "#" 1 Offset(6, 38)  // no feet
+    "----" "#" 0 A_Jump(256, "AltFireEnd")
+    goto AltFireEnd
+   AltFireEnd:
+    "----" "#" 0
+    "----" "#" 1 A_Jump(256, "ReadyX")
+    wait
+   Flash_Slide:
+    TNT1 A 1
+    6S02 A 1  // Y T(-79,-81)              @ W(16,48)
+    6S02 B 1  // Y T(-71,-73)              @ W(24,56)
+    6S02 C 1  // Z T(-63,-81)              @ W(40,72)
+    6S02 D 1  // Z T(-55,-73)              @ W(56,88)
+    6S02 E 4  // Z T(-47,-65)+Offset bob   @ W(74,104)..(70,102)  // 8
+    6S02 D 3  // Z T(-55,-73)+Offset(-2,30) @ W(54,86)
+    6S02 C 2  // Z T(-63,-81)+Offset(-2,30) @ W(38,70)
+    6S02 B 2  // Y T(-71,-73)+Offset(-2,30) @ W(22,54)
+    6S02 A 1  // Y T(-79,-81)+Offset(-2,30) @ W(14,46)
+    stop
+  }
 }
 
-actor BaseMM8BDMWep_UH : BaseMM8BDMWep0
-{
--WEAPON.ALT_USES_BOTH
--THRUACTORS
-// Match Unholy BaseUnholyWep (slot 1). Slot 0 is reserved for Qwant moves.
-Weapon.SlotNumber 1
-weapon.ammotype "BusterAmmo"
-inventory.icon "TNT1A0"
-dropitem ""
-//Inventory.ForbiddenTo ""
-//Inventory.RestrictedTo ""
-States
-{
-DeselectDeath:
-"----" "#" 0 A_GunFlash("NoFlash",GFF_NOEXTCHANGE)
-"----" "#" 1 A_SetTics(1-CallACS("uh_IsItOnline"))
-goto DeselectSwap+1
+actor BaseMM8BDMWep_UH : BaseMM8BDMWep0 {
+  -WEAPON.ALT_USES_BOTH
+  -THRUACTORS
+  // Match Unholy BaseUnholyWep (slot 1). Slot 0 is reserved for Qwant moves.
+  Weapon.SlotNumber 1
+  weapon.ammotype "BusterAmmo"
+  inventory.icon "TNT1A0"
+  dropitem ""
+  // Inventory.ForbiddenTo ""
+  // Inventory.RestrictedTo ""
+  States {
+   DeselectDeath:
+    "----" "#" 0 A_GunFlash("NoFlash", GFF_NOEXTCHANGE)
+    "----" "#" 1 A_SetTics(1-CallACS("uh_IsItOnline"))
+    goto DeselectSwap+1
 
-NoAmmo_B:
-BUST Y 0
-BUST Y 0 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 1)
-BUST Y 15
-BUST Y 0 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 0)
-BUST Y 1 A_JumpIfInventory("IsBot",1,"BotAmmo")
-wait
-}
+   NoAmmo_B:
+    BUST Y 0
+    BUST Y 0 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 1)
+    BUST Y 15
+    BUST Y 0 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 0)
+    BUST Y 1 A_JumpIfInventory("IsBot", 1, "BotAmmo")
+    wait
+  }
 }

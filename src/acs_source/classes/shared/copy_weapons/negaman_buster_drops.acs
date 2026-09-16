@@ -140,8 +140,6 @@ function int UH_NegaBusterSpawnDrop(int srcpn, int srclife) {
 	velz = random(4, 8) * 1.0;
 	SetActorVelocity(tid, FixedMul(vel, cos(ang)), FixedMul(vel, sin(ang)), velz, 0, 0);
 
-	if (SetActivator(tid))
-		ACS_NamedExecuteAlways("uh_NegaBusterDropFade", 0);
 	if (victpn >= 0)
 		SetActivatorToPlayer(victpn);
 	Thing_ChangeTID(tid, 0);
@@ -165,41 +163,6 @@ script "uh_NegaBusterDropLifeEnter" ENTER {
 
 script "uh_NegaBusterDropLifeRespawn" RESPAWN {
 	UH_NegaBusterBumpLife();
-}
-
-// DROPPED pickups reuse this actor in inventory (GoAway false). BecomeItem
-// clears SPECIAL; keep fading only while the wep is still a world pickup.
-function int Uh_NegaBusterDropStillWorld(void) {
-	if (ClassifyActor(0) == 0)
-		return 0;
-	if (!CheckFlag(0, "SPECIAL"))
-		return 0;
-	return 1;
-}
-
-script "uh_NegaBusterDropFade" (void) {
-	int i;
-	int wait;
-
-	wait = 18 * 35;
-	while (wait > 0) {
-		Delay(1);
-		wait--;
-		if (!Uh_NegaBusterDropStillWorld())
-			terminate;
-	}
-	for (i = 0; i < 10; i++) {
-		if (!Uh_NegaBusterDropStillWorld())
-			terminate;
-		SetActorProperty(0, APROP_Alpha, 0.25);
-		Delay(4);
-		if (!Uh_NegaBusterDropStillWorld())
-			terminate;
-		SetActorProperty(0, APROP_Alpha, 1.0);
-		Delay(3);
-	}
-	if (Uh_NegaBusterDropStillWorld())
-		Thing_Remove(0);
 }
 
 script "uh_NegaBusterKillDrop" (void) {
