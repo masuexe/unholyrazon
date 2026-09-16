@@ -34,6 +34,7 @@ str uhfw_cyan2[UHFW_MAX_WEAP];
 str uhfw_blue2[UHFW_MAX_WEAP];
 int uhww_own = UHFW_OWN_NONE;
 int uhww_pn = -1;
+int uhww_uix_cancel = 0;
 
 function int UHFW_ActorExists(str which) {
 	int u;
@@ -393,13 +394,17 @@ function int UHFW_OpenUnified(void) {
 }
 
 function void UHFW_OpenUixFallback(void) {
-	// ACS_NamedExecute is async; uixweap_wheel_start has not run yet, so
-	// wheelName is still -1. Record ownership first. Close must not wait
-	// for wheelName: UIX -weapwheel only checks the console player and
-	// calls stopWheel().
 	uhww_own = UHFW_OWN_UIX;
 	uhww_pn = PlayerNumber();
+	uhww_uix_cancel = 0;
 	ACS_NamedExecute("uixweap_wheel_start", 0);
+}
+
+script "uh_ww_uixok" (void) CLIENTSIDE {
+	if (uhww_uix_cancel)
+		SetResultValue(0);
+	else
+		SetResultValue(1);
 }
 
 script "uh_ww_open" (void) NET CLIENTSIDE {
@@ -449,7 +454,12 @@ script "uh_ww_close" (void) NET CLIENTSIDE {
 	}
 
 	if (uhww_own == UHFW_OWN_UIX) {
-		stopWheel();
+		uhww_uix_cancel = 1;
+		if (wheelName == -1) {
+			stopWheel();
+		} else if (StrCmp(wheelName, UHFW_UIX_WHEEL) == 0) {
+			stopWheel();
+		}
 		uhww_own = UHFW_OWN_NONE;
 		uhww_pn = -1;
 		terminate;
