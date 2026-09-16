@@ -76,7 +76,7 @@ script "uh_ww_open" (void) NET CLIENTSIDE {
 		uhfw_cancel = 0;
 		uhww_own = UHFW_OWN_UH;
 		uhww_pn = PlayerNumber();
-		ACS_NamedExecute("uh_qw_req", 0);
+		NamedRequestScriptPuke("uh_qw_req");
 		waits = 0;
 		while (waits < UHFW_QW_WAIT) {
 			if (uhfw_cancel)
@@ -85,6 +85,11 @@ script "uh_ww_open" (void) NET CLIENTSIDE {
 				terminate;
 			if (!UHFW_PlayerOk() || !UHFW_IsPlainQwant())
 				terminate;
+			if (wheelName != -1) {
+				uhww_own = UHFW_OWN_NONE;
+				uhww_pn = -1;
+				terminate;
+			}
 			if (UHFW_QwantTryCommit())
 				break;
 			Delay(1);
@@ -92,6 +97,11 @@ script "uh_ww_open" (void) NET CLIENTSIDE {
 		}
 		if (uhqw_show_seq < 0) {
 			UH_Log(UH_LOG_INFO, "uh_uixfw: Qwant wheel not ready");
+			uhww_own = UHFW_OWN_NONE;
+			uhww_pn = -1;
+			terminate;
+		}
+		if (wheelName != -1) {
 			uhww_own = UHFW_OWN_NONE;
 			uhww_pn = -1;
 			terminate;
