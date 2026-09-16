@@ -1,7 +1,39 @@
-#define UHFW_WHEEL_NAME "uhfixedweaponwheel"
+#define UHFW_WHEEL_NAME "uhweaponwheel"
+#define UHFW_UIX_WHEEL "weaponwheel"
 #define UHFW_IW_LABELPOS -9
 #define UHFW_IW_ICONX 8
 #define UHFW_IW_ICONY 16
+#define UHFW_WW_BARY 96
+#define UHFW_WW_BAR2Y 144
+#define UHFW_ROUTE_NONE 0
+#define UHFW_ROUTE_FIXED 1
+#define UHFW_OWN_NONE 0
+#define UHFW_OWN_UH 1
+#define UHFW_OWN_UIX 2
+#define UHFW_BAR_BLACK "Crayon8"
+
+int uhfw_snapn = 0;
+int uhfw_heldn = 0;
+int uhfw_metaok = 1;
+int uhfw_cancel = 0;
+int uhfw_route = UHFW_ROUTE_NONE;
+int uhfw_classidx = UHFW_FAIL;
+str uhfw_snapclass = "";
+str uhfw_snapwep[UHFW_MAX_WEAP];
+str uhfw_snaptag[UHFW_MAX_WEAP];
+str uhfw_snapicon[UHFW_MAX_WEAP];
+str uhfw_snapammo1[UHFW_MAX_WEAP];
+str uhfw_snapammo2[UHFW_MAX_WEAP];
+int uhfw_amt1[UHFW_MAX_WEAP];
+int uhfw_max1[UHFW_MAX_WEAP];
+int uhfw_amt2[UHFW_MAX_WEAP];
+int uhfw_max2[UHFW_MAX_WEAP];
+str uhfw_cyan1[UHFW_MAX_WEAP];
+str uhfw_blue1[UHFW_MAX_WEAP];
+str uhfw_cyan2[UHFW_MAX_WEAP];
+str uhfw_blue2[UHFW_MAX_WEAP];
+int uhww_own = UHFW_OWN_NONE;
+int uhww_pn = -1;
 
 function int UHFW_ActorExists(str which) {
 	int u;
@@ -14,106 +46,469 @@ function int UHFW_ActorExists(str which) {
 	return spawned;
 }
 
-function int UHFW_CurrentWepIndex(int classidx) {
+function int UHFW_PlayerOk(void) {
+	if (PlayerIsSpectator(PlayerNumber()))
+		return 0;
+	if (GetActorProperty(0, APROP_Health) <= 0)
+		return 0;
+	return 1;
+}
+
+function void UHFW_SnapClear(void) {
+	int i;
+
+	uhfw_snapn = 0;
+	uhfw_heldn = 0;
+	uhfw_metaok = 1;
+	uhfw_cancel = 0;
+	uhfw_route = UHFW_ROUTE_NONE;
+	uhfw_classidx = UHFW_FAIL;
+	uhfw_snapclass = "";
+	for (i = 0; i < UHFW_MAX_WEAP; i++) {
+		uhfw_snapwep[i] = "";
+		uhfw_snaptag[i] = "";
+		uhfw_snapicon[i] = "";
+		uhfw_snapammo1[i] = "";
+		uhfw_snapammo2[i] = "";
+		uhfw_amt1[i] = 0;
+		uhfw_max1[i] = 0;
+		uhfw_amt2[i] = 0;
+		uhfw_max2[i] = 0;
+		uhfw_cyan1[i] = UHFW_BAR_BLACK;
+		uhfw_blue1[i] = UHFW_BAR_BLACK;
+		uhfw_cyan2[i] = UHFW_BAR_BLACK;
+		uhfw_blue2[i] = UHFW_BAR_BLACK;
+	}
+}
+
+function int UHFW_SnapFind(str wep) {
+	int i;
+
+	if (StrCmp(wep, "") == 0)
+		return UHFW_FAIL;
+	for (i = 0; i < uhfw_snapn; i++) {
+		if (StrICmp(uhfw_snapwep[i], wep) == 0)
+			return i;
+	}
+	return UHFW_FAIL;
+}
+
+function void UHFW_ReadAmmo(int i) {
+	str a1;
+	str a2;
+
+	a1 = uhfw_snapammo1[i];
+	a2 = uhfw_snapammo2[i];
+	if (StrLen(a1) != 0) {
+		uhfw_amt1[i] = CheckInventory(a1);
+		uhfw_max1[i] = GetAmmoCapacity(a1);
+	} else {
+		uhfw_amt1[i] = 0;
+		uhfw_max1[i] = 0;
+	}
+	if (StrLen(a2) != 0) {
+		uhfw_amt2[i] = CheckInventory(a2);
+		uhfw_max2[i] = GetAmmoCapacity(a2);
+	} else {
+		uhfw_amt2[i] = 0;
+		uhfw_max2[i] = 0;
+	}
+}
+
+function str UHFW_Pal(int idx) {
+	if (idx < 0)
+		return UHFW_BAR_BLACK;
+	return StrParam(s:"Crayon", i:idx);
+}
+
+function void UHFW_ReadBarColors(int i, str wep) {
+	int obj;
+
+	readWeaponBars(wep);
+	if (readCyan1 < 0) {
+		obj = new(StrParam(s:wep, s:"_ScriptBar"));
+		if (obj) {
+			readCyan1 = GetActorArg(obj, 0);
+			readBlue1 = GetActorArg(obj, 1);
+			destroy(obj);
+		}
+	}
+	if (readCyan1 < 0) {
+		readCyan1 = 192;
+		readBlue1 = 198;
+	}
+	if (readCyan2 < 0) {
+		readCyan2 = 198;
+		readBlue2 = 199;
+	}
+	uhfw_cyan1[i] = UHFW_Pal(readCyan1);
+	uhfw_blue1[i] = UHFW_Pal(readBlue1);
+	uhfw_cyan2[i] = UHFW_Pal(readCyan2);
+	uhfw_blue2[i] = UHFW_Pal(readBlue2);
+}
+
+function void UHFW_SnapPush(str wep, str tag, str icon, str ammo1, str ammo2) {
+	int i;
+
+	if (uhfw_snapn >= UHFW_MAX_WEAP)
+		return;
+	i = uhfw_snapn;
+	uhfw_snapwep[i] = wep;
+	uhfw_snaptag[i] = tag;
+	uhfw_snapicon[i] = icon;
+	uhfw_snapammo1[i] = ammo1;
+	uhfw_snapammo2[i] = ammo2;
+	UHFW_ReadAmmo(i);
+	UHFW_ReadBarColors(i, wep);
+	uhfw_snapn++;
+}
+
+function void UHFW_TryHeldTable(int classidx, int i) {
+	str wep;
+
+	wep = uhfw_wep[classidx][i][UHFW_STR_WEP];
+	if (CheckInventory(wep) <= 0) {
+		UH_Log(UH_LOG_DEBUG, StrParam(s:"uh_uixfw: not holding ", s:wep));
+		return;
+	}
+	if (UHFW_SnapFind(wep) != UHFW_FAIL)
+		return;
+	uhfw_heldn++;
+	if (uhfw_heldn > UHFW_MAX_WEAP)
+		return;
+	UHFW_SnapPush(
+		wep,
+		uhfw_wep[classidx][i][UHFW_STR_TAG],
+		uhfw_wep[classidx][i][UHFW_STR_ICON],
+		uhfw_wep[classidx][i][UHFW_STR_AMMO1],
+		uhfw_wep[classidx][i][UHFW_STR_AMMO2]);
+}
+
+function void UHFW_CollectFixed(int classidx) {
 	int i;
 	int n;
 
 	n = uhfw_classwepcount[classidx];
-	for (i = 0; i < n; i++) {
-		if (CheckWeapon(uhfw_wep[classidx][i][UHFW_STR_WEP]))
+	for (i = 0; i < n; i++)
+		UHFW_TryHeldTable(classidx, i);
+}
+
+function int UHFW_CurrentSnapIndex(void) {
+	int i;
+
+	for (i = 0; i < uhfw_snapn; i++) {
+		if (CheckWeapon(uhfw_snapwep[i]))
 			return i;
 	}
 	return 0;
 }
 
-function int UHFW_AllWepsHeld(int classidx) {
-	int i;
-	int n;
-
-	n = uhfw_classwepcount[classidx];
-	for (i = 0; i < n; i++) {
-		if (CheckInventory(uhfw_wep[classidx][i][UHFW_STR_WEP]) <= 0)
-			return 0;
-	}
-	return 1;
+function void UHFW_AddBarTriple(int mode, int y, int scale, int alpha, int amt, int mx, str cyan, str blue) {
+	addWheelElement("A", "WBAMOHOR", cyan, mode, 0, y, IL_OP_ADD, IL_OP_ADD, 0, 0, scale, alpha, ALIGN_CENTER, ALIGN_CENTER, 160, amt, mx);
+	addWheelElement("B", "WBAMOHOR", blue, mode, 0, y, IL_OP_ADD, IL_OP_ADD, 0, 0, scale, alpha, ALIGN_CENTER, ALIGN_CENTER, 160, amt, mx);
+	addWheelElement("C", "WBAMOHOR", UHFW_BAR_BLACK, mode, 0, y, IL_OP_ADD, IL_OP_ADD, 0, 0, scale, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
 }
 
-function void UHFW_AddWepItem(int classidx, int i) {
+function void UHFW_AddSnapItem(int i) {
 	str wep;
 	str icon;
 	str tag;
+	int barY;
+	int amt1;
+	int max1;
+	int amt2;
+	int max2;
 
-	wep = uhfw_wep[classidx][i][UHFW_STR_WEP];
-	icon = uhfw_wep[classidx][i][UHFW_STR_ICON];
-	tag = uhfw_wep[classidx][i][UHFW_STR_TAG];
+	wep = uhfw_snapwep[i];
+	icon = uhfw_snapicon[i];
+	tag = uhfw_snaptag[i];
+	amt1 = uhfw_amt1[i];
+	max1 = uhfw_max1[i];
+	amt2 = uhfw_amt2[i];
+	max2 = uhfw_max2[i];
 	addWheelItem(wep, i);
 	addWheelElement("A", icon, 0, WHEEL_MODE_UNSELECTED, UHFW_IW_ICONX, UHFW_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 0.5, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
 	addWheelElement("A", "UXICB0", 0, WHEEL_MODE_UNSELECTED, UHFW_IW_ICONX, UHFW_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+	barY = UHFW_WW_BARY;
+	if (max2 > 0) {
+		UHFW_AddBarTriple(WHEEL_MODE_UNSELECTED, barY, 0.1, 0.5, amt2, max2, uhfw_cyan2[i], uhfw_blue2[i]);
+		barY = UHFW_WW_BAR2Y;
+	}
+	if (max1 > 0)
+		UHFW_AddBarTriple(WHEEL_MODE_UNSELECTED, barY, 0.1, 0.5, amt1, max1, uhfw_cyan1[i], uhfw_blue1[i]);
 	addWheelElement("A", icon, 0, WHEEL_MODE_SELECTED, UHFW_IW_ICONX, UHFW_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.5, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+	barY = UHFW_WW_BARY;
+	if (max2 > 0) {
+		UHFW_AddBarTriple(WHEEL_MODE_SELECTED, barY, 0.15, 1.0, amt2, max2, uhfw_cyan2[i], uhfw_blue2[i]);
+		barY = UHFW_WW_BAR2Y;
+	}
+	if (max1 > 0)
+		UHFW_AddBarTriple(WHEEL_MODE_SELECTED, barY, 0.15, 1.0, amt1, max1, uhfw_cyan1[i], uhfw_blue1[i]);
 	addWheelElement("A", icon, 0, WHEEL_MODE_MIDDLE, UHFW_IW_ICONX, UHFW_IW_ICONY + UHFW_IW_LABELPOS, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.5, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
-	addWheelElement(StrParam(l:tag), "SMALLFNT", "Gold", WHEEL_MODE_MIDDLE, 0, -UHFW_IW_LABELPOS, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+	addWheelElement(StrParam(l:tag), "SMALLFNT", "Gold", WHEEL_MODE_MIDDLE, 0, -2 * UHFW_IW_LABELPOS, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+	barY = UHFW_IW_ICONY + UHFW_IW_LABELPOS;
+	if (max2 > 0) {
+		UHFW_AddBarTriple(WHEEL_MODE_MIDDLE, barY, 0.15, 1.0, amt2, max2, uhfw_cyan2[i], uhfw_blue2[i]);
+		barY = 4 * UHFW_IW_ICONY + UHFW_IW_LABELPOS;
+	}
+	if (max1 > 0)
+		UHFW_AddBarTriple(WHEEL_MODE_MIDDLE, barY, 0.15, 1.0, amt1, max1, uhfw_cyan1[i], uhfw_blue1[i]);
 }
 
-script "uh_fw_open" (void) NET CLIENTSIDE {
-	int cln;
+function void UHFW_PatchBarTriple(int item, int el, int amt, int mx) {
+	setWheelElementBarAmt(item, el, amt);
+	setWheelElementBarMax(item, el, mx);
+	setWheelElementBarAmt(item, el + 1, amt);
+	setWheelElementBarMax(item, el + 1, mx);
+}
+
+function void UHFW_UpdateItemBars(int i) {
+	int item;
+	int el;
+	int max1;
+	int max2;
+	int amt1;
+	int amt2;
+
+	item = i;
+	max1 = uhfw_max1[i];
+	max2 = uhfw_max2[i];
+	amt1 = uhfw_amt1[i];
+	amt2 = uhfw_amt2[i];
+	el = 2;
+	if (max2 > 0) {
+		UHFW_PatchBarTriple(item, el, amt2, max2);
+		el += 3;
+	}
+	if (max1 > 0) {
+		UHFW_PatchBarTriple(item, el, amt1, max1);
+		el += 3;
+	}
+	el++;
+	if (max2 > 0) {
+		UHFW_PatchBarTriple(item, el, amt2, max2);
+		el += 3;
+	}
+	if (max1 > 0) {
+		UHFW_PatchBarTriple(item, el, amt1, max1);
+		el += 3;
+	}
+	el += 2;
+	if (max2 > 0) {
+		UHFW_PatchBarTriple(item, el, amt2, max2);
+		el += 3;
+	}
+	if (max1 > 0)
+		UHFW_PatchBarTriple(item, el, amt1, max1);
+}
+
+function int UHFW_ShouldCancel(void) {
+	int i;
+
+	if (!UHFW_PlayerOk())
+		return 1;
+	if (StrICmp(GetActorClass(0), uhfw_snapclass) != 0)
+		return 1;
+	for (i = 0; i < uhfw_snapn; i++) {
+		if (CheckInventory(uhfw_snapwep[i]) <= 0)
+			return 1;
+	}
+	return 0;
+}
+
+function void UHFW_DoCancel(void) {
+	uhfw_cancel = 1;
+	if (wheelName != -1) {
+		if (StrCmp(wheelName, UHFW_WHEEL_NAME) == 0)
+			stopWheel();
+	}
+}
+
+function int UHFW_RefreshAmmo(void) {
+	int i;
+	int changed;
+	int a1;
+	int m1;
+	int a2;
+	int m2;
+
+	changed = 0;
+	for (i = 0; i < uhfw_snapn; i++) {
+		a1 = uhfw_amt1[i];
+		m1 = uhfw_max1[i];
+		a2 = uhfw_amt2[i];
+		m2 = uhfw_max2[i];
+		UHFW_ReadAmmo(i);
+		if (uhfw_amt1[i] != a1 || uhfw_max1[i] != m1 || uhfw_amt2[i] != a2 || uhfw_max2[i] != m2) {
+			UHFW_UpdateItemBars(i);
+			changed = 1;
+		}
+	}
+	return changed;
+}
+
+function int UHFW_OpenUnified(void) {
 	int classidx;
-	int n;
+	str classactor;
 	int i;
 	int cur;
 
-	cln = ConsolePlayerNumber();
-	if (cln != PlayerNumber())
+	classactor = GetActorClass(0);
+	classidx = UHFW_FindClass(classactor);
+	UHFW_SnapClear();
+	uhfw_snapclass = classactor;
+	if (classidx != UHFW_FAIL) {
+		uhfw_route = UHFW_ROUTE_FIXED;
+		uhfw_classidx = classidx;
+		UHFW_CollectFixed(classidx);
+	} else
+		return 0;
+
+	if (uhfw_heldn > UHFW_MAX_WEAP) {
+		Print(s:"Weapon wheel cannot open: more than 12 weapons.");
+		UH_Log(UH_LOG_WARN, StrParam(s:"uh_uixfw: ", s:classactor, s:" held ", i:uhfw_heldn, s:" weapons"));
+		UHFW_SnapClear();
+		return -1;
+	}
+	if (!uhfw_metaok) {
+		Print(s:"Weapon wheel cannot open: missing weapon display data.");
+		UHFW_SnapClear();
+		return -1;
+	}
+	if (uhfw_snapn < UHFW_MIN_WEAP) {
+		UHFW_SnapClear();
+		return -1;
+	}
+
+	cur = UHFW_CurrentSnapIndex();
+	newWheel(UHFW_WHEEL_NAME, uhfw_snapn, cur);
+	emptyWheel();
+	WHEEL_GROUPS = uhfw_snapn;
+	for (i = 0; i < uhfw_snapn; i++)
+		UHFW_AddSnapItem(i);
+	startWheel("uh_ww_tick", "uh_ww_select");
+	uhww_own = UHFW_OWN_UH;
+	uhww_pn = PlayerNumber();
+	return 1;
+}
+
+function void UHFW_OpenUixFallback(void) {
+	// ACS_NamedExecute is async; uixweap_wheel_start has not run yet, so
+	// wheelName is still -1. Record ownership first. Close must not wait
+	// for wheelName: UIX -weapwheel only checks the console player and
+	// calls stopWheel().
+	uhww_own = UHFW_OWN_UIX;
+	uhww_pn = PlayerNumber();
+	ACS_NamedExecute("uixweap_wheel_start", 0);
+}
+
+script "uh_ww_open" (void) NET CLIENTSIDE {
+	int opened;
+
+	if (ConsolePlayerNumber() != PlayerNumber())
 		terminate;
 	if (!UHFW_ActorExists("UIX_ItemSelected_PU"))
+		terminate;
+	if (!UHFW_PlayerOk())
 		terminate;
 	if (wheelName != -1)
 		terminate;
 
-	classidx = UHFW_FindClass(GetActorClass(0));
-	if (classidx == UHFW_FAIL)
+	opened = UHFW_OpenUnified();
+	if (opened != 0)
 		terminate;
-	n = uhfw_classwepcount[classidx];
-	if (n < UHFW_MIN_WEAP)
+	UHFW_OpenUixFallback();
+}
+
+script "uh_fw_open" (void) NET CLIENTSIDE {
+	if (ConsolePlayerNumber() != PlayerNumber())
 		terminate;
-	if (n > UHFW_MAX_WEAP) {
-		UH_Log(UH_LOG_WARN, StrParam(s:"uh_uixfw: ", s:GetActorClass(0), s:" has too many weapons"));
+	if (!UHFW_ActorExists("UIX_ItemSelected_PU"))
 		terminate;
-	}
-	if (!UHFW_AllWepsHeld(classidx)) {
-		UH_Log(UH_LOG_DEBUG, StrParam(s:"uh_uixfw: missing weapon for ", s:GetActorClass(0)));
+	if (!UHFW_PlayerOk())
+		terminate;
+	if (wheelName != -1)
+		terminate;
+	UHFW_OpenUnified();
+}
+
+script "uh_ww_close" (void) NET CLIENTSIDE {
+	if (ConsolePlayerNumber() != PlayerNumber())
+		terminate;
+	if (uhww_pn != -1 && uhww_pn != PlayerNumber())
+		terminate;
+
+	if (uhww_own == UHFW_OWN_UH) {
+		if (wheelName != -1) {
+			if (StrCmp(wheelName, UHFW_WHEEL_NAME) == 0)
+				stopWheel();
+		}
+		uhww_own = UHFW_OWN_NONE;
+		uhww_pn = -1;
 		terminate;
 	}
 
-	cur = UHFW_CurrentWepIndex(classidx);
-	newWheel(UHFW_WHEEL_NAME, n, cur);
-	emptyWheel();
-	WHEEL_GROUPS = n;
-	for (i = 0; i < n; i++)
-		UHFW_AddWepItem(classidx, i);
-	startWheel(-1, "uh_fw_select");
+	if (uhww_own == UHFW_OWN_UIX) {
+		stopWheel();
+		uhww_own = UHFW_OWN_NONE;
+		uhww_pn = -1;
+		terminate;
+	}
+
+	if (wheelName != -1) {
+		if (StrCmp(wheelName, UHFW_UIX_WHEEL) == 0)
+			stopWheel();
+	}
+	uhww_own = UHFW_OWN_NONE;
+	uhww_pn = -1;
 }
 
 script "uh_fw_close" (void) NET CLIENTSIDE {
-	int cln;
-
-	cln = ConsolePlayerNumber();
-	if (cln != PlayerNumber())
-		terminate;
-	if (wheelName == -1)
-		terminate;
-	if (StrCmp(wheelName, UHFW_WHEEL_NAME) != 0)
-		terminate;
-	stopWheel();
+	ACS_NamedExecute("uh_ww_close", 0);
 }
 
-script "uh_fw_select" (int idx) {
+script "uh_ww_tick" (int selected) {
+	if (StrCmp(wheelName, UHFW_WHEEL_NAME) != 0) {
+		SetResultValue(0);
+		terminate;
+	}
+	if (UHFW_ShouldCancel()) {
+		UHFW_DoCancel();
+		SetResultValue(0);
+		terminate;
+	}
+	UHFW_RefreshAmmo();
+	SetResultValue(1);
+}
+
+script "uh_ww_select" (int idx) {
+	str wep;
+
+	if (uhfw_cancel) {
+		UHFW_SnapClear();
+		uhww_own = UHFW_OWN_NONE;
+		uhww_pn = -1;
+		terminate;
+	}
+	if (idx < 0 || idx >= uhfw_snapn) {
+		UHFW_SnapClear();
+		uhww_own = UHFW_OWN_NONE;
+		uhww_pn = -1;
+		terminate;
+	}
+	wep = uhfw_snapwep[idx];
 	GiveInventory("UIX_WeaponSelected_PU", 1);
-	NamedSendNetworkString("uh_fw_sel_sv", getWheelItemName(idx));
+	NamedSendNetworkString("uh_ww_sel_sv", wep);
+	UHFW_SnapClear();
+	uhww_own = UHFW_OWN_NONE;
+	uhww_pn = -1;
 }
 
-script "uh_fw_sel_sv" (int wep) NET {
+script "uh_ww_sel_sv" (int wep) NET {
 	int classidx;
 
+	if (!UHFW_PlayerOk())
+		terminate;
 	classidx = UHFW_FindClass(GetActorClass(0));
 	if (classidx == UHFW_FAIL)
 		terminate;

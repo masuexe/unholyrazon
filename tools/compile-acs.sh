@@ -87,6 +87,8 @@ echo "== uh_uixfw =="
 "$ACC" $INC -i src/acs_source/compat/mods/uix -i src/acs_source/compat/mods/uix/_uix_v3bh "src/acs_source/compat/mods/uix/uh_uixfw.acs" "$OUT/uh_uixfw.o" || fail=1
 echo "== UIXITEMS =="
 "$ACC" $INC -i src/acs_source/compat/mods/uix/_uix_v3bh "src/acs_source/compat/mods/uix/uixitems.acs" "$OUT/UIXITEMS.o" || fail=1
+echo "== UIXWEAP =="
+"$ACC" $INC -i src/acs_source/compat/mods/uix/_uix_v3bh -i "../references/for_8bdm-v6b/8bdm-uix-v3bh/acs_source/static tables" "src/acs_source/compat/mods/uix/uixweap.acs" "$OUT/UIXWEAP.o" || fail=1
 echo "== uh_legacy =="
 "$ACC" $INC "src/acs_source/compat/legacy/uh_legacy.acs" "$OUT/uh_legacy.o" || fail=1
 echo "== rz_shared =="
