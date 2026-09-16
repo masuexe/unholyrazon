@@ -283,9 +283,10 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 //      #include "zcommon.acs"
 //      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
 //      #include "UHADD.acs"
+//      #include "DTADD.acs"
 //      function void YourRegisterItems(void) {
 //          // Identity only; then AddUnholyItemDrop into a box.
-//          DefineUnholyItem(-1, "YourItem", "Your Item", "", "GNT/SuperShot");
+//          DefineUnholyItem(-1, "YourItem", "Your Item", "", DTADD_GRP_ATTACK, "", "GNT/SuperShot");
 //          AddUnholyItemDrop("PandoraBoxItem", "YourItem", 8, 1, "", "");
 //          // Coin pool (instant use): giveActor = Auto* / Auto*Silent
 //          // AddUnholyItemDrop("DLC_CoinItem", "YourItem", 8, 1, "", "AutoYourItemSilent");
@@ -301,7 +302,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 //      //   }
 //      //   UseX: ACS_NamedExecuteWithResult("GiveYourBox", 0, 0)
 //      function void YourRegisterBox(void) {
-//          DefineUnholyItem(-1, "YourBoxItem", "Your Box", "", "");
+//          DefineUnholyItem(-1, "YourBoxItem", "Your Box", "", DTADD_GRP_GIFT, "", "");
 //          SetUnholyBox("YourBoxItem", "items/YourBoxOpen", "items/ABoxEyeBox");
 //          AddUnholyItemDrop("YourBoxItem", "YourItem", 50, 1, "", "");
 //      }
@@ -990,16 +991,30 @@ function int UH_GetPlayerEyeId(int playernum) {
 
 // === DefineUnholyItem ========================================================
 // id: >=0 vanilla; -1 = auto custom (-1,-2,…).
-// actor / name required. mugshot / stingSound optional ("").
+// actor / name / dtaddGroup required. icon is spawn sprite ("" skips UIX).
+// Include DTADD.acs for DTADD_GRP_*. mugshot / stingSound optional ("").
 // Drops: SetUnholyBox + AddUnholyItemDrop (not on DefineUnholyItem).
 
-function int DefineUnholyItem(int id, str actor, str name, str mugshot, str sound) {
+function int DefineUnholyItem(int id, str actor, str name, str icon, int dtaddGroup, str mugshot, str sound) {
+	int defined;
+
+	if (dtaddGroup < 0 || dtaddGroup > 10) {
+		UH_Log(UH_LOG_WARN, StrParam(s:"DefineUnholyItem: unknown DTADD group for ", s:actor));
+		return UHITEM_FAIL;
+	}
 	SetCVar("uh_di_id", id);
 	SetCVarString("uh_di_actor", actor);
 	SetCVarString("uh_di_name", name);
+	SetCVarString("uh_di_icon", icon);
+	SetCVar("uh_di_group", dtaddGroup);
 	SetCVarString("uh_di_mugshot", mugshot);
 	SetCVarString("uh_di_sound", sound);
-	return ACS_NamedExecuteWithResult("uh_DefineUnholyItem_S");
+	defined = ACS_NamedExecuteWithResult("uh_DefineUnholyItem_S");
+	if (defined == UHITEM_FAIL) {
+		UH_Log(UH_LOG_WARN, StrParam(s:"DefineUnholyItem failed for ", s:actor));
+		return UHITEM_FAIL;
+	}
+	return defined;
 }
 
 // Mark a registered item as a rollable container (open / eyedrop sounds).
@@ -1079,6 +1094,15 @@ function str GetItemMugshot(int id) {
 function str GetItemSound(int id) {
 	ACS_NamedExecuteWithResult("uh_GetItemSound_S", id);
 	return GetCVarString("uh_di_out_str");
+}
+
+function str GetItemIcon(int id) {
+	ACS_NamedExecuteWithResult("uh_GetItemIcon_S", id);
+	return GetCVarString("uh_di_out_str");
+}
+
+function int GetItemDtaddGroup(int id) {
+	return ACS_NamedExecuteWithResult("uh_GetItemDtaddGroup_S", id);
 }
 
 function int GetItemDropWeight(int boxid, int itemid) {

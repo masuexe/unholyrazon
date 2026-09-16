@@ -1061,15 +1061,20 @@ function int EyeWriteCustom(str actor, str name, str prefix, int flags, str mugs
 #libdefine UHITEM_STR_SOUND 3
 #libdefine UHITEM_STR_OPENSOUND 4
 #libdefine UHITEM_STR_EYEDROPSOUND 5
-#libdefine UHITEM_STR_COUNT 6
+#libdefine UHITEM_STR_ICON 6
+#libdefine UHITEM_STR_COUNT 7
+#libdefine UHITEM_GRP_MIN 0
+#libdefine UHITEM_GRP_MAX 10
 
 int uh_itemvanilladefined[UH_MAX_VANILLA_ITEM];
 str uh_itemvanillastr[UH_MAX_VANILLA_ITEM][UHITEM_STR_COUNT];
 int uh_itemvanillaisbox[UH_MAX_VANILLA_ITEM];
+int uh_itemvanillagroup[UH_MAX_VANILLA_ITEM];
 
 int uh_itemcustomcount = 0;
 str uh_itemcustomstr[UH_MAX_CUSTOM_ITEM][UHITEM_STR_COUNT];
 int uh_itemcustomisbox[UH_MAX_CUSTOM_ITEM];
+int uh_itemcustomgroup[UH_MAX_CUSTOM_ITEM];
 
 // Drop rows: (boxid, itemid, weight, amt, stingOverride, giveActor).
 // Unique key = (box, item, giveActor, amt); same key accumulates weight.
@@ -1166,6 +1171,43 @@ function str GetItemSound(int id) {
 	return uh_itemcustomstr[slot][UHITEM_STR_SOUND];
 }
 
+function str GetItemIcon(int id) {
+	int slot = ItemResolveSlot(id);
+	if (slot == UHITEM_FAIL)
+		return "";
+	if (id >= 0)
+		return uh_itemvanillastr[slot][UHITEM_STR_ICON];
+	return uh_itemcustomstr[slot][UHITEM_STR_ICON];
+}
+
+function int GetItemDtaddGroup(int id) {
+	int slot = ItemResolveSlot(id);
+	if (slot == UHITEM_FAIL)
+		return -1;
+	if (id >= 0)
+		return uh_itemvanillagroup[slot];
+	return uh_itemcustomgroup[slot];
+}
+
+function int GetUnholyCustomItemCount(void) {
+	return uh_itemcustomcount;
+}
+
+function int GetUnholyItemCount(void) {
+	int n, i;
+
+	n = uh_itemcustomcount;
+	for (i = 0; i < UH_MAX_VANILLA_ITEM; i++) {
+		if (uh_itemvanilladefined[i] != 0)
+			n++;
+	}
+	return n;
+}
+
+function bool ItemDtaddGroupIsKnown(int group) {
+	return group >= UHITEM_GRP_MIN && group <= UHITEM_GRP_MAX;
+}
+
 function bool IsUnholyBox(int id) {
 	int slot = ItemResolveSlot(id);
 	if (slot == UHITEM_FAIL)
@@ -1208,7 +1250,7 @@ function int FindItemByActor(str actor) {
 	return UHITEM_FAIL;
 }
 
-function void ItemWriteVanilla(int id, str actor, str name, str mugshot, str sound) {
+function void ItemWriteVanilla(int id, str actor, str name, str icon, int group, str mugshot, str sound) {
 	uh_itemvanilladefined[id] = 1;
 	uh_itemvanillastr[id][UHITEM_STR_ACTOR] = actor;
 	uh_itemvanillastr[id][UHITEM_STR_NAME] = name;
@@ -1216,10 +1258,12 @@ function void ItemWriteVanilla(int id, str actor, str name, str mugshot, str sou
 	uh_itemvanillastr[id][UHITEM_STR_SOUND] = sound;
 	uh_itemvanillastr[id][UHITEM_STR_OPENSOUND] = "";
 	uh_itemvanillastr[id][UHITEM_STR_EYEDROPSOUND] = "";
+	uh_itemvanillastr[id][UHITEM_STR_ICON] = icon;
+	uh_itemvanillagroup[id] = group;
 	uh_itemvanillaisbox[id] = 0;
 }
 
-function int ItemWriteCustom(str actor, str name, str mugshot, str sound) {
+function int ItemWriteCustom(str actor, str name, str icon, int group, str mugshot, str sound) {
 	int i = uh_itemcustomcount;
 	int itemid = -1 - i;
 	uh_itemcustomstr[i][UHITEM_STR_ACTOR] = actor;
@@ -1228,6 +1272,8 @@ function int ItemWriteCustom(str actor, str name, str mugshot, str sound) {
 	uh_itemcustomstr[i][UHITEM_STR_SOUND] = sound;
 	uh_itemcustomstr[i][UHITEM_STR_OPENSOUND] = "";
 	uh_itemcustomstr[i][UHITEM_STR_EYEDROPSOUND] = "";
+	uh_itemcustomstr[i][UHITEM_STR_ICON] = icon;
+	uh_itemcustomgroup[i] = group;
 	uh_itemcustomisbox[i] = 0;
 	uh_itemcustomcount++;
 	return itemid;
