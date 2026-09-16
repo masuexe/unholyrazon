@@ -106,8 +106,8 @@ script "UH_RainbowHudMessage" (int whoisit, int y_offset) CLIENTSIDE {
 	HudMessage(s:""; 0, -6000, -1, 0.99, 0.01, 1873);
 }
 
-#define HELLTIMER_OFFSETX 50.1
-#define HELLTIMER_OFFSETY 309.1
+#define HELLTIMER_OFFSETX 54.1
+#define HELLTIMER_OFFSETY 270.1
 script "ub_HellTimerHud" (int timeleft) CLIENTSIDE {
 	SetHudSize(640, 480, 0);
 	int x_aspect = GetHudLeft(640) * 1.0;
@@ -116,11 +116,24 @@ script "ub_HellTimerHud" (int timeleft) CLIENTSIDE {
 		x_aspect = 0;
 		y_aspect = 0;
 	}
+	int custom_x = GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossHudX") * 1.0;
+	int custom_y = GetUserCVar(ConsolePlayerNumber(), "uh_cl_BossHudY") * 1.0;
 
-	ACS_NamedExecuteWithResult("uh_DrawTimerHud", timeleft, 0);
+	int x = HELLTIMER_OFFSETX + x_aspect + custom_x;
+	int y = HELLTIMER_OFFSETY + y_aspect + custom_y;
+
+	SetFont(StrParam(s:"HELTIMR", i:timeleft > 0));
+	HudMessage(s:"A"; HUDMSG_FADEOUT, 167, -1, x, y, 2.0, 3.0);
+	SetFont("fakefntC");  // SMALLFONT
+	HudMessage(i:timeleft; HUDMSG_FADEOUT, 166, CR_GOLD + (timeleft <= 0), x + 18.0, y + 5.0, 2.0, 3.0);
 }
 
 script "uh_DrawTimerHud" (int timeleft, int type) CLIENTSIDE {
+	if (type == 0) {
+		ACS_NamedExecuteWithResult("ub_HellTimerHud", timeleft);
+		terminate;
+	}
+
 	SetHudSize(640, 480, 0);
 	int x_aspect2 = GetHudLeft(640) * 1.0;
 	int y_aspect2 = GetHudTop(480) * 1.0;
@@ -128,24 +141,15 @@ script "uh_DrawTimerHud" (int timeleft, int type) CLIENTSIDE {
 		x_aspect2 = 0;
 		y_aspect2 = 0;
 	}
-	int x, y;
-	int holdtime, alerttime;
-	switch (type) {
-		default:
-			break;
-		case 0:
-			x = 50.1 + x_aspect2; y = 309.1 + y_aspect2;
-			holdtime = 2.0; alerttime = 0;
-			break;
-		case 1:
-			x = 300.1; y = 10.1 + y_aspect2;
-			holdtime = 1.0; alerttime = 60;
-			break;
-	}
+	int x = 300.1;
+	int y = 10.1 + y_aspect2;
+	int holdtime = 1.0;
+	int alerttime = 60;
+
 	SetFont(StrParam(s:"HELTIMR", i:timeleft > 0));
-	HudMessage(s:"A"; HUDMSG_FADEOUT, 167 + type * 2, -1, x, y, holdtime, 3.0);
+	HudMessage(s:"A"; HUDMSG_FADEOUT, 169, -1, x, y, holdtime, 3.0);
 	SetFont("fakefntC");  // SMALLFONT
-	HudMessageBold(i:timeleft; HUDMSG_FADEOUT, 166 + type * 2, CR_GOLD + (timeleft <= alerttime), x + 17.0, y + 5.0, holdtime, 3.0);
+	HudMessageBold(i:timeleft; HUDMSG_FADEOUT, 168, CR_GOLD + (timeleft <= alerttime), x + 17.0, y + 5.0, holdtime, 3.0);
 }
 
 
