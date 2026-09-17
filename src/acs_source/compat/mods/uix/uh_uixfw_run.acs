@@ -300,12 +300,29 @@ function void UHFW_AddWheelItemEntry(str wep, int group, str icon, str tag,
 	}
 }
 
+// Shared energy adds no per-weapon information to these wheels.
+// Keep the inventory metadata intact; this is only a wheel display policy.
+function int UHFW_HideSharedEnergyBars(void) {
+	if (uhfw_route != UHFW_ROUTE_FIXED)
+		return 0;
+	return StrICmp(uhfw_snapclass, "Arcanist") == 0
+		|| StrICmp(uhfw_snapclass, "ArcanistShiny") == 0
+		|| StrICmp(uhfw_snapclass, "RedWarrior") == 0
+		|| StrICmp(uhfw_snapclass, "YellowWizard") == 0;
+}
+
 function void UHFW_AddSnapItem(int i) {
+	int max1 = uhfw_max1[i];
+	int max2 = uhfw_max2[i];
+	if (UHFW_HideSharedEnergyBars()) {
+		max1 = 0;
+		max2 = 0;
+	}
 	UHFW_AddWheelItemEntry(
 		uhfw_snapwep[i], i,
 		uhfw_snapicon[i], uhfw_snaptag[i],
-		uhfw_amt1[i], uhfw_max1[i], uhfw_cyan1[i], uhfw_blue1[i],
-		uhfw_amt2[i], uhfw_max2[i], uhfw_cyan2[i], uhfw_blue2[i],
+		uhfw_amt1[i], max1, uhfw_cyan1[i], uhfw_blue1[i],
+		uhfw_amt2[i], max2, uhfw_cyan2[i], uhfw_blue2[i],
 		1);
 }
 
@@ -345,6 +362,8 @@ function void UHFW_UpdateBarsForItem(int item, int amt1, int max1, int amt2, int
 }
 
 function void UHFW_UpdateItemBars(int i) {
+	if (UHFW_HideSharedEnergyBars())
+		return;
 	UHFW_UpdateBarsForItem(i, uhfw_amt1[i], uhfw_max1[i], uhfw_amt2[i], uhfw_max2[i]);
 }
 
@@ -378,6 +397,8 @@ function int UHFW_RefreshAmmo(void) {
 	int a2;
 	int m2;
 
+	if (UHFW_HideSharedEnergyBars())
+		return 0;
 	changed = 0;
 	for (i = 0; i < uhfw_snapn; i++) {
 		a1 = uhfw_amt1[i];
