@@ -207,7 +207,8 @@ PASS: FinalSampi
 
 - [x] 首批六个 Boss（KakusaretaSutoka、ArchArcanist、VoidWalker、GBeast、FBeast、FinalSampi）的 actor、icon、绑定及切换全部正确。
 - [x] SinfulBusterExpert 始终维持 8 分区，仅持有 W1 时即可打开轮盘，未解锁项灰显且被拒绝选择；解锁 W2 后原位启用并可选择。
+- [x] SinfulBusterExpert 各武器 ammo1 显示已完整接入 wheel 与 fixed bar：正确读取 W1–W8 各自独立的 Ammo（SBESueAmmo～SBEHellBotAmmo）、NormalBar 对应调色板（203/206、63/79、198/244 等）及对应容量上限，同时隐藏 ammo2（UnholyPower1500 共享 Rage 能量），动态刷新机制同步维持；其他 Boss 共享能量条继续保持隐藏。
 - [x] MakeAGoodZero 第一、二、三阶段正确分离，bar 采用 `slotHint = -1` 真实单槽堆叠；Phase 2 自由选择 W2–W7，非 Phase 2 拒绝轮盘开启。
 - [x] Lin、MeisterWahwee、WarRockStelar 按计划暂缓，不增加虚假注册。
 - [x] Clownpiece 及各 `_Pissed` 变体完全排除在多武器轮盘外。
-- [x] 全部 ACS 编译通过（0 errors, 0 warnings），`git diff --check` 通过（0 errors），PK3 打包校验通过（16594 entries, status=ok），smoke test 通过（status=ok）。
+- [x] 全部 ACS 编译通过（0 errors, 0 warnings），`git diff --check` 通过（0 errors），PK3 打包校验通过，live MCP 自动化回归测试（`verify-boss-multiweapon.mjs`）全部通过（8/8 Bosses PASS）。

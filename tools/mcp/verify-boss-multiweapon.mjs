@@ -44,10 +44,18 @@ async function probeAcs(client, instance) {
   const fbRes = await callTool(client, "get_acs_var", { instance, scope: "world", index: 50 });
   const zcRes = await callTool(client, "get_acs_var", { instance, scope: "world", index: 51 });
   const zpRes = await callTool(client, "get_acs_var", { instance, scope: "world", index: 52 });
+  const alRes = await callTool(client, "get_acs_var", { instance, scope: "world", index: 53 });
+  const cyRes = await callTool(client, "get_acs_var", { instance, scope: "world", index: 54 });
+  const blRes = await callTool(client, "get_acs_var", { instance, scope: "world", index: 55 });
+  const mxRes = await callTool(client, "get_acs_var", { instance, scope: "world", index: 56 });
   const fbCount = fbRes.structuredContent ? fbRes.structuredContent.value : parseInt(textFromResult(fbRes), 10);
   const zbCheck = zcRes.structuredContent ? zcRes.structuredContent.value : parseInt(textFromResult(zcRes), 10);
   const zbPhase = zpRes.structuredContent ? zpRes.structuredContent.value : parseInt(textFromResult(zpRes), 10);
-  return { fbCount, zbCheck, zbPhase };
+  const sbeAmmoLen = alRes.structuredContent ? alRes.structuredContent.value : parseInt(textFromResult(alRes), 10);
+  const sbeCyan = cyRes.structuredContent ? cyRes.structuredContent.value : parseInt(textFromResult(cyRes), 10);
+  const sbeBlue = blRes.structuredContent ? blRes.structuredContent.value : parseInt(textFromResult(blRes), 10);
+  const sbeMax = mxRes.structuredContent ? mxRes.structuredContent.value : parseInt(textFromResult(mxRes), 10);
+  return { fbCount, zbCheck, zbPhase, sbeAmmoLen, sbeCyan, sbeBlue, sbeMax };
 }
 
 async function resetPlayer(client, instance) {
@@ -176,11 +184,15 @@ async function main() {
     console.log("SinfulBusterExpert after unlocking and selecting W2:", actor.weapon);
     const unlockSelected = (actor.weapon === "SinfulBusterExpert_W2");
 
+    const ammoOk = (probe.sbeAmmoLen === 10 && probe.sbeCyan === 203 && probe.sbeBlue === 206 && probe.sbeMax === 145);
+    console.log("SinfulBusterExpert ammo probe: ammoLen =", probe.sbeAmmoLen, "cyan =", probe.sbeCyan, "blue =", probe.sbeBlue, "max =", probe.sbeMax, "ammoOk =", ammoOk);
+
     results.SinfulBusterExpert = {
       fbCount: probe.fbCount,
       unheldRejected,
       unlockSelected,
-      ok: probe.fbCount === 8 && unheldRejected && unlockSelected,
+      ammoOk,
+      ok: probe.fbCount === 8 && unheldRejected && unlockSelected && ammoOk,
     };
 
     // -------------------------------------------------------------

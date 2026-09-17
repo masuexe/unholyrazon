@@ -45,6 +45,11 @@ script "uh_fb_slot" (int row) {
 	SetResultValue(slot);
 }
 
+// Constant palette/capacity lookup for SinfulBusterExpert:
+int uh_sbe_bar_cyan[8] = {203, 63, 198, 132, 180, 178, 218, 4};
+int uh_sbe_bar_blue[8] = {206, 79, 244, 135, 5, 5, 5, 84};
+int uh_sbe_bar_max[8] = {145, 175, 175, 145, 105, 250, 85, 250};
+
 // Always return global dynamic strings, including invalid/empty results.
 script "uh_fb_string" (int row, int field) {
 	str value = "";
@@ -55,9 +60,29 @@ script "uh_fb_string" (int row, int field) {
 				value = uhfw_wep[idx][row][UHFW_STR_WEP];
 			else if (field == UHFB_ICON)
 				value = uhfw_wep[idx][row][UHFW_STR_ICON];
+			else if (field == UHFB_AMMO1) {
+				if (StrICmp(GetActorClass(0), "SinfulBusterExpert") == 0)
+					value = uhfw_wep[idx][row][UHFW_STR_AMMO1];
+			}
 		}
 	}
 	SetResultValue(StrParam(s:value));
+}
+
+script "uh_fb_int" (int row, int field) {
+	int ival = 0;
+	int idx = UHFB_ClassIndex();
+	if (idx >= 0 && row >= 0 && row < 8) {
+		if (StrICmp(GetActorClass(0), "SinfulBusterExpert") == 0) {
+			if (field == UHFB_CYAN1)
+				ival = uh_sbe_bar_cyan[row];
+			else if (field == UHFB_BLUE1)
+				ival = uh_sbe_bar_blue[row];
+			else if (field == UHFB_DEFMAX1)
+				ival = uh_sbe_bar_max[row];
+		}
+	}
+	SetResultValue(ival);
 }
 
 // MakeAGoodZero weapon bar bridge: synchronous, camera activator preserved

@@ -3,6 +3,10 @@
 str fixedBarIcons[UHFB_MAX_WEAPONS];
 int fixedBarSelected[UHFB_MAX_WEAPONS];
 int fixedBarSlots[UHFB_MAX_WEAPONS];
+int fixedBarAmt1[UHFB_MAX_WEAPONS];
+int fixedBarMax1[UHFB_MAX_WEAPONS];
+int fixedBarCyan1[UHFB_MAX_WEAPONS];
+int fixedBarBlue1[UHFB_MAX_WEAPONS];
 
 str qwantSlot2Icon[UHQB_MAX_HELD];
 int qwantSlot2Amt[UHQB_MAX_HELD];
@@ -85,10 +89,15 @@ function void weaponBarDrawItem(int slot, int weight, int isSelected, str icon, 
 function void weaponBarFixed(int count) {
     int i;
     str actor;
+    str ammo1;
     for(i = 0; i < count; i++) {
         fixedBarIcons[i] = "";
         fixedBarSelected[i] = false;
         fixedBarSlots[i] = -1;
+        fixedBarAmt1[i] = 0;
+        fixedBarMax1[i] = 0;
+        fixedBarCyan1[i] = 0;
+        fixedBarBlue1[i] = 0;
         actor = ACS_NamedExecuteWithResult("uh_fb_string", i, UHFB_ACTOR);
         if(StrLen(actor) == 0)
             continue;
@@ -98,6 +107,16 @@ function void weaponBarFixed(int count) {
         fixedBarSelected[i] = CheckWeapon(actor);
         if(cvShowSlots)
             fixedBarSlots[i] = ACS_NamedExecuteWithResult("uh_fb_slot", i);
+
+        ammo1 = ACS_NamedExecuteWithResult("uh_fb_string", i, UHFB_AMMO1);
+        if(StrLen(ammo1) > 0) {
+            fixedBarAmt1[i] = CheckInventory(ammo1);
+            fixedBarMax1[i] = GetAmmoCapacity(ammo1);
+            if(fixedBarMax1[i] <= 0)
+                fixedBarMax1[i] = ACS_NamedExecuteWithResult("uh_fb_int", i, UHFB_DEFMAX1);
+            fixedBarCyan1[i] = ACS_NamedExecuteWithResult("uh_fb_int", i, UHFB_CYAN1);
+            fixedBarBlue1[i] = ACS_NamedExecuteWithResult("uh_fb_int", i, UHFB_BLUE1);
+        }
     }
 
     // Inventory and selection must be read from the camera before releasing it.
@@ -107,7 +126,8 @@ function void weaponBarFixed(int count) {
             continue;
         // Keep definition positions when weapons disappear; never rotate order.
         weaponBarDrawItem(i + 1, 0, fixedBarSelected[i], fixedBarIcons[i], fixedBarSlots[i],
-            0, 0, 0, 0, 0, 0, 0, 0);
+            fixedBarAmt1[i], fixedBarMax1[i], fixedBarCyan1[i], fixedBarBlue1[i],
+            0, 0, 0, 0);
     }
     // No ammo, stacking or ROWMAX truncation here.
 }
