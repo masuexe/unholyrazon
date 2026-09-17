@@ -16,6 +16,18 @@
 
 int uhqw_svlife[UHFW_QW_PLAYERS];
 int uhqw_svseq[UHFW_QW_PLAYERS];
+int uhqw_sv_req_timer[UHFW_QW_PLAYERS];
+
+int uhqw_cl_life[UHFW_QW_PLAYERS];
+int uhqw_cl_seq[UHFW_QW_PLAYERS];
+int uhqw_cl_ok[UHFW_QW_PLAYERS];
+int uhqw_cl_m[UHFW_QW_PLAYERS][UHFW_QW_SLOTS];
+int uhqw_cl_req_timer[UHFW_QW_PLAYERS];
+
+int uhqw_bar_life[UHFW_QW_PLAYERS];
+int uhqw_bar_seq[UHFW_QW_PLAYERS];
+int uhqw_bar_ok[UHFW_QW_PLAYERS];
+int uhqw_bar_m[UHFW_QW_PLAYERS][UHFW_QW_SLOTS];
 
 int uhqw_clife = 0;
 int uhqw_pend_ok = 0;
@@ -198,7 +210,7 @@ function int UHFW_QwantCacheWep(str wep) {
 		uhqw_ctag[i] = "TAG_Qwant_W";
 		uhqw_cicon[i] = "6N01S0";
 		uhqw_cammo[i] = "MyDestinyAmmo";
-		uhqw_cmax[i] = GetAmmoCapacity("MyDestinyAmmo");
+		uhqw_cmax[i] = 28;
 		uhqw_cn++;
 		return i;
 	}
@@ -417,11 +429,13 @@ function void UHFW_QwantPublish(void) {
 	seq = uhqw_svseq[pn];
 	life = uhqw_svlife[pn];
 	pack = (t1 & 255) | ((t2 & 255) << 8) | ((t3 & 255) << 16) | ((t4 & 255) << 24);
-	ACS_NamedExecuteAlways("uh_qw_recv", 0, pack, seq, life);
+	int pack_seq = (seq & 0x00FFFFFF) | ((pn + 1) << 24);
+	ACS_NamedExecuteAlways("uh_qw_recv", 0, pack, pack_seq, life);
 }
 
 function void UHFW_QwantBumpLife(void) {
 	int pn;
+	int pack_life;
 
 	if (!UHFW_IsPlainQwant())
 		return;
@@ -432,7 +446,8 @@ function void UHFW_QwantBumpLife(void) {
 	if (uhqw_svlife[pn] <= 0)
 		uhqw_svlife[pn] = 1;
 	uhqw_svseq[pn] = 0;
-	ACS_NamedExecuteAlways("uh_qw_newlife", 0, uhqw_svlife[pn]);
+	pack_life = (uhqw_svlife[pn] & 0x00FFFFFF) | ((pn + 1) << 24);
+	ACS_NamedExecuteAlways("uh_qw_newlife", 0, pack_life);
 }
 
 function int UHFW_OpenQwant(void) {
@@ -518,39 +533,301 @@ script "uh_qw_req" (void) NET {
 	UHFW_QwantPublish();
 }
 
-script "uh_qw_newlife" (int life) CLIENTSIDE {
-	if (ConsolePlayerNumber() != PlayerNumber())
+script "uh_qw_newlife" (int pack_life) CLIENTSIDE {
+	int pn;
+	int life;
+	int sender = (pack_life >> 24) & 255;
+	if (sender > 0) {
+		pn = sender - 1;
+		life = pack_life & 0x00FFFFFF;
+	} else {
+		pn = PlayerNumber();
+		life = pack_life;
+	}
+	if (pn < 0 || pn >= UHFW_QW_PLAYERS)
 		terminate;
-	uhqw_clife = life;
-	UHFW_QwantClearClient();
+
+	uhqw_cl_life[pn] = life;
+	uhqw_cl_seq[pn] = 0;
+	uhqw_cl_ok[pn] = 0;
+	for (int i = 0; i < UHFW_QW_SLOTS; i++) {
+		uhqw_cl_m[pn][i] = -1;
+		uhqw_bar_m[pn][i] = -1;
+	}
+
+	uhqw_bar_life[pn] = life;
+	uhqw_bar_seq[pn] = -1;
+	uhqw_bar_ok[pn] = 0;
+
+	if (pn == ConsolePlayerNumber()) {
+		uhqw_clife = life;
+		UHFW_QwantClearClient();
+	}
 }
 
-script "uh_qw_recv" (int pack, int seq, int life) CLIENTSIDE {
+script "uh_qw_recv" (int pack, int pack_seq, int life) CLIENTSIDE {
+	int pn;
+	int seq;
 	int t1;
 	int t2;
 	int t3;
 	int t4;
+	int sender = (pack_seq >> 24) & 255;
 
-	if (ConsolePlayerNumber() != PlayerNumber())
+	if (sender > 0) {
+		pn = sender - 1;
+		seq = pack_seq & 0x00FFFFFF;
+	} else {
+		pn = PlayerNumber();
+		seq = pack_seq;
+	}
+
+	if (pn < 0 || pn >= UHFW_QW_PLAYERS)
 		terminate;
-	if (!UHFW_IsPlainQwant())
+
+	if (uhqw_cl_life[pn] != 0 && life < uhqw_cl_life[pn])
 		terminate;
-	if (uhqw_clife != 0 && life != uhqw_clife)
+	if (uhqw_cl_life[pn] != 0 && life == uhqw_cl_life[pn] && seq < uhqw_cl_seq[pn])
 		terminate;
-	if (uhqw_clife == 0)
-		uhqw_clife = life;
+
 	t1 = pack & 255;
 	t2 = (pack >> 8) & 255;
 	t3 = (pack >> 16) & 255;
 	t4 = (pack >> 24) & 255;
 	if (!UHFW_QwantMovesOk(t1, t2, t3, t4))
 		terminate;
-	uhqw_pend_m[0] = t1;
-	uhqw_pend_m[1] = t2;
-	uhqw_pend_m[2] = t3;
-	uhqw_pend_m[3] = t4;
-	uhqw_pend_seq = seq;
-	uhqw_pend_ok = 1;
+
+	uhqw_cl_m[pn][0] = t1;
+	uhqw_cl_m[pn][1] = t2;
+	uhqw_cl_m[pn][2] = t3;
+	uhqw_cl_m[pn][3] = t4;
+	uhqw_cl_seq[pn] = seq;
+	uhqw_cl_life[pn] = life;
+	uhqw_cl_ok[pn] = 1;
+
+	if (pn == ConsolePlayerNumber()) {
+		if (uhqw_clife == 0)
+			uhqw_clife = life;
+		uhqw_pend_m[0] = t1;
+		uhqw_pend_m[1] = t2;
+		uhqw_pend_m[2] = t3;
+		uhqw_pend_m[3] = t4;
+		uhqw_pend_seq = seq;
+		uhqw_pend_ok = 1;
+	}
+}
+
+script "uh_qw_req_target" (int target_pn) NET {
+	int req_pn = PlayerNumber();
+	if (req_pn < 0 || req_pn >= UHFW_QW_PLAYERS)
+		terminate;
+	if (target_pn < 0 || target_pn >= UHFW_QW_PLAYERS)
+		terminate;
+	if (!PlayerInGame(target_pn))
+		terminate;
+
+	int target_tid = target_pn + 1000;
+	if (StrICmp(GetActorClass(target_tid), "Qwant") != 0)
+		terminate;
+	if (GetUserArray(target_tid, "user_PKMN_MoveMem", 7) != 777)
+		terminate;
+
+	if (Timer() < uhqw_sv_req_timer[req_pn] + 15)
+		terminate;
+	uhqw_sv_req_timer[req_pn] = Timer();
+
+	int t1 = GetUserArray(target_tid, "user_PKMN_MoveMem", 0);
+	int t2 = GetUserArray(target_tid, "user_PKMN_MoveMem", 1);
+	int t3 = GetUserArray(target_tid, "user_PKMN_MoveMem", 2);
+	int t4 = GetUserArray(target_tid, "user_PKMN_MoveMem", 3);
+	if (!UHFW_QwantMovesOk(t1, t2, t3, t4))
+		terminate;
+
+	int pack = (t1 & 255) | ((t2 & 255) << 8) | ((t3 & 255) << 16) | ((t4 & 255) << 24);
+	int seq = uhqw_svseq[target_pn];
+	int life = uhqw_svlife[target_pn];
+	int pack_seq = (seq & 0x00FFFFFF) | ((target_pn + 1) << 24);
+
+	NamedExecuteClientScript("uh_qw_recv", req_pn, pack, pack_seq, life);
+}
+
+script "uh_qw_disconnect" (int gone) DISCONNECT {
+	if (gone >= 0 && gone < UHFW_QW_PLAYERS) {
+		uhqw_svlife[gone] = 0;
+		uhqw_svseq[gone] = 0;
+		uhqw_sv_req_timer[gone] = 0;
+	}
+}
+
+script "uh_qw_cl_disconnect" (int gone) DISCONNECT CLIENTSIDE {
+	int i;
+	if (gone >= 0 && gone < UHFW_QW_PLAYERS) {
+		uhqw_cl_life[gone] = 0;
+		uhqw_cl_seq[gone] = 0;
+		uhqw_cl_ok[gone] = 0;
+		uhqw_cl_req_timer[gone] = 0;
+		for (i = 0; i < UHFW_QW_SLOTS; i++) {
+			uhqw_cl_m[gone][i] = -1;
+			uhqw_bar_m[gone][i] = -1;
+		}
+		uhqw_bar_life[gone] = 0;
+		uhqw_bar_seq[gone] = -1;
+		uhqw_bar_ok[gone] = 0;
+	}
+	if (gone == ConsolePlayerNumber()) {
+		uhqw_clife = 0;
+		UHFW_QwantClearClient();
+	}
+}
+
+function int UHQB_CheckCamera(void) {
+	if (StrICmp(GetActorClass(0), "Qwant") != 0)
+		return UHQB_UNSUPPORTED;
+	int pn = PlayerNumber();
+	if (pn < 0 || pn >= UHFW_QW_PLAYERS)
+		return UHQB_UNSUPPORTED;
+	return pn;
+}
+
+function int UHQB_UpdateBar(int pn) {
+	int i;
+	str act;
+
+	if (pn < 0 || pn >= UHFW_QW_PLAYERS)
+		return 0;
+
+	// Invalidate bar cache if life changed
+	if (uhqw_bar_life[pn] != uhqw_cl_life[pn]) {
+		uhqw_bar_ok[pn] = 0;
+		uhqw_bar_seq[pn] = -1;
+		uhqw_bar_life[pn] = uhqw_cl_life[pn];
+		for (i = 0; i < UHFW_QW_SLOTS; i++)
+			uhqw_bar_m[pn][i] = -1;
+	}
+
+	// If client moves not ready, request them with rate limit
+	if (!uhqw_cl_ok[pn]) {
+		if (Timer() >= uhqw_cl_req_timer[pn] + 35) {
+			uhqw_cl_req_timer[pn] = Timer();
+			ACS_NamedExecuteAlways("uh_qw_req_target", 0, pn);
+		}
+		return uhqw_bar_ok[pn];
+	}
+
+	// Try committing newly synced moves if they differ from bar sequence
+	if (uhqw_bar_seq[pn] != uhqw_cl_seq[pn]) {
+		int canCommit = 1;
+		if (CheckInventory("Qwant_W") <= 0)
+			canCommit = 0;
+		for (i = 0; i < UHFW_QW_SLOTS && canCommit; i++) {
+			act = UHFW_QwantActor(uhqw_cl_m[pn][i]);
+			if (StrLen(act) == 0 || CheckInventory(act) <= 0)
+				canCommit = 0;
+		}
+		if (canCommit) {
+			for (i = 0; i < UHFW_QW_SLOTS; i++)
+				uhqw_bar_m[pn][i] = uhqw_cl_m[pn][i];
+			uhqw_bar_seq[pn] = uhqw_cl_seq[pn];
+			uhqw_bar_ok[pn] = 1;
+		} else {
+			if (Timer() >= uhqw_cl_req_timer[pn] + 70) {
+				uhqw_cl_req_timer[pn] = Timer();
+				ACS_NamedExecuteAlways("uh_qw_req_target", 0, pn);
+			}
+		}
+	}
+
+	return uhqw_bar_ok[pn];
+}
+
+script "uh_qb_count" (void) {
+	int pn = UHQB_CheckCamera();
+	if (pn < 0) {
+		SetResultValue(pn);
+		terminate;
+	}
+
+	int ready = UHQB_UpdateBar(pn);
+	if (!ready)
+		SetResultValue(UHQB_NOT_READY);
+	else
+		SetResultValue(UHQB_MAX_WEAPONS);
+}
+
+script "uh_qb_string" (int row, int field) {
+	str val = "";
+	int pn = UHQB_CheckCamera();
+	if (pn >= 0 && uhqw_bar_ok[pn] && row >= 0 && row < UHQB_MAX_WEAPONS) {
+		if (row == 0) {
+			if (field == UHQB_ACTOR)
+				val = "Qwant_W";
+			else if (field == UHQB_ICON)
+				val = "6N01S0";
+			else if (field == UHQB_AMMO1)
+				val = "MyDestinyAmmo";
+			else if (field == UHQB_AMMO2)
+				val = "MoveRelearnAmmo";
+		} else {
+			int midx = uhqw_bar_m[pn][row - 1];
+			str wep = UHFW_QwantActor(midx);
+			if (StrLen(wep) > 0) {
+				int c = UHFW_QwantCacheWep(wep);
+				if (c != UHFW_FAIL) {
+					if (field == UHQB_ACTOR)
+						val = wep;
+					else if (field == UHQB_ICON)
+						val = uhqw_cicon[c];
+					else if (field == UHQB_AMMO1)
+						val = uhqw_cammo[c];
+					else if (field == UHQB_AMMO2)
+						val = "";
+				}
+			}
+		}
+	}
+	SetResultValue(StrParam(s:val));
+}
+
+script "uh_qb_int" (int row, int field) {
+	int ival = 0;
+	int pn = UHQB_CheckCamera();
+	if (pn >= 0 && uhqw_bar_ok[pn] && row >= 0 && row < UHQB_MAX_WEAPONS) {
+		if (row == 0) {
+			if (field == UHQB_CYAN1)
+				ival = UHFW_QW_BODY_C;
+			else if (field == UHQB_BLUE1)
+				ival = UHFW_QW_BODY_B;
+			else if (field == UHQB_CYAN2)
+				ival = UHFW_QW_BAR2_C;
+			else if (field == UHQB_BLUE2)
+				ival = UHFW_QW_BAR2_B;
+			else if (field == UHQB_DEFMAX1)
+				ival = 28;
+			else if (field == UHQB_DEFMAX2)
+				ival = 28;
+		} else {
+			int midx = uhqw_bar_m[pn][row - 1];
+			str wep = UHFW_QwantActor(midx);
+			if (StrLen(wep) > 0) {
+				int c = UHFW_QwantCacheWep(wep);
+				if (c != UHFW_FAIL) {
+					if (field == UHQB_CYAN1)
+						ival = uhqw_ccyan[c];
+					else if (field == UHQB_BLUE1)
+						ival = uhqw_cblue[c];
+					else if (field == UHQB_CYAN2)
+						ival = 0;
+					else if (field == UHQB_BLUE2)
+						ival = 0;
+					else if (field == UHQB_DEFMAX1)
+						ival = uhqw_cmax[c];
+					else if (field == UHQB_DEFMAX2)
+						ival = 0;
+				}
+			}
+		}
+	}
+	SetResultValue(ival);
 }
 
 script "uh_qw_life" ENTER {

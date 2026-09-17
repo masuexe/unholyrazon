@@ -4,6 +4,81 @@ str fixedBarIcons[UHFB_MAX_WEAPONS];
 int fixedBarSelected[UHFB_MAX_WEAPONS];
 int fixedBarSlots[UHFB_MAX_WEAPONS];
 
+str qwantBarIcons[UHQB_MAX_WEAPONS];
+int qwantBarSelected[UHQB_MAX_WEAPONS];
+int qwantBarAmt1[UHQB_MAX_WEAPONS];
+int qwantBarMax1[UHQB_MAX_WEAPONS];
+int qwantBarCyan1[UHQB_MAX_WEAPONS];
+int qwantBarBlue1[UHQB_MAX_WEAPONS];
+int qwantBarAmt2[UHQB_MAX_WEAPONS];
+int qwantBarMax2[UHQB_MAX_WEAPONS];
+int qwantBarCyan2[UHQB_MAX_WEAPONS];
+int qwantBarBlue2[UHQB_MAX_WEAPONS];
+
+function str weaponBarFontPal(int idx) {
+    if(idx <= 0 || idx >= 256)
+        return fontPalette[0];
+    return fontPalette[idx];
+}
+
+function void weaponBarDrawItem(int slot, int weight, int isSelected, str icon, int slotHint,
+    int amt1, int max1, int cyan1, int blue1,
+    int amt2, int max2, int cyan2, int blue2)
+{
+    int iconX = weaponBarIconX(slot, weight, isSelected);
+    int iconY = weaponBarIconY(slot, weight, isSelected);
+
+    if(!isSelected)
+        weaponBarBackground(iconX, iconY);
+
+    weaponBarIcon(icon, iconX, iconY);
+
+    weaponBarSlotHint(slotHint,
+        weaponBarIconX(slot, weight, false),
+        weaponBarIconY(slot, weight, false),
+        isSelected ? "\c[gold]" : "\c[darkgray]");
+
+    if(max2 > 0) {
+        drawLayeredBarColor(layer,
+            weaponBars[0][cvDir],
+            weaponBarFontPal(cyan2),
+            weaponBarFontPal(blue2),
+            fontPalette[0],
+            iconX + barX2,
+            iconY + barY2,
+            barWidth, barHeight,
+            barScale, barScale, cvAlpha,
+            amt2, max2,
+            !cvDir+1, false, ALIGN_LEFT, ALIGN_TOP);
+
+        if(max1 > 0) {
+            drawLayeredBarColor(layer,
+                weaponBars[0][cvDir],
+                weaponBarFontPal(cyan1),
+                weaponBarFontPal(blue1),
+                fontPalette[0],
+                iconX + barX1,
+                iconY + barY1,
+                barWidth, barHeight,
+                barScale, barScale, cvAlpha,
+                amt1, max1,
+                !cvDir+1, false, ALIGN_LEFT, ALIGN_TOP);
+        }
+    } else if(max1 > 0) {
+        drawLayeredBarColor(layer,
+            weaponBars[0][cvDir],
+            weaponBarFontPal(cyan1),
+            weaponBarFontPal(blue1),
+            fontPalette[0],
+            iconX + barX2,
+            iconY + barY2,
+            barWidth, barHeight,
+            barScale, barScale, cvAlpha,
+            amt1, max1,
+            !cvDir+1, false, ALIGN_LEFT, ALIGN_TOP);
+    }
+}
+
 function void weaponBarFixed(int count) {
     int i;
     str actor;
@@ -28,15 +103,72 @@ function void weaponBarFixed(int count) {
         if(StrLen(fixedBarIcons[i]) == 0)
             continue;
         // Keep definition positions when weapons disappear; never rotate order.
-        int x = weaponBarIconX(i + 1, 0, fixedBarSelected[i]);
-        int y = weaponBarIconY(i + 1, 0, fixedBarSelected[i]);
-        if(!fixedBarSelected[i])
-            weaponBarBackground(x, y);
-        weaponBarIcon(fixedBarIcons[i], x, y);
-        // Label stays at the original slot anchor, not the selected icon offset.
-        weaponBarSlotHint(fixedBarSlots[i],
-            weaponBarIconX(i + 1, 0, false), weaponBarIconY(i + 1, 0, false),
-            fixedBarSelected[i] ? "\c[gold]" : "\c[darkgray]");
+        weaponBarDrawItem(i + 1, 0, fixedBarSelected[i], fixedBarIcons[i], fixedBarSlots[i],
+            0, 0, 0, 0, 0, 0, 0, 0);
     }
     // No ammo, stacking or ROWMAX truncation here.
 }
+
+function void weaponBarQwant(int count) {
+    int i;
+    str actor;
+    str ammo1;
+    str ammo2;
+    int max1;
+    int max2;
+
+    for(i = 0; i < count; i++) {
+        qwantBarIcons[i] = "";
+        qwantBarSelected[i] = false;
+        qwantBarAmt1[i] = 0;
+        qwantBarMax1[i] = 0;
+        qwantBarCyan1[i] = 0;
+        qwantBarBlue1[i] = 0;
+        qwantBarAmt2[i] = 0;
+        qwantBarMax2[i] = 0;
+        qwantBarCyan2[i] = 0;
+        qwantBarBlue2[i] = 0;
+
+        actor = ACS_NamedExecuteWithResult("uh_qb_string", i, UHQB_ACTOR);
+        if(StrLen(actor) == 0)
+            continue;
+        if(CheckInventory(actor) <= 0)
+            continue;
+
+        qwantBarIcons[i] = ACS_NamedExecuteWithResult("uh_qb_string", i, UHQB_ICON);
+        qwantBarSelected[i] = CheckWeapon(actor);
+
+        ammo1 = ACS_NamedExecuteWithResult("uh_qb_string", i, UHQB_AMMO1);
+        if(StrLen(ammo1) > 0) {
+            qwantBarAmt1[i] = CheckInventory(ammo1);
+            max1 = GetAmmoCapacity(ammo1);
+            if(max1 <= 0)
+                max1 = ACS_NamedExecuteWithResult("uh_qb_int", i, UHQB_DEFMAX1);
+            qwantBarMax1[i] = max1;
+            qwantBarCyan1[i] = ACS_NamedExecuteWithResult("uh_qb_int", i, UHQB_CYAN1);
+            qwantBarBlue1[i] = ACS_NamedExecuteWithResult("uh_qb_int", i, UHQB_BLUE1);
+        }
+
+        ammo2 = ACS_NamedExecuteWithResult("uh_qb_string", i, UHQB_AMMO2);
+        if(StrLen(ammo2) > 0) {
+            qwantBarAmt2[i] = CheckInventory(ammo2);
+            max2 = GetAmmoCapacity(ammo2);
+            if(max2 <= 0)
+                max2 = ACS_NamedExecuteWithResult("uh_qb_int", i, UHQB_DEFMAX2);
+            qwantBarMax2[i] = max2;
+            qwantBarCyan2[i] = ACS_NamedExecuteWithResult("uh_qb_int", i, UHQB_CYAN2);
+            qwantBarBlue2[i] = ACS_NamedExecuteWithResult("uh_qb_int", i, UHQB_BLUE2);
+        }
+    }
+
+    // Inventory and selection must be read from the camera before releasing it.
+    SetActivator(-1);
+    for(i = 0; i < count; i++) {
+        if(StrLen(qwantBarIcons[i]) == 0)
+            continue;
+        weaponBarDrawItem(i + 1, 0, qwantBarSelected[i], qwantBarIcons[i], -1,
+            qwantBarAmt1[i], qwantBarMax1[i], qwantBarCyan1[i], qwantBarBlue1[i],
+            qwantBarAmt2[i], qwantBarMax2[i], qwantBarCyan2[i], qwantBarBlue2[i]);
+    }
+}
+

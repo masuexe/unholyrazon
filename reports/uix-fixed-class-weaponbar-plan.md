@@ -1,6 +1,8 @@
-# UIX v3bh 固定 class weaponbar 兼容计划
+# UIX v3bh weaponbar 兼容计划：固定 class 与 Qwant
 
 ## 执行状态
+
+当前阶段：固定 class 与槽位提示的最新源码 review、全量 ACS 编译和 diff 检查通过，可以进入下文的 Qwant 增量阶段。历史运行记录保留；未验证的项目不因进入下一阶段而视为通过。Qwant 尚未实施，NegaMan 与 killfeed 继续不在本轮范围。
 
 代码已实现，运行验收阻塞；本计划按“游戏内与联机回归通过后删除”的条件保留。
 
@@ -107,3 +109,100 @@ UH 数据使用独立的小型局部/显示缓存，不占用原版 slotVals、c
 - 使用现有 `tools/compile-acs.sh` 全量编译至临时目录。本轮仅写计划，不编译、打包或启动引擎。
 
 本计划依照 MM8BDM 和 Zandronum 技能及项目源码制定，技能核对促使数据入口与轮盘状态隔离；不修改只读参考树。
+
+## 下一阶段：普通 Qwant weaponbar
+
+### 目标与显示规则
+
+精确支持普通 `Qwant`，不自动纳入 `QwantShiny`。固定五个显示位置：`Qwant_W` 与 MoveMem 的四个招式槽位。M2 替换后原位置更新 actor、icon、弹药与配色，不排序、不移动其他招式。
+
+沿用 UIX weaponbar 的位置、缩放、alpha、方向、镜像、layer 和当前武器突出显示。每个招式独占一个显示位置，无需 ROWMAX 堆叠或溢出布局；bar 不依赖 wheel 是否打开，不受 wheel 至少三件条件限制。
+
+与共享能量固定 class 不同，Qwant 招式可能使用不同属性弹药，首版显示每件武器对应的弹药条，复用现有 Qwant HUD/轮盘元数据解析规则。`Qwant_W` 保留 `MyDestinyAmmo` 和 `MoveRelearnAmmo` 两条；招式读取属性弹药或自定义填充 Ammo。不要因为两个招式共享属性而合并显示位置。
+
+暂不把五个显示位置当成真实 slot 1～5。现有 `Qwant.dec` 没有上述固定 class 的五项显式 `player.weaponslot` 映射；先核对招式基类、后代与继承映射。只有能证明与真实选择命令对应时才显示绑定标签，不能根据 MoveMem 序号伪造数字，也不为 HUD 修改 gameplay slot。
+
+### 1. 独立于 wheel 的多人槽位数据
+
+现有 `uh_qw_recv/newlife` 只接受 ConsolePlayer 所属 activator，且使用单份客户端状态，不能直接支持观战目标，也不能把其显示数组当成 bar 数据源。
+
+把权威四槽位同步的接收缓存扩展为按玩家编号、生命周期与版本隔离的只读来源，存放在 UIX 兼容模块：
+
+- 复用初始化和 M2 完成后的现有服务端 Publish，不复制战斗随机逻辑。
+- 客户端接收整批四索引，验证注册、生命周期与版本；同一生命内拒绝旧版本回写，不将不同玩家或生命的数据混合。
+- 原本的 wheel 继续只使用本地玩家数据；bar 根据摄像机玩家取数据。接收其他玩家的同步不得清理本地 wheel owner、route 或快照。
+- 重生、换 class、断线及玩家编号复用时使旧缓存失效。生命周期版本不能仅依赖一个永久自增值而忽略地图/玩家连接上下文。
+- 沿用已有广播信息时可在各客户端保存所有有效玩家快照。为迟加入、观战切换及初始化消息丢失提供受限补拉，不每次 HUD 调用发网络请求。
+
+补拉应返回实际摄像机目标的数据；现有仅查询请求者自己的 `uh_qw_req` 不足以覆盖观战。新增请求若携带目标玩家编号，服务端验证编号、玩家有效、普通 Qwant，并限制频率；只读且不能改变槽位。按引擎已有定向 CLIENTSIDE 通信模式返回，并显式携带目标身份，不能把请求者 activator 误认为目标。
+
+实施前核对服务器到客户端脚本与迟加入行为；不存在客户端权威槽位写入 NET 入口。数据未就绪时不回退到错误的原版分类，不长期缓存“不支持”，允许下次显示调用重试。
+
+### 2. 复用静态元数据，不复用有状态快照
+
+使用 `UHDT` 的 Qwant kind/index 解析 actor，复用 `UHFW_QwantCacheWep` 或抽取其静态解析助手，统一 icon、标签、`_QwantBar` 属性、填充 Ammo、容量回退与颜色。
+
+静态缓存可跨玩家共享，但玩家弹药数量、容量及 CheckWeapon 必须从当前摄像机重新读取。不要把首次缓存玩家的动态容量固定为所有玩家的容量。保留自定义 Ammo 元数据，并及时移除临时 actor，不每 tic Spawn。
+
+新增 bar 专用、非 NET 同步读取接口，按摄像机返回当前完整版本和五行显示信息。禁止调用 `QwantTryCommit/LoadSnap/PaintItems` 或任何 `newWheel/emptyWheel`；这些函数写入 wheel 状态。不要重新维护全部招式 actor 或属性定义列表。
+
+### 3. 原位置更新与库存不同步处理
+
+bar 独立缓存最后一批完整、且库存匹配的五行显示映射。快照与 Give/Take 网络同步到达顺序可能不同：
+
+- 新 actor 尚未持有时暂不提交新映射，不绘制混合版本。
+- 旧 actor 已失去时该位置暂时禁用/淡化，不使用其他持有武器填补，不错误高亮。
+- 完整新映射可用后原位置更新；弹药数值每次 HUD 调用刷新，不需关闭重开 wheel。
+- 设有界等待和限频补拉；长期失配时隐藏失效行并记录受限日志，不能阻塞 HUD 或无限请求。
+
+这份 bar 映射按摄像机玩家与生命隔离。HUD 同一 tic 切换多个玩家时不得依赖全局 Timer 缓存。wheel 打开时 M2 同样更新，但 bar 刷新不得引发 wheel 重建。
+
+### 4. 绘制与路由复用
+
+在 `UIX_WeapBar` 的已有禁用检查和公共布局之后增加 Qwant 路由；保留固定 class 分支和 MegaMan 原版路径。
+
+复用 `weaponBarIconX/Y`、背景、图标、绑定提示及现有弹药条绘制调用。抽出通用的单武器条绘制助手，以 actor 显示数据为参数，不要求它有 8BDT 索引。固定 class 继续传无弹药策略，Qwant 传实际两条数据，MegaMan 原版行为保持不变。
+
+在 SetActivator(-1) 前完成摄像机库存、容量和高亮读取，之后只使用本次绘制数据。新实现片段继续放在 `compat/mods/uix/`，由现有库 include，不新增常驻 HUD 循环、LOADACS 项、CVAR 或按键。
+
+### 最小实验与执行顺序
+
+1. 先扩展槽位同步来源，验证本地 Qwant 与观战目标的四槽数据，不画新 bar；确认 wheel 生命周期不受影响。
+2. 接入五个 icon 与高亮，先验证从未打开 wheel 时能显示，M2 原位置更新。
+3. 接入属性弹药条、主武器双条和自定义 Ammo；确认配色在相同数值下替换也会刷新。
+4. 核对真实 slot，能准确表达才接入现有绑定提示；否则省略，不新增 gameplay 映射。
+5. 全量 native ACC 编译、diff 检查与实际联机回归；计划记录明确区分静态通过和运行通过。
+
+### Qwant 验收清单
+
+- 初始五项、连续 M2、同属性招式、不同属性替换、零弹药及容量变化：位置稳定，actor/icon/颜色/弹药同步刷新。
+- 主武器两条正确，招式自定义填充 Ammo 正确；bar 无需 wheel 开启且不修改其快照或选择状态。
+- 两个 Qwant 使用不同招式，观战来回切换、迟加入、重生、换 class、断线复用编号和延迟网络不串数据、不使用旧生命快照。
+- 数据未就绪或库存同步中间态无虚假高亮、混合版本或请求风暴；目标补拉没有错误 activator。
+- SHOWSLOTS 仅显示已验证的真实映射；UIX 所有原有显示开关与布局设置生效。
+- 固定 class、MegaMan M2、Qwant wheel、NegaMan wheel 和 item wheel 回归通过；无 UIX 加载时不触发新增显示或缺失调用。
+
+### 阶段执行结果与交付状态（2026-09-17）
+
+Stage 2（普通 Qwant weaponbar）已全面实现并验证：
+
+1. **协议与常量扩展**（`src/acs_source/compat/mods/uix/uh_uixbar_api.acs`）：
+   - 定义 `UHQB_UNSUPPORTED` (-1)、`UHQB_NOT_READY` (-2)、`UHQB_MAX_WEAPONS` (5)。
+   - 定义字段索引 `UHQB_ACTOR`、`UHQB_ICON`、`UHQB_AMMO1`、`UHQB_AMMO2`，以及颜色/容量查询字段 `UHQB_CYAN1`、`UHQB_BLUE1`、`UHQB_CYAN2`、`UHQB_BLUE2`、`UHQB_DEFMAX1`、`UHQB_DEFMAX2`。
+
+2. **多客户端同步与独立于轮盘的只读数据源**（`src/acs_source/compat/mods/uix/uh_uixfw_qwant.acs`）：
+   - 客户端建立按玩家隔离的状态数组 `uhqw_cl_m[64][4]`、`uhqw_cl_seq[64]`、`uhqw_cl_life[64]`、`uhqw_cl_ok[64]` 及 bar 独立提交快照 `uhqw_bar_m[64][4]`、`uhqw_bar_seq[64]`、`uhqw_bar_life[64]`、`uhqw_bar_ok[64]`。
+   - `UHFW_QwantPublish` 与 `UHFW_QwantBumpLife` 将目标玩家编号 `pn` 编码入高 8 位广播，全客户端均可维护各玩家的最新状态。
+   - 新增 `uh_qw_req_target(target_pn)` NET 脚本：服务端权威校验目标有效性与普通 Qwant 类别，并通过 `NamedExecuteClientScript("uh_qw_recv", req_pn, ...)` 定向单播回发；客户端设置 35 tics 限频防风暴。
+   - `DISCONNECT`（服务端与客户端）及生命版本更迭时彻底清理对应玩家缓存。
+   - 提供只读非 NET 接口 `uh_qb_count`、`uh_qb_string`、`uh_qb_int`，在摄像机 activator 下同步比对库存匹配度，未就绪时返回 `UHQB_NOT_READY`，杜绝混合版本或未持有时提前渲染。
+
+3. **通用绘制复用与 Qwant 专属条渲染**（`src/acs_source/compat/mods/uix/uixweap_fixedbar.acs` 与 `uixweap.acs`）：
+   - 提取通用的 `weaponBarDrawItem` 助手，支持双能量条、单能量条和无能量条（固定 class 复用）。
+   - 实现 `weaponBarQwant`：在 `SetActivator(-1)` 前从摄像机完成 `CheckWeapon`、`CheckInventory` 及 `GetAmmoCapacity` 查询；`Qwant_W` 绘制 `MyDestinyAmmo` 与 `MoveRelearnAmmo` 双条，Move 槽位绘制对应属性或自定义 Ammo 能量条；不伪造 slot 1～5 绑定提示（传 `-1`）。
+   - 在 `UIX_WeapBar` 中紧接固定 class 路由后挂接 `uh_qb_count` 分支，未知或未就绪时平稳处理，不影响 MegaMan 原版逻辑或固定 class 逻辑。
+
+4. **编译与打包验证**：
+   - 全量原生 ACC 编译器验证通过：`./tools/compile-acs.sh` 输出 `ACS COMPILE OK`（0 错误，0 告警）。
+   - PK3 归档打包并通过校验：`./tools/validate-build-pk3.sh` 输出 `status=ok`（17575 entries, 31.7MB）。
+
