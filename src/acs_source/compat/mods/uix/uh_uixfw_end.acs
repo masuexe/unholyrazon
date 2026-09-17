@@ -8,6 +8,8 @@ function int UHFW_OpenUnified(void) {
 	classidx = UHFW_FindClass(classactor);
 	if (classidx == UHFW_FAIL && UHFW_IsPlainQwant())
 		return UHFW_OpenQwant();
+	if (classidx == UHFW_FAIL && UHFW_IsPlainNegaMan())
+		return UHFW_OpenNegaMan();
 	UHFW_SnapClear();
 	uhfw_snapclass = classactor;
 	if (classidx != UHFW_FAIL) {
@@ -86,8 +88,7 @@ script "uh_ww_open" (void) NET CLIENTSIDE {
 			if (!UHFW_PlayerOk() || !UHFW_IsPlainQwant())
 				terminate;
 			if (wheelName != -1) {
-				uhww_own = UHFW_OWN_NONE;
-				uhww_pn = -1;
+				UHFW_ResetOwner();
 				terminate;
 			}
 			if (UHFW_QwantTryCommit())
@@ -97,19 +98,51 @@ script "uh_ww_open" (void) NET CLIENTSIDE {
 		}
 		if (uhqw_show_seq < 0) {
 			UH_Log(UH_LOG_INFO, "uh_uixfw: Qwant wheel not ready");
-			uhww_own = UHFW_OWN_NONE;
-			uhww_pn = -1;
+			UHFW_ResetOwner();
 			terminate;
 		}
 		if (wheelName != -1) {
-			uhww_own = UHFW_OWN_NONE;
-			uhww_pn = -1;
+			UHFW_ResetOwner();
 			terminate;
 		}
 		opened = UHFW_OpenQwant();
 		if (opened <= 0) {
-			uhww_own = UHFW_OWN_NONE;
-			uhww_pn = -1;
+			UHFW_ResetOwner();
+		}
+		terminate;
+	}
+
+	if (UHFW_IsPlainNegaMan()) {
+		uhfw_cancel = 0;
+		uhww_own = UHFW_OWN_UH;
+		uhww_pn = PlayerNumber();
+		waits = 0;
+		while (ACS_NamedExecuteWithResult("uh_copykind_count", UHFW_UHCOPY_NEGA) <= 0 && waits < UHFW_NEGA_WAIT) {
+			if (uhfw_cancel)
+				terminate;
+			if (uhww_own != UHFW_OWN_UH)
+				terminate;
+			if (!UHFW_PlayerOk() || !UHFW_IsPlainNegaMan())
+				terminate;
+			if (wheelName != -1) {
+				UHFW_ResetOwner();
+				terminate;
+			}
+			Delay(1);
+			waits++;
+		}
+		if (ACS_NamedExecuteWithResult("uh_copykind_count", UHFW_UHCOPY_NEGA) <= 0) {
+			UH_Log(UH_LOG_WARN, "uh_uixfw: NegaMan copy registry not ready");
+			UHFW_ResetOwner();
+			terminate;
+		}
+		if (uhfw_cancel || uhww_own != UHFW_OWN_UH || !UHFW_PlayerOk() || !UHFW_IsPlainNegaMan() || wheelName != -1) {
+			UHFW_ResetOwner();
+			terminate;
+		}
+		opened = UHFW_OpenNegaMan();
+		if (opened <= 0) {
+			UHFW_ResetOwner();
 		}
 		terminate;
 	}
@@ -132,8 +165,7 @@ script "uh_ww_close" (void) NET CLIENTSIDE {
 				stopWheel();
 		} else
 			uhfw_cancel = 1;
-		uhww_own = UHFW_OWN_NONE;
-		uhww_pn = -1;
+		UHFW_ResetOwner();
 		terminate;
 	}
 
@@ -144,8 +176,7 @@ script "uh_ww_close" (void) NET CLIENTSIDE {
 		} else if (StrCmp(wheelName, UHFW_UIX_WHEEL) == 0) {
 			stopWheel();
 		}
-		uhww_own = UHFW_OWN_NONE;
-		uhww_pn = -1;
+		UHFW_ResetOwner();
 		terminate;
 	}
 
@@ -153,8 +184,7 @@ script "uh_ww_close" (void) NET CLIENTSIDE {
 		if (StrCmp(wheelName, UHFW_UIX_WHEEL) == 0)
 			stopWheel();
 	}
-	uhww_own = UHFW_OWN_NONE;
-	uhww_pn = -1;
+	UHFW_ResetOwner();
 }
 
 script "uh_ww_tick" (int selected) {
@@ -171,6 +201,15 @@ script "uh_ww_tick" (int selected) {
 		SetResultValue(1);
 		terminate;
 	}
+	if (uhfw_route == UHFW_ROUTE_NEGA) {
+		UHFW_NegaTick();
+		if (uhfw_cancel) {
+			SetResultValue(0);
+			terminate;
+		}
+		SetResultValue(1);
+		terminate;
+	}
 	if (UHFW_ShouldCancel()) {
 		UHFW_DoCancel();
 		SetResultValue(0);
@@ -180,34 +219,27 @@ script "uh_ww_tick" (int selected) {
 	SetResultValue(1);
 }
 
+function void UHFW_EndWheelCleanup(void) {
+	UHFW_SnapClear();
+	UHFW_NegaSnapClear();
+	UHFW_ResetOwner();
+}
+
 script "uh_ww_select" (int idx) {
 	str wep;
 
-	if (uhfw_cancel) {
-		UHFW_SnapClear();
-		uhww_own = UHFW_OWN_NONE;
-		uhww_pn = -1;
-		terminate;
+	if (!uhfw_cancel) {
+		if (uhfw_route == UHFW_ROUTE_QWANT) {
+			UHFW_QwantSelect(idx);
+		} else if (uhfw_route == UHFW_ROUTE_NEGA) {
+			UHFW_NegaSelect(idx);
+		} else if (idx >= 0 && idx < uhfw_snapn) {
+			wep = uhfw_snapwep[idx];
+			UHFW_SubmitSelect(wep, "uh_ww_sel_sv");
+		}
 	}
-	if (uhfw_route == UHFW_ROUTE_QWANT) {
-		UHFW_QwantSelect(idx);
-		UHFW_SnapClear();
-		uhww_own = UHFW_OWN_NONE;
-		uhww_pn = -1;
-		terminate;
-	}
-	if (idx < 0 || idx >= uhfw_snapn) {
-		UHFW_SnapClear();
-		uhww_own = UHFW_OWN_NONE;
-		uhww_pn = -1;
-		terminate;
-	}
-	wep = uhfw_snapwep[idx];
-	GiveInventory("UIX_WeaponSelected_PU", 1);
-	NamedSendNetworkString("uh_ww_sel_sv", wep);
-	UHFW_SnapClear();
-	uhww_own = UHFW_OWN_NONE;
-	uhww_pn = -1;
+
+	UHFW_EndWheelCleanup();
 }
 
 script "uh_ww_sel_sv" (int wep) NET {

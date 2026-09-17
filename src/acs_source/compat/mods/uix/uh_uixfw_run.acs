@@ -8,6 +8,7 @@
 #define UHFW_ROUTE_NONE 0
 #define UHFW_ROUTE_FIXED 1
 #define UHFW_ROUTE_QWANT 2
+#define UHFW_ROUTE_NEGA 3
 #define UHFW_OWN_NONE 0
 #define UHFW_OWN_UH 1
 #define UHFW_OWN_UIX 2
@@ -53,6 +54,25 @@ function int UHFW_PlayerOk(void) {
 		return 0;
 	if (GetActorProperty(0, APROP_Health) <= 0)
 		return 0;
+	return 1;
+}
+
+function void UHFW_ResetOwner(void) {
+	uhww_own = UHFW_OWN_NONE;
+	uhww_pn = -1;
+}
+
+function int UHFW_SubmitSelect(str wep, str serverScript) {
+	if (!UHFW_PlayerOk())
+		return 0;
+	if (StrLen(wep) <= 0 || StrCmp(wep, "") == 0)
+		return 0;
+	if (CheckInventory(wep) <= 0)
+		return 0;
+
+	UH_Log(UH_LOG_DEBUG, StrParam(s:"uh_uixfw: SubmitSelect wep=", s:wep, s:" sv=", s:serverScript));
+	GiveInventory("UIX_WeaponSelected_PU", 1);
+	NamedSendNetworkString(serverScript, wep);
 	return 1;
 }
 
@@ -211,50 +231,82 @@ function void UHFW_AddBarTriple(int mode, int y, int scale, int alpha, int amt, 
 	addWheelElement("C", "WBAMOHOR", UHFW_BAR_BLACK, mode, 0, y, IL_OP_ADD, IL_OP_ADD, 0, 0, scale, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
 }
 
-function void UHFW_AddSnapItem(int i) {
-	str wep;
-	str icon;
-	str tag;
+function void UHFW_AddWheelItemEntry(str wep, int group, str icon, str tag,
+	int amt1, int max1, str cyan1, str blue1,
+	int amt2, int max2, str cyan2, str blue2,
+	int enabled)
+{
 	int barY;
-	int amt1;
-	int max1;
-	int amt2;
-	int max2;
 
-	wep = uhfw_snapwep[i];
-	icon = uhfw_snapicon[i];
-	tag = uhfw_snaptag[i];
-	amt1 = uhfw_amt1[i];
-	max1 = uhfw_max1[i];
-	amt2 = uhfw_amt2[i];
-	max2 = uhfw_max2[i];
-	addWheelItem(wep, i);
-	addWheelElement("A", icon, 0, WHEEL_MODE_UNSELECTED, UHFW_IW_ICONX, UHFW_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 0.5, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
-	addWheelElement("A", "UXICB0", 0, WHEEL_MODE_UNSELECTED, UHFW_IW_ICONX, UHFW_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
-	barY = UHFW_WW_BARY;
-	if (max2 > 0) {
-		UHFW_AddBarTriple(WHEEL_MODE_UNSELECTED, barY, 0.1, 0.5, amt2, max2, uhfw_cyan2[i], uhfw_blue2[i]);
-		barY = UHFW_WW_BAR2Y;
+	addWheelItem(wep, group);
+	if (enabled) {
+		addWheelElement("A", icon, 0, WHEEL_MODE_UNSELECTED, UHFW_IW_ICONX, UHFW_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 0.5, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+		addWheelElement("A", "UXICB0", 0, WHEEL_MODE_UNSELECTED, UHFW_IW_ICONX, UHFW_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+		barY = UHFW_WW_BARY;
+		if (max2 > 0) {
+			UHFW_AddBarTriple(WHEEL_MODE_UNSELECTED, barY, 0.1, 0.5, amt2, max2, cyan2, blue2);
+			barY = UHFW_WW_BAR2Y;
+		}
+		if (max1 > 0)
+			UHFW_AddBarTriple(WHEEL_MODE_UNSELECTED, barY, 0.1, 0.5, amt1, max1, cyan1, blue1);
+
+		addWheelElement("A", icon, 0, WHEEL_MODE_SELECTED, UHFW_IW_ICONX, UHFW_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.5, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+		barY = UHFW_WW_BARY;
+		if (max2 > 0) {
+			UHFW_AddBarTriple(WHEEL_MODE_SELECTED, barY, 0.15, 1.0, amt2, max2, cyan2, blue2);
+			barY = UHFW_WW_BAR2Y;
+		}
+		if (max1 > 0)
+			UHFW_AddBarTriple(WHEEL_MODE_SELECTED, barY, 0.15, 1.0, amt1, max1, cyan1, blue1);
+
+		addWheelElement("A", icon, 0, WHEEL_MODE_MIDDLE, UHFW_IW_ICONX, UHFW_IW_ICONY + UHFW_IW_LABELPOS, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.5, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+		addWheelElement(StrParam(l:tag), "SMALLFNT", "Gold", WHEEL_MODE_MIDDLE, 0, -2 * UHFW_IW_LABELPOS, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+		barY = UHFW_IW_ICONY + UHFW_IW_LABELPOS;
+		if (max2 > 0) {
+			UHFW_AddBarTriple(WHEEL_MODE_MIDDLE, barY, 0.15, 1.0, amt2, max2, cyan2, blue2);
+			barY = 4 * UHFW_IW_ICONY + UHFW_IW_LABELPOS;
+		}
+		if (max1 > 0)
+			UHFW_AddBarTriple(WHEEL_MODE_MIDDLE, barY, 0.15, 1.0, amt1, max1, cyan1, blue1);
+	} else {
+		addWheelElement("A", icon, 0, WHEEL_MODE_UNSELECTED, UHFW_IW_ICONX, UHFW_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 0.25, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+		addWheelElement("A", "UXICB0", 0, WHEEL_MODE_UNSELECTED, UHFW_IW_ICONX, UHFW_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 0.4, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+		barY = UHFW_WW_BARY;
+		if (max2 > 0) {
+			UHFW_AddBarTriple(WHEEL_MODE_UNSELECTED, barY, 0.1, 0.2, 0, max2, UHFW_BAR_BLACK, UHFW_BAR_BLACK);
+			barY = UHFW_WW_BAR2Y;
+		}
+		if (max1 > 0)
+			UHFW_AddBarTriple(WHEEL_MODE_UNSELECTED, barY, 0.1, 0.2, 0, max1, UHFW_BAR_BLACK, UHFW_BAR_BLACK);
+
+		addWheelElement("A", icon, 0, WHEEL_MODE_SELECTED, UHFW_IW_ICONX, UHFW_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.5, 0.4, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+		barY = UHFW_WW_BARY;
+		if (max2 > 0) {
+			UHFW_AddBarTriple(WHEEL_MODE_SELECTED, barY, 0.15, 0.3, 0, max2, UHFW_BAR_BLACK, UHFW_BAR_BLACK);
+			barY = UHFW_WW_BAR2Y;
+		}
+		if (max1 > 0)
+			UHFW_AddBarTriple(WHEEL_MODE_SELECTED, barY, 0.15, 0.3, 0, max1, UHFW_BAR_BLACK, UHFW_BAR_BLACK);
+
+		addWheelElement("A", icon, 0, WHEEL_MODE_MIDDLE, UHFW_IW_ICONX, UHFW_IW_ICONY + UHFW_IW_LABELPOS, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.5, 0.4, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+		addWheelElement(StrParam(l:tag), "SMALLFNT", "DarkGrey", WHEEL_MODE_MIDDLE, 0, -2 * UHFW_IW_LABELPOS, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 0.5, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
+		barY = UHFW_IW_ICONY + UHFW_IW_LABELPOS;
+		if (max2 > 0) {
+			UHFW_AddBarTriple(WHEEL_MODE_MIDDLE, barY, 0.15, 0.3, 0, max2, UHFW_BAR_BLACK, UHFW_BAR_BLACK);
+			barY = 4 * UHFW_IW_ICONY + UHFW_IW_LABELPOS;
+		}
+		if (max1 > 0)
+			UHFW_AddBarTriple(WHEEL_MODE_MIDDLE, barY, 0.15, 0.3, 0, max1, UHFW_BAR_BLACK, UHFW_BAR_BLACK);
 	}
-	if (max1 > 0)
-		UHFW_AddBarTriple(WHEEL_MODE_UNSELECTED, barY, 0.1, 0.5, amt1, max1, uhfw_cyan1[i], uhfw_blue1[i]);
-	addWheelElement("A", icon, 0, WHEEL_MODE_SELECTED, UHFW_IW_ICONX, UHFW_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.5, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
-	barY = UHFW_WW_BARY;
-	if (max2 > 0) {
-		UHFW_AddBarTriple(WHEEL_MODE_SELECTED, barY, 0.15, 1.0, amt2, max2, uhfw_cyan2[i], uhfw_blue2[i]);
-		barY = UHFW_WW_BAR2Y;
-	}
-	if (max1 > 0)
-		UHFW_AddBarTriple(WHEEL_MODE_SELECTED, barY, 0.15, 1.0, amt1, max1, uhfw_cyan1[i], uhfw_blue1[i]);
-	addWheelElement("A", icon, 0, WHEEL_MODE_MIDDLE, UHFW_IW_ICONX, UHFW_IW_ICONY + UHFW_IW_LABELPOS, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.5, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
-	addWheelElement(StrParam(l:tag), "SMALLFNT", "Gold", WHEEL_MODE_MIDDLE, 0, -2 * UHFW_IW_LABELPOS, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
-	barY = UHFW_IW_ICONY + UHFW_IW_LABELPOS;
-	if (max2 > 0) {
-		UHFW_AddBarTriple(WHEEL_MODE_MIDDLE, barY, 0.15, 1.0, amt2, max2, uhfw_cyan2[i], uhfw_blue2[i]);
-		barY = 4 * UHFW_IW_ICONY + UHFW_IW_LABELPOS;
-	}
-	if (max1 > 0)
-		UHFW_AddBarTriple(WHEEL_MODE_MIDDLE, barY, 0.15, 1.0, amt1, max1, uhfw_cyan1[i], uhfw_blue1[i]);
+}
+
+function void UHFW_AddSnapItem(int i) {
+	UHFW_AddWheelItemEntry(
+		uhfw_snapwep[i], i,
+		uhfw_snapicon[i], uhfw_snaptag[i],
+		uhfw_amt1[i], uhfw_max1[i], uhfw_cyan1[i], uhfw_blue1[i],
+		uhfw_amt2[i], uhfw_max2[i], uhfw_cyan2[i], uhfw_blue2[i],
+		1);
 }
 
 function void UHFW_PatchBarTriple(int item, int el, int amt, int mx) {
@@ -264,20 +316,8 @@ function void UHFW_PatchBarTriple(int item, int el, int amt, int mx) {
 	setWheelElementBarMax(item, el + 1, mx);
 }
 
-function void UHFW_UpdateItemBars(int i) {
-	int item;
-	int el;
-	int max1;
-	int max2;
-	int amt1;
-	int amt2;
-
-	item = i;
-	max1 = uhfw_max1[i];
-	max2 = uhfw_max2[i];
-	amt1 = uhfw_amt1[i];
-	amt2 = uhfw_amt2[i];
-	el = 2;
+function void UHFW_UpdateBarsForItem(int item, int amt1, int max1, int amt2, int max2) {
+	int el = 2;
 	if (max2 > 0) {
 		UHFW_PatchBarTriple(item, el, amt2, max2);
 		el += 3;
@@ -302,6 +342,10 @@ function void UHFW_UpdateItemBars(int i) {
 	}
 	if (max1 > 0)
 		UHFW_PatchBarTriple(item, el, amt1, max1);
+}
+
+function void UHFW_UpdateItemBars(int i) {
+	UHFW_UpdateBarsForItem(i, uhfw_amt1[i], uhfw_max1[i], uhfw_amt2[i], uhfw_max2[i]);
 }
 
 function int UHFW_ShouldCancel(void) {

@@ -1,0 +1,552 @@
+// NegaMan dynamic weapon wheel adapter for UIX.
+// Group 0 is exclusive to NegaMan_W. Other held copy weapons distribute into
+// groups 1..11 (up to 12 total groups). When weapons exceed 12, groups 1..11
+// receive additional weapons in round-robin fashion.
+
+#define UHFW_UHCOPY_NEGA 3
+#define UHFW_NEGA_MAX_WEAP 257
+#define UHFW_NEGA_CACHE 257
+#define UHFW_NEGA_WAIT 35
+#define UHFW_NEGA_GROUPS 12
+#define UHFW_NEGA_MIN_WEAP 3
+
+#define UHFW_NEGA_MM_AMMO_COUNT 16
+#define UHFW_NEGA_BAR_BLUE 77
+
+str uhnega_mm_ammo[16] = {
+	"NegaDuckAmmo",
+	"NegaMM1_Ammo",
+	"NegaMM2_Ammo",
+	"NegaMM3_Ammo",
+	"NegaMM4_Ammo",
+	"NegaMM5_Ammo",
+	"NegaMM6_Ammo",
+	"NegaMM7_Ammo",
+	"NegaMM8_Ammo",
+	"NegaMM9_Ammo",
+	"NegaMM10_Ammo",
+	"NegaMM11_Ammo",
+	"NegaMMB_Ammo",
+	"NegaMMK_Ammo",
+	"NegaMMV_Ammo",
+	"NegaMMWT_Ammo"
+};
+
+int uhnega_cn = 0;
+str uhnega_cwep[UHFW_NEGA_CACHE];
+str uhnega_ctag[UHFW_NEGA_CACHE];
+str uhnega_cicon[UHFW_NEGA_CACHE];
+str uhnega_cammo1[UHFW_NEGA_CACHE];
+str uhnega_cammo2[UHFW_NEGA_CACHE];
+int uhnega_cmax1[UHFW_NEGA_CACHE];
+int uhnega_cmax2[UHFW_NEGA_CACHE];
+str uhnega_ccyan1[UHFW_NEGA_CACHE];
+str uhnega_cblue1[UHFW_NEGA_CACHE];
+str uhnega_ccyan2[UHFW_NEGA_CACHE];
+str uhnega_cblue2[UHFW_NEGA_CACHE];
+
+int uhnega_snapn = 0;
+int uhnega_groupcount = 0;
+int uhnega_metaok = 1;
+str uhnega_snapwep[UHFW_NEGA_MAX_WEAP];
+str uhnega_snaptag[UHFW_NEGA_MAX_WEAP];
+str uhnega_snapicon[UHFW_NEGA_MAX_WEAP];
+str uhnega_snapammo1[UHFW_NEGA_MAX_WEAP];
+str uhnega_snapammo2[UHFW_NEGA_MAX_WEAP];
+int uhnega_amt1[UHFW_NEGA_MAX_WEAP];
+int uhnega_max1[UHFW_NEGA_MAX_WEAP];
+int uhnega_amt2[UHFW_NEGA_MAX_WEAP];
+int uhnega_max2[UHFW_NEGA_MAX_WEAP];
+str uhnega_cyan1[UHFW_NEGA_MAX_WEAP];
+str uhnega_blue1[UHFW_NEGA_MAX_WEAP];
+str uhnega_cyan2[UHFW_NEGA_MAX_WEAP];
+str uhnega_blue2[UHFW_NEGA_MAX_WEAP];
+int uhnega_group[UHFW_NEGA_MAX_WEAP];
+int uhnega_can[UHFW_NEGA_MAX_WEAP];
+
+function int UHFW_IsPlainNegaMan(void) {
+	if (StrICmp(GetActorClass(0), "NegaMan") == 0)
+		return 1;
+	return 0;
+}
+
+function void UHFW_NegaSnapClear(void) {
+	int i;
+
+	uhnega_snapn = 0;
+	uhnega_groupcount = 0;
+	uhnega_metaok = 1;
+	uhfw_route = UHFW_ROUTE_NONE;
+	for (i = 0; i < UHFW_NEGA_MAX_WEAP; i++) {
+		uhnega_snapwep[i] = "";
+		uhnega_snaptag[i] = "";
+		uhnega_snapicon[i] = "";
+		uhnega_snapammo1[i] = "";
+		uhnega_snapammo2[i] = "";
+		uhnega_amt1[i] = 0;
+		uhnega_max1[i] = 0;
+		uhnega_amt2[i] = 0;
+		uhnega_max2[i] = 0;
+		uhnega_cyan1[i] = UHFW_BAR_BLACK;
+		uhnega_blue1[i] = UHFW_BAR_BLACK;
+		uhnega_cyan2[i] = UHFW_BAR_BLACK;
+		uhnega_blue2[i] = UHFW_BAR_BLACK;
+		uhnega_group[i] = 0;
+		uhnega_can[i] = 0;
+	}
+}
+
+function int UHFW_NegaSnapFind(str wep) {
+	int i;
+
+	if (StrCmp(wep, "") == 0)
+		return UHFW_FAIL;
+	for (i = 0; i < uhnega_snapn; i++) {
+		if (StrICmp(uhnega_snapwep[i], wep) == 0)
+			return i;
+	}
+	return UHFW_FAIL;
+}
+
+function str UHFW_NegaIconOf(str wep) {
+	if (StrICmp(wep, "NegaMan_W") == 0) return "6N02A0";
+	if (StrICmp(wep, "NegaThunderBeamWep") == 0) return "6N02B0";
+	if (StrICmp(wep, "NegaTimeStopperWep") == 0) return "6N02C0";
+	if (StrICmp(wep, "NegaSearchSnakeWep") == 0) return "6N02D0";
+	if (StrICmp(wep, "NegaSkullBarrierWep") == 0) return "6N02E0";
+	if (StrICmp(wep, "NegaGravityHoldWep") == 0) return "6N02F0";
+	if (StrICmp(wep, "NegaFlameBlastWep") == 0) return "6N02G0";
+	if (StrICmp(wep, "NegaSlashClawWep") == 0) return "6N02H0";
+	if (StrICmp(wep, "NegaIceWaveWep") == 0) return "6N02I0";
+	if (StrICmp(wep, "NegaBlackHoleBombWep") == 0) return "6N02J0";
+	if (StrICmp(wep, "NegaTripleBladeWep") == 0) return "6N02K0";
+	if (StrICmp(wep, "NegaLightningBoltWep") == 0) return "6N02L0";
+	if (StrICmp(wep, "NegaBalladeCrackerWep") == 0) return "6N02M0";
+	if (StrICmp(wep, "NegaSparkChaserWep") == 0) return "6N02N0";
+	if (StrICmp(wep, "NegaTimeSlowWep") == 0) return "6N02O0";
+	if (StrICmp(wep, "NegaBubbleLeadWep") == 0) return "6N02P0";
+	if (StrICmp(wep, "NegaNeedleCannonWep") == 0) return "6N02Q0";
+	if (StrICmp(wep, "NegaRainFlushWep") == 0) return "6N02R0";
+	if (StrICmp(wep, "NegaNapalmBombWep") == 0) return "6N02S0";
+	if (StrICmp(wep, "NegaYamatoSpearWep") == 0) return "6N02T0";
+	if (StrICmp(wep, "NegaWildCoilWep") == 0) return "6N02U0";
+	if (StrICmp(wep, "NegaFlashBombWep") == 0) return "6N02V0";
+	if (StrICmp(wep, "NegaMagmaBazookaWep") == 0) return "6N02W0";
+	if (StrICmp(wep, "NegaIceWallWep") == 0) return "6N02Y0";
+	if (StrICmp(wep, "NegaChillSpikeWep") == 0) return "6N02X0";
+	if (StrICmp(wep, "NegaGrabBusterWep") == 0) return "6N02Z0";
+	if (StrICmp(wep, "NegaSuperArmWep") == 0) return "6O02A0";
+	return "6N02A0";
+}
+
+function str UHFW_NegaTagOf(str wep, int tid) {
+	str tag;
+	int len;
+
+	tag = GetActorProperty(tid, APROP_Nametag);
+	if (StrLen(tag) > 0) {
+		if (GetChar(tag, 0) == 36)
+			return StrMid(tag, 1, StrLen(tag) - 1);
+		return tag;
+	}
+	len = StrLen(wep);
+	if (len >= 3) {
+		if (StrCmp(StrRight(wep, 3), "Wep") == 0)
+			wep = StrLeft(wep, len - 3);
+	}
+	return StrParam(s:"TAG_", s:wep);
+}
+
+function int UHFW_NegaCacheFind(str wep) {
+	int i;
+
+	for (i = 0; i < uhnega_cn; i++) {
+		if (StrICmp(uhnega_cwep[i], wep) == 0)
+			return i;
+	}
+	return UHFW_FAIL;
+}
+
+function int UHFW_NegaCacheWep(str wep) {
+	int i;
+	int u;
+	int bu;
+	int ammoid;
+	int cyan;
+	int custommax;
+	int tagcap;
+	str tag;
+	str ammo;
+	int mx;
+
+	i = UHFW_NegaCacheFind(wep);
+	if (i != UHFW_FAIL)
+		return i;
+	if (uhnega_cn >= UHFW_NEGA_CACHE)
+		return UHFW_FAIL;
+
+	i = uhnega_cn;
+	uhnega_cwep[i] = wep;
+	uhnega_ctag[i] = "";
+	uhnega_cicon[i] = UHFW_NegaIconOf(wep);
+	uhnega_cammo1[i] = "";
+	uhnega_cammo2[i] = "";
+	uhnega_cmax1[i] = 0;
+	uhnega_cmax2[i] = 0;
+	uhnega_ccyan1[i] = UHFW_BAR_BLACK;
+	uhnega_cblue1[i] = UHFW_BAR_BLACK;
+	uhnega_ccyan2[i] = UHFW_BAR_BLACK;
+	uhnega_cblue2[i] = UHFW_BAR_BLACK;
+
+	// Special case: NegaMan_W (main weapon)
+	if (StrICmp(wep, "NegaMan_W") == 0) {
+		uhnega_ctag[i] = "TAG_NegaMan_W";
+		uhnega_cicon[i] = "6N02A0";
+		uhnega_cammo1[i] = "NegaDuckAmmo";
+		uhnega_cmax1[i] = GetAmmoCapacity("NegaDuckAmmo");
+		if (uhnega_cmax1[i] <= 0)
+			uhnega_cmax1[i] = 400;
+		uhnega_ccyan1[i] = UHFW_Pal(4);
+		uhnega_cblue1[i] = UHFW_Pal(204);
+		uhnega_cn++;
+		return i;
+	}
+
+	// Spawn temporary actor to read Tag
+	u = UniqueTID();
+	if (SpawnForced(wep, 0, 0, 0, u, 0)) {
+		uhnega_ctag[i] = UHFW_NegaTagOf(wep, u);
+		Thing_Remove(u);
+	} else {
+		uhnega_ctag[i] = StrParam(s:"TAG_", s:wep);
+	}
+
+	// Read bar metadata from _NegaManBar
+	bu = UniqueTID();
+	if (SpawnForced(StrParam(s:wep, s:"_NegaManBar"), 0, 0, 0, bu, 0)) {
+		ammoid = ACS_NamedExecuteWithResult("core_GetActorArg", bu, 0);
+		cyan = ACS_NamedExecuteWithResult("core_GetActorArg", bu, 1);
+		custommax = ACS_NamedExecuteWithResult("core_GetActorArg", bu, 2);
+
+		if (ammoid >= 0 && ammoid < UHFW_NEGA_MM_AMMO_COUNT)
+			ammo = uhnega_mm_ammo[ammoid];
+		else
+			ammo = uhnega_mm_ammo[0];
+		mx = 28;
+
+		if (custommax > 0) {
+			tag = GetActorProperty(bu, APROP_Nametag);
+			tagcap = 0;
+			if (StrLen(tag) > 0 && GetChar(tag, 0) != 36)
+				tagcap = GetAmmoCapacity(tag);
+			if (tagcap > 0) {
+				ammo = tag;
+				mx = tagcap;
+			} else {
+				ammo = tag;
+				mx = custommax;
+			}
+		}
+		Thing_Remove(bu);
+
+		uhnega_cammo1[i] = ammo;
+		uhnega_cmax1[i] = mx;
+		uhnega_ccyan1[i] = UHFW_Pal(cyan);
+		uhnega_cblue1[i] = UHFW_Pal(UHFW_NEGA_BAR_BLUE);
+	} else if (StrICmp(wep, "NegaTimeStopperWep") == 0) {
+		// NegaTimeStopperWep uses _ScriptBar
+		uhnega_cammo1[i] = "NegaMM2_Ammo";
+		uhnega_cmax1[i] = 28;
+		uhnega_ccyan1[i] = UHFW_Pal(239);
+		uhnega_cblue1[i] = UHFW_Pal(UHFW_NEGA_BAR_BLUE);
+	} else {
+		// Fallback to readWeaponBars
+		readWeaponBars(wep);
+		uhnega_cammo1[i] = "";
+		uhnega_cmax1[i] = 0;
+		uhnega_ccyan1[i] = UHFW_Pal(readCyan1 >= 0 ? readCyan1 : 192);
+		uhnega_cblue1[i] = UHFW_Pal(readBlue1 >= 0 ? readBlue1 : UHFW_NEGA_BAR_BLUE);
+	}
+
+	uhnega_cn++;
+	return i;
+}
+
+function void UHFW_NegaReadAmmo(int i) {
+	str a1;
+	str a2;
+	int c;
+
+	a1 = uhnega_snapammo1[i];
+	a2 = uhnega_snapammo2[i];
+	c = UHFW_NegaCacheFind(uhnega_snapwep[i]);
+	if (StrLen(a1) != 0) {
+		uhnega_amt1[i] = CheckInventory(a1);
+		uhnega_max1[i] = GetAmmoCapacity(a1);
+		if (uhnega_max1[i] <= 0 && c != UHFW_FAIL && uhnega_cmax1[c] > 0)
+			uhnega_max1[i] = uhnega_cmax1[c];
+	} else {
+		uhnega_amt1[i] = 0;
+		uhnega_max1[i] = 0;
+	}
+	if (StrLen(a2) != 0) {
+		uhnega_amt2[i] = CheckInventory(a2);
+		uhnega_max2[i] = GetAmmoCapacity(a2);
+		if (uhnega_max2[i] <= 0 && c != UHFW_FAIL && uhnega_cmax2[c] > 0)
+			uhnega_max2[i] = uhnega_cmax2[c];
+	} else {
+		uhnega_amt2[i] = 0;
+		uhnega_max2[i] = 0;
+	}
+}
+
+function void UHFW_NegaSnapPush(str wep, int group) {
+	int i;
+	int c;
+
+	if (uhnega_snapn >= UHFW_NEGA_MAX_WEAP)
+		return;
+	c = UHFW_NegaCacheWep(wep);
+	if (c == UHFW_FAIL) {
+		uhnega_metaok = 0;
+		return;
+	}
+	i = uhnega_snapn;
+	uhnega_snapwep[i] = wep;
+	uhnega_snaptag[i] = uhnega_ctag[c];
+	uhnega_snapicon[i] = uhnega_cicon[c];
+	uhnega_snapammo1[i] = uhnega_cammo1[c];
+	uhnega_snapammo2[i] = uhnega_cammo2[c];
+	uhnega_amt1[i] = 0;
+	uhnega_max1[i] = uhnega_cmax1[c];
+	uhnega_amt2[i] = 0;
+	uhnega_max2[i] = uhnega_cmax2[c];
+	uhnega_cyan1[i] = uhnega_ccyan1[c];
+	uhnega_blue1[i] = uhnega_cblue1[c];
+	uhnega_cyan2[i] = uhnega_ccyan2[c];
+	uhnega_blue2[i] = uhnega_cblue2[c];
+	uhnega_group[i] = group;
+	uhnega_can[i] = 1;
+	UHFW_NegaReadAmmo(i);
+	uhnega_snapn++;
+}
+
+function int UHFW_NegaCollect(void) {
+	int nreg;
+	int i;
+	int j;
+	int heldCount;
+	int dup;
+	int grp;
+	str wep;
+
+	UHFW_NegaSnapClear();
+
+	// Primary weapon NegaMan_W is mandatory for group 0
+	if (CheckInventory("NegaMan_W") <= 0) {
+		UH_Log(UH_LOG_WARN, "uh_uixfw: NegaMan not holding NegaMan_W");
+		return 0;
+	}
+
+	nreg = ACS_NamedExecuteWithResult("uh_copykind_count", UHFW_UHCOPY_NEGA);
+	if (nreg <= 0)
+		return 0;
+
+	// First pass: Count total held weapons to verify capacity
+	heldCount = 1; // NegaMan_W
+	for (i = 0; i < nreg; i++) {
+		wep = ACS_NamedExecuteWithResult("uh_copykind_actor", UHFW_UHCOPY_NEGA, i);
+		if (StrLen(wep) <= 0 || StrICmp(wep, "NegaMan_W") == 0)
+			continue;
+		if (CheckInventory(wep) > 0) {
+			dup = 0;
+			for (j = 0; j < i; j++) {
+				if (StrICmp(wep, ACS_NamedExecuteWithResult("uh_copykind_actor", UHFW_UHCOPY_NEGA, j)) == 0) {
+					dup = 1;
+					break;
+				}
+			}
+			if (!dup)
+				heldCount++;
+		}
+	}
+
+	if (heldCount < UHFW_NEGA_MIN_WEAP) {
+		UH_Log(UH_LOG_DEBUG, StrParam(s:"uh_uixfw: NegaMan held ", i:heldCount, s:" weapons (< 3), wheel will not open"));
+		return 0;
+	}
+	if (heldCount > UHFW_NEGA_MAX_WEAP) {
+		UH_Log(UH_LOG_WARN, StrParam(s:"uh_uixfw: NegaMan held ", i:heldCount, s:" weapons, exceeds max ", i:UHFW_NEGA_MAX_WEAP));
+		Print(s:"Weapon wheel cannot open: weapon capacity exceeded.");
+		return -1;
+	}
+
+	// Second pass: Populate snapshot
+	// Group 0 is exclusively NegaMan_W
+	UHFW_NegaSnapPush("NegaMan_W", 0);
+
+	for (i = 0; i < nreg; i++) {
+		wep = ACS_NamedExecuteWithResult("uh_copykind_actor", UHFW_UHCOPY_NEGA, i);
+		if (StrLen(wep) <= 0 || StrICmp(wep, "NegaMan_W") == 0)
+			continue;
+		if (CheckInventory(wep) <= 0)
+			continue;
+		if (UHFW_NegaSnapFind(wep) != UHFW_FAIL)
+			continue;
+		grp = 1 + ((uhnega_snapn - 1) % 11);
+		UHFW_NegaSnapPush(wep, grp);
+	}
+
+	uhnega_groupcount = min(uhnega_snapn, UHFW_NEGA_GROUPS);
+	return uhnega_snapn;
+}
+
+function int UHFW_NegaCurrentSnapIndex(void) {
+	int i;
+
+	for (i = 0; i < uhnega_snapn; i++) {
+		if (CheckWeapon(uhnega_snapwep[i]))
+			return i;
+	}
+	return 0;
+}
+
+function void UHFW_NegaPaintItems(void) {
+	int i;
+
+	emptyWheel();
+	WHEEL_GROUPS = uhnega_groupcount;
+	for (i = 0; i < uhnega_snapn; i++) {
+		UHFW_AddWheelItemEntry(
+			uhnega_snapwep[i], uhnega_group[i],
+			uhnega_snapicon[i], uhnega_snaptag[i],
+			uhnega_amt1[i], uhnega_max1[i], uhnega_cyan1[i], uhnega_blue1[i],
+			uhnega_amt2[i], uhnega_max2[i], uhnega_cyan2[i], uhnega_blue2[i],
+			uhnega_can[i]);
+	}
+}
+
+function int UHFW_OpenNegaMan(void) {
+	int cur;
+	int collected;
+
+	if (wheelName != -1)
+		return -1;
+
+	collected = UHFW_NegaCollect();
+	if (collected < UHFW_NEGA_MIN_WEAP || !uhnega_metaok) {
+		UHFW_NegaSnapClear();
+		UHFW_ResetOwner();
+		return -1;
+	}
+
+	uhfw_route = UHFW_ROUTE_NEGA;
+	uhfw_snapclass = "NegaMan";
+	uhfw_cancel = 0;
+	uhww_own = UHFW_OWN_UH;
+	uhww_pn = PlayerNumber();
+
+	cur = UHFW_NegaCurrentSnapIndex();
+	newWheel(UHFW_WHEEL_NAME, uhnega_groupcount, cur);
+	UHFW_NegaPaintItems();
+	startWheel("uh_ww_tick", "uh_ww_select");
+	return 1;
+}
+
+function void UHFW_NegaTick(void) {
+	int i;
+	int held;
+	int statusChanged;
+	int a1;
+	int m1;
+	int a2;
+	int m2;
+
+	if (!UHFW_PlayerOk() || !UHFW_IsPlainNegaMan()) {
+		UHFW_DoCancel();
+		return;
+	}
+
+	statusChanged = 0;
+
+	for (i = 0; i < uhnega_snapn; i++) {
+		held = (CheckInventory(uhnega_snapwep[i]) > 0);
+		if (held != uhnega_can[i]) {
+			uhnega_can[i] = held;
+			statusChanged = 1;
+		}
+
+		a1 = uhnega_amt1[i];
+		m1 = uhnega_max1[i];
+		a2 = uhnega_amt2[i];
+		m2 = uhnega_max2[i];
+		UHFW_NegaReadAmmo(i);
+
+		// If capacity changed, layout elements need rebuild
+		if (uhnega_max1[i] != m1 || uhnega_max2[i] != m2) {
+			statusChanged = 1;
+		} else if (uhnega_amt1[i] != a1 || uhnega_amt2[i] != a2) {
+			UHFW_UpdateBarsForItem(i, uhnega_amt1[i], uhnega_max1[i], uhnega_amt2[i], uhnega_max2[i]);
+		}
+	}
+
+	if (statusChanged) {
+		UHFW_NegaPaintItems();
+	}
+}
+
+function void UHFW_NegaSelect(int idx) {
+	str wep;
+
+	if (uhfw_cancel)
+		return;
+	if (idx < 0 || idx >= uhnega_snapn)
+		return;
+	if (!uhnega_can[idx])
+		return;
+
+	wep = uhnega_snapwep[idx];
+	UHFW_SubmitSelect(wep, "uh_nega_sel_sv");
+}
+
+script "uh_nega_sel_sv" (int wep) NET {
+	int i;
+	int ncount;
+	str cand;
+	int allowed;
+
+	if (!UHFW_IsPlainNegaMan())
+		terminate;
+	if (!UHFW_PlayerOk())
+		terminate;
+	if (StrCmp(wep, "") == 0)
+		terminate;
+
+	allowed = 0;
+	if (StrICmp(wep, "NegaMan_W") == 0) {
+		allowed = 1;
+	} else {
+		ncount = ACS_NamedExecuteWithResult("uh_copykind_count", UHFW_UHCOPY_NEGA);
+		for (i = 0; i < ncount; i++) {
+			cand = ACS_NamedExecuteWithResult("uh_copykind_actor", UHFW_UHCOPY_NEGA, i);
+			if (StrICmp(cand, wep) == 0) {
+				allowed = 1;
+				break;
+			}
+		}
+	}
+
+	if (!allowed) {
+		UH_Log(UH_LOG_WARN, StrParam(s:"uh_uixfw: invalid NegaMan weapon select: ", s:wep));
+		terminate;
+	}
+
+	if (CheckInventory(wep) <= 0) {
+		UH_Log(UH_LOG_DEBUG, StrParam(s:"uh_uixfw: NegaMan weapon not held at select: ", s:wep));
+		terminate;
+	}
+
+	if (!SetWeapon(wep)) {
+		UH_Log(UH_LOG_WARN, StrParam(s:"uh_uixfw: SetWeapon failed for: ", s:wep));
+	}
+}
