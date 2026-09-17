@@ -13,9 +13,19 @@ function int UHFW_OpenUnified(void) {
 	UHFW_SnapClear();
 	uhfw_snapclass = classactor;
 	if (classidx != UHFW_FAIL) {
+		if (UHFW_IsMakeAGoodZero(classactor)) {
+			if (!UHFW_IsZeroPhase2())
+				return 0;
+		}
 		uhfw_route = UHFW_ROUTE_FIXED;
 		uhfw_classidx = classidx;
-		UHFW_CollectFixed(classidx);
+		if (UHFW_IsSinfulBusterExpert(classactor)) {
+			if (CheckInventory("SinfulBusterExpert_W1") <= 0)
+				return 0;
+			UHFW_CollectSinfulBusterExpert(classidx);
+		} else {
+			UHFW_CollectFixed(classidx);
+		}
 	} else
 		return 0;
 
@@ -30,9 +40,11 @@ function int UHFW_OpenUnified(void) {
 		UHFW_SnapClear();
 		return -1;
 	}
-	if (uhfw_snapn < UHFW_MIN_WEAP) {
-		UHFW_SnapClear();
-		return -1;
+	if (!UHFW_IsSinfulBusterExpert(classactor)) {
+		if (uhfw_snapn < UHFW_MIN_WEAP) {
+			UHFW_SnapClear();
+			return -1;
+		}
 	}
 
 	cur = UHFW_CurrentSnapIndex();
@@ -215,7 +227,11 @@ script "uh_ww_tick" (int selected) {
 		SetResultValue(0);
 		terminate;
 	}
-	UHFW_RefreshAmmo();
+	if (UHFW_IsSinfulBusterExpert(uhfw_snapclass)) {
+		UHFW_RefreshSinfulBusterExpert();
+	} else {
+		UHFW_RefreshAmmo();
+	}
 	SetResultValue(1);
 }
 
@@ -234,8 +250,12 @@ script "uh_ww_select" (int idx) {
 		} else if (uhfw_route == UHFW_ROUTE_NEGA) {
 			UHFW_NegaSelect(idx);
 		} else if (idx >= 0 && idx < uhfw_snapn) {
-			wep = uhfw_snapwep[idx];
-			UHFW_SubmitSelect(wep, "uh_ww_sel_sv");
+			if (UHFW_IsSinfulBusterExpert(uhfw_snapclass) && !uhfw_enabled[idx]) {
+				// Disabled SinfulBusterExpert weapon cannot be selected
+			} else {
+				wep = uhfw_snapwep[idx];
+				UHFW_SubmitSelect(wep, "uh_ww_sel_sv");
+			}
 		}
 	}
 
@@ -244,15 +264,21 @@ script "uh_ww_select" (int idx) {
 
 script "uh_ww_sel_sv" (int wep) NET {
 	int classidx;
+	str classactor;
 
 	if (!UHFW_PlayerOk())
 		terminate;
-	classidx = UHFW_FindClass(GetActorClass(0));
+	classactor = GetActorClass(0);
+	classidx = UHFW_FindClass(classactor);
 	if (classidx == UHFW_FAIL)
 		terminate;
 	if (UHFW_FindWep(classidx, wep) == UHFW_FAIL)
 		terminate;
 	if (CheckInventory(wep) <= 0)
 		terminate;
+	if (UHFW_IsMakeAGoodZero(classactor)) {
+		if (!UHFW_IsZeroPhase2())
+			terminate;
+	}
 	SetWeapon(wep);
 }

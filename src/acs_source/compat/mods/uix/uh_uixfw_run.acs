@@ -34,6 +34,7 @@ str uhfw_cyan1[UHFW_MAX_WEAP];
 str uhfw_blue1[UHFW_MAX_WEAP];
 str uhfw_cyan2[UHFW_MAX_WEAP];
 str uhfw_blue2[UHFW_MAX_WEAP];
+int uhfw_enabled[UHFW_MAX_WEAP];
 int uhww_own = UHFW_OWN_NONE;
 int uhww_pn = -1;
 int uhww_uix_cancel = 0;
@@ -100,6 +101,7 @@ function void UHFW_SnapClear(void) {
 		uhfw_blue1[i] = UHFW_BAR_BLACK;
 		uhfw_cyan2[i] = UHFW_BAR_BLACK;
 		uhfw_blue2[i] = UHFW_BAR_BLACK;
+		uhfw_enabled[i] = 1;
 	}
 }
 
@@ -215,6 +217,32 @@ function void UHFW_CollectFixed(int classidx) {
 		UHFW_TryHeldTable(classidx, i);
 }
 
+function void UHFW_CollectSinfulBusterExpert(int classidx) {
+	int i;
+	str wep;
+
+	uhfw_snapn = 8;
+	for (i = 0; i < 8; i++) {
+		wep = uhfw_wep[classidx][i][UHFW_STR_WEP];
+		uhfw_snapwep[i] = wep;
+		uhfw_snaptag[i] = uhfw_wep[classidx][i][UHFW_STR_TAG];
+		uhfw_snapicon[i] = uhfw_wep[classidx][i][UHFW_STR_ICON];
+		uhfw_snapammo1[i] = uhfw_wep[classidx][i][UHFW_STR_AMMO1];
+		uhfw_snapammo2[i] = uhfw_wep[classidx][i][UHFW_STR_AMMO2];
+		uhfw_enabled[i] = (CheckInventory(wep) > 0);
+		if (uhfw_enabled[i])
+			uhfw_heldn++;
+		uhfw_amt1[i] = 0;
+		uhfw_max1[i] = 0;
+		uhfw_amt2[i] = 0;
+		uhfw_max2[i] = 0;
+		uhfw_cyan1[i] = UHFW_BAR_BLACK;
+		uhfw_blue1[i] = UHFW_BAR_BLACK;
+		uhfw_cyan2[i] = UHFW_BAR_BLACK;
+		uhfw_blue2[i] = UHFW_BAR_BLACK;
+	}
+}
+
 function int UHFW_CurrentSnapIndex(void) {
 	int i;
 
@@ -308,22 +336,26 @@ function int UHFW_HideSharedEnergyBars(void) {
 	return StrICmp(uhfw_snapclass, "Arcanist") == 0
 		|| StrICmp(uhfw_snapclass, "ArcanistShiny") == 0
 		|| StrICmp(uhfw_snapclass, "RedWarrior") == 0
-		|| StrICmp(uhfw_snapclass, "YellowWizard") == 0;
+		|| StrICmp(uhfw_snapclass, "YellowWizard") == 0
+		|| UHFW_IsBossClass(uhfw_snapclass);
 }
 
 function void UHFW_AddSnapItem(int i) {
 	int max1 = uhfw_max1[i];
 	int max2 = uhfw_max2[i];
+	int en = 1;
 	if (UHFW_HideSharedEnergyBars()) {
 		max1 = 0;
 		max2 = 0;
 	}
+	if (UHFW_IsSinfulBusterExpert(uhfw_snapclass))
+		en = uhfw_enabled[i];
 	UHFW_AddWheelItemEntry(
 		uhfw_snapwep[i], i,
 		uhfw_snapicon[i], uhfw_snaptag[i],
 		uhfw_amt1[i], max1, uhfw_cyan1[i], uhfw_blue1[i],
 		uhfw_amt2[i], max2, uhfw_cyan2[i], uhfw_blue2[i],
-		1);
+		en);
 }
 
 function void UHFW_PatchBarTriple(int item, int el, int amt, int mx) {
@@ -374,6 +406,15 @@ function int UHFW_ShouldCancel(void) {
 		return 1;
 	if (StrICmp(GetActorClass(0), uhfw_snapclass) != 0)
 		return 1;
+	if (UHFW_IsMakeAGoodZero(uhfw_snapclass)) {
+		if (!UHFW_IsZeroPhase2())
+			return 1;
+	}
+	if (UHFW_IsSinfulBusterExpert(uhfw_snapclass)) {
+		if (CheckInventory("SinfulBusterExpert_W1") <= 0)
+			return 1;
+		return 0;
+	}
 	for (i = 0; i < uhfw_snapn; i++) {
 		if (CheckInventory(uhfw_snapwep[i]) <= 0)
 			return 1;
@@ -387,6 +428,29 @@ function void UHFW_DoCancel(void) {
 		if (StrCmp(wheelName, UHFW_WHEEL_NAME) == 0)
 			stopWheel();
 	}
+}
+
+function int UHFW_RefreshSinfulBusterExpert(void) {
+	int i;
+	int changed = 0;
+	str wep;
+
+	for (i = 0; i < 8; i++) {
+		if (!uhfw_enabled[i]) {
+			wep = uhfw_snapwep[i];
+			if (CheckInventory(wep) > 0) {
+				uhfw_enabled[i] = 1;
+				setWheelElementAlpha(i, 0, 0.5);
+				setWheelElementAlpha(i, 1, 1.0);
+				setWheelElementAlpha(i, 2, 1.0);
+				setWheelElementAlpha(i, 3, 1.0);
+				setWheelElementColor(i, 4, "Gold");
+				setWheelElementAlpha(i, 4, 1.0);
+				changed = 1;
+			}
+		}
+	}
+	return changed;
 }
 
 function int UHFW_RefreshAmmo(void) {
