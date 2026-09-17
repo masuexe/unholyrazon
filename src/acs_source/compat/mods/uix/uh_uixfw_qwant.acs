@@ -209,8 +209,10 @@ function int UHFW_QwantCacheWep(str wep) {
 	if (StrICmp(wep, "Qwant_W") == 0) {
 		uhqw_ctag[i] = "TAG_Qwant_W";
 		uhqw_cicon[i] = "6N01S0";
-		uhqw_cammo[i] = "MyDestinyAmmo";
+		uhqw_cammo[i] = "MoveRelearnAmmo";
 		uhqw_cmax[i] = 28;
+		uhqw_ccyan[i] = UHFW_QW_BAR2_C;
+		uhqw_cblue[i] = UHFW_QW_BAR2_B;
 		uhqw_cn++;
 		return i;
 	}
@@ -302,12 +304,12 @@ function void UHFW_QwantPushCached(int c) {
 	uhfw_snaptag[i] = uhqw_ctag[c];
 	uhfw_snapicon[i] = uhqw_cicon[c];
 	if (StrICmp(uhqw_cwep[c], "Qwant_W") == 0) {
-		uhfw_snapammo1[i] = uhqw_cammo[c];
-		uhfw_snapammo2[i] = "MoveRelearnAmmo";
-		uhfw_cyan1[i] = UHFW_Pal(UHFW_QW_BODY_C);
-		uhfw_blue1[i] = UHFW_Pal(UHFW_QW_BODY_B);
-		uhfw_cyan2[i] = UHFW_Pal(UHFW_QW_BAR2_C);
-		uhfw_blue2[i] = UHFW_Pal(UHFW_QW_BAR2_B);
+		uhfw_snapammo1[i] = "MoveRelearnAmmo";
+		uhfw_snapammo2[i] = "";
+		uhfw_cyan1[i] = UHFW_Pal(UHFW_QW_BAR2_C);
+		uhfw_blue1[i] = UHFW_Pal(UHFW_QW_BAR2_B);
+		uhfw_cyan2[i] = UHFW_BAR_BLACK;
+		uhfw_blue2[i] = UHFW_BAR_BLACK;
 	} else {
 		uhfw_snapammo1[i] = uhqw_cammo[c];
 		uhfw_snapammo2[i] = "";
@@ -740,94 +742,155 @@ function int UHQB_UpdateBar(int pn) {
 	return uhqw_bar_ok[pn];
 }
 
+str uh_qwant_moves[UHQB_MOVE_COUNT] = {
+	"GustWep",
+	"SpikesWep",
+	"ToxicWep",
+	"AttackOrderWep",
+	"HiddenPowerWep",
+	"CalmMindWep",
+	"MoonlightWep",
+	"ShadowPunchWep",
+	"DragonBreathWep",
+	"NightSlashWep",
+	"ThunderWep",
+	"IceShardWep",
+	"AnchorShotWep",
+	"MatBlockWep",
+	"RockSlideWep",
+	"FlameWheelWep",
+	"NeedleArmWep",
+	"WaterSpoutWep",
+	"WaterShurikenWep",
+	"ThunderWaveWep",
+	"SonicBoomWep",
+	"ShadowForceWep",
+	"RapidSpinWep",
+	"NightDazeWep",
+	"MoonBlastWep",
+	"LeafBladeWep",
+	"IceBeamWep",
+	"FreezeDryWep",
+	"FlameBurstWep",
+	"FireBlastWep",
+	"FeintAttackWep",
+	"DazzlingGleamWep",
+	"ChargeBeamWep",
+	"BulletSeedWep",
+	"BlazeKickWep"
+};
+
+int uhqw_held_count = 0;
+int uhqw_held_moves[UHQB_MAX_HELD];
+int uhqw_held_selected = -1;
+
 script "uh_qb_count" (void) {
-	int pn = UHQB_CheckCamera();
-	if (pn < 0) {
-		SetResultValue(pn);
+	if (StrICmp(GetActorClass(0), "Qwant") != 0) {
+		SetResultValue(UHQB_UNSUPPORTED);
 		terminate;
 	}
-
-	int ready = UHQB_UpdateBar(pn);
-	if (!ready)
+	if (CheckInventory("Qwant_W") <= 0) {
 		SetResultValue(UHQB_NOT_READY);
-	else
-		SetResultValue(UHQB_MAX_WEAPONS);
+		terminate;
+	}
+	SetResultValue(2);
 }
 
-script "uh_qb_string" (int row, int field) {
-	str val = "";
-	int pn = UHQB_CheckCamera();
-	if (pn >= 0 && uhqw_bar_ok[pn] && row >= 0 && row < UHQB_MAX_WEAPONS) {
-		if (row == 0) {
-			if (field == UHQB_ACTOR)
-				val = "Qwant_W";
-			else if (field == UHQB_ICON)
-				val = "6N01S0";
-			else if (field == UHQB_AMMO1)
-				val = "MyDestinyAmmo";
-			else if (field == UHQB_AMMO2)
-				val = "MoveRelearnAmmo";
-		} else {
-			int midx = uhqw_bar_m[pn][row - 1];
-			str wep = UHFW_QwantActor(midx);
-			if (StrLen(wep) > 0) {
-				int c = UHFW_QwantCacheWep(wep);
-				if (c != UHFW_FAIL) {
-					if (field == UHQB_ACTOR)
-						val = wep;
-					else if (field == UHQB_ICON)
-						val = uhqw_cicon[c];
-					else if (field == UHQB_AMMO1)
-						val = uhqw_cammo[c];
-					else if (field == UHQB_AMMO2)
-						val = "";
-				}
+script "uh_qb_scan_moves" (void) {
+	int i;
+	int count = 0;
+	uhqw_held_selected = -1;
+	for (i = 0; i < UHQB_MOVE_COUNT; i++) {
+		str wep = uh_qwant_moves[i];
+		if (CheckInventory(wep) > 0) {
+			if (CheckWeapon(wep))
+				uhqw_held_selected = count;
+			if (count < UHQB_MAX_HELD) {
+				uhqw_held_moves[count] = i;
+				count++;
 			}
+		}
+	}
+	uhqw_held_count = count;
+	SetResultValue(count);
+}
+
+script "uh_qb_slot2_selected" (void) {
+	SetResultValue(uhqw_held_selected);
+}
+
+script "uh_qb_slot2_string" (int heldIdx, int field) {
+	str val = "";
+	if (heldIdx >= 0 && heldIdx < uhqw_held_count) {
+		int moveIdx = uhqw_held_moves[heldIdx];
+		str wep = uh_qwant_moves[moveIdx];
+		int c = UHFW_QwantCacheWep(wep);
+		if (c != UHFW_FAIL) {
+			if (field == UHQB_ACTOR)
+				val = wep;
+			else if (field == UHQB_ICON)
+				val = uhqw_cicon[c];
+			else if (field == UHQB_AMMO1)
+				val = uhqw_cammo[c];
+			else if (field == UHQB_AMMO2)
+				val = "";
 		}
 	}
 	SetResultValue(StrParam(s:val));
 }
 
-script "uh_qb_int" (int row, int field) {
+script "uh_qb_slot2_int" (int heldIdx, int field) {
 	int ival = 0;
-	int pn = UHQB_CheckCamera();
-	if (pn >= 0 && uhqw_bar_ok[pn] && row >= 0 && row < UHQB_MAX_WEAPONS) {
-		if (row == 0) {
+	if (heldIdx >= 0 && heldIdx < uhqw_held_count) {
+		int moveIdx = uhqw_held_moves[heldIdx];
+		str wep = uh_qwant_moves[moveIdx];
+		int c = UHFW_QwantCacheWep(wep);
+		if (c != UHFW_FAIL) {
 			if (field == UHQB_CYAN1)
-				ival = UHFW_QW_BODY_C;
+				ival = uhqw_ccyan[c];
 			else if (field == UHQB_BLUE1)
-				ival = UHFW_QW_BODY_B;
+				ival = uhqw_cblue[c];
 			else if (field == UHQB_CYAN2)
-				ival = UHFW_QW_BAR2_C;
+				ival = 0;
 			else if (field == UHQB_BLUE2)
-				ival = UHFW_QW_BAR2_B;
+				ival = 0;
 			else if (field == UHQB_DEFMAX1)
-				ival = 28;
+				ival = uhqw_cmax[c];
 			else if (field == UHQB_DEFMAX2)
-				ival = 28;
-		} else {
-			int midx = uhqw_bar_m[pn][row - 1];
-			str wep = UHFW_QwantActor(midx);
-			if (StrLen(wep) > 0) {
-				int c = UHFW_QwantCacheWep(wep);
-				if (c != UHFW_FAIL) {
-					if (field == UHQB_CYAN1)
-						ival = uhqw_ccyan[c];
-					else if (field == UHQB_BLUE1)
-						ival = uhqw_cblue[c];
-					else if (field == UHQB_CYAN2)
-						ival = 0;
-					else if (field == UHQB_BLUE2)
-						ival = 0;
-					else if (field == UHQB_DEFMAX1)
-						ival = uhqw_cmax[c];
-					else if (field == UHQB_DEFMAX2)
-						ival = 0;
-				}
-			}
+				ival = 0;
 		}
 	}
 	SetResultValue(ival);
+}
+
+script "uh_qb_slot1_string" (int field) {
+	str sval = "";
+	if (field == UHQB_ACTOR)
+		sval = "Qwant_W";
+	else if (field == UHQB_ICON)
+		sval = "6N01S0";
+	else if (field == UHQB_AMMO1)
+		sval = "MoveRelearnAmmo";
+	else if (field == UHQB_AMMO2)
+		sval = "";
+	SetResultValue(StrParam(s:sval));
+}
+
+script "uh_qb_slot1_int" (int field) {
+	int sival = 0;
+	if (field == UHQB_CYAN1)
+		sival = UHFW_QW_BAR2_C;
+	else if (field == UHQB_BLUE1)
+		sival = UHFW_QW_BAR2_B;
+	else if (field == UHQB_CYAN2)
+		sival = 0;
+	else if (field == UHQB_BLUE2)
+		sival = 0;
+	else if (field == UHQB_DEFMAX1)
+		sival = 28;
+	else if (field == UHQB_DEFMAX2)
+		sival = 0;
+	SetResultValue(sival);
 }
 
 script "uh_qw_life" ENTER {
