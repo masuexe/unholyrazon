@@ -90,7 +90,7 @@ async function tool(name, args, timeout = 90_000) {
   return result;
 }
 const sleep = ms => new Promise(resolveDelay => setTimeout(resolveDelay, ms));
-const common = ["-nosound", "+set", "vid_renderer", "0", "+set", "fullscreen", "0"];
+const common = ["-nosound", "+set", "vid_renderer", "0", "+set", "fullscreen", "0", "+set", "uh_cl_LogLevel", "4"];
 let result;
 try {
   await client.connect(transport);
@@ -115,7 +115,7 @@ try {
     "+set", "sv_cheats", "1",
     "+set", "sv_updatemaster", "0",
     "+set", "sv_noplayertimeout", "1",
-    "+set", "uh_sv_BossDebugText", "1",
+    "+set", "uh_sv_LogLevel", "4",
   ];
   dedicated = spawn(serverEngine, serverArgs, { cwd: serverDir, env: { ...process.env, SDL_VIDEODRIVER: "offscreen", ZANDRONUM_BRIDGE_PORT: String(options.port + 100) }, stdio: ["pipe", "pipe", "pipe"] });
   const serverLogPath = "/tmp/versus-207-server.log";

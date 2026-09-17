@@ -72,6 +72,16 @@ It checks ZIP integrity and the required `DECORATE`, `KEYCONF`, and `LOADACS`
 lumps. It does not build or rewrite the PK3, and it cannot replace engine-level
 DECORATE/ACS diagnostics.
 
+## Diagnostic log levels
+
+`UH_Log` uses only the existing verbosity thresholds: `0=OFF`, `1=ERROR`,
+`2=+WARN`, `3=+INFO` (default), `4=+DEBUG`. There is no separate debug toggle.
+Use `set uh_cl_LogLevel 4` for player/locally hosted diagnostics, or
+`set uh_sv_LogLevel 4` for dedicated-server calls without a player context.
+Player-context calls still use that player's `uh_cl_LogLevel` on the server.
+Deferred round-start registry diagnostics run only when the applicable threshold
+includes DEBUG. The full launch profiles and versus test enable level 4.
+
 ## Rebuilding ACS and the PK3 locally
 
 ACS edits only take effect once the affected library is recompiled with the
