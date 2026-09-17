@@ -44,6 +44,8 @@ str uhnega_ccyan1[UHFW_NEGA_CACHE];
 str uhnega_cblue1[UHFW_NEGA_CACHE];
 str uhnega_ccyan2[UHFW_NEGA_CACHE];
 str uhnega_cblue2[UHFW_NEGA_CACHE];
+int uhnega_craw_cyan1[UHFW_NEGA_CACHE];
+int uhnega_craw_blue1[UHFW_NEGA_CACHE];
 
 int uhnega_snapn = 0;
 int uhnega_groupcount = 0;
@@ -203,9 +205,9 @@ function int UHFW_NegaCacheWep(str wep) {
 		uhnega_ctag[i] = "TAG_NegaMan_W";
 		uhnega_cicon[i] = "6N02A0";
 		uhnega_cammo1[i] = "NegaDuckAmmo";
-		uhnega_cmax1[i] = GetAmmoCapacity("NegaDuckAmmo");
-		if (uhnega_cmax1[i] <= 0)
-			uhnega_cmax1[i] = 400;
+		uhnega_cmax1[i] = 400;
+		uhnega_craw_cyan1[i] = 4;
+		uhnega_craw_blue1[i] = 204;
 		uhnega_ccyan1[i] = UHFW_Pal(4);
 		uhnega_cblue1[i] = UHFW_Pal(204);
 		uhnega_cn++;
@@ -251,12 +253,16 @@ function int UHFW_NegaCacheWep(str wep) {
 
 		uhnega_cammo1[i] = ammo;
 		uhnega_cmax1[i] = mx;
+		uhnega_craw_cyan1[i] = cyan;
+		uhnega_craw_blue1[i] = UHFW_NEGA_BAR_BLUE;
 		uhnega_ccyan1[i] = UHFW_Pal(cyan);
 		uhnega_cblue1[i] = UHFW_Pal(UHFW_NEGA_BAR_BLUE);
 	} else if (StrICmp(wep, "NegaTimeStopperWep") == 0) {
 		// NegaTimeStopperWep uses _ScriptBar
 		uhnega_cammo1[i] = "NegaMM2_Ammo";
 		uhnega_cmax1[i] = 28;
+		uhnega_craw_cyan1[i] = 239;
+		uhnega_craw_blue1[i] = UHFW_NEGA_BAR_BLUE;
 		uhnega_ccyan1[i] = UHFW_Pal(239);
 		uhnega_cblue1[i] = UHFW_Pal(UHFW_NEGA_BAR_BLUE);
 	} else {
@@ -264,8 +270,10 @@ function int UHFW_NegaCacheWep(str wep) {
 		readWeaponBars(wep);
 		uhnega_cammo1[i] = "";
 		uhnega_cmax1[i] = 0;
-		uhnega_ccyan1[i] = UHFW_Pal(readCyan1 >= 0 ? readCyan1 : 192);
-		uhnega_cblue1[i] = UHFW_Pal(readBlue1 >= 0 ? readBlue1 : UHFW_NEGA_BAR_BLUE);
+		uhnega_craw_cyan1[i] = (readCyan1 >= 0 ? readCyan1 : 192);
+		uhnega_craw_blue1[i] = (readBlue1 >= 0 ? readBlue1 : UHFW_NEGA_BAR_BLUE);
+		uhnega_ccyan1[i] = UHFW_Pal(uhnega_craw_cyan1[i]);
+		uhnega_cblue1[i] = UHFW_Pal(uhnega_craw_blue1[i]);
 	}
 
 	uhnega_cn++;
@@ -506,6 +514,9 @@ function void UHFW_NegaSelect(int idx) {
 		return;
 
 	wep = uhnega_snapwep[idx];
+	if (CheckInventory(wep) <= 0)
+		return;
+
 	UHFW_SubmitSelect(wep, "uh_nega_sel_sv");
 }
 
@@ -549,4 +560,195 @@ script "uh_nega_sel_sv" (int wep) NET {
 	if (!SetWeapon(wep)) {
 		UH_Log(UH_LOG_WARN, StrParam(s:"uh_uixfw: SetWeapon failed for: ", s:wep));
 	}
+}
+
+// =========================================================================
+// NegaMan Weapon Bar (UIX Fixed Bar adapter)
+// =========================================================================
+
+function int UHNB_GetSlotTotal(int slot) {
+	switch (slot) {
+		case 2: return 7;
+		case 3: return 2;
+		case 4: return 9;
+		case 5: return 3;
+		case 6: return 3;
+		case 7: return 2;
+	}
+	return 0;
+}
+
+function str UHNB_GetSlotWep(int slot, int idx) {
+	if (slot == 2) {
+		switch (idx) {
+			case 0: return "NegaGrabBusterWep";
+			case 1: return "NegaSparkChaserWep";
+			case 2: return "NegaTripleBladeWep";
+			case 3: return "NegaBlackHoleBombWep";
+			case 4: return "NegaIceWaveWep";
+			case 5: return "NegaSearchSnakeWep";
+			case 6: return "NegaThunderBeamWep";
+		}
+	} else if (slot == 3) {
+		switch (idx) {
+			case 0: return "NegaYamatoSpearWep";
+			case 1: return "NegaTimeStopperWep";
+		}
+	} else if (slot == 4) {
+		switch (idx) {
+			case 0: return "NegaSuperArmWep";
+			case 1: return "NegaChillSpikeWep";
+			case 2: return "NegaMagmaBazookaWep";
+			case 3: return "NegaWildCoilWep";
+			case 4: return "NegaNeedleCannonWep";
+			case 5: return "NegaBubbleLeadWep";
+			case 6: return "NegaSlashClawWep";
+			case 7: return "NegaFlameBlastWep";
+			case 8: return "NegaGravityHoldWep";
+		}
+	} else if (slot == 5) {
+		switch (idx) {
+			case 0: return "NegaFlashBombWep";
+			case 1: return "NegaNapalmBombWep";
+			case 2: return "NegaSkullBarrierWep";
+		}
+	} else if (slot == 6) {
+		switch (idx) {
+			case 0: return "NegaRainFlushWep";
+			case 1: return "NegaTimeSlowWep";
+			case 2: return "NegaLightningBoltWep";
+		}
+	} else if (slot == 7) {
+		switch (idx) {
+			case 0: return "NegaIceWallWep";
+			case 1: return "NegaBalladeCrackerWep";
+		}
+	}
+	return "";
+}
+
+int uhnb_held_count[UHNB_MAX_SLOTS];
+int uhnb_selected[UHNB_MAX_SLOTS];
+int uhnb_held_wep_idx[UHNB_MAX_SLOTS][UHNB_MAX_SLOT_WEAPS];
+
+script "uh_nb_count" (void) {
+	if (!UHFW_IsPlainNegaMan()) {
+		SetResultValue(UHNB_UNSUPPORTED);
+		terminate;
+	}
+	if (CheckInventory("NegaMan_W") <= 0) {
+		SetResultValue(UHNB_NOT_READY);
+		terminate;
+	}
+	SetResultValue(1);
+}
+
+script "uh_nb_scan" (void) {
+	int activeSlot = -1;
+	int s, i, h, total;
+	str wep;
+
+	for (s = 0; s < UHNB_MAX_SLOTS; s++) {
+		uhnb_held_count[s] = 0;
+		uhnb_selected[s] = -1;
+	}
+
+	if (CheckInventory("NegaMan_W") > 0) {
+		uhnb_held_count[1] = 1;
+		uhnb_held_wep_idx[1][0] = 0;
+		if (CheckWeapon("NegaMan_W")) {
+			uhnb_selected[1] = 0;
+			activeSlot = 1;
+		}
+	}
+
+	for (s = 2; s <= 7; s++) {
+		total = UHNB_GetSlotTotal(s);
+		for (i = 0; i < total; i++) {
+			wep = UHNB_GetSlotWep(s, i);
+			if (CheckInventory(wep) > 0) {
+				h = uhnb_held_count[s];
+				if (h < UHNB_MAX_SLOT_WEAPS) {
+					uhnb_held_wep_idx[s][h] = i;
+					if (CheckWeapon(wep)) {
+						uhnb_selected[s] = h;
+						activeSlot = s;
+					}
+					uhnb_held_count[s]++;
+				}
+			}
+		}
+	}
+
+	SetResultValue(activeSlot);
+}
+
+script "uh_nb_slot_count" (int slot) {
+	if (slot < 0 || slot >= UHNB_MAX_SLOTS)
+		SetResultValue(0);
+	else
+		SetResultValue(uhnb_held_count[slot]);
+}
+
+script "uh_nb_slot_selected" (int slot) {
+	if (slot < 0 || slot >= UHNB_MAX_SLOTS)
+		SetResultValue(-1);
+	else
+		SetResultValue(uhnb_selected[slot]);
+}
+
+script "uh_nb_item_string" (int slot, int heldIdx, int field) {
+	str sval = "";
+	str wep = "";
+	int c;
+
+	if (slot >= 0 && slot < UHNB_MAX_SLOTS && heldIdx >= 0 && heldIdx < uhnb_held_count[slot]) {
+		if (slot == 1) {
+			wep = "NegaMan_W";
+		} else {
+			wep = UHNB_GetSlotWep(slot, uhnb_held_wep_idx[slot][heldIdx]);
+		}
+
+		if (field == UHNB_ACTOR) {
+			sval = wep;
+		} else if (field == UHNB_ICON) {
+			c = UHFW_NegaCacheWep(wep);
+			sval = (c != UHFW_FAIL ? uhnega_cicon[c] : UHFW_NegaIconOf(wep));
+		} else if (field == UHNB_AMMO) {
+			c = UHFW_NegaCacheWep(wep);
+			sval = (c != UHFW_FAIL ? uhnega_cammo1[c] : "");
+		}
+	}
+	SetResultValue(StrParam(s:sval));
+}
+
+script "uh_nb_item_int" (int slot, int heldIdx, int field) {
+	int ival = 0;
+	str wep = "";
+	int c;
+
+	if (slot >= 0 && slot < UHNB_MAX_SLOTS && heldIdx >= 0 && heldIdx < uhnb_held_count[slot]) {
+		if (slot == 1) {
+			wep = "NegaMan_W";
+		} else {
+			wep = UHNB_GetSlotWep(slot, uhnb_held_wep_idx[slot][heldIdx]);
+		}
+		c = UHFW_NegaCacheWep(wep);
+		if (c != UHFW_FAIL) {
+			if (field == UHNB_CYAN)
+				ival = uhnega_craw_cyan1[c];
+			else if (field == UHNB_BLUE)
+				ival = uhnega_craw_blue1[c];
+			else if (field == UHNB_DEFMAX)
+				ival = uhnega_cmax1[c];
+		} else {
+			if (field == UHNB_CYAN)
+				ival = 4;
+			else if (field == UHNB_BLUE)
+				ival = (slot == 1 ? 204 : UHFW_NEGA_BAR_BLUE);
+			else if (field == UHNB_DEFMAX)
+				ival = (slot == 1 ? 400 : 28);
+		}
+	}
+	SetResultValue(ival);
 }

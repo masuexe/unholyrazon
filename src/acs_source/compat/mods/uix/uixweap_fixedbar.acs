@@ -10,6 +10,14 @@ int qwantSlot2Max[UHQB_MAX_HELD];
 int qwantSlot2Cyan[UHQB_MAX_HELD];
 int qwantSlot2Blue[UHQB_MAX_HELD];
 
+int negaSlotCount[UHNB_MAX_SLOTS];
+int negaSlotSelected[UHNB_MAX_SLOTS];
+str negaWepIcon[UHNB_MAX_SLOTS][UHNB_MAX_SLOT_WEAPS];
+int negaWepAmt[UHNB_MAX_SLOTS][UHNB_MAX_SLOT_WEAPS];
+int negaWepMax[UHNB_MAX_SLOTS][UHNB_MAX_SLOT_WEAPS];
+int negaWepCyan[UHNB_MAX_SLOTS][UHNB_MAX_SLOT_WEAPS];
+int negaWepBlue[UHNB_MAX_SLOTS][UHNB_MAX_SLOT_WEAPS];
+
 function str weaponBarFontPal(int idx) {
     if(idx <= 0 || idx >= 256)
         return fontPalette[0];
@@ -193,6 +201,65 @@ function void weaponBarQwant(void) {
         if(slot2Count > cvMaxRow) {
             displayMessage(layer, UIXWEAP_OverflowNums[slot2Count - i],
                 baseX2 + overflowX, baseY2 + overflowY,
+                overflowScale, overflowScale, cvAlpha, OverflowHAlign, 0);
+        }
+    }
+}
+
+function void weaponBarNegaMan(void) {
+    int activeSlot = ACS_NamedExecuteWithResult("uh_nb_scan");
+    int s, h, i;
+
+    for(s = 1; s <= 7; s++) {
+        negaSlotCount[s] = ACS_NamedExecuteWithResult("uh_nb_slot_count", s);
+        if(negaSlotCount[s] == 0)
+            continue;
+        negaSlotSelected[s] = ACS_NamedExecuteWithResult("uh_nb_slot_selected", s);
+        for(h = 0; h < negaSlotCount[s]; h++) {
+            negaWepIcon[s][h] = ACS_NamedExecuteWithResult("uh_nb_item_string", s, h, UHNB_ICON);
+            str ammo = ACS_NamedExecuteWithResult("uh_nb_item_string", s, h, UHNB_AMMO);
+            int amt = 0;
+            int cap = 0;
+            if(StrLen(ammo) > 0) {
+                amt = CheckInventory(ammo);
+                cap = GetAmmoCapacity(ammo);
+            }
+            if(cap <= 0)
+                cap = ACS_NamedExecuteWithResult("uh_nb_item_int", s, h, UHNB_DEFMAX);
+            negaWepAmt[s][h] = amt;
+            negaWepMax[s][h] = cap;
+            negaWepCyan[s][h] = ACS_NamedExecuteWithResult("uh_nb_item_int", s, h, UHNB_CYAN);
+            negaWepBlue[s][h] = ACS_NamedExecuteWithResult("uh_nb_item_int", s, h, UHNB_BLUE);
+        }
+    }
+
+    // Release camera activator before HUD rendering
+    SetActivator(-1);
+
+    for(s = 1; s <= 7; s++) {
+        if(negaSlotCount[s] == 0)
+            continue;
+
+        int baseX = cvOffsX + slotOffsX * s;
+        int baseY = cvOffsY + slotOffsY * s;
+        int idx = (activeSlot == s ? negaSlotSelected[s] : -1);
+        int maxVisible = min(negaSlotCount[s], cvMaxRow + (activeSlot == s));
+
+        for(i = 0; i < maxVisible; i++) {
+            int weap = (idx > -1 ? (i + idx) % negaSlotCount[s] : i);
+            int isSelected = (idx > -1 && weap == negaSlotSelected[s]);
+            int weight = (idx > -1 ? i - 1 : i);
+            weaponBarDrawItem(s, weight, isSelected, negaWepIcon[s][weap], -1,
+                negaWepAmt[s][weap], negaWepMax[s][weap], negaWepCyan[s][weap], negaWepBlue[s][weap],
+                0, 0, 0, 0);
+        }
+
+        SetFont("SMALLFONT");
+        weaponBarSlotHint(s, baseX, baseY, (activeSlot == s ? "\c[gold]" : "\c[darkgray]"));
+
+        if(negaSlotCount[s] > cvMaxRow) {
+            displayMessage(layer, UIXWEAP_OverflowNums[negaSlotCount[s] - i],
+                baseX + overflowX, baseY + overflowY,
                 overflowScale, overflowScale, cvAlpha, OverflowHAlign, 0);
         }
     }
