@@ -1,0 +1,42 @@
+// Per-call scratch only, not a Timer cache. Every camera call overwrites all
+// rows it draws, even when two players are viewed during the same tic.
+str fixedBarIcons[UHFB_MAX_WEAPONS];
+int fixedBarSelected[UHFB_MAX_WEAPONS];
+int fixedBarSlots[UHFB_MAX_WEAPONS];
+
+function void weaponBarFixed(int count) {
+    int i;
+    str actor;
+    for(i = 0; i < count; i++) {
+        fixedBarIcons[i] = "";
+        fixedBarSelected[i] = false;
+        fixedBarSlots[i] = -1;
+        actor = ACS_NamedExecuteWithResult("uh_fb_string", i, UHFB_ACTOR);
+        if(StrLen(actor) == 0)
+            continue;
+        if(CheckInventory(actor) <= 0)
+            continue;
+        fixedBarIcons[i] = ACS_NamedExecuteWithResult("uh_fb_string", i, UHFB_ICON);
+        fixedBarSelected[i] = CheckWeapon(actor);
+        if(cvShowSlots)
+            fixedBarSlots[i] = ACS_NamedExecuteWithResult("uh_fb_slot", i);
+    }
+
+    // Inventory and selection must be read from the camera before releasing it.
+    SetActivator(-1);
+    for(i = 0; i < count; i++) {
+        if(StrLen(fixedBarIcons[i]) == 0)
+            continue;
+        // Keep definition positions when weapons disappear; never rotate order.
+        int x = weaponBarIconX(i + 1, 0, fixedBarSelected[i]);
+        int y = weaponBarIconY(i + 1, 0, fixedBarSelected[i]);
+        if(!fixedBarSelected[i])
+            weaponBarBackground(x, y);
+        weaponBarIcon(fixedBarIcons[i], x, y);
+        // Label stays at the original slot anchor, not the selected icon offset.
+        weaponBarSlotHint(fixedBarSlots[i],
+            weaponBarIconX(i + 1, 0, false), weaponBarIconY(i + 1, 0, false),
+            fixedBarSelected[i] ? "\c[gold]" : "\c[darkgray]");
+    }
+    // No ammo, stacking or ROWMAX truncation here.
+}

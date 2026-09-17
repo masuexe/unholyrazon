@@ -1,0 +1,53 @@
+// Weaponbar reads definitions only: never collect/open/reset a wheel here.
+#include "uh_uixbar_api.acs"
+
+function int UHFB_ClassIndex(void) {
+	str actor = GetActorClass(0);
+	if (StrICmp(actor, "Arcanist") != 0
+		&& StrICmp(actor, "ArcanistShiny") != 0
+		&& StrICmp(actor, "RedWarrior") != 0
+		&& StrICmp(actor, "YellowWizard") != 0)
+		return UHFB_UNSUPPORTED;
+	if (!uhfw_defsready)
+		return UHFB_NOT_READY;
+	int idx = UHFW_FindClass(actor);
+	if (idx == UHFW_FAIL)
+		return UHFB_NOT_READY;
+	return idx;
+}
+
+// -1: stock path; -2: supported but OPEN has not finished; >= 0: row count.
+// Synchronous, non-NET; inherits and preserves the camera activator.
+script "uh_fb_count" (void) {
+	int idx = UHFB_ClassIndex();
+	if (idx < 0)
+		SetResultValue(idx);
+	else
+		SetResultValue(uhfw_classwepcount[idx]);
+}
+
+// Real binding slot, not the row's display position. -1 means no hint.
+script "uh_fb_slot" (int row) {
+	int slot = -1;
+	int idx = UHFB_ClassIndex();
+	if (idx >= 0 && row >= 0) {
+		if (row < uhfw_classwepcount[idx])
+			slot = uhfw_wepslot[idx][row];
+	}
+	SetResultValue(slot);
+}
+
+// Always return global dynamic strings, including invalid/empty results.
+script "uh_fb_string" (int row, int field) {
+	str value = "";
+	int idx = UHFB_ClassIndex();
+	if (idx >= 0 && row >= 0) {
+		if (row < uhfw_classwepcount[idx]) {
+			if (field == UHFB_ACTOR)
+				value = uhfw_wep[idx][row][UHFW_STR_WEP];
+			else if (field == UHFB_ICON)
+				value = uhfw_wep[idx][row][UHFW_STR_ICON];
+		}
+	}
+	SetResultValue(StrParam(s:value));
+}

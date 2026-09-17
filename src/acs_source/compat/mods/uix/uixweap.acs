@@ -5,6 +5,9 @@
 // Change vs stock: always write wheel bar colors from WeaponBarColor.
 // Stock only refreshed colors when ammo amount/max changed, so MegaMan
 // M2 slot swaps reused the previous occupant's palette.
+// UH fixed-class weaponbars read uh_uixfw definitions independently of the
+// stock slot/wheel cache, sharing layout, icon drawing and real slot-binding
+// hints (SHOWSLOTS); UH registration order is not a gameplay slot.
 
 #include "zcommon.acs"
 
@@ -17,6 +20,7 @@
 #include "UXTBWOVR.acs"
 
 #include "UXWHLDEF.acs"
+#include "uh_uixbar_api.acs"
 
 /*
 DATA NEEDED:
@@ -390,24 +394,8 @@ function void updateSlotData(void)
         WeaponWheel_Rebuild();
 }
 
-script "UIX_WeapBar" (int cam, int cpn, int cv)
+function void weaponBarLayout(int cpn)
 {
-    if(!GetCvar("UIX_SV_WEAPBAR"))
-        terminate;
-
-    cvAlpha = GetUserCvar(cpn, "UIX_CL_WEAPBARALPHA");
-
-    if(cvAlpha == 0.0)
-        terminate;
-
-    SetActivator(cam);
-    int pln = PlayerNumber();
-    if(pln == -1)
-        terminate;
-
-    if(CheckInventory("UIX_NoWeaponBar") > 0)
-        terminate;
-
     cvAlpha = GetUserCvar(cpn, "UIX_CL_WEAPBARALPHA");
     cvShowSlots = GetUserCvar(cpn, "UIX_CL_WEAPBARSHOWSLOTS");
     cvMirror = GetUserCvar(cpn, "UIX_CL_WEAPBARMIRROR");
@@ -461,6 +449,57 @@ script "UIX_WeapBar" (int cam, int cpn, int cv)
         overflowScale = cvDir ? cvScale : FixedMul(cvScale, 0.7);
     }
 
+}
+
+// Slots here are display coordinates only; weight is the stack position.
+function int weaponBarIconX(int slot, int weight, int selected) {
+    return cvOffsX + slotOffsX * slot + (selected ? selectedX : weightOffsX * weight);
+}
+
+function int weaponBarIconY(int slot, int weight, int selected) {
+    return cvOffsY + slotOffsY * slot + (selected ? selectedY : weightOffsY * weight);
+}
+
+function void weaponBarBackground(int x, int y) {
+    displayIcon(layer, "UXICB0", x, y, cvScale, cvScale, FixedMul(cvAlpha, 0.5), ALIGN_CENTER, ALIGN_CENTER);
+}
+
+function void weaponBarIcon(str icon, int x, int y) {
+    displayIcon(layer, icon, x, y, cvScale, cvScale, cvAlpha, ALIGN_CENTER, ALIGN_CENTER);
+}
+
+// baseX/Y are layout coordinates; bindSlot is the real gameplay binding.
+function void weaponBarSlotHint(int bindSlot, int baseX, int baseY, str col) {
+    if(!cvShowSlots || bindSlot < 0 || bindSlot >= MAX_SLOTS_LIMIT)
+        return;
+    SetFont("SMALLFONT");
+    displayMessage(layer, StrParam(s:col, k:slotBinds[bindSlot]), baseX + slotX, baseY + slotY, cvScale, cvScale, cvAlpha, HAlign, 0);
+}
+
+#include "uixweap_fixedbar.acs"
+
+script "UIX_WeapBar" (int cam, int cpn, int cv)
+{
+    if(!GetCvar("UIX_SV_WEAPBAR"))
+        terminate;
+    if(GetUserCvar(cpn, "UIX_CL_WEAPBARALPHA") == 0.0)
+        terminate;
+
+    SetActivator(cam);
+    if(PlayerNumber() == -1)
+        terminate;
+    if(CheckInventory("UIX_NoWeaponBar") > 0)
+        terminate;
+
+    weaponBarLayout(cpn);
+    int fixedCount = ACS_NamedExecuteWithResult("uh_fb_count");
+    if(fixedCount != UHFB_UNSUPPORTED) {
+        if(fixedCount > 0 && fixedCount <= UHFB_MAX_WEAPONS)
+            weaponBarFixed(fixedCount);
+        // Known but not ready: retry next HUD call, never update wheel data.
+        terminate;
+    }
+
     int i;
     int slot, icon, ammo1, ammo2;
 
@@ -487,24 +526,13 @@ script "UIX_WeapBar" (int cam, int cpn, int cv)
             int weap;
             int iconX, iconY;
 
-            if(idx > -1) {
-                weap = (i + idx) % slotCounts[slot];
-
-                if(weap == selectedWep) {
-                    iconX = baseX + selectedX;
-                    iconY = baseY + selectedY;
-                } else {
-                    iconX = baseX + weightOffsX * (i-1);
-                    iconY = baseY + weightOffsY * (i-1);
-                    displayIcon(layer, "UXICB0", iconX, iconY, cvScale, cvScale, FixedMul(cvAlpha, 0.5), ALIGN_CENTER, ALIGN_CENTER);
-                }
-            } else {
-                weap = i;
-
-                iconX = baseX + weightOffsX * i;
-                iconY = baseY + weightOffsY * i;
-                displayIcon(layer, "UXICB0", iconX, iconY, cvScale, cvScale, FixedMul(cvAlpha, 0.5), ALIGN_CENTER, ALIGN_CENTER);
-            }
+            weap = (idx > -1 ? (i + idx) % slotCounts[slot] : i);
+            int isSelected = idx > -1 && weap == selectedWep;
+            int weight = (idx > -1 ? i-1 : i);
+            iconX = weaponBarIconX(slot, weight, isSelected);
+            iconY = weaponBarIconY(slot, weight, isSelected);
+            if(!isSelected)
+                weaponBarBackground(iconX, iconY);
 
             if(!slotVals[slot][weap][WEAP_TYPE]) {
                 icon = getBusterIcon(slotVals[slot][weap][WEAP_IDX]);
@@ -558,13 +586,12 @@ script "UIX_WeapBar" (int cam, int cpn, int cv)
                     }
                 }
             }
-            displayIcon(layer, icon, iconX, iconY, cvScale, cvScale, cvAlpha, ALIGN_CENTER, ALIGN_CENTER);
+            weaponBarIcon(icon, iconX, iconY);
         }
 
         if(slotCounts[slot]) {
             SetFont("SMALLFONT");
-            if(cvShowSlots)
-                displayMessage(layer, StrParam(s:col, k:slotBinds[slot]), baseX + slotX, baseY + slotY, cvScale, cvScale, cvAlpha, HAlign, 0);
+            weaponBarSlotHint(slot, baseX, baseY, col);
 
             if(slotCounts[slot] > cvMaxRow) {
                 displayMessage(layer, UIXWEAP_OverflowNums[slotCounts[slot]-i], baseX + overflowX, baseY + overflowY, overflowScale, overflowScale, cvAlpha, OverflowHAlign, 0);
