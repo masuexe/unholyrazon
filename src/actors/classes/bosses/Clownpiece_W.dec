@@ -1258,19 +1258,48 @@ actor Clownpiece_W6 : Clownpiece_SpellWep {
    Flash:
     TNT1 A 1 A_GiveInventory("ClownpieceHealthCheck_W6_P")
     loop
+   Ready2:
+    8I12 A 0 A_GunFlash("Flash", true)
+    8I12 A 0 A_JumpIfHealthLower(2, "TryLifeBreak")
+    8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "Ready3")
+    8I12 A 2 A_GiveInventory("Clownpiece_W6_Ready8_P")
+    loop
    Fire:
     8I12 A 0 A_GiveInventory("ClownpieceHealthCheck_W6_P")
     8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200", 67, "DollarGive")
     Goto Ready2
+   AltFire:
+    goto Fire
    DollarGive:
     8I12 A 0 A_GiveInventory("VivifyDelay4")
     8I12 A 0 A_TakeInventory("UnholyBossAmmo200", 67)
+    // Wave 1: Windup & Spark
+    8I12 B 1 Offset(-12, 28) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8I12 B 1 Offset(-20, 32)
+    8I12 C 2 Offset(-10, 16)
+    // Wave 1: 24-Ring Inferno Eruption
     8I12 A 0 A_PlaySoundEx("Touhou/Tan0", "Weapon")
     8I12 A 0 A_FireCustomMissile("ClownpieceItemShotRed24_H", 0, 0, 0, 0)
-    8I12 BCAAAAAAAA 2
+    8I12 C 2 Offset(4, 10)
+    8I12 C 2 Offset(16, 14)
+    // Resonance & Wave 2 Setup
+    8I12 B 2 Offset(12, 22)
+    8I12 B 2 Offset(4, 25)
+    8I12 C 2 Offset(-6, 20)
+    8I12 C 2 Offset(-14, 14)
+    8I12 B 1 Offset(-8, 20) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    // Wave 2: 12-Ring Staggered Shockwave Eruption
     8I12 A 0 A_PlaySoundEx("Touhou/Tan0", "Weapon")
     8I12 A 0 A_FireCustomMissile("ClownpieceItemShotRed12_H", 0, 0, 0, 0)
-    8I12 BCAAAAAAAA 2
+    8I12 C 2 Offset(2, 10)
+    8I12 C 2 Offset(14, 16)
+    8I12 C 2 Offset(22, 26)
+    // Grand Recovery
+    8I12 B 2 Offset(14, 28)
+    8I12 B 2 Offset(6, 30)
+    8I12 B 1 Offset(2, 31) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8I12 A 2 Offset(1, 32)
+    8I12 A 3
     Goto Ready2
   }
 }
@@ -1449,6 +1478,24 @@ actor Clownpiece_W2_Ready8_P : Clownpiece_Ready0_P {
   }
 }
 
+actor Clownpiece_W6_Ready8_P : Clownpiece_Ready0_P {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo200", 67, "PickupReload")
+    TNT1 A 0 A_Jump(256, "PickupNormal")
+    goto PickupNormal
+   PickupNormal:
+    TNT1 A 0 A_WeaponReady(8 + 4)
+    goto Ammo
+   PickupReload:
+    TNT1 A 0 A_WeaponReady
+    goto Ammo
+   Ammo:
+    TNT1 A 0 A_GiveInventory("UnholyBossAmmo200", 2)
+    stop
+  }
+}
+
 actor ClownpieceMainfire_P : CustomInventory {
   States {
    Pickup:
@@ -1582,8 +1629,7 @@ actor ClownpieceEoHAltFire_P : CustomInventory {
 
 // Hellfire "Graze Inferno"
 // Hellfire "Infernal Essence of Grazing"
-actor ClownpieceItemShot : ProjSpawnFuncActor  // BasicProjectile
-{
+actor ClownpieceItemShot : ProjSpawnFuncActor {
   Damagetype "Clownpiece"
   Obituary "%o went insane from touching %k's Graze Inferno."
   +MISSILE
@@ -1594,6 +1640,7 @@ actor ClownpieceItemShot : ProjSpawnFuncActor  // BasicProjectile
   +RIPPER
   -NOGRAVITY
   +FORCEXYBILLBOARD
+  +THRUSPECIES
   +ALLOWBOUNCEONACTORS
   +BOUNCEONFLOORS
   +BOUNCEONWALLS
@@ -1605,7 +1652,7 @@ actor ClownpieceItemShot : ProjSpawnFuncActor  // BasicProjectile
   Damagefactor "Clownpiece", 0.0
   Damagefactor "ignition", 0.0
   mass 0x7ffffffd
-  health 1500
+  health 3000
   bouncecount 10
   bouncefactor 1.0
   wallbouncefactor 1.0
@@ -1624,6 +1671,9 @@ actor ClownpieceItemShot : ProjSpawnFuncActor  // BasicProjectile
     6P06 ABCD 3 A_SpawnItemEx("OilPitIgnite", 0, 0, 8)
     6P06 A 0 A_CountDown
     Loop
+   Pain:
+    6P06 A 0 A_ScaleVelocity(0.8)
+    goto Spawn2
    Death:
     TMFX A 0 A_SetGravity(0.0)
     TMFX ABCD 3
