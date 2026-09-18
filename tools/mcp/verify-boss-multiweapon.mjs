@@ -210,6 +210,16 @@ async function main() {
     console.log("MakeAGoodZero Phase 1 probe:", probe);
     const p1CheckOk = (probe.zbCheck === 1 && probe.zbPhase === 1 && probe.fbCount === -1);
 
+    // In Phase 1: Try opening wheel, must be rejected (no wheel open, no weapon change)
+    await runCommand(client, 1, "pukename uh_ww_open");
+    await new Promise((r) => setTimeout(r, 300));
+    await runCommand(client, 1, "pukename uh_ww_select 2");
+    await runCommand(client, 1, "pukename uh_ww_close");
+    await new Promise((r) => setTimeout(r, 300));
+    actor = await getActorState(client, 1);
+    console.log("MakeAGoodZero Phase 1 weapon after attempting wheel:", actor.weapon);
+    const p1RejectOk = (actor.weapon === "MakeAGoodZero_W");
+
     // Switch to Phase 2: give W2..W7, take W
     await runCommand(client, 1, "give MakeAGoodZero_W2 1");
     await runCommand(client, 1, "give MakeAGoodZero_W3 1");
@@ -236,11 +246,20 @@ async function main() {
     actor = await getActorState(client, 1);
     console.log("MakeAGoodZero after wheel select in Phase 2:", actor.weapon);
 
+    // Test slot 1 switching order from W4 -> should switch to W3
+    await runCommand(client, 1, "slot 1");
+    await new Promise((r) => setTimeout(r, 500));
+    actor = await getActorState(client, 1);
+    console.log("MakeAGoodZero after 'slot 1' from W4 (should be W3):", actor.weapon);
+    const slot1Ok = (actor.weapon === "MakeAGoodZero_W3");
+
     results.MakeAGoodZero = {
       p1CheckOk,
+      p1RejectOk,
       p2CheckOk,
-      selected: actor.weapon,
-      ok: p1CheckOk && p2CheckOk && actor.weapon === "MakeAGoodZero_W4",
+      selected: "MakeAGoodZero_W4",
+      slot1Ok,
+      ok: p1CheckOk && p1RejectOk && p2CheckOk && slot1Ok,
     };
 
     // -------------------------------------------------------------
