@@ -34,6 +34,10 @@ int uh_spellcardtimeleft;
 int uh_spellcardphase;
 int uh_spellcardtimergen;  // bump on each Start; stale Always timers must not tick
 
+int uh_cl_spellcardgen;
+bool uh_cl_spellcardbroken;
+int uh_cl_spellcard_remaining_tics;
+
 str uh_spellcardnamelist[UH_SC_PHASE_MAX + 1] = {
 	"",
 	"",  // Nonspell 1 — no name HUD
@@ -71,47 +75,63 @@ function void UH_SpellCardClearHud(void) {
 	ClearHudMessageBold(UH_SC_HUD_NAME);
 	ClearHudMessageBold(UH_SC_HUD_TIMER);
 	ClearHudMessageBold(UH_SC_HUD_BONUS);
+	ACS_NamedExecuteAlways("uh_SpellCardClientClear", 0);
 }
 
-function void UH_SpellCardDrawHud(int timeleft, int phaseid) {
+function void UH_SpellCardDrawHud(int sec, int centi, int phaseid) {
 	int color;
+	str sec_str;
+	str centi_str;
 	str timerstr;
 
 	SetHudSize(640, 480, 0);
+	int x_aspect = GetHudRight(640) * 1.0;
+	if (GetScreenWidth() == 640 && GetScreenHeight() == 480) {
+		x_aspect = 640.0;
+	}
+	int draw_x = (RoundFixedToInt(x_aspect - 16.0) * 1.0) + 0.2;
 
-	// Timer (Top-Right, Touhou STG style with pseudo-decimal .00)
+	// Timer (Top-Right, Touhou STG style with real countdown centiseconds)
 	SetFont("BIGFONT");
-	if (timeleft <= 4)
+	if (sec <= 4)
 		color = CR_RED;
-	else if (timeleft <= 9)
+	else if (sec <= 9)
 		color = CR_BRICK;
 	else
 		color = CR_WHITE;
 
-	if (timeleft < 0)
-		timeleft = 0;
+	if (sec < 0)
+		sec = 0;
+	if (centi < 0)
+		centi = 0;
 
-	if (timeleft < 10)
-		timerstr = StrParam(s:"0", i:timeleft, s:".00");
+	if (sec < 10)
+		sec_str = StrParam(s:"0", i:sec);
 	else
-		timerstr = StrParam(i:timeleft, s:".00");
+		sec_str = StrParam(i:sec);
 
-	HudMessageBold(s:timerstr; HUDMSG_PLAIN, UH_SC_HUD_TIMER, color, 620.2, 16.1, 0);
+	if (centi < 10)
+		centi_str = StrParam(s:"0", i:centi);
+	else
+		centi_str = StrParam(i:centi);
 
-	// Spell Card Name and Bonus (Top-Right, right-aligned underneath Timer)
+	timerstr = StrParam(s:sec_str, s:".", s:centi_str);
+	HudMessage(s:timerstr; HUDMSG_PLAIN, UH_SC_HUD_TIMER, color, draw_x, 16.1, 0);
+
+	// Spell Card Name and Bonus (Top-Right, placed at Y=56.1 and 68.1 to clear LMS event banner)
 	SetFont("SMALLFONT");
 	if (UH_SpellCardShowsName(phaseid)) {
-		HudMessageBold(s:UH_SpellCardNameOf(phaseid); HUDMSG_PLAIN, UH_SC_HUD_NAME, CR_GOLD, 620.2, 36.1, 0);
-		if (uh_spellcardbroken) {
-			HudMessageBold(s:"\cuBONUS  \cgFAILED"; HUDMSG_PLAIN, UH_SC_HUD_BONUS, CR_UNTRANSLATED, 620.2, 48.1, 0);
+		HudMessage(s:UH_SpellCardNameOf(phaseid); HUDMSG_PLAIN, UH_SC_HUD_NAME, CR_GOLD, draw_x, 56.1, 0);
+		if (uh_cl_spellcardbroken) {
+			HudMessage(s:"\cuBONUS  \cgFAILED"; HUDMSG_PLAIN, UH_SC_HUD_BONUS, CR_UNTRANSLATED, draw_x, 68.1, 0);
 		}
 		else {
-			HudMessageBold(s:"\ckBONUS  \cdSURVIVOR BOX"; HUDMSG_PLAIN, UH_SC_HUD_BONUS, CR_UNTRANSLATED, 620.2, 48.1, 0);
+			HudMessage(s:"\ckBONUS  \cdSURVIVOR BOX"; HUDMSG_PLAIN, UH_SC_HUD_BONUS, CR_UNTRANSLATED, draw_x, 68.1, 0);
 		}
 	}
 	else {
-		ClearHudMessageBold(UH_SC_HUD_NAME);
-		ClearHudMessageBold(UH_SC_HUD_BONUS);
+		ClearHudMessage(UH_SC_HUD_NAME);
+		ClearHudMessage(UH_SC_HUD_BONUS);
 	}
 }
 
@@ -227,7 +247,7 @@ script "uh_SpellCardStart" (int phaseid, int timelimitsec) {
 	uh_spellcardbroken = false;
 	uh_spellcardactive = true;
 
-	UH_SpellCardDrawHud(uh_spellcardtimeleft, uh_spellcardphase);
+	ACS_NamedExecuteAlways("uh_SpellCardClientSync", 0, timelimitsec, uh_spellcardtimergen, phaseid);
 	ACS_NamedExecuteAlways("uh_SpellCardTimer", 0, uh_spellcardtimergen);
 }
 
@@ -267,7 +287,7 @@ script "uh_SpellCardTimer" (int mygen) {
 	while (uh_spellcardactive && uh_spellcardtimeleft > 0) {
 		if (mygen != uh_spellcardtimergen)
 			terminate;
-		UH_SpellCardDrawHud(uh_spellcardtimeleft, uh_spellcardphase);
+		ACS_NamedExecuteAlways("uh_SpellCardClientSync", 0, uh_spellcardtimeleft, mygen, uh_spellcardphase);
 		if (uh_spellcardtimeleft <= 9 && uh_spellcardtimeleft >= 5)
 			AmbientSound("Touhou/Timeout", 127);
 		if (uh_spellcardtimeleft <= 4)
@@ -330,7 +350,53 @@ script "uh_SpellCardFail" (void) {
 script "uh_SpellCardBreak" (void) {
 	if (uh_spellcardactive) {
 		uh_spellcardbroken = true;
-		UH_SpellCardDrawHud(uh_spellcardtimeleft, uh_spellcardphase);
+		ACS_NamedExecuteAlways("uh_SpellCardClientBreak", 0);
+	}
+}
+
+script "uh_SpellCardClientClear" (void) CLIENTSIDE {
+	uh_cl_spellcardgen++;
+	ClearHudMessage(UH_SC_HUD_NAME);
+	ClearHudMessage(UH_SC_HUD_TIMER);
+	ClearHudMessage(UH_SC_HUD_BONUS);
+}
+
+script "uh_SpellCardClientBreak" (void) CLIENTSIDE {
+	uh_cl_spellcardbroken = true;
+}
+
+script "uh_SpellCardClientSync" (int timeleftsec, int mygen, int phaseid) CLIENTSIDE {
+	if (uh_cl_spellcardgen != mygen) {
+		uh_cl_spellcardgen = mygen;
+		uh_cl_spellcardbroken = false;
+		uh_cl_spellcard_remaining_tics = timeleftsec * 35;
+		ACS_NamedExecuteAlways("uh_SpellCardClientHud", 0, phaseid, timeleftsec, mygen);
+	}
+	else {
+		uh_cl_spellcard_remaining_tics = timeleftsec * 35;
+	}
+}
+
+script "uh_SpellCardClientHud" (int phaseid, int timelimitsec, int mygen) CLIENTSIDE {
+	uh_cl_spellcardgen = mygen;
+	uh_cl_spellcardbroken = false;
+	uh_cl_spellcard_remaining_tics = timelimitsec * 35;
+
+	while (uh_cl_spellcard_remaining_tics >= 0 && mygen == uh_cl_spellcardgen) {
+		int sec = uh_cl_spellcard_remaining_tics / 35;
+		int rem = uh_cl_spellcard_remaining_tics % 35;
+		int centi = (rem * 99) / 34;
+
+		UH_SpellCardDrawHud(sec, centi, phaseid);
+
+		Delay(1);
+		uh_cl_spellcard_remaining_tics--;
+	}
+
+	if (mygen == uh_cl_spellcardgen) {
+		ClearHudMessage(UH_SC_HUD_NAME);
+		ClearHudMessage(UH_SC_HUD_TIMER);
+		ClearHudMessage(UH_SC_HUD_BONUS);
 	}
 }
 
