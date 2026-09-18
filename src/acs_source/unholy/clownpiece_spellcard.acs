@@ -19,6 +19,7 @@
 #define UH_SC_HUD_NAME 1720
 #define UH_SC_HUD_TIMER 1721
 #define UH_SC_HUD_RESULT 1722
+#define UH_SC_HUD_BONUS 1723
 
 #define UH_SC_PHASE_MAX 8
 #define UH_SC_TICRATE 35
@@ -36,13 +37,13 @@ int uh_spellcardtimergen;  // bump on each Start; stale Always timers must not t
 str uh_spellcardnamelist[UH_SC_PHASE_MAX + 1] = {
 	"",
 	"",  // Nonspell 1 — no name HUD
-	"Hell Sign: Eclipse of Hell",
+	"Hell Sign \"Eclipse of Hell\"",
 	"",  // Nonspell 2
-	"Hell Sign: Star and Stripe",
+	"Hell Sign \"Star and Stripe\"",
 	"",  // Nonspell 3
-	"Hellfire: Infernal Essence of Grazing",
-	"Inferno: Striped Abyss",
-	"Apollo Hoax Theory"
+	"Hellfire \"Infernal Essence of Grazing\"",
+	"Inferno \"Striped Abyss\"",
+	"\"Apollo Hoax Theory\""
 };
 
 function str UH_SpellCardNameOf(int phaseid) {
@@ -69,24 +70,49 @@ function bool UH_SpellCardIsSurvival(int phaseid) {
 function void UH_SpellCardClearHud(void) {
 	ClearHudMessageBold(UH_SC_HUD_NAME);
 	ClearHudMessageBold(UH_SC_HUD_TIMER);
+	ClearHudMessageBold(UH_SC_HUD_BONUS);
 }
 
 function void UH_SpellCardDrawHud(int timeleft, int phaseid) {
 	int color;
+	str timerstr;
 
-	SetFont("BIGFONT");
 	SetHudSize(640, 480, 0);
-	if (UH_SpellCardShowsName(phaseid))
-		HudMessageBold(s:UH_SpellCardNameOf(phaseid); HUDMSG_PLAIN, UH_SC_HUD_NAME, CR_GOLD, 320.4, 36.0, 0);
-	else
-		ClearHudMessageBold(UH_SC_HUD_NAME);
+
+	// Timer (Top-Right, Touhou STG style with pseudo-decimal .00)
+	SetFont("BIGFONT");
 	if (timeleft <= 4)
 		color = CR_RED;
 	else if (timeleft <= 9)
 		color = CR_BRICK;
 	else
 		color = CR_WHITE;
-	HudMessageBold(i:timeleft; HUDMSG_PLAIN, UH_SC_HUD_TIMER, color, 320.4, 52.0, 0);
+
+	if (timeleft < 0)
+		timeleft = 0;
+
+	if (timeleft < 10)
+		timerstr = StrParam(s:"0", i:timeleft, s:".00");
+	else
+		timerstr = StrParam(i:timeleft, s:".00");
+
+	HudMessageBold(s:timerstr; HUDMSG_PLAIN, UH_SC_HUD_TIMER, color, 620.2, 16.1, 0);
+
+	// Spell Card Name and Bonus (Top-Right, right-aligned underneath Timer)
+	SetFont("SMALLFONT");
+	if (UH_SpellCardShowsName(phaseid)) {
+		HudMessageBold(s:UH_SpellCardNameOf(phaseid); HUDMSG_PLAIN, UH_SC_HUD_NAME, CR_GOLD, 620.2, 36.1, 0);
+		if (uh_spellcardbroken) {
+			HudMessageBold(s:"\cuBONUS  \cgFAILED"; HUDMSG_PLAIN, UH_SC_HUD_BONUS, CR_UNTRANSLATED, 620.2, 48.1, 0);
+		}
+		else {
+			HudMessageBold(s:"\ckBONUS  \cdSURVIVOR BOX"; HUDMSG_PLAIN, UH_SC_HUD_BONUS, CR_UNTRANSLATED, 620.2, 48.1, 0);
+		}
+	}
+	else {
+		ClearHudMessageBold(UH_SC_HUD_NAME);
+		ClearHudMessageBold(UH_SC_HUD_BONUS);
+	}
 }
 
 function void UH_SpellCardAnnounceResult(str msg, int color) {
@@ -302,8 +328,10 @@ script "uh_SpellCardFail" (void) {
 }
 
 script "uh_SpellCardBreak" (void) {
-	if (uh_spellcardactive)
+	if (uh_spellcardactive) {
 		uh_spellcardbroken = true;
+		UH_SpellCardDrawHud(uh_spellcardtimeleft, uh_spellcardphase);
+	}
 }
 
 script "uh_SpellCardStop" (void) {
