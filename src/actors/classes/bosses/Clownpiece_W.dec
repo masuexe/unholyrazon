@@ -1049,6 +1049,12 @@ actor Clownpiece_W4 : Clownpiece_SpellWep {
    Flash:
     TNT1 A 1 A_GiveInventory("ClownpieceHealthCheck_W4_P")
     loop
+   Ready2:
+    8I12 A 0 A_GunFlash("Flash", true)
+    8I12 A 0 A_JumpIfHealthLower(2, "TryLifeBreak")
+    8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "Ready3")
+    8I12 A 2 A_GiveInventory("Clownpiece_W4_Ready8_P")
+    loop
    Fire:
     8I12 A 0 A_JumpIfInventory("ClownpieceW4Swing_F", 1, "FireLeft")
    FireRight:
@@ -1079,10 +1085,10 @@ actor Clownpiece_W4 : Clownpiece_SpellWep {
     goto Ready2
    AltFire:
     8I12 A 0 A_GiveInventory("ClownpieceHealthCheck_W4_P")
-    8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200", 100, "StripeFire")
+    8I12 A 0 A_JumpIfInventory("UnholyBossAmmo200", 100 - 50 * CallACS("uh_checkrune", RUNE_ENDLESSAMMO), "StripeFire")
     Goto Ready2
    StripeFire:
-    8I12 A 0 A_TakeInventory("UnholyBossAmmo200", 100)
+    8I12 A 0 A_TakeInventory("UnholyBossAmmo200", 100 - 50 * CallACS("uh_checkrune", RUNE_ENDLESSAMMO))
     8I12 B 1 Offset(-12, 28) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
     8I12 B 1 Offset(-24, 34)
     8I12 C 2 Offset(-15, 18)
@@ -1523,6 +1529,21 @@ actor Clownpiece_Ready8_P : Clownpiece_Ready0_P {
     goto Ammo
    PickupReload:
     TNT1 A 0 A_WeaponReady(8 + 16)
+    goto Ammo
+  }
+}
+
+// W4 Ready loop: below 200 ammo the base Ready8 sets WRF_NoSecondary (8), which
+// locks altfire until the gauge is full. Stripe costs 100 (50 with endless ammo),
+// so uncap altfire once the cost is available.
+actor Clownpiece_W4_Ready8_P : Clownpiece_Ready8_P {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo200", 100 - 50 * CallACS("uh_checkrune", RUNE_ENDLESSAMMO), "PickupAltReady")
+    TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo200", 67, "PickupReload")
+    goto PickupNormal
+   PickupAltReady:
+    TNT1 A 0 A_WeaponReady(WRF_ALLOWRELOAD)
     goto Ammo
   }
 }
