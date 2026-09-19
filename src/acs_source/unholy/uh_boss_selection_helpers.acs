@@ -12,7 +12,7 @@ function int ForceBossChange(str force, bool truerandom) {
     ShowMeTheRCON(StrParam(s:"Boss ", s:StrRight(force, 1)), bossnum);
   }
   else {
-    if (truerandom || bossnum == -666) {bossnum = TrueRandomBoss();}
+    if (truerandom || bossnum == UHBOSS_FORCE_TRUE_RANDOM) {bossnum = TrueRandomBoss();}
     else {bossnum = UHBOSS_FAIL;}
   }
 
@@ -193,9 +193,49 @@ function int PickLeastSeenBossFromPool(int rarity, int avoid) {
   return best;
 }
 
+// Standard (unforced, non-combo) round selection.  Reproduces the Unbound /
+// Razon3 rarity boundary: the candidate comes from UHBOSS_POOL_COMMON unless
+// the RareBossChance pity promotes the slot to UHBOSS_POOL_RARE, and a Rare
+// roll keeps the legacy 10% chance to become a Shadow Trick instead.  It never
+// consults Ultra/Special/EX -- those only appear through an active Strongman
+// queue, an explicit forced id, or a deliberate full-pool TrueRandomBoss()
+// path.  The slot is only used to flag the Shadow trick on the right line-up
+// slot.  Falls back to Common, then to a safe defined boss 0.
+function int PickStandardBoss(int slot) {
+  int pool = UHBOSS_POOL_COMMON;
+  int picked;
+
+  if (random(rarebosschance, 25) >= 25) {
+    if (RandomPercent(10))
+      shadowtricksarr[slot] = true;
+    else
+      pool = UHBOSS_POOL_RARE;
+    rarebosschance = 0;
+  }
+  else
+    rarebosschance++;
+
+  picked = PickLeastSeenBossFromPool(pool, UHBOSS_FAIL);
+  if (picked == UHBOSS_FAIL || !IsBossDefined(picked))
+    picked = PickLeastSeenBossFromPool(UHBOSS_POOL_COMMON, UHBOSS_FAIL);
+  if (picked == UHBOSS_FAIL || !IsBossDefined(picked))
+    picked = 0;
+
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"StandardBoss slot ", i:slot, s:" pool=", i:pool,
+      s:" rarechance=", i:rarebosschance, s:" picked=", i:picked));
+  return picked;
+}
+
+// TrueRandomBoss is the FULL-POOL draw (Ultra / Special / EX / Rare / Common).
+// It may only be reached from paths that genuinely want every tier:
+//   * UHBOSS_FORCE_TRUE_RANDOM or ForceBossChange(..., true);
+//   * the final Shadow body;
+//   * the deliberate all-pool boss events (e.g. bonus event 100, versus).
+// Ordinary unforced rounds MUST use PickStandardBoss(): calling this from the
+// standard branch is what leaked the 5% Ultra roll into opening rounds.
 // NEW#BOSS — pool-based pick (no BOSSRNGMAX holes).  The rarity draw order and
 // probabilities are unchanged; only the in-pool pick now prefers the least-seen
-// boss.  Forced boss and -666 true-random semantics are untouched.
+// boss.  Forced boss and UHBOSS_FORCE_TRUE_RANDOM semantics are untouched.
 function int TrueRandomBoss(void) {
   int rngpick;
   if (RandomPercent(5))
@@ -220,22 +260,28 @@ function int TrueRandomBoss(void) {
 // Select Bosses
 function void SetUpBossSelection_Func(void) {
   int tempboss;
+  int selected;
   for (int i = 0; i < multibosscheck; i++) {
     tempboss = ForceBossChange(StrParam(s:"uh_sv_ForcedBoss", i:i + 1), false);
     if (IsBossDefined(tempboss)) {
-      bossdataarr[i][BOSSDATA_NUM] = tempboss;
+      selected = tempboss;
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"BossSelect slot ", i:i + 1, s:" entry=forced picked=", i:selected));
     }
     else {
-      bossdataarr[i][BOSSDATA_NUM] = TrueRandomBoss();
+      // Ordinary unforced round: Common/Rare only.  Never TrueRandomBoss()
+      // here, or the 5% Ultra roll can leak a 400-404 into an opening round.
+      selected = PickStandardBoss(i);
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"BossSelect slot ", i:i + 1, s:" entry=standard picked=", i:selected));
     }
 
     if (tempboss == 300 || shadowtricksarr[i]) {
       shadowtricksarr[i] = true;
       shadowfakeoutactive = true;
-      bossdataarr[i][BOSSDATA_NUM] = TrueRandomBoss();
+      selected = TrueRandomBoss();
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"BossSelect slot ", i:i + 1, s:" entry=shadow-fullpool picked=", i:selected));
     }
-    else
-      bossdataarr[i][BOSSDATA_NUM] = bossdataarr[i][BOSSDATA_NUM];  // no conversion here: EX bosses are separate UHBOSS_POOL_EX registrations, so the selected id is already the final one
+
+    bossdataarr[i][BOSSDATA_NUM] = selected;
 
     // Feed this slot back into the round-scoped delta so the next slot prefers
     // a different equally-seen boss.  Shadow placeholders are not the final
@@ -244,7 +290,6 @@ function void SetUpBossSelection_Func(void) {
       UH_BossRoundRecord(bossdataarr[i][BOSSDATA_NUM]);
     UH_Log(UH_LOG_DEBUG, StrParam(s:"UnholyBoss", i:i + 1, s:" = ", i:bossdataarr[i][BOSSDATA_NUM]));
   }
-  // debugLog(StrParam(s:"DEBUG TXT: RareBossChance = ",d:RareBossChance);}
 }
 
 // Assigns players as Bosses
