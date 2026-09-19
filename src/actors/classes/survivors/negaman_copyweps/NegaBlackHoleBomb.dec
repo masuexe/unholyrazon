@@ -1,7 +1,7 @@
 actor NegaBlackHoleBombWep_NegaManBar : NegaManBar {args 9, 62}
 
 actor NegaBlackHoleBombWep : BaseNegaManWep {
-  Weapon.AmmoUse 1
+  Weapon.AmmoUse 0
   Weapon.AmmoGive 28
   Weapon.SlotNumber 2
   Inventory.Pickupmessage "$PU_02_MM9"
@@ -24,18 +24,24 @@ actor NegaBlackHoleBombWep : BaseNegaManWep {
    Ready:
     6I02 D 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_DYE9)
    ReadyX:
-    6I02 D 0 A_JumpIfNoAmmo("NoAmmo")
+    6I02 D 0 A_SetArg(4, CallACS("uh_NegaReadyCost", 1))
+    6I02 D 0 A_JumpIfInventory("NegaMM9_Ammo", Args[4], "ReadyHave")
+    6I02 D 0 A_JumpIfInventory("NegaReadyRef_F", Args[4] <= 0, "ReadyHave")
+    Goto NoAmmo
+   ReadyHave:
     6I02 D 8 A_WeaponReady
     6I02 D 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
-    Goto Ready+2
+    Goto ReadyX
    ReadyNoAmmo:
     6I02 D 8 A_WeaponReady(4)
     6I02 D 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
-    6I02 D 0 A_JumpIfNoAmmo("ReadyNoAmmo")
-    Goto ReadyX
+    6I02 D 0 A_SetArg(4, CallACS("uh_NegaReadyCost", 1))
+    6I02 D 0 A_JumpIfInventory("NegaMM9_Ammo", Args[4], "ReadyX")
+    6I02 D 0 A_JumpIfInventory("NegaReadyRef_F", Args[4] <= 0, "ReadyX")
+    Goto ReadyNoAmmo
 
    Fire:
-    6I02 D 0 A_JumpIfNoAmmo("NoAmmo")
+    6I02 D 0 A_JumpIf(!CallACS("uh_NegaTrySpendAmmo", 1), "NoAmmo")
     6I02 D 0 A_GiveInventory("NegaBlackHoleBomb_Fire_P")
     6I02 EFD 2
     6I02 D 0 A_Refire

@@ -1,0 +1,403 @@
+// ===========================================================================
+// negaman_ammo_cost.acs - NegaMan copywep daily random ammo cost.
+//
+// Part of library uh_copyweps (included by uh_copyweps.acs); no LOADACS entry.
+//
+// One server-authoritative interface, split by transaction:
+//   uh_NegaAmmoCost      read-only exact cost (HUD / debug / delayed init)
+//   uh_NegaCanSpendAmmo  read-only "can the activator pay today's cost?"
+//   uh_NegaReadyCost     today's cost for the client-predicted Ready branch
+//   uh_NegaTrySpendAmmo  atomic check-and-take for the current registered weapon
+//   uh_NegaTrySpendExact delayed effect: take a saved cost from an actor pointer
+//
+// The daily multiplier is keyed on the weapon actor name (stable hash), never
+// on registration order, so third-party Nega copyweapons registered through
+// DefineCopyWep(UHCOPY_NEGA, slot, actor) get their own value automatically.
+//
+// Cost 0 is intentionally preserved (Razon3 semantics): a base cost of 1 is a
+// free attack whenever the multiplier rounds below 0.5.
+//
+// Client-prediction contract:
+//   * A_JumpIf and the bare ACS_NamedExecuteWithResult action are skipped on the
+//     network client, but an action argument is evaluated in place: the weapon
+//     Ready state runs A_SetArg(4, CallACS("uh_NegaReadyCost", base)), which has
+//     no client guard and therefore computes and stores today's cost locally on
+//     both sides.  Args[] is an AActor array, so its offset is identical whether
+//     the state is compiled against the weapon or executed with the player as
+//     self (a user_ variable would not be: it resolves against the weapon class
+//     but is read from the player).  The branch is then a local
+//     A_JumpIfInventory(ammo, Args[4], ...) (engine-predicted for the local
+//     weapon psprite) plus a free-attack probe for cost 0, so Ready is daily
+//     accurate with no per-frame RTT and no stale server flag.
+//   * Charge/tier selection (Magma Bazooka, Wild Coil) is a local
+//     A_JumpIfInventory against the static base threshold; the daily cost is
+//     applied afterwards as a non-branching clamped spend so client and server
+//     never pick different attack tiers.
+//   * Fire / Hold gates and the actual spend still use CallACS: that branch is
+//     server-authoritative by design (optimistic client prediction, corrected
+//     by the server psprite result).
+// DECORATE keeps Weapon.AmmoUse 0 so the engine's DepleteAmmo() cannot
+// double-charge A_FireCustomMissile / A_FireBullets.
+// ===========================================================================
+
+#define UH_NEGA_AMMO_SALT 931
+#define UH_NEGA_AMMO_LOG_TICS 175  // ~5s at 35 tics/s: throttle diagnostic spam
+
+// Passed from DECORATE as numeric literals.
+#define UH_NEGA_AMMO_NORMAL 0
+#define UH_NEGA_AMMO_FORCE  1  // ignore infinite ammo (audited legacy continuous drains)
+#define UH_NEGA_AMMO_CLAMP  2  // commit-style: take min(cost, stock); 0 only when empty
+
+int uh_negaammo_lasterrtic = -9999;
+
+function void UH_NegaAmmoLogError(str msg) {
+	int t = Timer();
+	if (t - uh_negaammo_lasterrtic < UH_NEGA_AMMO_LOG_TICS)
+		return;
+	uh_negaammo_lasterrtic = t;
+	UH_Log(UH_LOG_ERROR, StrParam(s:"uh_NegaAmmoCost: ", s:msg));
+}
+
+// Activator's ready weapon -> registered Nega row, or -1.
+function int UH_NegaCurrentRow(void) {
+	int row = FindCopyWepByActor(GetWeapon());
+	if (row < 0)
+		return -1;
+	if (GetCopyWepKind(row) != UHCOPY_NEGA)
+		return -1;
+	return row;
+}
+
+// row.slot -> NegaMM*_Ammo.  Reuses UH_CopyWepNegaAmmo: one generation ammo table.
+function str UH_NegaAmmoForRow(int row) {
+	if (row < 0)
+		return "";
+	if (GetCopyWepKind(row) != UHCOPY_NEGA)
+		return "";
+	return UH_CopyWepNegaAmmo(GetCopyWepSlot(row));
+}
+
+// Today's fixed multiplier in [0.0, 2.0] for one weapon actor name.
+function int UH_NegaAmmoMultiplierForActor(str w) {
+	int date = UH_DateToIntUTC();
+	return UH_SeedRandom(date + UH_HashStr(w) * UH_NEGA_AMMO_SALT, 0.0, 2.0);
+}
+
+// round(multiplier * baseCost).  -1 marks an invalid negative base cost.
+function int UH_NegaAmmoCostForActor(str w, int baseCost) {
+	int mul;
+	if (baseCost < 0)
+		return -1;
+	if (baseCost == 0)
+		return 0;
+	if (!GetCVar("rz_sv_randNegaManCopywepAmmo"))
+		return baseCost;
+	// mul is Q16; mul * baseCost + 0.5 then >>16 is round-half-up without
+	// overflow (max 131072 * 28 = 3.7M, well inside 32-bit).
+	mul = UH_NegaAmmoMultiplierForActor(w);
+	return (mul * baseCost + 0.5) >> 16;
+}
+
+// Simulate TIF_NOTAKEINFINITE: sv_infiniteammo (dmflags DF_INFINITE_AMMO) and
+// the PowerInfiniteAmmo powerup both suppress ordinary Nega ammo consumption.
+// PowerEndlessAmmo_ST is checked only if a package defines it (safe no-op
+// otherwise) so the Razon3 omission is not inherited.
+function bool UH_NegaHasInfiniteAmmo(void) {
+	if (GetCVar("sv_infiniteammo"))
+		return true;
+	if (CheckInventory("PowerInfiniteAmmo"))
+		return true;
+	if (CheckInventory("PowerEndlessAmmo_ST"))
+		return true;
+	return false;
+}
+
+// ---------------------------------------------------------------------------
+// Read-only cost.  pointer 0 = current activator; non-zero = switch first
+// (delayed actors use AAPTR_TARGET to initialise their saved costs).
+// ---------------------------------------------------------------------------
+script "uh_NegaAmmoCost" (int baseCost, int pointer) {
+	int row;
+	if (pointer != 0)
+		SetActivator(0, pointer);
+	row = UH_NegaCurrentRow();
+	if (row < 0) {
+		UH_NegaAmmoLogError(StrParam(s:"weapon not registered as Nega: ", s:GetWeapon()));
+		SetResultValue(-1);
+		terminate;
+	}
+	if (baseCost < 0) {
+		UH_NegaAmmoLogError("negative base cost");
+		SetResultValue(-1);
+		terminate;
+	}
+	SetResultValue(UH_NegaAmmoCostForActor(GetWeapon(), baseCost));
+}
+
+// ---------------------------------------------------------------------------
+// Read-only can-spend.  Used by Ready / ReadyNoAmmo / charge-tier checks.
+// ---------------------------------------------------------------------------
+script "uh_NegaCanSpendAmmo" (int baseCost) {
+	int row = UH_NegaCurrentRow();
+	int cost;
+	str ammo;
+	if (row < 0) {
+		UH_NegaAmmoLogError(StrParam(s:"weapon not registered as Nega: ", s:GetWeapon()));
+		SetResultValue(0);
+		terminate;
+	}
+	if (baseCost < 0) {
+		UH_NegaAmmoLogError("negative base cost");
+		SetResultValue(0);
+		terminate;
+	}
+	ammo = UH_NegaAmmoForRow(row);
+	if (StrCmp(ammo, "") == 0) {
+		UH_NegaAmmoLogError("empty ammo name for registered Nega weapon");
+		SetResultValue(0);
+		terminate;
+	}
+	cost = UH_NegaAmmoCostForActor(GetWeapon(), baseCost);
+	if (cost <= 0) {
+		SetResultValue(1);
+		terminate;
+	}
+	if (UH_NegaHasInfiniteAmmo()) {
+		SetResultValue(1);
+		terminate;
+	}
+	if (CheckInventory(ammo) >= cost)
+		SetResultValue(1);
+	else
+		SetResultValue(0);
+}
+
+// ---------------------------------------------------------------------------
+// Atomic check-and-take for the current registered Nega weapon.  The check and
+// the take happen inside one synchronised script call, so there is no TOCTOU
+// window between Ready's CanSpend and the actual attack.
+// ---------------------------------------------------------------------------
+script "uh_NegaTrySpendAmmo" (int baseCost, int flags) {
+	int row = UH_NegaCurrentRow();
+	int cost;
+	str ammo;
+	if (row < 0) {
+		UH_NegaAmmoLogError(StrParam(s:"weapon not registered as Nega: ", s:GetWeapon()));
+		SetResultValue(0);
+		terminate;
+	}
+	if (baseCost < 0) {
+		UH_NegaAmmoLogError("negative base cost");
+		SetResultValue(0);
+		terminate;
+	}
+	ammo = UH_NegaAmmoForRow(row);
+	if (StrCmp(ammo, "") == 0) {
+		UH_NegaAmmoLogError("empty ammo name for registered Nega weapon");
+		SetResultValue(0);
+		terminate;
+	}
+	cost = UH_NegaAmmoCostForActor(GetWeapon(), baseCost);
+	if (cost <= 0) {
+		SetResultValue(1);
+		terminate;
+	}
+	if (!(flags & UH_NEGA_AMMO_FORCE) && UH_NegaHasInfiniteAmmo()) {
+		SetResultValue(1);
+		terminate;
+	}
+
+	if (flags & UH_NEGA_AMMO_CLAMP) {
+		int have = CheckInventory(ammo);
+		if (have <= 0) {
+			SetResultValue(0);
+			terminate;
+		}
+		if (have < cost)
+			TakeInventory(ammo, have);
+		else
+			TakeInventory(ammo, cost);
+		SetResultValue(1);
+		terminate;
+	}
+
+	if (CheckInventory(ammo) < cost) {
+		SetResultValue(0);
+		terminate;
+	}
+	TakeInventory(ammo, cost);
+	SetResultValue(1);
+}
+
+// ---------------------------------------------------------------------------
+// Delayed / committed take.  slot is UHCOPY_NEGA_*; exactCost was saved while
+// the weapon was still known; pointer is a SetActivator(0, pointer) selector
+// (AAPTR_TARGET for marker effects).  Never re-reads the current weapon.
+// ---------------------------------------------------------------------------
+script "uh_NegaTrySpendExact" (int slot, int exactCost, int flags, int pointer) {
+	str ammo;
+	int have;
+	if (pointer != 0) {
+		if (!SetActivator(0, pointer)) {
+			SetResultValue(0);
+			terminate;
+		}
+	}
+	ammo = UH_CopyWepNegaAmmo(slot);
+	if (StrCmp(ammo, "") == 0) {
+		UH_NegaAmmoLogError(StrParam(s:"invalid Nega slot: ", i:slot));
+		SetResultValue(0);
+		terminate;
+	}
+	if (exactCost < 0) {
+		UH_NegaAmmoLogError("negative exact cost");
+		SetResultValue(0);
+		terminate;
+	}
+	if (exactCost == 0) {
+		SetResultValue(1);
+		terminate;
+	}
+	if (!(flags & UH_NEGA_AMMO_FORCE) && UH_NegaHasInfiniteAmmo()) {
+		SetResultValue(1);
+		terminate;
+	}
+
+	have = CheckInventory(ammo);
+	if (flags & UH_NEGA_AMMO_CLAMP) {
+		if (have <= 0) {
+			SetResultValue(0);
+			terminate;
+		}
+		if (have < exactCost)
+			TakeInventory(ammo, have);
+		else
+			TakeInventory(ammo, exactCost);
+		SetResultValue(1);
+		terminate;
+	}
+
+	if (have < exactCost) {
+		SetResultValue(0);
+		terminate;
+	}
+	TakeInventory(ammo, exactCost);
+	SetResultValue(1);
+}
+
+// ---------------------------------------------------------------------------
+// Debug: print today's multiplier and sample costs for every registered Nega
+// copyweapon.  Display only; never touches inventory.
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Local Ready/ReadyNoAmmo cost.
+//
+// A_JumpIf and the bare ACS_NamedExecuteWithResult action are both skipped on
+// the network client (thingdef_codeptr.cpp: A_JumpIf client guard, and the
+// ACS_NamedExecuteWithResult action guard), so a Ready branch must not call ACS
+// directly.  A_SetArg has no client guard and its value argument is evaluated
+// in place, so A_SetArg(4, CallACS("uh_NegaReadyCost", base)) *does* run this
+// script on the client and stores today's cost in the player's Args[4], which
+// A_JumpIfInventory can read locally (Args is an AActor field, so the offset is
+// the same for the weapon-compiled expression and the player runtime self).
+// Returns a large sentinel on an unregistered weapon so a mis-registered weapon
+// stays NoAmmo instead of becoming free, and 0 under infinite ammo (which never
+// deducts) so sv_infiniteammo keeps every weapon usable.
+// ---------------------------------------------------------------------------
+script "uh_NegaReadyCost" (int baseCost) {
+	int row = UH_NegaCurrentRow();
+	int cost;
+	if (row < 0)
+		{ SetResultValue(255); terminate; }
+	cost = UH_NegaAmmoCostForActor(GetWeapon(), baseCost);
+	if (cost < 0)
+		{ SetResultValue(255); terminate; }
+	// Infinite ammo never deducts, so the Ready display treats it as free.
+	if (UH_NegaHasInfiniteAmmo())
+		{ SetResultValue(0); terminate; }
+	SetResultValue(cost);
+}
+
+script "uh_debug_ShowTodayNegaAmmo" (void) {
+	int date = UH_DateToIntUTC();
+	int n = CountCopyWepByKind(UHCOPY_NEGA);
+	UH_Log(UH_LOG_DEBUG, StrParam(s:"uh_debug_ShowTodayNegaAmmo date=", i:date,
+		s:" rz_sv_randNegaManCopywepAmmo=", i:GetCVar("rz_sv_randNegaManCopywepAmmo")));
+	for (int i = 0; i < n; i++) {
+		int row = FindCopyWepRowByKindIndex(UHCOPY_NEGA, i);
+		str actor = GetCopyWepActor(row);
+		UH_Log(UH_LOG_DEBUG, StrParam(s:actor, s:" slot=", i:GetCopyWepSlot(row),
+			s:" mul=", f:UH_NegaAmmoMultiplierForActor(actor),
+			s:" c1=", i:UH_NegaAmmoCostForActor(actor, 1),
+			s:" c2=", i:UH_NegaAmmoCostForActor(actor, 2),
+			s:" c5=", i:UH_NegaAmmoCostForActor(actor, 5),
+			s:" c14=", i:UH_NegaAmmoCostForActor(actor, 14)));
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Committed delayed cost ("grab now, settle on release"): Super Arm saves the
+// exact cost while the weapon is still known and settles it on Throw_P, even
+// when the throw happens after a weapon switch.  Keyed by player number, so no
+// inventory cost flags and no reliance on the current ready weapon.
+// ---------------------------------------------------------------------------
+int uh_nega_savedcost[64];
+int uh_nega_savedslot[64];
+int uh_nega_savedvalid[64];
+
+script "uh_NegaSaveCost" (int slot, int baseCost) {
+	int pn = PlayerNumber();
+	int cost;
+	if (pn < 0) {
+		SetResultValue(0);
+		terminate;
+	}
+	cost = UH_NegaAmmoCostForActor(GetWeapon(), baseCost);
+	if (cost < 0) {
+		UH_NegaAmmoLogError("negative base cost in SaveCost");
+		SetResultValue(0);
+		terminate;
+	}
+	uh_nega_savedcost[pn] = cost;
+	uh_nega_savedslot[pn] = slot;
+	uh_nega_savedvalid[pn] = 1;
+	SetResultValue(cost);
+}
+
+// Consume the cost saved by uh_NegaSaveCost.  This is a commitment: it takes
+// min(cost, stock) and always reports success, so a completed grab still
+// finishes even if the stock dropped during the carry.  A missing or stale
+// saved slot is a safe no-op rather than a charge against the wrong generation.
+script "uh_NegaTrySpendSaved" (int slot, int flags) {
+	int pn = PlayerNumber();
+	int cost;
+	int have;
+	str ammo;
+	if (pn < 0) {
+		SetResultValue(0);
+		terminate;
+	}
+	if (!uh_nega_savedvalid[pn] || uh_nega_savedslot[pn] != slot) {
+		SetResultValue(1);
+		terminate;
+	}
+	cost = uh_nega_savedcost[pn];
+	uh_nega_savedvalid[pn] = 0;
+	ammo = UH_CopyWepNegaAmmo(slot);
+	if (StrCmp(ammo, "") == 0) {
+		SetResultValue(1);
+		terminate;
+	}
+	if (!(flags & UH_NEGA_AMMO_FORCE) && UH_NegaHasInfiniteAmmo()) {
+		SetResultValue(1);
+		terminate;
+	}
+	have = CheckInventory(ammo);
+	if (cost > 0 && have > 0) {
+		if (have < cost)
+			TakeInventory(ammo, have);
+		else
+			TakeInventory(ammo, cost);
+	}
+	SetResultValue(1);
+}

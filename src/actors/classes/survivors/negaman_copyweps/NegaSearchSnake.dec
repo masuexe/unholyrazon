@@ -1,7 +1,7 @@
 actor NegaSearchSnakeWep_NegaManBar : NegaManBar {args 3, 110}
 
 actor NegaSearchSnakeWep : BaseNegaManWep {
-  Weapon.AmmoUse 2
+  Weapon.AmmoUse 0
   Weapon.AmmoGive 28
   Weapon.SlotNumber 2
   Inventory.Pickupmessage "$PU_02_MM3"
@@ -24,18 +24,24 @@ actor NegaSearchSnakeWep : BaseNegaManWep {
    Ready:
     6H02 J 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_DYE3)
    ReadyX:
-    6H02 J 0 A_JumpIfNoAmmo("NoAmmo")
+    6H02 J 0 A_SetArg(4, CallACS("uh_NegaReadyCost", 2))
+    6H02 J 0 A_JumpIfInventory("NegaMM3_Ammo", Args[4], "ReadyHave")
+    6H02 J 0 A_JumpIfInventory("NegaReadyRef_F", Args[4] <= 0, "ReadyHave")
+    Goto NoAmmo
+   ReadyHave:
     6H02 J 8 A_WeaponReady
     6H02 J 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
-    Goto Ready+2
+    Goto ReadyX
    ReadyNoAmmo:
     6H02 J 8 A_WeaponReady(4)
     6H02 J 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
-    6H02 J 0 A_JumpIfNoAmmo("ReadyNoAmmo")
-    Goto ReadyX
+    6H02 J 0 A_SetArg(4, CallACS("uh_NegaReadyCost", 2))
+    6H02 J 0 A_JumpIfInventory("NegaMM3_Ammo", Args[4], "ReadyX")
+    6H02 J 0 A_JumpIfInventory("NegaReadyRef_F", Args[4] <= 0, "ReadyX")
+    Goto ReadyNoAmmo
 
    Fire:
-    6H02 J 0 A_JumpIfNoAmmo("NoAmmo")
+    6H02 J 0 A_JumpIf(!CallACS("uh_NegaTrySpendAmmo", 2), "NoAmmo")
     6H02 J 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
     6H02 J 0 A_FireCustomMissile("NegaSearchSnakeStart", 0, 1, 8, 0)
     6H02 KL 5

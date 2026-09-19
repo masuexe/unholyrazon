@@ -90,6 +90,19 @@ function int UH_DateToInt(void) {
 		+ GetTimeProperty(time, TM_DAY);
 }
 
+// UTC variant of UH_DateToInt, used by the Nega daily ammo cost only.
+// GetTimeProperty defaults to localtime, so a client and a server in different
+// time zones (or across a DST / midnight boundary) can disagree about "today"
+// for hours.  The authoritative spend is server-side, but the client-predicted
+// Ready branch must roll the day at the same instant, so Nega uses UTC.
+// MegaMan's daily damage keeps UH_DateToInt (local) unchanged.
+function int UH_DateToIntUTC(void) {
+	int time = SystemTime();
+	return GetTimeProperty(time, TM_YEAR, true) * 10000
+		+ (GetTimeProperty(time, TM_MONTH, true) + 1) * 100
+		+ GetTimeProperty(time, TM_DAY, true);
+}
+
 function int UH_SeedRandom(int seed, int minval, int maxval) {
 	int a = 1919810;
 	int b = 114514;
