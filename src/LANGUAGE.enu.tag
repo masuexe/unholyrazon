@@ -11,7 +11,7 @@
 // ===========================================================================
 
 TAG_Megaman_W = "Mega Buster";
-TAG_Qwant_W = "Pok\xE9mon Master Buster";
+TAG_Qwant_W = "Pokemon Master Buster";
 TAG_BLAZEKICK = "Blaze Kick";
 TAG_BULLETSEED = "Bullet Seed";
 TAG_CHARGEBEAM = "Charge Beam";
