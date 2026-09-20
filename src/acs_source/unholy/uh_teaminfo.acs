@@ -61,6 +61,8 @@ int uhtilocalplayer = -1;
 int uhtistathp[MAX_PLAYERS];
 int uhtistatmaxhp[MAX_PLAYERS];
 int uhtistatarmor[MAX_PLAYERS];
+int uhtistatabsorb[MAX_PLAYERS];
+int uhtistatlives[MAX_PLAYERS];
 str uhtistattag[MAX_PLAYERS];
 int uhtistatammo1[MAX_PLAYERS];
 int uhtistatammo2[MAX_PLAYERS];
@@ -77,6 +79,8 @@ function void UH_Ti_ClearStats(int pn) {
   uhtistathp[pn] = 0;
   uhtistatmaxhp[pn] = 0;
   uhtistatarmor[pn] = 0;
+  uhtistatabsorb[pn] = 0;
+  uhtistatlives[pn] = 0;
   uhtistattag[pn] = "";
   uhtistatammo1[pn] = 0;
   uhtistatammo2[pn] = 0;
@@ -151,10 +155,14 @@ script "uh_ti_sync_policy" (int policy) CLIENTSIDE {
 }
 
 // Per-subject live stats addressed to THIS client only.  NamedExecuteClient-
-// Script passes (subject, packed1, tag, packed2); the server packs hp/maxhp and
-// armor/ammo so the four-int limit is never exceeded.
-script "uh_ti_stat" (int pn, int packed1, int tag, int packed2) CLIENTSIDE {
+// Script passes (packed_s, packed1, tag, packed2); the server packs
+// subject+absorb+lives, hp/maxhp, and armor/ammo so the four-int limit is never
+// exceeded.
+script "uh_ti_stat" (int packed_s, int packed1, int tag, int packed2) CLIENTSIDE {
+  int pn = packed_s & 63;
   if (pn < 0 || pn >= MAX_PLAYERS) { terminate; }
+  uhtistatabsorb[pn] = (packed_s >> 6) & 127;
+  uhtistatlives[pn] = (packed_s >> 13) & 63;
   uhtistathp[pn] = packed1 & 65535;              // unsigned 16-bit
   uhtistatmaxhp[pn] = (packed1 >> 16) & 65535;   // unsigned 16-bit
   uhtistatarmor[pn] = packed2 & 1023;
@@ -294,6 +302,31 @@ function str UH_ClientPortraitTex(int pn) {
   // to the server-synced UIX index when this client never saw the live class.
   if (uhscoreiconcachevalid[pn]) { return uhscoreiconcache[pn]; }
   return UH_PortraitTexForIndex(uhtiportrait[pn]);
+}
+
+function str UH_Ti_GetClassName(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { return ""; }
+  str cls = "";
+  if (uhtilife[pn] != PLS_DEAD && uhtilife[pn] != PLS_NULL) {
+    cls = GetActorClass(pn + 1000);
+    if (StrLen(cls) != 0) { uhticlasscache[pn] = cls; }
+  }
+  if (StrLen(cls) == 0 && StrLen(uhticlasscache[pn]) != 0) {
+    cls = uhticlasscache[pn];
+  }
+  if (StrLen(cls) == 0 && uhtiportrait[pn] >= 0) {
+    cls = UH_PortraitClassForIndex(uhtiportrait[pn]);
+  }
+  if (StrICmp(cls, "MegaManU") == 0) { return "Mega Man"; }
+  if (StrICmp(cls, "BusterExpert") == 0) { return "Buster Expert"; }
+  if (StrICmp(cls, "BusterMistress") == 0) { return "Buster Mistress"; }
+  if (StrICmp(cls, "TrueBusterExpert") == 0) { return "True Buster Expert"; }
+  if (StrICmp(cls, "TrueBusterMistress") == 0) { return "True Buster Mistress"; }
+  int len = StrLen(cls);
+  if (len > 2 && StrICmp(StrRight(cls, 2), "_U") == 0) {
+    return StrLeft(cls, len - 2);
+  }
+  return cls;
 }
 
 function bool UH_IsUnholyTeamMode(void) {
@@ -446,10 +479,19 @@ function void UH_Ti_RefreshStats(void) {
     int armor = CheckActorInventory(tid, "BasicArmor");
     if (armor < 0) { armor = 0; } if (armor > 1023) { armor = 1023; }
 
+    int lives = CheckActorInventory(tid, "PlayerPropertyExtraLife");
+    if (lives < 0) { lives = 0; } if (lives > 63) { lives = 63; }
+    int absorbPct = 0;
+
     str tag = "";
     int a1 = 0; int a2 = 0; int has1 = 0; int has2 = 0;
     if (hp > 0) {
       SetActivatorToPlayer(s);
+      if (armor > 0) {
+        absorbPct = FixedMul(GetArmorInfo(ARMORINFO_SAVEPERCENT), 100.0) >> 16;
+        if (absorbPct < 0) { absorbPct = 0; }
+        if (absorbPct > 100) { absorbPct = 100; }
+      }
       str wactor = GetWeapon();
       SetActivator(0, AAPTR_NULL);
       if (StrICmp(wactor, uhsrvwepactor[s]) != 0) {
@@ -473,11 +515,12 @@ function void UH_Ti_RefreshStats(void) {
 
     int packed1 = (hp & 65535) | ((maxhp & 65535) << 16);
     int packed2 = armor | (a1 << 10) | (a2 << 20) | (has1 << 30) | (has2 << 31);
+    int packed_s = (s & 63) | ((absorbPct & 127) << 6) | ((lives & 63) << 13);
 
     for (int vw = 0; vw < MAX_PLAYERS; vw++) {
       if (!velig[vw]) { continue; }
       if (!vspec[vw] && !UH_Ti_ServerAreDisplayTeammates(vw, s)) { continue; }
-      NamedExecuteClientScript("uh_ti_stat", vw, s, packed1, tag, packed2);
+      NamedExecuteClientScript("uh_ti_stat", vw, packed_s, packed1, tag, packed2);
     }
   }
 }
@@ -540,6 +583,9 @@ function void UH_Ti_Draw(int viewer, int cpn) {
   bool showhealth = GetUserCVar(cpn, "uh_cl_teaminfo_health") != 0;
   bool showweapon = GetUserCVar(cpn, "uh_cl_teaminfo_weapon") != 0;
   bool showdead = GetUserCVar(cpn, "uh_cl_teaminfo_dead") != 0;
+  int hpstyle = GetUserCVar(cpn, "uh_cl_teaminfo_hpstyle");
+  int subline = GetUserCVar(cpn, "uh_cl_teaminfo_subline");
+  bool showlives = GetUserCVar(cpn, "uh_cl_teaminfo_lives") != 0;
 
   int scale = GetUserCVar(cpn, "uh_cl_teaminfo_scale");
   if (scale < 50) { scale = 50; } if (scale > 200) { scale = 200; }
@@ -608,9 +654,16 @@ function void UH_Ti_Draw(int viewer, int cpn) {
     int fy2 = ((y + 2 * linestep) * 1.0) + 0.1;
 
     if (shownames) {
-      HudMessageBold(n:i + 1;
-        HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - i, CR_GREY,
-        fx, fy, 0.1, falpha);
+      if (showlives && uhtistatlives[i] > 0) {
+        HudMessageBold(n:i + 1, s:" \cG[x", i:uhtistatlives[i], s:"]";
+          HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - i, CR_GREY,
+          fx, fy, 0.1, falpha);
+      }
+      else {
+        HudMessageBold(n:i + 1;
+          HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - i, CR_GREY,
+          fx, fy, 0.1, falpha);
+      }
     }
 
     if (showhealth) {
@@ -629,29 +682,116 @@ function void UH_Ti_Draw(int viewer, int cpn) {
         if (pct > 75) { hcol = CR_GREEN; }
         else if (pct > 50) { hcol = CR_GOLD; }
         else if (pct > 25) { hcol = CR_ORANGE; }
-        HudMessageBold(i:hp, s:"\cD / ", i:uhtistatarmor[i];
-          HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
-          fx, fy1, 0.1, falpha);
+
+        int armor = uhtistatarmor[i];
+        int absorb = uhtistatabsorb[i];
+
+        switch (hpstyle) {
+          default:
+          case 0: // HP / Max HP (+Armor)
+            if (armor > 0 && absorb > 0) {
+              HudMessageBold(i:hp, s:"\cD/", i:maxhp, s:" \cD[\cC+", i:armor, s:" \cA(", i:absorb, s:"%)\cD]";
+                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                fx, fy1, 0.1, falpha);
+            }
+            else if (armor > 0) {
+              HudMessageBold(i:hp, s:"\cD/", i:maxhp, s:" \cD[\cC+", i:armor, s:"\cD]";
+                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                fx, fy1, 0.1, falpha);
+            }
+            else {
+              HudMessageBold(i:hp, s:"\cD/", i:maxhp;
+                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                fx, fy1, 0.1, falpha);
+            }
+            break;
+
+          case 1: // HP Only
+            if (armor > 0 && absorb > 0) {
+              HudMessageBold(i:hp, s:" \cD[\cC+", i:armor, s:" \cA(", i:absorb, s:"%)\cD]";
+                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                fx, fy1, 0.1, falpha);
+            }
+            else if (armor > 0) {
+              HudMessageBold(i:hp, s:" \cD[\cC+", i:armor, s:"\cD]";
+                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                fx, fy1, 0.1, falpha);
+            }
+            else {
+              HudMessageBold(i:hp;
+                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                fx, fy1, 0.1, falpha);
+            }
+            break;
+
+          case 2: // Percentage
+            if (armor > 0 && absorb > 0) {
+              HudMessageBold(i:pct, s:"% \cD[\cC+", i:armor, s:" \cA(", i:absorb, s:"%)\cD]";
+                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                fx, fy1, 0.1, falpha);
+            }
+            else if (armor > 0) {
+              HudMessageBold(i:pct, s:"% \cD[\cC+", i:armor, s:"\cD]";
+                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                fx, fy1, 0.1, falpha);
+            }
+            else {
+              HudMessageBold(i:pct, s:"%";
+                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                fx, fy1, 0.1, falpha);
+            }
+            break;
+
+          case 3: // HP / Armor (Classic Doom, only shows armor if armor > 0)
+            if (armor > 0 && absorb > 0) {
+              HudMessageBold(i:hp, s:"\cD / \cC", i:armor, s:" \cA(", i:absorb, s:"%)";
+                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                fx, fy1, 0.1, falpha);
+            }
+            else if (armor > 0) {
+              HudMessageBold(i:hp, s:"\cD / \cC", i:armor;
+                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                fx, fy1, 0.1, falpha);
+            }
+            else {
+              HudMessageBold(i:hp;
+                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                fx, fy1, 0.1, falpha);
+            }
+            break;
+        }
       }
     }
 
-    if (showweapon && !dead && StrLen(uhtistattag[i]) != 0) {
+    if (showweapon && !dead && subline != 3) {
       int wy = fy2;
-      if (uhtistathasammo2[i]) {
-        HudMessageBold(l:uhtistattag[i], s:"\cF ", i:uhtistatammo1[i],
-          s:"\cF ", i:uhtistatammo2[i];
-          HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_GREEN,
-          fx, wy, 0.1, falpha);
+      bool haswep = (StrLen(uhtistattag[i]) != 0);
+
+      if (subline == 1 || (!haswep && subline == 0)) {
+        str clsname = UH_Ti_GetClassName(i);
+        if (StrLen(clsname) != 0) {
+          HudMessageBold(s:clsname;
+            HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_CYAN,
+            fx, wy, 0.1, falpha);
+        }
       }
-      else if (uhtistathasammo1[i]) {
-        HudMessageBold(l:uhtistattag[i], s:"\cF ", i:uhtistatammo1[i];
-          HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_GREEN,
-          fx, wy, 0.1, falpha);
-      }
-      else {
-        HudMessageBold(l:uhtistattag[i], s:"\cG -";
-          HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_GREEN,
-          fx, wy, 0.1, falpha);
+      else if (haswep) {
+        if (uhtistathasammo2[i]) {
+          HudMessageBold(l:uhtistattag[i], s:"\cF ", i:uhtistatammo1[i],
+            s:"\cF ", i:uhtistatammo2[i];
+            HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_GREEN,
+            fx, wy, 0.1, falpha);
+        }
+        else if (uhtistathasammo1[i]) {
+          HudMessageBold(l:uhtistattag[i], s:"\cF ", i:uhtistatammo1[i];
+            HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_GREEN,
+            fx, wy, 0.1, falpha);
+        }
+        else {
+          HudMessageBold(l:uhtistattag[i], s:"\cG -";
+            HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_GREEN,
+            fx, wy, 0.1, falpha);
+        }
       }
     }
 
