@@ -215,6 +215,173 @@ Three Bugbot findings were fixed:
   tracked launch profile with UIX before this pk3; the Unholy-only path does not
   require UIX.
 
+## Built-in scoreboard portrait repair
+
+### Symptom and corrected diagnosis
+
+`Screenshot From 2026-09-20 23-13-25.png` shows solid black/green squares to
+the left of player names, while `Snipaste_2026-09-20_23-16-13.png` from
+classes-v9gh_ shows recognizable class faces.
+
+The squares do **not** prove that `UHPlayerIcon` was parsed as a Color column.
+Engine source confirms that the MAPINFO declaration
+`AddCustomData = "UHPlayerIcon", "Texture", ""` makes the custom column a
+`DATATYPE_TEXTURE`; `DataScoreColumn::DrawValue` then takes the texture drawing
+path.  The reference classes mod also does not use a fundamentally different
+asset format: `TEXTURES.C_ICONS` defines 32x32 face textures with
+`XScale/YScale 4.0`, exactly the same effective 8x8 size used by the Unholy
+`UMUG_*`, `UB*MUG` and `I_MUG*` definitions.
+
+Later runtime evidence refines this diagnosis: portraits render correctly on
+the result scoreboard.  Therefore the Texture declaration, the portrait names
+and `SetCustomPlayerValue` transport are capable of drawing real faces.  The
+solid squares seen during the in-game TAB view are not failed portraits.
+
+There are **two independent in-game TAB issues**:
+
+1. The current Unholy `ColumnOrder` still includes `CountryFlag` immediately
+   after `UHPlayerIcon`.  The classes-v9gh_ reference explicitly comments out
+   `CountryFlag`.  During in-game TAB, when `UHPlayerIcon` has not refreshed and
+   is disabled as empty, the country column occupies the position immediately
+   left of the player name.  The local player's configured country can appear
+   as a mostly green cell, while bots/players without useful country data can
+   appear black.  These are the reported green/black squares.  The original
+   Unholy setup can expose the same native country/player metadata column, so
+   its occurrence there does not implicate the new portrait code.
+2. The new `UHPlayerIcon` implementation has an additional refresh defect.
+   Its scoreboard loop is an `OPEN CLIENTSIDE` script and currently tests:
+
+```c
+GetPlayerInput(-1, INPUT_BUTTONS) & BT_SHOWSCORES
+```
+
+For `GetPlayerInput`, `-1` means the script's current activator.  An OPEN
+script normally has no player activator, so TAB is not detected.  Refresh only
+happens in `GAMESTATE_INRESULTSEQUENCE`; during an ordinary in-game TAB view,
+`SetCustomPlayerValue` may never be reached.  This is a bug introduced by the
+new per-viewer column, but it does not explain the original Unholy squares.
+
+### Chosen repair
+
+1. Resolve the local player exactly as the assist display does:
+
+   ```c
+   int viewer = ConsolePlayerNumber();
+   if (viewer < 0) { viewer = uhtilocalplayer; }
+   ```
+
+2. Read scoreboard input from that explicit player slot:
+
+   ```c
+   bool shown = viewer >= 0
+     && (GetPlayerInput(viewer, INPUT_BUTTONS) & BT_SHOWSCORES) != 0;
+   ```
+
+   Keep the result-sequence fallback.  Do not use `GetPlayerInput(-1, ...)` in
+   the OPEN loop.
+
+3. On the transition from hidden to shown, invalidate the icon write cache or
+   compare it against the engine value returned by
+   `GetCustomPlayerValue("UHPlayerIcon", i)`.  Comparing only against
+   `uhtiiconset[i]` assumes nobody overwrote the engine-side value; that is
+   already false on listen servers.  While the scoreboard stays open, refresh
+   changed roles/classes normally.  On close, retaining the values is fine as
+   long as the next open verifies the engine value.
+
+4. Remove `"CountryFlag"` from Unholy's owned `ColumnOrder`, matching the
+   classes-v9gh_ layout that defines the visual target.  This removes the
+   unrelated green/black cells and ensures the only graphic immediately before
+   `Player` is `UHPlayerIcon` (apart from status/artifact columns when they
+   actually contain data).  Do not change the country-flag renderer or atlas;
+   it is simply outside this scoreboard design.
+
+5. Retain the existing portrait resources for the first repaired build.  The
+   successful result scoreboard proves that wholesale generation of a new
+   `USI*` asset set is unnecessary.  Keep a separate scoreboard mapping only
+   where actual class mappings differ (for example LuckyLass uses `UMUG_6_`,
+   not `UMUG_6`).  Consider dedicated pixel-adjusted icons only for individual
+   faces that remain unreadable after the country column is removed and the TAB
+   refresh is fixed.
+
+6. Add a temporary diagnostic during implementation, then remove it:
+
+   ```c
+   str wanted = UH_ClientPortraitTex(i);
+   SetCustomPlayerValue("UHPlayerIcon", i, wanted);
+   str stored = GetCustomPlayerValue("UHPlayerIcon", i);
+   ```
+
+   For one known class, verify `wanted == stored` and that the texture name is
+   the expected existing face texture.  This separates a data-path failure
+   from an unrelated native column.  A correct stored name plus the already
+   working result scoreboard proves SCORINFO and ACS transport.
+
+### Listen-server limitation and safe policy
+
+Per-viewer custom player data works locally on remote clients, but not safely
+inside a listen-server process.  `PlayerData::SetValue` broadcasts every
+server-state change to all clients.  The ACS API exposes no
+`SVCF_ONLYTHISCLIENT` target argument, so one host cannot store a private
+`UHPlayerIcon` value without altering every client's copy.
+
+The safe supported policy is therefore:
+
+- dedicated server + remote clients: full per-viewer portrait matrix;
+- offline/single local process with no remote clients: local portraits are
+  acceptable;
+- listen server with remote clients: do not let the host write private custom
+  values.  Prefer hiding the host's custom portrait column over broadcasting
+  Survivor/Eye information incorrectly.  Remote clients may still compute
+  their own local copies.
+
+Do not describe “every client overwrites on open” as a complete mitigation:
+the existing cache can suppress that correction, and simultaneous open
+scoreboards can race.  Correctness requires either the safe host-disable policy
+above or an engine/API change that can send custom player data to one client.
+
+### Acceptance checks
+
+- In-game TAB calls `UH_ScoreIcons_Refresh` immediately, not only during the
+  result sequence.
+- `CountryFlag` is absent from `ColumnOrder`; no solid green/black country cells
+  remain beside player names.
+- A known Survivor and Boss display recognizable 8x8 faces matching their
+  existing `Player.ScoreIcon`/face texture.
+- An empty/unauthorized value draws no placeholder and does not reserve the
+  custom column when every row is empty.
+- Regular LMS permission matrix: self, all Bosses, and Survivor teammates;
+  Eye sees only self and Bosses.
+- 1-vs-all exposes every assigned player's portrait.
+- Dead Eye retains Eye permissions rather than becoming an unrestricted
+  spectator; only a true spectator gets the spectator policy.
+- Dedicated two-client test proves different viewers can hold different icon
+  values for the same subject.
+- Listen-server test confirms the host does not broadcast private values.
+
+### Scoreboard repair (implemented)
+
+- `scoreboard_icons.acs` resolves the viewer as `ConsolePlayerNumber()` with the
+  `uhtilocalplayer` fallback and reads `GetPlayerInput(viewer, INPUT_BUTTONS)`
+  — no more `GetPlayerInput(-1, ...)` in the OPEN loop, so in-game TAB refreshes
+  instead of only the result sequence.
+- Each write compares `GetCustomPlayerValue("UHPlayerIcon", i)` against the
+  desired texture instead of a local cache, so a listen-host broadcast or join
+  reset is corrected on the next open.
+- `UH_ScoreIconVisibleEffective` grants see-all only to
+  `PlayerIsSpectator(viewer) == 1`; dead spectators keep their role matrix (a
+  dead Eye no longer sees Survivors).
+- `SCORINFO` no longer lists `CountryFlag` (the unrelated green/black cells).
+- The scoreboard uses a one-row override table for the only class whose
+  `Player.ScoreIcon` differs from the UIX PBMug registry: `LuckyLass` →
+  `UMUG_6_` (`UH_ScoreIconOverrideTex` in `player_portraits.acs`; the override
+  list was generated by comparing all 251 DECORATE `Player.ScoreIcon` rows).
+- Listen-server policy: `UH_ScoreIcons_HostBroadcastRisk` (consoleplayer < 0
+  and `PlayerCount() > 1`) makes the host empty its shared custom values
+  (`UH_ScoreIcons_HostHide`; an empty broadcast leaks nothing) instead of
+  writing a private matrix, while remote clients compute their own copies.
+- The temporary `wanted/stored` diagnostic from step 6 was not added because
+  the work was verified statically rather than in-engine.
+
 ## Static verification performed
 
 ```

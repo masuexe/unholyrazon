@@ -39,9 +39,6 @@ str uhticlasscache[MAX_PLAYERS];
 int uhtiportraitcache[MAX_PLAYERS];
 bool uhtiportraitcachevalid[MAX_PLAYERS];
 
-// Last UHPlayerIcon texture pushed for each row (see hud/scoreboard_icons.acs).
-str uhtiiconset[MAX_PLAYERS];
-
 // Local player identity for the scoreboard refresh.  ConsolePlayerNumber()
 // returns -1 on a listen server even inside a client-side script (NETSTATE_-
 // SERVER), so the assist display latches the camera player here as a fallback.
@@ -153,7 +150,6 @@ script "uh_ti_client_disconnect" (int gone) DISCONNECT CLIENTSIDE {
   uhtiportrait[gone] = -1;
   uhtiportraitcachevalid[gone] = false;
   SetCustomPlayerValue("UHPlayerIcon", gone, "");
-  uhtiiconset[gone] = "";
 }
 
 // --- Shared display semantics (the single relation source) -------------------
@@ -209,6 +205,9 @@ function str UH_ClientPortraitTex(int pn) {
       uhtiportraitcache[pn] = UH_PortraitIndexForClass(cls);
       uhtiportraitcachevalid[pn] = true;
     }
+    // Scoreboard-specific override (LuckyLass UMUG_6_), else the shared table.
+    str over = UH_ScoreIconOverrideTex(cls);
+    if (StrLen(over) != 0) { return over; }
     if (uhtiportraitcache[pn] >= 0) {
       return UH_PortraitTexForIndex(uhtiportraitcache[pn]);
     }

@@ -1,42 +1,60 @@
 // scoreboard_icons.acs — Unholy per-viewer portrait column refresh.
 //
-// Fragment of library unholy; #include'd at the END of unholy/uh_teaminfo.acs
-// so it can use the client snapshot and the UH_CanSeeScoreIcon matrix.  It is
-// not a standalone library and must not be added to LOADACS.
+// Fragment of library unholy; #include'd at the END of unholy/uh_teaminfo.acs.
+// Not a standalone library; must not be added to LOADACS.
 //
-// How the built-in scoreboard gets per-viewer icons:
+// Per-viewer flow:
 //   * MAPINFO declares a Texture custom player value "UHPlayerIcon".
-//   * SCORINFO defines a UHPlayerIcon column and puts it in PlayerIcon's slot.
-//   * A CLIENTSIDE script writes the texture for the LOCAL client only with
-//     SetCustomPlayerValue(); the server never writes this column.
-// Each client therefore computes its own visibility and only its own
-// scoreboard changes.  The server-side state (see uh_round_helpers.acs) is
-// synced separately from the life-status changes.
+//   * SCORINFO puts the UHPlayerIcon column in PlayerIcon's slot.
+//   * This CLIENTSIDE loop computes each row for the local client only and
+//     writes it with SetCustomPlayerValue; the server never writes the column.
 //
-// Refresh policy: only while the scoreboard is actually on screen, and only
-// when a row's value changes.  Keeping writes rare also keeps the (bounded)
-// listen-server broadcast of clientside writes rare; a host's CLIENTSIDE
-// SetCustomPlayerValue still reaches other clients because the process runs
-// as the server, but every client overwrites its own copy on open.
-
-// uhtiiconset (declared in uh_teaminfo.acs) is the last texture this client
-// pushed for each row, so a refresh does not rewrite identical values.  Plain
-// arrays reset to "" on map load; UH_ScoreIcons_ClearEngine also clears it.
+// Correctness rules:
+//   * The viewer is the explicit console player (or the assist-display latch on
+//     a listen host).  GetPlayerInput(-1, ...) means the script's activator,
+//     which an OPEN script does not have, so TAB was never detected before.
+//   * Writes compare against GetCustomPlayerValue so an engine-side overwrite
+//     (listen-host broadcast, join reset) is corrected on the next open instead
+//     of being masked by a client-side cache.
+//   * Only a connected TRUE spectator (PlayerIsSpectator == 1) sees every
+//     assigned portrait; dead spectators keep their retained role.
+//   * Listen server with remote clients: the ACS API cannot address custom
+//     player data to one client, so a host write is broadcast.  The host
+//     therefore empties its shared copy (an empty broadcast leaks nothing) and
+//     does not compute a private matrix; remote clients compute their own.
 
 function bool UH_ScoreIconVisibleEffective(int viewer, int subject) {
   if (subject < 0 || subject >= MAX_PLAYERS) { return false; }
   if (uhtirole[subject] == PLS_NULL) { return false; }
-  // A true spectator (no local player) sees every assigned portrait; dead
-  // spectators keep their own player identity and use the normal matrix.
-  if (viewer < 0 || viewer >= MAX_PLAYERS) { return true; }
-  if (!PlayerInGame(viewer)) { return true; }
+  if (viewer < 0 || viewer >= MAX_PLAYERS) { return false; }
+  if (PlayerIsSpectator(viewer) == 1) { return true; }  // connected true spectator
   return UH_CanSeeScoreIcon(viewer, subject);
 }
 
+// ConsolePlayerNumber() returns -1 only inside a listen-server process (a
+// dedicated server never runs this CLIENTSIDE loop and a pure client has a real
+// consoleplayer).  Risk exists only when remote clients can receive a
+// broadcast, i.e. more than one player is connected.
+function bool UH_ScoreIcons_HostBroadcastRisk(void) {
+  return (ConsolePlayerNumber() < 0) && (PlayerCount() > 1);
+}
+
+// Empty the host's shared copy; an empty value carries no Survivor/Eye data.
+// Remote clients overwrite their own copies on open via the GetCustomPlayerValue
+// comparison in UH_ScoreIcons_Refresh.
+function void UH_ScoreIcons_HostHide(void) {
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (StrCmp(GetCustomPlayerValue("UHPlayerIcon", i), "") != 0) {
+      SetCustomPlayerValue("UHPlayerIcon", i, "");
+    }
+  }
+}
+
 function void UH_ScoreIcons_Refresh(void) {
-  // Listen servers report -1 from ConsolePlayerNumber(); the assist display
-  // latches the camera player so the host still gets its own permission set
-  // instead of the "true spectator sees all" fallback.
+  if (UH_ScoreIcons_HostBroadcastRisk()) {
+    UH_ScoreIcons_HostHide();
+    return;
+  }
   int viewer = ConsolePlayerNumber();
   if (viewer < 0) { viewer = uhtilocalplayer; }
   for (int i = 0; i < MAX_PLAYERS; i++) {
@@ -44,9 +62,10 @@ function void UH_ScoreIcons_Refresh(void) {
     if (UH_ScoreIconVisibleEffective(viewer, i)) {
       tex = UH_ClientPortraitTex(i);
     }
-    if (StrCmp(uhtiiconset[i], tex) != 0) {
+    // Compare against the engine value, not a local cache: the scoreboard may
+    // have been overwritten by a listen-host broadcast or the join reset.
+    if (StrCmp(GetCustomPlayerValue("UHPlayerIcon", i), tex) != 0) {
       SetCustomPlayerValue("UHPlayerIcon", i, tex);
-      uhtiiconset[i] = tex;
     }
   }
 }
@@ -56,7 +75,6 @@ function void UH_ScoreIcons_Refresh(void) {
 function void UH_ScoreIcons_ClearEngine(void) {
   for (int i = 0; i < MAX_PLAYERS; i++) {
     ResetCustomDataToDefault("UHPlayerIcon", i);
-    uhtiiconset[i] = "";
   }
 }
 
@@ -65,10 +83,14 @@ script "uh_ti_scoreboard_loop" OPEN CLIENTSIDE {
   while (true) {
     Delay(1);
     if (GetCVar("lastmanstanding") != 1) { continue; }
-    bool shown = (GetPlayerInput(-1, INPUT_BUTTONS) & BT_SHOWSCORES) != 0;
+    // Resolve the viewer first; an OPEN script has no player activator, so
+    // GetPlayerInput(-1, ...) would never see TAB.
+    int viewer = ConsolePlayerNumber();
+    if (viewer < 0) { viewer = uhtilocalplayer; }
+    bool shown = (viewer >= 0)
+      && (GetPlayerInput(viewer, INPUT_BUTTONS) & BT_SHOWSCORES) != 0;
     if (!shown && GetGameModeState() == GAMESTATE_INRESULTSEQUENCE) {
-      // The intermission/result scoreboard is drawn without TAB; the battle is
-      // over, so refreshing there is safe and keeps the last frame consistent.
+      // The result scoreboard draws without TAB; the battle is over.
       shown = true;
     }
     if (shown) {
