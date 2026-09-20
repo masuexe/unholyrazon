@@ -165,6 +165,27 @@ below `(1 + con_notifylines)` lines.  Verification is still owed at
 states, comparing scale 100 against built-in TLMS with the same virtual size,
 aspect option and physical resolution.
 
+### TLMS parity fixes (implemented)
+
+Three Bugbot findings were fixed:
+
+1. **Canvas follows `con_scaletext`.** `UH_Ti_Draw` now picks the base canvas
+   exactly like `C_UpdateVirtualScreen`'s `g_bScale`: the console virtual size
+   (`con_virtualwidth` / `con_virtualheight`) only when `con_scaletext` is on
+   and it differs from the real screen; otherwise the real
+   `GetScreenWidth()` / `GetScreenHeight()` (the engine draws in real pixels
+   when `g_bScale` is false).  100% therefore matches native TLMS in both
+   `con_scaletext` states.
+2. **16-bit HP.** `packed1` now stores HP and max HP as two unsigned 16-bit
+   fields (`hp | (maxhp << 16)`), so the 30000 `MAX_HEALTH` bosses
+   (BlueThwomp, ZankokunaHellbot) no longer clamp at 4095.  The client decodes
+   with `& 65535` / `(>> 16) & 65535`.
+3. **Native line colors.** The health number keeps the percentage color while
+   `" / "` and armor are forced green (`\cD`), the weapon tag is green with
+   Ammo1/Ammo2 in gold (`\cF`), and the no-Ammo1 `-` is red (`\cG`) —
+   matching `HUD_DrawCoopInfo`'s `TEXTCOLOR_GREEN` / `TEXTCOLOR_GOLD` /
+   `TEXTCOLOR_RED`.
+
 ### Remaining native-fallback caveats
 
 - Row metrics are the engine's: cell height 12, per-line advance 13, block

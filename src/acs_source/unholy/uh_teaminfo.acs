@@ -128,8 +128,8 @@ script "uh_ti_sync_ova" (int active, int target) CLIENTSIDE {
 // armor/ammo so the four-int limit is never exceeded.
 script "uh_ti_stat" (int pn, int packed1, int tag, int packed2) CLIENTSIDE {
   if (pn < 0 || pn >= MAX_PLAYERS) { terminate; }
-  uhtistathp[pn] = packed1 & 4095;
-  uhtistatmaxhp[pn] = (packed1 >> 12) & 4095;
+  uhtistathp[pn] = packed1 & 65535;              // unsigned 16-bit
+  uhtistatmaxhp[pn] = (packed1 >> 16) & 65535;   // unsigned 16-bit
   uhtistatarmor[pn] = packed2 & 1023;
   uhtistatammo1[pn] = (packed2 >> 10) & 1023;
   uhtistatammo2[pn] = (packed2 >> 20) & 1023;
@@ -307,9 +307,9 @@ function void UH_Ti_RefreshStats(void) {
     }
     uhsrvWasingame[s] = true;
     int hp = GetActorProperty(tid, APROP_Health);
-    if (hp < 0) { hp = 0; } if (hp > 4095) { hp = 4095; }
+    if (hp < 0) { hp = 0; } if (hp > 65535) { hp = 65535; }
     int maxhp = GetActorProperty(tid, APROP_SpawnHealth);
-    if (maxhp < 0) { maxhp = 0; } if (maxhp > 4095) { maxhp = 4095; }
+    if (maxhp < 0) { maxhp = 0; } if (maxhp > 65535) { maxhp = 65535; }
     int armor = CheckActorInventory(tid, "BasicArmor");
     if (armor < 0) { armor = 0; } if (armor > 1023) { armor = 1023; }
 
@@ -338,7 +338,7 @@ function void UH_Ti_RefreshStats(void) {
       }
     }
 
-    int packed1 = hp | (maxhp << 12);
+    int packed1 = (hp & 65535) | ((maxhp & 65535) << 16);
     int packed2 = armor | (a1 << 10) | (a2 << 20) | (has1 << 30) | (has2 << 31);
 
     for (int vw = 0; vw < MAX_PLAYERS; vw++) {
@@ -417,13 +417,22 @@ function void UH_Ti_Draw(int viewer, int cpn) {
   int notify = GetCVar("con_notifylines");
   if (notify < 0) { notify = 0; }
 
-  // HUD_DrawCoopInfo draws through g_bScale using the console virtual canvas
-  // (con_virtualwidth x con_virtualheight, defaults 640x480), not the classic
-  // 320x200 status-bar canvas.  Make 100% equal that canvas, then scale by
-  // shrinking/growing the virtual size.  Line height and block spacing stay in
-  // these virtual units; do not multiply them by scale again.
-  int basew = GetCVar("con_virtualwidth");
-  int baseh = GetCVar("con_virtualheight");
+  // Mirror C_UpdateVirtualScreen's g_bScale: HUD_DrawCoopInfo draws through
+  // the console virtual canvas only when con_scaletext is on AND the virtual
+  // size differs from the real screen; otherwise it draws in real screen
+  // pixels.  Make 100% equal whichever canvas the engine uses, then scale by
+  // shrinking/growing that size.  Metrics stay in these units.
+  int realw = GetScreenWidth();
+  int realh = GetScreenHeight();
+  int basew = realw;
+  int baseh = realh;
+  int virtw = GetCVar("con_virtualwidth");
+  int virth = GetCVar("con_virtualheight");
+  if (GetCVar("con_scaletext") != 0 && virtw > 0 && virth > 0
+      && (virtw != realw || virth != realh)) {
+    basew = virtw;
+    baseh = virth;
+  }
   if (basew <= 0) { basew = 640; }
   if (baseh <= 0) { baseh = 480; }
   int hudw = (basew * 100) / scale;
@@ -487,7 +496,7 @@ function void UH_Ti_Draw(int viewer, int cpn) {
         if (pct > 75) { hcol = CR_GREEN; }
         else if (pct > 50) { hcol = CR_GOLD; }
         else if (pct > 25) { hcol = CR_ORANGE; }
-        HudMessageBold(i:hp, s:" / ", i:uhtistatarmor[i];
+        HudMessageBold(i:hp, s:"\cD / ", i:uhtistatarmor[i];
           HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
           fx, fy1, 0.1, falpha);
       }
@@ -496,18 +505,18 @@ function void UH_Ti_Draw(int viewer, int cpn) {
     if (showweapon && !dead && StrLen(uhtistattag[i]) != 0) {
       int wy = fy2;
       if (uhtistathasammo2[i]) {
-        HudMessageBold(l:uhtistattag[i], s:" ", i:uhtistatammo1[i],
-          s:" ", i:uhtistatammo2[i];
+        HudMessageBold(l:uhtistattag[i], s:"\cF ", i:uhtistatammo1[i],
+          s:"\cF ", i:uhtistatammo2[i];
           HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_GREEN,
           fx, wy, 0.1, falpha);
       }
       else if (uhtistathasammo1[i]) {
-        HudMessageBold(l:uhtistattag[i], s:" ", i:uhtistatammo1[i];
+        HudMessageBold(l:uhtistattag[i], s:"\cF ", i:uhtistatammo1[i];
           HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_GREEN,
           fx, wy, 0.1, falpha);
       }
       else {
-        HudMessageBold(l:uhtistattag[i], s:" -";
+        HudMessageBold(l:uhtistattag[i], s:"\cG -";
           HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_GREEN,
           fx, wy, 0.1, falpha);
       }
