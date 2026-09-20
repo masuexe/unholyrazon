@@ -370,7 +370,15 @@ above or an engine/API change that can send custom player data to one client.
 - `UH_ScoreIconVisibleEffective` grants see-all only to
   `PlayerIsSpectator(viewer) == 1`; dead spectators keep their role matrix (a
   dead Eye no longer sees Survivors).
-- `SCORINFO` no longer lists `CountryFlag` (the unrelated green/black cells).
+- `SCORINFO` no longer lists `CountryFlag` (a native country/player
+  metadata column, unrelated to the rows we own).
+- The remaining green/black box was the native `PlayerColor` sub-column inside
+  the `Player` composite: it draws a solid color box (team-colored in a team
+  game, but a meaningless black/green rectangle in ordinary LMS).  Our SCORINFO
+  re-declares `CompositeColumn "Player"` with
+  `RemoveFromColumns = "PlayerColor"`, which clears it surgically while keeping
+  the inherited gap/size.  This — not `CountryFlag` — was the reported box;
+  removing `CountryFlag` alone did not fix it.
 - The scoreboard uses a one-row override table for the only class whose
   `Player.ScoreIcon` differs from the UIX PBMug registry: `LuckyLass` →
   `UMUG_6_` (`UH_ScoreIconOverrideTex` in `player_portraits.acs`; the override
