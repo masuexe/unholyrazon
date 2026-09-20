@@ -357,7 +357,48 @@ str uhsrvammo2name[MAX_PLAYERS];
 // its row instead of keeping the last synced stat forever.
 bool uhsrvWasingame[MAX_PLAYERS];
 
+// Per-client initial-snapshot handshake.  A client that connects as a true
+// spectator never spawns, so the ENTER snapshot (uh_ti_enter) never fires for
+// it and its cache would stay PLS_NULL / INVALID with no portraits.  The watch
+// loop detects each new connection and repeats the full snapshot for ~0.6 s so
+// it survives the client's own uh_ti_clientinit_cs reset at map load.
+bool uhsrvHelloSeen[MAX_PLAYERS];
+int uhsrvHelloTics[MAX_PLAYERS];
+
+function void UH_Ti_ServerHelloClients(void) {
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    if (!UH_Ti_IsConnectedClient(c)) {
+      uhsrvHelloSeen[c] = false;
+      uhsrvHelloTics[c] = 0;
+      continue;
+    }
+    if (!uhsrvHelloSeen[c]) {
+      uhsrvHelloSeen[c] = true;
+      uhsrvHelloTics[c] = 3;  // ~0.6 s at the 7-tic watch cadence
+    }
+    if (uhsrvHelloTics[c] > 0) {
+      UH_TeamInfo_SendSnapshotTo(c);
+      uhsrvHelloTics[c]--;
+    }
+  }
+}
+
+// Immediate hello-slot reset for a disconnecting client.  The watch also clears
+// the slot when it observes the disconnect, but a disconnect followed by a
+// same-slot reconnect between two 7-tic polls would otherwise leave
+// uhsrvHelloSeen set and the new client would never receive its hello.  Called
+// from the server DISCONNECT handler (ub_Disconnect_ChangeIsAlive).
+function void UH_Ti_ServerForgetClient(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { return; }
+  uhsrvHelloSeen[pn] = false;
+  uhsrvHelloTics[pn] = 0;
+}
+
 function void UH_Ti_RefreshStats(void) {
+  // Newly connected clients (including true spectators) get the full snapshot
+  // even though they never spawn and so never run the ENTER snapshot.
+  UH_Ti_ServerHelloClients();
+
   // DF_INFINITE_AMMO = 1 << 11.
   bool infinite = (GetCVar("dmflags") & 2048) != 0;
 

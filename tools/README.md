@@ -46,15 +46,31 @@ node tools/mcp/team-info-sync-test.mjs --json
 node tools/mcp/team-info-sync-test.mjs --dry-run
 ```
 
-It launches one listen server plus one MCP-controlled remote client, connects
-the client, has it run the console `join` command so it actually spawns, and
-then asserts the client's own `uhtirole[]` / `uhtilife[]` / `uhtiscorepolicy`
-map vars are populated by the server's per-client sync. This is the runtime
-gate for the P1 per-client delivery fix (`ACS_NamedExecuteAlways` to a
-CLIENTSIDE receiver does not reach a remote client); static compilation cannot
-prove a receiver was reached over the network. A client that is still a true
-spectator has no role and is expected to read `-1`, so the test only judges
-after `join`.
+It launches one listen server plus one MCP-controlled remote client, then
+verifies every team-info CLIENTSIDE receiver end-to-end:
+
+- **spectator hello + roles** — a client that connects but has not run `join`
+  still receives the full snapshot: a valid `uhtiscorepolicy` and the in-game
+  bots' `uhtirole[]` (the round role gather is forced, because a bot that joins
+  mid-round is not assigned a role). `uhtiova` / `uhtiovatarget` are perturbed
+  to a sentinel first, so the re-delivered `0` / `-1` is a real assertion
+  rather than a default-value match.
+- **spectator stats + clear** — a true spectator receives `uh_ti_stat` for an
+  in-game bot; `removebot` then produces `uh_ti_stat_clear`, and the test
+  asserts the removed slot clears while the other bot's slot stays set, so a
+  map reset cannot masquerade as a clear.
+- **join snapshot** — after `join` the client spawns and its
+  `uhtirole[]` / `uhtilife[]` / `uhtiscorepolicy` are populated.
+
+The gate requires every receiver to be proven **over the network**
+(`statDelivery` + `networkClear` are part of the pass condition). A direct
+local `run_script` round-trip is recorded as a diagnostic only and must never
+substitute for network delivery, so a broken sender cannot let the gate pass.
+
+This is the runtime gate for the P1 per-client delivery fix
+(`ACS_NamedExecuteAlways` to a CLIENTSIDE receiver does not reach a remote
+client); static compilation cannot prove a receiver was reached over the
+network.
 
 For the boss-versus combo directed probe:
 

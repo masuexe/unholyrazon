@@ -734,3 +734,37 @@ a remote client, whereas the pre-fix `ACS_NamedExecuteAlways` path left the
 caches at their `PLS_NULL` / `INVALID` defaults.  The probe is now the
 standing gate `tools/mcp/team-info-sync-test.mjs` (`--json` / `--dry-run`),
 documented in `tools/README.md`.
+## P1 follow-up — spectator hello for clients that never spawn (implemented)
+
+A client that connects but never runs `join` is a true spectator and never
+spawns, so the `uh_ti_enter ENTER` snapshot never fires for it.  Its cache
+stayed `PLS_NULL` / `INVALID`, and because the scoreboard matrix hides any
+subject whose `uhtirole` is `PLS_NULL`, even the public spectator rule could
+not draw anything.
+
+`UH_Ti_ServerHelloClients` (called at the top of `UH_Ti_RefreshStats`, i.e.
+the 7-tic server watch) detects each newly connected client, including true
+spectators, and repeats the full snapshot for ~0.6 s so it survives the
+client's own `uh_ti_clientinit_cs` reset at map load.  The seen/tick tracking
+arrays are map-scope, and the server `DISCONNECT` handler
+(`ub_Disconnect_ChangeIsAlive` -> `UH_Ti_ServerForgetClient`) clears the slot
+immediately, so a disconnect followed by a same-slot reconnect between two
+watch polls still receives its own hello.
+
+The `tools/mcp/team-info-sync-test.mjs` gate now proves every receiver over
+the network and requires it for a pass:
+
+- spectator hello + roles: a connected-but-not-joined client reads a valid
+  `uhtiscorepolicy` and the in-game bots' `uhtirole[]` (the round role gather
+  is forced; a mid-round bot join is not assigned a role on its own).
+- `uh_ti_sync_ova`: `uhtiova`/`uhtiovatarget` are perturbed to a sentinel
+  before `join`, so the re-delivered `0`/`-1` is an active overwrite, not a
+  default value.
+- `uh_ti_stat` / `uh_ti_stat_clear`: a true spectator is seeded from two
+  bots, then `removebot` clears exactly one slot while the other stays set.
+- `uh_ti_sync_status`: every still-NULL slot is sentineled before `join`, so
+  the join must actively write the joining player's own `uhtirole` AND
+  `uhtilife` — an already-valid bot row cannot satisfy it.
+
+The local `run_script` round-trip is recorded as a diagnostic only and cannot
+satisfy the pass condition, so a broken sender cannot let the gate pass.
