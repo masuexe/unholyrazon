@@ -377,10 +377,10 @@ function void UH_Ti_ClearDrawn(void) {
 }
 
 function void UH_Ti_Draw(int viewer, int cpn) {
-  bool showNames = GetUserCVar(cpn, "uh_cl_teaminfo_names") != 0;
-  bool showHealth = GetUserCVar(cpn, "uh_cl_teaminfo_health") != 0;
-  bool showWeapon = GetUserCVar(cpn, "uh_cl_teaminfo_weapon") != 0;
-  bool showDead = GetUserCVar(cpn, "uh_cl_teaminfo_dead") != 0;
+  bool shownames = GetUserCVar(cpn, "uh_cl_teaminfo_names") != 0;
+  bool showhealth = GetUserCVar(cpn, "uh_cl_teaminfo_health") != 0;
+  bool showweapon = GetUserCVar(cpn, "uh_cl_teaminfo_weapon") != 0;
+  bool showdead = GetUserCVar(cpn, "uh_cl_teaminfo_dead") != 0;
 
   int scale = GetUserCVar(cpn, "uh_cl_teaminfo_scale");
   if (scale < 50) { scale = 50; } if (scale > 200) { scale = 200; }
@@ -391,10 +391,17 @@ function void UH_Ti_Draw(int viewer, int cpn) {
   int notify = GetCVar("con_notifylines");
   if (notify < 0) { notify = 0; }
 
-  // Setting the virtual HUD size to 320/scale makes both the glyphs and the
-  // base-space layout scale by "scale"; base coordinates stay in 320x200 units.
-  int hudw = (320 * 100) / scale;
-  int hudh = (200 * 100) / scale;
+  // HUD_DrawCoopInfo draws through g_bScale using the console virtual canvas
+  // (con_virtualwidth x con_virtualheight, defaults 640x480), not the classic
+  // 320x200 status-bar canvas.  Make 100% equal that canvas, then scale by
+  // shrinking/growing the virtual size.  Line height and block spacing stay in
+  // these virtual units; do not multiply them by scale again.
+  int basew = GetCVar("con_virtualwidth");
+  int baseh = GetCVar("con_virtualheight");
+  if (basew <= 0) { basew = 640; }
+  if (baseh <= 0) { baseh = 480; }
+  int hudw = (basew * 100) / scale;
+  int hudh = (baseh * 100) / scale;
   int falpha = (alpha * 65536) / 100;
   int lineh = 8;
   int ybase = (1 + notify) * lineh;
@@ -411,24 +418,33 @@ function void UH_Ti_Draw(int viewer, int cpn) {
     if (!uhtistatvalid[i]) { continue; }  // per-viewer authorization gate
     if (!viewerSpec && !UH_AreDisplayTeammates(viewer, i)) { continue; }
     bool dead = (uhtistathp[i] <= 0);
-    if (dead && !showDead) { continue; }
+    if (dead && !showdead) { continue; }
 
-    int x = (((row % 2) == 0) ? 0 : (hudw / 2)) + offx;
+    // HudMessage encodes alignment in the coordinate fraction: .1 = left edge,
+    // .2 = right edge, .0 = center.  offx is an inward margin from each edge.
+    // X uses .1 for even rows (left) and .2 for odd rows (right); Y uses .1 so
+    // every line is top-anchored like HUD_DrawTextAligned.
+    bool drawleft = ((row % 2) == 0);
+    int xbase = drawleft ? offx : (hudw - offx);
     int y = ybase + ((row / 2) * (4 * lineh + 3)) + offy;
-    int fx = x << 16;
-    int fy = y << 16;
+    // (n * 1.0) forces the integer cell into 16.16 before the alignment marker;
+    // ACS does not promote "int + 0.1" and would drop the fraction.
+    int fx = (xbase * 1.0) + (drawleft ? 0.1 : 0.2);
+    int fy = (y * 1.0) + 0.1;
+    int fy1 = ((y + lineh) * 1.0) + 0.1;
+    int fy2 = ((y + 2 * lineh) * 1.0) + 0.1;
 
-    if (showNames) {
+    if (shownames) {
       HudMessageBold(n:i + 1;
         HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - i, CR_GREY,
         fx, fy, 0.1, falpha);
     }
 
-    if (showHealth) {
+    if (showhealth) {
       if (dead) {
         HudMessageBold(s:"dead";
           HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, CR_RED,
-          fx, fy + (lineh << 16), 0.1, falpha);
+          fx, fy1, 0.1, falpha);
       }
       else {
         int hp = uhtistathp[i];
@@ -442,12 +458,12 @@ function void UH_Ti_Draw(int viewer, int cpn) {
         else if (pct > 25) { hcol = CR_ORANGE; }
         HudMessageBold(i:hp, s:" / ", i:uhtistatarmor[i];
           HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
-          fx, fy + (lineh << 16), 0.1, falpha);
+          fx, fy1, 0.1, falpha);
       }
     }
 
-    if (showWeapon && !dead && StrLen(uhtistattag[i]) != 0) {
-      int wy = fy + ((2 * lineh) << 16);
+    if (showweapon && !dead && StrLen(uhtistattag[i]) != 0) {
+      int wy = fy2;
       if (uhtistathasammo2[i]) {
         HudMessageBold(l:uhtistattag[i], s:" ", i:uhtistatammo1[i],
           s:" ", i:uhtistatammo2[i];

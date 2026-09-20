@@ -109,9 +109,9 @@ reworked after the review above; all five findings are addressed:
    Ammo2, shows `-` when there is no Ammo1, and honors `DF_INFINITE_AMMO`.
 4. **Independent toggles.** Name, health/armor and weapon/ammo are separate HUD
    messages, each controlled only by its own CVAR.
-5. **Real scaling.** `uh_cl_teaminfo_scale` sets the virtual `SetHudSize` to
-   `320/scale x 200/scale`, so glyphs and the layout scale together instead of
-   only moving row spacing.
+5. **Real scaling (partially implemented; baseline corrected below).** Changing
+   the virtual `SetHudSize` does scale glyphs and layout together, but using
+   `320x200` as the 100% baseline does not match Zandronum's TLMS text canvas.
 
 The renderer mirrors `HUD_DrawCoopInfo`: two columns alternating left/right, a
 vertical block every two teammates, three `SMALLFONT` lines per player (name,
@@ -122,11 +122,37 @@ Dead rows stay optional and render `dead` with no weapon line.  Only HUD IDs
 drawn on the preceding frame are cleared, plus a full clear when the bar is
 disabled or UIX takes over.
 
+### Scale/alignment correction (implemented)
+
+Both coupled coordinate bugs from the screenshot comparison are fixed in
+`UH_Ti_Draw`:
+
+1. **Canvas.** 100% is now the console virtual canvas
+   (`con_virtualwidth` / `con_virtualheight`, defaults 640x480), not 320x200:
+   `hudw = basew * 100 / scale`, `hudh = baseh * 100 / scale`.  At scale 100
+   this matches built-in TLMS; 200 is twice its physical size and 50 is half.
+   Line height (8) and block spacing stay in virtual units.
+2. **Alignment.** HudMessage encodes alignment in the coordinate fraction:
+   `.1` = left edge, `.2` = right edge, `.0` = center.  Even rows use
+   `(offx * 1.0) + 0.1` and odd rows use `((hudw - offx) * 1.0) + 0.2`; each
+   line's Y uses `.1` so all three lines are top-anchored like
+   `HUD_DrawTextAligned`.  The `* 1.0` idiom is required because ACS does not
+   promote `int + 0.1`, and `fixed` is not a declaration keyword in this ACC,
+   so the fraction would otherwise be dropped.  `uh_cl_teaminfo_x` is now an
+   inward margin from both edges (MENUDEF slider `0..160`), and `hudw / 2` is
+   no longer used as an anchor.
+
+The baseline now matches the Snipaste reference: compact `SMALLFONT` rows at
+the upper corners, even entries flush left, odd entries flush right, first row
+below `(1 + con_notifylines)` lines.  Verification is still owed at
+640x480 / 1280x720 / 1920x1200 with scale 50/100/200 and both `con_scaletext`
+states, comparing scale 100 against built-in TLMS with the same virtual size,
+aspect option and physical resolution.
+
 ### Remaining native-fallback caveats
 
-- The right column is left-aligned at the horizontal midpoint; ACS has no
-  text-width measurement, so extreme scale values can clip long names (the
-  engine right-aligns the right column).
+- `lineh` is a fixed 8 virtual units; if MM8BDM's `SMALLFONT` has a different
+  height the row pitch needs a one-line adjustment.
 - The snapshot is throttled to 7 tics (~0.2 s), so teammate HP/ammo update a few
   times per second rather than every tic.
 - A weapon absent from both the DTADD and buster tables yields no weapon line
