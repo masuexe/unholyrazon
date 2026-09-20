@@ -1,8 +1,33 @@
 #library "uh_corereplace"
 #include "zcommon.acs"
 #include "8BDMDEFS.acs"
+#import "8BDT.acs"
 
 #define RUNE_LUCKYPENNY 11
+
+// DECORATE evaluates this expression when a spike damager deals damage, so
+// the returned value remains the base damage before normal damage modifiers.
+script "uh_GetSpikeDamage" (void) {
+	int spike_damage = GetCVar("uh_sv_SpikeDamage");
+	if (spike_damage < 0)
+		spike_damage = 0;
+	SetResultValue(spike_damage);
+}
+
+// Map DeathPit actors register their sector damage during map startup.  A
+// value of 0 deliberately leaves those per-marker values untouched.
+script "uh_ApplyPitDamage" OPEN {
+	Delay(1);
+
+	int pit_damage = GetCVar("uh_sv_PitDamage");
+	if (pit_damage <= 0)
+		terminate;
+
+	for (int i = 0; i < getPitCount(); i++) {
+		Sector_SetDamage(getPitTag(i), pit_damage, getPitMod(i), getPitInterval(i));
+		setPitDamage(i, pit_damage);
+	}
+}
 
 // Player Rune stacker
 // Makes sure that players receive the rune that core facilities check for
