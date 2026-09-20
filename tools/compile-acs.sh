@@ -17,6 +17,9 @@ cd "$script_dir/.." || exit 1
 if [[ -z "${ACC:-}" ]]; then
   ACC="$(command -v acc || true)"
 fi
+if [[ -z "$ACC" ]] && [[ -x "/home/user/appfiles/acc-zandronum/acc" ]]; then
+  ACC="/home/user/appfiles/acc-zandronum/acc"
+fi
 if [[ -z "$ACC" ]]; then
   echo "acc not found on PATH; set ACC to your Zandronum ACC binary" >&2
   exit 1
@@ -95,6 +98,8 @@ echo "== rz_shared =="
 "$ACC" $INC "src/acs_source/systems/player_hooks/rz_shared.acs" "$OUT/rz_shared.o" || fail=1
 echo "== unholy =="
 "$ACC" $INC "src/acs_source/unholy/unholy.acs" "$OUT/unholy.o" || fail=1
+echo "== deathtips =="
+"$ACC" $INC "src/acs_source/hud/deathtips.acs" "$OUT/deathtips.o" || fail=1
 echo "== rz_debug =="
 "$ACC" $INC "src/acs_source/debug/rz_debug.acs" "$OUT/rz_debug.o" || fail=1
 echo "== CORE8BDT =="
