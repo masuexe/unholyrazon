@@ -16,6 +16,10 @@ script "uh_SetPlayerLifeStatus" (int player, int status) {
   if (player < 0)
     terminate;
   playerlifestatusarr[player] = status;
+  if (status == PLS_NULL) { uhsrvrole[player] = PLS_NULL; }
+  else if (status != PLS_DEAD) { uhsrvrole[player] = status; }
+  // External setter: keep the client display snapshot in step.
+  UH_TeamInfo_BroadcastStatus(player, status);
 }
 
 script "uh_GetGameOverState" (void) {
@@ -73,6 +77,9 @@ script "uh_SetBonusEventTarget" (int eventid, int tid) {
     terminate;
   }
   bossdataarr[0][BOSSDATA_TID] = tid;
+  // Re-freeze the display target for every client (the 1-vs-all split keys on
+  // this player number, never on the target's morphable life status).
+  UH_TeamInfo_BroadcastOneVsAll();
   SetResultValue(true);
 }
 

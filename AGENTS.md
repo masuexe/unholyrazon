@@ -58,6 +58,8 @@ Optional debugging mods, loaded in step 3 when relevant:
 | `src/TEAMINFO` | 4 teams: Survivors, Bosses, Demoneyes, Light Team |
 | `src/SNDINFO.players` | Per-soundclass pain/death/taunt aliases |
 | `src/TEXTURES.classes` | Composite HUD sprites via TEXTURES |
+| `src/MAPINFO` | `GameInfo { AddCustomData = "UHPlayerIcon", "Texture", "" }` — declares the scoreboard column's custom player value (must be MAPINFO, not GAMEINFO) |
+| `src/SCORINFO` | `UHPlayerIcon` custom Texture column; takes ownership of the full `ColumnOrder` so the column keeps `PlayerIcon`'s slot |
 
 ## Actor include chain
 
@@ -153,9 +155,20 @@ monolithic aggregator), `uh_events` (round event system, ex-`uh_bonus`),
 `clownpiece_spellcard.acs` (Clownpiece-only spell-card flow; sole caller
 `Clownpiece_W.dec`), `uh_display`/`uh_aspect` (boss/round HUD), `uh_music`
 (music runtime; registration lives in `systems/music/`), and `uh_access`
-(named-script API used by other libraries). `debug/rz_debug.acs` also
-includes `uh_def` and `uh_funclib` — keep them unrenamed or update that
-include list.
+(named-script API used by other libraries). `uh_teaminfo` adds the client
+display snapshot, the TLMS-style native teammate bar and the SCORINFO icon
+refresh; it is included by `unholy.acs` only (it defines scripts) and pulls
+`hud/player_portraits.acs` + `hud/scoreboard_icons.acs`. The server never
+writes `UHPlayerIcon`; each client computes it locally with
+`SetCustomPlayerValue`. In ordinary LMS the engine classifies the logical
+teammates as enemies and withholds their health, so a server watch
+(`uh_ti_serverwatch`) pushes a per-viewer health/armor/weapon/ammo snapshot
+with `NamedExecuteClientScript`, gated by `UH_Ti_ServerAreDisplayTeammates`.
+The weapon display tag/ammo types come from `systems/tools/weapon_display.acs`
+in UH_TOOLS — the only UH library that may import 8BDT; do not add that bridge
+to `unholy`. `debug/rz_debug.acs` also includes `uh_def` and
+`uh_funclib` — keep them unrenamed or update that include list; the portrait
+table lives in `uh_funclib` because the life-status broadcast resolves it.
 
 Survivor, boss, and demoneye class logic belongs under `classes/`. GemBanker’s
 user-option bridge is kept in `classes/bosses/gem_banker_hud.acs`, while the
@@ -163,6 +176,14 @@ shared weapon roulette remains in `classes/shared/class_weapon_roulette.acs`.
 Modified v6b ACS remains under `v6b_overrides/`; `uh_corereplace.acs` is a
 v6b-derived library replacement that belongs there because it replaces v6b
 rune/knockback scripts.
+
+The UIX Better Team Display shadow is `compat/mods/uix/uixteam.acs`
+(`#library "UIXTEAM"`, compiled to `src/acs/UIXTEAM.o`, deliberately absent
+from `LOADACS`). It keeps the stock v3bh drawing/CVAR code and only swaps the
+player filter and the wrap-hide count to the Unholy side model via the
+`uh_IsUnholyTeamMode` / `uh_IsDisplayTeammate` named scripts when
+`lastmanstanding` is active. UIX must load before this pk3 for the shadow to
+win. `compat/mods/uix/_uix_v3bh/UXTBNUM.acs` is vendored for that compile.
 
 UH-owned shared includes live under `acs_source/_includes/mod_api/`. Modified
 v6b shared includes live under `acs_source/v6b_overrides/_includes/`

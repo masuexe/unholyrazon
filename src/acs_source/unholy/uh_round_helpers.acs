@@ -31,9 +31,14 @@ function int GetClampedCvar(str check, int minval, int maxval) {
 function void PlayerLifeStatusArr_GatherFunc(void) {
   totalplayersarr[1] = PlayerCount();
 
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    uhsrvrole[c] = PLS_NULL;
+  }
+
   int p_total = PlayerCount();
   for (int i = 0; i < MAX_PLAYERS; i++) {
     if (PlayerInGame(i)) {
+      uhsrvrole[i] = PLS_SURVIVOR;
       UH_Log(UH_LOG_DEBUG, StrParam(s:"Player ", i:i, s:" is alive"));
       playerlifestatusarr[i] = 1;
       if (p_total <= 1) {
@@ -45,11 +50,89 @@ function void PlayerLifeStatusArr_GatherFunc(void) {
     }
   }
 }
-// Updates player status and total players with status
+
+// --- Team-info / scoreboard-icon state broadcast -----------------------------
+// Server-authoritative snapshots pushed to every client.  The receivers are
+// CLIENTSIDE scripts in unholy/uh_teaminfo.acs; keeping the senders here lets
+// the life-status updater broadcast without pulling the teammate HUD scripts
+// into the shared library (rz_debug also compiles this fragment).
+//
+// The client cache is display-only and always rebuilt from these snapshots:
+// a client must never treat the server's runtime arrays as authoritative.
+
+// Portrait index captured server-side, kept across death so a dead player's
+// row can still show the portrait they had while alive.  UH_PortraitIndex-
+// ForClass is the single class -> texture mapping (hud/player_portraits.acs).
+int uhsrvportraitidx[MAX_PLAYERS];
+bool uhsrvportraitvalid[MAX_PLAYERS];
+
+function int UH_Ti_PortraitIndexForPlayer(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { return -1; }
+  if (PlayerInGame(pn)) {
+    int idx = UH_PortraitIndexForClass(GetActorClass(pn + 1000));
+    if (idx >= 0) {
+      uhsrvportraitidx[pn] = idx;
+      uhsrvportraitvalid[pn] = true;
+      return idx;
+    }
+  }
+  return uhsrvportraitvalid[pn] ? uhsrvportraitidx[pn] : -1;
+}
+
+function void UH_TeamInfo_BroadcastStatus(int pn, int status) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { return; }
+  // ACS_NamedExecuteAlways maps (name, map, a1, a2, a3); the first user arg is
+  // consumed as the level name, so the leading 0 placeholder is mandatory and
+  // the receiver gets (pn, status, portrait).
+  ACS_NamedExecuteAlways("uh_ti_sync_status", 0, pn, status,
+    UH_Ti_PortraitIndexForPlayer(pn));
+}
+
+// 1-vs-all is defined by the ACTIVE bonus event's UHBE_FLAG_ONEVSALL, never
+// by the target's current life status (uh_DemoneyeMorph rewrites it to PLS_EYE).
+function bool UH_TeamInfo_IsOneVsAllActive(void) {
+  if (!isbonuseventactive || bonuseventended) { return false; }
+  int eid = eventdataarr[EVENTDATA_MAINEVENT];
+  if (!IsBonusEventDefined(eid)) { return false; }
+  return (GetBonusEventFlags(eid) & UHBE_FLAG_ONEVSALL) != 0;
+}
+
+function int UH_TeamInfo_OneVsAllTarget(void) {
+  if (!UH_TeamInfo_IsOneVsAllActive()) { return -1; }
+  int tid = bossdataarr[0][BOSSDATA_TID];
+  if (tid < 1000 || tid > 1063) { return -1; }
+  return tid - 1000;
+}
+
+function void UH_TeamInfo_BroadcastOneVsAll(void) {
+  ACS_NamedExecuteAlways("uh_ti_sync_ova", 0,
+    UH_TeamInfo_IsOneVsAllActive() ? 1 : 0, UH_TeamInfo_OneVsAllTarget());
+}
+
+// Rebuild every client against the current server state.  Called at round
+// setup, on enter (late join) and after the one-vs-all target freezes.
+function void UH_TeamInfo_FullSnapshot(void) {
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (PlayerInGame(i)) {
+      UH_TeamInfo_BroadcastStatus(i, playerlifestatusarr[i]);
+    } else {
+      // Explicitly clear unused slots so no stale role/portrait can remain
+      // after a player leaves and the slot is reused.
+      ACS_NamedExecuteAlways("uh_ti_sync_status", 0, i, PLS_NULL, -1);
+    }
+  }
+  UH_TeamInfo_BroadcastOneVsAll();
+}
+
+// Updates player status and total players with status, then pushes the change
+// to every client so the teammate bar and TAB portraits see it on the next tic.
 function void PlayerLifeStatusArr_UpdateFunc(int thedude, int newstatus) {
   totalplayersarr[playerlifestatusarr[thedude]]--;
   playerlifestatusarr[thedude] = newstatus;
   totalplayersarr[newstatus]++;
+  if (newstatus == PLS_NULL) { uhsrvrole[thedude] = PLS_NULL; }
+  else if (newstatus != PLS_DEAD) { uhsrvrole[thedude] = newstatus; }
+  UH_TeamInfo_BroadcastStatus(thedude, newstatus);
 }
 
 // Give/Take Inventory items to/from EVERY ingame player.

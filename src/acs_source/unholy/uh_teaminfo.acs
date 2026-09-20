@@ -1,0 +1,502 @@
+// uh_teaminfo.acs — Unholy client teammate snapshot, display semantics and
+// the native TLMS-style teammate bar.
+//
+// Fragment of the single "unholy" library; #include'd by unholy/unholy.acs
+// after uh_funclib.acs.  It is NOT a library and must not be added to LOADACS.
+//
+// Authority split:
+//   * The server owns playerlifestatusarr, the active bonus event and every
+//     live stat (health, armor, ready weapon, ammo).  In ordinary LMS the
+//     engine classifies Unholy's logical teammates as enemies, so it withholds
+//     their health/armor from clients; the server therefore pushes a
+//     per-viewer snapshot with NamedExecuteClientScript, only for the subjects
+//     UH_Ti_ServerAreDisplayTeammates authorizes that viewer to see.
+//   * Clients own only this display cache.  A pure client never has valid
+//     server runtime arrays, so nothing here may read playerlifestatusarr,
+//     isbonuseventactive, eventdataarr or bossdataarr outside a server script.
+//
+// The same role cache drives the Unholy native bar, the UIXTEAM shadow and the
+// SCORINFO UHPlayerIcon refresh, so the relation rules live here exactly once.
+
+// --- Client display snapshot -------------------------------------------------
+// uhtilife   : last synced PLS_* value (PLS_DEAD = 0, PLS_NULL = -1).
+// uhtirole   : last non-dead role, retained across death so a dead player's
+//              scoreboard row and teammate row keep their side.  PLS_EYE is a
+//              role and deliberately suppresses regular-LMS teammate display.
+// uhtiportrait: server-synced portrait index captured while the actor existed
+//              (a corpse has no readable class, so this is the dead-row face).
+// uhtiova*   : frozen 1-vs-all active flag and target player number.
+int uhtilife[MAX_PLAYERS];
+int uhtirole[MAX_PLAYERS];
+int uhtiportrait[MAX_PLAYERS];
+int uhtiova;
+int uhtiovatarget;
+
+// Per-viewer portrait resolution cache: the live actor class is preferred so a
+// morph is reflected before the next status sync; the synced index is the
+// fallback for dead/missing actors.
+str uhticlasscache[MAX_PLAYERS];
+int uhtiportraitcache[MAX_PLAYERS];
+bool uhtiportraitcachevalid[MAX_PLAYERS];
+
+// Last UHPlayerIcon texture pushed for each row (see hud/scoreboard_icons.acs).
+str uhtiiconset[MAX_PLAYERS];
+
+// Local player identity for the scoreboard refresh.  ConsolePlayerNumber()
+// returns -1 on a listen server even inside a client-side script (NETSTATE_-
+// SERVER), so the assist display latches the camera player here as a fallback.
+int uhtilocalplayer = -1;
+
+// Per-viewer live stats received from the authoritative server snapshot.  A
+// subject is renderable only while uhtistatvalid is set, which doubles as the
+// authorization gate: the server never sends an unauthorized subject.
+int uhtistathp[MAX_PLAYERS];
+int uhtistatmaxhp[MAX_PLAYERS];
+int uhtistatarmor[MAX_PLAYERS];
+str uhtistattag[MAX_PLAYERS];
+int uhtistatammo1[MAX_PLAYERS];
+int uhtistatammo2[MAX_PLAYERS];
+bool uhtistathasammo1[MAX_PLAYERS];
+bool uhtistathasammo2[MAX_PLAYERS];
+bool uhtistatvalid[MAX_PLAYERS];
+
+// Native-bar HUD IDs used on the preceding frame; only these are cleared.
+bool uhtiwasdrawn[MAX_PLAYERS];
+
+function void UH_Ti_ClearStats(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { return; }
+  uhtistatvalid[pn] = false;
+  uhtistathp[pn] = 0;
+  uhtistatmaxhp[pn] = 0;
+  uhtistatarmor[pn] = 0;
+  uhtistattag[pn] = "";
+  uhtistatammo1[pn] = 0;
+  uhtistatammo2[pn] = 0;
+  uhtistathasammo1[pn] = false;
+  uhtistathasammo2[pn] = false;
+}
+
+function void UH_Ti_ResetClient(void) {
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    uhtilife[i] = PLS_NULL;
+    uhtirole[i] = PLS_NULL;
+    uhtiportrait[i] = -1;
+    uhticlasscache[i] = "";
+    uhtiportraitcache[i] = -1;
+    uhtiportraitcachevalid[i] = false;
+    UH_Ti_ClearStats(i);
+  }
+  uhtiova = 0;
+  uhtiovatarget = -1;
+  uhtilocalplayer = -1;
+}
+
+function void UH_Ti_SetClientLife(int pn, int status) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { return; }
+  uhtilife[pn] = status;
+  if (status == PLS_SURVIVOR || status == PLS_BOSS || status == PLS_EYE) {
+    if (uhtirole[pn] != status) { UH_Ti_ClearStats(pn); }
+    uhtirole[pn] = status;  // Role survives a later PLS_DEAD transition.
+  }
+  else if (status == PLS_NULL) {
+    uhtirole[pn] = PLS_NULL;
+    uhtiportrait[pn] = -1;
+    uhtiportraitcachevalid[pn] = false;
+    UH_Ti_ClearStats(pn);
+  }
+}
+
+// --- CLIENTSIDE receivers (server broadcasts land here) ----------------------
+script "uh_ti_sync_status" (int pn, int status, int portrait) CLIENTSIDE {
+  UH_Ti_SetClientLife(pn, status);
+  if (pn < 0 || pn >= MAX_PLAYERS) { terminate; }
+  if (portrait >= 0) {
+    uhtiportrait[pn] = portrait;
+    uhtiportraitcachevalid[pn] = false;  // force the next lookup to refresh
+  }
+}
+
+script "uh_ti_sync_ova" (int active, int target) CLIENTSIDE {
+  uhtiova = active ? 1 : 0;
+  uhtiovatarget = (uhtiova && target >= 0 && target < MAX_PLAYERS) ? target : -1;
+  // The authorized subject set changes with the side split.
+  for (int i = 0; i < MAX_PLAYERS; i++) { UH_Ti_ClearStats(i); }
+}
+
+// Per-subject live stats addressed to THIS client only.  NamedExecuteClient-
+// Script passes (subject, packed1, tag, packed2); the server packs hp/maxhp and
+// armor/ammo so the four-int limit is never exceeded.
+script "uh_ti_stat" (int pn, int packed1, int tag, int packed2) CLIENTSIDE {
+  if (pn < 0 || pn >= MAX_PLAYERS) { terminate; }
+  uhtistathp[pn] = packed1 & 4095;
+  uhtistatmaxhp[pn] = (packed1 >> 12) & 4095;
+  uhtistatarmor[pn] = packed2 & 1023;
+  uhtistatammo1[pn] = (packed2 >> 10) & 1023;
+  uhtistatammo2[pn] = (packed2 >> 20) & 1023;
+  uhtistathasammo1[pn] = ((packed2 >> 30) & 1) != 0;
+  uhtistathasammo2[pn] = ((packed2 >> 31) & 1) != 0;
+  uhtistattag[pn] = tag;
+  uhtistatvalid[pn] = true;
+}
+
+script "uh_ti_client_disconnect" (int gone) DISCONNECT CLIENTSIDE {
+  if (gone < 0 || gone >= MAX_PLAYERS) { terminate; }
+  UH_Ti_SetClientLife(gone, PLS_NULL);
+  uhtiportrait[gone] = -1;
+  uhtiportraitcachevalid[gone] = false;
+  SetCustomPlayerValue("UHPlayerIcon", gone, "");
+  uhtiiconset[gone] = "";
+}
+
+// --- Shared display semantics (the single relation source) -------------------
+// A teammate row is selected by ROLE, not by current alive state, so a dead
+// player can still own a dead row when the consumer's dead-row option is on.
+// Consumers apply the alive/dead option themselves (UIX CV_SHOWDEAD, the
+// native bar's uh_cl_teaminfo_dead).
+function bool UH_AreDisplayTeammates(int viewer, int subject) {
+  if (viewer < 0 || viewer >= MAX_PLAYERS) { return false; }
+  if (subject < 0 || subject >= MAX_PLAYERS) { return false; }
+  if (viewer == subject) { return false; }  // Never repeat yourself.
+  if (uhtirole[viewer] == PLS_NULL || uhtirole[subject] == PLS_NULL) { return false; }
+
+  if (uhtiova) {
+    // Frozen 1-vs-all: the solo target is its own side; everyone else is the
+    // many side.  Keyed on the target player number, never on PLS_EYE.
+    if (uhtiovatarget < 0) { return false; }
+    if (viewer == uhtiovatarget || subject == uhtiovatarget) { return false; }
+    return true;
+  }
+
+  // Regular LMS.  Eye may still damage Eye, so Eye never forms a display team;
+  // ALL_EYE / EYE_TEAM alone do not authorize teammates either.
+  if (uhtirole[viewer] == PLS_EYE || uhtirole[subject] == PLS_EYE) { return false; }
+  if (uhtirole[viewer] == PLS_SURVIVOR && uhtirole[subject] == PLS_SURVIVOR) { return true; }
+  if (uhtirole[viewer] == PLS_BOSS && uhtirole[subject] == PLS_BOSS) { return true; }
+  return false;
+}
+
+// TAB portrait permission matrix:
+//   self always; any Boss always; Survivor<->Survivor; otherwise hidden.
+// During 1-vs-all every assigned player is public.  Dead rows keep their role.
+function bool UH_CanSeeScoreIcon(int viewer, int subject) {
+  if (subject < 0 || subject >= MAX_PLAYERS) { return false; }
+  if (uhtirole[subject] == PLS_NULL) { return false; }
+  if (viewer == subject) { return true; }
+  if (uhtiova) { return true; }
+  if (uhtirole[subject] == PLS_BOSS) { return true; }  // Bosses are always public.
+  if (viewer < 0 || viewer >= MAX_PLAYERS) { return true; }
+  if (uhtirole[viewer] == PLS_SURVIVOR && uhtirole[subject] == PLS_SURVIVOR) { return true; }
+  if (uhtirole[viewer] == PLS_BOSS && uhtirole[subject] == PLS_BOSS) { return true; }
+  return false;
+}
+
+// Resolve the display portrait for a player.  Live actors are looked up by
+// class (morph-aware); the server-synced index is the dead/absent fallback.
+function str UH_ClientPortraitTex(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { return ""; }
+  if (uhtilife[pn] != PLS_DEAD && uhtilife[pn] != PLS_NULL) {
+    str cls = GetActorClass(pn + 1000);
+    if (!uhtiportraitcachevalid[pn] || StrICmp(cls, uhticlasscache[pn]) != 0) {
+      uhticlasscache[pn] = cls;
+      uhtiportraitcache[pn] = UH_PortraitIndexForClass(cls);
+      uhtiportraitcachevalid[pn] = true;
+    }
+    if (uhtiportraitcache[pn] >= 0) {
+      return UH_PortraitTexForIndex(uhtiportraitcache[pn]);
+    }
+  }
+  return UH_PortraitTexForIndex(uhtiportrait[pn]);
+}
+
+function bool UH_IsUnholyTeamMode(void) {
+  return GetCVar("lastmanstanding") == 1;
+}
+
+// --- Cross-library named-script API (UIXTEAM shadow) -------------------------
+// Function names and script names are case-insensitive to ACC, so the exported
+// scripts are deliberately named differently from the functions above.
+script "uh_IsUnholyTeamMode" (void) {
+  SetResultValue(UH_IsUnholyTeamMode());
+}
+script "uh_IsDisplayTeammate" (int viewer, int subject) {
+  SetResultValue(UH_AreDisplayTeammates(viewer, subject));
+}
+script "uh_ScoreIconVisible" (int viewer, int subject) {
+  SetResultValue(UH_CanSeeScoreIcon(viewer, subject));
+}
+
+// --- Late join: full snapshot ------------------------------------------------
+script "uh_ti_enter" ENTER {
+  Delay(35);
+  UH_TeamInfo_FullSnapshot();
+}
+
+// --- Server-authoritative teammate stats -------------------------------------
+// Mirrors UH_AreDisplayTeammates server-side from the retained role cache, so
+// the per-viewer snapshot authorizes exactly the rows the bar may draw.
+function bool UH_Ti_ServerAreDisplayTeammates(int viewer, int subject) {
+  if (viewer < 0 || viewer >= MAX_PLAYERS) { return false; }
+  if (subject < 0 || subject >= MAX_PLAYERS) { return false; }
+  if (viewer == subject) { return false; }
+  if (uhsrvrole[viewer] == PLS_NULL || uhsrvrole[subject] == PLS_NULL) { return false; }
+  if (UH_TeamInfo_IsOneVsAllActive()) {
+    int t = UH_TeamInfo_OneVsAllTarget();
+    if (t < 0) { return false; }
+    if (viewer == t || subject == t) { return false; }
+    return true;
+  }
+  if (uhsrvrole[viewer] == PLS_EYE || uhsrvrole[subject] == PLS_EYE) { return false; }
+  if (uhsrvrole[viewer] == PLS_SURVIVOR && uhsrvrole[subject] == PLS_SURVIVOR) { return true; }
+  if (uhsrvrole[viewer] == PLS_BOSS && uhsrvrole[subject] == PLS_BOSS) { return true; }
+  return false;
+}
+
+// Cached 8BDT bridge results, refreshed only when a player's ready weapon
+// changes.  UH_TOOLS owns the 8BDT import; the round core must not import it.
+str uhsrvwepactor[MAX_PLAYERS];
+str uhsrvweptag[MAX_PLAYERS];
+str uhsrvammo1name[MAX_PLAYERS];
+str uhsrvammo2name[MAX_PLAYERS];
+
+function void UH_Ti_RefreshStats(void) {
+  // DF_INFINITE_AMMO = 1 << 11.
+  bool infinite = (GetCVar("dmflags") & 2048) != 0;
+
+  // Cache the per-viewer eligibility once per refresh: PlayerIsSpectator == 1
+  // is a connected true spectator (PlayerInGame excludes spectators).
+  bool vspec[MAX_PLAYERS];
+  bool velig[MAX_PLAYERS];
+  bool uixOn = GetCvar("UIX_SV_TEAMINFO") != 0;
+  for (int v = 0; v < MAX_PLAYERS; v++) {
+    vspec[v] = (PlayerIsSpectator(v) == 1);
+    velig[v] = false;
+    if (!PlayerInGame(v) && !vspec[v]) { continue; }
+    if (GetUserCVar(v, "uh_cl_teaminfo") == 0) { continue; }
+    if (uixOn && GetUserCVar(v, "UIX_CL_Enable") != 0
+        && GetUserCVar(v, "UIX_CL_TEAMINFO") != 0) { continue; }
+    velig[v] = true;
+  }
+
+  for (int s = 0; s < MAX_PLAYERS; s++) {
+    if (!PlayerInGame(s)) { continue; }
+    int tid = s + 1000;
+    int hp = GetActorProperty(tid, APROP_Health);
+    if (hp < 0) { hp = 0; } if (hp > 4095) { hp = 4095; }
+    int maxhp = GetActorProperty(tid, APROP_SpawnHealth);
+    if (maxhp < 0) { maxhp = 0; } if (maxhp > 4095) { maxhp = 4095; }
+    int armor = CheckActorInventory(tid, "BasicArmor");
+    if (armor < 0) { armor = 0; } if (armor > 1023) { armor = 1023; }
+
+    str tag = "";
+    int a1 = 0; int a2 = 0; int has1 = 0; int has2 = 0;
+    if (hp > 0) {
+      SetActivatorToPlayer(s);
+      str wactor = GetWeapon();
+      SetActivator(0, AAPTR_NULL);
+      if (StrICmp(wactor, uhsrvwepactor[s]) != 0) {
+        uhsrvwepactor[s] = wactor;
+        uhsrvweptag[s] = ACS_NamedExecuteWithResult("uh_WeaponTag_S", tid);
+        uhsrvammo1name[s] = ACS_NamedExecuteWithResult("uh_WeaponAmmo1_S", tid);
+        uhsrvammo2name[s] = ACS_NamedExecuteWithResult("uh_WeaponAmmo2_S", tid);
+      }
+      tag = uhsrvweptag[s];
+      if (StrLen(uhsrvammo1name[s]) != 0 && !infinite) {
+        has1 = 1;
+        a1 = CheckActorInventory(tid, uhsrvammo1name[s]);
+        if (a1 < 0) { a1 = 0; } if (a1 > 1023) { a1 = 1023; }
+      }
+      if (StrLen(uhsrvammo2name[s]) != 0 && !infinite) {
+        has2 = 1;
+        a2 = CheckActorInventory(tid, uhsrvammo2name[s]);
+        if (a2 < 0) { a2 = 0; } if (a2 > 1023) { a2 = 1023; }
+      }
+    }
+
+    int packed1 = hp | (maxhp << 12);
+    int packed2 = armor | (a1 << 10) | (a2 << 20) | (has1 << 30) | (has2 << 31);
+
+    for (int vw = 0; vw < MAX_PLAYERS; vw++) {
+      if (!velig[vw]) { continue; }
+      if (!vspec[vw] && !UH_Ti_ServerAreDisplayTeammates(vw, s)) { continue; }
+      NamedExecuteClientScript("uh_ti_stat", vw, s, packed1, tag, packed2);
+    }
+  }
+}
+
+script "uh_ti_serverwatch_start" OPEN {
+  if (GetCvar("lastmanstanding") != 1) { terminate; }
+  ACS_NamedExecute("uh_ti_serverwatch", 0);
+}
+
+script "uh_ti_serverwatch" (void) {
+  SetActivator(0, AAPTR_NULL);
+  while (true) {
+    Delay(7);
+    if (GetCvar("lastmanstanding") != 1) { continue; }
+    if (gameover) { continue; }
+    UH_Ti_RefreshStats();
+  }
+}
+
+// --- Native teammate bar -----------------------------------------------------
+// Registered with the MM8BDM Assist Display; core_Assist_Display runs it every
+// tic per client with the current camera TID as "cam".  UIX's Better Team
+// Display suppresses it (see UH_TeamInfo_UIXTakesOver) to avoid a double draw.
+// This reproduces the Zandronum TLMS HUD_DrawCoopInfo layout in ACS: two
+// columns alternating left/right, three SmallFont lines per player (name,
+// health/armor, weapon/ammo), anchored below the chat area (con_notifylines).
+
+#include "../hud/scoreboard_icons.acs"
+
+#define UH_TI_ID_BASE -19740000
+
+function bool UH_TeamInfo_UIXTakesOver(int cpn) {
+  // Unknown CVARs read as 0 when UIX is not loaded, so this is not a hard
+  // dependency on the UIX libraries.
+  if (GetCvar("UIX_SV_TEAMINFO") == 0) { return false; }
+  if (GetUserCVar(cpn, "UIX_CL_Enable") == 0) { return false; }
+  if (GetUserCVar(cpn, "UIX_CL_TEAMINFO") == 0) { return false; }
+  return true;
+}
+
+function void UH_Ti_ClearSubject(int i) {
+  ClearHudMessage(UH_TI_ID_BASE - i);
+  ClearHudMessage(UH_TI_ID_BASE - 100 - i);
+  ClearHudMessage(UH_TI_ID_BASE - 200 - i);
+}
+
+// Clear only the IDs drawn on the preceding frame, plus everything when the
+// renderer is disabled or taken over.  No 128-ID sweep every tic.
+function void UH_Ti_ClearDrawn(void) {
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (uhtiwasdrawn[i]) {
+      UH_Ti_ClearSubject(i);
+      uhtiwasdrawn[i] = false;
+    }
+  }
+}
+
+function void UH_Ti_Draw(int viewer, int cpn) {
+  bool showNames = GetUserCVar(cpn, "uh_cl_teaminfo_names") != 0;
+  bool showHealth = GetUserCVar(cpn, "uh_cl_teaminfo_health") != 0;
+  bool showWeapon = GetUserCVar(cpn, "uh_cl_teaminfo_weapon") != 0;
+  bool showDead = GetUserCVar(cpn, "uh_cl_teaminfo_dead") != 0;
+
+  int scale = GetUserCVar(cpn, "uh_cl_teaminfo_scale");
+  if (scale < 50) { scale = 50; } if (scale > 200) { scale = 200; }
+  int alpha = GetUserCVar(cpn, "uh_cl_teaminfo_alpha");
+  if (alpha < 0) { alpha = 0; } if (alpha > 100) { alpha = 100; }
+  int offx = GetUserCVar(cpn, "uh_cl_teaminfo_x");
+  int offy = GetUserCVar(cpn, "uh_cl_teaminfo_y");
+  int notify = GetCVar("con_notifylines");
+  if (notify < 0) { notify = 0; }
+
+  // Setting the virtual HUD size to 320/scale makes both the glyphs and the
+  // base-space layout scale by "scale"; base coordinates stay in 320x200 units.
+  int hudw = (320 * 100) / scale;
+  int hudh = (200 * 100) / scale;
+  int falpha = (alpha * 65536) / 100;
+  int lineh = 8;
+  int ybase = (1 + notify) * lineh;
+
+  SetHudSize(hudw, hudh, 0);
+  SetFont("SMALLFONT");
+
+  bool viewerSpec = (viewer < 0 || viewer >= MAX_PLAYERS
+    || !PlayerInGame(viewer) || PlayerIsSpectator(viewer) == 1);
+
+  int row = 0;
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (i == viewer) { continue; }
+    if (!uhtistatvalid[i]) { continue; }  // per-viewer authorization gate
+    if (!viewerSpec && !UH_AreDisplayTeammates(viewer, i)) { continue; }
+    bool dead = (uhtistathp[i] <= 0);
+    if (dead && !showDead) { continue; }
+
+    int x = (((row % 2) == 0) ? 0 : (hudw / 2)) + offx;
+    int y = ybase + ((row / 2) * (4 * lineh + 3)) + offy;
+    int fx = x << 16;
+    int fy = y << 16;
+
+    if (showNames) {
+      HudMessageBold(n:i + 1;
+        HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - i, CR_GREY,
+        fx, fy, 0.1, falpha);
+    }
+
+    if (showHealth) {
+      if (dead) {
+        HudMessageBold(s:"dead";
+          HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, CR_RED,
+          fx, fy + (lineh << 16), 0.1, falpha);
+      }
+      else {
+        int hp = uhtistathp[i];
+        int maxhp = uhtistatmaxhp[i];
+        if (maxhp <= 0) { maxhp = hp; }
+        if (maxhp <= 0) { maxhp = 1; }
+        int pct = (100 * hp) / maxhp;
+        int hcol = CR_RED;
+        if (pct > 75) { hcol = CR_GREEN; }
+        else if (pct > 50) { hcol = CR_GOLD; }
+        else if (pct > 25) { hcol = CR_ORANGE; }
+        HudMessageBold(i:hp, s:" / ", i:uhtistatarmor[i];
+          HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+          fx, fy + (lineh << 16), 0.1, falpha);
+      }
+    }
+
+    if (showWeapon && !dead && StrLen(uhtistattag[i]) != 0) {
+      int wy = fy + ((2 * lineh) << 16);
+      if (uhtistathasammo2[i]) {
+        HudMessageBold(l:uhtistattag[i], s:" ", i:uhtistatammo1[i],
+          s:" ", i:uhtistatammo2[i];
+          HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_GREEN,
+          fx, wy, 0.1, falpha);
+      }
+      else if (uhtistathasammo1[i]) {
+        HudMessageBold(l:uhtistattag[i], s:" ", i:uhtistatammo1[i];
+          HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_GREEN,
+          fx, wy, 0.1, falpha);
+      }
+      else {
+        HudMessageBold(l:uhtistattag[i], s:" -";
+          HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_GREEN,
+          fx, wy, 0.1, falpha);
+      }
+    }
+
+    uhtiwasdrawn[i] = true;
+    row++;
+  }
+}
+
+script "uh_assist_teaminfo" (int cam) CLIENTSIDE {
+  int cpn = ConsolePlayerNumber();
+
+  // A listen server (hosted with -host) reports -1 even for client-side
+  // scripts, so fall back to the camera player as the local identity; this
+  // keeps the host's own bar and user cvars working.
+  if (cpn < 0 && cam >= 1000 && cam <= 1063) { cpn = cam - 1000; }
+  UH_Ti_ClearDrawn();
+  if (cpn < 0) { terminate; }
+  uhtilocalplayer = cpn;
+
+  if (GetUserCVar(cpn, "uh_cl_teaminfo") == 0) { terminate; }
+  if (GetCvar("cl_drawcoopinfo") == 0) { terminate; }
+  if (GetCvar("sv_nocoopinfo") != 0) { terminate; }
+  if (!UH_IsUnholyTeamMode()) { terminate; }
+  if (UH_TeamInfo_UIXTakesOver(cpn)) { terminate; }
+
+  int viewer = (cam >= 1000 && cam <= 1063) ? cam - 1000 : cpn;
+  UH_Ti_Draw(viewer, cpn);
+}
+
+script "uh_ti_clientinit_cs" OPEN CLIENTSIDE {
+  UH_Ti_ResetClient();
+  // Register the bar with the MM8BDM Assist Display.  This mirrors DTADD's
+  // DefineAssistDisplay without importing DTADD (which pulls 8BDT and would
+  // collide with the uhdt import in this library).
+  ConsoleCommand(StrParam(s:"set 8bdmassistdisplay_name \"uh_assist_teaminfo\""));
+  ACS_NamedExecuteWithResult("core_DefineAssistDisplay_S");
+}

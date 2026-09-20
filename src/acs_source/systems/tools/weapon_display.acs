@@ -1,0 +1,47 @@
+// UH_TOOLS fragment: authoritative weapon display metadata for the Unholy
+// teammate bar.
+//
+// The round-core "unholy" library must not import 8BDT (ACC identifiers are
+// case-insensitive and 8BDT vs uhdt collide on getItemName/getItemActor), so
+// the display data is exposed as named-script bridges here in UH_TOOLS, the
+// only UH library that imports 8BDT.  The server calls these to resolve a
+// remote player's ready weapon; the teammate bar never prints the raw actor
+// class name.
+//
+// Each bridge returns "" when the player has no resolvable ready weapon, so
+// the client drops the weapon line instead of guessing.
+
+// Buster rows are stored in a separate table; offset them so one index space
+// covers both.  MAX_WEAPONS_GLOBAL_LIMIT is 1000 and MAX_BUSTER_LIMIT is 100.
+#define UH_BUSTER_INDEX_BASE 1000000
+
+function int UH_WeaponIndexForTid(int tid) {
+  if (tid < 1000 || tid > 1063) { return -1; }
+  SetActivator(tid);
+  str actor = GetWeapon();
+  SetActivator(0, AAPTR_NULL);
+  int idx = findWeaponByActor(actor);
+  if (idx >= 0) { return idx; }
+  int bidx = findBusterUpgradeByActor(actor);
+  if (bidx >= 0) { return UH_BUSTER_INDEX_BASE + bidx; }
+  return -1;
+}
+
+script "uh_WeaponTag_S" (int tid) {
+  int idx = UH_WeaponIndexForTid(tid);
+  if (idx >= UH_BUSTER_INDEX_BASE) {
+    SetResultValue(getBusterTag(idx - UH_BUSTER_INDEX_BASE));
+    terminate;
+  }
+  SetResultValue(idx >= 0 ? getWeaponTag(idx) : "");
+}
+script "uh_WeaponAmmo1_S" (int tid) {
+  int idx = UH_WeaponIndexForTid(tid);
+  if (idx >= UH_BUSTER_INDEX_BASE || idx < 0) { SetResultValue(""); terminate; }
+  SetResultValue(getWeaponAmmoType(idx));
+}
+script "uh_WeaponAmmo2_S" (int tid) {
+  int idx = UH_WeaponIndexForTid(tid);
+  if (idx >= UH_BUSTER_INDEX_BASE || idx < 0) { SetResultValue(""); terminate; }
+  SetResultValue(getWeaponAmmo2Type(idx));
+}

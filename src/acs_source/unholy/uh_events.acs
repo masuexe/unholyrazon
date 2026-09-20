@@ -108,6 +108,9 @@ script "ub_EventManagementACS" (int perform) {
     int startevent = UH_ResolveStartableBonusEvent(eventdataarr[EVENTDATA_MAINEVENT]);
     eventdataarr[EVENTDATA_MAINEVENT] = startevent;
     isbonuseventactive = true;
+    // Publish the frozen 1-vs-all target before any start callback can morph
+    // it (uh_DemoneyeMorph rewrites the target's life status to PLS_EYE).
+    UH_TeamInfo_BroadcastOneVsAll();
     if (RunBonusEventStart(startevent)) {
       // Core-owned end-callback observer: covers the engine-driven LMS ending
       // path (FFA / all-eye) that has no ACS ending script.  Idempotent with
@@ -116,6 +119,7 @@ script "ub_EventManagementACS" (int perform) {
     }
     else {
       isbonuseventactive = false;
+      UH_TeamInfo_BroadcastOneVsAll();
       UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event ", i:startevent, s:" start dispatch failed; round continues without an event."));
     }
   }
@@ -517,6 +521,10 @@ script "ub_OneVsAllEvent" (int eventid, int which, int unused) {
       ApplyOneVsAllState(i + 1000, which, i + 1000 == tempboss1);
     }
   }
+  // Re-publish after the target snapshot is final so a late client sees the
+  // correct side split even before the per-player status syncs arrive.
+  UH_TeamInfo_BroadcastOneVsAll();
+  UH_TeamInfo_FullSnapshot();
 
   switch (which) {
     default:
@@ -751,6 +759,9 @@ function bool UH_TryFinishBonusEvent(int eventid, int result, bool runsequence) 
   if (eventid != eventdataarr[EVENTDATA_MAINEVENT]) {return false;}
   if (bonuseventended) {return false;}
   bonuseventended = true;
+  // Clearing the event also clears 1-vs-all; clients must fall back to the
+  // regular LMS teammate matrix immediately, not at the next round.
+  UH_TeamInfo_BroadcastOneVsAll();
 
   str endcb = GetBonusEventEndCallback(eventid);
   if (!RunBonusEventEnd(eventid, result) && StrCmp(endcb, "") != 0) {

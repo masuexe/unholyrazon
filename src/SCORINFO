@@ -1,0 +1,37 @@
+// Unholy SCORINFO: per-viewer portrait column.
+//
+// The native PlayerIcon column carries NOENEMIES, which follows engine Team
+// and therefore never hides anything useful in ordinary LMS.  UHPlayerIcon is
+// a custom Texture column with no NOENEMIES; the client-side refresh in
+// acs_source/hud/scoreboard_icons.acs decides per row what the local viewer
+// may see, and clears the rest to the NULL default so DISABLEIFEMPTY drops
+// empty rows cleanly.
+//
+// The custom data "UHPlayerIcon" must exist before this column is created
+// (declared in src/MAPINFO's GameInfo block).  A custom Column without
+// matching data is a fatal engine error.
+//
+// OWNERSHIP: we take full ownership of ColumnOrder instead of appending with
+// AddToColumnOrder, so UHPlayerIcon keeps PlayerIcon's exact slot and the
+// rest of the default v6b/Zandronum layout is byte-for-byte identical.
+// Consequence: any addon that also overrides ColumnOrder and loads AFTER this
+// pk3 supersedes this list; any addon that adds extra columns and loads
+// BEFORE this pk3 is dropped by the rebuild.  Load order rule: other
+// SCORINFO addons go before Unholy, and Unholy owns the final ColumnOrder.
+//
+// All other scoreboard style/header/footer settings are left untouched and
+// keep the engine defaults.
+
+Column "UHPlayerIcon" {
+  AddFlag NOSPECTATORS
+  AddFlag DONTSHOWHEADER
+  AddFlag ALWAYSUSESHORTESTWIDTH
+  AddFlag DISABLEIFEMPTY
+
+  Alignment = Center
+  ClipRectHeight = -2
+}
+
+Scoreboard {
+  ColumnOrder = "BotSkillIcon", "Index", "ReadyToGoAndStatusIcons", "ArtifactIcon", "UHPlayerIcon", "CountryFlag", "Player", "Vote", "Handicap", "Wins", "Points", "Frags", "Kills", "Damage", "Lives", "Secrets", "Deaths", "Time", "Ping", "ConnectionStrength"
+}

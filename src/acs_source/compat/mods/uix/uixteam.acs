@@ -1,0 +1,1597 @@
+// UIX v3bh UIXTEAM, vendored so this pk3 can shadow acs/UIXTEAM.o when loaded
+// after 8bdm-uix-v3bh.  Do not add to LOADACS; UIX already loads it.
+//
+// Change vs stock (v3bh): the player filter and the wrap-hide count are made
+// Unholy-LMS aware.  In ordinary lastmanstanding PLAYERINFO_TEAM is not a
+// meaningful team, so the stock filter would draw nothing (team == 255) or the
+// wrong players.  When the "unholy" library reports LMS (uh_IsUnholyTeamMode),
+// membership is decided by uh_IsDisplayTeammate, which follows the Unholy
+// side model (Survivor/Boss grouping, Eye excluded, frozen 1-vs-all target).
+// Every non-Unholy mode keeps the stock PLAYERINFO_TEAM path byte-for-byte.
+// Drawing, CVARs, layouts, mugshots, HP bars, weapons, death animation, status
+// icons and layers are untouched.  UXTBNUM.acs is vendored next to the other
+// v3bh include fragments because it is not shipped in this repo.
+#library "UIXTEAM"
+
+#include "zcommon.acs"
+
+#import "8BDT.acs"
+
+#include "SHRTFUNC.acs"
+
+#include "UXTBNUM.acs"
+#include "UXTBICNS.acs"
+
+// Preliminary data preparatation =====================================================================================
+
+// modes are ordered in what's most likely to be played
+#define OBJ_IDC -1
+#define OBJ_ONEFLAG 0
+#define OBJ_SKULLTAG 1
+#define OBJ_CTF 2
+#define OBJ_TEAMPOSS 3
+#define OBJ_MODES 4
+str objectiveModes[OBJ_MODES] = { "OneFlagCTF", "Skulltag", "CTF", "TeamPossession" };
+str objectiveItems[OBJ_MODES][4] = {
+    {"MegaWhiteFlag", "MegaWhiteFlag", "MegaWhiteFlag", "MegaWhiteFlag"},
+    {"MegaBlueHat", "MegaRedHat", "MegaGreenHat", "MegaYellowHat"},
+    {"MegaBlueFlag", "MegaRedFlag", "MegaGreenFlag", "MegaYellowFlag"},
+    {"PowerPossessionArtifact", "PowerPossessionArtifact", "PowerPossessionArtifact", "PowerPossessionArtifact"},
+};
+int objective = OBJ_IDC;
+int maxTeams = -1;
+// /!\ MANIPULATED IN DRAWMUGSHOT /!\
+int objectiveDrawn = false;
+int lastPickup = -1;
+// ----------------------------------
+
+#define SURVIVAL 3
+str survivalModes[SURVIVAL] = { "teamlms", "lastmanstanding", "survival" };
+int maxLives = -1;
+
+#define COOP_MODES 3
+str coopModes[COOP_MODES] = { "cooperative", "survival", "invasion" };
+int isCoopMode = false;
+
+function int getPlayerTeam(int pln) {
+	
+	if(isCoopMode)
+        return 4;
+	
+	return GetPlayerInfo(pln, PLAYERINFO_TEAM);
+}
+
+script "UITweaks_TeamInfo_ModeTest" OPEN CLIENTSIDE
+{
+    str mode = GetCurrentGamemode();
+    int i;
+
+    for(i = 0; i < COOP_MODES; i++) {
+        if(StrMatches(coopModes[i], mode)) {
+            isCoopMode = true;
+            break;
+        }
+    }
+
+    for(i = 0; i < OBJ_MODES; i++) {
+        if(StrMatches(objectiveModes[i], mode)) {
+            objective = i;
+            maxTeams = GetCvar("sv_maxteams");
+            terminate;
+        }
+    }
+
+    for(i = 0; i < SURVIVAL; i++) {
+        if(StrMatches(survivalModes[i], mode)) {
+            maxLives = GetCvar("sv_maxlives");
+            break;
+        }
+    }
+}
+
+// Main dispatch script ===============================================================================================
+
+#define horizontal 0
+#define vertical 1
+
+int cvars[27];
+#define CV_OFFSX        0
+#define CV_OFFSY        1
+#define CV_SCALE        2
+#define CV_ALPHA        3
+#define CV_NAMESIZE     4
+#define CV_MIRROR       5
+#define CV_DIR          6
+#define CV_FONTDIR      7
+#define CV_STACK        8
+#define CV_SHOWNAME     9
+#define CV_SHOWHEALTH   10
+#define CV_SHOWLOCATION 11
+#define CV_SHOWLIVES    12
+#define CV_SHOWMUGSHOT  13
+#define CV_FONTIDX      14
+#define CV_REVERSETEXT  15
+#define CV_SHOWWEAPON   16
+#define CV_SEPARATION   17
+#define CV_WRAPAMOUNT   18
+#define CV_WRAPDIR      19
+#define CV_WRAPSEPARATION   20
+#define CV_SHOWDEAD         21
+#define CV_SHOWDEATHANIM    22
+#define CV_SHOWMENUSTATUS   23
+#define CV_SHOWOBJECTIVES   24
+#define CV_LAYER            25
+#define CV_WRAPHIDE         26
+
+int dbShowSelf;
+
+int tiCache_Scale = MIN_INT;
+int tiCache_Stack = MIN_INT;
+int tiCache_Separation = MIN_INT;
+int tiCache_WrapSeparation = MIN_INT;
+int tiCache_WrapDir = MIN_INT;
+
+#define STACK_OFFS 36
+#define WRAP_OFFS  120
+int tiStackOffs;
+int tiWrapOffs;
+
+#define STATUS_GONE -1
+#define STATUS_ALIVE 0
+#define STATUS_DEAD 1
+#define STATUS_GHOST 2
+
+function int getPlayerAlive(int pln)
+{
+    if(PlayerIsSpectator(pln) == 2)
+        return STATUS_GHOST;
+    
+    if(!PlayerInGame(pln))
+        return STATUS_GONE;
+    
+    if(GetActorProperty(pln+PLN_TID_SHRT, AProp_Health) <= 0)
+        return STATUS_DEAD;
+
+    return STATUS_ALIVE;   
+}
+
+// --- Unholy LMS bridge (CLIENTSIDE) -----------------------------------------
+// The "unholy" library owns the synced display snapshot.  ACS_NamedExecute-
+// WithResult runs the named script synchronously in this client's VM, so these
+// read exactly the cache the Unholy native teammate bar uses.  uixUnholyMode is
+// latched once per draw so the filter, the wrap-hide count and the palette
+// agree on the same side model.
+int uixUnholyMode = 0;
+
+function bool uixIsUnholyTeamMode(void) {
+    return ACS_NamedExecuteWithResult("uh_IsUnholyTeamMode") != 0;
+}
+function bool uixIsDisplayTeammate(int viewer, int subject) {
+    return ACS_NamedExecuteWithResult("uh_IsDisplayTeammate", viewer, subject) != 0;
+}
+// Count the rows the Unholy filter would actually draw (excluding the viewer),
+// mirroring the stock TPROP_NumPlayers / TPROP_NumLivePlayers split.
+function int uixUnholyDisplayCount(int pln, int showdead) {
+    int count = 0;
+    for(int i = 0; i < MAX_PLAYERS_SHRT; i++) {
+        if(i == pln)
+            continue;
+        int dead = getPlayerAlive(i);
+        if(dead == STATUS_GONE)
+            continue;
+        if(!showdead && dead == STATUS_GHOST)
+            continue;
+        if(!uixIsDisplayTeammate(pln, i))
+            continue;
+        count++;
+    }
+    return count;
+}
+
+script "UITweaks_TeamInfo" (int cam, int cpn, int cv)
+{
+    if(!GetCvar("UIX_SV_TEAMINFO"))
+        terminate;
+
+    int baseAlpha = GetUserCvar(cpn, "UIX_CL_TEAMINFOALPHA");
+    if(baseAlpha == 0.0)
+        terminate;
+
+    if(CheckActorInventory(cam, "UIX_NoTeamBar") > 0)
+        terminate;
+
+    SetActivator(cam);
+
+    int pln = PlayerNumber();
+    if(pln == -1)
+        terminate;
+
+    SetActivator(-1);
+
+    uixUnholyMode = uixIsUnholyTeamMode();
+    int team = getPlayerTeam(pln);
+    // Log(i:team, s:" cam: ", i:cam);
+
+    if(team == 255 && !uixUnholyMode) { // Spectator
+
+    } else {
+        // Ordinary LMS has no engine team.  Use a neutral palette index so the
+        // untouched drawMugshot/drawStatus/drawLives code stays in range.
+        if(uixUnholyMode && (team < 0 || team > 3))
+            team = 0;
+        dbShowSelf = GetUserCvar(cpn, "UIX_DEBUG_SHOWSELF");
+
+        cvars[CV_OFFSX] = GetUserCvar(cpn, "UIX_CL_TEAMINFOOFFSX");
+        cvars[CV_OFFSY] = GetUserCvar(cpn, "UIX_CL_TEAMINFOOFFSY");
+        cvars[CV_SCALE] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSCALE");
+        cvars[CV_ALPHA] = baseAlpha;
+        cvars[CV_NAMESIZE] = GetUserCvar(cpn, "UIX_CL_TEAMINFONAMESIZE");
+        cvars[CV_MIRROR] = GetUserCvar(cpn, "UIX_CL_TEAMINFOMIRROR");
+        cvars[CV_DIR] = GetUserCvar(cpn, "UIX_CL_TEAMINFODIR");
+        cvars[CV_FONTDIR] = GetUserCvar(cpn, "UIX_CL_TEAMINFOFONTDIR");
+        cvars[CV_STACK] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSTACK");
+        cvars[CV_SHOWNAME] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSHOWNAME");
+        cvars[CV_SHOWHEALTH] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSHOWHEALTH");
+        cvars[CV_SHOWLOCATION] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSHOWLOCATION");
+        cvars[CV_SHOWLIVES] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSHOWLIVES");
+        cvars[CV_SHOWMUGSHOT] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSHOWMUGSHOT");
+        cvars[CV_SHOWWEAPON] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSHOWWEAPON");
+        cvars[CV_SEPARATION] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSEPARATION");
+        cvars[CV_WRAPAMOUNT] = GetUserCvar(cpn, "UIX_CL_TEAMINFOWRAPAMOUNT");
+        cvars[CV_WRAPHIDE] = GetUserCvar(cpn, "UIX_CL_TEAMINFOWRAPHIDE");
+        cvars[CV_WRAPDIR] = GetUserCvar(cpn, "UIX_CL_TEAMINFOWRAPDIR");
+        cvars[CV_WRAPSEPARATION] = GetUserCvar(cpn, "UIX_CL_TEAMINFOWRAPSEPARATION");
+        cvars[CV_SHOWDEAD] = GetUserCvar(cpn, "UIX_CV_TEAMINFOSHOWDEAD");
+        cvars[CV_SHOWDEATHANIM] = GetUserCvar(cpn, "UIX_CV_TEAMINFOSHOWDEATHANIM");
+        cvars[CV_SHOWMENUSTATUS] = GetUserCvar(cpn, "UIX_CV_TEAMINFOSHOWMENUSTATUS");
+        cvars[CV_SHOWOBJECTIVES] = GetUserCvar(cpn, "UIX_CV_TEAMINFOSHOWOBJECTIVES");
+        cvars[CV_LAYER] = hudLayers[GetUserCvar(cpn, "UIX_CL_TEAMINFOLAYER")];
+
+        if(cvars[CV_WRAPHIDE] && cvars[CV_WRAPAMOUNT] > 0) {
+            if(uixUnholyMode) {
+                // Engine team properties are meaningless in LMS; count the rows
+                // the Unholy filter would actually draw.
+                if(uixUnholyDisplayCount(pln, cvars[CV_SHOWDEAD]) > cvars[CV_WRAPAMOUNT]) {
+                    terminate;
+                }
+            } else if(team < 4) { // Team games
+                if(cvars[CV_SHOWDEAD]) {
+                    if(GetTeamProperty(team, TPROP_NumPlayers)-1 > cvars[CV_WRAPAMOUNT]) {
+                        terminate;
+                    }
+                } else {
+                    if(GetTeamProperty(team, TPROP_NumLivePlayers)-1 > cvars[CV_WRAPAMOUNT]) {
+                        terminate;
+                    }
+                }
+            } else { // Coop
+                if(cvars[CV_SHOWDEAD]) {
+                    if(countAllPlayers()-1 > cvars[CV_WRAPAMOUNT]) {
+                        terminate;
+                    }
+                } else {
+                    if(PlayerCount()-1 > cvars[CV_WRAPAMOUNT]) {
+                        terminate;
+                    }
+                }
+            }
+        }
+
+        cvars[CV_FONTIDX] = cvars[CV_FONTDIR] ^ cvars[CV_DIR];
+        cvars[CV_REVERSETEXT] = cvars[CV_DIR] && !cvars[CV_FONTDIR];
+
+        if(
+            tiCache_Scale != cvars[CV_SCALE] ||
+            tiCache_Stack != cvars[CV_STACK] ||
+            tiCache_WrapDir != cvars[CV_WRAPDIR] ||
+            tiCache_Separation != cvars[CV_SEPARATION] ||
+            tiCache_WrapSeparation != cvars[CV_WRAPSEPARATION]
+        ) {
+            tiCache_Scale = cvars[CV_SCALE];
+            tiCache_Stack = cvars[CV_STACK];
+            tiCache_WrapDir = cvars[CV_WRAPDIR];
+            tiCache_Separation = cvars[CV_SEPARATION];
+            tiCache_WrapSeparation = cvars[CV_WRAPSEPARATION];
+
+            tiStackOffs = FixedMul(STACK_OFFS+tiCache_Separation, cvars[CV_SCALE]);
+            tiWrapOffs = FixedMul(WRAP_OFFS+tiCache_WrapSeparation, cvars[CV_SCALE]);
+
+            if(cvars[CV_STACK])
+                tiStackOffs *= -1;
+
+            if(cvars[CV_WRAPDIR])
+                tiWrapOffs *= -1;
+        }
+
+        int drawnPlayers = 0;
+
+        for(int i = 0; i < MAX_PLAYERS_SHRT; i++) {
+            // Log(i:i, s:" == ", i:pln);
+            if(!dbShowSelf)
+                if(i == pln)
+                    continue;
+
+            // Log(i:i, s:"in game? ", i:PlayerInGame(i));
+            int dead = getPlayerAlive(i);
+            if(dead == STATUS_GONE)
+                continue;
+            
+            if(!cvars[CV_SHOWDEAD])
+                if(dead == STATUS_GHOST)
+                    continue;
+
+            // Log(i:i, s:" team: ", i:GetPlayerInfo(i, PLAYERINFO_TEAM), s:" == ", i:team);
+            if(uixUnholyMode) {
+                // Unholy side model: Survivor<->Survivor, Boss<->Boss, Eye never
+                // teams, and an active 1-vs-all event splits on the frozen
+                // target player number.
+                if(!uixIsDisplayTeammate(pln, i))
+                    continue;
+            } else if(getPlayerTeam(i) != team) {
+                continue;
+            }
+
+            int baseX, baseY;
+
+            if(cvars[CV_WRAPAMOUNT] > 0) {
+                int stackCount = drawnPlayers % cvars[CV_WRAPAMOUNT];
+                int wrapCount = drawnPlayers / cvars[CV_WRAPAMOUNT];
+
+                baseX = cvars[CV_OFFSX] + (cvars[CV_DIR] ? stackCount * tiStackOffs : 0);
+                baseY = cvars[CV_OFFSY] + (!cvars[CV_DIR] ? stackCount * tiStackOffs : 0);
+
+                baseX += (!cvars[CV_DIR] ? wrapCount * tiWrapOffs : 0);
+                baseY += (cvars[CV_DIR] ? wrapCount * tiWrapOffs : 0);
+            } else {
+                baseX = cvars[CV_OFFSX] + (cvars[CV_DIR] ? drawnPlayers * tiStackOffs : 0);
+                baseY = cvars[CV_OFFSY] + (!cvars[CV_DIR] ? drawnPlayers * tiStackOffs : 0);
+            }
+
+            drawStatus(i, baseX, baseY);
+            if(dead == STATUS_ALIVE)
+                drawObjective(i, baseX, baseY, team);
+            drawMugshot(i, baseX, baseY, team, dead);
+            drawName(i, baseX, baseY);
+            drawLocation(i, baseX, baseY, dead);
+            drawHealth(i, baseX, baseY, dead);
+            drawWeapon(i, baseX, baseY, dead);
+            drawLives(i, baseX, baseY, dead);
+
+            drawnPlayers++;
+        }
+        if(!objectiveDrawn) {
+            lastPickup = -1;
+        } else {
+            objectiveDrawn = false;
+        }
+    }
+}
+
+// Generic Draw constants ===========================================================================================================================
+#define ROW_LENGTH 11
+#define TEXT_SCALE 0.7
+
+#define HP_LENGTH 64
+#define HP_WIDTH 8
+
+str uiFonts[2] = {
+    "SMALLFNT",
+    "SIDEFNTL",
+};
+
+// Draw mugshot =====================================================================================================================================
+int mugCache_Scale = 0;
+int mugScale;
+
+int mugShot_ObjX;
+int mugShot_ObjY;
+int mugShot_StatusX;
+int mugShot_StatusY;
+int mugShot_VCY;
+int mugShot_SkullY;
+int mugShot_ExplodeScale;
+int mugShot_ExplodeX;
+int mugShot_ExplodeY;
+
+#define MG_OBJ_X -4
+#define MG_OBJ_Y -4
+
+#define MG_STATUS_X 0
+#define MG_STATUS_Y -4
+#define MG_VC_Y 4
+
+#define MG_SKULL_Y -4
+#define MG_EXPLODE_X 26
+#define MG_EXPLODE_Y 28
+
+// bool init
+// str  mug
+// bool dead
+// int  deadTime
+// bool diedOnce
+//
+str lastValidMug[MAX_PLAYERS_SHRT][4];
+#define MV_INIT 0
+#define MV_MUG 1
+#define MV_DEADTIME 2
+#define MV_DIEDONCE 3
+
+function void drawMugshot(int pln, int x, int y, int team, int dead)
+{
+    if(!cvars[CV_SHOWMUGSHOT])
+        return;
+
+    str face = getMugshotGraphicFromTID(pln+PLN_TID_SHRT);
+
+    if(StrLen(face) == 0) {
+        if(lastValidMug[pln][MV_INIT])
+            face = lastValidMug[pln][MV_MUG];
+        else
+            return;
+    } else {
+        if(!lastValidMug[pln][MV_INIT])
+            lastValidMug[pln][MV_INIT] = true;
+        lastValidMug[pln][MV_MUG] = face;
+    }
+
+    if(mugCache_Scale != cvars[CV_SCALE]) {
+        mugCache_Scale = cvars[CV_SCALE];
+        mugScale = FixedMul(cvars[CV_SCALE], 4.0);
+        mugShot_ExplodeScale = FixedMul(mugScale, 0.25);
+
+        mugShot_ObjX = fixedMul(mugScale, MG_OBJ_X);
+        mugShot_ObjY = fixedMul(mugScale, MG_OBJ_Y);
+
+        mugShot_StatusX = fixedMul(mugScale, MG_STATUS_X);
+        mugShot_StatusY = fixedMul(mugScale, MG_STATUS_Y);
+        mugShot_VCY = fixedMul(mugScale, MG_VC_Y);
+
+        mugShot_SkullY = fixedMul(mugScale, MG_SKULL_Y);
+        mugShot_ExplodeX = fixedMul(mugShot_ExplodeScale, MG_EXPLODE_X);
+        mugShot_ExplodeY = fixedMul(mugShot_ExplodeScale, MG_EXPLODE_Y);
+    }
+
+    drawMugshotDead(pln, x, y, team, dead);
+
+    displayIcon(cvars[CV_LAYER], face, x, y, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER);
+}
+
+function void drawStatus(int pln, int x, int y)
+{
+    if(!cvars[CV_SHOWMENUSTATUS])
+        return;
+
+    int status = GetPlayerStatus(pln);
+
+    if(status == 0)
+        return;
+
+    if(status & PLAYERSTATUS_CHATTING)
+        displayIcon(cvars[CV_LAYER], "UIXSTCHT", x+mugShot_StatusX, y+mugShot_StatusY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP);
+    if(status & PLAYERSTATUS_TALKING)
+        displayIcon(cvars[CV_LAYER], "UIXSTVC1", x+mugShot_StatusX, y+mugShot_VCY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_BOTTOM);
+    if(status & PLAYERSTATUS_INCONSOLE)
+        displayIcon(cvars[CV_LAYER], "UIXSTCO1", x+mugShot_StatusX, y+mugShot_StatusY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP);
+    if(status & PLAYERSTATUS_INMENU)
+        displayIcon(cvars[CV_LAYER], "UIXSTMN1", x+mugShot_StatusX, y+mugShot_StatusY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP);
+    if(status & PLAYERSTATUS_LAGGING)
+        displayIcon(cvars[CV_LAYER], "UIXSTLAG", x+mugShot_StatusX, y+mugShot_StatusY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP);
+}
+
+function void drawMugshotDead(int pln, int x, int y, int team, int dead)
+{
+    if(cvars[CV_SHOWDEATHANIM] && lastValidMug[pln][MV_DIEDONCE]) {
+        int explodeFrame = Timer() - lastValidMug[pln][MV_DEADTIME];
+        if(explodeFrame < FRAGMSG_EXPLODEFRAMES) {
+            displayIcon(cvars[CV_LAYER], explodeFrames[explodeFrame], x+mugShot_ExplodeX, y+mugShot_ExplodeY, mugShot_ExplodeScale, mugShot_ExplodeScale, cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER);
+        }
+    }
+
+    if(dead == STATUS_ALIVE)
+        return;
+
+    SetFont("MUGSFX");
+    displayMessageColorString(cvars[CV_LAYER], "E", x, y+mugShot_SkullY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER, fontPalette[4]);
+    displayMessageColorString(cvars[CV_LAYER], "F", x, y+mugShot_SkullY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER, fontPalette[200]);
+    displayMessage(cvars[CV_LAYER], "G", x, y, mugScale, mugScale, cvars[CV_ALPHA] >> 1, ALIGN_CENTER, ALIGN_CENTER);
+}
+
+script "UIXTeam_Mugshot_Death" DEATH CLIENTSIDE
+{
+    int pln = PlayerNumber();
+    str face = getMugshotGraphicFromTID(pln+PLN_TID_SHRT);
+
+    if(StrLen(face) == 0) {
+        if(lastValidMug[pln][MV_INIT]) {
+            face = lastValidMug[pln][MV_MUG];
+        }
+    } else {
+        if(!lastValidMug[pln][MV_INIT]) {
+            lastValidMug[pln][MV_INIT] = true;
+        }
+        lastValidMug[pln][MV_MUG] = face;
+    }
+
+    lastValidMug[pln][MV_DEADTIME] = timer();
+    lastValidMug[pln][MV_DIEDONCE] = true;
+}
+
+function void drawObjective(int pln, int x, int y, int team)
+{
+    if(objective == OBJ_IDC)
+        return;
+
+    if(!cvars[CV_SHOWOBJECTIVES])
+        return;
+    
+    if(objectiveDrawn)
+        return;
+
+    for(int i = 0; i < maxTeams; i++) {
+        if(i == team)
+            continue;
+        if(CheckActorInventory(pln+PLN_TID_SHRT, objectiveItems[objective][i]) == 0)
+            continue;
+
+        objectiveDrawn = true;
+        if(lastPickup == -1)
+            lastPickup = Timer();
+
+        SetFont("MUGSOBJS");
+
+        if(((Timer()-lastPickup) / 35) % 2 == 1) {
+            displayMessageColorString(cvars[CV_LAYER], objMessage[objective][0], x+mugShot_ObjX, y+mugShot_ObjY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP, fontPalette[4]);
+        }
+
+        displayMessageColorString(cvars[CV_LAYER], objMessage[objective][1], x+mugShot_ObjX, y+mugShot_ObjY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP, fontPalette[CallACS2("core_getteampalette", i, 0)]);
+        displayMessageColorString(cvars[CV_LAYER], objMessage[objective][2], x+mugShot_ObjX, y+mugShot_ObjY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP, fontPalette[CallACS2("core_getteampalette", i, 1)]);
+    }
+}
+
+// Draw Name ========================================================================================================================================
+#define NAME_X_00 17
+#define NAME_Y_00 -14
+
+#define NAME_X_01 -NAME_X_00-1
+#define NAME_Y_01 NAME_Y_00
+
+#define NAME_X_10 -15
+#define NAME_Y_10 17
+
+#define NAME_X_11 NAME_X_10
+#define NAME_Y_11 -18
+
+int nc[4]; // name cache
+#define NC_SCALE    0
+#define NC_MIRROR   1
+#define NC_DIR      2
+#define NC_NAMESIZE 3
+
+int nv[6]; // name vars
+#define N_X      0
+#define N_Y      1
+#define N_SCALE  2
+#define N_HALIGN 3
+#define N_VALIGN 4
+#define N_LENGTH 5
+
+function void drawName(int pln, int x, int y)
+{
+    if(!cvars[CV_SHOWNAME])
+        return;
+
+    if(
+        nc[NC_SCALE] != cvars[CV_SCALE] ||
+        nc[NC_MIRROR] != cvars[CV_MIRROR] ||
+        nc[NC_DIR] != cvars[CV_DIR] ||
+        nc[NC_NAMESIZE] != cvars[CV_NAMESIZE]
+    )
+    {
+        nc[NC_SCALE] = cvars[CV_SCALE];
+        nc[NC_MIRROR] = cvars[CV_MIRROR];
+        nc[NC_DIR] = cvars[CV_DIR];
+        nc[NC_NAMESIZE] = cvars[CV_NAMESIZE];
+
+        nv[N_X] = FixedMul(cvars[CV_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? NAME_X_00 : NAME_X_01) : (!cvars[CV_MIRROR] ? NAME_X_10 : NAME_X_11)));
+        nv[N_Y] = FixedMul(cvars[CV_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? NAME_Y_00 : NAME_Y_01) : (!cvars[CV_MIRROR] ? NAME_Y_10 : NAME_Y_11)));
+        nv[N_SCALE] = FixedMul(cvars[CV_SCALE], TEXT_SCALE);
+        nv[N_LENGTH] = cvars[CV_NAMESIZE];
+        nv[N_HALIGN] = cvars[CV_DIR] == vertical ? ALIGN_CENTER : (cvars[CV_MIRROR] ? ALIGN_RIGHT : ALIGN_LEFT);
+        nv[N_VALIGN] = cvars[CV_DIR] == horizontal ? ALIGN_CENTER : (!cvars[CV_MIRROR] ? ALIGN_TOP : ALIGN_BOTTOM);
+    }
+
+    str name = getPlayerName(pln, cvars[CV_DIR], cvars[CV_FONTIDX]);
+    int plrNameLength = getCacheNameWidth(pln, cvars[CV_DIR], cvars[CV_FONTIDX]);
+    int nameLengthScale = 1.0;
+
+    if(plrNameLength > nv[N_LENGTH]) {
+        nameLengthScale = FixedDiv(nv[N_LENGTH], plrNameLength);
+    }
+
+    int nameScaleX = cvars[CV_DIR] ? nv[N_SCALE] : FixedMul(nv[N_SCALE], nameLengthScale);
+    int nameScaleY = !cvars[CV_DIR] ? nv[N_SCALE] : FixedMul(nv[N_SCALE], nameLengthScale);
+    
+    SetFont(uiFonts[cvars[CV_FONTIDX]]);
+    displayMessage(cvars[CV_LAYER], name, x + nv[N_X], y + nv[N_Y], nameScaleX, nameScaleY, cvars[CV_ALPHA], nv[N_HALIGN], nv[N_VALIGN]);
+}
+
+// Draw Location ========================================================================================================================================
+#define LOC_X_00 NAME_X_00
+#define LOC_Y_00 NAME_Y_00 + 7
+
+#define LOC_X_01 NAME_X_01
+#define LOC_Y_01 LOC_Y_00
+
+#define LOC_X_10 NAME_X_10 + 7
+#define LOC_Y_10 NAME_Y_10
+
+#define LOC_X_11 LOC_X_10
+#define LOC_Y_11 NAME_Y_11-1
+
+int lc[4]; // location cvar cache
+#define LC_SCALE    0
+#define LC_MIRROR   1
+#define LC_DIR      2
+#define LC_NAMESIZE 3
+
+int lv[6]; // location variables
+#define L_X      0
+#define L_Y      1
+#define L_SCALE  2
+#define L_HALIGN 3
+#define L_VALIGN 4
+#define L_LENGTH 5
+
+function void drawLocation(int pln, int x, int y, int dead)
+{
+    if(!cvars[CV_SHOWLOCATION])
+        return;
+
+    if(
+        lv[LC_SCALE] != cvars[CV_SCALE] ||
+        lv[LC_MIRROR] != cvars[CV_MIRROR] ||
+        lv[LC_DIR] != cvars[CV_DIR] ||
+        lv[LC_NAMESIZE] != cvars[CV_NAMESIZE]
+    )
+    {
+        lv[LC_SCALE] = cvars[CV_SCALE];
+        lv[LC_MIRROR] = cvars[CV_MIRROR];
+        lv[LC_DIR] = cvars[CV_DIR];
+        lv[LC_NAMESIZE] = cvars[CV_NAMESIZE];
+
+        lv[L_X] = FixedMul(cvars[CV_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? LOC_X_00 : LOC_X_01) : (!cvars[CV_MIRROR] ? LOC_X_10 : LOC_X_11)));
+        lv[L_Y] = FixedMul(cvars[CV_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? LOC_Y_00 : LOC_Y_01) : (!cvars[CV_MIRROR] ? LOC_Y_10 : LOC_Y_11)));
+        lv[L_SCALE] = FixedMul(cvars[CV_SCALE], TEXT_SCALE);
+        lv[L_LENGTH] = cvars[CV_NAMESIZE];
+        lv[L_HALIGN] = cvars[CV_DIR] == vertical ? ALIGN_CENTER : (cvars[CV_MIRROR] ? ALIGN_RIGHT : ALIGN_LEFT);
+        lv[L_VALIGN] = cvars[CV_DIR] == horizontal ? ALIGN_CENTER : (!cvars[CV_MIRROR] ? ALIGN_TOP : ALIGN_BOTTOM);
+    }
+
+    str loc = findLocation(pln, cvars[CV_DIR], cvars[CV_FONTIDX], dead);
+
+    if(loc == -1)
+        return;
+    
+    int plrLocLength = getLocWidthPlr(pln, cvars[CV_DIR], cvars[CV_FONTIDX]);
+
+    int locLengthScale = 1.0;
+
+    if(plrLocLength > lv[L_LENGTH]) {
+        locLengthScale = FixedDiv(lv[L_LENGTH], plrLocLength);
+    }
+
+    int locScaleX = cvars[CV_DIR] ? lv[L_SCALE] : FixedMul(lv[L_SCALE], locLengthScale);
+    int locScaleY = !cvars[CV_DIR] ? lv[L_SCALE] : FixedMul(lv[L_SCALE], locLengthScale);
+    
+    SetFont(uiFonts[cvars[CV_FONTIDX]]);
+    displayMessage(cvars[CV_LAYER], loc, x + lv[L_X], y + lv[L_Y], locScaleX, locScaleY, cvars[CV_ALPHA], lv[L_HALIGN], lv[L_VALIGN]);
+}
+
+// Draw Health ======================================================================================================================================
+#define HP_X_00 120
+#define HP_Y_00 10
+
+#define HP_X_01 -HP_X_00-23
+#define HP_Y_01 HP_Y_00
+
+#define HP_X_10 0
+#define HP_Y_10 123
+
+#define HP_X_11 HP_X_10
+#define HP_Y_11 -HP_Y_10-16
+
+#define HP_L_CONST HP_LENGTH * 10
+#define HP_W_CONST HP_WIDTH * 10
+
+int hc[3]; // health cvar cache
+#define HC_SCALE  0
+#define HC_MIRROR 1
+#define HC_DIR    2
+
+int hv[7]; // health variables
+#define H_X      0
+#define H_Y      1
+#define H_SCALE  2
+#define H_WIDTH  3
+#define H_HEIGHT 4
+#define H_HALIGN 5
+#define H_VALIGN 6
+
+int healthBarDimensions[2] = {HP_L_CONST, HP_W_CONST};
+
+function void drawHealth(int pln, int x, int y, int dead)
+{
+    if(!cvars[CV_SHOWHEALTH])
+        return;
+    
+    if(dead == STATUS_GHOST)
+        return;
+    
+    if(
+        hc[HC_SCALE] != cvars[CV_SCALE] ||
+        hc[HC_MIRROR] != cvars[CV_MIRROR] ||
+        hc[HC_DIR] != cvars[CV_DIR]
+    )
+    {
+        hc[HC_SCALE] = cvars[CV_SCALE];
+        hc[HC_MIRROR] = cvars[CV_MIRROR];
+        hc[HC_DIR] = cvars[CV_DIR];
+
+        hv[H_SCALE] = FixedMul(FixedMul(cvars[CV_SCALE], 1.3334), 0.1);
+        hv[H_X] = FixedMul(hv[H_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? HP_X_00 : HP_X_01) : (!cvars[CV_MIRROR] ? HP_X_10 : HP_X_11)));
+        hv[H_Y] = FixedMul(hv[H_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? HP_Y_00 : HP_Y_01) : (!cvars[CV_MIRROR] ? HP_Y_10 : HP_Y_11)));
+        hv[H_WIDTH] = healthBarDimensions[cvars[CV_DIR]];
+        hv[H_HEIGHT] = healthBarDimensions[!cvars[CV_DIR]];
+        hv[H_HALIGN] = cvars[CV_DIR] == vertical ? ALIGN_CENTER : (cvars[CV_MIRROR] ? ALIGN_RIGHT : ALIGN_LEFT);
+        hv[H_VALIGN] = cvars[CV_DIR] == horizontal ? ALIGN_CENTER : (!cvars[CV_MIRROR] ? ALIGN_TOP : ALIGN_BOTTOM);
+    }
+
+    int mhp = GetActorProperty(pln+PLN_TID_SHRT, AProp_SpawnHealth);
+    int chp = GetActorProperty(pln+PLN_TID_SHRT, AProp_Health);
+    if(mhp == 0) {
+        if(chp == 0) {
+            mhp = 1;
+        } else {
+            mhp = chp;
+        }
+    }
+    
+    drawBar(
+        cvars[CV_LAYER],
+        healthBars[0][cvars[CV_DIR]],
+        healthBars[1][cvars[CV_DIR]],
+        x+hv[H_X], y+hv[H_Y],
+        hv[H_WIDTH], hv[H_HEIGHT],
+        hv[H_SCALE], hv[H_SCALE], cvars[CV_ALPHA],
+        chp, mhp,
+        !cvars[CV_DIR]+1, false,
+        hv[H_HALIGN], hv[H_VALIGN]
+    );
+}
+
+// Draw Weapon ======================================================================================================================================
+#define WEP_ICONX_00 16
+#define WEP_ICONY_00 17
+
+#define WEP_ICONX_01 -WEP_ICONX_00-30
+#define WEP_ICONY_01 WEP_ICONY_00
+
+#define WEP_ICONX_10 12
+#define WEP_ICONY_10 56
+
+#define WEP_ICONX_11 WEP_ICONX_10
+#define WEP_ICONY_11 -5
+
+// Bar is relative to the icon
+#define WEP_BARX_00 3
+#define WEP_BARY_00 -8
+
+#define WEP_BARX_01 WEP_BARX_00
+#define WEP_BARY_01 WEP_BARY_00
+
+#define WEP_BARX_10 -4
+#define WEP_BARY_10 -16
+
+#define WEP_BARX_11 WEP_BARX_10
+#define WEP_BARY_11 WEP_BARY_10
+
+// Double bar has a different set of coords
+#define WEP_BAR1X_00 3
+#define WEP_BAR1Y_00 -6
+
+#define WEP_BAR1X_01 WEP_BAR1X_00
+#define WEP_BAR1Y_01 WEP_BAR1Y_00
+
+#define WEP_BAR1X_10 -2
+#define WEP_BAR1Y_10 -16
+
+#define WEP_BAR1X_11 WEP_BAR1X_10
+#define WEP_BAR1Y_11 WEP_BAR1Y_10
+
+#define WEP_BAR2X_00 WEP_BAR1X_00
+#define WEP_BAR2Y_00 -10
+
+#define WEP_BAR2X_01 WEP_BAR2X_00
+#define WEP_BAR2Y_01 WEP_BAR2Y_00
+
+#define WEP_BAR2X_10 -6
+#define WEP_BAR2Y_10 -16
+
+#define WEP_BAR2X_11 WEP_BAR2X_10
+#define WEP_BAR2Y_11 WEP_BAR2Y_10
+
+
+#define WEP_L_CONST 28 * 10
+#define WEP_W_CONST 4 * 10
+
+#define WEP_ICON_SCALE 0.5
+
+int wc[3]; // weapon cvar cache
+#define WC_SCALE  0
+#define WC_MIRROR 1
+#define WC_DIR    2
+
+int wv[21]; // weapon variables
+#define W_ICONX           0
+#define W_ICONY           1
+#define W_BARX            2
+#define W_BARY            3
+#define W_BAR1X           4
+#define W_BAR1Y           5
+#define W_BAR2X           6
+#define W_BAR2Y           7
+#define W_ICONSCALE       8
+#define W_BARSCALE        9
+#define W_BARWIDTH        10
+#define W_BARHEIGHT       11
+#define W_BARSINGLEWIDTH  12
+#define W_BARSINGLEHEIGHT 13
+#define W_BAR1TOP         14
+#define W_BAR1BOTTOM      15
+#define W_BAR2TOP         16
+#define W_BAR2BOTTOM      17
+#define W_SCALE           18
+#define W_HALIGN          19
+#define W_VALIGN          20
+
+int weaponBarDimensions[2] = {WEP_L_CONST, WEP_W_CONST};
+
+#define UIX_WeapProp_Actor 0
+#define UIX_WeapProp_Tag 1
+#define UIX_WeapProp_Icon 2
+#define UIX_WeapProp_Ammo 3
+#define UIX_WeapProp_Ammo2 4
+
+#define UIX_WeapProp_Slot 5
+#define UIX_WeapProp_Cyan 6
+#define UIX_WeapProp_Blue 7
+#define UIX_WeapProp_Cyan2 8
+#define UIX_WeapProp_Blue2 9
+
+int playerWeaponInfo[10];
+#define PI_SUCCESS 0
+#define PI_ICON 1
+#define PI_AMMO_AMT1 2
+#define PI_AMMO_MAX1 3
+#define PI_AMMO_AMT2 4
+#define PI_AMMO_MAX2 5
+#define PI_CYAN1 6
+#define PI_BLUE1 7
+#define PI_CYAN2 8
+#define PI_BLUE2 9
+
+function void drawWeapon(int pln, int x, int y, int dead)
+{
+    if(!cvars[CV_SHOWWEAPON])
+        return;
+
+    if(dead == STATUS_GHOST)
+        return;
+
+    // int mwep = GetActorProperty(pln+PLN_TID_SHRT, AProp_SpawnWeapon);
+    // if(mwep == 0)
+        // return;
+
+    if(
+        wc[WC_SCALE] != cvars[CV_SCALE] ||
+        wc[WC_MIRROR] != cvars[CV_MIRROR] ||
+        wc[WC_DIR] != cvars[CV_DIR]
+    )
+    {
+        wc[WC_SCALE] = cvars[CV_SCALE];
+        wc[WC_MIRROR] = cvars[CV_MIRROR];
+        wc[WC_DIR] = cvars[CV_DIR];
+
+        wv[W_SCALE] = FixedMul(cvars[CV_SCALE], 1.3334);
+
+        wv[W_ICONX] = FixedMul(wv[W_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? WEP_ICONX_00 : WEP_ICONX_01) : (!cvars[CV_MIRROR] ? WEP_ICONX_10 : WEP_ICONX_11)));
+        wv[W_ICONY] = FixedMul(wv[W_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? WEP_ICONY_00 : WEP_ICONY_01) : (!cvars[CV_MIRROR] ? WEP_ICONY_10 : WEP_ICONY_11)));
+        wv[W_BARX] = wv[W_ICONX] + FixedMul(wv[W_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? WEP_BARX_00 : WEP_BARX_01) : (!cvars[CV_MIRROR] ? WEP_BARX_10 : WEP_BARX_11)));
+        wv[W_BARY] = wv[W_ICONY] + FixedMul(wv[W_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? WEP_BARY_00 : WEP_BARY_01) : (!cvars[CV_MIRROR] ? WEP_BARY_10 : WEP_BARY_11)));
+        wv[W_BAR1X] = wv[W_ICONX] + FixedMul(wv[W_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? WEP_BAR1X_00 : WEP_BAR1X_01) : (!cvars[CV_MIRROR] ? WEP_BAR1X_10 : WEP_BAR1X_11)));
+        wv[W_BAR1Y] = wv[W_ICONY] + FixedMul(wv[W_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? WEP_BAR1Y_00 : WEP_BAR1Y_01) : (!cvars[CV_MIRROR] ? WEP_BAR1Y_10 : WEP_BAR1Y_11)));
+        wv[W_BAR2X] = wv[W_ICONX] + FixedMul(wv[W_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? WEP_BAR2X_00 : WEP_BAR2X_01) : (!cvars[CV_MIRROR] ? WEP_BAR2X_10 : WEP_BAR2X_11)));
+        wv[W_BAR2Y] = wv[W_ICONY] + FixedMul(wv[W_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? WEP_BAR2Y_00 : WEP_BAR2Y_01) : (!cvars[CV_MIRROR] ? WEP_BAR2Y_10 : WEP_BAR2Y_11)));
+        wv[W_BARSCALE] = FixedMul(FixedMul(wv[W_SCALE], 1.0), 0.1);
+        wv[W_ICONSCALE] = FixedMul(WEP_ICON_SCALE, wv[W_SCALE]);
+        wv[W_BARWIDTH] = weaponBarDimensions[cvars[CV_DIR]];
+        wv[W_BARHEIGHT] = weaponBarDimensions[!cvars[CV_DIR]];
+        wv[W_HALIGN] = cvars[CV_DIR] == vertical ? ALIGN_CENTER : ALIGN_LEFT;
+        wv[W_VALIGN] = cvars[CV_DIR] == horizontal ? ALIGN_CENTER : ALIGN_BOTTOM;
+
+        wv[W_BARSINGLEWIDTH] = wv[W_BARWIDTH];
+        wv[W_BARSINGLEHEIGHT] = wv[W_BARHEIGHT];
+
+        if(cvars[CV_DIR]) {
+            wv[W_BARSINGLEWIDTH] *= 2;
+        } else {
+            wv[W_BARSINGLEHEIGHT] *= 2;
+        }
+    }
+
+    getPlayerWeaponInfo(pln);
+
+    if(!playerWeaponInfo[PI_SUCCESS]) {
+        Log(s:"Canceling due to invalid data");
+        return;
+    }
+
+    if(playerWeaponInfo[PI_AMMO_MAX1] > 0 && playerWeaponInfo[PI_AMMO_MAX2] > 0) {
+        drawLayeredBarColor(
+            cvars[CV_LAYER],
+            weaponBars[2][cvars[CV_DIR]],
+            fontPalette[playerWeaponInfo[PI_CYAN1]],
+            fontPalette[playerWeaponInfo[PI_BLUE1]],
+            fontPalette[0],
+            X+wv[W_BAR1X], Y+wv[W_BAR1Y], wv[W_BARWIDTH], wv[W_BARHEIGHT],
+            wv[W_BARSCALE], wv[W_BARSCALE], cvars[CV_ALPHA],
+            playerWeaponInfo[PI_AMMO_AMT1], playerWeaponInfo[PI_AMMO_MAX1],
+            !cvars[CV_DIR]+1, false,
+            wv[W_HALIGN], wv[W_VALIGN]
+        );
+        drawLayeredBarColor(
+            cvars[CV_LAYER],
+            weaponBars[2][cvars[CV_DIR]],
+            fontPalette[playerWeaponInfo[PI_CYAN2]],
+            fontPalette[playerWeaponInfo[PI_BLUE2]],
+            fontPalette[0],
+            X+wv[W_BAR2X], Y+wv[W_BAR2Y], wv[W_BARWIDTH], wv[W_BARHEIGHT],
+            wv[W_BARSCALE], wv[W_BARSCALE], cvars[CV_ALPHA],
+            playerWeaponInfo[PI_AMMO_AMT2], playerWeaponInfo[PI_AMMO_MAX2],
+            !cvars[CV_DIR]+1, false,
+            wv[W_HALIGN], wv[W_VALIGN]
+        );
+    } else {
+        if(playerWeaponInfo[PI_AMMO_MAX1] > 0) {
+            drawLayeredBarColor(
+                cvars[CV_LAYER],
+                weaponBars[1][cvars[CV_DIR]],
+                fontPalette[playerWeaponInfo[PI_CYAN1]],
+                fontPalette[playerWeaponInfo[PI_BLUE1]],
+                fontPalette[0],
+                X+wv[W_BARX], Y+wv[W_BARY], wv[W_BARSINGLEWIDTH], wv[W_BARSINGLEHEIGHT],
+                wv[W_BARSCALE], wv[W_BARSCALE], cvars[CV_ALPHA],
+                playerWeaponInfo[PI_AMMO_AMT1], playerWeaponInfo[PI_AMMO_MAX1],
+                !cvars[CV_DIR]+1, false,
+                wv[W_HALIGN], wv[W_VALIGN]
+            );
+        }
+        
+        if(playerWeaponInfo[PI_AMMO_MAX2] > 0) {
+            drawLayeredBarColor(
+                cvars[CV_LAYER],
+                weaponBars[1][cvars[CV_DIR]],
+                fontPalette[playerWeaponInfo[PI_CYAN1]],
+                fontPalette[playerWeaponInfo[PI_BLUE1]],
+                fontPalette[0],
+                X+wv[W_BARX], Y+wv[W_BARY], wv[W_BARSINGLEWIDTH], wv[W_BARSINGLEHEIGHT],
+                wv[W_BARSCALE], wv[W_BARSCALE], cvars[CV_ALPHA],
+                playerWeaponInfo[PI_AMMO_AMT2], playerWeaponInfo[PI_AMMO_MAX2],
+                !cvars[CV_DIR]+1, false,
+                wv[W_HALIGN], wv[W_VALIGN]
+            );
+        }
+    }
+
+    displayIcon(cvars[CV_LAYER], playerWeaponInfo[PI_ICON], x+wv[W_ICONX], y+wv[W_ICONY], wv[W_ICONSCALE], wv[W_ICONSCALE], cvars[CV_ALPHA], wv[W_HALIGN], wv[W_VALIGN]);
+}
+
+// Draw Lives =======================================================================================================================================
+#define LIVES_X_00 88
+#define LIVES_Y_00 16
+
+#define LIVES_X_01 -LIVES_X_00-8
+#define LIVES_Y_01 LIVES_Y_00
+
+#define LIVES_X_10 13
+#define LIVES_Y_10 100
+
+#define LIVES_X_11 LIVES_X_10
+#define LIVES_Y_11 -80
+
+#define LIVES_TEXT_X_00 2
+#define LIVES_TEXT_Y_00 -4
+
+#define LIVES_TEXT_X_01 LIVES_TEXT_X_00
+#define LIVES_TEXT_Y_01 LIVES_TEXT_Y_00
+
+#define LIVES_TEXT_X_10 -4
+#define LIVES_TEXT_Y_10 -10
+
+#define LIVES_TEXT_X_11 LIVES_TEXT_X_10
+#define LIVES_TEXT_Y_11 LIVES_TEXT_Y_10
+
+#define LIVES_OFFS 9
+
+int sc[3]; // lives cvar cache
+#define SC_SCALE  0
+#define SC_MIRROR 1
+#define SC_DIR    2
+
+int sv[10]; // lives variables
+#define S_X          0
+#define S_Y          1
+#define S_TEXTX      2
+#define S_TEXTY      3
+#define S_SCALE      4
+#define S_OFFSX      5
+#define S_OFFSY      6
+#define S_TEXTSCALE  7
+#define S_TEXTHALIGN 8
+#define S_TEXTVALIGN 9
+
+function void drawLives(int pln, int x, int y, int dead)
+{
+    if(dead == STATUS_GHOST)
+        return;
+
+    if(maxLives == -1)
+        return;
+
+    if(!cvars[CV_SHOWLIVES])
+        return;
+
+    int lives = GetPlayerLivesLeft(pln);
+    if(lives <= 0)
+        return;
+
+    if(
+        sc[SC_SCALE] != cvars[CV_SCALE] ||
+        sc[SC_MIRROR] != cvars[CV_MIRROR] ||
+        sc[SC_DIR] != cvars[CV_DIR]
+    )
+    {
+        sc[SC_SCALE] = cvars[CV_SCALE];
+        sc[SC_MIRROR] = cvars[CV_MIRROR];
+        sc[SC_DIR] = cvars[CV_DIR];
+
+        sv[S_X] = FixedMul(cvars[CV_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? LIVES_X_00 : LIVES_X_01) : (!cvars[CV_MIRROR] ? LIVES_X_10 : LIVES_X_11)));
+        sv[S_Y] = FixedMul(cvars[CV_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? LIVES_Y_00 : LIVES_Y_01) : (!cvars[CV_MIRROR] ? LIVES_Y_10 : LIVES_Y_11)));
+        sv[S_TEXTX] = sv[S_X] + FixedMul(cvars[CV_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? LIVES_TEXT_X_00 : LIVES_TEXT_X_01) : (!cvars[CV_MIRROR] ? LIVES_TEXT_X_10 : LIVES_TEXT_X_11)));
+        sv[S_TEXTY] = sv[S_Y] + FixedMul(cvars[CV_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? LIVES_TEXT_Y_00 : LIVES_TEXT_Y_01) : (!cvars[CV_MIRROR] ? LIVES_TEXT_Y_10 : LIVES_TEXT_Y_11)));
+        sv[S_SCALE] = cvars[CV_SCALE];
+        sv[S_OFFSX] = FixedMul(cvars[CV_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? -LIVES_OFFS : LIVES_OFFS) : 0));
+        sv[S_OFFSY] = FixedMul(cvars[CV_SCALE], ( cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? -LIVES_OFFS : LIVES_OFFS) : 0));
+
+        sv[S_TEXTSCALE] = FixedMul(cvars[CV_SCALE], TEXT_SCALE);
+        sv[S_TEXTHALIGN] = cvars[CV_DIR] == vertical ? ALIGN_CENTER : ALIGN_LEFT;
+        sv[S_TEXTVALIGN] = cvars[CV_DIR] == horizontal ? ALIGN_CENTER : ALIGN_BOTTOM;
+    }
+
+    int team = GetPlayerInfo(pln, PLAYERINFO_TEAM);
+    int cyan = ACS_NamedExecuteWithResult("core_getteampalette", team, 0);
+    int blue = ACS_NamedExecuteWithResult("core_getteampalette", team, 1);
+
+    SetFont("LIVCOUNT");
+    displayMessageColorString(cvars[CV_LAYER], "A", x+sv[S_X], y+sv[S_Y], sv[S_SCALE], sv[S_SCALE], cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER, fontPalette[cyan]);
+    displayMessageColorString(cvars[CV_LAYER], "B", x+sv[S_X], y+sv[S_Y], sv[S_SCALE], sv[S_SCALE], cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER, fontPalette[blue]);
+
+    SetFont(uiFonts[cvars[CV_FONTIDX]]);
+    displayMessage(cvars[CV_LAYER], livesCounts[cvars[CV_DIR] + cvars[CV_REVERSETEXT]][lives < 100 ? lives : 99], x + sv[S_TEXTX], y + sv[S_TEXTY], sv[S_TEXTSCALE], sv[S_TEXTSCALE], cvars[CV_ALPHA], sv[S_TEXTHALIGN], sv[S_TEXTVALIGN]);
+}
+
+// Player name cache ================================================================================================================================
+#define NAME_MAX 1000
+#define CHAR_COLOR 28
+
+int nameSize;
+int nameBuilder[NAME_MAX];
+
+int nameColorless[NAME_MAX];
+int nameColors[NAME_MAX];
+int colorPos[NAME_MAX][3];
+
+function int getColorPos(int i) { return colorPos[i][0]; }
+function int getColorStart(int i) { return colorPos[i][1]; }
+function int getColorEnd(int i) { return colorPos[i][2]; }
+
+function void setColorPos(int i, int val) { colorPos[i][0] = val; }
+function void setColorStart(int i, int val) { colorPos[i][1] = val; }
+function void setColorEnd(int i, int val) { colorPos[i][2] = val; }
+
+// output of rebuildString stored here.
+str cacheKey;
+str cacheVert;
+str cacheVertReverse;
+int cacheWidth;
+int cacheHeight;
+int cacheHeightReverse;
+
+function void rebuildString(str name) {
+    cacheKey = name;
+
+    strCpy(a:nameBuilder, name);
+    nameSize = StrLen(name);
+
+    str outName = "";
+
+    int inColor = 0;
+    int colorStart;
+
+    int colorLessSize = 0;
+    int colorsLength = 0;
+    int colorsCount = 0;
+
+    int i;
+
+    int nameWidth = 0;
+
+    for(i = 0; i < nameSize; i++) {
+        switch(inColor) {
+            case 0:
+                if(nameBuilder[i] == CHAR_COLOR) {
+                    inColor = 1;
+                    setColorPos(colorsCount, colorLessSize);
+                    setColorStart(colorsCount, colorsLength);
+                } else {
+                    nameColorless[colorLessSize++] = nameBuilder[i];
+                    nameWidth += getCharWidth(nameBuilder[i]);
+                }
+                break;
+            case 1: // check next char
+                if(nameBuilder[i] == '[') {
+                    colorStart = i;
+                    inColor = 2;
+                    setColorPos(colorsCount, colorLessSize);
+                    setColorStart(colorsCount, colorsLength);
+                    nameColors[colorsLength++] = nameBuilder[i];
+                } else {
+                    inColor = 0;
+                    nameColors[colorsLength++] = nameBuilder[i];
+                    setColorEnd(colorsCount, colorsLength);
+                    colorsCount++;
+                }
+                break;
+            case 2: // in big string
+                nameColors[colorsLength++] = nameBuilder[i];
+                if(nameBuilder[i] == ']') {
+                    inColor = 0;
+                    setColorEnd(colorsCount, colorsLength);
+                    colorsCount++;
+                }
+                break;
+        }
+        nameBuilder[i] = 0;
+    }
+
+    // // Cache test
+    // Log(s:"nameColorLess: ", a:(nameColorless, 0, colorLessSize));
+    // Log(s:"nameColors: ", a:(nameColors, 0, colorsLength));
+
+    // // Colors test
+    // str tpos = StrParam(i:getColorPos(0));
+    // str tstart = StrParam(i:getColorStart(0));
+    // str tend = StrParam(i:getColorEnd(0));
+    // for(i = 1; i < colorsCount; i++) {
+    //     tpos = StrParam(s:tpos, s:", ", i:getColorPos(i));
+    //     tstart = StrParam(s:tstart, s:", ", i:getColorStart(i));
+    //     tend = StrParam(s:tend, s:", ", i:getColorEnd(i));
+    // }
+    // Log(s:tstart);
+    // Log(s:tend);
+    // Log(s:tpos);
+
+    int c, nidx, curCol;
+
+    // vertical
+    nidx = 0;
+    curCol = -1;
+    for(i = 0; i < colorLessSize; i++) {
+        if(colorsCount > 0) {
+            if(i == getColorPos(curCol+1)) {
+                curCol++;
+            }
+        }
+
+        if(nameColorless[i] != ' ') {
+            if(curCol > -1) {
+                nameBuilder[nidx++] = CHAR_COLOR;
+                for(c = getColorStart(curCol); c < getColorEnd(curCol); c++) {
+                    nameBuilder[nidx++] = nameColors[c];
+                }
+            }
+            nameBuilder[nidx++] = nameColorless[i];
+        }
+
+        nameBuilder[nidx++] = '\n';
+    }
+
+    cacheVert = StrParam(a:(nameBuilder, 0, nidx));
+    
+    // verticalreverse
+    nidx = 0;
+    curCol = colorsCount-1;
+    for(i = colorLessSize; i > 0; i--) {
+        if(i == getColorPos(curCol)) {
+            curCol--;
+            if(curCol < 0)
+                curCol = colorsCount-1;
+        }
+
+        if(nameColorless[i-1] != ' ') {
+            if(curCol > -1 && curCol < colorsCount) {
+                // Log(s:"\\c");
+                nameBuilder[nidx++] = CHAR_COLOR;
+                for(c = getColorStart(curCol); c < getColorEnd(curCol); c++) {
+                    // Log(c:nameColors[c]);
+                    nameBuilder[nidx++] = nameColors[c];
+                }
+            }
+            // Log(c:nameColorless[i-1]);
+            nameBuilder[nidx++] = nameColorless[i-1];
+        }
+
+        nameBuilder[nidx++] = '\n';
+    }
+
+    cacheVertReverse = StrParam(a:(nameBuilder, 0, nidx));
+    cacheWidth = nameWidth;
+    cacheHeight = colorLessSize * 9;
+    cacheHeightReverse = colorLessSize * 9;
+
+    // Log(s:"===== Final Cache =====");
+    // Log(s:"CacheKey: ", s:cacheKey);
+    // Log(s:"CacheVert: ", s:cacheVert);
+    // Log(s:"CacheVertReverse: ", s:cacheVertReverse);
+    // Log(s:"CacheWidth: ", i:cacheWidth);
+    // Log(s:"CacheHeight: ", i:cacheHeight);
+    // Log(s:"CacheHeightReverse: ", i:cacheHeightReverse);
+}
+
+// bool init
+// string name
+// string vertical
+// string reversevertical
+// int width horizontal
+// int width vertical
+// int width vertical reverse
+//
+str namesCache[MAX_PLAYERS_SHRT][7];
+
+function int isCacheInit(int plr) { return namesCache[plr][0]; }
+function void setCacheInit(int plr, int val) { namesCache[plr][0] = val; }
+
+function str getCacheName(int plr, int o, int r) { return namesCache[plr][1 + (o ? o + r : 0)]; }
+function void setCacheName(int plr, int o, int r, str val) { namesCache[plr][1 + (o ? o + r : 0)] = val; }
+
+function int getCacheNameWidth(int plr, int o, int r) { return namesCache[plr][4 + (o ? o + r : 0)]; }
+function void setCacheNameWidth(int plr, int o, int r, int val) { namesCache[plr][4 + (o ? o + r : 0)] = val; }
+
+function bool needsReset(int plr, str name)
+{
+    // [Russ] keeping in pattern with other uix stuff, short circuit the most important fail case
+    if(!isCacheInit(plr)) {
+        return true;
+    }
+
+    if(!StrEqual(name, getCacheName(plr, 0, 0))) {
+        return true;
+    }
+
+    return false;
+}
+
+function str getPlayerName(int plr, int o, int r)
+{
+    str name = StrParam(n:1+plr);
+
+    if(needsReset(plr, name)) {
+        rebuildString(name);
+
+        setCacheInit(plr, true);
+        setCacheName(plr, false, false, cacheKey);
+        setCacheName(plr, true, false, cacheVert);
+        setCacheName(plr, true, true, cacheVertReverse);
+        setCacheNameWidth(plr, false, false, cacheWidth);
+        setCacheNameWidth(plr, true, false, cacheHeight);
+        setCacheNameWidth(plr, true, true, cacheHeightReverse);
+    }
+
+    return getCacheName(plr, o, r);
+}
+
+#define LOC_SIZE_LIMIT 1000
+int LOC_SIZE = 0;
+
+// Location name cache ==============================================================================================================================
+// string location
+// string vertical
+// string reversevertical
+// int width horizontal
+// int width vertical
+// int width vertical reverse
+//
+// Index size +1 to append an error state for the last slot
+str locs[LOC_SIZE_LIMIT+1][7];
+
+// previous locations so per-tic comparisons are reduced
+// int loc
+// int idx
+//
+int playerLocs[MAX_PLAYERS_SHRT][2];
+
+// [Russ] This algorithm is based on one very dangerous assumption.
+// Will the engine generate an identical string with a separate index in the string table?
+// I feel like only god knows.
+// EDIT: NOPE.
+// IT SOMETIMES RETURNS A NEW INDEX.
+// I DON'T KNOW WHEN I DON'T KNOW HOW I JUST KNOW IT DOES.
+//
+function int findLoc(int id) {
+    for(int i = 0; i < LOC_SIZE; i++) {
+        if(StrEqual(getLocId(i), id))
+            return i;
+    }
+    return -1;
+}
+
+function int getLocId(int idx) { return locs[idx][0]; }
+function void setLocId(int idx, int val) { locs[idx][0] = val; }
+
+function str getLocName(int idx, int o, int r) { return locs[idx][(o ? o + r : 0)]; }
+function void setLocName(int idx, int o, int r, str val) { locs[idx][(o ? o + r : 0)] = val; }
+
+function int getLocNameWidth(int idx, int o, int r) { return locs[idx][4 + (o ? o + r : 0)]; }
+function void setLocNameWidth(int idx, int o, int r, int val) { locs[idx][4 + (o ? o + r : 0)] = val; }
+
+function int getLocWidthPlr(int plr, int o, int r) { return getLocNameWidth(playerLocs[plr][1], o, r); }
+
+function str findLocation(int plr, int o, int r, int dead) {
+    str loc = -1;
+
+    if(dead == STATUS_DEAD)
+        loc = StrParam(l:"UIX_LOC_DEAD");
+
+    if(dead == STATUS_GHOST)
+        loc = StrParam(l:"UIX_LOC_GHOST");
+
+    if(loc == -1)
+        loc = GetActorSectorLocation(plr+PLN_TID_SHRT, false);
+
+    if(loc == -1 || StrLen(loc) == 0)
+        return "";
+
+    if(StrEqual(playerLocs[plr][0], loc)) {
+        return getLocName(playerLocs[plr][1], o, r);
+    }
+
+    int idx = findLoc(loc);
+
+    if(idx != -1) {
+        playerLocs[plr][0] = loc;
+        playerLocs[plr][1] = idx;
+        return getLocName(idx, o, r);
+    }
+
+    if(LOC_SIZE > LOC_SIZE_LIMIT) {
+        playerLocs[plr][0] = loc;
+        playerLocs[plr][1] = LOC_SIZE_LIMIT;
+        return getLocName(LOC_SIZE_LIMIT, o, r);
+    }
+    
+    if(LOC_SIZE == LOC_SIZE_LIMIT) {
+        loc = StrParam(l:StrParam(s:"UIX_UNKNOWN_LOC_", i:random(1, 4)));
+    }
+
+    rebuildString(loc);
+
+    setLocName(LOC_SIZE, false, false, cacheKey);
+    setLocName(LOC_SIZE, true, false, cacheVert);
+    setLocName(LOC_SIZE, true, true, cacheVertReverse);
+    setLocNameWidth(LOC_SIZE, false, false, cacheWidth);
+    setLocNameWidth(LOC_SIZE, true, false, cacheHeight);
+    setLocNameWidth(LOC_SIZE, true, true, cacheHeightReverse);
+
+    playerLocs[plr][0] = loc;
+    playerLocs[plr][1] = LOC_SIZE;
+
+    // Log(s:"Loc change (new): ", i:playerLocs[plr][0], s:" ", i:playerLocs[plr][1]);
+
+    return getLocName(LOC_SIZE++, o, r);
+}
+
+// Character width calculator =======================================================================================================================
+
+int fontCharWidths[256] = {
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+};
+
+function int getCharWidth(int char) {
+    int idx = char + 128;
+    if(fontCharWidths[idx] >= 0)
+        return fontCharWidths[idx];
+
+    int width = parseInt(StrParam(l:StrParam(s:"UI_SMALLFONT_", c:char<0?'N':'P', i:char)));
+    fontCharWidths[idx] = width;
+    return width;
+}
+
+// Weapon data store ================================================================================================================================
+
+// bool: cached
+// int:  cyan1
+// int:  blue1
+// int:  cyan2
+// int:  blue2
+//
+int weapon_colors[MAX_WEAPONS_GLOBAL_LIMIT][5];
+#define WC_ISCACHED 0
+#define WC_CYAN1 1
+#define WC_BLUE1 2
+#define WC_CYAN2 3
+#define WC_BLUE2 4
+
+
+// core function
+function int getWeaponColor(int idx, int prop)
+{
+    if(idx == -1 || prop == 0)
+        return -1;
+
+    if(weapon_colors[idx][WC_ISCACHED])
+        return weapon_colors[idx][prop];
+    
+    str act = getWeaponActor(idx);
+    readWeaponBars(act);
+
+    weapon_colors[idx][WC_ISCACHED] = true;
+    weapon_colors[idx][WC_CYAN1] = readCyan1;
+    weapon_colors[idx][WC_BLUE1] = readBlue1;
+    weapon_colors[idx][WC_CYAN2] = readCyan2;
+    weapon_colors[idx][WC_BLUE2] = readBlue2;
+    return weapon_colors[idx][prop];
+}
+
+function int findWeaponInDTs(str weap) {
+    int i;
+
+	for(i = 0; i < MAX_WEAPONS_GLOBAL; i++)
+    {
+        if(StrMatches(weap, getWeaponActor(i)))
+            return i+1;
+    }
+
+    for(i = 0; i < MAX_BUSTERUPGRADES; i++)
+    {
+        if(StrMatches(weap, getBusterActor(i)))
+            return -(i+1);
+    }
+
+    return 0;
+}
+
+// bool: init
+// int:  index
+// int:  timestamp
+// str:  weaponActor
+//
+int playerWeapons[MAX_PLAYERS_SHRT][4];
+#define WP_INIT 0
+#define WP_INDEX 1
+#define WP_TIMESTAMP 2
+#define WP_ACTOR 3
+
+// this function will throw all of its information
+// to variables defined way earlier
+function void getPlayerWeaponInfo(int pln)
+{
+    // flag to mark this function has initialized
+    playerWeaponInfo[PI_SUCCESS] = false;
+
+    // regardless, data access is difficult without setting activator
+    SetActivatorToPlayer(pln);
+    int idx = 0;
+
+    // check if the data in the cache is still fresh
+    // if a "stale timer" is added, check that here
+    //
+    if(playerWeapons[pln][WP_INIT]) {
+        if(!CheckWeapon(playerWeapons[pln][WP_ACTOR])) {
+            playerWeapons[pln][WP_INIT] = false;
+        } else {
+            idx = playerWeapons[pln][WP_INDEX];
+        }
+    }
+
+    if(!playerWeapons[pln][WP_INIT]) {
+        str weap = GetWeapon();
+        idx = findWeaponInDTs(weap);
+        playerWeapons[pln][WP_INIT] = true;
+        playerWeapons[pln][WP_INDEX] = idx;
+        playerWeapons[pln][WP_TIMESTAMP] = Timer();
+        playerWeapons[pln][WP_ACTOR] = weap;
+    }
+
+    if(idx <= 0) {
+        if(idx < 0) { // weapon is a known buster
+            playerWeaponInfo[PI_ICON] = getBusterIcon(-idx-1);
+        } else { // weapon is unknown
+            playerWeaponInfo[PI_ICON] = "";
+        }
+
+        playerWeaponInfo[PI_AMMO_AMT1] = -1;
+        playerWeaponInfo[PI_AMMO_MAX1] = -1;
+        playerWeaponInfo[PI_AMMO_AMT2] = -1;
+        playerWeaponInfo[PI_AMMO_MAX2] = -1;
+        playerWeaponInfo[PI_CYAN1] = -1;
+        playerWeaponInfo[PI_BLUE1] = -1;
+        playerWeaponInfo[PI_CYAN2] = -1;
+        playerWeaponInfo[PI_BLUE2] = -1;
+    } else { // weapon is a known copywep
+        idx--; // convert the combined index into the copywep index
+
+        int amo1 = getWeaponAmmoType(idx);
+        int amo2 = getWeaponAmmo2Type(idx);
+
+        playerWeaponInfo[PI_ICON] = getWeaponIcon(idx);
+
+        playerWeaponInfo[PI_CYAN1] = getWeaponColor(idx, WC_CYAN1);
+        playerWeaponInfo[PI_BLUE1] = getWeaponColor(idx, WC_BLUE1);
+        playerWeaponInfo[PI_CYAN2] = getWeaponColor(idx, WC_CYAN2);
+        playerWeaponInfo[PI_BLUE2] = getWeaponColor(idx, WC_BLUE2);
+
+        if(StrLen(amo1) != 0 && playerWeaponInfo[PI_CYAN1] != -1) {
+            playerWeaponInfo[PI_AMMO_AMT1] = CheckInventory(amo1);
+            playerWeaponInfo[PI_AMMO_MAX1] = GetAmmoCapacity(amo1);
+        } else {
+            playerWeaponInfo[PI_AMMO_AMT1] = -1;
+            playerWeaponInfo[PI_AMMO_MAX1] = -1;
+        }
+        if(StrLen(amo2) != 0 && playerWeaponInfo[PI_CYAN2] != -1) {
+            playerWeaponInfo[PI_AMMO_AMT2] = CheckInventory(amo2);
+            playerWeaponInfo[PI_AMMO_MAX2] = GetAmmoCapacity(amo2);
+        } else {
+            playerWeaponInfo[PI_AMMO_AMT2] = -1;
+            playerWeaponInfo[PI_AMMO_MAX2] = -1;
+        }
+    }
+
+    playerWeaponInfo[PI_SUCCESS] = true;
+    resetActivator();
+    return;
+}
+
+function int countAllPlayers(void)
+{
+    int count = 0;
+    for(int i = 0; i < MAX_PLAYERS_SHRT; i++) {
+        if(getPlayerAlive(i) > STATUS_GONE)
+            count++;
+    }
+    return count;
+}

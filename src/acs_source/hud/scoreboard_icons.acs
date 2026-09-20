@@ -1,0 +1,78 @@
+// scoreboard_icons.acs — Unholy per-viewer portrait column refresh.
+//
+// Fragment of library unholy; #include'd at the END of unholy/uh_teaminfo.acs
+// so it can use the client snapshot and the UH_CanSeeScoreIcon matrix.  It is
+// not a standalone library and must not be added to LOADACS.
+//
+// How the built-in scoreboard gets per-viewer icons:
+//   * MAPINFO declares a Texture custom player value "UHPlayerIcon".
+//   * SCORINFO defines a UHPlayerIcon column and puts it in PlayerIcon's slot.
+//   * A CLIENTSIDE script writes the texture for the LOCAL client only with
+//     SetCustomPlayerValue(); the server never writes this column.
+// Each client therefore computes its own visibility and only its own
+// scoreboard changes.  The server-side state (see uh_round_helpers.acs) is
+// synced separately from the life-status changes.
+//
+// Refresh policy: only while the scoreboard is actually on screen, and only
+// when a row's value changes.  Keeping writes rare also keeps the (bounded)
+// listen-server broadcast of clientside writes rare; a host's CLIENTSIDE
+// SetCustomPlayerValue still reaches other clients because the process runs
+// as the server, but every client overwrites its own copy on open.
+
+// uhtiiconset (declared in uh_teaminfo.acs) is the last texture this client
+// pushed for each row, so a refresh does not rewrite identical values.  Plain
+// arrays reset to "" on map load; UH_ScoreIcons_ClearEngine also clears it.
+
+function bool UH_ScoreIconVisibleEffective(int viewer, int subject) {
+  if (subject < 0 || subject >= MAX_PLAYERS) { return false; }
+  if (uhtirole[subject] == PLS_NULL) { return false; }
+  // A true spectator (no local player) sees every assigned portrait; dead
+  // spectators keep their own player identity and use the normal matrix.
+  if (viewer < 0 || viewer >= MAX_PLAYERS) { return true; }
+  if (!PlayerInGame(viewer)) { return true; }
+  return UH_CanSeeScoreIcon(viewer, subject);
+}
+
+function void UH_ScoreIcons_Refresh(void) {
+  // Listen servers report -1 from ConsolePlayerNumber(); the assist display
+  // latches the camera player so the host still gets its own permission set
+  // instead of the "true spectator sees all" fallback.
+  int viewer = ConsolePlayerNumber();
+  if (viewer < 0) { viewer = uhtilocalplayer; }
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    str tex = "";
+    if (UH_ScoreIconVisibleEffective(viewer, i)) {
+      tex = UH_ClientPortraitTex(i);
+    }
+    if (StrCmp(uhtiiconset[i], tex) != 0) {
+      SetCustomPlayerValue("UHPlayerIcon", i, tex);
+      uhtiiconset[i] = tex;
+    }
+  }
+}
+
+// Clear every row once at map load so a leftover value from the previous map
+// cannot survive until the scoreboard is first opened in this one.
+function void UH_ScoreIcons_ClearEngine(void) {
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    ResetCustomDataToDefault("UHPlayerIcon", i);
+    uhtiiconset[i] = "";
+  }
+}
+
+script "uh_ti_scoreboard_loop" OPEN CLIENTSIDE {
+  UH_ScoreIcons_ClearEngine();
+  while (true) {
+    Delay(1);
+    if (GetCVar("lastmanstanding") != 1) { continue; }
+    bool shown = (GetPlayerInput(-1, INPUT_BUTTONS) & BT_SHOWSCORES) != 0;
+    if (!shown && GetGameModeState() == GAMESTATE_INRESULTSEQUENCE) {
+      // The intermission/result scoreboard is drawn without TAB; the battle is
+      // over, so refreshing there is safe and keeps the last frame consistent.
+      shown = true;
+    }
+    if (shown) {
+      UH_ScoreIcons_Refresh();
+    }
+  }
+}
