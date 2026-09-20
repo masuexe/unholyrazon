@@ -39,6 +39,13 @@ str uhticlasscache[MAX_PLAYERS];
 int uhtiportraitcache[MAX_PLAYERS];
 bool uhtiportraitcachevalid[MAX_PLAYERS];
 
+// Last scoreboard texture resolved from a live class, kept across death so a
+// dead/body-less subject keeps its own face.  Without this, LuckyLass would
+// revert from its scoreboard ScoreIcon UMUG_6_ to the UIX PBMug name UMUG_6
+// once GetActorClass stops returning the class.
+str uhscoreiconcache[MAX_PLAYERS];
+bool uhscoreiconcachevalid[MAX_PLAYERS];
+
 // Local player identity for the scoreboard refresh.  ConsolePlayerNumber()
 // returns -1 on a listen server even inside a client-side script (NETSTATE_-
 // SERVER), so the assist display latches the camera player here as a fallback.
@@ -81,6 +88,8 @@ function void UH_Ti_ResetClient(void) {
     uhticlasscache[i] = "";
     uhtiportraitcache[i] = -1;
     uhtiportraitcachevalid[i] = false;
+    uhscoreiconcache[i] = "";
+    uhscoreiconcachevalid[i] = false;
     UH_Ti_ClearStats(i);
   }
   uhtiova = 0;
@@ -92,13 +101,18 @@ function void UH_Ti_SetClientLife(int pn, int status) {
   if (pn < 0 || pn >= MAX_PLAYERS) { return; }
   uhtilife[pn] = status;
   if (status == PLS_SURVIVOR || status == PLS_BOSS || status == PLS_EYE) {
-    if (uhtirole[pn] != status) { UH_Ti_ClearStats(pn); }
+    if (uhtirole[pn] != status) {
+      UH_Ti_ClearStats(pn);
+      uhscoreiconcachevalid[pn] = false;  // class changes with the role
+    }
     uhtirole[pn] = status;  // Role survives a later PLS_DEAD transition.
   }
   else if (status == PLS_NULL) {
     uhtirole[pn] = PLS_NULL;
     uhtiportrait[pn] = -1;
     uhtiportraitcachevalid[pn] = false;
+    uhscoreiconcache[pn] = "";
+    uhscoreiconcachevalid[pn] = false;
     UH_Ti_ClearStats(pn);
   }
 }
@@ -149,6 +163,8 @@ script "uh_ti_client_disconnect" (int gone) DISCONNECT CLIENTSIDE {
   UH_Ti_SetClientLife(gone, PLS_NULL);
   uhtiportrait[gone] = -1;
   uhtiportraitcachevalid[gone] = false;
+  uhscoreiconcache[gone] = "";
+  uhscoreiconcachevalid[gone] = false;
   SetCustomPlayerValue("UHPlayerIcon", gone, "");
 }
 
@@ -200,18 +216,22 @@ function str UH_ClientPortraitTex(int pn) {
   if (pn < 0 || pn >= MAX_PLAYERS) { return ""; }
   if (uhtilife[pn] != PLS_DEAD && uhtilife[pn] != PLS_NULL) {
     str cls = GetActorClass(pn + 1000);
-    if (!uhtiportraitcachevalid[pn] || StrICmp(cls, uhticlasscache[pn]) != 0) {
+    if (StrLen(cls) != 0
+        && (!uhtiportraitcachevalid[pn] || StrICmp(cls, uhticlasscache[pn]) != 0)) {
       uhticlasscache[pn] = cls;
       uhtiportraitcache[pn] = UH_PortraitIndexForClass(cls);
       uhtiportraitcachevalid[pn] = true;
+      // Scoreboard-specific override (LuckyLass UMUG_6_), else the shared table.
+      str tex = UH_ScoreIconOverrideTex(cls);
+      if (StrLen(tex) == 0) { tex = UH_PortraitTexForIndex(uhtiportraitcache[pn]); }
+      uhscoreiconcache[pn] = tex;
+      uhscoreiconcachevalid[pn] = (StrLen(tex) != 0);
     }
-    // Scoreboard-specific override (LuckyLass UMUG_6_), else the shared table.
-    str over = UH_ScoreIconOverrideTex(cls);
-    if (StrLen(over) != 0) { return over; }
-    if (uhtiportraitcache[pn] >= 0) {
-      return UH_PortraitTexForIndex(uhtiportraitcache[pn]);
-    }
+    if (uhscoreiconcachevalid[pn]) { return uhscoreiconcache[pn]; }
   }
+  // Dead/absent: keep the face resolved while the actor existed; only fall back
+  // to the server-synced UIX index when this client never saw the live class.
+  if (uhscoreiconcachevalid[pn]) { return uhscoreiconcache[pn]; }
   return UH_PortraitTexForIndex(uhtiportrait[pn]);
 }
 

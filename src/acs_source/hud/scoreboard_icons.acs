@@ -32,11 +32,15 @@ function bool UH_ScoreIconVisibleEffective(int viewer, int subject) {
 }
 
 // ConsolePlayerNumber() returns -1 only inside a listen-server process (a
-// dedicated server never runs this CLIENTSIDE loop and a pure client has a real
-// consoleplayer).  Risk exists only when remote clients can receive a
-// broadcast, i.e. more than one player is connected.
+// dedicated server never runs this CLIENTSIDE loop and single-player/offline
+// has a real consoleplayer).  A listen host must never write this column at
+// all: the ACS API has no per-client target, so the write is broadcast to every
+// connected client, and PlayerCount() is not a safe gate because it excludes
+// spectators and dead spectators — the only remote player dying would drop it
+// to 1 and re-enable the broadcast.  Suppress unconditionally on a listen host;
+// single-player/offline still shows local portraits.
 function bool UH_ScoreIcons_HostBroadcastRisk(void) {
-  return (ConsolePlayerNumber() < 0) && (PlayerCount() > 1);
+  return (ConsolePlayerNumber() < 0);
 }
 
 // Empty the host's shared copy; an empty value carries no Survivor/Eye data.
