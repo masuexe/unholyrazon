@@ -596,6 +596,7 @@ script "ub_OneVsAllEvent" (int eventid, int which, int unused) {
       break;
   }
 
+  SetHudSize(480, 360, 0);
   SetFont("BIGFONT");
   HudMessageBold(s:eventstring; HUDMSG_FADEOUT, 49, CR_WHITE, 240.4, 324.0, 1.8, 0.2);
   SetPlayerProperty(1, 0, 4);
@@ -895,6 +896,16 @@ script "ub_SpecialEventEnding" (int which) {
       while (ThingCount(0, bossdataarr[0][BOSSDATA_TID]) >= 1) {Delay(2);}
       PlayMusic_Win(1);
       break;
+    case 50:
+      endingstring = "\cgThe Furry has been caught!";
+      ACS_NamedExecuteWithResult("uh_ClearRoundTimerHud");
+      PlayMusic_Win(1);
+      break;
+    case 51:
+      endingstring = "\cgThe angry Foxeye has been defeated!";
+      ACS_NamedExecuteWithResult("uh_ClearRoundTimerHud");
+      PlayMusic_Win(1);
+      break;
   }
   // Unified bonus-event end entry: the one-vs-all target was defeated.
   UH_TryFinishBonusEvent(eventdataarr[EVENTDATA_MAINEVENT], UHBE_RESULT_SURVIVOR, false);
@@ -952,31 +963,31 @@ script "ub_SpecialEventTracker" (int which) {
       }
       break;
     case 50:
-      SetHudSize(640, 480, 0);
+      // Catch Furry ends at this deadline, so its countdown replaces the
+      // normal round timer instead of occupying a second HUD slot.
+      ACS_NamedTerminate("uh_BackgroundTimer", 0);
       timer_ten = 60 - (PlayerCount() * 2);
       if (timer_ten < 21) {timer_ten = 20;}
-      while (timer_ten >= 1) {
-        SetFont("HELTIMR1");
-        HudMessage(s:"A"; 0, 167, -1, 300.1, 49.1, 0, 3.0);
-        SetFont("fakefntC");  // SMALLFONT
-        HudMessageBold(i:timer_ten; 0, 166, CR_GOLD, 317.1, 54.1, 0, 3.0);
-
-        // SetFont("SMALLFONT");
-        // HudMessage(s:"Time left: ", i:Timer_TEN; HUDMSG_PLAIN, 166, CR_GOLD,0.04, 0.88, 0, 3.0);
-        timer_ten -= 1;
-        Delay(35);
+      while (timer_ten >= 1 && ThingCount(0, bossdataarr[0][BOSSDATA_TID]) >= 1) {
+        ACS_NamedExecuteWithResult("uh_DrawTimerHud", timer_ten, 1);
+        for (int furry_tick = 0; furry_tick < 35; furry_tick++) {
+          if (ThingCount(0, bossdataarr[0][BOSSDATA_TID]) < 1) {
+            ACS_NamedExecute("ub_SpecialEventEnding", 0, 50);
+            terminate;
+          }
+          Delay(1);
+        }
+        timer_ten--;
         if (gameover || GetGameModeState() == GAMESTATE_INRESULTSEQUENCE) {
-          ClearHudMessage(166);
-          ClearHudMessage(167);
+          ACS_NamedExecuteWithResult("uh_ClearRoundTimerHud");
           terminate;
         }
       }
-      SetFont("HELTIMR0");
-      HudMessage(s:"A"; 1, 167, -1, 300.1, 49.1, 4.0, 1.0);
-      SetFont("fakefntC");  // SMALLFONT
-      HudMessageBold(i:timer_ten; 1, 166, CR_RED, 317.1, 54.1, 4.0, 1.0);
-
-      // HudMessage(s:"Time left: \cg0"; HUDMSG_PLAIN, 166, CR_GOLD,0.04, 0.88, 0, 3.0);
+      if (ThingCount(0, bossdataarr[0][BOSSDATA_TID]) < 1) {
+        ACS_NamedExecute("ub_SpecialEventEnding", 0, 50);
+        terminate;
+      }
+      ACS_NamedExecuteWithResult("uh_DrawTimerHud", 0, 1);
       Delay(1);
       PlayMusic_Loss(2);
       SetHudSize(480, 360, 0);
@@ -991,30 +1002,29 @@ script "ub_SpecialEventTracker" (int which) {
       Delay(36 * 6);
       break;
     case 51:
-      SetHudSize(640, 480, 0);
+      // Like Catch Furry, this event's deadline is the round deadline.
+      ACS_NamedTerminate("uh_BackgroundTimer", 0);
       timer_ten = 18 + RoundFixedToInt(PlayerCount() * 1.5);
-      while (timer_ten >= 1) {
-        SetFont("HELTIMR1");
-        HudMessage(s:"A"; 0, 167, -1, 300.1, 49.1, 0, 3.0);
-        SetFont("fakefntC");  // SMALLFONT
-        HudMessageBold(i:timer_ten; 0, 166, CR_GOLD, 317.1, 54.1, 0, 3.0);
-
-        // SetFont("fakefntC");//SMALLFONT
-        // HudMessage(s:"Time left: ", i:Timer_TEN; HUDMSG_PLAIN, 166, CR_GOLD,0.04, 0.96, 0, 3.0);
-        timer_ten -= 1;
-        Delay(35);
+      while (timer_ten >= 1 && ThingCount(0, bossdataarr[0][BOSSDATA_TID]) >= 1) {
+        ACS_NamedExecuteWithResult("uh_DrawTimerHud", timer_ten, 1);
+        for (int fox_tick = 0; fox_tick < 35; fox_tick++) {
+          if (ThingCount(0, bossdataarr[0][BOSSDATA_TID]) < 1) {
+            ACS_NamedExecute("ub_SpecialEventEnding", 0, 51);
+            terminate;
+          }
+          Delay(1);
+        }
+        timer_ten--;
         if (gameover || GetGameModeState() == GAMESTATE_INRESULTSEQUENCE) {
-          ClearHudMessage(166);
-          ClearHudMessage(167);
+          ACS_NamedExecuteWithResult("uh_ClearRoundTimerHud");
           terminate;
         }
       }
-      SetFont("HELTIMR0");
-      HudMessage(s:"A"; 1, 167, -1, 300.1, 49.1, 4.0, 1.0);
-      SetFont("fakefntC");  // SMALLFONT
-      HudMessageBold(i:timer_ten; 1, 166, CR_RED, 317.1, 54.1, 4.0, 1.0);
-
-      // HudMessage(s:"Time left: \cg0"; HUDMSG_PLAIN, 166, CR_GOLD,0.04, 0.88, 0, 3.0);
+      if (ThingCount(0, bossdataarr[0][BOSSDATA_TID]) < 1) {
+        ACS_NamedExecute("ub_SpecialEventEnding", 0, 51);
+        terminate;
+      }
+      ACS_NamedExecuteWithResult("uh_DrawTimerHud", 0, 1);
       Delay(1);
       PlayMusic_Loss(1);
       SetHudSize(480, 360, 0);
