@@ -126,6 +126,21 @@ reserved `Ceil`/`Floor`/`Round` names).
 Color implementation fragments
 live under `systems/colors/`.
 
+The death-tip database (`hud/deathtips.acs` + its `hud/deathtips_data.acs`
+fragment) is a **client-only** runtime registry of (text, byline, wrap width,
+pool) rows. Addons register tips with `UH_RegisterTip` from a single
+`OPEN CLIENTSIDE` script; pools are byline groups only. Selection is weighted
+(`weight / total_weight`, weight 0 = parked): the server-side `DEATH` script
+draws one 16-bit roll in `[0, UH_TIP_ROLL_VALUES-1]` and forwards it, and the
+client scales it into the weight space and walks the registry — the server
+must never read the registry (a dedicated server has no client side to fill
+it, and client `random()` is re-seeded every map, so client rolls would repeat
+each round). Easter-egg rarity is data (`UH_TIP_SECRET_WEIGHT`,
+`UH_TIP_WEIGHT_404`), not code. Recipe at the top of
+`deathtips.acs`, working addon in `examples/deathtips_addon/`. Built-in tip
+data stays byte-identical in the fragment; do not register a tip into the
+shared `UH_POOL_CUSTOM` pool without a per-tip byline.
+
 `unholy/` is the LMS round-core module, compiled as the single `unholy`
 library (its LOADACS entry must stay; do not split it into multiple
 libraries). Fragments map to responsibility clusters: `uh_def` (unit state

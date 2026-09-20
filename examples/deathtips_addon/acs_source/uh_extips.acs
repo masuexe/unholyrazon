@@ -1,0 +1,52 @@
+#library "uh_extips"
+#include "zcommon.acs"
+#import "deathtips.acs"
+
+// Death tip example addon: registers custom tips through the dynamic tip
+// registry (library "deathtips", loaded by the main mod).  Matches the recipe
+// documented at the top of src/acs_source/hud/deathtips.acs.
+
+// Pool id for this addon's own byline group.  Built-in pools own 1..24; pick
+// any unused id below UH_TIP_POOL_MAX (64).
+#define UH_EXTIPS_POOL 30
+
+function void UH_ExampleRegisterTips(void) {
+  // 1. UH_POOL_CUSTOM is the shared addon default.  Byline per tip; wrap
+  //    width 0 = default 220; UH_TIP_WEIGHT_DEFAULT = the normal rotation.
+  //    Re-registering the same row is a no-op (dedupe by pool + text +
+  //    byline), so the engine delivering this script twice (local level
+  //    start + server forward) is safe.
+  UH_RegisterTip("Example tip: you can add these without editing the mod.",
+                 "\cjExample \cj\xA9", 210, UH_POOL_CUSTOM, UH_TIP_WEIGHT_DEFAULT);
+  UH_RegisterTip("Example tip: join a built-in pool to share its byline.",
+                 "", 0, UH_POOL_CUSTOM, UH_TIP_WEIGHT_DEFAULT);
+
+  // 2. Join a built-in pool (shares the Demoneye quote byline; a non-empty
+  //    byline here replaces the pool byline for this tip).
+  UH_RegisterTip("A borrowed slot in the Demoneye quote pool.",
+                 "", 0, UH_POOL_TIPS, UH_TIP_WEIGHT_DEFAULT);
+
+  // 3. Own pool for an own byline: a pool is just a byline group — there are
+  //    no magic numbers to claim any more.
+  UH_SetTipPoolLabel(UH_EXTIPS_POOL, "\cgExample \cjTip \cj\xAE");
+  UH_RegisterTip("First tip of the addon's own pool.", "", 230,
+                 UH_EXTIPS_POOL, UH_TIP_WEIGHT_DEFAULT);
+  UH_RegisterTip("Second tip of the addon's own pool.", "", 0,
+                 UH_EXTIPS_POOL, UH_TIP_WEIGHT_DEFAULT);
+  UH_RegisterTip("Per-tip bylines work here too.",
+                 "\cgExample \cj\xA9", 0, UH_EXTIPS_POOL, UH_TIP_WEIGHT_DEFAULT);
+
+  // 4. Weights are relative: this row is drawn about UH_TIP_WEIGHT_DEFAULT/4
+  //    as often as a normal tip, and weight 0 would park it entirely
+  //    (registered, never drawn).
+  UH_RegisterTip("Example tip: this one is deliberately rare.",
+                 "\cgExample \cj\xA9", 0, UH_EXTIPS_POOL, 4);
+}
+
+// The tip registry is client-only (the server never reads it), so a single
+// CLIENTSIDE twin is enough.  No UHInPlay() guard: registration is pure data
+// and SpawnForced can fail on pure clients.  UH_RegisterTip dedupes, so the
+// engine's double delivery (local level start + server forward) is safe.
+script "uh_extips_define_tips_cs" OPEN CLIENTSIDE {
+  UH_ExampleRegisterTips();
+}
