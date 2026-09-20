@@ -151,8 +151,9 @@ aspect option and physical resolution.
 
 ### Remaining native-fallback caveats
 
-- `lineh` is a fixed 8 virtual units; if MM8BDM's `SMALLFONT` has a different
-  height the row pitch needs a one-line adjustment.
+- Row metrics are the engine's: cell height 12, per-line advance 13, block
+  advance `4*12+3`.  A different `SMALLFONT` cell height would need the `fonth`
+  constant adjusted; the previous 8 left the name and health/armor touching.
 - The snapshot is throttled to 7 tics (~0.2 s), so teammate HP/ammo update a few
   times per second rather than every tic.
 - A weapon absent from both the DTADD and buster tables yields no weapon line

@@ -403,8 +403,13 @@ function void UH_Ti_Draw(int viewer, int cpn) {
   int hudw = (basew * 100) / scale;
   int hudh = (baseh * 100) / scale;
   int falpha = (alpha * 65536) / 100;
-  int lineh = 8;
-  int ybase = (1 + notify) * lineh;
+  // Match HUD_DrawCoopInfo's text metrics: the row unit is the SmallFont cell
+  // height (12 in the Zandronum SMALLFONT), each line advances cell+1, and the
+  // next two-player block advances 4*cell+3.  The previous hardcoded 8 left the
+  // name and the health/armor line touching.
+  int fonth = 12;
+  int linestep = fonth + 1;
+  int ybase = (1 + notify) * fonth;
 
   SetHudSize(hudw, hudh, 0);
   SetFont("SMALLFONT");
@@ -426,13 +431,13 @@ function void UH_Ti_Draw(int viewer, int cpn) {
     // every line is top-anchored like HUD_DrawTextAligned.
     bool drawleft = ((row % 2) == 0);
     int xbase = drawleft ? offx : (hudw - offx);
-    int y = ybase + ((row / 2) * (4 * lineh + 3)) + offy;
+    int y = ybase + ((row / 2) * (4 * fonth + 3)) + offy;
     // (n * 1.0) forces the integer cell into 16.16 before the alignment marker;
     // ACS does not promote "int + 0.1" and would drop the fraction.
     int fx = (xbase * 1.0) + (drawleft ? 0.1 : 0.2);
     int fy = (y * 1.0) + 0.1;
-    int fy1 = ((y + lineh) * 1.0) + 0.1;
-    int fy2 = ((y + 2 * lineh) * 1.0) + 0.1;
+    int fy1 = ((y + linestep) * 1.0) + 0.1;
+    int fy2 = ((y + 2 * linestep) * 1.0) + 0.1;
 
     if (shownames) {
       HudMessageBold(n:i + 1;
