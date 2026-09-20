@@ -122,6 +122,22 @@ Dead rows stay optional and render `dead` with no weapon line.  Only HUD IDs
 drawn on the preceding frame are cleared, plus a full clear when the bar is
 disabled or UIX takes over.
 
+### Dead-row lifetime (implemented)
+
+Vanilla TLMS keeps a dead teammate's row while the body exists (health <= 0
+draws `dead`) and drops it once the player becomes a spectator or their `mo`
+is gone; the list then compacts.  The native fallback now matches:
+
+- While `PlayerInGame(subject)` and `ClassifyActor(tid) != ACTOR_NONE`, the
+  server keeps sending the subject and the client renders `dead` (when
+  `uh_cl_teaminfo_dead` is on).
+- On the in-game -> gone transition (dead spectator / corpse removed /
+  disconnect), the server broadcasts `uh_ti_stat_clear` exactly once; the
+  client clears that subject's stats and the renderer's `row` counter lets the
+  following teammates fill the freed slot.
+- `uhsrvWasingame[]` tracks the transition so the clear fires once per leave,
+  and the subject re-registers on respawn/revival.
+
 ### Scale/alignment correction (implemented)
 
 Both coupled coordinate bugs from the screenshot comparison are fixed in

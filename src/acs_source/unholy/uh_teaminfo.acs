@@ -139,6 +139,14 @@ script "uh_ti_stat" (int pn, int packed1, int tag, int packed2) CLIENTSIDE {
   uhtistatvalid[pn] = true;
 }
 
+// Drop a subject once its body is gone (corpse removed / dead spectator).  The
+// server broadcasts this on the in-game -> gone transition, so the row vanishes
+// and the remaining teammates compact into the freed slot, matching
+// HUD_DrawCoopInfo's corpse behaviour.
+script "uh_ti_stat_clear" (int pn) CLIENTSIDE {
+  UH_Ti_ClearStats(pn);
+}
+
 script "uh_ti_client_disconnect" (int gone) DISCONNECT CLIENTSIDE {
   if (gone < 0 || gone >= MAX_PLAYERS) { terminate; }
   UH_Ti_SetClientLife(gone, PLS_NULL);
@@ -258,6 +266,11 @@ str uhsrvweptag[MAX_PLAYERS];
 str uhsrvammo1name[MAX_PLAYERS];
 str uhsrvammo2name[MAX_PLAYERS];
 
+// Server-side in-game transition tracker: a subject that leaves the game (dead
+// spectator, corpse removed, disconnect) is cleared exactly once so clients drop
+// its row instead of keeping the last synced stat forever.
+bool uhsrvWasingame[MAX_PLAYERS];
+
 function void UH_Ti_RefreshStats(void) {
   // DF_INFINITE_AMMO = 1 << 11.
   bool infinite = (GetCVar("dmflags") & 2048) != 0;
@@ -278,8 +291,21 @@ function void UH_Ti_RefreshStats(void) {
   }
 
   for (int s = 0; s < MAX_PLAYERS; s++) {
-    if (!PlayerInGame(s)) { continue; }
     int tid = s + 1000;
+    // HUD_DrawCoopInfo draws a row while the player is in game AND has a body
+    // (a dead body with health <= 0 still shows "dead"), and skips spectators /
+    // players whose mo is gone.  Mirror that: a body-less or spectating player
+    // clears here, which is what makes the dead row disappear and the list
+    // compact after the corpse is removed.
+    bool ingame = PlayerInGame(s) && ClassifyActor(tid) != ACTOR_NONE;
+    if (!ingame) {
+      if (uhsrvWasingame[s]) {
+        uhsrvWasingame[s] = false;
+        ACS_NamedExecuteAlways("uh_ti_stat_clear", 0, s);
+      }
+      continue;
+    }
+    uhsrvWasingame[s] = true;
     int hp = GetActorProperty(tid, APROP_Health);
     if (hp < 0) { hp = 0; } if (hp > 4095) { hp = 4095; }
     int maxhp = GetActorProperty(tid, APROP_SpawnHealth);
