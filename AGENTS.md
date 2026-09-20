@@ -137,9 +137,11 @@ must never read the registry (a dedicated server has no client side to fill
 it, and client `random()` is re-seeded every map, so client rolls would repeat
 each round). Easter-egg rarity is data (`UH_TIP_SECRET_WEIGHT`,
 `UH_TIP_WEIGHT_404`), not code. Recipe at the top of
-`deathtips.acs`, working addon in `examples/deathtips_addon/`. Built-in tip
-data stays byte-identical in the fragment; do not register a tip into the
-shared `UH_POOL_CUSTOM` pool without a per-tip byline.
+`deathtips.acs`, working addon in `examples/deathtips_addon/`. Built-in tips
+are inline `UH_RegisterTip` calls in the fragment (strings, bylines, wrap
+widths and weights transcribed verbatim from the former tables); do not
+register a tip into the shared `UH_POOL_CUSTOM` pool without a per-tip
+byline.
 
 `unholy/` is the LMS round-core module, compiled as the single `unholy`
 library (its LOADACS entry must stay; do not split it into multiple

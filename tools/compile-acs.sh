@@ -9,7 +9,8 @@
 # differently named .o would not shadow the base lump. CORE8BDT.o and
 # DTADDR.o must keep those names so they replace v6b's Assist Item table.
 # UIXITEMS.o must keep that name so it can replace 8bdm-uix-v3bh when this
-# pk3 loads after UIX.
+# pk3 loads after UIX.  WHEELDT.o is an import-only library (no LOADACS entry);
+# it must ship because the UIX libraries import it.
 # Usage: compile-acs.sh [outdir]   (default: src/acs)
 set -u
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -88,6 +89,11 @@ echo "== uh_uix =="
 "$ACC" $INC -i src/acs_source/compat/mods/uix "src/acs_source/compat/mods/uix/uh_uix.acs" "$OUT/uh_uix.o" || fail=1
 echo "== uh_uixfw =="
 "$ACC" $INC -i src/acs_source/compat/mods/uix -i src/acs_source/compat/mods/uix/_uix_v3bh "src/acs_source/compat/mods/uix/uh_uixfw.acs" "$OUT/uh_uixfw.o" || fail=1
+echo "== WHEELDT =="
+# uh_uixfw/uixitems/uixweap #import this shared wheel table, so the lump must
+# ship: without it those three libraries fail to load ("Could not find ACS
+# library WHEELDT").  Not in LOADACS — imports resolve by lump name.
+"$ACC" $INC -i src/acs_source/compat/mods/uix/_uix_v3bh "src/acs_source/compat/mods/uix/_uix_v3bh/WHEELDT.acs" "$OUT/WHEELDT.o" || fail=1
 echo "== UIXITEMS =="
 "$ACC" $INC -i src/acs_source/compat/mods/uix/_uix_v3bh "src/acs_source/compat/mods/uix/uixitems.acs" "$OUT/UIXITEMS.o" || fail=1
 echo "== UIXWEAP =="
