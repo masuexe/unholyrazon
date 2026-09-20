@@ -16,20 +16,13 @@
 //   * Writes compare against GetCustomPlayerValue so an engine-side overwrite
 //     (listen-host broadcast, join reset) is corrected on the next open instead
 //     of being masked by a client-side cache.
-//   * Only a connected TRUE spectator (PlayerIsSpectator == 1) sees every
-//     assigned portrait; dead spectators keep their retained role.
+//   * Visibility is the single UH_CanSeeScoreIcon matrix in uh_teaminfo.acs,
+//     driven by the server-synchronized UH_SCOREPOLICY_* value; this file adds
+//     no permission logic of its own.
 //   * Listen server with remote clients: the ACS API cannot address custom
 //     player data to one client, so a host write is broadcast.  The host
 //     therefore empties its shared copy (an empty broadcast leaks nothing) and
 //     does not compute a private matrix; remote clients compute their own.
-
-function bool UH_ScoreIconVisibleEffective(int viewer, int subject) {
-  if (subject < 0 || subject >= MAX_PLAYERS) { return false; }
-  if (uhtirole[subject] == PLS_NULL) { return false; }
-  if (viewer < 0 || viewer >= MAX_PLAYERS) { return false; }
-  if (PlayerIsSpectator(viewer) == 1) { return true; }  // connected true spectator
-  return UH_CanSeeScoreIcon(viewer, subject);
-}
 
 // ConsolePlayerNumber() returns -1 only inside a listen-server process (a
 // dedicated server never runs this CLIENTSIDE loop and single-player/offline
@@ -63,7 +56,7 @@ function void UH_ScoreIcons_Refresh(void) {
   if (viewer < 0) { viewer = uhtilocalplayer; }
   for (int i = 0; i < MAX_PLAYERS; i++) {
     str tex = "";
-    if (UH_ScoreIconVisibleEffective(viewer, i)) {
+    if (UH_CanSeeScoreIcon(viewer, i)) {
       tex = UH_ClientPortraitTex(i);
     }
     // Compare against the engine value, not a local cache: the scoreboard may

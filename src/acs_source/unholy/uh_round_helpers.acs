@@ -104,9 +104,40 @@ function int UH_TeamInfo_OneVsAllTarget(void) {
   return tid - 1000;
 }
 
+// Authoritative scoreboard portrait policy for the ACTIVE round.  This is a
+// separate synchronization from the frozen 1-vs-all split above: the teammate
+// bar still keys on uhtiova/uhtiovatarget, while the scoreboard needs to tell
+// FFA / normal / all-eye / multi-team apart and must fail closed.  The client
+// must never infer the policy from server-only globals.
+//
+// Classification is exact: no active event is NORMAL; an active event with
+// exactly one of the four policy flags maps to that policy; a defined event
+// with none of them, or with more than one, is INVALID (never resolved by
+// priority).  UHBE_FLAG_EYE_TEAM is orthogonal metadata and is ignored.
+function int UH_TeamInfo_ScorePolicy(void) {
+  if (!isbonuseventactive || bonuseventended) { return UH_SCOREPOLICY_NORMAL; }
+  int eid = eventdataarr[EVENTDATA_MAINEVENT];
+  if (!IsBonusEventDefined(eid)) { return UH_SCOREPOLICY_INVALID; }
+  int f = GetBonusEventFlags(eid);
+  int n = 0;
+  if (f & UHBE_FLAG_FFA) { n++; }
+  if (f & UHBE_FLAG_ONEVSALL) { n++; }
+  if (f & UHBE_FLAG_ALL_EYE) { n++; }
+  if (f & UHBE_FLAG_MULTITEAM) { n++; }
+  if (n != 1) { return UH_SCOREPOLICY_INVALID; }
+  if (f & UHBE_FLAG_FFA) { return UH_SCOREPOLICY_FFA; }
+  if (f & UHBE_FLAG_ONEVSALL) { return UH_SCOREPOLICY_ONEVSALL; }
+  if (f & UHBE_FLAG_ALL_EYE) { return UH_SCOREPOLICY_ALL_EYE; }
+  return UH_SCOREPOLICY_MULTITEAM;
+}
+
 function void UH_TeamInfo_BroadcastOneVsAll(void) {
   ACS_NamedExecuteAlways("uh_ti_sync_ova", 0,
     UH_TeamInfo_IsOneVsAllActive() ? 1 : 0, UH_TeamInfo_OneVsAllTarget());
+  // Piggyback the scoreboard policy on the same state boundaries (round setup,
+  // event commit, target freeze, event finish/abort, late-join snapshot) so a
+  // client never has to wait for a close-and-reopen cycle after a policy change.
+  ACS_NamedExecuteAlways("uh_ti_sync_policy", 0, UH_TeamInfo_ScorePolicy());
 }
 
 // Rebuild every client against the current server state.  Called at round

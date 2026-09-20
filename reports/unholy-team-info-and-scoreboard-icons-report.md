@@ -405,3 +405,272 @@ above or an engine/API change that can send custom player data to one client.
 ./tools/validate-build-pk3.sh # status=ok
 unzip -Z1 out/build.pk3 | grep -E '^(MAPINFO|SCORINFO)$|UIXTEAM.o'  # present
 ```
+
+## Next phase plan — role-aware scoreboard portrait visibility
+
+This section is the implementation plan for the next scoreboard pass.  It
+supersedes the older portrait permission matrix and the corresponding
+acceptance bullets above; the already repaired SCORINFO layout, portrait
+lookup/cache and listen-server safety policy remain unchanged.
+
+### Required behavior
+
+Apply the rules to the **viewer** of the scoreboard.  `self` means
+`viewer == subject`.
+
+#### Ordinary LMS
+
+- Survivor viewer: show every assigned player's portrait.  A player who later
+  morphs into an Eye remains visible because that transformation is globally
+  announced.
+- Boss viewer: show self, every other Boss, and every Eye; hide Survivors.
+- Eye viewer: show self, every Boss, and every other Eye; hide Survivors.
+- Bosses cannot morph into Eyes, so there is no Boss-to-Eye transition to
+  preserve or special-case.
+
+#### Bonus events
+
+- FFA, including Boss FFA: show self only.
+- 1-vs-all: show every assigned player's portrait.
+- All-Eye: show every assigned player's portrait.  Everyone has the same
+  disclosed role, so hiding faces conveys no useful information.
+- Multi-vs-multi (currently Eyelento of Pain): an Eyelento shows self and
+  other Eyelentos; a non-Eyelento shows self and other Survivors.
+
+#### Viewer state and defensive fallback
+
+- A dead viewer can spectate every player, so show all assigned portraits.
+- A true spectator also sees all assigned portraits, including one who joined
+  without ever receiving an Unholy role.
+- Test death/spectator before the event and role branches; otherwise a dead
+  FFA participant would incorrectly remain restricted to self.
+- An invalid subject slot is hidden.  A subject whose synced role is
+  `PLS_NULL` is also hidden, preventing stale or unassigned rows from leaking a
+  cached face.
+- Self is visible after subject validation, even if later policy data is
+  malformed.
+- Unknown viewer roles, unknown event policies, contradictory event-policy
+  flags, invalid targets, or other illegal inputs fall back to self only.
+  They must never fall through to the permissive ordinary-LMS behavior.
+
+The intended evaluation order in `UH_CanSeeScoreIcon` is therefore:
+
+1. Reject an invalid/unassigned subject.
+2. Allow self.
+3. If the viewer is valid and is dead, or is a true spectator, allow all
+   assigned subjects.
+4. Reject an invalid viewer or an invalid/unknown synchronized policy.
+5. Apply the active bonus-event policy (`ONEVSALL`, `FFA`, `ALL_EYE`, or
+   `MULTITEAM`).
+6. For `NORMAL`, apply the ordinary-LMS role matrix above.
+7. Default to hidden.
+
+### Synchronize an explicit event policy
+
+The client must not infer the active event from server-only globals such as
+`isbonuseventactive`, `eventdataarr`, or `bossdataarr`.  Replace the narrow
+`uhtiova` boolean with a synchronized portrait-policy value:
+
+```c
+#define UH_SCOREPOLICY_INVALID   -1
+#define UH_SCOREPOLICY_NORMAL     0
+#define UH_SCOREPOLICY_FFA        1
+#define UH_SCOREPOLICY_ONEVSALL   2
+#define UH_SCOREPOLICY_ALL_EYE    3
+#define UH_SCOREPOLICY_MULTITEAM  4
+```
+
+Keep the frozen 1-vs-all target only if another display subsystem still needs
+it; portrait visibility itself does not need the target because all portraits
+are public in that policy.  `UH_AreDisplayTeammates` still needs its existing
+target split and must not be silently changed by this scoreboard work.
+
+Add `UHBE_FLAG_MULTITEAM` as a new, non-overlapping registry flag and assign it
+to Eyelento of Pain.  Convert the active event flags to exactly one scoreboard
+policy on the server.  Legal combinations are:
+
+- `UHBE_FLAG_FFA` -> `FFA`
+- `UHBE_FLAG_ONEVSALL` -> `ONEVSALL`
+- `UHBE_FLAG_ALL_EYE` -> `ALL_EYE`
+- `UHBE_FLAG_MULTITEAM` -> `MULTITEAM`
+- no active bonus event -> `NORMAL`
+
+`UHBE_FLAG_EYE_TEAM` is orthogonal metadata and is ignored for this
+classification.  More than one of the four policy flags, or an active event
+with none of them, maps to `INVALID`; do not resolve malformed combinations by
+priority.  Consequently every bonus event must declare its portrait policy
+explicitly.  Eyelento is the only existing event that needs the new flag; the
+current FFA, one-vs-all and All-Eye definitions already carry their matching
+flags.
+
+Broadcast the policy through a dedicated CLIENTSIDE receiver (or extend the
+existing receiver without exceeding ACS' argument limit).  Send it at all
+state boundaries:
+
+- ordinary round setup/reset (`NORMAL`);
+- successful bonus-event commit, after its definition is known;
+- bonus-event finish/cancel (`NORMAL` only after the event is no longer
+  active);
+- the full snapshot used by `ENTER`, so late joiners receive the current
+  policy;
+- any administrative path that replaces or aborts the active event.
+
+Initialize the client cache to `INVALID`, not `NORMAL`.  Until the authoritative
+snapshot arrives, the scoreboard consequently exposes only self.  When policy
+or role changes, invalidate/refresh the affected icon values immediately; do
+not wait for a close-and-reopen cycle if TAB is already held.
+
+### Represent Eyelento teams with `PLS_EYE`
+
+It is safe and useful to change successfully morphed Eyelento players from
+`PLS_SURVIVOR` to `PLS_EYE`, provided the status change is coupled to morph
+success:
+
+```c
+if (MorphActor(tid, "EyelentoMajorDemoneye", "", 0x7ffffffd,
+    morphFlags, "GigaAstroExplode", "EyelentoMajorDemoneyeC"))
+{
+    int pn = tid - 1000;
+    if (pn >= 0 && pn < MAX_PLAYERS
+        && playerlifestatusarr[pn] == PLS_SURVIVOR)
+    {
+        PlayerLifeStatusArr_UpdateFunc(pn, PLS_EYE);
+    }
+}
+```
+
+Use the existing literal flag expression if extracting `morphFlags` would
+require an unsupported ACS declaration or change compilation behavior.  Never
+update the status merely because the player was randomly selected: a failed
+`MorphActor` would corrupt `totalplayersarr`, role synchronization and the
+scoreboard team split.
+
+The event deliberately caps the Eyelento count below the number of Survivors,
+so moving successful morphs out of `PLS_SURVIVOR` leaves at least one Survivor
+for `ub_WatchSurvivors(true)`.  Nevertheless, audit these related paths while
+implementing:
+
+- revival/rebuild must restore an Eyelento as `PLS_EYE`, not let generic bonus
+  rebuilding coerce it to `PLS_SURVIVOR`;
+- the event end condition remains actor-based
+  (`ThingCountName("EyelentoMajorDemoneye", 0)`), so the status change must not
+  replace or race that condition;
+- death continues to set `PLS_DEAD`, while `uhtirole`/`uhsrvrole` retain the
+  last non-dead `PLS_EYE` role for portrait caching;
+- the native TLMS/UIX teammate display must keep its current semantics unless
+  separately requested.  Do not make `UH_AreDisplayTeammates` treat all Eyes
+  as teammates just because the scoreboard uses `PLS_EYE` for Eyelentos.
+
+For `MULTITEAM`, the portrait relation is exact role equality limited to the
+two expected sides: `PLS_EYE` sees `PLS_EYE`, and `PLS_SURVIVOR` sees
+`PLS_SURVIVOR`.  Any Boss or unknown role in this policy is illegal and gets
+self only.
+
+### Implementation touch points
+
+- `systems/bonus_events/uhadd.acs` (or the existing flag-definition owner):
+  define `UHBE_FLAG_MULTITEAM` without renumbering existing flags.
+- `systems/bonus_events/definitions/uh_bonusdefs.acs`: mark Eyelento of Pain as
+  `UHBE_FLAG_MULTITEAM`.
+- `unholy/uh_round_helpers.acs`: classify and broadcast the authoritative
+  scoreboard policy; include it in the late-join/full snapshot and reset path.
+- `unholy/uh_teaminfo.acs`: store the client policy and replace
+  `UH_CanSeeScoreIcon` with the ordered matrix above.  Keep scoreboard policy
+  separate from `UH_AreDisplayTeammates`.
+- `unholy/uh_events.acs`: update an Eyelento player's life status only after a
+  successful morph; cover event rebuild/revival as necessary.
+- `hud/scoreboard_icons.acs`: no new permission logic; continue consuming the
+  single `UH_CanSeeScoreIcon` result and refresh changed values while shown.
+
+### Acceptance matrix
+
+Test with at least three live roles where the branch permits it, plus a dead
+viewer and a fresh spectator:
+
+- Normal/Survivor: Survivor, Boss and Eye subjects are visible.
+- Normal/Boss: Boss and Eye visible; Survivor hidden.
+- Normal/Eye: Boss and Eye visible; Survivor hidden.
+- FFA and Boss FFA: only self while alive.
+- 1-vs-all: everyone visible while alive.
+- All-Eye: everyone visible while alive.
+- Eyelento/`PLS_EYE`: only self and other Eyelentos.
+- Eyelento/`PLS_SURVIVOR`: only self and other Survivors.
+- Dead viewer in every policy: all assigned subjects visible.
+- True spectator in every policy: all assigned subjects visible.
+- Invalid policy, conflicting flags, unknown live role, or incomplete initial
+  snapshot: self only.
+- Failed Eyelento morph: selected player remains `PLS_SURVIVOR`, and all role
+  counters remain balanced.
+- Successful Eyelento morph: status and retained role become `PLS_EYE`, the
+  portrait changes immediately, and late joiners receive the same split.
+- Dedicated two-client test: each living viewer receives the correct different
+  matrix.  Listen-host behavior continues to follow the existing safe-hide
+  policy and never broadcasts a private matrix.
+
+Compile all affected ACS libraries, validate the packed PK3, then perform the
+matrix test in a dedicated-server session.  Static compilation alone cannot
+prove per-client custom-data isolation, spectator state, or live morph refresh.
+
+## Role-aware scoreboard portrait visibility (implemented)
+
+The plan above is implemented.  Static verification passed; the runtime matrix
+test is still owed.
+
+### Synchronized policy
+- `UHBE_FLAG_MULTITEAM` (16) is a new non-overlapping registry flag in
+  `_imports/uhdt.acs` with a public mirror in `_includes/mod_api/uhadd.acs`;
+  Eyelento of Pain now carries it.
+- `UH_SCOREPOLICY_INVALID/NORMAL/FFA/ONEVSALL/ALL_EYE/MULTITEAM` live in
+  `uh_def.acs`.  The client cache `uhtiscorepolicy` starts `INVALID`.
+- `UH_TeamInfo_ScorePolicy` (server, `uh_round_helpers.acs`) classifies the
+  active event exactly: no event -> `NORMAL`; exactly one of the four policy
+  flags -> that policy; a defined event with none or more than one ->
+  `INVALID`, never resolved by priority.  `UHBE_FLAG_EYE_TEAM` is ignored.
+- `UH_TeamInfo_BroadcastOneVsAll` now also emits
+  `ACS_NamedExecuteAlways("uh_ti_sync_policy", 0, ...)`, so the policy is
+  pushed on every existing boundary: round setup/reset via
+  `UH_TeamInfo_FullSnapshot`, the `ENTER` late-join snapshot, event commit and
+  failed-commit rollback, the 1-vs-all target freeze/re-freeze, and the unified
+  `UH_TryFinishBonusEvent` finish/abort path (`NORMAL`, because
+  `bonuseventended` is already set).
+- The new `uh_ti_sync_policy` CLIENTSIDE receiver clamps anything outside the
+  defined range to `INVALID`.
+
+### Client matrix
+`UH_CanSeeScoreIcon` is the single ordered matrix; `scoreboard_icons.acs` now
+calls it directly and its private `UH_ScoreIconVisibleEffective` wrapper was
+removed.  Order: invalid/`PLS_NULL` subject -> hidden; self -> visible; dead
+viewer or connected true spectator -> all assigned subjects; invalid viewer or
+`INVALID` policy -> self only; FFA -> self only; one-vs-all or all-eye -> all
+assigned; multi-team -> exact `PLS_EYE`/`PLS_SURVIVOR` role equality (Boss or
+unknown role -> self only); ordinary LMS -> Survivor viewer sees every assigned
+portrait while Boss/Eye viewers see only Boss/Eye subjects; otherwise hidden.
+
+### Eyelento teams
+- `ub_EyelentoOfPain` updates a player to `PLS_EYE` only inside a successful
+  `MorphActor` call and only while the player is still `PLS_SURVIVOR`, so a
+  failed morph leaves `totalplayersarr`, `uhsrvrole` and the scoreboard split
+  balanced.
+- `UH_IsEyelentoActor` (live actor class) drives the new
+  `UHBE_FLAG_MULTITEAM` branch in `RebuildActiveRoundState`: a still-morphed
+  Eyelento restores `PLS_EYE`, and a revived (engine-unmorphed) player returns
+  to `PLS_SURVIVOR` instead of the generic branch coercing the side.
+- `UH_AreDisplayTeammates` / `UH_Ti_ServerAreDisplayTeammates` are unchanged:
+  the native TLMS/UIX teammate bar keeps its existing semantics and still keys
+  the frozen 1-vs-all split on `uhtiova`/`uhtiovatarget`.
+- `player_portraits.acs` gained one scoreboard-only override,
+  `EyelentoMajorDemoneye -> I_MUG111`.  The morph body has no
+  `PBMug_EyelentoMajorDemoneye` script, so without it the featured role would
+  draw an empty texture; `I_MUG111` is the class's own `Player.ScoreIcon`
+  (`EYE_F111`) and already ships in `TEXTURES.eyes.faces`.
+
+### Static verification
+
+```
+./tools/compile-acs.sh        # ACS COMPILE OK, 0 errors/warnings
+./tools/validate-build-pk3.sh # status=ok, 16623 entries
+```
+
+Runtime verification is still owed: the acceptance matrix (three live roles,
+dead viewer, fresh spectator), per-viewer divergence on a dedicated server,
+listen-host hide policy, and the Eyelento morph/revive transitions.

@@ -25,12 +25,16 @@
 //              role and deliberately suppresses regular-LMS teammate display.
 // uhtiportrait: server-synced portrait index captured while the actor existed
 //              (a corpse has no readable class, so this is the dead-row face).
-// uhtiova*   : frozen 1-vs-all active flag and target player number.
+// uhtiova*   : frozen 1-vs-all active flag and target player number (drives
+//              UH_AreDisplayTeammates, NOT scoreboard visibility).
+// uhtiscorepolicy: synchronized UH_SCOREPOLICY_* for the scoreboard icon matrix.
+//              Starts INVALID so only self is visible until the server snapshot.
 int uhtilife[MAX_PLAYERS];
 int uhtirole[MAX_PLAYERS];
 int uhtiportrait[MAX_PLAYERS];
 int uhtiova;
 int uhtiovatarget;
+int uhtiscorepolicy;
 
 // Per-viewer portrait resolution cache: the live actor class is preferred so a
 // morph is reflected before the next status sync; the synced index is the
@@ -94,6 +98,7 @@ function void UH_Ti_ResetClient(void) {
   }
   uhtiova = 0;
   uhtiovatarget = -1;
+  uhtiscorepolicy = UH_SCOREPOLICY_INVALID;
   uhtilocalplayer = -1;
 }
 
@@ -132,6 +137,17 @@ script "uh_ti_sync_ova" (int active, int target) CLIENTSIDE {
   uhtiovatarget = (uhtiova && target >= 0 && target < MAX_PLAYERS) ? target : -1;
   // The authorized subject set changes with the side split.
   for (int i = 0; i < MAX_PLAYERS; i++) { UH_Ti_ClearStats(i); }
+}
+
+// Authoritative scoreboard portrait policy.  Any value outside the defined
+// range (including the -1 INVALID sentinel) collapses to INVALID so a corrupt
+// or missing broadcast can never widen visibility.  The refresh loop re-derives
+// every row from this value on the next tic while TAB is held.
+script "uh_ti_sync_policy" (int policy) CLIENTSIDE {
+  if (policy < UH_SCOREPOLICY_NORMAL || policy > UH_SCOREPOLICY_MULTITEAM) {
+    policy = UH_SCOREPOLICY_INVALID;
+  }
+  uhtiscorepolicy = policy;
 }
 
 // Per-subject live stats addressed to THIS client only.  NamedExecuteClient-
@@ -195,18 +211,63 @@ function bool UH_AreDisplayTeammates(int viewer, int subject) {
   return false;
 }
 
-// TAB portrait permission matrix:
-//   self always; any Boss always; Survivor<->Survivor; otherwise hidden.
-// During 1-vs-all every assigned player is public.  Dead rows keep their role.
+// TAB portrait permission matrix, applied to the VIEWER of the scoreboard.
+// Evaluation order is fixed; each step is deliberate:
+//   1. an invalid or unassigned subject is never shown (no cached face leak);
+//   2. self is shown once the subject is valid, even if later policy data is
+//      malformed;
+//   3. a dead viewer or a connected true spectator sees every assigned player
+//      (tested BEFORE the event/role branches so a dead FFA participant is not
+//      pinned to self);
+//   4. an invalid viewer or an unknown/ambiguous synchronized policy falls back
+//      to self only;
+//   5. the active bonus-event policy;
+//   6. the ordinary-LMS role matrix;
+//   7. otherwise hidden.
+// The retained role (uhtirole) survives PLS_DEAD, so a dead row keeps its side.
 function bool UH_CanSeeScoreIcon(int viewer, int subject) {
+  // 1. Reject an unassigned slot (PLS_NULL covers a just-joined or stale row).
   if (subject < 0 || subject >= MAX_PLAYERS) { return false; }
   if (uhtirole[subject] == PLS_NULL) { return false; }
+  // 2. Self is always visible after subject validation.
   if (viewer == subject) { return true; }
-  if (uhtiova) { return true; }
-  if (uhtirole[subject] == PLS_BOSS) { return true; }  // Bosses are always public.
-  if (viewer < 0 || viewer >= MAX_PLAYERS) { return true; }
-  if (uhtirole[viewer] == PLS_SURVIVOR && uhtirole[subject] == PLS_SURVIVOR) { return true; }
-  if (uhtirole[viewer] == PLS_BOSS && uhtirole[subject] == PLS_BOSS) { return true; }
+  // 3. Dead viewers and true spectators can spectate every assigned player.
+  if (viewer >= 0 && viewer < MAX_PLAYERS) {
+    if (uhtilife[viewer] == PLS_DEAD) { return true; }
+    if (PlayerIsSpectator(viewer) == 1) { return true; }
+  }
+  // 4. Fail closed: invalid viewer or a policy we could not classify.
+  if (viewer < 0 || viewer >= MAX_PLAYERS) { return false; }
+  if (uhtiscorepolicy == UH_SCOREPOLICY_INVALID) { return false; }
+
+  if (uhtiscorepolicy == UH_SCOREPOLICY_FFA) {
+    // FFA (including Boss FFA): alive players see only self.
+    return false;
+  }
+  if (uhtiscorepolicy == UH_SCOREPOLICY_ONEVSALL
+      || uhtiscorepolicy == UH_SCOREPOLICY_ALL_EYE) {
+    // Every assigned player's portrait is public in both policies.
+    return true;
+  }
+  if (uhtiscorepolicy == UH_SCOREPOLICY_MULTITEAM) {
+    // Eyelento of Pain: exact role equality on the two expected sides.  A Boss
+    // or unknown live role is illegal under this policy and gets self only.
+    if (uhtirole[viewer] == PLS_EYE) { return (uhtirole[subject] == PLS_EYE); }
+    if (uhtirole[viewer] == PLS_SURVIVOR) { return (uhtirole[subject] == PLS_SURVIVOR); }
+    return false;
+  }
+  if (uhtiscorepolicy == UH_SCOREPOLICY_NORMAL) {
+    // Ordinary LMS.  A Survivor sees every assigned portrait (a later Eye morph
+    // stays visible because that transformation is globally announced).  A Boss
+    // or Eye sees self, every Boss and every Eye, but hides Survivors.  An
+    // unknown viewer role is self only.
+    if (uhtirole[viewer] == PLS_SURVIVOR) { return true; }
+    if (uhtirole[viewer] == PLS_BOSS || uhtirole[viewer] == PLS_EYE) {
+      return (uhtirole[subject] == PLS_BOSS || uhtirole[subject] == PLS_EYE);
+    }
+    return false;
+  }
+  // 7. Unknown policy value (the receiver clamps, so this is defensive).
   return false;
 }
 

@@ -625,10 +625,34 @@ script "ub_EyelentoOfPain" (int eventid, int eyelentoamount, int unused) {
   SetPlayerProperty(1, 0, 4);
   while (ThingCountName("EyelentoMajorDemoneye", 0) < eyelentoamount) {
     eyelentorng = random(1000, playerlifestatusarr[MAX_PLAYERS] + 1000);
-    MorphActor(eyelentorng, "EyelentoMajorDemoneye", "", 0x7ffffffd, MRF_FULLHEALTH | MRF_WHENINVULNERABLE | MRF_LOSEACTUALWEAPON | MRF_NEWTIDBEHAVIOUR, "GigaAstroExplode", "EyelentoMajorDemoneyeC");
+    // Couple the PLS_EYE status to a SUCCESSFUL morph.  A failed MorphActor
+    // (already morphed / dead / invulnerable) must leave the player on the
+    // Survivor side, or totalplayersarr, uhsrvrole and the scoreboard split
+    // would all diverge from the actual actor.
+    if (MorphActor(eyelentorng, "EyelentoMajorDemoneye", "", 0x7ffffffd,
+        MRF_FULLHEALTH | MRF_WHENINVULNERABLE | MRF_LOSEACTUALWEAPON | MRF_NEWTIDBEHAVIOUR,
+        "GigaAstroExplode", "EyelentoMajorDemoneyeC")) {
+      int epn = eyelentorng - 1000;
+      if (epn >= 0 && epn < MAX_PLAYERS
+          && playerlifestatusarr[epn] == PLS_SURVIVOR) {
+        PlayerLifeStatusArr_UpdateFunc(epn, PLS_EYE);
+      }
+    }
     Delay(1);
   }
   ACS_NamedExecute("ub_SpecialEventEnding", 0, 2);
+}
+
+// Eyelento-of-Pain side detection for a rebuild: the live actor class is the
+// ground truth.  The engine unmorphs a morphed dead spectator, so a revived
+// Eyelento is a Survivor again; only an actor still in an Eyelento morph body
+// may hold PLS_EYE.
+function bool UH_IsEyelentoActor(int tid) {
+  if (tid < 1000 || tid > 1063) { return false; }
+  if (ClassifyActor(tid) == ACTOR_NONE) { return false; }
+  str cls = GetActorClass(tid);
+  return (StrICmp(cls, "EyelentoMajorDemoneye") == 0
+       || StrICmp(cls, "EyelentoDemoneye") == 0);
 }
 
 // D2: idempotent server-side revival rebuild for the active bonus event.
@@ -667,6 +691,11 @@ function bool RebuildActiveRoundState(int tid, int reason) {
     else {
       PlayerLifeStatusArr_UpdateFunc(pn, PLS_SURVIVOR);
     }
+  }
+  else if (eventflags & UHBE_FLAG_MULTITEAM) {
+    // Eyelento of Pain: the live actor decides the side.  Never let the generic
+    // branch below coerce an active Eyelento to PLS_SURVIVOR.
+    PlayerLifeStatusArr_UpdateFunc(pn, UH_IsEyelentoActor(tid) ? PLS_EYE : PLS_SURVIVOR);
   }
   else if (playerlifestatusarr[pn] != PLS_SURVIVOR) {
     PlayerLifeStatusArr_UpdateFunc(pn, PLS_SURVIVOR);
