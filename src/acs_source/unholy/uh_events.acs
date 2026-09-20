@@ -297,7 +297,7 @@ function void BossFFAMorphPlayer(int tid, int bossid) {
 
 // Boss FFA (event 51): everyone becomes their own rolled boss; the round is
 // resolved by the engine's LMS last-man-standing flow like other FFAs.
-script "ub_BossFFAEvent" (void) {
+script "ub_BossFFAEvent" (int eventid, int unused1, int unused2) {
   for (int p = 0; p < MAX_PLAYERS; p++) {
     eventbossid[p] = -1;
     if (PlayerInGame(p) && PlayerIsSpectator(p) == 0) {
@@ -310,9 +310,9 @@ script "ub_BossFFAEvent" (void) {
     if (PlayerInGame(c)) {ClearFFAProtections(c + 1000);}
   }
 
-  PlayMusic(GetBonusEventMusic(UHEVENT_BOSSEFFA));
+  PlayMusic(GetBonusEventMusic(eventid));
   Delay(2);
-  MusicCredits(GetBonusEventMusicCredit(UHEVENT_BOSSEFFA), 0);
+  MusicCredits(GetBonusEventMusicCredit(eventid), 0);
 
   SetFont("BIGFONT");
   SetHudSize(640, 480, 0);
@@ -327,7 +327,7 @@ function void GiveSatanSealState(int tid) {
   GiveActorInventory(tid, "AutoUnholyInsuranceItem", 1);
 }
 
-script "ub_SatanSealFFA" (void) {
+script "ub_SatanSealFFA" (int eventid, int unused1, int unused2) {
   for (int c = 0; c < MAX_PLAYERS; c++) {
     if (PlayerInGame(c)) {
       ClearFFAProtections(c + 1000);
@@ -335,9 +335,9 @@ script "ub_SatanSealFFA" (void) {
     }
   }
 
-  PlayMusic(GetBonusEventMusic(UHEVENT_SATANSEAL));
+  PlayMusic(GetBonusEventMusic(eventid));
   Delay(2);
-  MusicCredits(GetBonusEventMusicCredit(UHEVENT_SATANSEAL), 0);
+  MusicCredits(GetBonusEventMusicCredit(eventid), 0);
 
   SetFont("BIGFONT");
   SetHudSize(640, 480, 0);
@@ -347,7 +347,7 @@ script "ub_SatanSealFFA" (void) {
 }
 
 // FREE FOR ALL SCRIPT
-script "ub_FreeForAll" (int freechance) {
+script "ub_FreeForAll" (int eventid, int freechance, int unused) {
   int forchance = 0;
 
   switch (freechance) {
@@ -419,7 +419,7 @@ script "ub_WhoWonTheRound" (void) {
 
 
 // Demoneye event script
-script "ub_DemoneyeEvent" (int eventid, int eyeid) {
+script "ub_DemoneyeEvent" (int eventid, int eyeid, int unused) {
   str stem = GetEyeEventStem(eyeid);
   str eyemorphstr = StrParam(s:stem, s:"_MoolaGiver");
   str eyebonusstr = StrParam(s:stem, s:"_EventD_P");
@@ -491,17 +491,12 @@ script "uh_DemoneyeEventTextDelay" (int which, int delaytime) {
 
 // Scripts used by special events
 
-// This script is mainly for the 1 vs Something events
-script "ub_OneVsAllEvent" (int which) {
+// This script is mainly for the 1 vs Something events.  Dynamic start
+// callbacks receive (eventId, arg1, arg2); arg1 is the legacy raw selector.
+script "ub_OneVsAllEvent" (int eventid, int which, int unused) {
 
   str eventstring = "Null";
   int mainhealth = 0;
-  int eventid = UHEVENT_EYEPARADE;
-  if (which == 1) {eventid = UHEVENT_CLONEPARADE;}
-  else if (which == 50) {eventid = UHEVENT_CATCHFURRY;}
-  else if (which == 51) {eventid = UHEVENT_RUNAWAYFOX;}
-  else if (which == 14) {eventid = UHEVENT_BRICK;}
-  else if (which == 15) {eventid = UHEVENT_MOSQUITO;}
   Delay(1);
 
   multibosscheck = 1;
@@ -607,9 +602,9 @@ script "ub_OneVsAllEvent" (int which) {
 }
 
 // Eyelento of Pain bonus event (ported from unbound Script 827)
-script "ub_EyelentoOfPain" (int eyelentoamount) {
-  PlayMusic(GetBonusEventMusic(UHEVENT_EYELENTO));
-  MusicCredits(GetBonusEventMusicCredit(UHEVENT_EYELENTO), 0);
+script "ub_EyelentoOfPain" (int eventid, int eyelentoamount, int unused) {
+  PlayMusic(GetBonusEventMusic(eventid));
+  MusicCredits(GetBonusEventMusicCredit(eventid), 0);
 
   ACS_NamedExecute("ub_WatchSurvivors", 0, true);
 
