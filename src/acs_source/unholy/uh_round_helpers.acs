@@ -79,13 +79,59 @@ function int UH_Ti_PortraitIndexForPlayer(int pn) {
   return uhsrvportraitvalid[pn] ? uhsrvportraitidx[pn] : -1;
 }
 
+// Read the server portrait cache without rescanning the class table.
+function int UH_Ti_CachedPortrait(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { return -1; }
+  return uhsrvportraitvalid[pn] ? uhsrvportraitidx[pn] : -1;
+}
+
+// Refresh the portrait cache for every live subject once.  Snapshot delivery
+// then reads the cache instead of walking the 197-row class table once per
+// client (N clients x M subjects).
+function void UH_TeamInfo_WarmPortraits(void) {
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (PlayerInGame(i)) { UH_Ti_PortraitIndexForPlayer(i); }
+  }
+}
+
+// --- Per-client delivery ------------------------------------------------------
+// CLIENTSIDE receivers must be delivered with NamedExecuteClientScript, which
+// emits an SVCF_ONLYTHISCLIENT ACS command for exactly one client.  A plain
+// ACS_NamedExecuteAlways call to a CLIENTSIDE script does not reliably reach
+// remote clients from a dedicated server (on builds without the clientside
+// broadcast branch it runs on the server only), which left uhtirole[]/uhtiova/
+// uhtiscorepolicy unsynchronized and the TAB portraits blank.  Iterate every
+// connected client explicitly instead.
+function bool UH_Ti_IsConnectedClient(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { return false; }
+  // PlayerInGame == playeringame && !bSpectating; PlayerIsSpectator is
+  // non-zero exactly for connected spectators.  Their union is playeringame,
+  // which is what NamedExecuteClientScript (PLAYER_IsValidPlayer) accepts.
+  if (PlayerInGame(pn)) { return true; }
+  return PlayerIsSpectator(pn) != 0;
+}
+
+function void UH_Ti_SendStatusTo(int client, int pn, int status, int portrait) {
+  if (!UH_Ti_IsConnectedClient(client)) { return; }
+  NamedExecuteClientScript("uh_ti_sync_status", client, pn, status, portrait);
+}
+
+function void UH_Ti_SendOneVsAllTo(int client, int active, int target) {
+  if (!UH_Ti_IsConnectedClient(client)) { return; }
+  NamedExecuteClientScript("uh_ti_sync_ova", client, active, target);
+}
+
+function void UH_Ti_SendScorePolicyTo(int client, int policy) {
+  if (!UH_Ti_IsConnectedClient(client)) { return; }
+  NamedExecuteClientScript("uh_ti_sync_policy", client, policy);
+}
+
 function void UH_TeamInfo_BroadcastStatus(int pn, int status) {
   if (pn < 0 || pn >= MAX_PLAYERS) { return; }
-  // ACS_NamedExecuteAlways maps (name, map, a1, a2, a3); the first user arg is
-  // consumed as the level name, so the leading 0 placeholder is mandatory and
-  // the receiver gets (pn, status, portrait).
-  ACS_NamedExecuteAlways("uh_ti_sync_status", 0, pn, status,
-    UH_Ti_PortraitIndexForPlayer(pn));
+  int portrait = UH_Ti_PortraitIndexForPlayer(pn);
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    UH_Ti_SendStatusTo(c, pn, status, portrait);
+  }
 }
 
 // 1-vs-all is defined by the ACTIVE bonus event's UHBE_FLAG_ONEVSALL, never
@@ -131,28 +177,54 @@ function int UH_TeamInfo_ScorePolicy(void) {
   return UH_SCOREPOLICY_MULTITEAM;
 }
 
-function void UH_TeamInfo_BroadcastOneVsAll(void) {
-  ACS_NamedExecuteAlways("uh_ti_sync_ova", 0,
-    UH_TeamInfo_IsOneVsAllActive() ? 1 : 0, UH_TeamInfo_OneVsAllTarget());
-  // Piggyback the scoreboard policy on the same state boundaries (round setup,
-  // event commit, target freeze, event finish/abort, late-join snapshot) so a
-  // client never has to wait for a close-and-reopen cycle after a policy change.
-  ACS_NamedExecuteAlways("uh_ti_sync_policy", 0, UH_TeamInfo_ScorePolicy());
-}
-
-// Rebuild every client against the current server state.  Called at round
-// setup, on enter (late join) and after the one-vs-all target freezes.
-function void UH_TeamInfo_FullSnapshot(void) {
+// Full current state (every subject plus both display policies) to one client.
+// The caller must have warmed the portrait cache once (UH_TeamInfo_WarmPortraits)
+// so no class-table scan happens per client.
+function void UH_Ti_SendSnapshotCore(int client) {
+  if (!UH_Ti_IsConnectedClient(client)) { return; }
   for (int i = 0; i < MAX_PLAYERS; i++) {
     if (PlayerInGame(i)) {
-      UH_TeamInfo_BroadcastStatus(i, playerlifestatusarr[i]);
+      UH_Ti_SendStatusTo(client, i, playerlifestatusarr[i],
+        UH_Ti_CachedPortrait(i));
     } else {
       // Explicitly clear unused slots so no stale role/portrait can remain
       // after a player leaves and the slot is reused.
-      ACS_NamedExecuteAlways("uh_ti_sync_status", 0, i, PLS_NULL, -1);
+      UH_Ti_SendStatusTo(client, i, PLS_NULL, -1);
     }
   }
-  UH_TeamInfo_BroadcastOneVsAll();
+  UH_Ti_SendOneVsAllTo(client,
+    UH_TeamInfo_IsOneVsAllActive() ? 1 : 0, UH_TeamInfo_OneVsAllTarget());
+  UH_Ti_SendScorePolicyTo(client, UH_TeamInfo_ScorePolicy());
+}
+
+// Late-join entry point: one client, cache warmed here so it is safe standalone.
+function void UH_TeamInfo_SendSnapshotTo(int client) {
+  UH_TeamInfo_WarmPortraits();
+  UH_Ti_SendSnapshotCore(client);
+}
+
+// Re-publish the frozen 1-vs-all split and the scoreboard policy on the same
+// state boundaries (round setup, event commit, target freeze, event
+// finish/abort, late-join snapshot) so a client never waits for a
+// close-and-reopen cycle after a change.
+function void UH_TeamInfo_BroadcastOneVsAll(void) {
+  int active = UH_TeamInfo_IsOneVsAllActive() ? 1 : 0;
+  int target = UH_TeamInfo_OneVsAllTarget();
+  int policy = UH_TeamInfo_ScorePolicy();
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    UH_Ti_SendOneVsAllTo(c, active, target);
+    UH_Ti_SendScorePolicyTo(c, policy);
+  }
+}
+
+// Rebuild every connected client against the current server state.  Called at
+// round setup and after the one-vs-all target freezes; the ENTER late join uses
+// UH_TeamInfo_SendSnapshotTo for just the entering client.
+function void UH_TeamInfo_FullSnapshot(void) {
+  UH_TeamInfo_WarmPortraits();
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    UH_Ti_SendSnapshotCore(c);
+  }
 }
 
 // Updates player status and total players with status, then pushes the change

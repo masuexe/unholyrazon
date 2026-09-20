@@ -39,6 +39,23 @@ level authentication and snapshot receipt. Temporary isolated engine folders
 prevent shared runtime/config files and are removed during cleanup. It requires
 permission to open local TCP/UDP ports.
 
+For the team-info CLIENTSIDE sync delivery regression:
+
+```bash
+node tools/mcp/team-info-sync-test.mjs --json
+node tools/mcp/team-info-sync-test.mjs --dry-run
+```
+
+It launches one listen server plus one MCP-controlled remote client, connects
+the client, has it run the console `join` command so it actually spawns, and
+then asserts the client's own `uhtirole[]` / `uhtilife[]` / `uhtiscorepolicy`
+map vars are populated by the server's per-client sync. This is the runtime
+gate for the P1 per-client delivery fix (`ACS_NamedExecuteAlways` to a
+CLIENTSIDE receiver does not reach a remote client); static compilation cannot
+prove a receiver was reached over the network. A client that is still a true
+spectator has no role and is expected to read `-1`, so the test only judges
+after `join`.
+
 For the boss-versus combo directed probe:
 
 ```bash

@@ -316,7 +316,13 @@ script "uh_ScoreIconVisible" (int viewer, int subject) {
 // --- Late join: full snapshot ------------------------------------------------
 script "uh_ti_enter" ENTER {
   Delay(35);
-  UH_TeamInfo_FullSnapshot();
+  // Late join: push the full snapshot to the entering client only.  Everyone
+  // else already holds the round state, so re-broadcasting here would be pure
+  // repetition.
+  int joiner = PlayerNumber();
+  if (joiner >= 0) {
+    UH_TeamInfo_SendSnapshotTo(joiner);
+  }
 }
 
 // --- Server-authoritative teammate stats -------------------------------------
@@ -381,7 +387,13 @@ function void UH_Ti_RefreshStats(void) {
     if (!ingame) {
       if (uhsrvWasingame[s]) {
         uhsrvWasingame[s] = false;
-        ACS_NamedExecuteAlways("uh_ti_stat_clear", 0, s);
+        // Per-client clear: the receiver is CLIENTSIDE, so a plain
+        // ACS_NamedExecuteAlways would not reach remote clients.
+        for (int cl = 0; cl < MAX_PLAYERS; cl++) {
+          if (UH_Ti_IsConnectedClient(cl)) {
+            NamedExecuteClientScript("uh_ti_stat_clear", cl, s);
+          }
+        }
       }
       continue;
     }

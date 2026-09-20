@@ -674,3 +674,63 @@ portrait while Boss/Eye viewers see only Boss/Eye subjects; otherwise hidden.
 Runtime verification is still owed: the acceptance matrix (three live roles,
 dead viewer, fresh spectator), per-viewer divergence on a dedicated server,
 listen-host hide policy, and the Eyelento morph/revive transitions.
+
+## P1 fix — per-client delivery for CLIENTSIDE receivers (implemented)
+
+A dedicated-server test showed the team-info cache never reached remote
+clients: `uhtirole[]` stayed `PLS_NULL` and `uhtiscorepolicy` stayed
+`UH_SCOREPOLICY_INVALID`, so TAB had no `UHPlayerIcon` portraits.  The
+receivers are `CLIENTSIDE` scripts, and the broadcasts were issued with
+`ACS_NamedExecuteAlways`; on the tested engine a plain named execute of a
+clientside script is not delivered to remote clients as an ACS execution
+command.  Only `NamedExecuteClientScript` emits the per-client
+`SVCF_ONLYTHISCLIENT` command.  (`uh_ti_stat` already used it, which is why
+the teammate-stat snapshot worked while the role/policy sync did not.)
+
+All team-info `CLIENTSIDE` receivers are now delivered per connected client:
+
+- `uh_round_helpers.acs` adds `UH_Ti_IsConnectedClient` (the union of
+  `PlayerInGame` and `PlayerIsSpectator != 0`, which is exactly the engine's
+  `playeringame` / `PLAYER_IsValidPlayer`), plus `UH_Ti_SendStatusTo`,
+  `UH_Ti_SendOneVsAllTo` and `UH_Ti_SendScorePolicyTo`.
+- `UH_TeamInfo_BroadcastStatus`, `UH_TeamInfo_BroadcastOneVsAll` and the
+  `uh_ti_stat_clear` transition now loop every connected client and send with
+  `NamedExecuteClientScript`.
+- `uh_ti_enter ENTER` sends the full snapshot only to the entering player
+  (`PlayerNumber()` -> `UH_TeamInfo_SendSnapshotTo`), while round setup and
+  the 1-vs-all re-freeze still use `UH_TeamInfo_FullSnapshot` for everyone.
+- `UH_TeamInfo_WarmPortraits` refreshes the server portrait cache once per
+  snapshot; `UH_Ti_SendSnapshotCore` then reads `UH_Ti_CachedPortrait`
+  instead of rescanning the 197-row class table for every client.
+
+Static verification:
+
+```
+./tools/compile-acs.sh        # ACS COMPILE OK, 0 errors/warnings
+./tools/validate-build-pk3.sh # status=ok, 16623 entries
+```
+
+### Runtime verification (performed)
+
+A local Zandronum 3.3-alpha bridge session (the `tools/mcp` harness with the
+engine from `~/mcpfiles/zandronum-mcp`) reproduced the reported failure and
+then confirmed the fix:
+
+- A remote client connected to a `-lastmanstanding` listen server.  While it
+  was still a **spectator** (the console `join` command not yet issued), its
+  map vars read `uhtirole[] = -1`, `uhtilife[] = -1`,
+  `uhtiscorepolicy = -1` — the reported symptom.
+- After the client ran the console `join` command and spawned (actor
+  `Trapist`, health 925), the synced values became
+  `uhtirole[0..1] = [1, 2]`, `uhtilife[0..1] = [1, 2]` and
+  `uhtiscorepolicy = 0` (`UH_SCOREPOLICY_NORMAL`), matching the server's
+  `Player 0 is alive` / `Player 1 is alive` + boss-morph round.
+- Running the receivers locally on the client (`run_script uh_ti_sync_policy 0`)
+  also set `uhtiscorepolicy = 0`, isolating the fix to delivery rather than the
+  receiver logic.
+
+The per-client `NamedExecuteClientScript` path is therefore confirmed to reach
+a remote client, whereas the pre-fix `ACS_NamedExecuteAlways` path left the
+caches at their `PLS_NULL` / `INVALID` defaults.  The probe is now the
+standing gate `tools/mcp/team-info-sync-test.mjs` (`--json` / `--dry-run`),
+documented in `tools/README.md`.

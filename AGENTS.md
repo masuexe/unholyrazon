@@ -164,6 +164,11 @@ writes `UHPlayerIcon`; each client computes it locally with
 teammates as enemies and withholds their health, so a server watch
 (`uh_ti_serverwatch`) pushes a per-viewer health/armor/weapon/ammo snapshot
 with `NamedExecuteClientScript`, gated by `UH_Ti_ServerAreDisplayTeammates`.
+Deliver **every** CLIENTSIDE team-info receiver (`uh_ti_sync_status`,
+`uh_ti_sync_ova`, `uh_ti_sync_policy`, `uh_ti_stat_clear`) the same way, per
+connected client: a plain `ACS_NamedExecuteAlways` call to a CLIENTSIDE script
+is not delivered to remote clients on a dedicated server, so role/policy sync
+silently never arrives.
 The weapon display tag/ammo types come from `systems/tools/weapon_display.acs`
 in UH_TOOLS — the only UH library that may import 8BDT; do not add that bridge
 to `unholy`. `debug/rz_debug.acs` also includes `uh_def` and
