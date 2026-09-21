@@ -92,11 +92,15 @@ HUD resolves from:
   presentation fragments (`tools/check_team_presentation.py` proves those match
   the former hardcoded tables). `scoreIcon` covers the LuckyLass `UMUG_6_`
   override.
-- **identity sync** — every published `uhtiident[]` decodes to a
-  `(UH_PLDEF_* kind, definition id)`; a regression to a bare 0..197
-  presentation row index would decode to kind 0 and fail. Where `uhtirole[]` is
-  also known, the packed kind must equal that role's kind (so a Boss slot
-  really carries `UH_PLDEF_BOSS`).
+- **identity sync** — `uh_ti_TeamInfoCacheDump` logs what the client actually
+  cached per slot. Every published class must be a plausible name, and a class
+  the peer does not know (`known=0`) must resolve to an empty portrait *and* an
+  empty icon, with the name falling back to the class itself. That is the
+  property that makes a divergent addon set safe, and it is why neither a
+  definition id nor a presentation row may ever be synchronised — both are
+  assigned in load order. `unknownSeen` keeps the assertion from being vacuous.
+  A mismatched addon set cannot be forced for a class-adding addon: the engine
+  rejects the connection on protected lumps.
 - **receiver round-trip** — a known packed identity pushed through
   `uh_ti_sync_status` is stored, and `PLS_NULL` clears both the role and the
   identity.

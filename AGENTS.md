@@ -192,11 +192,20 @@ Every consumer resolves through the same UHDT functions
 The native bar calls them directly, the UIXTEAM shadow through the named script
 `uh_GetTeamPortraitForTid`, and an addon through the UHADD wrappers.
 
-The team-info status broadcast carries a **packed `(UH_PLDEF_* kind, definition
-id)`** (`UH_Ti_PackPlayerId`), never a presentation row index: rows are assigned
-in load order, so two peers with a different addon set would disagree. A client
-maps it back with `UH_Ti_ActorForIdentity` through its own tables, so no class
-name travels over the network and a missing addon degrades to an empty face.
+The team-info status broadcast carries the **actor class name**
+(`uh_ti_sync_status`'s third argument), never a definition id and never a
+presentation row index. Both of those are assigned in load order — a custom
+`DefineSurvivor(-1, …)` id shifts when a peer is missing an earlier addon, and a
+presentation row is handed out in registration order — so syncing either would
+let a peer with a different addon set resolve the number to a *different* class
+and draw someone else's face. A class name is content: the client resolves it
+through its own tables, and a class it does not know yields an empty face. ACS
+strings travel as an ordinary `NamedExecuteClientScript` argument (the weapon tag
+in `uh_ti_stat` already does), and the class is only re-sent on a status change
+or a snapshot, never on the 7-tic stat cadence. Note that the engine already
+refuses a connection whose protected lumps (DECORATE, KEYCONF) differ, so a
+class-*adding* addon cannot diverge; the residual case is an ACS-only addon,
+which the class-name protocol makes safe.
 
 Built-in rows are generated into `*_presentation.acs` fragments next to the
 definition they belong to. Regenerate with `python3

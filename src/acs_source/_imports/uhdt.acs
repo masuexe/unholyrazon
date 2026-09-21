@@ -3410,11 +3410,12 @@ function int GetTeamPresentationFlags(int row) {
 // The single actor -> display path for every consumer.  Consumers must never
 // walk the three definition tables themselves: the order below IS the contract.
 //
-// Definition kinds returned by UH_FindPlayerDefinition.  The value travels in
-// the team-info status broadcast (see UH_Ti_PackPlayerId), so it must never be
-// renumbered.  survivor -> boss -> eye is the fixed order and a presentation-
-// only row is the last resort, so an actor that is also a real definition keeps
-// its stable game-logic id.
+// Definition kinds returned by UH_FindPlayerDefinition.  These classify an actor
+// for callers that need to know which table owns it; they are NOT a network
+// protocol — the status broadcast sends the actor class name instead, because
+// ids and row indices are both load-order dependent.  survivor -> boss -> eye is
+// the fixed lookup order and a presentation-only row is the last resort, so an
+// actor that is also a real definition keeps its game-logic classification.
 #libdefine UH_PLDEF_NONE 0
 #libdefine UH_PLDEF_SURVIVOR 1
 #libdefine UH_PLDEF_BOSS 2
@@ -3482,35 +3483,9 @@ function str UH_PlayerScoreIcon(str actor) {
 	return uh_tipstr[row][UHTIP_STR_PORTRAIT];
 }
 
-// --- Team-info identity packing ----------------------------------------------
-// The status broadcast carries ONE int of definition identity, and it must not
-// be a bare table row: presentation rows are assigned in load order, so two
-// peers that loaded a different addon set would disagree on the same number.
-// Packing (kind, id) keeps survivor/boss/eye ids — which are game-logic ids and
-// stable for a given load order — separate from presentation rows.
-// id is offset so a packed value is never negative and the kind band can never
-// collide with an id (survivor/boss/eye ids are >= -256 and <= 999).
-#libdefine UH_TI_IDENT_BASE 100000
-#libdefine UH_TI_IDENT_OFFSET 1000
-// -1 = "no definition": an unregistered live actor.
-#libdefine UH_TI_ID_NONE -1
-
-function int UH_Ti_PackPlayerId(int kind, int id) {
-	if (kind <= UH_PLDEF_NONE || kind > UH_PLDEF_PRESENTATION)
-		return UH_TI_ID_NONE;
-	if (id < -UH_TI_IDENT_OFFSET || id >= UH_TI_IDENT_BASE - UH_TI_IDENT_OFFSET)
-		return UH_TI_ID_NONE;
-	return (kind * UH_TI_IDENT_BASE) + id + UH_TI_IDENT_OFFSET;
-}
-
-function int UH_Ti_PackedIdKind(int packed) {
-	if (packed < 0)
-		return UH_PLDEF_NONE;
-	return packed / UH_TI_IDENT_BASE;
-}
-
-function int UH_Ti_PackedIdValue(int packed) {
-	if (packed < 0)
-		return 0;
-	return (packed % UH_TI_IDENT_BASE) - UH_TI_IDENT_OFFSET;
-}
+// --- Team-info identity sync -------------------------------------------------
+// The status broadcast carries the actor class NAME (see uh_round_helpers.acs),
+// so no id or row index is ever packed.  Nothing below needs a helper: the
+// lesson is that both definition ids and presentation rows are assigned in load
+// order, which makes them unsafe to synchronise between peers that may have
+// loaded a different addon set.

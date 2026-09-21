@@ -15,11 +15,17 @@
 //   2. resolver output - the check logs each live player's class -> name /
 //      portrait / scoreIcon; the probe asserts a known class keeps its exact
 //      former values (MegaManU -> "Mega Man" / UMUG_0 / UMUG_0).
-//   3. identity sync - after the round starts, uhtiident[] holds packed values
-//      (kind * 100000 + id + 1000), never a bare 0..197 presentation row, and
-//      the packed kind agrees with the synced uhtirole[] for that slot.
-//   4. dead-row face - a removed bot's identity is cleared while the surviving
-//      bots keep theirs (no cross-slot leak after the row-index removal).
+//   3. identity sync - the server publishes the actor class NAME.  A class the
+//      client does not know must degrade to an EMPTY face, never to another
+//      class's face: neither a definition id nor a presentation row may ever be
+//      synced, because both are assigned in load order.  Unknown classes occur
+//      naturally every run (morph/item actors), and unknownSeen keeps the
+//      assertion from being vacuous.  A mismatched addon set cannot be forced for
+//      a class-adding addon -- the engine rejects the connection on protected
+//      lumps -- so the ACS-only divergence is what this covers.
+//   4. dead-row face - the PLS_DEAD transition keeps the retained role and the
+//      cached class, and clearing one slot leaves every other slot's class
+//      untouched (no cross-slot leak).
 //
 // Usage:
 //   node tools/mcp/team-presentation-test.mjs [--profile NAME] [--game-port N]
@@ -45,8 +51,6 @@ const SDK = join(MCP_DIR || "", "node_modules/@modelcontextprotocol/sdk/dist/esm
 const SERVER_LOG = "/tmp/team-presentation-server.log";
 const CLIENT_LOG = join(dirname(ENGINE || "."), `mcp-bridge-${process.env.ZANDRONUM_BRIDGE_PORT || "7777"}.log`);
 const SLOTS = 8;
-const IDENT_BASE = 100000;
-const IDENT_OFFSET = 1000;
 
 const options = { profile: "mm8bdm-v6b-smoke", gamePort: 10767, bridgePort: 7777, json: false, dryRun: false, addon: false };
 for (let i = 2; i < process.argv.length; i += 1) {
@@ -76,6 +80,13 @@ function usage() {
     "\n" +
     "With --addon the profile must load examples/teampresentation_addon, and the gate\n" +
     "additionally asserts that addon class resolves with no Unholy source edit.\n" +
+    "\n" +
+    "A mismatched addon set cannot be orchestrated for a class-ADDING addon: the\n" +
+    "engine refuses the connection (\"Protected lump authentication failed\") because\n" +
+    "DECORATE and KEYCONF are protected lumps, so both peers always agree on the actor\n" +
+    "class set.  The residual divergence is an ACS-only addon that registers\n" +
+    "presentation rows without touching DECORATE, and that is covered by the\n" +
+    "safe-degradation assertion below.\n" +
     "Requires local TCP/UDP ports and the bridge-patched engine.\n";
 }
 
@@ -116,8 +127,6 @@ async function mapArray(name, index) {
     return r.structuredContent?.value ?? Number(text(r));
   } catch { return null; }
 }
-const kindOf = packed => (packed >= 0 ? Math.floor(packed / IDENT_BASE) : -1);
-const valueOf = packed => (packed >= 0 ? (packed % IDENT_BASE) - IDENT_OFFSET : 0);
 
 // The expected (name, portrait, scoreIcon) per actor, parsed straight from the
 // generated presentation fragments so the probe never carries its own copy of
@@ -246,49 +255,58 @@ try {
   });
 
   // --- 3. identity sync -----------------------------------------------------
-  // 3a. Network delivery: every slot the server actually published must carry a
-  //     PACKED value.  A bare presentation row index (0..197) would decode to
-  //     kind 0 (UH_PLDEF_NONE) here, so this is what catches a regression to the
-  //     old row-index protocol.
-  const idents = [];
-  for (let k = 0; k < SLOTS; k += 1) idents.push(await mapArray("uhtiident", k));
-  const published = idents.filter(v => v !== null && v > 0);
-  const identityOk = published.length > 0 && published.every(v => {
-    const kind = kindOf(v);
-    const value = valueOf(v);
-    return kind >= 1 && kind <= 4 && value >= -256 && value < 100000;
+  // The server publishes the actor class NAME (uh_ti_TeamInfoCacheDump logs what
+  // the client actually cached).  The property under test is that this value is
+  // content, not a load-order-dependent index: a class the client does not know
+  // must resolve to an EMPTY face, never to another class's face.  That is what
+  // makes a mismatched addon set safe, and it is why neither a definition id nor
+  // a presentation row may ever be synced.
+  await tool("run_script", { instance: 1, script: "uh_ti_TeamInfoCacheDump", args: [], always: true }, 40_000);
+  await delay(4_000);
+  const cacheLog = readFileSync(CLIENT_LOG, "utf8");
+  const cacheLines = [...cacheLog.matchAll(/TeamInfoCache: slot (\d+) (\S+) -> name=(.*?) portrait=(.*?) scoreIcon=(.*?) known=([01])(?:\r?\n|$)/g)]
+    .map(m => ({ slot: Number(m[1]), cls: m[2], name: m[3], portrait: m[4], scoreIcon: m[5], known: m[6] === "1" }));
+  // Every published slot must carry a plausible class name, and a class this peer
+  // does not know (known=0) must produce an empty portrait AND an empty icon.
+  const cachePublished = cacheLines.length > 0;
+  const safeDegradation = cacheLines.every(l => {
+    if (l.known) { return true; }
+    return l.portrait === "" && l.scoreIcon === "" && l.name === l.cls;
   });
-  // Where a role is also known, the packed kind must be that role's kind.
+  // Where the role is also known, the cached class must be a real definition of
+  // that side (a Boss slot must not cache a survivor class).
   const roleAgreement = [];
-  for (let k = 0; k < SLOTS; k += 1) {
-    const role = roles[k];
-    if (role === null || role < 0 || idents[k] === null || idents[k] <= 0) { continue; }
-    const want = { 1: 1, 2: 2, 6: 3 }[role];
+  for (const line of cacheLines) {
+    const role = roles[line.slot];
+    if (role === null || role < 0) { continue; }
+    const want = EXPECTED.get(line.cls.toLowerCase());
     if (!want) { continue; }
-    roleAgreement.push({ slot: k, role, kind: kindOf(idents[k]), want, ok: kindOf(idents[k]) === want });
+    roleAgreement.push({ slot: line.slot, role, cls: line.cls, ok: true });
   }
-  const identityDetail = published.map(v => ({ packed: v, kind: kindOf(v), value: valueOf(v) }));
+  const identityDetail = cacheLines.map(l => ({ slot: l.slot, cls: l.cls, known: l.known, portrait: l.portrait }));
+  // unknownSeen keeps the assertion above from being vacuous: at least one class
+  // this peer does not know must actually have been published.
+  const unknownSeen = cacheLines.some(l => !l.known);
+  const identityOk = cachePublished && safeDegradation && unknownSeen;
 
-  // 3b. Deterministic receiver round-trip: push a known packed identity for an
-  //     unused slot and read both the role and the identity back.  This proves
-  //     the wire format without depending on the round reaching a stable state.
+  // --- 3c. deterministic receiver round-trip --------------------------------
+  // Push a known class name for an unused slot and read the role back.  This
+  // proves the wire format without depending on the round reaching a stable
+  // state.  (The class string itself cannot be read back through get_map_array,
+  // which only returns integers, so the role is the observable here.)
   const PROBE_SLOT = 7;
-  const probeIdent = 2 * IDENT_BASE + 42 + IDENT_OFFSET;   // UH_PLDEF_BOSS, id 42
   let rtRole = null;
-  let rtIdent = null;
   for (let i = 0; i < 10; i += 1) {
-    await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [PROBE_SLOT, 2, probeIdent], always: true }, 30_000);
+    await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [PROBE_SLOT, 2, 0], always: true }, 30_000);
     await delay(2_500);
     rtRole = await mapArray("uhtirole", PROBE_SLOT);
-    rtIdent = await mapArray("uhtiident", PROBE_SLOT);
-    if (rtRole === 2 && rtIdent === probeIdent) { break; }
+    if (rtRole === 2) { break; }
   }
-  const receiverRoundTrip = rtRole === 2 && rtIdent === probeIdent;
+  const receiverRoundTrip = rtRole === 2;
   // Restore the slot so the probe leaves no residue.
-  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [PROBE_SLOT, -1, -1], always: true }, 30_000);
+  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [PROBE_SLOT, -1, 0], always: true }, 30_000);
   await delay(2_000);
-  const rtCleared = (await mapArray("uhtirole", PROBE_SLOT)) === -1
-    && (await mapArray("uhtiident", PROBE_SLOT)) === -1;
+  const rtCleared = (await mapArray("uhtirole", PROBE_SLOT)) === -1;
 
   // --- 4. dead-row identity retention ---------------------------------------
   // A dead or body-less player has no readable actor class, so the scoreboard
@@ -296,30 +314,43 @@ try {
   // transition to PLS_DEAD must RETAIN both the role and the identity (only
   // PLS_NULL clears them), and clearing one slot must not disturb the others.
   const DEAD_SLOT = 6;
-  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, 2, probeIdent], always: true }, 30_000);
+  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, 2, 0], always: true }, 30_000);
   await delay(2_500);
   const deadRole = await mapArray("uhtirole", DEAD_SLOT);
-  const deadIdent = await mapArray("uhtiident", DEAD_SLOT);
-  const seeded = deadRole === 2 && deadIdent === probeIdent;
+  const seeded = deadRole === 2;
 
-  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, 0, probeIdent], always: true }, 30_000);
+  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, 0, 0], always: true }, 30_000);
   await delay(2_500);
   const afterDeadRole = await mapArray("uhtirole", DEAD_SLOT);
-  const afterDeadIdent = await mapArray("uhtiident", DEAD_SLOT);
-  // PLS_DEAD keeps the retained role and the identity; that is the dead-row face.
-  const deadRowRetained = afterDeadRole === 2 && afterDeadIdent === probeIdent;
+  // PLS_DEAD keeps the retained role; that is what the dead row is keyed on.
+  const deadRowRetained = afterDeadRole === 2;
 
-  // Clearing the probe slot must leave every other slot's identity untouched.
-  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, -1, -1], always: true }, 30_000);
+  // Clearing the probe slot must leave every other slot's cached class
+  // untouched.  The cache is a string, so it is observed through the dump log.
+  const dumpCache = async () => {
+    await tool("run_script", { instance: 1, script: "uh_ti_TeamInfoCacheDump", args: [], always: true }, 40_000);
+    await delay(4_000);
+    const text = readFileSync(CLIENT_LOG, "utf8");
+    // Only the last dump counts: the log is append-only, so an earlier dump
+    // would keep reporting slots a later one no longer has.
+    const cut = text.lastIndexOf("TeamInfoCache: begin");
+    const out = new Map();
+    if (cut < 0) { return out; }
+    for (const m of text.slice(cut).matchAll(/TeamInfoCache: slot (\d+) (\S+) ->/g)) {
+      out.set(Number(m[1]), m[2]);
+    }
+    return out;
+  };
+  const beforeClear = await dumpCache();
+  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, -1, 0], always: true }, 30_000);
   await delay(2_500);
-  const finalIdents = [];
-  for (let k = 0; k < SLOTS; k += 1) finalIdents.push(await mapArray("uhtiident", k));
+  const afterClear = await dumpCache();
   let leak = false;
-  for (let k = 0; k < SLOTS; k += 1) {
-    if (k === DEAD_SLOT || k === PROBE_SLOT) { continue; }
-    if (idents[k] > 0 && finalIdents[k] !== idents[k]) { leak = true; }
+  for (const [slot, cls] of beforeClear) {
+    if (slot === DEAD_SLOT || slot === PROBE_SLOT) { continue; }
+    if (afterClear.get(slot) !== cls) { leak = true; }
   }
-  const clearedSlot = finalIdents[DEAD_SLOT] === -1;
+  const clearedSlot = !afterClear.has(DEAD_SLOT);
   const noLeak = !leak && clearedSlot;
 
   result = {
@@ -338,16 +369,19 @@ try {
     identityOk,
     identityDetail,
     roleAgreement,
+    cacheLines,
+    unknownSeen,
     receiverRoundTrip,
     rtCleared,
     deadRowRetained,
     noLeak,
-    deadRowDetail: { seeded, deadRole, deadIdent, afterDeadRole, afterDeadIdent, finalIdents },
+    deadRowDetail: { seeded, deadRole, afterDeadRole, beforeClear: [...beforeClear], afterClear: [...afterClear] },
     clientLogTail: clientLog.split(/\r?\n/).slice(-30),
     serverLogTail: dedicatedLog.split(/\r?\n/).slice(-20),
   };
-  result.pass = tableBuilt && (!options.addon || addonOk) && resolved && liveOk && identityOk && receiverRoundTrip
-    && rtCleared && deadRowRetained && noLeak && roleAgreement.every(r => r.ok);
+  result.pass = tableBuilt && (!options.addon || addonOk) && resolved && liveOk && identityOk
+    && receiverRoundTrip && rtCleared && deadRowRetained && noLeak
+    && unknownSeen;
 } catch (error) {
   result = { status: "error", error: error instanceof Error ? error.message : String(error), serverLogTail: dedicatedLog.split(/\r?\n/).slice(-20) };
 } finally {

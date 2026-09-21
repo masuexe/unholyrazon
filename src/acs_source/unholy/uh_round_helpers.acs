@@ -60,64 +60,48 @@ function void PlayerLifeStatusArr_GatherFunc(void) {
 // The client cache is display-only and always rebuilt from these snapshots:
 // a client must never treat the server's runtime arrays as authoritative.
 
-// Definition identity captured server-side, kept across death so a dead
-// player's row can still show the portrait they had while alive.  It is a
-// packed (UH_PLDEF_* kind, definition id), NOT a presentation table row — rows
-// are assigned in load order, so two peers with a different addon set would
-// disagree on the same number.
-int uhsrvident[MAX_PLAYERS];
-bool uhsrvidentvalid[MAX_PLAYERS];
+// Actor class captured server-side, kept across death so a dead player's row
+// can still show the portrait they had while alive.
+//
+// This is the DECORATE class NAME, not a definition id and not a presentation
+// row index.  Both of those are assigned in load order: a custom
+// DefineSurvivor(-1, ...) id shifts when a peer is missing an earlier addon, and
+// a presentation row is handed out in registration order.  Syncing either would
+// let a peer with a different addon set resolve the number to a DIFFERENT class
+// and draw someone else's face.  A class name is content, so a peer that does
+// not know it resolves to an empty face — the safe degradation.
+//
+// ACS strings travel as a normal NamedExecuteClientScript argument (the weapon
+// tag in uh_ti_stat already does), and the class is only re-sent on a status
+// change or a snapshot, never on the 7-tic stat cadence.
+str uhsrvclass[MAX_PLAYERS];
+bool uhsrvclassvalid[MAX_PLAYERS];
 
-// survivor -> boss -> eye is the fixed identity order; a presentation-only row
-// (a morph body with no definition of its own) is the last resort.
-function int UH_Ti_IdentityForPlayer(int pn) {
-  if (pn < 0 || pn >= MAX_PLAYERS) { return UH_TI_ID_NONE; }
+function str UH_Ti_ClassForPlayer(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { return ""; }
   if (PlayerInGame(pn)) {
     str cls = GetActorClass(pn + 1000);
     if (StrCmp(cls, "") != 0) {
-      int kind = UH_FindPlayerDefinition(cls);
-      int id = UH_TI_ID_NONE;
-      // Re-read the id from whichever table owns the actor, so the packed value
-      // always carries a real game-logic id.
-      switch (kind) {
-        case UH_PLDEF_SURVIVOR:
-          id = FindSurvivorByActor(cls);
-          break;
-        case UH_PLDEF_BOSS:
-          id = FindBossByActor(cls);
-          break;
-        case UH_PLDEF_EYE:
-          id = FindEyeByActor(cls);
-          break;
-        case UH_PLDEF_PRESENTATION:
-          id = FindTeamPresentation(cls);
-          break;
-        default:
-          return uhsrvidentvalid[pn] ? uhsrvident[pn] : UH_TI_ID_NONE;
-      }
-      int packed = UH_Ti_PackPlayerId(kind, id);
-      if (packed != UH_TI_ID_NONE) {
-        uhsrvident[pn] = packed;
-        uhsrvidentvalid[pn] = true;
-        return packed;
-      }
+      uhsrvclass[pn] = cls;
+      uhsrvclassvalid[pn] = true;
+      return cls;
     }
   }
-  return uhsrvidentvalid[pn] ? uhsrvident[pn] : UH_TI_ID_NONE;
+  return uhsrvclassvalid[pn] ? uhsrvclass[pn] : "";
 }
 
-// Read the server identity cache without rescanning the definition tables.
-function int UH_Ti_CachedIdentity(int pn) {
-  if (pn < 0 || pn >= MAX_PLAYERS) { return UH_TI_ID_NONE; }
-  return uhsrvidentvalid[pn] ? uhsrvident[pn] : UH_TI_ID_NONE;
+// Read the server class cache without re-reading the actor.
+function str UH_Ti_CachedClass(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { return ""; }
+  return uhsrvclassvalid[pn] ? uhsrvclass[pn] : "";
 }
 
-// Refresh the identity cache for every live subject once.  Snapshot delivery
-// then reads the cache instead of walking the definition tables once per
-// client (N clients x M subjects).
-function void UH_TeamInfo_WarmIdentities(void) {
+// Refresh the class cache for every live subject once.  Snapshot delivery then
+// reads the cache instead of calling GetActorClass once per client
+// (N clients x M subjects).
+function void UH_TeamInfo_WarmClasses(void) {
   for (int i = 0; i < MAX_PLAYERS; i++) {
-    if (PlayerInGame(i)) { UH_Ti_IdentityForPlayer(i); }
+    if (PlayerInGame(i)) { UH_Ti_ClassForPlayer(i); }
   }
 }
 
@@ -138,9 +122,9 @@ function bool UH_Ti_IsConnectedClient(int pn) {
   return PlayerIsSpectator(pn) != 0;
 }
 
-function void UH_Ti_SendStatusTo(int client, int pn, int status, int identity) {
+function void UH_Ti_SendStatusTo(int client, int pn, int status, str cls) {
   if (!UH_Ti_IsConnectedClient(client)) { return; }
-  NamedExecuteClientScript("uh_ti_sync_status", client, pn, status, identity);
+  NamedExecuteClientScript("uh_ti_sync_status", client, pn, status, cls);
 }
 
 function void UH_Ti_SendOneVsAllTo(int client, int active, int target) {
@@ -155,9 +139,9 @@ function void UH_Ti_SendScorePolicyTo(int client, int policy) {
 
 function void UH_TeamInfo_BroadcastStatus(int pn, int status) {
   if (pn < 0 || pn >= MAX_PLAYERS) { return; }
-  int identity = UH_Ti_IdentityForPlayer(pn);
+  str cls = UH_Ti_ClassForPlayer(pn);
   for (int c = 0; c < MAX_PLAYERS; c++) {
-    UH_Ti_SendStatusTo(c, pn, status, identity);
+    UH_Ti_SendStatusTo(c, pn, status, cls);
   }
 }
 
@@ -205,18 +189,18 @@ function int UH_TeamInfo_ScorePolicy(void) {
 }
 
 // Full current state (every subject plus both display policies) to one client.
-// The caller must have warmed the identity cache once (UH_TeamInfo_WarmIdentities)
-// so no definition-table scan happens per client.
+// The caller must have warmed the class cache once (UH_TeamInfo_WarmClasses) so
+// no GetActorClass call happens per client.
 function void UH_Ti_SendSnapshotCore(int client) {
   if (!UH_Ti_IsConnectedClient(client)) { return; }
   for (int i = 0; i < MAX_PLAYERS; i++) {
     if (PlayerInGame(i)) {
       UH_Ti_SendStatusTo(client, i, playerlifestatusarr[i],
-        UH_Ti_CachedIdentity(i));
+        UH_Ti_CachedClass(i));
     } else {
       // Explicitly clear unused slots so no stale role/identity can remain
       // after a player leaves and the slot is reused.
-      UH_Ti_SendStatusTo(client, i, PLS_NULL, UH_TI_ID_NONE);
+      UH_Ti_SendStatusTo(client, i, PLS_NULL, "");
     }
   }
   UH_Ti_SendOneVsAllTo(client,
@@ -226,7 +210,7 @@ function void UH_Ti_SendSnapshotCore(int client) {
 
 // Late-join entry point: one client, cache warmed here so it is safe standalone.
 function void UH_TeamInfo_SendSnapshotTo(int client) {
-  UH_TeamInfo_WarmIdentities();
+  UH_TeamInfo_WarmClasses();
   UH_Ti_SendSnapshotCore(client);
 }
 
@@ -248,7 +232,7 @@ function void UH_TeamInfo_BroadcastOneVsAll(void) {
 // round setup and after the one-vs-all target freezes; the ENTER late join uses
 // UH_TeamInfo_SendSnapshotTo for just the entering client.
 function void UH_TeamInfo_FullSnapshot(void) {
-  UH_TeamInfo_WarmIdentities();
+  UH_TeamInfo_WarmClasses();
   for (int c = 0; c < MAX_PLAYERS; c++) {
     UH_Ti_SendSnapshotCore(c);
   }
