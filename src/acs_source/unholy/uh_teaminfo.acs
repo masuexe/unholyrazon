@@ -55,6 +55,8 @@ bool uhscoreiconcachevalid[MAX_PLAYERS];
 // SERVER), so the assist display latches the camera player here as a fallback.
 int uhtilocalplayer = -1;
 
+#define UH_TI_MAX_LIVES 15
+
 // Per-viewer live stats received from the authoritative server snapshot.  A
 // subject is renderable only while uhtistatvalid is set, which doubles as the
 // authorization gate: the server never sends an unauthorized subject.
@@ -171,7 +173,7 @@ script "uh_ti_stat" (int packed_s, int packed1, int tag, int packed2) CLIENTSIDE
   int pn = packed_s & 63;
   if (pn < 0 || pn >= MAX_PLAYERS) { terminate; }
   uhtistatabsorb[pn] = (packed_s >> 6) & 127;
-  uhtistatlives[pn] = (packed_s >> 13) & 63;
+  uhtistatlives[pn] = (packed_s >> 13) & UH_TI_MAX_LIVES;
   uhtistathp[pn] = packed1 & 65535;              // unsigned 16-bit
   uhtistatmaxhp[pn] = (packed1 >> 16) & 65535;   // unsigned 16-bit
   uhtistatarmor[pn] = packed2 & 1023;
@@ -489,7 +491,7 @@ function void UH_Ti_RefreshStats(void) {
     if (armor < 0) { armor = 0; } if (armor > 1023) { armor = 1023; }
 
     int lives = CheckActorInventory(tid, "PlayerPropertyExtraLife");
-    if (lives < 0) { lives = 0; } if (lives > 63) { lives = 63; }
+    if (lives < 0) { lives = 0; } if (lives > UH_TI_MAX_LIVES) { lives = UH_TI_MAX_LIVES; }
     int absorbPct = 0;
 
     str tag = "";
@@ -524,7 +526,7 @@ function void UH_Ti_RefreshStats(void) {
 
     int packed1 = (hp & 65535) | ((maxhp & 65535) << 16);
     int packed2 = armor | (a1 << 10) | (a2 << 20) | (has1 << 30) | (has2 << 31);
-    int packed_s = (s & 63) | ((absorbPct & 127) << 6) | ((lives & 63) << 13);
+    int packed_s = (s & 63) | ((absorbPct & 127) << 6) | ((lives & UH_TI_MAX_LIVES) << 13);
 
     for (int vw = 0; vw < MAX_PLAYERS; vw++) {
       if (!velig[vw]) { continue; }
