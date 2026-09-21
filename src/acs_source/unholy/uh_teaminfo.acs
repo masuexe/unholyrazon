@@ -528,7 +528,14 @@ function void UH_Ti_RefreshStats(void) {
 
     for (int vw = 0; vw < MAX_PLAYERS; vw++) {
       if (!velig[vw]) { continue; }
-      if (!vspec[vw] && !UH_Ti_ServerAreDisplayTeammates(vw, s)) { continue; }
+      // A living client normally views itself, so its own row is omitted by
+      // UH_Ti_Draw and did not need a snapshot.  Chasecam can instead follow a
+      // living teammate; the camera player is then omitted and the console
+      // player becomes a legitimate teammate row.  Always send each client its
+      // own stats so that row is available without widening anyone else's
+      // authorization set.
+      if (!vspec[vw] && s != vw
+          && !UH_Ti_ServerAreDisplayTeammates(vw, s)) { continue; }
       NamedExecuteClientScript("uh_ti_stat", vw, packed_s, packed1, tag, packed2);
     }
   }
