@@ -441,6 +441,69 @@ script "uh_GetEyeMorphPoolActor_S" (void)
 	SetResultValue(StrCmp(actor, "") != 0);
 }
 
+// --- Team presentation API ---------------------------------------------------
+// Actor-keyed display data (teammate-bar short name, mugshot, scoreboard icon).
+// Same cvar-mailbox pattern as the Define* helpers above; the caller is
+// UHADD's DefineTeamPresentation, which already verified every mailbox exists.
+function int DefineTeamPresentationCore(str actor, str shortName, str portrait, str scoreIcon, int flags)
+{
+	return TeamPresentationRegister(actor, shortName, portrait, scoreIcon, flags);
+}
+
+// Do NOT add CLIENTSIDE: same rule as uh_DefineBoss_S — clients run this
+// locally via ACS_NamedExecuteWithResult from their OPEN CLIENTSIDE twin.
+script "uh_DefineTeamPresentation_S" (void)
+{
+	SetResultValue(DefineTeamPresentationCore(
+		GetCVarString("uh_tip_actor"),
+		GetCVarString("uh_tip_name"),
+		GetCVarString("uh_tip_portrait"),
+		GetCVarString("uh_tip_scoreicon"),
+		GetCVar("uh_tip_flags")
+	));
+}
+
+script "uh_FindTeamPresentation_S" (void)
+{
+	int row = FindTeamPresentation(GetCVarString("uh_tip_actor"));
+	SetCVar("uh_tip_row", row);
+	SetResultValue(row);
+}
+
+script "uh_GetTeamPresentationCount_S" (void)
+{
+	SetResultValue(GetTeamPresentationCount());
+}
+
+script "uh_GetTeamPresentationActor_S" (int row)
+{
+	SetCVarString("uh_tip_out_str", GetTeamPresentationActor(row));
+	SetResultValue(row >= 0 && row < GetTeamPresentationCount());
+}
+
+script "uh_GetTeamPresentationName_S" (int row)
+{
+	SetCVarString("uh_tip_out_str", GetTeamPresentationName(row));
+	SetResultValue(row >= 0 && row < GetTeamPresentationCount());
+}
+
+script "uh_GetTeamPresentationPortrait_S" (int row)
+{
+	SetCVarString("uh_tip_out_str", GetTeamPresentationPortrait(row));
+	SetResultValue(row >= 0 && row < GetTeamPresentationCount());
+}
+
+script "uh_GetTeamPresentationScoreIcon_S" (int row)
+{
+	SetCVarString("uh_tip_out_str", GetTeamPresentationScoreIcon(row));
+	SetResultValue(row >= 0 && row < GetTeamPresentationCount());
+}
+
+script "uh_GetTeamPresentationFlags_S" (int row)
+{
+	SetResultValue(GetTeamPresentationFlags(row));
+}
+
 function int DefineUnholyItemCore(int id, str actor, str name, str icon, int group, str mugshot, str sound)
 {
 	if (StrCmp(actor, "") == 0)
@@ -900,4 +963,32 @@ script "uh_DefineShinyMegaCopyWep_S" (void)
 		GetCVarString("uh_sm_wep"),
 		GetCVar("uh_sm_weight")
 	));
+}
+
+// --- Unified player presentation resolver ------------------------------------
+// One actor -> display path shared by the native teammate bar, the SCORINFO
+// UHPlayerIcon column and the UIXTEAM shadow.  Exposed here (rather than only
+// inside UHDT) so a consumer that cannot #import uhdt — the vendored UIX
+// libraries — reaches exactly the same resolution rules instead of duplicating
+// the survivor/boss/eye lookup order.
+script "uh_FindPlayerDefinition_S" (void)
+{
+	int kind = UH_FindPlayerDefinition(GetCVarString("uh_tip_actor"));
+	SetCVar("uh_tip_row", kind);
+	SetResultValue(kind);
+}
+
+script "uh_PlayerDisplayName_S" (void)
+{
+	SetCVarString("uh_tip_out_str", UH_PlayerDisplayName(GetCVarString("uh_tip_actor")));
+}
+
+script "uh_PlayerPortrait_S" (void)
+{
+	SetCVarString("uh_tip_out_str", UH_PlayerPortrait(GetCVarString("uh_tip_actor")));
+}
+
+script "uh_PlayerScoreIcon_S" (void)
+{
+	SetCVarString("uh_tip_out_str", UH_PlayerScoreIcon(GetCVarString("uh_tip_actor")));
 }

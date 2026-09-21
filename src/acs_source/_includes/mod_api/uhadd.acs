@@ -584,6 +584,19 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 #define UHMUS_FAIL -9999
 #define UHLMS_FAIL -9999
 #define UHBE_FAIL -9999
+// Team presentation public constants (mirror the UHDT libdefines).
+#define UHTIP_OK 0
+#define UHTIP_FAIL -1
+#define UHTIP_FULL -2
+#define UHTIP_BAD_ACTOR -3
+#define UHTIP_NONE -1
+#define UHTIP_TABLE_FULL -2
+// Definition kinds returned by UH_FindPlayerDefinition.
+#define UH_PLDEF_NONE 0
+#define UH_PLDEF_SURVIVOR 1
+#define UH_PLDEF_BOSS 2
+#define UH_PLDEF_EYE 3
+#define UH_PLDEF_PRESENTATION 4
 // Bonus event public constants (mirror the UHDT libdefines).
 #define UHBE_ADDON_ID_START 200
 #define UHBE_MAX_WEIGHT 1000000
@@ -988,6 +1001,117 @@ function str GetEyeEventStem(int id) {
 
 function int UH_GetPlayerEyeId(int playernum) {
 	return ACS_NamedExecuteWithResult("uh_GetPlayerEyeId_S", playernum);
+}
+
+// === DefineTeamPresentation ==================================================
+// Actor-keyed DISPLAY data (teammate-bar short name, mugshot texture, scoreboard
+// icon) for the teammate bar, the SCORINFO UHPlayerIcon column and the UIX
+// Better Team Display.  Identity stays in DefineSurvivor / DefineBoss /
+// DefineDemoneye; this only adds what those tables cannot express, and it also
+// covers morph bodies that have no definition row of their own.
+//
+// actor     : DECORATE player actor class, the case-insensitive key. Required.
+// shortName : teammate-bar third line. "" falls back to the definition name
+//             (eyes keep the DefineDemoneye " Demoneye" suffix rule), then to
+//             the actor class.  Pass an explicit name for a bar label that
+//             differs from the broadcast name.
+// portrait  : teammate-bar / UIX mugshot texture. "" = no face (never a guess).
+// scoreIcon : SCORINFO texture. "" = same as portrait.
+// flags     : reserved display semantics; pass 0.
+//
+// Re-registering the same actor (any case) REPLACES the row, so an addon can
+// correct a built-in face.  Returns UHTIP_OK, UHTIP_FAIL, UHTIP_FULL or
+// UHTIP_BAD_ACTOR.
+//
+// Must be called from BOTH the plain OPEN script and its OPEN CLIENTSIDE twin,
+// in the same order — the client resolves faces from its local table.
+
+function int DefineTeamPresentation(
+	str actor,
+	str shortName,
+	str portrait,
+	str scoreIcon,
+	int flags) {
+	int ipc;
+	int row;
+	ipc  = SetCVarString("uh_tip_actor", actor);
+	ipc = ipc & SetCVarString("uh_tip_name", shortName);
+	ipc = ipc & SetCVarString("uh_tip_portrait", portrait);
+	ipc = ipc & SetCVarString("uh_tip_scoreicon", scoreIcon);
+	ipc = ipc & SetCVar("uh_tip_flags", flags);
+	if (ipc == 0) {
+		UH_ReportIPCFailure("DefineTeamPresentation");
+		return UHTIP_FAIL;
+	}
+	row = ACS_NamedExecuteWithResult("uh_DefineTeamPresentation_S");
+	if (row == UHTIP_NONE) { return UHTIP_BAD_ACTOR; }
+	if (row == UHTIP_TABLE_FULL) { return UHTIP_FULL; }
+	if (row < 0) { return UHTIP_FAIL; }
+	return UHTIP_OK;
+}
+
+// Row index of an actor's presentation, or UHTIP_FAIL when it has none.
+function int FindTeamPresentation(str actor) {
+	SetCVarString("uh_tip_actor", actor);
+	int row = ACS_NamedExecuteWithResult("uh_FindTeamPresentation_S");
+	if (row < 0) { return UHTIP_FAIL; }
+	return row;
+}
+
+function int UH_TeamPresentationCount(void) {
+	return ACS_NamedExecuteWithResult("uh_GetTeamPresentationCount_S");
+}
+
+function str GetTeamPresentationActor(int row) {
+	ACS_NamedExecuteWithResult("uh_GetTeamPresentationActor_S", row);
+	return GetCVarString("uh_tip_out_str");
+}
+
+function str GetTeamPresentationName(int row) {
+	ACS_NamedExecuteWithResult("uh_GetTeamPresentationName_S", row);
+	return GetCVarString("uh_tip_out_str");
+}
+
+function str GetTeamPresentationPortrait(int row) {
+	ACS_NamedExecuteWithResult("uh_GetTeamPresentationPortrait_S", row);
+	return GetCVarString("uh_tip_out_str");
+}
+
+function str GetTeamPresentationScoreIcon(int row) {
+	ACS_NamedExecuteWithResult("uh_GetTeamPresentationScoreIcon_S", row);
+	return GetCVarString("uh_tip_out_str");
+}
+
+function int GetTeamPresentationFlags(int row) {
+	return ACS_NamedExecuteWithResult("uh_GetTeamPresentationFlags_S", row);
+}
+
+// Which definition table owns this actor: UH_PLDEF_SURVIVOR / _BOSS / _EYE /
+// _PRESENTATION / _NONE.  Useful to tell a real class from a morph body.
+function int UH_FindPlayerDefinition(str actor) {
+	SetCVarString("uh_tip_actor", actor);
+	return ACS_NamedExecuteWithResult("uh_FindPlayerDefinition_S");
+}
+
+// The single resolver the HUD consumers use.  These mirror the UHDT functions
+// of the same name (minus the _S suffix) so an addon never has to walk the
+// three definition tables itself.
+function str UH_PlayerDisplayName(str actor) {
+	SetCVarString("uh_tip_actor", actor);
+	ACS_NamedExecuteWithResult("uh_PlayerDisplayName_S");
+	return GetCVarString("uh_tip_out_str");
+}
+
+function str UH_PlayerPortrait(str actor) {
+	SetCVarString("uh_tip_actor", actor);
+	ACS_NamedExecuteWithResult("uh_PlayerPortrait_S");
+	return GetCVarString("uh_tip_out_str");
+}
+
+function str UH_PlayerScoreIcon(str actor) {
+	SetCVarString("uh_tip_actor", actor);
+	ACS_NamedExecuteWithResult("uh_PlayerScoreIcon_S");
+	return GetCVarString("uh_tip_out_str");
 }
 
 // === DefineUnholyItem ========================================================

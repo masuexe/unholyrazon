@@ -818,24 +818,25 @@ function str GetSurvivorWepActor(int row) {
 
 #libdefine UH_MAX_SURVCLEANUP 128
 
+// [0] = survivor actor key, [1] = cleanup CustomInventory actor.  One 2-D array
+// instead of two parallel ones: UHDT is at ACC's 128 map-variable ceiling.
 int uh_survcleanupcount = 0;
-str uh_survcleanupkey[UH_MAX_SURVCLEANUP];
-str uh_survcleanupactor[UH_MAX_SURVCLEANUP];
+str uh_survcleanup[UH_MAX_SURVCLEANUP][2];
 
 function int SurvCleanupRegister(str survactor, str cleanupactor) {
 	int i;
 	if (StrCmp(survactor, "") == 0 || StrCmp(cleanupactor, "") == 0)
 		return UHSURVWEP_FAIL;
 	for (i = 0; i < uh_survcleanupcount; i++) {
-		if (StrICmp(uh_survcleanupkey[i], survactor) == 0) {
-			uh_survcleanupactor[i] = cleanupactor;
+		if (StrICmp(uh_survcleanup[i][0], survactor) == 0) {
+			uh_survcleanup[i][1] = cleanupactor;
 			return i;
 		}
 	}
 	if (uh_survcleanupcount >= UH_MAX_SURVCLEANUP)
 		return UHSURVWEP_FAIL;
-	uh_survcleanupkey[uh_survcleanupcount] = survactor;
-	uh_survcleanupactor[uh_survcleanupcount] = cleanupactor;
+	uh_survcleanup[uh_survcleanupcount][0] = survactor;
+	uh_survcleanup[uh_survcleanupcount][1] = cleanupactor;
 	uh_survcleanupcount++;
 	return uh_survcleanupcount - 1;
 }
@@ -847,16 +848,16 @@ function str GetSurvCleanupFor(str survactor) {
 	if (StrLen(survactor) == 0)
 		return "";
 	for (i = 0; i < uh_survcleanupcount; i++) {
-		if (StrICmp(uh_survcleanupkey[i], survactor) == 0)
-			return uh_survcleanupactor[i];
+		if (StrICmp(uh_survcleanup[i][0], survactor) == 0)
+			return uh_survcleanup[i][1];
 	}
 	// Shiny morphs strip after MorphActor — fall back to the base class key.
 	len = StrLen(survactor);
 	if (len > 5 && StrICmp(StrRight(survactor, 5), "Shiny") == 0) {
 		base = StrLeft(survactor, len - 5);
 		for (i = 0; i < uh_survcleanupcount; i++) {
-			if (StrICmp(uh_survcleanupkey[i], base) == 0)
-				return uh_survcleanupactor[i];
+			if (StrICmp(uh_survcleanup[i][0], base) == 0)
+				return uh_survcleanup[i][1];
 		}
 	}
 	return "";
@@ -2471,9 +2472,9 @@ str uh_negaheld[64];
 int uh_decoymovecount = 0;
 str uh_decoymovewep[UH_MAX_SHINYMOVES];
 // Per-player currently held DecoyCopy_*_W1/_W2/_W3 actor names ("" = parents).
-str uh_decoyheld1[64];
-str uh_decoyheld2[64];
-str uh_decoyheld3[64];
+// One 2-D array instead of three parallel ones: UHDT is at ACC's 128
+// map-variable ceiling.  Column 0/1/2 == launcher weapon 1/2/3.
+str uh_decoyheld[64][3];
 // Shiny DecoyBot weapon paired with each normal Decoy slot. Empty entries are
 // legal (old addons only registered the normal stem) and are skipped by M2.
 str uh_decoyshinywep[UH_MAX_SHINYMOVES];
@@ -2722,8 +2723,12 @@ int uh_eyemorphpoolcount = 0;
 str uh_eyemorphpoolname[UH_MAX_EYEMORPH_POOLS];
 
 int uh_eyemorphentrycount = 0;
-int uh_eyemorphentrypool[UH_MAX_EYEMORPH_ENTRIES];
-int uh_eyemorphentryeye[UH_MAX_EYEMORPH_ENTRIES];
+// (pool id, eye id) packed into one int — UHDT is at ACC's 128 map-variable
+// ceiling, so two parallel int arrays are one here.  eye ids are >= -256 and
+// pool ids <= 63, so poolid * 100000 + (eyeid + 1000) is exact.
+#libdefine UHEM_KEY_BASE 100000
+#libdefine UHEM_KEY_EYEOFF 1000
+int uh_eyemorphentrykey[UH_MAX_EYEMORPH_ENTRIES];
 str uh_eyemorphentryshot[UH_MAX_EYEMORPH_ENTRIES];
 str uh_eyemorphentryburst[UH_MAX_EYEMORPH_ENTRIES];
 str uh_eyemorphentrygiver[UH_MAX_EYEMORPH_ENTRIES];
@@ -2758,7 +2763,7 @@ function int DefineEyeMorphPoolCore(str pool) {
 function int FindEyeMorphEntry(int poolid, int eyeid) {
 	int i;
 	for (i = 0; i < uh_eyemorphentrycount; i++) {
-		if (uh_eyemorphentrypool[i] == poolid && uh_eyemorphentryeye[i] == eyeid)
+		if (uh_eyemorphentrykey[i] == poolid * UHEM_KEY_BASE + eyeid + UHEM_KEY_EYEOFF)
 			return i;
 	}
 	return UHEM_FAIL;
@@ -2794,8 +2799,7 @@ function int SetEyeMorphPoolEntryCore(
 		if (uh_eyemorphentrycount >= UH_MAX_EYEMORPH_ENTRIES)
 			return UHEM_FAIL;
 		row = uh_eyemorphentrycount;
-		uh_eyemorphentrypool[row] = poolid;
-		uh_eyemorphentryeye[row] = eyeid;
+		uh_eyemorphentrykey[row] = poolid * UHEM_KEY_BASE + eyeid + UHEM_KEY_EYEOFF;
 		uh_eyemorphentrycount++;
 	}
 	uh_eyemorphentryshot[row] = shotactor;
@@ -2840,7 +2844,8 @@ function int EyeMorphPoolWeightSum(int poolid, int mode) {
 	if (mode < UHEM_MODE_SHOT || mode > UHEM_MODE_GIVER)
 		return 0;
 	for (i = 0; i < uh_eyemorphentrycount; i++) {
-		if (uh_eyemorphentrypool[i] != poolid || uh_eyemorphentryweight[i] <= 0)
+		if (uh_eyemorphentrykey[i] / UHEM_KEY_BASE != poolid
+			|| uh_eyemorphentryweight[i] <= 0)
 			continue;
 		actor = mode == UHEM_MODE_SHOT ? uh_eyemorphentryshot[i]
 			: mode == UHEM_MODE_BURST ? uh_eyemorphentryburst[i]
@@ -2864,7 +2869,8 @@ function int RandomEyeMorphEntry(str pool, int mode) {
 		return UHEM_FAIL;
 	roll = random(1, sum);
 	for (i = 0; i < uh_eyemorphentrycount; i++) {
-		if (uh_eyemorphentrypool[i] != poolid || uh_eyemorphentryweight[i] <= 0)
+		if (uh_eyemorphentrykey[i] / UHEM_KEY_BASE != poolid
+			|| uh_eyemorphentryweight[i] <= 0)
 			continue;
 		actor = mode == UHEM_MODE_SHOT ? uh_eyemorphentryshot[i]
 			: mode == UHEM_MODE_BURST ? uh_eyemorphentryburst[i]
@@ -3303,4 +3309,208 @@ function bool RunBonusEventEnd(int id, int result) {
 		return false;
 	ACS_NamedExecuteAlways(cb, 0, id, result, 0);
 	return true;
+}
+
+// --- Team presentation table -------------------------------------------------
+// Actor-keyed DISPLAY data for the Unholy teammate bar, the SCORINFO
+// UHPlayerIcon column and the UIX Better Team Display.  Identity (actor class,
+// side, standard announcement name) stays in the DefineSurvivor / DefineBoss /
+// DefineDemoneye tables above; this table only holds what those tables cannot
+// express:
+//   * the short name the teammate bar prints (the main tables carry the
+//     broadcast name, which has color codes and a different wording),
+//   * the teammate-bar / UIX mugshot texture,
+//   * a scoreboard icon that differs from the mugshot.
+//
+// Keyed by DECORATE player actor class, case-insensitively, and deduplicated: a
+// repeat registration REPLACES the row and returns it, so a later-loaded addon
+// can correct a built-in face without a second row.  Empty actor and an
+// exhausted table return explicit failure codes (never a silent no-op).
+#libdefine UH_MAX_TEAM_PRESENTATION 256
+// Row lookup results.  Rows are always >= 0, so -1 is an unambiguous "no row".
+#libdefine UHTIP_NONE -1
+#libdefine UHTIP_TABLE_FULL -2
+
+#libdefine UHTIP_STR_ACTOR 0
+#libdefine UHTIP_STR_NAME 1
+#libdefine UHTIP_STR_PORTRAIT 2
+#libdefine UHTIP_STR_SCOREICON 3
+#libdefine UHTIP_STR_COUNT 4
+
+int uh_tipcount = 0;
+str uh_tipstr[UH_MAX_TEAM_PRESENTATION][UHTIP_STR_COUNT];
+int uh_tipflags[UH_MAX_TEAM_PRESENTATION];
+
+function int FindTeamPresentation(str actor) {
+	if (StrCmp(actor, "") == 0)
+		return UHTIP_NONE;
+	for (int i = 0; i < uh_tipcount; i++) {
+		if (StrICmp(actor, uh_tipstr[i][UHTIP_STR_ACTOR]) == 0)
+			return i;
+	}
+	return UHTIP_NONE;
+}
+
+// Insert-or-replace.  Returns the row, UHTIP_NONE for an empty actor or
+// UHTIP_TABLE_FULL when the fixed capacity is exhausted.
+function int TeamPresentationRegister(str actor, str shortName, str portrait, str scoreIcon, int flags) {
+	if (StrCmp(actor, "") == 0)
+		return UHTIP_NONE;
+	int row = FindTeamPresentation(actor);
+	if (row == UHTIP_NONE) {
+		if (uh_tipcount >= UH_MAX_TEAM_PRESENTATION)
+			return UHTIP_TABLE_FULL;
+		row = uh_tipcount;
+		uh_tipcount++;
+	}
+	uh_tipstr[row][UHTIP_STR_ACTOR] = actor;
+	uh_tipstr[row][UHTIP_STR_NAME] = shortName;
+	uh_tipstr[row][UHTIP_STR_PORTRAIT] = portrait;
+	uh_tipstr[row][UHTIP_STR_SCOREICON] = scoreIcon;
+	uh_tipflags[row] = flags;
+	return row;
+}
+
+function int GetTeamPresentationCount(void) {
+	return uh_tipcount;
+}
+
+function str GetTeamPresentationActor(int row) {
+	if (row < 0 || row >= uh_tipcount)
+		return "";
+	return uh_tipstr[row][UHTIP_STR_ACTOR];
+}
+
+function str GetTeamPresentationName(int row) {
+	if (row < 0 || row >= uh_tipcount)
+		return "";
+	return uh_tipstr[row][UHTIP_STR_NAME];
+}
+
+function str GetTeamPresentationPortrait(int row) {
+	if (row < 0 || row >= uh_tipcount)
+		return "";
+	return uh_tipstr[row][UHTIP_STR_PORTRAIT];
+}
+
+// Empty scoreIcon means "same as the portrait".
+function str GetTeamPresentationScoreIcon(int row) {
+	if (row < 0 || row >= uh_tipcount)
+		return "";
+	return uh_tipstr[row][UHTIP_STR_SCOREICON];
+}
+
+function int GetTeamPresentationFlags(int row) {
+	if (row < 0 || row >= uh_tipcount)
+		return 0;
+	return uh_tipflags[row];
+}
+
+// --- Unified player presentation resolver ------------------------------------
+// The single actor -> display path for every consumer.  Consumers must never
+// walk the three definition tables themselves: the order below IS the contract.
+//
+// Definition kinds returned by UH_FindPlayerDefinition.  The value travels in
+// the team-info status broadcast (see UH_Ti_PackPlayerId), so it must never be
+// renumbered.  survivor -> boss -> eye is the fixed order and a presentation-
+// only row is the last resort, so an actor that is also a real definition keeps
+// its stable game-logic id.
+#libdefine UH_PLDEF_NONE 0
+#libdefine UH_PLDEF_SURVIVOR 1
+#libdefine UH_PLDEF_BOSS 2
+#libdefine UH_PLDEF_EYE 3
+#libdefine UH_PLDEF_PRESENTATION 4
+
+function int UH_FindPlayerDefinition(str actor) {
+	if (StrCmp(actor, "") == 0)
+		return UH_PLDEF_NONE;
+	if (FindSurvivorByActor(actor) != UHSURV_FAIL)
+		return UH_PLDEF_SURVIVOR;
+	if (FindBossByActor(actor) != UHBOSS_FAIL)
+		return UH_PLDEF_BOSS;
+	if (FindEyeByActor(actor) != UHEYE_FAIL)
+		return UH_PLDEF_EYE;
+	if (FindTeamPresentation(actor) != UHTIP_NONE)
+		return UH_PLDEF_PRESENTATION;
+	return UH_PLDEF_NONE;
+}
+
+// Teammate-bar / subline short name.  An explicit shortName wins; otherwise the
+// main-table name (eyes keep the DefineDemoneye " Demoneye" suffix rule);
+// otherwise the actor class itself.  Color codes are a legitimate result — a
+// caller that wants a plain name must register an explicit shortName, so no
+// generic color-code or "_U" suffix stripping happens here.
+function str UH_PlayerDisplayName(str actor) {
+	if (StrCmp(actor, "") == 0)
+		return "";
+	int row = FindTeamPresentation(actor);
+	if (row != UHTIP_NONE && StrCmp(uh_tipstr[row][UHTIP_STR_NAME], "") != 0)
+		return uh_tipstr[row][UHTIP_STR_NAME];
+	int sid = FindSurvivorByActor(actor);
+	if (sid != UHSURV_FAIL)
+		return GetSurvivorName(sid);
+	int bid = FindBossByActor(actor);
+	if (bid != UHBOSS_FAIL)
+		return GetBossName(bid);
+	int eid = FindEyeByActor(actor);
+	if (eid != UHEYE_FAIL)
+		return GetEyeHudName(eid);
+	return actor;
+}
+
+// Teammate-bar / UIX mugshot.  Never guessed: an unregistered actor returns ""
+// so the row degrades to "no face" instead of showing a wrong portrait.
+function str UH_PlayerPortrait(str actor) {
+	if (StrCmp(actor, "") == 0)
+		return "";
+	int row = FindTeamPresentation(actor);
+	if (row == UHTIP_NONE)
+		return "";
+	return uh_tipstr[row][UHTIP_STR_PORTRAIT];
+}
+
+// SCORINFO icon: the explicit scoreIcon, else the portrait, else "".
+function str UH_PlayerScoreIcon(str actor) {
+	if (StrCmp(actor, "") == 0)
+		return "";
+	int row = FindTeamPresentation(actor);
+	if (row == UHTIP_NONE)
+		return "";
+	str icon = uh_tipstr[row][UHTIP_STR_SCOREICON];
+	if (StrCmp(icon, "") != 0)
+		return icon;
+	return uh_tipstr[row][UHTIP_STR_PORTRAIT];
+}
+
+// --- Team-info identity packing ----------------------------------------------
+// The status broadcast carries ONE int of definition identity, and it must not
+// be a bare table row: presentation rows are assigned in load order, so two
+// peers that loaded a different addon set would disagree on the same number.
+// Packing (kind, id) keeps survivor/boss/eye ids — which are game-logic ids and
+// stable for a given load order — separate from presentation rows.
+// id is offset so a packed value is never negative and the kind band can never
+// collide with an id (survivor/boss/eye ids are >= -256 and <= 999).
+#libdefine UH_TI_IDENT_BASE 100000
+#libdefine UH_TI_IDENT_OFFSET 1000
+// -1 = "no definition": an unregistered live actor.
+#libdefine UH_TI_ID_NONE -1
+
+function int UH_Ti_PackPlayerId(int kind, int id) {
+	if (kind <= UH_PLDEF_NONE || kind > UH_PLDEF_PRESENTATION)
+		return UH_TI_ID_NONE;
+	if (id < -UH_TI_IDENT_OFFSET || id >= UH_TI_IDENT_BASE - UH_TI_IDENT_OFFSET)
+		return UH_TI_ID_NONE;
+	return (kind * UH_TI_IDENT_BASE) + id + UH_TI_IDENT_OFFSET;
+}
+
+function int UH_Ti_PackedIdKind(int packed) {
+	if (packed < 0)
+		return UH_PLDEF_NONE;
+	return packed / UH_TI_IDENT_BASE;
+}
+
+function int UH_Ti_PackedIdValue(int packed) {
+	if (packed < 0)
+		return 0;
+	return (packed % UH_TI_IDENT_BASE) - UH_TI_IDENT_OFFSET;
 }
