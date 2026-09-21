@@ -158,7 +158,7 @@ monolithic aggregator), `uh_events` (round event system, ex-`uh_bonus`),
 (named-script API used by other libraries). `uh_teaminfo` adds the client
 display snapshot, the TLMS-style native teammate bar and the SCORINFO icon
 refresh; it is included by `unholy.acs` only (it defines scripts) and pulls
-`hud/player_portraits.acs` + `hud/scoreboard_icons.acs`. The server never
+`hud/scoreboard_icons.acs`. The server never
 writes `UHPlayerIcon`; each client computes it locally with
 `SetCustomPlayerValue`. In ordinary LMS the engine classifies the logical
 teammates as enemies and withholds their health, so a server watch
@@ -172,8 +172,39 @@ silently never arrives.
 The weapon display tag/ammo types come from `systems/tools/weapon_display.acs`
 in UH_TOOLS — the only UH library that may import 8BDT; do not add that bridge
 to `unholy`. `debug/rz_debug.acs` also includes `uh_def` and
-`uh_funclib` — keep them unrenamed or update that include list; the portrait
-table lives in `uh_funclib` because the life-status broadcast resolves it.
+`uh_funclib` — keep them unrenamed or update that include list.
+
+### Class presentation (teammate bar / scoreboard / UIX mugshot)
+
+Display data for a player actor class lives in ONE place: the actor-keyed
+presentation table at the end of `_imports/uhdt.acs`, filled by
+`DefineTeamPresentation` (public API in `_includes/mod_api/uhadd.acs`, mailbox
+cvars in `CVARINFO.ipc`, handlers in `corescripts/api_handlers/uhaddr.acs`).
+Identity (actor, side, broadcast name) stays in the `DefineSurvivor` /
+`DefineBoss` / `DefineDemoneye` tables; the presentation table only adds what
+those cannot express — the teammate-bar short name, the mugshot texture and a
+scoreboard icon that differs from it. It also covers morph bodies that have no
+definition row of their own.
+
+Every consumer resolves through the same UHDT functions
+(`UH_FindPlayerDefinition`, `UH_PlayerDisplayName`, `UH_PlayerPortrait`,
+`UH_PlayerScoreIcon`); none of them may walk the three definition tables itself.
+The native bar calls them directly, the UIXTEAM shadow through the named script
+`uh_GetTeamPortraitForTid`, and an addon through the UHADD wrappers.
+
+The team-info status broadcast carries a **packed `(UH_PLDEF_* kind, definition
+id)`** (`UH_Ti_PackPlayerId`), never a presentation row index: rows are assigned
+in load order, so two peers with a different addon set would disagree. A client
+maps it back with `UH_Ti_ActorForIdentity` through its own tables, so no class
+name travels over the network and a missing addon degrades to an empty face.
+
+Built-in rows are generated into `*_presentation.acs` fragments next to the
+definition they belong to. Regenerate with `python3
+tools/gen_team_presentation.py` (add `--check` to verify only);
+`python3 tools/check_team_presentation.py` pins them to the former hardcoded
+output using the frozen baseline in `tools/fixtures/`. The runtime gate is
+`node tools/mcp/team-presentation-test.mjs [--addon]`, and the working addon
+recipe is `examples/teampresentation_addon`.
 
 Survivor, boss, and demoneye class logic belongs under `classes/`. GemBanker’s
 user-option bridge is kept in `classes/bosses/gem_banker_hud.acs`, while the

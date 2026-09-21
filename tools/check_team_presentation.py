@@ -25,8 +25,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-TEAMINFO = ROOT / "src/acs_source/unholy/uh_teaminfo.acs"
-PORTRAITS = ROOT / "src/acs_source/hud/player_portraits.acs"
+BASELINE = ROOT / "tools/fixtures/former_player_portraits.tsv"
 UIXMUGS = ROOT / "src/acs_source/compat/mods/uix/uh_uix_mugshots.acs"
 SURVDEFS = ROOT / "src/acs_source/classes/survivors/definitions/uh_survdefs.acs"
 BOSSDEFS = ROOT / "src/acs_source/classes/bosses/boss_definition_table.acs"
@@ -37,9 +36,6 @@ GEN = [
     ROOT / "src/acs_source/classes/bosses/boss_presentation_defs.acs",
     ROOT / "src/acs_source/classes/demoneyes/definitions/uh_eyedefs_presentation.acs",
 ]
-
-# Morph bodies that have no Define* row of their own.
-PRESENTATION_ONLY = {"EyelentoMajorDemoneye"}
 
 CALL_RE = re.compile(
     r'DefineTeamPresentation\(\s*"([^"]+)"\s*,\s*"([^"]*)"\s*,\s*"([^"]*)"\s*,\s*"([^"]*)"\s*,\s*(-?\d+)\s*\)'
@@ -53,63 +49,51 @@ def read(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="replace")
 
 
-def old_short_names(text: str) -> dict[str, str]:
-    """The former UH_Ti_GetClassName() special cases, parsed from the source."""
-    out: dict[str, str] = {}
-    for cls, name in re.findall(r'StrICmp\(cls,\s*"([^"]+)"\)\s*==\s*0\)\s*\{\s*return\s*"([^"]*)"', text):
-        out[cls] = name
-    if "MegaManU" not in out:
-        print("error: could not parse the UH_Ti_GetClassName special cases", file=sys.stderr)
+# The former UH_Ti_GetClassName() special cases.  Frozen here (together with the
+# portrait table in tools/fixtures) because that function and the fixed class ->
+# texture arrays were deleted in phase 3; this check is what keeps the migrated
+# output pinned to the original behaviour.
+OLD_NAME_SPECIALS = {
+    "MegaManU": "Mega Man",
+    "BusterExpert": "Buster Expert",
+    "BusterMistress": "Buster Mistress",
+    "TrueBusterExpert": "True Buster Expert",
+    "TrueBusterMistress": "True Buster Mistress",
+}
+
+
+def parse_baseline(path: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """actor -> portrait texture and actor -> scoreboard icon ("-" = same as
+    portrait / no portrait)."""
+    portrait: dict[str, str] = {}
+    scoreicon: dict[str, str] = {}
+    for lineno, line in enumerate(read(path).splitlines(), 1):
+        if not line.strip() or line.lstrip().startswith("//"):
+            continue
+        parts = line.split("\t")
+        if len(parts) != 3:
+            print(f"error: {path.name}:{lineno}: expected 3 tab-separated columns", file=sys.stderr)
+            raise SystemExit(2)
+        actor, mug, icon = (part.strip() for part in parts)
+        portrait[actor] = "" if mug == "-" else mug
+        if icon != "-":
+            scoreicon[actor] = icon
+    if not portrait:
+        print(f"error: {path.name}: no rows found", file=sys.stderr)
         raise SystemExit(2)
-    return out
+    return portrait, scoreicon
 
 
-def old_portrait_table(text: str) -> list[tuple[str, str]]:
-    m = re.search(
-        r"#define UH_PORTRAIT_COUNT \d+\s*\n"
-        r"str uhPortraitClass\[UH_PORTRAIT_COUNT\] = \{(.*?)\};\s*\n"
-        r"str uhPortraitTex\[UH_PORTRAIT_COUNT\] = \{(.*?)\};",
-        text,
-        re.S,
-    )
-    if not m:
-        print("error: player_portraits.acs tables not found", file=sys.stderr)
-        raise SystemExit(2)
-    classes = [c.strip().strip('"') for c in m.group(1).replace("\n", " ").split(",") if c.strip()]
-    texes = [t.strip().strip('"') for t in m.group(2).replace("\n", " ").split(",") if t.strip()]
-    if len(classes) != len(texes):
-        print(f"error: {len(classes)} classes vs {len(texes)} textures", file=sys.stderr)
-        raise SystemExit(2)
-    return list(zip(classes, texes))
-
-
-def old_scoreicon_overrides(text: str) -> dict[str, str]:
-    m = re.search(
-        r"#define UH_SCOREICON_OVERRIDE_COUNT \d+\s*\n"
-        r"str uhScoreIconOverrideClass\[UH_SCOREICON_OVERRIDE_COUNT\] = \{(.*?)\};\s*\n"
-        r"str uhScoreIconOverrideTex\[UH_SCOREICON_OVERRIDE_COUNT\] = \{(.*?)\};",
-        text,
-        re.S,
-    )
-    if not m:
-        return {}
-    classes = [c.strip().strip('"') for c in m.group(1).replace("\n", " ").split(",") if c.strip()]
-    texes = [t.strip().strip('"') for t in m.group(2).replace("\n", " ").split(",") if t.strip()]
-    return dict(zip(classes, texes))
-
-
-def expected_short_name(cls: str, specials: dict[str, str]) -> str:
-    if cls in specials:
-        return specials[cls]
+def expected_short_name(cls: str) -> str:
+    if cls in OLD_NAME_SPECIALS:
+        return OLD_NAME_SPECIALS[cls]
     if len(cls) > 2 and cls.endswith("_U"):
         return cls[:-2]
     return cls
 
 
 def main() -> int:
-    specials = old_short_names(read(TEAMINFO))
-    portraits = dict(old_portrait_table(read(PORTRAITS)))
-    overrides = old_scoreicon_overrides(read(PORTRAITS))
+    portraits, overrides = parse_baseline(BASELINE)
 
     rows: dict[str, tuple[str, str, str, int]] = {}
     fails = 0
@@ -127,7 +111,7 @@ def main() -> int:
             fails += 1
             continue
         name, portrait, icon, _ = rows[cls]
-        want_name = expected_short_name(cls, specials)
+        want_name = expected_short_name(cls)
         want_icon = overrides.get(cls, "")
         if name != want_name:
             print(f"FAIL {cls}: shortName {name!r} != former {want_name!r}")
@@ -149,18 +133,19 @@ def main() -> int:
         if rows[cls][2] != tex:
             print(f"FAIL {cls}: scoreIcon {rows[cls][2]!r} != former override {tex!r}")
             fails += 1
-    for cls in PRESENTATION_ONLY:
-        if cls not in rows:
-            print(f"FAIL missing presentation-only morph row: {cls}")
-            fails += 1
 
     # 3. No row without a definition home and without an explicit morph note.
     defined: set[str] = set()
     for path, call in ((SURVDEFS, "DefineSurvivor"), (BOSSDEFS, "DefineBoss"), (EYEDEFS, "DefineDemoneye")):
         defined |= {a for a in re.findall(rf"{call}\(\s*-?\d+,\s*\"([^\"]+)\"", read(path)) if a}
+    # A row without a definition must be a morph body: it must have no portrait
+    # (so nothing can be drawn for it in the teammate bar) and must carry a
+    # scoreboard icon.  Anything else is a registration that lost its identity.
     for cls in rows:
-        if cls not in defined and cls not in PRESENTATION_ONLY:
-            print(f"FAIL {cls}: no Define* registration and not a known morph")
+        if cls in defined:
+            continue
+        if rows[cls][1] != "" or rows[cls][2] == "":
+            print(f"FAIL {cls}: no Define* registration and not a scoreboard-only morph body")
             fails += 1
 
     # 4. UIX PBMug_<Class> scripts must still agree with the presentation
@@ -177,11 +162,12 @@ def main() -> int:
         elif rows[cls][1] != tex:
             print(f"FAIL {cls}: portrait {rows[cls][1]!r} != PBMug {tex!r}")
             fails += 1
+    # A row with a portrait but no PBMug_ script would silently lose its UIX
+    # face; only the scoreboard-only morph may legitimately lack one.
     for cls in rows:
         if cls in mugs:
             continue
-        # Only the scoreboard-only morph may legitimately have no PBMug script.
-        if cls in PRESENTATION_ONLY:
+        if rows[cls][1] == "":
             continue
         print(f"note: {cls}: presentation portrait has no PBMug_ script (UIX fallback empty)")
 

@@ -37,7 +37,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SURVDEFS = ROOT / "src/acs_source/classes/survivors/definitions/uh_survdefs.acs"
 BOSSDEFS = ROOT / "src/acs_source/classes/bosses/boss_definition_table.acs"
 EYEDEFS = ROOT / "src/acs_source/classes/demoneyes/definitions/uh_eyedefs.acs"
-PORTRAITS = ROOT / "src/acs_source/hud/player_portraits.acs"
+BASELINE = ROOT / "tools/fixtures/former_player_portraits.tsv"
 
 OUT_SURV = ROOT / "src/acs_source/classes/survivors/definitions/uh_survdefs_presentation.acs"
 OUT_BOSS = ROOT / "src/acs_source/classes/bosses/boss_presentation_defs.acs"
@@ -53,14 +53,6 @@ NAME_SPECIALS = {
     "TrueBusterMistress": "True Buster Mistress",
 }
 
-# Presentation-only morph bodies: no survivor/boss/eye definition exists, but
-# the scoreboard still needs a face for them.  shortName "" falls back to the
-# actor class, portrait "" means "no teammate-bar mugshot".
-PRESENTATION_ONLY = {
-    "EyelentoMajorDemoneye": ("", "", "I_MUG111"),
-}
-
-
 def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
@@ -74,36 +66,29 @@ def parse_defs(text: str, call: str) -> dict[str, int]:
     return out
 
 
-def parse_portrait_table(text: str) -> list[tuple[str, str]]:
-    m = re.search(
-        r"#define UH_PORTRAIT_COUNT \d+\s*\n"
-        r"str uhPortraitClass\[UH_PORTRAIT_COUNT\] = \{(.*?)\};\s*\n"
-        r"str uhPortraitTex\[UH_PORTRAIT_COUNT\] = \{(.*?)\};",
-        text,
-        re.S,
-    )
-    if not m:
-        raise SystemExit("player_portraits.acs: class/texture tables not found")
-    classes = [c.strip().strip('"') for c in m.group(1).replace("\n", " ").split(",") if c.strip()]
-    texes = [t.strip().strip('"') for t in m.group(2).replace("\n", " ").split(",") if t.strip()]
-    if len(classes) != len(texes):
-        raise SystemExit(f"player_portraits.acs: {len(classes)} classes vs {len(texes)} textures")
-    return list(zip(classes, texes))
+def parse_baseline(path: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """The frozen former table: actor -> portrait texture and actor -> score icon.
 
-
-def parse_scoreicon_overrides(text: str) -> dict[str, str]:
-    m = re.search(
-        r"#define UH_SCOREICON_OVERRIDE_COUNT \d+\s*\n"
-        r"str uhScoreIconOverrideClass\[UH_SCOREICON_OVERRIDE_COUNT\] = \{(.*?)\};\s*\n"
-        r"str uhScoreIconOverrideTex\[UH_SCOREICON_OVERRIDE_COUNT\] = \{(.*?)\};",
-        text,
-        re.S,
-    )
-    if not m:
-        return {}
-    classes = [c.strip().strip('"') for c in m.group(1).replace("\n", " ").split(",") if c.strip()]
-    texes = [t.strip().strip('"') for t in m.group(2).replace("\n", " ").split(",") if t.strip()]
-    return dict(zip(classes, texes))
+    A scoreboard icon of "-" means "same as the portrait"; the morph body that
+    only ever had a scoreboard icon carries "-" as its portrait.
+    """
+    portrait: dict[str, str] = {}
+    scoreicon: dict[str, str] = {}
+    for lineno, line in enumerate(read(path).splitlines(), 1):
+        if not line.strip() or line.lstrip().startswith("//"):
+            continue
+        parts = line.split("\t")
+        if len(parts) != 3:
+            raise SystemExit(f"{path.name}:{lineno}: expected 3 tab-separated columns")
+        actor, mug, icon = (part.strip() for part in parts)
+        if not actor:
+            raise SystemExit(f"{path.name}:{lineno}: empty actor")
+        portrait[actor] = "" if mug == "-" else mug
+        if icon != "-":
+            scoreicon[actor] = icon
+    if not portrait:
+        raise SystemExit(f"{path.name}: no rows found")
+    return portrait, scoreicon
 
 
 def short_name(cls: str) -> str:
@@ -135,14 +120,15 @@ def build() -> dict[Path, str]:
     survivors = parse_defs(read(SURVDEFS), "DefineSurvivor")
     bosses = parse_defs(read(BOSSDEFS), "DefineBoss")
     eyes = parse_defs(read(EYEDEFS), "DefineDemoneye")
-    portrait = dict(parse_portrait_table(read(PORTRAITS)))
-    scoreicon = parse_scoreicon_overrides(read(PORTRAITS))
+    portrait, scoreicon = parse_baseline(BASELINE)
 
     rows: dict[str, list[tuple[str, str, str, str, int]]] = {
         "surv": [], "boss": [], "eye": [], "only": [],
     }
     seen: set[str] = set()
     for cls, tex in portrait.items():
+        if not tex:
+            continue  # presentation-only morph, handled below
         if cls in survivors:
             group = "surv"
         elif cls in bosses:
@@ -157,11 +143,14 @@ def build() -> dict[Path, str]:
         icon = scoreicon.get(cls, "")
         rows[group].append((cls, short_name(cls), tex, icon, 0))
 
-    # Presentation-only morph bodies never reach the portrait table.
-    only = [k for k in PRESENTATION_ONLY if k not in seen]
-    for cls in only:
-        name, mug, icon = PRESENTATION_ONLY[cls]
-        rows["only"].append((cls, name, mug, icon, 0))
+    # Morph bodies the baseline carries without a portrait of their own (the
+    # scoreboard-only Eyelento of Pain body).  They get an explicit short name so
+    # every row reads the same way, and an empty portrait so the teammate bar
+    # draws no face for them.
+    for cls, tex in portrait.items():
+        if tex or cls in seen:
+            continue
+        rows["only"].append((cls, short_name(cls), "", scoreicon.get(cls, ""), 0))
 
     header = [
         "// GENERATED by tools/gen_team_presentation.py -- do not edit by hand.",
