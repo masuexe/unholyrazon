@@ -137,10 +137,19 @@ script "uh_ti_sync_status" (int pn, int status, int portrait) CLIENTSIDE {
 }
 
 script "uh_ti_sync_ova" (int active, int target) CLIENTSIDE {
-  uhtiova = active ? 1 : 0;
-  uhtiovatarget = (uhtiova && target >= 0 && target < MAX_PLAYERS) ? target : -1;
-  // The authorized subject set changes with the side split.
-  for (int i = 0; i < MAX_PLAYERS; i++) { UH_Ti_ClearStats(i); }
+  int nextactive = active ? 1 : 0;
+  int nexttarget = (nextactive && target >= 0 && target < MAX_PLAYERS) ? target : -1;
+
+  // A full snapshot can be repeated several times during the initial client
+  // hello.  Clearing live stats for an unchanged 0/-1 split briefly removes
+  // every native teammate row before the following stat messages restore it,
+  // which makes the text display flicker at startup.  Only a real side-split
+  // transition invalidates the per-viewer authorization set.
+  if (uhtiova != nextactive || uhtiovatarget != nexttarget) {
+    for (int i = 0; i < MAX_PLAYERS; i++) { UH_Ti_ClearStats(i); }
+  }
+  uhtiova = nextactive;
+  uhtiovatarget = nexttarget;
 }
 
 // Authoritative scoreboard portrait policy.  Any value outside the defined
