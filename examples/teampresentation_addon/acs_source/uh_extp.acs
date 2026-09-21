@@ -1,0 +1,47 @@
+#library "uh_extp"
+#include "zcommon.acs"
+#import "uh_log.acs"
+#include "uhadd.acs"
+
+// Team presentation example addon: registers a custom survivor AND its display
+// data (teammate-bar short name, mugshot, scoreboard icon) without touching the
+// main mod.  Matches the recipe at the top of src/acs_source/_includes/mod_api/uhadd.acs.
+
+// Textures this addon ships in its own TEXTURES lump (see TEXTURES).  Any lump
+// name works; the scoreboard icon may be the same texture as the mugshot.
+#define UH_EXTP_MUG "EXTPMUG"
+#define UH_EXTP_ICON "EXTPICN"
+
+function void UH_ExampleRegisterPresentations(void)
+{
+	// 1. The identity row: this is what makes the class a survivor at all.
+	DefineSurvivor(-1, "UHExampleTerrance", "\cjUH Example Terrance", "UMUG_6");
+
+	// 2. The presentation row: teammate-bar name, mugshot and scoreboard icon.
+	//    Without this the teammate bar would show the raw actor class and the
+	//    scoreboard column would stay empty.
+	//    - shortName "" would fall back to the DefineSurvivor name above (which
+	//      carries color codes), then to the actor class.  Register it
+	//      explicitly when the bar should read differently from the broadcast.
+	//    - scoreIcon "" means "same as portrait".
+	DefineTeamPresentation("UHExampleTerrance", "Example Terrance", UH_EXTP_MUG, UH_EXTP_ICON, 0);
+
+	// 3. A presentation-only morph body: no Define* row of its own, but the
+	//    scoreboard still needs a face while a player wears it.
+	DefineTeamPresentation("UHExampleTerranceEx", "", "", UH_EXTP_ICON, 0);
+}
+
+script "uh_extp_define" OPEN
+{
+	if (!UHInPlay()) terminate;
+	UH_ExampleRegisterPresentations();
+}
+
+script "uh_extp_define_cs" OPEN CLIENTSIDE
+{
+	// Do NOT UHInPlay (SpawnForced can fail on pure clients).
+	// Do NOT guard on IsSurvivorDefined(0): 0 is vanilla, this addon's row is -1.
+	// Both DefineSurvivor and DefineTeamPresentation are idempotent per actor,
+	// so the engine delivering this script twice is safe.
+	UH_ExampleRegisterPresentations();
+}

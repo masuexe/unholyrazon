@@ -427,7 +427,7 @@ function void drawMugshot(int pln, int x, int y, int team, int dead)
     if(!cvars[CV_SHOWMUGSHOT])
         return;
 
-    str face = getMugshotGraphicFromTID(pln+PLN_TID_SHRT);
+    str face = uixGetMugshotGraphic(pln+PLN_TID_SHRT);
 
     if(StrLen(face) == 0) {
         if(lastValidMug[pln][MV_INIT])
@@ -460,6 +460,22 @@ function void drawMugshot(int pln, int x, int y, int team, int dead)
     drawMugshotDead(pln, x, y, team, dead);
 
     displayIcon(cvars[CV_LAYER], face, x, y, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER);
+}
+
+// --- Unholy LMS mugshot bridge ---------------------------------------------
+// UIX resolves a mugshot through dynamically named PBMug_<Class> scripts
+// (uh_uix_mugshots.acs).  ACS cannot create new named scripts at runtime, so an
+// addon player class would have no face even after DefineTeamPresentation
+// registered one.  Ask the Unholy resolver first: it is keyed on the TID and
+// reads the actor class plus the local presentation table, so it never has to
+// duplicate the survivor/boss/eye lookup order.  When the unholy library is not
+// loaded the named script resolves to "" and the stock path runs unchanged, so
+// non-Unholy modes and old addons keep their exact former faces.
+function str uixGetMugshotGraphic(int tid) {
+    str face = ACS_NamedExecuteWithResult("uh_GetTeamPortraitForTid", tid);
+    if(StrLen(face) != 0)
+        return face;
+    return getMugshotGraphicFromTID(tid);
 }
 
 function void drawStatus(int pln, int x, int y)
@@ -505,7 +521,7 @@ function void drawMugshotDead(int pln, int x, int y, int team, int dead)
 script "UIXTeam_Mugshot_Death" DEATH CLIENTSIDE
 {
     int pln = PlayerNumber();
-    str face = getMugshotGraphicFromTID(pln+PLN_TID_SHRT);
+    str face = uixGetMugshotGraphic(pln+PLN_TID_SHRT);
 
     if(StrLen(face) == 0) {
         if(lastValidMug[pln][MV_INIT]) {

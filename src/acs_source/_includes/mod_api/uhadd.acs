@@ -7,7 +7,7 @@
 //      #library "YOUR_BOSSDEFS"
 //      #include "zcommon.acs"
 //      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
-//      #include "UHADD.acs"
+//      #include "uhadd.acs"   // lowercase: ACC include paths are case-sensitive
 //
 //      function void YourRegisterBosses(void)
 //      {
@@ -94,7 +94,7 @@
 //      #library "YOUR_SURVDEFS"
 //      #include "zcommon.acs"
 //      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
-//      #include "UHADD.acs"
+//      #include "uhadd.acs"   // lowercase: ACC include paths are case-sensitive
 //      function void YourRegisterSurvivors(void) {
 //          DefineSurvivor(-1, "YourClass", "\cjName", "UMUG_6");
 //      }
@@ -134,7 +134,7 @@
 //      #library "YOUR_EYEDEFS"
 //      #include "zcommon.acs"
 //      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
-//      #include "UHADD.acs"
+//      #include "uhadd.acs"   // lowercase: ACC include paths are case-sensitive
 //      function void YourRegisterEyes(void) {
 //          DefineDemoneye(-1, "YourDemoneye", "\ctYour", "a ", 0, "EYE_F0", "Your");
 //          // Color lives on name (HUD + YouAreNow). Prefix is article only.
@@ -234,6 +234,54 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 	return GetCVarString("uh_em_out_str");
 }
 
+// === DefineTeamPresentation addon recipe ====================================
+// Display data (teammate-bar short name, mugshot texture, scoreboard icon) for
+// a player actor class.  Identity stays in DefineSurvivor / DefineBoss /
+// DefineDemoneye — this only adds what those tables cannot express, and it also
+// covers morph bodies that have no definition row of their own.
+//
+//      #library "YOUR_SURVDEFS"
+//      #include "zcommon.acs"
+//      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
+//      #include "uhadd.acs"   // lowercase: ACC include paths are case-sensitive
+//      function void YourRegisterSurvivors(void) {
+//          DefineSurvivor(-1, "YourClass", "\cjName", "UMUG_6");
+//          DefineTeamPresentation("YourClass", "Short Name", "YOURMUG", "YOURICON", 0);
+//      }
+//      script "your_define_survivors" OPEN {
+//          if (!UHInPlay()) terminate;
+//          YourRegisterSurvivors();
+//      }
+//      script "your_define_survivors_cs" OPEN CLIENTSIDE {
+//          YourRegisterSurvivors();   // same order, no UHInPlay
+//      }
+//
+// Rules:
+//   1. actor is the case-insensitive key and must be the DECORATE player class.
+//   2. shortName "" falls back to the definition name (eyes keep the
+//      DefineDemoneye " Demoneye" suffix rule), then to the actor class.
+//      Register it explicitly when the teammate bar should read differently
+//      from the broadcast name — the resolver never strips color codes or a
+//      "_U" suffix for you.
+//   3. portrait "" = no teammate-bar/UIX face (never a guessed texture).
+//   4. scoreIcon "" = same as portrait.
+//   5. flags: reserved display semantics; pass 0.
+//   6. Re-registering the same actor (any case) REPLACES the row, so a later
+//      addon can correct an earlier one.
+//   7. Register from BOTH the plain OPEN script and its OPEN CLIENTSIDE twin,
+//      in the same order: the client resolves faces from its LOCAL table, so a
+//      missing twin leaves the teammate bar and scoreboard blank even though
+//      the round works.
+//   8. Server and every client must load the same addon set.  A peer that is
+//      missing a row shows an empty face — it never shows someone else's,
+//      because the synced identity is a (kind, definition id), not a row index.
+//   9. Load this addon AFTER the Unholy pk3.
+//  10. Weapons still follow MM8BDM's DefineWeapon; the teammate bar reads the
+//      tag and ammo types from DTADD, so an unregistered weapon simply drops
+//      the weapon line and falls back to the class name.
+//
+// Working example: examples/teampresentation_addon
+//
 // === MegaManU copywep HUD (MegaManUBar) ======================================
 // Opt-in marker so BARHNDLE draws RockNRollAmmo (reroll meter) on bar2
 // (or bar3 if the weapon already uses bar2).
@@ -282,7 +330,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 //      #library "YOUR_ITEMDEFS"
 //      #include "zcommon.acs"
 //      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
-//      #include "UHADD.acs"
+//      #include "uhadd.acs"   // lowercase: ACC include paths are case-sensitive
 //      #include "DTADD.acs"
 //      function void YourRegisterItems(void) {
 //          // Identity only; then AddUnholyItemDrop into a box.
@@ -347,7 +395,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 //      #library "YOUR_COPYDEFS"
 //      #include "zcommon.acs"
 //      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
-//      #include "UHADD.acs"
+//      #include "uhadd.acs"   // lowercase: ACC include paths are case-sensitive
 //      function void YourRegisterCopyWeps(void) {
 //          DefineCopyWep(UHCOPY_MEGA, UHCOPY_SLOT_RANGED, "YourWepU");
 //          DefineCopyWep(UHCOPY_QWANT, UHCOPY_QWANT_FIRE, "YourFireMoveWep");
@@ -375,7 +423,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 //      #library "YOUR_MUSICDEFS"
 //      #include "zcommon.acs"
 //      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
-//      #include "UHADD.acs"
+//      #include "uhadd.acs"   // lowercase: ACC include paths are case-sensitive
 //      function void YourRegister(void) {
 //          int id = DefineBoss(
 //              -1, "YourBossActor", "\cjName",
@@ -459,7 +507,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 //      #library "YOUR_LMSDEFS"
 //      #include "zcommon.acs"
 //      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
-//      #include "UHADD.acs"
+//      #include "uhadd.acs"   // lowercase: ACC include paths are case-sensitive
 //      function void YourRegisterLMS(void) {
 //          DefineLMSEvent(-1, "my_lms", "Normal msg", "Rare msg",
 //              "MYLMS_E", "MYLMS_X", 0, 1);
@@ -491,7 +539,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 //      #library "YOUR_BONUSDEFS"
 //      #include "zcommon.acs"
 //      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
-//      #include "UHADD.acs"
+//      #include "uhadd.acs"   // lowercase: ACC include paths are case-sensitive
 //
 //      function void MyBonusApplyState(int tid) {
 //          if (tid < 1000 || tid >= 1064) return;
@@ -1691,7 +1739,7 @@ function int UH_GetBonusEventTarget(int eventid) {
 //      #library "YOUR_SHINYDEFS"
 //      #include "zcommon.acs"
 //      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
-//      #include "UHADD.acs"
+//      #include "uhadd.acs"   // lowercase: ACC include paths are case-sensitive
 //      function void YourRegister(void) {
 //          DefineShinyQwantMoveWep("YourMove_W", 3);
 //          DefineShinyNegaSlotWep(26, "YourNegaHeld_W", "", "");

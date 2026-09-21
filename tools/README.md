@@ -72,6 +72,48 @@ This is the runtime gate for the P1 per-client delivery fix
 client); static compilation cannot prove a receiver was reached over the
 network.
 
+For the team-presentation resolver migration:
+
+```bash
+node tools/mcp/team-presentation-test.mjs --json
+node tools/mcp/team-presentation-test.mjs --dry-run
+node tools/mcp/team-presentation-test.mjs --profile mm8bdm-v6b-teampres-addon --addon --json
+```
+
+It launches one dedicated `-lastmanstanding` server plus one MCP-controlled
+remote client and verifies the migration on the **client** VM, which is where the
+HUD resolves from:
+
+- **table built** — `rz_debug_TeamPresentationCheck` reports 0 failures and a
+  non-zero row count, so `DefineTeamPresentation` actually populated UHDT at map
+  load (the `OPEN` + `OPEN CLIENTSIDE` twin pair both ran).
+- **resolver output** — the check logs each live player's class → name /
+  portrait / scoreIcon, and the gate compares them against the generated
+  presentation fragments (`tools/check_team_presentation.py` proves those match
+  the former hardcoded tables). `scoreIcon` covers the LuckyLass `UMUG_6_`
+  override.
+- **identity sync** — every published `uhtiident[]` decodes to a
+  `(UH_PLDEF_* kind, definition id)`; a regression to a bare 0..197
+  presentation row index would decode to kind 0 and fail. Where `uhtirole[]` is
+  also known, the packed kind must equal that role's kind (so a Boss slot
+  really carries `UH_PLDEF_BOSS`).
+- **receiver round-trip** — a known packed identity pushed through
+  `uh_ti_sync_status` is stored, and `PLS_NULL` clears both the role and the
+  identity.
+- **dead-row retention** — the `PLS_DEAD` transition keeps the retained role and
+  the identity (that is the dead/body-less fallback), and clearing one slot
+  leaves every other slot's identity untouched.
+
+`--addon` additionally requires the `mm8bdm-v6b-teampres-addon` profile and
+asserts the example addon's own class resolves to its registered short name and
+textures — i.e. a new class needs no edit to any Unholy source file. Pack
+`examples/teampresentation_addon` into `out/teampresentation_addon.pk3` first.
+
+This is the runtime gate for
+`reports/team-info-definition-api-implementation-plan.md`; static compilation
+cannot prove the table was populated on a client, nor that the identity
+broadcast stopped being a load-order-dependent row index.
+
 For the boss-versus combo directed probe:
 
 ```bash
@@ -179,6 +221,15 @@ Three of these cost a debugging round each; check them before blaming the mod:
 
 - `validate-build-pk3.sh` — read-only PK3 integrity and entry-point check.
 - `check_boss_defs.py` — verify `DefineBoss` actor names against `src/actors`.
+- `gen_team_presentation.py` — regenerate the built-in `DefineTeamPresentation`
+  rows from the definition tables plus the former hardcoded portrait/score-icon
+  tables. `--check` verifies the three checked-in fragments without writing and
+  exits 1 on drift. Run after adding a survivor / boss / demoneye.
+- `check_team_presentation.py` — prove the generated fragments still match the
+  former hardcoded output (short name, portrait, scoreboard icon) and that the
+  UIX `PBMug_*` scripts still agree. This is the static half of the
+  team-presentation migration gate; `tools/mcp/team-presentation-test.mjs` is
+  the runtime half.
 - `gen_shiny_moves.py` / `gen_decoy_moves.py` — regenerate checked-in DECORATE
   fragments from their source actors.
 - `_gen_barpos.py` — regenerate `SBARINFO.h.uhappend` /

@@ -1,0 +1,367 @@
+#!/usr/bin/env node
+//
+// team-presentation-test.mjs - runtime gate for the actor-keyed presentation
+// migration (reports/team-info-definition-api-implementation-plan.md).
+//
+// Static compilation cannot prove that the UHDT presentation table is populated
+// at map load on the CLIENT (which is where the HUD resolves from), that the
+// resolver returns the same faces the former hardcoded tables did, or that the
+// team-info identity broadcast carries a packed (kind, definition id) instead of
+// a load-order-dependent presentation row.
+//
+// Coverage (dedicated server + one MCP-controlled remote client):
+//   1. table built   - rz_debug_TeamPresentationCheck reports 0 failures on the
+//      client, so every built-in row resolves through the public API.
+//   2. resolver output - the check logs each live player's class -> name /
+//      portrait / scoreIcon; the probe asserts a known class keeps its exact
+//      former values (MegaManU -> "Mega Man" / UMUG_0 / UMUG_0).
+//   3. identity sync - after the round starts, uhtiident[] holds packed values
+//      (kind * 100000 + id + 1000), never a bare 0..197 presentation row, and
+//      the packed kind agrees with the synced uhtirole[] for that slot.
+//   4. dead-row face - a removed bot's identity is cleared while the surviving
+//      bots keep theirs (no cross-slot leak after the row-index removal).
+//
+// Usage:
+//   node tools/mcp/team-presentation-test.mjs [--profile NAME] [--game-port N]
+//        [--bridge-port N] [--json] [--dry-run]
+//
+// Env overrides: ZANDRONUM_MCP_DIR, ZANDRONUM_MCP_SERVER, ZANDRONUM_EXE,
+//   ZANDRONUM_LAUNCH_PROFILES, ZANDRONUM_BRIDGE_PORT.
+
+import { spawn } from "node:child_process";
+import { appendFileSync, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { launchInstanceArgs, loadResolvedProfile } from "../resolve-launch-profile.mjs";
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const PROFILES = process.env.ZANDRONUM_LAUNCH_PROFILES || join(ROOT, "tools/mm8bdm-v6b-linux.launch.json");
+const MCP_DIR = process.env.ZANDRONUM_MCP_DIR;
+const ENGINE = process.env.ZANDRONUM_EXE;
+const SERVER = process.env.ZANDRONUM_MCP_SERVER || (MCP_DIR ? join(MCP_DIR, "dist/server.js") : "");
+const RUNNER = join(ROOT, "tools/mcp/server-runner.mjs");
+const SDK = join(MCP_DIR || "", "node_modules/@modelcontextprotocol/sdk/dist/esm");
+const SERVER_LOG = "/tmp/team-presentation-server.log";
+const CLIENT_LOG = join(dirname(ENGINE || "."), `mcp-bridge-${process.env.ZANDRONUM_BRIDGE_PORT || "7777"}.log`);
+const SLOTS = 8;
+const IDENT_BASE = 100000;
+const IDENT_OFFSET = 1000;
+
+const options = { profile: "mm8bdm-v6b-smoke", gamePort: 10767, bridgePort: 7777, json: false, dryRun: false, addon: false };
+for (let i = 2; i < process.argv.length; i += 1) {
+  const arg = process.argv[i];
+  if (arg === "--help" || arg === "-h") { process.stdout.write(usage()); process.exit(0); }
+  if (arg === "--json") { options.json = true; continue; }
+  if (arg === "--dry-run") { options.dryRun = true; continue; }
+  if (arg === "--addon") { options.addon = true; continue; }
+  if (arg === "--profile") { options.profile = process.argv[++i]; continue; }
+  if (arg === "--game-port") { options.gamePort = Number.parseInt(process.argv[++i], 10); continue; }
+  if (arg === "--bridge-port") { options.bridgePort = Number.parseInt(process.argv[++i], 10); continue; }
+  throw new Error("unknown option " + arg);
+}
+if (!options.profile) throw new Error("invalid --profile");
+for (const path of [SERVER, ENGINE, PROFILES, RUNNER, SDK]) if (!path || !existsSync(path)) {
+  console.error("set ZANDRONUM_MCP_DIR / ZANDRONUM_EXE; missing: " + path);
+  process.exit(2);
+}
+
+function usage() {
+  return "Usage: team-presentation-test.mjs [--profile NAME] [--game-port N] [--bridge-port N] [--json] [--dry-run]\n" +
+    "\n" +
+    "Launch one local Zandronum dedicated server plus one MCP-controlled remote client,\n" +
+    "then verify the team presentation migration on the client VM: the built-in table is\n" +
+    "populated, the resolver output matches the former hardcoded tables, and the\n" +
+    "team-info identity broadcast carries a packed (kind, definition id).\n" +
+    "\n" +
+    "With --addon the profile must load examples/teampresentation_addon, and the gate\n" +
+    "additionally asserts that addon class resolves with no Unholy source edit.\n" +
+    "Requires local TCP/UDP ports and the bridge-patched engine.\n";
+}
+
+const [{ Client }, { StdioClientTransport }] = await Promise.all([
+  import(pathToFileURL(join(SDK, "client/index.js"))),
+  import(pathToFileURL(join(SDK, "client/stdio.js"))),
+]);
+const transport = new StdioClientTransport({
+  command: process.execPath,
+  args: [RUNNER, SERVER],
+  cwd: MCP_DIR,
+  env: { ...process.env, ZANDRONUM_EXE: ENGINE, ZANDRONUM_LAUNCH_PROFILES: PROFILES, ZANDRONUM_BRIDGE_PORT: String(options.bridgePort) },
+  stderr: "ignore",
+});
+
+const client = new Client({ name: "unholy-team-presentation", version: "1.0.0" });
+const delay = ms => new Promise(r => setTimeout(r, ms));
+const launched = [];
+let dedicated;
+let dedicatedLog = "";
+let isolatedRoot;
+const text = result => (result.content || []).filter(x => x.type === "text").map(x => x.text).join("\n");
+
+async function tool(name, args, timeout) {
+  const result = await client.callTool({ name, arguments: args }, undefined, { timeout: timeout || 90_000 });
+  if (result.isError) throw new Error(name + ": " + text(result));
+  return result;
+}
+async function mapVar(name) {
+  try {
+    const r = await tool("get_map_var", { instance: 1, name }, 8_000);
+    return r.structuredContent?.value ?? Number(text(r));
+  } catch { return null; }
+}
+async function mapArray(name, index) {
+  try {
+    const r = await tool("get_map_array", { instance: 1, name, index }, 8_000);
+    return r.structuredContent?.value ?? Number(text(r));
+  } catch { return null; }
+}
+const kindOf = packed => (packed >= 0 ? Math.floor(packed / IDENT_BASE) : -1);
+const valueOf = packed => (packed >= 0 ? (packed % IDENT_BASE) - IDENT_OFFSET : 0);
+
+// The expected (name, portrait, scoreIcon) per actor, parsed straight from the
+// generated presentation fragments so the probe never carries its own copy of
+// the data.  tools/check_team_presentation.py proves those fragments match the
+// former hardcoded tables; this probe proves the live client agrees.
+const EXPECTED = new Map();
+for (const frag of [
+  "src/acs_source/classes/survivors/definitions/uh_survdefs_presentation.acs",
+  "src/acs_source/classes/bosses/boss_presentation_defs.acs",
+  "src/acs_source/classes/demoneyes/definitions/uh_eyedefs_presentation.acs",
+]) {
+  const body = readFileSync(join(ROOT, frag), "utf8");
+  for (const m of body.matchAll(/DefineTeamPresentation\("([^"]+)",\s*"([^"]*)",\s*"([^"]*)",\s*"([^"]*)",\s*-?\d+\)/g)) {
+    EXPECTED.set(m[1].toLowerCase(), { name: m[2], portrait: m[3], scoreIcon: m[4] });
+  }
+}
+
+let result;
+try {
+  const { profile: profileData } = loadResolvedProfile(ROOT, PROFILES, options.profile);
+
+  // Dedicated -lastmanstanding server (the round actually starts, so roles and
+  // the status snapshot are pushed to the remote client).
+  // Isolated engine folder: the dedicated server must not share runtime/config
+  // files with the MCP-controlled client.
+  const isolatedRoot = mkdtempSync(join(tmpdir(), "unholy-teampres-"));
+  const serverDir = join(isolatedRoot, "server");
+  cpSync(dirname(ENGINE), serverDir, { recursive: true });
+  writeFileSync(SERVER_LOG, "");
+  const common = ["-nosound", "+set", "vid_renderer", "0", "+set", "fullscreen", "0"];
+  const serverArgs = [
+    "-stdout", "-iwad", profileData.iwad, "-file", ...(profileData.files || []),
+    "-host", "8", "-port", String(options.gamePort), "-lastmanstanding",
+    "+set", "sv_minplayers", "1", "+set", "sv_updatemaster", "0", "+set", "sv_noplayertimeout", "1",
+    "+set", "sv_cheats", "1", "+set", "uh_sv_LogLevel", "4",
+    "+map", profileData.map || "MM2DW1", ...common,
+  ];
+  dedicated = spawn(join(serverDir, "zandronum"), serverArgs, {
+    cwd: serverDir,
+    env: { ...process.env, SDL_VIDEODRIVER: "offscreen", ZANDRONUM_BRIDGE_PORT: String(options.gamePort + 100) },
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  for (const stream of [dedicated.stdout, dedicated.stderr]) {
+    stream.on("data", chunk => { dedicatedLog = (dedicatedLog + chunk).slice(-400000); appendFileSync(SERVER_LOG, chunk); });
+  }
+  await delay(25_000);
+  if (dedicated.exitCode !== null) throw new Error("dedicated server exited early with code " + dedicated.exitCode);
+
+  await client.connect(transport);
+  launched.push(1);
+  await tool("launch_instance", launchInstanceArgs(1, profileData, [
+    ...common, "+set", "uh_cl_LogLevel", "4", "+set", "uh_cl_teaminfo", "1",
+    "-port", String(options.gamePort + 1), "+name", "TPClient",
+  ]), 120_000);
+  await delay(10_000);
+  await tool("run_command", { instance: 1, text: "connect 127.0.0.1:" + options.gamePort }, 30_000);
+  await delay(16_000);
+  await tool("run_command", { instance: 1, text: "join" }, 20_000);
+  await delay(14_000);
+  // Bots keep the round alive and give the probe stable subjects to observe.
+  // Driven through the dedicated server's stdin: addbot is a server command.
+  const sendServer = line => { if (dedicated.stdin.writable) dedicated.stdin.write(line + "\n"); };
+  sendServer("addbot");
+  await delay(3_000);
+  sendServer("addbot");
+  await delay(14_000);
+
+  // The round must actually start before playerlifestatusarr is filled in, so
+  // poll for ANY assigned role instead of guessing a fixed delay.
+  const pollRoles = async () => {
+    const out = [];
+    for (let k = 0; k < SLOTS; k += 1) out.push(await mapArray("uhtirole", k));
+    return out;
+  };
+  let roles = await pollRoles();
+  for (let i = 0; i < 40 && !roles.some(r => r !== null && r >= 0); i += 1) {
+    await delay(4_000);
+    roles = await pollRoles();
+  }
+  const roundStarted = roles.some(r => r !== null && r >= 0);
+  await delay(6_000);
+
+  // --- 1 + 2. table built and resolver output -------------------------------
+  await tool("run_script", { instance: 1, script: "rz_debug_TeamPresentationCheck", args: [], always: true }, 40_000);
+  await delay(4_000);
+  const clientLog = readFileSync(CLIENT_LOG, "utf8");
+  const rowMatch = clientLog.match(/TeamPresentationCheck: (\d+) rows ok/);
+  const rowCount = rowMatch ? Number(rowMatch[1]) : 0;
+  const rowErrors = clientLog.match(/TeamPresentationCheck: (?:empty actor|row does not resolve|no display name)[^\n]*/g) || [];
+  const tableBuilt = Boolean(rowMatch) && rowErrors.length === 0 && rowCount > 0;
+
+  // The check logs one line per live player; the joining client is a survivor,
+  // so its own class must resolve to exactly the former hardcoded output.
+  const liveLines = [...clientLog.matchAll(/TeamPresentationCheck: player \d+ (\S+) -> name=(.*?) portrait=(.*?) scoreIcon=(.*?)(?:\r?\n|$)/g)]
+    .map(m => ({ cls: m[1], name: m[2], portrait: m[3], scoreIcon: m[4] }));
+  const resolved = liveLines.length > 0;
+  // The same expectations, resolved through the table by class, are asserted in
+  // check_team_presentation.py; here we only prove the live client agrees.
+  // Every live class is a built-in one, so it must match its expected row
+  // exactly: this is the runtime half of check_team_presentation.py.
+  // --addon: the example addon's own class must resolve through the same table,
+  // with no edit to any Unholy source file.
+  let addonOk = true;
+  let addonDetail = null;
+  if (options.addon) {
+    const rowLine = clientLog.match(/TeamPresentationCheck: row (\S+) -> name=(.*?) portrait=(.*?) scoreIcon=(.*?)(?:\r?\n|$)/);
+    const rows = [...clientLog.matchAll(/TeamPresentationCheck: row (\S+) -> name=(.*?) portrait=(.*?) scoreIcon=(.*?)(?:\r?\n|$)/g)]
+      .map(m => ({ cls: m[1], name: m[2], portrait: m[3], scoreIcon: m[4] }));
+    const addonRow = rows.find(r => r.cls.toLowerCase() === "uhexampleterrance");
+    addonDetail = { addonRow, rowCount: rows.length };
+    // The addon registers an explicit short name and its own mugshot/icon, so
+    // neither the colored DefineSurvivor name nor the actor class may appear.
+    addonOk = Boolean(addonRow)
+      && addonRow.name === "Example Terrance"
+      && addonRow.portrait === "EXTPMUG"
+      && addonRow.scoreIcon === "EXTPICN";
+    void rowLine;
+  }
+
+  const liveOk = liveLines.length > 0 && liveLines.every(l => {
+    const want = EXPECTED.get(l.cls.toLowerCase());
+    if (!want) { return false; }
+    // An empty scoreIcon means "same as the portrait" (documented API rule).
+    const wantIcon = want.scoreIcon || want.portrait;
+    return want.name === l.name && want.portrait === l.portrait && wantIcon === l.scoreIcon;
+  });
+
+  // --- 3. identity sync -----------------------------------------------------
+  // 3a. Network delivery: every slot the server actually published must carry a
+  //     PACKED value.  A bare presentation row index (0..197) would decode to
+  //     kind 0 (UH_PLDEF_NONE) here, so this is what catches a regression to the
+  //     old row-index protocol.
+  const idents = [];
+  for (let k = 0; k < SLOTS; k += 1) idents.push(await mapArray("uhtiident", k));
+  const published = idents.filter(v => v !== null && v > 0);
+  const identityOk = published.length > 0 && published.every(v => {
+    const kind = kindOf(v);
+    const value = valueOf(v);
+    return kind >= 1 && kind <= 4 && value >= -256 && value < 100000;
+  });
+  // Where a role is also known, the packed kind must be that role's kind.
+  const roleAgreement = [];
+  for (let k = 0; k < SLOTS; k += 1) {
+    const role = roles[k];
+    if (role === null || role < 0 || idents[k] === null || idents[k] <= 0) { continue; }
+    const want = { 1: 1, 2: 2, 6: 3 }[role];
+    if (!want) { continue; }
+    roleAgreement.push({ slot: k, role, kind: kindOf(idents[k]), want, ok: kindOf(idents[k]) === want });
+  }
+  const identityDetail = published.map(v => ({ packed: v, kind: kindOf(v), value: valueOf(v) }));
+
+  // 3b. Deterministic receiver round-trip: push a known packed identity for an
+  //     unused slot and read both the role and the identity back.  This proves
+  //     the wire format without depending on the round reaching a stable state.
+  const PROBE_SLOT = 7;
+  const probeIdent = 2 * IDENT_BASE + 42 + IDENT_OFFSET;   // UH_PLDEF_BOSS, id 42
+  let rtRole = null;
+  let rtIdent = null;
+  for (let i = 0; i < 10; i += 1) {
+    await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [PROBE_SLOT, 2, probeIdent], always: true }, 30_000);
+    await delay(2_500);
+    rtRole = await mapArray("uhtirole", PROBE_SLOT);
+    rtIdent = await mapArray("uhtiident", PROBE_SLOT);
+    if (rtRole === 2 && rtIdent === probeIdent) { break; }
+  }
+  const receiverRoundTrip = rtRole === 2 && rtIdent === probeIdent;
+  // Restore the slot so the probe leaves no residue.
+  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [PROBE_SLOT, -1, -1], always: true }, 30_000);
+  await delay(2_000);
+  const rtCleared = (await mapArray("uhtirole", PROBE_SLOT)) === -1
+    && (await mapArray("uhtiident", PROBE_SLOT)) === -1;
+
+  // --- 4. dead-row identity retention ---------------------------------------
+  // A dead or body-less player has no readable actor class, so the scoreboard
+  // and the teammate bar must fall back to the synced definition identity.  The
+  // transition to PLS_DEAD must RETAIN both the role and the identity (only
+  // PLS_NULL clears them), and clearing one slot must not disturb the others.
+  const DEAD_SLOT = 6;
+  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, 2, probeIdent], always: true }, 30_000);
+  await delay(2_500);
+  const deadRole = await mapArray("uhtirole", DEAD_SLOT);
+  const deadIdent = await mapArray("uhtiident", DEAD_SLOT);
+  const seeded = deadRole === 2 && deadIdent === probeIdent;
+
+  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, 0, probeIdent], always: true }, 30_000);
+  await delay(2_500);
+  const afterDeadRole = await mapArray("uhtirole", DEAD_SLOT);
+  const afterDeadIdent = await mapArray("uhtiident", DEAD_SLOT);
+  // PLS_DEAD keeps the retained role and the identity; that is the dead-row face.
+  const deadRowRetained = afterDeadRole === 2 && afterDeadIdent === probeIdent;
+
+  // Clearing the probe slot must leave every other slot's identity untouched.
+  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, -1, -1], always: true }, 30_000);
+  await delay(2_500);
+  const finalIdents = [];
+  for (let k = 0; k < SLOTS; k += 1) finalIdents.push(await mapArray("uhtiident", k));
+  let leak = false;
+  for (let k = 0; k < SLOTS; k += 1) {
+    if (k === DEAD_SLOT || k === PROBE_SLOT) { continue; }
+    if (idents[k] > 0 && finalIdents[k] !== idents[k]) { leak = true; }
+  }
+  const clearedSlot = finalIdents[DEAD_SLOT] === -1;
+  const noLeak = !leak && clearedSlot;
+
+  result = {
+    status: "ok",
+    profile: options.profile,
+    rowCount,
+    rowErrors,
+    tableBuilt,
+    addon: options.addon,
+    addonOk,
+    addonDetail,
+    resolved,
+    roundStarted,
+    liveLines,
+    liveOk,
+    identityOk,
+    identityDetail,
+    roleAgreement,
+    receiverRoundTrip,
+    rtCleared,
+    deadRowRetained,
+    noLeak,
+    deadRowDetail: { seeded, deadRole, deadIdent, afterDeadRole, afterDeadIdent, finalIdents },
+    clientLogTail: clientLog.split(/\r?\n/).slice(-30),
+    serverLogTail: dedicatedLog.split(/\r?\n/).slice(-20),
+  };
+  result.pass = tableBuilt && (!options.addon || addonOk) && resolved && liveOk && identityOk && receiverRoundTrip
+    && rtCleared && deadRowRetained && noLeak && roleAgreement.every(r => r.ok);
+} catch (error) {
+  result = { status: "error", error: error instanceof Error ? error.message : String(error), serverLogTail: dedicatedLog.split(/\r?\n/).slice(-20) };
+} finally {
+  for (const instance of launched.reverse()) {
+    try { await tool("kill_instance", { instance }, 15_000); } catch { /* best effort */ }
+  }
+  if (dedicated && dedicated.exitCode === null) {
+    dedicated.kill("SIGTERM");
+    await Promise.race([new Promise(r => dedicated.once("exit", r)), delay(4_000)]);
+    if (dedicated.exitCode === null) dedicated.kill("SIGKILL");
+  }
+  await client.close().catch(() => {});
+  if (isolatedRoot) rmSync(isolatedRoot, { recursive: true, force: true });
+}
+
+console.log(options.json ? JSON.stringify(result) : JSON.stringify(result, null, 2));
+process.exit(result.pass ? 0 : 1);

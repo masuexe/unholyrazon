@@ -381,3 +381,65 @@ script "rz_debug_fb_probe" (void) {
   uh_probe_sbe_max = ACS_NamedExecuteWithResult("uh_fb_int", 0, 2);
 }
 
+
+// --- Team presentation database check ----------------------------------------
+// Runs on the client that pukes it (puke rz_debug_TeamPresentationCheck), so it
+// verifies the LOCAL table the HUD actually resolves from.  Every registered
+// presentation row must resolve to a name, and every live player's class must
+// either have a presentation row or be reported as unknown — that is the
+// addon-author's signal that a DefineTeamPresentation call is missing.
+script "rz_debug_TeamPresentationCheck" (void) CLIENTSIDE {
+  int fails = 0;
+  int i;
+  int pn;
+  str cls;
+  str name;
+
+  for (i = 0; i < GetTeamPresentationCount(); i++) {
+    cls = GetTeamPresentationActor(i);
+    if (StrCmp(cls, "") == 0) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"TeamPresentationCheck: empty actor at row ", i:i));
+      fails++;
+      continue;
+    }
+    // The row must be reachable through the public lookup, not just by index.
+    if (FindTeamPresentation(cls) != i) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"TeamPresentationCheck: row does not resolve: ", s:cls));
+      fails++;
+    }
+    name = UH_PlayerDisplayName(cls);
+    if (StrCmp(name, "") == 0) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"TeamPresentationCheck: no display name for ", s:cls));
+      fails++;
+    }
+    // Full dump at DEBUG so an addon author can confirm their row landed.
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"TeamPresentationCheck: row ", s:cls,
+      s:" -> name=", s:name,
+      s:" portrait=", s:UH_PlayerPortrait(cls),
+      s:" scoreIcon=", s:UH_PlayerScoreIcon(cls)));
+  }
+
+  // Live players: log what the HUD would actually resolve.  A class with no
+  // presentation row has no teammate-bar face, which is the addon-author's
+  // signal that a DefineTeamPresentation call is missing.
+  for (pn = 0; pn < MAX_PLAYERS; pn++) {
+    if (!PlayerInGame(pn)) { continue; }
+    cls = GetActorClass(pn + 1000);
+    if (StrCmp(cls, "") == 0) { continue; }
+    UH_Log(UH_LOG_INFO, StrParam(s:"TeamPresentationCheck: player ", i:pn,
+      s:" ", s:cls, s:" -> name=", s:UH_PlayerDisplayName(cls),
+      s:" portrait=", s:UH_PlayerPortrait(cls),
+      s:" scoreIcon=", s:UH_PlayerScoreIcon(cls)));
+    if (FindTeamPresentation(cls) != UHTIP_NONE) { continue; }
+    // Only a real definition class is a bug; a plain morph body is expected.
+    if (UH_FindPlayerDefinition(cls) != UH_PLDEF_PRESENTATION) {
+      UH_Log(UH_LOG_WARN, StrParam(s:"TeamPresentationCheck: no presentation row for ", s:cls));
+    }
+  }
+
+  if (fails == 0) {
+    UH_Log(UH_LOG_INFO, StrParam(s:"TeamPresentationCheck: ",
+      i:GetTeamPresentationCount(), s:" rows ok"));
+  }
+  SetResultValue(fails);
+}
