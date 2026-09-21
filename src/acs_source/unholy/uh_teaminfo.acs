@@ -356,6 +356,26 @@ script "uh_IsDisplayTeammate" (int viewer, int subject) {
 script "uh_ScoreIconVisible" (int viewer, int subject) {
   SetResultValue(UH_CanSeeScoreIcon(viewer, subject));
 }
+script "uh_GetTeammateHealth" (int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { SetResultValue(0); terminate; }
+  SetResultValue(uhtistathp[pn]);
+}
+script "uh_GetTeammateMaxHealth" (int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { SetResultValue(0); terminate; }
+  SetResultValue(uhtistatmaxhp[pn]);
+}
+script "uh_GetTeammateArmor" (int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { SetResultValue(0); terminate; }
+  SetResultValue(uhtistatarmor[pn]);
+}
+script "uh_GetTeammateAbsorb" (int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { SetResultValue(0); terminate; }
+  SetResultValue(uhtistatabsorb[pn]);
+}
+script "uh_GetTeammateLives" (int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { SetResultValue(0); terminate; }
+  SetResultValue(uhtistatlives[pn]);
+}
 
 // --- Late join: full snapshot ------------------------------------------------
 script "uh_ti_enter" ENTER {
@@ -455,9 +475,10 @@ function void UH_Ti_RefreshStats(void) {
     vspec[v] = (PlayerIsSpectator(v) == 1);
     velig[v] = false;
     if (!PlayerInGame(v) && !vspec[v]) { continue; }
-    if (GetUserCVar(v, "uh_cl_teaminfo") == 0) { continue; }
-    if (uixOn && GetUserCVar(v, "UIX_CL_Enable") != 0
-        && GetUserCVar(v, "UIX_CL_TEAMINFO") != 0) { continue; }
+    bool nativeOn = (GetUserCVar(v, "uh_cl_teaminfo") != 0);
+    bool uixClientOn = (uixOn && GetUserCVar(v, "UIX_CL_Enable") != 0
+                        && GetUserCVar(v, "UIX_CL_TEAMINFO") != 0);
+    if (!nativeOn && !uixClientOn) { continue; }
     velig[v] = true;
   }
 

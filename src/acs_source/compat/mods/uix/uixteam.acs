@@ -141,6 +141,14 @@ int tiWrapOffs;
 #define STATUS_DEAD 1
 #define STATUS_GHOST 2
 
+// --- Unholy LMS bridge (CLIENTSIDE) -----------------------------------------
+// The "unholy" library owns the synced display snapshot.  ACS_NamedExecute-
+// WithResult runs the named script synchronously in this client's VM, so these
+// read exactly the cache the Unholy native teammate bar uses.  uixUnholyMode is
+// latched once per draw so the filter, the wrap-hide count and the palette
+// agree on the same side model.
+int uixUnholyMode = 0;
+
 function int getPlayerAlive(int pln)
 {
     if(PlayerIsSpectator(pln) == 2)
@@ -149,19 +157,17 @@ function int getPlayerAlive(int pln)
     if(!PlayerInGame(pln))
         return STATUS_GONE;
     
-    if(GetActorProperty(pln+PLN_TID_SHRT, AProp_Health) <= 0)
+    int hp;
+    if(uixUnholyMode) {
+        hp = ACS_NamedExecuteWithResult("uh_GetTeammateHealth", pln);
+    } else {
+        hp = GetActorProperty(pln+PLN_TID_SHRT, AProp_Health);
+    }
+    if(hp <= 0)
         return STATUS_DEAD;
 
     return STATUS_ALIVE;   
 }
-
-// --- Unholy LMS bridge (CLIENTSIDE) -----------------------------------------
-// The "unholy" library owns the synced display snapshot.  ACS_NamedExecute-
-// WithResult runs the named script synchronously in this client's VM, so these
-// read exactly the cache the Unholy native teammate bar uses.  uixUnholyMode is
-// latched once per draw so the filter, the wrap-hide count and the palette
-// agree on the same side model.
-int uixUnholyMode = 0;
 
 function bool uixIsUnholyTeamMode(void) {
     return ACS_NamedExecuteWithResult("uh_IsUnholyTeamMode") != 0;
@@ -746,16 +752,90 @@ function void drawHealth(int pln, int x, int y, int dead)
         hv[H_VALIGN] = cvars[CV_DIR] == horizontal ? ALIGN_CENTER : (!cvars[CV_MIRROR] ? ALIGN_TOP : ALIGN_BOTTOM);
     }
 
-    int mhp = GetActorProperty(pln+PLN_TID_SHRT, AProp_SpawnHealth);
-    int chp = GetActorProperty(pln+PLN_TID_SHRT, AProp_Health);
-    if(mhp == 0) {
-        if(chp == 0) {
-            mhp = 1;
-        } else {
-            mhp = chp;
+    int mhp, chp;
+    if(uixUnholyMode) {
+        chp = ACS_NamedExecuteWithResult("uh_GetTeammateHealth", pln);
+        mhp = ACS_NamedExecuteWithResult("uh_GetTeammateMaxHealth", pln);
+        if(mhp <= 0) {
+            mhp = (chp > 0 ? chp : 100);
+        }
+    } else {
+        mhp = GetActorProperty(pln+PLN_TID_SHRT, AProp_SpawnHealth);
+        chp = GetActorProperty(pln+PLN_TID_SHRT, AProp_Health);
+        if(mhp == 0) {
+            if(chp == 0) {
+                mhp = 1;
+            } else {
+                mhp = chp;
+            }
         }
     }
     
+    if(uixUnholyMode && dead == STATUS_ALIVE) {
+        int armor = ACS_NamedExecuteWithResult("uh_GetTeammateArmor", pln);
+        int absorb = ACS_NamedExecuteWithResult("uh_GetTeammateAbsorb", pln);
+        if(armor > 0) {
+            // 1. Text badge called FIRST -> rendered LAST (on top of all bars)
+            int txtX, txtY, txtHAlign, txtVAlign;
+            int badgeScale;
+
+            if(!cvars[CV_DIR]) { // Horizontal: right end of bar (or left if mirrored)
+                badgeScale = FixedMul(cvars[CV_SCALE], TEXT_SCALE);
+                if(!cvars[CV_MIRROR]) {
+                    txtX = x + hv[H_X] + FixedMul(hv[H_SCALE], 640) + FixedMul(cvars[CV_SCALE], 2);
+                    txtHAlign = ALIGN_LEFT;
+                } else {
+                    txtX = x + hv[H_X] - FixedMul(hv[H_SCALE], 640) - FixedMul(cvars[CV_SCALE], 2);
+                    txtHAlign = ALIGN_RIGHT;
+                }
+                txtY = y + hv[H_Y];
+                txtVAlign = ALIGN_CENTER;
+            } else { // Vertical: bottom of bar (centered)
+                badgeScale = FixedMul(cvars[CV_SCALE], 0.6);
+                txtX = x + hv[H_X];
+                txtHAlign = ALIGN_CENTER;
+                if(!cvars[CV_MIRROR]) {
+                    txtY = y + hv[H_Y] + FixedMul(hv[H_SCALE], 640) + FixedMul(cvars[CV_SCALE], 1);
+                    txtVAlign = ALIGN_TOP;
+                } else {
+                    txtY = y + hv[H_Y] - FixedMul(hv[H_SCALE], 640) - FixedMul(cvars[CV_SCALE], 1);
+                    txtVAlign = ALIGN_BOTTOM;
+                }
+            }
+
+            if(absorb > 0) {
+                SetFont("SMALLFNT");
+                displayMessage(
+                    cvars[CV_LAYER],
+                    StrParam(s:"\cu", i:absorb, s:"%"),
+                    txtX, txtY,
+                    badgeScale, badgeScale,
+                    cvars[CV_ALPHA],
+                    txtHAlign, txtVAlign
+                );
+            }
+
+            // 2. Armor bar called SECOND -> rendered on top of health bar (ZDoom LIFO message order)
+            int maxArmor = mhp;
+            if(armor > maxArmor) { maxArmor = armor; }
+
+            str armorBar = !cvars[CV_DIR] ? "UXTEMAH1" : "UXTEMAV1";
+
+            drawBar(
+                cvars[CV_LAYER],
+                armorBar,
+                "UXNOBAR",
+                x+hv[H_X], y+hv[H_Y],
+                hv[H_WIDTH], hv[H_HEIGHT],
+                hv[H_SCALE], hv[H_SCALE], cvars[CV_ALPHA],
+                armor, maxArmor,
+                !cvars[CV_DIR]+1, false,
+                hv[H_HALIGN], hv[H_VALIGN]
+            );
+        }
+    }
+
+    // 3. Health bar called LAST -> rendered FIRST (at the very bottom)
     drawBar(
         cvars[CV_LAYER],
         healthBars[0][cvars[CV_DIR]],
@@ -1045,13 +1125,21 @@ function void drawLives(int pln, int x, int y, int dead)
     if(dead == STATUS_GHOST)
         return;
 
-    if(maxLives == -1)
-        return;
+    int lives;
+    if(uixUnholyMode) {
+        if(!cvars[CV_SHOWLIVES])
+            return;
+        lives = ACS_NamedExecuteWithResult("uh_GetTeammateLives", pln);
+    } else {
+        if(maxLives == -1)
+            return;
 
-    if(!cvars[CV_SHOWLIVES])
-        return;
+        if(!cvars[CV_SHOWLIVES])
+            return;
 
-    int lives = GetPlayerLivesLeft(pln);
+        lives = GetPlayerLivesLeft(pln);
+    }
+
     if(lives <= 0)
         return;
 
@@ -1079,6 +1167,8 @@ function void drawLives(int pln, int x, int y, int dead)
     }
 
     int team = GetPlayerInfo(pln, PLAYERINFO_TEAM);
+    if(uixUnholyMode && (team < 0 || team > 3))
+        team = 0;
     int cyan = ACS_NamedExecuteWithResult("core_getteampalette", team, 0);
     int blue = ACS_NamedExecuteWithResult("core_getteampalette", team, 1);
 
