@@ -445,15 +445,27 @@ script "rz_debug_TeamPresentationCheck" (void) CLIENTSIDE {
 }
 
 // --- Server-side team-info identity cache -----------------------------------
-// Run on the SERVER (puke rz_debug_TeamInfoSlots); it reads server-only arrays.
-// This is the classification the full snapshot depends on, and it is what a
-// regression would break: a slot that is connected but out of the game is a dead
-// spectator and must keep its retained identity, while a slot nobody occupies
-// must publish none.  Logging it makes that observable without a client.
-script "rz_debug_TeamInfoSlots" (void) {
+// Run on the SERVER:
+//   puke rz_debug_TeamInfoSlots [probeFrom] [probeTo]
+// probeTo is exclusive.  Slots in [probeFrom, probeTo) are always logged,
+// including a real unconnected PLS_NULL slot.  Outside that range those empty
+// slots are still skipped.  Passing 0 0 therefore logs only occupied rows.
+//
+// "TeamInfoSlots: begin" is the dump boundary.  The engine log is append-only,
+// so a reader must parse from the LAST begin.  Starting at the last "slot"
+// line keeps only that one row.
+//
+// A slot with PlayerIsSpectator == 2 is a dead spectator and must keep its
+// retained identity.  A slot nobody occupies must publish none.
+script "rz_debug_TeamInfoSlots" (int probeFrom, int probeTo) {
+  if (probeFrom < 0) { probeFrom = 0; }
+  if (probeTo > MAX_PLAYERS) { probeTo = MAX_PLAYERS; }
+  if (probeTo < probeFrom) { probeTo = probeFrom; }
+  UH_Log(UH_LOG_INFO, StrParam(s:"TeamInfoSlots: begin ", i:probeFrom, s:" ", i:probeTo));
   for (int i = 0; i < MAX_PLAYERS; i++) {
     bool connected = UH_Ti_IsConnectedPlayer(i);
-    if (!connected && playerlifestatusarr[i] == PLS_NULL) { continue; }
+    bool inProbe = (i >= probeFrom && i < probeTo);
+    if (!inProbe && !connected && playerlifestatusarr[i] == PLS_NULL) { continue; }
     UH_Log(UH_LOG_INFO, StrParam(s:"TeamInfoSlots: slot ", i:i,
       s:" connected=", i:connected,
       s:" ingame=", i:PlayerInGame(i),

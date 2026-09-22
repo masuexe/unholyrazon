@@ -105,13 +105,16 @@ function int UH_Ti_IdForClass(str cls) {
   return 0;
 }
 
-// Still connected, whether playing or spectating.  PlayerInGame is
-// playeringame && !bSpectating, so a player who died and left the game but is
-// still connected reports false here and needs the PlayerIsSpectator union.
+// Occupies a team-info row: in the game, or a dead spectator.
+// PlayerInGame is playeringame && !bSpectating, so a dead spectator reports
+// false there.  PlayerIsSpectator returns 2 only for a dead spectator
+// (GMF_DEADSPECTATORS) and 1 for a true spectator.  A true spectator is still
+// connected for delivery (UH_Ti_IsConnectedClient) but must not keep a previous
+// occupant's role or portrait.
 function bool UH_Ti_IsConnectedPlayer(int pn) {
   if (pn < 0 || pn >= MAX_PLAYERS) { return false; }
   if (PlayerInGame(pn)) { return true; }
-  return PlayerIsSpectator(pn) != 0;
+  return PlayerIsSpectator(pn) == 2;
 }
 
 // Server-only: reads playerlifestatusarr, so it must never run on a pure client.
@@ -120,8 +123,9 @@ function void UH_Ti_IdentityForPlayer(int pn) {
   int id = 0;
   if (pn >= 0 && pn < MAX_PLAYERS) {
     // PLS_NULL means the slot is finished.  Publishing anything for it would let
-    // a reused slot inherit the previous player's face.  playerlifestatusarr is
-    // initialised to PLS_NULL for every slot, so a never-used slot clears too.
+    // a reused slot inherit the previous player's face.  A never-used slot is
+    // not connected, so it clears too.  The `= {-1}` initializer only writes
+    // index 0; the other elements stay 0.
     if (playerlifestatusarr[pn] != PLS_NULL && UH_Ti_IsConnectedPlayer(pn)) {
       if (PlayerInGame(pn)) {
         str cls = GetActorClass(pn + 1000);
@@ -134,8 +138,9 @@ function void UH_Ti_IdentityForPlayer(int pn) {
         }
       }
       else {
-        // Dead and out of the game but still connected: keep the identity
-        // resolved while the body existed, so the dead row keeps its own face.
+        // Dead spectator (PlayerIsSpectator == 2): keep the identity resolved
+        // while the body existed, so the dead row keeps its own face.  A true
+        // spectator never reaches this branch.
         kind = uhsrvkind[pn];
         id = uhsrvid[pn];
       }
@@ -256,10 +261,10 @@ function int UH_TeamInfo_ScorePolicy(void) {
 function void UH_Ti_SendSnapshotCore(int client) {
   if (!UH_Ti_IsConnectedClient(client)) { return; }
   for (int i = 0; i < MAX_PLAYERS; i++) {
-    // Gate on "still connected", NOT on PlayerInGame: a player who died and left
-    // the game but is still connected is a dead spectator whose slot is still
-    // assigned.  Sending PLS_NULL for them would drop their retained role and
-    // identity and take their dead row off the scoreboard.
+    // Gate on the team-info row, NOT on PlayerInGame: a dead spectator
+    // (PlayerIsSpectator == 2) has left the game but the slot is still assigned.
+    // Sending PLS_NULL for them would drop their retained role and identity.
+    // A true spectator (1) fails UH_Ti_IsConnectedPlayer and is cleared below.
     if (UH_Ti_IsConnectedPlayer(i)) {
       // PLS_DEAD for an out-of-game subject, which retains the role on the
       // client (only PLS_NULL clears it).
