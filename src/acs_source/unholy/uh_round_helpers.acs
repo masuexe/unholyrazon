@@ -63,29 +63,28 @@ function void PlayerLifeStatusArr_GatherFunc(void) {
 // Definition identity captured server-side, kept across death so a dead player's
 // row can still show the portrait they had while alive.
 //
-// This is a (UH_PLDEF_* kind, definition id) pair of PLAIN INTEGERS.  Two things
-// must never be synced instead:
+// This is a (UH_PLDEF_* kind, definition id) pair of PLAIN INTEGERS.  Three
+// payloads must never be synced instead:
 //
 //   * an ACS string.  NamedExecuteClientScript copies only raw int args, and the
 //     ACS string pool is per-process and garbage-collected, so a string index
 //     means nothing on the client (NamedSendNetworkString is the only supported
 //     path and needs its own per-client mailbox).
 //   * a presentation table row.  Rows are handed out in registration order.
+//   * a custom Define*(-1, ...) id.  Also assigned in registration order, so a
+//     peer missing an earlier addon would resolve it to a different class.
 //
-// The id is only synced when it is a VANILLA slot (>= 0).  A custom
-// DefineSurvivor/Boss/Demoneye(-1, ...) id is also assigned in registration
-// order, so a peer that is missing an earlier addon would resolve the same
-// number to a DIFFERENT class and draw that class's face.  Vanilla slots are
-// explicit and stable by contract (see the UHADD recipe), so they are the only
-// safe identity to publish.
+// The id is therefore only published when it is a VANILLA slot (>= 0), which is
+// explicit and stable by contract (see the UHADD recipe).
 //
-// A class with no vanilla definition (a custom addon class, or a morph body with
-// no definition row of its own) syncs as NONE.  The client keeps whatever class
-// it observed itself while the actor was alive, and a peer that never saw the
-// player alive simply shows no face -- never someone else's.
+// UH_Ti_IdentityForPlayer ALWAYS writes the slot, including "no stable
+// identity".  A stale entry must never survive: after a slot reuse or a morph it
+// would make every client draw the PREVIOUS player's face, which is worse than
+// showing nothing.  A class with no vanilla definition (a custom addon class, or
+// a morph body with no definition row) therefore publishes NONE, and the client
+// falls back to the class it observed itself while the actor was alive.
 int uhsrvkind[MAX_PLAYERS];
 int uhsrvid[MAX_PLAYERS];
-bool uhsrvidentvalid[MAX_PLAYERS];
 
 // Stable identity for an actor class, or UH_PLDEF_NONE.  The >= 0 test is what
 // rejects load-order-dependent custom ids.
@@ -106,35 +105,49 @@ function int UH_Ti_IdForClass(str cls) {
   return 0;
 }
 
+// Server-only: reads playerlifestatusarr, so it must never run on a pure client.
 function void UH_Ti_IdentityForPlayer(int pn) {
-  if (pn < 0 || pn >= MAX_PLAYERS) { return; }
-  if (!PlayerInGame(pn)) { return; }
-  str cls = GetActorClass(pn + 1000);
-  if (StrCmp(cls, "") == 0) { return; }
-  int kind = UH_Ti_KindForClass(cls);
-  if (kind == UH_PLDEF_NONE) { return; }   // keep the last stable identity
-  uhsrvkind[pn] = kind;
-  uhsrvid[pn] = UH_Ti_IdForClass(cls);
-  uhsrvidentvalid[pn] = true;
+  int kind = UH_PLDEF_NONE;
+  int id = 0;
+  if (pn >= 0 && pn < MAX_PLAYERS) {
+    // PLS_NULL means the slot is finished.  Publishing anything for it would let
+    // a reused slot inherit the previous player's face.
+    if (playerlifestatusarr[pn] != PLS_NULL && PlayerInGame(pn)) {
+      str cls = GetActorClass(pn + 1000);
+      if (StrCmp(cls, "") != 0) {
+        int k = UH_Ti_KindForClass(cls);
+        if (k != UH_PLDEF_NONE) {
+          kind = k;
+          id = UH_Ti_IdForClass(cls);
+        }
+      }
+    }
+    // A player who left the game but is still assigned (a dead spectator) keeps
+    // the identity resolved while their body existed, so their scoreboard row
+    // keeps its own face.
+    uhsrvkind[pn] = kind;
+    uhsrvid[pn] = id;
+  }
 }
 
 // Read the server identity cache without re-reading the actor.
 function int UH_Ti_CachedKind(int pn) {
   if (pn < 0 || pn >= MAX_PLAYERS) { return UH_PLDEF_NONE; }
-  return uhsrvidentvalid[pn] ? uhsrvkind[pn] : UH_PLDEF_NONE;
+  return uhsrvkind[pn];
 }
 
 function int UH_Ti_CachedId(int pn) {
   if (pn < 0 || pn >= MAX_PLAYERS) { return 0; }
-  return uhsrvidentvalid[pn] ? uhsrvid[pn] : 0;
+  return uhsrvid[pn];
 }
 
-// Refresh the identity cache for every live subject once.  Snapshot delivery
-// then reads the cache instead of walking the definition tables once per client
-// (N clients x M subjects).
+// Refresh the identity cache for every slot once.  Snapshot delivery then reads
+// the cache instead of walking the definition tables once per client
+// (N clients x M subjects).  Every slot is refreshed, not just the live ones, so
+// a finished slot is actively cleared rather than left stale.
 function void UH_TeamInfo_WarmIdentities(void) {
   for (int i = 0; i < MAX_PLAYERS; i++) {
-    if (PlayerInGame(i)) { UH_Ti_IdentityForPlayer(i); }
+    UH_Ti_IdentityForPlayer(i);
   }
 }
 
@@ -232,7 +245,8 @@ function void UH_Ti_SendSnapshotCore(int client) {
       UH_Ti_SendStatusTo(client, i, playerlifestatusarr[i]);
     } else {
       // Explicitly clear unused slots so no stale role/identity can remain
-      // after a player leaves and the slot is reused.
+      // after a player leaves and the slot is reused.  WarmIdentities has
+      // already published NONE for them, so the pair below is empty.
       UH_Ti_SendStatusTo(client, i, PLS_NULL);
     }
   }

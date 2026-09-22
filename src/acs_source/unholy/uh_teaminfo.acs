@@ -23,21 +23,18 @@
 // uhtirole   : last non-dead role, retained across death so a dead player's
 //              scoreboard row and teammate row keep their side.  PLS_EYE is a
 //              role and deliberately suppresses regular-LMS teammate display.
-// uhtikind/uhtiid: server-synced definition identity captured while the actor
-//              existed (a corpse has no readable class, so this is the dead-row
-//              face).  Only VANILLA ids are synced: a custom Define*(-1, ...) id
-//              is assigned in registration order, so a peer missing an earlier
-//              addon would resolve it to a different class.
-// uhticlasscache: the actor class, refreshed from the live actor while it
-//              exists and derived from the synced identity otherwise.
+// uhticlasscache: the actor class.  Refreshed from the live actor while one is
+//              readable (so a morph is reflected immediately), and otherwise
+//              derived from the server-synced (kind, vanilla id) identity — a
+//              corpse has no readable class, so this is the dead-row face.  It is
+//              cleared whenever the server publishes no identity, so a reused
+//              slot can never inherit the previous player's class.
 // uhtiova*   : frozen 1-vs-all active flag and target player number (drives
 //              UH_AreDisplayTeammates, NOT scoreboard visibility).
 // uhtiscorepolicy: synchronized UH_SCOREPOLICY_* for the scoreboard icon matrix.
 //              Starts INVALID so only self is visible until the server snapshot.
 int uhtilife[MAX_PLAYERS];
 int uhtirole[MAX_PLAYERS];
-int uhtikind[MAX_PLAYERS];
-int uhtiid[MAX_PLAYERS];
 int uhtiova;
 int uhtiovatarget;
 int uhtiscorepolicy;
@@ -99,8 +96,6 @@ function void UH_Ti_ResetClient(void) {
   for (int i = 0; i < MAX_PLAYERS; i++) {
     uhtilife[i] = PLS_NULL;
     uhtirole[i] = PLS_NULL;
-    uhtikind[i] = UH_PLDEF_NONE;
-    uhtiid[i] = 0;
     uhticlasscache[i] = "";
     uhtiscoreiconvalid[i] = false;
     uhscoreiconcache[i] = "";
@@ -125,8 +120,6 @@ function void UH_Ti_SetClientLife(int pn, int status) {
   }
   else if (status == PLS_NULL) {
     uhtirole[pn] = PLS_NULL;
-    uhtikind[pn] = UH_PLDEF_NONE;
-    uhtiid[pn] = 0;
     uhticlasscache[pn] = "";
     uhtiscoreiconvalid[pn] = false;
     uhscoreiconcache[pn] = "";
@@ -142,22 +135,21 @@ function void UH_Ti_SetClientLife(int pn, int status) {
 // either: rows are assigned in registration order.
 //
 // The id is only trusted when it is a VANILLA slot (>= 0); a custom id would be
-// load-order dependent.  UH_PLDEF_NONE means "no stable identity", and the
-// client then keeps whatever class it observed itself while the actor was alive.
+// load-order dependent.  UH_PLDEF_NONE (or an id this client cannot resolve)
+// means "no stable identity" and CLEARS the cache — keeping the previous class
+// is what would make a reused slot show the previous player's face.  A live
+// actor repopulates the cache on the next frame, so a morph or a custom addon
+// class is unaffected.
 script "uh_ti_sync_status" (int pn, int status, int kind, int id) CLIENTSIDE {
   UH_Ti_SetClientLife(pn, status);
   if (pn < 0 || pn >= MAX_PLAYERS) { terminate; }
-  if (kind == UH_PLDEF_NONE || id < 0) {
-    // Keep the last stable identity: a stale one is still better than none for a
-    // class this peer cannot identify, and the live actor overrides it anyway.
-    terminate;
+  str cls = "";
+  if (kind != UH_PLDEF_NONE && id >= 0) {
+    // Resolve through THIS client's own tables, so a peer with a different addon
+    // set derives its own content or nothing at all.
+    cls = UH_Ti_ActorForIdentity(kind, id);
   }
-  uhtikind[pn] = kind;
-  uhtiid[pn] = id;
-  // Derive the actor class from THIS client's own tables, so a peer with a
-  // different addon set resolves it through its own content or to nothing.
-  str cls = UH_Ti_ActorForIdentity(kind, id);
-  if (StrLen(cls) != 0 && StrICmp(cls, uhticlasscache[pn]) != 0) {
+  if (StrICmp(cls, uhticlasscache[pn]) != 0) {
     uhticlasscache[pn] = cls;
     // Force the next lookup to refresh: the actor class changed.
     uhtiscoreiconvalid[pn] = false;
@@ -222,8 +214,6 @@ script "uh_ti_stat_clear" (int pn) CLIENTSIDE {
 script "uh_ti_client_disconnect" (int gone) DISCONNECT CLIENTSIDE {
   if (gone < 0 || gone >= MAX_PLAYERS) { terminate; }
   UH_Ti_SetClientLife(gone, PLS_NULL);
-  uhtikind[gone] = UH_PLDEF_NONE;
-  uhtiid[gone] = 0;
   uhticlasscache[gone] = "";
   uhtiscoreiconvalid[gone] = false;
   uhscoreiconcache[gone] = "";
@@ -339,7 +329,7 @@ function str UH_ClientPortraitTex(int pn) {
   // to the server-synced definition identity when this client never saw the
   // live class.
   if (uhscoreiconcachevalid[pn]) { return uhscoreiconcache[pn]; }
-  return UH_PlayerScoreIcon(UH_Ti_ActorForIdentity(uhtikind[pn], uhtiid[pn]));
+  return UH_PlayerScoreIcon(uhticlasscache[pn]);
 }
 
 // Teammate-bar / subline short name.  The class is resolved the same way for
@@ -356,12 +346,7 @@ function str UH_Ti_GetClassName(int pn) {
   if (StrLen(cls) == 0 && StrLen(uhticlasscache[pn]) != 0) {
     cls = uhticlasscache[pn];
   }
-  if (StrLen(cls) == 0) {
-    cls = uhticlasscache[pn];
-    if (StrLen(cls) == 0) {
-      cls = UH_Ti_ActorForIdentity(uhtikind[pn], uhtiid[pn]);
-    }
-  }
+  if (StrLen(cls) == 0) { cls = uhticlasscache[pn]; }
   return UH_PlayerDisplayName(cls);
 }
 
