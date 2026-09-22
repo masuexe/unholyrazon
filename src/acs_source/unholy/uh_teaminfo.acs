@@ -143,6 +143,10 @@ function void UH_Ti_SetClientLife(int pn, int status) {
 script "uh_ti_sync_status" (int pn, int status, int kind, int id) CLIENTSIDE {
   UH_Ti_SetClientLife(pn, status);
   if (pn < 0 || pn >= MAX_PLAYERS) { terminate; }
+  // PLS_NULL means the slot is finished.  UH_Ti_SetClientLife has already
+  // emptied the cache, and resolving an identity here would repopulate it in the
+  // same script -- which is how a stale pair used to survive a slot clear.
+  if (status == PLS_NULL) { terminate; }
   str cls = "";
   if (kind != UH_PLDEF_NONE && id >= 0) {
     // Resolve through THIS client's own tables, so a peer with a different addon

@@ -311,13 +311,20 @@ try {
   // ACS string is not a viable payload here).
   const PROBE_SLOT = 7;
   const transfer = [];
-  const pushIdentity = async (kind, id) => {
-    for (let i = 0; i < 10; i += 1) {
-      await tool("run_script", { instance: 1, script: "uh_ti_sync_status",
-        args: [PROBE_SLOT, 2, kind, id], always: true }, 30_000);
+  // Push a (kind, id) pair and read back what the client cached.  When
+  // expectEmpty is set the correct behaviour is that the slot produces NO line at
+  // all, so a single attempt is enough -- retrying would just wait for a line a
+  // correct implementation never emits.
+  const pushIdentity = async (kind, id, status = 2, expectEmpty = false) => {
+    await tool("run_script", { instance: 1, script: "uh_ti_sync_status",
+      args: [PROBE_SLOT, status, kind, id], always: true }, 30_000);
+    await delay(3_000);
+    const line = (await dumpCacheLines()).find(l => l.slot === PROBE_SLOT);
+    if (line || expectEmpty) { return line; }
+    for (let i = 0; i < 6; i += 1) {
       await delay(2_500);
-      const line = (await dumpCacheLines()).find(l => l.slot === PROBE_SLOT);
-      if (line) { return line; }
+      const retry = (await dumpCacheLines()).find(l => l.slot === PROBE_SLOT);
+      if (retry) { return retry; }
     }
     return null;
   };
@@ -338,30 +345,28 @@ try {
   const surv6 = await pushIdentity(1, 6);
   transfer.push({ case: "vanilla survivor 6", line: surv6, wantCls: "LuckyLass", wantPortrait: "UMUG_6" });
   // (c) an undefined vanilla slot must resolve to NOTHING, not to a neighbour.
-  const undef = await pushIdentity(2, 9999);
-  transfer.push({ case: "undefined boss 9999", line: undef, wantCls: null, wantPortrait: "" });
+  const undef = await pushIdentity(2, 9999, 2, true);
+  transfer.push({ case: "undefined boss 9999", line: undef, wantCls: null, wantPortrait: "", wantEmpty: true });
   // (d) a negative (custom, load-order-dependent) id must be REJECTED by the
   //     receiver, so it can never be misresolved on a peer with another addon set.
-  const custom = await pushIdentity(1, -1);
-  transfer.push({ case: "custom survivor -1", line: custom, wantCls: null, wantPortrait: "" });
+  const custom = await pushIdentity(1, -1, 2, true);
+  transfer.push({ case: "custom survivor -1", line: custom, wantCls: null, wantPortrait: "", wantEmpty: true });
   // (e) NONE after a valid identity must CLEAR the slot.  This is the morph /
   //     slot-reuse case: the previous occupant had a vanilla identity, and
   //     keeping it would draw the previous player's face.
-  const noneAfterValid = await pushIdentity(0, 0);
+  const noneAfterValid = await pushIdentity(0, 0, 2, true);
   transfer.push({ case: "NONE after a valid identity", line: noneAfterValid, wantCls: null, wantPortrait: "", wantEmpty: true });
-  // (f) PLS_NULL with a still-valid pair must also clear.  This is the
+  // (f) PLS_NULL carrying a STILL-VALID pair must also clear.  This is the
   //     "clear then immediately re-apply" hazard: UH_Ti_SetClientLife empties the
-  //     cache and a stale server pair used to repopulate it in the same script.
+  //     cache and resolving the pair afterwards used to repopulate it in the very
+  //     same script.  The pair must be a real one, or the case proves nothing.
   await tool("run_script", { instance: 1, script: "uh_ti_sync_status",
     args: [PROBE_SLOT, 2, 2, 0], always: true }, 30_000);
-  await delay(2_500);
+  await delay(3_000);
   const reseeded = (await dumpCacheLines()).find(l => l.slot === PROBE_SLOT);
-  await tool("run_script", { instance: 1, script: "uh_ti_sync_status",
-    args: [PROBE_SLOT, -1, 0, 0], always: true }, 30_000);
-  await delay(2_500);
-  const afterNull = (await dumpCacheLines()).find(l => l.slot === PROBE_SLOT);
+  const afterNull = await pushIdentity(2, 0, -1, true);
   transfer.push({
-    case: "PLS_NULL clears even with a stale pair",
+    case: "PLS_NULL clears even with a valid pair",
     line: afterNull, wantCls: null, wantPortrait: "", wantEmpty: true,
     reseededCls: reseeded ? reseeded.cls : null,
   });
@@ -379,7 +384,7 @@ try {
       return t.line.portrait === "" && t.line.scoreIcon === "";
     }
     return t.line.cls === t.wantCls && t.line.portrait === t.wantPortrait;
-  }) && transfer.find(t => t.case === "PLS_NULL clears even with a stale pair").reseededCls === "TrueBusterExpert";
+  }) && transfer.find(t => t.case === "PLS_NULL clears even with a valid pair").reseededCls === "TrueBusterExpert";
 
   // Restore the slot so the probe leaves no residue.
   await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [PROBE_SLOT, -1, 0, 0], always: true }, 30_000);

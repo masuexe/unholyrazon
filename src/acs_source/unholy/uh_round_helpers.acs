@@ -105,26 +105,41 @@ function int UH_Ti_IdForClass(str cls) {
   return 0;
 }
 
+// Still connected, whether playing or spectating.  PlayerInGame is
+// playeringame && !bSpectating, so a player who died and left the game but is
+// still connected reports false here and needs the PlayerIsSpectator union.
+function bool UH_Ti_IsConnectedPlayer(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) { return false; }
+  if (PlayerInGame(pn)) { return true; }
+  return PlayerIsSpectator(pn) != 0;
+}
+
 // Server-only: reads playerlifestatusarr, so it must never run on a pure client.
 function void UH_Ti_IdentityForPlayer(int pn) {
   int kind = UH_PLDEF_NONE;
   int id = 0;
   if (pn >= 0 && pn < MAX_PLAYERS) {
     // PLS_NULL means the slot is finished.  Publishing anything for it would let
-    // a reused slot inherit the previous player's face.
-    if (playerlifestatusarr[pn] != PLS_NULL && PlayerInGame(pn)) {
-      str cls = GetActorClass(pn + 1000);
-      if (StrCmp(cls, "") != 0) {
-        int k = UH_Ti_KindForClass(cls);
-        if (k != UH_PLDEF_NONE) {
-          kind = k;
-          id = UH_Ti_IdForClass(cls);
+    // a reused slot inherit the previous player's face.  playerlifestatusarr is
+    // initialised to PLS_NULL for every slot, so a never-used slot clears too.
+    if (playerlifestatusarr[pn] != PLS_NULL && UH_Ti_IsConnectedPlayer(pn)) {
+      if (PlayerInGame(pn)) {
+        str cls = GetActorClass(pn + 1000);
+        if (StrCmp(cls, "") != 0) {
+          int k = UH_Ti_KindForClass(cls);
+          if (k != UH_PLDEF_NONE) {
+            kind = k;
+            id = UH_Ti_IdForClass(cls);
+          }
         }
       }
+      else {
+        // Dead and out of the game but still connected: keep the identity
+        // resolved while the body existed, so the dead row keeps its own face.
+        kind = uhsrvkind[pn];
+        id = uhsrvid[pn];
+      }
     }
-    // A player who left the game but is still assigned (a dead spectator) keeps
-    // the identity resolved while their body existed, so their scoreboard row
-    // keeps its own face.
     uhsrvkind[pn] = kind;
     uhsrvid[pn] = id;
   }
@@ -241,7 +256,13 @@ function int UH_TeamInfo_ScorePolicy(void) {
 function void UH_Ti_SendSnapshotCore(int client) {
   if (!UH_Ti_IsConnectedClient(client)) { return; }
   for (int i = 0; i < MAX_PLAYERS; i++) {
-    if (PlayerInGame(i)) {
+    // Gate on "still connected", NOT on PlayerInGame: a player who died and left
+    // the game but is still connected is a dead spectator whose slot is still
+    // assigned.  Sending PLS_NULL for them would drop their retained role and
+    // identity and take their dead row off the scoreboard.
+    if (UH_Ti_IsConnectedPlayer(i)) {
+      // PLS_DEAD for an out-of-game subject, which retains the role on the
+      // client (only PLS_NULL clears it).
       UH_Ti_SendStatusTo(client, i, playerlifestatusarr[i]);
     } else {
       // Explicitly clear unused slots so no stale role/identity can remain
