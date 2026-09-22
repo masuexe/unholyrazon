@@ -192,20 +192,26 @@ Every consumer resolves through the same UHDT functions
 The native bar calls them directly, the UIXTEAM shadow through the named script
 `uh_GetTeamPortraitForTid`, and an addon through the UHADD wrappers.
 
-The team-info status broadcast carries the **actor class name**
-(`uh_ti_sync_status`'s third argument), never a definition id and never a
-presentation row index. Both of those are assigned in load order — a custom
-`DefineSurvivor(-1, …)` id shifts when a peer is missing an earlier addon, and a
-presentation row is handed out in registration order — so syncing either would
-let a peer with a different addon set resolve the number to a *different* class
-and draw someone else's face. A class name is content: the client resolves it
-through its own tables, and a class it does not know yields an empty face. ACS
-strings travel as an ordinary `NamedExecuteClientScript` argument (the weapon tag
-in `uh_ti_stat` already does), and the class is only re-sent on a status change
-or a snapshot, never on the 7-tic stat cadence. Note that the engine already
-refuses a connection whose protected lumps (DECORATE, KEYCONF) differ, so a
-class-*adding* addon cannot diverge; the residual case is an ACS-only addon,
-which the class-name protocol makes safe.
+The team-info status broadcast carries a **`(UH_PLDEF_* kind, definition id)`
+pair of plain integers**, restricted to **vanilla ids (`>= 0`)**. Three payloads
+are forbidden here, and each one has already caused a bug:
+
+- **An ACS string.** `NamedExecuteClientScript` copies only raw int args, and the
+  ACS string pool is per-process and garbage-collected, so a string index means
+  something else entirely on the client. `NamedSendNetworkString` is the only
+  supported path and needs its own per-client mailbox. (The weapon `tag` in
+  `uh_ti_stat` still has this latent bug; nothing verifies its content.)
+- **A presentation table row.** Rows are handed out in registration order.
+- **A custom `Define*(-1, …)` id.** Also assigned in registration order, so a
+  peer missing an earlier addon resolves the same number to a different class.
+
+A class with no vanilla definition syncs as `UH_PLDEF_NONE`, and the client keeps
+whatever class it observed itself while the actor was alive — so a custom addon
+class still shows its own face to any peer that saw the player, and a peer that
+never did shows nothing. `UH_Ti_ActorForIdentity` maps the pair back through the
+client's own tables. The engine already refuses a connection whose protected
+lumps (DECORATE, KEYCONF) differ, so a class-*adding* addon cannot diverge at
+all.
 
 Built-in rows are generated into `*_presentation.acs` fragments next to the
 definition they belong to. Regenerate with `python3

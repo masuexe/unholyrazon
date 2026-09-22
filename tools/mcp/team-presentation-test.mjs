@@ -86,7 +86,7 @@ function usage() {
     "DECORATE and KEYCONF are protected lumps, so both peers always agree on the actor\n" +
     "class set.  The residual divergence is an ACS-only addon that registers\n" +
     "presentation rows without touching DECORATE, and that is covered by the\n" +
-    "safe-degradation assertion below.\n" +
+    "safe-degradation assertion plus the controlled transfer cases in 3c.\n" +
     "Requires local TCP/UDP ports and the bridge-patched engine.\n";
 }
 
@@ -132,15 +132,18 @@ async function mapArray(name, index) {
 // generated presentation fragments so the probe never carries its own copy of
 // the data.  tools/check_team_presentation.py proves those fragments match the
 // former hardcoded tables; this probe proves the live client agrees.
+// PLS_* role -> the definition side that must own the class.
+const ROLE_SIDE = { 1: "surv", 2: "boss", 6: "eye" };
 const EXPECTED = new Map();
-for (const frag of [
-  "src/acs_source/classes/survivors/definitions/uh_survdefs_presentation.acs",
-  "src/acs_source/classes/bosses/boss_presentation_defs.acs",
-  "src/acs_source/classes/demoneyes/definitions/uh_eyedefs_presentation.acs",
-]) {
+const SIDES = [
+  ["surv", "src/acs_source/classes/survivors/definitions/uh_survdefs_presentation.acs"],
+  ["boss", "src/acs_source/classes/bosses/boss_presentation_defs.acs"],
+  ["eye", "src/acs_source/classes/demoneyes/definitions/uh_eyedefs_presentation.acs"],
+];
+for (const [side, frag] of SIDES) {
   const body = readFileSync(join(ROOT, frag), "utf8");
   for (const m of body.matchAll(/DefineTeamPresentation\("([^"]+)",\s*"([^"]*)",\s*"([^"]*)",\s*"([^"]*)",\s*-?\d+\)/g)) {
-    EXPECTED.set(m[1].toLowerCase(), { name: m[2], portrait: m[3], scoreIcon: m[4] });
+    EXPECTED.set(m[1].toLowerCase(), { side, name: m[2], portrait: m[3], scoreIcon: m[4] });
   }
 }
 
@@ -273,40 +276,89 @@ try {
     if (l.known) { return true; }
     return l.portrait === "" && l.scoreIcon === "" && l.name === l.cls;
   });
-  // Where the role is also known, the cached class must be a real definition of
-  // that side (a Boss slot must not cache a survivor class).
+  // Where the role is also known, the cached class must be a definition of THAT
+  // side.  This is the check that catches an id resolving to the wrong table:
+  // a Boss slot caching a survivor class means the synced (kind, id) pair was
+  // misinterpreted, which is exactly what a load-order-dependent id would do.
   const roleAgreement = [];
   for (const line of cacheLines) {
     const role = roles[line.slot];
     if (role === null || role < 0) { continue; }
     const want = EXPECTED.get(line.cls.toLowerCase());
     if (!want) { continue; }
-    roleAgreement.push({ slot: line.slot, role, cls: line.cls, ok: true });
+    const wantSide = ROLE_SIDE[role];
+    roleAgreement.push({
+      slot: line.slot, role, cls: line.cls, side: want.side, wantSide,
+      ok: want.side === wantSide,
+    });
   }
+  const roleAgreementOk = roleAgreement.length > 0 && roleAgreement.every(r => r.ok);
   const identityDetail = cacheLines.map(l => ({ slot: l.slot, cls: l.cls, known: l.known, portrait: l.portrait }));
   // unknownSeen keeps the assertion above from being vacuous: at least one class
   // this peer does not know must actually have been published.
   const unknownSeen = cacheLines.some(l => !l.known);
-  const identityOk = cachePublished && safeDegradation && unknownSeen;
+  const identityOk = cachePublished && safeDegradation && unknownSeen && roleAgreementOk;
 
-  // --- 3c. deterministic receiver round-trip --------------------------------
-  // Push a known class name for an unused slot and read the role back.  This
-  // proves the wire format without depending on the round reaching a stable
-  // state.  (The class string itself cannot be read back through get_map_array,
-  // which only returns integers, so the role is the observable here.)
+  // --- 3c. controlled server -> client identity transfer --------------------
+  // The cache dump above cannot prove the transfer, because uhticlasscache is
+  // also filled locally from the live actor.  Drive the receiver directly with a
+  // known (kind, id) pair for a slot that has NO live actor, then read back what
+  // the client derived from its OWN tables.  This is the only part of the probe
+  // that exercises the wire format deterministically.
+  //
+  // PLS_* role values and the UH_PLDEF_* kinds are plain integers, so they can be
+  // pushed through run_script (which only accepts int args -- another reason an
+  // ACS string is not a viable payload here).
   const PROBE_SLOT = 7;
-  let rtRole = null;
-  for (let i = 0; i < 10; i += 1) {
-    await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [PROBE_SLOT, 2, 0], always: true }, 30_000);
-    await delay(2_500);
-    rtRole = await mapArray("uhtirole", PROBE_SLOT);
-    if (rtRole === 2) { break; }
-  }
-  const receiverRoundTrip = rtRole === 2;
+  const transfer = [];
+  const pushIdentity = async (kind, id) => {
+    for (let i = 0; i < 10; i += 1) {
+      await tool("run_script", { instance: 1, script: "uh_ti_sync_status",
+        args: [PROBE_SLOT, 2, kind, id], always: true }, 30_000);
+      await delay(2_500);
+      const line = (await dumpCacheLines()).find(l => l.slot === PROBE_SLOT);
+      if (line) { return line; }
+    }
+    return null;
+  };
+  const dumpCacheLines = async () => {
+    await tool("run_script", { instance: 1, script: "uh_ti_TeamInfoCacheDump", args: [], always: true }, 40_000);
+    await delay(4_000);
+    const text = readFileSync(CLIENT_LOG, "utf8");
+    const cut = text.lastIndexOf("TeamInfoCache: begin");
+    if (cut < 0) { return []; }
+    return [...text.slice(cut).matchAll(/TeamInfoCache: slot (\d+) (\S+) -> name=(.*?) portrait=(.*?) scoreIcon=(.*?) known=([01])(?:\r?\n|$)/g)]
+      .map(m => ({ slot: Number(m[1]), cls: m[2], name: m[3], portrait: m[4], scoreIcon: m[5], known: m[6] === "1" }));
+  };
+
+  // (a) a vanilla boss id must resolve to that boss's own class and face.
+  const boss0 = await pushIdentity(2, 0);
+  transfer.push({ case: "vanilla boss 0", line: boss0, wantCls: "TrueBusterExpert", wantPortrait: "UB000MUG" });
+  // (b) a vanilla survivor id must resolve to that survivor.
+  const surv6 = await pushIdentity(1, 6);
+  transfer.push({ case: "vanilla survivor 6", line: surv6, wantCls: "LuckyLass", wantPortrait: "UMUG_6" });
+  // (c) an undefined vanilla slot must resolve to NOTHING, not to a neighbour.
+  const undef = await pushIdentity(2, 9999);
+  transfer.push({ case: "undefined boss 9999", line: undef, wantCls: null, wantPortrait: "" });
+  // (d) a negative (custom, load-order-dependent) id must be REJECTED by the
+  //     receiver, so it can never be misresolved on a peer with another addon set.
+  const custom = await pushIdentity(1, -1);
+  transfer.push({ case: "custom survivor -1", line: custom, wantCls: null, wantPortrait: "" });
+
+  const transferOk = transfer.every(t => {
+    if (!t.line) { return false; }
+    if (t.wantCls === null) {
+      // Either the receiver rejected it, or it resolved to an unknown class:
+      // both must yield an empty face, never another class's face.
+      return t.line.portrait === "" && t.line.scoreIcon === "";
+    }
+    return t.line.cls === t.wantCls && t.line.portrait === t.wantPortrait;
+  });
+
   // Restore the slot so the probe leaves no residue.
-  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [PROBE_SLOT, -1, 0], always: true }, 30_000);
+  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [PROBE_SLOT, -1, 0, 0], always: true }, 30_000);
   await delay(2_000);
-  const rtCleared = (await mapArray("uhtirole", PROBE_SLOT)) === -1;
+  const rtCleared = !(await dumpCacheLines()).some(l => l.slot === PROBE_SLOT);
 
   // --- 4. dead-row identity retention ---------------------------------------
   // A dead or body-less player has no readable actor class, so the scoreboard
@@ -314,12 +366,12 @@ try {
   // transition to PLS_DEAD must RETAIN both the role and the identity (only
   // PLS_NULL clears them), and clearing one slot must not disturb the others.
   const DEAD_SLOT = 6;
-  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, 2, 0], always: true }, 30_000);
+  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, 2, 1, 6], always: true }, 30_000);
   await delay(2_500);
   const deadRole = await mapArray("uhtirole", DEAD_SLOT);
   const seeded = deadRole === 2;
 
-  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, 0, 0], always: true }, 30_000);
+  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, 0, 1, 6], always: true }, 30_000);
   await delay(2_500);
   const afterDeadRole = await mapArray("uhtirole", DEAD_SLOT);
   // PLS_DEAD keeps the retained role; that is what the dead row is keyed on.
@@ -342,7 +394,7 @@ try {
     return out;
   };
   const beforeClear = await dumpCache();
-  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, -1, 0], always: true }, 30_000);
+  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, -1, 0, 0], always: true }, 30_000);
   await delay(2_500);
   const afterClear = await dumpCache();
   let leak = false;
@@ -371,7 +423,8 @@ try {
     roleAgreement,
     cacheLines,
     unknownSeen,
-    receiverRoundTrip,
+    transfer,
+    transferOk,
     rtCleared,
     deadRowRetained,
     noLeak,
@@ -380,8 +433,7 @@ try {
     serverLogTail: dedicatedLog.split(/\r?\n/).slice(-20),
   };
   result.pass = tableBuilt && (!options.addon || addonOk) && resolved && liveOk && identityOk
-    && receiverRoundTrip && rtCleared && deadRowRetained && noLeak
-    && unknownSeen;
+    && transferOk && rtCleared && deadRowRetained && noLeak && roleAgreementOk;
 } catch (error) {
   result = { status: "error", error: error instanceof Error ? error.message : String(error), serverLogTail: dedicatedLog.split(/\r?\n/).slice(-20) };
 } finally {

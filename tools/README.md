@@ -92,15 +92,18 @@ HUD resolves from:
   presentation fragments (`tools/check_team_presentation.py` proves those match
   the former hardcoded tables). `scoreIcon` covers the LuckyLass `UMUG_6_`
   override.
-- **identity sync** — `uh_ti_TeamInfoCacheDump` logs what the client actually
-  cached per slot. Every published class must be a plausible name, and a class
-  the peer does not know (`known=0`) must resolve to an empty portrait *and* an
-  empty icon, with the name falling back to the class itself. That is the
-  property that makes a divergent addon set safe, and it is why neither a
-  definition id nor a presentation row may ever be synchronised — both are
-  assigned in load order. `unknownSeen` keeps the assertion from being vacuous.
-  A mismatched addon set cannot be forced for a class-adding addon: the engine
-  rejects the connection on protected lumps.
+- **identity sync** — the status broadcast carries a `(UH_PLDEF_* kind, vanilla
+  definition id)` pair of plain integers. `uh_ti_TeamInfoCacheDump` logs what the
+  client cached per slot; a class the peer does not know (`known=0`) must resolve
+  to an empty portrait *and* an empty icon. Where `uhtirole[]` is also known, the
+  cached class must be a definition of *that* side — a Boss slot caching a
+  survivor class means the pair was misinterpreted.
+- **controlled transfer** — the cache dump alone cannot prove the transfer,
+  because the client also fills that cache from the live actor. The probe
+  therefore drives `uh_ti_sync_status` directly for a slot with no live actor and
+  reads back what the client derived from its own tables: a vanilla boss id must
+  resolve to that boss, an undefined slot must resolve to nothing, and a negative
+  (custom, load-order-dependent) id must be rejected rather than misresolved.
 - **receiver round-trip** — a known packed identity pushed through
   `uh_ti_sync_status` is stored, and `PLS_NULL` clears both the role and the
   identity.

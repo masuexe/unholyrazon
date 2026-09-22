@@ -3410,12 +3410,17 @@ function int GetTeamPresentationFlags(int row) {
 // The single actor -> display path for every consumer.  Consumers must never
 // walk the three definition tables themselves: the order below IS the contract.
 //
-// Definition kinds returned by UH_FindPlayerDefinition.  These classify an actor
-// for callers that need to know which table owns it; they are NOT a network
-// protocol — the status broadcast sends the actor class name instead, because
-// ids and row indices are both load-order dependent.  survivor -> boss -> eye is
-// the fixed lookup order and a presentation-only row is the last resort, so an
-// actor that is also a real definition keeps its game-logic classification.
+// Definition kinds returned by UH_FindPlayerDefinition.  survivor -> boss -> eye
+// is the fixed lookup order and a presentation-only row is the last resort, so
+// an actor that is also a real definition keeps its game-logic classification.
+//
+// These also label the team-info status broadcast (uh_ti_sync_status's third
+// argument).  That is safe ONLY because the sender restricts itself to VANILLA
+// ids (>= 0): a custom Define*(-1, ...) id is assigned in registration order, so
+// a peer missing an earlier addon would resolve the same number to a different
+// class.  Never publish a custom id, a presentation row index, or an ACS string
+// here — NamedExecuteClientScript copies raw ints and the ACS string pool is
+// per-process, so a string index means nothing on the client.
 #libdefine UH_PLDEF_NONE 0
 #libdefine UH_PLDEF_SURVIVOR 1
 #libdefine UH_PLDEF_BOSS 2
