@@ -443,3 +443,23 @@ script "rz_debug_TeamPresentationCheck" (void) CLIENTSIDE {
   }
   SetResultValue(fails);
 }
+
+// --- Server-side team-info identity cache -----------------------------------
+// Run on the SERVER (puke rz_debug_TeamInfoSlots); it reads server-only arrays.
+// This is the classification the full snapshot depends on, and it is what a
+// regression would break: a slot that is connected but out of the game is a dead
+// spectator and must keep its retained identity, while a slot nobody occupies
+// must publish none.  Logging it makes that observable without a client.
+script "rz_debug_TeamInfoSlots" (void) {
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    bool connected = UH_Ti_IsConnectedPlayer(i);
+    if (!connected && playerlifestatusarr[i] == PLS_NULL) { continue; }
+    UH_Log(UH_LOG_INFO, StrParam(s:"TeamInfoSlots: slot ", i:i,
+      s:" connected=", i:connected,
+      s:" ingame=", i:PlayerInGame(i),
+      s:" spec=", i:PlayerIsSpectator(i),
+      s:" life=", i:playerlifestatusarr[i],
+      s:" kind=", i:uhsrvkind[i],
+      s:" id=", i:uhsrvid[i]));
+  }
+}

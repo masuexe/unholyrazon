@@ -23,9 +23,12 @@
 //      assertion from being vacuous.  A mismatched addon set cannot be forced for
 //      a class-adding addon -- the engine rejects the connection on protected
 //      lumps -- so the ACS-only divergence is what this covers.
-//   4. dead-row face - the PLS_DEAD transition keeps the retained role and the
-//      cached class, and clearing one slot leaves every other slot's class
-//      untouched (no cross-slot leak).
+//   4. dead-spectator retention - driven through the REAL server path: the round
+//      eliminates players into dead spectators, rz_debug_TeamInfoSlots reports
+//      the server's classification, ub_StartUpSettings forces a full snapshot,
+//      and the client must keep the dead spectators' role AND class while slots
+//      nobody occupies are cleared.  The receiver is also driven directly in 3c,
+//      but that cannot catch a snapshot-classification regression on its own.
 //
 // Usage:
 //   node tools/mcp/team-presentation-test.mjs [--profile NAME] [--game-port N]
@@ -391,31 +394,60 @@ try {
   await delay(2_000);
   const rtCleared = !(await dumpCacheLines()).some(l => l.slot === PROBE_SLOT);
 
-  // --- 4. dead-row identity retention ---------------------------------------
-  // A dead or body-less player has no readable actor class, so the scoreboard
-  // and the teammate bar must fall back to the synced definition identity.  The
-  // transition to PLS_DEAD must RETAIN both the role and the identity (only
-  // PLS_NULL clears them), and clearing one slot must not disturb the others.
-  const DEAD_SLOT = 6;
-  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, 2, 1, 6], always: true }, 30_000);
-  await delay(2_500);
-  const deadRole = await mapArray("uhtirole", DEAD_SLOT);
-  const seeded = deadRole === 2;
+  // --- 4. dead-spectator retention through the REAL server path --------------
+  // The previous version called uh_ti_sync_status directly on the client, which
+  // bypassed UH_Ti_IdentityForPlayer and UH_Ti_SendSnapshotCore entirely -- so
+  // re-introducing the dead-spectator misclassification would still have passed.
+  // Drive the actual server path instead:
+  //   (a) let the round run so players are eliminated into dead spectators;
+  //   (b) read the server's own classification (rz_debug_TeamInfoSlots);
+  //   (c) force a full snapshot (ub_StartUpSettings -> UH_TeamInfo_FullSnapshot);
+  //   (d) assert the dead spectators kept their role AND their identity, while
+  //       slots nobody occupies were cleared.
+  const serverSlots = async () => {
+    sendServer("puke rz_debug_TeamInfoSlots");
+    await delay(4_000);
+    const text = readFileSync(SERVER_LOG, "utf8");
+    const cut = text.lastIndexOf("TeamInfoSlots: slot");
+    const out = [];
+    if (cut < 0) { return out; }
+    for (const m of text.slice(cut).matchAll(/TeamInfoSlots: slot (\d+) connected=(\d+) ingame=(\d+) spec=(\d+) life=(-?\d+) kind=(\d+) id=(-?\d+)/g)) {
+      out.push({
+        slot: Number(m[1]), connected: m[2] === "1", ingame: m[3] === "1",
+        spec: m[4] === "1", life: Number(m[5]), kind: Number(m[6]), id: Number(m[7]),
+      });
+    }
+    return out;
+  };
 
-  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, 0, 1, 6], always: true }, 30_000);
-  await delay(2_500);
-  const afterDeadRole = await mapArray("uhtirole", DEAD_SLOT);
-  // PLS_DEAD keeps the retained role; that is what the dead row is keyed on.
-  const deadRowRetained = afterDeadRole === 2;
+  // (a) wait for at least one eliminated player: connected, out of the game, and
+  //     still holding a life status (a dead spectator rather than an empty slot).
+  let slots = await serverSlots();
+  for (let i = 0; i < 30; i += 1) {
+    if (slots.some(sl => sl.connected && !sl.ingame && sl.life !== -1)) { break; }
+    sendServer("addbot");
+    await delay(3_000);
+    slots = await serverSlots();
+  }
+  const deadSpectators = slots.filter(sl => sl.connected && !sl.ingame && sl.life !== -1);
+  const unusedSlots = slots.filter(sl => !sl.connected);
+  // A dead spectator must keep a resolved identity server-side.  This is the
+  // assertion the old client-only test could not make.
+  const serverRetainsDead = deadSpectators.length > 0
+    && deadSpectators.every(sl => sl.kind >= 1 && sl.kind <= 3);
 
-  // Clearing the probe slot must leave every other slot's cached class
-  // untouched.  The cache is a string, so it is observed through the dump log.
+  // (c) force the full snapshot through the real path.
+  sendServer("puke ub_StartUpSettings");
+  await delay(10_000);
+  const slotsAfter = await serverSlots();
+
+  // (d) the client must still hold the dead spectator's role and class...
+  const clientRoles = [];
+  for (let k = 0; k < SLOTS; k += 1) clientRoles.push(await mapArray("uhtirole", k));
   const dumpCache = async () => {
     await tool("run_script", { instance: 1, script: "uh_ti_TeamInfoCacheDump", args: [], always: true }, 40_000);
     await delay(4_000);
     const text = readFileSync(CLIENT_LOG, "utf8");
-    // Only the last dump counts: the log is append-only, so an earlier dump
-    // would keep reporting slots a later one no longer has.
     const cut = text.lastIndexOf("TeamInfoCache: begin");
     const out = new Map();
     if (cut < 0) { return out; }
@@ -424,17 +456,19 @@ try {
     }
     return out;
   };
-  const beforeClear = await dumpCache();
-  await tool("run_script", { instance: 1, script: "uh_ti_sync_status", args: [DEAD_SLOT, -1, 0, 0], always: true }, 30_000);
-  await delay(2_500);
-  const afterClear = await dumpCache();
-  let leak = false;
-  for (const [slot, cls] of beforeClear) {
-    if (slot === DEAD_SLOT || slot === PROBE_SLOT) { continue; }
-    if (afterClear.get(slot) !== cls) { leak = true; }
-  }
-  const clearedSlot = !afterClear.has(DEAD_SLOT);
-  const noLeak = !leak && clearedSlot;
+  const cacheAfter = await dumpCache();
+  const deadRowRetained = deadSpectators.length > 0 && deadSpectators.every(sl => {
+    // PLS_DEAD retains the role on the client; only PLS_NULL clears it.
+    if (clientRoles[sl.slot] === null || clientRoles[sl.slot] < 0) { return false; }
+    // ...and the class cache must still resolve to a face for it.
+    const cls = cacheAfter.get(sl.slot);
+    return typeof cls === "string" && cls.length > 0;
+  });
+  // ...while slots nobody occupies must be cleared on the client.
+  const unusedCleared = unusedSlots.every(sl =>
+    (clientRoles[sl.slot] === null || clientRoles[sl.slot] === -1)
+    && !cacheAfter.has(sl.slot));
+  const noLeak = unusedCleared;
 
   result = {
     status: "ok",
@@ -458,13 +492,18 @@ try {
     transferOk,
     rtCleared,
     deadRowRetained,
+    serverRetainsDead,
     noLeak,
-    deadRowDetail: { seeded, deadRole, afterDeadRole, beforeClear: [...beforeClear], afterClear: [...afterClear] },
+    deadRowDetail: {
+      deadSpectators, unusedSlots, slotsAfter,
+      clientRoles, cacheAfter: [...cacheAfter],
+    },
     clientLogTail: clientLog.split(/\r?\n/).slice(-30),
     serverLogTail: dedicatedLog.split(/\r?\n/).slice(-20),
   };
   result.pass = tableBuilt && (!options.addon || addonOk) && resolved && liveOk && identityOk
-    && transferOk && rtCleared && deadRowRetained && noLeak && roleAgreementOk;
+    && transferOk && rtCleared && serverRetainsDead && deadRowRetained
+    && noLeak && roleAgreementOk;
 } catch (error) {
   result = { status: "error", error: error instanceof Error ? error.message : String(error), serverLogTail: dedicatedLog.split(/\r?\n/).slice(-20) };
 } finally {
