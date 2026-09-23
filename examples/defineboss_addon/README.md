@@ -20,6 +20,7 @@ New-Item -ItemType Directory -Force -Path acs | Out-Null
   -i "..\..\src\acs_source\v6b_overrides\_includes\mod_api" `
   -i "..\..\src\acs_source\v6b_overrides\_includes\common" `
   -i "..\..\src\acs_source\_includes\mod_api" `
+  -i "..\..\src\acs_source\_imports" `
   -i "D:\AppFiles\ACC" `
   acs_source\uh_exaddon.acs `
   acs\uh_exaddon.o
@@ -50,6 +51,17 @@ The example registers `uh_BossMorphSetup_UHExampleBoss` via
 `MorphActor`, before the first weapon `Ready`, and gives the boss the same two
 lives as CuttyCut. This is where multi-weapon / ExtraLife / PowerLimit setup
 belongs for custom bosses.
+
+## CRUD example
+
+`uh_exaddon_set_enabled(0)` calls `SetBossEnabledByActor`, keeps the row
+queryable, and removes it from the random Boss pool. Passing `1` restores pool
+eligibility. The script returns `UHDB_OK` (0) on success. For the full set of
+update, count, and remove operations, see
+`reports/uhdt-identity-crud-contract.md` in the main repository. A removal
+returns `UHDB_ERR_REFERENCED` while the music row or morph setup row exists;
+those references must be removed first. Auto-assigned negative IDs remain
+reserved for the lifetime of the map.
 
 ## Notes
 

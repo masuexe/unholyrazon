@@ -2,6 +2,7 @@
 #include "zcommon.acs"
 
 #import "uhdt.acs"
+#import "uhdbcrud.acs"
 
 function int UH_DefineBossCore(
 	  int id,
@@ -20,7 +21,13 @@ function int UH_DefineBossCore(
 	if (StrCmp(actor, "") == 0)
 		return UHBOSS_FAIL;
 
-	if (FindBossByActor(actor) != UHBOSS_FAIL)
+	if (FindBossByActorAllocated(actor) != UHBOSS_FAIL)
+		return UHBOSS_FAIL;
+	if (rarity < UHBOSS_POOL_NONE || rarity >= UHBOSS_POOL_COUNT
+		|| basehp < 0 || addhp < 0)
+		return UHBOSS_FAIL;
+	if (rarity > UHBOSS_POOL_NONE
+		&& uh_boss_pool_count[rarity] >= UH_MAX_VANILLA_BOSS)
 		return UHBOSS_FAIL;
 
 	if (id >= 0)
@@ -72,6 +79,37 @@ script "uh_DefineBoss_S" (void)
 script "uh_IsBossDefined_S" (int id)
 {
 	SetResultValue(IsBossDefined(id));
+}
+
+script "uh_IsBossEnabled_S" (int id) {
+	SetResultValue(IsBossEnabled(id));
+}
+
+script "uh_SetBossEnabled_S" (int id, int enabled) {
+	SetResultValue(SetBossEnabledCore(id, enabled));
+}
+
+script "uh_UpdateBossDisplay_S" (int id) {
+	SetResultValue(UpdateBossDisplayCore(id, GetCVarString("uh_db_name"),
+		GetCVarString("uh_db_mugshot"), GetCVarString("uh_db_instruction"),
+		GetCVarString("uh_db_spawnmsgtype"), GetCVarString("uh_db_spawnmsg"),
+		GetCVarString("uh_db_ragewarning")));
+}
+
+script "uh_UpdateBossStats_S" (int id, int rarity, int basehp, int addhp) {
+	SetResultValue(UpdateBossStatsCore(id, rarity, basehp, addhp));
+}
+
+script "uh_RemoveBoss_S" (int id) {
+	SetResultValue(RemoveBossCore(id));
+}
+
+script "uh_GetDefinedBossCount_S" (void) {
+	SetResultValue(GetDefinedBossCount());
+}
+
+script "uh_GetEnabledBossCount_S" (void) {
+	SetResultValue(GetEnabledBossCount());
 }
 
 script "uh_FindBossByActor_S" (void)
@@ -183,7 +221,7 @@ function int DefineSurvivorCore(int id, str actor, str name, str mugshot)
 	if (StrCmp(actor, "") == 0)
 		return UHSURV_FAIL;
 
-	if (FindSurvivorByActor(actor) != UHSURV_FAIL)
+	if (FindSurvivorByActorAllocated(actor) != UHSURV_FAIL)
 		return UHSURV_FAIL;
 
 	if (id >= 0)
@@ -221,6 +259,37 @@ script "uh_DefineSurvivor_S" (void)
 script "uh_IsSurvivorDefined_S" (int id)
 {
 	SetResultValue(IsSurvivorDefined(id));
+}
+
+script "uh_IsSurvivorEnabled_S" (int id)
+{
+	SetResultValue(IsSurvivorEnabled(id));
+}
+
+script "uh_SetSurvivorEnabled_S" (int id, int enabled)
+{
+	SetResultValue(SetSurvivorEnabledCore(id, enabled));
+}
+
+script "uh_UpdateSurvivorDisplay_S" (int id)
+{
+	SetResultValue(UpdateSurvivorDisplayCore(id,
+		GetCVarString("uh_ds_name"), GetCVarString("uh_ds_mugshot")));
+}
+
+script "uh_RemoveSurvivor_S" (int id)
+{
+	SetResultValue(RemoveSurvivorCore(id));
+}
+
+script "uh_GetDefinedSurvivorCount_S" (void)
+{
+	SetResultValue(GetDefinedSurvivorCount());
+}
+
+script "uh_GetEnabledSurvivorCount_S" (void)
+{
+	SetResultValue(GetEnabledSurvivorCount());
 }
 
 script "uh_FindSurvivorByActor_S" (void)
@@ -292,7 +361,7 @@ function int DefineDemoneyeCore(int id, str actor, str name, str prefix, int fla
 		return UHEYE_FAIL;
 
 	// Actor uniqueness only when actor is set (bonus face slots may omit actor).
-	if (StrCmp(actor, "") != 0 && FindEyeByActor(actor) != UHEYE_FAIL)
+	if (StrCmp(actor, "") != 0 && FindEyeByActorAllocated(actor) != UHEYE_FAIL)
 		return UHEYE_FAIL;
 
 	if (id >= 0)
@@ -328,6 +397,38 @@ script "uh_DefineDemoneye_S" (void)
 		GetCVarString("uh_de_mugshot"),
 		GetCVarString("uh_de_eventstem")
 	));
+}
+
+script "uh_IsEyeEnabled_S" (int id)
+{
+	SetResultValue(IsEyeEnabled(id));
+}
+
+script "uh_SetEyeEnabled_S" (int id, int enabled)
+{
+	SetResultValue(SetEyeEnabledCore(id, enabled));
+}
+
+script "uh_UpdateEyeDisplay_S" (int id)
+{
+	SetResultValue(UpdateEyeDisplayCore(id,
+		GetCVarString("uh_de_name"), GetCVarString("uh_de_prefix"),
+		GetCVarString("uh_de_mugshot")));
+}
+
+script "uh_RemoveEye_S" (int id)
+{
+	SetResultValue(RemoveEyeCore(id));
+}
+
+script "uh_GetDefinedEyeCount_S" (void)
+{
+	SetResultValue(GetDefinedEyeCount());
+}
+
+script "uh_GetEnabledEyeCount_S" (void)
+{
+	SetResultValue(GetEnabledEyeCount());
 }
 
 script "uh_IsEyeDefined_S" (int id)
@@ -506,7 +607,7 @@ function int DefineUnholyItemCore(int id, str actor, str name, str icon, int gro
 		return UHITEM_FAIL;
 	if (!ItemDtaddGroupIsKnown(group))
 		return UHITEM_FAIL;
-	if (FindItemByActor(actor) != UHITEM_FAIL)
+	if (FindItemByActorAllocated(actor) != UHITEM_FAIL)
 		return UHITEM_FAIL;
 
 	if (id >= 0)
@@ -540,6 +641,38 @@ script "uh_DefineUnholyItem_S" (void)
 		GetCVarString("uh_di_mugshot"),
 		GetCVarString("uh_di_sound")
 	));
+}
+
+script "uh_IsUnholyItemEnabled_S" (int id)
+{
+	SetResultValue(IsItemEnabled(id));
+}
+
+script "uh_SetUnholyItemEnabled_S" (int id, int enabled)
+{
+	SetResultValue(SetItemEnabledCore(id, enabled));
+}
+
+script "uh_UpdateUnholyItemDisplay_S" (int id)
+{
+	SetResultValue(UpdateItemDisplayCore(id,
+		GetCVarString("uh_di_name"), GetCVarString("uh_di_icon"),
+		GetCVarString("uh_di_mugshot"), GetCVarString("uh_di_sound")));
+}
+
+script "uh_RemoveUnholyItem_S" (int id)
+{
+	SetResultValue(RemoveItemCore(id));
+}
+
+script "uh_GetDefinedUnholyItemCount_S" (void)
+{
+	SetResultValue(GetUnholyItemCount());
+}
+
+script "uh_GetEnabledUnholyItemCount_S" (void)
+{
+	SetResultValue(GetEnabledItemCount());
 }
 
 script "uh_SetUnholyBox_S" (void)
@@ -697,6 +830,94 @@ script "uh_AddEventMusic_S" (void)
 	));
 }
 
+script "uh_SetBossMusicEnabled_S" (void)
+{
+	SetResultValue(SetBossMusicEnabledCore(
+		GetCVar("uh_bm_bossid"),
+		GetCVar("uh_bm_kind"),
+		GetCVar("uh_bm_phase"),
+		GetCVarString("uh_bm_lump"),
+		GetCVar("uh_bm_enabled")
+	));
+}
+
+script "uh_RemoveBossMusic_S" (void)
+{
+	SetResultValue(RemoveBossMusicCore(
+		GetCVar("uh_bm_bossid"),
+		GetCVar("uh_bm_kind"),
+		GetCVar("uh_bm_phase"),
+		GetCVarString("uh_bm_lump")
+	));
+}
+
+script "uh_IsBossMusicDefined_S" (void)
+{
+	SetResultValue(IsBossMusicDefinedCore(
+		GetCVar("uh_bm_bossid"),
+		GetCVar("uh_bm_kind"),
+		GetCVar("uh_bm_phase"),
+		GetCVarString("uh_bm_lump")
+	));
+}
+
+script "uh_IsBossMusicEnabled_S" (void)
+{
+	SetResultValue(IsBossMusicEnabledCore(
+		GetCVar("uh_bm_bossid"),
+		GetCVar("uh_bm_kind"),
+		GetCVar("uh_bm_phase"),
+		GetCVarString("uh_bm_lump")
+	));
+}
+
+script "uh_SetEventMusicEnabled_S" (void)
+{
+	SetResultValue(SetEventMusicEnabledCore(
+		GetCVar("uh_bm_kind"),
+		GetCVar("uh_bm_phase"),
+		GetCVarString("uh_bm_lump"),
+		GetCVar("uh_bm_enabled")
+	));
+}
+
+script "uh_RemoveEventMusic_S" (void)
+{
+	SetResultValue(RemoveEventMusicCore(
+		GetCVar("uh_bm_kind"),
+		GetCVar("uh_bm_phase"),
+		GetCVarString("uh_bm_lump")
+	));
+}
+
+script "uh_IsEventMusicDefined_S" (void)
+{
+	SetResultValue(IsEventMusicDefinedCore(
+		GetCVar("uh_bm_kind"),
+		GetCVar("uh_bm_phase"),
+		GetCVarString("uh_bm_lump")
+	));
+}
+
+script "uh_IsEventMusicEnabled_S" (void)
+{
+	SetResultValue(IsEventMusicEnabledCore(
+		GetCVar("uh_bm_kind"),
+		GetCVar("uh_bm_phase"),
+		GetCVarString("uh_bm_lump")
+	));
+}
+
+script "uh_GetDefinedMusicCount_S" (void)
+{
+	SetResultValue(GetDefinedMusicRowCount());
+}
+
+script "uh_GetEnabledMusicCount_S" (void)
+{
+	SetResultValue(GetEnabledMusicRowCount());
+}
+
 script "uh_DefineLMSEvent_S" (void)
 {
 	SetResultValue(DefineLMSEventCore(
@@ -731,6 +952,39 @@ script "uh_AddLMSEventDrop_S" (void)
 script "uh_IsLMSEventDefined_S" (int id)
 {
 	SetResultValue(IsLMSEventDefined(id));
+}
+
+script "uh_IsLMSEventEnabled_S" (int id)
+{
+	SetResultValue(IsLMSEventEnabled(id));
+}
+
+script "uh_SetLMSEventEnabled_S" (int id, int enabled)
+{
+	SetResultValue(SetLMSEventEnabledCore(id, enabled));
+}
+
+script "uh_UpdateLMSEvent_S" (int id)
+{
+	SetResultValue(UpdateLMSEventCore(id,
+		GetCVarString("uh_le_message"), GetCVarString("uh_le_raremessage"),
+		GetCVarString("uh_le_icon"), GetCVarString("uh_le_rareicon"),
+		GetCVar("uh_le_flags"), GetCVar("uh_le_weight")));
+}
+
+script "uh_RemoveLMSEvent_S" (int id)
+{
+	SetResultValue(RemoveLMSEventCore(id));
+}
+
+script "uh_GetDefinedLMSEventCount_S" (void)
+{
+	SetResultValue(GetDefinedLMSEventCount());
+}
+
+script "uh_GetEnabledLMSEventCount_S" (void)
+{
+	SetResultValue(GetEnabledLMSEventCount());
 }
 
 script "uh_FindLMSEventByStem_S" (void)
@@ -821,6 +1075,39 @@ script "uh_SetBonusEventEX_S" (void)
 script "uh_IsBonusEventDefined_S" (int id)
 {
 	SetResultValue(IsBonusEventDefined(id));
+}
+
+script "uh_IsBonusEventEnabled_S" (int id) {
+	SetResultValue(IsBonusEventEnabled(id));
+}
+
+script "uh_SetBonusEventEnabled_S" (int id, int enabled) {
+	SetResultValue(SetBonusEventEnabledCore(id, enabled));
+}
+
+script "uh_UpdateBonusEvent_S" (int id) {
+	SetResultValue(UpdateBonusEventCore(id,
+		GetCVarString("uh_be_name"), GetCVarString("uh_be_music"),
+		GetCVarString("uh_be_title"), GetCVarString("uh_be_album"),
+		GetCVarString("uh_be_artist"), GetCVarString("uh_be_sound"),
+		GetCVarString("uh_be_hud1"), GetCVarString("uh_be_hud2"),
+		GetCVarString("uh_be_startcb"), GetCVarString("uh_be_rebuildcb"),
+		GetCVarString("uh_be_endcb"), GetCVar("uh_be_arg1"),
+		GetCVar("uh_be_arg2"), GetCVar("uh_be_arg3"),
+		GetCVar("uh_be_flags"), GetCVar("uh_be_weight"),
+		GetCVar("uh_be_minp"), GetCVar("uh_be_maxp")));
+}
+
+script "uh_RemoveBonusEvent_S" (int id) {
+	SetResultValue(RemoveBonusEventCore(id));
+}
+
+script "uh_GetDefinedBonusEventCount_S" (void) {
+	SetResultValue(GetDefinedBonusEventCount());
+}
+
+script "uh_GetEnabledBonusEventCount_S" (void) {
+	SetResultValue(GetEnabledBonusEventCount());
 }
 
 script "uh_FindBonusEventByStem_S" (void)

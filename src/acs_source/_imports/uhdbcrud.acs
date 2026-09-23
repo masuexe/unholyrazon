@@ -1,0 +1,553 @@
+// UHDBCRUD — identity-table mutation logic split from UHDT because ACC limits
+// each ACS library to 256 functions.  Import-only: UHADDR imports this library.
+#library "uhdbcrud"
+#include "zcommon.acs"
+#import "uhdt.acs"
+
+function int FindBossByActorAllocated(str actor) {
+  int i;
+  if (StrCmp(actor, "") == 0) return UHBOSS_FAIL;
+  for (i = 0; i < UH_MAX_VANILLA_BOSS; i++) {
+    if (uh_bossvanilladefined[i] != 0
+      && StrICmp(actor, uh_bossvanillastr[i][UHBOSS_STR_ACTOR]) == 0)
+      return i;
+  }
+  for (i = 0; i < uh_bosscustomcount; i++) {
+    if (StrICmp(actor, uh_bosscustomstr[i][UHBOSS_STR_ACTOR]) == 0)
+      return -1 - i;
+  }
+  return UHBOSS_FAIL;
+}
+
+function void BossPoolRemoveCore(int rarity, int id) {
+  if (rarity <= UHBOSS_POOL_NONE || rarity >= UHBOSS_POOL_COUNT) return;
+  int count = uh_boss_pool_count[rarity];
+  for (int i = 0; i < count; i++) {
+    if (uh_bosspoolids[rarity][i] != id) continue;
+    for (int j = i + 1; j < count; j++)
+      uh_bosspoolids[rarity][j - 1] = uh_bosspoolids[rarity][j];
+    uh_boss_pool_count[rarity] = count - 1;
+    return;
+  }
+}
+
+function int SetBossEnabledCore(int id, int enabled) {
+  if (!IsBossDefined(id)) return UHDB_ERR_NOTFOUND;
+  if (IsBossEnabled(id) == (enabled != 0)) return UHDB_OK;
+  int rarity = GetBossRarity(id);
+  if (enabled && rarity > UHBOSS_POOL_NONE && rarity < UHBOSS_POOL_COUNT
+    && uh_boss_pool_count[rarity] >= UH_MAX_VANILLA_BOSS)
+    return UHDB_ERR_CAPACITY;
+  if (enabled)
+    UH_BossAppendPool(rarity, id);
+  else
+    BossPoolRemoveCore(rarity, id);
+  if (id >= 0)
+    uh_bossvanilladefined[id] = enabled ? UHDB_ROW_ACTIVE : UHDB_ROW_DISABLED;
+  else
+    uh_bosscustomint[UH_BossCustomIndex(id)][UHBOSS_INT_STATE]
+      = enabled ? UHDB_ROW_ACTIVE : UHDB_ROW_DISABLED;
+  return UHDB_OK;
+}
+
+function int UpdateBossDisplayCore(int id, str name, str mugshot, str instruction,
+  str spawnmessagetype, str spawnmessage, str ragewarning) {
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL) return UHDB_ERR_NOTFOUND;
+  if (id >= 0) {
+    uh_bossvanillastr[slot][UHBOSS_STR_NAME] = name;
+    uh_bossvanillastr[slot][UHBOSS_STR_MUGSHOT] = mugshot;
+    uh_bossvanillastr[slot][UHBOSS_STR_INSTRUCTION] = instruction;
+    uh_bossvanillastr[slot][UHBOSS_STR_SPAWNMSGTYPE] = spawnmessagetype;
+    uh_bossvanillastr[slot][UHBOSS_STR_SPAWNMSG] = spawnmessage;
+    uh_bossvanillastr[slot][UHBOSS_STR_RAGEWARNING] = ragewarning;
+  }
+  else {
+    uh_bosscustomstr[slot][UHBOSS_STR_NAME] = name;
+    uh_bosscustomstr[slot][UHBOSS_STR_MUGSHOT] = mugshot;
+    uh_bosscustomstr[slot][UHBOSS_STR_INSTRUCTION] = instruction;
+    uh_bosscustomstr[slot][UHBOSS_STR_SPAWNMSGTYPE] = spawnmessagetype;
+    uh_bosscustomstr[slot][UHBOSS_STR_SPAWNMSG] = spawnmessage;
+    uh_bosscustomstr[slot][UHBOSS_STR_RAGEWARNING] = ragewarning;
+  }
+  return UHDB_OK;
+}
+
+function int UpdateBossStatsCore(int id, int rarity, int basehp, int addhp) {
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL) return UHDB_ERR_NOTFOUND;
+  if (rarity < UHBOSS_POOL_NONE || rarity >= UHBOSS_POOL_COUNT
+    || basehp < 0 || addhp < 0) return UHDB_ERR_BADARG;
+  int oldrarity = GetBossRarity(id);
+  if (rarity != oldrarity && IsBossEnabled(id)
+    && rarity > UHBOSS_POOL_NONE
+    && uh_boss_pool_count[rarity] >= UH_MAX_VANILLA_BOSS)
+    return UHDB_ERR_CAPACITY;
+  if (rarity != oldrarity && IsBossEnabled(id)) {
+    BossPoolRemoveCore(oldrarity, id);
+    UH_BossAppendPool(rarity, id);
+  }
+  if (id >= 0) {
+    uh_bossvanillaint[slot][UHBOSS_INT_RARITY] = rarity;
+    uh_bossvanillaint[slot][UHBOSS_INT_BASEHP] = basehp;
+    uh_bossvanillaint[slot][UHBOSS_INT_ADDHP] = addhp;
+  }
+  else {
+    uh_bosscustomint[slot][UHBOSS_INT_RARITY] = rarity;
+    uh_bosscustomint[slot][UHBOSS_INT_BASEHP] = basehp;
+    uh_bosscustomint[slot][UHBOSS_INT_ADDHP] = addhp;
+  }
+  return UHDB_OK;
+}
+
+function int RemoveBossCore(int id) {
+  int i;
+  if (!IsBossDefined(id)) return UHDB_ERR_NOTFOUND;
+  for (i = 0; i < UH_MAX_PLAYERS; i++) {
+    if (PlayerInGame(i) && (uh_playerbossid[i] == id || uh_playeractiveboss[i] == id))
+      return UHDB_ERR_REFERENCED;
+  }
+  if (ACS_NamedExecuteWithResult("uh_IsBossRegistryReferenced", id))
+    return UHDB_ERR_REFERENCED;
+  for (i = 0; i < uh_bossunmorphcount; i++)
+    if (uh_bossunmorphid[i] == id) return UHDB_ERR_REFERENCED;
+  for (i = 0; i < uh_bossmusiccount; i++)
+    if (IsMusicRowDefined(i) && uh_bossmusicbossid[i] == id)
+      return UHDB_ERR_REFERENCED;
+  str actor = GetBossActor(id);
+  for (i = 0; i < UH_MAX_VANILLA_BOSS; i++) {
+    if (i != id && uh_bossvanilladefined[i] != 0
+      && (uh_bossvanillaint[i][UHBOSS_INT_EXBASEID] == id
+        || StrICmp(uh_bossvanillastr[i][UHBOSS_STR_EXBASEACTOR], actor) == 0))
+      return UHDB_ERR_REFERENCED;
+  }
+  for (i = 0; i < uh_bosscustomcount; i++) {
+    if (-1 - i != id
+      && (uh_bosscustomint[i][UHBOSS_INT_EXBASEID] == id
+        || StrICmp(uh_bosscustomstr[i][UHBOSS_STR_EXBASEACTOR], actor) == 0))
+      return UHDB_ERR_REFERENCED;
+  }
+  if (IsBossEnabled(id)) BossPoolRemoveCore(GetBossRarity(id), id);
+  if (id >= 0)
+    uh_bossvanilladefined[id] = UHDB_ROW_REMOVED;
+  else
+    uh_bosscustomint[UH_BossCustomIndex(id)][UHBOSS_INT_STATE] = UHDB_ROW_REMOVED;
+  return UHDB_OK;
+}
+
+function int GetDefinedBossCount(void) {
+  int count = 0, i;
+  for (i = 0; i < UH_MAX_VANILLA_BOSS; i++)
+    if (IsBossDefined(i)) count++;
+  for (i = 0; i < uh_bosscustomcount; i++)
+    if (IsBossDefined(-1 - i)) count++;
+  return count;
+}
+
+function int GetEnabledBossCount(void) {
+  int count = 0, i;
+  for (i = 0; i < UH_MAX_VANILLA_BOSS; i++)
+    if (IsBossEnabled(i)) count++;
+  for (i = 0; i < uh_bosscustomcount; i++)
+    if (IsBossEnabled(-1 - i)) count++;
+  return count;
+}
+
+function bool IsSurvivorEnabled(int id) {
+  if (id >= 0)
+    return id < UH_MAX_VANILLA_SURV && uh_survvanilladefined[id] == UHDB_ROW_ACTIVE;
+  int i = SurvCustomIndex(id);
+  return i >= 0 && i < uh_survcustomcount
+    && uh_survcustomstr[i][UHSURV_STR_STATE] == UHDB_ROW_ACTIVE;
+}
+
+// Includes tombstones so a later Define cannot steal an old actor identity.
+function int FindSurvivorByActorAllocated(str actor) {
+  int i;
+  if (StrCmp(actor, "") == 0)
+    return UHSURV_FAIL;
+  for (i = 0; i < UH_MAX_VANILLA_SURV; i++) {
+    if (uh_survvanilladefined[i] != 0
+      && StrICmp(actor, uh_survvanillastr[i][UHSURV_STR_ACTOR]) == 0)
+      return i;
+  }
+  for (i = 0; i < uh_survcustomcount; i++) {
+    if (StrICmp(actor, uh_survcustomstr[i][UHSURV_STR_ACTOR]) == 0)
+      return -1 - i;
+  }
+  return UHSURV_FAIL;
+}
+
+function int SetSurvivorEnabledCore(int id, int enabled) {
+  if (!IsSurvivorDefined(id))
+    return UHDB_ERR_NOTFOUND;
+  int state = enabled != 0 ? UHDB_ROW_ACTIVE : UHDB_ROW_DISABLED;
+  if (id >= 0)
+    uh_survvanilladefined[id] = state;
+  else
+    uh_survcustomstr[SurvCustomIndex(id)][UHSURV_STR_STATE] = state;
+  return UHDB_OK;
+}
+
+function int UpdateSurvivorDisplayCore(int id, str name, str mugshot) {
+  int slot = SurvResolveSlot(id);
+  if (slot == UHSURV_FAIL)
+    return UHDB_ERR_NOTFOUND;
+  if (id >= 0) {
+    uh_survvanillastr[slot][UHSURV_STR_NAME] = name;
+    uh_survvanillastr[slot][UHSURV_STR_MUGSHOT] = mugshot;
+  }
+  else {
+    uh_survcustomstr[slot][UHSURV_STR_NAME] = name;
+    uh_survcustomstr[slot][UHSURV_STR_MUGSHOT] = mugshot;
+  }
+  return UHDB_OK;
+}
+
+// Do not delete an identity currently used by a player actor.
+function int RemoveSurvivorCore(int id) {
+  if (!IsSurvivorDefined(id))
+    return UHDB_ERR_NOTFOUND;
+  str actor = GetSurvivorActor(id);
+  for (int row = 0; row < uh_survcleanupcount; row++) {
+    if (StrICmp(uh_survcleanup[row][0], actor) == 0)
+      return UHDB_ERR_REFERENCED;
+  }
+  for (int p = 0; p < 64; p++) {
+    if (PlayerInGame(p) && StrICmp(GetActorClass(1000 + p), actor) == 0)
+      return UHDB_ERR_REFERENCED;
+  }
+  if (id >= 0)
+    uh_survvanilladefined[id] = UHDB_ROW_REMOVED;
+  else
+    uh_survcustomstr[SurvCustomIndex(id)][UHSURV_STR_STATE] = UHDB_ROW_REMOVED;
+  return UHDB_OK;
+}
+
+function int GetDefinedSurvivorCount(void) {
+  int i, count = 0;
+  for (i = 0; i < UH_MAX_VANILLA_SURV; i++)
+    if (IsSurvivorDefined(i)) count++;
+  for (i = 0; i < uh_survcustomcount; i++)
+    if (IsSurvivorDefined(-1 - i)) count++;
+  return count;
+}
+
+function int GetEnabledSurvivorCount(void) {
+  int i, count = 0;
+  for (i = 0; i < UH_MAX_VANILLA_SURV; i++)
+    if (IsSurvivorEnabled(i)) count++;
+  for (i = 0; i < uh_survcustomcount; i++)
+    if (IsSurvivorEnabled(-1 - i)) count++;
+  return count;
+}
+
+function bool IsEyeEnabled(int id) {
+  if (id >= 0)
+    return id < UH_MAX_VANILLA_EYE && uh_eyevanilladefined[id] == UHDB_ROW_ACTIVE;
+  int i = EyeCustomIndex(id);
+  return i >= 0 && i < uh_eyecustomcount
+    && uh_eyecustomstr[i][UHEYE_STR_STATE] == UHDB_ROW_ACTIVE;
+}
+
+function int FindEyeByActorAllocated(str actor) {
+  int i;
+  if (StrCmp(actor, "") == 0)
+    return UHEYE_FAIL;
+  for (i = 0; i < UH_MAX_VANILLA_EYE; i++) {
+    if (uh_eyevanilladefined[i] != 0
+      && StrICmp(actor, uh_eyevanillastr[i][UHEYE_STR_ACTOR]) == 0)
+      return i;
+  }
+  for (i = 0; i < uh_eyecustomcount; i++) {
+    if (StrICmp(actor, uh_eyecustomstr[i][UHEYE_STR_ACTOR]) == 0)
+      return -1 - i;
+  }
+  return UHEYE_FAIL;
+}
+
+function int SetEyeEnabledCore(int id, int enabled) {
+  if (!IsEyeDefined(id))
+    return UHDB_ERR_NOTFOUND;
+  int state = enabled != 0 ? UHDB_ROW_ACTIVE : UHDB_ROW_DISABLED;
+  if (id >= 0)
+    uh_eyevanilladefined[id] = state;
+  else
+    uh_eyecustomstr[EyeCustomIndex(id)][UHEYE_STR_STATE] = state;
+  return UHDB_OK;
+}
+
+function int UpdateEyeDisplayCore(int id, str name, str prefix, str mugshot) {
+  int slot = EyeResolveSlot(id);
+  if (slot == UHEYE_FAIL)
+    return UHDB_ERR_NOTFOUND;
+  if (StrCmp(name, "") == 0 || StrCmp(mugshot, "") == 0)
+    return UHDB_ERR_BADARG;
+  if (id >= 0) {
+    uh_eyevanillastr[slot][UHEYE_STR_NAME] = name;
+    uh_eyevanillastr[slot][UHEYE_STR_PREFIX] = prefix;
+    uh_eyevanillastr[slot][UHEYE_STR_MUGSHOT] = mugshot;
+  }
+  else {
+    uh_eyecustomstr[slot][UHEYE_STR_NAME] = name;
+    uh_eyecustomstr[slot][UHEYE_STR_PREFIX] = prefix;
+    uh_eyecustomstr[slot][UHEYE_STR_MUGSHOT] = mugshot;
+  }
+  return UHDB_OK;
+}
+
+function int RemoveEyeCore(int id) {
+  if (!IsEyeDefined(id))
+    return UHDB_ERR_NOTFOUND;
+  str actor = GetEyeActor(id);
+  int slot = EyeResolveSlot(id);
+  str eventstem;
+  if (id >= 0)
+    eventstem = uh_eyevanillastr[slot][UHEYE_STR_EVENTSTEM];
+  else
+    eventstem = uh_eyecustomstr[slot][UHEYE_STR_EVENTSTEM];
+  if (StrCmp(eventstem, "") != 0 && FindBonusEventByStem(eventstem) != UHBE_FAIL)
+    return UHDB_ERR_REFERENCED;
+  for (int p = 0; p < 64; p++) {
+    if (PlayerInGame(p) && uh_playereyeid[p] == id)
+      return UHDB_ERR_REFERENCED;
+    if (StrCmp(actor, "") != 0 && PlayerInGame(p)
+      && StrICmp(GetActorClass(1000 + p), actor) == 0)
+      return UHDB_ERR_REFERENCED;
+  }
+  for (int row = 0; row < uh_eyemorphentrycount; row++) {
+    if (uh_eyemorphentrykey[row] % UHEM_KEY_BASE - UHEM_KEY_EYEOFF == id)
+      return UHDB_ERR_REFERENCED;
+  }
+  if (id >= 0)
+    uh_eyevanilladefined[id] = UHDB_ROW_REMOVED;
+  else
+    uh_eyecustomstr[EyeCustomIndex(id)][UHEYE_STR_STATE] = UHDB_ROW_REMOVED;
+  return UHDB_OK;
+}
+
+function int GetDefinedEyeCount(void) {
+  int i, count = 0;
+  for (i = 0; i < UH_MAX_VANILLA_EYE; i++)
+    if (IsEyeDefined(i)) count++;
+  for (i = 0; i < uh_eyecustomcount; i++)
+    if (IsEyeDefined(-1 - i)) count++;
+  return count;
+}
+
+function int GetEnabledEyeCount(void) {
+  int i, count = 0;
+  for (i = 0; i < UH_MAX_VANILLA_EYE; i++)
+    if (IsEyeEnabled(i)) count++;
+  for (i = 0; i < uh_eyecustomcount; i++)
+    if (IsEyeEnabled(-1 - i)) count++;
+  return count;
+}
+
+function int FindItemByActorAllocated(str actor) {
+  int i;
+  if (StrCmp(actor, "") == 0)
+    return UHITEM_FAIL;
+  for (i = 0; i < UH_MAX_VANILLA_ITEM; i++) {
+    if (uh_itemvanilladefined[i] != 0
+      && StrICmp(actor, uh_itemvanillastr[i][UHITEM_STR_ACTOR]) == 0)
+      return i;
+  }
+  for (i = 0; i < uh_itemcustomcount; i++) {
+    if (StrICmp(actor, uh_itemcustomstr[i][UHITEM_STR_ACTOR]) == 0)
+      return -1 - i;
+  }
+  return UHITEM_FAIL;
+}
+
+function int SetItemEnabledCore(int id, int enabled) {
+  if (!IsItemDefined(id))
+    return UHDB_ERR_NOTFOUND;
+  int state = enabled != 0 ? UHDB_ROW_ACTIVE : UHDB_ROW_DISABLED;
+  if (id >= 0)
+    uh_itemvanilladefined[id] = state;
+  else
+    uh_itemcustomstr[ItemCustomIndex(id)][UHITEM_STR_STATE] = state;
+  return UHDB_OK;
+}
+
+function int UpdateItemDisplayCore(int id, str name, str icon, str mugshot, str sound) {
+  int slot = ItemResolveSlot(id);
+  if (slot == UHITEM_FAIL)
+    return UHDB_ERR_NOTFOUND;
+  if (id >= 0) {
+    uh_itemvanillastr[slot][UHITEM_STR_NAME] = name;
+    uh_itemvanillastr[slot][UHITEM_STR_ICON] = icon;
+    uh_itemvanillastr[slot][UHITEM_STR_MUGSHOT] = mugshot;
+    uh_itemvanillastr[slot][UHITEM_STR_SOUND] = sound;
+  }
+  else {
+    uh_itemcustomstr[slot][UHITEM_STR_NAME] = name;
+    uh_itemcustomstr[slot][UHITEM_STR_ICON] = icon;
+    uh_itemcustomstr[slot][UHITEM_STR_MUGSHOT] = mugshot;
+    uh_itemcustomstr[slot][UHITEM_STR_SOUND] = sound;
+  }
+  return UHDB_OK;
+}
+
+function int RemoveItemCore(int id) {
+  int i;
+  if (!IsItemDefined(id))
+    return UHDB_ERR_NOTFOUND;
+  for (i = 0; i < uh_itemdropcount; i++) {
+    if (uh_itemdropboxid[i] == id || uh_itemdropitemid[i] == id)
+      return UHDB_ERR_REFERENCED;
+  }
+  str actor = GetItemActor(id);
+  for (i = 0; i < uh_coinspendcount; i++) {
+    if (StrICmp(uh_coinspendgive[i], actor) == 0)
+      return UHDB_ERR_REFERENCED;
+  }
+  for (i = 0; i < UH_ASSHAT_PENDING_MAX; i++) {
+    if (uh_asshatpendingused[i] && StrICmp(uh_asshatpendingitem[i], actor) == 0)
+      return UHDB_ERR_REFERENCED;
+  }
+  for (i = 0; i < 64; i++) {
+    if (PlayerInGame(i) && CheckActorInventory(1000 + i, actor) > 0)
+      return UHDB_ERR_REFERENCED;
+  }
+  if (id >= 0)
+    uh_itemvanilladefined[id] = UHDB_ROW_REMOVED;
+  else
+    uh_itemcustomstr[ItemCustomIndex(id)][UHITEM_STR_STATE] = UHDB_ROW_REMOVED;
+  return UHDB_OK;
+}
+
+function int GetEnabledItemCount(void) {
+  int i, count = 0;
+  for (i = 0; i < UH_MAX_VANILLA_ITEM; i++)
+    if (IsItemEnabled(i)) count++;
+  for (i = 0; i < uh_itemcustomcount; i++)
+    if (IsItemEnabled(-1 - i)) count++;
+  return count;
+}
+
+function bool IsLMSEventEnabled(int id) {
+  return id >= 0 && id < UH_MAX_LMS_EVENTS
+    && uh_lmsdefined[id] == UHDB_ROW_ACTIVE;
+}
+
+function int SetLMSEventEnabledCore(int id, int enabled) {
+  if (!IsLMSEventDefined(id))
+    return UHDB_ERR_NOTFOUND;
+  uh_lmsdefined[id] = enabled != 0 ? UHDB_ROW_ACTIVE : UHDB_ROW_DISABLED;
+  return UHDB_OK;
+}
+
+function int UpdateLMSEventCore(int id, str message, str raremessage,
+  str icon, str rareicon, int flags, int weight) {
+  if (!IsLMSEventDefined(id))
+    return UHDB_ERR_NOTFOUND;
+  if (weight < 0 || weight > UHLMS_MAX_WEIGHT)
+    return UHDB_ERR_BADARG;
+  uh_lmsmessage[id] = message;
+  uh_lmsraremessage[id] = raremessage;
+  uh_lmsicon[id] = icon;
+  uh_lmsrareicon[id] = rareicon;
+  uh_lmsflags[id] = flags;
+  uh_lmsweight[id] = weight;
+  return UHDB_OK;
+}
+
+function int RemoveLMSEventCore(int id) {
+  if (!IsLMSEventDefined(id))
+    return UHDB_ERR_NOTFOUND;
+  for (int i = 0; i < uh_lmsdropcount; i++) {
+    if (uh_lmsdropeventid[i] == id)
+      return UHDB_ERR_REFERENCED;
+  }
+  uh_lmsdefined[id] = UHDB_ROW_REMOVED;
+  return UHDB_OK;
+}
+
+function int GetDefinedLMSEventCount(void) {
+  int count = 0;
+  for (int i = 0; i < UH_MAX_LMS_EVENTS; i++)
+    if (IsLMSEventDefined(i)) count++;
+  return count;
+}
+
+function int GetEnabledLMSEventCount(void) {
+  int count = 0;
+  for (int i = 0; i < UH_MAX_LMS_EVENTS; i++)
+    if (IsLMSEventEnabled(i)) count++;
+  return count;
+}
+
+function bool IsBonusEventEnabled(int id) {
+  return id >= 0 && id < UH_MAX_BONUS_EVENTS
+    && uh_bedefined[id] == UHDB_ROW_ACTIVE;
+}
+
+function int SetBonusEventEnabledCore(int id, int enabled) {
+  if (!IsBonusEventDefined(id))
+    return UHDB_ERR_NOTFOUND;
+  if (ACS_NamedExecuteWithResult("uh_GetActiveBonusEvent") == id)
+    return UHDB_ERR_REFERENCED;
+  uh_bedefined[id] = enabled != 0 ? UHDB_ROW_ACTIVE : UHDB_ROW_DISABLED;
+  return UHDB_OK;
+}
+
+function int UpdateBonusEventCore(int id, str name, str music, str title,
+  str album, str artist, str sound, str hud1, str hud2,
+  str startcb, str rebuildcb, str endcb, int arg1, int arg2, int arg3,
+  int flags, int weight, int minplayers, int maxplayers) {
+  if (!IsBonusEventDefined(id))
+    return UHDB_ERR_NOTFOUND;
+  if (ACS_NamedExecuteWithResult("uh_GetActiveBonusEvent") == id)
+    return UHDB_ERR_REFERENCED;
+  if (weight < 0 || weight > UHBE_MAX_WEIGHT || minplayers < 0
+    || maxplayers < 0 || (maxplayers > 0 && maxplayers < minplayers))
+    return UHDB_ERR_BADARG;
+  uh_bestr[id][UHBE_STR_NAME] = name;
+  uh_bestr[id][UHBE_STR_MUSIC] = music;
+  uh_bestr[id][UHBE_STR_MUSICTITLE] = title;
+  uh_bestr[id][UHBE_STR_MUSICALBUM] = album;
+  uh_bestr[id][UHBE_STR_MUSICARTIST] = artist;
+  uh_bestr[id][UHBE_STR_SOUND] = sound;
+  uh_bestr[id][UHBE_STR_HUD1] = hud1;
+  uh_bestr[id][UHBE_STR_HUD2] = hud2;
+  uh_bestr[id][UHBE_STR_STARTCB] = startcb;
+  uh_bestr[id][UHBE_STR_REBUILDCB] = rebuildcb;
+  uh_bestr[id][UHBE_STR_ENDCB] = endcb;
+  uh_beint[id][UHBE_INT_ARG1] = arg1;
+  uh_beint[id][UHBE_INT_ARG2] = arg2;
+  uh_beint[id][UHBE_INT_ARG3] = arg3;
+  uh_beint[id][UHBE_INT_FLAGS] = flags;
+  uh_beint[id][UHBE_INT_WEIGHT] = weight;
+  uh_beint[id][UHBE_INT_MINP] = minplayers;
+  uh_beint[id][UHBE_INT_MAXP] = maxplayers;
+  return UHDB_OK;
+}
+
+function int RemoveBonusEventCore(int id) {
+  if (!IsBonusEventDefined(id))
+    return UHDB_ERR_NOTFOUND;
+  if (ACS_NamedExecuteWithResult("uh_GetActiveBonusEvent") == id)
+    return UHDB_ERR_REFERENCED;
+  for (int i = 0; i < uh_beexcount; i++) {
+    if (uh_beexbase[i] == id || uh_beexevent[i] == id)
+      return UHDB_ERR_REFERENCED;
+  }
+  uh_bedefined[id] = UHDB_ROW_REMOVED;
+  return UHDB_OK;
+}
+
+function int GetDefinedBonusEventCount(void) {
+  int count = 0;
+  for (int i = 0; i < UH_MAX_BONUS_EVENTS; i++)
+    if (IsBonusEventDefined(i)) count++;
+  return count;
+}
+
+function int GetEnabledBonusEventCount(void) {
+  int count = 0;
+  for (int i = 0; i < UH_MAX_BONUS_EVENTS; i++)
+    if (IsBonusEventEnabled(i)) count++;
+  return count;
+}

@@ -2,7 +2,7 @@
 # Full ACS compile check for the project. Libraries are compiled in the same
 # order as LOADACS with the documented include search order: modified v6b
 # shared includes first, then the UH-owned mod_api include dir, then the UH
-# _imports library sources (uh_acsutils, uh_log, uhdt, uhedenisaac) and the
+# _imports library sources (uh_acsutils, uh_log, uhdt, uhdbcrud, uhedenisaac) and the
 # v6b override imports (8BDT compiled as CORE8BDT.o).
 # Output objects are named after the SOURCE lump (not the internal #library
 # name): the base game LOADACS lists lump names such as COLOTRNS, and a
@@ -43,6 +43,9 @@ echo "== uh_log =="
 "$ACC" $INC "src/acs_source/_imports/uh_log.acs" "$OUT/uh_log.o" || fail=1
 echo "== uhdt =="
 "$ACC" $INC "src/acs_source/_imports/uhdt.acs" "$OUT/uhdt.o" || fail=1
+echo "== uhdbcrud =="
+# Import-only CRUD logic. UHADDR imports this lump; it has no LOADACS entry.
+"$ACC" $INC "src/acs_source/_imports/uhdbcrud.acs" "$OUT/uhdbcrud.o" || fail=1
 echo "== uhedenisaac =="
 "$ACC" $INC "src/acs_source/_imports/uhedenisaac.acs" "$OUT/uhedenisaac.o" || fail=1
 echo "== uhaddr =="
