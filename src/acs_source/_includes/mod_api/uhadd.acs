@@ -17,11 +17,11 @@
 //              2000, 300,
 //              "",
 //              "UFACE26",
-//              "M_UB000", "credit",
 //              "instructions",
 //              "T.", "spawn msg",
-//              "\crYOURBOSS \cjIS ENRAGED!"  // 14th: full rage warning body
+//              "\crYOURBOSS \cjIS ENRAGED!"  // 12th: full rage warning body
 //          );
+//          AddBossMusicByActor("YourBossActor", "M_UB000", "Track", "Game", "", 1, 0);
 //      }
 //
 //      script "your_define_bosses" OPEN
@@ -45,7 +45,7 @@
 // 6. UHBOSS_POOL_NONE (0) = registered but not in RNG pools (force / EX parent only).
 // 7. EX: pass parent actor in exboss_baseactor; use GetBossBaseId / GetBossExId.
 // 8. Mugshot: set an explicit font/lump for custom ids (Shiny/CBM own negative bands).
-// 9. ragewarningmessage (14th, last): the COMPLETE rage-warning body shown when
+// 9. ragewarningmessage (12th, last): the COMPLETE rage-warning body shown when
 //    the boss slams full rage, colored codes allowed (e.g.
 //    "\crYOURBOSS \cjIS ENRAGED!").  Pass "" to keep the generic
 //    "<Boss Name> IS ENRAGED!" fallback.  The core still draws the blinking
@@ -67,10 +67,9 @@
 //              2000, 300,
 //              "",
 //              "UFACE26",
-//              "M_UB000", "credit",
 //              "instructions",
 //              "T.", "spawn msg",
-//              "\crYOURBOSS \cjIS ENRAGED!"  // 14th: full rage warning body
+//              "\crYOURBOSS \cjIS ENRAGED!"  // 12th: full rage warning body
 //          );
 //          SetBossMorphSetupByActor("YourBossActor", "uh_BossMorphSetup_YourBossActor");
 //      }
@@ -431,15 +430,14 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 //              2000, 300,
 //              "",
 //              "UFACE26",
-//              "M_MYBASE", "base credit",
 //              "instructions",
 //              "T.", "spawn msg",
-//              "\crYOURBOSS \cjIS ENRAGED!"  // 14th: full rage warning body
+//              "\crYOURBOSS \cjIS ENRAGED!"  // 12th: full rage warning body
 //          );
 //          // weight >= 1. optional 1 = skip unless uh_sv_OptionalMusic.
 //          // Prefer optional=0 and ship lumps in the same addon pk3.
-//          AddBossMusic(id, "M_MYTUNE", "Game - Track", 3, 0);
-//          // or: AddBossMusicByActor("YourBossActor", "M_MYTUNE", "Game - Track", 3, 0);
+//          AddBossMusic(id, "M_MYTUNE", "Track", "Game", "", 3, 0);
+//          // or: AddBossMusicByActor("YourBossActor", "M_MYTUNE", "Track", "Game", "", 3, 0);
 //      }
 //      script "your_define" OPEN {
 //          if (!UHInPlay()) terminate;
@@ -450,7 +448,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 //      }
 // 3. Music-only addon for an existing boss (wait for *that* actor, not boss 0):
 //      function void YourRegisterBossMusic(void) {
-//          AddBossMusicByActor("GemBanker", "M_MYTUNE", "Game - Track", 3, 0);
+//          AddBossMusicByActor("GemBanker", "M_MYTUNE", "Track", "Game", "", 3, 0);
 //      }
 //      script "your_define_boss_music" OPEN {
 //          int t;
@@ -471,32 +469,33 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 //          }
 //          YourRegisterBossMusic();
 //      }
-// 4. Same (bossId, kind, phase, lump) again updates weight/credit/optional (no second row).
-// 5. DefineBoss musiclump is auto-seeded as SPAWN kind (weight 1, optional 0).
+// 4. Same (bossId, kind, phase, lump) again updates title/album/artist/weight/optional (no second row).
+// 5. Spawn music is AddBossMusic (weight 1, optional 0), not a DefineBoss argument.
 // 6. Spawn uses PickBossMusicRow(id, UHMUS_KIND_SPAWN, 0) in ub_PlayVariantMusic.
 // 7. Enrage: AddBossEnrageMusic / ByActor; DECORATE ub_BossEnrageMusic(which, phase).
 // 8. OPEN order is not LOADACS order — wait for the target actor before Add*ByActor.
 
 // === AddBossEnrageMusic addon recipe =========================================
 // Same patterns as AddBossMusic. phase 0 = default enrage; CuttyCut uses 0 and 1.
-//      AddBossEnrageMusicByActor("YourBossActor", 0, "M_ENRAGE", "credit", 1, 0);
+//      AddBossEnrageMusicByActor("YourBossActor", 0, "M_ENRAGE", "Track", "Game", "", 1, 0);
 // Custom DECORATE: ACS_NamedExecuteAlways("ub_BossEnrageMusic",0) or (0, phase).
 // Empty enrage pool → no music change.
 //
 // === AddWinnerMusic / AddLoserMusic addon recipe ==============================
 // Global LMS end themes (not per-boss). No actor wait required.
 // duration: seconds as ACS fixed (-1.0 = unknown). emuflag: 1 = MAME (+12 tics).
-//      AddWinnerMusic("M_MYWIN", "Game - Victory", 1, 0, -1.0, 0);
-//      AddLoserMusic("M_MYLOSE", "Game - Game Over", 1, 0, -1.0, 0);
+//      AddWinnerMusic("M_MYWIN", "Victory", "Game", "", 1, 0, -1.0, 0);
+//      AddLoserMusic("M_MYLOSE", "Game Over", "Game", "", 1, 0, -1.0, 0);
 // Prefer optional=0 and ship lumps in the same addon pk3.
-// Same (kind, phase=0, lump) again updates weight/credit/optional/duration/emuflag.
+// Music args after the lump are title, album, artist. Artist "" when unknown.
+// Same (kind, phase=0, lump) again updates title/album/artist/weight/optional/duration/emuflag.
 // Empty pool → PlayMusic_Winner/Loser skips play and returns 0.
 //
 // === AddLMSMusic addon recipe ================================================
 // Per-event BGM for last-survivor LMS events (not a global random pool).
 // eventid: vanilla 0–11; ids >=12 work once DefineLMSEvent registers them.
-//      AddLMSMusic(4, "M_MYALT", "Game - Alt LMS Theme", 1, 0);
-// Same (kind, eventid, lump) again updates weight/credit/optional.
+//      AddLMSMusic(4, "M_MYALT", "Alt LMS Theme", "Game", "", 1, 0);
+// Same (kind, eventid, lump) again updates title/album/artist/weight/optional.
 // Empty pool for that eventid → ub_LMS_EventTime falls back to lmsListArray music.
 //
 // === DefineLMSEvent addon recipe =============================================
@@ -513,7 +512,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 //              "MYLMS_E", "MYLMS_X", 0, 1);
 //          AddLMSEventDrop("my_lms", "GUHUItem", 1, 0);
 //          AddLMSEventDrop("my_lms", "SuperGUHUItem", 1, 1);
-//          AddLMSMusicByStem("my_lms", "M_MYLMS", "Game - My LMS Theme", 1, 0);
+//          AddLMSMusicByStem("my_lms", "M_MYLMS", "My LMS Theme", "Game", "", 1, 0);
 //      }
 //      script "your_define_lms" OPEN {
 //          if (!UHInPlay()) terminate;
@@ -568,7 +567,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 //      function void MyBonusRegister(void) {
 //          DefineBonusEvent(
 //              -1, "example_my_bonus", "\\cgExperimental FFA",
-//              "MYBGM", "Example Game - Battle",
+//              "MYBGM", "Battle", "Example Game", "",
 //              "misc/MyBonusStart",
 //              "\\cgExperimental battle!", "\\ccLast player wins.",
 //              "mybonus_start", "mybonus_rebuild", "mybonus_end",
@@ -794,8 +793,6 @@ function int DefineBoss(
 	int addhp,
 	str exboss_baseactor,
 	str mugshot,
-	str musiclump,
-	str musiccredit,
 	str instruction,
 	str spawnmessagetype,
 	str spawnmessage,
@@ -808,8 +805,6 @@ function int DefineBoss(
 	SetCVar("uh_db_addhp", addhp);
 	SetCVarString("uh_db_exbase", exboss_baseactor);
 	SetCVarString("uh_db_mugshot", mugshot);
-	SetCVarString("uh_db_music", musiclump);
-	SetCVarString("uh_db_musiccredit", musiccredit);
 	SetCVarString("uh_db_instruction", instruction);
 	SetCVarString("uh_db_spawnmsgtype", spawnmessagetype);
 	SetCVarString("uh_db_spawnmsg", spawnmessage);
@@ -1328,53 +1323,59 @@ function int GetMegaOfficialCopyCount(void) {
 // Add a weighted spawn BGM for an existing boss (stable vanilla id, or id from
 // DefineBoss in the same register call). Prefer AddBossMusicByActor for addons.
 // weight >= 1. optional: 1 = skipped unless uh_sv_OptionalMusic.
-function int AddBossMusic(int bossid, str lump, str credit, int weight, int optional) {
+function int AddBossMusic(int bossid, str lump, str title, str album, str artist, int weight, int optional) {
 	SetCVar("uh_bm_bossid", bossid);
 	SetCVar("uh_bm_kind", UHMUS_KIND_SPAWN);
 	SetCVar("uh_bm_phase", 0);
 	SetCVarString("uh_bm_lump", lump);
-	SetCVarString("uh_bm_credit", credit);
+	SetCVarString("uh_bm_title", title);
+	SetCVarString("uh_bm_album", album);
+	SetCVarString("uh_bm_artist", artist);
 	SetCVar("uh_bm_weight", weight);
 	SetCVar("uh_bm_optional", optional);
 	return ACS_NamedExecuteWithResult("uh_AddBossMusic_S");
 }
 
 // Addon-safe: resolve DECORATE class name via UH_FindBossByActor (vanilla or custom).
-function int AddBossMusicByActor(str actor, str lump, str credit, int weight, int optional) {
+function int AddBossMusicByActor(str actor, str lump, str title, str album, str artist, int weight, int optional) {
 	int bossid;
 	bossid = UH_FindBossByActor(actor);
 	if (bossid == UHBOSS_FAIL)
 		return UHMUS_FAIL;
-	return AddBossMusic(bossid, lump, credit, weight, optional);
+	return AddBossMusic(bossid, lump, title, album, artist, weight, optional);
 }
 
 // Phase-2 / enrage BGM. phase: 0 default; some bosses use 1+ (e.g. CuttyCut).
-function int AddBossEnrageMusic(int bossid, int phase, str lump, str credit, int weight, int optional) {
+function int AddBossEnrageMusic(int bossid, int phase, str lump, str title, str album, str artist, int weight, int optional) {
 	SetCVar("uh_bm_bossid", bossid);
 	SetCVar("uh_bm_kind", UHMUS_KIND_ENRAGE);
 	SetCVar("uh_bm_phase", phase);
 	SetCVarString("uh_bm_lump", lump);
-	SetCVarString("uh_bm_credit", credit);
+	SetCVarString("uh_bm_title", title);
+	SetCVarString("uh_bm_album", album);
+	SetCVarString("uh_bm_artist", artist);
 	SetCVar("uh_bm_weight", weight);
 	SetCVar("uh_bm_optional", optional);
 	return ACS_NamedExecuteWithResult("uh_AddBossMusic_S");
 }
 
-function int AddBossEnrageMusicByActor(str actor, int phase, str lump, str credit, int weight, int optional) {
+function int AddBossEnrageMusicByActor(str actor, int phase, str lump, str title, str album, str artist, int weight, int optional) {
 	int bossid;
 	bossid = UH_FindBossByActor(actor);
 	if (bossid == UHBOSS_FAIL)
 		return UHMUS_FAIL;
-	return AddBossEnrageMusic(bossid, phase, lump, credit, weight, optional);
+	return AddBossEnrageMusic(bossid, phase, lump, title, album, artist, weight, optional);
 }
 
 // LMS survivor-victory theme. duration: ACS fixed seconds (-1.0 unknown).
 // emuflag: 1 = MAME (+12 tics on returned delay).
-function int AddWinnerMusic(str lump, str credit, int weight, int optional, int duration, int emuflag) {
+function int AddWinnerMusic(str lump, str title, str album, str artist, int weight, int optional, int duration, int emuflag) {
 	SetCVar("uh_bm_kind", UHMUS_KIND_WINNER);
 	SetCVar("uh_bm_phase", 0);
 	SetCVarString("uh_bm_lump", lump);
-	SetCVarString("uh_bm_credit", credit);
+	SetCVarString("uh_bm_title", title);
+	SetCVarString("uh_bm_album", album);
+	SetCVarString("uh_bm_artist", artist);
 	SetCVar("uh_bm_weight", weight);
 	SetCVar("uh_bm_optional", optional);
 	SetCVar("uh_bm_duration", duration);
@@ -1383,11 +1384,13 @@ function int AddWinnerMusic(str lump, str credit, int weight, int optional, int 
 }
 
 // LMS survivor-defeat theme. Same args as AddWinnerMusic.
-function int AddLoserMusic(str lump, str credit, int weight, int optional, int duration, int emuflag) {
+function int AddLoserMusic(str lump, str title, str album, str artist, int weight, int optional, int duration, int emuflag) {
 	SetCVar("uh_bm_kind", UHMUS_KIND_LOSER);
 	SetCVar("uh_bm_phase", 0);
 	SetCVarString("uh_bm_lump", lump);
-	SetCVarString("uh_bm_credit", credit);
+	SetCVarString("uh_bm_title", title);
+	SetCVarString("uh_bm_album", album);
+	SetCVarString("uh_bm_artist", artist);
 	SetCVar("uh_bm_weight", weight);
 	SetCVar("uh_bm_optional", optional);
 	SetCVar("uh_bm_duration", duration);
@@ -1397,11 +1400,13 @@ function int AddLoserMusic(str lump, str credit, int weight, int optional, int d
 
 // Last-survivor event BGM for a given eventid (vanilla 0–11; no upper cap).
 // No duration — plays until match end. weight >= 1.
-function int AddLMSMusic(int eventid, str lump, str credit, int weight, int optional) {
+function int AddLMSMusic(int eventid, str lump, str title, str album, str artist, int weight, int optional) {
 	SetCVar("uh_bm_kind", UHMUS_KIND_LMS);
 	SetCVar("uh_bm_phase", eventid);
 	SetCVarString("uh_bm_lump", lump);
-	SetCVarString("uh_bm_credit", credit);
+	SetCVarString("uh_bm_title", title);
+	SetCVarString("uh_bm_album", album);
+	SetCVarString("uh_bm_artist", artist);
 	SetCVar("uh_bm_weight", weight);
 	SetCVar("uh_bm_optional", optional);
 	SetCVar("uh_bm_duration", 0);
@@ -1441,12 +1446,12 @@ function int UH_FindLMSEventByStem(str stem) {
 }
 
 // Addon-safe: resolve stem, then AddLMSMusic.
-function int AddLMSMusicByStem(str stem, str lump, str credit, int weight, int optional) {
+function int AddLMSMusicByStem(str stem, str lump, str title, str album, str artist, int weight, int optional) {
 	int eventid;
 	eventid = UH_FindLMSEventByStem(stem);
 	if (eventid == UHLMS_FAIL)
 		return UHMUS_FAIL;
-	return AddLMSMusic(eventid, lump, credit, weight, optional);
+	return AddLMSMusic(eventid, lump, title, album, artist, weight, optional);
 }
 
 function str UH_GetLMSEventMessage(int id) {
@@ -1486,7 +1491,9 @@ function int DefineBonusEvent(
 	str stem,
 	str name,
 	str music,
-	str credit,
+	str title,
+	str album,
+	str artist,
 	str sound,
 	str hud1,
 	str hud2,
@@ -1505,7 +1512,9 @@ function int DefineBonusEvent(
 	ipc = ipc & SetCVarString("uh_be_stem", stem);
 	ipc = ipc & SetCVarString("uh_be_name", name);
 	ipc = ipc & SetCVarString("uh_be_music", music);
-	ipc = ipc & SetCVarString("uh_be_credit", credit);
+	ipc = ipc & SetCVarString("uh_be_title", title);
+	ipc = ipc & SetCVarString("uh_be_album", album);
+	ipc = ipc & SetCVarString("uh_be_artist", artist);
 	ipc = ipc & SetCVarString("uh_be_sound", sound);
 	ipc = ipc & SetCVarString("uh_be_hud1", hud1);
 	ipc = ipc & SetCVarString("uh_be_hud2", hud2);
@@ -1564,8 +1573,18 @@ function str UH_GetBonusEventMusic(int id) {
 	return GetCVarString("uh_be_out_str");
 }
 
-function str UH_GetBonusEventMusicCredit(int id) {
-	ACS_NamedExecuteWithResult("uh_GetBonusEventMusicCredit_S", id);
+function str UH_GetBonusEventMusicTitle(int id) {
+	ACS_NamedExecuteWithResult("uh_GetBonusEventMusicTitle_S", id);
+	return GetCVarString("uh_be_out_str");
+}
+
+function str UH_GetBonusEventMusicAlbum(int id) {
+	ACS_NamedExecuteWithResult("uh_GetBonusEventMusicAlbum_S", id);
+	return GetCVarString("uh_be_out_str");
+}
+
+function str UH_GetBonusEventMusicArtist(int id) {
+	ACS_NamedExecuteWithResult("uh_GetBonusEventMusicArtist_S", id);
 	return GetCVarString("uh_be_out_str");
 }
 

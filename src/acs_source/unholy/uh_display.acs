@@ -863,6 +863,44 @@ script "ub_LMS_EventIcon" (int lmsnum, int isitrare, int badevent) CLIENTSIDE {
 }
 
 
+function int UH_MusicSnapshotReady(void) {
+	int gen = GetCVar("_uh_ServMusicGen");
+	if (gen <= 0 || (gen & 1))
+		return 0;
+	if (!UH_MusicLumpPublishable(GetCVarString("_uh_ServMusicLump")))
+		return 0;
+	return 1;
+}
+
+// Set when uh_MusicMapCard actually draws on this client. Cleared when we hand
+// 5000-5005 back to core_mapcard or when uh_MusicDismiss takes that card down.
+int uh_music_custom_mapcard;
+
+function str UH_MusicFitLine(str text) {
+	str trunc;
+	int c;
+	if (StrLen(text) <= 30)
+		return text;
+	trunc = "";
+	for (c = 0; c < 27; c++)
+		trunc = StrParam(s:trunc, c:GetChar(text, c));
+	return StrParam(s:trunc, s:"...");
+}
+
+// HUDMSG_LOG reaches AddToConsole. Alpha 0 keeps that message out of the view.
+// Log() is Printf and also feeds the top notify line, so it is not used here.
+function void UH_MusicWriteConsole(str lump, str title, str album, str artist) {
+	str line;
+	line = StrParam(s:"\c[Gold]Now Playing: \c[White]", s:title);
+	if (StrLen(album) > 0)
+		line = StrParam(s:line, s:"\n\cd", s:album);
+	if (StrLen(artist) > 0)
+		line = StrParam(s:line, s:"\n\cd", s:artist);
+	line = StrParam(s:line, s:" \c[LightBlue][", s:lump, s:"]");
+	SetFont("SMALLFONT");
+	HudMessage(s:line; HUDMSG_PLAIN | HUDMSG_LOG | HUDMSG_ALPHA, -68740, CR_WHITE, 0.1, 0.1, 0.1, 0.0);
+}
+
 script "uh_getcurrentmusic" (int which) {
 	if (CheckInventory("NetScriptAntiSpam2")) {
 		terminate;
@@ -873,182 +911,156 @@ script "uh_getcurrentmusic" (int which) {
 }
 
 script "uh_displaycurrentmusic" (void) NET CLIENTSIDE {
+	int spins;
 	if (ConsolePlayerNumber() != PlayerNumber()) {
 		terminate;
 	}
-
-	ACS_NamedExecuteAlways("ub_FancyDisplayMusic", 0, 0);
+	spins = 0;
+	while ((GetCVar("_uh_ServMusicGen") & 1) && spins < 5) {
+		Delay(1);
+		spins++;
+	}
+	ACS_NamedExecuteAlways("uh_MusicQuery", 0);
 }
 
 script "uh_showmapcard" (void) NET CLIENTSIDE {
+	int cpn;
 	if (ConsolePlayerNumber() != PlayerNumber()) terminate;
-	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicDisplay") == 3)
-		ACS_NamedExecuteAlways("ub_FancyDisplayMusic", 0, 0);
-	else
+	cpn = ConsolePlayerNumber();
+	// The map-card key shows the map's own music. The current Unholy track
+	// replaces those three lines only when Music Info Style is Map Card,
+	// Round Music is Boss Music, and a track is actually committed.
+	if (GetUserCVar(cpn, "uh_cl_MusicMode") == 0 && GetUserCVar(cpn, "uh_cl_MusicDisplay") == 3 && UH_MusicSnapshotReady())
+		ACS_NamedExecuteAlways("uh_MusicMapCard", 0);
+	else {
+		uh_music_custom_mapcard = 0;
 		ACS_NamedExecuteAlways("core_mapcard", 0);
+	}
 }
 
+script "uh_MusicQuery" (void) CLIENTSIDE {
+	int cpn = ConsolePlayerNumber();
+	int mode = GetUserCVar(cpn, "uh_cl_MusicMode");
+	int style = GetUserCVar(cpn, "uh_cl_MusicDisplay");
+	if (mode == 1) {
+		if (style == 3) {
+			uh_music_custom_mapcard = 0;
+			ACS_NamedExecuteAlways("core_mapcard", 0);
+		}
+		terminate;
+	}
+	if (style <= 0)
+		terminate;
+	if (style == 3) {
+		if (UH_MusicSnapshotReady())
+			ACS_NamedExecuteAlways("uh_MusicMapCard", 0);
+		else {
+			uh_music_custom_mapcard = 0;
+			ACS_NamedExecuteAlways("core_mapcard", 0);
+		}
+	}
+	else
+		ACS_NamedExecuteAlways("uh_MusicPresent", 0, 1);
+}
 
+script "uh_MusicAutoNotify" (void) CLIENTSIDE {
+	int cpn = ConsolePlayerNumber();
+	int style;
+	if (cpn < 0 || GetUserCVar(cpn, "uh_cl_MusicMode") != 0)
+		terminate;
+	style = GetUserCVar(cpn, "uh_cl_MusicDisplay");
+	if (style <= 0)
+		terminate;
+	if (style == 3)
+		ACS_NamedExecuteAlways("uh_MusicMapCard", 0);
+	else
+		ACS_NamedExecuteAlways("uh_MusicPresent", 0, 1);
+}
+
+global int 33:fancytunedisplay_serial;
+
+// Same gates, ids, coordinates and timing as core_mapcard. The three music
+// lines are the committed Unholy title, album and artist.
+script "uh_MusicMapCard" (void) CLIENTSIDE {
+	str background;
+	str icon;
+	if (!UH_MusicSnapshotReady())
+		terminate;
+	if (GetUserCVar(ConsolePlayerNumber(), "mm8bdm_mapcards") == 0)
+		terminate;
+	if (StrLen(GetCVarString("mm8bdm_map_creator")) == 0)
+		terminate;
+	fancytunedisplay_serial++;
+	HudMessage(s:""; 0, -68741, -1, 0.0, 0.0, 0.0);
+	HudMessage(s:""; 0, -68742, -1, 0.0, 0.0, 0.0);
+	HudMessage(s:""; 0, -68743, -1, 0.0, 0.0, 0.0);
+	HudMessage(s:""; 0, -68744, -1, 0.0, 0.0, 0.0);
+	HudMessage(s:""; 0, -68745, -1, 0.0, 0.0, 0.0);
+	HudMessage(s:""; 0, -68746, -1, 0.0, 0.0, 0.0);
+	background = GetCVarString("mm8bdm_map_background");
+	icon = GetCVarString("mm8bdm_map_icon");
+	if (StrLen(background) == 0) background = "MAPCD10";
+	if (StrLen(icon) == 0) icon = "MAPCARDI";
+	SetHudSize(800, 600, 0);
+	SetFont(background);
+	HudMessage(s:"A"; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5005, CR_WHITE, 0.1, 440.1, 5.0, 0.5, 0.5);
+	SetFont(icon);
+	HudMessage(s:"A"; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5004, CR_WHITE, 11.1, 451.1, 5.0, 0.5, 0.5);
+	SetFont("CONFONT");
+	HudMessage(s:GetCVarString("mm8bdm_map_createdbytext"), s:"\n\n\cj", s:GetCVarString("mm8bdm_map_creator"); HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5003, CR_CYAN, 48.1, 450.1, 5.0, 0.5, 0.5);
+	HudMessage(s:GetCVarString("_uh_ServMusicTitle"); HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5002, CR_WHITE, 26.1, 488.1, 5.0, 0.5, 0.5);
+	HudMessage(s:GetCVarString("_uh_ServMusicAlbum"); HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5001, CR_WHITE, 26.1, 500.1, 5.0, 0.5, 0.5);
+	HudMessage(s:GetCVarString("_uh_ServMusicArtist"); HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5000, CR_WHITE, 26.1, 512.1, 5.0, 0.5, 0.5);
+	uh_music_custom_mapcard = 1;
+}
 
 #define MUSIC_CARD_WIDTH 270.0
 #define MUSIC_CARD_HEIGHT 42.0
 #define MUSIC_CARD_OFFSET_X -286.0
-#define MUSIC_CARD_OFFSET_Y -62.0
+#define MUSIC_CARD_OFFSET_Y -74.0
 #define MUSIC_CARD_SLIDE_DIST 36.0
 #define MUSIC_CARD_IN_TICS 10
 #define MUSIC_CARD_OUT_TICS 10
 #define MUSIC_CARD_HOLD_TICS (4 * 35 + 18)
 
-global int 33:fancytunedisplay_serial;
-
-script "ub_FancyDisplayMusicStart" (int garbagetext) {
-	SetActivator(0, AAPTR_NULL);
-	ACS_NamedExecuteAlways("ub_FancyDisplayMusic", 0, garbagetext);
+script "uh_MusicDismiss" (void) CLIENTSIDE {
+	int id;
+	fancytunedisplay_serial++;
+	for (id = -68746; id <= -68740; id++)
+		HudMessage(s:""; 0, id, -1, 0.0, 0.0, 0.0);
+	// 5000-5005 are also core_mapcard's IDs. Clear them only when Unholy
+	// actually drew the custom Map Card on this client.
+	if (uh_music_custom_mapcard) {
+		for (id = 5000; id <= 5005; id++)
+			HudMessage(s:""; 0, id, -1, 0.0, 0.0, 0.0);
+		uh_music_custom_mapcard = 0;
+	}
 }
 
-script "ub_FancyDisplayMusic" (int togglegarbage) CLIENTSIDE {
-	str tunecode_str = GetCVarString("_uh_ServMusicLump");
-	str musical_str = GetCVarString("_uh_ServMusicCredits");
-	int music_context = GetCVar("_uh_ServMusicContext");
-	int display_mode = GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicDisplay");
-	if (!togglegarbage && GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicMode") == 1) {
-		if (music_context == 1) {
-			tunecode_str = "*";
-			musical_str = StrParam(l:GetCVarString("mm8bdm_map_musicgame"),
-			                       s:" - ", l:GetCVarString("mm8bdm_map_musicname"));
-		} else if (music_context == 2) {
-			tunecode_str = UH_MapBossMusic();
-			musical_str = StrParam(l:GetCVarString("mm8bdm_map_musicgame"), s:" - Boss Theme");
-		}
-	}
-
-	if (togglegarbage) {
-		tunecode_str = "???";
-		musical_str = "Corrupted - Unknown Track";
-	}
-
-	// Console copy for player reference (always logged even if HUD card is disabled)
-	Log(s:"\c[Gold]Now Playing: \c[White]", s:musical_str, s:" \c[LightBlue][", s:tunecode_str, s:"]");
-
-	if (display_mode <= 0) {
-		terminate;
-	}
-
-	// Three-line card: split "origin - title" so line 2 is the track name and
-	// line 3 is the origin/album (empty -> line 3 is not drawn).
-	str origin_str = "";
-	str title_str = "";
-	int len = StrLen(musical_str);
-	int split_pos = -1;
-	int c;
-
-	for (c = 0; c < len - 2; c++) {
-		if (GetChar(musical_str, c) == ' ' &&
-		    GetChar(musical_str, c + 1) == '-' &&
-		    GetChar(musical_str, c + 2) == ' ') {
-			split_pos = c;
-			break;
-		}
-	}
-
-	if (split_pos >= 0) {
-		for (c = 0; c < split_pos; c++) {
-			origin_str = StrParam(s:origin_str, c:GetChar(musical_str, c));
-		}
-		for (c = split_pos + 3; c < len; c++) {
-			title_str = StrParam(s:title_str, c:GetChar(musical_str, c));
-		}
-	} else {
-		title_str = musical_str;
-		origin_str = "";
-	}
-
-	if (display_mode == 3) {
-		// Mapcard-style presentation uses our selected music, never the stock
-		// core_mapcard stage-music fields. Reuse its IDs so Show Mapcard
-		// replaces any earlier stock card instead of layering over it.
-		if (GetUserCVar(ConsolePlayerNumber(), "mm8bdm_mapcards") == 0 ||
-		    StrLen(GetCVarString("mm8bdm_map_creator")) == 0)
-			terminate;
-
-		str background = GetCVarString("mm8bdm_map_background");
-		str icon = GetCVarString("mm8bdm_map_icon");
-		str card_music_name = title_str;
-		str card_music_game = origin_str;
-		str card_music_composer = tunecode_str;
-		if (!togglegarbage && GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicMode") == 1) {
-			if (music_context == 1) {
-				card_music_name = StrParam(l:GetCVarString("mm8bdm_map_musicname"));
-				card_music_game = StrParam(l:GetCVarString("mm8bdm_map_musicgame"));
-				card_music_composer = StrParam(l:GetCVarString("mm8bdm_map_musiccomposer"));
-			} else if (music_context == 2) {
-				card_music_name = "Boss Theme";
-				card_music_game = StrParam(l:GetCVarString("mm8bdm_map_musicgame"));
-				card_music_composer = UH_MapBossMusic();
-			}
-		}
-		if (StrLen(background) == 0) background = "MAPCD10";
-		if (StrLen(icon) == 0) icon = "MAPCARDI";
-		SetHudSize(800, 600, 0);
-		SetFont(background);
-		HudMessage(s:"A"; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5005, CR_WHITE, 0.1, 440.1, 5.0, 0.5, 0.5);
-		SetFont(icon);
-		HudMessage(s:"A"; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5004, CR_WHITE, 11.1, 451.1, 5.0, 0.5, 0.5);
-		SetFont("CONFONT");
-		HudMessage(s:GetCVarString("mm8bdm_map_createdbytext"), s:"\n\n\cj", s:GetCVarString("mm8bdm_map_creator"); HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5003, CR_CYAN, 48.1, 450.1, 5.0, 0.5, 0.5);
-		HudMessage(s:card_music_name; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5002, CR_WHITE, 26.1, 488.1, 5.0, 0.5, 0.5);
-		HudMessage(s:card_music_game; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5001, CR_WHITE, 26.1, 500.1, 5.0, 0.5, 0.5);
-		HudMessage(s:card_music_composer; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5000, CR_WHITE, 26.1, 512.1, 5.0, 0.5, 0.5);
-		terminate;
-	}
-
-	// Safety truncation: a 270px line comfortably fits ~30 UIX chars.
-	if (StrLen(title_str) > 30) {
-		str trunc_t = "";
-		for (c = 0; c < 27; c++) { trunc_t = StrParam(s:trunc_t, c:GetChar(title_str, c)); }
-		title_str = StrParam(s:trunc_t, s:"...");
-	}
-	if (StrLen(origin_str) > 30) {
-		str trunc_o = "";
-		for (c = 0; c < 27; c++) { trunc_o = StrParam(s:trunc_o, c:GetChar(origin_str, c)); }
-		origin_str = StrParam(s:trunc_o, s:"...");
-	}
-
-	SetHudSize(640, 480, 0);
-	int x_aspect = GetHudRight(640) * 1.0;
-	int y_aspect = GetHudBot(480) * 1.0;
-	if (GetScreenWidth() == 640 && GetScreenHeight() == 480) {
-		x_aspect = 640.0;
-		y_aspect = 480.0;
-	}
-
-	if (display_mode == 2) {
-		// Mode 2: Minimal Text (3-line typewriter typeon & fadeout, matching Card HUD arrangement, right-aligned at bottom right)
-		fancytunedisplay_serial++;
-		int text_x = (RoundFixedToInt(x_aspect - 16.0) * 1.0) + 0.2;
-		int text_y = (RoundFixedToInt(y_aspect - 72.0) * 1.0) + 0.2;
-
-		str min_text = "";
-		if (StrLen(origin_str) > 0) {
-			min_text = StrParam(s:"\ckNOW PLAYING \cl[", s:tunecode_str, s:"]\n\c[White]", s:title_str, s:"\n\cd", s:origin_str);
-		} else {
-			min_text = StrParam(s:"\ckNOW PLAYING \cl[", s:tunecode_str, s:"]\n\c[White]", s:title_str);
-		}
-
-		SetFont("SMALLFONT");
-		HudMessage(s:min_text; HUDMSG_TYPEON, -68741, -1, text_x, text_y, 4.0, 0.02, 1.5);
-		HudMessage(s:""; 0, -68742, -1, 0.0, 0.0, 0.0);
-		HudMessage(s:""; 0, -68743, -1, 0.0, 0.0, 0.0);
-		HudMessage(s:""; 0, -68744, -1, 0.0, 0.0, 0.0);
+function void UH_MusicDrawCardLines(int draw_x, int draw_y, int hold, int alpha, str lump, str title, str album, str artist) {
+	SetFont("SMALLFONT");
+	HudMessage(s:"\ckNOW PLAYING \cl[", s:lump, s:"]"; HUDMSG_ALPHA, -68743, -1, draw_x + 18.0, draw_y + 4.0, hold, alpha);
+	HudMessage(s:"\c[White]", s:title; HUDMSG_ALPHA, -68744, -1, draw_x + 18.0, draw_y + 15.0, hold, alpha);
+	if (StrLen(album) > 0)
+		HudMessage(s:"\cd", s:album; HUDMSG_ALPHA, -68745, -1, draw_x + 18.0, draw_y + 26.0, hold, alpha);
+	else
 		HudMessage(s:""; 0, -68745, -1, 0.0, 0.0, 0.0);
-		terminate;
-	}
+	if (StrLen(artist) > 0)
+		HudMessage(s:"\cq", s:artist; HUDMSG_ALPHA, -68746, -1, draw_x + 18.0, draw_y + 37.0, hold, alpha);
+	else
+		HudMessage(s:""; 0, -68746, -1, 0.0, 0.0, 0.0);
+}
 
-	int base_target_x = x_aspect + MUSIC_CARD_OFFSET_X;
-	int base_target_y = y_aspect + MUSIC_CARD_OFFSET_Y;
-
-	fancytunedisplay_serial++;
-	int my_serial = fancytunedisplay_serial;
+script "uh_MusicPresent" (int wantconsole) CLIENTSIDE {
+	str lump;
+	str title;
+	str album;
+	str artist;
+	int x_aspect;
+	int y_aspect;
+	int base_target_x;
+	int base_target_y;
+	int my_serial;
 	int i;
 	int progress;
 	int inv_p;
@@ -1056,98 +1068,113 @@ script "ub_FancyDisplayMusic" (int togglegarbage) CLIENTSIDE {
 	int raw_x;
 	int draw_x;
 	int draw_y;
+	int style;
+	int final_x;
+	int final_y;
+	int hold_secs;
+	int cur_alpha;
+	str min_text;
+	int text_x;
+	int text_y;
 
-	// 1. Entrance: Slide in from right with Ease-Out Quad
+	if (!UH_MusicSnapshotReady())
+		terminate;
+	lump = GetCVarString("_uh_ServMusicLump");
+	title = GetCVarString("_uh_ServMusicTitle");
+	album = GetCVarString("_uh_ServMusicAlbum");
+	artist = GetCVarString("_uh_ServMusicArtist");
+	style = GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicDisplay");
+	if (wantconsole)
+		UH_MusicWriteConsole(lump, title, album, artist);
+	title = UH_MusicFitLine(title);
+	album = UH_MusicFitLine(album);
+	artist = UH_MusicFitLine(artist);
+	if (style <= 0)
+		terminate;
+
+	SetHudSize(640, 480, 0);
+	x_aspect = GetHudRight(640) * 1.0;
+	y_aspect = GetHudBot(480) * 1.0;
+	if (GetScreenWidth() == 640 && GetScreenHeight() == 480) {
+		x_aspect = 640.0;
+		y_aspect = 480.0;
+	}
+
+	if (style == 2) {
+		fancytunedisplay_serial++;
+		min_text = StrParam(s:"\ckNOW PLAYING \cl[", s:lump, s:"]\n\c[White]", s:title);
+		if (StrLen(album) > 0)
+			min_text = StrParam(s:min_text, s:"\n\cd", s:album);
+		if (StrLen(artist) > 0)
+			min_text = StrParam(s:min_text, s:"\n\cq", s:artist);
+		text_x = (RoundFixedToInt(x_aspect - 16.0) * 1.0) + 0.2;
+		text_y = (RoundFixedToInt(y_aspect - 84.0) * 1.0) + 0.2;
+		SetFont("SMALLFONT");
+		HudMessage(s:min_text; HUDMSG_TYPEON, -68741, -1, text_x, text_y, 4.0, 0.02, 1.5);
+		HudMessage(s:""; 0, -68742, -1, 0.0, 0.0, 0.0);
+		HudMessage(s:""; 0, -68743, -1, 0.0, 0.0, 0.0);
+		HudMessage(s:""; 0, -68744, -1, 0.0, 0.0, 0.0);
+		HudMessage(s:""; 0, -68745, -1, 0.0, 0.0, 0.0);
+		HudMessage(s:""; 0, -68746, -1, 0.0, 0.0, 0.0);
+		terminate;
+	}
+
+	base_target_x = x_aspect + MUSIC_CARD_OFFSET_X;
+	base_target_y = y_aspect + MUSIC_CARD_OFFSET_Y;
+	fancytunedisplay_serial++;
+	my_serial = fancytunedisplay_serial;
+
 	for (i = 1; i <= MUSIC_CARD_IN_TICS; i++) {
 		if (my_serial != fancytunedisplay_serial) { terminate; }
 		progress = FixedDiv(i * 1.0, MUSIC_CARD_IN_TICS * 1.0);
 		inv_p = 1.0 - progress;
 		ease = 1.0 - FixedMul(inv_p, inv_p);
 		raw_x = base_target_x + FixedMul(MUSIC_CARD_SLIDE_DIST, 1.0 - ease);
-
 		draw_x = (RoundFixedToInt(raw_x) * 1.0) + 0.1;
 		draw_y = (RoundFixedToInt(base_target_y) * 1.0) + 0.1;
-
-		// Card background
 		SetFont("MUSCARD");
 		HudMessage(s:"A"; HUDMSG_ALPHA, -68741, -1, draw_x, draw_y, 0.2, FixedMul(0.85, ease));
-
-		// Music note symbol (STCFN600)
 		SetFont("STCFN600");
 		HudMessage(s:"A"; HUDMSG_ALPHA, -68742, -1, draw_x + 6.0, draw_y + 5.0, 0.2, ease);
-
-		// Line 1: NOW PLAYING [lump]
-		SetFont("SMALLFONT");
-		HudMessage(s:"\ckNOW PLAYING \cl[", s:tunecode_str, s:"]"; HUDMSG_ALPHA, -68743, -1, draw_x + 18.0, draw_y + 5.0, 0.2, ease);
-
-		// Line 2: track title
-		HudMessage(s:"\c[White]", s:title_str; HUDMSG_ALPHA, -68744, -1, draw_x + 18.0, draw_y + 17.0, 0.2, ease);
-
-		// Line 3: origin / album (omitted when empty)
-		if (StrLen(origin_str) > 0) {
-			HudMessage(s:"\cd", s:origin_str; HUDMSG_ALPHA, -68745, -1, draw_x + 18.0, draw_y + 29.0, 0.2, ease);
-		} else {
-			HudMessage(s:""; 0, -68745, -1, 0.0, 0.0, 0.0);
-		}
-
+		UH_MusicDrawCardLines(draw_x, draw_y, 0.2, ease, lump, title, album, artist);
 		Delay(1);
 	}
 
-	// 2. Hold phase: fully settled in place
-	int final_x = (RoundFixedToInt(base_target_x) * 1.0) + 0.1;
-	int final_y = (RoundFixedToInt(base_target_y) * 1.0) + 0.1;
-	int hold_secs = FixedDiv(MUSIC_CARD_HOLD_TICS * 1.0, 35.0) + 0.5;
-
+	final_x = (RoundFixedToInt(base_target_x) * 1.0) + 0.1;
+	final_y = (RoundFixedToInt(base_target_y) * 1.0) + 0.1;
+	hold_secs = FixedDiv(MUSIC_CARD_HOLD_TICS * 1.0, 35.0) + 0.5;
 	SetFont("MUSCARD");
 	HudMessage(s:"A"; HUDMSG_ALPHA, -68741, -1, final_x, final_y, hold_secs, 0.85);
-
 	SetFont("STCFN600");
 	HudMessage(s:"A"; HUDMSG_ALPHA, -68742, -1, final_x + 6.0, final_y + 5.0, hold_secs, 1.0);
-
-	SetFont("SMALLFONT");
-	HudMessage(s:"\ckNOW PLAYING \cl[", s:tunecode_str, s:"]"; HUDMSG_ALPHA, -68743, -1, final_x + 18.0, final_y + 5.0, hold_secs, 1.0);
-	HudMessage(s:"\c[White]", s:title_str; HUDMSG_ALPHA, -68744, -1, final_x + 18.0, final_y + 17.0, hold_secs, 1.0);
-	if (StrLen(origin_str) > 0) {
-		HudMessage(s:"\cd", s:origin_str; HUDMSG_ALPHA, -68745, -1, final_x + 18.0, final_y + 29.0, hold_secs, 1.0);
-	}
+	UH_MusicDrawCardLines(final_x, final_y, hold_secs, 1.0, lump, title, album, artist);
 
 	for (i = 0; i < MUSIC_CARD_HOLD_TICS; i++) {
 		if (my_serial != fancytunedisplay_serial) { terminate; }
 		Delay(1);
 	}
 
-	// 3. Exit: Slide out to right with Ease-In Quad & fade out
 	for (i = 1; i <= MUSIC_CARD_OUT_TICS; i++) {
 		if (my_serial != fancytunedisplay_serial) { terminate; }
 		progress = FixedDiv(i * 1.0, MUSIC_CARD_OUT_TICS * 1.0);
 		ease = FixedMul(progress, progress);
+		cur_alpha = 1.0 - progress;
 		raw_x = base_target_x + FixedMul(MUSIC_CARD_SLIDE_DIST, ease);
-		int cur_alpha = 1.0 - progress;
-
 		draw_x = (RoundFixedToInt(raw_x) * 1.0) + 0.1;
-
 		SetFont("MUSCARD");
 		HudMessage(s:"A"; HUDMSG_ALPHA, -68741, -1, draw_x, final_y, 0.2, FixedMul(0.85, cur_alpha));
-
 		SetFont("STCFN600");
 		HudMessage(s:"A"; HUDMSG_ALPHA, -68742, -1, draw_x + 6.0, final_y + 5.0, 0.2, cur_alpha);
-
-		SetFont("SMALLFONT");
-		HudMessage(s:"\ckNOW PLAYING \cl[", s:tunecode_str, s:"]"; HUDMSG_ALPHA, -68743, -1, draw_x + 18.0, final_y + 5.0, 0.2, cur_alpha);
-		HudMessage(s:"\c[White]", s:title_str; HUDMSG_ALPHA, -68744, -1, draw_x + 18.0, final_y + 17.0, 0.2, cur_alpha);
-		if (StrLen(origin_str) > 0) {
-			HudMessage(s:"\cd", s:origin_str; HUDMSG_ALPHA, -68745, -1, draw_x + 18.0, final_y + 29.0, 0.2, cur_alpha);
-		}
-
+		UH_MusicDrawCardLines(draw_x, final_y, 0.2, cur_alpha, lump, title, album, artist);
 		Delay(1);
 	}
 
-	// Clear all 5 message layers
 	if (my_serial == fancytunedisplay_serial) {
 		HudMessage(s:""; 0, -68741, -1, 0.0, 0.0, 0.0);
 		HudMessage(s:""; 0, -68742, -1, 0.0, 0.0, 0.0);
 		HudMessage(s:""; 0, -68743, -1, 0.0, 0.0, 0.0);
 		HudMessage(s:""; 0, -68744, -1, 0.0, 0.0, 0.0);
 		HudMessage(s:""; 0, -68745, -1, 0.0, 0.0, 0.0);
+		HudMessage(s:""; 0, -68746, -1, 0.0, 0.0, 0.0);
 	}
 }

@@ -99,15 +99,13 @@
 #libdefine UHBOSS_STR_ACTOR 0
 #libdefine UHBOSS_STR_NAME 1
 #libdefine UHBOSS_STR_MUGSHOT 2
-#libdefine UHBOSS_STR_MUSIC 3
-#libdefine UHBOSS_STR_MUSICCREDIT 4
-#libdefine UHBOSS_STR_INSTRUCTION 5
-#libdefine UHBOSS_STR_SPAWNMSGTYPE 6
-#libdefine UHBOSS_STR_SPAWNMSG 7
-#libdefine UHBOSS_STR_EXBASEACTOR 8
-#libdefine UHBOSS_STR_MORPHSETUP 9
-#libdefine UHBOSS_STR_RAGEWARNING 10
-#libdefine UHBOSS_STR_COUNT 11
+#libdefine UHBOSS_STR_INSTRUCTION 3
+#libdefine UHBOSS_STR_SPAWNMSGTYPE 4
+#libdefine UHBOSS_STR_SPAWNMSG 5
+#libdefine UHBOSS_STR_EXBASEACTOR 6
+#libdefine UHBOSS_STR_MORPHSETUP 7
+#libdefine UHBOSS_STR_RAGEWARNING 8
+#libdefine UHBOSS_STR_COUNT 9
 
 // int fields per boss
 #libdefine UHBOSS_INT_RARITY 0
@@ -279,24 +277,6 @@ function str GetBossMugshot(int id) {
 	if (id >= 0)
 		return uh_bossvanillastr[slot][UHBOSS_STR_MUGSHOT];
 	return uh_bosscustomstr[slot][UHBOSS_STR_MUGSHOT];
-}
-
-function str getBossMusic(int id) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_bossvanillastr[slot][UHBOSS_STR_MUSIC];
-	return uh_bosscustomstr[slot][UHBOSS_STR_MUSIC];
-}
-
-function str getBossMusicCredit(int id) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_bossvanillastr[slot][UHBOSS_STR_MUSICCREDIT];
-	return uh_bosscustomstr[slot][UHBOSS_STR_MUSICCREDIT];
 }
 
 function str GetBossInstruction(int id) {
@@ -592,15 +572,13 @@ function int RandomBossFromPool(int rarity) {
 }
 
 function void UH_BossWriteVanilla(int id, str actor, str name, int rarity, int basehp, int addhp,
-	str exboss_baseactor, str mugshot, str musiclump, str musiccredit,
+	str exboss_baseactor, str mugshot,
 	str instruction, str spawnmessagetype, str spawnmessage, str ragewarningmessage) {
 	int baseid;
 	uh_bossvanilladefined[id] = 1;
 	uh_bossvanillastr[id][UHBOSS_STR_ACTOR] = actor;
 	uh_bossvanillastr[id][UHBOSS_STR_NAME] = name;
 	uh_bossvanillastr[id][UHBOSS_STR_MUGSHOT] = mugshot;
-	uh_bossvanillastr[id][UHBOSS_STR_MUSIC] = musiclump;
-	uh_bossvanillastr[id][UHBOSS_STR_MUSICCREDIT] = musiccredit;
 	uh_bossvanillastr[id][UHBOSS_STR_INSTRUCTION] = instruction;
 	uh_bossvanillastr[id][UHBOSS_STR_SPAWNMSGTYPE] = spawnmessagetype;
 	uh_bossvanillastr[id][UHBOSS_STR_SPAWNMSG] = spawnmessage;
@@ -616,7 +594,7 @@ function void UH_BossWriteVanilla(int id, str actor, str name, int rarity, int b
 }
 
 function int UH_BossWriteCustom(str actor, str name, int rarity, int basehp, int addhp,
-	str exboss_baseactor, str mugshot, str musiclump, str musiccredit,
+	str exboss_baseactor, str mugshot,
 	str instruction, str spawnmessagetype, str spawnmessage, str ragewarningmessage) {
 	int i = uh_bosscustomcount;
 	int bossid = -1 - i;
@@ -624,8 +602,6 @@ function int UH_BossWriteCustom(str actor, str name, int rarity, int basehp, int
 	uh_bosscustomstr[i][UHBOSS_STR_ACTOR] = actor;
 	uh_bosscustomstr[i][UHBOSS_STR_NAME] = name;
 	uh_bosscustomstr[i][UHBOSS_STR_MUGSHOT] = mugshot;
-	uh_bosscustomstr[i][UHBOSS_STR_MUSIC] = musiclump;
-	uh_bosscustomstr[i][UHBOSS_STR_MUSICCREDIT] = musiccredit;
 	uh_bosscustomstr[i][UHBOSS_STR_INSTRUCTION] = instruction;
 	uh_bosscustomstr[i][UHBOSS_STR_SPAWNMSGTYPE] = spawnmessagetype;
 	uh_bosscustomstr[i][UHBOSS_STR_SPAWNMSG] = spawnmessage;
@@ -1987,7 +1963,7 @@ int uh_bossmusicbossid[UH_MAX_BOSS_MUSICS];
 int uh_bossmusickind[UH_MAX_BOSS_MUSICS];
 int uh_bossmusicphase[UH_MAX_BOSS_MUSICS];
 str uh_bossmusiclump[UH_MAX_BOSS_MUSICS];
-str uh_bossmusiccredit[UH_MAX_BOSS_MUSICS];
+str uh_bossmusicmeta[UH_MAX_BOSS_MUSICS][3];
 int uh_bossmusicweight[UH_MAX_BOSS_MUSICS];
 int uh_bossmusicoptional[UH_MAX_BOSS_MUSICS];
 int uh_bossmusicduration[UH_MAX_BOSS_MUSICS];
@@ -2009,9 +1985,15 @@ function int FindEventMusicRow(int kind, int phase, str lump) {
 	return FindBossMusicRow(UHMUS_GLOBAL, kind, phase, lump);
 }
 
+function void UH_BossMusicWriteMeta(int row, str title, str album, str artist) {
+	uh_bossmusicmeta[row][0] = title;
+	uh_bossmusicmeta[row][1] = album;
+	uh_bossmusicmeta[row][2] = artist;
+}
+
 // weight >= 1. optional: non-zero = skip unless uh_sv_OptionalMusic.
-// Same (bossId, kind, phase, lump) again updates weight/credit/optional.
-function int AddBossMusicCore(int bossid, int kind, int phase, str lump, str credit, int weight, int optional) {
+// Same (bossId, kind, phase, lump) again updates title/album/artist/weight/optional.
+function int AddBossMusicCore(int bossid, int kind, int phase, str lump, str title, str album, str artist, int weight, int optional) {
 	int row;
 	if (!IsBossDefined(bossid))
 		return UHMUS_FAIL;
@@ -2026,7 +2008,7 @@ function int AddBossMusicCore(int bossid, int kind, int phase, str lump, str cre
 
 	row = FindBossMusicRow(bossid, kind, phase, lump);
 	if (row >= 0) {
-		uh_bossmusiccredit[row] = credit;
+		UH_BossMusicWriteMeta(row, title, album, artist);
 		uh_bossmusicweight[row] = weight;
 		if (optional != 0)
 			uh_bossmusicoptional[row] = 1;
@@ -2042,7 +2024,7 @@ function int AddBossMusicCore(int bossid, int kind, int phase, str lump, str cre
 	uh_bossmusickind[row] = kind;
 	uh_bossmusicphase[row] = phase;
 	uh_bossmusiclump[row] = lump;
-	uh_bossmusiccredit[row] = credit;
+	UH_BossMusicWriteMeta(row, title, album, artist);
 	uh_bossmusicweight[row] = weight;
 	if (optional != 0)
 		uh_bossmusicoptional[row] = 1;
@@ -2057,7 +2039,7 @@ function int AddBossMusicCore(int bossid, int kind, int phase, str lump, str cre
 // Global event pools (winner/loser/LMS). Identity = (kind, phase, lump).
 // Winner/Loser: phase 0. LMS: phase = eventid (>=0, no upper bound).
 // duration: ACS fixed seconds (-1.0 unknown). emuflag: 1 = MAME (+12 tics).
-function int AddEventMusicCore(int kind, int phase, str lump, str credit, int weight, int optional, int duration, int emuflag) {
+function int AddEventMusicCore(int kind, int phase, str lump, str title, str album, str artist, int weight, int optional, int duration, int emuflag) {
 	int row;
 	int emuf;
 	if (kind != UHMUS_KIND_WINNER && kind != UHMUS_KIND_LOSER && kind != UHMUS_KIND_LMS)
@@ -2076,7 +2058,7 @@ function int AddEventMusicCore(int kind, int phase, str lump, str credit, int we
 
 	row = FindEventMusicRow(kind, phase, lump);
 	if (row >= 0) {
-		uh_bossmusiccredit[row] = credit;
+		UH_BossMusicWriteMeta(row, title, album, artist);
 		uh_bossmusicweight[row] = weight;
 		if (optional != 0)
 			uh_bossmusicoptional[row] = 1;
@@ -2094,7 +2076,7 @@ function int AddEventMusicCore(int kind, int phase, str lump, str credit, int we
 	uh_bossmusickind[row] = kind;
 	uh_bossmusicphase[row] = phase;
 	uh_bossmusiclump[row] = lump;
-	uh_bossmusiccredit[row] = credit;
+	UH_BossMusicWriteMeta(row, title, album, artist);
 	uh_bossmusicweight[row] = weight;
 	if (optional != 0)
 		uh_bossmusicoptional[row] = 1;
@@ -2106,23 +2088,28 @@ function int AddEventMusicCore(int kind, int phase, str lump, str credit, int we
 	return row;
 }
 
-// Seed DefineBoss spawn music (weight 1, required). No-op for "" / "*".
-function void UH_BossSeedMusic(int bossid, str lump, str credit) {
-	if (StrCmp(lump, "") == 0 || StrCmp(lump, "*") == 0)
-		return;
-	AddBossMusicCore(bossid, UHMUS_KIND_SPAWN, 0, lump, credit, 1, 0);
-}
-
 function str GetBossMusicLumpByRow(int row) {
 	if (row < 0 || row >= uh_bossmusiccount)
 		return "";
 	return uh_bossmusiclump[row];
 }
 
-function str GetBossMusicCreditByRow(int row) {
+function str GetBossMusicTitleByRow(int row) {
 	if (row < 0 || row >= uh_bossmusiccount)
 		return "";
-	return uh_bossmusiccredit[row];
+	return uh_bossmusicmeta[row][0];
+}
+
+function str GetBossMusicAlbumByRow(int row) {
+	if (row < 0 || row >= uh_bossmusiccount)
+		return "";
+	return uh_bossmusicmeta[row][1];
+}
+
+function str GetBossMusicArtistByRow(int row) {
+	if (row < 0 || row >= uh_bossmusiccount)
+		return "";
+	return uh_bossmusicmeta[row][2];
 }
 
 function int GetBossMusicDurationByRow(int row) {
@@ -2937,14 +2924,16 @@ function str PickEyeMorphActorCore(str pool, int mode) {
 #libdefine UHBE_STR_STEM 0
 #libdefine UHBE_STR_NAME 1
 #libdefine UHBE_STR_MUSIC 2
-#libdefine UHBE_STR_CREDIT 3
-#libdefine UHBE_STR_SOUND 4
-#libdefine UHBE_STR_HUD1 5
-#libdefine UHBE_STR_HUD2 6
-#libdefine UHBE_STR_STARTCB 7
-#libdefine UHBE_STR_REBUILDCB 8
-#libdefine UHBE_STR_ENDCB 9
-#libdefine UHBE_STR_COUNT 10
+#libdefine UHBE_STR_MUSICTITLE 3
+#libdefine UHBE_STR_MUSICALBUM 4
+#libdefine UHBE_STR_MUSICARTIST 5
+#libdefine UHBE_STR_SOUND 6
+#libdefine UHBE_STR_HUD1 7
+#libdefine UHBE_STR_HUD2 8
+#libdefine UHBE_STR_STARTCB 9
+#libdefine UHBE_STR_REBUILDCB 10
+#libdefine UHBE_STR_ENDCB 11
+#libdefine UHBE_STR_COUNT 12
 
 // int fields per bonus event
 #libdefine UHBE_INT_ARG1 0
@@ -2990,7 +2979,7 @@ function int FindBonusEventByStem(str stem) {
 // Re-registering the same (id, stem) updates the whole row; the same applies
 // to repeated id -1 calls with a known stem (the existing row's id is reused).
 // Same stem with a different id, or same id with a different stem, fails.
-function int DefineBonusEventCore(int id, str stem, str name, str music, str credit,
+function int DefineBonusEventCore(int id, str stem, str name, str music, str title, str album, str artist,
 	str sound, str hud1, str hud2, str startcb, str rebuildcb, str endcb,
 	int arg1, int arg2, int arg3, int flags, int weight, int minplayers, int maxplayers) {
 	int other;
@@ -3033,7 +3022,9 @@ function int DefineBonusEventCore(int id, str stem, str name, str music, str cre
 	uh_bestr[id][UHBE_STR_STEM] = stem;
 	uh_bestr[id][UHBE_STR_NAME] = name;
 	uh_bestr[id][UHBE_STR_MUSIC] = music;
-	uh_bestr[id][UHBE_STR_CREDIT] = credit;
+	uh_bestr[id][UHBE_STR_MUSICTITLE] = title;
+	uh_bestr[id][UHBE_STR_MUSICALBUM] = album;
+	uh_bestr[id][UHBE_STR_MUSICARTIST] = artist;
 	uh_bestr[id][UHBE_STR_SOUND] = sound;
 	uh_bestr[id][UHBE_STR_HUD1] = hud1;
 	uh_bestr[id][UHBE_STR_HUD2] = hud2;
@@ -3131,10 +3122,22 @@ function str GetBonusEventMusic(int id) {
 	return uh_bestr[id][UHBE_STR_MUSIC];
 }
 
-function str GetBonusEventMusicCredit(int id) {
+function str GetBonusEventMusicTitle(int id) {
 	if (!IsBonusEventDefined(id))
 		return "";
-	return uh_bestr[id][UHBE_STR_CREDIT];
+	return uh_bestr[id][UHBE_STR_MUSICTITLE];
+}
+
+function str GetBonusEventMusicAlbum(int id) {
+	if (!IsBonusEventDefined(id))
+		return "";
+	return uh_bestr[id][UHBE_STR_MUSICALBUM];
+}
+
+function str GetBonusEventMusicArtist(int id) {
+	if (!IsBonusEventDefined(id))
+		return "";
+	return uh_bestr[id][UHBE_STR_MUSICARTIST];
 }
 
 function str GetBonusEventSound(int id) {

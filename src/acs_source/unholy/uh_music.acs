@@ -1,12 +1,34 @@
 // This records whatever the current music/code is for possible later use.
 function void MusicSaveFunc(void) {
   savedmusiclump = currentmusiclump;
-  savedmusiccredit = currentmusiccredit;
+  savedmusictitle = currentmusictitle;
+  savedmusicalbum = currentmusicalbum;
+  savedmusicartist = currentmusicartist;
+  savedmusiccontext = currentmusiccontext;
 }
+
+function void UH_ClearPublishedMusic(int context) {
+  int gen;
+  currentmusiclump = "";
+  currentmusictitle = "";
+  currentmusicalbum = "";
+  currentmusicartist = "";
+  currentmusiccontext = context;
+  gen = GetCVar("_uh_ServMusicGen");
+  if ((gen & 1) == 0)
+    gen = gen + 1;
+  else
+    gen = gen + 2;
+  SetCVar("_uh_ServMusicGen", gen);
+  SetCVarString("_uh_ServMusicLump", "");
+  SetCVarString("_uh_ServMusicTitle", "");
+  SetCVarString("_uh_ServMusicAlbum", "");
+  SetCVarString("_uh_ServMusicArtist", "");
+  SetCVar("_uh_ServMusicContext", context);
+  SetCVar("_uh_ServMusicGen", gen + 1);
+}
+
 function void PlayMusic(str music) {
-  currentmusiclump = music;
-  SetCVarString("_uh_ServMusicLump", music);
-  SetCVar("_uh_ServMusicContext", 0);
   int len = StrLen(music);  // Also checks if music has a space and numbers after it
   int space = FindSpace(music, len);  // If it does, it plays the multi track
 
@@ -16,16 +38,81 @@ function void PlayMusic(str music) {
     int len2 = len - space - 1;
     SetMusic(StrLeft(music, space), StringToInt(StrRight(music, len2), len2));
   }
+  // Silence and map-default playback are not Unholy tracks. Drop the previous
+  // snapshot so !music and Map Card do not keep showing it.
+  if (!UH_MusicLumpPublishable(music))
+    UH_ClearPublishedMusic(0);
 }
 
-// The server still selects one Unholy tune. Each client may locally substitute
-// the map's stage tune, or its MM8BDM boss tune once LMS begins.
-function void UH_MusicSetContext(int context) {
+function int UH_MusicLumpPublishable(str lump) {
+  if (StrCmp(lump, "") == 0 || StrCmp(lump, "*") == 0)
+    return 0;
+  return 1;
+}
+
+// Strings are written before the even generation, so a client that sees a stable
+// generation has already received this snapshot. Announce moves only for a new
+// selection; a restore refreshes the snapshot without one.
+function void UH_PublishMusic(str lump, str title, str album, str artist, int context, int announce) {
+  int gen;
+  int ann;
+  if (!UH_MusicLumpPublishable(lump))
+    return;
+
+  currentmusiclump = lump;
+  currentmusictitle = title;
+  currentmusicalbum = album;
+  currentmusicartist = artist;
+  currentmusiccontext = context;
+
+  gen = GetCVar("_uh_ServMusicGen");
+  if ((gen & 1) == 0)
+    gen = gen + 1;
+  else
+    gen = gen + 2;
+  SetCVar("_uh_ServMusicGen", gen);
+  SetCVarString("_uh_ServMusicLump", lump);
+  SetCVarString("_uh_ServMusicTitle", title);
+  SetCVarString("_uh_ServMusicAlbum", album);
+  SetCVarString("_uh_ServMusicArtist", artist);
   SetCVar("_uh_ServMusicContext", context);
-  for (int c = 0; c < MAX_PLAYERS; c++) {
+  if (announce) {
+    ann = GetCVar("_uh_ServMusicAnnounce") + 1;
+    if (ann < 1)
+      ann = 1;
+    SetCVar("_uh_ServMusicAnnounce", ann);
+  }
+  SetCVar("_uh_ServMusicGen", gen + 1);
+}
+
+function void UH_PingRoundMusicMode(int context) {
+  int c;
+  if (context != 1 && context != 2)
+    return;
+  for (c = 0; c < MAX_PLAYERS; c++) {
     if (UH_Ti_IsConnectedClient(c))
       NamedExecuteClientScript("uh_ApplyRoundMusicMode", c, context);
   }
+}
+
+function void UH_PlayTrack(str lump, str title, str album, str artist, int context, int announce) {
+  PlayMusic(lump);
+  UH_PublishMusic(lump, title, album, artist, context, announce);
+  UH_PingRoundMusicMode(context);
+}
+
+function void UH_RestoreMusic(void) {
+  UH_PlayTrack(savedmusiclump, savedmusictitle, savedmusicalbum, savedmusicartist, savedmusiccontext, 0);
+}
+
+function void UH_PlayBossRow(int row, int context, int announce) {
+  if (row < 0)
+    return;
+  UH_PlayTrack(GetBossMusicLumpByRow(row), GetBossMusicTitleByRow(row), GetBossMusicAlbumByRow(row), GetBossMusicArtistByRow(row), context, announce);
+}
+
+function void UH_PlayBonusEventMusic(int eventid) {
+  UH_PlayTrack(GetBonusEventMusic(eventid), GetBonusEventMusicTitle(eventid), GetBonusEventMusicAlbum(eventid), GetBonusEventMusicArtist(eventid), 0, 1);
 }
 
 function str UH_MapBossMusic(void) {
@@ -65,8 +152,22 @@ function void UH_ClientPlayMusic(str music) {
   }
 }
 
-// A server music change is delivered explicitly to each connected client.
-// The polling script also handles user-option changes and late joins.
+function void UH_ClientApplyRoundMusic(int mode, int context) {
+  str lump;
+  if (context != 1 && context != 2)
+    return;
+  if (mode == 1) {
+    ACS_NamedExecuteAlways("uh_ApplyRoundMusicMode", 0, context);
+    return;
+  }
+  lump = GetCVarString("_uh_ServMusicLump");
+  if (!UH_MusicLumpPublishable(lump))
+    return;
+  UH_ClientPlayMusic(lump);
+}
+
+// The server still selects one Unholy tune. Each client may locally substitute
+// the map's stage tune, or its MM8BDM boss tune once LMS begins.
 script "uh_ApplyRoundMusicMode" (int context) CLIENTSIDE {
   int cpn = ConsolePlayerNumber();
   if (cpn < 0 || GetUserCVar(cpn, "uh_cl_MusicMode") == 0)
@@ -81,74 +182,78 @@ script "uh_ApplyRoundMusicMode" (int context) CLIENTSIDE {
   }
 }
 
+// The first stable generation is the baseline (startup or a late join). Only a
+// later announce is a new selection. Mode and style changes refresh playback
+// without displaying.
 script "uh_WatchRoundMusicMode" OPEN CLIENTSIDE {
+  int primed = 0;
+  int lastgen = 0;
+  int lastann = 0;
   int lastmode = -1;
   int lastcontext = -1;
-  int lastdisplay = -1;
-  str lastlump = "";
-  str lastcredit = "";
   while (true) {
     int cpn = ConsolePlayerNumber();
-    int mode = GetUserCVar(cpn, "uh_cl_MusicMode");
-    int context = GetCVar("_uh_ServMusicContext");
-    int display = GetUserCVar(cpn, "uh_cl_MusicDisplay");
-    str lump = GetCVarString("_uh_ServMusicLump");
-    str credit = GetCVarString("_uh_ServMusicCredits");
-    int music_changed = mode != lastmode || context != lastcontext ||
-                        StrCmp(lump, lastlump) != 0;
-    if (music_changed) {
-      if (context == 1 || context == 2) {
-        if (mode == 1)
-          ACS_NamedExecuteAlways("uh_ApplyRoundMusicMode", 0, context);
-        else
-          UH_ClientPlayMusic(lump);
-      }
+    int gen;
+    int mode;
+    int context;
+    int ann;
+    if (cpn < 0) {
+      Delay(1);
+      continue;
     }
-    if (display == 3 &&
-        (music_changed || display != lastdisplay || StrCmp(credit, lastcredit) != 0))
-      ACS_NamedExecuteAlways("ub_FancyDisplayMusic", 0, 0);
+    gen = GetCVar("_uh_ServMusicGen");
+    if (gen & 1) {
+      Delay(1);
+      continue;
+    }
+    if (!primed) {
+      Delay(1);
+      if (GetCVar("_uh_ServMusicGen") != gen)
+        continue;
+      primed = 1;
+      lastgen = gen;
+      lastann = GetCVar("_uh_ServMusicAnnounce");
+      lastmode = GetUserCVar(cpn, "uh_cl_MusicMode");
+      lastcontext = GetCVar("_uh_ServMusicContext");
+      UH_ClientApplyRoundMusic(lastmode, lastcontext);
+      continue;
+    }
+    mode = GetUserCVar(cpn, "uh_cl_MusicMode");
+    context = GetCVar("_uh_ServMusicContext");
+    ann = GetCVar("_uh_ServMusicAnnounce");
+    if (gen != lastgen || mode != lastmode || context != lastcontext)
+      UH_ClientApplyRoundMusic(mode, context);
+    if ((gen != lastgen && !UH_MusicSnapshotReady()) || (mode != lastmode && mode == 1))
+      ACS_NamedExecuteAlways("uh_MusicDismiss", 0);
+    if (ann != lastann && ann > 0 && mode == 0)
+      ACS_NamedExecuteAlways("uh_MusicAutoNotify", 0);
+    lastgen = gen;
+    lastann = ann;
     lastmode = mode;
     lastcontext = context;
-    lastlump = lump;
-    lastdisplay = display;
-    lastcredit = credit;
-    Delay(7);
+    Delay(1);
   }
 }
-// Easy to manage music credits rather than having it listed multiple times in this ACS file.
-function void MusicCredits(str music, int display) {
-  currentmusiccredit = music;
-  SetCVarString("_uh_ServMusicCredits", music);
-  if (display == 0) {
-    ACS_NamedExecuteAlways("ub_FancyDisplayMusicStart", 0);
-  }
-}
+
 script "ub_PlayVariantMusic" (int thenum) {
   int row;
-  str lump;
-  str credit;
 
   // D6: combo music wins when defined; empty combo music falls back to the
   // selected boss's own music below.
   if (isbosseventactive && activebosscombo >= 0 && StrCmp(bosscombomusic[activebosscombo], "") != 0) {
-    PlayMusic(bosscombomusic[activebosscombo]);
-    UH_MusicSetContext(1);
-    MusicCredits(bosscombocredit[activebosscombo], 0);
+    UH_PlayTrack(bosscombomusic[activebosscombo], bosscombotitle[activebosscombo], bosscomboalbum[activebosscombo], bosscomboartist[activebosscombo], 1, 1);
     terminate;
   }
 
   row = PickBossMusicRow(thenum, UHMUS_KIND_SPAWN, 0);
-  if (row >= 0) {
-    lump = GetBossMusicLumpByRow(row);
-    credit = GetBossMusicCreditByRow(row);
-  }
+  if (row >= 0)
+    UH_PlayBossRow(row, 1, 1);
   else {
-    lump = getBossMusic(thenum);
-    credit = getBossMusicCredit(thenum);
+    // No Unholy track for this boss. Stop the previous tune and drop its card.
+    SetMusic("*");
+    UH_ClearPublishedMusic(1);
+    UH_PingRoundMusicMode(1);
   }
-  PlayMusic(lump);
-  UH_MusicSetContext(1);
-  MusicCredits(credit, 0);
 }
 
 // Phase-2 / enrage music. which = legacy boss id from DECORATE; type = phase.
@@ -156,8 +261,6 @@ script "ub_PlayVariantMusic" (int thenum) {
 script "ub_BossEnrageMusic" (int which, int type) {
   int id;
   int row;
-  str lump;
-  str credit;
 
   if (!CheckInventory("Is_UH_BossNum") || CheckInventory("IsGonnaBeFake"))
     terminate;
@@ -172,11 +275,7 @@ script "ub_BossEnrageMusic" (int which, int type) {
   if (row < 0)
     terminate;
 
-  lump = GetBossMusicLumpByRow(row);
-  credit = GetBossMusicCreditByRow(row);
-  PlayMusic(lump);
-  UH_MusicSetContext(1);
-  MusicCredits(credit, 0);
+  UH_PlayBossRow(row, 1, 1);
 }
 
 function int PlayMusic_Winner(int force) {
@@ -188,8 +287,7 @@ function int PlayMusic_Winner(int force) {
   if (row < 0)
     return 0;
 
-  PlayMusic(GetBossMusicLumpByRow(row));
-  MusicCredits(GetBossMusicCreditByRow(row), 1);
+  UH_PlayBossRow(row, 0, 0);
 
   emulatedelay = 0;
   if (GetBossMusicEmuFlagByRow(row))
@@ -205,8 +303,7 @@ function int PlayMusic_Loser(int force) {
   if (row < 0)
     return 0;
 
-  PlayMusic(GetBossMusicLumpByRow(row));
-  MusicCredits(GetBossMusicCreditByRow(row), 1);
+  UH_PlayBossRow(row, 0, 0);
 
   emulatedelay = 0;
   if (GetBossMusicEmuFlagByRow(row))
@@ -218,20 +315,16 @@ function void PlayMusic_Win(int force) {
   if (!force) {force = random(1, 3);}
   switch (force) {
     case -2:  // Solo Boss Spec/Disconnect!
-      MusicCredits("Team Fortress 2 - Class Duel Declined", 1);
-      PlayMusic("VICT__T2");
+      UH_PlayTrack("VICT__T2", "Class Duel Declined", "Team Fortress 2", "", 0, 0);
       break;
     case 1:
-      MusicCredits("Final Fight (SNES) - Game Over", 1);
-      PlayMusic("M_UWON_1");
+      UH_PlayTrack("M_UWON_1", "Game Over", "Final Fight (SNES)", "", 0, 0);
       break;
     case 2:
-      MusicCredits("Fire Emblem 7 - Arena Victory", 1);
-      PlayMusic("M_UWON_2");
+      UH_PlayTrack("M_UWON_2", "Arena Victory", "Fire Emblem 7", "", 0, 0);
       break;
     case 3:
-      MusicCredits("Mario Golf - Won The Challenge!", 1);
-      PlayMusic("MARIGOLF 31");
+      UH_PlayTrack("MARIGOLF 31", "Won The Challenge!", "Mario Golf", "", 0, 0);
       break;
   }
 }
@@ -240,21 +333,16 @@ function void PlayMusic_Loss(int force) {
   if (force < 1 || force > 3) {force = random(1, 3);}
   switch (force) {
     case 1:
-      MusicCredits("Super Street Fighter 2 - End Battle", 1);
-      PlayMusic("M_ULOS_1");
+      UH_PlayTrack("M_ULOS_1", "End Battle", "Super Street Fighter 2", "", 0, 0);
       break;
     case 2:
-      MusicCredits("Street Fighter 2 - Match Over", 1);
-      PlayMusic("M_ULOS_2");
+      UH_PlayTrack("M_ULOS_2", "Match Over", "Street Fighter 2", "", 0, 0);
       break;
     case 3:
-      MusicCredits("Mario Golf GBC - Lose", 1);
-      PlayMusic("MARIGOLF 32");
+      UH_PlayTrack("MARIGOLF 32", "Lose", "Mario Golf GBC", "", 0, 0);
       break;
   }
 }
-
-
 
 function int FindSpace(str string, int length) {
   for (int i = 0; i < length; i++) {
