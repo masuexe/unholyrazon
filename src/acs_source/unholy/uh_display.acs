@@ -902,17 +902,15 @@ script "ub_FancyDisplayMusic" (int togglegarbage) CLIENTSIDE {
 	str tunecode_str = GetCVarString("_uh_ServMusicLump");
 	str musical_str = GetCVarString("_uh_ServMusicCredits");
 	int music_context = GetCVar("_uh_ServMusicContext");
-	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicMode") == 1) {
+	int display_mode = GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicDisplay");
+	if (!togglegarbage && GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicMode") == 1) {
 		if (music_context == 1) {
 			tunecode_str = "*";
-			str map_title = GetCVarString("mm8bdm_map_musicname");
-			str map_source = GetCVarString("mm8bdm_map_musicgame");
-			if (StrLen(map_title) == 0) map_title = "Stage Music";
-			if (StrLen(map_source) == 0) map_source = "Map";
-			musical_str = StrParam(s:map_source, s:" - ", s:map_title);
+			musical_str = StrParam(l:GetCVarString("mm8bdm_map_musicgame"),
+			                       s:" - ", l:GetCVarString("mm8bdm_map_musicname"));
 		} else if (music_context == 2) {
 			tunecode_str = UH_MapBossMusic();
-			musical_str = "Map - Boss Theme";
+			musical_str = StrParam(l:GetCVarString("mm8bdm_map_musicgame"), s:" - Boss Theme");
 		}
 	}
 
@@ -924,7 +922,6 @@ script "ub_FancyDisplayMusic" (int togglegarbage) CLIENTSIDE {
 	// Console copy for player reference (always logged even if HUD card is disabled)
 	Log(s:"\c[Gold]Now Playing: \c[White]", s:musical_str, s:" \c[LightBlue][", s:tunecode_str, s:"]");
 
-	int display_mode = GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicDisplay");
 	if (display_mode <= 0) {
 		terminate;
 	}
@@ -956,6 +953,26 @@ script "ub_FancyDisplayMusic" (int togglegarbage) CLIENTSIDE {
 	} else {
 		title_str = musical_str;
 		origin_str = "";
+	}
+
+	if (display_mode == 3) {
+		// Mapcard-style presentation uses our selected music, never the stock
+		// core_mapcard stage-music fields. Keep IDs separate from the stock card.
+		str background = GetCVarString("mm8bdm_map_background");
+		str icon = GetCVarString("mm8bdm_map_icon");
+		if (StrLen(background) == 0) background = "MAPCD10";
+		if (StrLen(icon) == 0) icon = "MAPCARDI";
+		SetHudSize(800, 600, 0);
+		SetFont(background);
+		HudMessage(s:"A"; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5105, CR_WHITE, 0.1, 440.1, 5.0, 0.5, 0.5);
+		SetFont(icon);
+		HudMessage(s:"A"; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5104, CR_WHITE, 11.1, 451.1, 5.0, 0.5, 0.5);
+		SetFont("CONFONT");
+		HudMessage(s:"NOW PLAYING"; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5103, CR_CYAN, 48.1, 450.1, 5.0, 0.5, 0.5);
+		HudMessage(s:title_str; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5102, CR_WHITE, 26.1, 488.1, 5.0, 0.5, 0.5);
+		HudMessage(s:origin_str; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5101, CR_WHITE, 26.1, 500.1, 5.0, 0.5, 0.5);
+		HudMessage(s:tunecode_str; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5100, CR_WHITE, 26.1, 512.1, 5.0, 0.5, 0.5);
+		terminate;
 	}
 
 	// Safety truncation: a 270px line comfortably fits ~30 UIX chars.
