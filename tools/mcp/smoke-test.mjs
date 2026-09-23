@@ -183,6 +183,7 @@ function printResult(result, json) {
   console.error(`status=error profile=${result.profile ?? "unknown"}`);
   console.error(`error=${result.error}`);
   if (result.toolDetail) console.error(`tool_detail=${result.toolDetail}`);
+  if (result.engineLog) console.error(`engine_log=${result.engineLog}`);
   if (result.serverStderr) console.error(`server_stderr=${result.serverStderr}`);
   if (result.protocolNoise) console.error(`protocol_noise=${result.protocolNoise}`);
 }
@@ -218,8 +219,11 @@ async function run(options) {
   });
   const client = new Client({ name: "mm8bdm-mcp-smoke", version: "1.0.0" });
   let cleanup = "not attempted";
+  let connected = false;
+  let outcome;
   try {
     await client.connect(transport);
+    connected = true;
 
     const launchResult = await callTool(
       client,
@@ -243,30 +247,39 @@ async function run(options) {
       }
     })();
 
-    try {
-      const cleanupResult = await callTool(client, "kill_instance", { instance: options.instance }, 15000);
-      cleanup = firstLine(textFromResult(cleanupResult));
-    } catch (error) {
-      cleanup = `failed: ${error.message}`;
-    }
-
-    return {
+    outcome = {
       status: "ok",
       profile: options.profile,
       instance: options.instance,
       launch: firstLine(textFromResult(launchResult)),
       startup: summarizeStartup(textFromResult(startupResult)),
       playerState,
-      cleanup,
     };
   } catch (error) {
     if (error instanceof Error) {
       error.serverStderr = tail(serverStderr);
+      if (connected) {
+        try {
+          const log = await callTool(client, "read_engine_log", { instance: options.instance, maxLines: 200 }, 15000);
+          error.engineLog = tail(textFromResult(log), 8000);
+        } catch (logError) {
+          error.engineLog = `unavailable: ${logError.message}`;
+        }
+      }
     }
     throw error;
   } finally {
+    if (connected) {
+      try {
+        const cleanupResult = await callTool(client, "kill_instance", { instance: options.instance }, 15000);
+        cleanup = firstLine(textFromResult(cleanupResult));
+      } catch (error) {
+        cleanup = `failed: ${error.message}`;
+      }
+    }
     await client.close();
   }
+  return { ...outcome, cleanup };
 }
 
 const options = parseArgs(process.argv.slice(2));
@@ -281,6 +294,7 @@ try {
     error: error instanceof Error ? error.message : String(error),
   };
   if (error?.toolResult) result.toolDetail = tail(textFromResult(error.toolResult));
+  if (error?.engineLog) result.engineLog = error.engineLog;
   if (error?.serverStderr) result.serverStderr = error.serverStderr;
   if (error?.protocolNoise) result.protocolNoise = error.protocolNoise;
   printResult(result, options.json);
