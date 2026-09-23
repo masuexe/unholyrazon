@@ -84,23 +84,34 @@ script "uh_ApplyRoundMusicMode" (int context) CLIENTSIDE {
 script "uh_WatchRoundMusicMode" OPEN CLIENTSIDE {
   int lastmode = -1;
   int lastcontext = -1;
+  int lastdisplay = -1;
   str lastlump = "";
+  str lastcredit = "";
   while (true) {
     int cpn = ConsolePlayerNumber();
     int mode = GetUserCVar(cpn, "uh_cl_MusicMode");
     int context = GetCVar("_uh_ServMusicContext");
+    int display = GetUserCVar(cpn, "uh_cl_MusicDisplay");
     str lump = GetCVarString("_uh_ServMusicLump");
-    if (mode != lastmode || context != lastcontext || StrCmp(lump, lastlump) != 0) {
+    str credit = GetCVarString("_uh_ServMusicCredits");
+    int music_changed = mode != lastmode || context != lastcontext ||
+                        StrCmp(lump, lastlump) != 0;
+    if (music_changed) {
       if (context == 1 || context == 2) {
         if (mode == 1)
           ACS_NamedExecuteAlways("uh_ApplyRoundMusicMode", 0, context);
         else
           UH_ClientPlayMusic(lump);
       }
-      lastmode = mode;
-      lastcontext = context;
-      lastlump = lump;
     }
+    if (display == 3 &&
+        (music_changed || display != lastdisplay || StrCmp(credit, lastcredit) != 0))
+      ACS_NamedExecuteAlways("ub_FancyDisplayMusic", 0, 0);
+    lastmode = mode;
+    lastcontext = context;
+    lastlump = lump;
+    lastdisplay = display;
+    lastcredit = credit;
     Delay(7);
   }
 }

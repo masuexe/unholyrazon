@@ -880,6 +880,14 @@ script "uh_displaycurrentmusic" (void) NET CLIENTSIDE {
 	ACS_NamedExecuteAlways("ub_FancyDisplayMusic", 0, 0);
 }
 
+script "uh_showmapcard" (void) NET CLIENTSIDE {
+	if (ConsolePlayerNumber() != PlayerNumber()) terminate;
+	if (GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicDisplay") == 3)
+		ACS_NamedExecuteAlways("ub_FancyDisplayMusic", 0, 0);
+	else
+		ACS_NamedExecuteAlways("core_mapcard", 0);
+}
+
 
 
 #define MUSIC_CARD_WIDTH 270.0
@@ -957,21 +965,40 @@ script "ub_FancyDisplayMusic" (int togglegarbage) CLIENTSIDE {
 
 	if (display_mode == 3) {
 		// Mapcard-style presentation uses our selected music, never the stock
-		// core_mapcard stage-music fields. Keep IDs separate from the stock card.
+		// core_mapcard stage-music fields. Reuse its IDs so Show Mapcard
+		// replaces any earlier stock card instead of layering over it.
+		if (GetUserCVar(ConsolePlayerNumber(), "mm8bdm_mapcards") == 0 ||
+		    StrLen(GetCVarString("mm8bdm_map_creator")) == 0)
+			terminate;
+
 		str background = GetCVarString("mm8bdm_map_background");
 		str icon = GetCVarString("mm8bdm_map_icon");
+		str card_music_name = title_str;
+		str card_music_game = origin_str;
+		str card_music_composer = tunecode_str;
+		if (!togglegarbage && GetUserCVar(ConsolePlayerNumber(), "uh_cl_MusicMode") == 1) {
+			if (music_context == 1) {
+				card_music_name = StrParam(l:GetCVarString("mm8bdm_map_musicname"));
+				card_music_game = StrParam(l:GetCVarString("mm8bdm_map_musicgame"));
+				card_music_composer = StrParam(l:GetCVarString("mm8bdm_map_musiccomposer"));
+			} else if (music_context == 2) {
+				card_music_name = "Boss Theme";
+				card_music_game = StrParam(l:GetCVarString("mm8bdm_map_musicgame"));
+				card_music_composer = UH_MapBossMusic();
+			}
+		}
 		if (StrLen(background) == 0) background = "MAPCD10";
 		if (StrLen(icon) == 0) icon = "MAPCARDI";
 		SetHudSize(800, 600, 0);
 		SetFont(background);
-		HudMessage(s:"A"; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5105, CR_WHITE, 0.1, 440.1, 5.0, 0.5, 0.5);
+		HudMessage(s:"A"; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5005, CR_WHITE, 0.1, 440.1, 5.0, 0.5, 0.5);
 		SetFont(icon);
-		HudMessage(s:"A"; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5104, CR_WHITE, 11.1, 451.1, 5.0, 0.5, 0.5);
+		HudMessage(s:"A"; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5004, CR_WHITE, 11.1, 451.1, 5.0, 0.5, 0.5);
 		SetFont("CONFONT");
-		HudMessage(s:"NOW PLAYING"; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5103, CR_CYAN, 48.1, 450.1, 5.0, 0.5, 0.5);
-		HudMessage(s:title_str; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5102, CR_WHITE, 26.1, 488.1, 5.0, 0.5, 0.5);
-		HudMessage(s:origin_str; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5101, CR_WHITE, 26.1, 500.1, 5.0, 0.5, 0.5);
-		HudMessage(s:tunecode_str; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5100, CR_WHITE, 26.1, 512.1, 5.0, 0.5, 0.5);
+		HudMessage(s:GetCVarString("mm8bdm_map_createdbytext"), s:"\n\n\cj", s:GetCVarString("mm8bdm_map_creator"); HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5003, CR_CYAN, 48.1, 450.1, 5.0, 0.5, 0.5);
+		HudMessage(s:card_music_name; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5002, CR_WHITE, 26.1, 488.1, 5.0, 0.5, 0.5);
+		HudMessage(s:card_music_game; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5001, CR_WHITE, 26.1, 500.1, 5.0, 0.5, 0.5);
+		HudMessage(s:card_music_composer; HUDMSG_PLAIN|HUDMSG_FADEINOUT, 5000, CR_WHITE, 26.1, 512.1, 5.0, 0.5, 0.5);
 		terminate;
 	}
 
