@@ -6,6 +6,7 @@ function void MusicSaveFunc(void) {
 function void PlayMusic(str music) {
   currentmusiclump = music;
   SetCVarString("_uh_ServMusicLump", music);
+  SetCVar("_uh_ServMusicContext", 0);
   int len = StrLen(music);  // Also checks if music has a space and numbers after it
   int space = FindSpace(music, len);  // If it does, it plays the multi track
 
@@ -14,6 +15,93 @@ function void PlayMusic(str music) {
   } else {
     int len2 = len - space - 1;
     SetMusic(StrLeft(music, space), StringToInt(StrRight(music, len2), len2));
+  }
+}
+
+// The server still selects one Unholy tune. Each client may locally substitute
+// the map's stage tune, or its MM8BDM boss tune once LMS begins.
+function void UH_MusicSetContext(int context) {
+  SetCVar("_uh_ServMusicContext", context);
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    if (UH_Ti_IsConnectedClient(c))
+      NamedExecuteClientScript("uh_ApplyRoundMusicMode", c, context);
+  }
+}
+
+function str UH_MapBossMusic(void) {
+  str override = GetCVarString("mm8bdm_map_bossmusic");
+  int par;
+  if (StrLen(override) > 0)
+    return override;
+  par = GetLevelInfo(LEVELINFO_PAR_TIME);
+  switch (par) {
+    case 1: return "MM1BOSS";
+    case 2: return "MM2BOSS";
+    case 3: return "MM3BOSS";
+    case 4: return "MM4BOSS";
+    case 5: return "MM5BOSS";
+    case 6: return "MM6BOSS";
+    case 7: return "MM7BOSS";
+    case 8: return "MM7OBOS";
+    case 9: return "MM8BOSS";
+    case 10: return "MM1PBOSS";
+    case 11: return "DUOMUS";
+    case 12: return "MMBBOSS";
+    case 13: return "MMBOBOS";
+    case 14: return "MMWTBOSS";
+    case 15: return "MM9BOSS";
+  }
+  return "*";
+}
+
+function void UH_ClientPlayMusic(str music) {
+  int len = StrLen(music);
+  int space = FindSpace(music, len);
+  if (space == -1) {
+    SetMusic(music);
+  } else {
+    int digits = len - space - 1;
+    SetMusic(StrLeft(music, space), StringToInt(StrRight(music, digits), digits));
+  }
+}
+
+// A server music change is delivered explicitly to each connected client.
+// The polling script also handles user-option changes and late joins.
+script "uh_ApplyRoundMusicMode" (int context) CLIENTSIDE {
+  int cpn = ConsolePlayerNumber();
+  if (cpn < 0 || GetUserCVar(cpn, "uh_cl_MusicMode") == 0)
+    terminate;
+  if (context == 1) {
+    SetMusic("*");
+    // MM8BDM maps may provide a client-selected stage track here.
+    ACS_NamedExecuteWithResult("core_setstagemusic_client");
+  } else if (context == 2) {
+    UH_ClientPlayMusic(UH_MapBossMusic());
+    ACS_NamedExecuteWithResult("core_setupbossoverride_client");
+  }
+}
+
+script "uh_WatchRoundMusicMode" OPEN CLIENTSIDE {
+  int lastmode = -1;
+  int lastcontext = -1;
+  str lastlump = "";
+  while (true) {
+    int cpn = ConsolePlayerNumber();
+    int mode = GetUserCVar(cpn, "uh_cl_MusicMode");
+    int context = GetCVar("_uh_ServMusicContext");
+    str lump = GetCVarString("_uh_ServMusicLump");
+    if (mode != lastmode || context != lastcontext || StrCmp(lump, lastlump) != 0) {
+      if (context == 1 || context == 2) {
+        if (mode == 1)
+          ACS_NamedExecuteAlways("uh_ApplyRoundMusicMode", 0, context);
+        else
+          UH_ClientPlayMusic(lump);
+      }
+      lastmode = mode;
+      lastcontext = context;
+      lastlump = lump;
+    }
+    Delay(7);
   }
 }
 // Easy to manage music credits rather than having it listed multiple times in this ACS file.
@@ -33,6 +121,7 @@ script "ub_PlayVariantMusic" (int thenum) {
   // selected boss's own music below.
   if (isbosseventactive && activebosscombo >= 0 && StrCmp(bosscombomusic[activebosscombo], "") != 0) {
     PlayMusic(bosscombomusic[activebosscombo]);
+    UH_MusicSetContext(1);
     MusicCredits(bosscombocredit[activebosscombo], 0);
     terminate;
   }
@@ -47,6 +136,7 @@ script "ub_PlayVariantMusic" (int thenum) {
     credit = getBossMusicCredit(thenum);
   }
   PlayMusic(lump);
+  UH_MusicSetContext(1);
   MusicCredits(credit, 0);
 }
 
@@ -74,6 +164,7 @@ script "ub_BossEnrageMusic" (int which, int type) {
   lump = GetBossMusicLumpByRow(row);
   credit = GetBossMusicCreditByRow(row);
   PlayMusic(lump);
+  UH_MusicSetContext(1);
   MusicCredits(credit, 0);
 }
 
