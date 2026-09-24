@@ -1,167 +1,161 @@
 actor PurpleHero_W_NormalBar : NormalBar {args 237, 61}
-actor PurpleHero_W : BaseUnholyBossWep
-{
-Tag "$TAG_Boss041_W"
-Obituary "%o was vanquished by \ctPurple Anti-Unholy Elite\c- (%k)!"
-Inventory.Pickupmessage "\ctAGAINST THE EVIL!"
-weapon.ammotype "UnholyBossAmmo150"
-//weapon.ammotype2 "UnholyPower3000"
-States
-{
-Spawn:
-8H41 [ 1
-wait
+actor PurpleHero_W : BaseUnholyBossWep {
+  Tag "$TAG_Boss041_W"
+  Obituary "%o was vanquished by \ctPurple Anti-Unholy Elite\c- (%k)!"
+  Inventory.Pickupmessage "\ctAGAINST THE EVIL!"
+  weapon.ammotype "UnholyBossAmmo150"
+  // weapon.ammotype2 "UnholyPower3000"
+  States {
+   Spawn:
+    8H41 [ 1
+    wait
 
-Deselect:
-8H41 A 0
-goto DeselectSwap
-Select:
-8H41 A 0
-goto SelectSwap
+   Deselect:
+    8H41 A 0
+    goto DeselectSwap
+   Select:
+    8H41 A 0
+    goto SelectSwap
 
-Ready:
-8H41 A 0 ACS_NamedExecuteAlways("core_weaponcolor", 0, PURPLEHERO_DYE)
-8H41 A 6 
-8H41 A 0 A_GunFlash
-goto ReadyX
-ReadyX:
-8H41 A 0 A_JumpIfInventory("UnholyBossAmmo150",150,"ReadyX2")
-8H41 A 2 A_WeaponReady(8)
-8H41 A 0 A_GiveInventory("UnholyBossAmmo150",2)
-loop
-ReadyX2:
-8H41 A 2 A_WeaponReady
-8H41 A 0 A_GiveInventory("UnholyBossAmmo150",2)
-loop
+   Ready:
+    8H41 A 1 ACS_NamedExecuteAlways("core_weaponcolor", 0, PURPLEHERO_DYE)
+    8H41 A 6
+    8H41 A 0 A_GunFlash
+    goto ReadyX
+   ReadyX:
+    8H41 A 0 A_JumpIfInventory("UnholyBossAmmo150", 150, "ReadyX2")
+    8H41 A 2 A_WeaponReady(8)
+    8H41 A 0 A_GiveInventory("UnholyBossAmmo150", 2)
+    loop
+   ReadyX2:
+    8H41 A 2 A_WeaponReady
+    8H41 A 0 A_GiveInventory("UnholyBossAmmo150", 2)
+    loop
 
-Flash:
-TNT1 A 0 A_JumpIf(!CallACS("uh_PointerIsABoss_CheckInv"), "NoFlash")//1001
-TNT1 A 0 A_JumpIfHealthLower(CallACS("rz_CountInv_BossSpawnHealthFlag")*0.50+1,"Flash.GetHypedForPain")
-TNT1 A 1
-loop
-Flash.GetHypedForPain:
-TNT1 A 0 A_PlaySound("weapon/mirrorabsorb")
-TNT1 A 0 ACS_NamedExecuteWithResult("uh_runeplayer", 0, true, RUNE_SPREAD)
-TNT1 A 1
-TNT1 A 4 //ACS_NamedExecuteWithResult("core_chargecolor", THEDENTIST_DYE)
-//stop
-Flash.Old:
-TNT1 A 5 ACS_NamedExecuteWithResult("core_chargecolor", PURPLEHERO_DYE)
-TNT1 A 0 A_JumpIf(!CallACS("uh_PointerIsABoss_CheckInv"), "NoFlash")
-TNT1 A 5 ACS_NamedExecuteWithResult("core_chargecolor", THEDENTIST_DYE)
-TNT1 A 0 A_JumpIf(!CallACS("uh_PointerIsABoss_CheckInv"), "NoFlash")
-loop
+   Flash:
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerIsABoss_CheckInv"), "NoFlash")  // 1001
+    TNT1 A 0 A_JumpIfHealthLower(CallACS("rz_CountInv_BossSpawnHealthFlag")*0.50+1, "Flash.GetHypedForPain")
+    TNT1 A 1
+    loop
+   Flash.GetHypedForPain:
+    TNT1 A 0 A_PlaySound("weapon/mirrorabsorb")
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_runeplayer", 0, true, RUNE_SPREAD)
+    TNT1 A 1
+    TNT1 A 4  // ACS_NamedExecuteWithResult("core_chargecolor", THEDENTIST_DYE)
+    // stop
+   Flash.Old:
+    TNT1 A 5 ACS_NamedExecuteWithResult("core_chargecolor", PURPLEHERO_DYE)
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerIsABoss_CheckInv"), "NoFlash")
+    TNT1 A 5 ACS_NamedExecuteWithResult("core_chargecolor", THEDENTIST_DYE)
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerIsABoss_CheckInv"), "NoFlash")
+    loop
 
-Fire:
-8H41 A 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-8H41 A 0 A_FireCustomMissile("PurpleHeroShot",0,0,8,0)
-8H41 A 0 A_FireCustomMissile("PurpleHeroShot",10,0,8,0)
-8H41 A 0 A_FireCustomMissile("PurpleHeroShot",-10,0,8,0)
-// 24 tics (was BCBAAAAAAAAA 2). Peak (36,62). Ammo x1 x12.
-// duration 1 + Rage settle-skips → ~12 real tics under Rage (old duration-2 half).
-// Give on 0-tic before kept frames so Rage still grants 12 ammo.
-8H41 B 0 A_GiveInventory("UnholyBossAmmo150",1)
-8H41 B 1 Offset(12, 42) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
-8H41 B 1 Offset(24, 52)
-8H41 B 0 A_GiveInventory("UnholyBossAmmo150",1)
-8H41 C 1 Offset(36, 62) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
-8H41 C 1 Offset(32, 58)
-8H41 A 0 A_GiveInventory("UnholyBossAmmo150",1)
-8H41 B 1 Offset(28, 54) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
-8H41 B 1 Offset(24, 50)
-8H41 A 0 A_GiveInventory("UnholyBossAmmo150",1)
-8H41 A 1 Offset(20, 46) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
-8H41 A 1 Offset(16, 42)
-8H41 A 0 A_GiveInventory("UnholyBossAmmo150",1)
-8H41 A 1 Offset(14, 40) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
-8H41 A 1 Offset(12, 38)
-8H41 A 0 A_GiveInventory("UnholyBossAmmo150",1)
-8H41 A 1 Offset(10, 36) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
-8H41 A 1 Offset(8, 36)
-8H41 A 0 A_GiveInventory("UnholyBossAmmo150",1)
-8H41 A 1 Offset(6, 34) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
-8H41 A 1 Offset(4, 34)
-8H41 A 0 A_GiveInventory("UnholyBossAmmo150",1)
-8H41 A 1 Offset(4, 34) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
-8H41 A 1 Offset(2, 34)
-8H41 A 0 A_GiveInventory("UnholyBossAmmo150",1)
-8H41 A 1 Offset(2, 34) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
-8H41 A 1 Offset(2, 34)
-8H41 A 0 A_GiveInventory("UnholyBossAmmo150",1)
-8H41 A 1 Offset(2, 34) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
-8H41 A 1 Offset(2, 34)
-8H41 A 0 A_GiveInventory("UnholyBossAmmo150",1)
-8H41 A 1 Offset(2, 34) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
-8H41 A 1 Offset(2, 34)
-8H41 A 0 A_GiveInventory("UnholyBossAmmo150",1)
-8H41 A 1 Offset(2, 34) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
-8H41 A 1 Offset(2, 34)
-8H41 A 0 A_WeaponReady(14)
-Goto ReadyX
-AltFire:
-8H41 A 0 A_JumpIfInventory("UnholyBossAmmo150",150,"SpinShotThing")
-Goto ReadyX
-SpinShotThing:
-8H41 A 0 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 1)
-8H41 A 0 A_TakeInventory("UnholyBossAmmo150",200)
-// Continuous spin volley (18 shots) — pulse/vibrate, not one big kick.
-// Each frame still Gives PurpleHeroAlt_P; no Rage skips (would drop shots).
-// Rage bonus stays in PurpleHeroAlt_P Pickup_R. Amplitude builds mid-spin then eases.
-8H41 B 1 Offset(8, 38) A_GiveInventory("PurpleHeroAlt_P")
-8H41 B 1 Offset(4, 34) A_GiveInventory("PurpleHeroAlt_P")
-8H41 C 1 Offset(12, 42) A_GiveInventory("PurpleHeroAlt_P")
-8H41 C 1 Offset(6, 36) A_GiveInventory("PurpleHeroAlt_P")
-8H41 B 1 Offset(14, 44) A_GiveInventory("PurpleHeroAlt_P")
-8H41 B 1 Offset(6, 36) A_GiveInventory("PurpleHeroAlt_P")
-8H41 C 1 Offset(18, 48) A_GiveInventory("PurpleHeroAlt_P")
-8H41 C 1 Offset(8, 38) A_GiveInventory("PurpleHeroAlt_P")
-8H41 B 1 Offset(16, 46) A_GiveInventory("PurpleHeroAlt_P")
-8H41 B 1 Offset(6, 36) A_GiveInventory("PurpleHeroAlt_P")
-8H41 C 1 Offset(20, 50) A_GiveInventory("PurpleHeroAlt_P")
-8H41 C 1 Offset(8, 38) A_GiveInventory("PurpleHeroAlt_P")
-8H41 B 1 Offset(16, 46) A_GiveInventory("PurpleHeroAlt_P")
-8H41 B 1 Offset(6, 36) A_GiveInventory("PurpleHeroAlt_P")
-8H41 C 1 Offset(14, 44) A_GiveInventory("PurpleHeroAlt_P")
-8H41 C 1 Offset(6, 36) A_GiveInventory("PurpleHeroAlt_P")
-8H41 B 1 Offset(10, 40) A_GiveInventory("PurpleHeroAlt_P")
-8H41 B 1 Offset(4, 34) A_GiveInventory("PurpleHeroAlt_P")
-8H41 A 0 A_WeaponReady(14)
-8H41 A 2 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 0)
-Goto ReadyX
-}
+   Fire:
+    8H41 A 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    8H41 A 0 A_FireCustomMissile("PurpleHeroShot", 0, 0, 8, 0)
+    8H41 A 0 A_FireCustomMissile("PurpleHeroShot", 10, 0, 8, 0)
+    8H41 A 0 A_FireCustomMissile("PurpleHeroShot", -10, 0, 8, 0)
+    // 24 tics (was BCBAAAAAAAAA 2). Peak (36,62). Ammo x1 x12.
+    // duration 1 + Rage settle-skips → ~12 real tics under Rage (old duration-2 half).
+    // Give on 0-tic before kept frames so Rage still grants 12 ammo.
+    8H41 B 0 A_GiveInventory("UnholyBossAmmo150", 1)
+    8H41 B 1 Offset(12, 42) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H41 B 1 Offset(24, 52)
+    8H41 B 0 A_GiveInventory("UnholyBossAmmo150", 1)
+    8H41 C 1 Offset(36, 62) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H41 C 1 Offset(32, 58)
+    8H41 A 0 A_GiveInventory("UnholyBossAmmo150", 1)
+    8H41 B 1 Offset(28, 54) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H41 B 1 Offset(24, 50)
+    8H41 A 0 A_GiveInventory("UnholyBossAmmo150", 1)
+    8H41 A 1 Offset(20, 46) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H41 A 1 Offset(16, 42)
+    8H41 A 0 A_GiveInventory("UnholyBossAmmo150", 1)
+    8H41 A 1 Offset(14, 40) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H41 A 1 Offset(12, 38)
+    8H41 A 0 A_GiveInventory("UnholyBossAmmo150", 1)
+    8H41 A 1 Offset(10, 36) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H41 A 1 Offset(8, 36)
+    8H41 A 0 A_GiveInventory("UnholyBossAmmo150", 1)
+    8H41 A 1 Offset(6, 34) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H41 A 1 Offset(4, 34)
+    8H41 A 0 A_GiveInventory("UnholyBossAmmo150", 1)
+    8H41 A 1 Offset(4, 34) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H41 A 1 Offset(2, 34)
+    8H41 A 0 A_GiveInventory("UnholyBossAmmo150", 1)
+    8H41 A 1 Offset(2, 34) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H41 A 1 Offset(2, 34)
+    8H41 A 0 A_GiveInventory("UnholyBossAmmo150", 1)
+    8H41 A 1 Offset(2, 34) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H41 A 1 Offset(2, 34)
+    8H41 A 0 A_GiveInventory("UnholyBossAmmo150", 1)
+    8H41 A 1 Offset(2, 34) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H41 A 1 Offset(2, 34)
+    8H41 A 0 A_GiveInventory("UnholyBossAmmo150", 1)
+    8H41 A 1 Offset(2, 34) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
+    8H41 A 1 Offset(2, 34)
+    8H41 A 0 A_WeaponReady(14)
+    Goto ReadyX
+   AltFire:
+    8H41 A 0 A_JumpIfInventory("UnholyBossAmmo150", 150, "SpinShotThing")
+    Goto ReadyX
+   SpinShotThing:
+    8H41 A 0 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 1)
+    8H41 A 0 A_TakeInventory("UnholyBossAmmo150", 200)
+    // Continuous spin volley (18 shots) — pulse/vibrate, not one big kick.
+    // Each frame still Gives PurpleHeroAlt_P; no Rage skips (would drop shots).
+    // Rage bonus stays in PurpleHeroAlt_P Pickup_R. Amplitude builds mid-spin then eases.
+    8H41 B 1 Offset(8, 38) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 B 1 Offset(4, 34) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 C 1 Offset(12, 42) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 C 1 Offset(6, 36) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 B 1 Offset(14, 44) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 B 1 Offset(6, 36) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 C 1 Offset(18, 48) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 C 1 Offset(8, 38) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 B 1 Offset(16, 46) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 B 1 Offset(6, 36) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 C 1 Offset(20, 50) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 C 1 Offset(8, 38) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 B 1 Offset(16, 46) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 B 1 Offset(6, 36) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 C 1 Offset(14, 44) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 C 1 Offset(6, 36) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 B 1 Offset(10, 40) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 B 1 Offset(4, 34) A_GiveInventory("PurpleHeroAlt_P")
+    8H41 A 0 A_WeaponReady(14)
+    8H41 A 2 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 0)
+    Goto ReadyX
+  }
 }
 
-Actor PurpleHeroShot : RedHeroShot
-{
-Translation "192:192=61:61","198:198=63:63","202:202=34:34","199:199=237:237"
-Damagetype "HeroPurple"
-Obituary "%o was vanquished by \ctPurple Anti-Unholy Elite\c- (%k)!"
-Damage(75)
-States
-{
-Death:
-TNT1 A 0 A_Stop
-TNT1 A 0 A_PlaySoundEx("weapon/crackerexplode", "Weapon")
-TNT1 A 0 A_Explode(75,128,0)
-X_8B ABCDEF 2
-//TNT1 A 4 A_SpawnItemEx("BasicBoom4FX_ColorX_Dull",0,0,0,0,0,0,0,1+16384)
-stop
-}
+Actor PurpleHeroShot : RedHeroShot {
+  Translation "192:192=61:61", "198:198=63:63", "202:202=34:34", "199:199=237:237"
+  Damagetype "HeroPurple"
+  Obituary "%o was vanquished by \ctPurple Anti-Unholy Elite\c- (%k)!"
+  Damage (75)
+  States {
+   Death:
+    TNT1 A 0 A_Stop
+    TNT1 A 0 A_PlaySoundEx("weapon/crackerexplode", "Weapon")
+    TNT1 A 0 A_Explode(75, 128, 0)
+    X_8B ABCDEF 2
+    // TNT1 A 4 A_SpawnItemEx("BasicBoom4FX_ColorX_Dull",0,0,0,0,0,0,0,1+16384)
+    stop
+  }
 }
 
-//COOL IDEA, GIVE PURPLE ANTI HERO A LOBBING GRENADE BLOWS UP ON CONTACT AND FIRES SHOTS IN A CIRLCE MARKSMAN STLY.E
-Actor PurpleHeroAlt_P : CustomInventory
-{
-States
-{
-Pickup:
-TNT1 A 0 A_PlaySoundEx("weapon/pshot","Weapon")
-TNT1 A 0 A_SetAngle(angle-20.0)
-TNT1 A 1 A_FireCustomMissile("PurpleHeroShot",random(-8,8),0,8,0)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertyRage",1,"Pickup_R")
-stop
-Pickup_R:
-TNT1 A 1 A_FireCustomMissile("PurpleHeroShot",random(-8,8),0,8,0,0,random(-2,2))
-stop
-}
+// COOL IDEA, GIVE PURPLE ANTI HERO A LOBBING GRENADE BLOWS UP ON CONTACT AND FIRES SHOTS IN A CIRLCE MARKSMAN STLY.E
+Actor PurpleHeroAlt_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_PlaySoundEx("weapon/pshot", "Weapon")
+    TNT1 A 0 A_SetAngle(angle-20.0)
+    TNT1 A 1 A_FireCustomMissile("PurpleHeroShot", random(-8, 8), 0, 8, 0)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertyRage", 1, "Pickup_R")
+    stop
+   Pickup_R:
+    TNT1 A 1 A_FireCustomMissile("PurpleHeroShot", random(-8, 8), 0, 8, 0, 0, random(-2, 2))
+    stop
+  }
 }
