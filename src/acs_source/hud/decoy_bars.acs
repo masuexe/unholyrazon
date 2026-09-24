@@ -1,28 +1,6 @@
-function void DrawDecoyBotHud(void) {
+function void DrawDecoyBotHud(int sel) {
   SetHudSize(320, 200, 0);
   int baseid = UH_IMAGE_ID_BASE - 110;
-  // Held DecoyCopy_*_W1/_W2/_W3 (and legacy parents): slot from weapon suffix.
-  int sel = 1;
-  int wlen;
-  int d;
-  str wep = GetWeapon();
-  wlen = StrLen(wep);
-  if (wlen >= 4
-    && GetChar(wep, wlen - 3) == '_'
-    && GetChar(wep, wlen - 2) == 'W') {
-    d = GetChar(wep, wlen - 1);
-    if (d == '2')
-      sel = 2;
-    else if (d == '3')
-      sel = 3;
-    else
-      sel = 1;
-  }
-  else if (!StrCmp(wep, "DecoyBot_W2")) {
-    sel = 2;
-  } else if (!StrCmp(wep, "DecoyBot_W3")) {
-    sel = 3;
-  }
 
   int f1 = CheckInventory("DecoyBotFlag1");
   int f2 = CheckInventory("DecoyBotFlag2");
@@ -131,16 +109,17 @@ function void DrawDecoyBotShinyHud(void) {
     -8.2, 43.1, 82.2, 153.1);
 }
 
-script "DrawBar_DecoyBot_W" (void) {
+script "DrawBar_DecoyBot_W" (int sel) {
   // Ammo1Disp proxy: fill/number do not depend on ReadyWeapon Ammo1 (avoids switch flash).
   DrawBarColorOwned(CheckInventory("DecoyEnergyAmmo"), GetAmmoCapacity("DecoyEnergyAmmo"), 68, 78);
-  DrawDecoyBotHud();
+  if (sel < 1 || sel > 3) {sel = 1;}
+  DrawDecoyBotHud(sel);
 }
 script "DrawBar_DecoyBot_W2" (void) {
-  ACS_NamedExecuteWithResult("DrawBar_DecoyBot_W");
+  ACS_NamedExecuteWithResult("DrawBar_DecoyBot_W", 2);
 }
 script "DrawBar_DecoyBot_W3" (void) {
-  ACS_NamedExecuteWithResult("DrawBar_DecoyBot_W");
+  ACS_NamedExecuteWithResult("DrawBar_DecoyBot_W", 3);
 }
 script "DrawBar_DecoyBotShiny_W" (void) {
   DrawBarColorOwned(CheckInventory("DecoyEnergyAmmo"), GetAmmoCapacity("DecoyEnergyAmmo"), 161, 248);

@@ -110,6 +110,20 @@ function void DrawBarRun(void) {
 		wep = UH_DecoyHeldBarWep(wep);
 		wep = UH_NegaHeldBarWep(wep);
 	}
+	// Replacing a held Decoy copy can leave ReadyWeapon null for one HUD tick.
+	// GetWeapon() then returns "None"; keep its bar until the new copy is ready.
+	if (StrICmp(wep, "None") == 0
+		&& (CheckInventory("IsDecoyBotFlag") || CheckInventory("IsDecoyBotSFlag"))) {
+		str cls = GetActorClass(0);
+		if (StrICmp(cls, "DecoyBotShiny") == 0)
+			wep = "DecoyBotShiny_W";
+		else if (StrICmp(cls, "DecoyBot") == 0) {
+			if (StrICmp(oldwep, "DecoyBot_W2") == 0 || StrICmp(oldwep, "DecoyBot_W3") == 0)
+				wep = oldwep;
+			else
+				wep = "DecoyBot_W";
+		}
+	}
 
 	if (oldwep != wep) {
 		oldwep = wep;
