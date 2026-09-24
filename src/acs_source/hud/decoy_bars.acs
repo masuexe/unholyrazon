@@ -101,6 +101,36 @@ function void DrawDecoyBotHud(void) {
   AdjustedImageDisplay(pipv, piph, baseid - 24, baseid - 25, -9.1, 73.1, 47.1, 167.1);
 }
 
+function void DrawDecoyBotShinyHud(void) {
+  SetHudSize(320, 200, 0);
+  int baseid = UH_IMAGE_ID_BASE - 110;
+  int slot = CheckInventory("DecoyBotFlag1");
+  if (slot < 0) {slot = 0;}
+  str number;
+  if (slot < 10) {number = StrParam(s:"0", i:slot);}
+  else {number = StrParam(i:slot);}
+
+  // Normal DecoyBot uses this ID range for three boxes and the reroll pips.
+  // Replace unused messages so they cannot linger after morphing to Shiny.
+  for (int offset = 2; offset < 32; offset += 2) {
+    if (offset != 6 && offset != 12 && offset != 26) {
+      AdjustedImageDisplay("TNT1A0", "TNT1A0", baseid - offset, baseid - offset - 1,
+        0.1, 0.1, 0.1, 0.1);
+    }
+  }
+
+  // Razon3 Shiny layout: only the middle slot, with its animated gold frame.
+  AdjustedImageDisplay("C_I_50G", "C_I_50G", baseid, baseid - 1,
+    -17.1, 29.1, 73.1, 158.1);
+  AdjustedImageDisplay("C_I_50E", "C_I_50E", baseid - 6, baseid - 7,
+    -17.1, 29.1, 73.1, 158.1);
+  str portrait = slot >= UH_DECOY_SLOTBASE ? "TNT1A0" : StrParam(s:"UCNUM$", i:slot);
+  AdjustedImageDisplay(portrait, portrait, baseid - 26, baseid - 27,
+    -16.1, 30.1, 74.1, 159.1);
+  AdjustedDrawStringC("CMBHQFONT", CR_GOLD, number, baseid - 12, baseid - 13,
+    -8.2, 43.1, 82.2, 153.1);
+}
+
 script "DrawBar_DecoyBot_W" (void) {
   // Ammo1Disp proxy: fill/number do not depend on ReadyWeapon Ammo1 (avoids switch flash).
   DrawBarColorOwned(CheckInventory("DecoyEnergyAmmo"), GetAmmoCapacity("DecoyEnergyAmmo"), 68, 78);
@@ -113,7 +143,8 @@ script "DrawBar_DecoyBot_W3" (void) {
   ACS_NamedExecuteWithResult("DrawBar_DecoyBot_W");
 }
 script "DrawBar_DecoyBotShiny_W" (void) {
-  ACS_NamedExecuteWithResult("DrawBar_DecoyBot_W");
+  DrawBarColorOwned(CheckInventory("DecoyEnergyAmmo"), GetAmmoCapacity("DecoyEnergyAmmo"), 161, 248);
+  DrawDecoyBotShinyHud();
 }
 
 script "DrawBar_Zangief_W" (void) {
