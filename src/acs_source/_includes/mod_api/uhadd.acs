@@ -127,6 +127,21 @@
 //      }
 // Re-registering the same name (any case) returns the existing row.
 //
+// === DefineMultiWeapon addon recipe =========================================
+// Marks weapons as native to a player actor class for mechanics that need its
+// owned weapon set (currently Pharaoh 4MI's roulette curse). This does not add
+// them to MM8BDM's DTADD weapon table or require a _W naming convention.
+//
+//      script "your_multiweapons" OPEN {
+//          DefineMultiWeapon("YourClass", "YourFirstWeapon");
+//          DefineMultiWeapon("YourClass", "YourSecondWeapon");
+//      }
+//
+// Register on the server after Unholy's UH_CLASSES library loads. The class is
+// considered multi-weapon only while the player owns two registered weapons.
+// Duplicate pairs return the original row; one weapon cannot belong to two
+// classes. This table is server-only, so no OPEN CLIENTSIDE twin is needed.
+//
 // === DefineDemoneye addon recipe =============================================
 // 1. LOADACS after Unholy: YOUR_EYEDEFS
 // 2. ACS:
@@ -1109,6 +1124,16 @@ function str GetSurvivorMugshot(int id) {
 function int DefineSurvivorWep(str wepActor) {
 	SetCVarString("uh_dsw_actor", wepActor);
 	return ACS_NamedExecuteWithResult("uh_DefineSurvivorWep_S");
+}
+
+// Register a weapon as native to a player class. Pharaoh 4MI's roulette
+// considers the class multi-weapon only while it owns at least two rows.
+// Register from a server OPEN script after UH_CLASSES has loaded. Repeating
+// the same (class, weapon) pair returns its existing row.
+function int DefineMultiWeapon(str classActor, str weaponActor) {
+	SetCVarString("uh_mw_class", classActor);
+	SetCVarString("uh_mw_weapon", weaponActor);
+	return ACS_NamedExecuteWithResult("uh_DefineMultiWeapon_S");
 }
 
 // Register a per-survivor cleanup CustomInventory given by uh_StripSurvivorWeps

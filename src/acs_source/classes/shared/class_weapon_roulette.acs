@@ -1,39 +1,55 @@
-// Strip trailing _W / _W1.._W9 from a weapon classname
-function str WeaponFamilyBase(str weap) {
-  int len = StrLen(weap);
-  if (len < 3)
-    return weap;
-  // *_W1 .. *_W9
-  if (len >= 4 &&
-      GetChar(weap, len - 3) == '_' &&
-      GetChar(weap, len - 2) == 'W') {
-    int d = GetChar(weap, len - 1);
-    if (d >= '1' && d <= '9')
-      return StrLeft(weap, len - 3);
+// Class-owned weapons used by Pharaoh 4MI's roulette curse. Unlike DTADD's
+// DefineWeapon, these rows do not enter MM8BDM's random-weapon pools.
+#define UH_MULTIWEAPON_MAX 512
+#define UH_MULTIWEAPON_FAIL -9999
+
+str uh_multiweapon_class[UH_MULTIWEAPON_MAX];
+str uh_multiweapon_actor[UH_MULTIWEAPON_MAX];
+int uh_multiweapon_count;
+
+function int UH_RegisterMultiWeapon(str classActor, str weaponActor) {
+  if (StrLen(classActor) == 0 || StrLen(weaponActor) == 0)
+    return UH_MULTIWEAPON_FAIL;
+  for (int i = 0; i < uh_multiweapon_count; i++) {
+    if (StrICmp(uh_multiweapon_actor[i], weaponActor) == 0) {
+      if (StrICmp(uh_multiweapon_class[i], classActor) == 0)
+        return i;
+      return UH_MULTIWEAPON_FAIL;
+    }
   }
-  // *_W
-  if (GetChar(weap, len - 2) == '_' && GetChar(weap, len - 1) == 'W')
-    return StrLeft(weap, len - 2);
-  return weap;
+  if (uh_multiweapon_count >= UH_MULTIWEAPON_MAX)
+    return UH_MULTIWEAPON_FAIL;
+  int row = uh_multiweapon_count;
+  uh_multiweapon_class[row] = classActor;
+  uh_multiweapon_actor[row] = weaponActor;
+  uh_multiweapon_count++;
+  return row;
 }
 
-function int CountNativeWepFamily(void) {
-  str weap = GetWeapon();
-  if (StrLen(weap) == 0)
-    return 0;
-  str base = WeaponFamilyBase(weap);
+// UHADD passes strings through registered cvars. Raw ACS string indices are
+// not portable between server and client processes.
+script "uh_DefineMultiWeapon_S" (void) {
+  SetResultValue(UH_RegisterMultiWeapon(
+    GetCVarString("uh_mw_class"), GetCVarString("uh_mw_weapon")));
+}
+
+str uh_ownedmultiweapon[UH_MULTIWEAPON_MAX];
+
+function int UH_CollectOwnedMultiWeapons(void) {
+  str classActor = GetActorClass(0);
   int count = 0;
-  if (CheckInventory(StrParam(s:base, s:"_W")))
-    count++;
-  for (int i = 1; i <= 6; i++) {
-    if (CheckInventory(StrParam(s:base, s:"_W", i:i)))
+  for (int i = 0; i < uh_multiweapon_count; i++) {
+    if (StrICmp(uh_multiweapon_class[i], classActor) == 0 &&
+        CheckInventory(uh_multiweapon_actor[i])) {
+      uh_ownedmultiweapon[count] = uh_multiweapon_actor[i];
       count++;
+    }
   }
   return count;
 }
 
 function int CountClassWeapons(void) {
-  int native = CountNativeWepFamily();
+  int native = UH_CollectOwnedMultiWeapons();
   if (native >= 2)
     return native;
   return ACS_NamedExecuteWithResult("rz_CountCopyWeapons");
@@ -43,42 +59,20 @@ script "rz_CountClassWeapons" (void) {
   SetResultValue(CountClassWeapons());
 }
 
-// Activator: player — SetWeapon to another owned weapon (_W family, else Mega/Qwant/Nega copy pool)
+// Activator: player. Pick another owned weapon of this actor class.
 script "rz_RoulettePickOtherWeapon" (void) {
-  str weap = GetWeapon();
-  if (StrLen(weap) == 0) {
+  str current = GetWeapon();
+  if (StrLen(current) == 0) {
     SetResultValue(0);
     terminate;
   }
 
-  // Prefer class-native *_W / *_W# siblings when that family has 2+
-  if (CountNativeWepFamily() >= 2) {
-    str base = WeaponFamilyBase(weap);
-    str owned[7];
-    int n = 0;
-    str cand = StrParam(s:base, s:"_W");
-    if (CheckInventory(cand)) {
-      owned[n] = cand;
-      n++;
-    }
-    for (int i = 1; i <= 6; i++) {
-      cand = StrParam(s:base, s:"_W", i:i);
-      if (CheckInventory(cand)) {
-        owned[n] = cand;
-        n++;
-      }
-    }
-    for (int tries = 0; tries < 16; tries++) {
-      int idx = Random(0, n - 1);
-      if (StrCmp(owned[idx], weap) != 0) {
-        SetWeapon(owned[idx]);
-        SetResultValue(1);
-        terminate;
-      }
-    }
-    for (int j = 0; j < n; j++) {
-      if (StrCmp(owned[j], weap) != 0) {
-        SetWeapon(owned[j]);
+  int n = UH_CollectOwnedMultiWeapons();
+  if (n >= 2) {
+    int start = Random(0, n - 1);
+    for (int i = 0; i < n; i++) {
+      str next = uh_ownedmultiweapon[(start + i) % n];
+      if (StrICmp(next, current) != 0 && SetWeapon(next)) {
         SetResultValue(1);
         terminate;
       }
