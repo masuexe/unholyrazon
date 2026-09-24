@@ -237,8 +237,16 @@ Three of these cost a debugging round each; check them before blaming the mod:
   UIX `PBMug_*` scripts still agree. This is the static half of the
   team-presentation migration gate; `tools/mcp/team-presentation-test.mjs` is
   the runtime half.
-- `gen_shiny_moves.py` / `gen_decoy_moves.py` — regenerate checked-in DECORATE
-  fragments from their source actors.
+- `gen_shiny_moves.py` — regenerate the checked-in Shiny DECORATE fragment.
+- `gen_decoy_moves.py` — generate all 61 DecoyBot W1/W2/W3 copy actors from
+  `tools/decoy_copy_moves_source.dec` into the checked-in
+  `src/actors/classes/survivors/decoy_copy_moves.dec`. Edit the W1 actors in
+  the source file; W2/W3 are derived by sprite-prefix, parent and tag remaps.
+  Slots 27 and 52 have explicit W2/W3 overrides for their differing behavior.
+  `python3 tools/gen_decoy_moves.py --check` detects stale output without
+  writing. Format the source with the project's DECORATE editor settings; the
+  generator preserves that formatting in W1/W2/W3. This generator no longer
+  rewrites `DecoyBot_W.dec`.
 - `_gen_barpos.py` — regenerate `SBARINFO.h.uhappend` /
   `SBARINFO.v.uhappend` (AppendStatusBar) and the TOML bar actors/ACS from
   `tools/bars.toml`. The v6b numeric `BRSL/VRSL` compatibility banks remain
@@ -248,9 +256,10 @@ Three of these cost a debugging round each; check them before blaming the mod:
 - `bars.toml` is the schema-versioned hand-authored input for namespaced bars.
   `python3 tools/_gen_barpos.py --check` verifies its checked-in numeric ACS
   helper, namespaced selector/ammo actors in `UH_BarFX.dec`, and sparse-priority
-  AppendStatusBar output. The two `.uhappend` files are deliberately emitted as
-  compact, single-line compiler output; edit `bars.toml` or the generator, never
-  format them by hand. The base game's `BarFX.txt` must not be overridden.
+  AppendStatusBar output. The two `.uhappend` files use the same spacing and
+  indentation as their corresponding `SBARINFO.*._core` files; edit `bars.toml`
+  or the generator, never format them by hand. The base game's `BarFX.txt` must
+  not be overridden.
   Each `[[groups]]` entry declares one namespace and contains one or more
   `[[groups.bars]]` entries. All namespaces share the single generated
   `UHBar_ClearAll` callback (one `core_DrawBar_RegisterClear` slot for the

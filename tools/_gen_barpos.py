@@ -440,7 +440,7 @@ def validate_generated_actor_names(config: dict):
             seen[key] = (kind, bar_label(bar), bank)
 
 
-def gen_namespaced_append_lines(config: dict, horiz: bool) -> list:
+def gen_namespaced_append_lines(config: dict, horiz: bool) -> list[str]:
     lines = []
     position_order = {pos[0]: index for index, pos in enumerate(POS_BANKS)}
     bars = sorted(
@@ -462,35 +462,38 @@ def gen_namespaced_append_lines(config: dict, horiz: bool) -> list:
                                  next(p[4] for p in POS_BANKS if p[0] == bar["position"]),
                                  next(p[5] for p in POS_BANKS if p[0] == bar["position"]))
             orientation = "vertical"
+        indent = "  " if horiz else "\t"
         lines.append(
-            f'InInventory {selector},{selector_id}'
-            f'{{InInventory not {selector},{selector_id + 1}'
-            f'{{DrawBar"{fill}","{empty}",{ammo},{orientation},{x},{y};}}}}'
+            f'{indent * 4}InInventory "{selector}", {selector_id} '
+            f'{{InInventory not "{selector}", {selector_id + 1} '
+            f'{{DrawBar "{fill}", "{empty}", {ammo}, '
+            f'{orientation}, {x}, {y};}}}}'
         )
     return lines
 
 
 def gen_append_files(config):
-    def body(horiz: bool) -> list:
+    def render(horiz: bool) -> str:
+        indent = "  " if horiz else "\t"
+        mode = "normal" if horiz else "fullscreen"
         lines = [
-            'InInventory DrawStatusBarFlag,1{',
-            'InInventory not NoHud,1{',
-            'InInventory not NoHealthBar,1{',
+            f"AppendStatusBar {mode}, forcescaled {{",
+            f'{indent}InInventory "DrawStatusBarFlag", 1 {{',
+            f'{indent * 2}InInventory not "NoHud", 1 {{',
+            f'{indent * 3}InInventory not "NoHealthBar", 1 {{',
+            *gen_namespaced_append_lines(config, horiz),
+            f"{indent * 3}}}",
+            f"{indent * 2}}}",
+            f"{indent}}}",
+            "}",
         ]
-        lines += gen_namespaced_append_lines(config, horiz)
-        lines += ["}", "}", "}"]
-        return lines
+        return "\n".join(lines) + "\n"
 
-    # These files are compiler output. Keep only parser-required token
-    # separators: DrawBar requires quoted image names, while InInventory accepts
-    # identifiers. No trailing newline is needed by FScanner.
-    hz = "AppendStatusBar normal,forcescaled{" + "".join(body(True)) + "}"
-    vz = "AppendStatusBar fullscreen,forcescaled{" + "".join(body(False)) + "}"
-    return hz, vz
+    return render(True), render(False)
 
 
 def gen_namespaced_barfx_actors(config: dict) -> str:
-    block = ["//$UH — TOML namespaced bar selectors / ammo"]
+    block = ["// $UH — TOML namespaced bar selectors / ammo"]
     seen = set()
     for bar in config["bars"]:
         actors = [(
@@ -507,7 +510,7 @@ def gen_namespaced_barfx_actors(config: dict) -> str:
             if actor_key in seen:
                 continue
             seen.add(actor_key)
-            block += [f"actor {actor} : {parent}", "{", *extra, "}", ""]
+            block += [f"actor {actor} : {parent} {{", *(f"  {line}" for line in extra), "}", ""]
     return "\n".join(block)
 
 

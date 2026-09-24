@@ -87,15 +87,17 @@ def main():
     del source_bar["capacity"]
     source_config = load_fixture([("UHBar_Source", [source_bar])])
     append_lines = generator.gen_namespaced_append_lines(source_config, True)
-    assert any('DrawBar"002B_VAR","VNOBAR",Ammo1,' in line
+    assert any('DrawBar "002B_VAR", "VNOBAR", Ammo1,' in line
                for line in append_lines)
-    compact_h, compact_v = generator.gen_append_files(source_config)
-    assert compact_h.startswith("AppendStatusBar normal,forcescaled{")
-    assert compact_v.startswith("AppendStatusBar fullscreen,forcescaled{")
-    assert "\n" not in compact_h and "\n" not in compact_v
-    assert "//" not in compact_h and "\t" not in compact_h
-    assert 'InInventory "' not in compact_h
-    assert 'DrawBar"002B_VAR","VNOBAR",Ammo1,horizontal,58,184;' in compact_h
+    formatted_h, formatted_v = generator.gen_append_files(source_config)
+    assert formatted_h.startswith("AppendStatusBar normal, forcescaled {\n")
+    assert formatted_v.startswith("AppendStatusBar fullscreen, forcescaled {\n")
+    assert '\n  InInventory "DrawStatusBarFlag", 1 {\n' in formatted_h
+    assert '\n\tInInventory "DrawStatusBarFlag", 1 {\n' in formatted_v
+    assert '\n        InInventory "UHBar_Source_P1L0Selector", 1 ' in formatted_h
+    assert '\n\t\t\t\tInInventory "UHBar_Source_P1L0Selector", 1 ' in formatted_v
+    assert 'DrawBar "002B_VAR", "VNOBAR", Ammo1, horizontal, 58, 184;' in formatted_h
+    assert formatted_h.endswith("}\n") and formatted_v.endswith("}\n")
     source_actors = generator.gen_namespaced_barfx_actors(source_config)
     assert "actor UHBar_Source_P1L0Selector" in source_actors
     assert "UHBar_Source_P1L0_BodyAmmo" not in source_actors
