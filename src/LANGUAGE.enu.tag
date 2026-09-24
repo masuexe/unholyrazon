@@ -479,6 +479,16 @@ TAG_DecoyCopy_58_W2 = "\ck[Illegal]\c- Champion Dive Kick";
 TAG_DecoyCopy_58_W3 = "\cd[The Best]\c- Champion Dive Kick";
 TAG_DecoyShinyCopy_58_W = "\c[UH50]*\c- \cq[Licensed]\c- Champion Dive Kick";
 
+TAG_DecoyCopy_59_W1 = "\cg[Chinese Imported]\c- Eden Tears";
+TAG_DecoyCopy_59_W2 = "\ck[Illegal]\c- Eden Tears";
+TAG_DecoyCopy_59_W3 = "\cd[The Best]\c- Eden Tears";
+TAG_DecoyShinyCopy_59_W = "\c[UH50]*\c- \cq[Licensed]\c- Eden Tears";
+
+TAG_DecoyCopy_60_W1 = "\cg[Chinese Imported]\c- Crystal Strap";
+TAG_DecoyCopy_60_W2 = "\ck[Illegal]\c- Crystal Strap";
+TAG_DecoyCopy_60_W3 = "\cd[The Best]\c- Crystal Strap";
+TAG_DecoyShinyCopy_60_W = "\c[UH50]*\c- \cq[Licensed]\c- Crystal Strap";
+
 // ===========================================================================
 // Boss Multi-Weapon Wheels
 // ===========================================================================
