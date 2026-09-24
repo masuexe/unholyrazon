@@ -2215,7 +2215,8 @@ function int UH_GetBonusEventTarget(int eventid) {
 //
 // DecoyBot: M2 roll Gives three held weapons DecoyCopy_<stem>_W1/_W2/_W3 into
 // slots 1/2/3. M1 fires the held weapon's Fire state directly. Register with
-// DefineDecoyBotMoveWep(stem or *_W / *_W1); table stores the stem.
+// DefineDecoyBotMoveWep(stem or *_W / *_W1); table stores the stem. Optional
+// SetDecoyBotReadyRule configures the minimum energy needed to enable Fire.
 //
 // Move weapon requirements for Qwant (engine-enforced):
 // 1. SetWeapon needs CheckAmmo(EitherFire) to pass: either give the weapon
@@ -2253,10 +2254,17 @@ function int UH_GetBonusEventTarget(int eventid) {
 // 4. W2/W3 may inherit W1 and only remap sprites (6H→6I/6J) + SlotNumber/icon.
 // 5. Register once: DefineDecoyBotMoveWep("DecoyCopy_YourName_W1") (or stem /
 //    *_W); M2 Give appends _W1/_W2/_W3 from the stored stem.
-// 6. Optional Shiny partner: inherit DecoyBotShinyCycleBase_W, implement Fire,
+// 6. Optional normal ready gate: SetDecoyBotReadyRule(stem, normalMin,
+//    endlessMin, bypassInventory). The default is (1, 1, ""); use 0 to make
+//    Fire available even at zero energy. A nonempty bypass inventory makes
+//    Fire available whenever the player holds it. The ready gate only enables
+//    Fire; your Fire state still owns the actual energy cost.
+// 7. Optional Shiny partner: inherit DecoyBotShinyCycleBase_W, implement Fire,
 //    then DefineDecoyBotShinyWep(the same normal stem, "YourShinyHeld_W").
 //    Shiny Decoy M1 fires that actor; M2 cycles paired rows in registration
-//    order and skips legacy/addon rows that have no shiny partner.
+//    order and skips legacy/addon rows that have no shiny partner. If Shiny
+//    Fire needs another ready gate, call SetDecoyBotShinyReadyRule after the
+//    ordinary ready rule.
 //
 // Recipes:
 //   DefineShinyQwantMoveWep("YourMove_W", 3);
@@ -2266,8 +2274,12 @@ function int UH_GetBonusEventTarget(int eventid) {
 //       NegaManShiny slots 26..33 (vanilla 1..25 already registered). One held
 //       actor; Fire1/2/3 on it. Register contiguous from 26.
 //   DefineDecoyBotMoveWep("DecoyCopy_YourName_W1");
-//       DecoyBot copy slot 59+ (vanilla 0..58 already registered). Uniform in
+//       DecoyBot copy slot 61+ (vanilla 0..60 already registered). Uniform in
 //       the flag swap pool; ApplyHeldWeps Gives stem_W1/_W2/_W3.
+//   SetDecoyBotReadyRule("DecoyCopy_YourName_W1", 40, 20, "");
+//       Optional normal DecoyBot readiness rule for the same registered stem.
+//   SetDecoyBotShinyReadyRule("DecoyCopy_YourName_W1", 50, 25, "");
+//       Optional Shiny-only override; otherwise it inherits the normal rule.
 //   DefineDecoyBotShinyWep("DecoyCopy_YourName_W1", "DecoyShiny_YourName_W");
 //       Pairs the same row with Shiny Decoy. The shiny actor owns Fire and
 //       should inherit DecoyBotShinyCycleBase_W for the standard M2 cycle.
@@ -2289,6 +2301,7 @@ function int UH_GetBonusEventTarget(int eventid) {
 //          DefineShinyQwantMoveWep("YourMove_W", 3);
 //          DefineShinyNegaSlotWep(26, "YourNegaHeld_W", "", "");
 //          DefineDecoyBotMoveWep("DecoyCopy_YourName_W1");
+//          SetDecoyBotReadyRule("DecoyCopy_YourName_W1", 40, 20, "");
 //          DefineShinyMegaCopyWep("ShinyMega_YourStem_P", UH_SHINYMEGA_M1, 5);
 //      }
 //      script "your_define" OPEN {
@@ -2331,6 +2344,32 @@ function int DefineShinyNegaSlotWep(int slot, str wepl1, str wepl2, str wepl3) {
 function int DefineDecoyBotMoveWep(str wepactor) {
 	SetCVarString("uh_sm_wep", wepactor);
 	return ACS_NamedExecuteWithResult("uh_DefineDecoyBotMoveWep_S");
+}
+
+// Optional: set minimum DecoyEnergyAmmo with/without Endless Ammo rune, plus
+// an inventory that permits firing below that minimum ("" for none). Call
+// after DefineDecoyBotMoveWep on both server and CLIENTSIDE registration.
+// The ordinary rule also becomes the initial Shiny rule; call the Shiny
+// override afterwards if its costs differ. Defaults are (1, 1, ""). Returns the
+// registered slot, or UHCOPY_FAIL if the stem is missing/values are negative.
+function int SetDecoyBotReadyRule(str wepactor, int normalMin,
+	int endlessMin, str bypassInventory) {
+	SetCVarString("uh_sm_wep", wepactor);
+	SetCVar("uh_sm_ready_normal", normalMin);
+	SetCVar("uh_sm_ready_endless", endlessMin);
+	SetCVarString("uh_sm_ready_bypass", bypassInventory);
+	return ACS_NamedExecuteWithResult("uh_SetDecoyBotReadyRule_S");
+}
+
+// Optional Shiny counterpart; same stem but independent minima and bypass.
+// Call after SetDecoyBotReadyRule if both are used.
+function int SetDecoyBotShinyReadyRule(str wepactor, int normalMin,
+	int endlessMin, str bypassInventory) {
+	SetCVarString("uh_sm_wep", wepactor);
+	SetCVar("uh_sm_ready_normal", normalMin);
+	SetCVar("uh_sm_ready_endless", endlessMin);
+	SetCVarString("uh_sm_ready_bypass", bypassInventory);
+	return ACS_NamedExecuteWithResult("uh_SetDecoyBotShinyReadyRule_S");
 }
 
 // Pair the normal DecoyBot stem with its Shiny Decoy held weapon. The shiny

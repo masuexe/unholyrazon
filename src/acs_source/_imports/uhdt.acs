@@ -2723,9 +2723,14 @@ str uh_shinynegaslotwep[UH_SHINYNEGA_CYCLE_RESET][3];
 str uh_negaheld[64];
 
 // DecoyBot copy slots (index == slot). Vanilla 0..60 registered first; addon 61+.
-// Table stores stem only (e.g. "DecoyCopy_00"); Give appends _W1/_W2/_W3.
+// Weapon column stores the stem (e.g. "DecoyCopy_00"); Give appends
+// _W1/_W2/_W3. The other columns hold readiness bypasses.
 int uh_decoymovecount = 0;
-str uh_decoymovewep[UH_MAX_SHINYMOVES];
+// Stem, ordinary ready bypass, Shiny ready bypass. Keep these in one map
+// variable because UHDT is at ACC's 128-map-variable ceiling.
+str uh_decoymovewep[UH_MAX_SHINYMOVES][3];
+// Ordinary normal/endless, then Shiny normal/endless minima.
+int uh_decoyreadyammo[UH_MAX_SHINYMOVES][4];
 // Per-player currently held DecoyCopy_*_W1/_W2/_W3 actor names ("" = parents).
 // One 2-D array instead of three parallel ones: UHDT is at ACC's 128
 // map-variable ceiling.  Column 0/1/2 == launcher weapon 1/2/3.
@@ -2800,7 +2805,7 @@ function str UH_DecoyMoveStem(str wepactor) {
 }
 
 // DecoyBot: register a copy slot. Slot is auto-assigned as the next index
-// (vanilla 0..58 first, then addon 59+). Same stem again returns the
+// (vanilla 0..60 first, then addon 61+). Same stem again returns the
 // existing slot index. Accepts stem or *_W / *_W1..*_W3.
 function int DefineDecoyBotMoveWepCore(str wepactor) {
 	int i;
@@ -2811,14 +2816,47 @@ function int DefineDecoyBotMoveWepCore(str wepactor) {
 	if (StrCmp(stem, "") == 0)
 		return UHCOPY_FAIL;
 	for (i = 0; i < uh_decoymovecount; i++) {
-		if (StrICmp(uh_decoymovewep[i], stem) == 0)
+		if (StrICmp(uh_decoymovewep[i][0], stem) == 0)
 			return i;
 	}
 	if (uh_decoymovecount >= UH_MAX_SHINYMOVES)
 		return UHCOPY_FAIL;
-	uh_decoymovewep[uh_decoymovecount] = stem;
+	uh_decoymovewep[uh_decoymovecount][0] = stem;
+	// A new addon copy is usable with any positive DecoyEnergyAmmo unless
+	// its author supplies a stricter rule after registration.
+	uh_decoyreadyammo[uh_decoymovecount][0] = 1;
+	uh_decoyreadyammo[uh_decoymovecount][1] = 1;
+	uh_decoyreadyammo[uh_decoymovecount][2] = 1;
+	uh_decoyreadyammo[uh_decoymovecount][3] = 1;
 	uh_decoymovecount++;
 	return uh_decoymovecount - 1;
+}
+
+// Configure an already-registered Decoy copy's readiness. Zero means no
+// energy requirement; the bypass inventory (or "") is checked in addition.
+function int SetDecoyBotReadyRuleCore(str wepactor, int normalMin,
+	int endlessMin, str bypassInventory, int shiny) {
+	int i;
+	int column = shiny ? 2 : 0;
+	str stem = UH_DecoyMoveStem(wepactor);
+	if (StrCmp(stem, "") == 0 || normalMin < 0 || endlessMin < 0)
+		return UHCOPY_FAIL;
+	for (i = 0; i < uh_decoymovecount; i++) {
+		if (StrICmp(uh_decoymovewep[i][0], stem) == 0) {
+			uh_decoyreadyammo[i][column] = normalMin;
+			uh_decoyreadyammo[i][column + 1] = endlessMin;
+			uh_decoymovewep[i][shiny ? 2 : 1] = bypassInventory;
+			// An ordinary rule is also the Shiny fallback. A later Shiny-specific
+			// call may override it without changing the ordinary copy.
+			if (!shiny) {
+				uh_decoyreadyammo[i][2] = normalMin;
+				uh_decoyreadyammo[i][3] = endlessMin;
+				uh_decoymovewep[i][2] = bypassInventory;
+			}
+			return i;
+		}
+	}
+	return UHCOPY_FAIL;
 }
 
 // Pair a shiny held weapon with a normal DecoyBot stem. Registering the shiny

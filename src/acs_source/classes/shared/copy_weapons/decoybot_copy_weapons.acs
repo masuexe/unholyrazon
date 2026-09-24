@@ -61,9 +61,9 @@ script "uh_DecoyBotApplyHeldWeps" (void) {
 	if (s3 < 0 || s3 >= uh_decoymovecount)
 		terminate;
 
-	stem1 = uh_decoymovewep[s1];
-	stem2 = uh_decoymovewep[s2];
-	stem3 = uh_decoymovewep[s3];
+	stem1 = uh_decoymovewep[s1][0];
+	stem2 = uh_decoymovewep[s2][0];
+	stem3 = uh_decoymovewep[s3][0];
 	if (StrCmp(stem1, "") == 0 || StrCmp(stem2, "") == 0 || StrCmp(stem3, "") == 0)
 		terminate;
 
@@ -130,6 +130,41 @@ script "uh_DecoyBotGetWhich" (void) {
 // Dynamic DecoyBot copy slot count.
 script "uh_CountDecoyBotSlots" (void) {
 	SetResultValue(CountDecoyBotSlots());
+}
+
+// Called by the three ordinary ready pickups or Shiny ready pickup while
+// their player is the activator.
+// Use the same registered slot index that ApplyHeldWeps uses; no DECORATE
+// D00..D60 dispatch is needed for addon slots.
+script "uh_DecoyBotCanFire" (int which) {
+	int slot;
+	int rune;
+	int minimum;
+	str bypass;
+	if (which == 1)
+		slot = CheckInventory("DecoyBotFlag1");
+	else if (which == 2)
+		slot = CheckInventory("DecoyBotFlag2");
+	else if (which == 3)
+		slot = CheckInventory("DecoyBotFlag3");
+	else if (which == 4)
+		slot = CheckInventory("DecoyBotFlag1");
+	else {
+		SetResultValue(0);
+		terminate;
+	}
+	if (slot < 0 || slot >= uh_decoymovecount) {
+		SetResultValue(0);
+		terminate;
+	}
+	bypass = uh_decoymovewep[slot][which == 4 ? 2 : 1];
+	if (StrCmp(bypass, "") != 0 && CheckInventory(bypass) > 0) {
+		SetResultValue(1);
+		terminate;
+	}
+	rune = ACS_NamedExecuteWithResult("uh_checkrune", 10);
+	minimum = uh_decoyreadyammo[slot][(which == 4 ? 2 : 0) + (rune > 0)];
+	SetResultValue(CheckInventory("DecoyEnergyAmmo") >= minimum);
 }
 
 // Equip Shiny Decoy's current slot, or advance to the next registered shiny
