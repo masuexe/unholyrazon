@@ -319,8 +319,21 @@ def main():
         "animated_fill", transparent_defs, {"animated_fill": ["b_bar01a"]}
     )
     assert not generator.is_transparent_fill("NOBAR", texture_defs, animations)
+    # DecoyBot's formerly commented wrapper is now an animated charge bar.
+    assert texture_defs["50_f_bar"]["patches"] == ["tnt1a0"]
+    assert generator.fill_animation_frames("50_F_BAR", animations) == [
+        "50_e_bar", "50_d_bar", "50_c_bar", "50_b_bar",
+    ]
+    assert not generator.is_transparent_fill("50_F_BAR", texture_defs, animations)
+    assert texture_defs["50_k_bar"]["patches"] == ["tnt1a0"]
+    assert generator.fill_animation_frames("50_K_BAR", animations) == [
+        "50_j_bar", "50_i_bar", "50_h_bar", "50_g_bar",
+    ]
+    assert not generator.is_transparent_fill("50_K_BAR", texture_defs, animations)
     # A definition that only exists in a comment is not a graphic at all.
-    assert "50_f_bar" not in texture_defs
+    assert "50_only_comment" not in generator.parse_texture_defs(
+        generator.strip_line_comments("// graphic 50_ONLY_COMMENT,8,56{patch TNT1A0,0,0}")
+    )
 
     fake_defs = {
         "fake_off": {"patches": ["b_bar01a"], "offset": (-16, -8)},
