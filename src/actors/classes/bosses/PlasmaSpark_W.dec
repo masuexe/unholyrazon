@@ -25,7 +25,7 @@ actor PlasmaSpark_W : BaseUnholyBossWep  // Plasma_Shock_Super_Star
     // A_SpawnItemEx("Plasma_Passive_Shocker",random(-100,100),random(-100,100),random(0,100),0,0,0,0,1)
    Flash:
     TNT1 A 0 A_JumpIf(!CallACS("uh_CanContinueBossWeaponFlash"), "NoFlash")
-    TNT1 A 1 A_GiveInventory("PlasmaSpark_Pickup")
+    TNT1 A 1 ACS_NamedExecuteWithResult("uh_PlasmaSparkChargeTick")
     TNT1 A 0 A_GiveInventory("PlasmaSpark_FlashCounter", 1)
     TNT1 A 0 A_JumpIfInventory("Voltage_Stocker", 1200, "Flash_Barrier")
     TNT1 A 0 A_TakeInventory("PlasmaSpark_Barrier_Power", 1)
@@ -70,6 +70,7 @@ actor PlasmaSpark_W : BaseUnholyBossWep  // Plasma_Shock_Super_Star
    NoFlash:
     TNT1 A 0 A_TakeInventory("PlasmaSpark_Barrier_Power", 1)
     TNT1 A 0 A_TakeInventory("PlasmaSpark_Barrier_Active", 1)
+    TNT1 A 0 A_TakeInventory("PlasmaSpark_ChargeGrace", 18)
     stop
     //
    ReadyX:
@@ -84,6 +85,7 @@ actor PlasmaSpark_W : BaseUnholyBossWep  // Plasma_Shock_Super_Star
    Deselect:
     8H63 C 0 A_TakeInventory("PlasmaSpark_Barrier_Power", 1)
     8H63 C 0 A_TakeInventory("PlasmaSpark_Barrier_Active", 1)
+    8H63 C 0 A_TakeInventory("PlasmaSpark_ChargeGrace", 18)
     8H63 C 0
     goto DeselectSwap
    Select:
@@ -194,6 +196,11 @@ actor PlasmaSpark_FlashCounter : Inventory {
   inventory.maxamount 64
 }
 
+actor PlasmaSpark_ChargeGrace : Inventory {
+  inventory.amount 1
+  inventory.maxamount 18
+}
+
 actor PlasmaSpark_Barrier_Active : Once {}
 
 actor PlasmaSpark_Barrier_Power : PowerProtection {
@@ -290,35 +297,6 @@ actor Plasma_Powerinos : Inventory  // Inventory
   inventory.amount 1
   inventory.maxamount 30  // 400 //500 //600
 }  // Every 300?
-
-
-actor PlasmaSpark_Pickup : CustomInventory {
-  States  // I was thinking of making the first charge stack fast... while the rest is normal.
-  {
-   Pickup:
-    TNT1 A 0 A_JumpIfInventory("Voltage_Stocker", 1200, "Pickup0")
-    // TNT1 A 0 A_JumpIfInventory("Voltage_Stocker",300,"Pickup1")
-    TNT1 A 0 A_JumpIf( (MOMX*MOMX+MOMY*MOMY+MOMZ*MOMZ)*0.01 >= 1, "Pickup1")
-    stop
-   Pickup0:
-    TNT1 A 0
-    stop
-   Pickup1:
-    TNT1 A 0 A_JumpIfInventory("Voltage_Stocker", 300, "Pickup2")
-    TNT1 A 0 A_JumpIfInventory("PlayerPropertyRage", 1, "Pickup_Rage")
-    goto Pickup3
-   Pickup2:
-    TNT1 A 0 A_GiveInventory("Voltage_Stocker", (MOMX*MOMX+MOMY*MOMY+MOMZ*MOMZ)*0.02)
-    stop
-   Pickup_Rage:
-    TNT1 A 0 A_GiveInventory("Voltage_Stocker", (MOMX*MOMX+MOMY*MOMY+MOMZ*MOMZ)*0.03)
-    stop
-    //
-   Pickup3:  // 3
-    TNT1 A 0 A_GiveInventory("Voltage_Stocker", (MOMX*MOMX+MOMY*MOMY+MOMZ*MOMZ)*0.03)
-    stop
-  }
-}
 
 
 actor PlasmaSpark_BasicArmor_P : BasicArmorBonus {

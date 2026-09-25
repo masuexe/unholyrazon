@@ -1,0 +1,25 @@
+// Four independent direction keys. Holding one key never creates another press.
+#define UH_PLASMA_DIRECTION_BUTTONS (BT_FORWARD | BT_BACK | BT_MOVELEFT | BT_MOVERIGHT)
+#define UH_PLASMA_CHARGE_PER_PRESS 75
+#define UH_PLASMA_CHARGE_GRACE_TICS 18
+#define UH_PLASMA_CHARGE_DECAY_PER_TIC 4
+
+script "uh_PlasmaSparkChargeTick" (void) {
+  if (PlayerNumber() < 0)
+    terminate;
+
+  int buttons = GetPlayerInput(-1, INPUT_BUTTONS) & UH_PLASMA_DIRECTION_BUTTONS;
+  int oldbuttons = GetPlayerInput(-1, INPUT_OLDBUTTONS) & UH_PLASMA_DIRECTION_BUTTONS;
+  int pressed = buttons & ~oldbuttons;
+  int presses = !!(pressed & BT_FORWARD) + !!(pressed & BT_BACK) +
+                !!(pressed & BT_MOVELEFT) + !!(pressed & BT_MOVERIGHT);
+
+  if (presses) {
+    GiveInventory("Voltage_Stocker", presses * UH_PLASMA_CHARGE_PER_PRESS);
+    SetInventory("PlasmaSpark_ChargeGrace", UH_PLASMA_CHARGE_GRACE_TICS);
+  } else if (CheckInventory("PlasmaSpark_ChargeGrace")) {
+    TakeInventory("PlasmaSpark_ChargeGrace", 1);
+  } else {
+    TakeInventory("Voltage_Stocker", UH_PLASMA_CHARGE_DECAY_PER_TIC);
+  }
+}
