@@ -59,7 +59,7 @@ collisions with v6b CVARINFO: NONE
 类型全部与调用端一致（`SetCVarString`/`GetCVarString` ↔ `string`，其余 `int`）。
 `git diff --check` 通过。所有条目保持 `local noarchive`，未进入 `user` / `server` / archive cvar。
 
-未注册名单中剩余 9 个名字全部属于引擎或 v6b 基础包（`sv_MaxClients`、`vid_*`、`mm8bdm_bossstate`、`mm8bdm_intensestate`、`UE_TimerEnd`），均为只读 `GetCVar` 用法，不属于本次缺陷类。
+未注册名单中剩余 9 个名字全部属于引擎或 v6b 基础包（`sv_MaxClients`、`vid_*`、`mm8bdm_bossstate`、`mm8bdm_intensestate`、`uh_sv_timerend`），均为只读 `GetCVar` 用法，不属于本次缺陷类。
 
 ### 引擎语义核对（源码）
 
