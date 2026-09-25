@@ -1,0 +1,59 @@
+// Call from an actor with two 0xRRGGBB arguments: dark (primary), then light
+// (secondary), matching MM8BDM v6b's team-color parameter order. Reverse the
+// arguments deliberately to reverse the brightness mapping.
+// DECORATE: TNT1 A 0 ACS_NamedExecuteWithResult("uh_ColorAnyPalette", 0x183858, 0xA0B8FF)
+// The actor is the script activator. This is a local visual effect; actors that
+// already existed when a client joined do not replay this call automatically.
+
+// Reserved for client-local actor RGB translations. Keep clear of other dyes.
+#define UH_ACTOR_RGB_FIRST 52000
+#define UH_ACTOR_RGB_COUNT 1024
+
+int uh_actor_rgb_used[UH_ACTOR_RGB_COUNT];
+int uh_actor_rgb_dark[UH_ACTOR_RGB_COUNT];
+int uh_actor_rgb_light[UH_ACTOR_RGB_COUNT];
+
+function int UH_ActorRGBUnit(int rgb, int shift) {
+  return FixedDiv((((rgb >> shift) & 255) * 1.0), 255.0);
+}
+
+script "uh_ColorAnyPalette" (int darkRGB, int lightRGB) CLIENTSIDE {
+  darkRGB = darkRGB & 0xFFFFFF;
+  lightRGB = lightRGB & 0xFFFFFF;
+
+  int slot = (darkRGB ^ (darkRGB >> 10) ^ lightRGB ^ (lightRGB >> 10)) & (UH_ACTOR_RGB_COUNT - 1);
+
+  for (int probe = 0; probe < UH_ACTOR_RGB_COUNT; probe++) {
+    if (!uh_actor_rgb_used[slot]) {
+      int id = UH_ACTOR_RGB_FIRST + slot;
+      uh_actor_rgb_used[slot] = true;
+      uh_actor_rgb_dark[slot] = darkRGB;
+      uh_actor_rgb_light[slot] = lightRGB;
+
+      // The engine computes each palette entry's brightness inside this one
+      // desaturation range, including entries outside MM8BDM's player colors.
+      CreateTranslation(id, 0:255=%[
+        UH_ActorRGBUnit(darkRGB, 16),
+        UH_ActorRGBUnit(darkRGB, 8),
+        UH_ActorRGBUnit(darkRGB, 0)
+      ]:[
+        UH_ActorRGBUnit(lightRGB, 16),
+        UH_ActorRGBUnit(lightRGB, 8),
+        UH_ActorRGBUnit(lightRGB, 0)
+      ]);
+      Thing_SetTranslation(0, id);
+      terminate;
+    }
+
+    if (uh_actor_rgb_dark[slot] == darkRGB && uh_actor_rgb_light[slot] == lightRGB) {
+      Thing_SetTranslation(0, UH_ACTOR_RGB_FIRST + slot);
+      terminate;
+    }
+
+    slot = (slot + 1) & (UH_ACTOR_RGB_COUNT - 1);
+  }
+
+  // Every reserved slot has a different color pair; preserve this actor's
+  // existing translation rather than replacing another pair's shared table.
+  Log(s:"UH_COLORS: actor RGB translation slots exhausted");
+}
