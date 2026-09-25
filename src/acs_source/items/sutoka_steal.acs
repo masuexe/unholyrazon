@@ -1,0 +1,33 @@
+// A whip hit steals one of the victim's held, registered Unholy item types.
+// Reservoir sampling gives every held type the same chance, as in Razon 3.
+script "uh_SutokaStealsAnything" (void) {
+	int owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+	int victim = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TRACER);
+	int slot;
+	int id;
+	int found = 0;
+	str actor;
+	str selected = "";
+
+	if (owner == 0 || victim == 0 || owner == victim)
+		terminate;
+
+	for (slot = 0; slot < UH_MAX_VANILLA_ITEM + uh_itemcustomcount; slot++) {
+		id = slot < UH_MAX_VANILLA_ITEM ? slot : -1 - (slot - UH_MAX_VANILLA_ITEM);
+		if (!IsItemDefined(id))
+			continue;
+		actor = GetItemActor(id);
+		if (CheckActorInventory(victim, actor) <= 0)
+			continue;
+		found++;
+		if (Random(1, found) == 1)
+			selected = actor;
+	}
+
+	if (found == 0)
+		terminate;
+
+	TakeActorInventory(victim, selected, 1);
+	GiveActorInventory(owner, selected, 1);
+	SetResultValue(1);
+}
