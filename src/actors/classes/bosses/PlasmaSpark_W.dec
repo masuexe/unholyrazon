@@ -26,14 +26,60 @@ actor PlasmaSpark_W : BaseUnholyBossWep  // Plasma_Shock_Super_Star
    Flash:
     TNT1 A 0 A_JumpIf(!CallACS("uh_CanContinueBossWeaponFlash"), "NoFlash")
     TNT1 A 1 A_GiveInventory("PlasmaSpark_Pickup")
-    TNT1 A 0 A_JumpIfInventory("Voltage_Stocker", 1200, "Flash_Harder")
+    TNT1 A 0 A_GiveInventory("PlasmaSpark_FlashCounter", 1)
+    TNT1 A 0 A_JumpIfInventory("Voltage_Stocker", 1200, "Flash_Barrier")
+    TNT1 A 0 A_TakeInventory("PlasmaSpark_Barrier_Power", 1)
+    TNT1 A 0 A_TakeInventory("PlasmaSpark_Barrier_Active", 1)
+    TNT1 A 0 A_TakeInventory("PlasmaSpark_BarrierSoundCounter", 32)
+    TNT1 A 0 A_JumpIfInventory("Voltage_Stocker", 900, "Flash_Tier3")
+    TNT1 A 0 A_JumpIfInventory("Voltage_Stocker", 600, "Flash_Tier2")
+    TNT1 A 0 A_JumpIfInventory("Voltage_Stocker", 300, "Flash_Tier1")
+    TNT1 A 0 A_TakeInventory("PlasmaSpark_FlashCounter", 64)
     loop
-   Flash_Harder:
-    TNT1 A 0 A_JumpIf(!CallACS("uh_CanContinueBossWeaponFlash"), "NoFlash")
-    TNT1 A 0 A_SpawnItemEx("Plasma_Passive_Shocker", random(-100, 100), random(-100, 100), random(0, 100), 0, 0, 0, 0, 1)
-    TNT1 A 1 A_GiveInventory("PlasmaSpark_Pickup")  // Is this necessary at this point?
-    TNT1 A 0 A_JumpIfInventory("Voltage_Stocker", 1200, "Flash_Harder")
-    Goto Flash
+
+   Flash_Tier1:
+    TNT1 A 0 A_JumpIfInventory("PlasmaSpark_FlashCounter", 16, "Do_Tier1")
+    goto Flash
+   Do_Tier1:
+    TNT1 A 0 A_TakeInventory("PlasmaSpark_FlashCounter", 64)
+    TNT1 A 0 A_SpawnItemEx("Plasma_Passive_Shocker_Small", random(-70, 70), random(-70, 70), random(0, 48), 0, 0, 0, 0, 1)
+    goto Flash
+
+   Flash_Tier2:
+    TNT1 A 0 A_JumpIfInventory("PlasmaSpark_FlashCounter", 8, "Do_Tier2")
+    goto Flash
+   Do_Tier2:
+    TNT1 A 0 A_TakeInventory("PlasmaSpark_FlashCounter", 64)
+    TNT1 A 0 A_SpawnItemEx("Plasma_Passive_Shocker", random(-85, 85), random(-85, 85), random(0, 64), 0, 0, 0, 0, 1)
+    goto Flash
+
+   Flash_Tier3:
+    TNT1 A 0 A_JumpIfInventory("PlasmaSpark_FlashCounter", 4, "Do_Tier3")
+    goto Flash
+   Do_Tier3:
+    TNT1 A 0 A_TakeInventory("PlasmaSpark_FlashCounter", 64)
+    TNT1 A 0 A_SpawnItemEx("Plasma_Passive_Shocker", random(-100, 100), random(-100, 100), random(0, 80), 0, 0, 0, 0, 1)
+    goto Flash
+
+   Flash_Barrier:
+    TNT1 A 0 A_JumpIfInventory("PlasmaSpark_Barrier_Active", 1, "Barrier_Loop")
+    TNT1 A 0 A_GiveInventory("PlasmaSpark_Barrier_Active", 1)
+    TNT1 A 0 A_GiveInventory("PlasmaSpark_Barrier_Power", 1)
+    TNT1 A 0 A_SpawnItemEx("Plasma_Barrier_Aura", 0, 0, 16, 0, 0, 0, 0, 3)
+   Barrier_Loop:
+    TNT1 A 0 A_GiveInventory("PlasmaSpark_BarrierSoundCounter", 1)
+    TNT1 A 0 A_JumpIfInventory("PlasmaSpark_BarrierSoundCounter", 18, "Barrier_Sound")
+    goto Flash
+   Barrier_Sound:
+    TNT1 A 0 A_TakeInventory("PlasmaSpark_BarrierSoundCounter", 32)
+    TNT1 A 0 A_PlaySoundEx("weapon/sparkshock", "SoundSlot6")
+    goto Flash
+
+   NoFlash:
+    TNT1 A 0 A_TakeInventory("PlasmaSpark_Barrier_Power", 1)
+    TNT1 A 0 A_TakeInventory("PlasmaSpark_Barrier_Active", 1)
+    TNT1 A 0 A_TakeInventory("PlasmaSpark_BarrierSoundCounter", 32)
+    stop
     //
    ReadyX:
     8H63 A 2 A_WeaponReady(WRF_NOSECONDARY)
@@ -45,6 +91,9 @@ actor PlasmaSpark_W : BaseUnholyBossWep  // Plasma_Shock_Super_Star
     loop
 
    Deselect:
+    8H63 C 0 A_TakeInventory("PlasmaSpark_Barrier_Power", 1)
+    8H63 C 0 A_TakeInventory("PlasmaSpark_Barrier_Active", 1)
+    8H63 C 0 A_TakeInventory("PlasmaSpark_BarrierSoundCounter", 32)
     8H63 C 0
     goto DeselectSwap
    Select:
@@ -52,6 +101,9 @@ actor PlasmaSpark_W : BaseUnholyBossWep  // Plasma_Shock_Super_Star
     goto SelectSwap
 
    Fire:
+    8H63 H 0 A_TakeInventory("PlasmaSpark_Barrier_Power", 1)
+    8H63 H 0 A_TakeInventory("PlasmaSpark_Barrier_Active", 1)
+    8H63 H 0 A_TakeInventory("PlasmaSpark_BarrierSoundCounter", 32)
     8H63 FGH 2  // 2
     8H63 H 0 A_JumpIfInventory("Voltage_Stocker", 1200, "DEATHBLOW")
     8H63 H 0 A_JumpIfInventory("Voltage_Stocker", 900, "High_Fire")
@@ -90,6 +142,9 @@ actor PlasmaSpark_W : BaseUnholyBossWep  // Plasma_Shock_Super_Star
     8H63 H 0 A_ReFire("Hold")
     Goto StopHold
    DEATHBLOW:
+    8H63 H 0 A_TakeInventory("PlasmaSpark_Barrier_Power", 1)
+    8H63 H 0 A_TakeInventory("PlasmaSpark_Barrier_Active", 1)
+    8H63 H 0 A_TakeInventory("PlasmaSpark_BarrierSoundCounter", 32)
     8H63 H 0 A_TakeInventory("Voltage_Stocker")
     8H63 H 0 A_PlaySoundEx("KirbySuperStarUltra/PlasmaShot5", "Weapon")
     8H63 H 0 A_ScaleVelocity(0.2)
@@ -112,6 +167,9 @@ actor PlasmaSpark_W : BaseUnholyBossWep  // Plasma_Shock_Super_Star
     8H63 H 0 A_ReFire("AltHold")
     Goto StopAltHold
    Altfire:  // Animate the alt properly, please.
+    8H63 H 0 A_TakeInventory("PlasmaSpark_Barrier_Power", 1)
+    8H63 H 0 A_TakeInventory("PlasmaSpark_Barrier_Active", 1)
+    8H63 H 0 A_TakeInventory("PlasmaSpark_BarrierSoundCounter", 32)
     8H63 H 0 ACS_NamedExecuteWithResult("uh_BossPowerGive", 12)  // ACS_NamedExecuteWithResult("core_stopplayer", 0, true)
     8H63 FGH 1  // A_ScaleVelocity(0.8)
    AltHold:  // Plasma_Discharge_FX
@@ -139,11 +197,110 @@ actor PlasmaSpark_W : BaseUnholyBossWep  // Plasma_Shock_Super_Star
   }
 }
 
-actor Voltage_Stocker : Ammo  // Inventory
-{
+actor Voltage_Stocker : Ammo {
   inventory.amount 1
   inventory.maxamount 1200  // 400 //500 //600
 }  // Every 300?
+
+actor PlasmaSpark_FlashCounter : Inventory {
+  inventory.amount 1
+  inventory.maxamount 64
+}
+
+actor PlasmaSpark_BarrierSoundCounter : Inventory {
+  inventory.amount 1
+  inventory.maxamount 32
+}
+
+actor PlasmaSpark_Barrier_Active : Once {}
+
+actor PlasmaSpark_Barrier_Power : PowerProtection {
+  +INVENTORY.ALWAYSPICKUP
+  Powerup.Duration 0x7ffffffd
+  DamageFactor "Normal", 0.50
+}
+
+actor PlasmaSparkProjectile : BasicProjectile {
+  Species "PlasmaSpark"
+  +THRUSPECIES
+  Obituary "%o got the shocker from \cdPlasma \cjSpark\c- (%k)."  // Filler
+}
+
+Actor Plasma_Passive_Shocker : PlasmaSparkProjectile {
+  damagetype "PlasmaSpark_A"
+  Obituary "%o got the shocker from \cdPlasma \cjSpark\c- (%k)."  // Filler
+  +RIPPER
+  +NOGRAVITY
+  +DONTBLAST
+  +FORCEXYBILLBOARD
+  +BRIGHT
+  Damage (20)  // 10
+  Radius 25
+  Height 16
+  scale 3.5
+  States {
+   Spawn:
+    X_7D IIJJKKLL 1 A_SpawnItemEx("ElectrifyEffect")
+    stop
+  }
+}
+
+actor Plasma_Passive_Shocker_Small : Plasma_Passive_Shocker {
+  Damage (6)
+  Radius 16
+  Height 16
+  scale 1.8
+  States {
+   Spawn:
+    X_7D IJKL 1 A_SpawnItemEx("ElectrifyEffect")
+    stop
+  }
+}
+
+actor Plasma_Barrier_Aura : ProjSpawnFuncActor {
+  -SOLID
+  +MISSILE
+  +RIPPER
+  +NOBLOOD
+  +SHOOTABLE
+  +INVULNERABLE
+  +NODAMAGE
+  +NOPAIN
+  +NOCLIP
+  Species "PlasmaSpark"
+  +THRUSPECIES
+  +FORCEXYBILLBOARD
+  +BRIGHT
+  Radius 48
+  Height 48
+  damagetype "PlasmaSpark_A"
+  Obituary "%o got the shocker from \cdPlasma \cjSpark\c- (%k)."  // Filler
+  // Each client enables the sprite unless its owner is viewing in first person.
+  RenderStyle "None"
+  Alpha 0.85
+  Scale 2.5
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_JumpIfInTargetInventory("PlasmaSpark_Barrier_Power", 1, "ShieldLoop")
+    stop
+   ShieldLoop:
+    TNT1 A 0 A_Explode(80, 64, 0, 0, 48)
+    TNT1 A 0 A_SpawnItemEx("ElectrifyEffect")
+    KPBA A 1 A_Warp(AAPTR_TARGET, 0, 0, 32, 0, WARPF_NOCHECKPOSITION | WARPF_COPYINTERPOLATION)
+    TNT1 A 0 A_JumpIfInTargetInventory("PlasmaSpark_Barrier_Power", 1, 1)
+    stop
+    TNT1 A 1 A_Warp(AAPTR_TARGET, 0, 0, 32, 0, WARPF_NOCHECKPOSITION | WARPF_COPYINTERPOLATION)
+    TNT1 A 0 A_JumpIfInTargetInventory("PlasmaSpark_Barrier_Power", 1, 1)
+    stop
+    KPBA A 1 A_Warp(AAPTR_TARGET, 0, 0, 32, 0, WARPF_NOCHECKPOSITION | WARPF_COPYINTERPOLATION)
+    TNT1 A 0 A_JumpIfInTargetInventory("PlasmaSpark_Barrier_Power", 1, 1)
+    stop
+    TNT1 A 1 A_Warp(AAPTR_TARGET, 0, 0, 32, 0, WARPF_NOCHECKPOSITION | WARPF_COPYINTERPOLATION)
+    TNT1 A 0 A_JumpIfInTargetInventory("PlasmaSpark_Barrier_Power", 1, "ShieldLoop")
+    stop
+  }
+}
 
 actor Plasma_Powerinos : Inventory  // Inventory
 {
@@ -185,23 +342,6 @@ actor PlasmaSpark_BasicArmor_P : BasicArmorBonus {
   Armor.Savepercent 50
   Armor.Saveamount 250
   Armor.MaxSaveAmount 1000
-}
-
-Actor Plasma_Passive_Shocker : BasicProjectile {
-  damagetype "PlasmaSpark_A"
-  Obituary "%o got the shocker from \cdPlasma \cjSpark\c- (%k)."  // Filler
-  +RIPPER
-  +NOGRAVITY
-  +DONTBLAST
-  Damage (20)  // 10
-  Radius 25
-  Height 16
-  scale 3.5
-  States {
-   Spawn:
-    X_7D IIJJKKLL 1 A_SpawnItemEx("ElectrifyEffect")
-    stop
-  }
 }
 
 actor Plasma_Discharge_Boom : BasicExplosion {

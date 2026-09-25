@@ -5,6 +5,28 @@ script "rz_spawnfuncs" OPEN {
   AddSpawnFunc(DTADD_SFT_PROJ, "rz_EdenTearPassiveSpawn");
 }
 
+// Keep the shield's damaging actor authoritative while hiding its sprite from
+// its owner in first person. The default invisible style prevents a spawn flash.
+script "uh_PlasmaBarrierAuraView" (int type, int arg1, int arg2) EVENT CLIENTSIDE {
+  if (type != GAMEEVENT_ACTOR_SPAWNED ||
+      StrICmp(GetActorClass(0), "Plasma_Barrier_Aura"))
+    terminate;
+
+  // SpawnThing and SetThingTarget arrive separately on network clients.
+  Delay(1);
+  int shown = -1;
+  while (!StrICmp(GetActorClass(0), "Plasma_Barrier_Aura")) {
+    int show = GetActorProperty(0, APROP_TargetTID) &&
+      !ACS_NamedExecuteWithResult("uh_IsPointerClient", AAPTR_TARGET, 0, 1);
+    if (show != shown) {
+      SetActorProperty(0, APROP_RenderStyle,
+                       show ? STYLE_Translucent : STYLE_None);
+      shown = show;
+    }
+    Delay(1);
+  }
+}
+
 script "rz_projflipgrav" (void) {
   if (CheckFlag(0, "NOGRAVITY"))
     terminate;
