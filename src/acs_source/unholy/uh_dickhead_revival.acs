@@ -41,12 +41,14 @@ function int DickheadWatchClaim(void) {
   return 0;
 }
 
-function void DickheadDoRevive(int selftid, int revived_tid, int isbossrevival, int bossslot) {
+function void DickheadDoRevive(int selftid, int revived_tid, int isbossrevival, int bossslot, int owner_is_an_eye) {
   int dropx;
   int dropy;
   int dropz;
   int pn;
   int bossnum;
+  str eyegiver;
+  str oldclass;
 
   pn = revived_tid - 1000;
   dropx = GetActorX(selftid);
@@ -71,6 +73,34 @@ function void DickheadDoRevive(int selftid, int revived_tid, int isbossrevival, 
   SetHudSize(640, 480, 0);
   HudMessageBold(n:pn + 1, s:" \cvhas been revived!"; HUDMSG_FADEOUT | HUDMSG_LOG, 49, CR_YELLOW, 320.4, 464.2, 1.8, 0.2);
   RebuildActiveRoundState(revived_tid, 2);
+
+  // Both revival paths snapshot the thrower's role before respawning anyone:
+  // respawn can destroy the old pawn referenced by the Dickhead's target.
+  if (owner_is_an_eye && !isbossrevival && !CheckActorInventory(revived_tid, "Is_UH_BossNum")) {
+    eyegiver = PickEyeMorphActorCore("MoneyBait", UHEM_MODE_GIVER);
+    if (StrCmp(eyegiver, "") != 0 && SetActivator(revived_tid)) {
+      // A bonus-event RESPAWN callback may already have morphed this player.
+      // Undo that form first; PowerMorph refuses an already-morphed pawn.
+      if (UnMorphActor(revived_tid, true)) {
+        SetActivatorToPlayer(pn);
+        ACS_NamedExecuteWithResult("uh_MorphDemorphReset", -1);
+      }
+      oldclass = GetActorClass(revived_tid);
+      GiveActorInventory(revived_tid, eyegiver, 1);
+      if (StrICmp(oldclass, GetActorClass(revived_tid)) != 0) {
+        // Publish the side immediately; the eye weapon's Ready state performs
+        // the normal inventory/protection setup via uh_DemoneyeMorph.
+        PlayerLifeStatusArr_UpdateFunc(pn, PLS_EYE);
+      }
+      else {
+        UH_Log(UH_LOG_WARN, "Dickhead revival: demoneye morph failed");
+      }
+    }
+    else {
+      UH_Log(UH_LOG_WARN, "Dickhead revival: no MoneyBait giver or live player");
+    }
+    SetActivator(selftid);
+  }
   SetActorState(selftid, "UsedUp", 0);
 }
 
@@ -90,6 +120,7 @@ script "rz_DickheadRevival" (void) {
   int waittics;
   int selftid;
   int owner_is_a_boss;
+  int owner_is_an_eye;
 
   selftid = ActivatorTID();
   if (selftid == 0) {
@@ -98,8 +129,11 @@ script "rz_DickheadRevival" (void) {
   }
 
   owner_is_a_boss = 0;
-  if (SetActivator(0, AAPTR_TARGET))
+  owner_is_an_eye = 0;
+  if (SetActivator(0, AAPTR_TARGET)) {
     owner_is_a_boss = CheckInventory("Is_UH_BossNum");
+    owner_is_an_eye = CheckInventory("IsAnEye");
+  }
   SetActivator(selftid);
 
   revived_tid = 0;
@@ -172,7 +206,7 @@ script "rz_DickheadRevival" (void) {
       SpawnForced("DickheadReviveBoom", GetActorX(selftid), GetActorY(selftid), GetActorZ(selftid));
       SetDeadSpectator(revived_tid - 1000, 0);
       Delay(2);
-      DickheadDoRevive(selftid, revived_tid, isbossrevival, slot);
+      DickheadDoRevive(selftid, revived_tid, isbossrevival, slot, owner_is_an_eye);
       revivingqueue--;
       terminate;
     }
@@ -213,7 +247,11 @@ script "rz_DickheadRevivalDelayed" (int dead_pn, int selftid) {
   int bossslot;
   int waittics;
   int j;
+  int owner_is_an_eye;
 
+  owner_is_an_eye = 0;
+  if (SetActivator(selftid, AAPTR_TARGET))
+    owner_is_an_eye = CheckInventory("IsAnEye");
   SetActivator(selftid);
   Delay(DICKHEAD_REVIVE_DELAY);
 
@@ -251,6 +289,6 @@ script "rz_DickheadRevivalDelayed" (int dead_pn, int selftid) {
   SpawnForced("DickheadReviveBoom", GetActorX(selftid), GetActorY(selftid), GetActorZ(selftid));
   SetDeadSpectator(dead_pn, 0);
   Delay(2);
-  DickheadDoRevive(selftid, revived_tid, isbossrevival, bossslot);
+  DickheadDoRevive(selftid, revived_tid, isbossrevival, bossslot, owner_is_an_eye);
   revivingqueue--;
 }
