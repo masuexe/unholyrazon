@@ -19,23 +19,27 @@ function str GetMoneyBagType(int credit) {
 	return "DLCMoneyBag";
 }
 
+// Shared by real inventory and the server's leave-game snapshot.
+function void DropUnholyActorAmount(int source, str actor, int count) {
+	if (count <= 0 || StrCmp(actor, "") == 0)
+		return;
+	if (StrICmp(actor, "DLC_CoinItem") == 0) {
+		str bag = GetMoneyBagType(count);
+		if (StrCmp(bag, "") != 0)
+			DropItem(source, bag, 1);
+		return;
+	}
+	DropItem(source, actor, count);
+}
+
 function void TakeAndDropUnholyActor(str actor) {
 	int count;
-	str bag;
-
 	if (StrCmp(actor, "") == 0)
 		return;
 	count = CheckInventory(actor);
 	if (count <= 0)
 		return;
-	if (StrICmp(actor, "DLC_CoinItem") == 0) {
-		bag = GetMoneyBagType(count);
-		if (StrCmp(bag, "") != 0)
-			DropItem(0, bag, 1);
-		TakeInventory(actor, count);
-		return;
-	}
-	DropItem(0, actor, count);
+	DropUnholyActorAmount(0, actor, count);
 	TakeInventory(actor, count);
 }
 
