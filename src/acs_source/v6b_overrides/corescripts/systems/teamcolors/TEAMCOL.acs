@@ -82,6 +82,13 @@ function void InitializeTeamColorData(void) {
     team_color_darker[i][1] = b / 4;  // b/8;
     team_color_darker[i][2] = c / 4;  // c/8;
   }
+
+  // $UH Apply source anchors after the default luminances are initialized.
+  // DecoyBot: 198 -> primary, 192 -> secondary; retain both outer gradients.
+  SetTeamColorAnchors(14, 198, 192);
+  SetTeamColorAnchors(15, 198, 192);
+  SetTeamColorAnchors(16, 198, 192);
+  SetTeamColorAnchors(17, 198, 192);
 }
 
 function void ReadTeamColCVars(void) {
@@ -152,6 +159,23 @@ function int GetPaletteiLum(int i) {
   int lum = 0;
   for (int j = 0; j < PALETTE_VAL; j++) lum += palette_data[i][j];
   return (lum / PALETTE_VAL);
+}
+
+// $UH Optional source-palette anchors. Call after InitializeTeamColorData's
+// default luminance loop, before generating translations. Target RGB order is
+// preserved, including deliberately reversed colors. Source luminances must
+// increase; invalid anchors leave the default curve intact.
+function void SetTeamColorAnchors(int team, int darkIndex, int lightIndex) {
+  if (team < 0 || team >= TEAM_COUNT) return;
+  if (darkIndex < 0 || darkIndex >= PALETTE_SIZE) return;
+  if (lightIndex < 0 || lightIndex >= PALETTE_SIZE) return;
+
+  int darkLum = GetPaletteiLum(darkIndex);
+  int lightLum = GetPaletteiLum(lightIndex);
+  if (darkLum >= lightLum) return;
+
+  team_color_dark_lum[team] = darkLum;
+  team_color_light_lum[team] = lightLum;
 }
 
 script "core_callteamtranslations_open" OPEN CLIENTSIDE {
