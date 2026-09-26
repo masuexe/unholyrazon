@@ -238,9 +238,16 @@ script "rz_EdenUseAlt" (void) {
 // declaring their own uniquely named EVENT script; no ClassPain override is
 // needed. The event activator is the damage target, and this script never
 // changes the shared damage result.
+script "rz_EdenItemOwnerActive" (void) {
+  SetResultValue((CheckActorClass(0, "Eden") || CheckActorClass(0, "EdenShiny")) &&
+                 GetActorProperty(0, APROP_Health) > 0 && !CheckInventory("IsDead"));
+}
+
 script "rz_EdenPiggyBankDamage" (int evt, int dmg, int dmgtype) EVENT {
   int effectivedamage;
   if (evt != GAMEEVENT_ACTOR_DAMAGED || dmg <= 0)
+    terminate;
+  if (!CheckActorClass(0, "Eden") && !CheckActorClass(0, "EdenShiny"))
     terminate;
   if (PlayerNumber() < 0 || !CheckInventory("C227Flag") || CheckInventory("IsDead"))
     terminate;
@@ -275,6 +282,8 @@ function bool EdenDamageTypeIsBomb(str dmgtype) {
 script "rz_EdenCurseTowerDamage" (int evt, int dmg, int dmgtype) EVENT {
   int effectivedamage;
   if (evt != GAMEEVENT_ACTOR_DAMAGED || dmg <= 0)
+    terminate;
+  if (!CheckActorClass(0, "Eden") && !CheckActorClass(0, "EdenShiny"))
     terminate;
   if (PlayerNumber() < 0 || !CheckInventory("C371Flag") || CheckInventory("IsDead"))
     terminate;
@@ -324,6 +333,8 @@ script "rz_EdenDamoclesDamage" (int evt, int dmg, int dmgtype) EVENT {
 
   if (evt != GAMEEVENT_ACTOR_DAMAGED || dmg <= 0)
     terminate;
+  if (!CheckActorClass(0, "Eden") && !CheckActorClass(0, "EdenShiny"))
+    terminate;
   if (PlayerNumber() < 0 || !CheckInventory("C577Flag") ||
       !CheckInventory("EdenDamoclesActive_F") || CheckInventory("IsDead"))
     terminate;
@@ -354,7 +365,8 @@ script "rz_EdenDamoclesShouldFall" (void) {
     terminate;
   }
   if (PlayerNumber() < 0 || CheckInventory("IsDead") ||
-      !CheckInventory("EdenDamoclesActive_F")) {
+      (!CheckActorClass(0, "Eden") && !CheckActorClass(0, "EdenShiny")) ||
+      !CheckInventory("C577Flag") || !CheckInventory("EdenDamoclesActive_F")) {
     SetResultValue(0);
     terminate;
   }
@@ -366,6 +378,10 @@ script "rz_EdenDamoclesShouldFall" (void) {
 }
 
 script "rz_EdenDamoclesKill" (void) {
+  // A queued fall must not damage the replacement pawn after a morph.
+  if ((!CheckActorClass(0, "Eden") && !CheckActorClass(0, "EdenShiny")) ||
+      !CheckInventory("C577Flag") || !CheckInventory("EdenDamoclesSpent_F"))
+    terminate;
   if (PlayerNumber() < 0 || CheckInventory("IsDead") ||
       GetActorProperty(0, APROP_Health) <= 0)
     terminate;
@@ -442,6 +458,8 @@ function void EdenApplyColor(void) {
 
 function void EdenApplyCSectionSkin(void) {
   int pn;
+  if (!CheckActorClass(0, "Eden") && !CheckActorClass(0, "EdenShiny"))
+    return;
   if (!CheckInventory("C678Flag"))
     return;
   pn = PlayerNumber();
@@ -706,6 +724,9 @@ function void EdenRollMainItems(void) {
 }
 
 script "rz_InitEdenProperties" (void) {
+  // A queued weapon initialization must not restore items on a boss pawn.
+  if (!CheckActorClass(0, "Eden") && !CheckActorClass(0, "EdenShiny"))
+    terminate;
   EdenEnsureVanillaAltRegistered();
   EdenEnsureVanillaMainRegistered();
 
@@ -778,6 +799,17 @@ script "rz_EdenWeaponColor" (void) {
 // the translation system falls back to the actor's default colors on the next
 // weapon sync. Familiars and C396 endpoints self-manage their lifetime.
 script "rz_EdenStripCleanup" (void) {
+  // Clear registered addon items as well as all built-in activation markers.
+  // In particular, C577's watcher and box bonus use Active_F, not C577Flag.
+  EdenClearMorphState();
+  TakeInventory("PowerC371Cooldown", 1);
+  SetInventory("EdenTearsHUDAttr", 0);
+  SetInventory("EdenLuckAttr", 0);
+  // ACS skins belong to the player, so removing the C678 inventory is not
+  // enough. Only release Eden's override; preserve unrelated forced skins.
+  int pn = PlayerNumber();
+  if (pn >= 0 && StrICmp(GetPlayerSkin(pn, PLAYERSKIN_ACS), "Eden-CSection") == 0)
+    SetPlayerSkin(pn, "", 0);
   SetInventory("UH_LastReadyDye", 0);
 }
 

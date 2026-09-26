@@ -88,9 +88,14 @@ function int GiveOpenedBoxItemCore(int boxid, int prosperity, int silent) {
 	int damocles;
 	int result;
 
-	damocles = CheckInventory("EdenDamoclesActive_F");
+	damocles = (CheckActorClass(0, "Eden") || CheckActorClass(0, "EdenShiny")) &&
+		CheckInventory("C577Flag") && CheckInventory("EdenDamoclesActive_F");
 	result = GiveRandomBoxItemCore(boxid, prosperity, silent);
 	if (!result || !damocles)
+		return result;
+	// The first item may itself convert the player and clear Eden's state.
+	if ((!CheckActorClass(0, "Eden") && !CheckActorClass(0, "EdenShiny")) ||
+		!CheckInventory("C577Flag") || !CheckInventory("EdenDamoclesActive_F"))
 		return result;
 
 	// The second roll shares Prosperity but suppresses the generic open sound.
@@ -218,4 +223,3 @@ script "uh_SpawnRandomBoxItem" (int boxid) {
 	SpawnForced(give, x, y, z, 0, 0);
 	SetResultValue(1);
 }
-
