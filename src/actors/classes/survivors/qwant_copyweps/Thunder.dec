@@ -7,7 +7,7 @@ actor ThunderWep_QwantBar : QwantBar {
 
 actor ThunderWep : BaseQwantWep {
   Obituary "%o found out from %k that \cfThunder \c-can strike more than once."
-  weapon.ammotype "ThunderCharge"
+  Weapon.AmmoType "ThunderCharge"
   Tag "$TAG_THUNDER"
   Inventory.Icon "PKMNI_E"
   States {
@@ -38,7 +38,7 @@ actor ThunderWep : BaseQwantWep {
     CHGB C 0 A_JumpIfInventory("ThunderCharge", 112, "FireCheck")
     CHGB C 0 A_SpawnItemEx("ThunderPKMNFX", random(-32, 32), random(-32, 32), random(8, 64))
     CHGB C 1 A_GiveInventory("ThunderCharge", 2)  // C 2
-    CHGB C 0 A_Refire("FireHold")
+    CHGB C 0 A_ReFire("FireHold")
     goto FireCheck
 
    FireCheck:
@@ -67,10 +67,13 @@ actor ThunderWep : BaseQwantWep {
   }
 }
 
-Actor ThunderCounter : Once {}
-Actor ThunderCharge : Ammo {inventory.amount 1 inventory.maxamount 112 +INVENTORY.IGNORESKILL}
+actor ThunderCounter : Once {}
+actor ThunderCharge : Ammo {
+  Inventory.MaxAmount 112
+  +INVENTORY.IGNORESKILL
+}
 
-Actor ThunderPKMN_Ammo_H : BasicWatcher {
+actor ThunderPKMN_Ammo_H : BasicWatcher {
   States {
    Spawn:
     TNT1 A 0
@@ -84,7 +87,7 @@ Actor ThunderPKMN_Ammo_H : BasicWatcher {
   }
 }
 
-Actor ThunderPKMN_P : CustomInventory {
+actor ThunderPKMN_P : CustomInventory {
   States {
    Pickup:
     TNT1 A 0 A_JumpIfInventory("ThunderCharge", 112, "Pickup2")
@@ -103,7 +106,7 @@ Actor ThunderPKMN_P : CustomInventory {
     stop
    Pickup3:
     TNT1 A 0 A_SpawnItemEx("ThunderPKMNSpawner_H2", 64, 0, 4, 0, 0, 0, 0, 1)
-    TNT1 A 0 A_TakeInventory("ThunderCounter", 99)
+    TNT1 A 0 A_TakeInventory("ThunderCounter")
     stop
    PickupX:
     TNT1 A 0 A_SpawnItemEx("ThunderPKMNSpawner_H3", 64, 0, 4, 0, 0, 0, 15, 1)
@@ -118,7 +121,7 @@ Actor ThunderPKMN_P : CustomInventory {
   }
 }
 
-Actor ThunderPKMNSpawner_H1 : BasicWatcher {
+actor ThunderPKMNSpawner_H1 : BasicWatcher {
   States {
    Spawn:
     TNT1 A 0
@@ -131,7 +134,7 @@ Actor ThunderPKMNSpawner_H1 : BasicWatcher {
   }
 }
 
-Actor ThunderPKMNSpawner_H2 : BasicWatcher {
+actor ThunderPKMNSpawner_H2 : BasicWatcher {
   States {
    Spawn:
     TNT1 A 0
@@ -144,7 +147,7 @@ Actor ThunderPKMNSpawner_H2 : BasicWatcher {
   }
 }
 
-Actor ThunderPKMNSpawner_H3 : BasicWatcher {
+actor ThunderPKMNSpawner_H3 : BasicWatcher {
   States {
    Spawn:
     TNT1 A 0
@@ -161,7 +164,7 @@ Actor ThunderPKMNSpawner_H3 : BasicWatcher {
   }
 }
 
-Actor ThunderPKMNLineM_H : BasicWatcher {
+actor ThunderPKMNLineM_H : BasicWatcher {
   States {
    Spawn:
     TNT1 A 0
@@ -171,8 +174,8 @@ Actor ThunderPKMNLineM_H : BasicWatcher {
   }
 }
 
-Actor ThunderPKMNLine {
-  PROJECTILE
+actor ThunderPKMNLine {
+  Projectile
   +NOEXPLODEFLOOR
   +FLOORHUGGER
   +DONTBLAST
@@ -192,7 +195,7 @@ Actor ThunderPKMNLine {
   }
 }
 
-Actor ThunderPKMNLineM : ThunderPKMNLine {
+actor ThunderPKMNLineM : ThunderPKMNLine {
   States {
    Spawn:
     TNT1 A 0
@@ -203,9 +206,11 @@ Actor ThunderPKMNLineM : ThunderPKMNLine {
 }
 
 actor ThunderPKMN : LightningBolt {
-  DamageType "Thunder"  // discuss about adding possible paralyze/slow effect to act as status from game series
+  DamageType "Thunder"
+  // discuss about adding possible paralyze/slow effect to act as status from game series
+  // IDEA: add 30% paralyze from MMBN
   Obituary "As %o found out, %k's \cfThunder\c- can strike more than once."
-  Renderstyle "Add"
+  RenderStyle "Add"
   Alpha 0.6
   States {
    Spawn:
@@ -221,25 +226,25 @@ actor ThunderPKMN : LightningBolt {
     X_BC P 0 A_SpawnItemEx("ThunderPKMNFX", Random(32, 96), Random(32, 96), 160)
     X_BC P 0 A_SpawnItemEx("ThunderPKMNFX", Random(-32, -96), Random(-32, -96), 192)
     X_BC PQR 1
-    Stop
+    stop
   }
 }
 
-Actor ThunderExtend : LightningExtend {
-  Renderstyle "Add"
+actor ThunderExtend : LightningExtend {
+  RenderStyle "Add"
   Alpha 0.6
   States {
    Spawn:
     X_BC S 0
-    X_BC S 0 A_JumpIf(ceilingz-z<= 32, "Death")
+    X_BC S 0 A_JumpIf(ceilingz - z <= 32, "Death")
     X_BC S 0 A_SpawnItemEx("ThunderExtend", 0, 0, 160, 0, 0, 0, 0, 1)
     X_BC SSTUV 1
     stop
   }
 }
 
-Actor ThunderPKMNFX : LightningBoltFX {
-  Renderstyle "Add"
+actor ThunderPKMNFX : LightningBoltFX {
+  RenderStyle "Add"
   Alpha 0.6
   Translation "192:192=228:228", "198:198=229:229"
   States {
@@ -251,11 +256,11 @@ Actor ThunderPKMNFX : LightningBoltFX {
   }
 }
 
-/// //////////////////////////
-// == Shiny ==//
-/// //////////////////////////
+/////////////////
+// == Shiny == //
+/////////////////
 
-Actor S_ThunderPKMN_P : CustomInventory {
+actor S_ThunderPKMN_P : CustomInventory {
   States {
    Pickup:
     TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "PickupX")
@@ -265,7 +270,7 @@ Actor S_ThunderPKMN_P : CustomInventory {
     stop
    Pickup2:
     TNT1 A 0 A_SpawnItemEx("S_ThunderPKMNSpawner_H2", 64, 0, 4, 0, 0, 0, 0, 1)
-    TNT1 A 0 A_TakeInventory("ThunderCounter", 99)
+    TNT1 A 0 A_TakeInventory("ThunderCounter")
     stop
    PickupX:
     TNT1 A 0 A_SpawnItemEx("S_ThunderPKMNSpawner_H3", 64, 0, 4, 0, 0, 0, 15, 1)
@@ -273,7 +278,7 @@ Actor S_ThunderPKMN_P : CustomInventory {
   }
 }
 
-Actor S_ThunderPKMNSpawner_H1 : BasicWatcher {
+actor S_ThunderPKMNSpawner_H1 : BasicWatcher {
   States {
    Spawn:
     TNT1 A 0
@@ -286,7 +291,7 @@ Actor S_ThunderPKMNSpawner_H1 : BasicWatcher {
   }
 }
 
-Actor S_ThunderPKMNSpawner_H2 : BasicWatcher {
+actor S_ThunderPKMNSpawner_H2 : BasicWatcher {
   States {
    Spawn:
     TNT1 A 0
@@ -299,7 +304,7 @@ Actor S_ThunderPKMNSpawner_H2 : BasicWatcher {
   }
 }
 
-Actor S_ThunderPKMNSpawner_H3 : BasicWatcher {
+actor S_ThunderPKMNSpawner_H3 : BasicWatcher {
   States {
    Spawn:
     TNT1 A 0
@@ -316,7 +321,7 @@ Actor S_ThunderPKMNSpawner_H3 : BasicWatcher {
   }
 }
 
-Actor S_ThunderPKMNLine : ThunderPKMNLine {
+actor S_ThunderPKMNLine : ThunderPKMNLine {
   States {
    Spawn:
     TNT1 A 0
@@ -341,8 +346,8 @@ actor S_ThunderPKMN : ThunderPKMN {
     X_BC P 0 A_SpawnItemEx("S_ThunderPKMNFX", Random(32, 96), Random(32, 96), 160)
     X_BC P 0 A_SpawnItemEx("S_ThunderPKMNFX", Random(-32, -96), Random(-32, -96), 192)
     X_BC PQR 1
-    Stop
+    stop
   }
 }
 
-Actor S_ThunderPKMNFX : ThunderPKMNFX {}
+actor S_ThunderPKMNFX : ThunderPKMNFX {}

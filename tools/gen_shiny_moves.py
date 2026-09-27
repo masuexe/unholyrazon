@@ -113,25 +113,25 @@ def gen_qwant() -> None:
         "",
         "actor QwantShinyMoveBase_W : BaseMM8BDMWep_UH",
         "{",
-		'\tweapon.ammotype "MyDestinyAmmo"',
-		"\tweapon.ammouse 0",
-		'\tWeapon.UpSound ""',
-		"\t+WEAPON.NOALERT",
+    '\tweapon.ammotype "MyDestinyAmmo"',
+    "\tweapon.ammouse 0",
+    '\tWeapon.UpSound ""',
+    "\t+WEAPON.NOALERT",
         "States",
         "{",
         "Spawn:",
         "\t7H01 [ 6",
         "\tloop",
-		"Deselect:",
-		"\tTNT1 A 0 Offset(1, 128) A_Lower",
-		"Select:",
-		"\t7H01 A 0",
-		"\tgoto Ready",
-		"Ready:",
-		"Fire:",
-		"AltFire:",
-		"\t7H01 A 1 A_WeaponReady",
-		"\twait",
+    "Deselect:",
+    "\tTNT1 A 0 Offset(1, 128) A_Lower",
+    "Select:",
+    "\t7H01 A 0",
+    "\tgoto Ready",
+    "Ready:",
+    "Fire:",
+    "AltFire:",
+    "\t7H01 A 1 A_WeaponReady",
+    "\twait",
         "MoveReturn:",
         '\tTNT1 A 0 ACS_NamedExecuteAlways("uh_ShinyMoveReturn_cs", 0)',
         '\tTNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyMoveReturn")',
@@ -332,98 +332,98 @@ def gen_nega() -> None:
 
 actor NegaShinyHeldBase_W : BaseMM8BDMWep_UH
 {{
-	Weapon.SlotNumber 1
-	Weapon.AmmoUse 0
-	Weapon.AmmoGive 0
-	weapon.ammotype "S_NegaDuckAmmo"
-	Weapon.UpSound ""
-	inventory.icon "C_I_02B"
-	+WEAPON.NOALERT
-	+WEAPON.NOAUTOAIM
+  Weapon.SlotNumber 1
+  Weapon.AmmoUse 0
+  Weapon.AmmoGive 0
+  Weapon.AmmoType "S_NegaDuckAmmo"
+  Weapon.UpSound ""
+  Inventory.Icon "C_I_02B"
+  +WEAPON.NOALERT
+  +WEAPON.NOAUTOAIM
 States
 {{
 Spawn:
-	7H02 [ 6
-	loop
+  7H02 [ 6
+  loop
 Deselect:
-	7H02 A 0
-	goto DeselectSwap
+  7H02 A 0
+  goto DeselectSwap
 Select:
-	7H02 A 0 A_JumpIfInventory("UH_SilentSelect_F",1,"SilentSelect")
-	goto SelectSwap
+  7H02 A 0 A_JumpIfInventory("UH_SilentSelect_F",1,"SilentSelect")
+  goto SelectSwap
 SilentSelect:
-	7H02 A 0 A_StopSound(CHAN_WEAPON)
-	7H02 A 0 A_TakeInventory("UH_SilentSelect_F",1)
-	7H02 A 0 A_TakeInventory("NoWeaponSwitchSound",1)
-	7H02 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_SDYE)
-	7H02 A 0 A_WeaponReady(14)
-	goto Ready2
+  7H02 A 0 A_StopSound(CHAN_WEAPON)
+  7H02 A 0 A_TakeInventory("UH_SilentSelect_F",1)
+  7H02 A 0 A_TakeInventory("NoWeaponSwitchSound",1)
+  7H02 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_SDYE)
+  7H02 A 0 A_WeaponReady(14)
+  goto Ready2
 Ready:
-	7H02 A 1 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_SDYE)
-	Goto Ready2
+  7H02 A 1 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_SDYE)
+  Goto Ready2
 Ready2:
-	7H02 A 0 A_JumpIfInventory("S_NegaDuckAmmo",100,"Ready3")
-	7H02 A 2 A_WeaponReady(8)
-	7H02 A 0 A_GiveInventory("S_NegaDuckAmmo",3)
-	loop
+  7H02 A 0 A_JumpIfInventory("S_NegaDuckAmmo",100,"Ready3")
+  7H02 A 2 A_WeaponReady(8)
+  7H02 A 0 A_GiveInventory("S_NegaDuckAmmo",3)
+  loop
 Ready3:
-	7H02 A 2 A_WeaponReady
-	7H02 A 0 A_GiveInventory("S_NegaDuckAmmo",3)
-	loop
+  7H02 A 2 A_WeaponReady
+  7H02 A 0 A_GiveInventory("S_NegaDuckAmmo",3)
+  loop
 Fire:
 Charge:
-	7H02 A 0
-	goto Charge0
+  7H02 A 0
+  goto Charge0
 Charge0:
-	7H02 A 0 A_JumpIfInventory("WeaponCharge",25,"Charge1")
-	7H02 A 0 A_JumpIfInventory("WeaponCharge",24,"ChargeStart")
-	7H02 A 0 A_JumpIfInventory("PlayerPropertyRage",1,"Charge0R")
-	7H02 A 1 A_GiveInventory("WeaponCharge",1)
-	7H02 A 0 A_Refire("Charge0")
-	// A_Jump resolves Fire1/2/3 on the *held* class (goto would stick on base stubs).
-	7H02 A 0 A_Jump(256, "Fire1")
+  7H02 A 0 A_JumpIfInventory("WeaponCharge",25,"Charge1")
+  7H02 A 0 A_JumpIfInventory("WeaponCharge",24,"ChargeStart")
+  7H02 A 0 A_JumpIfInventory("PlayerPropertyRage",1,"Charge0R")
+  7H02 A 1 A_GiveInventory("WeaponCharge",1)
+  7H02 A 0 A_ReFire("Charge0")
+  // A_Jump resolves Fire1/2/3 on the *held* class (goto would stick on base stubs).
+  7H02 A 0 A_Jump(256, "Fire1")
 ChargeStart:
-	7H02 A 0 A_PlaySoundEx("weapon/pcharge","Weapon")
-	Goto Charge1
+  7H02 A 0 A_PlaySoundEx("weapon/pcharge","Weapon")
+  Goto Charge1
 Charge0R:
-	7H02 A 1 A_GiveInventory("WeaponCharge",2)
-	7H02 A 0 A_Refire("Charge0")
-	7H02 A 0 A_Jump(256, "Fire1")
+  7H02 A 1 A_GiveInventory("WeaponCharge",2)
+  7H02 A 0 A_ReFire("Charge0")
+  7H02 A 0 A_Jump(256, "Fire1")
 Charge1:
-	7H02 B 0 A_JumpIfInventory("WeaponCharge",56,"Charge2")
-	7H02 B 0 A_JumpIfInventory("PlayerPropertyRage",1,"Charge1R")
-	7H02 B 1 A_GiveInventory("WeaponCharge",1)
-	7H02 B 0 A_Refire("Charge1")
-	7H02 B 0 A_Jump(256, "Fire2")
+  7H02 B 0 A_JumpIfInventory("WeaponCharge",56,"Charge2")
+  7H02 B 0 A_JumpIfInventory("PlayerPropertyRage",1,"Charge1R")
+  7H02 B 1 A_GiveInventory("WeaponCharge",1)
+  7H02 B 0 A_ReFire("Charge1")
+  7H02 B 0 A_Jump(256, "Fire2")
 Charge1R:
-	7H02 B 1 A_GiveInventory("WeaponCharge",2)
-	7H02 B 0 A_Refire("Charge1")
-	7H02 B 0 A_Jump(256, "Fire2")
+  7H02 B 1 A_GiveInventory("WeaponCharge",2)
+  7H02 B 0 A_ReFire("Charge1")
+  7H02 B 0 A_Jump(256, "Fire2")
 Charge2:
-	7H02 C 1 A_RailWait
-	7H02 C 0 A_Refire("Charge2")
-	7H02 C 0 A_Jump(256, "Fire3")
+  7H02 C 1 A_RailWait
+  7H02 C 0 A_ReFire("Charge2")
+  7H02 C 0 A_Jump(256, "Fire3")
 Fire1:
-	7H02 A 0 A_TakeInventory("WeaponCharge",999)
-	7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-	goto Ready2
+  7H02 A 0 A_TakeInventory("WeaponCharge",999)
+  7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
+  goto Ready2
 Fire2:
-	7H02 B 0 A_TakeInventory("WeaponCharge",999)
-	goto Ready2
+  7H02 B 0 A_TakeInventory("WeaponCharge",999)
+  goto Ready2
 Fire3:
-	7H02 C 0 A_TakeInventory("WeaponCharge",999)
-	goto Ready2
+  7H02 C 0 A_TakeInventory("WeaponCharge",999)
+  goto Ready2
 Nega4End:
-	7H02 C 0 A_PlaySoundEx("weapon/skullcounter","Weapon")
-	7H02 C 0 A_TakeInventory("ShieldCheck")
-	7H02 BA 3
-	goto Ready2
+  7H02 C 0 A_PlaySoundEx("weapon/skullcounter","Weapon")
+  7H02 C 0 A_TakeInventory("ShieldCheck")
+  7H02 BA 3
+  goto Ready2
 Nega4End3:
-	7H02 C 0 A_PlaySoundEx("weapon/skullcounter","Weapon")
-	7H02 C 0 A_TakeInventory("ShieldCheck")
-	7H02 BA 3
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyNegaAdvanceHeld")
-	goto Ready2
+  7H02 C 0 A_PlaySoundEx("weapon/skullcounter","Weapon")
+  7H02 C 0 A_TakeInventory("ShieldCheck")
+  7H02 BA 3
+  TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyNegaAdvanceHeld")
+  goto Ready2
 {fire2_end.rstrip()}
 {fire3_end.rstrip()}
 {flash_alt.rstrip()}
@@ -596,7 +596,7 @@ Negaman0_1:
 7H02 A 0 A_PlaySoundEx("weapon/mbuster","Weapon")
 7H02 A 0 A_FireCustomMissile("S_NegaChargeShot1",0,0,8,0)
 7H02 BC 2
-7H02 A 0 A_Refire("Charge")
+7H02 A 0 A_ReFire("Charge")
 Goto Ready2
 
 Fire2:
@@ -608,7 +608,7 @@ Negaman0_2:
 7H02 B 0 A_FireCustomMissile("S_NegaChargeShot2",0,0,8,0)
 7H02 BC 3
 7H02 A 1
-7H02 A 0 A_Refire("Charge")
+7H02 A 0 A_ReFire("Charge")
 Goto Ready2
 
 Fire3:
@@ -739,7 +739,7 @@ def gen_decoy() -> None:
 
     def ensure_bot_helpers(slot_body: str, slot: int, pref: str) -> str:
         """If body jumps to FireNNBot / FireNNH but label missing, pull from W1."""
-        needed = set(re.findall(r'(?:goto|A_ReFire|A_Refire|A_Jump[^"]*")(Fire\d{2}(?:Bot|H\d*|H|A|B|End|Toss|Fail)?)"?', slot_body))
+        needed = set(re.findall(r'(?:goto|A_ReFire|A_ReFire|A_Jump[^"]*")(Fire\d{2}(?:Bot|H\d*|H|A|B|End|Toss|Fail)?)"?', slot_body))
         # simpler: find goto FireXXBot
         refs = set(re.findall(r'\b(Fire\d{2}(?:Bot|H\d*|H|A|B|End|Toss|Fail|Hit)?)\b', slot_body))
         defined = set(re.findall(r'(?m)^(Fire\d{2}(?:Bot|H\d*|H|A|B|End|Toss|Fail|Hit)?)\s*:', slot_body))
@@ -812,7 +812,7 @@ def gen_decoy() -> None:
             body = rewrite_ends(body, ready="Ready2")
             # Rename FireNN: to AnimN:
             body = re.sub(rf"(?m)^{re.escape(fire_label)}\s*:", f"{anim}:", body, count=1)
-            # BotFire jumps inside Fire52 — leave as-is (still valid on DecoyBot_W parent? 
+            # BotFire jumps inside Fire52 — leave as-is (still valid on DecoyBot_W parent?
             # Move weapon doesn't have BotFire — remap goto BotFire to MoveReturn for safety)
             body = re.sub(r"(?i)\bgoto\s+BotFire\b", "goto MoveReturn", body)
             return body.rstrip()
@@ -899,7 +899,7 @@ Goto Ready2
 
     # Get DecoyBot_W actor only
     w1_actor = "actor DecoyBot_W " + w1.split("actor DecoyBot_W ", 1)[1]
-    # w1 variable was split before W2 so includes ScriptBars? 
+    # w1 variable was split before W2 so includes ScriptBars?
     # Actually w1 = src.split("actor DecoyBot_W2")[0] includes preamble + W1
     w1_only = "actor DecoyBot_W " + src.split("actor DecoyBot_W ", 1)[1].split("actor DecoyBot_W2")[0]
 

@@ -1,37 +1,37 @@
 // Crooked Penny: double or strip all DefineUnholyItem identities (UHDT tables, no UHADD roundtrips).
 function void CrookedPennyMutateActor(str actor, bool lucky) {
-	int count = CheckInventory(actor);
-	if (count <= 0)
-		return;
-	if (lucky) {
-		GiveInventory(actor, count);
-		return;
-	}
-	if (StrCmp(actor, "SuperGUHUItem") == 0 && CheckInventory("SuperGuhuDoomFlag"))
-		count--;
-	if (count > 0)
-		TakeInventory(actor, count);
+  int count = CheckInventory(actor);
+  if (count <= 0)
+    return;
+  if (lucky) {
+    GiveInventory(actor, count);
+    return;
+  }
+  if (StrCmp(actor, "SuperGUHUItem") == 0 && CheckInventory("SuperGuhuDoomFlag"))
+    count--;
+  if (count > 0)
+    TakeInventory(actor, count);
 }
 
 script "rz_CrookedPennyRolling" (void) {
-	bool lucky = random(0, 1);
-	int id;
-	int i;
+  bool lucky = random(0, 1);
+  int id;
+  int i;
 
-	for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
-		if (!IsItemDefined(id))
-			continue;
-		CrookedPennyMutateActor(GetItemActor(id), lucky);
-	}
-	for (i = 0; i < uh_itemcustomcount; i++) {
-		if (IsItemDefined(-1 - i))
-			CrookedPennyMutateActor(GetItemActor(-1 - i), lucky);
-	}
+  for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
+    if (!IsItemDefined(id))
+      continue;
+    CrookedPennyMutateActor(GetItemActor(id), lucky);
+  }
+  for (i = 0; i < uh_itemcustomcount; i++) {
+    if (IsItemDefined(-1 - i))
+      CrookedPennyMutateActor(GetItemActor(-1 - i), lucky);
+  }
 
-	if (!lucky) {
-		GiveInventory("DLC_CoinItem", 1);
-		PlaySound(0, "items/SoUnlucky", 5);
-	}
+  if (!lucky) {
+    GiveInventory("DLC_CoinItem", 1);
+    PlaySound(0, "items/SoUnlucky", 5);
+  }
 }
 
 // Eternal D6: defer gives so newly rolled items are not re-processed in the same pass.
@@ -40,73 +40,73 @@ str uh_edend6pendinggive[UH_EDEN_D6_PENDING_MAX];
 int uh_edend6pendingcount;
 
 function void EternalD6QueueGive(str actor) {
-	if (StrCmp(actor, "") == 0)
-		return;
-	if (uh_edend6pendingcount >= UH_EDEN_D6_PENDING_MAX)
-		return;
-	uh_edend6pendinggive[uh_edend6pendingcount] = actor;
-	uh_edend6pendingcount++;
+  if (StrCmp(actor, "") == 0)
+    return;
+  if (uh_edend6pendingcount >= UH_EDEN_D6_PENDING_MAX)
+    return;
+  uh_edend6pendinggive[uh_edend6pendingcount] = actor;
+  uh_edend6pendingcount++;
 }
 
 function void EternalD6ProcessActor(str actor) {
-	int count;
-	int itemid;
-	int boxid;
-	int coinid;
-	int u;
-	int newid;
-	str giveactor;
+  int count;
+  int itemid;
+  int boxid;
+  int coinid;
+  int u;
+  int newid;
+  str giveactor;
 
-	count = CheckInventory(actor);
-	if (count <= 0)
-		return;
-	if (StrCmp(actor, "SuperGUHUItem") == 0 && CheckInventory("SuperGuhuDoomFlag"))
-		count--;
-	if (count <= 0)
-		return;
+  count = CheckInventory(actor);
+  if (count <= 0)
+    return;
+  if (StrCmp(actor, "SuperGUHUItem") == 0 && CheckInventory("SuperGuhuDoomFlag"))
+    count--;
+  if (count <= 0)
+    return;
 
-	itemid = FindItemByActor(actor);
-	if (itemid == UHITEM_FAIL)
-		return;
-	coinid = FindItemByActor("DLC_CoinItem");
-	if (itemid == coinid)
-		return;
-	if (IsUnholyBox(itemid))
-		return;
+  itemid = FindItemByActor(actor);
+  if (itemid == UHITEM_FAIL)
+    return;
+  coinid = FindItemByActor("DLC_CoinItem");
+  if (itemid == coinid)
+    return;
+  if (IsUnholyBox(itemid))
+    return;
 
-	for (u = 0; u < count; u++) {
-		boxid = PickItemHomeBoxEdenD6(itemid);
-		if (boxid == UHITEM_FAIL)
-			continue;
-		if (ItemBoxWeightSumEdenD6(boxid, itemid) <= 0)
-			continue;
-		TakeInventory(actor, 1);
-		if (random(0, 99) < 75) {
-			newid = RandomItemFromBoxEdenD6(boxid, itemid);
-			if (newid != UHITEM_FAIL) {
-				giveactor = GetItemActor(newid);
-				EternalD6QueueGive(giveactor);
-			}
-		}
-	}
+  for (u = 0; u < count; u++) {
+    boxid = PickItemHomeBoxEdenD6(itemid);
+    if (boxid == UHITEM_FAIL)
+      continue;
+    if (ItemBoxWeightSumEdenD6(boxid, itemid) <= 0)
+      continue;
+    TakeInventory(actor, 1);
+    if (random(0, 99) < 75) {
+      newid = RandomItemFromBoxEdenD6(boxid, itemid);
+      if (newid != UHITEM_FAIL) {
+        giveactor = GetItemActor(newid);
+        EternalD6QueueGive(giveactor);
+      }
+    }
+  }
 }
 
 script "rz_EternalD6Rolling" (void) {
-	int id;
-	int i;
+  int id;
+  int i;
 
-	uh_edend6pendingcount = 0;
+  uh_edend6pendingcount = 0;
 
-	for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
-		if (!IsItemDefined(id))
-			continue;
-		EternalD6ProcessActor(GetItemActor(id));
-	}
-	for (i = 0; i < uh_itemcustomcount; i++) {
-		if (IsItemDefined(-1 - i))
-			EternalD6ProcessActor(GetItemActor(-1 - i));
-	}
+  for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
+    if (!IsItemDefined(id))
+      continue;
+    EternalD6ProcessActor(GetItemActor(id));
+  }
+  for (i = 0; i < uh_itemcustomcount; i++) {
+    if (IsItemDefined(-1 - i))
+      EternalD6ProcessActor(GetItemActor(-1 - i));
+  }
 
-	for (i = 0; i < uh_edend6pendingcount; i++)
-		GiveInventory(uh_edend6pendinggive[i], 1);
+  for (i = 0; i < uh_edend6pendingcount; i++)
+    GiveInventory(uh_edend6pendinggive[i], 1);
 }

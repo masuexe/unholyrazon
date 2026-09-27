@@ -18,83 +18,83 @@
 // registered as DTADD slot 1 (buster).
 
 function int UH_UIX_ActorExists(str which) {
-	int u;
-	int spawned;
+  int u;
+  int spawned;
 
-	u = UniqueTID();
-	spawned = SpawnForced(which, 0, 0, 0, u, 0);
-	if (spawned)
-		Thing_Remove(u);
-	return spawned;
+  u = UniqueTID();
+  spawned = SpawnForced(which, 0, 0, 0, u, 0);
+  if (spawned)
+    Thing_Remove(u);
+  return spawned;
 }
 
 function int UH_UIX_TryId(int id) {
-	str icon;
+  str icon;
 
-	icon = GetItemIcon(id);
-	if (StrCmp(icon, "") == 0)
-		return 0;
-	if (DefineAssistItem(GetItemName(id), GetItemActor(id), icon, 1, GetItemDtaddGroup(id), false) == -1)
-		return 1;
-	return 0;
+  icon = GetItemIcon(id);
+  if (StrCmp(icon, "") == 0)
+    return 0;
+  if (DefineAssistItem(GetItemName(id), GetItemActor(id), icon, 1, GetItemDtaddGroup(id), false) == -1)
+    return 1;
+  return 0;
 }
 
 int uh_uix_itemsdone = 0;
 
 function void UH_UIX_RegisterItems(void) {
-	int fail;
-	int id;
-	int i;
-	int n;
+  int fail;
+  int id;
+  int i;
+  int n;
 
-	fail = 0;
-	n = 0;
-	for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
-		if (!IsItemDefined(id))
-			continue;
-		fail += UH_UIX_TryId(id);
-		n++;
-	}
-	for (i = 0; i < GetUnholyCustomItemCount(); i++) {
-		id = -1 - i;
-		fail += UH_UIX_TryId(id);
-		n++;
-	}
-	if (fail) {
-		UH_Log(UH_LOG_WARN, StrParam(
-			s:"uh_uix: DefineAssistItem failed for ",
-			i:fail,
-			s:" item(s)"));
-		return;
-	}
-	UH_Log(UH_LOG_INFO, StrParam(s:"uh_uix: registered ", i:n, s:" Unholy items"));
-	uh_uix_itemsdone = 1;
+  fail = 0;
+  n = 0;
+  for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
+    if (!IsItemDefined(id))
+      continue;
+    fail += UH_UIX_TryId(id);
+    n++;
+  }
+  for (i = 0; i < GetUnholyCustomItemCount(); i++) {
+    id = -1 - i;
+    fail += UH_UIX_TryId(id);
+    n++;
+  }
+  if (fail) {
+    UH_Log(UH_LOG_WARN, StrParam(
+      s:"uh_uix: DefineAssistItem failed for ",
+      i:fail,
+      s:" item(s)"));
+    return;
+  }
+  UH_Log(UH_LOG_INFO, StrParam(s:"uh_uix: registered ", i:n, s:" Unholy items"));
+  uh_uix_itemsdone = 1;
 }
 
 function void UH_UIX_RegisterItemsIfReady(int src) {
-	int count;
+  int count;
 
-	count = GetUnholyItemCount();
-	if (count <= 0)
-		return;
-	if (uh_uix_itemsdone)
-		return;
-	if (!UH_UIX_ActorExists("UIX_ItemSelected_PU"))
-		return;
-	UH_UIX_RegisterItems();
+  count = GetUnholyItemCount();
+  if (count <= 0)
+    return;
+  if (uh_uix_itemsdone)
+    return;
+  if (!UH_UIX_ActorExists("UIX_ItemSelected_PU"))
+    return;
+  UH_UIX_RegisterItems();
 }
 
 #include "uh_uix_megaweps.acs"
 #include "uh_uix_mugshots.acs"
 
 script "uh_uix_reg_items" (void) CLIENTSIDE {
-	UH_UIX_RegisterItemsIfReady(2);
+  UH_UIX_RegisterItemsIfReady(2);
 }
 
 script "uh_uix_register_items" OPEN CLIENTSIDE {
-	if (!UH_UIX_ActorExists("UIX_ItemSelected_PU"))
-		terminate;
+  if (!UH_UIX_ActorExists("UIX_ItemSelected_PU"))
+    terminate;
 
-	UH_UIX_RegisterItemsIfReady(1);
-	UH_UIX_RegisterMegaWeps();
+  UH_UIX_RegisterItemsIfReady(1);
+  UH_UIX_RegisterMegaWeps();
 }

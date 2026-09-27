@@ -462,7 +462,7 @@ def gen_namespaced_append_lines(config: dict, horiz: bool) -> list[str]:
                                  next(p[4] for p in POS_BANKS if p[0] == bar["position"]),
                                  next(p[5] for p in POS_BANKS if p[0] == bar["position"]))
             orientation = "vertical"
-        indent = "  " if horiz else "\t"
+        indent = "  "
         lines.append(
             f'{indent * 4}InInventory "{selector}", {selector_id} '
             f'{{InInventory not "{selector}", {selector_id + 1} '
@@ -474,7 +474,7 @@ def gen_namespaced_append_lines(config: dict, horiz: bool) -> list[str]:
 
 def gen_append_files(config):
     def render(horiz: bool) -> str:
-        indent = "  " if horiz else "\t"
+        indent = "  "
         mode = "normal" if horiz else "fullscreen"
         lines = [
             f"AppendStatusBar {mode}, forcescaled {{",
@@ -499,12 +499,12 @@ def gen_namespaced_barfx_actors(config: dict) -> str:
         actors = [(
             namespaced_selector(bar), "Inventory", [
                 "inventory.amount 1",
-                f"inventory.maxamount {layer_selector_capacity(config, bar)}"])]
+                f"Inventory.MaxAmount {layer_selector_capacity(config, bar)}"])]
         if "source" not in bar:
             actors.append((
                 namespaced_ammo(bar), "Ammo", [
                     "+INVENTORY.IGNORESKILL", "inventory.amount 0",
-                    f"inventory.maxamount {bar['capacity']}"]))
+                    f"Inventory.MaxAmount {bar['capacity']}"]))
         for actor, parent, extra in actors:
             actor_key = actor.casefold()
             if actor_key in seen:

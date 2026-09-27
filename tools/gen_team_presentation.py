@@ -77,9 +77,9 @@ def parse_baseline(path: Path) -> tuple[dict[str, str], dict[str, str]]:
     for lineno, line in enumerate(read(path).splitlines(), 1):
         if not line.strip() or line.lstrip().startswith("//"):
             continue
-        parts = line.split("\t")
+        parts = line.split()
         if len(parts) != 3:
-            raise SystemExit(f"{path.name}:{lineno}: expected 3 tab-separated columns")
+            raise SystemExit(f"{path.name}:{lineno}: expected 3 space-separated columns")
         actor, mug, icon = (part.strip() for part in parts)
         if not actor:
             raise SystemExit(f"{path.name}:{lineno}: empty actor")
@@ -103,10 +103,19 @@ def acs_str(value: str) -> str:
     return f'"{value}"'
 
 
-def emit(header: list[str], func: str, rows: list[tuple[str, str, str, str, int]]) -> str:
+def emit(
+    header: list[str],
+    func: str,
+    rows: list[tuple[str, str, str, str, int]],
+    *,
+    brace_same_line: bool = False,
+) -> str:
     lines = list(header)
-    lines.append(f"function void {func}(void)")
-    lines.append("{")
+    if brace_same_line:
+        lines.append(f"function void {func}(void) {{")
+    else:
+        lines.append(f"function void {func}(void)")
+        lines.append("{")
     for actor, name, portrait, icon, flags in rows:
         lines.append(
             f"  DefineTeamPresentation({acs_str(actor)}, {acs_str(name)}, "
@@ -182,6 +191,7 @@ def build() -> dict[Path, str]:
             ],
             "RegisterSurvPresentations",
             rows["surv"],
+            brace_same_line=True,
         ),
         OUT_BOSS: emit(
             [
@@ -193,8 +203,9 @@ def build() -> dict[Path, str]:
             ],
             "RegisterBossPresentations",
             rows["boss"],
+            brace_same_line=True,
         ),
-        OUT_EYE: emit(eye_header, "RegisterEyePresentations", rows["eye"] + rows["only"]),
+        OUT_EYE: emit(eye_header, "RegisterEyePresentations", rows["eye"] + rows["only"], brace_same_line=True),
     }
 
 

@@ -1,135 +1,135 @@
 // Legacy M1 SetWeapon dispatch — unused; held copies fire in place.
 script "uh_DecoyBotCustomFire" (int which) {
-	SetResultValue(0);
+  SetResultValue(0);
 }
 
 // Which weapon slot is currently ready (1/2/3) from GetWeapon() suffix.
 function int UH_DecoyHeldSlotFromWeapon(str wep) {
-	int len = StrLen(wep);
-	int d;
-	if (len >= 4
-		&& GetChar(wep, len - 3) == '_'
-		&& GetChar(wep, len - 2) == 'W') {
-		d = GetChar(wep, len - 1);
-		if (d == '2')
-			return 2;
-		if (d == '3')
-			return 3;
-		if (d == '1')
-			return 1;
-	}
-	if (StrICmp(wep, "DecoyBot_W2") == 0)
-		return 2;
-	if (StrICmp(wep, "DecoyBot_W3") == 0)
-		return 3;
-	return 1;
+  int len = StrLen(wep);
+  int d;
+  if (len >= 4
+    && GetChar(wep, len - 3) == '_'
+    && GetChar(wep, len - 2) == 'W') {
+    d = GetChar(wep, len - 1);
+    if (d == '2')
+      return 2;
+    if (d == '3')
+      return 3;
+    if (d == '1')
+      return 1;
+  }
+  if (StrICmp(wep, "DecoyBot_W2") == 0)
+    return 2;
+  if (StrICmp(wep, "DecoyBot_W3") == 0)
+    return 3;
+  return 1;
 }
 
 // After M2 roll: Give three new held copies, SetWeapon current slot, Take old.
 // Always strip leftover DecoyBot_W* parents (ScriptBar-only; never held).
 script "uh_DecoyBotApplyHeldWeps" (void) {
-	int pn = PlayerNumber();
-	int s1;
-	int s2;
-	int s3;
-	int slot;
-	str stem1;
-	str stem2;
-	str stem3;
-	str new1;
-	str new2;
-	str new3;
-	str old1;
-	str old2;
-	str old3;
-	str cur;
-	str setto;
+  int pn = PlayerNumber();
+  int s1;
+  int s2;
+  int s3;
+  int slot;
+  str stem1;
+  str stem2;
+  str stem3;
+  str new1;
+  str new2;
+  str new3;
+  str old1;
+  str old2;
+  str old3;
+  str cur;
+  str setto;
 
-	if (pn < 0)
-		terminate;
-	// Caller (WepSwap) waits for the table; do not bootstrap 00 here.
-	if (uh_decoymovecount <= 0)
-		terminate;
+  if (pn < 0)
+    terminate;
+  // Caller (WepSwap) waits for the table; do not bootstrap 00 here.
+  if (uh_decoymovecount <= 0)
+    terminate;
 
-	s1 = CheckInventory("DecoyBotFlag1");
-	s2 = CheckInventory("DecoyBotFlag2");
-	s3 = CheckInventory("DecoyBotFlag3");
-	if (s1 < 0 || s1 >= uh_decoymovecount)
-		terminate;
-	if (s2 < 0 || s2 >= uh_decoymovecount)
-		terminate;
-	if (s3 < 0 || s3 >= uh_decoymovecount)
-		terminate;
+  s1 = CheckInventory("DecoyBotFlag1");
+  s2 = CheckInventory("DecoyBotFlag2");
+  s3 = CheckInventory("DecoyBotFlag3");
+  if (s1 < 0 || s1 >= uh_decoymovecount)
+    terminate;
+  if (s2 < 0 || s2 >= uh_decoymovecount)
+    terminate;
+  if (s3 < 0 || s3 >= uh_decoymovecount)
+    terminate;
 
-	stem1 = uh_decoymovewep[s1][0];
-	stem2 = uh_decoymovewep[s2][0];
-	stem3 = uh_decoymovewep[s3][0];
-	if (StrCmp(stem1, "") == 0 || StrCmp(stem2, "") == 0 || StrCmp(stem3, "") == 0)
-		terminate;
+  stem1 = uh_decoymovewep[s1][0];
+  stem2 = uh_decoymovewep[s2][0];
+  stem3 = uh_decoymovewep[s3][0];
+  if (StrCmp(stem1, "") == 0 || StrCmp(stem2, "") == 0 || StrCmp(stem3, "") == 0)
+    terminate;
 
-	new1 = StrParam(s:stem1, s:"_W1");
-	new2 = StrParam(s:stem2, s:"_W2");
-	new3 = StrParam(s:stem3, s:"_W3");
+  new1 = StrParam(s:stem1, s:"_W1");
+  new2 = StrParam(s:stem2, s:"_W2");
+  new3 = StrParam(s:stem3, s:"_W3");
 
-	old1 = uh_decoyheld[pn][0];
-	old2 = uh_decoyheld[pn][1];
-	old3 = uh_decoyheld[pn][2];
+  old1 = uh_decoyheld[pn][0];
+  old2 = uh_decoyheld[pn][1];
+  old3 = uh_decoyheld[pn][2];
 
-	cur = GetWeapon();
-	slot = UH_DecoyHeldSlotFromWeapon(cur);
-	if (slot == 2)
-		setto = new2;
-	else if (slot == 3)
-		setto = new3;
-	else
-		setto = new1;
+  cur = GetWeapon();
+  slot = UH_DecoyHeldSlotFromWeapon(cur);
+  if (slot == 2)
+    setto = new2;
+  else if (slot == 3)
+    setto = new3;
+  else
+    setto = new1;
 
-	// Before any Give: first auto-raise must SilentSelect (not SelectSwap Ready).
-	GiveInventory("NoWeaponSwitchSound", 1);
-	GiveInventory("UH_SilentSelect_F", 1);
+  // Before any Give: first auto-raise must SilentSelect (not SelectSwap Ready).
+  GiveInventory("NoWeaponSwitchSound", 1);
+  GiveInventory("UH_SilentSelect_F", 1);
 
-	GiveInventory(new1, 1);
-	GiveInventory(new2, 1);
-	GiveInventory(new3, 1);
+  GiveInventory(new1, 1);
+  GiveInventory(new2, 1);
+  GiveInventory(new3, 1);
 
-	SetWeapon(setto);
+  SetWeapon(setto);
 
-	if (StrCmp(old1, "") != 0 && StrICmp(old1, new1) != 0)
-		TakeInventory(old1, 1);
-	if (StrCmp(old2, "") != 0 && StrICmp(old2, new2) != 0)
-		TakeInventory(old2, 1);
-	if (StrCmp(old3, "") != 0 && StrICmp(old3, new3) != 0)
-		TakeInventory(old3, 1);
+  if (StrCmp(old1, "") != 0 && StrICmp(old1, new1) != 0)
+    TakeInventory(old1, 1);
+  if (StrCmp(old2, "") != 0 && StrICmp(old2, new2) != 0)
+    TakeInventory(old2, 1);
+  if (StrCmp(old3, "") != 0 && StrICmp(old3, new3) != 0)
+    TakeInventory(old3, 1);
 
-	// Parents are never valid held guns (ScriptBar / bar remap only).
-	TakeInventory("DecoyBot_W", 1);
-	TakeInventory("DecoyBot_W2", 1);
-	TakeInventory("DecoyBot_W3", 1);
+  // Parents are never valid held guns (ScriptBar / bar remap only).
+  TakeInventory("DecoyBot_W", 1);
+  TakeInventory("DecoyBot_W2", 1);
+  TakeInventory("DecoyBot_W3", 1);
 
-	uh_decoyheld[pn][0] = new1;
-	uh_decoyheld[pn][1] = new2;
-	uh_decoyheld[pn][2] = new3;
+  uh_decoyheld[pn][0] = new1;
+  uh_decoyheld[pn][1] = new2;
+  uh_decoyheld[pn][2] = new3;
 }
 
 // For Decoy move Select: which launcher weapon (1..3).
 // Array is server-only; on clients (v==0) derive from synced UH_MoveHud_F.
 script "uh_DecoyBotGetWhich" (void) {
-	int pn = PlayerNumber();
-	int v = pn >= 0 ? uh_decoywhich[pn] : 0;
-	int hud;
-	if (v <= 0) {
-		hud = CheckInventory("UH_MoveHud_F");
-		if (hud >= 3 && hud <= 5)
-			v = hud - 2;
-		else
-			v = 1;
-	}
-	SetResultValue(v);
+  int pn = PlayerNumber();
+  int v = pn >= 0 ? uh_decoywhich[pn] : 0;
+  int hud;
+  if (v <= 0) {
+    hud = CheckInventory("UH_MoveHud_F");
+    if (hud >= 3 && hud <= 5)
+      v = hud - 2;
+    else
+      v = 1;
+  }
+  SetResultValue(v);
 }
 
 // Dynamic DecoyBot copy slot count.
 script "uh_CountDecoyBotSlots" (void) {
-	SetResultValue(CountDecoyBotSlots());
+  SetResultValue(CountDecoyBotSlots());
 }
 
 // Called by the three ordinary ready pickups or Shiny ready pickup while
@@ -137,176 +137,176 @@ script "uh_CountDecoyBotSlots" (void) {
 // Use the same registered slot index that ApplyHeldWeps uses; no DECORATE
 // D00..D60 dispatch is needed for addon slots.
 script "uh_DecoyBotCanFire" (int which) {
-	int slot;
-	int rune;
-	int minimum;
-	str bypass;
-	if (which == 1)
-		slot = CheckInventory("DecoyBotFlag1");
-	else if (which == 2)
-		slot = CheckInventory("DecoyBotFlag2");
-	else if (which == 3)
-		slot = CheckInventory("DecoyBotFlag3");
-	else if (which == 4)
-		slot = CheckInventory("DecoyBotFlag1");
-	else {
-		SetResultValue(0);
-		terminate;
-	}
-	if (slot < 0 || slot >= uh_decoymovecount) {
-		SetResultValue(0);
-		terminate;
-	}
-	bypass = uh_decoymovewep[slot][which == 4 ? 2 : 1];
-	if (StrCmp(bypass, "") != 0 && CheckInventory(bypass) > 0) {
-		SetResultValue(1);
-		terminate;
-	}
-	rune = ACS_NamedExecuteWithResult("uh_checkrune", 10);
-	minimum = uh_decoyreadyammo[slot][(which == 4 ? 2 : 0) + (rune > 0)];
-	SetResultValue(CheckInventory("DecoyEnergyAmmo") >= minimum);
+  int slot;
+  int rune;
+  int minimum;
+  str bypass;
+  if (which == 1)
+    slot = CheckInventory("DecoyBotFlag1");
+  else if (which == 2)
+    slot = CheckInventory("DecoyBotFlag2");
+  else if (which == 3)
+    slot = CheckInventory("DecoyBotFlag3");
+  else if (which == 4)
+    slot = CheckInventory("DecoyBotFlag1");
+  else {
+    SetResultValue(0);
+    terminate;
+  }
+  if (slot < 0 || slot >= uh_decoymovecount) {
+    SetResultValue(0);
+    terminate;
+  }
+  bypass = uh_decoymovewep[slot][which == 4 ? 2 : 1];
+  if (StrCmp(bypass, "") != 0 && CheckInventory(bypass) > 0) {
+    SetResultValue(1);
+    terminate;
+  }
+  rune = ACS_NamedExecuteWithResult("uh_checkrune", 10);
+  minimum = uh_decoyreadyammo[slot][(which == 4 ? 2 : 0) + (rune > 0)];
+  SetResultValue(CheckInventory("DecoyEnergyAmmo") >= minimum);
 }
 
 // Equip Shiny Decoy's current slot, or advance to the next registered shiny
 // partner. Old addons may leave shiny entries empty; M2 skips those rows.
 function int UH_DecoyBotShinyEquip(int advance) {
-	int pn = PlayerNumber();
-	int count = CountDecoyBotSlots();
-	int slot;
-	int tries;
-	str nextwep;
-	str oldwep;
+  int pn = PlayerNumber();
+  int count = CountDecoyBotSlots();
+  int slot;
+  int tries;
+  str nextwep;
+  str oldwep;
 
-	if (pn < 0 || count <= 0)
-		return 0;
-	slot = CheckInventory("DecoyBotFlag1");
-	if (slot < 0 || slot >= count)
-		slot = 0;
-	if (advance)
-		slot = (slot + 1) % count;
+  if (pn < 0 || count <= 0)
+    return 0;
+  slot = CheckInventory("DecoyBotFlag1");
+  if (slot < 0 || slot >= count)
+    slot = 0;
+  if (advance)
+    slot = (slot + 1) % count;
 
-	for (tries = 0; tries < count; tries++) {
-		nextwep = uh_decoyshinywep[slot];
-		if (StrCmp(nextwep, "") != 0)
-			break;
-		slot = (slot + 1) % count;
-	}
-	if (StrCmp(nextwep, "") == 0)
-		return 0;
+  for (tries = 0; tries < count; tries++) {
+    nextwep = uh_decoyshinywep[slot];
+    if (StrCmp(nextwep, "") != 0)
+      break;
+    slot = (slot + 1) % count;
+  }
+  if (StrCmp(nextwep, "") == 0)
+    return 0;
 
-	oldwep = uh_decoyshinyheld[pn];
-	SetInventory("DecoyBotFlag1", slot);
-	GiveInventory("NoWeaponSwitchSound", 1);
-	GiveInventory("UH_SilentSelect_F", 1);
-	GiveInventory(nextwep, 1);
-	if (!CheckInventory(nextwep) || !SetWeapon(nextwep)) {
-		TakeInventory("UH_SilentSelect_F", 1);
-		TakeInventory("NoWeaponSwitchSound", 1);
-		return 0;
-	}
-	if (StrCmp(oldwep, "") != 0 && StrICmp(oldwep, nextwep) != 0)
-		TakeInventory(oldwep, 1);
-	if (StrICmp(nextwep, "DecoyBotShiny_W") != 0 && CheckInventory("DecoyBotShiny_W")) {
-		TakeInventory("DecoyBotShiny_W", 1);
-	}
-	uh_decoyshinyheld[pn] = nextwep;
-	return 1;
+  oldwep = uh_decoyshinyheld[pn];
+  SetInventory("DecoyBotFlag1", slot);
+  GiveInventory("NoWeaponSwitchSound", 1);
+  GiveInventory("UH_SilentSelect_F", 1);
+  GiveInventory(nextwep, 1);
+  if (!CheckInventory(nextwep) || !SetWeapon(nextwep)) {
+    TakeInventory("UH_SilentSelect_F", 1);
+    TakeInventory("NoWeaponSwitchSound", 1);
+    return 0;
+  }
+  if (StrCmp(oldwep, "") != 0 && StrICmp(oldwep, nextwep) != 0)
+    TakeInventory(oldwep, 1);
+  if (StrICmp(nextwep, "DecoyBotShiny_W") != 0 && CheckInventory("DecoyBotShiny_W")) {
+    TakeInventory("DecoyBotShiny_W", 1);
+  }
+  uh_decoyshinyheld[pn] = nextwep;
+  return 1;
 }
 
 // MorphActor carries the ordinary Decoy loadout into the shiny pawn. Remove
 // the three dynamically named held weapons so number keys cannot escape the
 // one-weapon shiny cycle. The new shiny held actor is equipped by MorphWeapon.
 script "uh_DecoyBotShinyMorphSetup" (void) {
-	int pn = PlayerNumber();
-	if (pn < 0)
-		terminate;
+  int pn = PlayerNumber();
+  if (pn < 0)
+    terminate;
 
-	if (StrCmp(uh_decoyheld[pn][0], "") != 0)
-		TakeInventory(uh_decoyheld[pn][0], 1);
-	if (StrCmp(uh_decoyheld[pn][1], "") != 0)
-		TakeInventory(uh_decoyheld[pn][1], 1);
-	if (StrCmp(uh_decoyheld[pn][2], "") != 0)
-		TakeInventory(uh_decoyheld[pn][2], 1);
-	TakeInventory("DecoyBot_W", 1);
-	TakeInventory("DecoyBot_W2", 1);
-	TakeInventory("DecoyBot_W3", 1);
-	uh_decoyheld[pn][0] = "";
-	uh_decoyheld[pn][1] = "";
-	uh_decoyheld[pn][2] = "";
+  if (StrCmp(uh_decoyheld[pn][0], "") != 0)
+    TakeInventory(uh_decoyheld[pn][0], 1);
+  if (StrCmp(uh_decoyheld[pn][1], "") != 0)
+    TakeInventory(uh_decoyheld[pn][1], 1);
+  if (StrCmp(uh_decoyheld[pn][2], "") != 0)
+    TakeInventory(uh_decoyheld[pn][2], 1);
+  TakeInventory("DecoyBot_W", 1);
+  TakeInventory("DecoyBot_W2", 1);
+  TakeInventory("DecoyBot_W3", 1);
+  uh_decoyheld[pn][0] = "";
+  uh_decoyheld[pn][1] = "";
+  uh_decoyheld[pn][2] = "";
 }
 
 script "uh_DecoyBotShinyStart" (void) {
-	// Zandronum clears a pending SetWeapon when the active MorphWeapon is
-	// removed in the same tic. Remove it first, then select on the next tic.
-	TakeInventory("DecoyBotShiny_W", 1);
-	Delay(1);
-	SetResultValue(UH_DecoyBotShinyEquip(false));
+  // Zandronum clears a pending SetWeapon when the active MorphWeapon is
+  // removed in the same tic. Remove it first, then select on the next tic.
+  TakeInventory("DecoyBotShiny_W", 1);
+  Delay(1);
+  SetResultValue(UH_DecoyBotShinyEquip(false));
 }
 
 script "uh_DecoyBotShinyAdvance" (void) {
-	SetResultValue(UH_DecoyBotShinyEquip(true));
+  SetResultValue(UH_DecoyBotShinyEquip(true));
 }
 
 // Called from a move weapon's last animation frame: switch back to the
 // launching shiny weapon. TakeInventory of the move wep is deferred to
 // parent SilentSelect (uh_ShinyMoveTake) so ReadyWeapon is never None.
 script "uh_ShinyMoveReturn" (void) {
-	int pn = PlayerNumber();
-	str cur;
-	str ret;
+  int pn = PlayerNumber();
+  str cur;
+  str ret;
 
-	if (pn < 0)
-		terminate;
-	cur = uh_movecurrent[pn];
-	if (StrCmp(cur, "") == 0)
-		terminate;
-	ret = uh_movereturn[pn];
-	uh_negachargelvl[pn] = 0;
-	uh_decoywhich[pn] = 0;
+  if (pn < 0)
+    terminate;
+  cur = uh_movecurrent[pn];
+  if (StrCmp(cur, "") == 0)
+    terminate;
+  ret = uh_movereturn[pn];
+  uh_negachargelvl[pn] = 0;
+  uh_decoywhich[pn] = 0;
 
-	// Only clean up when we are still the ready weapon (player may have
-	// switched manually mid-move; then the record is simply cleared).
-	if (StrICmp(GetWeapon(), cur) != 0) {
-		uh_movecurrent[pn] = "";
-		uh_movereturn[pn] = "";
-		SetInventory("UH_MoveHud_F", 0);
-		TakeInventory(cur, 1);
-		terminate;
-	}
-	// Mute ACS menu/cursor (and Decoy gravitywarn) on parent Ready, and
-	// mark Select to skip SelectSwap raise + Ready color frame.
-	GiveInventory("NoWeaponSwitchSound", 1);
-	GiveInventory("UH_SilentSelect_F", 1);
-	SetWeapon(ret);
-	// Do not TakeInventory here: that sets ReadyWeapon to None and skips
-	// move Deselect. Parent SilentSelect calls uh_ShinyMoveTake instead.
+  // Only clean up when we are still the ready weapon (player may have
+  // switched manually mid-move; then the record is simply cleared).
+  if (StrICmp(GetWeapon(), cur) != 0) {
+    uh_movecurrent[pn] = "";
+    uh_movereturn[pn] = "";
+    SetInventory("UH_MoveHud_F", 0);
+    TakeInventory(cur, 1);
+    terminate;
+  }
+  // Mute ACS menu/cursor (and Decoy gravitywarn) on parent Ready, and
+  // mark Select to skip SelectSwap raise + Ready color frame.
+  GiveInventory("NoWeaponSwitchSound", 1);
+  GiveInventory("UH_SilentSelect_F", 1);
+  SetWeapon(ret);
+  // Do not TakeInventory here: that sets ReadyWeapon to None and skips
+  // move Deselect. Parent SilentSelect calls uh_ShinyMoveTake instead.
 }
 
 script "uh_ShinyMoveTake" (void) {
-	int pn = PlayerNumber();
-	str cur;
+  int pn = PlayerNumber();
+  str cur;
 
-	if (pn < 0)
-		terminate;
-	cur = uh_movecurrent[pn];
-	uh_movecurrent[pn] = "";
-	uh_movereturn[pn] = "";
-	if (StrCmp(cur, "") != 0)
-		TakeInventory(cur, 1);
+  if (pn < 0)
+    terminate;
+  cur = uh_movecurrent[pn];
+  uh_movecurrent[pn] = "";
+  uh_movereturn[pn] = "";
+  if (StrCmp(cur, "") != 0)
+    TakeInventory(cur, 1);
 }
 
 // Team-color the move weapon by the player's shiny class. Call from Select.
 // CLRF_SILENT (=1) skips ACS switch noise; StopSound kills engine UpSound.
 script "uh_ShinyMoveColor" (void) {
-	str cls = GetActorClass(0);
-	int dye = UH_MOVE_DYE_MEGA;
-	if (StrICmp(cls, "QwantShiny") == 0)
-		dye = UH_MOVE_DYE_QWANT;
-	else if (StrICmp(cls, "NegaManShiny") == 0)
-		dye = UH_MOVE_DYE_NEGA;
-	else if (StrICmp(cls, "DecoyBot") == 0 || StrICmp(cls, "DecoyBotShiny") == 0)
-		dye = UH_MOVE_DYE_DECOY;
-	StopSound(0, CHAN_WEAPON);
-	// 1 = CLRF_SILENT (8BDMDEFS); mute ACS menu/cursor switch noise
-	ACS_NamedExecuteWithResult("core_weaponcolor", dye, 1);
+  str cls = GetActorClass(0);
+  int dye = UH_MOVE_DYE_MEGA;
+  if (StrICmp(cls, "QwantShiny") == 0)
+    dye = UH_MOVE_DYE_QWANT;
+  else if (StrICmp(cls, "NegaManShiny") == 0)
+    dye = UH_MOVE_DYE_NEGA;
+  else if (StrICmp(cls, "DecoyBot") == 0 || StrICmp(cls, "DecoyBotShiny") == 0)
+    dye = UH_MOVE_DYE_DECOY;
+  StopSound(0, CHAN_WEAPON);
+  // 1 = CLRF_SILENT (8BDMDEFS); mute ACS menu/cursor switch noise
+  ACS_NamedExecuteWithResult("core_weaponcolor", dye, 1);
 }

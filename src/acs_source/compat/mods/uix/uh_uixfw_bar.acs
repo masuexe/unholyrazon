@@ -2,47 +2,47 @@
 #include "uh_uixbar_api.acs"
 
 function int UHFB_ClassIndex(void) {
-	str actor = GetActorClass(0);
-	if (StrICmp(actor, "Arcanist") != 0
-		&& StrICmp(actor, "ArcanistShiny") != 0
-		&& StrICmp(actor, "RedWarrior") != 0
-		&& StrICmp(actor, "YellowWizard") != 0
-		&& StrICmp(actor, "Archivist") != 0
-		&& StrICmp(actor, "KakusaretaSutoka") != 0
-		&& StrICmp(actor, "ArchArcanist") != 0
-		&& StrICmp(actor, "VoidWalker") != 0
-		&& StrICmp(actor, "GBeast") != 0
-		&& StrICmp(actor, "FBeast") != 0
-		&& StrICmp(actor, "FinalSampi") != 0
-		&& StrICmp(actor, "SinfulBusterExpert") != 0)
-		return UHFB_UNSUPPORTED;
-	if (!uhfw_defsready)
-		return UHFB_NOT_READY;
-	int idx = UHFW_FindClass(actor);
-	if (idx == UHFW_FAIL)
-		return UHFB_NOT_READY;
-	return idx;
+  str actor = GetActorClass(0);
+  if (StrICmp(actor, "Arcanist") != 0 &&
+      StrICmp(actor, "ArcanistShiny") != 0 &&
+      StrICmp(actor, "RedWarrior") != 0 &&
+      StrICmp(actor, "YellowWizard") != 0 &&
+      StrICmp(actor, "Archivist") != 0 &&
+      StrICmp(actor, "KakusaretaSutoka") != 0 &&
+      StrICmp(actor, "ArchArcanist") != 0 &&
+      StrICmp(actor, "VoidWalker") != 0 &&
+      StrICmp(actor, "GBeast") != 0 &&
+      StrICmp(actor, "FBeast") != 0 &&
+      StrICmp(actor, "FinalSampi") != 0 &&
+      StrICmp(actor, "SinfulBusterExpert") != 0)
+    return UHFB_UNSUPPORTED;
+  if (!uhfw_defsready)
+    return UHFB_NOT_READY;
+  int idx = UHFW_FindClass(actor);
+  if (idx == UHFW_FAIL)
+    return UHFB_NOT_READY;
+  return idx;
 }
 
 // -1: stock path; -2: supported but OPEN has not finished; >= 0: row count.
 // Synchronous, non-NET; inherits and preserves the camera activator.
 script "uh_fb_count" (void) {
-	int idx = UHFB_ClassIndex();
-	if (idx < 0)
-		SetResultValue(idx);
-	else
-		SetResultValue(uhfw_classwepcount[idx]);
+  int idx = UHFB_ClassIndex();
+  if (idx < 0)
+    SetResultValue(idx);
+  else
+    SetResultValue(uhfw_classwepcount[idx]);
 }
 
 // Real binding slot, not the row's display position. -1 means no hint.
 script "uh_fb_slot" (int row) {
-	int slot = -1;
-	int idx = UHFB_ClassIndex();
-	if (idx >= 0 && row >= 0) {
-		if (row < uhfw_classwepcount[idx])
-			slot = uhfw_wepslot[idx][row];
-	}
-	SetResultValue(slot);
+  int slot = -1;
+  int idx = UHFB_ClassIndex();
+  if (idx >= 0 && row >= 0) {
+    if (row < uhfw_classwepcount[idx])
+      slot = uhfw_wepslot[idx][row];
+  }
+  SetResultValue(slot);
 }
 
 // Constant palette/capacity lookup for SinfulBusterExpert:
@@ -56,65 +56,65 @@ int uh_zero_bar_blue[6] = {227, 93, 219, 205, 229, 239};
 int uh_zero_bar_max[6] = {3000, 1200, 1200, 1200, 1200, 1200};
 
 function int UHFW_ZeroWeaponIndex(str wep) {
-	if (StrICmp(wep, "MakeAGoodZero_W2") == 0) return 0;
-	if (StrICmp(wep, "MakeAGoodZero_W3") == 0) return 1;
-	if (StrICmp(wep, "MakeAGoodZero_W4") == 0) return 2;
-	if (StrICmp(wep, "MakeAGoodZero_W5") == 0) return 3;
-	if (StrICmp(wep, "MakeAGoodZero_W6") == 0) return 4;
-	if (StrICmp(wep, "MakeAGoodZero_W7") == 0) return 5;
-	return -1;
+  if (StrICmp(wep, "MakeAGoodZero_W2") == 0) return 0;
+  if (StrICmp(wep, "MakeAGoodZero_W3") == 0) return 1;
+  if (StrICmp(wep, "MakeAGoodZero_W4") == 0) return 2;
+  if (StrICmp(wep, "MakeAGoodZero_W5") == 0) return 3;
+  if (StrICmp(wep, "MakeAGoodZero_W6") == 0) return 4;
+  if (StrICmp(wep, "MakeAGoodZero_W7") == 0) return 5;
+  return -1;
 }
 
 // Always return global dynamic strings, including invalid/empty results.
 script "uh_fb_string" (int row, int field) {
-	str value = "";
-	int idx = UHFB_ClassIndex();
-	if (idx >= 0 && row >= 0) {
-		if (row < uhfw_classwepcount[idx]) {
-			if (field == UHFB_ACTOR)
-				value = uhfw_wep[idx][row][UHFW_STR_WEP];
-			else if (field == UHFB_ICON)
-				value = uhfw_wep[idx][row][UHFW_STR_ICON];
-			else if (field == UHFB_AMMO1) {
-				if (StrICmp(GetActorClass(0), "SinfulBusterExpert") == 0)
-					value = uhfw_wep[idx][row][UHFW_STR_AMMO1];
-			}
-		}
-	}
-	SetResultValue(StrParam(s:value));
+  str value = "";
+  int idx = UHFB_ClassIndex();
+  if (idx >= 0 && row >= 0) {
+    if (row < uhfw_classwepcount[idx]) {
+      if (field == UHFB_ACTOR)
+        value = uhfw_wep[idx][row][UHFW_STR_WEP];
+      else if (field == UHFB_ICON)
+        value = uhfw_wep[idx][row][UHFW_STR_ICON];
+      else if (field == UHFB_AMMO1) {
+        if (StrICmp(GetActorClass(0), "SinfulBusterExpert") == 0)
+          value = uhfw_wep[idx][row][UHFW_STR_AMMO1];
+      }
+    }
+  }
+  SetResultValue(StrParam(s:value));
 }
 
 script "uh_fb_int" (int row, int field) {
-	int ival = 0;
-	int idx = UHFB_ClassIndex();
-	if (idx >= 0 && row >= 0 && row < 8) {
-		if (StrICmp(GetActorClass(0), "SinfulBusterExpert") == 0) {
-			if (field == UHFB_CYAN1)
-				ival = uh_sbe_bar_cyan[row];
-			else if (field == UHFB_BLUE1)
-				ival = uh_sbe_bar_blue[row];
-			else if (field == UHFB_DEFMAX1)
-				ival = uh_sbe_bar_max[row];
-		}
-	}
-	SetResultValue(ival);
+  int ival = 0;
+  int idx = UHFB_ClassIndex();
+  if (idx >= 0 && row >= 0 && row < 8) {
+    if (StrICmp(GetActorClass(0), "SinfulBusterExpert") == 0) {
+      if (field == UHFB_CYAN1)
+        ival = uh_sbe_bar_cyan[row];
+      else if (field == UHFB_BLUE1)
+        ival = uh_sbe_bar_blue[row];
+      else if (field == UHFB_DEFMAX1)
+        ival = uh_sbe_bar_max[row];
+    }
+  }
+  SetResultValue(ival);
 }
 
 // MakeAGoodZero weapon bar bridge: synchronous, camera activator preserved
 script "uh_zb_check" (void) {
-	if (StrICmp(GetActorClass(0), "MakeAGoodZero") == 0)
-		SetResultValue(1);
-	else
-		SetResultValue(0);
+  if (StrICmp(GetActorClass(0), "MakeAGoodZero") == 0)
+    SetResultValue(1);
+  else
+    SetResultValue(0);
 }
 
 script "uh_zb_phase" (void) {
-	if (CheckInventory("MakeAGoodZero_W8") > 0)
-		SetResultValue(3);
-	else if (UHFW_IsZeroPhase2())
-		SetResultValue(2);
-	else if (CheckInventory("MakeAGoodZero_W") > 0)
-		SetResultValue(1);
-	else
-		SetResultValue(0);
+  if (CheckInventory("MakeAGoodZero_W8") > 0)
+    SetResultValue(3);
+  else if (UHFW_IsZeroPhase2())
+    SetResultValue(2);
+  else if (CheckInventory("MakeAGoodZero_W") > 0)
+    SetResultValue(1);
+  else
+    SetResultValue(0);
 }

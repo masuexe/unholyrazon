@@ -56,7 +56,7 @@ the shiny copy classes through the Unholy mod API:
    (team coloring; silent switch sound). After color: `A_WeaponReady(14)`.
 4. Last animation frame: `uh_ShinyMoveReturn_cs` then `uh_ShinyMoveReturn`, then
    `goto Deselect`.
-5. Do **not** register the move weapon in any `player.weaponslot` (slotless).
+5. Do **not** register the move weapon in any `Player.WeaponSlot` (slotless).
 
 ### NegaManShiny
 

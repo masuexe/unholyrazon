@@ -5,164 +5,162 @@
 // DECORATE actors; modders can use PickEyeMorphActor directly when they need a
 // different delivery shape.
 function int SpawnEyeMorphEffect(str pool, int mode, int zoff, int speed) {
-	str actor = PickEyeMorphActorCore(pool, mode);
-	int sourcetid = ActivatorTID();
-	int sourcetemp = 0;
-	int spawntid;
-	int angle;
-	int result;
-	if (StrCmp(actor, "") == 0)
-		return 0;
+  str actor = PickEyeMorphActorCore(pool, mode);
+  int sourcetid = ActivatorTID();
+  int sourcetemp = 0;
+  int spawntid;
+  int angle;
+  int result;
+  if (StrCmp(actor, "") == 0)
+    return 0;
 
-	// A_SpawnItemEx makes the spawned missile target its helper.  Give an
-	// activator without a TID a temporary one so the same pointer relationship
-	// and server-side ownership are retained for the dynamic spawn.
-	// DECORATE must call these scripts with ACS_NamedExecuteWithResult (not
-	// ACS_NamedExecuteAlways): Always is deferred, and a 0-tic helper is
-	// already gone by the time the script would run.
-	if (sourcetid == 0) {
-		sourcetemp = UniqueTID();
-		Thing_ChangeTID(0, sourcetemp);
-		sourcetid = sourcetemp;
-	}
+  // A_SpawnItemEx makes the spawned missile target its helper.  Give an
+  // activator without a TID a temporary one so the same pointer relationship
+  // and server-side ownership are retained for the dynamic spawn.
+  // DECORATE must call these scripts with ACS_NamedExecuteWithResult (not
+  // ACS_NamedExecuteAlways): Always is deferred, and a 0-tic helper is
+  // already gone by the time the script would run.
+  if (sourcetid == 0) {
+    sourcetemp = UniqueTID();
+    Thing_ChangeTID(0, sourcetemp);
+    sourcetid = sourcetemp;
+  }
 
-	spawntid = UniqueTID();
-	angle = GetActorAngle(0);
-	result = SpawnForced(
-		actor,
-		GetActorX(0),
-		GetActorY(0),
-		GetActorZ(0) + zoff * 1.0,
-		spawntid,
-		angle >> 8
-	);
-	if (result) {
-		if (speed != 0) {
-			SetActorVelocity(
-				spawntid,
-				FixedMul(cos(angle), speed * 1.0),
-				FixedMul(sin(angle), speed * 1.0),
-				0,
-				0,
-				0
-			);
-		}
-		SetActivator(spawntid);
-		SetPointer(AAPTR_TARGET, sourcetid);
-		Thing_ChangeTID(spawntid, 0);
-	}
+  spawntid = UniqueTID();
+  angle = GetActorAngle(0);
+  result = SpawnForced(
+    actor,
+    GetActorX(0),
+    GetActorY(0),
+    GetActorZ(0) + zoff * 1.0,
+    spawntid,
+    angle >> 8
+  );
+  if (result) {
+    if (speed != 0) {
+      SetActorVelocity(
+        spawntid,
+        FixedMul(cos(angle), speed * 1.0),
+        FixedMul(sin(angle), speed * 1.0),
+        0,
+        0,
+        0
+      );
+    }
+    SetActivator(spawntid);
+    SetPointer(AAPTR_TARGET, sourcetid);
+    Thing_ChangeTID(spawntid, 0);
+  }
 
-	if (sourcetemp != 0) {
-		SetActivator(sourcetid);
-		Thing_ChangeTID(sourcetid, 0);
-	}
-	return result;
+  if (sourcetemp != 0) {
+    SetActivator(sourcetid);
+    Thing_ChangeTID(sourcetid, 0);
+  }
+  return result;
 }
 
 script "uh_SpawnMoneyBaitShot" (void) {
-	SetResultValue(SpawnEyeMorphEffect("MoneyBait", UHEM_MODE_SHOT, 0, 20));
+  SetResultValue(SpawnEyeMorphEffect("MoneyBait", UHEM_MODE_SHOT, 0, 20));
 }
 
 script "uh_SpawnMoneyBaitBurst" (void) {
-	SetResultValue(SpawnEyeMorphEffect("MoneyBait", UHEM_MODE_BURST, 8, 0));
+  SetResultValue(SpawnEyeMorphEffect("MoneyBait", UHEM_MODE_BURST, 8, 0));
 }
 
 script "uh_SpawnMoneyBombBurst" (void) {
-	SetResultValue(SpawnEyeMorphEffect("MoneyBomb", UHEM_MODE_BURST, 0, 0));
+  SetResultValue(SpawnEyeMorphEffect("MoneyBomb", UHEM_MODE_BURST, 0, 0));
 }
 
 script "rz_ThingDamage_GiveUpHope" (int tid, int amount) {
-	SetResultValue(Thing_Damage2(tid, amount, "GiveUpHope"));
+  SetResultValue(Thing_Damage2(tid, amount, "GiveUpHope"));
 }
 
 script "rz_ThingDamage_SuperGiveUpHope" (int tid, int amount) {
-	SetResultValue(Thing_Damage2(tid, amount, "SuperGiveUpHope"));
+  SetResultValue(Thing_Damage2(tid, amount, "SuperGiveUpHope"));
 }
 
 script "rz_ThingDamage_FortuneCoin" (int tid, int amount) {
-	SetResultValue(Thing_Damage2(tid, amount, "FortuneCoin"));
+  SetResultValue(Thing_Damage2(tid, amount, "FortuneCoin"));
 }
 
 script "rz_ThingDamage_Damocles" (int tid, int amount) {
-	SetResultValue(Thing_Damage2(tid, amount, "Damocles"));
+  SetResultValue(Thing_Damage2(tid, amount, "Damocles"));
 }
 
 script "UB_OnFireBurning" (void) {
-	int h = max(PlayerHealth(), 0);
-	int burn = CheckInventory("OnFireItemFlag");
+  int h = max(PlayerHealth(), 0);
+  int burn = CheckInventory("OnFireItemFlag");
 
-	if (h >= burn + 1)
-		SetActorProperty(0, APROP_HEALTH, h - burn);
-	else
-		SetResultValue(0);
+  if (h >= burn + 1)
+    SetActorProperty(0, APROP_HEALTH, h - burn);
+  else
+    SetResultValue(0);
 }
 
 script "UB_OnFireFinalBurn" (void) {
-	Thing_Damage2(ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET), 100000, "OnFireB");
+  Thing_Damage2(ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET), 100000, "OnFireB");
 }
 
 script "UB_WhackSpellRNGCheck" (int high_hp, int low_hp, int user_hp, int bonuschance) {
-	if (Timer() <= 100) {SetResultValue(1); terminate;}  // Quick kill lol
+  if (Timer() <= 100) {SetResultValue(1); terminate;}  // Quick kill lol
 
-	int targethpper = 100 - ACS_NamedExecuteWithResult("UB_GetPointerHealth", 2, 2);
-	int tracerhpper = 100 - ACS_NamedExecuteWithResult("UB_GetPointerHealth", 8, 2);
-	// Log(i:TargetHPPer,s:" =TargetHP Percent TracerHP= ",i:TracerHPPer);
+  int targethpper = 100 - ACS_NamedExecuteWithResult("UB_GetPointerHealth", 2, 2);
+  int tracerhpper = 100 - ACS_NamedExecuteWithResult("UB_GetPointerHealth", 8, 2);
+  // Log(i:TargetHPPer,s:" =TargetHP Percent TracerHP= ",i:TracerHPPer);
 
-	if (high_hp > 100 || high_hp < 1)  // Failsafe zone
-		high_hp = 100;
-	if (low_hp > 99)
-		low_hp = 99;
-	else if (low_hp < 0)
-		low_hp = 0;
-	// 1 + 200 * (pt - 20) / 280 + 20 * (pH / 300)//Ultimate Math
+  if (high_hp > 100 || high_hp < 1)  // Failsafe zone
+    high_hp = 100;
+  if (low_hp > 99)
+    low_hp = 99;
+  else if (low_hp < 0)
+    low_hp = 0;
+  // 1 + 200 * (pt - 20) / 280 + 20 * (pH / 300)//Ultimate Math
 
-	int whackchance = (tracerhpper - (100 - high_hp)) * 100 / (100 - low_hp);
-	// Log(i:WhackChance,s:" <> High_HP == ",i:High_HP,s:" <> Low_HP = ",i:Low_HP);
-	whackchance += targethpper / 100 * user_hp;
-	// Log(i:WhackChance,s:" <> User_HP = ",i:User_HP);
-	whackchance += bonuschance;
-	// Log(i:WhackChance,s:" <> BonusChance = ",i:BonusChance);
+  int whackchance = (tracerhpper - (100 - high_hp)) * 100 / (100 - low_hp);
+  // Log(i:WhackChance,s:" <> High_HP == ",i:High_HP,s:" <> Low_HP = ",i:Low_HP);
+  whackchance += targethpper / 100 * user_hp;
+  // Log(i:WhackChance,s:" <> User_HP = ",i:User_HP);
+  whackchance += bonuschance;
+  // Log(i:WhackChance,s:" <> BonusChance = ",i:BonusChance);
 
-	if (whackchance <= 0) {
-		whackchance = 1;
-	}
-	else {
-		whackchance += 1;
-	}
-	// Log(i:WhackChance,s:" WhackSpell Math Done!");
+  if (whackchance <= 0) {
+    whackchance = 1;
+  }
+  else {
+    whackchance += 1;
+  }
+  // Log(i:WhackChance,s:" WhackSpell Math Done!");
 
-	if (whackchance < 100 && tracerhpper >= 100 - low_hp) {
-		whackchance = 100;  // Force Whack if Tracer has less than % LowHP (5% as example)
-		// Log(s:"Forced Thwack!");
-	}
+  if (whackchance < 100 && tracerhpper >= 100 - low_hp) {
+    whackchance = 100;  // Force Whack if Tracer has less than % LowHP (5% as example)
+    // Log(s:"Forced Thwack!");
+  }
 
-	SetResultValue(random(1, 100) <= whackchance);
+  SetResultValue(random(1, 100) <= whackchance);
 }
 
 script "UB_DeadlyFireArmsButtonCheck" (void) {
-	SetActivatorToTarget(0);
-	if (GetPlayerInput(-1, INPUT_BUTTONS) & (BT_ATTACK | BT_ALTATTACK))
-		SetResultValue(2);
+  SetActivatorToTarget(0);
+  if (GetPlayerInput(-1, INPUT_BUTTONS) & (BT_ATTACK | BT_ALTATTACK))
+    SetResultValue(2);
 }
 
 script "UB_I_WinACS" (void) {
-	PrintBold(s:"\ciYou're Winner!  \cj", c:169, s:" ", n:PlayerNumber() + 1);
-	if (GetGameModeState() == GAMESTATE_COUNTDOWN)
-		terminate;
-	ACS_NamedExecuteWithResult("uh_SetGameOverState", 1);
-	// World-activated exit.  This is a core-initiated round settlement, not a
-	// player using an exit line, so it must not be blocked by DF_NO_EXIT /
-	// sv_noexit and must not telefrag the winner (CheckIfExitIsGood, p_spec.cpp).
-	// PlayerNumber() above needs the caller's activator, so the clear happens
-	// here, before the delay.  This library (uh_items) deliberately does not
-	// reach into the unholy library's ub_ExitFinishedRound, so it performs the
-	// same SetActivator(0, AAPTR_NULL) itself.
-	// Previous code cleared the activator only when sv_noexit was 1, and used
-	// the one-argument SetActivator form, which selects TID 1 instead of the
-	// world (zspecial.acs: SetActivator(1,2)).
-	SetActivator(0, AAPTR_NULL);
-	Delay(100);
-	Exit_Normal(0);
+  PrintBold(s:"\ciYou're Winner!  \cj", c:169, s:" ", n:PlayerNumber() + 1);
+  if (GetGameModeState() == GAMESTATE_COUNTDOWN)
+    terminate;
+  ACS_NamedExecuteWithResult("uh_SetGameOverState", 1);
+  // World-activated exit.  This is a core-initiated round settlement, not a
+  // player using an exit line, so it must not be blocked by DF_NO_EXIT /
+  // sv_noexit and must not telefrag the winner (CheckIfExitIsGood, p_spec.cpp).
+  // PlayerNumber() above needs the caller's activator, so the clear happens
+  // here, before the delay.  This library (uh_items) deliberately does not
+  // reach into the unholy library's ub_ExitFinishedRound, so it performs the
+  // same SetActivator(0, AAPTR_NULL) itself.
+  // Previous code cleared the activator only when sv_noexit was 1, and used
+  // the one-argument SetActivator form, which selects TID 1 instead of the
+  // world (zspecial.acs: SetActivator(1,2)).
+  SetActivator(0, AAPTR_NULL);
+  Delay(100);
+  Exit_Normal(0);
 }
-
-

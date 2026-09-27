@@ -158,32 +158,32 @@ int uh_bosspoolids[UHBOSS_POOL_COUNT][UH_MAX_VANILLA_BOSS];
 int uh_playerbossid[UH_MAX_PLAYERS];
 
 script "uh_BossIdStorageInit" OPEN {
-	int i;
-	for (i = 0; i < UH_MAX_PLAYERS; i++)
-		uh_playerbossid[i] = UHBOSS_FAIL;
+  int i;
+  for (i = 0; i < UH_MAX_PLAYERS; i++)
+    uh_playerbossid[i] = UHBOSS_FAIL;
 }
 
 // Joining clients never run non-CLIENTSIDE OPEN; init local uh_playerBossId.
 script "uh_BossIdStorageInit_cs" OPEN CLIENTSIDE {
-	int i;
-	for (i = 0; i < UH_MAX_PLAYERS; i++)
-		uh_playerbossid[i] = UHBOSS_FAIL;
+  int i;
+  for (i = 0; i < UH_MAX_PLAYERS; i++)
+    uh_playerbossid[i] = UHBOSS_FAIL;
 }
 
 function int UH_BossCustomIndex(int id) {
-	return -1 - id;
+  return -1 - id;
 }
 
 function void SetPlayerBossId(int playernum, int bossid) {
-	if (playernum < 0 || playernum >= UH_MAX_PLAYERS)
-		return;
-	uh_playerbossid[playernum] = bossid;
+  if (playernum < 0 || playernum >= UH_MAX_PLAYERS)
+    return;
+  uh_playerbossid[playernum] = bossid;
 }
 
 function int GetPlayerBossId(int playernum) {
-	if (playernum < 0 || playernum >= UH_MAX_PLAYERS)
-		return UHBOSS_FAIL;
-	return uh_playerbossid[playernum];
+  if (playernum < 0 || playernum >= UH_MAX_PLAYERS)
+    return UHBOSS_FAIL;
+  return uh_playerbossid[playernum];
 }
 
 // --- Boss morph identity / generation ----------------------------------------
@@ -197,159 +197,159 @@ int uh_playermorphgen[UH_MAX_PLAYERS];
 int uh_playeractiveboss[UH_MAX_PLAYERS];
 
 script "uh_MorphIdStorageInit" OPEN {
-	int i;
-	for (i = 0; i < UH_MAX_PLAYERS; i++) {
-		uh_playermorphgen[i] = 0;
-		uh_playeractiveboss[i] = UHBOSS_FAIL;
-	}
+  int i;
+  for (i = 0; i < UH_MAX_PLAYERS; i++) {
+    uh_playermorphgen[i] = 0;
+    uh_playeractiveboss[i] = UHBOSS_FAIL;
+  }
 }
 
 // Joining clients never run non-CLIENTSIDE OPEN; init the local copy as well.
 script "uh_MorphIdStorageInit_cs" OPEN CLIENTSIDE {
-	int i;
-	for (i = 0; i < UH_MAX_PLAYERS; i++) {
-		uh_playermorphgen[i] = 0;
-		uh_playeractiveboss[i] = UHBOSS_FAIL;
-	}
+  int i;
+  for (i = 0; i < UH_MAX_PLAYERS; i++) {
+    uh_playermorphgen[i] = 0;
+    uh_playeractiveboss[i] = UHBOSS_FAIL;
+  }
 }
 
 function bool PlayerMorphIdValid(int playernum) {
-	return playernum >= 0 && playernum < UH_MAX_PLAYERS;
+  return playernum >= 0 && playernum < UH_MAX_PLAYERS;
 }
 
 // Records a completed morph and returns the generation new watchers must hold.
 function int BeginPlayerBossMorph(int playernum, int bossid) {
-	if (!PlayerMorphIdValid(playernum))
-		return 0;
-	uh_playeractiveboss[playernum] = bossid;
-	uh_playermorphgen[playernum]++;
-	return uh_playermorphgen[playernum];
+  if (!PlayerMorphIdValid(playernum))
+    return 0;
+  uh_playeractiveboss[playernum] = bossid;
+  uh_playermorphgen[playernum]++;
+  return uh_playermorphgen[playernum];
 }
 
 // Invalidates every watcher/cleanup bound to the previous morph generation.
 function int EndPlayerBossMorph(int playernum) {
-	if (!PlayerMorphIdValid(playernum))
-		return 0;
-	uh_playeractiveboss[playernum] = UHBOSS_FAIL;
-	uh_playermorphgen[playernum]++;
-	return uh_playermorphgen[playernum];
+  if (!PlayerMorphIdValid(playernum))
+    return 0;
+  uh_playeractiveboss[playernum] = UHBOSS_FAIL;
+  uh_playermorphgen[playernum]++;
+  return uh_playermorphgen[playernum];
 }
 
 function int GetPlayerMorphGen(int playernum) {
-	if (!PlayerMorphIdValid(playernum))
-		return 0;
-	return uh_playermorphgen[playernum];
+  if (!PlayerMorphIdValid(playernum))
+    return 0;
+  return uh_playermorphgen[playernum];
 }
 
 function int GetPlayerActiveBossId(int playernum) {
-	if (!PlayerMorphIdValid(playernum))
-		return UHBOSS_FAIL;
-	return uh_playeractiveboss[playernum];
+  if (!PlayerMorphIdValid(playernum))
+    return UHBOSS_FAIL;
+  return uh_playeractiveboss[playernum];
 }
 
 function bool IsBossDefined(int id) {
-	if (id >= 0) {
-		if (id >= UH_MAX_VANILLA_BOSS)
-			return false;
-		return uh_bossvanilladefined[id] == UHDB_ROW_ACTIVE
-			|| uh_bossvanilladefined[id] == UHDB_ROW_DISABLED;
-	}
-	if (id <= -1) {
-		int i = UH_BossCustomIndex(id);
-		if (i < 0 || i >= uh_bosscustomcount)
-			return false;
-		return uh_bosscustomint[i][UHBOSS_INT_STATE] == UHDB_ROW_ACTIVE
-			|| uh_bosscustomint[i][UHBOSS_INT_STATE] == UHDB_ROW_DISABLED;
-	}
-	return false;
+  if (id >= 0) {
+    if (id >= UH_MAX_VANILLA_BOSS)
+      return false;
+    return uh_bossvanilladefined[id] == UHDB_ROW_ACTIVE
+      || uh_bossvanilladefined[id] == UHDB_ROW_DISABLED;
+  }
+  if (id <= -1) {
+    int i = UH_BossCustomIndex(id);
+    if (i < 0 || i >= uh_bosscustomcount)
+      return false;
+    return uh_bosscustomint[i][UHBOSS_INT_STATE] == UHDB_ROW_ACTIVE
+      || uh_bosscustomint[i][UHBOSS_INT_STATE] == UHDB_ROW_DISABLED;
+  }
+  return false;
 }
 
 function bool IsBossEnabled(int id) {
-	if (id >= 0)
-		return id < UH_MAX_VANILLA_BOSS && uh_bossvanilladefined[id] == UHDB_ROW_ACTIVE;
-	int i = UH_BossCustomIndex(id);
-	return i >= 0 && i < uh_bosscustomcount
-		&& uh_bosscustomint[i][UHBOSS_INT_STATE] == UHDB_ROW_ACTIVE;
+  if (id >= 0)
+    return id < UH_MAX_VANILLA_BOSS && uh_bossvanilladefined[id] == UHDB_ROW_ACTIVE;
+  int i = UH_BossCustomIndex(id);
+  return i >= 0 && i < uh_bosscustomcount
+    && uh_bosscustomint[i][UHBOSS_INT_STATE] == UHDB_ROW_ACTIVE;
 }
 
 function int UH_BossResolveSlot(int id) {
-	// Returns storage index for getters; vanilla id == slot, custom uses customIndex.
-	// Caller must IsBossDefined first. Returns UHBOSS_FAIL if invalid.
-	if (id >= 0) {
-		if (!IsBossDefined(id))
-			return UHBOSS_FAIL;
-		return id;
-	}
-	if (id <= -1) {
-		int i = UH_BossCustomIndex(id);
-		if (!IsBossDefined(id))
-			return UHBOSS_FAIL;
-		return i;
-	}
-	return UHBOSS_FAIL;
+  // Returns storage index for getters; vanilla id == slot, custom uses customIndex.
+  // Caller must IsBossDefined first. Returns UHBOSS_FAIL if invalid.
+  if (id >= 0) {
+    if (!IsBossDefined(id))
+      return UHBOSS_FAIL;
+    return id;
+  }
+  if (id <= -1) {
+    int i = UH_BossCustomIndex(id);
+    if (!IsBossDefined(id))
+      return UHBOSS_FAIL;
+    return i;
+  }
+  return UHBOSS_FAIL;
 }
 
 function str GetBossActor(int id) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_bossvanillastr[slot][UHBOSS_STR_ACTOR];
-	return uh_bosscustomstr[slot][UHBOSS_STR_ACTOR];
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_bossvanillastr[slot][UHBOSS_STR_ACTOR];
+  return uh_bosscustomstr[slot][UHBOSS_STR_ACTOR];
 }
 
 function str GetBossName(int id) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_bossvanillastr[slot][UHBOSS_STR_NAME];
-	return uh_bosscustomstr[slot][UHBOSS_STR_NAME];
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_bossvanillastr[slot][UHBOSS_STR_NAME];
+  return uh_bosscustomstr[slot][UHBOSS_STR_NAME];
 }
 
 function str GetBossMugshot(int id) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_bossvanillastr[slot][UHBOSS_STR_MUGSHOT];
-	return uh_bosscustomstr[slot][UHBOSS_STR_MUGSHOT];
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_bossvanillastr[slot][UHBOSS_STR_MUGSHOT];
+  return uh_bosscustomstr[slot][UHBOSS_STR_MUGSHOT];
 }
 
 function str GetBossInstruction(int id) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_bossvanillastr[slot][UHBOSS_STR_INSTRUCTION];
-	return uh_bosscustomstr[slot][UHBOSS_STR_INSTRUCTION];
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_bossvanillastr[slot][UHBOSS_STR_INSTRUCTION];
+  return uh_bosscustomstr[slot][UHBOSS_STR_INSTRUCTION];
 }
 
 function str GetBossSpawnMsgType(int id) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_bossvanillastr[slot][UHBOSS_STR_SPAWNMSGTYPE];
-	return uh_bosscustomstr[slot][UHBOSS_STR_SPAWNMSGTYPE];
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_bossvanillastr[slot][UHBOSS_STR_SPAWNMSGTYPE];
+  return uh_bosscustomstr[slot][UHBOSS_STR_SPAWNMSGTYPE];
 }
 
 function str GetBossSpawnMsg(int id) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_bossvanillastr[slot][UHBOSS_STR_SPAWNMSG];
-	return uh_bosscustomstr[slot][UHBOSS_STR_SPAWNMSG];
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_bossvanillastr[slot][UHBOSS_STR_SPAWNMSG];
+  return uh_bosscustomstr[slot][UHBOSS_STR_SPAWNMSG];
 }
 
 function str GetBossRageWarning(int id) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_bossvanillastr[slot][UHBOSS_STR_RAGEWARNING];
-	return uh_bosscustomstr[slot][UHBOSS_STR_RAGEWARNING];
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_bossvanillastr[slot][UHBOSS_STR_RAGEWARNING];
+  return uh_bosscustomstr[slot][UHBOSS_STR_RAGEWARNING];
 }
 
 // Full rage-warning body for a DefineBoss-registered boss: the registered
@@ -357,41 +357,41 @@ function str GetBossRageWarning(int id) {
 // Returns "" for anything that is not a Boss (undefined id or an encoding
 // from another HUD band), so callers never print a nameless generic sentence.
 function str GetBossRageWarningText(int id) {
-	if (!IsBossDefined(id))
-		return "";
-	str custom = GetBossRageWarning(id);
-	if (StrCmp(custom, "") != 0)
-		return custom;
-	return StrParam(s:GetBossName(id), s:" \c[AlertRed]IS ENRAGED!");
+  if (!IsBossDefined(id))
+    return "";
+  str custom = GetBossRageWarning(id);
+  if (StrCmp(custom, "") != 0)
+    return custom;
+  return StrParam(s:GetBossName(id), s:" \c[AlertRed]IS ENRAGED!");
 }
 
 function str GetBossExBaseActor(int id) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_bossvanillastr[slot][UHBOSS_STR_EXBASEACTOR];
-	return uh_bosscustomstr[slot][UHBOSS_STR_EXBASEACTOR];
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_bossvanillastr[slot][UHBOSS_STR_EXBASEACTOR];
+  return uh_bosscustomstr[slot][UHBOSS_STR_EXBASEACTOR];
 }
 
 function str GetBossMorphSetup(int id) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_bossvanillastr[slot][UHBOSS_STR_MORPHSETUP];
-	return uh_bosscustomstr[slot][UHBOSS_STR_MORPHSETUP];
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_bossvanillastr[slot][UHBOSS_STR_MORPHSETUP];
+  return uh_bosscustomstr[slot][UHBOSS_STR_MORPHSETUP];
 }
 
 function bool SetBossMorphSetup(int id, str setupscript) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return false;
-	if (id >= 0)
-		uh_bossvanillastr[slot][UHBOSS_STR_MORPHSETUP] = setupscript;
-	else
-		uh_bosscustomstr[slot][UHBOSS_STR_MORPHSETUP] = setupscript;
-	return true;
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL)
+    return false;
+  if (id >= 0)
+    uh_bossvanillastr[slot][UHBOSS_STR_MORPHSETUP] = setupscript;
+  else
+    uh_bosscustomstr[slot][UHBOSS_STR_MORPHSETUP] = setupscript;
+  return true;
 }
 
 // --- Boss unmorph cleanup registry -------------------------------------------
@@ -421,239 +421,239 @@ str uh_bossunmorphpost[UH_MAX_BOSS_UNMORPH];
 int uh_bossunmorphfams[UH_MAX_BOSS_UNMORPH];
 
 function int FindBossUnmorphRow(int id) {
-	int i;
-	for (i = 0; i < uh_bossunmorphcount; i++) {
-		if (uh_bossunmorphid[i] == id)
-			return i;
-	}
-	return -1;
+  int i;
+  for (i = 0; i < uh_bossunmorphcount; i++) {
+    if (uh_bossunmorphid[i] == id)
+      return i;
+  }
+  return -1;
 }
 
 function bool SetBossUnmorphCleanup(int id, str prescript, str postscript) {
-	int row;
-	if (!IsBossDefined(id))
-		return false;
-	row = FindBossUnmorphRow(id);
-	if (row < 0) {
-		if (uh_bossunmorphcount >= UH_MAX_BOSS_UNMORPH)
-			return false;
-		row = uh_bossunmorphcount;
-		uh_bossunmorphcount++;
-		uh_bossunmorphid[row] = id;
-		uh_bossunmorphfams[row] = -1;
-	}
-	uh_bossunmorphpre[row] = prescript;
-	uh_bossunmorphpost[row] = postscript;
-	return true;
+  int row;
+  if (!IsBossDefined(id))
+    return false;
+  row = FindBossUnmorphRow(id);
+  if (row < 0) {
+    if (uh_bossunmorphcount >= UH_MAX_BOSS_UNMORPH)
+      return false;
+    row = uh_bossunmorphcount;
+    uh_bossunmorphcount++;
+    uh_bossunmorphid[row] = id;
+    uh_bossunmorphfams[row] = -1;
+  }
+  uh_bossunmorphpre[row] = prescript;
+  uh_bossunmorphpost[row] = postscript;
+  return true;
 }
 
 // Restrict the demorph stacker clamp to the families this boss can own.
 // -1 = unknown / all families (legacy behaviour).
 function bool SetBossUnmorphOwnedFamilies(int id, int mask) {
-	int row = FindBossUnmorphRow(id);
-	if (row < 0)
-		return false;
-	uh_bossunmorphfams[row] = mask;
-	return true;
+  int row = FindBossUnmorphRow(id);
+  if (row < 0)
+    return false;
+  uh_bossunmorphfams[row] = mask;
+  return true;
 }
 
 function int GetBossUnmorphOwnedFamilies(int id) {
-	int row = FindBossUnmorphRow(id);
-	if (row < 0)
-		return -1;
-	return uh_bossunmorphfams[row];
+  int row = FindBossUnmorphRow(id);
+  if (row < 0)
+    return -1;
+  return uh_bossunmorphfams[row];
 }
 
 function str GetBossUnmorphPre(int id) {
-	int row = FindBossUnmorphRow(id);
-	if (row < 0)
-		return "";
-	return uh_bossunmorphpre[row];
+  int row = FindBossUnmorphRow(id);
+  if (row < 0)
+    return "";
+  return uh_bossunmorphpre[row];
 }
 
 function str GetBossUnmorphPost(int id) {
-	int row = FindBossUnmorphRow(id);
-	if (row < 0)
-		return "";
-	return uh_bossunmorphpost[row];
+  int row = FindBossUnmorphRow(id);
+  if (row < 0)
+    return "";
+  return uh_bossunmorphpost[row];
 }
 
 function int GetBossRarity(int id) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return UHBOSS_POOL_NONE;
-	if (id >= 0)
-		return uh_bossvanillaint[slot][UHBOSS_INT_RARITY];
-	return uh_bosscustomint[slot][UHBOSS_INT_RARITY];
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL)
+    return UHBOSS_POOL_NONE;
+  if (id >= 0)
+    return uh_bossvanillaint[slot][UHBOSS_INT_RARITY];
+  return uh_bosscustomint[slot][UHBOSS_INT_RARITY];
 }
 
 function int GetBossHPBase(int id) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return 0;
-	if (id >= 0)
-		return uh_bossvanillaint[slot][UHBOSS_INT_BASEHP];
-	return uh_bosscustomint[slot][UHBOSS_INT_BASEHP];
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL)
+    return 0;
+  if (id >= 0)
+    return uh_bossvanillaint[slot][UHBOSS_INT_BASEHP];
+  return uh_bosscustomint[slot][UHBOSS_INT_BASEHP];
 }
 
 function int GetBossHPAdd(int id) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return 0;
-	if (id >= 0)
-		return uh_bossvanillaint[slot][UHBOSS_INT_ADDHP];
-	return uh_bosscustomint[slot][UHBOSS_INT_ADDHP];
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL)
+    return 0;
+  if (id >= 0)
+    return uh_bossvanillaint[slot][UHBOSS_INT_ADDHP];
+  return uh_bosscustomint[slot][UHBOSS_INT_ADDHP];
 }
 
 function int GetBossExBaseId(int id) {
-	int slot = UH_BossResolveSlot(id);
-	if (slot == UHBOSS_FAIL)
-		return UHBOSS_FAIL;
-	if (id >= 0)
-		return uh_bossvanillaint[slot][UHBOSS_INT_EXBASEID];
-	return uh_bosscustomint[slot][UHBOSS_INT_EXBASEID];
+  int slot = UH_BossResolveSlot(id);
+  if (slot == UHBOSS_FAIL)
+    return UHBOSS_FAIL;
+  if (id >= 0)
+    return uh_bossvanillaint[slot][UHBOSS_INT_EXBASEID];
+  return uh_bosscustomint[slot][UHBOSS_INT_EXBASEID];
 }
 
 function int FindBossByActor(str actor) {
-	int i;
-	if (StrCmp(actor, "") == 0)
-		return UHBOSS_FAIL;
+  int i;
+  if (StrCmp(actor, "") == 0)
+    return UHBOSS_FAIL;
 
-	for (i = 0; i < UH_MAX_VANILLA_BOSS; i++) {
-		if (IsBossDefined(i) && StrICmp(actor, uh_bossvanillastr[i][UHBOSS_STR_ACTOR]) == 0)
-			return i;
-	}
-	for (i = 0; i < uh_bosscustomcount; i++) {
-		if (IsBossDefined(-1 - i) && StrICmp(actor, uh_bosscustomstr[i][UHBOSS_STR_ACTOR]) == 0)
-			return -1 - i;
-	}
-	return UHBOSS_FAIL;
+  for (i = 0; i < UH_MAX_VANILLA_BOSS; i++) {
+    if (IsBossDefined(i) && StrICmp(actor, uh_bossvanillastr[i][UHBOSS_STR_ACTOR]) == 0)
+      return i;
+  }
+  for (i = 0; i < uh_bosscustomcount; i++) {
+    if (IsBossDefined(-1 - i) && StrICmp(actor, uh_bosscustomstr[i][UHBOSS_STR_ACTOR]) == 0)
+      return -1 - i;
+  }
+  return UHBOSS_FAIL;
 }
 
 function int UH_BossResolveExBaseId(str exboss_baseactor) {
-	if (StrCmp(exboss_baseactor, "") == 0)
-		return UHBOSS_FAIL;
-	return FindBossByActor(exboss_baseactor);
+  if (StrCmp(exboss_baseactor, "") == 0)
+    return UHBOSS_FAIL;
+  return FindBossByActor(exboss_baseactor);
 }
 
 // Parent of an EX boss. UHBOSS_FAIL if not an EX / unknown.
 function int GetBossBaseId(int id) {
-	int cached = GetBossExBaseId(id);
-	if (cached != UHBOSS_FAIL)
-		return cached;
-	return UH_BossResolveExBaseId(GetBossExBaseActor(id));
+  int cached = GetBossExBaseId(id);
+  if (cached != UHBOSS_FAIL)
+    return cached;
+  return UH_BossResolveExBaseId(GetBossExBaseActor(id));
 }
 
 function bool IsBossEx(int id) {
-	return GetBossBaseId(id) != UHBOSS_FAIL;
+  return GetBossBaseId(id) != UHBOSS_FAIL;
 }
 
 // EX child of a base boss. UHBOSS_FAIL if none registered.
 function int GetBossExId(int baseid) {
-	int i;
-	if (!IsBossDefined(baseid))
-		return UHBOSS_FAIL;
+  int i;
+  if (!IsBossDefined(baseid))
+    return UHBOSS_FAIL;
 
-	for (i = 0; i < UH_MAX_VANILLA_BOSS; i++) {
-		if (IsBossDefined(i) && uh_bossvanillaint[i][UHBOSS_INT_EXBASEID] == baseid)
-			return i;
-	}
-	for (i = 0; i < uh_bosscustomcount; i++) {
-		if (IsBossDefined(-1 - i) && uh_bosscustomint[i][UHBOSS_INT_EXBASEID] == baseid)
-			return -1 - i;
-	}
-	// Lazy: match exboss_baseactor string if EXBASEID not filled yet
-	str baseactor = GetBossActor(baseid);
-	if (StrCmp(baseactor, "") == 0)
-		return UHBOSS_FAIL;
-	for (i = 0; i < UH_MAX_VANILLA_BOSS; i++) {
-		if (IsBossDefined(i) && StrICmp(uh_bossvanillastr[i][UHBOSS_STR_EXBASEACTOR], baseactor) == 0)
-			return i;
-	}
-	for (i = 0; i < uh_bosscustomcount; i++) {
-		if (IsBossDefined(-1 - i) && StrICmp(uh_bosscustomstr[i][UHBOSS_STR_EXBASEACTOR], baseactor) == 0)
-			return -1 - i;
-	}
-	return UHBOSS_FAIL;
+  for (i = 0; i < UH_MAX_VANILLA_BOSS; i++) {
+    if (IsBossDefined(i) && uh_bossvanillaint[i][UHBOSS_INT_EXBASEID] == baseid)
+      return i;
+  }
+  for (i = 0; i < uh_bosscustomcount; i++) {
+    if (IsBossDefined(-1 - i) && uh_bosscustomint[i][UHBOSS_INT_EXBASEID] == baseid)
+      return -1 - i;
+  }
+  // Lazy: match exboss_baseactor string if EXBASEID not filled yet
+  str baseactor = GetBossActor(baseid);
+  if (StrCmp(baseactor, "") == 0)
+    return UHBOSS_FAIL;
+  for (i = 0; i < UH_MAX_VANILLA_BOSS; i++) {
+    if (IsBossDefined(i) && StrICmp(uh_bossvanillastr[i][UHBOSS_STR_EXBASEACTOR], baseactor) == 0)
+      return i;
+  }
+  for (i = 0; i < uh_bosscustomcount; i++) {
+    if (IsBossDefined(-1 - i) && StrICmp(uh_bosscustomstr[i][UHBOSS_STR_EXBASEACTOR], baseactor) == 0)
+      return -1 - i;
+  }
+  return UHBOSS_FAIL;
 }
 
 function void UH_BossAppendPool(int rarity, int bossid) {
-	if (rarity <= UHBOSS_POOL_NONE || rarity >= UHBOSS_POOL_COUNT)
-		return;
-	int n = uh_boss_pool_count[rarity];
-	if (n < 0 || n >= UH_MAX_VANILLA_BOSS)
-		return;
-	uh_bosspoolids[rarity][n] = bossid;
-	uh_boss_pool_count[rarity] = n + 1;
+  if (rarity <= UHBOSS_POOL_NONE || rarity >= UHBOSS_POOL_COUNT)
+    return;
+  int n = uh_boss_pool_count[rarity];
+  if (n < 0 || n >= UH_MAX_VANILLA_BOSS)
+    return;
+  uh_bosspoolids[rarity][n] = bossid;
+  uh_boss_pool_count[rarity] = n + 1;
 }
 
 function int GetBossPoolCount(int rarity) {
-	if (rarity <= UHBOSS_POOL_NONE || rarity >= UHBOSS_POOL_COUNT)
-		return 0;
-	return uh_boss_pool_count[rarity];
+  if (rarity <= UHBOSS_POOL_NONE || rarity >= UHBOSS_POOL_COUNT)
+    return 0;
+  return uh_boss_pool_count[rarity];
 }
 
 function int GetBossPoolId(int rarity, int index) {
-	if (rarity <= UHBOSS_POOL_NONE || rarity >= UHBOSS_POOL_COUNT)
-		return UHBOSS_FAIL;
-	if (index < 0 || index >= uh_boss_pool_count[rarity])
-		return UHBOSS_FAIL;
-	return uh_bosspoolids[rarity][index];
+  if (rarity <= UHBOSS_POOL_NONE || rarity >= UHBOSS_POOL_COUNT)
+    return UHBOSS_FAIL;
+  if (index < 0 || index >= uh_boss_pool_count[rarity])
+    return UHBOSS_FAIL;
+  return uh_bosspoolids[rarity][index];
 }
 
 function int RandomBossFromPool(int rarity) {
-	int n = GetBossPoolCount(rarity);
-	if (n <= 0)
-		return UHBOSS_FAIL;
-	return GetBossPoolId(rarity, random(0, n - 1));
+  int n = GetBossPoolCount(rarity);
+  if (n <= 0)
+    return UHBOSS_FAIL;
+  return GetBossPoolId(rarity, random(0, n - 1));
 }
 
 function void UH_BossWriteVanilla(int id, str actor, str name, int rarity, int basehp, int addhp,
-	str exboss_baseactor, str mugshot,
-	str instruction, str spawnmessagetype, str spawnmessage, str ragewarningmessage) {
-	int baseid;
-	uh_bossvanilladefined[id] = 1;
-	uh_bossvanillastr[id][UHBOSS_STR_ACTOR] = actor;
-	uh_bossvanillastr[id][UHBOSS_STR_NAME] = name;
-	uh_bossvanillastr[id][UHBOSS_STR_MUGSHOT] = mugshot;
-	uh_bossvanillastr[id][UHBOSS_STR_INSTRUCTION] = instruction;
-	uh_bossvanillastr[id][UHBOSS_STR_SPAWNMSGTYPE] = spawnmessagetype;
-	uh_bossvanillastr[id][UHBOSS_STR_SPAWNMSG] = spawnmessage;
-	uh_bossvanillastr[id][UHBOSS_STR_EXBASEACTOR] = exboss_baseactor;
-	uh_bossvanillastr[id][UHBOSS_STR_MORPHSETUP] = "";
-	uh_bossvanillastr[id][UHBOSS_STR_RAGEWARNING] = ragewarningmessage;
-	uh_bossvanillaint[id][UHBOSS_INT_RARITY] = rarity;
-	uh_bossvanillaint[id][UHBOSS_INT_BASEHP] = basehp;
-	uh_bossvanillaint[id][UHBOSS_INT_ADDHP] = addhp;
-	baseid = UH_BossResolveExBaseId(exboss_baseactor);
-	uh_bossvanillaint[id][UHBOSS_INT_EXBASEID] = baseid;
-	UH_BossAppendPool(rarity, id);
+  str exboss_baseactor, str mugshot,
+  str instruction, str spawnmessagetype, str spawnmessage, str ragewarningmessage) {
+  int baseid;
+  uh_bossvanilladefined[id] = 1;
+  uh_bossvanillastr[id][UHBOSS_STR_ACTOR] = actor;
+  uh_bossvanillastr[id][UHBOSS_STR_NAME] = name;
+  uh_bossvanillastr[id][UHBOSS_STR_MUGSHOT] = mugshot;
+  uh_bossvanillastr[id][UHBOSS_STR_INSTRUCTION] = instruction;
+  uh_bossvanillastr[id][UHBOSS_STR_SPAWNMSGTYPE] = spawnmessagetype;
+  uh_bossvanillastr[id][UHBOSS_STR_SPAWNMSG] = spawnmessage;
+  uh_bossvanillastr[id][UHBOSS_STR_EXBASEACTOR] = exboss_baseactor;
+  uh_bossvanillastr[id][UHBOSS_STR_MORPHSETUP] = "";
+  uh_bossvanillastr[id][UHBOSS_STR_RAGEWARNING] = ragewarningmessage;
+  uh_bossvanillaint[id][UHBOSS_INT_RARITY] = rarity;
+  uh_bossvanillaint[id][UHBOSS_INT_BASEHP] = basehp;
+  uh_bossvanillaint[id][UHBOSS_INT_ADDHP] = addhp;
+  baseid = UH_BossResolveExBaseId(exboss_baseactor);
+  uh_bossvanillaint[id][UHBOSS_INT_EXBASEID] = baseid;
+  UH_BossAppendPool(rarity, id);
 }
 
 function int UH_BossWriteCustom(str actor, str name, int rarity, int basehp, int addhp,
-	str exboss_baseactor, str mugshot,
-	str instruction, str spawnmessagetype, str spawnmessage, str ragewarningmessage) {
-	int i = uh_bosscustomcount;
-	int bossid = -1 - i;
-	int baseid;
-	uh_bosscustomstr[i][UHBOSS_STR_ACTOR] = actor;
-	uh_bosscustomstr[i][UHBOSS_STR_NAME] = name;
-	uh_bosscustomstr[i][UHBOSS_STR_MUGSHOT] = mugshot;
-	uh_bosscustomstr[i][UHBOSS_STR_INSTRUCTION] = instruction;
-	uh_bosscustomstr[i][UHBOSS_STR_SPAWNMSGTYPE] = spawnmessagetype;
-	uh_bosscustomstr[i][UHBOSS_STR_SPAWNMSG] = spawnmessage;
-	uh_bosscustomstr[i][UHBOSS_STR_EXBASEACTOR] = exboss_baseactor;
-	uh_bosscustomstr[i][UHBOSS_STR_MORPHSETUP] = "";
-	uh_bosscustomstr[i][UHBOSS_STR_RAGEWARNING] = ragewarningmessage;
-	uh_bosscustomint[i][UHBOSS_INT_RARITY] = rarity;
-	uh_bosscustomint[i][UHBOSS_INT_BASEHP] = basehp;
-	uh_bosscustomint[i][UHBOSS_INT_ADDHP] = addhp;
-	baseid = UH_BossResolveExBaseId(exboss_baseactor);
-	uh_bosscustomint[i][UHBOSS_INT_EXBASEID] = baseid;
-	uh_bosscustomint[i][UHBOSS_INT_STATE] = UHDB_ROW_ACTIVE;
-	uh_bosscustomcount++;
-	UH_BossAppendPool(rarity, bossid);
-	return bossid;
+  str exboss_baseactor, str mugshot,
+  str instruction, str spawnmessagetype, str spawnmessage, str ragewarningmessage) {
+  int i = uh_bosscustomcount;
+  int bossid = -1 - i;
+  int baseid;
+  uh_bosscustomstr[i][UHBOSS_STR_ACTOR] = actor;
+  uh_bosscustomstr[i][UHBOSS_STR_NAME] = name;
+  uh_bosscustomstr[i][UHBOSS_STR_MUGSHOT] = mugshot;
+  uh_bosscustomstr[i][UHBOSS_STR_INSTRUCTION] = instruction;
+  uh_bosscustomstr[i][UHBOSS_STR_SPAWNMSGTYPE] = spawnmessagetype;
+  uh_bosscustomstr[i][UHBOSS_STR_SPAWNMSG] = spawnmessage;
+  uh_bosscustomstr[i][UHBOSS_STR_EXBASEACTOR] = exboss_baseactor;
+  uh_bosscustomstr[i][UHBOSS_STR_MORPHSETUP] = "";
+  uh_bosscustomstr[i][UHBOSS_STR_RAGEWARNING] = ragewarningmessage;
+  uh_bosscustomint[i][UHBOSS_INT_RARITY] = rarity;
+  uh_bosscustomint[i][UHBOSS_INT_BASEHP] = basehp;
+  uh_bosscustomint[i][UHBOSS_INT_ADDHP] = addhp;
+  baseid = UH_BossResolveExBaseId(exboss_baseactor);
+  uh_bosscustomint[i][UHBOSS_INT_EXBASEID] = baseid;
+  uh_bosscustomint[i][UHBOSS_INT_STATE] = UHDB_ROW_ACTIVE;
+  uh_bosscustomcount++;
+  UH_BossAppendPool(rarity, bossid);
+  return bossid;
 }
 
 // --- DefineSurvivor tables ---------------------------------------------------
@@ -671,129 +671,129 @@ int uh_survcustomcount = 0;
 str uh_survcustomstr[UH_MAX_CUSTOM_SURV][UHSURV_STR_COUNT];
 
 function int SurvCustomIndex(int id) {
-	return -1 - id;
+  return -1 - id;
 }
 
 function bool IsSurvivorDefined(int id) {
-	if (id >= 0) {
-		if (id >= UH_MAX_VANILLA_SURV)
-			return false;
-		return uh_survvanilladefined[id] == UHDB_ROW_ACTIVE
-			|| uh_survvanilladefined[id] == UHDB_ROW_DISABLED;
-	}
-	if (id <= -1) {
-		int i = SurvCustomIndex(id);
-		if (i < 0 || i >= uh_survcustomcount)
-			return false;
-		return uh_survcustomstr[i][UHSURV_STR_STATE] == UHDB_ROW_ACTIVE
-			|| uh_survcustomstr[i][UHSURV_STR_STATE] == UHDB_ROW_DISABLED;
-	}
-	return false;
+  if (id >= 0) {
+    if (id >= UH_MAX_VANILLA_SURV)
+      return false;
+    return uh_survvanilladefined[id] == UHDB_ROW_ACTIVE
+      || uh_survvanilladefined[id] == UHDB_ROW_DISABLED;
+  }
+  if (id <= -1) {
+    int i = SurvCustomIndex(id);
+    if (i < 0 || i >= uh_survcustomcount)
+      return false;
+    return uh_survcustomstr[i][UHSURV_STR_STATE] == UHDB_ROW_ACTIVE
+      || uh_survcustomstr[i][UHSURV_STR_STATE] == UHDB_ROW_DISABLED;
+  }
+  return false;
 }
 
 function int SurvResolveSlot(int id) {
-	if (id >= 0) {
-		if (!IsSurvivorDefined(id))
-			return UHSURV_FAIL;
-		return id;
-	}
-	if (id <= -1) {
-		int i = SurvCustomIndex(id);
-		if (!IsSurvivorDefined(id))
-			return UHSURV_FAIL;
-		return i;
-	}
-	return UHSURV_FAIL;
+  if (id >= 0) {
+    if (!IsSurvivorDefined(id))
+      return UHSURV_FAIL;
+    return id;
+  }
+  if (id <= -1) {
+    int i = SurvCustomIndex(id);
+    if (!IsSurvivorDefined(id))
+      return UHSURV_FAIL;
+    return i;
+  }
+  return UHSURV_FAIL;
 }
 
 function str GetSurvivorActor(int id) {
-	int slot = SurvResolveSlot(id);
-	if (slot == UHSURV_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_survvanillastr[slot][UHSURV_STR_ACTOR];
-	return uh_survcustomstr[slot][UHSURV_STR_ACTOR];
+  int slot = SurvResolveSlot(id);
+  if (slot == UHSURV_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_survvanillastr[slot][UHSURV_STR_ACTOR];
+  return uh_survcustomstr[slot][UHSURV_STR_ACTOR];
 }
 
 function str GetSurvivorName(int id) {
-	int slot = SurvResolveSlot(id);
-	if (slot == UHSURV_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_survvanillastr[slot][UHSURV_STR_NAME];
-	return uh_survcustomstr[slot][UHSURV_STR_NAME];
+  int slot = SurvResolveSlot(id);
+  if (slot == UHSURV_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_survvanillastr[slot][UHSURV_STR_NAME];
+  return uh_survcustomstr[slot][UHSURV_STR_NAME];
 }
 
 function str GetSurvivorMugshot(int id) {
-	int slot = SurvResolveSlot(id);
-	if (slot == UHSURV_FAIL)
-		return "";
-	str mug;
-	if (id >= 0)
-		mug = uh_survvanillastr[slot][UHSURV_STR_MUGSHOT];
-	else
-		mug = uh_survcustomstr[slot][UHSURV_STR_MUGSHOT];
-	if (StrCmp(mug, "") != 0)
-		return mug;
-	// Empty mugshot: vanilla KEYCONF id → UMUG_{id}; custom must set explicit.
-	if (id >= 0)
-		return StrParam(s:"UMUG_", i:id);
-	return "";
+  int slot = SurvResolveSlot(id);
+  if (slot == UHSURV_FAIL)
+    return "";
+  str mug;
+  if (id >= 0)
+    mug = uh_survvanillastr[slot][UHSURV_STR_MUGSHOT];
+  else
+    mug = uh_survcustomstr[slot][UHSURV_STR_MUGSHOT];
+  if (StrCmp(mug, "") != 0)
+    return mug;
+  // Empty mugshot: vanilla KEYCONF id → UMUG_{id}; custom must set explicit.
+  if (id >= 0)
+    return StrParam(s:"UMUG_", i:id);
+  return "";
 }
 
 // Stored mugshot only (no UMUG fallback). Empty = use legacy C@ICN / C-ICN paths.
 function str GetSurvivorMugshotRaw(int id) {
-	int slot = SurvResolveSlot(id);
-	if (slot == UHSURV_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_survvanillastr[slot][UHSURV_STR_MUGSHOT];
-	return uh_survcustomstr[slot][UHSURV_STR_MUGSHOT];
+  int slot = SurvResolveSlot(id);
+  if (slot == UHSURV_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_survvanillastr[slot][UHSURV_STR_MUGSHOT];
+  return uh_survcustomstr[slot][UHSURV_STR_MUGSHOT];
 }
 
 function str GetSurvivorShinyActor(int id) {
-	str actor = GetSurvivorActor(id);
-	if (StrCmp(actor, "") == 0)
-		return "";
-	return StrParam(s:actor, s:"Shiny");
+  str actor = GetSurvivorActor(id);
+  if (StrCmp(actor, "") == 0)
+    return "";
+  return StrParam(s:actor, s:"Shiny");
 }
 
 function int FindSurvivorByActor(str actor) {
-	int i;
-	if (StrCmp(actor, "") == 0)
-		return UHSURV_FAIL;
+  int i;
+  if (StrCmp(actor, "") == 0)
+    return UHSURV_FAIL;
 
-	for (i = 0; i < UH_MAX_VANILLA_SURV; i++) {
-		if (IsSurvivorDefined(i) && StrICmp(actor, uh_survvanillastr[i][UHSURV_STR_ACTOR]) == 0)
-			return i;
-	}
-	for (i = 0; i < uh_survcustomcount; i++) {
-		if (IsSurvivorDefined(-1 - i) && StrICmp(actor, uh_survcustomstr[i][UHSURV_STR_ACTOR]) == 0)
-			return -1 - i;
-	}
-	return UHSURV_FAIL;
+  for (i = 0; i < UH_MAX_VANILLA_SURV; i++) {
+    if (IsSurvivorDefined(i) && StrICmp(actor, uh_survvanillastr[i][UHSURV_STR_ACTOR]) == 0)
+      return i;
+  }
+  for (i = 0; i < uh_survcustomcount; i++) {
+    if (IsSurvivorDefined(-1 - i) && StrICmp(actor, uh_survcustomstr[i][UHSURV_STR_ACTOR]) == 0)
+      return -1 - i;
+  }
+  return UHSURV_FAIL;
 }
 
 function void SurvWriteVanilla(int id, str actor, str name, str mugshot) {
-	uh_survvanilladefined[id] = UHDB_ROW_ACTIVE;
-	uh_survvanillastr[id][UHSURV_STR_ACTOR] = actor;
-	uh_survvanillastr[id][UHSURV_STR_NAME] = name;
-	uh_survvanillastr[id][UHSURV_STR_MUGSHOT] = mugshot;
+  uh_survvanilladefined[id] = UHDB_ROW_ACTIVE;
+  uh_survvanillastr[id][UHSURV_STR_ACTOR] = actor;
+  uh_survvanillastr[id][UHSURV_STR_NAME] = name;
+  uh_survvanillastr[id][UHSURV_STR_MUGSHOT] = mugshot;
 }
 
 function int SurvWriteCustom(str actor, str name, str mugshot) {
-	int i = uh_survcustomcount;
-	int survid = -1 - i;
-	uh_survcustomstr[i][UHSURV_STR_ACTOR] = actor;
-	uh_survcustomstr[i][UHSURV_STR_NAME] = name;
-	uh_survcustomstr[i][UHSURV_STR_MUGSHOT] = mugshot;
-	uh_survcustomstr[i][UHSURV_STR_STATE] = UHDB_ROW_ACTIVE;
-	uh_survcustomcount++;
-	return survid;
+  int i = uh_survcustomcount;
+  int survid = -1 - i;
+  uh_survcustomstr[i][UHSURV_STR_ACTOR] = actor;
+  uh_survcustomstr[i][UHSURV_STR_NAME] = name;
+  uh_survcustomstr[i][UHSURV_STR_MUGSHOT] = mugshot;
+  uh_survcustomstr[i][UHSURV_STR_STATE] = UHDB_ROW_ACTIVE;
+  uh_survcustomcount++;
+  return survid;
 }
 
 function int GetSurvivorCustomCount(void) {
-	return uh_survcustomcount;
+  return uh_survcustomcount;
 }
 
 // --- Survivor weapon registry (uh_StripSurvivorWeps) -------------------------
@@ -805,28 +805,28 @@ int uh_survwepcount = 0;
 str uh_survwepactor[UH_MAX_SURVWEP];
 
 function int SurvWepRegister(str wepactor) {
-	int i;
-	if (StrCmp(wepactor, "") == 0)
-		return UHSURVWEP_FAIL;
-	for (i = 0; i < uh_survwepcount; i++) {
-		if (StrICmp(uh_survwepactor[i], wepactor) == 0)
-			return i;
-	}
-	if (uh_survwepcount >= UH_MAX_SURVWEP)
-		return UHSURVWEP_FAIL;
-	uh_survwepactor[uh_survwepcount] = wepactor;
-	uh_survwepcount++;
-	return uh_survwepcount - 1;
+  int i;
+  if (StrCmp(wepactor, "") == 0)
+    return UHSURVWEP_FAIL;
+  for (i = 0; i < uh_survwepcount; i++) {
+    if (StrICmp(uh_survwepactor[i], wepactor) == 0)
+      return i;
+  }
+  if (uh_survwepcount >= UH_MAX_SURVWEP)
+    return UHSURVWEP_FAIL;
+  uh_survwepactor[uh_survwepcount] = wepactor;
+  uh_survwepcount++;
+  return uh_survwepcount - 1;
 }
 
 function int GetSurvivorWepCount(void) {
-	return uh_survwepcount;
+  return uh_survwepcount;
 }
 
 function str GetSurvivorWepActor(int row) {
-	if (row < 0 || row >= uh_survwepcount)
-		return "";
-	return uh_survwepactor[row];
+  if (row < 0 || row >= uh_survwepcount)
+    return "";
+  return uh_survwepactor[row];
 }
 
 // --- Survivor strip-cleanup registry -----------------------------------------
@@ -842,43 +842,43 @@ int uh_survcleanupcount = 0;
 str uh_survcleanup[UH_MAX_SURVCLEANUP][2];
 
 function int SurvCleanupRegister(str survactor, str cleanupactor) {
-	int i;
-	if (StrCmp(survactor, "") == 0 || StrCmp(cleanupactor, "") == 0)
-		return UHSURVWEP_FAIL;
-	for (i = 0; i < uh_survcleanupcount; i++) {
-		if (StrICmp(uh_survcleanup[i][0], survactor) == 0) {
-			uh_survcleanup[i][1] = cleanupactor;
-			return i;
-		}
-	}
-	if (uh_survcleanupcount >= UH_MAX_SURVCLEANUP)
-		return UHSURVWEP_FAIL;
-	uh_survcleanup[uh_survcleanupcount][0] = survactor;
-	uh_survcleanup[uh_survcleanupcount][1] = cleanupactor;
-	uh_survcleanupcount++;
-	return uh_survcleanupcount - 1;
+  int i;
+  if (StrCmp(survactor, "") == 0 || StrCmp(cleanupactor, "") == 0)
+    return UHSURVWEP_FAIL;
+  for (i = 0; i < uh_survcleanupcount; i++) {
+    if (StrICmp(uh_survcleanup[i][0], survactor) == 0) {
+      uh_survcleanup[i][1] = cleanupactor;
+      return i;
+    }
+  }
+  if (uh_survcleanupcount >= UH_MAX_SURVCLEANUP)
+    return UHSURVWEP_FAIL;
+  uh_survcleanup[uh_survcleanupcount][0] = survactor;
+  uh_survcleanup[uh_survcleanupcount][1] = cleanupactor;
+  uh_survcleanupcount++;
+  return uh_survcleanupcount - 1;
 }
 
 function str GetSurvCleanupFor(str survactor) {
-	int i;
-	int len;
-	str base;
-	if (StrLen(survactor) == 0)
-		return "";
-	for (i = 0; i < uh_survcleanupcount; i++) {
-		if (StrICmp(uh_survcleanup[i][0], survactor) == 0)
-			return uh_survcleanup[i][1];
-	}
-	// Shiny morphs strip after MorphActor — fall back to the base class key.
-	len = StrLen(survactor);
-	if (len > 5 && StrICmp(StrRight(survactor, 5), "Shiny") == 0) {
-		base = StrLeft(survactor, len - 5);
-		for (i = 0; i < uh_survcleanupcount; i++) {
-			if (StrICmp(uh_survcleanup[i][0], base) == 0)
-				return uh_survcleanup[i][1];
-		}
-	}
-	return "";
+  int i;
+  int len;
+  str base;
+  if (StrLen(survactor) == 0)
+    return "";
+  for (i = 0; i < uh_survcleanupcount; i++) {
+    if (StrICmp(uh_survcleanup[i][0], survactor) == 0)
+      return uh_survcleanup[i][1];
+  }
+  // Shiny morphs strip after MorphActor — fall back to the base class key.
+  len = StrLen(survactor);
+  if (len > 5 && StrICmp(StrRight(survactor, 5), "Shiny") == 0) {
+    base = StrLeft(survactor, len - 5);
+    for (i = 0; i < uh_survcleanupcount; i++) {
+      if (StrICmp(uh_survcleanup[i][0], base) == 0)
+        return uh_survcleanup[i][1];
+    }
+  }
+  return "";
 }
 
 // --- DefineDemoneye tables ---------------------------------------------------
@@ -902,178 +902,178 @@ int uh_eyecustomflags[UH_MAX_CUSTOM_EYE];
 int uh_playereyeid[UH_MAX_PLAYERS];
 
 script "uh_EyeIdStorageInit" OPEN {
-	int i;
-	for (i = 0; i < UH_MAX_PLAYERS; i++)
-		uh_playereyeid[i] = UHEYE_FAIL;
+  int i;
+  for (i = 0; i < UH_MAX_PLAYERS; i++)
+    uh_playereyeid[i] = UHEYE_FAIL;
 }
 
 script "uh_EyeIdStorageInit_cs" OPEN CLIENTSIDE {
-	int i;
-	for (i = 0; i < UH_MAX_PLAYERS; i++)
-		uh_playereyeid[i] = UHEYE_FAIL;
+  int i;
+  for (i = 0; i < UH_MAX_PLAYERS; i++)
+    uh_playereyeid[i] = UHEYE_FAIL;
 }
 
 function void SetPlayerEyeId(int playernum, int eyeid) {
-	if (playernum < 0 || playernum >= UH_MAX_PLAYERS)
-		return;
-	uh_playereyeid[playernum] = eyeid;
+  if (playernum < 0 || playernum >= UH_MAX_PLAYERS)
+    return;
+  uh_playereyeid[playernum] = eyeid;
 }
 
 function int GetPlayerEyeId(int playernum) {
-	if (playernum < 0 || playernum >= UH_MAX_PLAYERS)
-		return UHEYE_FAIL;
-	return uh_playereyeid[playernum];
+  if (playernum < 0 || playernum >= UH_MAX_PLAYERS)
+    return UHEYE_FAIL;
+  return uh_playereyeid[playernum];
 }
 
 function int EyeCustomIndex(int id) {
-	return -1 - id;
+  return -1 - id;
 }
 
 function bool IsEyeDefined(int id) {
-	if (id >= 0) {
-		if (id >= UH_MAX_VANILLA_EYE)
-			return false;
-		return uh_eyevanilladefined[id] == UHDB_ROW_ACTIVE
-			|| uh_eyevanilladefined[id] == UHDB_ROW_DISABLED;
-	}
-	if (id <= -1) {
-		int i = EyeCustomIndex(id);
-		if (i < 0 || i >= uh_eyecustomcount)
-			return false;
-		return uh_eyecustomstr[i][UHEYE_STR_STATE] == UHDB_ROW_ACTIVE
-			|| uh_eyecustomstr[i][UHEYE_STR_STATE] == UHDB_ROW_DISABLED;
-	}
-	return false;
+  if (id >= 0) {
+    if (id >= UH_MAX_VANILLA_EYE)
+      return false;
+    return uh_eyevanilladefined[id] == UHDB_ROW_ACTIVE
+      || uh_eyevanilladefined[id] == UHDB_ROW_DISABLED;
+  }
+  if (id <= -1) {
+    int i = EyeCustomIndex(id);
+    if (i < 0 || i >= uh_eyecustomcount)
+      return false;
+    return uh_eyecustomstr[i][UHEYE_STR_STATE] == UHDB_ROW_ACTIVE
+      || uh_eyecustomstr[i][UHEYE_STR_STATE] == UHDB_ROW_DISABLED;
+  }
+  return false;
 }
 
 function int EyeResolveSlot(int id) {
-	if (id >= 0) {
-		if (!IsEyeDefined(id))
-			return UHEYE_FAIL;
-		return id;
-	}
-	if (id <= -1) {
-		int i = EyeCustomIndex(id);
-		if (!IsEyeDefined(id))
-			return UHEYE_FAIL;
-		return i;
-	}
-	return UHEYE_FAIL;
+  if (id >= 0) {
+    if (!IsEyeDefined(id))
+      return UHEYE_FAIL;
+    return id;
+  }
+  if (id <= -1) {
+    int i = EyeCustomIndex(id);
+    if (!IsEyeDefined(id))
+      return UHEYE_FAIL;
+    return i;
+  }
+  return UHEYE_FAIL;
 }
 
 function str GetEyeActor(int id) {
-	int slot = EyeResolveSlot(id);
-	if (slot == UHEYE_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_eyevanillastr[slot][UHEYE_STR_ACTOR];
-	return uh_eyecustomstr[slot][UHEYE_STR_ACTOR];
+  int slot = EyeResolveSlot(id);
+  if (slot == UHEYE_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_eyevanillastr[slot][UHEYE_STR_ACTOR];
+  return uh_eyecustomstr[slot][UHEYE_STR_ACTOR];
 }
 
 function str GetEyeName(int id) {
-	int slot = EyeResolveSlot(id);
-	if (slot == UHEYE_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_eyevanillastr[slot][UHEYE_STR_NAME];
-	return uh_eyecustomstr[slot][UHEYE_STR_NAME];
+  int slot = EyeResolveSlot(id);
+  if (slot == UHEYE_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_eyevanillastr[slot][UHEYE_STR_NAME];
+  return uh_eyecustomstr[slot][UHEYE_STR_NAME];
 }
 
 function str GetEyePrefix(int id) {
-	int slot = EyeResolveSlot(id);
-	if (slot == UHEYE_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_eyevanillastr[slot][UHEYE_STR_PREFIX];
-	return uh_eyecustomstr[slot][UHEYE_STR_PREFIX];
+  int slot = EyeResolveSlot(id);
+  if (slot == UHEYE_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_eyevanillastr[slot][UHEYE_STR_PREFIX];
+  return uh_eyecustomstr[slot][UHEYE_STR_PREFIX];
 }
 
 function int GetEyeFlags(int id) {
-	int slot = EyeResolveSlot(id);
-	if (slot == UHEYE_FAIL)
-		return 0;
-	if (id >= 0)
-		return uh_eyevanillaflags[slot];
-	return uh_eyecustomflags[slot];
+  int slot = EyeResolveSlot(id);
+  if (slot == UHEYE_FAIL)
+    return 0;
+  if (id >= 0)
+    return uh_eyevanillaflags[slot];
+  return uh_eyecustomflags[slot];
 }
 
 function str GetEyeMugshot(int id) {
-	int slot = EyeResolveSlot(id);
-	if (slot == UHEYE_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_eyevanillastr[slot][UHEYE_STR_MUGSHOT];
-	return uh_eyecustomstr[slot][UHEYE_STR_MUGSHOT];
+  int slot = EyeResolveSlot(id);
+  if (slot == UHEYE_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_eyevanillastr[slot][UHEYE_STR_MUGSHOT];
+  return uh_eyecustomstr[slot][UHEYE_STR_MUGSHOT];
 }
 
 function str GetEyeEventStem(int id) {
-	int slot = EyeResolveSlot(id);
-	if (slot == UHEYE_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_eyevanillastr[slot][UHEYE_STR_EVENTSTEM];
-	return uh_eyecustomstr[slot][UHEYE_STR_EVENTSTEM];
+  int slot = EyeResolveSlot(id);
+  if (slot == UHEYE_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_eyevanillastr[slot][UHEYE_STR_EVENTSTEM];
+  return uh_eyecustomstr[slot][UHEYE_STR_EVENTSTEM];
 }
 
 // Personal morph line: "You are now {prefix}{name}[ Demoneye]!"
 function str GetEyeYouAreNowName(int id) {
-	str prefix = GetEyePrefix(id);
-	str name = GetEyeName(id);
-	if (StrCmp(name, "") == 0)
-		return "";
-	if (GetEyeFlags(id) & UHEYE_FLAG_NOSUFFIX)
-		return StrParam(s:prefix, s:name, s:"\ck");
-	return StrParam(s:prefix, s:name, s:" \ckDemoneye");
+  str prefix = GetEyePrefix(id);
+  str name = GetEyeName(id);
+  if (StrCmp(name, "") == 0)
+    return "";
+  if (GetEyeFlags(id) & UHEYE_FLAG_NOSUFFIX)
+    return StrParam(s:prefix, s:name, s:"\ck");
+  return StrParam(s:prefix, s:name, s:" \ckDemoneye");
 }
 
 // BHW / parade label: "Plain Demoneye" (no article). NOSUFFIX → name only.
 function str GetEyeHudName(int id) {
-	str name = GetEyeName(id);
-	if (StrCmp(name, "") == 0)
-		return "";
-	if (GetEyeFlags(id) & UHEYE_FLAG_NOSUFFIX)
-		return name;
-	return StrParam(s:name, s:" Demoneye");
+  str name = GetEyeName(id);
+  if (StrCmp(name, "") == 0)
+    return "";
+  if (GetEyeFlags(id) & UHEYE_FLAG_NOSUFFIX)
+    return name;
+  return StrParam(s:name, s:" Demoneye");
 }
 
 function int FindEyeByActor(str actor) {
-	int i;
-	if (StrCmp(actor, "") == 0)
-		return UHEYE_FAIL;
+  int i;
+  if (StrCmp(actor, "") == 0)
+    return UHEYE_FAIL;
 
-	for (i = 0; i < UH_MAX_VANILLA_EYE; i++) {
-		if (IsEyeDefined(i) && StrICmp(actor, uh_eyevanillastr[i][UHEYE_STR_ACTOR]) == 0)
-			return i;
-	}
-	for (i = 0; i < uh_eyecustomcount; i++) {
-		if (IsEyeDefined(-1 - i) && StrICmp(actor, uh_eyecustomstr[i][UHEYE_STR_ACTOR]) == 0)
-			return -1 - i;
-	}
-	return UHEYE_FAIL;
+  for (i = 0; i < UH_MAX_VANILLA_EYE; i++) {
+    if (IsEyeDefined(i) && StrICmp(actor, uh_eyevanillastr[i][UHEYE_STR_ACTOR]) == 0)
+      return i;
+  }
+  for (i = 0; i < uh_eyecustomcount; i++) {
+    if (IsEyeDefined(-1 - i) && StrICmp(actor, uh_eyecustomstr[i][UHEYE_STR_ACTOR]) == 0)
+      return -1 - i;
+  }
+  return UHEYE_FAIL;
 }
 
 function void EyeWriteVanilla(int id, str actor, str name, str prefix, int flags, str mugshot, str eventstem) {
-	uh_eyevanilladefined[id] = UHDB_ROW_ACTIVE;
-	uh_eyevanillastr[id][UHEYE_STR_ACTOR] = actor;
-	uh_eyevanillastr[id][UHEYE_STR_NAME] = name;
-	uh_eyevanillastr[id][UHEYE_STR_PREFIX] = prefix;
-	uh_eyevanillaflags[id] = flags;
-	uh_eyevanillastr[id][UHEYE_STR_MUGSHOT] = mugshot;
-	uh_eyevanillastr[id][UHEYE_STR_EVENTSTEM] = eventstem;
+  uh_eyevanilladefined[id] = UHDB_ROW_ACTIVE;
+  uh_eyevanillastr[id][UHEYE_STR_ACTOR] = actor;
+  uh_eyevanillastr[id][UHEYE_STR_NAME] = name;
+  uh_eyevanillastr[id][UHEYE_STR_PREFIX] = prefix;
+  uh_eyevanillaflags[id] = flags;
+  uh_eyevanillastr[id][UHEYE_STR_MUGSHOT] = mugshot;
+  uh_eyevanillastr[id][UHEYE_STR_EVENTSTEM] = eventstem;
 }
 
 function int EyeWriteCustom(str actor, str name, str prefix, int flags, str mugshot, str eventstem) {
-	int i = uh_eyecustomcount;
-	int eyeid = -1 - i;
-	uh_eyecustomstr[i][UHEYE_STR_ACTOR] = actor;
-	uh_eyecustomstr[i][UHEYE_STR_NAME] = name;
-	uh_eyecustomstr[i][UHEYE_STR_PREFIX] = prefix;
-	uh_eyecustomflags[i] = flags;
-	uh_eyecustomstr[i][UHEYE_STR_MUGSHOT] = mugshot;
-	uh_eyecustomstr[i][UHEYE_STR_EVENTSTEM] = eventstem;
-	uh_eyecustomstr[i][UHEYE_STR_STATE] = UHDB_ROW_ACTIVE;
-	uh_eyecustomcount++;
-	return eyeid;
+  int i = uh_eyecustomcount;
+  int eyeid = -1 - i;
+  uh_eyecustomstr[i][UHEYE_STR_ACTOR] = actor;
+  uh_eyecustomstr[i][UHEYE_STR_NAME] = name;
+  uh_eyecustomstr[i][UHEYE_STR_PREFIX] = prefix;
+  uh_eyecustomflags[i] = flags;
+  uh_eyecustomstr[i][UHEYE_STR_MUGSHOT] = mugshot;
+  uh_eyecustomstr[i][UHEYE_STR_EVENTSTEM] = eventstem;
+  uh_eyecustomstr[i][UHEYE_STR_STATE] = UHDB_ROW_ACTIVE;
+  uh_eyecustomcount++;
+  return eyeid;
 }
 
 // --- DefineUnholyItem tables -------------------------------------------------
@@ -1126,634 +1126,634 @@ str uh_asshatpendingitem[UH_ASSHAT_PENDING_MAX];
 int uh_asshatpendingused[UH_ASSHAT_PENDING_MAX];
 
 function int ItemCustomIndex(int id) {
-	return -1 - id;
+  return -1 - id;
 }
 
 function bool IsItemDefined(int id) {
-	if (id >= 0) {
-		if (id >= UH_MAX_VANILLA_ITEM)
-			return false;
-		return uh_itemvanilladefined[id] == UHDB_ROW_ACTIVE
-			|| uh_itemvanilladefined[id] == UHDB_ROW_DISABLED;
-	}
-	if (id <= -1) {
-		int i = ItemCustomIndex(id);
-		if (i < 0 || i >= uh_itemcustomcount)
-			return false;
-		return uh_itemcustomstr[i][UHITEM_STR_STATE] == UHDB_ROW_ACTIVE
-			|| uh_itemcustomstr[i][UHITEM_STR_STATE] == UHDB_ROW_DISABLED;
-	}
-	return false;
+  if (id >= 0) {
+    if (id >= UH_MAX_VANILLA_ITEM)
+      return false;
+    return uh_itemvanilladefined[id] == UHDB_ROW_ACTIVE
+      || uh_itemvanilladefined[id] == UHDB_ROW_DISABLED;
+  }
+  if (id <= -1) {
+    int i = ItemCustomIndex(id);
+    if (i < 0 || i >= uh_itemcustomcount)
+      return false;
+    return uh_itemcustomstr[i][UHITEM_STR_STATE] == UHDB_ROW_ACTIVE
+      || uh_itemcustomstr[i][UHITEM_STR_STATE] == UHDB_ROW_DISABLED;
+  }
+  return false;
 }
 
 function bool IsItemEnabled(int id) {
-	if (id >= 0)
-		return id < UH_MAX_VANILLA_ITEM && uh_itemvanilladefined[id] == UHDB_ROW_ACTIVE;
-	int i = ItemCustomIndex(id);
-	return i >= 0 && i < uh_itemcustomcount
-		&& uh_itemcustomstr[i][UHITEM_STR_STATE] == UHDB_ROW_ACTIVE;
+  if (id >= 0)
+    return id < UH_MAX_VANILLA_ITEM && uh_itemvanilladefined[id] == UHDB_ROW_ACTIVE;
+  int i = ItemCustomIndex(id);
+  return i >= 0 && i < uh_itemcustomcount
+    && uh_itemcustomstr[i][UHITEM_STR_STATE] == UHDB_ROW_ACTIVE;
 }
 
 function int ItemResolveSlot(int id) {
-	if (id >= 0) {
-		if (!IsItemDefined(id))
-			return UHITEM_FAIL;
-		return id;
-	}
-	if (id <= -1) {
-		int i = ItemCustomIndex(id);
-		if (!IsItemDefined(id))
-			return UHITEM_FAIL;
-		return i;
-	}
-	return UHITEM_FAIL;
+  if (id >= 0) {
+    if (!IsItemDefined(id))
+      return UHITEM_FAIL;
+    return id;
+  }
+  if (id <= -1) {
+    int i = ItemCustomIndex(id);
+    if (!IsItemDefined(id))
+      return UHITEM_FAIL;
+    return i;
+  }
+  return UHITEM_FAIL;
 }
 
 function str GetItemActor(int id) {
-	int slot = ItemResolveSlot(id);
-	if (slot == UHITEM_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_itemvanillastr[slot][UHITEM_STR_ACTOR];
-	return uh_itemcustomstr[slot][UHITEM_STR_ACTOR];
+  int slot = ItemResolveSlot(id);
+  if (slot == UHITEM_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_itemvanillastr[slot][UHITEM_STR_ACTOR];
+  return uh_itemcustomstr[slot][UHITEM_STR_ACTOR];
 }
 
 function str GetItemName(int id) {
-	int slot = ItemResolveSlot(id);
-	if (slot == UHITEM_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_itemvanillastr[slot][UHITEM_STR_NAME];
-	return uh_itemcustomstr[slot][UHITEM_STR_NAME];
+  int slot = ItemResolveSlot(id);
+  if (slot == UHITEM_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_itemvanillastr[slot][UHITEM_STR_NAME];
+  return uh_itemcustomstr[slot][UHITEM_STR_NAME];
 }
 
 function str GetItemMugshot(int id) {
-	int slot = ItemResolveSlot(id);
-	if (slot == UHITEM_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_itemvanillastr[slot][UHITEM_STR_MUGSHOT];
-	return uh_itemcustomstr[slot][UHITEM_STR_MUGSHOT];
+  int slot = ItemResolveSlot(id);
+  if (slot == UHITEM_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_itemvanillastr[slot][UHITEM_STR_MUGSHOT];
+  return uh_itemcustomstr[slot][UHITEM_STR_MUGSHOT];
 }
 
 function str GetItemSound(int id) {
-	int slot = ItemResolveSlot(id);
-	if (slot == UHITEM_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_itemvanillastr[slot][UHITEM_STR_SOUND];
-	return uh_itemcustomstr[slot][UHITEM_STR_SOUND];
+  int slot = ItemResolveSlot(id);
+  if (slot == UHITEM_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_itemvanillastr[slot][UHITEM_STR_SOUND];
+  return uh_itemcustomstr[slot][UHITEM_STR_SOUND];
 }
 
 function str GetItemIcon(int id) {
-	int slot = ItemResolveSlot(id);
-	if (slot == UHITEM_FAIL)
-		return "";
-	if (id >= 0)
-		return uh_itemvanillastr[slot][UHITEM_STR_ICON];
-	return uh_itemcustomstr[slot][UHITEM_STR_ICON];
+  int slot = ItemResolveSlot(id);
+  if (slot == UHITEM_FAIL)
+    return "";
+  if (id >= 0)
+    return uh_itemvanillastr[slot][UHITEM_STR_ICON];
+  return uh_itemcustomstr[slot][UHITEM_STR_ICON];
 }
 
 function int GetItemDtaddGroup(int id) {
-	int slot = ItemResolveSlot(id);
-	if (slot == UHITEM_FAIL)
-		return -1;
-	if (id >= 0)
-		return uh_itemvanillagroup[slot];
-	return uh_itemcustomgroup[slot];
+  int slot = ItemResolveSlot(id);
+  if (slot == UHITEM_FAIL)
+    return -1;
+  if (id >= 0)
+    return uh_itemvanillagroup[slot];
+  return uh_itemcustomgroup[slot];
 }
 
 function int GetUnholyCustomItemCount(void) {
-	return uh_itemcustomcount;
+  return uh_itemcustomcount;
 }
 
 function int GetUnholyItemCount(void) {
-	int n, i;
+  int n, i;
 
-	n = 0;
-	for (i = 0; i < uh_itemcustomcount; i++) {
-		if (IsItemDefined(-1 - i))
-			n++;
-	}
-	for (i = 0; i < UH_MAX_VANILLA_ITEM; i++) {
-		if (IsItemDefined(i))
-			n++;
-	}
-	return n;
+  n = 0;
+  for (i = 0; i < uh_itemcustomcount; i++) {
+    if (IsItemDefined(-1 - i))
+      n++;
+  }
+  for (i = 0; i < UH_MAX_VANILLA_ITEM; i++) {
+    if (IsItemDefined(i))
+      n++;
+  }
+  return n;
 }
 
 function bool ItemDtaddGroupIsKnown(int group) {
-	return group >= UHITEM_GRP_MIN && group <= UHITEM_GRP_MAX;
+  return group >= UHITEM_GRP_MIN && group <= UHITEM_GRP_MAX;
 }
 
 function bool IsUnholyBox(int id) {
-	int slot = ItemResolveSlot(id);
-	if (slot == UHITEM_FAIL)
-		return false;
-	if (id >= 0)
-		return uh_itemvanillaisbox[slot] != 0;
-	return uh_itemcustomisbox[slot] != 0;
+  int slot = ItemResolveSlot(id);
+  if (slot == UHITEM_FAIL)
+    return false;
+  if (id >= 0)
+    return uh_itemvanillaisbox[slot] != 0;
+  return uh_itemcustomisbox[slot] != 0;
 }
 
 function str GetBoxOpenSound(int boxid) {
-	int slot = ItemResolveSlot(boxid);
-	if (slot == UHITEM_FAIL)
-		return "";
-	if (boxid >= 0)
-		return uh_itemvanillastr[slot][UHITEM_STR_OPENSOUND];
-	return uh_itemcustomstr[slot][UHITEM_STR_OPENSOUND];
+  int slot = ItemResolveSlot(boxid);
+  if (slot == UHITEM_FAIL)
+    return "";
+  if (boxid >= 0)
+    return uh_itemvanillastr[slot][UHITEM_STR_OPENSOUND];
+  return uh_itemcustomstr[slot][UHITEM_STR_OPENSOUND];
 }
 
 function str GetBoxEyedropSound(int boxid) {
-	int slot = ItemResolveSlot(boxid);
-	if (slot == UHITEM_FAIL)
-		return "";
-	if (boxid >= 0)
-		return uh_itemvanillastr[slot][UHITEM_STR_EYEDROPSOUND];
-	return uh_itemcustomstr[slot][UHITEM_STR_EYEDROPSOUND];
+  int slot = ItemResolveSlot(boxid);
+  if (slot == UHITEM_FAIL)
+    return "";
+  if (boxid >= 0)
+    return uh_itemvanillastr[slot][UHITEM_STR_EYEDROPSOUND];
+  return uh_itemcustomstr[slot][UHITEM_STR_EYEDROPSOUND];
 }
 
 function int FindItemByActor(str actor) {
-	int i;
-	if (StrCmp(actor, "") == 0)
-		return UHITEM_FAIL;
-	for (i = 0; i < UH_MAX_VANILLA_ITEM; i++) {
-		if (IsItemDefined(i) && StrICmp(actor, uh_itemvanillastr[i][UHITEM_STR_ACTOR]) == 0)
-			return i;
-	}
-	for (i = 0; i < uh_itemcustomcount; i++) {
-		if (IsItemDefined(-1 - i) && StrICmp(actor, uh_itemcustomstr[i][UHITEM_STR_ACTOR]) == 0)
-			return -1 - i;
-	}
-	return UHITEM_FAIL;
+  int i;
+  if (StrCmp(actor, "") == 0)
+    return UHITEM_FAIL;
+  for (i = 0; i < UH_MAX_VANILLA_ITEM; i++) {
+    if (IsItemDefined(i) && StrICmp(actor, uh_itemvanillastr[i][UHITEM_STR_ACTOR]) == 0)
+      return i;
+  }
+  for (i = 0; i < uh_itemcustomcount; i++) {
+    if (IsItemDefined(-1 - i) && StrICmp(actor, uh_itemcustomstr[i][UHITEM_STR_ACTOR]) == 0)
+      return -1 - i;
+  }
+  return UHITEM_FAIL;
 }
 
 function void ItemWriteVanilla(int id, str actor, str name, str icon, int group, str mugshot, str sound) {
-	uh_itemvanilladefined[id] = UHDB_ROW_ACTIVE;
-	uh_itemvanillastr[id][UHITEM_STR_ACTOR] = actor;
-	uh_itemvanillastr[id][UHITEM_STR_NAME] = name;
-	uh_itemvanillastr[id][UHITEM_STR_MUGSHOT] = mugshot;
-	uh_itemvanillastr[id][UHITEM_STR_SOUND] = sound;
-	uh_itemvanillastr[id][UHITEM_STR_OPENSOUND] = "";
-	uh_itemvanillastr[id][UHITEM_STR_EYEDROPSOUND] = "";
-	uh_itemvanillastr[id][UHITEM_STR_ICON] = icon;
-	uh_itemvanillagroup[id] = group;
-	uh_itemvanillaisbox[id] = 0;
+  uh_itemvanilladefined[id] = UHDB_ROW_ACTIVE;
+  uh_itemvanillastr[id][UHITEM_STR_ACTOR] = actor;
+  uh_itemvanillastr[id][UHITEM_STR_NAME] = name;
+  uh_itemvanillastr[id][UHITEM_STR_MUGSHOT] = mugshot;
+  uh_itemvanillastr[id][UHITEM_STR_SOUND] = sound;
+  uh_itemvanillastr[id][UHITEM_STR_OPENSOUND] = "";
+  uh_itemvanillastr[id][UHITEM_STR_EYEDROPSOUND] = "";
+  uh_itemvanillastr[id][UHITEM_STR_ICON] = icon;
+  uh_itemvanillagroup[id] = group;
+  uh_itemvanillaisbox[id] = 0;
 }
 
 function int ItemWriteCustom(str actor, str name, str icon, int group, str mugshot, str sound) {
-	int i = uh_itemcustomcount;
-	int itemid = -1 - i;
-	uh_itemcustomstr[i][UHITEM_STR_ACTOR] = actor;
-	uh_itemcustomstr[i][UHITEM_STR_NAME] = name;
-	uh_itemcustomstr[i][UHITEM_STR_MUGSHOT] = mugshot;
-	uh_itemcustomstr[i][UHITEM_STR_SOUND] = sound;
-	uh_itemcustomstr[i][UHITEM_STR_OPENSOUND] = "";
-	uh_itemcustomstr[i][UHITEM_STR_EYEDROPSOUND] = "";
-	uh_itemcustomstr[i][UHITEM_STR_ICON] = icon;
-	uh_itemcustomstr[i][UHITEM_STR_STATE] = UHDB_ROW_ACTIVE;
-	uh_itemcustomgroup[i] = group;
-	uh_itemcustomisbox[i] = 0;
-	uh_itemcustomcount++;
-	return itemid;
+  int i = uh_itemcustomcount;
+  int itemid = -1 - i;
+  uh_itemcustomstr[i][UHITEM_STR_ACTOR] = actor;
+  uh_itemcustomstr[i][UHITEM_STR_NAME] = name;
+  uh_itemcustomstr[i][UHITEM_STR_MUGSHOT] = mugshot;
+  uh_itemcustomstr[i][UHITEM_STR_SOUND] = sound;
+  uh_itemcustomstr[i][UHITEM_STR_OPENSOUND] = "";
+  uh_itemcustomstr[i][UHITEM_STR_EYEDROPSOUND] = "";
+  uh_itemcustomstr[i][UHITEM_STR_ICON] = icon;
+  uh_itemcustomstr[i][UHITEM_STR_STATE] = UHDB_ROW_ACTIVE;
+  uh_itemcustomgroup[i] = group;
+  uh_itemcustomisbox[i] = 0;
+  uh_itemcustomcount++;
+  return itemid;
 }
 
 function int SetUnholyBoxCore(int boxid, str opensound, str eyedropsound) {
-	int slot = ItemResolveSlot(boxid);
-	if (slot == UHITEM_FAIL)
-		return UHITEM_FAIL;
-	if (boxid >= 0) {
-		uh_itemvanillaisbox[slot] = 1;
-		uh_itemvanillastr[slot][UHITEM_STR_OPENSOUND] = opensound;
-		uh_itemvanillastr[slot][UHITEM_STR_EYEDROPSOUND] = eyedropsound;
-	}
-	else {
-		uh_itemcustomisbox[slot] = 1;
-		uh_itemcustomstr[slot][UHITEM_STR_OPENSOUND] = opensound;
-		uh_itemcustomstr[slot][UHITEM_STR_EYEDROPSOUND] = eyedropsound;
-	}
-	return boxid;
+  int slot = ItemResolveSlot(boxid);
+  if (slot == UHITEM_FAIL)
+    return UHITEM_FAIL;
+  if (boxid >= 0) {
+    uh_itemvanillaisbox[slot] = 1;
+    uh_itemvanillastr[slot][UHITEM_STR_OPENSOUND] = opensound;
+    uh_itemvanillastr[slot][UHITEM_STR_EYEDROPSOUND] = eyedropsound;
+  }
+  else {
+    uh_itemcustomisbox[slot] = 1;
+    uh_itemcustomstr[slot][UHITEM_STR_OPENSOUND] = opensound;
+    uh_itemcustomstr[slot][UHITEM_STR_EYEDROPSOUND] = eyedropsound;
+  }
+  return boxid;
 }
 
 function int FindItemDropRow(int boxid, int itemid, str giveactor, int amt) {
-	int i;
-	for (i = 0; i < uh_itemdropcount; i++) {
-		if (uh_itemdropboxid[i] == boxid
-			&& uh_itemdropitemid[i] == itemid
-			&& uh_itemdropamt[i] == amt
-			&& StrICmp(uh_itemdropgive[i], giveactor) == 0)
-			return i;
-	}
-	return -1;
+  int i;
+  for (i = 0; i < uh_itemdropcount; i++) {
+    if (uh_itemdropboxid[i] == boxid
+      && uh_itemdropitemid[i] == itemid
+      && uh_itemdropamt[i] == amt
+      && StrICmp(uh_itemdropgive[i], giveactor) == 0)
+      return i;
+  }
+  return -1;
 }
 
 // First row for (box, item) — API helpers / prosperity fallback.
 function int FindItemDropRowByItem(int boxid, int itemid) {
-	int i;
-	for (i = 0; i < uh_itemdropcount; i++) {
-		if (uh_itemdropboxid[i] == boxid && uh_itemdropitemid[i] == itemid)
-			return i;
-	}
-	return -1;
+  int i;
+  for (i = 0; i < uh_itemdropcount; i++) {
+    if (uh_itemdropboxid[i] == boxid && uh_itemdropitemid[i] == itemid)
+      return i;
+  }
+  return -1;
 }
 
 // Same (box, item, giveActor, amt) again: accumulate weight. sting kept from first row.
 function int AddUnholyItemDropCore(int boxid, int itemid, int weight, int amt, str stingoverride, str giveactor) {
-	int row;
-	if (!IsItemDefined(boxid) || !IsItemDefined(itemid))
-		return UHITEM_FAIL;
-	if (!IsUnholyBox(boxid))
-		return UHITEM_FAIL;
-	if (weight <= 0)
-		return UHITEM_FAIL;
-	if (amt < 1)
-		amt = 1;
+  int row;
+  if (!IsItemDefined(boxid) || !IsItemDefined(itemid))
+    return UHITEM_FAIL;
+  if (!IsUnholyBox(boxid))
+    return UHITEM_FAIL;
+  if (weight <= 0)
+    return UHITEM_FAIL;
+  if (amt < 1)
+    amt = 1;
 
-	row = FindItemDropRow(boxid, itemid, giveactor, amt);
-	if (row >= 0) {
-		uh_itemdropweight[row] += weight;
-		return row;
-	}
-	if (uh_itemdropcount >= UH_MAX_ITEM_DROPS)
-		return UHITEM_FAIL;
-	row = uh_itemdropcount;
-	uh_itemdropboxid[row] = boxid;
-	uh_itemdropitemid[row] = itemid;
-	uh_itemdropweight[row] = weight;
-	uh_itemdropamt[row] = amt;
-	uh_itemdropsting[row] = stingoverride;
-	uh_itemdropgive[row] = giveactor;
-	uh_itemdropcount++;
-	return row;
+  row = FindItemDropRow(boxid, itemid, giveactor, amt);
+  if (row >= 0) {
+    uh_itemdropweight[row] += weight;
+    return row;
+  }
+  if (uh_itemdropcount >= UH_MAX_ITEM_DROPS)
+    return UHITEM_FAIL;
+  row = uh_itemdropcount;
+  uh_itemdropboxid[row] = boxid;
+  uh_itemdropitemid[row] = itemid;
+  uh_itemdropweight[row] = weight;
+  uh_itemdropamt[row] = amt;
+  uh_itemdropsting[row] = stingoverride;
+  uh_itemdropgive[row] = giveactor;
+  uh_itemdropcount++;
+  return row;
 }
 
 function int GetItemDropWeight(int boxid, int itemid) {
-	int row = FindItemDropRowByItem(boxid, itemid);
-	if (row < 0)
-		return 0;
-	return uh_itemdropweight[row];
+  int row = FindItemDropRowByItem(boxid, itemid);
+  if (row < 0)
+    return 0;
+  return uh_itemdropweight[row];
 }
 
 function int GetItemDropAmt(int boxid, int itemid) {
-	int row = FindItemDropRowByItem(boxid, itemid);
-	if (row < 0)
-		return 0;
-	return uh_itemdropamt[row];
+  int row = FindItemDropRowByItem(boxid, itemid);
+  if (row < 0)
+    return 0;
+  return uh_itemdropamt[row];
 }
 
 function str GetItemDropSting(int boxid, int itemid) {
-	int row = FindItemDropRowByItem(boxid, itemid);
-	if (row < 0)
-		return "";
-	return GetItemDropStingByRow(row);
+  int row = FindItemDropRowByItem(boxid, itemid);
+  if (row < 0)
+    return "";
+  return GetItemDropStingByRow(row);
 }
 
 // Auto* (not *Silent) runs Use with its own sound — do not also play item loot sting.
 function bool ItemDropGiveIsAutoNonSilent(str give) {
-	int n;
-	if (StrCmp(give, "") == 0)
-		return false;
-	n = StrLen(give);
-	if (n < 4)
-		return false;
-	if (StrICmp(StrMid(give, 0, 4), "Auto") != 0)
-		return false;
-	if (n >= 6 && StrICmp(StrRight(give, 6), "Silent") == 0)
-		return false;
-	return true;
+  int n;
+  if (StrCmp(give, "") == 0)
+    return false;
+  n = StrLen(give);
+  if (n < 4)
+    return false;
+  if (StrICmp(StrMid(give, 0, 4), "Auto") != 0)
+    return false;
+  if (n >= 6 && StrICmp(StrRight(give, 6), "Silent") == 0)
+    return false;
+  return true;
 }
 
 function str GetItemDropStingByRow(int row) {
-	str override;
-	int itemid;
-	if (row < 0 || row >= uh_itemdropcount)
-		return "";
-	override = uh_itemdropsting[row];
-	if (StrCmp(override, "") != 0)
-		return override;
-	// Explicit empty override + Auto Use sound → no ACS sting (e.g. Coin → AutoUnholyBook).
-	if (ItemDropGiveIsAutoNonSilent(uh_itemdropgive[row]))
-		return "";
-	itemid = uh_itemdropitemid[row];
-	return GetItemSound(itemid);
+  str override;
+  int itemid;
+  if (row < 0 || row >= uh_itemdropcount)
+    return "";
+  override = uh_itemdropsting[row];
+  if (StrCmp(override, "") != 0)
+    return override;
+  // Explicit empty override + Auto Use sound → no ACS sting (e.g. Coin → AutoUnholyBook).
+  if (ItemDropGiveIsAutoNonSilent(uh_itemdropgive[row]))
+    return "";
+  itemid = uh_itemdropitemid[row];
+  return GetItemSound(itemid);
 }
 
 function str GetItemDropGiveActorByRow(int row) {
-	str give;
-	int itemid;
-	if (row < 0 || row >= uh_itemdropcount)
-		return "";
-	give = uh_itemdropgive[row];
-	if (StrCmp(give, "") != 0)
-		return give;
-	itemid = uh_itemdropitemid[row];
-	return GetItemActor(itemid);
+  str give;
+  int itemid;
+  if (row < 0 || row >= uh_itemdropcount)
+    return "";
+  give = uh_itemdropgive[row];
+  if (StrCmp(give, "") != 0)
+    return give;
+  itemid = uh_itemdropitemid[row];
+  return GetItemActor(itemid);
 }
 
 function int GetItemDropAmtByRow(int row) {
-	if (row < 0 || row >= uh_itemdropcount)
-		return 0;
-	return uh_itemdropamt[row];
+  if (row < 0 || row >= uh_itemdropcount)
+    return 0;
+  return uh_itemdropamt[row];
 }
 
 function int GetItemDropItemIdByRow(int row) {
-	if (row < 0 || row >= uh_itemdropcount)
-		return UHITEM_FAIL;
-	return uh_itemdropitemid[row];
+  if (row < 0 || row >= uh_itemdropcount)
+    return UHITEM_FAIL;
+  return uh_itemdropitemid[row];
 }
 
 function int ItemBoxWeightSum(int boxid) {
-	int sum = 0;
-	int i;
-	if (!IsUnholyBox(boxid) || !IsItemEnabled(boxid))
-		return 0;
-	for (i = 0; i < uh_itemdropcount; i++) {
-		if (uh_itemdropboxid[i] == boxid && IsItemEnabled(uh_itemdropitemid[i]))
-			sum += uh_itemdropweight[i];
-	}
-	return sum;
+  int sum = 0;
+  int i;
+  if (!IsUnholyBox(boxid) || !IsItemEnabled(boxid))
+    return 0;
+  for (i = 0; i < uh_itemdropcount; i++) {
+    if (uh_itemdropboxid[i] == boxid && IsItemEnabled(uh_itemdropitemid[i]))
+      sum += uh_itemdropweight[i];
+  }
+  return sum;
 }
 
 // Weighted pick; returns drop row index or -1. Sets uh_itemLastDropRow.
 function int RandomItemDropRowFromBox(int boxid) {
-	int sum;
-	int roll;
-	int i;
-	uh_itemlastdroprow = -1;
-	if (!IsUnholyBox(boxid) || !IsItemEnabled(boxid))
-		return -1;
-	sum = ItemBoxWeightSum(boxid);
-	if (sum <= 0)
-		return -1;
-	roll = random(1, sum);
-	for (i = 0; i < uh_itemdropcount; i++) {
-		if (uh_itemdropboxid[i] != boxid)
-			continue;
-		if (!IsItemEnabled(uh_itemdropitemid[i]))
-			continue;
-		roll -= uh_itemdropweight[i];
-		if (roll <= 0) {
-			uh_itemlastdroprow = i;
-			return i;
-		}
-	}
-	return -1;
+  int sum;
+  int roll;
+  int i;
+  uh_itemlastdroprow = -1;
+  if (!IsUnholyBox(boxid) || !IsItemEnabled(boxid))
+    return -1;
+  sum = ItemBoxWeightSum(boxid);
+  if (sum <= 0)
+    return -1;
+  roll = random(1, sum);
+  for (i = 0; i < uh_itemdropcount; i++) {
+    if (uh_itemdropboxid[i] != boxid)
+      continue;
+    if (!IsItemEnabled(uh_itemdropitemid[i]))
+      continue;
+    roll -= uh_itemdropweight[i];
+    if (roll <= 0) {
+      uh_itemlastdroprow = i;
+      return i;
+    }
+  }
+  return -1;
 }
 
 // Weighted pick. Returns item id or UHITEM_FAIL. Sets uh_itemLastDropRow.
 function int RandomItemFromBox(int boxid) {
-	int row = RandomItemDropRowFromBox(boxid);
-	if (row < 0)
-		return UHITEM_FAIL;
-	return uh_itemdropitemid[row];
+  int row = RandomItemDropRowFromBox(boxid);
+  if (row < 0)
+    return UHITEM_FAIL;
+  return uh_itemdropitemid[row];
 }
 
 // Prosperity: roll twice, keep the rarer (lower weight) *row*. Ties keep first.
 function int RandomItemFromBoxProsperity(int boxid) {
-	int ra = RandomItemDropRowFromBox(boxid);
-	int rb = RandomItemDropRowFromBox(boxid);
-	if (ra < 0) {
-		uh_itemlastdroprow = rb;
-		if (rb < 0)
-			return UHITEM_FAIL;
-		return uh_itemdropitemid[rb];
-	}
-	if (rb < 0) {
-		uh_itemlastdroprow = ra;
-		return uh_itemdropitemid[ra];
-	}
-	if (uh_itemdropweight[rb] < uh_itemdropweight[ra]) {
-		uh_itemlastdroprow = rb;
-		return uh_itemdropitemid[rb];
-	}
-	uh_itemlastdroprow = ra;
-	return uh_itemdropitemid[ra];
+  int ra = RandomItemDropRowFromBox(boxid);
+  int rb = RandomItemDropRowFromBox(boxid);
+  if (ra < 0) {
+    uh_itemlastdroprow = rb;
+    if (rb < 0)
+      return UHITEM_FAIL;
+    return uh_itemdropitemid[rb];
+  }
+  if (rb < 0) {
+    uh_itemlastdroprow = ra;
+    return uh_itemdropitemid[ra];
+  }
+  if (uh_itemdropweight[rb] < uh_itemdropweight[ra]) {
+    uh_itemlastdroprow = rb;
+    return uh_itemdropitemid[rb];
+  }
+  uh_itemlastdroprow = ra;
+  return uh_itemdropitemid[ra];
 }
 
 // Eternal D6: eligible home boxes exclude coin spend pool and AssHat morph pool.
 #libdefine UH_EDEN_D6_HOME_MAX 32
 
 function bool IsEdenD6EligibleBox(int boxid) {
-	str actor;
-	if (!IsUnholyBox(boxid) || !IsItemEnabled(boxid))
-		return false;
-	actor = GetItemActor(boxid);
-	if (StrICmp(actor, "DLC_CoinItem") == 0)
-		return false;
-	if (StrICmp(actor, "AssHatItem") == 0)
-		return false;
-	if (StrICmp(actor, "DickHatItem") == 0)
-		return false;
-	return true;
+  str actor;
+  if (!IsUnholyBox(boxid) || !IsItemEnabled(boxid))
+    return false;
+  actor = GetItemActor(boxid);
+  if (StrICmp(actor, "DLC_CoinItem") == 0)
+    return false;
+  if (StrICmp(actor, "AssHatItem") == 0)
+    return false;
+  if (StrICmp(actor, "DickHatItem") == 0)
+    return false;
+  return true;
 }
 
 // Among boxes that drop itemid, pick one weighted by that item's drop weights in each box.
 function int PickItemHomeBoxEdenD6(int itemid) {
-	int boxes[UH_EDEN_D6_HOME_MAX];
-	int weights[UH_EDEN_D6_HOME_MAX];
-	int n;
-	int i;
-	int j;
-	int found;
-	int boxid;
-	int sum;
-	int roll;
+  int boxes[UH_EDEN_D6_HOME_MAX];
+  int weights[UH_EDEN_D6_HOME_MAX];
+  int n;
+  int i;
+  int j;
+  int found;
+  int boxid;
+  int sum;
+  int roll;
 
-	n = 0;
-	if (!IsItemEnabled(itemid))
-		return UHITEM_FAIL;
+  n = 0;
+  if (!IsItemEnabled(itemid))
+    return UHITEM_FAIL;
 
-	for (i = 0; i < uh_itemdropcount; i++) {
-		if (uh_itemdropitemid[i] != itemid)
-			continue;
-		boxid = uh_itemdropboxid[i];
-		if (!IsEdenD6EligibleBox(boxid))
-			continue;
-		found = -1;
-		for (j = 0; j < n; j++) {
-			if (boxes[j] == boxid) {
-				found = j;
-				break;
-			}
-		}
-		if (found >= 0)
-			weights[found] += uh_itemdropweight[i];
-		else if (n < UH_EDEN_D6_HOME_MAX) {
-			boxes[n] = boxid;
-			weights[n] = uh_itemdropweight[i];
-			n++;
-		}
-	}
+  for (i = 0; i < uh_itemdropcount; i++) {
+    if (uh_itemdropitemid[i] != itemid)
+      continue;
+    boxid = uh_itemdropboxid[i];
+    if (!IsEdenD6EligibleBox(boxid))
+      continue;
+    found = -1;
+    for (j = 0; j < n; j++) {
+      if (boxes[j] == boxid) {
+        found = j;
+        break;
+      }
+    }
+    if (found >= 0)
+      weights[found] += uh_itemdropweight[i];
+    else if (n < UH_EDEN_D6_HOME_MAX) {
+      boxes[n] = boxid;
+      weights[n] = uh_itemdropweight[i];
+      n++;
+    }
+  }
 
-	if (n <= 0)
-		return UHITEM_FAIL;
-	if (n == 1)
-		return boxes[0];
+  if (n <= 0)
+    return UHITEM_FAIL;
+  if (n == 1)
+    return boxes[0];
 
-	sum = 0;
-	for (j = 0; j < n; j++)
-		sum += weights[j];
-	if (sum <= 0)
-		return UHITEM_FAIL;
-	roll = random(1, sum);
-	for (j = 0; j < n; j++) {
-		roll -= weights[j];
-		if (roll <= 0)
-			return boxes[j];
-	}
-	return UHITEM_FAIL;
+  sum = 0;
+  for (j = 0; j < n; j++)
+    sum += weights[j];
+  if (sum <= 0)
+    return UHITEM_FAIL;
+  roll = random(1, sum);
+  for (j = 0; j < n; j++) {
+    roll -= weights[j];
+    if (roll <= 0)
+      return boxes[j];
+  }
+  return UHITEM_FAIL;
 }
 
 function int ItemBoxWeightSumEdenD6(int boxid, int excludeitemid) {
-	int coinid;
-	int sum;
-	int i;
+  int coinid;
+  int sum;
+  int i;
 
-	coinid = FindItemByActor("DLC_CoinItem");
-	sum = 0;
-	if (!IsUnholyBox(boxid) || !IsItemEnabled(boxid))
-		return 0;
-	for (i = 0; i < uh_itemdropcount; i++) {
-		if (uh_itemdropboxid[i] != boxid)
-			continue;
-		if (uh_itemdropitemid[i] == excludeitemid)
-			continue;
-		if (uh_itemdropitemid[i] == coinid)
-			continue;
-		if (!IsItemEnabled(uh_itemdropitemid[i]))
-			continue;
-		sum += uh_itemdropweight[i];
-	}
-	return sum;
+  coinid = FindItemByActor("DLC_CoinItem");
+  sum = 0;
+  if (!IsUnholyBox(boxid) || !IsItemEnabled(boxid))
+    return 0;
+  for (i = 0; i < uh_itemdropcount; i++) {
+    if (uh_itemdropboxid[i] != boxid)
+      continue;
+    if (uh_itemdropitemid[i] == excludeitemid)
+      continue;
+    if (uh_itemdropitemid[i] == coinid)
+      continue;
+    if (!IsItemEnabled(uh_itemdropitemid[i]))
+      continue;
+    sum += uh_itemdropweight[i];
+  }
+  return sum;
 }
 
 // Weighted pick excluding self and DLC_Coin. Sets uh_itemLastDropRow.
 function int RandomItemFromBoxEdenD6(int boxid, int excludeitemid) {
-	int coinid;
-	int sum;
-	int roll;
-	int i;
+  int coinid;
+  int sum;
+  int roll;
+  int i;
 
-	coinid = FindItemByActor("DLC_CoinItem");
-	uh_itemlastdroprow = -1;
-	sum = ItemBoxWeightSumEdenD6(boxid, excludeitemid);
-	if (sum <= 0)
-		return UHITEM_FAIL;
-	roll = random(1, sum);
-	for (i = 0; i < uh_itemdropcount; i++) {
-		if (uh_itemdropboxid[i] != boxid)
-			continue;
-		if (uh_itemdropitemid[i] == excludeitemid)
-			continue;
-		if (uh_itemdropitemid[i] == coinid)
-			continue;
-		if (!IsItemEnabled(uh_itemdropitemid[i]))
-			continue;
-		roll -= uh_itemdropweight[i];
-		if (roll <= 0) {
-			uh_itemlastdroprow = i;
-			return uh_itemdropitemid[i];
-		}
-	}
-	return UHITEM_FAIL;
+  coinid = FindItemByActor("DLC_CoinItem");
+  uh_itemlastdroprow = -1;
+  sum = ItemBoxWeightSumEdenD6(boxid, excludeitemid);
+  if (sum <= 0)
+    return UHITEM_FAIL;
+  roll = random(1, sum);
+  for (i = 0; i < uh_itemdropcount; i++) {
+    if (uh_itemdropboxid[i] != boxid)
+      continue;
+    if (uh_itemdropitemid[i] == excludeitemid)
+      continue;
+    if (uh_itemdropitemid[i] == coinid)
+      continue;
+    if (!IsItemEnabled(uh_itemdropitemid[i]))
+      continue;
+    roll -= uh_itemdropweight[i];
+    if (roll <= 0) {
+      uh_itemlastdroprow = i;
+      return uh_itemdropitemid[i];
+    }
+  }
+  return UHITEM_FAIL;
 }
 
 function int AssHatPendingAlloc(int tid, str itemactor) {
-	int i;
-	for (i = 0; i < UH_ASSHAT_PENDING_MAX; i++) {
-		if (uh_asshatpendingused[i] == 0) {
-			uh_asshatpendingused[i] = 1;
-			uh_asshatpendingtid[i] = tid;
-			uh_asshatpendingitem[i] = itemactor;
-			return i;
-		}
-	}
-	return -1;
+  int i;
+  for (i = 0; i < UH_ASSHAT_PENDING_MAX; i++) {
+    if (uh_asshatpendingused[i] == 0) {
+      uh_asshatpendingused[i] = 1;
+      uh_asshatpendingtid[i] = tid;
+      uh_asshatpendingitem[i] = itemactor;
+      return i;
+    }
+  }
+  return -1;
 }
 
 function str AssHatPendingTake(int tid) {
-	int i;
-	str item;
-	for (i = 0; i < UH_ASSHAT_PENDING_MAX; i++) {
-		if (uh_asshatpendingused[i] != 0 && uh_asshatpendingtid[i] == tid) {
-			item = uh_asshatpendingitem[i];
-			uh_asshatpendingused[i] = 0;
-			uh_asshatpendingtid[i] = 0;
-			uh_asshatpendingitem[i] = "";
-			return item;
-		}
-	}
-	return "";
+  int i;
+  str item;
+  for (i = 0; i < UH_ASSHAT_PENDING_MAX; i++) {
+    if (uh_asshatpendingused[i] != 0 && uh_asshatpendingtid[i] == tid) {
+      item = uh_asshatpendingitem[i];
+      uh_asshatpendingused[i] = 0;
+      uh_asshatpendingtid[i] = 0;
+      uh_asshatpendingitem[i] = "";
+      return item;
+    }
+  }
+  return "";
 }
 
 function str AssHatPendingPeek(int tid) {
-	int i;
-	for (i = 0; i < UH_ASSHAT_PENDING_MAX; i++) {
-		if (uh_asshatpendingused[i] != 0 && uh_asshatpendingtid[i] == tid)
-			return uh_asshatpendingitem[i];
-	}
-	return "";
+  int i;
+  for (i = 0; i < UH_ASSHAT_PENDING_MAX; i++) {
+    if (uh_asshatpendingused[i] != 0 && uh_asshatpendingtid[i] == tid)
+      return uh_asshatpendingitem[i];
+  }
+  return "";
 }
 
 function int FindCoinSpendByKey(int mincount, str giveactor) {
-	int i;
-	for (i = 0; i < uh_coinspendcount; i++) {
-		if (uh_coinspendmin[i] == mincount && StrICmp(uh_coinspendgive[i], giveactor) == 0)
-			return i;
-	}
-	return -1;
+  int i;
+  for (i = 0; i < uh_coinspendcount; i++) {
+    if (uh_coinspendmin[i] == mincount && StrICmp(uh_coinspendgive[i], giveactor) == 0)
+      return i;
+  }
+  return -1;
 }
 
 // takeAmt 0 = take all at use time. Same (minCount, giveActor) returns existing row (no double).
 function int DefineUnholyCoinSpendCore(int mincount, int takeamt, str giveactor, str sound) {
-	int row;
-	if (mincount < 1)
-		return UHITEM_FAIL;
-	if (StrCmp(giveactor, "") == 0)
-		return UHITEM_FAIL;
-	if (takeamt < 0)
-		takeamt = 0;
+  int row;
+  if (mincount < 1)
+    return UHITEM_FAIL;
+  if (StrCmp(giveactor, "") == 0)
+    return UHITEM_FAIL;
+  if (takeamt < 0)
+    takeamt = 0;
 
-	row = FindCoinSpendByKey(mincount, giveactor);
-	if (row >= 0)
-		return row;
-	if (uh_coinspendcount >= UH_MAX_COIN_SPENDS)
-		return UHITEM_FAIL;
+  row = FindCoinSpendByKey(mincount, giveactor);
+  if (row >= 0)
+    return row;
+  if (uh_coinspendcount >= UH_MAX_COIN_SPENDS)
+    return UHITEM_FAIL;
 
-	row = uh_coinspendcount;
-	uh_coinspendmin[row] = mincount;
-	uh_coinspendtake[row] = takeamt;
-	uh_coinspendgive[row] = giveactor;
-	uh_coinspendsound[row] = sound;
-	uh_coinspendcount++;
-	return row;
+  row = uh_coinspendcount;
+  uh_coinspendmin[row] = mincount;
+  uh_coinspendtake[row] = takeamt;
+  uh_coinspendgive[row] = giveactor;
+  uh_coinspendsound[row] = sound;
+  uh_coinspendcount++;
+  return row;
 }
 
 // Highest eligible minCount; uniform pick among rows at that tier. -1 if none.
 function int FindCoinSpendRow(int coins) {
-	int i;
-	int bestmin;
-	int n;
-	int candidates[UH_MAX_COIN_SPENDS];
+  int i;
+  int bestmin;
+  int n;
+  int candidates[UH_MAX_COIN_SPENDS];
 
-	bestmin = 0;
-	for (i = 0; i < uh_coinspendcount; i++) {
-		if (uh_coinspendmin[i] <= coins && uh_coinspendmin[i] > bestmin)
-			bestmin = uh_coinspendmin[i];
-	}
-	if (bestmin < 1)
-		return -1;
+  bestmin = 0;
+  for (i = 0; i < uh_coinspendcount; i++) {
+    if (uh_coinspendmin[i] <= coins && uh_coinspendmin[i] > bestmin)
+      bestmin = uh_coinspendmin[i];
+  }
+  if (bestmin < 1)
+    return -1;
 
-	n = 0;
-	for (i = 0; i < uh_coinspendcount; i++) {
-		if (uh_coinspendmin[i] == bestmin) {
-			candidates[n] = i;
-			n++;
-		}
-	}
-	if (n < 1)
-		return -1;
-	return candidates[Random(0, n - 1)];
+  n = 0;
+  for (i = 0; i < uh_coinspendcount; i++) {
+    if (uh_coinspendmin[i] == bestmin) {
+      candidates[n] = i;
+      n++;
+    }
+  }
+  if (n < 1)
+    return -1;
+  return candidates[Random(0, n - 1)];
 }
 
 // --- DefineCopyWep tables ----------------------------------------------------
@@ -1771,257 +1771,257 @@ int uh_copymegacount = 0;
 int uh_copymegaofficialcount = 0;
 
 function bool CopyWepSlotValid(int kind, int slot) {
-	if (kind == UHCOPY_MEGA)
-		return slot >= UHCOPY_SLOT_RANGED && slot <= UHCOPY_SLOT_SHIELD;
-	if (kind == UHCOPY_QWANT)
-		return slot >= UHCOPY_QWANT_NORMAL && slot <= UHCOPY_QWANT_FAIRY;
-	if (kind == UHCOPY_NEGA)
-		return slot >= UHCOPY_NEGA_MM1 && slot <= UHCOPY_NEGA_MMWT;
-	return false;
+  if (kind == UHCOPY_MEGA)
+    return slot >= UHCOPY_SLOT_RANGED && slot <= UHCOPY_SLOT_SHIELD;
+  if (kind == UHCOPY_QWANT)
+    return slot >= UHCOPY_QWANT_NORMAL && slot <= UHCOPY_QWANT_FAIRY;
+  if (kind == UHCOPY_NEGA)
+    return slot >= UHCOPY_NEGA_MM1 && slot <= UHCOPY_NEGA_MMWT;
+  return false;
 }
 
 function str CopyWepMakeDmgStem(str wepactor) {
-	int len = StrLen(wepactor);
-	if (len >= 4 && StrCmp(StrRight(wepactor, 4), "WepU") == 0)
-		return StrLeft(wepactor, len - 4);
-	return wepactor;
+  int len = StrLen(wepactor);
+  if (len >= 4 && StrCmp(StrRight(wepactor, 4), "WepU") == 0)
+    return StrLeft(wepactor, len - 4);
+  return wepactor;
 }
 
 function int FindCopyWepByKindActor(int kind, str wepactor) {
-	int i;
-	for (i = 0; i < uh_copycount; i++) {
-		if (uh_copykind[i] == kind && StrICmp(uh_copyactor[i], wepactor) == 0)
-			return i;
-	}
-	return -1;
+  int i;
+  for (i = 0; i < uh_copycount; i++) {
+    if (uh_copykind[i] == kind && StrICmp(uh_copyactor[i], wepactor) == 0)
+      return i;
+  }
+  return -1;
 }
 
 function int FindCopyWepByActor(str wepactor) {
-	int i;
-	for (i = 0; i < uh_copycount; i++) {
-		if (StrICmp(uh_copyactor[i], wepactor) == 0)
-			return i;
-	}
-	return -1;
+  int i;
+  for (i = 0; i < uh_copycount; i++) {
+    if (StrICmp(uh_copyactor[i], wepactor) == 0)
+      return i;
+  }
+  return -1;
 }
 
 function int GetCopyWepKind(int row) {
-	if (row < 0 || row >= uh_copycount)
-		return 0;
-	return uh_copykind[row];
+  if (row < 0 || row >= uh_copycount)
+    return 0;
+  return uh_copykind[row];
 }
 
 function int GetCopyWepSlot(int row) {
-	if (row < 0 || row >= uh_copycount)
-		return 0;
-	return uh_copyslot[row];
+  if (row < 0 || row >= uh_copycount)
+    return 0;
+  return uh_copyslot[row];
 }
 
 function int GetCopyWepRegenFlags(int row) {
-	if (row < 0 || row >= uh_copycount)
-		return 0;
-	return uh_copyregenflags[row];
+  if (row < 0 || row >= uh_copycount)
+    return 0;
+  return uh_copyregenflags[row];
 }
 
 function int GetCopyWepCount(void) {
-	return uh_copycount;
+  return uh_copycount;
 }
 
 function str GetCopyWepActor(int row) {
-	if (row < 0 || row >= uh_copycount)
-		return "";
-	return uh_copyactor[row];
+  if (row < 0 || row >= uh_copycount)
+    return "";
+  return uh_copyactor[row];
 }
 
 script "uh_copywep_count" (void) {
-	SetResultValue(GetCopyWepCount());
+  SetResultValue(GetCopyWepCount());
 }
 
 script "uh_copywep_kind" (int row) {
-	SetResultValue(GetCopyWepKind(row));
+  SetResultValue(GetCopyWepKind(row));
 }
 
 script "uh_copywep_actor" (int row) {
-	SetResultValue(GetCopyWepActor(row));
+  SetResultValue(GetCopyWepActor(row));
 }
 
 function int DefineCopyWepCore(int kind, int slot, str wepactor) {
-	int row;
-	if (kind != UHCOPY_MEGA && kind != UHCOPY_QWANT && kind != UHCOPY_NEGA)
-		return UHCOPY_FAIL;
-	if (!CopyWepSlotValid(kind, slot))
-		return UHCOPY_FAIL;
-	if (StrCmp(wepactor, "") == 0)
-		return UHCOPY_FAIL;
+  int row;
+  if (kind != UHCOPY_MEGA && kind != UHCOPY_QWANT && kind != UHCOPY_NEGA)
+    return UHCOPY_FAIL;
+  if (!CopyWepSlotValid(kind, slot))
+    return UHCOPY_FAIL;
+  if (StrCmp(wepactor, "") == 0)
+    return UHCOPY_FAIL;
 
-	row = FindCopyWepByKindActor(kind, wepactor);
-	if (row >= 0)
-		return row;
-	if (uh_copycount >= UH_MAX_COPYWEPS)
-		return UHCOPY_FAIL;
+  row = FindCopyWepByKindActor(kind, wepactor);
+  if (row >= 0)
+    return row;
+  if (uh_copycount >= UH_MAX_COPYWEPS)
+    return UHCOPY_FAIL;
 
-	row = uh_copycount;
-	uh_copykind[row] = kind;
-	uh_copyslot[row] = slot;
-	uh_copyactor[row] = wepactor;
-	uh_copydmgstem[row] = CopyWepMakeDmgStem(wepactor);
-	uh_copymegaid[row] = 0;
-	uh_copyregenflags[row] = 0;
-	if (kind == UHCOPY_MEGA) {
-		uh_copymegacount++;
-		uh_copymegaid[row] = uh_copymegacount;
-	}
-	uh_copycount++;
-	return row;
+  row = uh_copycount;
+  uh_copykind[row] = kind;
+  uh_copyslot[row] = slot;
+  uh_copyactor[row] = wepactor;
+  uh_copydmgstem[row] = CopyWepMakeDmgStem(wepactor);
+  uh_copymegaid[row] = 0;
+  uh_copyregenflags[row] = 0;
+  if (kind == UHCOPY_MEGA) {
+    uh_copymegacount++;
+    uh_copymegaid[row] = uh_copymegacount;
+  }
+  uh_copycount++;
+  return row;
 }
 
 function int DefineCopyWepRegenCore(str wepactor, int flags) {
-	int row;
-	if (StrCmp(wepactor, "") == 0)
-		return UHCOPY_FAIL;
-	row = FindCopyWepByActor(wepactor);
-	if (row < 0)
-		return UHCOPY_FAIL;
-	uh_copyregenflags[row] = flags;
-	return row;
+  int row;
+  if (StrCmp(wepactor, "") == 0)
+    return UHCOPY_FAIL;
+  row = FindCopyWepByActor(wepactor);
+  if (row < 0)
+    return UHCOPY_FAIL;
+  uh_copyregenflags[row] = flags;
+  return row;
 }
 
 function void FreezeMegaOfficialCopyCount(void) {
-	uh_copymegaofficialcount = uh_copymegacount;
+  uh_copymegaofficialcount = uh_copymegacount;
 }
 
 function int GetMegaOfficialCopyCount(void) {
-	return uh_copymegaofficialcount;
+  return uh_copymegaofficialcount;
 }
 
 function int CountCopyWepByKind(int kind) {
-	int i;
-	int n;
-	n = 0;
-	for (i = 0; i < uh_copycount; i++) {
-		if (uh_copykind[i] == kind)
-			n++;
-	}
-	return n;
+  int i;
+  int n;
+  n = 0;
+  for (i = 0; i < uh_copycount; i++) {
+    if (uh_copykind[i] == kind)
+      n++;
+  }
+  return n;
 }
 
 function int CountCopyWepByKindSlot(int kind, int slot) {
-	int i;
-	int n;
-	n = 0;
-	for (i = 0; i < uh_copycount; i++) {
-		if (uh_copykind[i] == kind && uh_copyslot[i] == slot)
-			n++;
-	}
-	return n;
+  int i;
+  int n;
+  n = 0;
+  for (i = 0; i < uh_copycount; i++) {
+    if (uh_copykind[i] == kind && uh_copyslot[i] == slot)
+      n++;
+  }
+  return n;
 }
 
 // idx = 0-based among rows with this kind. Returns table row or -1.
 function int FindCopyWepRowByKindIndex(int kind, int idx) {
-	int i;
-	int n;
-	n = 0;
-	for (i = 0; i < uh_copycount; i++) {
-		if (uh_copykind[i] != kind)
-			continue;
-		if (n == idx)
-			return i;
-		n++;
-	}
-	return -1;
+  int i;
+  int n;
+  n = 0;
+  for (i = 0; i < uh_copycount; i++) {
+    if (uh_copykind[i] != kind)
+      continue;
+    if (n == idx)
+      return i;
+    n++;
+  }
+  return -1;
 }
 
 // idx = 0-based among rows with this kind+slot. Returns table row or -1.
 function int FindCopyWepRowByKindSlotIndex(int kind, int slot, int idx) {
-	int i;
-	int n;
-	n = 0;
-	for (i = 0; i < uh_copycount; i++) {
-		if (uh_copykind[i] != kind || uh_copyslot[i] != slot)
-			continue;
-		if (n == idx)
-			return i;
-		n++;
-	}
-	return -1;
+  int i;
+  int n;
+  n = 0;
+  for (i = 0; i < uh_copycount; i++) {
+    if (uh_copykind[i] != kind || uh_copyslot[i] != slot)
+      continue;
+    if (n == idx)
+      return i;
+    n++;
+  }
+  return -1;
 }
 
 function str GetCopyWepActorByKindIndex(int kind, int idx) {
-	int row = FindCopyWepRowByKindIndex(kind, idx);
-	if (row < 0)
-		return "";
-	return uh_copyactor[row];
+  int row = FindCopyWepRowByKindIndex(kind, idx);
+  if (row < 0)
+    return "";
+  return uh_copyactor[row];
 }
 
 script "uh_copykind_count" (int kind) {
-	SetResultValue(CountCopyWepByKind(kind));
+  SetResultValue(CountCopyWepByKind(kind));
 }
 
 script "uh_copykind_actor" (int kind, int idx) {
-	SetResultValue(GetCopyWepActorByKindIndex(kind, idx));
+  SetResultValue(GetCopyWepActorByKindIndex(kind, idx));
 }
 
 function str GetCopyWepActorByKindSlotIndex(int kind, int slot, int idx) {
-	int row = FindCopyWepRowByKindSlotIndex(kind, slot, idx);
-	if (row < 0)
-		return "";
-	return uh_copyactor[row];
+  int row = FindCopyWepRowByKindSlotIndex(kind, slot, idx);
+  if (row < 0)
+    return "";
+  return uh_copyactor[row];
 }
 
 function str GetCopyWepDmgStemByMegaId(int megaid) {
-	int i;
-	if (megaid < 1)
-		return "";
-	for (i = 0; i < uh_copycount; i++) {
-		if (uh_copykind[i] == UHCOPY_MEGA && uh_copymegaid[i] == megaid)
-			return uh_copydmgstem[i];
-	}
-	return "";
+  int i;
+  if (megaid < 1)
+    return "";
+  for (i = 0; i < uh_copycount; i++) {
+    if (uh_copykind[i] == UHCOPY_MEGA && uh_copymegaid[i] == megaid)
+      return uh_copydmgstem[i];
+  }
+  return "";
 }
 
 // Case-insensitive prefix (UHDT self-contained for mega stem match).
 function bool UH_StrIStartsWithCopy(str s, str prefix) {
-	int plen;
-	int i;
-	int a;
-	int b;
-	plen = StrLen(prefix);
-	if (plen <= 0 || StrLen(s) < plen)
-		return false;
-	for (i = 0; i < plen; i++) {
-		a = GetChar(s, i);
-		b = GetChar(prefix, i);
-		if (a >= 65 && a <= 90)
-			a = a + 32;
-		if (b >= 65 && b <= 90)
-			b = b + 32;
-		if (a != b)
-			return false;
-	}
-	return true;
+  int plen;
+  int i;
+  int a;
+  int b;
+  plen = StrLen(prefix);
+  if (plen <= 0 || StrLen(s) < plen)
+    return false;
+  for (i = 0; i < plen; i++) {
+    a = GetChar(s, i);
+    b = GetChar(prefix, i);
+    if (a >= 65 && a <= 90)
+      a = a + 32;
+    if (b >= 65 && b <= 90)
+      b = b + 32;
+    if (a != b)
+      return false;
+  }
+  return true;
 }
 
 // Longest mega dmgStem prefix match against s. Returns megaId or 0.
 function int FindMegaCopyIdByStemPrefix(str s) {
-	int i;
-	int bestid;
-	int bestlen;
-	int nlen;
-	str stem;
+  int i;
+  int bestid;
+  int bestlen;
+  int nlen;
+  str stem;
 
-	bestid = 0;
-	bestlen = 0;
-	for (i = 0; i < uh_copycount; i++) {
-		if (uh_copykind[i] != UHCOPY_MEGA)
-			continue;
-		stem = uh_copydmgstem[i];
-		nlen = StrLen(stem);
-		if (nlen > bestlen && UH_StrIStartsWithCopy(s, stem)) {
-			bestlen = nlen;
-			bestid = uh_copymegaid[i];
-		}
-	}
-	return bestid;
+  bestid = 0;
+  bestlen = 0;
+  for (i = 0; i < uh_copycount; i++) {
+    if (uh_copykind[i] != UHCOPY_MEGA)
+      continue;
+    stem = uh_copydmgstem[i];
+    nlen = StrLen(stem);
+    if (nlen > bestlen && UH_StrIStartsWithCopy(s, stem)) {
+      bestlen = nlen;
+      bestid = uh_copymegaid[i];
+    }
+  }
+  return bestid;
 }
 
 // --- Boss / event music pool -------------------------------------------------
@@ -2047,158 +2047,158 @@ int uh_bossmusicduration[UH_MAX_BOSS_MUSICS];
 int uh_bossmusicemuflag[UH_MAX_BOSS_MUSICS];
 
 function int UH_MusicRowAllocated(int row) {
-	if (row < 0 || row >= uh_bossmusiccount)
-		return 0;
-	return 1;
+  if (row < 0 || row >= uh_bossmusiccount)
+    return 0;
+  return 1;
 }
 
 function int UH_MusicOptionalBit(int row) {
-	if ((uh_bossmusicoptional[row] & UHMUS_BIT_OPTIONAL) != 0)
-		return 1;
-	return 0;
+  if ((uh_bossmusicoptional[row] & UHMUS_BIT_OPTIONAL) != 0)
+    return 1;
+  return 0;
 }
 
 function void UH_MusicSetOptionalBit(int row, int optional) {
-	if (optional != 0)
-		uh_bossmusicoptional[row] = uh_bossmusicoptional[row] | UHMUS_BIT_OPTIONAL;
-	else
-		uh_bossmusicoptional[row] = uh_bossmusicoptional[row] & (~UHMUS_BIT_OPTIONAL);
+  if (optional != 0)
+    uh_bossmusicoptional[row] = uh_bossmusicoptional[row] | UHMUS_BIT_OPTIONAL;
+  else
+    uh_bossmusicoptional[row] = uh_bossmusicoptional[row] & (~UHMUS_BIT_OPTIONAL);
 }
 
 function int IsMusicRowDefined(int row) {
-	if (!UH_MusicRowAllocated(row))
-		return 0;
-	if ((uh_bossmusicoptional[row] & UHMUS_BIT_DEFINED) == 0)
-		return 0;
-	return 1;
+  if (!UH_MusicRowAllocated(row))
+    return 0;
+  if ((uh_bossmusicoptional[row] & UHMUS_BIT_DEFINED) == 0)
+    return 0;
+  return 1;
 }
 
 function int IsMusicRowEnabled(int row) {
-	if (!IsMusicRowDefined(row))
-		return 0;
-	if ((uh_bossmusicoptional[row] & UHMUS_BIT_ENABLED) == 0)
-		return 0;
-	return 1;
+  if (!IsMusicRowDefined(row))
+    return 0;
+  if ((uh_bossmusicoptional[row] & UHMUS_BIT_ENABLED) == 0)
+    return 0;
+  return 1;
 }
 
 function int SetMusicRowEnabled(int row, int enabled) {
-	if (!IsMusicRowDefined(row))
-		return UHMUS_ERR_NOTFOUND;
-	if (enabled != 0)
-		uh_bossmusicoptional[row] = uh_bossmusicoptional[row] | UHMUS_BIT_ENABLED;
-	else
-		uh_bossmusicoptional[row] = uh_bossmusicoptional[row] & (~UHMUS_BIT_ENABLED);
-	return UHMUS_OK;
+  if (!IsMusicRowDefined(row))
+    return UHMUS_ERR_NOTFOUND;
+  if (enabled != 0)
+    uh_bossmusicoptional[row] = uh_bossmusicoptional[row] | UHMUS_BIT_ENABLED;
+  else
+    uh_bossmusicoptional[row] = uh_bossmusicoptional[row] & (~UHMUS_BIT_ENABLED);
+  return UHMUS_OK;
 }
 
 function int RemoveMusicRow(int row) {
-	if (!IsMusicRowDefined(row))
-		return UHMUS_ERR_NOTFOUND;
-	uh_bossmusicoptional[row] = uh_bossmusicoptional[row] & ~(UHMUS_BIT_DEFINED | UHMUS_BIT_ENABLED);
-	return UHMUS_OK;
+  if (!IsMusicRowDefined(row))
+    return UHMUS_ERR_NOTFOUND;
+  uh_bossmusicoptional[row] = uh_bossmusicoptional[row] & ~(UHMUS_BIT_DEFINED | UHMUS_BIT_ENABLED);
+  return UHMUS_OK;
 }
 
 function int GetDefinedMusicRowCount(void) {
-	int i;
-	int n;
-	n = 0;
-	for (i = 0; i < uh_bossmusiccount; i++) {
-		if (IsMusicRowDefined(i))
-			n++;
-	}
-	return n;
+  int i;
+  int n;
+  n = 0;
+  for (i = 0; i < uh_bossmusiccount; i++) {
+    if (IsMusicRowDefined(i))
+      n++;
+  }
+  return n;
 }
 
 function int GetEnabledMusicRowCount(void) {
-	int i;
-	int n;
-	n = 0;
-	for (i = 0; i < uh_bossmusiccount; i++) {
-		if (IsMusicRowEnabled(i))
-			n++;
-	}
-	return n;
+  int i;
+  int n;
+  n = 0;
+  for (i = 0; i < uh_bossmusiccount; i++) {
+    if (IsMusicRowEnabled(i))
+      n++;
+  }
+  return n;
 }
 
 // Includes tombstones. Ordinary FindBossMusicRow does not.
 function int FindBossMusicRowStored(int bossid, int kind, int phase, str lump) {
-	int i;
-	for (i = 0; i < uh_bossmusiccount; i++) {
-		if (uh_bossmusicbossid[i] == bossid
-			&& uh_bossmusickind[i] == kind
-			&& uh_bossmusicphase[i] == phase
-			&& StrCmp(uh_bossmusiclump[i], lump) == 0)
-			return i;
-	}
-	return -1;
+  int i;
+  for (i = 0; i < uh_bossmusiccount; i++) {
+    if (uh_bossmusicbossid[i] == bossid
+      && uh_bossmusickind[i] == kind
+      && uh_bossmusicphase[i] == phase
+      && StrCmp(uh_bossmusiclump[i], lump) == 0)
+      return i;
+  }
+  return -1;
 }
 
 function int FindBossMusicRow(int bossid, int kind, int phase, str lump) {
-	int row;
-	row = FindBossMusicRowStored(bossid, kind, phase, lump);
-	if (row < 0 || !IsMusicRowDefined(row))
-		return -1;
-	return row;
+  int row;
+  row = FindBossMusicRowStored(bossid, kind, phase, lump);
+  if (row < 0 || !IsMusicRowDefined(row))
+    return -1;
+  return row;
 }
 
 function int FindEventMusicRow(int kind, int phase, str lump) {
-	return FindBossMusicRow(UHMUS_GLOBAL, kind, phase, lump);
+  return FindBossMusicRow(UHMUS_GLOBAL, kind, phase, lump);
 }
 
 function void UH_BossMusicWriteMeta(int row, str title, str album, str artist) {
-	uh_bossmusicmeta[row][0] = title;
-	uh_bossmusicmeta[row][1] = album;
-	uh_bossmusicmeta[row][2] = artist;
+  uh_bossmusicmeta[row][0] = title;
+  uh_bossmusicmeta[row][1] = album;
+  uh_bossmusicmeta[row][2] = artist;
 }
 
 function void UH_MusicWriteCommon(int row, str title, str album, str artist, int weight, int optional) {
-	UH_BossMusicWriteMeta(row, title, album, artist);
-	uh_bossmusicweight[row] = weight;
-	UH_MusicSetOptionalBit(row, optional);
+  UH_BossMusicWriteMeta(row, title, album, artist);
+  uh_bossmusicweight[row] = weight;
+  UH_MusicSetOptionalBit(row, optional);
 }
 
 function void UH_MusicCommitDefined(int row, int enabled) {
-	uh_bossmusicoptional[row] = uh_bossmusicoptional[row] | UHMUS_BIT_DEFINED;
-	if (enabled != 0)
-		uh_bossmusicoptional[row] = uh_bossmusicoptional[row] | UHMUS_BIT_ENABLED;
-	else
-		uh_bossmusicoptional[row] = uh_bossmusicoptional[row] & (~UHMUS_BIT_ENABLED);
+  uh_bossmusicoptional[row] = uh_bossmusicoptional[row] | UHMUS_BIT_DEFINED;
+  if (enabled != 0)
+    uh_bossmusicoptional[row] = uh_bossmusicoptional[row] | UHMUS_BIT_ENABLED;
+  else
+    uh_bossmusicoptional[row] = uh_bossmusicoptional[row] & (~UHMUS_BIT_ENABLED);
 }
 
 function int UH_MusicBossKeyOk(int bossid, int kind, int phase, str lump) {
-	if (bossid == UHMUS_GLOBAL)
-		return 0;
-	if (kind != UHMUS_KIND_SPAWN && kind != UHMUS_KIND_ENRAGE)
-		return 0;
-	if (phase < 0)
-		return 0;
-	if (StrCmp(lump, "") == 0 || StrCmp(lump, "*") == 0)
-		return 0;
-	return 1;
+  if (bossid == UHMUS_GLOBAL)
+    return 0;
+  if (kind != UHMUS_KIND_SPAWN && kind != UHMUS_KIND_ENRAGE)
+    return 0;
+  if (phase < 0)
+    return 0;
+  if (StrCmp(lump, "") == 0 || StrCmp(lump, "*") == 0)
+    return 0;
+  return 1;
 }
 
 function int UH_MusicEventKeyOk(int kind, int phase, str lump) {
-	if (kind != UHMUS_KIND_WINNER && kind != UHMUS_KIND_LOSER && kind != UHMUS_KIND_LMS)
-		return 0;
-	if (phase < 0)
-		return 0;
-	if (StrCmp(lump, "") == 0 || StrCmp(lump, "*") == 0)
-		return 0;
-	return 1;
+  if (kind != UHMUS_KIND_WINNER && kind != UHMUS_KIND_LOSER && kind != UHMUS_KIND_LMS)
+    return 0;
+  if (phase < 0)
+    return 0;
+  if (StrCmp(lump, "") == 0 || StrCmp(lump, "*") == 0)
+    return 0;
+  return 1;
 }
 
 function int UH_MusicRowMatchesPick(int row, int bossid, int kind, int phase, int matchboss, int allowoptional) {
-	if (!IsMusicRowEnabled(row))
-		return 0;
-	if (matchboss && uh_bossmusicbossid[row] != bossid)
-		return 0;
-	if (uh_bossmusickind[row] != kind)
-		return 0;
-	if (uh_bossmusicphase[row] != phase)
-		return 0;
-	if (UH_MusicOptionalBit(row) != 0 && !allowoptional)
-		return 0;
-	return 1;
+  if (!IsMusicRowEnabled(row))
+    return 0;
+  if (matchboss && uh_bossmusicbossid[row] != bossid)
+    return 0;
+  if (uh_bossmusickind[row] != kind)
+    return 0;
+  if (uh_bossmusicphase[row] != phase)
+    return 0;
+  if (UH_MusicOptionalBit(row) != 0 && !allowoptional)
+    return 0;
+  return 1;
 }
 
 // weight >= 1. optional: non-zero = skip unless uh_sv_OptionalMusic.
@@ -2206,260 +2206,260 @@ function int UH_MusicRowMatchesPick(int row, int bossid, int kind, int phase, in
 // keeps enabled. Same key on a tombstone restores that row and enables it.
 // Returns the row, or UHMUS_FAIL. Failure leaves the table unchanged.
 function int AddBossMusicCore(int bossid, int kind, int phase, str lump, str title, str album, str artist, int weight, int optional) {
-	int row;
-	if (!IsBossDefined(bossid))
-		return UHMUS_FAIL;
-	if (!UH_MusicBossKeyOk(bossid, kind, phase, lump))
-		return UHMUS_FAIL;
-	if (weight < 1 || weight > UHMUS_MAX_WEIGHT)
-		return UHMUS_FAIL;
+  int row;
+  if (!IsBossDefined(bossid))
+    return UHMUS_FAIL;
+  if (!UH_MusicBossKeyOk(bossid, kind, phase, lump))
+    return UHMUS_FAIL;
+  if (weight < 1 || weight > UHMUS_MAX_WEIGHT)
+    return UHMUS_FAIL;
 
-	row = FindBossMusicRowStored(bossid, kind, phase, lump);
-	if (row >= 0) {
-		UH_MusicWriteCommon(row, title, album, artist, weight, optional);
-		if (!IsMusicRowDefined(row)) {
-			uh_bossmusicduration[row] = 0;
-			uh_bossmusicemuflag[row] = 0;
-			UH_MusicCommitDefined(row, 1);
-		}
-		return row;
-	}
-	if (uh_bossmusiccount >= UH_MAX_BOSS_MUSICS)
-		return UHMUS_FAIL;
+  row = FindBossMusicRowStored(bossid, kind, phase, lump);
+  if (row >= 0) {
+    UH_MusicWriteCommon(row, title, album, artist, weight, optional);
+    if (!IsMusicRowDefined(row)) {
+      uh_bossmusicduration[row] = 0;
+      uh_bossmusicemuflag[row] = 0;
+      UH_MusicCommitDefined(row, 1);
+    }
+    return row;
+  }
+  if (uh_bossmusiccount >= UH_MAX_BOSS_MUSICS)
+    return UHMUS_FAIL;
 
-	row = uh_bossmusiccount;
-	uh_bossmusicbossid[row] = bossid;
-	uh_bossmusickind[row] = kind;
-	uh_bossmusicphase[row] = phase;
-	uh_bossmusiclump[row] = lump;
-	UH_MusicWriteCommon(row, title, album, artist, weight, optional);
-	uh_bossmusicduration[row] = 0;
-	uh_bossmusicemuflag[row] = 0;
-	UH_MusicCommitDefined(row, 1);
-	uh_bossmusiccount++;
-	return row;
+  row = uh_bossmusiccount;
+  uh_bossmusicbossid[row] = bossid;
+  uh_bossmusickind[row] = kind;
+  uh_bossmusicphase[row] = phase;
+  uh_bossmusiclump[row] = lump;
+  UH_MusicWriteCommon(row, title, album, artist, weight, optional);
+  uh_bossmusicduration[row] = 0;
+  uh_bossmusicemuflag[row] = 0;
+  UH_MusicCommitDefined(row, 1);
+  uh_bossmusiccount++;
+  return row;
 }
 
 // Global event pools (winner/loser/LMS). Identity = (kind, phase, lump).
 // Winner/Loser: phase 0. LMS: phase = eventid (>=0, no upper bound).
 // duration: ACS fixed seconds (-1.0 unknown). emuflag: 1 = MAME (+12 tics).
 function int AddEventMusicCore(int kind, int phase, str lump, str title, str album, str artist, int weight, int optional, int duration, int emuflag) {
-	int row;
-	int emuf;
-	if (kind != UHMUS_KIND_WINNER && kind != UHMUS_KIND_LOSER && kind != UHMUS_KIND_LMS)
-		return UHMUS_FAIL;
-	if (StrCmp(lump, "") == 0 || StrCmp(lump, "*") == 0)
-		return UHMUS_FAIL;
-	if (weight < 1 || weight > UHMUS_MAX_WEIGHT)
-		return UHMUS_FAIL;
-	if (phase < 0)
-		return UHMUS_FAIL;
+  int row;
+  int emuf;
+  if (kind != UHMUS_KIND_WINNER && kind != UHMUS_KIND_LOSER && kind != UHMUS_KIND_LMS)
+    return UHMUS_FAIL;
+  if (StrCmp(lump, "") == 0 || StrCmp(lump, "*") == 0)
+    return UHMUS_FAIL;
+  if (weight < 1 || weight > UHMUS_MAX_WEIGHT)
+    return UHMUS_FAIL;
+  if (phase < 0)
+    return UHMUS_FAIL;
 
-	if (emuflag != 0)
-		emuf = 1;
-	else
-		emuf = 0;
+  if (emuflag != 0)
+    emuf = 1;
+  else
+    emuf = 0;
 
-	row = FindBossMusicRowStored(UHMUS_GLOBAL, kind, phase, lump);
-	if (row >= 0) {
-		UH_MusicWriteCommon(row, title, album, artist, weight, optional);
-		uh_bossmusicduration[row] = duration;
-		uh_bossmusicemuflag[row] = emuf;
-		if (!IsMusicRowDefined(row))
-			UH_MusicCommitDefined(row, 1);
-		return row;
-	}
-	if (uh_bossmusiccount >= UH_MAX_BOSS_MUSICS)
-		return UHMUS_FAIL;
+  row = FindBossMusicRowStored(UHMUS_GLOBAL, kind, phase, lump);
+  if (row >= 0) {
+    UH_MusicWriteCommon(row, title, album, artist, weight, optional);
+    uh_bossmusicduration[row] = duration;
+    uh_bossmusicemuflag[row] = emuf;
+    if (!IsMusicRowDefined(row))
+      UH_MusicCommitDefined(row, 1);
+    return row;
+  }
+  if (uh_bossmusiccount >= UH_MAX_BOSS_MUSICS)
+    return UHMUS_FAIL;
 
-	row = uh_bossmusiccount;
-	uh_bossmusicbossid[row] = UHMUS_GLOBAL;
-	uh_bossmusickind[row] = kind;
-	uh_bossmusicphase[row] = phase;
-	uh_bossmusiclump[row] = lump;
-	UH_MusicWriteCommon(row, title, album, artist, weight, optional);
-	uh_bossmusicduration[row] = duration;
-	uh_bossmusicemuflag[row] = emuf;
-	UH_MusicCommitDefined(row, 1);
-	uh_bossmusiccount++;
-	return row;
+  row = uh_bossmusiccount;
+  uh_bossmusicbossid[row] = UHMUS_GLOBAL;
+  uh_bossmusickind[row] = kind;
+  uh_bossmusicphase[row] = phase;
+  uh_bossmusiclump[row] = lump;
+  UH_MusicWriteCommon(row, title, album, artist, weight, optional);
+  uh_bossmusicduration[row] = duration;
+  uh_bossmusicemuflag[row] = emuf;
+  UH_MusicCommitDefined(row, 1);
+  uh_bossmusiccount++;
+  return row;
 }
 
 function int SetBossMusicEnabledCore(int bossid, int kind, int phase, str lump, int enabled) {
-	int row;
-	if (!UH_MusicBossKeyOk(bossid, kind, phase, lump))
-		return UHMUS_ERR_BADARG;
-	row = FindBossMusicRow(bossid, kind, phase, lump);
-	if (row < 0)
-		return UHMUS_ERR_NOTFOUND;
-	return SetMusicRowEnabled(row, enabled);
+  int row;
+  if (!UH_MusicBossKeyOk(bossid, kind, phase, lump))
+    return UHMUS_ERR_BADARG;
+  row = FindBossMusicRow(bossid, kind, phase, lump);
+  if (row < 0)
+    return UHMUS_ERR_NOTFOUND;
+  return SetMusicRowEnabled(row, enabled);
 }
 
 function int RemoveBossMusicCore(int bossid, int kind, int phase, str lump) {
-	int row;
-	if (!UH_MusicBossKeyOk(bossid, kind, phase, lump))
-		return UHMUS_ERR_BADARG;
-	row = FindBossMusicRow(bossid, kind, phase, lump);
-	if (row < 0)
-		return UHMUS_ERR_NOTFOUND;
-	return RemoveMusicRow(row);
+  int row;
+  if (!UH_MusicBossKeyOk(bossid, kind, phase, lump))
+    return UHMUS_ERR_BADARG;
+  row = FindBossMusicRow(bossid, kind, phase, lump);
+  if (row < 0)
+    return UHMUS_ERR_NOTFOUND;
+  return RemoveMusicRow(row);
 }
 
 function int IsBossMusicDefinedCore(int bossid, int kind, int phase, str lump) {
-	if (!UH_MusicBossKeyOk(bossid, kind, phase, lump))
-		return 0;
-	if (FindBossMusicRow(bossid, kind, phase, lump) < 0)
-		return 0;
-	return 1;
+  if (!UH_MusicBossKeyOk(bossid, kind, phase, lump))
+    return 0;
+  if (FindBossMusicRow(bossid, kind, phase, lump) < 0)
+    return 0;
+  return 1;
 }
 
 function int IsBossMusicEnabledCore(int bossid, int kind, int phase, str lump) {
-	int row;
-	if (!UH_MusicBossKeyOk(bossid, kind, phase, lump))
-		return 0;
-	row = FindBossMusicRow(bossid, kind, phase, lump);
-	if (row < 0)
-		return 0;
-	return IsMusicRowEnabled(row);
+  int row;
+  if (!UH_MusicBossKeyOk(bossid, kind, phase, lump))
+    return 0;
+  row = FindBossMusicRow(bossid, kind, phase, lump);
+  if (row < 0)
+    return 0;
+  return IsMusicRowEnabled(row);
 }
 
 function int SetEventMusicEnabledCore(int kind, int phase, str lump, int enabled) {
-	int row;
-	if (!UH_MusicEventKeyOk(kind, phase, lump))
-		return UHMUS_ERR_BADARG;
-	row = FindEventMusicRow(kind, phase, lump);
-	if (row < 0)
-		return UHMUS_ERR_NOTFOUND;
-	return SetMusicRowEnabled(row, enabled);
+  int row;
+  if (!UH_MusicEventKeyOk(kind, phase, lump))
+    return UHMUS_ERR_BADARG;
+  row = FindEventMusicRow(kind, phase, lump);
+  if (row < 0)
+    return UHMUS_ERR_NOTFOUND;
+  return SetMusicRowEnabled(row, enabled);
 }
 
 function int RemoveEventMusicCore(int kind, int phase, str lump) {
-	int row;
-	if (!UH_MusicEventKeyOk(kind, phase, lump))
-		return UHMUS_ERR_BADARG;
-	row = FindEventMusicRow(kind, phase, lump);
-	if (row < 0)
-		return UHMUS_ERR_NOTFOUND;
-	return RemoveMusicRow(row);
+  int row;
+  if (!UH_MusicEventKeyOk(kind, phase, lump))
+    return UHMUS_ERR_BADARG;
+  row = FindEventMusicRow(kind, phase, lump);
+  if (row < 0)
+    return UHMUS_ERR_NOTFOUND;
+  return RemoveMusicRow(row);
 }
 
 function int IsEventMusicDefinedCore(int kind, int phase, str lump) {
-	if (!UH_MusicEventKeyOk(kind, phase, lump))
-		return 0;
-	if (FindEventMusicRow(kind, phase, lump) < 0)
-		return 0;
-	return 1;
+  if (!UH_MusicEventKeyOk(kind, phase, lump))
+    return 0;
+  if (FindEventMusicRow(kind, phase, lump) < 0)
+    return 0;
+  return 1;
 }
 
 function int IsEventMusicEnabledCore(int kind, int phase, str lump) {
-	int row;
-	if (!UH_MusicEventKeyOk(kind, phase, lump))
-		return 0;
-	row = FindEventMusicRow(kind, phase, lump);
-	if (row < 0)
-		return 0;
-	return IsMusicRowEnabled(row);
+  int row;
+  if (!UH_MusicEventKeyOk(kind, phase, lump))
+    return 0;
+  row = FindEventMusicRow(kind, phase, lump);
+  if (row < 0)
+    return 0;
+  return IsMusicRowEnabled(row);
 }
 
 function str GetBossMusicLumpByRow(int row) {
-	if (!IsMusicRowDefined(row))
-		return "";
-	return uh_bossmusiclump[row];
+  if (!IsMusicRowDefined(row))
+    return "";
+  return uh_bossmusiclump[row];
 }
 
 function str GetBossMusicTitleByRow(int row) {
-	if (!IsMusicRowDefined(row))
-		return "";
-	return uh_bossmusicmeta[row][0];
+  if (!IsMusicRowDefined(row))
+    return "";
+  return uh_bossmusicmeta[row][0];
 }
 
 function str GetBossMusicAlbumByRow(int row) {
-	if (!IsMusicRowDefined(row))
-		return "";
-	return uh_bossmusicmeta[row][1];
+  if (!IsMusicRowDefined(row))
+    return "";
+  return uh_bossmusicmeta[row][1];
 }
 
 function str GetBossMusicArtistByRow(int row) {
-	if (!IsMusicRowDefined(row))
-		return "";
-	return uh_bossmusicmeta[row][2];
+  if (!IsMusicRowDefined(row))
+    return "";
+  return uh_bossmusicmeta[row][2];
 }
 
 function int GetBossMusicDurationByRow(int row) {
-	if (!IsMusicRowDefined(row))
-		return 0;
-	return uh_bossmusicduration[row];
+  if (!IsMusicRowDefined(row))
+    return 0;
+  return uh_bossmusicduration[row];
 }
 
 function int GetBossMusicEmuFlagByRow(int row) {
-	if (!IsMusicRowDefined(row))
-		return 0;
-	return uh_bossmusicemuflag[row];
+  if (!IsMusicRowDefined(row))
+    return 0;
+  return uh_bossmusicemuflag[row];
 }
 
 // Weighted pick among enabled rows. Both passes use UH_MusicRowMatchesPick.
 // -1 if none eligible. Removed and disabled rows are not candidates.
 function int PickBossMusicRow(int bossid, int kind, int phase) {
-	int i;
-	int sum;
-	int roll;
-	int allowoptional;
+  int i;
+  int sum;
+  int roll;
+  int allowoptional;
 
-	if (!IsBossDefined(bossid))
-		return -1;
+  if (!IsBossDefined(bossid))
+    return -1;
 
-	allowoptional = GetCVar("uh_sv_OptionalMusic");
-	sum = 0;
-	for (i = 0; i < uh_bossmusiccount; i++) {
-		if (!UH_MusicRowMatchesPick(i, bossid, kind, phase, 1, allowoptional))
-			continue;
-		sum += uh_bossmusicweight[i];
-	}
-	if (sum <= 0)
-		return -1;
+  allowoptional = GetCVar("uh_sv_OptionalMusic");
+  sum = 0;
+  for (i = 0; i < uh_bossmusiccount; i++) {
+    if (!UH_MusicRowMatchesPick(i, bossid, kind, phase, 1, allowoptional))
+      continue;
+    sum += uh_bossmusicweight[i];
+  }
+  if (sum <= 0)
+    return -1;
 
-	roll = random(1, sum);
-	for (i = 0; i < uh_bossmusiccount; i++) {
-		if (!UH_MusicRowMatchesPick(i, bossid, kind, phase, 1, allowoptional))
-			continue;
-		roll -= uh_bossmusicweight[i];
-		if (roll <= 0)
-			return i;
-	}
-	return -1;
+  roll = random(1, sum);
+  for (i = 0; i < uh_bossmusiccount; i++) {
+    if (!UH_MusicRowMatchesPick(i, bossid, kind, phase, 1, allowoptional))
+      continue;
+    roll -= uh_bossmusicweight[i];
+    if (roll <= 0)
+      return i;
+  }
+  return -1;
 }
 
 // Global winner/loser/LMS pick. Same filter on the sum and the landing pass.
 function int PickEventMusicRow(int kind, int phase) {
-	int i;
-	int sum;
-	int roll;
-	int allowoptional;
+  int i;
+  int sum;
+  int roll;
+  int allowoptional;
 
-	if (kind != UHMUS_KIND_WINNER && kind != UHMUS_KIND_LOSER && kind != UHMUS_KIND_LMS)
-		return -1;
-	if (phase < 0)
-		return -1;
+  if (kind != UHMUS_KIND_WINNER && kind != UHMUS_KIND_LOSER && kind != UHMUS_KIND_LMS)
+    return -1;
+  if (phase < 0)
+    return -1;
 
-	allowoptional = GetCVar("uh_sv_OptionalMusic");
-	sum = 0;
-	for (i = 0; i < uh_bossmusiccount; i++) {
-		if (!UH_MusicRowMatchesPick(i, 0, kind, phase, 0, allowoptional))
-			continue;
-		sum += uh_bossmusicweight[i];
-	}
-	if (sum <= 0)
-		return -1;
+  allowoptional = GetCVar("uh_sv_OptionalMusic");
+  sum = 0;
+  for (i = 0; i < uh_bossmusiccount; i++) {
+    if (!UH_MusicRowMatchesPick(i, 0, kind, phase, 0, allowoptional))
+      continue;
+    sum += uh_bossmusicweight[i];
+  }
+  if (sum <= 0)
+    return -1;
 
-	roll = random(1, sum);
-	for (i = 0; i < uh_bossmusiccount; i++) {
-		if (!UH_MusicRowMatchesPick(i, 0, kind, phase, 0, allowoptional))
-			continue;
-		roll -= uh_bossmusicweight[i];
-		if (roll <= 0)
-			return i;
-	}
-	return -1;
+  roll = random(1, sum);
+  for (i = 0; i < uh_bossmusiccount; i++) {
+    if (!UH_MusicRowMatchesPick(i, 0, kind, phase, 0, allowoptional))
+      continue;
+    roll -= uh_bossmusicweight[i];
+    if (roll <= 0)
+      return i;
+  }
+  return -1;
 }
 
 // --- LMS event table (last-survivor events) ----------------------------------
@@ -2483,209 +2483,209 @@ int uh_lmsdropamt[UH_MAX_LMS_DROPS];
 int uh_lmsdroprare[UH_MAX_LMS_DROPS];
 
 function bool IsLMSEventDefined(int id) {
-	if (id < 0 || id >= UH_MAX_LMS_EVENTS)
-		return false;
-	return uh_lmsdefined[id] == UHDB_ROW_ACTIVE
-		|| uh_lmsdefined[id] == UHDB_ROW_DISABLED;
+  if (id < 0 || id >= UH_MAX_LMS_EVENTS)
+    return false;
+  return uh_lmsdefined[id] == UHDB_ROW_ACTIVE
+    || uh_lmsdefined[id] == UHDB_ROW_DISABLED;
 }
 
 function int FindLMSEventByStem(str stem) {
-	int i;
-	if (StrCmp(stem, "") == 0)
-		return UHLMS_FAIL;
-	for (i = 0; i < UH_MAX_LMS_EVENTS; i++) {
-		if (IsLMSEventDefined(i) && StrICmp(uh_lmsstem[i], stem) == 0)
-			return i;
-	}
-	return UHLMS_FAIL;
+  int i;
+  if (StrCmp(stem, "") == 0)
+    return UHLMS_FAIL;
+  for (i = 0; i < UH_MAX_LMS_EVENTS; i++) {
+    if (IsLMSEventDefined(i) && StrICmp(uh_lmsstem[i], stem) == 0)
+      return i;
+  }
+  return UHLMS_FAIL;
 }
 
 function int DefineLMSEventCore(int id, str stem, str message, str raremessage, str icon, str rareicon, int flags, int weight) {
-	int other;
-	int i;
-	if (StrCmp(stem, "") == 0)
-		return UHLMS_FAIL;
-	if (weight < 0 || weight > UHLMS_MAX_WEIGHT)
-		return UHLMS_FAIL;
+  int other;
+  int i;
+  if (StrCmp(stem, "") == 0)
+    return UHLMS_FAIL;
+  if (weight < 0 || weight > UHLMS_MAX_WEIGHT)
+    return UHLMS_FAIL;
 
-	if (id == -1) {
-		id = uh_lmsnextcustomid;
-		while (id < UH_MAX_LMS_EVENTS && uh_lmsdefined[id] != 0)
-			id++;
-		if (id >= UH_MAX_LMS_EVENTS)
-			return UHLMS_FAIL;
-	}
-	else if (id < 0 || id >= UH_MAX_LMS_EVENTS)
-		return UHLMS_FAIL;
+  if (id == -1) {
+    id = uh_lmsnextcustomid;
+    while (id < UH_MAX_LMS_EVENTS && uh_lmsdefined[id] != 0)
+      id++;
+    if (id >= UH_MAX_LMS_EVENTS)
+      return UHLMS_FAIL;
+  }
+  else if (id < 0 || id >= UH_MAX_LMS_EVENTS)
+    return UHLMS_FAIL;
 
-	// Include tombstones when checking uniqueness; an old identity cannot be
-	// silently rebound to a newly allocated id.
-	other = UHLMS_FAIL;
-	for (i = 0; i < UH_MAX_LMS_EVENTS; i++) {
-		if (uh_lmsdefined[i] != 0 && StrICmp(uh_lmsstem[i], stem) == 0) {
-			other = i;
-			break;
-		}
-	}
-	if (other != UHLMS_FAIL && other != id)
-		return UHLMS_FAIL;
-	if (uh_lmsdefined[id] == UHDB_ROW_REMOVED)
-		return UHLMS_FAIL;
-	if (uh_lmsdefined[id] != 0 && StrICmp(uh_lmsstem[id], stem) != 0)
-		return UHLMS_FAIL;
+  // Include tombstones when checking uniqueness; an old identity cannot be
+  // silently rebound to a newly allocated id.
+  other = UHLMS_FAIL;
+  for (i = 0; i < UH_MAX_LMS_EVENTS; i++) {
+    if (uh_lmsdefined[i] != 0 && StrICmp(uh_lmsstem[i], stem) == 0) {
+      other = i;
+      break;
+    }
+  }
+  if (other != UHLMS_FAIL && other != id)
+    return UHLMS_FAIL;
+  if (uh_lmsdefined[id] == UHDB_ROW_REMOVED)
+    return UHLMS_FAIL;
+  if (uh_lmsdefined[id] != 0 && StrICmp(uh_lmsstem[id], stem) != 0)
+    return UHLMS_FAIL;
 
-	if (uh_lmsdefined[id] == 0)
-		uh_lmsdefined[id] = UHDB_ROW_ACTIVE;
-	uh_lmsstem[id] = stem;
-	uh_lmsmessage[id] = message;
-	uh_lmsraremessage[id] = raremessage;
-	uh_lmsicon[id] = icon;
-	uh_lmsrareicon[id] = rareicon;
-	uh_lmsflags[id] = flags;
-	uh_lmsweight[id] = weight;
+  if (uh_lmsdefined[id] == 0)
+    uh_lmsdefined[id] = UHDB_ROW_ACTIVE;
+  uh_lmsstem[id] = stem;
+  uh_lmsmessage[id] = message;
+  uh_lmsraremessage[id] = raremessage;
+  uh_lmsicon[id] = icon;
+  uh_lmsrareicon[id] = rareicon;
+  uh_lmsflags[id] = flags;
+  uh_lmsweight[id] = weight;
 
-	if (id >= 12 && id >= uh_lmsnextcustomid)
-		uh_lmsnextcustomid = id + 1;
+  if (id >= 12 && id >= uh_lmsnextcustomid)
+    uh_lmsnextcustomid = id + 1;
 
-	return id;
+  return id;
 }
 
 function int FindLMSEventDropRow(int eventid, str itemactor, int amt, int rare) {
-	int i;
-	int rareflag;
-	if (rare != 0)
-		rareflag = 1;
-	else
-		rareflag = 0;
-	for (i = 0; i < uh_lmsdropcount; i++) {
-		if (uh_lmsdropeventid[i] == eventid
-			&& uh_lmsdropamt[i] == amt
-			&& uh_lmsdroprare[i] == rareflag
-			&& StrICmp(uh_lmsdropitem[i], itemactor) == 0)
-			return i;
-	}
-	return -1;
+  int i;
+  int rareflag;
+  if (rare != 0)
+    rareflag = 1;
+  else
+    rareflag = 0;
+  for (i = 0; i < uh_lmsdropcount; i++) {
+    if (uh_lmsdropeventid[i] == eventid
+      && uh_lmsdropamt[i] == amt
+      && uh_lmsdroprare[i] == rareflag
+      && StrICmp(uh_lmsdropitem[i], itemactor) == 0)
+      return i;
+  }
+  return -1;
 }
 
 // Same (id, item, amt, rare) again returns existing row (no double grant).
 function int AddLMSEventDropCore(int eventid, str itemactor, int amt, int rare) {
-	int row;
-	int rareflag;
-	if (!IsLMSEventDefined(eventid))
-		return UHLMS_FAIL;
-	if (StrCmp(itemactor, "") == 0)
-		return UHLMS_FAIL;
-	if (amt < 1)
-		return UHLMS_FAIL;
-	if (rare != 0)
-		rareflag = 1;
-	else
-		rareflag = 0;
+  int row;
+  int rareflag;
+  if (!IsLMSEventDefined(eventid))
+    return UHLMS_FAIL;
+  if (StrCmp(itemactor, "") == 0)
+    return UHLMS_FAIL;
+  if (amt < 1)
+    return UHLMS_FAIL;
+  if (rare != 0)
+    rareflag = 1;
+  else
+    rareflag = 0;
 
-	row = FindLMSEventDropRow(eventid, itemactor, amt, rareflag);
-	if (row >= 0)
-		return row;
-	if (uh_lmsdropcount >= UH_MAX_LMS_DROPS)
-		return UHLMS_FAIL;
+  row = FindLMSEventDropRow(eventid, itemactor, amt, rareflag);
+  if (row >= 0)
+    return row;
+  if (uh_lmsdropcount >= UH_MAX_LMS_DROPS)
+    return UHLMS_FAIL;
 
-	row = uh_lmsdropcount;
-	uh_lmsdropeventid[row] = eventid;
-	uh_lmsdropitem[row] = itemactor;
-	uh_lmsdropamt[row] = amt;
-	uh_lmsdroprare[row] = rareflag;
-	uh_lmsdropcount++;
-	return row;
+  row = uh_lmsdropcount;
+  uh_lmsdropeventid[row] = eventid;
+  uh_lmsdropitem[row] = itemactor;
+  uh_lmsdropamt[row] = amt;
+  uh_lmsdroprare[row] = rareflag;
+  uh_lmsdropcount++;
+  return row;
 }
 
 function str GetLMSEventStem(int id) {
-	if (!IsLMSEventDefined(id))
-		return "";
-	return uh_lmsstem[id];
+  if (!IsLMSEventDefined(id))
+    return "";
+  return uh_lmsstem[id];
 }
 
 function str GetLMSEventMessage(int id) {
-	if (!IsLMSEventDefined(id))
-		return "";
-	return uh_lmsmessage[id];
+  if (!IsLMSEventDefined(id))
+    return "";
+  return uh_lmsmessage[id];
 }
 
 function str GetLMSEventraremessage(int id) {
-	if (!IsLMSEventDefined(id))
-		return "";
-	return uh_lmsraremessage[id];
+  if (!IsLMSEventDefined(id))
+    return "";
+  return uh_lmsraremessage[id];
 }
 
 function str GetLMSEventIcon(int id) {
-	if (!IsLMSEventDefined(id))
-		return "";
-	return uh_lmsicon[id];
+  if (!IsLMSEventDefined(id))
+    return "";
+  return uh_lmsicon[id];
 }
 
 function str GetLMSEventrareicon(int id) {
-	if (!IsLMSEventDefined(id))
-		return "";
-	return uh_lmsrareicon[id];
+  if (!IsLMSEventDefined(id))
+    return "";
+  return uh_lmsrareicon[id];
 }
 
 function int GetLMSEventFlags(int id) {
-	if (!IsLMSEventDefined(id))
-		return 0;
-	return uh_lmsflags[id];
+  if (!IsLMSEventDefined(id))
+    return 0;
+  return uh_lmsflags[id];
 }
 
 function int GetLMSEventWeight(int id) {
-	if (!IsLMSEventDefined(id))
-		return 0;
-	return uh_lmsweight[id];
+  if (!IsLMSEventDefined(id))
+    return 0;
+  return uh_lmsweight[id];
 }
 
 // Weighted pick among events with weight >= 1. UHLMS_FAIL if none.
 function int PickLMSEvent(void) {
-	int i;
-	int sum;
-	int roll;
+  int i;
+  int sum;
+  int roll;
 
-	sum = 0;
-	for (i = 0; i < UH_MAX_LMS_EVENTS; i++) {
-		if (uh_lmsdefined[i] != UHDB_ROW_ACTIVE)
-			continue;
-		if (uh_lmsweight[i] < 1)
-			continue;
-		sum += uh_lmsweight[i];
-	}
-	if (sum <= 0)
-		return UHLMS_FAIL;
+  sum = 0;
+  for (i = 0; i < UH_MAX_LMS_EVENTS; i++) {
+    if (uh_lmsdefined[i] != UHDB_ROW_ACTIVE)
+      continue;
+    if (uh_lmsweight[i] < 1)
+      continue;
+    sum += uh_lmsweight[i];
+  }
+  if (sum <= 0)
+    return UHLMS_FAIL;
 
-	roll = random(1, sum);
-	for (i = 0; i < UH_MAX_LMS_EVENTS; i++) {
-		if (uh_lmsdefined[i] != UHDB_ROW_ACTIVE)
-			continue;
-		if (uh_lmsweight[i] < 1)
-			continue;
-		roll -= uh_lmsweight[i];
-		if (roll <= 0)
-			return i;
-	}
-	return UHLMS_FAIL;
+  roll = random(1, sum);
+  for (i = 0; i < UH_MAX_LMS_EVENTS; i++) {
+    if (uh_lmsdefined[i] != UHDB_ROW_ACTIVE)
+      continue;
+    if (uh_lmsweight[i] < 1)
+      continue;
+    roll -= uh_lmsweight[i];
+    if (roll <= 0)
+      return i;
+  }
+  return UHLMS_FAIL;
 }
 
 // Grant all drop rows for eventId matching rare flag to actor tid.
 function void GrantLMSEventDrops(int tid, int eventid, int rare) {
-	int i;
-	int rareflag;
-	if (!IsLMSEventDefined(eventid))
-		return;
-	if (rare != 0)
-		rareflag = 1;
-	else
-		rareflag = 0;
-	for (i = 0; i < uh_lmsdropcount; i++) {
-		if (uh_lmsdropeventid[i] != eventid)
-			continue;
-		if (uh_lmsdroprare[i] != rareflag)
-			continue;
-		GiveActorInventory(tid, uh_lmsdropitem[i], uh_lmsdropamt[i]);
-	}
+  int i;
+  int rareflag;
+  if (!IsLMSEventDefined(eventid))
+    return;
+  if (rare != 0)
+    rareflag = 1;
+  else
+    rareflag = 0;
+  for (i = 0; i < uh_lmsdropcount; i++) {
+    if (uh_lmsdropeventid[i] != eventid)
+      continue;
+    if (uh_lmsdroprare[i] != rareflag)
+      continue;
+    GiveActorInventory(tid, uh_lmsdropitem[i], uh_lmsdropamt[i]);
+  }
 }
 
 // ============================================================================
@@ -2758,241 +2758,241 @@ int uh_shinymegaallkind[UH_MAX_SHINYMOVES];
 // QwantShiny: register a custom AltFire move weapon. weight < 1 becomes 1.
 // Same (wepActor) again returns the existing row (no double entry).
 function int DefineShinyQwantMoveWepCore(str wepactor, int weight) {
-	int i;
-	if (StrCmp(wepactor, "") == 0)
-		return UHCOPY_FAIL;
-	for (i = 0; i < uh_shinyqwantmovecount; i++) {
-		if (StrICmp(uh_shinyqwantmovewep[i], wepactor) == 0)
-			return i;
-	}
-	if (uh_shinyqwantmovecount >= UH_MAX_SHINYMOVES)
-		return UHCOPY_FAIL;
-	uh_shinyqwantmovewep[uh_shinyqwantmovecount] = wepactor;
-	uh_shinyqwantmoveweight[uh_shinyqwantmovecount] = weight < 1 ? 1 : weight;
-	uh_shinyqwantmovecount++;
-	return uh_shinyqwantmovecount - 1;
+  int i;
+  if (StrCmp(wepactor, "") == 0)
+    return UHCOPY_FAIL;
+  for (i = 0; i < uh_shinyqwantmovecount; i++) {
+    if (StrICmp(uh_shinyqwantmovewep[i], wepactor) == 0)
+      return i;
+  }
+  if (uh_shinyqwantmovecount >= UH_MAX_SHINYMOVES)
+    return UHCOPY_FAIL;
+  uh_shinyqwantmovewep[uh_shinyqwantmovecount] = wepactor;
+  uh_shinyqwantmoveweight[uh_shinyqwantmovecount] = weight < 1 ? 1 : weight;
+  uh_shinyqwantmovecount++;
+  return uh_shinyqwantmovecount - 1;
 }
 
 // NegaManShiny: register slot 1..33 held weapon (wepL1). Fire1/2/3 live on that
 // actor. wepL2/wepL3 ignored by the held cycle (pass "" ). Addons: 26..33.
 function int DefineShinyNegaSlotWepCore(int slot, str wepl1, str wepl2, str wepl3) {
-	if (slot < 1 || slot > UH_SHINYNEGA_SLOTMAX)
-		return UHCOPY_FAIL;
-	if (StrCmp(wepl1, "") == 0)
-		return UHCOPY_FAIL;
-	uh_shinynegaslotwep[slot][0] = wepl1;
-	uh_shinynegaslotwep[slot][1] = wepl2;
-	uh_shinynegaslotwep[slot][2] = wepl3;
-	return slot;
+  if (slot < 1 || slot > UH_SHINYNEGA_SLOTMAX)
+    return UHCOPY_FAIL;
+  if (StrCmp(wepl1, "") == 0)
+    return UHCOPY_FAIL;
+  uh_shinynegaslotwep[slot][0] = wepl1;
+  uh_shinynegaslotwep[slot][1] = wepl2;
+  uh_shinynegaslotwep[slot][2] = wepl3;
+  return slot;
 }
 
 // Strip trailing _W / _W1.._W9 so registration accepts DecoyCopy_00_W or _W1.
 function str UH_DecoyMoveStem(str wepactor) {
-	int len = StrLen(wepactor);
-	int d;
-	if (len < 2)
-		return wepactor;
-	if (len >= 4
-		&& GetChar(wepactor, len - 3) == '_'
-		&& GetChar(wepactor, len - 2) == 'W') {
-		d = GetChar(wepactor, len - 1);
-		if (d >= '1' && d <= '9')
-			return StrLeft(wepactor, len - 3);
-	}
-	if (GetChar(wepactor, len - 2) == '_' && GetChar(wepactor, len - 1) == 'W')
-		return StrLeft(wepactor, len - 2);
-	return wepactor;
+  int len = StrLen(wepactor);
+  int d;
+  if (len < 2)
+    return wepactor;
+  if (len >= 4
+    && GetChar(wepactor, len - 3) == '_'
+    && GetChar(wepactor, len - 2) == 'W') {
+    d = GetChar(wepactor, len - 1);
+    if (d >= '1' && d <= '9')
+      return StrLeft(wepactor, len - 3);
+  }
+  if (GetChar(wepactor, len - 2) == '_' && GetChar(wepactor, len - 1) == 'W')
+    return StrLeft(wepactor, len - 2);
+  return wepactor;
 }
 
 // DecoyBot: register a copy slot. Slot is auto-assigned as the next index
 // (vanilla 0..60 first, then addon 61+). Same stem again returns the
 // existing slot index. Accepts stem or *_W / *_W1..*_W3.
 function int DefineDecoyBotMoveWepCore(str wepactor) {
-	int i;
-	str stem;
-	if (StrCmp(wepactor, "") == 0)
-		return UHCOPY_FAIL;
-	stem = UH_DecoyMoveStem(wepactor);
-	if (StrCmp(stem, "") == 0)
-		return UHCOPY_FAIL;
-	for (i = 0; i < uh_decoymovecount; i++) {
-		if (StrICmp(uh_decoymovewep[i][0], stem) == 0)
-			return i;
-	}
-	if (uh_decoymovecount >= UH_MAX_SHINYMOVES)
-		return UHCOPY_FAIL;
-	uh_decoymovewep[uh_decoymovecount][0] = stem;
-	// A new addon copy is usable with any positive DecoyEnergyAmmo unless
-	// its author supplies a stricter rule after registration.
-	uh_decoyreadyammo[uh_decoymovecount][0] = 1;
-	uh_decoyreadyammo[uh_decoymovecount][1] = 1;
-	uh_decoyreadyammo[uh_decoymovecount][2] = 1;
-	uh_decoyreadyammo[uh_decoymovecount][3] = 1;
-	uh_decoymovecount++;
-	return uh_decoymovecount - 1;
+  int i;
+  str stem;
+  if (StrCmp(wepactor, "") == 0)
+    return UHCOPY_FAIL;
+  stem = UH_DecoyMoveStem(wepactor);
+  if (StrCmp(stem, "") == 0)
+    return UHCOPY_FAIL;
+  for (i = 0; i < uh_decoymovecount; i++) {
+    if (StrICmp(uh_decoymovewep[i][0], stem) == 0)
+      return i;
+  }
+  if (uh_decoymovecount >= UH_MAX_SHINYMOVES)
+    return UHCOPY_FAIL;
+  uh_decoymovewep[uh_decoymovecount][0] = stem;
+  // A new addon copy is usable with any positive DecoyEnergyAmmo unless
+  // its author supplies a stricter rule after registration.
+  uh_decoyreadyammo[uh_decoymovecount][0] = 1;
+  uh_decoyreadyammo[uh_decoymovecount][1] = 1;
+  uh_decoyreadyammo[uh_decoymovecount][2] = 1;
+  uh_decoyreadyammo[uh_decoymovecount][3] = 1;
+  uh_decoymovecount++;
+  return uh_decoymovecount - 1;
 }
 
 // Configure an already-registered Decoy copy's readiness. Zero means no
 // energy requirement; the bypass inventory (or "") is checked in addition.
 function int SetDecoyBotReadyRuleCore(str wepactor, int normalMin,
-	int endlessMin, str bypassInventory, int shiny) {
-	int i;
-	int column = shiny ? 2 : 0;
-	str stem = UH_DecoyMoveStem(wepactor);
-	if (StrCmp(stem, "") == 0 || normalMin < 0 || endlessMin < 0)
-		return UHCOPY_FAIL;
-	for (i = 0; i < uh_decoymovecount; i++) {
-		if (StrICmp(uh_decoymovewep[i][0], stem) == 0) {
-			uh_decoyreadyammo[i][column] = normalMin;
-			uh_decoyreadyammo[i][column + 1] = endlessMin;
-			uh_decoymovewep[i][shiny ? 2 : 1] = bypassInventory;
-			// An ordinary rule is also the Shiny fallback. A later Shiny-specific
-			// call may override it without changing the ordinary copy.
-			if (!shiny) {
-				uh_decoyreadyammo[i][2] = normalMin;
-				uh_decoyreadyammo[i][3] = endlessMin;
-				uh_decoymovewep[i][2] = bypassInventory;
-			}
-			return i;
-		}
-	}
-	return UHCOPY_FAIL;
+  int endlessMin, str bypassInventory, int shiny) {
+  int i;
+  int column = shiny ? 2 : 0;
+  str stem = UH_DecoyMoveStem(wepactor);
+  if (StrCmp(stem, "") == 0 || normalMin < 0 || endlessMin < 0)
+    return UHCOPY_FAIL;
+  for (i = 0; i < uh_decoymovecount; i++) {
+    if (StrICmp(uh_decoymovewep[i][0], stem) == 0) {
+      uh_decoyreadyammo[i][column] = normalMin;
+      uh_decoyreadyammo[i][column + 1] = endlessMin;
+      uh_decoymovewep[i][shiny ? 2 : 1] = bypassInventory;
+      // An ordinary rule is also the Shiny fallback. A later Shiny-specific
+      // call may override it without changing the ordinary copy.
+      if (!shiny) {
+        uh_decoyreadyammo[i][2] = normalMin;
+        uh_decoyreadyammo[i][3] = endlessMin;
+        uh_decoymovewep[i][2] = bypassInventory;
+      }
+      return i;
+    }
+  }
+  return UHCOPY_FAIL;
 }
 
 // Pair a shiny held weapon with a normal DecoyBot stem. Registering the shiny
 // half first is supported: the normal stem receives the next ordinary slot,
 // so both forms always share one stable index.
 function int DefineDecoyBotShinyWepCore(str wepactor, str shinywepactor) {
-	int slot;
-	if (StrCmp(wepactor, "") == 0 || StrCmp(shinywepactor, "") == 0)
-		return UHCOPY_FAIL;
-	slot = DefineDecoyBotMoveWepCore(wepactor);
-	if (slot < 0 || slot >= UH_MAX_SHINYMOVES)
-		return UHCOPY_FAIL;
-	uh_decoyshinywep[slot] = shinywepactor;
-	return slot;
+  int slot;
+  if (StrCmp(wepactor, "") == 0 || StrCmp(shinywepactor, "") == 0)
+    return UHCOPY_FAIL;
+  slot = DefineDecoyBotMoveWepCore(wepactor);
+  if (slot < 0 || slot >= UH_MAX_SHINYMOVES)
+    return UHCOPY_FAIL;
+  uh_decoyshinywep[slot] = shinywepactor;
+  return slot;
 }
 
 // Shiny MegaMan: register a fire CustomInventory into M1 (Fire), M2 (AltFire),
 // or TRUE (both, same weight). Same (actor, pool) again returns existing index.
 // which: UH_SHINYMEGA_M1 / M2 / TRUE.
 function int DefineShinyMegaCopyWepCore(int which, str fireactor, int weight) {
-	int w;
-	int i;
-	int last;
-	int allrow;
-	if (StrCmp(fireactor, "") == 0)
-		return UHCOPY_FAIL;
-	if (which != UH_SHINYMEGA_M1 && which != UH_SHINYMEGA_M2 && which != UH_SHINYMEGA_TRUE)
-		return UHCOPY_FAIL;
-	w = weight < 1 ? 1 : weight;
-	last = -1;
-	allrow = -1;
-	for (i = 0; i < uh_shinymegaallcount; i++) {
-		if (StrICmp(uh_shinymegaallactor[i], fireactor) == 0 && uh_shinymegaallkind[i] == which) {
-			allrow = i;
-			break;
-		}
-	}
-	if (allrow < 0) {
-		if (uh_shinymegaallcount >= UH_MAX_SHINYMOVES)
-			return UHCOPY_FAIL;
-		allrow = uh_shinymegaallcount;
-		uh_shinymegaallactor[allrow] = fireactor;
-		uh_shinymegaallweight[allrow] = w;
-		uh_shinymegaallkind[allrow] = which;
-		uh_shinymegaallcount++;
-	}
+  int w;
+  int i;
+  int last;
+  int allrow;
+  if (StrCmp(fireactor, "") == 0)
+    return UHCOPY_FAIL;
+  if (which != UH_SHINYMEGA_M1 && which != UH_SHINYMEGA_M2 && which != UH_SHINYMEGA_TRUE)
+    return UHCOPY_FAIL;
+  w = weight < 1 ? 1 : weight;
+  last = -1;
+  allrow = -1;
+  for (i = 0; i < uh_shinymegaallcount; i++) {
+    if (StrICmp(uh_shinymegaallactor[i], fireactor) == 0 && uh_shinymegaallkind[i] == which) {
+      allrow = i;
+      break;
+    }
+  }
+  if (allrow < 0) {
+    if (uh_shinymegaallcount >= UH_MAX_SHINYMOVES)
+      return UHCOPY_FAIL;
+    allrow = uh_shinymegaallcount;
+    uh_shinymegaallactor[allrow] = fireactor;
+    uh_shinymegaallweight[allrow] = w;
+    uh_shinymegaallkind[allrow] = which;
+    uh_shinymegaallcount++;
+  }
 
-	if (which == UH_SHINYMEGA_M1 || which == UH_SHINYMEGA_TRUE) {
-		for (i = 0; i < uh_shinymegamaincount; i++) {
-			if (StrICmp(uh_shinymegamainactor[i], fireactor) == 0) {
-				last = i;
-				break;
-			}
-		}
-		if (last < 0) {
-			if (uh_shinymegamaincount >= UH_MAX_SHINYMOVES)
-				return UHCOPY_FAIL;
-			last = uh_shinymegamaincount;
-			uh_shinymegamainactor[last] = fireactor;
-			uh_shinymegamainweight[last] = w;
-			uh_shinymegamaincount++;
-		}
-	}
+  if (which == UH_SHINYMEGA_M1 || which == UH_SHINYMEGA_TRUE) {
+    for (i = 0; i < uh_shinymegamaincount; i++) {
+      if (StrICmp(uh_shinymegamainactor[i], fireactor) == 0) {
+        last = i;
+        break;
+      }
+    }
+    if (last < 0) {
+      if (uh_shinymegamaincount >= UH_MAX_SHINYMOVES)
+        return UHCOPY_FAIL;
+      last = uh_shinymegamaincount;
+      uh_shinymegamainactor[last] = fireactor;
+      uh_shinymegamainweight[last] = w;
+      uh_shinymegamaincount++;
+    }
+  }
 
-	if (which == UH_SHINYMEGA_M2 || which == UH_SHINYMEGA_TRUE) {
-		for (i = 0; i < uh_shinymegaaltcount; i++) {
-			if (StrICmp(uh_shinymegaaltactor[i], fireactor) == 0) {
-				last = i;
-				break;
-			}
-		}
-		if (i >= uh_shinymegaaltcount) {
-			if (uh_shinymegaaltcount >= UH_MAX_SHINYMOVES)
-				return UHCOPY_FAIL;
-			last = uh_shinymegaaltcount;
-			uh_shinymegaaltactor[last] = fireactor;
-			uh_shinymegaaltweight[last] = w;
-			uh_shinymegaaltcount++;
-		}
-	}
-	return last;
+  if (which == UH_SHINYMEGA_M2 || which == UH_SHINYMEGA_TRUE) {
+    for (i = 0; i < uh_shinymegaaltcount; i++) {
+      if (StrICmp(uh_shinymegaaltactor[i], fireactor) == 0) {
+        last = i;
+        break;
+      }
+    }
+    if (i >= uh_shinymegaaltcount) {
+      if (uh_shinymegaaltcount >= UH_MAX_SHINYMOVES)
+        return UHCOPY_FAIL;
+      last = uh_shinymegaaltcount;
+      uh_shinymegaaltactor[last] = fireactor;
+      uh_shinymegaaltweight[last] = w;
+      uh_shinymegaaltcount++;
+    }
+  }
+  return last;
 }
 
 // Total DecoyBot copy slot count (vanilla 59 once registered + addon).
 function int CountDecoyBotSlots(void) {
-	return uh_decoymovecount;
+  return uh_decoymovecount;
 }
 
 // Next cycle slot after a full-charge shot on `slot` (0 = buster).
 function int UH_ShinyNegaNextSlot(int slot) {
-	int n;
-	if (slot < 0)
-		slot = 0;
-	if (slot == 0)
-		return 1;
-	if (slot == 25) {
-		if (HasCustomNegaSlots())
-			return 26;
-		return 0;
-	}
-	n = slot + 1;
-	if (n >= UH_SHINYNEGA_CYCLE_RESET)
-		return 0;
-	if (n > 25) {
-		while (n <= UH_SHINYNEGA_SLOTMAX) {
-			if (StrCmp(uh_shinynegaslotwep[n][0], "") != 0)
-				return n;
-			n++;
-		}
-		return 0;
-	}
-	return n;
+  int n;
+  if (slot < 0)
+    slot = 0;
+  if (slot == 0)
+    return 1;
+  if (slot == 25) {
+    if (HasCustomNegaSlots())
+      return 26;
+    return 0;
+  }
+  n = slot + 1;
+  if (n >= UH_SHINYNEGA_CYCLE_RESET)
+    return 0;
+  if (n > 25) {
+    while (n <= UH_SHINYNEGA_SLOTMAX) {
+      if (StrCmp(uh_shinynegaslotwep[n][0], "") != 0)
+        return n;
+      n++;
+    }
+    return 0;
+  }
+  return n;
 }
 
 // Resolve a NegaManShiny slot charge weapon. lvl: 1..3. Slots 1..33.
 // Held cycle uses lvl 1 (one actor per slot; Fire1/2/3 are charge tiers).
 function str GetShinyNegaSlotWep(int slot, int lvl) {
-	str wep;
-	if (slot < 1 || slot > UH_SHINYNEGA_SLOTMAX)
-		return "";
-	wep = lvl == 2 ? uh_shinynegaslotwep[slot][1]
-		: lvl == 3 ? uh_shinynegaslotwep[slot][2]
-		: uh_shinynegaslotwep[slot][0];
-	if (StrCmp(wep, "") == 0)
-		return uh_shinynegaslotwep[slot][0];
-	return wep;
+  str wep;
+  if (slot < 1 || slot > UH_SHINYNEGA_SLOTMAX)
+    return "";
+  wep = lvl == 2 ? uh_shinynegaslotwep[slot][1]
+    : lvl == 3 ? uh_shinynegaslotwep[slot][2]
+    : uh_shinynegaslotwep[slot][0];
+  if (StrCmp(wep, "") == 0)
+    return uh_shinynegaslotwep[slot][0];
+  return wep;
 }
 
 // Any addon NegaManShiny slot (26..33) registered? (gates full-charge wrap.)
 function int HasCustomNegaSlots(void) {
-	int i;
-	for (i = UH_SHINYNEGA_SLOTBASE; i <= UH_SHINYNEGA_SLOTMAX; i++) {
-		if (StrCmp(uh_shinynegaslotwep[i][0], "") != 0)
-			return 1;
-	}
-	return 0;
+  int i;
+  for (i = UH_SHINYNEGA_SLOTBASE; i <= UH_SHINYNEGA_SLOTMAX; i++) {
+    if (StrCmp(uh_shinynegaslotwep[i][0], "") != 0)
+      return 1;
+  }
+  return 0;
 }
 
 // ============================================================================
@@ -3028,164 +3028,164 @@ str uh_eyemorphentrygiver[UH_MAX_EYEMORPH_ENTRIES];
 int uh_eyemorphentryweight[UH_MAX_EYEMORPH_ENTRIES];
 
 function int FindEyeMorphPool(str pool) {
-	int i;
-	if (StrCmp(pool, "") == 0)
-		return UHEM_FAIL;
-	for (i = 0; i < uh_eyemorphpoolcount; i++) {
-		if (StrICmp(uh_eyemorphpoolname[i], pool) == 0)
-			return i;
-	}
-	return UHEM_FAIL;
+  int i;
+  if (StrCmp(pool, "") == 0)
+    return UHEM_FAIL;
+  for (i = 0; i < uh_eyemorphpoolcount; i++) {
+    if (StrICmp(uh_eyemorphpoolname[i], pool) == 0)
+      return i;
+  }
+  return UHEM_FAIL;
 }
 
 function int DefineEyeMorphPoolCore(str pool) {
-	int id;
-	if (StrCmp(pool, "") == 0)
-		return UHEM_FAIL;
-	id = FindEyeMorphPool(pool);
-	if (id != UHEM_FAIL)
-		return id;
-	if (uh_eyemorphpoolcount >= UH_MAX_EYEMORPH_POOLS)
-		return UHEM_FAIL;
-	id = uh_eyemorphpoolcount;
-	uh_eyemorphpoolname[id] = pool;
-	uh_eyemorphpoolcount++;
-	return id;
+  int id;
+  if (StrCmp(pool, "") == 0)
+    return UHEM_FAIL;
+  id = FindEyeMorphPool(pool);
+  if (id != UHEM_FAIL)
+    return id;
+  if (uh_eyemorphpoolcount >= UH_MAX_EYEMORPH_POOLS)
+    return UHEM_FAIL;
+  id = uh_eyemorphpoolcount;
+  uh_eyemorphpoolname[id] = pool;
+  uh_eyemorphpoolcount++;
+  return id;
 }
 
 function int FindEyeMorphEntry(int poolid, int eyeid) {
-	int i;
-	for (i = 0; i < uh_eyemorphentrycount; i++) {
-		if (uh_eyemorphentrykey[i] == poolid * UHEM_KEY_BASE + eyeid + UHEM_KEY_EYEOFF)
-			return i;
-	}
-	return UHEM_FAIL;
+  int i;
+  for (i = 0; i < uh_eyemorphentrycount; i++) {
+    if (uh_eyemorphentrykey[i] == poolid * UHEM_KEY_BASE + eyeid + UHEM_KEY_EYEOFF)
+      return i;
+  }
+  return UHEM_FAIL;
 }
 
 // Register or replace one (pool, eye) row.  The pool must already have been
 // created with DefineEyeMorphPoolCore.  A zero weight disables a row without
 // destroying it, allowing addons to restore the original definition.
 function int SetEyeMorphPoolEntryCore(
-	str pool,
-	int eyeid,
-	str shotactor,
-	str burstactor,
-	str giveractor,
-	int weight) {
-	int poolid;
-	int row;
-	if (StrCmp(pool, "") == 0)
-		return UHEM_FAIL;
-	if (!IsEyeDefined(eyeid))
-		return UHEM_FAIL;
-	if (StrCmp(shotactor, "") == 0
-		&& StrCmp(burstactor, "") == 0
-		&& StrCmp(giveractor, "") == 0)
-		return UHEM_FAIL;
-	if (weight < 0 || weight > UHEM_MAX_WEIGHT)
-		return UHEM_FAIL;
-	poolid = FindEyeMorphPool(pool);
-	if (poolid == UHEM_FAIL)
-		return UHEM_FAIL;
-	row = FindEyeMorphEntry(poolid, eyeid);
-	if (row == UHEM_FAIL) {
-		if (uh_eyemorphentrycount >= UH_MAX_EYEMORPH_ENTRIES)
-			return UHEM_FAIL;
-		row = uh_eyemorphentrycount;
-		uh_eyemorphentrykey[row] = poolid * UHEM_KEY_BASE + eyeid + UHEM_KEY_EYEOFF;
-		uh_eyemorphentrycount++;
-	}
-	uh_eyemorphentryshot[row] = shotactor;
-	uh_eyemorphentryburst[row] = burstactor;
-	uh_eyemorphentrygiver[row] = giveractor;
-	uh_eyemorphentryweight[row] = weight;
-	return row;
+  str pool,
+  int eyeid,
+  str shotactor,
+  str burstactor,
+  str giveractor,
+  int weight) {
+  int poolid;
+  int row;
+  if (StrCmp(pool, "") == 0)
+    return UHEM_FAIL;
+  if (!IsEyeDefined(eyeid))
+    return UHEM_FAIL;
+  if (StrCmp(shotactor, "") == 0
+    && StrCmp(burstactor, "") == 0
+    && StrCmp(giveractor, "") == 0)
+    return UHEM_FAIL;
+  if (weight < 0 || weight > UHEM_MAX_WEIGHT)
+    return UHEM_FAIL;
+  poolid = FindEyeMorphPool(pool);
+  if (poolid == UHEM_FAIL)
+    return UHEM_FAIL;
+  row = FindEyeMorphEntry(poolid, eyeid);
+  if (row == UHEM_FAIL) {
+    if (uh_eyemorphentrycount >= UH_MAX_EYEMORPH_ENTRIES)
+      return UHEM_FAIL;
+    row = uh_eyemorphentrycount;
+    uh_eyemorphentrykey[row] = poolid * UHEM_KEY_BASE + eyeid + UHEM_KEY_EYEOFF;
+    uh_eyemorphentrycount++;
+  }
+  uh_eyemorphentryshot[row] = shotactor;
+  uh_eyemorphentryburst[row] = burstactor;
+  uh_eyemorphentrygiver[row] = giveractor;
+  uh_eyemorphentryweight[row] = weight;
+  return row;
 }
 
 function int GetEyeMorphPoolWeightCore(str pool, int eyeid) {
-	int poolid = FindEyeMorphPool(pool);
-	int row;
-	if (poolid == UHEM_FAIL)
-		return UHEM_FAIL;
-	row = FindEyeMorphEntry(poolid, eyeid);
-	if (row == UHEM_FAIL)
-		return UHEM_FAIL;
-	return uh_eyemorphentryweight[row];
+  int poolid = FindEyeMorphPool(pool);
+  int row;
+  if (poolid == UHEM_FAIL)
+    return UHEM_FAIL;
+  row = FindEyeMorphEntry(poolid, eyeid);
+  if (row == UHEM_FAIL)
+    return UHEM_FAIL;
+  return uh_eyemorphentryweight[row];
 }
 
 function str GetEyeMorphPoolActorCore(str pool, int eyeid, int mode) {
-	int poolid = FindEyeMorphPool(pool);
-	int row;
-	if (mode < UHEM_MODE_SHOT || mode > UHEM_MODE_GIVER)
-		return "";
-	if (poolid == UHEM_FAIL)
-		return "";
-	row = FindEyeMorphEntry(poolid, eyeid);
-	if (row == UHEM_FAIL)
-		return "";
-	if (mode == UHEM_MODE_SHOT)
-		return uh_eyemorphentryshot[row];
-	if (mode == UHEM_MODE_BURST)
-		return uh_eyemorphentryburst[row];
-	return uh_eyemorphentrygiver[row];
+  int poolid = FindEyeMorphPool(pool);
+  int row;
+  if (mode < UHEM_MODE_SHOT || mode > UHEM_MODE_GIVER)
+    return "";
+  if (poolid == UHEM_FAIL)
+    return "";
+  row = FindEyeMorphEntry(poolid, eyeid);
+  if (row == UHEM_FAIL)
+    return "";
+  if (mode == UHEM_MODE_SHOT)
+    return uh_eyemorphentryshot[row];
+  if (mode == UHEM_MODE_BURST)
+    return uh_eyemorphentryburst[row];
+  return uh_eyemorphentrygiver[row];
 }
 
 function int EyeMorphPoolWeightSum(int poolid, int mode) {
-	int sum = 0;
-	int i;
-	str actor;
-	if (mode < UHEM_MODE_SHOT || mode > UHEM_MODE_GIVER)
-		return 0;
-	for (i = 0; i < uh_eyemorphentrycount; i++) {
-		if (uh_eyemorphentrykey[i] / UHEM_KEY_BASE != poolid
-			|| uh_eyemorphentryweight[i] <= 0)
-			continue;
-		actor = mode == UHEM_MODE_SHOT ? uh_eyemorphentryshot[i]
-			: mode == UHEM_MODE_BURST ? uh_eyemorphentryburst[i]
-			: uh_eyemorphentrygiver[i];
-		if (StrCmp(actor, "") != 0)
-			sum += uh_eyemorphentryweight[i];
-	}
-	return sum;
+  int sum = 0;
+  int i;
+  str actor;
+  if (mode < UHEM_MODE_SHOT || mode > UHEM_MODE_GIVER)
+    return 0;
+  for (i = 0; i < uh_eyemorphentrycount; i++) {
+    if (uh_eyemorphentrykey[i] / UHEM_KEY_BASE != poolid
+      || uh_eyemorphentryweight[i] <= 0)
+      continue;
+    actor = mode == UHEM_MODE_SHOT ? uh_eyemorphentryshot[i]
+      : mode == UHEM_MODE_BURST ? uh_eyemorphentryburst[i]
+      : uh_eyemorphentrygiver[i];
+    if (StrCmp(actor, "") != 0)
+      sum += uh_eyemorphentryweight[i];
+  }
+  return sum;
 }
 
 function int RandomEyeMorphEntry(str pool, int mode) {
-	int poolid = FindEyeMorphPool(pool);
-	int sum;
-	int roll;
-	int i;
-	str actor;
-	if (poolid == UHEM_FAIL)
-		return UHEM_FAIL;
-	sum = EyeMorphPoolWeightSum(poolid, mode);
-	if (sum <= 0)
-		return UHEM_FAIL;
-	roll = random(1, sum);
-	for (i = 0; i < uh_eyemorphentrycount; i++) {
-		if (uh_eyemorphentrykey[i] / UHEM_KEY_BASE != poolid
-			|| uh_eyemorphentryweight[i] <= 0)
-			continue;
-		actor = mode == UHEM_MODE_SHOT ? uh_eyemorphentryshot[i]
-			: mode == UHEM_MODE_BURST ? uh_eyemorphentryburst[i]
-			: uh_eyemorphentrygiver[i];
-		if (StrCmp(actor, "") == 0)
-			continue;
-		roll -= uh_eyemorphentryweight[i];
-		if (roll <= 0)
-			return i;
-	}
-	return UHEM_FAIL;
+  int poolid = FindEyeMorphPool(pool);
+  int sum;
+  int roll;
+  int i;
+  str actor;
+  if (poolid == UHEM_FAIL)
+    return UHEM_FAIL;
+  sum = EyeMorphPoolWeightSum(poolid, mode);
+  if (sum <= 0)
+    return UHEM_FAIL;
+  roll = random(1, sum);
+  for (i = 0; i < uh_eyemorphentrycount; i++) {
+    if (uh_eyemorphentrykey[i] / UHEM_KEY_BASE != poolid
+      || uh_eyemorphentryweight[i] <= 0)
+      continue;
+    actor = mode == UHEM_MODE_SHOT ? uh_eyemorphentryshot[i]
+      : mode == UHEM_MODE_BURST ? uh_eyemorphentryburst[i]
+      : uh_eyemorphentrygiver[i];
+    if (StrCmp(actor, "") == 0)
+      continue;
+    roll -= uh_eyemorphentryweight[i];
+    if (roll <= 0)
+      return i;
+  }
+  return UHEM_FAIL;
 }
 
 function str PickEyeMorphActorCore(str pool, int mode) {
-	int row = RandomEyeMorphEntry(pool, mode);
-	if (row == UHEM_FAIL)
-		return "";
-	if (mode == UHEM_MODE_SHOT)
-		return uh_eyemorphentryshot[row];
-	if (mode == UHEM_MODE_BURST)
-		return uh_eyemorphentryburst[row];
-	return uh_eyemorphentrygiver[row];
+  int row = RandomEyeMorphEntry(pool, mode);
+  if (row == UHEM_FAIL)
+    return "";
+  if (mode == UHEM_MODE_SHOT)
+    return uh_eyemorphentryshot[row];
+  if (mode == UHEM_MODE_BURST)
+    return uh_eyemorphentryburst[row];
+  return uh_eyemorphentrygiver[row];
 }
 
 // ============================================================================
@@ -3266,285 +3266,285 @@ int uh_beexevent[UH_MAX_BONUS_EX];
 int uh_beexthreshold[UH_MAX_BONUS_EX];
 
 function bool IsBonusEventDefined(int id) {
-	if (id < 0 || id >= UH_MAX_BONUS_EVENTS)
-		return false;
-	return uh_bedefined[id] == UHDB_ROW_ACTIVE || uh_bedefined[id] == UHDB_ROW_DISABLED;
+  if (id < 0 || id >= UH_MAX_BONUS_EVENTS)
+    return false;
+  return uh_bedefined[id] == UHDB_ROW_ACTIVE || uh_bedefined[id] == UHDB_ROW_DISABLED;
 }
 
 function int FindBonusEventByStem(str stem) {
-	int i;
-	if (StrCmp(stem, "") == 0)
-		return UHBE_FAIL;
-	for (i = 0; i < UH_MAX_BONUS_EVENTS; i++) {
-		if (IsBonusEventDefined(i) && StrICmp(uh_bestr[i][UHBE_STR_STEM], stem) == 0)
-			return i;
-	}
-	return UHBE_FAIL;
+  int i;
+  if (StrCmp(stem, "") == 0)
+    return UHBE_FAIL;
+  for (i = 0; i < UH_MAX_BONUS_EVENTS; i++) {
+    if (IsBonusEventDefined(i) && StrICmp(uh_bestr[i][UHBE_STR_STEM], stem) == 0)
+      return i;
+  }
+  return UHBE_FAIL;
 }
 
 // Re-registering the same (id, stem) updates the whole row; the same applies
 // to repeated id -1 calls with a known stem (the existing row's id is reused).
 // Same stem with a different id, or same id with a different stem, fails.
 function int DefineBonusEventCore(int id, str stem, str name, str music, str title, str album, str artist,
-	str sound, str hud1, str hud2, str startcb, str rebuildcb, str endcb,
-	int arg1, int arg2, int arg3, int flags, int weight, int minplayers, int maxplayers) {
-	int other;
-	if (StrCmp(stem, "") == 0)
-		return UHBE_FAIL;
-	if (weight < 0 || weight > UHBE_MAX_WEIGHT)
-		return UHBE_FAIL;
-	if (minplayers < 0 || maxplayers < 0)
-		return UHBE_FAIL;
-	if (maxplayers > 0 && maxplayers < minplayers)
-		return UHBE_FAIL;
+  str sound, str hud1, str hud2, str startcb, str rebuildcb, str endcb,
+  int arg1, int arg2, int arg3, int flags, int weight, int minplayers, int maxplayers) {
+  int other;
+  if (StrCmp(stem, "") == 0)
+    return UHBE_FAIL;
+  if (weight < 0 || weight > UHBE_MAX_WEIGHT)
+    return UHBE_FAIL;
+  if (minplayers < 0 || maxplayers < 0)
+    return UHBE_FAIL;
+  if (maxplayers > 0 && maxplayers < minplayers)
+    return UHBE_FAIL;
 
-	// Stem lookup first: a repeated DefineBonusEvent(-1, sameStem, ...) call
-	// (double registration, addon reload) must reuse the existing row instead
-	// of allocating a fresh auto id and then failing the stem check.
-	other = FindBonusEventByStem(stem);
-	// Tombstones retain the stem.  They cannot be implicitly resurrected or
-	// reassigned to another id by the legacy Define entry point.
-	for (int scan = 0; scan < UH_MAX_BONUS_EVENTS; scan++) {
-		if (uh_bedefined[scan] == UHDB_ROW_REMOVED
-			&& StrICmp(uh_bestr[scan][UHBE_STR_STEM], stem) == 0)
-			return UHBE_FAIL;
-	}
+  // Stem lookup first: a repeated DefineBonusEvent(-1, sameStem, ...) call
+  // (double registration, addon reload) must reuse the existing row instead
+  // of allocating a fresh auto id and then failing the stem check.
+  other = FindBonusEventByStem(stem);
+  // Tombstones retain the stem.  They cannot be implicitly resurrected or
+  // reassigned to another id by the legacy Define entry point.
+  for (int scan = 0; scan < UH_MAX_BONUS_EVENTS; scan++) {
+    if (uh_bedefined[scan] == UHDB_ROW_REMOVED
+      && StrICmp(uh_bestr[scan][UHBE_STR_STEM], stem) == 0)
+      return UHBE_FAIL;
+  }
 
-	if (id == -1) {
-		if (other != UHBE_FAIL) {
-			id = other;
-		}
-		else {
-			id = uh_benextcustomid;
-			while (id < UH_MAX_BONUS_EVENTS && uh_bedefined[id] != 0)
-				id++;
-			if (id >= UH_MAX_BONUS_EVENTS)
-				return UHBE_FAIL;
-		}
-	}
-	else if (id < 0 || id >= UH_MAX_BONUS_EVENTS)
-		return UHBE_FAIL;
+  if (id == -1) {
+    if (other != UHBE_FAIL) {
+      id = other;
+    }
+    else {
+      id = uh_benextcustomid;
+      while (id < UH_MAX_BONUS_EVENTS && uh_bedefined[id] != 0)
+        id++;
+      if (id >= UH_MAX_BONUS_EVENTS)
+        return UHBE_FAIL;
+    }
+  }
+  else if (id < 0 || id >= UH_MAX_BONUS_EVENTS)
+    return UHBE_FAIL;
 
-	if (other != UHBE_FAIL && other != id)
-		return UHBE_FAIL;
-	if (uh_bedefined[id] != 0 && StrICmp(uh_bestr[id][UHBE_STR_STEM], stem) != 0)
-		return UHBE_FAIL;
-	if (uh_bedefined[id] == UHDB_ROW_REMOVED)
-		return UHBE_FAIL;
+  if (other != UHBE_FAIL && other != id)
+    return UHBE_FAIL;
+  if (uh_bedefined[id] != 0 && StrICmp(uh_bestr[id][UHBE_STR_STEM], stem) != 0)
+    return UHBE_FAIL;
+  if (uh_bedefined[id] == UHDB_ROW_REMOVED)
+    return UHBE_FAIL;
 
-	if (uh_bedefined[id] == 0)
-		uh_bedefined[id] = UHDB_ROW_ACTIVE;
-	uh_bestr[id][UHBE_STR_STEM] = stem;
-	uh_bestr[id][UHBE_STR_NAME] = name;
-	uh_bestr[id][UHBE_STR_MUSIC] = music;
-	uh_bestr[id][UHBE_STR_MUSICTITLE] = title;
-	uh_bestr[id][UHBE_STR_MUSICALBUM] = album;
-	uh_bestr[id][UHBE_STR_MUSICARTIST] = artist;
-	uh_bestr[id][UHBE_STR_SOUND] = sound;
-	uh_bestr[id][UHBE_STR_HUD1] = hud1;
-	uh_bestr[id][UHBE_STR_HUD2] = hud2;
-	uh_bestr[id][UHBE_STR_STARTCB] = startcb;
-	uh_bestr[id][UHBE_STR_REBUILDCB] = rebuildcb;
-	uh_bestr[id][UHBE_STR_ENDCB] = endcb;
-	uh_beint[id][UHBE_INT_ARG1] = arg1;
-	uh_beint[id][UHBE_INT_ARG2] = arg2;
-	uh_beint[id][UHBE_INT_ARG3] = arg3;
-	uh_beint[id][UHBE_INT_FLAGS] = flags;
-	uh_beint[id][UHBE_INT_WEIGHT] = weight;
-	uh_beint[id][UHBE_INT_MINP] = minplayers;
-	uh_beint[id][UHBE_INT_MAXP] = maxplayers;
+  if (uh_bedefined[id] == 0)
+    uh_bedefined[id] = UHDB_ROW_ACTIVE;
+  uh_bestr[id][UHBE_STR_STEM] = stem;
+  uh_bestr[id][UHBE_STR_NAME] = name;
+  uh_bestr[id][UHBE_STR_MUSIC] = music;
+  uh_bestr[id][UHBE_STR_MUSICTITLE] = title;
+  uh_bestr[id][UHBE_STR_MUSICALBUM] = album;
+  uh_bestr[id][UHBE_STR_MUSICARTIST] = artist;
+  uh_bestr[id][UHBE_STR_SOUND] = sound;
+  uh_bestr[id][UHBE_STR_HUD1] = hud1;
+  uh_bestr[id][UHBE_STR_HUD2] = hud2;
+  uh_bestr[id][UHBE_STR_STARTCB] = startcb;
+  uh_bestr[id][UHBE_STR_REBUILDCB] = rebuildcb;
+  uh_bestr[id][UHBE_STR_ENDCB] = endcb;
+  uh_beint[id][UHBE_INT_ARG1] = arg1;
+  uh_beint[id][UHBE_INT_ARG2] = arg2;
+  uh_beint[id][UHBE_INT_ARG3] = arg3;
+  uh_beint[id][UHBE_INT_FLAGS] = flags;
+  uh_beint[id][UHBE_INT_WEIGHT] = weight;
+  uh_beint[id][UHBE_INT_MINP] = minplayers;
+  uh_beint[id][UHBE_INT_MAXP] = maxplayers;
 
-	if (id >= UHBE_ADDON_ID_START && id >= uh_benextcustomid)
-		uh_benextcustomid = id + 1;
+  if (id >= UHBE_ADDON_ID_START && id >= uh_benextcustomid)
+    uh_benextcustomid = id + 1;
 
-	return id;
+  return id;
 }
 
 // Bind base -> EX by stem.  Both events must already be defined and differ.
 // Re-setting the same base updates the row (idempotent double registration).
 function int SetBonusEventEXCore(str basestem, str exstem, int threshold) {
-	int baseid;
-	int exid;
-	int i;
-	if (StrCmp(basestem, "") == 0 || StrCmp(exstem, "") == 0)
-		return UHBE_FAIL;
-	if (threshold < 1)
-		return UHBE_FAIL;
-	baseid = FindBonusEventByStem(basestem);
-	exid = FindBonusEventByStem(exstem);
-	if (baseid == UHBE_FAIL || exid == UHBE_FAIL || baseid == exid)
-		return UHBE_FAIL;
+  int baseid;
+  int exid;
+  int i;
+  if (StrCmp(basestem, "") == 0 || StrCmp(exstem, "") == 0)
+    return UHBE_FAIL;
+  if (threshold < 1)
+    return UHBE_FAIL;
+  baseid = FindBonusEventByStem(basestem);
+  exid = FindBonusEventByStem(exstem);
+  if (baseid == UHBE_FAIL || exid == UHBE_FAIL || baseid == exid)
+    return UHBE_FAIL;
 
-	for (i = 0; i < uh_beexcount; i++) {
-		if (uh_beexbase[i] == baseid) {
-			uh_beexevent[i] = exid;
-			uh_beexthreshold[i] = threshold;
-			return i;
-		}
-	}
-	if (uh_beexcount >= UH_MAX_BONUS_EX)
-		return UHBE_FAIL;
-	uh_beexbase[uh_beexcount] = baseid;
-	uh_beexevent[uh_beexcount] = exid;
-	uh_beexthreshold[uh_beexcount] = threshold;
-	uh_beexcount++;
-	return uh_beexcount - 1;
+  for (i = 0; i < uh_beexcount; i++) {
+    if (uh_beexbase[i] == baseid) {
+      uh_beexevent[i] = exid;
+      uh_beexthreshold[i] = threshold;
+      return i;
+    }
+  }
+  if (uh_beexcount >= UH_MAX_BONUS_EX)
+    return UHBE_FAIL;
+  uh_beexbase[uh_beexcount] = baseid;
+  uh_beexevent[uh_beexcount] = exid;
+  uh_beexthreshold[uh_beexcount] = threshold;
+  uh_beexcount++;
+  return uh_beexcount - 1;
 }
 
 function int FindBonusEventEXRow(int baseid) {
-	int i;
-	for (i = 0; i < uh_beexcount; i++) {
-		if (uh_beexbase[i] == baseid)
-			return i;
-	}
-	return -1;
+  int i;
+  for (i = 0; i < uh_beexcount; i++) {
+    if (uh_beexbase[i] == baseid)
+      return i;
+  }
+  return -1;
 }
 
 // Resolved EX event id for a base, or UHBE_FAIL when the base has no relation
 // or the target is not (any longer) defined.  Callers fall back to the base
 // event and log a warning.
 function int ResolveBonusEventEX(int baseid) {
-	int row = FindBonusEventEXRow(baseid);
-	if (row < 0)
-		return UHBE_FAIL;
-	if (uh_bedefined[uh_beexevent[row]] != UHDB_ROW_ACTIVE)
-		return UHBE_FAIL;
-	return uh_beexevent[row];
+  int row = FindBonusEventEXRow(baseid);
+  if (row < 0)
+    return UHBE_FAIL;
+  if (uh_bedefined[uh_beexevent[row]] != UHDB_ROW_ACTIVE)
+    return UHBE_FAIL;
+  return uh_beexevent[row];
 }
 
 function int GetBonusEventEXThreshold(int baseid) {
-	int row = FindBonusEventEXRow(baseid);
-	if (row < 0)
-		return 0;
-	return uh_beexthreshold[row];
+  int row = FindBonusEventEXRow(baseid);
+  if (row < 0)
+    return 0;
+  return uh_beexthreshold[row];
 }
 
 function str GetBonusEventStem(int id) {
-	if (!IsBonusEventDefined(id))
-		return "";
-	return uh_bestr[id][UHBE_STR_STEM];
+  if (!IsBonusEventDefined(id))
+    return "";
+  return uh_bestr[id][UHBE_STR_STEM];
 }
 
 function str GetBonusEventName(int id) {
-	if (!IsBonusEventDefined(id))
-		return "";
-	return uh_bestr[id][UHBE_STR_NAME];
+  if (!IsBonusEventDefined(id))
+    return "";
+  return uh_bestr[id][UHBE_STR_NAME];
 }
 
 function str GetBonusEventMusic(int id) {
-	if (!IsBonusEventDefined(id))
-		return "";
-	return uh_bestr[id][UHBE_STR_MUSIC];
+  if (!IsBonusEventDefined(id))
+    return "";
+  return uh_bestr[id][UHBE_STR_MUSIC];
 }
 
 function str GetBonusEventMusicTitle(int id) {
-	if (!IsBonusEventDefined(id))
-		return "";
-	return uh_bestr[id][UHBE_STR_MUSICTITLE];
+  if (!IsBonusEventDefined(id))
+    return "";
+  return uh_bestr[id][UHBE_STR_MUSICTITLE];
 }
 
 function str GetBonusEventMusicAlbum(int id) {
-	if (!IsBonusEventDefined(id))
-		return "";
-	return uh_bestr[id][UHBE_STR_MUSICALBUM];
+  if (!IsBonusEventDefined(id))
+    return "";
+  return uh_bestr[id][UHBE_STR_MUSICALBUM];
 }
 
 function str GetBonusEventMusicArtist(int id) {
-	if (!IsBonusEventDefined(id))
-		return "";
-	return uh_bestr[id][UHBE_STR_MUSICARTIST];
+  if (!IsBonusEventDefined(id))
+    return "";
+  return uh_bestr[id][UHBE_STR_MUSICARTIST];
 }
 
 function str GetBonusEventSound(int id) {
-	if (!IsBonusEventDefined(id))
-		return "";
-	return uh_bestr[id][UHBE_STR_SOUND];
+  if (!IsBonusEventDefined(id))
+    return "";
+  return uh_bestr[id][UHBE_STR_SOUND];
 }
 
 function str GetBonusEventHudMessage1(int id) {
-	if (!IsBonusEventDefined(id))
-		return "";
-	return uh_bestr[id][UHBE_STR_HUD1];
+  if (!IsBonusEventDefined(id))
+    return "";
+  return uh_bestr[id][UHBE_STR_HUD1];
 }
 
 function str GetBonusEventHudMessage2(int id) {
-	if (!IsBonusEventDefined(id))
-		return "";
-	return uh_bestr[id][UHBE_STR_HUD2];
+  if (!IsBonusEventDefined(id))
+    return "";
+  return uh_bestr[id][UHBE_STR_HUD2];
 }
 
 function str GetBonusEventStartCallback(int id) {
-	if (!IsBonusEventDefined(id))
-		return "";
-	return uh_bestr[id][UHBE_STR_STARTCB];
+  if (!IsBonusEventDefined(id))
+    return "";
+  return uh_bestr[id][UHBE_STR_STARTCB];
 }
 
 function str GetBonusEventRebuildCallback(int id) {
-	if (!IsBonusEventDefined(id))
-		return "";
-	return uh_bestr[id][UHBE_STR_REBUILDCB];
+  if (!IsBonusEventDefined(id))
+    return "";
+  return uh_bestr[id][UHBE_STR_REBUILDCB];
 }
 
 function str GetBonusEventEndCallback(int id) {
-	if (!IsBonusEventDefined(id))
-		return "";
-	return uh_bestr[id][UHBE_STR_ENDCB];
+  if (!IsBonusEventDefined(id))
+    return "";
+  return uh_bestr[id][UHBE_STR_ENDCB];
 }
 
 function int GetBonusEventFlags(int id) {
-	if (!IsBonusEventDefined(id))
-		return 0;
-	return uh_beint[id][UHBE_INT_FLAGS];
+  if (!IsBonusEventDefined(id))
+    return 0;
+  return uh_beint[id][UHBE_INT_FLAGS];
 }
 
 function int GetBonusEventWeight(int id) {
-	if (!IsBonusEventDefined(id))
-		return 0;
-	return uh_beint[id][UHBE_INT_WEIGHT];
+  if (!IsBonusEventDefined(id))
+    return 0;
+  return uh_beint[id][UHBE_INT_WEIGHT];
 }
 
 function int GetBonusEventMinPlayers(int id) {
-	if (!IsBonusEventDefined(id))
-		return 0;
-	return uh_beint[id][UHBE_INT_MINP];
+  if (!IsBonusEventDefined(id))
+    return 0;
+  return uh_beint[id][UHBE_INT_MINP];
 }
 
 function int GetBonusEventMaxPlayers(int id) {
-	if (!IsBonusEventDefined(id))
-		return 0;
-	return uh_beint[id][UHBE_INT_MAXP];
+  if (!IsBonusEventDefined(id))
+    return 0;
+  return uh_beint[id][UHBE_INT_MAXP];
 }
 
 function int GetBonusEventArg1(int id) {
-	if (!IsBonusEventDefined(id))
-		return 0;
-	return uh_beint[id][UHBE_INT_ARG1];
+  if (!IsBonusEventDefined(id))
+    return 0;
+  return uh_beint[id][UHBE_INT_ARG1];
 }
 
 function int GetBonusEventArg2(int id) {
-	if (!IsBonusEventDefined(id))
-		return 0;
-	return uh_beint[id][UHBE_INT_ARG2];
+  if (!IsBonusEventDefined(id))
+    return 0;
+  return uh_beint[id][UHBE_INT_ARG2];
 }
 
 function int GetBonusEventArg3(int id) {
-	if (!IsBonusEventDefined(id))
-		return 0;
-	return uh_beint[id][UHBE_INT_ARG3];
+  if (!IsBonusEventDefined(id))
+    return 0;
+  return uh_beint[id][UHBE_INT_ARG3];
 }
 
 function bool UH_BonusEligible(int id, int plccount, int excludedid) {
-	if (uh_bedefined[id] != UHDB_ROW_ACTIVE)
-		return false;
-	if (uh_beint[id][UHBE_INT_WEIGHT] < 1)
-		return false;
-	if (id == excludedid)
-		return false;
-	if (plccount < uh_beint[id][UHBE_INT_MINP])
-		return false;
-	if (uh_beint[id][UHBE_INT_MAXP] > 0 && plccount > uh_beint[id][UHBE_INT_MAXP])
-		return false;
-	return true;
+  if (uh_bedefined[id] != UHDB_ROW_ACTIVE)
+    return false;
+  if (uh_beint[id][UHBE_INT_WEIGHT] < 1)
+    return false;
+  if (id == excludedid)
+    return false;
+  if (plccount < uh_beint[id][UHBE_INT_MINP])
+    return false;
+  if (uh_beint[id][UHBE_INT_MAXP] > 0 && plccount > uh_beint[id][UHBE_INT_MAXP])
+    return false;
+  return true;
 }
 
 // Weighted pick among defined events with weight >= 1 whose player range
@@ -3553,37 +3553,37 @@ function bool UH_BonusEligible(int id, int plccount, int excludedid) {
 // allowed to repeat rather than failing or looping.  UHBE_FAIL only when no
 // weighted event is eligible at all.
 function int PickBonusEvent(int plccount, int excludedid) {
-	int i;
-	int sum;
-	int roll;
-	bool allowrepeat;
+  int i;
+  int sum;
+  int roll;
+  bool allowrepeat;
 
-	allowrepeat = false;
-	sum = 0;
-	for (i = 0; i < UH_MAX_BONUS_EVENTS; i++) {
-		if (UH_BonusEligible(i, plccount, excludedid))
-			sum += uh_beint[i][UHBE_INT_WEIGHT];
-	}
-	if (sum <= 0) {
-		allowrepeat = true;
-		sum = 0;
-		for (i = 0; i < UH_MAX_BONUS_EVENTS; i++) {
-			if (UH_BonusEligible(i, plccount, -1))
-				sum += uh_beint[i][UHBE_INT_WEIGHT];
-		}
-	}
-	if (sum <= 0)
-		return UHBE_FAIL;
+  allowrepeat = false;
+  sum = 0;
+  for (i = 0; i < UH_MAX_BONUS_EVENTS; i++) {
+    if (UH_BonusEligible(i, plccount, excludedid))
+      sum += uh_beint[i][UHBE_INT_WEIGHT];
+  }
+  if (sum <= 0) {
+    allowrepeat = true;
+    sum = 0;
+    for (i = 0; i < UH_MAX_BONUS_EVENTS; i++) {
+      if (UH_BonusEligible(i, plccount, -1))
+        sum += uh_beint[i][UHBE_INT_WEIGHT];
+    }
+  }
+  if (sum <= 0)
+    return UHBE_FAIL;
 
-	roll = random(1, sum);
-	for (i = 0; i < UH_MAX_BONUS_EVENTS; i++) {
-		if (!UH_BonusEligible(i, plccount, allowrepeat ? -1 : excludedid))
-			continue;
-		roll -= uh_beint[i][UHBE_INT_WEIGHT];
-		if (roll <= 0)
-			return i;
-	}
-	return UHBE_FAIL;
+  roll = random(1, sum);
+  for (i = 0; i < UH_MAX_BONUS_EVENTS; i++) {
+    if (!UH_BonusEligible(i, plccount, allowrepeat ? -1 : excludedid))
+      continue;
+    roll -= uh_beint[i][UHBE_INT_WEIGHT];
+    if (roll <= 0)
+      return i;
+  }
+  return UHBE_FAIL;
 }
 
 // Dispatch the per-round start callback as (eventId, arg1, arg2).  Start
@@ -3592,41 +3592,41 @@ function int PickBonusEvent(int plccount, int excludedid) {
 // that does not resolve to a real script reports failure, never a silent
 // no-op (the caller falls back to the registered FFA row).
 function bool RunBonusEventStart(int id) {
-	str cb;
-	if (!IsBonusEventDefined(id))
-		return false;
-	cb = uh_bestr[id][UHBE_STR_STARTCB];
-	if (StrCmp(cb, "") == 0 || !CheckScript(cb, true))
-		return false;
-	ACS_NamedExecuteAlways(cb, 0, id, uh_beint[id][UHBE_INT_ARG1], uh_beint[id][UHBE_INT_ARG2]);
-	return true;
+  str cb;
+  if (!IsBonusEventDefined(id))
+    return false;
+  cb = uh_bestr[id][UHBE_STR_STARTCB];
+  if (StrCmp(cb, "") == 0 || !CheckScript(cb, true))
+    return false;
+  ACS_NamedExecuteAlways(cb, 0, id, uh_beint[id][UHBE_INT_ARG1], uh_beint[id][UHBE_INT_ARG2]);
+  return true;
 }
 
 // Per-player revival/reconnect rebuild as (eventId, tid, reason).  Callbacks
 // must be idempotent: repeated calls may not stack rewards, reroll targets or
 // change round-frozen random results.
 function bool RunBonusEventRebuild(int id, int tid, int reason) {
-	str cb;
-	if (!IsBonusEventDefined(id))
-		return false;
-	cb = uh_bestr[id][UHBE_STR_REBUILDCB];
-	if (StrCmp(cb, "") == 0 || !CheckScript(cb, true))
-		return false;
-	ACS_NamedExecuteAlways(cb, 0, id, tid, reason);
-	return true;
+  str cb;
+  if (!IsBonusEventDefined(id))
+    return false;
+  cb = uh_bestr[id][UHBE_STR_REBUILDCB];
+  if (StrCmp(cb, "") == 0 || !CheckScript(cb, true))
+    return false;
+  ACS_NamedExecuteAlways(cb, 0, id, tid, reason);
+  return true;
 }
 
 // Round teardown as (eventId, result, 0).  End callbacks only undo side
 // effects the event owns; they never decide the winner or exit the map.
 function bool RunBonusEventEnd(int id, int result) {
-	str cb;
-	if (!IsBonusEventDefined(id))
-		return false;
-	cb = uh_bestr[id][UHBE_STR_ENDCB];
-	if (StrCmp(cb, "") == 0 || !CheckScript(cb, true))
-		return false;
-	ACS_NamedExecuteAlways(cb, 0, id, result, 0);
-	return true;
+  str cb;
+  if (!IsBonusEventDefined(id))
+    return false;
+  cb = uh_bestr[id][UHBE_STR_ENDCB];
+  if (StrCmp(cb, "") == 0 || !CheckScript(cb, true))
+    return false;
+  ACS_NamedExecuteAlways(cb, 0, id, result, 0);
+  return true;
 }
 
 // --- Team presentation table -------------------------------------------------
@@ -3660,68 +3660,68 @@ str uh_tipstr[UH_MAX_TEAM_PRESENTATION][UHTIP_STR_COUNT];
 int uh_tipflags[UH_MAX_TEAM_PRESENTATION];
 
 function int FindTeamPresentation(str actor) {
-	if (StrCmp(actor, "") == 0)
-		return UHTIP_NONE;
-	for (int i = 0; i < uh_tipcount; i++) {
-		if (StrICmp(actor, uh_tipstr[i][UHTIP_STR_ACTOR]) == 0)
-			return i;
-	}
-	return UHTIP_NONE;
+  if (StrCmp(actor, "") == 0)
+    return UHTIP_NONE;
+  for (int i = 0; i < uh_tipcount; i++) {
+    if (StrICmp(actor, uh_tipstr[i][UHTIP_STR_ACTOR]) == 0)
+      return i;
+  }
+  return UHTIP_NONE;
 }
 
 // Insert-or-replace.  Returns the row, UHTIP_NONE for an empty actor or
 // UHTIP_TABLE_FULL when the fixed capacity is exhausted.
 function int TeamPresentationRegister(str actor, str shortName, str portrait, str scoreIcon, int flags) {
-	if (StrCmp(actor, "") == 0)
-		return UHTIP_NONE;
-	int row = FindTeamPresentation(actor);
-	if (row == UHTIP_NONE) {
-		if (uh_tipcount >= UH_MAX_TEAM_PRESENTATION)
-			return UHTIP_TABLE_FULL;
-		row = uh_tipcount;
-		uh_tipcount++;
-	}
-	uh_tipstr[row][UHTIP_STR_ACTOR] = actor;
-	uh_tipstr[row][UHTIP_STR_NAME] = shortName;
-	uh_tipstr[row][UHTIP_STR_PORTRAIT] = portrait;
-	uh_tipstr[row][UHTIP_STR_SCOREICON] = scoreIcon;
-	uh_tipflags[row] = flags;
-	return row;
+  if (StrCmp(actor, "") == 0)
+    return UHTIP_NONE;
+  int row = FindTeamPresentation(actor);
+  if (row == UHTIP_NONE) {
+    if (uh_tipcount >= UH_MAX_TEAM_PRESENTATION)
+      return UHTIP_TABLE_FULL;
+    row = uh_tipcount;
+    uh_tipcount++;
+  }
+  uh_tipstr[row][UHTIP_STR_ACTOR] = actor;
+  uh_tipstr[row][UHTIP_STR_NAME] = shortName;
+  uh_tipstr[row][UHTIP_STR_PORTRAIT] = portrait;
+  uh_tipstr[row][UHTIP_STR_SCOREICON] = scoreIcon;
+  uh_tipflags[row] = flags;
+  return row;
 }
 
 function int GetTeamPresentationCount(void) {
-	return uh_tipcount;
+  return uh_tipcount;
 }
 
 function str GetTeamPresentationActor(int row) {
-	if (row < 0 || row >= uh_tipcount)
-		return "";
-	return uh_tipstr[row][UHTIP_STR_ACTOR];
+  if (row < 0 || row >= uh_tipcount)
+    return "";
+  return uh_tipstr[row][UHTIP_STR_ACTOR];
 }
 
 function str GetTeamPresentationName(int row) {
-	if (row < 0 || row >= uh_tipcount)
-		return "";
-	return uh_tipstr[row][UHTIP_STR_NAME];
+  if (row < 0 || row >= uh_tipcount)
+    return "";
+  return uh_tipstr[row][UHTIP_STR_NAME];
 }
 
 function str GetTeamPresentationPortrait(int row) {
-	if (row < 0 || row >= uh_tipcount)
-		return "";
-	return uh_tipstr[row][UHTIP_STR_PORTRAIT];
+  if (row < 0 || row >= uh_tipcount)
+    return "";
+  return uh_tipstr[row][UHTIP_STR_PORTRAIT];
 }
 
 // Empty scoreIcon means "same as the portrait".
 function str GetTeamPresentationScoreIcon(int row) {
-	if (row < 0 || row >= uh_tipcount)
-		return "";
-	return uh_tipstr[row][UHTIP_STR_SCOREICON];
+  if (row < 0 || row >= uh_tipcount)
+    return "";
+  return uh_tipstr[row][UHTIP_STR_SCOREICON];
 }
 
 function int GetTeamPresentationFlags(int row) {
-	if (row < 0 || row >= uh_tipcount)
-		return 0;
-	return uh_tipflags[row];
+  if (row < 0 || row >= uh_tipcount)
+    return 0;
+  return uh_tipflags[row];
 }
 
 // --- Unified player presentation resolver ------------------------------------
@@ -3746,17 +3746,17 @@ function int GetTeamPresentationFlags(int row) {
 #libdefine UH_PLDEF_PRESENTATION 4
 
 function int UH_FindPlayerDefinition(str actor) {
-	if (StrCmp(actor, "") == 0)
-		return UH_PLDEF_NONE;
-	if (FindSurvivorByActor(actor) != UHSURV_FAIL)
-		return UH_PLDEF_SURVIVOR;
-	if (FindBossByActor(actor) != UHBOSS_FAIL)
-		return UH_PLDEF_BOSS;
-	if (FindEyeByActor(actor) != UHEYE_FAIL)
-		return UH_PLDEF_EYE;
-	if (FindTeamPresentation(actor) != UHTIP_NONE)
-		return UH_PLDEF_PRESENTATION;
-	return UH_PLDEF_NONE;
+  if (StrCmp(actor, "") == 0)
+    return UH_PLDEF_NONE;
+  if (FindSurvivorByActor(actor) != UHSURV_FAIL)
+    return UH_PLDEF_SURVIVOR;
+  if (FindBossByActor(actor) != UHBOSS_FAIL)
+    return UH_PLDEF_BOSS;
+  if (FindEyeByActor(actor) != UHEYE_FAIL)
+    return UH_PLDEF_EYE;
+  if (FindTeamPresentation(actor) != UHTIP_NONE)
+    return UH_PLDEF_PRESENTATION;
+  return UH_PLDEF_NONE;
 }
 
 // Teammate-bar / subline short name.  An explicit shortName wins; otherwise the
@@ -3765,45 +3765,45 @@ function int UH_FindPlayerDefinition(str actor) {
 // caller that wants a plain name must register an explicit shortName, so no
 // generic color-code or "_U" suffix stripping happens here.
 function str UH_PlayerDisplayName(str actor) {
-	if (StrCmp(actor, "") == 0)
-		return "";
-	int row = FindTeamPresentation(actor);
-	if (row != UHTIP_NONE && StrCmp(uh_tipstr[row][UHTIP_STR_NAME], "") != 0)
-		return uh_tipstr[row][UHTIP_STR_NAME];
-	int sid = FindSurvivorByActor(actor);
-	if (sid != UHSURV_FAIL)
-		return GetSurvivorName(sid);
-	int bid = FindBossByActor(actor);
-	if (bid != UHBOSS_FAIL)
-		return GetBossName(bid);
-	int eid = FindEyeByActor(actor);
-	if (eid != UHEYE_FAIL)
-		return GetEyeHudName(eid);
-	return actor;
+  if (StrCmp(actor, "") == 0)
+    return "";
+  int row = FindTeamPresentation(actor);
+  if (row != UHTIP_NONE && StrCmp(uh_tipstr[row][UHTIP_STR_NAME], "") != 0)
+    return uh_tipstr[row][UHTIP_STR_NAME];
+  int sid = FindSurvivorByActor(actor);
+  if (sid != UHSURV_FAIL)
+    return GetSurvivorName(sid);
+  int bid = FindBossByActor(actor);
+  if (bid != UHBOSS_FAIL)
+    return GetBossName(bid);
+  int eid = FindEyeByActor(actor);
+  if (eid != UHEYE_FAIL)
+    return GetEyeHudName(eid);
+  return actor;
 }
 
 // Teammate-bar / UIX mugshot.  Never guessed: an unregistered actor returns ""
 // so the row degrades to "no face" instead of showing a wrong portrait.
 function str UH_PlayerPortrait(str actor) {
-	if (StrCmp(actor, "") == 0)
-		return "";
-	int row = FindTeamPresentation(actor);
-	if (row == UHTIP_NONE)
-		return "";
-	return uh_tipstr[row][UHTIP_STR_PORTRAIT];
+  if (StrCmp(actor, "") == 0)
+    return "";
+  int row = FindTeamPresentation(actor);
+  if (row == UHTIP_NONE)
+    return "";
+  return uh_tipstr[row][UHTIP_STR_PORTRAIT];
 }
 
 // SCORINFO icon: the explicit scoreIcon, else the portrait, else "".
 function str UH_PlayerScoreIcon(str actor) {
-	if (StrCmp(actor, "") == 0)
-		return "";
-	int row = FindTeamPresentation(actor);
-	if (row == UHTIP_NONE)
-		return "";
-	str icon = uh_tipstr[row][UHTIP_STR_SCOREICON];
-	if (StrCmp(icon, "") != 0)
-		return icon;
-	return uh_tipstr[row][UHTIP_STR_PORTRAIT];
+  if (StrCmp(actor, "") == 0)
+    return "";
+  int row = FindTeamPresentation(actor);
+  if (row == UHTIP_NONE)
+    return "";
+  str icon = uh_tipstr[row][UHTIP_STR_SCOREICON];
+  if (StrCmp(icon, "") != 0)
+    return icon;
+  return uh_tipstr[row][UHTIP_STR_PORTRAIT];
 }
 
 // --- Team-info identity sync -------------------------------------------------

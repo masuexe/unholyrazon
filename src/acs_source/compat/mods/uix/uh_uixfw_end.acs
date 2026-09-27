@@ -1,286 +1,286 @@
 function int UHFW_OpenUnified(void) {
-	int classidx;
-	str classactor;
-	int i;
-	int cur;
+  int classidx;
+  str classactor;
+  int i;
+  int cur;
 
-	classactor = GetActorClass(0);
-	classidx = UHFW_FindClass(classactor);
-	if (classidx == UHFW_FAIL && UHFW_IsPlainQwant())
-		return UHFW_OpenQwant();
-	if (classidx == UHFW_FAIL && UHFW_IsPlainNegaMan())
-		return UHFW_OpenNegaMan();
-	UHFW_SnapClear();
-	uhfw_snapclass = classactor;
-	if (classidx != UHFW_FAIL) {
-		if (UHFW_IsMakeAGoodZero(classactor)) {
-			if (!UHFW_IsZeroPhase2()) {
-				UHFW_SnapClear();
-				return -1;
-			}
-		}
-		uhfw_route = UHFW_ROUTE_FIXED;
-		uhfw_classidx = classidx;
-		if (UHFW_IsSinfulBusterExpert(classactor)) {
-			if (CheckInventory("SinfulBusterExpert_W1") <= 0) {
-				UHFW_SnapClear();
-				return -1;
-			}
-			UHFW_CollectSinfulBusterExpert(classidx);
-		} else {
-			UHFW_CollectFixed(classidx);
-		}
-	} else
-		return 0;
+  classactor = GetActorClass(0);
+  classidx = UHFW_FindClass(classactor);
+  if (classidx == UHFW_FAIL && UHFW_IsPlainQwant())
+    return UHFW_OpenQwant();
+  if (classidx == UHFW_FAIL && UHFW_IsPlainNegaMan())
+    return UHFW_OpenNegaMan();
+  UHFW_SnapClear();
+  uhfw_snapclass = classactor;
+  if (classidx != UHFW_FAIL) {
+    if (UHFW_IsMakeAGoodZero(classactor)) {
+      if (!UHFW_IsZeroPhase2()) {
+        UHFW_SnapClear();
+        return -1;
+      }
+    }
+    uhfw_route = UHFW_ROUTE_FIXED;
+    uhfw_classidx = classidx;
+    if (UHFW_IsSinfulBusterExpert(classactor)) {
+      if (CheckInventory("SinfulBusterExpert_W1") <= 0) {
+        UHFW_SnapClear();
+        return -1;
+      }
+      UHFW_CollectSinfulBusterExpert(classidx);
+    } else {
+      UHFW_CollectFixed(classidx);
+    }
+  } else
+    return 0;
 
-	if (uhfw_heldn > UHFW_MAX_WEAP) {
-		Print(s:"Weapon wheel cannot open: more than 12 weapons.");
-		UH_Log(UH_LOG_WARN, StrParam(s:"uh_uixfw: ", s:classactor, s:" held ", i:uhfw_heldn, s:" weapons"));
-		UHFW_SnapClear();
-		return -1;
-	}
-	if (!uhfw_metaok) {
-		Print(s:"Weapon wheel cannot open: missing weapon display data.");
-		UHFW_SnapClear();
-		return -1;
-	}
-	if (!UHFW_IsSinfulBusterExpert(classactor)) {
-		if (uhfw_snapn < UHFW_MIN_WEAP) {
-			UHFW_SnapClear();
-			return -1;
-		}
-	}
+  if (uhfw_heldn > UHFW_MAX_WEAP) {
+    Print(s:"Weapon wheel cannot open: more than 12 weapons.");
+    UH_Log(UH_LOG_WARN, StrParam(s:"uh_uixfw: ", s:classactor, s:" held ", i:uhfw_heldn, s:" weapons"));
+    UHFW_SnapClear();
+    return -1;
+  }
+  if (!uhfw_metaok) {
+    Print(s:"Weapon wheel cannot open: missing weapon display data.");
+    UHFW_SnapClear();
+    return -1;
+  }
+  if (!UHFW_IsSinfulBusterExpert(classactor)) {
+    if (uhfw_snapn < UHFW_MIN_WEAP) {
+      UHFW_SnapClear();
+      return -1;
+    }
+  }
 
-	cur = UHFW_CurrentSnapIndex();
-	newWheel(UHFW_WHEEL_NAME, uhfw_snapn, cur);
-	emptyWheel();
-	WHEEL_GROUPS = uhfw_snapn;
-	for (i = 0; i < uhfw_snapn; i++)
-		UHFW_AddSnapItem(i);
-	startWheel("uh_ww_tick", "uh_ww_select");
-	uhww_own = UHFW_OWN_UH;
-	uhww_pn = PlayerNumber();
-	return 1;
+  cur = UHFW_CurrentSnapIndex();
+  newWheel(UHFW_WHEEL_NAME, uhfw_snapn, cur);
+  emptyWheel();
+  WHEEL_GROUPS = uhfw_snapn;
+  for (i = 0; i < uhfw_snapn; i++)
+    UHFW_AddSnapItem(i);
+  startWheel("uh_ww_tick", "uh_ww_select");
+  uhww_own = UHFW_OWN_UH;
+  uhww_pn = PlayerNumber();
+  return 1;
 }
 
 function void UHFW_OpenUixFallback(void) {
-	uhww_own = UHFW_OWN_UIX;
-	uhww_pn = PlayerNumber();
-	uhww_uix_cancel = 0;
-	ACS_NamedExecute("uixweap_wheel_start", 0);
+  uhww_own = UHFW_OWN_UIX;
+  uhww_pn = PlayerNumber();
+  uhww_uix_cancel = 0;
+  ACS_NamedExecute("uixweap_wheel_start", 0);
 }
 
 script "uh_ww_uixok" (void) CLIENTSIDE {
-	if (uhww_uix_cancel)
-		SetResultValue(0);
-	else
-		SetResultValue(1);
+  if (uhww_uix_cancel)
+    SetResultValue(0);
+  else
+    SetResultValue(1);
 }
 
 script "uh_ww_open" (void) NET CLIENTSIDE {
-	int opened;
-	int waits;
+  int opened;
+  int waits;
 
-	if (ConsolePlayerNumber() != PlayerNumber())
-		terminate;
-	if (!UHFW_ActorExists("UIX_ItemSelected_PU"))
-		terminate;
-	if (!UHFW_PlayerOk())
-		terminate;
-	if (wheelName != -1)
-		terminate;
+  if (ConsolePlayerNumber() != PlayerNumber())
+    terminate;
+  if (!UHFW_ActorExists("UIX_ItemSelected_PU"))
+    terminate;
+  if (!UHFW_PlayerOk())
+    terminate;
+  if (wheelName != -1)
+    terminate;
 
-	if (UHFW_IsPlainQwant()) {
-		uhfw_cancel = 0;
-		uhww_own = UHFW_OWN_UH;
-		uhww_pn = PlayerNumber();
-		NamedRequestScriptPuke("uh_qw_req");
-		waits = 0;
-		while (waits < UHFW_QW_WAIT) {
-			if (uhfw_cancel)
-				terminate;
-			if (uhww_own != UHFW_OWN_UH)
-				terminate;
-			if (!UHFW_PlayerOk() || !UHFW_IsPlainQwant())
-				terminate;
-			if (wheelName != -1) {
-				UHFW_ResetOwner();
-				terminate;
-			}
-			if (UHFW_QwantTryCommit())
-				break;
-			Delay(1);
-			waits++;
-		}
-		if (uhqw_show_seq < 0) {
-			UH_Log(UH_LOG_INFO, "uh_uixfw: Qwant wheel not ready");
-			UHFW_ResetOwner();
-			terminate;
-		}
-		if (wheelName != -1) {
-			UHFW_ResetOwner();
-			terminate;
-		}
-		opened = UHFW_OpenQwant();
-		if (opened <= 0) {
-			UHFW_ResetOwner();
-		}
-		terminate;
-	}
+  if (UHFW_IsPlainQwant()) {
+    uhfw_cancel = 0;
+    uhww_own = UHFW_OWN_UH;
+    uhww_pn = PlayerNumber();
+    NamedRequestScriptPuke("uh_qw_req");
+    waits = 0;
+    while (waits < UHFW_QW_WAIT) {
+      if (uhfw_cancel)
+        terminate;
+      if (uhww_own != UHFW_OWN_UH)
+        terminate;
+      if (!UHFW_PlayerOk() || !UHFW_IsPlainQwant())
+        terminate;
+      if (wheelName != -1) {
+        UHFW_ResetOwner();
+        terminate;
+      }
+      if (UHFW_QwantTryCommit())
+        break;
+      Delay(1);
+      waits++;
+    }
+    if (uhqw_show_seq < 0) {
+      UH_Log(UH_LOG_INFO, "uh_uixfw: Qwant wheel not ready");
+      UHFW_ResetOwner();
+      terminate;
+    }
+    if (wheelName != -1) {
+      UHFW_ResetOwner();
+      terminate;
+    }
+    opened = UHFW_OpenQwant();
+    if (opened <= 0) {
+      UHFW_ResetOwner();
+    }
+    terminate;
+  }
 
-	if (UHFW_IsPlainNegaMan()) {
-		uhfw_cancel = 0;
-		uhww_own = UHFW_OWN_UH;
-		uhww_pn = PlayerNumber();
-		waits = 0;
-		while (ACS_NamedExecuteWithResult("uh_copykind_count", UHFW_UHCOPY_NEGA) <= 0 && waits < UHFW_NEGA_WAIT) {
-			if (uhfw_cancel)
-				terminate;
-			if (uhww_own != UHFW_OWN_UH)
-				terminate;
-			if (!UHFW_PlayerOk() || !UHFW_IsPlainNegaMan())
-				terminate;
-			if (wheelName != -1) {
-				UHFW_ResetOwner();
-				terminate;
-			}
-			Delay(1);
-			waits++;
-		}
-		if (ACS_NamedExecuteWithResult("uh_copykind_count", UHFW_UHCOPY_NEGA) <= 0) {
-			UH_Log(UH_LOG_WARN, "uh_uixfw: NegaMan copy registry not ready");
-			UHFW_ResetOwner();
-			terminate;
-		}
-		if (uhfw_cancel || uhww_own != UHFW_OWN_UH || !UHFW_PlayerOk() || !UHFW_IsPlainNegaMan() || wheelName != -1) {
-			UHFW_ResetOwner();
-			terminate;
-		}
-		opened = UHFW_OpenNegaMan();
-		if (opened <= 0) {
-			UHFW_ResetOwner();
-		}
-		terminate;
-	}
+  if (UHFW_IsPlainNegaMan()) {
+    uhfw_cancel = 0;
+    uhww_own = UHFW_OWN_UH;
+    uhww_pn = PlayerNumber();
+    waits = 0;
+    while (ACS_NamedExecuteWithResult("uh_copykind_count", UHFW_UHCOPY_NEGA) <= 0 && waits < UHFW_NEGA_WAIT) {
+      if (uhfw_cancel)
+        terminate;
+      if (uhww_own != UHFW_OWN_UH)
+        terminate;
+      if (!UHFW_PlayerOk() || !UHFW_IsPlainNegaMan())
+        terminate;
+      if (wheelName != -1) {
+        UHFW_ResetOwner();
+        terminate;
+      }
+      Delay(1);
+      waits++;
+    }
+    if (ACS_NamedExecuteWithResult("uh_copykind_count", UHFW_UHCOPY_NEGA) <= 0) {
+      UH_Log(UH_LOG_WARN, "uh_uixfw: NegaMan copy registry not ready");
+      UHFW_ResetOwner();
+      terminate;
+    }
+    if (uhfw_cancel || uhww_own != UHFW_OWN_UH || !UHFW_PlayerOk() || !UHFW_IsPlainNegaMan() || wheelName != -1) {
+      UHFW_ResetOwner();
+      terminate;
+    }
+    opened = UHFW_OpenNegaMan();
+    if (opened <= 0) {
+      UHFW_ResetOwner();
+    }
+    terminate;
+  }
 
-	opened = UHFW_OpenUnified();
-	if (opened != 0)
-		terminate;
-	UHFW_OpenUixFallback();
+  opened = UHFW_OpenUnified();
+  if (opened != 0)
+    terminate;
+  UHFW_OpenUixFallback();
 }
 
 script "uh_ww_close" (void) NET CLIENTSIDE {
-	if (ConsolePlayerNumber() != PlayerNumber())
-		terminate;
-	if (uhww_pn != -1 && uhww_pn != PlayerNumber())
-		terminate;
+  if (ConsolePlayerNumber() != PlayerNumber())
+    terminate;
+  if (uhww_pn != -1 && uhww_pn != PlayerNumber())
+    terminate;
 
-	if (uhww_own == UHFW_OWN_UH) {
-		if (wheelName != -1) {
-			if (StrCmp(wheelName, UHFW_WHEEL_NAME) == 0)
-				stopWheel();
-		} else
-			uhfw_cancel = 1;
-		UHFW_ResetOwner();
-		terminate;
-	}
+  if (uhww_own == UHFW_OWN_UH) {
+    if (wheelName != -1) {
+      if (StrCmp(wheelName, UHFW_WHEEL_NAME) == 0)
+        stopWheel();
+    } else
+      uhfw_cancel = 1;
+    UHFW_ResetOwner();
+    terminate;
+  }
 
-	if (uhww_own == UHFW_OWN_UIX) {
-		uhww_uix_cancel = 1;
-		if (wheelName == -1) {
-			stopWheel();
-		} else if (StrCmp(wheelName, UHFW_UIX_WHEEL) == 0) {
-			stopWheel();
-		}
-		UHFW_ResetOwner();
-		terminate;
-	}
+  if (uhww_own == UHFW_OWN_UIX) {
+    uhww_uix_cancel = 1;
+    if (wheelName == -1) {
+      stopWheel();
+    } else if (StrCmp(wheelName, UHFW_UIX_WHEEL) == 0) {
+      stopWheel();
+    }
+    UHFW_ResetOwner();
+    terminate;
+  }
 
-	if (wheelName != -1) {
-		if (StrCmp(wheelName, UHFW_UIX_WHEEL) == 0)
-			stopWheel();
-	}
-	UHFW_ResetOwner();
+  if (wheelName != -1) {
+    if (StrCmp(wheelName, UHFW_UIX_WHEEL) == 0)
+      stopWheel();
+  }
+  UHFW_ResetOwner();
 }
 
 script "uh_ww_tick" (int selected) {
-	if (StrCmp(wheelName, UHFW_WHEEL_NAME) != 0) {
-		SetResultValue(0);
-		terminate;
-	}
-	if (uhfw_route == UHFW_ROUTE_QWANT) {
-		UHFW_QwantTick();
-		if (uhfw_cancel) {
-			SetResultValue(0);
-			terminate;
-		}
-		SetResultValue(1);
-		terminate;
-	}
-	if (uhfw_route == UHFW_ROUTE_NEGA) {
-		UHFW_NegaTick();
-		if (uhfw_cancel) {
-			SetResultValue(0);
-			terminate;
-		}
-		SetResultValue(1);
-		terminate;
-	}
-	if (UHFW_ShouldCancel()) {
-		UHFW_DoCancel();
-		SetResultValue(0);
-		terminate;
-	}
-	if (UHFW_IsSinfulBusterExpert(uhfw_snapclass))
-		UHFW_RefreshSinfulBusterExpert();
-	UHFW_RefreshAmmo();
-	SetResultValue(1);
+  if (StrCmp(wheelName, UHFW_WHEEL_NAME) != 0) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (uhfw_route == UHFW_ROUTE_QWANT) {
+    UHFW_QwantTick();
+    if (uhfw_cancel) {
+      SetResultValue(0);
+      terminate;
+    }
+    SetResultValue(1);
+    terminate;
+  }
+  if (uhfw_route == UHFW_ROUTE_NEGA) {
+    UHFW_NegaTick();
+    if (uhfw_cancel) {
+      SetResultValue(0);
+      terminate;
+    }
+    SetResultValue(1);
+    terminate;
+  }
+  if (UHFW_ShouldCancel()) {
+    UHFW_DoCancel();
+    SetResultValue(0);
+    terminate;
+  }
+  if (UHFW_IsSinfulBusterExpert(uhfw_snapclass))
+    UHFW_RefreshSinfulBusterExpert();
+  UHFW_RefreshAmmo();
+  SetResultValue(1);
 }
 
 function void UHFW_EndWheelCleanup(void) {
-	UHFW_SnapClear();
-	UHFW_NegaSnapClear();
-	UHFW_ResetOwner();
+  UHFW_SnapClear();
+  UHFW_NegaSnapClear();
+  UHFW_ResetOwner();
 }
 
 script "uh_ww_select" (int idx) {
-	str wep;
+  str wep;
 
-	if (!uhfw_cancel) {
-		if (uhfw_route == UHFW_ROUTE_QWANT) {
-			UHFW_QwantSelect(idx);
-		} else if (uhfw_route == UHFW_ROUTE_NEGA) {
-			UHFW_NegaSelect(idx);
-		} else if (idx >= 0 && idx < uhfw_snapn) {
-			if (UHFW_IsSinfulBusterExpert(uhfw_snapclass) && !uhfw_enabled[idx]) {
-				// Disabled SinfulBusterExpert weapon cannot be selected
-			} else {
-				wep = uhfw_snapwep[idx];
-				UHFW_SubmitSelect(wep, "uh_ww_sel_sv");
-			}
-		}
-	}
+  if (!uhfw_cancel) {
+    if (uhfw_route == UHFW_ROUTE_QWANT) {
+      UHFW_QwantSelect(idx);
+    } else if (uhfw_route == UHFW_ROUTE_NEGA) {
+      UHFW_NegaSelect(idx);
+    } else if (idx >= 0 && idx < uhfw_snapn) {
+      if (UHFW_IsSinfulBusterExpert(uhfw_snapclass) && !uhfw_enabled[idx]) {
+        // Disabled SinfulBusterExpert weapon cannot be selected
+      } else {
+        wep = uhfw_snapwep[idx];
+        UHFW_SubmitSelect(wep, "uh_ww_sel_sv");
+      }
+    }
+  }
 
-	UHFW_EndWheelCleanup();
+  UHFW_EndWheelCleanup();
 }
 
 script "uh_ww_sel_sv" (int wep) NET {
-	int classidx;
-	str classactor;
+  int classidx;
+  str classactor;
 
-	if (!UHFW_PlayerOk())
-		terminate;
-	classactor = GetActorClass(0);
-	classidx = UHFW_FindClass(classactor);
-	if (classidx == UHFW_FAIL)
-		terminate;
-	if (UHFW_FindWep(classidx, wep) == UHFW_FAIL)
-		terminate;
-	if (CheckInventory(wep) <= 0)
-		terminate;
-	if (UHFW_IsMakeAGoodZero(classactor)) {
-		if (!UHFW_IsZeroPhase2())
-			terminate;
-	}
-	SetWeapon(wep);
+  if (!UHFW_PlayerOk())
+    terminate;
+  classactor = GetActorClass(0);
+  classidx = UHFW_FindClass(classactor);
+  if (classidx == UHFW_FAIL)
+    terminate;
+  if (UHFW_FindWep(classidx, wep) == UHFW_FAIL)
+    terminate;
+  if (CheckInventory(wep) <= 0)
+    terminate;
+  if (UHFW_IsMakeAGoodZero(classactor)) {
+    if (!UHFW_IsZeroPhase2())
+      terminate;
+  }
+  SetWeapon(wep);
 }

@@ -1,126 +1,129 @@
 actor ChargeBeamWep_QwantBar : QwantBar {
-	// args[0]=Electric type color; args[1]=custom fill max; Tag=ammo classname
-	args 3, 180
-	Tag "ChargeBeamCharge"
+  // args[0]=Electric type color; args[1]=custom fill max; Tag=ammo classname
+  args 3, 180
+  Tag "ChargeBeamCharge"
 }
 
 actor ChargeBeamWep : BaseQwantWep {
-	Obituary "%o felt the power of %k's \cfCharge Beam\c-."
-	Tag "$TAG_CHARGEBEAM"
-	weapon.ammotype "ChargeBeamCharge"
-	Inventory.Icon "PKMNI_E"
-	+WEAPON.NOAUTOAIM
-	States {
-	 Spawn:
-	  6N01 D 1
-	  loop
+  Obituary "%o felt the power of %k's \cfCharge Beam\c-."
+  Tag "$TAG_CHARGEBEAM"
+  Weapon.AmmoType "ChargeBeamCharge"
+  Inventory.Icon "PKMNI_E"
+  +WEAPON.NOAUTOAIM
+  States {
+   Spawn:
+    6N01 D 1
+    loop
 
-	 Deselect:
-	  CHGB A 0
-	  goto DeselectSwap
-	 Select:
-	  CHGB A 0
-	  goto SelectSwap
+   Deselect:
+    CHGB A 0
+    goto DeselectSwap
+   Select:
+    CHGB A 0
+    goto SelectSwap
 
-	 Ready:
-	  CHGB A 0 ACS_NamedExecuteWithResult("core_weaponcolor", Q_ELECTRIC_DYE, CLRF_QWANTMENU)
-	  CHGB A 0 A_GunFlash
-	 ReadyX:
-	  CHGB A 0 A_JumpIfInventory("ChargeBeamCharge", 1, "ReadyX2")
-	  CHGB A 8 A_WeaponReady(WRF_NOPRIMARY)
-	  CHGB A 0 A_GiveInventory("ChargeBeamCharge", 4)
-	  CHGB A 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
-	  loop
-	 ReadyX2:
-	  CHGB A 8 A_WeaponReady
-	  CHGB A 0 A_GiveInventory("ChargeBeamCharge", 1)
-	  CHGB A 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
-	  loop
+   Ready:
+    CHGB A 0 ACS_NamedExecuteWithResult("core_weaponcolor", Q_ELECTRIC_DYE, CLRF_QWANTMENU)
+    CHGB A 0 A_GunFlash
+   ReadyX:
+    CHGB A 0 A_JumpIfInventory("ChargeBeamCharge", 1, "ReadyX2")
+    CHGB A 8 A_WeaponReady(WRF_NOPRIMARY)
+    CHGB A 0 A_GiveInventory("ChargeBeamCharge", 4)
+    CHGB A 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
+    loop
+   ReadyX2:
+    CHGB A 8 A_WeaponReady
+    CHGB A 0 A_GiveInventory("ChargeBeamCharge", 1)
+    CHGB A 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
+    loop
 
-	 Flash:
-	  TNT1 A 0 A_JumpIfInventory("IsDead", 1, "NoFlash")
-	  TNT1 A 2 A_GiveInventory("Q_ChargeBeam_P")
-	  loop
+   Flash:
+    TNT1 A 0 A_JumpIfInventory("IsDead", 1, "NoFlash")
+    TNT1 A 2 A_GiveInventory("Q_ChargeBeam_P")
+    loop
 
-	 Fire:
-	  CHGB B 3 A_GiveInventory("ChargeBeamFlag")
-	 FireH:
-	  CHGB A 0 A_JumpIfInventory("ChargeBeamCharge", 1, 1)
-	  goto FireEnd
-	  CHGB C 0 A_TakeInventory("ChargeBeamCharge", 1)
-	  CHGB C 0 A_PlaySoundEx("weapon/sparkshock", "Weapon")
-	  CHGB C 3 A_FireCustomMissile("ChargeBeam", 0, 0, 8, 0)
-	  CHGB C 0 A_Refire("FireH")
-	 FireEnd:
-	  CHGB B 4
-	  CHGB A 8 A_TakeInventory("ChargeBeamFlag")
-	  CHGB A 0 A_GiveInventory("MoveRelearnAmmo", 1)
-	  goto ReadyX
-	}
+   Fire:
+    CHGB B 3 A_GiveInventory("ChargeBeamFlag")
+   FireH:
+    CHGB A 0 A_JumpIfInventory("ChargeBeamCharge", 1, 1)
+    goto FireEnd
+    CHGB C 0 A_TakeInventory("ChargeBeamCharge", 1)
+    CHGB C 0 A_PlaySoundEx("weapon/sparkshock", "Weapon")
+    CHGB C 3 A_FireCustomMissile("ChargeBeam", 0, 0, 8, 0)
+    CHGB C 0 A_ReFire("FireH")
+   FireEnd:
+    CHGB B 4
+    CHGB A 8 A_TakeInventory("ChargeBeamFlag")
+    CHGB A 0 A_GiveInventory("MoveRelearnAmmo", 1)
+    goto ReadyX
+  }
 }
 
-Actor ChargeBeamFlag : Once {}
-Actor ChargeBeamCharge : Ammo {inventory.amount 1 inventory.maxamount 180 +INVENTORY.IGNORESKILL}
+actor ChargeBeamFlag : Once {}
+actor ChargeBeamCharge : Ammo {
+  Inventory.MaxAmount 180
+  +INVENTORY.IGNORESKILL
+}
 
 actor Q_ChargeBeam_P : CustomInventory {
-	States {
-	 Pickup:
-	  TNT1 A 0 A_JumpIfInventory("ChargeBeamFlag", 1, "No")
-	  TNT1 A 0 A_JumpIfInventory("ChargeBeamCharge", 0, 2)
-	  TNT1 A 0 A_JumpIf(sqrt(MOMX*MOMX+MOMY*MOMY+MOMZ*MOMZ)/10 >= 1, 2)
-	  TNT1 A 0
-	  stop
-	  TNT1 A 0 A_GiveInventory("ChargeBeamCharge", sqrt(MOMX*MOMX+MOMY*MOMY+MOMZ*MOMZ)/10)
-	  stop
-	 No:
-	  TNT1 A 0
-	  stop
-	}
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("ChargeBeamFlag", 1, "No")
+    TNT1 A 0 A_JumpIfInventory("ChargeBeamCharge", 0, 2)
+    TNT1 A 0 A_JumpIf(sqrt(velx * velx + vely * vely + velz * velz) / 10 >= 1, 2)
+    TNT1 A 0
+    stop
+    TNT1 A 0 A_GiveInventory("ChargeBeamCharge", sqrt(velx * velx + vely * vely + velz * velz) / 10)
+    stop
+   No:
+    TNT1 A 0
+    stop
+  }
 }
 
 actor ChargeBeam : BasicProjectile {
-	Translation "192:192=228:228", "198:198=73:73"
-	damagetype "ChargeBeam"
-	+BRIGHT
-	Damage (24)  // 20
-	Radius 22  // 25
-	Height 14  // 26
-	Speed 50
-	scale 2.5
-	States {
-	 Spawn:
-	  X_7D A 0
-	  X_7D ABCD 1
-	 Spawn2:
-	  X_7D N 1
-	  X_7D M 1 A_SpawnItemEx("Q_ThunderTrail", 0, 0, 0, 0, 0, 0, 0, 1)
-	  loop
-	 Death:
-	  X_7D B 0 A_PlaySoundEx("weapon/thunderbolt", "Voice")
-	  X_7D BCDA 1
-	  stop
-	}
+  Translation "192:192=228:228", "198:198=73:73"
+  DamageType "ChargeBeam"
+  +BRIGHT
+  Damage (24)  // 20
+  Radius 22    // 25
+  Height 14    // 26
+  Speed 50
+  Scale 2.5
+  States {
+   Spawn:
+    X_7D A 0
+    X_7D ABCD 1
+   Spawn2:
+    X_7D N 1
+    X_7D M 1 A_SpawnItemEx("Q_ThunderTrail", 0, 0, 0, 0, 0, 0, 0, 1)
+    loop
+   Death:
+    X_7D B 0 A_PlaySoundEx("weapon/thunderbolt", "Voice")
+    X_7D BCDA 1
+    stop
+  }
 }
 
 actor Q_ThunderTrail : BasicClientside {
-	States {
-	 Spawn:
-	  X_7D IJKL 2
-	  stop
-	}
+  States {
+   Spawn:
+    X_7D IJKL 2
+    stop
+  }
 }
 
-/// //////////////////////////
-// == Shiny ==//
-/// //////////////////////////
+/////////////////
+// == Shiny == //
+/////////////////
 
-Actor S_ChargeBeam_P : CustomInventory {
-	States {
-	 Pickup:
-	  TNT1 A 0 A_PlaySoundEx("weapon/sparkshock", "Weapon")
-	  TNT1 A 0 A_FireCustomMissile("S_ChargeBeam", 0, 0, 8, 0)
-	  stop
-	}
+actor S_ChargeBeam_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_PlaySoundEx("weapon/sparkshock", "Weapon")
+    TNT1 A 0 A_FireCustomMissile("S_ChargeBeam", 0, 0, 8, 0)
+    stop
+  }
 }
 
-Actor S_ChargeBeam : ChargeBeam { Damage (36) }
+actor S_ChargeBeam : ChargeBeam {Damage (36)}

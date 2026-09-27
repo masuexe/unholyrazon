@@ -5,1031 +5,901 @@
 #import "uhdbcrud.acs"
 
 function int UH_DefineBossCore(
-	  int id,
-	  str actor,
-	  str name,
-	  int rarity,
-	  int basehp,
-	  int addhp,
-	  str exboss_baseactor,
-	  str mugshot,
-	  str instruction,
-	  str spawnmessagetype,
-	  str spawnmessage,
-	  str ragewarningmessage) {
-	int customid;
-	if (StrCmp(actor, "") == 0)
-		return UHBOSS_FAIL;
+    int id,
+    str actor,
+    str name,
+    int rarity,
+    int basehp,
+    int addhp,
+    str exboss_baseactor,
+    str mugshot,
+    str instruction,
+    str spawnmessagetype,
+    str spawnmessage,
+    str ragewarningmessage) {
+  int customid;
+  if (StrCmp(actor, "") == 0)
+    return UHBOSS_FAIL;
 
-	if (FindBossByActorAllocated(actor) != UHBOSS_FAIL)
-		return UHBOSS_FAIL;
-	if (rarity < UHBOSS_POOL_NONE || rarity >= UHBOSS_POOL_COUNT
-		|| basehp < 0 || addhp < 0)
-		return UHBOSS_FAIL;
-	if (rarity > UHBOSS_POOL_NONE
-		&& uh_boss_pool_count[rarity] >= UH_MAX_VANILLA_BOSS)
-		return UHBOSS_FAIL;
+  if (FindBossByActorAllocated(actor) != UHBOSS_FAIL)
+    return UHBOSS_FAIL;
+  if (rarity < UHBOSS_POOL_NONE || rarity >= UHBOSS_POOL_COUNT
+    || basehp < 0 || addhp < 0)
+    return UHBOSS_FAIL;
+  if (rarity > UHBOSS_POOL_NONE
+    && uh_boss_pool_count[rarity] >= UH_MAX_VANILLA_BOSS)
+    return UHBOSS_FAIL;
 
-	if (id >= 0)
-	{
-		if (id >= UH_MAX_VANILLA_BOSS)
-			return UHBOSS_FAIL;
-		if (uh_bossvanilladefined[id] != 0)
-			return UHBOSS_FAIL;
-		UH_BossWriteVanilla(id, actor, name, rarity, basehp, addhp,
-			exboss_baseactor, mugshot,
-			instruction, spawnmessagetype, spawnmessage, ragewarningmessage);
-		return id;
-	}
+  if (id >= 0) {
+    if (id >= UH_MAX_VANILLA_BOSS)
+      return UHBOSS_FAIL;
+    if (uh_bossvanilladefined[id] != 0)
+      return UHBOSS_FAIL;
+    UH_BossWriteVanilla(id, actor, name, rarity, basehp, addhp,
+      exboss_baseactor, mugshot,
+      instruction, spawnmessagetype, spawnmessage, ragewarningmessage);
+    return id;
+  }
 
-	if (id == -1)
-	{
-		if (uh_bosscustomcount >= UH_MAX_CUSTOM_BOSS)
-			return UHBOSS_FAIL;
-		customid = UH_BossWriteCustom(actor, name, rarity, basehp, addhp,
-			exboss_baseactor, mugshot,
-			instruction, spawnmessagetype, spawnmessage, ragewarningmessage);
-		return customid;
-	}
+  if (id == -1) {
+    if (uh_bosscustomcount >= UH_MAX_CUSTOM_BOSS)
+      return UHBOSS_FAIL;
+    customid = UH_BossWriteCustom(actor, name, rarity, basehp, addhp,
+      exboss_baseactor, mugshot,
+      instruction, spawnmessagetype, spawnmessage, ragewarningmessage);
+    return customid;
+  }
 
-	// Explicit negatives other than AUTO are rejected in v1
-	return UHBOSS_FAIL;
+  // Explicit negatives other than AUTO are rejected in v1
+  return UHBOSS_FAIL;
 }
 
 // Do NOT add CLIENTSIDE: listen-server hosts share one ACS VM with the
 // client; a CLIENTSIDE twin would double-write UHDT on the host.
-script "uh_DefineBoss_S" (void)
-{
-	SetResultValue(UH_DefineBossCore(
-		GetCVar("uh_db_id"),
-		GetCVarString("uh_db_actor"),
-		GetCVarString("uh_db_name"),
-		GetCVar("uh_db_rarity"),
-		GetCVar("uh_db_basehp"),
-		GetCVar("uh_db_addhp"),
-		GetCVarString("uh_db_exbase"),
-		GetCVarString("uh_db_mugshot"),
-		GetCVarString("uh_db_instruction"),
-		GetCVarString("uh_db_spawnmsgtype"),
-		GetCVarString("uh_db_spawnmsg"),
-		GetCVarString("uh_db_ragewarning")
-	));
+script "uh_DefineBoss_S" (void) {
+  SetResultValue(UH_DefineBossCore(
+    GetCVar("uh_db_id"),
+    GetCVarString("uh_db_actor"),
+    GetCVarString("uh_db_name"),
+    GetCVar("uh_db_rarity"),
+    GetCVar("uh_db_basehp"),
+    GetCVar("uh_db_addhp"),
+    GetCVarString("uh_db_exbase"),
+    GetCVarString("uh_db_mugshot"),
+    GetCVarString("uh_db_instruction"),
+    GetCVarString("uh_db_spawnmsgtype"),
+    GetCVarString("uh_db_spawnmsg"),
+    GetCVarString("uh_db_ragewarning")
+  ));
 }
 
-script "uh_IsBossDefined_S" (int id)
-{
-	SetResultValue(IsBossDefined(id));
+script "uh_IsBossDefined_S" (int id) {
+  SetResultValue(IsBossDefined(id));
 }
 
 script "uh_IsBossEnabled_S" (int id) {
-	SetResultValue(IsBossEnabled(id));
+  SetResultValue(IsBossEnabled(id));
 }
 
 script "uh_SetBossEnabled_S" (int id, int enabled) {
-	SetResultValue(SetBossEnabledCore(id, enabled));
+  SetResultValue(SetBossEnabledCore(id, enabled));
 }
 
 script "uh_UpdateBossDisplay_S" (int id) {
-	SetResultValue(UpdateBossDisplayCore(id, GetCVarString("uh_db_name"),
-		GetCVarString("uh_db_mugshot"), GetCVarString("uh_db_instruction"),
-		GetCVarString("uh_db_spawnmsgtype"), GetCVarString("uh_db_spawnmsg"),
-		GetCVarString("uh_db_ragewarning")));
+  SetResultValue(UpdateBossDisplayCore(id, GetCVarString("uh_db_name"),
+    GetCVarString("uh_db_mugshot"), GetCVarString("uh_db_instruction"),
+    GetCVarString("uh_db_spawnmsgtype"), GetCVarString("uh_db_spawnmsg"),
+    GetCVarString("uh_db_ragewarning")));
 }
 
 script "uh_UpdateBossStats_S" (int id, int rarity, int basehp, int addhp) {
-	SetResultValue(UpdateBossStatsCore(id, rarity, basehp, addhp));
+  SetResultValue(UpdateBossStatsCore(id, rarity, basehp, addhp));
 }
 
 script "uh_RemoveBoss_S" (int id) {
-	SetResultValue(RemoveBossCore(id));
+  SetResultValue(RemoveBossCore(id));
 }
 
 script "uh_GetDefinedBossCount_S" (void) {
-	SetResultValue(GetDefinedBossCount());
+  SetResultValue(GetDefinedBossCount());
 }
 
 script "uh_GetEnabledBossCount_S" (void) {
-	SetResultValue(GetEnabledBossCount());
+  SetResultValue(GetEnabledBossCount());
 }
 
-script "uh_FindBossByActor_S" (void)
-{
-	int id = FindBossByActor(GetCVarString("uh_db_actor"));
-	SetCVar("uh_db_id", id);
-	SetResultValue(id);
+script "uh_FindBossByActor_S" (void) {
+  int id = FindBossByActor(GetCVarString("uh_db_actor"));
+  SetCVar("uh_db_id", id);
+  SetResultValue(id);
 }
 
 // Do NOT add CLIENTSIDE: same rule as uh_DefineBoss_S.
 script "uh_SetBossMorphSetup_S" (void) {
-	SetResultValue(SetBossMorphSetup(
-		GetCVar("uh_db_id"),
-		GetCVarString("uh_db_setup")
-	));
+  SetResultValue(SetBossMorphSetup(
+    GetCVar("uh_db_id"),
+    GetCVarString("uh_db_setup")
+  ));
 }
 
 // Do NOT add CLIENTSIDE: same rule as uh_DefineBoss_S.
 script "uh_SetBossUnmorphCleanup_S" (void) {
-	SetResultValue(SetBossUnmorphCleanup(
-		GetCVar("uh_db_id"),
-		GetCVarString("uh_db_unmorphpre"),
-		GetCVarString("uh_db_unmorphpost")
-	));
+  SetResultValue(SetBossUnmorphCleanup(
+    GetCVar("uh_db_id"),
+    GetCVarString("uh_db_unmorphpre"),
+    GetCVarString("uh_db_unmorphpost")
+  ));
 }
 
 // Do NOT add CLIENTSIDE: same rule as uh_DefineBoss_S.
 script "uh_SetBossUnmorphOwnedFamilies_S" (int id, int mask) {
-	SetResultValue(SetBossUnmorphOwnedFamilies(id, mask));
+  SetResultValue(SetBossUnmorphOwnedFamilies(id, mask));
 }
 
-script "uh_GetBossUnmorphPre_S" (int id)
-{
-	str scriptname = GetBossUnmorphPre(id);
-	SetCVarString("uh_db_out_str", scriptname);
-	SetResultValue(StrCmp(scriptname, "") != 0);
+script "uh_GetBossUnmorphPre_S" (int id) {
+  str scriptname = GetBossUnmorphPre(id);
+  SetCVarString("uh_db_out_str", scriptname);
+  SetResultValue(StrCmp(scriptname, "") != 0);
 }
 
-script "uh_GetBossUnmorphPost_S" (int id)
-{
-	str scriptname = GetBossUnmorphPost(id);
-	SetCVarString("uh_db_out_str", scriptname);
-	SetResultValue(StrCmp(scriptname, "") != 0);
+script "uh_GetBossUnmorphPost_S" (int id) {
+  str scriptname = GetBossUnmorphPost(id);
+  SetCVarString("uh_db_out_str", scriptname);
+  SetResultValue(StrCmp(scriptname, "") != 0);
 }
 
-script "uh_GetBossActor_S" (int id)
-{
-	SetCVarString("uh_db_out_str", GetBossActor(id));
-	SetResultValue(IsBossDefined(id));
+script "uh_GetBossActor_S" (int id) {
+  SetCVarString("uh_db_out_str", GetBossActor(id));
+  SetResultValue(IsBossDefined(id));
 }
 
-script "uh_GetBossName_S" (int id)
-{
-	SetCVarString("uh_db_out_str", GetBossName(id));
-	SetResultValue(IsBossDefined(id));
+script "uh_GetBossName_S" (int id) {
+  SetCVarString("uh_db_out_str", GetBossName(id));
+  SetResultValue(IsBossDefined(id));
 }
 
-script "uh_GetBossHPBase_S" (int id)
-{
-	SetResultValue(GetBossHPBase(id));
+script "uh_GetBossHPBase_S" (int id) {
+  SetResultValue(GetBossHPBase(id));
 }
 
-script "uh_GetBossHPAdd_S" (int id)
-{
-	SetResultValue(GetBossHPAdd(id));
+script "uh_GetBossHPAdd_S" (int id) {
+  SetResultValue(GetBossHPAdd(id));
 }
 
-script "uh_GetBossBaseId_S" (int id)
-{
-	int baseid = GetBossBaseId(id);
-	SetCVar("uh_db_id", baseid);
-	SetResultValue(baseid);
+script "uh_GetBossBaseId_S" (int id) {
+  int baseid = GetBossBaseId(id);
+  SetCVar("uh_db_id", baseid);
+  SetResultValue(baseid);
 }
 
-script "uh_GetBossExId_S" (int id)
-{
-	int exid = GetBossExId(id);
-	SetCVar("uh_db_id", exid);
-	SetResultValue(exid);
+script "uh_GetBossExId_S" (int id) {
+  int exid = GetBossExId(id);
+  SetCVar("uh_db_id", exid);
+  SetResultValue(exid);
 }
 
-script "uh_IsBossEx_S" (int id)
-{
-	SetResultValue(IsBossEx(id));
+script "uh_IsBossEx_S" (int id) {
+  SetResultValue(IsBossEx(id));
 }
 
-script "uh_RandomBossFromPool_S" (int rarity)
-{
-	int pick = RandomBossFromPool(rarity);
-	SetCVar("uh_db_id", pick);
-	SetResultValue(pick);
+script "uh_RandomBossFromPool_S" (int rarity) {
+  int pick = RandomBossFromPool(rarity);
+  SetCVar("uh_db_id", pick);
+  SetResultValue(pick);
 }
 
-script "uh_GetPlayerBossId_S" (int playernum)
-{
-	int id = GetPlayerBossId(playernum);
-	SetCVar("uh_db_id", id);
-	SetResultValue(id);
+script "uh_GetPlayerBossId_S" (int playernum) {
+  int id = GetPlayerBossId(playernum);
+  SetCVar("uh_db_id", id);
+  SetResultValue(id);
 }
 
-script "uh_GetBossMugshot_S" (int id)
-{
-	SetCVarString("uh_db_out_str", GetBossMugshot(id));
-	SetResultValue(IsBossDefined(id));
+script "uh_GetBossMugshot_S" (int id) {
+  SetCVarString("uh_db_out_str", GetBossMugshot(id));
+  SetResultValue(IsBossDefined(id));
 }
 
-function int DefineSurvivorCore(int id, str actor, str name, str mugshot)
-{
-	if (StrCmp(actor, "") == 0)
-		return UHSURV_FAIL;
+function int DefineSurvivorCore(int id, str actor, str name, str mugshot) {
+  if (StrCmp(actor, "") == 0)
+    return UHSURV_FAIL;
 
-	if (FindSurvivorByActorAllocated(actor) != UHSURV_FAIL)
-		return UHSURV_FAIL;
+  if (FindSurvivorByActorAllocated(actor) != UHSURV_FAIL)
+    return UHSURV_FAIL;
 
-	if (id >= 0)
-	{
-		if (id >= UH_MAX_VANILLA_SURV)
-			return UHSURV_FAIL;
-		if (uh_survvanilladefined[id] != 0)
-			return UHSURV_FAIL;
-		SurvWriteVanilla(id, actor, name, mugshot);
-		return id;
-	}
+  if (id >= 0) {
+    if (id >= UH_MAX_VANILLA_SURV)
+      return UHSURV_FAIL;
+    if (uh_survvanilladefined[id] != 0)
+      return UHSURV_FAIL;
+    SurvWriteVanilla(id, actor, name, mugshot);
+    return id;
+  }
 
-	if (id == -1)
-	{
-		if (uh_survcustomcount >= UH_MAX_CUSTOM_SURV)
-			return UHSURV_FAIL;
-		return SurvWriteCustom(actor, name, mugshot);
-	}
+  if (id == -1) {
+    if (uh_survcustomcount >= UH_MAX_CUSTOM_SURV)
+      return UHSURV_FAIL;
+    return SurvWriteCustom(actor, name, mugshot);
+  }
 
-	return UHSURV_FAIL;
+  return UHSURV_FAIL;
 }
 
 // Do NOT add CLIENTSIDE: same rule as uh_DefineBoss_S — clients run this
 // locally via ACS_NamedExecuteWithResult from their OPEN CLIENTSIDE twin.
-script "uh_DefineSurvivor_S" (void)
-{
-	SetResultValue(DefineSurvivorCore(
-		GetCVar("uh_ds_id"),
-		GetCVarString("uh_ds_actor"),
-		GetCVarString("uh_ds_name"),
-		GetCVarString("uh_ds_mugshot")
-	));
+script "uh_DefineSurvivor_S" (void) {
+  SetResultValue(DefineSurvivorCore(
+    GetCVar("uh_ds_id"),
+    GetCVarString("uh_ds_actor"),
+    GetCVarString("uh_ds_name"),
+    GetCVarString("uh_ds_mugshot")
+  ));
 }
 
-script "uh_IsSurvivorDefined_S" (int id)
-{
-	SetResultValue(IsSurvivorDefined(id));
+script "uh_IsSurvivorDefined_S" (int id) {
+  SetResultValue(IsSurvivorDefined(id));
 }
 
-script "uh_IsSurvivorEnabled_S" (int id)
-{
-	SetResultValue(IsSurvivorEnabled(id));
+script "uh_IsSurvivorEnabled_S" (int id) {
+  SetResultValue(IsSurvivorEnabled(id));
 }
 
-script "uh_SetSurvivorEnabled_S" (int id, int enabled)
-{
-	SetResultValue(SetSurvivorEnabledCore(id, enabled));
+script "uh_SetSurvivorEnabled_S" (int id, int enabled) {
+  SetResultValue(SetSurvivorEnabledCore(id, enabled));
 }
 
-script "uh_UpdateSurvivorDisplay_S" (int id)
-{
-	SetResultValue(UpdateSurvivorDisplayCore(id,
-		GetCVarString("uh_ds_name"), GetCVarString("uh_ds_mugshot")));
+script "uh_UpdateSurvivorDisplay_S" (int id) {
+  SetResultValue(UpdateSurvivorDisplayCore(id,
+    GetCVarString("uh_ds_name"), GetCVarString("uh_ds_mugshot")));
 }
 
-script "uh_RemoveSurvivor_S" (int id)
-{
-	SetResultValue(RemoveSurvivorCore(id));
+script "uh_RemoveSurvivor_S" (int id) {
+  SetResultValue(RemoveSurvivorCore(id));
 }
 
-script "uh_GetDefinedSurvivorCount_S" (void)
-{
-	SetResultValue(GetDefinedSurvivorCount());
+script "uh_GetDefinedSurvivorCount_S" (void) {
+  SetResultValue(GetDefinedSurvivorCount());
 }
 
-script "uh_GetEnabledSurvivorCount_S" (void)
-{
-	SetResultValue(GetEnabledSurvivorCount());
+script "uh_GetEnabledSurvivorCount_S" (void) {
+  SetResultValue(GetEnabledSurvivorCount());
 }
 
-script "uh_FindSurvivorByActor_S" (void)
-{
-	int id = FindSurvivorByActor(GetCVarString("uh_ds_actor"));
-	SetCVar("uh_ds_id", id);
-	SetResultValue(id);
+script "uh_FindSurvivorByActor_S" (void) {
+  int id = FindSurvivorByActor(GetCVarString("uh_ds_actor"));
+  SetCVar("uh_ds_id", id);
+  SetResultValue(id);
 }
 
-script "uh_GetSurvivorActor_S" (int id)
-{
-	SetCVarString("uh_ds_out_str", GetSurvivorActor(id));
-	SetResultValue(IsSurvivorDefined(id));
+script "uh_GetSurvivorActor_S" (int id) {
+  SetCVarString("uh_ds_out_str", GetSurvivorActor(id));
+  SetResultValue(IsSurvivorDefined(id));
 }
 
-script "uh_GetSurvivorName_S" (int id)
-{
-	SetCVarString("uh_ds_out_str", GetSurvivorName(id));
-	SetResultValue(IsSurvivorDefined(id));
+script "uh_GetSurvivorName_S" (int id) {
+  SetCVarString("uh_ds_out_str", GetSurvivorName(id));
+  SetResultValue(IsSurvivorDefined(id));
 }
 
-script "uh_GetSurvivorMugshot_S" (int id)
-{
-	SetCVarString("uh_ds_out_str", GetSurvivorMugshot(id));
-	SetResultValue(IsSurvivorDefined(id));
+script "uh_GetSurvivorMugshot_S" (int id) {
+  SetCVarString("uh_ds_out_str", GetSurvivorMugshot(id));
+  SetResultValue(IsSurvivorDefined(id));
 }
 
-function int DefineSurvivorWepCore(str wepactor)
-{
-	return SurvWepRegister(wepactor);
+function int DefineSurvivorWepCore(str wepactor) {
+  return SurvWepRegister(wepactor);
 }
 
-script "uh_DefineSurvivorWep_S" (void)
-{
-	SetResultValue(DefineSurvivorWepCore(GetCVarString("uh_dsw_actor")));
+script "uh_DefineSurvivorWep_S" (void) {
+  SetResultValue(DefineSurvivorWepCore(GetCVarString("uh_dsw_actor")));
 }
 
-script "uh_SurvivorWepCount_S" (void)
-{
-	SetResultValue(GetSurvivorWepCount());
+script "uh_SurvivorWepCount_S" (void) {
+  SetResultValue(GetSurvivorWepCount());
 }
 
-script "uh_GetSurvivorWep_S" (int row)
-{
-	SetCVarString("uh_dsw_out_str", GetSurvivorWepActor(row));
-	SetResultValue(row >= 0 && row < GetSurvivorWepCount());
+script "uh_GetSurvivorWep_S" (int row) {
+  SetCVarString("uh_dsw_out_str", GetSurvivorWepActor(row));
+  SetResultValue(row >= 0 && row < GetSurvivorWepCount());
 }
 
-function int DefineSurvivorCleanupCore(str survactor, str cleanupactor)
-{
-	return SurvCleanupRegister(survactor, cleanupactor);
+function int DefineSurvivorCleanupCore(str survactor, str cleanupactor) {
+  return SurvCleanupRegister(survactor, cleanupactor);
 }
 
-script "uh_DefineSurvivorCleanup_S" (void)
-{
-	SetResultValue(DefineSurvivorCleanupCore(
-		GetCVarString("uh_dsc_actor"),
-		GetCVarString("uh_dsc_cleanup")));
+script "uh_DefineSurvivorCleanup_S" (void) {
+  SetResultValue(DefineSurvivorCleanupCore(
+    GetCVarString("uh_dsc_actor"),
+    GetCVarString("uh_dsc_cleanup")));
 }
 
-function int DefineDemoneyeCore(int id, str actor, str name, str prefix, int flags, str mugshot, str eventstem)
-{
-	// Mugshot is mandatory — empty would fall through BHW numeric bands incorrectly.
-	if (StrCmp(mugshot, "") == 0)
-		return UHEYE_FAIL;
-	if (StrCmp(name, "") == 0)
-		return UHEYE_FAIL;
-	if (StrCmp(eventstem, "") == 0)
-		return UHEYE_FAIL;
+function int DefineDemoneyeCore(int id, str actor, str name, str prefix, int flags, str mugshot, str eventstem) {
+  // Mugshot is mandatory — empty would fall through BHW numeric bands incorrectly.
+  if (StrCmp(mugshot, "") == 0)
+    return UHEYE_FAIL;
+  if (StrCmp(name, "") == 0)
+    return UHEYE_FAIL;
+  if (StrCmp(eventstem, "") == 0)
+    return UHEYE_FAIL;
 
-	// Actor uniqueness only when actor is set (bonus face slots may omit actor).
-	if (StrCmp(actor, "") != 0 && FindEyeByActorAllocated(actor) != UHEYE_FAIL)
-		return UHEYE_FAIL;
+  // Actor uniqueness only when actor is set (bonus face slots may omit actor).
+  if (StrCmp(actor, "") != 0 && FindEyeByActorAllocated(actor) != UHEYE_FAIL)
+    return UHEYE_FAIL;
 
-	if (id >= 0)
-	{
-		if (id >= UH_MAX_VANILLA_EYE)
-			return UHEYE_FAIL;
-		if (uh_eyevanilladefined[id] != 0)
-			return UHEYE_FAIL;
-		EyeWriteVanilla(id, actor, name, prefix, flags, mugshot, eventstem);
-		return id;
-	}
+  if (id >= 0) {
+    if (id >= UH_MAX_VANILLA_EYE)
+      return UHEYE_FAIL;
+    if (uh_eyevanilladefined[id] != 0)
+      return UHEYE_FAIL;
+    EyeWriteVanilla(id, actor, name, prefix, flags, mugshot, eventstem);
+    return id;
+  }
 
-	if (id == -1)
-	{
-		if (StrCmp(actor, "") == 0)
-			return UHEYE_FAIL;
-		if (uh_eyecustomcount >= UH_MAX_CUSTOM_EYE)
-			return UHEYE_FAIL;
-		return EyeWriteCustom(actor, name, prefix, flags, mugshot, eventstem);
-	}
+  if (id == -1) {
+    if (StrCmp(actor, "") == 0)
+      return UHEYE_FAIL;
+    if (uh_eyecustomcount >= UH_MAX_CUSTOM_EYE)
+      return UHEYE_FAIL;
+    return EyeWriteCustom(actor, name, prefix, flags, mugshot, eventstem);
+  }
 
-	return UHEYE_FAIL;
+  return UHEYE_FAIL;
 }
 
-script "uh_DefineDemoneye_S" (void)
-{
-	SetResultValue(DefineDemoneyeCore(
-		GetCVar("uh_de_id"),
-		GetCVarString("uh_de_actor"),
-		GetCVarString("uh_de_name"),
-		GetCVarString("uh_de_prefix"),
-		GetCVar("uh_de_flags"),
-		GetCVarString("uh_de_mugshot"),
-		GetCVarString("uh_de_eventstem")
-	));
+script "uh_DefineDemoneye_S" (void) {
+  SetResultValue(DefineDemoneyeCore(
+    GetCVar("uh_de_id"),
+    GetCVarString("uh_de_actor"),
+    GetCVarString("uh_de_name"),
+    GetCVarString("uh_de_prefix"),
+    GetCVar("uh_de_flags"),
+    GetCVarString("uh_de_mugshot"),
+    GetCVarString("uh_de_eventstem")
+  ));
 }
 
-script "uh_IsEyeEnabled_S" (int id)
-{
-	SetResultValue(IsEyeEnabled(id));
+script "uh_IsEyeEnabled_S" (int id) {
+  SetResultValue(IsEyeEnabled(id));
 }
 
-script "uh_SetEyeEnabled_S" (int id, int enabled)
-{
-	SetResultValue(SetEyeEnabledCore(id, enabled));
+script "uh_SetEyeEnabled_S" (int id, int enabled) {
+  SetResultValue(SetEyeEnabledCore(id, enabled));
 }
 
-script "uh_UpdateEyeDisplay_S" (int id)
-{
-	SetResultValue(UpdateEyeDisplayCore(id,
-		GetCVarString("uh_de_name"), GetCVarString("uh_de_prefix"),
-		GetCVarString("uh_de_mugshot")));
+script "uh_UpdateEyeDisplay_S" (int id) {
+  SetResultValue(UpdateEyeDisplayCore(id,
+    GetCVarString("uh_de_name"), GetCVarString("uh_de_prefix"),
+    GetCVarString("uh_de_mugshot")));
 }
 
-script "uh_RemoveEye_S" (int id)
-{
-	SetResultValue(RemoveEyeCore(id));
+script "uh_RemoveEye_S" (int id) {
+  SetResultValue(RemoveEyeCore(id));
 }
 
-script "uh_GetDefinedEyeCount_S" (void)
-{
-	SetResultValue(GetDefinedEyeCount());
+script "uh_GetDefinedEyeCount_S" (void) {
+  SetResultValue(GetDefinedEyeCount());
 }
 
-script "uh_GetEnabledEyeCount_S" (void)
-{
-	SetResultValue(GetEnabledEyeCount());
+script "uh_GetEnabledEyeCount_S" (void) {
+  SetResultValue(GetEnabledEyeCount());
 }
 
-script "uh_IsEyeDefined_S" (int id)
-{
-	SetResultValue(IsEyeDefined(id));
+script "uh_IsEyeDefined_S" (int id) {
+  SetResultValue(IsEyeDefined(id));
 }
 
-script "uh_FindEyeByActor_S" (void)
-{
-	int id = FindEyeByActor(GetCVarString("uh_de_actor"));
-	SetCVar("uh_de_id", id);
-	SetResultValue(id);
+script "uh_FindEyeByActor_S" (void) {
+  int id = FindEyeByActor(GetCVarString("uh_de_actor"));
+  SetCVar("uh_de_id", id);
+  SetResultValue(id);
 }
 
-script "uh_GetEyeActor_S" (int id)
-{
-	SetCVarString("uh_de_out_str", GetEyeActor(id));
-	SetResultValue(IsEyeDefined(id));
+script "uh_GetEyeActor_S" (int id) {
+  SetCVarString("uh_de_out_str", GetEyeActor(id));
+  SetResultValue(IsEyeDefined(id));
 }
 
-script "uh_GetEyeName_S" (int id)
-{
-	SetCVarString("uh_de_out_str", GetEyeName(id));
-	SetResultValue(IsEyeDefined(id));
+script "uh_GetEyeName_S" (int id) {
+  SetCVarString("uh_de_out_str", GetEyeName(id));
+  SetResultValue(IsEyeDefined(id));
 }
 
-script "uh_GetEyePrefix_S" (int id)
-{
-	SetCVarString("uh_de_out_str", GetEyePrefix(id));
-	SetResultValue(IsEyeDefined(id));
+script "uh_GetEyePrefix_S" (int id) {
+  SetCVarString("uh_de_out_str", GetEyePrefix(id));
+  SetResultValue(IsEyeDefined(id));
 }
 
-script "uh_GetEyeFlags_S" (int id)
-{
-	SetResultValue(GetEyeFlags(id));
+script "uh_GetEyeFlags_S" (int id) {
+  SetResultValue(GetEyeFlags(id));
 }
 
-script "uh_GetEyeMugshot_S" (int id)
-{
-	SetCVarString("uh_de_out_str", GetEyeMugshot(id));
-	SetResultValue(IsEyeDefined(id));
+script "uh_GetEyeMugshot_S" (int id) {
+  SetCVarString("uh_de_out_str", GetEyeMugshot(id));
+  SetResultValue(IsEyeDefined(id));
 }
 
-script "uh_GetEyeEventStem_S" (int id)
-{
-	SetCVarString("uh_de_out_str", GetEyeEventStem(id));
-	SetResultValue(IsEyeDefined(id));
+script "uh_GetEyeEventStem_S" (int id) {
+  SetCVarString("uh_de_out_str", GetEyeEventStem(id));
+  SetResultValue(IsEyeDefined(id));
 }
 
-script "uh_GetPlayerEyeId_S" (int playernum)
-{
-	SetResultValue(GetPlayerEyeId(playernum));
+script "uh_GetPlayerEyeId_S" (int playernum) {
+  SetResultValue(GetPlayerEyeId(playernum));
 }
 
 // --- Eye-morph weighted pool API -------------------------------------------
 
-script "uh_DefineEyeMorphPool_S" (void)
-{
-	SetResultValue(DefineEyeMorphPoolCore(GetCVarString("uh_em_pool")));
+script "uh_DefineEyeMorphPool_S" (void) {
+  SetResultValue(DefineEyeMorphPoolCore(GetCVarString("uh_em_pool")));
 }
 
-script "uh_FindEyeMorphPool_S" (void)
-{
-	SetResultValue(FindEyeMorphPool(GetCVarString("uh_em_pool")));
+script "uh_FindEyeMorphPool_S" (void) {
+  SetResultValue(FindEyeMorphPool(GetCVarString("uh_em_pool")));
 }
 
-script "uh_SetEyeMorphPoolEntry_S" (void)
-{
-	SetResultValue(SetEyeMorphPoolEntryCore(
-		GetCVarString("uh_em_pool"),
-		GetCVar("uh_em_eyeid"),
-		GetCVarString("uh_em_shot"),
-		GetCVarString("uh_em_burst"),
-		GetCVarString("uh_em_giver"),
-		GetCVar("uh_em_weight")
-	));
+script "uh_SetEyeMorphPoolEntry_S" (void) {
+  SetResultValue(SetEyeMorphPoolEntryCore(
+    GetCVarString("uh_em_pool"),
+    GetCVar("uh_em_eyeid"),
+    GetCVarString("uh_em_shot"),
+    GetCVarString("uh_em_burst"),
+    GetCVarString("uh_em_giver"),
+    GetCVar("uh_em_weight")
+  ));
 }
 
-script "uh_PickEyeMorphActor_S" (void)
-{
-	str actor = PickEyeMorphActorCore(
-		GetCVarString("uh_em_pool"),
-		GetCVar("uh_em_mode")
-	);
-	SetCVarString("uh_em_out_str", actor);
-	SetResultValue(StrCmp(actor, "") != 0);
+script "uh_PickEyeMorphActor_S" (void) {
+  str actor = PickEyeMorphActorCore(
+    GetCVarString("uh_em_pool"),
+    GetCVar("uh_em_mode")
+  );
+  SetCVarString("uh_em_out_str", actor);
+  SetResultValue(StrCmp(actor, "") != 0);
 }
 
-script "uh_GetEyeMorphPoolWeight_S" (void)
-{
-	SetResultValue(GetEyeMorphPoolWeightCore(
-		GetCVarString("uh_em_pool"),
-		GetCVar("uh_em_eyeid")
-	));
+script "uh_GetEyeMorphPoolWeight_S" (void) {
+  SetResultValue(GetEyeMorphPoolWeightCore(
+    GetCVarString("uh_em_pool"),
+    GetCVar("uh_em_eyeid")
+  ));
 }
 
-script "uh_GetEyeMorphPoolActor_S" (void)
-{
-	str actor = GetEyeMorphPoolActorCore(
-		GetCVarString("uh_em_pool"),
-		GetCVar("uh_em_eyeid"),
-		GetCVar("uh_em_mode")
-	);
-	SetCVarString("uh_em_out_str", actor);
-	SetResultValue(StrCmp(actor, "") != 0);
+script "uh_GetEyeMorphPoolActor_S" (void) {
+  str actor = GetEyeMorphPoolActorCore(
+    GetCVarString("uh_em_pool"),
+    GetCVar("uh_em_eyeid"),
+    GetCVar("uh_em_mode")
+  );
+  SetCVarString("uh_em_out_str", actor);
+  SetResultValue(StrCmp(actor, "") != 0);
 }
 
 // --- Team presentation API ---------------------------------------------------
 // Actor-keyed display data (teammate-bar short name, mugshot, scoreboard icon).
 // Same cvar-mailbox pattern as the Define* helpers above; the caller is
 // UHADD's DefineTeamPresentation, which already verified every mailbox exists.
-function int DefineTeamPresentationCore(str actor, str shortName, str portrait, str scoreIcon, int flags)
-{
-	return TeamPresentationRegister(actor, shortName, portrait, scoreIcon, flags);
+function int DefineTeamPresentationCore(str actor, str shortName, str portrait, str scoreIcon, int flags) {
+  return TeamPresentationRegister(actor, shortName, portrait, scoreIcon, flags);
 }
 
 // Do NOT add CLIENTSIDE: same rule as uh_DefineBoss_S — clients run this
 // locally via ACS_NamedExecuteWithResult from their OPEN CLIENTSIDE twin.
-script "uh_DefineTeamPresentation_S" (void)
-{
-	SetResultValue(DefineTeamPresentationCore(
-		GetCVarString("uh_tip_actor"),
-		GetCVarString("uh_tip_name"),
-		GetCVarString("uh_tip_portrait"),
-		GetCVarString("uh_tip_scoreicon"),
-		GetCVar("uh_tip_flags")
-	));
+script "uh_DefineTeamPresentation_S" (void) {
+  SetResultValue(DefineTeamPresentationCore(
+    GetCVarString("uh_tip_actor"),
+    GetCVarString("uh_tip_name"),
+    GetCVarString("uh_tip_portrait"),
+    GetCVarString("uh_tip_scoreicon"),
+    GetCVar("uh_tip_flags")
+  ));
 }
 
-script "uh_FindTeamPresentation_S" (void)
-{
-	int row = FindTeamPresentation(GetCVarString("uh_tip_actor"));
-	SetCVar("uh_tip_row", row);
-	SetResultValue(row);
+script "uh_FindTeamPresentation_S" (void) {
+  int row = FindTeamPresentation(GetCVarString("uh_tip_actor"));
+  SetCVar("uh_tip_row", row);
+  SetResultValue(row);
 }
 
-script "uh_GetTeamPresentationCount_S" (void)
-{
-	SetResultValue(GetTeamPresentationCount());
+script "uh_GetTeamPresentationCount_S" (void) {
+  SetResultValue(GetTeamPresentationCount());
 }
 
-script "uh_GetTeamPresentationActor_S" (int row)
-{
-	SetCVarString("uh_tip_out_str", GetTeamPresentationActor(row));
-	SetResultValue(row >= 0 && row < GetTeamPresentationCount());
+script "uh_GetTeamPresentationActor_S" (int row) {
+  SetCVarString("uh_tip_out_str", GetTeamPresentationActor(row));
+  SetResultValue(row >= 0 && row < GetTeamPresentationCount());
 }
 
-script "uh_GetTeamPresentationName_S" (int row)
-{
-	SetCVarString("uh_tip_out_str", GetTeamPresentationName(row));
-	SetResultValue(row >= 0 && row < GetTeamPresentationCount());
+script "uh_GetTeamPresentationName_S" (int row) {
+  SetCVarString("uh_tip_out_str", GetTeamPresentationName(row));
+  SetResultValue(row >= 0 && row < GetTeamPresentationCount());
 }
 
-script "uh_GetTeamPresentationPortrait_S" (int row)
-{
-	SetCVarString("uh_tip_out_str", GetTeamPresentationPortrait(row));
-	SetResultValue(row >= 0 && row < GetTeamPresentationCount());
+script "uh_GetTeamPresentationPortrait_S" (int row) {
+  SetCVarString("uh_tip_out_str", GetTeamPresentationPortrait(row));
+  SetResultValue(row >= 0 && row < GetTeamPresentationCount());
 }
 
-script "uh_GetTeamPresentationScoreIcon_S" (int row)
-{
-	SetCVarString("uh_tip_out_str", GetTeamPresentationScoreIcon(row));
-	SetResultValue(row >= 0 && row < GetTeamPresentationCount());
+script "uh_GetTeamPresentationScoreIcon_S" (int row) {
+  SetCVarString("uh_tip_out_str", GetTeamPresentationScoreIcon(row));
+  SetResultValue(row >= 0 && row < GetTeamPresentationCount());
 }
 
-script "uh_GetTeamPresentationFlags_S" (int row)
-{
-	SetResultValue(GetTeamPresentationFlags(row));
+script "uh_GetTeamPresentationFlags_S" (int row) {
+  SetResultValue(GetTeamPresentationFlags(row));
 }
 
-function int DefineUnholyItemCore(int id, str actor, str name, str icon, int group, str mugshot, str sound)
-{
-	if (StrCmp(actor, "") == 0)
-		return UHITEM_FAIL;
-	if (StrCmp(name, "") == 0)
-		return UHITEM_FAIL;
-	if (!ItemDtaddGroupIsKnown(group))
-		return UHITEM_FAIL;
-	if (FindItemByActorAllocated(actor) != UHITEM_FAIL)
-		return UHITEM_FAIL;
+function int DefineUnholyItemCore(int id, str actor, str name, str icon, int group, str mugshot, str sound) {
+  if (StrCmp(actor, "") == 0)
+    return UHITEM_FAIL;
+  if (StrCmp(name, "") == 0)
+    return UHITEM_FAIL;
+  if (!ItemDtaddGroupIsKnown(group))
+    return UHITEM_FAIL;
+  if (FindItemByActorAllocated(actor) != UHITEM_FAIL)
+    return UHITEM_FAIL;
 
-	if (id >= 0)
-	{
-		if (id >= UH_MAX_VANILLA_ITEM)
-			return UHITEM_FAIL;
-		if (uh_itemvanilladefined[id] != 0)
-			return UHITEM_FAIL;
-		ItemWriteVanilla(id, actor, name, icon, group, mugshot, sound);
-		return id;
-	}
+  if (id >= 0) {
+    if (id >= UH_MAX_VANILLA_ITEM)
+      return UHITEM_FAIL;
+    if (uh_itemvanilladefined[id] != 0)
+      return UHITEM_FAIL;
+    ItemWriteVanilla(id, actor, name, icon, group, mugshot, sound);
+    return id;
+  }
 
-	if (id == -1)
-	{
-		if (uh_itemcustomcount >= UH_MAX_CUSTOM_ITEM)
-			return UHITEM_FAIL;
-		return ItemWriteCustom(actor, name, icon, group, mugshot, sound);
-	}
+  if (id == -1) {
+    if (uh_itemcustomcount >= UH_MAX_CUSTOM_ITEM)
+      return UHITEM_FAIL;
+    return ItemWriteCustom(actor, name, icon, group, mugshot, sound);
+  }
 
-	return UHITEM_FAIL;
+  return UHITEM_FAIL;
 }
 
-script "uh_DefineUnholyItem_S" (void)
-{
-	SetResultValue(DefineUnholyItemCore(
-		GetCVar("uh_di_id"),
-		GetCVarString("uh_di_actor"),
-		GetCVarString("uh_di_name"),
-		GetCVarString("uh_di_icon"),
-		GetCVar("uh_di_group"),
-		GetCVarString("uh_di_mugshot"),
-		GetCVarString("uh_di_sound")
-	));
+script "uh_DefineUnholyItem_S" (void) {
+  SetResultValue(DefineUnholyItemCore(
+    GetCVar("uh_di_id"),
+    GetCVarString("uh_di_actor"),
+    GetCVarString("uh_di_name"),
+    GetCVarString("uh_di_icon"),
+    GetCVar("uh_di_group"),
+    GetCVarString("uh_di_mugshot"),
+    GetCVarString("uh_di_sound")
+  ));
 }
 
-script "uh_IsUnholyItemEnabled_S" (int id)
-{
-	SetResultValue(IsItemEnabled(id));
+script "uh_IsUnholyItemEnabled_S" (int id) {
+  SetResultValue(IsItemEnabled(id));
 }
 
-script "uh_SetUnholyItemEnabled_S" (int id, int enabled)
-{
-	SetResultValue(SetItemEnabledCore(id, enabled));
+script "uh_SetUnholyItemEnabled_S" (int id, int enabled) {
+  SetResultValue(SetItemEnabledCore(id, enabled));
 }
 
-script "uh_UpdateUnholyItemDisplay_S" (int id)
-{
-	SetResultValue(UpdateItemDisplayCore(id,
-		GetCVarString("uh_di_name"), GetCVarString("uh_di_icon"),
-		GetCVarString("uh_di_mugshot"), GetCVarString("uh_di_sound")));
+script "uh_UpdateUnholyItemDisplay_S" (int id) {
+  SetResultValue(UpdateItemDisplayCore(id,
+    GetCVarString("uh_di_name"), GetCVarString("uh_di_icon"),
+    GetCVarString("uh_di_mugshot"), GetCVarString("uh_di_sound")));
 }
 
-script "uh_RemoveUnholyItem_S" (int id)
-{
-	SetResultValue(RemoveItemCore(id));
+script "uh_RemoveUnholyItem_S" (int id) {
+  SetResultValue(RemoveItemCore(id));
 }
 
-script "uh_GetDefinedUnholyItemCount_S" (void)
-{
-	SetResultValue(GetUnholyItemCount());
+script "uh_GetDefinedUnholyItemCount_S" (void) {
+  SetResultValue(GetUnholyItemCount());
 }
 
-script "uh_GetEnabledUnholyItemCount_S" (void)
-{
-	SetResultValue(GetEnabledItemCount());
+script "uh_GetEnabledUnholyItemCount_S" (void) {
+  SetResultValue(GetEnabledItemCount());
 }
 
-script "uh_SetUnholyBox_S" (void)
-{
-	int boxid = FindItemByActor(GetCVarString("uh_di_boxactor"));
-	SetResultValue(SetUnholyBoxCore(
-		boxid,
-		GetCVarString("uh_di_opensound"),
-		GetCVarString("uh_di_eyedropsound")
-	));
+script "uh_SetUnholyBox_S" (void) {
+  int boxid = FindItemByActor(GetCVarString("uh_di_boxactor"));
+  SetResultValue(SetUnholyBoxCore(
+    boxid,
+    GetCVarString("uh_di_opensound"),
+    GetCVarString("uh_di_eyedropsound")
+  ));
 }
 
-script "uh_AddUnholyItemDrop_S" (void)
-{
-	int boxid = FindItemByActor(GetCVarString("uh_di_boxactor"));
-	int itemid = FindItemByActor(GetCVarString("uh_di_itemactor"));
-	SetResultValue(AddUnholyItemDropCore(
-		boxid,
-		itemid,
-		GetCVar("uh_di_weight"),
-		GetCVar("uh_di_amt"),
-		GetCVarString("uh_di_sound"),
-		GetCVarString("uh_di_giveactor")
-	));
+script "uh_AddUnholyItemDrop_S" (void) {
+  int boxid = FindItemByActor(GetCVarString("uh_di_boxactor"));
+  int itemid = FindItemByActor(GetCVarString("uh_di_itemactor"));
+  SetResultValue(AddUnholyItemDropCore(
+    boxid,
+    itemid,
+    GetCVar("uh_di_weight"),
+    GetCVar("uh_di_amt"),
+    GetCVarString("uh_di_sound"),
+    GetCVarString("uh_di_giveactor")
+  ));
 }
 
-script "uh_DefineUnholyCoinSpend_S" (void)
-{
-	SetResultValue(DefineUnholyCoinSpendCore(
-		GetCVar("uh_di_mincount"),
-		GetCVar("uh_di_amt"),
-		GetCVarString("uh_di_giveactor"),
-		GetCVarString("uh_di_sound")
-	));
+script "uh_DefineUnholyCoinSpend_S" (void) {
+  SetResultValue(DefineUnholyCoinSpendCore(
+    GetCVar("uh_di_mincount"),
+    GetCVar("uh_di_amt"),
+    GetCVarString("uh_di_giveactor"),
+    GetCVarString("uh_di_sound")
+  ));
 }
 
-script "uh_DefineCopyWep_S" (void)
-{
-	SetResultValue(DefineCopyWepCore(
-		GetCVar("uh_cw_kind"),
-		GetCVar("uh_cw_slot"),
-		GetCVarString("uh_cw_actor")
-	));
+script "uh_DefineCopyWep_S" (void) {
+  SetResultValue(DefineCopyWepCore(
+    GetCVar("uh_cw_kind"),
+    GetCVar("uh_cw_slot"),
+    GetCVarString("uh_cw_actor")
+  ));
 }
 
-script "uh_DefineCopyWepRegen_S" (void)
-{
-	SetResultValue(DefineCopyWepRegenCore(
-		GetCVarString("uh_cw_actor"),
-		GetCVar("uh_cw_regen")
-	));
+script "uh_DefineCopyWepRegen_S" (void) {
+  SetResultValue(DefineCopyWepRegenCore(
+    GetCVarString("uh_cw_actor"),
+    GetCVar("uh_cw_regen")
+  ));
 }
 
-script "uh_FreezeMegaOfficialCopyCount_S" (void)
-{
-	FreezeMegaOfficialCopyCount();
-	SetResultValue(GetMegaOfficialCopyCount());
+script "uh_FreezeMegaOfficialCopyCount_S" (void) {
+  FreezeMegaOfficialCopyCount();
+  SetResultValue(GetMegaOfficialCopyCount());
 }
 
-script "uh_GetMegaOfficialCopyCount_S" (void)
-{
-	SetResultValue(GetMegaOfficialCopyCount());
+script "uh_GetMegaOfficialCopyCount_S" (void) {
+  SetResultValue(GetMegaOfficialCopyCount());
 }
 
-script "uh_IsItemDefined_S" (int id)
-{
-	SetResultValue(IsItemDefined(id));
+script "uh_IsItemDefined_S" (int id) {
+  SetResultValue(IsItemDefined(id));
 }
 
-script "uh_FindItemByActor_S" (void)
-{
-	int id = FindItemByActor(GetCVarString("uh_di_actor"));
-	SetCVar("uh_di_id", id);
-	SetResultValue(id);
+script "uh_FindItemByActor_S" (void) {
+  int id = FindItemByActor(GetCVarString("uh_di_actor"));
+  SetCVar("uh_di_id", id);
+  SetResultValue(id);
 }
 
-script "uh_GetItemActor_S" (int id)
-{
-	SetCVarString("uh_di_out_str", GetItemActor(id));
-	SetResultValue(IsItemDefined(id));
+script "uh_GetItemActor_S" (int id) {
+  SetCVarString("uh_di_out_str", GetItemActor(id));
+  SetResultValue(IsItemDefined(id));
 }
 
-script "uh_GetItemName_S" (int id)
-{
-	SetCVarString("uh_di_out_str", GetItemName(id));
-	SetResultValue(IsItemDefined(id));
+script "uh_GetItemName_S" (int id) {
+  SetCVarString("uh_di_out_str", GetItemName(id));
+  SetResultValue(IsItemDefined(id));
 }
 
-script "uh_GetItemMugshot_S" (int id)
-{
-	SetCVarString("uh_di_out_str", GetItemMugshot(id));
-	SetResultValue(IsItemDefined(id));
+script "uh_GetItemMugshot_S" (int id) {
+  SetCVarString("uh_di_out_str", GetItemMugshot(id));
+  SetResultValue(IsItemDefined(id));
 }
 
-script "uh_GetItemSound_S" (int id)
-{
-	SetCVarString("uh_di_out_str", GetItemSound(id));
-	SetResultValue(IsItemDefined(id));
+script "uh_GetItemSound_S" (int id) {
+  SetCVarString("uh_di_out_str", GetItemSound(id));
+  SetResultValue(IsItemDefined(id));
 }
 
-script "uh_GetItemIcon_S" (int id)
-{
-	SetCVarString("uh_di_out_str", GetItemIcon(id));
-	SetResultValue(IsItemDefined(id));
+script "uh_GetItemIcon_S" (int id) {
+  SetCVarString("uh_di_out_str", GetItemIcon(id));
+  SetResultValue(IsItemDefined(id));
 }
 
-script "uh_GetItemDtaddGroup_S" (int id)
-{
-	SetResultValue(GetItemDtaddGroup(id));
+script "uh_GetItemDtaddGroup_S" (int id) {
+  SetResultValue(GetItemDtaddGroup(id));
 }
 
-script "uh_GetItemDropWeight_S" (int boxid, int itemid)
-{
-	SetResultValue(GetItemDropWeight(boxid, itemid));
+script "uh_GetItemDropWeight_S" (int boxid, int itemid) {
+  SetResultValue(GetItemDropWeight(boxid, itemid));
 }
 
-script "uh_GetItemDropAmt_S" (int boxid, int itemid)
-{
-	SetResultValue(GetItemDropAmt(boxid, itemid));
+script "uh_GetItemDropAmt_S" (int boxid, int itemid) {
+  SetResultValue(GetItemDropAmt(boxid, itemid));
 }
 
-script "uh_RandomItemFromBox_S" (int boxid)
-{
-	SetResultValue(RandomItemFromBox(boxid));
+script "uh_RandomItemFromBox_S" (int boxid) {
+  SetResultValue(RandomItemFromBox(boxid));
 }
 
-script "uh_AddBossMusic_S" (void)
-{
-	SetResultValue(AddBossMusicCore(
-		GetCVar("uh_bm_bossid"),
-		GetCVar("uh_bm_kind"),
-		GetCVar("uh_bm_phase"),
-		GetCVarString("uh_bm_lump"),
-		GetCVarString("uh_bm_title"),
-		GetCVarString("uh_bm_album"),
-		GetCVarString("uh_bm_artist"),
-		GetCVar("uh_bm_weight"),
-		GetCVar("uh_bm_optional")
-	));
+script "uh_AddBossMusic_S" (void) {
+  SetResultValue(AddBossMusicCore(
+    GetCVar("uh_bm_bossid"),
+    GetCVar("uh_bm_kind"),
+    GetCVar("uh_bm_phase"),
+    GetCVarString("uh_bm_lump"),
+    GetCVarString("uh_bm_title"),
+    GetCVarString("uh_bm_album"),
+    GetCVarString("uh_bm_artist"),
+    GetCVar("uh_bm_weight"),
+    GetCVar("uh_bm_optional")
+  ));
 }
 
-script "uh_AddEventMusic_S" (void)
-{
-	SetResultValue(AddEventMusicCore(
-		GetCVar("uh_bm_kind"),
-		GetCVar("uh_bm_phase"),
-		GetCVarString("uh_bm_lump"),
-		GetCVarString("uh_bm_title"),
-		GetCVarString("uh_bm_album"),
-		GetCVarString("uh_bm_artist"),
-		GetCVar("uh_bm_weight"),
-		GetCVar("uh_bm_optional"),
-		GetCVar("uh_bm_duration"),
-		GetCVar("uh_bm_emuflag")
-	));
+script "uh_AddEventMusic_S" (void) {
+  SetResultValue(AddEventMusicCore(
+    GetCVar("uh_bm_kind"),
+    GetCVar("uh_bm_phase"),
+    GetCVarString("uh_bm_lump"),
+    GetCVarString("uh_bm_title"),
+    GetCVarString("uh_bm_album"),
+    GetCVarString("uh_bm_artist"),
+    GetCVar("uh_bm_weight"),
+    GetCVar("uh_bm_optional"),
+    GetCVar("uh_bm_duration"),
+    GetCVar("uh_bm_emuflag")
+  ));
 }
 
-script "uh_SetBossMusicEnabled_S" (void)
-{
-	SetResultValue(SetBossMusicEnabledCore(
-		GetCVar("uh_bm_bossid"),
-		GetCVar("uh_bm_kind"),
-		GetCVar("uh_bm_phase"),
-		GetCVarString("uh_bm_lump"),
-		GetCVar("uh_bm_enabled")
-	));
+script "uh_SetBossMusicEnabled_S" (void) {
+  SetResultValue(SetBossMusicEnabledCore(
+    GetCVar("uh_bm_bossid"),
+    GetCVar("uh_bm_kind"),
+    GetCVar("uh_bm_phase"),
+    GetCVarString("uh_bm_lump"),
+    GetCVar("uh_bm_enabled")
+  ));
 }
 
-script "uh_RemoveBossMusic_S" (void)
-{
-	SetResultValue(RemoveBossMusicCore(
-		GetCVar("uh_bm_bossid"),
-		GetCVar("uh_bm_kind"),
-		GetCVar("uh_bm_phase"),
-		GetCVarString("uh_bm_lump")
-	));
+script "uh_RemoveBossMusic_S" (void) {
+  SetResultValue(RemoveBossMusicCore(
+    GetCVar("uh_bm_bossid"),
+    GetCVar("uh_bm_kind"),
+    GetCVar("uh_bm_phase"),
+    GetCVarString("uh_bm_lump")
+  ));
 }
 
-script "uh_IsBossMusicDefined_S" (void)
-{
-	SetResultValue(IsBossMusicDefinedCore(
-		GetCVar("uh_bm_bossid"),
-		GetCVar("uh_bm_kind"),
-		GetCVar("uh_bm_phase"),
-		GetCVarString("uh_bm_lump")
-	));
+script "uh_IsBossMusicDefined_S" (void) {
+  SetResultValue(IsBossMusicDefinedCore(
+    GetCVar("uh_bm_bossid"),
+    GetCVar("uh_bm_kind"),
+    GetCVar("uh_bm_phase"),
+    GetCVarString("uh_bm_lump")
+  ));
 }
 
-script "uh_IsBossMusicEnabled_S" (void)
-{
-	SetResultValue(IsBossMusicEnabledCore(
-		GetCVar("uh_bm_bossid"),
-		GetCVar("uh_bm_kind"),
-		GetCVar("uh_bm_phase"),
-		GetCVarString("uh_bm_lump")
-	));
+script "uh_IsBossMusicEnabled_S" (void) {
+  SetResultValue(IsBossMusicEnabledCore(
+    GetCVar("uh_bm_bossid"),
+    GetCVar("uh_bm_kind"),
+    GetCVar("uh_bm_phase"),
+    GetCVarString("uh_bm_lump")
+  ));
 }
 
-script "uh_SetEventMusicEnabled_S" (void)
-{
-	SetResultValue(SetEventMusicEnabledCore(
-		GetCVar("uh_bm_kind"),
-		GetCVar("uh_bm_phase"),
-		GetCVarString("uh_bm_lump"),
-		GetCVar("uh_bm_enabled")
-	));
+script "uh_SetEventMusicEnabled_S" (void) {
+  SetResultValue(SetEventMusicEnabledCore(
+    GetCVar("uh_bm_kind"),
+    GetCVar("uh_bm_phase"),
+    GetCVarString("uh_bm_lump"),
+    GetCVar("uh_bm_enabled")
+  ));
 }
 
-script "uh_RemoveEventMusic_S" (void)
-{
-	SetResultValue(RemoveEventMusicCore(
-		GetCVar("uh_bm_kind"),
-		GetCVar("uh_bm_phase"),
-		GetCVarString("uh_bm_lump")
-	));
+script "uh_RemoveEventMusic_S" (void) {
+  SetResultValue(RemoveEventMusicCore(
+    GetCVar("uh_bm_kind"),
+    GetCVar("uh_bm_phase"),
+    GetCVarString("uh_bm_lump")
+  ));
 }
 
-script "uh_IsEventMusicDefined_S" (void)
-{
-	SetResultValue(IsEventMusicDefinedCore(
-		GetCVar("uh_bm_kind"),
-		GetCVar("uh_bm_phase"),
-		GetCVarString("uh_bm_lump")
-	));
+script "uh_IsEventMusicDefined_S" (void) {
+  SetResultValue(IsEventMusicDefinedCore(
+    GetCVar("uh_bm_kind"),
+    GetCVar("uh_bm_phase"),
+    GetCVarString("uh_bm_lump")
+  ));
 }
 
-script "uh_IsEventMusicEnabled_S" (void)
-{
-	SetResultValue(IsEventMusicEnabledCore(
-		GetCVar("uh_bm_kind"),
-		GetCVar("uh_bm_phase"),
-		GetCVarString("uh_bm_lump")
-	));
+script "uh_IsEventMusicEnabled_S" (void) {
+  SetResultValue(IsEventMusicEnabledCore(
+    GetCVar("uh_bm_kind"),
+    GetCVar("uh_bm_phase"),
+    GetCVarString("uh_bm_lump")
+  ));
 }
 
-script "uh_GetDefinedMusicCount_S" (void)
-{
-	SetResultValue(GetDefinedMusicRowCount());
+script "uh_GetDefinedMusicCount_S" (void) {
+  SetResultValue(GetDefinedMusicRowCount());
 }
 
-script "uh_GetEnabledMusicCount_S" (void)
-{
-	SetResultValue(GetEnabledMusicRowCount());
+script "uh_GetEnabledMusicCount_S" (void) {
+  SetResultValue(GetEnabledMusicRowCount());
 }
 
-script "uh_DefineLMSEvent_S" (void)
-{
-	SetResultValue(DefineLMSEventCore(
-		GetCVar("uh_le_id"),
-		GetCVarString("uh_le_stem"),
-		GetCVarString("uh_le_message"),
-		GetCVarString("uh_le_raremessage"),
-		GetCVarString("uh_le_icon"),
-		GetCVarString("uh_le_rareicon"),
-		GetCVar("uh_le_flags"),
-		GetCVar("uh_le_weight")
-	));
+script "uh_DefineLMSEvent_S" (void) {
+  SetResultValue(DefineLMSEventCore(
+    GetCVar("uh_le_id"),
+    GetCVarString("uh_le_stem"),
+    GetCVarString("uh_le_message"),
+    GetCVarString("uh_le_raremessage"),
+    GetCVarString("uh_le_icon"),
+    GetCVarString("uh_le_rareicon"),
+    GetCVar("uh_le_flags"),
+    GetCVar("uh_le_weight")
+  ));
 }
 
-script "uh_AddLMSEventDrop_S" (void)
-{
-	int eventid;
-	eventid = FindLMSEventByStem(GetCVarString("uh_le_stem"));
-	if (eventid == UHLMS_FAIL)
-	{
-		SetResultValue(UHLMS_FAIL);
-		terminate;
-	}
-	SetResultValue(AddLMSEventDropCore(
-		eventid,
-		GetCVarString("uh_le_item"),
-		GetCVar("uh_le_amt"),
-		GetCVar("uh_le_rare")
-	));
+script "uh_AddLMSEventDrop_S" (void) {
+  int eventid;
+  eventid = FindLMSEventByStem(GetCVarString("uh_le_stem"));
+  if (eventid == UHLMS_FAIL) {
+    SetResultValue(UHLMS_FAIL);
+    terminate;
+  }
+  SetResultValue(AddLMSEventDropCore(
+    eventid,
+    GetCVarString("uh_le_item"),
+    GetCVar("uh_le_amt"),
+    GetCVar("uh_le_rare")
+  ));
 }
 
-script "uh_IsLMSEventDefined_S" (int id)
-{
-	SetResultValue(IsLMSEventDefined(id));
+script "uh_IsLMSEventDefined_S" (int id) {
+  SetResultValue(IsLMSEventDefined(id));
 }
 
-script "uh_IsLMSEventEnabled_S" (int id)
-{
-	SetResultValue(IsLMSEventEnabled(id));
+script "uh_IsLMSEventEnabled_S" (int id) {
+  SetResultValue(IsLMSEventEnabled(id));
 }
 
-script "uh_SetLMSEventEnabled_S" (int id, int enabled)
-{
-	SetResultValue(SetLMSEventEnabledCore(id, enabled));
+script "uh_SetLMSEventEnabled_S" (int id, int enabled) {
+  SetResultValue(SetLMSEventEnabledCore(id, enabled));
 }
 
-script "uh_UpdateLMSEvent_S" (int id)
-{
-	SetResultValue(UpdateLMSEventCore(id,
-		GetCVarString("uh_le_message"), GetCVarString("uh_le_raremessage"),
-		GetCVarString("uh_le_icon"), GetCVarString("uh_le_rareicon"),
-		GetCVar("uh_le_flags"), GetCVar("uh_le_weight")));
+script "uh_UpdateLMSEvent_S" (int id) {
+  SetResultValue(UpdateLMSEventCore(id,
+    GetCVarString("uh_le_message"), GetCVarString("uh_le_raremessage"),
+    GetCVarString("uh_le_icon"), GetCVarString("uh_le_rareicon"),
+    GetCVar("uh_le_flags"), GetCVar("uh_le_weight")));
 }
 
-script "uh_RemoveLMSEvent_S" (int id)
-{
-	SetResultValue(RemoveLMSEventCore(id));
+script "uh_RemoveLMSEvent_S" (int id) {
+  SetResultValue(RemoveLMSEventCore(id));
 }
 
-script "uh_GetDefinedLMSEventCount_S" (void)
-{
-	SetResultValue(GetDefinedLMSEventCount());
+script "uh_GetDefinedLMSEventCount_S" (void) {
+  SetResultValue(GetDefinedLMSEventCount());
 }
 
-script "uh_GetEnabledLMSEventCount_S" (void)
-{
-	SetResultValue(GetEnabledLMSEventCount());
+script "uh_GetEnabledLMSEventCount_S" (void) {
+  SetResultValue(GetEnabledLMSEventCount());
 }
 
-script "uh_FindLMSEventByStem_S" (void)
-{
-	SetResultValue(FindLMSEventByStem(GetCVarString("uh_le_stem")));
+script "uh_FindLMSEventByStem_S" (void) {
+  SetResultValue(FindLMSEventByStem(GetCVarString("uh_le_stem")));
 }
 
-script "uh_GetLMSEventStem_S" (int id)
-{
-	SetCVarString("uh_le_out_str", GetLMSEventStem(id));
-	SetResultValue(0);
+script "uh_GetLMSEventStem_S" (int id) {
+  SetCVarString("uh_le_out_str", GetLMSEventStem(id));
+  SetResultValue(0);
 }
 
-script "uh_GetLMSEventMessage_S" (int id)
-{
-	SetCVarString("uh_le_out_str", GetLMSEventMessage(id));
-	SetResultValue(0);
+script "uh_GetLMSEventMessage_S" (int id) {
+  SetCVarString("uh_le_out_str", GetLMSEventMessage(id));
+  SetResultValue(0);
 }
 
-script "uh_GetLMSEventraremessage_S" (int id)
-{
-	SetCVarString("uh_le_out_str", GetLMSEventraremessage(id));
-	SetResultValue(0);
+script "uh_GetLMSEventraremessage_S" (int id) {
+  SetCVarString("uh_le_out_str", GetLMSEventraremessage(id));
+  SetResultValue(0);
 }
 
-script "uh_GetLMSEventIcon_S" (int id)
-{
-	SetCVarString("uh_le_out_str", GetLMSEventIcon(id));
-	SetResultValue(0);
+script "uh_GetLMSEventIcon_S" (int id) {
+  SetCVarString("uh_le_out_str", GetLMSEventIcon(id));
+  SetResultValue(0);
 }
 
-script "uh_GetLMSEventrareicon_S" (int id)
-{
-	SetCVarString("uh_le_out_str", GetLMSEventrareicon(id));
-	SetResultValue(0);
+script "uh_GetLMSEventrareicon_S" (int id) {
+  SetCVarString("uh_le_out_str", GetLMSEventrareicon(id));
+  SetResultValue(0);
 }
 
-script "uh_GetLMSEventFlags_S" (int id)
-{
-	SetResultValue(GetLMSEventFlags(id));
+script "uh_GetLMSEventFlags_S" (int id) {
+  SetResultValue(GetLMSEventFlags(id));
 }
 
-script "uh_PickLMSEvent_S" (void)
-{
-	SetResultValue(PickLMSEvent());
+script "uh_PickLMSEvent_S" (void) {
+  SetResultValue(PickLMSEvent());
 }
 
 // --- Bonus event registration handlers --------------------------------------
@@ -1037,251 +907,223 @@ script "uh_PickLMSEvent_S" (void)
 // database state.  Do NOT add CLIENTSIDE twins: listen-server hosts share one
 // ACS VM with the client, and pure clients must never write the server table.
 
-script "uh_DefineBonusEvent_S" (void)
-{
-	SetResultValue(DefineBonusEventCore(
-		GetCVar("uh_be_id"),
-		GetCVarString("uh_be_stem"),
-		GetCVarString("uh_be_name"),
-		GetCVarString("uh_be_music"),
-		GetCVarString("uh_be_title"),
-		GetCVarString("uh_be_album"),
-		GetCVarString("uh_be_artist"),
-		GetCVarString("uh_be_sound"),
-		GetCVarString("uh_be_hud1"),
-		GetCVarString("uh_be_hud2"),
-		GetCVarString("uh_be_startcb"),
-		GetCVarString("uh_be_rebuildcb"),
-		GetCVarString("uh_be_endcb"),
-		GetCVar("uh_be_arg1"),
-		GetCVar("uh_be_arg2"),
-		GetCVar("uh_be_arg3"),
-		GetCVar("uh_be_flags"),
-		GetCVar("uh_be_weight"),
-		GetCVar("uh_be_minp"),
-		GetCVar("uh_be_maxp")
-	));
+script "uh_DefineBonusEvent_S" (void) {
+  SetResultValue(DefineBonusEventCore(
+    GetCVar("uh_be_id"),
+    GetCVarString("uh_be_stem"),
+    GetCVarString("uh_be_name"),
+    GetCVarString("uh_be_music"),
+    GetCVarString("uh_be_title"),
+    GetCVarString("uh_be_album"),
+    GetCVarString("uh_be_artist"),
+    GetCVarString("uh_be_sound"),
+    GetCVarString("uh_be_hud1"),
+    GetCVarString("uh_be_hud2"),
+    GetCVarString("uh_be_startcb"),
+    GetCVarString("uh_be_rebuildcb"),
+    GetCVarString("uh_be_endcb"),
+    GetCVar("uh_be_arg1"),
+    GetCVar("uh_be_arg2"),
+    GetCVar("uh_be_arg3"),
+    GetCVar("uh_be_flags"),
+    GetCVar("uh_be_weight"),
+    GetCVar("uh_be_minp"),
+    GetCVar("uh_be_maxp")
+  ));
 }
 
-script "uh_SetBonusEventEX_S" (void)
-{
-	SetResultValue(SetBonusEventEXCore(
-		GetCVarString("uh_bex_base"),
-		GetCVarString("uh_bex_ex"),
-		GetCVar("uh_bex_threshold")
-	));
+script "uh_SetBonusEventEX_S" (void) {
+  SetResultValue(SetBonusEventEXCore(
+    GetCVarString("uh_bex_base"),
+    GetCVarString("uh_bex_ex"),
+    GetCVar("uh_bex_threshold")
+  ));
 }
 
-script "uh_IsBonusEventDefined_S" (int id)
-{
-	SetResultValue(IsBonusEventDefined(id));
+script "uh_IsBonusEventDefined_S" (int id) {
+  SetResultValue(IsBonusEventDefined(id));
 }
 
 script "uh_IsBonusEventEnabled_S" (int id) {
-	SetResultValue(IsBonusEventEnabled(id));
+  SetResultValue(IsBonusEventEnabled(id));
 }
 
 script "uh_SetBonusEventEnabled_S" (int id, int enabled) {
-	SetResultValue(SetBonusEventEnabledCore(id, enabled));
+  SetResultValue(SetBonusEventEnabledCore(id, enabled));
 }
 
 script "uh_UpdateBonusEvent_S" (int id) {
-	SetResultValue(UpdateBonusEventCore(id,
-		GetCVarString("uh_be_name"), GetCVarString("uh_be_music"),
-		GetCVarString("uh_be_title"), GetCVarString("uh_be_album"),
-		GetCVarString("uh_be_artist"), GetCVarString("uh_be_sound"),
-		GetCVarString("uh_be_hud1"), GetCVarString("uh_be_hud2"),
-		GetCVarString("uh_be_startcb"), GetCVarString("uh_be_rebuildcb"),
-		GetCVarString("uh_be_endcb"), GetCVar("uh_be_arg1"),
-		GetCVar("uh_be_arg2"), GetCVar("uh_be_arg3"),
-		GetCVar("uh_be_flags"), GetCVar("uh_be_weight"),
-		GetCVar("uh_be_minp"), GetCVar("uh_be_maxp")));
+  SetResultValue(UpdateBonusEventCore(id,
+    GetCVarString("uh_be_name"), GetCVarString("uh_be_music"),
+    GetCVarString("uh_be_title"), GetCVarString("uh_be_album"),
+    GetCVarString("uh_be_artist"), GetCVarString("uh_be_sound"),
+    GetCVarString("uh_be_hud1"), GetCVarString("uh_be_hud2"),
+    GetCVarString("uh_be_startcb"), GetCVarString("uh_be_rebuildcb"),
+    GetCVarString("uh_be_endcb"), GetCVar("uh_be_arg1"),
+    GetCVar("uh_be_arg2"), GetCVar("uh_be_arg3"),
+    GetCVar("uh_be_flags"), GetCVar("uh_be_weight"),
+    GetCVar("uh_be_minp"), GetCVar("uh_be_maxp")));
 }
 
 script "uh_RemoveBonusEvent_S" (int id) {
-	SetResultValue(RemoveBonusEventCore(id));
+  SetResultValue(RemoveBonusEventCore(id));
 }
 
 script "uh_GetDefinedBonusEventCount_S" (void) {
-	SetResultValue(GetDefinedBonusEventCount());
+  SetResultValue(GetDefinedBonusEventCount());
 }
 
 script "uh_GetEnabledBonusEventCount_S" (void) {
-	SetResultValue(GetEnabledBonusEventCount());
+  SetResultValue(GetEnabledBonusEventCount());
 }
 
-script "uh_FindBonusEventByStem_S" (void)
-{
-	SetResultValue(FindBonusEventByStem(GetCVarString("uh_be_stem")));
+script "uh_FindBonusEventByStem_S" (void) {
+  SetResultValue(FindBonusEventByStem(GetCVarString("uh_be_stem")));
 }
 
-script "uh_GetBonusEventStem_S" (int id)
-{
-	SetCVarString("uh_be_out_str", GetBonusEventStem(id));
-	SetResultValue(IsBonusEventDefined(id));
+script "uh_GetBonusEventStem_S" (int id) {
+  SetCVarString("uh_be_out_str", GetBonusEventStem(id));
+  SetResultValue(IsBonusEventDefined(id));
 }
 
-script "uh_GetBonusEventName_S" (int id)
-{
-	SetCVarString("uh_be_out_str", GetBonusEventName(id));
-	SetResultValue(IsBonusEventDefined(id));
+script "uh_GetBonusEventName_S" (int id) {
+  SetCVarString("uh_be_out_str", GetBonusEventName(id));
+  SetResultValue(IsBonusEventDefined(id));
 }
 
-script "uh_GetBonusEventMusic_S" (int id)
-{
-	SetCVarString("uh_be_out_str", GetBonusEventMusic(id));
-	SetResultValue(IsBonusEventDefined(id));
+script "uh_GetBonusEventMusic_S" (int id) {
+  SetCVarString("uh_be_out_str", GetBonusEventMusic(id));
+  SetResultValue(IsBonusEventDefined(id));
 }
 
-script "uh_GetBonusEventMusicTitle_S" (int id)
-{
-	SetCVarString("uh_be_out_str", GetBonusEventMusicTitle(id));
-	SetResultValue(IsBonusEventDefined(id));
+script "uh_GetBonusEventMusicTitle_S" (int id) {
+  SetCVarString("uh_be_out_str", GetBonusEventMusicTitle(id));
+  SetResultValue(IsBonusEventDefined(id));
 }
 
-script "uh_GetBonusEventMusicAlbum_S" (int id)
-{
-	SetCVarString("uh_be_out_str", GetBonusEventMusicAlbum(id));
-	SetResultValue(IsBonusEventDefined(id));
+script "uh_GetBonusEventMusicAlbum_S" (int id) {
+  SetCVarString("uh_be_out_str", GetBonusEventMusicAlbum(id));
+  SetResultValue(IsBonusEventDefined(id));
 }
 
-script "uh_GetBonusEventMusicArtist_S" (int id)
-{
-	SetCVarString("uh_be_out_str", GetBonusEventMusicArtist(id));
-	SetResultValue(IsBonusEventDefined(id));
+script "uh_GetBonusEventMusicArtist_S" (int id) {
+  SetCVarString("uh_be_out_str", GetBonusEventMusicArtist(id));
+  SetResultValue(IsBonusEventDefined(id));
 }
 
-script "uh_GetBonusEventSound_S" (int id)
-{
-	SetCVarString("uh_be_out_str", GetBonusEventSound(id));
-	SetResultValue(IsBonusEventDefined(id));
+script "uh_GetBonusEventSound_S" (int id) {
+  SetCVarString("uh_be_out_str", GetBonusEventSound(id));
+  SetResultValue(IsBonusEventDefined(id));
 }
 
-script "uh_GetBonusEventHudMessage1_S" (int id)
-{
-	SetCVarString("uh_be_out_str", GetBonusEventHudMessage1(id));
-	SetResultValue(IsBonusEventDefined(id));
+script "uh_GetBonusEventHudMessage1_S" (int id) {
+  SetCVarString("uh_be_out_str", GetBonusEventHudMessage1(id));
+  SetResultValue(IsBonusEventDefined(id));
 }
 
-script "uh_GetBonusEventHudMessage2_S" (int id)
-{
-	SetCVarString("uh_be_out_str", GetBonusEventHudMessage2(id));
-	SetResultValue(IsBonusEventDefined(id));
+script "uh_GetBonusEventHudMessage2_S" (int id) {
+  SetCVarString("uh_be_out_str", GetBonusEventHudMessage2(id));
+  SetResultValue(IsBonusEventDefined(id));
 }
 
-script "uh_GetBonusEventStartCallback_S" (int id)
-{
-	SetCVarString("uh_be_out_str", GetBonusEventStartCallback(id));
-	SetResultValue(IsBonusEventDefined(id));
+script "uh_GetBonusEventStartCallback_S" (int id) {
+  SetCVarString("uh_be_out_str", GetBonusEventStartCallback(id));
+  SetResultValue(IsBonusEventDefined(id));
 }
 
-script "uh_GetBonusEventRebuildCallback_S" (int id)
-{
-	SetCVarString("uh_be_out_str", GetBonusEventRebuildCallback(id));
-	SetResultValue(IsBonusEventDefined(id));
+script "uh_GetBonusEventRebuildCallback_S" (int id) {
+  SetCVarString("uh_be_out_str", GetBonusEventRebuildCallback(id));
+  SetResultValue(IsBonusEventDefined(id));
 }
 
-script "uh_GetBonusEventEndCallback_S" (int id)
-{
-	SetCVarString("uh_be_out_str", GetBonusEventEndCallback(id));
-	SetResultValue(IsBonusEventDefined(id));
+script "uh_GetBonusEventEndCallback_S" (int id) {
+  SetCVarString("uh_be_out_str", GetBonusEventEndCallback(id));
+  SetResultValue(IsBonusEventDefined(id));
 }
 
-script "uh_GetBonusEventFlags_S" (int id)
-{
-	SetResultValue(GetBonusEventFlags(id));
+script "uh_GetBonusEventFlags_S" (int id) {
+  SetResultValue(GetBonusEventFlags(id));
 }
 
-script "uh_GetBonusEventWeight_S" (int id)
-{
-	SetResultValue(GetBonusEventWeight(id));
+script "uh_GetBonusEventWeight_S" (int id) {
+  SetResultValue(GetBonusEventWeight(id));
 }
 
-script "uh_GetBonusEventMinPlayers_S" (int id)
-{
-	SetResultValue(GetBonusEventMinPlayers(id));
+script "uh_GetBonusEventMinPlayers_S" (int id) {
+  SetResultValue(GetBonusEventMinPlayers(id));
 }
 
-script "uh_GetBonusEventMaxPlayers_S" (int id)
-{
-	SetResultValue(GetBonusEventMaxPlayers(id));
+script "uh_GetBonusEventMaxPlayers_S" (int id) {
+  SetResultValue(GetBonusEventMaxPlayers(id));
 }
 
 // slot: 0 = arg1, 1 = arg2, 2 = arg3; other slots return UHBE_FAIL.
-script "uh_GetBonusEventArg_S" (int id, int slot)
-{
-	if (slot == 0)
-		SetResultValue(GetBonusEventArg1(id));
-	else if (slot == 1)
-		SetResultValue(GetBonusEventArg2(id));
-	else if (slot == 2)
-		SetResultValue(GetBonusEventArg3(id));
-	else
-		SetResultValue(UHBE_FAIL);
+script "uh_GetBonusEventArg_S" (int id, int slot) {
+  if (slot == 0)
+    SetResultValue(GetBonusEventArg1(id));
+  else if (slot == 1)
+    SetResultValue(GetBonusEventArg2(id));
+  else if (slot == 2)
+    SetResultValue(GetBonusEventArg3(id));
+  else
+    SetResultValue(UHBE_FAIL);
 }
 
 // --- Shiny move-weapon registration stubs ---
 
-script "uh_DefineShinyQwantMoveWep_S" (void)
-{
-	SetResultValue(DefineShinyQwantMoveWepCore(
-		GetCVarString("uh_sm_wep"),
-		GetCVar("uh_sm_weight")
-	));
+script "uh_DefineShinyQwantMoveWep_S" (void) {
+  SetResultValue(DefineShinyQwantMoveWepCore(
+    GetCVarString("uh_sm_wep"),
+    GetCVar("uh_sm_weight")
+  ));
 }
 
-script "uh_DefineShinyNegaSlotWep_S" (void)
-{
-	SetResultValue(DefineShinyNegaSlotWepCore(
-		GetCVar("uh_sm_slot"),
-		GetCVarString("uh_sm_wl1"),
-		GetCVarString("uh_sm_wl2"),
-		GetCVarString("uh_sm_wl3")
-	));
+script "uh_DefineShinyNegaSlotWep_S" (void) {
+  SetResultValue(DefineShinyNegaSlotWepCore(
+    GetCVar("uh_sm_slot"),
+    GetCVarString("uh_sm_wl1"),
+    GetCVarString("uh_sm_wl2"),
+    GetCVarString("uh_sm_wl3")
+  ));
 }
 
-script "uh_DefineDecoyBotMoveWep_S" (void)
-{
-	SetResultValue(DefineDecoyBotMoveWepCore(
-		GetCVarString("uh_sm_wep")
-	));
+script "uh_DefineDecoyBotMoveWep_S" (void) {
+  SetResultValue(DefineDecoyBotMoveWepCore(
+    GetCVarString("uh_sm_wep")
+  ));
 }
 
-script "uh_SetDecoyBotReadyRule_S" (void)
-{
-	SetResultValue(SetDecoyBotReadyRuleCore(
-		GetCVarString("uh_sm_wep"),
-		GetCVar("uh_sm_ready_normal"),
-		GetCVar("uh_sm_ready_endless"),
-		GetCVarString("uh_sm_ready_bypass"), 0
-	));
+script "uh_SetDecoyBotReadyRule_S" (void) {
+  SetResultValue(SetDecoyBotReadyRuleCore(
+    GetCVarString("uh_sm_wep"),
+    GetCVar("uh_sm_ready_normal"),
+    GetCVar("uh_sm_ready_endless"),
+    GetCVarString("uh_sm_ready_bypass"), 0
+  ));
 }
 
-script "uh_SetDecoyBotShinyReadyRule_S" (void)
-{
-	SetResultValue(SetDecoyBotReadyRuleCore(
-		GetCVarString("uh_sm_wep"),
-		GetCVar("uh_sm_ready_normal"),
-		GetCVar("uh_sm_ready_endless"),
-		GetCVarString("uh_sm_ready_bypass"), 1
-	));
+script "uh_SetDecoyBotShinyReadyRule_S" (void) {
+  SetResultValue(SetDecoyBotReadyRuleCore(
+    GetCVarString("uh_sm_wep"),
+    GetCVar("uh_sm_ready_normal"),
+    GetCVar("uh_sm_ready_endless"),
+    GetCVarString("uh_sm_ready_bypass"), 1
+  ));
 }
 
-script "uh_DefineDecoyBotShinyWep_S" (void)
-{
-	SetResultValue(DefineDecoyBotShinyWepCore(
-		GetCVarString("uh_sm_wep"),
-		GetCVarString("uh_sm_shiny")
-	));
+script "uh_DefineDecoyBotShinyWep_S" (void) {
+  SetResultValue(DefineDecoyBotShinyWepCore(
+    GetCVarString("uh_sm_wep"),
+    GetCVarString("uh_sm_shiny")
+  ));
 }
 
-script "uh_DefineShinyMegaCopyWep_S" (void)
-{
-	SetResultValue(DefineShinyMegaCopyWepCore(
-		GetCVar("uh_sm_kind"),
-		GetCVarString("uh_sm_wep"),
-		GetCVar("uh_sm_weight")
-	));
+script "uh_DefineShinyMegaCopyWep_S" (void) {
+  SetResultValue(DefineShinyMegaCopyWepCore(
+    GetCVar("uh_sm_kind"),
+    GetCVarString("uh_sm_wep"),
+    GetCVar("uh_sm_weight")
+  ));
 }
 
 // --- Unified player presentation resolver ------------------------------------
@@ -1290,24 +1132,20 @@ script "uh_DefineShinyMegaCopyWep_S" (void)
 // inside UHDT) so a consumer that cannot #import uhdt — the vendored UIX
 // libraries — reaches exactly the same resolution rules instead of duplicating
 // the survivor/boss/eye lookup order.
-script "uh_FindPlayerDefinition_S" (void)
-{
-	int kind = UH_FindPlayerDefinition(GetCVarString("uh_tip_actor"));
-	SetCVar("uh_tip_row", kind);
-	SetResultValue(kind);
+script "uh_FindPlayerDefinition_S" (void) {
+  int kind = UH_FindPlayerDefinition(GetCVarString("uh_tip_actor"));
+  SetCVar("uh_tip_row", kind);
+  SetResultValue(kind);
 }
 
-script "uh_PlayerDisplayName_S" (void)
-{
-	SetCVarString("uh_tip_out_str", UH_PlayerDisplayName(GetCVarString("uh_tip_actor")));
+script "uh_PlayerDisplayName_S" (void) {
+  SetCVarString("uh_tip_out_str", UH_PlayerDisplayName(GetCVarString("uh_tip_actor")));
 }
 
-script "uh_PlayerPortrait_S" (void)
-{
-	SetCVarString("uh_tip_out_str", UH_PlayerPortrait(GetCVarString("uh_tip_actor")));
+script "uh_PlayerPortrait_S" (void) {
+  SetCVarString("uh_tip_out_str", UH_PlayerPortrait(GetCVarString("uh_tip_actor")));
 }
 
-script "uh_PlayerScoreIcon_S" (void)
-{
-	SetCVarString("uh_tip_out_str", UH_PlayerScoreIcon(GetCVarString("uh_tip_actor")));
+script "uh_PlayerScoreIcon_S" (void) {
+  SetCVarString("uh_tip_out_str", UH_PlayerScoreIcon(GetCVarString("uh_tip_actor")));
 }

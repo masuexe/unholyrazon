@@ -5,261 +5,261 @@
 // DAMAGED EVENT scripts that SetResultValue.
 
 function int UH_NegaBusterPlayersHostile(int a, int b) {
-	if (a < 0 || b < 0)
-		return 0;
-	if (a == b)
-		return 0;
-	if (!PlayerInGame(a) || !PlayerInGame(b))
-		return 0;
-	if (IsTeamGame) {
-		if (GetPlayerInfo(a, PLAYERINFO_TEAM) == GetPlayerInfo(b, PLAYERINFO_TEAM))
-			return 0;
-	}
-	return 1;
+  if (a < 0 || b < 0)
+    return 0;
+  if (a == b)
+    return 0;
+  if (!PlayerInGame(a) || !PlayerInGame(b))
+    return 0;
+  if (IsTeamGame) {
+    if (GetPlayerInfo(a, PLAYERINFO_TEAM) == GetPlayerInfo(b, PLAYERINFO_TEAM))
+      return 0;
+  }
+  return 1;
 }
 
 function int UH_NegaBusterShooterValid(int pn, int life) {
-	if (pn < 0 || !PlayerInGame(pn))
-		return 0;
-	if (!SetActivatorToPlayer(pn))
-		return 0;
-	if (PlayerNumber() != pn)
-		return 0;
-	if (StrICmp(GetActorClass(0), "NegaMan"))
-		return 0;
-	if (GetUserVariable(0, "user_uh_nb_life") != life)
-		return 0;
-	return 1;
+  if (pn < 0 || !PlayerInGame(pn))
+    return 0;
+  if (!SetActivatorToPlayer(pn))
+    return 0;
+  if (PlayerNumber() != pn)
+    return 0;
+  if (StrICmp(GetActorClass(0), "NegaMan"))
+    return 0;
+  if (GetUserVariable(0, "user_uh_nb_life") != life)
+    return 0;
+  return 1;
 }
 
 function int UH_NegaBusterPickIndex(int preferMissing) {
-	int n;
-	int i;
-	int eligible;
-	int pick;
-	int seen;
-	str wep;
+  int n;
+  int i;
+  int eligible;
+  int pick;
+  int seen;
+  str wep;
 
-	n = CountCopyWepByKind(UHCOPY_NEGA);
-	if (n <= 0) {
-		UH_Log(UH_LOG_ERROR, "Nega Buster drop: empty Nega copywep pool");
-		return -1;
-	}
+  n = CountCopyWepByKind(UHCOPY_NEGA);
+  if (n <= 0) {
+    UH_Log(UH_LOG_ERROR, "Nega Buster drop: empty Nega copywep pool");
+    return -1;
+  }
 
-	if (preferMissing) {
-		eligible = 0;
-		for (i = 0; i < n; i++) {
-			wep = GetCopyWepActorByKindIndex(UHCOPY_NEGA, i);
-			if (StrCmp(wep, "") == 0)
-				continue;
-			if (CheckInventory(wep) == 0)
-				eligible++;
-		}
-		if (eligible > 0) {
-			pick = random(0, eligible - 1);
-			seen = 0;
-			for (i = 0; i < n; i++) {
-				wep = GetCopyWepActorByKindIndex(UHCOPY_NEGA, i);
-				if (StrCmp(wep, "") == 0)
-					continue;
-				if (CheckInventory(wep) != 0)
-					continue;
-				if (seen == pick)
-					return i;
-				seen++;
-			}
-		}
-	}
+  if (preferMissing) {
+    eligible = 0;
+    for (i = 0; i < n; i++) {
+      wep = GetCopyWepActorByKindIndex(UHCOPY_NEGA, i);
+      if (StrCmp(wep, "") == 0)
+        continue;
+      if (CheckInventory(wep) == 0)
+        eligible++;
+    }
+    if (eligible > 0) {
+      pick = random(0, eligible - 1);
+      seen = 0;
+      for (i = 0; i < n; i++) {
+        wep = GetCopyWepActorByKindIndex(UHCOPY_NEGA, i);
+        if (StrCmp(wep, "") == 0)
+          continue;
+        if (CheckInventory(wep) != 0)
+          continue;
+        if (seen == pick)
+          return i;
+        seen++;
+      }
+    }
+  }
 
-	eligible = 0;
-	for (i = 0; i < n; i++) {
-		wep = GetCopyWepActorByKindIndex(UHCOPY_NEGA, i);
-		if (StrCmp(wep, "") != 0)
-			eligible++;
-	}
-	if (eligible <= 0) {
-		UH_Log(UH_LOG_ERROR, "Nega Buster drop: no spawnable Nega mapping");
-		return -1;
-	}
-	pick = random(0, eligible - 1);
-	seen = 0;
-	for (i = 0; i < n; i++) {
-		wep = GetCopyWepActorByKindIndex(UHCOPY_NEGA, i);
-		if (StrCmp(wep, "") == 0)
-			continue;
-		if (seen == pick)
-			return i;
-		seen++;
-	}
-	return -1;
+  eligible = 0;
+  for (i = 0; i < n; i++) {
+    wep = GetCopyWepActorByKindIndex(UHCOPY_NEGA, i);
+    if (StrCmp(wep, "") != 0)
+      eligible++;
+  }
+  if (eligible <= 0) {
+    UH_Log(UH_LOG_ERROR, "Nega Buster drop: no spawnable Nega mapping");
+    return -1;
+  }
+  pick = random(0, eligible - 1);
+  seen = 0;
+  for (i = 0; i < n; i++) {
+    wep = GetCopyWepActorByKindIndex(UHCOPY_NEGA, i);
+    if (StrCmp(wep, "") == 0)
+      continue;
+    if (seen == pick)
+      return i;
+    seen++;
+  }
+  return -1;
 }
 
 function int UH_NegaBusterSpawnDrop(int srcpn, int srclife) {
-	int victpn;
-	int idx;
-	int tid;
-	int ang;
-	int vel;
-	int velz;
-	int x;
-	int y;
-	int z;
-	str wep;
+  int victpn;
+  int idx;
+  int tid;
+  int ang;
+  int vel;
+  int velz;
+  int x;
+  int y;
+  int z;
+  str wep;
 
-	victpn = PlayerNumber();
-	x = GetActorX(0);
-	y = GetActorY(0);
-	z = GetActorZ(0) + 24.0;
+  victpn = PlayerNumber();
+  x = GetActorX(0);
+  y = GetActorY(0);
+  z = GetActorZ(0) + 24.0;
 
-	idx = -1;
-	if (UH_NegaBusterShooterValid(srcpn, srclife))
-		idx = UH_NegaBusterPickIndex(1);
-	if (victpn >= 0)
-		SetActivatorToPlayer(victpn);
-	if (idx < 0)
-		idx = UH_NegaBusterPickIndex(0);
-	if (victpn >= 0)
-		SetActivatorToPlayer(victpn);
-	if (idx < 0)
-		return 0;
+  idx = -1;
+  if (UH_NegaBusterShooterValid(srcpn, srclife))
+    idx = UH_NegaBusterPickIndex(1);
+  if (victpn >= 0)
+    SetActivatorToPlayer(victpn);
+  if (idx < 0)
+    idx = UH_NegaBusterPickIndex(0);
+  if (victpn >= 0)
+    SetActivatorToPlayer(victpn);
+  if (idx < 0)
+    return 0;
 
-	wep = GetCopyWepActorByKindIndex(UHCOPY_NEGA, idx);
-	if (StrCmp(wep, "") == 0)
-		return 0;
+  wep = GetCopyWepActorByKindIndex(UHCOPY_NEGA, idx);
+  if (StrCmp(wep, "") == 0)
+    return 0;
 
-	tid = UniqueTID();
-	if (!SpawnForced(wep, x, y, z, tid, 0)) {
-		UH_Log(UH_LOG_ERROR, StrParam(s:"Nega Buster drop: SpawnForced failed for ", s:wep));
-		return 0;
-	}
+  tid = UniqueTID();
+  if (!SpawnForced(wep, x, y, z, tid, 0)) {
+    UH_Log(UH_LOG_ERROR, StrParam(s:"Nega Buster drop: SpawnForced failed for ", s:wep));
+    return 0;
+  }
 
-	SetActorFlag(tid, "DROPPED", 1);
+  SetActorFlag(tid, "DROPPED", 1);
 
-	ang = random(0, 255) * 1.0 / 256;
-	vel = random(1, 3) * 1.0;
-	velz = random(4, 8) * 1.0;
-	SetActorVelocity(tid, FixedMul(vel, cos(ang)), FixedMul(vel, sin(ang)), velz, 0, 0);
+  ang = random(0, 255) * 1.0 / 256;
+  vel = random(1, 3) * 1.0;
+  velz = random(4, 8) * 1.0;
+  SetActorVelocity(tid, FixedMul(vel, cos(ang)), FixedMul(vel, sin(ang)), velz, 0, 0);
 
-	if (victpn >= 0)
-		SetActivatorToPlayer(victpn);
-	Thing_ChangeTID(tid, 0);
-	return 1;
+  if (victpn >= 0)
+    SetActivatorToPlayer(victpn);
+  Thing_ChangeTID(tid, 0);
+  return 1;
 }
 
 function void UH_NegaBusterBumpLife(void) {
-	if (PlayerNumber() < 0)
-		return;
-	SetUserVariable(0, "user_uh_nb_life", GetUserVariable(0, "user_uh_nb_life") + 1);
-	SetUserVariable(0, "user_uh_nb_hitseq", 0);
-	SetUserVariable(0, "user_uh_nb_busterseq", 0);
-	SetUserVariable(0, "user_uh_nb_dropped", 0);
-	SetUserVariable(0, "user_uh_nb_srcpn", -1);
-	SetUserVariable(0, "user_uh_nb_srclife", 0);
+  if (PlayerNumber() < 0)
+    return;
+  SetUserVariable(0, "user_uh_nb_life", GetUserVariable(0, "user_uh_nb_life") + 1);
+  SetUserVariable(0, "user_uh_nb_hitseq", 0);
+  SetUserVariable(0, "user_uh_nb_busterseq", 0);
+  SetUserVariable(0, "user_uh_nb_dropped", 0);
+  SetUserVariable(0, "user_uh_nb_srcpn", -1);
+  SetUserVariable(0, "user_uh_nb_srclife", 0);
 }
 
 script "uh_NegaBusterDropLifeEnter" ENTER {
-	UH_NegaBusterBumpLife();
+  UH_NegaBusterBumpLife();
 }
 
 script "uh_NegaBusterDropLifeRespawn" RESPAWN {
-	UH_NegaBusterBumpLife();
+  UH_NegaBusterBumpLife();
 }
 
 script "uh_NegaBusterKillDrop" (void) {
-	int hitseq;
-	int busterseq;
-	int dropped;
-	int srcpn;
-	int srclife;
+  int hitseq;
+  int busterseq;
+  int dropped;
+  int srcpn;
+  int srclife;
 
-	SetResultValue(0);
-	if (PlayerNumber() < 0)
-		terminate;
+  SetResultValue(0);
+  if (PlayerNumber() < 0)
+    terminate;
 
-	hitseq = GetUserVariable(0, "user_uh_nb_hitseq");
-	busterseq = GetUserVariable(0, "user_uh_nb_busterseq");
-	dropped = GetUserVariable(0, "user_uh_nb_dropped");
-	srcpn = GetUserVariable(0, "user_uh_nb_srcpn");
-	srclife = GetUserVariable(0, "user_uh_nb_srclife");
+  hitseq = GetUserVariable(0, "user_uh_nb_hitseq");
+  busterseq = GetUserVariable(0, "user_uh_nb_busterseq");
+  dropped = GetUserVariable(0, "user_uh_nb_dropped");
+  srcpn = GetUserVariable(0, "user_uh_nb_srcpn");
+  srclife = GetUserVariable(0, "user_uh_nb_srclife");
 
-	if (busterseq <= 0 || busterseq != hitseq) {
-		SetUserVariable(0, "user_uh_nb_busterseq", 0);
-		terminate;
-	}
-	if (dropped) {
-		SetUserVariable(0, "user_uh_nb_busterseq", 0);
-		SetResultValue(1);
-		terminate;
-	}
-	if (UH_NegaBusterSpawnDrop(srcpn, srclife))
-		SetUserVariable(0, "user_uh_nb_dropped", 1);
-	SetUserVariable(0, "user_uh_nb_busterseq", 0);
-	SetResultValue(GetUserVariable(0, "user_uh_nb_dropped"));
+  if (busterseq <= 0 || busterseq != hitseq) {
+    SetUserVariable(0, "user_uh_nb_busterseq", 0);
+    terminate;
+  }
+  if (dropped) {
+    SetUserVariable(0, "user_uh_nb_busterseq", 0);
+    SetResultValue(1);
+    terminate;
+  }
+  if (UH_NegaBusterSpawnDrop(srcpn, srclife))
+    SetUserVariable(0, "user_uh_nb_dropped", 1);
+  SetUserVariable(0, "user_uh_nb_busterseq", 0);
+  SetResultValue(GetUserVariable(0, "user_uh_nb_dropped"));
 }
 
 script "uh_NegaBusterDropDamage" (int evt, int dmg, int dmgtype) EVENT {
-	int charge;
-	int srcpn;
-	int srclife;
-	int victpn;
-	int hitseq;
-	int chance;
-	str infclass;
+  int charge;
+  int srcpn;
+  int srclife;
+  int victpn;
+  int hitseq;
+  int chance;
+  str infclass;
 
-	if (evt != GAMEEVENT_ACTOR_DAMAGED)
-		terminate;
+  if (evt != GAMEEVENT_ACTOR_DAMAGED)
+    terminate;
 
-	charge = 0;
-	srcpn = -1;
-	srclife = 0;
+  charge = 0;
+  srcpn = -1;
+  srclife = 0;
 
-	if (SetActivator(0, AAPTR_DAMAGE_INFLICTOR)) {
-		infclass = GetActorClass(0);
-		if (!StrICmp(infclass, "NegaChargeShot3"))
-			charge = 3;
-		else if (!StrICmp(infclass, "NegaChargeShot2"))
-			charge = 2;
-		else if (!StrICmp(infclass, "NegaChargeShot1"))
-			charge = 1;
-		if (charge > 0 && SetActivator(0, AAPTR_TARGET)) {
-			if (!StrICmp(GetActorClass(0), "NegaMan")) {
-				srcpn = PlayerNumber();
-				srclife = GetUserVariable(0, "user_uh_nb_life");
-			}
-		}
-	}
+  if (SetActivator(0, AAPTR_DAMAGE_INFLICTOR)) {
+    infclass = GetActorClass(0);
+    if (!StrICmp(infclass, "NegaChargeShot3"))
+      charge = 3;
+    else if (!StrICmp(infclass, "NegaChargeShot2"))
+      charge = 2;
+    else if (!StrICmp(infclass, "NegaChargeShot1"))
+      charge = 1;
+    if (charge > 0 && SetActivator(0, AAPTR_TARGET)) {
+      if (!StrICmp(GetActorClass(0), "NegaMan")) {
+        srcpn = PlayerNumber();
+        srclife = GetUserVariable(0, "user_uh_nb_life");
+      }
+    }
+  }
 
-	if (!SetActivator(0, AAPTR_DAMAGE_TARGET))
-		terminate;
-	victpn = PlayerNumber();
-	if (victpn < 0)
-		terminate;
+  if (!SetActivator(0, AAPTR_DAMAGE_TARGET))
+    terminate;
+  victpn = PlayerNumber();
+  if (victpn < 0)
+    terminate;
 
-	hitseq = GetUserVariable(0, "user_uh_nb_hitseq") + 1;
-	SetUserVariable(0, "user_uh_nb_hitseq", hitseq);
-	SetUserVariable(0, "user_uh_nb_busterseq", 0);
-	SetUserVariable(0, "user_uh_nb_dropped", 0);
-	SetUserVariable(0, "user_uh_nb_srcpn", -1);
-	SetUserVariable(0, "user_uh_nb_srclife", 0);
+  hitseq = GetUserVariable(0, "user_uh_nb_hitseq") + 1;
+  SetUserVariable(0, "user_uh_nb_hitseq", hitseq);
+  SetUserVariable(0, "user_uh_nb_busterseq", 0);
+  SetUserVariable(0, "user_uh_nb_dropped", 0);
+  SetUserVariable(0, "user_uh_nb_srcpn", -1);
+  SetUserVariable(0, "user_uh_nb_srclife", 0);
 
-	if (GetEventResult() <= 0)
-		terminate;
-	if (charge < 1 || srcpn < 0)
-		terminate;
-	if (!UH_NegaBusterPlayersHostile(victpn, srcpn))
-		terminate;
+  if (GetEventResult() <= 0)
+    terminate;
+  if (charge < 1 || srcpn < 0)
+    terminate;
+  if (!UH_NegaBusterPlayersHostile(victpn, srcpn))
+    terminate;
 
-	SetUserVariable(0, "user_uh_nb_busterseq", hitseq);
-	SetUserVariable(0, "user_uh_nb_srcpn", srcpn);
-	SetUserVariable(0, "user_uh_nb_srclife", srclife);
+  SetUserVariable(0, "user_uh_nb_busterseq", hitseq);
+  SetUserVariable(0, "user_uh_nb_srcpn", srcpn);
+  SetUserVariable(0, "user_uh_nb_srclife", srclife);
 
-	chance = 16;
-	if (charge == 2)
-		chance = 32;
-	else if (charge == 3)
-		chance = 64;
-	if (random(0, 255) >= chance)
-		terminate;
-	if (UH_NegaBusterSpawnDrop(srcpn, srclife))
-		SetUserVariable(0, "user_uh_nb_dropped", 1);
+  chance = 16;
+  if (charge == 2)
+    chance = 32;
+  else if (charge == 3)
+    chance = 64;
+  if (random(0, 255) >= chance)
+    terminate;
+  if (UH_NegaBusterSpawnDrop(srcpn, srclife))
+    SetUserVariable(0, "user_uh_nb_dropped", 1);
 }

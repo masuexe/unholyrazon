@@ -39,383 +39,383 @@ bool uh_cl_spellcardbroken;
 int uh_cl_spellcard_remaining_tics;
 
 str uh_spellcardnamelist[UH_SC_PHASE_MAX + 1] = {
-	"",
-	"",  // Nonspell 1 — no name HUD
-	"Hell Sign \"Eclipse of Hell\"",
-	"",  // Nonspell 2
-	"Hell Sign \"Star and Stripe\"",
-	"",  // Nonspell 3
-	"Hellfire \"Infernal Essence of Grazing\"",
-	"Inferno \"Striped Abyss\"",
-	"\"Apollo Hoax Theory\""
+  "",
+  "",  // Nonspell 1 — no name HUD
+  "Hell Sign \"Eclipse of Hell\"",
+  "",  // Nonspell 2
+  "Hell Sign \"Star and Stripe\"",
+  "",  // Nonspell 3
+  "Hellfire \"Infernal Essence of Grazing\"",
+  "Inferno \"Striped Abyss\"",
+  "\"Apollo Hoax Theory\""
 };
 
 function str UH_SpellCardNameOf(int phaseid) {
-	if (phaseid < 1 || phaseid > UH_SC_PHASE_MAX)
-		return "";
-	return uh_spellcardnamelist[phaseid];
+  if (phaseid < 1 || phaseid > UH_SC_PHASE_MAX)
+    return "";
+  return uh_spellcardnamelist[phaseid];
 }
 
 // Named spell cards only (not nonspells 1/3/5)
 function bool UH_SpellCardShowsName(int phaseid) {
-	return (phaseid == 2 || phaseid == 4 || phaseid == 6 || phaseid == 7 || phaseid == 8);
+  return (phaseid == 2 || phaseid == 4 || phaseid == 6 || phaseid == 7 || phaseid == 8);
 }
 
 // Spell-card bonus stages only — nonspells 1/3/5 never announce or reward
 function bool UH_SpellCardIsBonusPhase(int phaseid) {
-	return UH_SpellCardShowsName(phaseid);
+  return UH_SpellCardShowsName(phaseid);
 }
 
 // LoLK survival spells (Time Sign): W2 Eclipse of Hell, W8 Apollo Hoax
 function bool UH_SpellCardIsSurvival(int phaseid) {
-	return (phaseid == 2 || phaseid == 8);
+  return (phaseid == 2 || phaseid == 8);
 }
 
 function void UH_SpellCardClearHud(void) {
-	ClearHudMessageBold(UH_SC_HUD_NAME);
-	ClearHudMessageBold(UH_SC_HUD_TIMER);
-	ClearHudMessageBold(UH_SC_HUD_BONUS);
-	ACS_NamedExecuteAlways("uh_SpellCardClientClear", 0);
+  ClearHudMessageBold(UH_SC_HUD_NAME);
+  ClearHudMessageBold(UH_SC_HUD_TIMER);
+  ClearHudMessageBold(UH_SC_HUD_BONUS);
+  ACS_NamedExecuteAlways("uh_SpellCardClientClear", 0);
 }
 
 function void UH_SpellCardDrawHud(int sec, int centi, int phaseid) {
-	int color;
-	str sec_str;
-	str centi_str;
-	str timerstr;
+  int color;
+  str sec_str;
+  str centi_str;
+  str timerstr;
 
-	SetHudSize(640, 480, 0);
-	int x_aspect = GetHudRight(640) * 1.0;
-	if (GetScreenWidth() == 640 && GetScreenHeight() == 480) {
-		x_aspect = 640.0;
-	}
-	int draw_x = (RoundFixedToInt(x_aspect - 16.0) * 1.0) + 0.2;
+  SetHudSize(640, 480, 0);
+  int x_aspect = GetHudRight(640) * 1.0;
+  if (GetScreenWidth() == 640 && GetScreenHeight() == 480) {
+    x_aspect = 640.0;
+  }
+  int draw_x = (RoundFixedToInt(x_aspect - 16.0) * 1.0) + 0.2;
 
-	// Timer (Top-Right, Touhou STG style with real countdown centiseconds)
-	SetFont("BIGFONT");
-	if (sec <= 4)
-		color = CR_RED;
-	else if (sec <= 9)
-		color = CR_BRICK;
-	else
-		color = CR_WHITE;
+  // Timer (Top-Right, Touhou STG style with real countdown centiseconds)
+  SetFont("BIGFONT");
+  if (sec <= 4)
+    color = CR_RED;
+  else if (sec <= 9)
+    color = CR_BRICK;
+  else
+    color = CR_WHITE;
 
-	if (sec < 0)
-		sec = 0;
-	if (centi < 0)
-		centi = 0;
+  if (sec < 0)
+    sec = 0;
+  if (centi < 0)
+    centi = 0;
 
-	if (sec < 10)
-		sec_str = StrParam(s:"0", i:sec);
-	else
-		sec_str = StrParam(i:sec);
+  if (sec < 10)
+    sec_str = StrParam(s:"0", i:sec);
+  else
+    sec_str = StrParam(i:sec);
 
-	if (centi < 10)
-		centi_str = StrParam(s:"0", i:centi);
-	else
-		centi_str = StrParam(i:centi);
+  if (centi < 10)
+    centi_str = StrParam(s:"0", i:centi);
+  else
+    centi_str = StrParam(i:centi);
 
-	timerstr = StrParam(s:sec_str, s:".", s:centi_str);
-	HudMessage(s:timerstr; HUDMSG_PLAIN, UH_SC_HUD_TIMER, color, draw_x, 16.1, 0);
+  timerstr = StrParam(s:sec_str, s:".", s:centi_str);
+  HudMessage(s:timerstr; HUDMSG_PLAIN, UH_SC_HUD_TIMER, color, draw_x, 16.1, 0);
 
-	// Spell Card Name and Bonus (Top-Right, placed at Y=56.1 and 68.1 to clear LMS event banner)
-	SetFont("SMALLFONT");
-	if (UH_SpellCardShowsName(phaseid)) {
-		HudMessage(s:UH_SpellCardNameOf(phaseid); HUDMSG_PLAIN, UH_SC_HUD_NAME, CR_GOLD, draw_x, 56.1, 0);
-		if (uh_cl_spellcardbroken) {
-			HudMessage(s:"\cuBONUS  \cgFAILED"; HUDMSG_PLAIN, UH_SC_HUD_BONUS, CR_UNTRANSLATED, draw_x, 68.1, 0);
-		}
-		else {
-			HudMessage(s:"\ckBONUS  \cdSURVIVOR BOX"; HUDMSG_PLAIN, UH_SC_HUD_BONUS, CR_UNTRANSLATED, draw_x, 68.1, 0);
-		}
-	}
-	else {
-		ClearHudMessage(UH_SC_HUD_NAME);
-		ClearHudMessage(UH_SC_HUD_BONUS);
-	}
+  // Spell Card Name and Bonus (Top-Right, placed at Y=56.1 and 68.1 to clear LMS event banner)
+  SetFont("SMALLFONT");
+  if (UH_SpellCardShowsName(phaseid)) {
+    HudMessage(s:UH_SpellCardNameOf(phaseid); HUDMSG_PLAIN, UH_SC_HUD_NAME, CR_GOLD, draw_x, 56.1, 0);
+    if (uh_cl_spellcardbroken) {
+      HudMessage(s:"\cuBONUS  \cgFAILED"; HUDMSG_PLAIN, UH_SC_HUD_BONUS, CR_UNTRANSLATED, draw_x, 68.1, 0);
+    }
+    else {
+      HudMessage(s:"\ckBONUS  \cdSURVIVOR BOX"; HUDMSG_PLAIN, UH_SC_HUD_BONUS, CR_UNTRANSLATED, draw_x, 68.1, 0);
+    }
+  }
+  else {
+    ClearHudMessage(UH_SC_HUD_NAME);
+    ClearHudMessage(UH_SC_HUD_BONUS);
+  }
 }
 
 function void UH_SpellCardAnnounceResult(str msg, int color) {
-	SetFont("BIGFONT");
-	SetHudSize(640, 480, 0);
-	HudMessageBold(s:msg; HUDMSG_FADEOUT, UH_SC_HUD_RESULT, color, 320.4, 72.0, 3.0, 1.0);
+  SetFont("BIGFONT");
+  SetHudSize(640, 480, 0);
+  HudMessageBold(s:msg; HUDMSG_FADEOUT, UH_SC_HUD_RESULT, color, 320.4, 72.0, 3.0, 1.0);
 }
 
 function void UH_SpellCardStopTimer(void) {
-	uh_spellcardactive = false;
-	uh_spellcardtimergen++;
-	ACS_NamedTerminate("uh_SpellCardTimer", 0);
+  uh_spellcardactive = false;
+  uh_spellcardtimergen++;
+  ACS_NamedTerminate("uh_SpellCardTimer", 0);
 }
 
 function void UH_SpellCardEndQuiet(void) {
-	UH_SpellCardStopTimer();
-	uh_spellcardbroken = false;
-	uh_spellcardtimeleft = 0;
-	UH_SpellCardClearHud();
+  UH_SpellCardStopTimer();
+  uh_spellcardbroken = false;
+  uh_spellcardtimeleft = 0;
+  UH_SpellCardClearHud();
 }
 
 function void UH_SpellCardGiveSurvivorBoxes(void) {
-	int j;
-	for (j = 0; j < MAX_PLAYERS; j++) {
-		if (!PlayerInGame(j))
-			continue;
-		if (playerlifestatusarr[j] != PLS_SURVIVOR)
-			continue;
-		GiveActorInventory(j + 1000, "SurvivorBoxItems_P", 1);
-	}
+  int j;
+  for (j = 0; j < MAX_PLAYERS; j++) {
+    if (!PlayerInGame(j))
+      continue;
+    if (playerlifestatusarr[j] != PLS_SURVIVOR)
+      continue;
+    GiveActorInventory(j + 1000, "SurvivorBoxItems_P", 1);
+  }
 }
 
 // Time Sign end: drop flag and strip ALL PlayerPropertyInvulnerable stacks.
 // core_invulnerableplayer(false) only pops one layer; APROP stays if stacks remain.
 function void UH_ClownpieceClearSurvInv(void) {
-	int tid;
-	int old;
+  int tid;
+  int old;
 
-	old = ActivatorTID();
-	for (tid = 1000; tid <= 1063; tid++) {
-		if (!PlayerInGame(tid - 1000))
-			continue;
-		if (!CheckActorInventory(tid, "ClownpieceSurvivalInvuln_F")
-			&& CheckActorInventory(tid, "PlayerPropertyInvulnerable") < 1)
-			continue;
-		TakeActorInventory(tid, "ClownpieceSurvivalInvuln_F", 1);
-		TakeActorInventory(tid, "ClownpiecePhaseInvulnTics", 999);
-		TakeActorInventory(tid, "PlayerPropertyInvulnerable", 999);
-		SetActivator(tid);
-		SetActorProperty(0, APROP_INVULNERABLE, false);
-	}
-	if (old)
-		SetActivator(old);
-	else
-		SetActivator(0);
+  old = ActivatorTID();
+  for (tid = 1000; tid <= 1063; tid++) {
+    if (!PlayerInGame(tid - 1000))
+      continue;
+    if (!CheckActorInventory(tid, "ClownpieceSurvivalInvuln_F")
+      && CheckActorInventory(tid, "PlayerPropertyInvulnerable") < 1)
+      continue;
+    TakeActorInventory(tid, "ClownpieceSurvivalInvuln_F", 1);
+    TakeActorInventory(tid, "ClownpiecePhaseInvulnTics", 999);
+    TakeActorInventory(tid, "PlayerPropertyInvulnerable", 999);
+    SetActivator(tid);
+    SetActorProperty(0, APROP_INVULNERABLE, false);
+  }
+  if (old)
+    SetActivator(old);
+  else
+    SetActivator(0);
 }
 
 function void UH_SpellCardCaptureSuccess(void) {
-	UH_SpellCardStopTimer();
-	UH_SpellCardAnnounceResult("Get Spell Card Bonus!", CR_YELLOW);
-	AmbientSound("Touhou/SpellCardGet", 127);
-	UH_SpellCardGiveSurvivorBoxes();
-	AmbientSound("Touhou/SpellCardBonus", 127);
-	uh_spellcardbroken = false;
+  UH_SpellCardStopTimer();
+  UH_SpellCardAnnounceResult("Get Spell Card Bonus!", CR_YELLOW);
+  AmbientSound("Touhou/SpellCardGet", 127);
+  UH_SpellCardGiveSurvivorBoxes();
+  AmbientSound("Touhou/SpellCardBonus", 127);
+  uh_spellcardbroken = false;
 }
 
 // mode: FAIL / DAMAGE (need timeLeft>0) / SURVIVAL timeout (!Broken, ignore time)
 // Nonspells (1/3/5): quiet stop only — no Bonus!/Failed announce, no boxes.
 function void UH_SpellCardTryCaptureOrFail(int mode) {
-	if (!uh_spellcardactive && !uh_spellcardbroken)
-		return;
+  if (!uh_spellcardactive && !uh_spellcardbroken)
+    return;
 
-	if (!UH_SpellCardIsBonusPhase(uh_spellcardphase)) {
-		UH_SpellCardStopTimer();
-		uh_spellcardbroken = false;
-		if (uh_spellcardphase >= UH_SC_PHASE_MAX)
-			UH_SpellCardClearHud();
-		return;
-	}
+  if (!UH_SpellCardIsBonusPhase(uh_spellcardphase)) {
+    UH_SpellCardStopTimer();
+    uh_spellcardbroken = false;
+    if (uh_spellcardphase >= UH_SC_PHASE_MAX)
+      UH_SpellCardClearHud();
+    return;
+  }
 
-	if (mode == UH_SC_RESOLVE_SURVIVAL && uh_spellcardactive && !uh_spellcardbroken)
-		UH_SpellCardCaptureSuccess();
-	else if (mode == UH_SC_RESOLVE_DAMAGE && uh_spellcardactive && !uh_spellcardbroken && uh_spellcardtimeleft > 0)
-		UH_SpellCardCaptureSuccess();
-	else {
-		UH_SpellCardStopTimer();
-		UH_SpellCardAnnounceResult("Bonus Failed...", CR_RED);
-		uh_spellcardbroken = false;
-	}
+  if (mode == UH_SC_RESOLVE_SURVIVAL && uh_spellcardactive && !uh_spellcardbroken)
+    UH_SpellCardCaptureSuccess();
+  else if (mode == UH_SC_RESOLVE_DAMAGE && uh_spellcardactive && !uh_spellcardbroken && uh_spellcardtimeleft > 0)
+    UH_SpellCardCaptureSuccess();
+  else {
+    UH_SpellCardStopTimer();
+    UH_SpellCardAnnounceResult("Bonus Failed...", CR_RED);
+    uh_spellcardbroken = false;
+  }
 
-	if (uh_spellcardphase >= UH_SC_PHASE_MAX)
-		UH_SpellCardClearHud();
+  if (uh_spellcardphase >= UH_SC_PHASE_MAX)
+    UH_SpellCardClearHud();
 }
 
 script "uh_SpellCardStart" (int phaseid, int timelimitsec) {
-	if (phaseid < 1 || phaseid > UH_SC_PHASE_MAX)
-		phaseid = 1;
-	if (timelimitsec < 1)
-		timelimitsec = 1;
+  if (phaseid < 1 || phaseid > UH_SC_PHASE_MAX)
+    phaseid = 1;
+  if (timelimitsec < 1)
+    timelimitsec = 1;
 
-	if (uh_spellcardactive && phaseid == uh_spellcardphase)
-		terminate;
-	if (phaseid < uh_spellcardphase)
-		terminate;
+  if (uh_spellcardactive && phaseid == uh_spellcardphase)
+    terminate;
+  if (phaseid < uh_spellcardphase)
+    terminate;
 
-	uh_spellcardtimergen++;
-	ACS_NamedTerminate("uh_SpellCardTimer", 0);
-	UH_SpellCardClearHud();
+  uh_spellcardtimergen++;
+  ACS_NamedTerminate("uh_SpellCardTimer", 0);
+  UH_SpellCardClearHud();
 
-	uh_spellcardphase = phaseid;
-	uh_spellcardtimeleft = timelimitsec;
-	uh_spellcardbroken = false;
-	uh_spellcardactive = true;
+  uh_spellcardphase = phaseid;
+  uh_spellcardtimeleft = timelimitsec;
+  uh_spellcardbroken = false;
+  uh_spellcardactive = true;
 
-	ACS_NamedExecuteAlways("uh_SpellCardClientSync", 0, timelimitsec, uh_spellcardtimergen, phaseid);
-	ACS_NamedExecuteAlways("uh_SpellCardTimer", 0, uh_spellcardtimergen);
+  ACS_NamedExecuteAlways("uh_SpellCardClientSync", 0, timelimitsec, uh_spellcardtimergen, phaseid);
+  ACS_NamedExecuteAlways("uh_SpellCardTimer", 0, uh_spellcardtimergen);
 }
 
 script "uh_ClownpieceBroadcastPhase" (int tophase) {
-	if (tophase < 2 || tophase > UH_SC_PHASE_MAX)
-		terminate;
+  if (tophase < 2 || tophase > UH_SC_PHASE_MAX)
+    terminate;
 
-	// Damage life-break settle (timeout already resolved before calling this)
-	UH_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_DAMAGE);
+  // Damage life-break settle (timeout already resolved before calling this)
+  UH_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_DAMAGE);
 
-	AmbientSound("Touhou/Cat0", 127);
+  AmbientSound("Touhou/Cat0", 127);
 
-	str swapp = StrParam(s:"ClownpieceForceSwap_W", i:tophase, s:"_P");
-	int tid;
-	for (tid = 1000; tid <= 1063; tid++) {
-		if (!PlayerInGame(tid - 1000))
-			continue;
-		if (CheckActorInventory(tid, "IsDead"))
-			continue;
-		GiveActorInventory(tid, swapp, 1);
-	}
+  str swapp = StrParam(s:"ClownpieceForceSwap_W", i:tophase, s:"_P");
+  int tid;
+  for (tid = 1000; tid <= 1063; tid++) {
+    if (!PlayerInGame(tid - 1000))
+      continue;
+    if (CheckActorInventory(tid, "IsDead"))
+      continue;
+    GiveActorInventory(tid, swapp, 1);
+  }
 }
 
 script "uh_ClownpieceSelectW" (int phase) {
-	Delay(1);
-	if (phase < 1 || phase > UH_SC_PHASE_MAX)
-		terminate;
-	str wep = StrParam(s:"Clownpiece_W", i:phase);
-	if (!CheckInventory(wep))
-		terminate;
-	SetWeapon(wep);
+  Delay(1);
+  if (phase < 1 || phase > UH_SC_PHASE_MAX)
+    terminate;
+  str wep = StrParam(s:"Clownpiece_W", i:phase);
+  if (!CheckInventory(wep))
+    terminate;
+  SetWeapon(wep);
 }
 
 script "uh_SpellCardTimer" (int mygen) {
-	int phase;
+  int phase;
 
-	while (uh_spellcardactive && uh_spellcardtimeleft > 0) {
-		if (mygen != uh_spellcardtimergen)
-			terminate;
-		ACS_NamedExecuteAlways("uh_SpellCardClientSync", 0, uh_spellcardtimeleft, mygen, uh_spellcardphase);
-		if (uh_spellcardtimeleft <= 9 && uh_spellcardtimeleft >= 5)
-			AmbientSound("Touhou/Timeout", 127);
-		if (uh_spellcardtimeleft <= 4)
-			AmbientSound("Touhou/Timeout2", 127);
-		Delay(UH_SC_TICRATE);
-		if (mygen != uh_spellcardtimergen)
-			terminate;
-		if (!uh_spellcardactive)
-			terminate;
-		uh_spellcardtimeleft--;
-	}
+  while (uh_spellcardactive && uh_spellcardtimeleft > 0) {
+    if (mygen != uh_spellcardtimergen)
+      terminate;
+    ACS_NamedExecuteAlways("uh_SpellCardClientSync", 0, uh_spellcardtimeleft, mygen, uh_spellcardphase);
+    if (uh_spellcardtimeleft <= 9 && uh_spellcardtimeleft >= 5)
+      AmbientSound("Touhou/Timeout", 127);
+    if (uh_spellcardtimeleft <= 4)
+      AmbientSound("Touhou/Timeout2", 127);
+    Delay(UH_SC_TICRATE);
+    if (mygen != uh_spellcardtimergen)
+      terminate;
+    if (!uh_spellcardactive)
+      terminate;
+    uh_spellcardtimeleft--;
+  }
 
-	if (uh_spellcardactive && mygen == uh_spellcardtimergen) {
-		phase = uh_spellcardphase;
-		if (UH_SpellCardIsSurvival(phase))
-			UH_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_SURVIVAL);
-		else
-			UH_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_FAIL);
+  if (uh_spellcardactive && mygen == uh_spellcardtimergen) {
+    phase = uh_spellcardphase;
+    if (UH_SpellCardIsSurvival(phase))
+      UH_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_SURVIVAL);
+    else
+      UH_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_FAIL);
 
-		UH_ClownpieceClearSurvInv();
+    UH_ClownpieceClearSurvInv();
 
-		if (phase >= UH_SC_PHASE_MAX)
-			ACS_NamedExecuteAlways("uh_ClownpieceTimeoutKill", 0);
-		else
-			ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, phase + 1);
-	}
+    if (phase >= UH_SC_PHASE_MAX)
+      ACS_NamedExecuteAlways("uh_ClownpieceTimeoutKill", 0);
+    else
+      ACS_NamedExecuteAlways("uh_ClownpieceBroadcastPhase", 0, phase + 1);
+  }
 }
 
 script "uh_ClownpieceTimeoutKill" (void) {
-	int tid;
-	for (tid = 1000; tid <= 1063; tid++) {
-		if (!PlayerInGame(tid - 1000))
-			continue;
-		if (CheckActorInventory(tid, "IsDead"))
-			continue;
-		GiveActorInventory(tid, "ClownpieceTimeoutKill_P", 1);
-	}
+  int tid;
+  for (tid = 1000; tid <= 1063; tid++) {
+    if (!PlayerInGame(tid - 1000))
+      continue;
+    if (CheckActorInventory(tid, "IsDead"))
+      continue;
+    GiveActorInventory(tid, "ClownpieceTimeoutKill_P", 1);
+  }
 }
 
 script "uh_SpellCardResolve" (int mode) {
-	UH_SpellCardTryCaptureOrFail(mode);
+  UH_SpellCardTryCaptureOrFail(mode);
 }
 
 script "uh_SpellCardCapture" (void) {
-	if (!uh_spellcardactive)
-		terminate;
-	if (uh_spellcardbroken || uh_spellcardtimeleft <= 0) {
-		UH_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_FAIL);
-		terminate;
-	}
-	UH_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_DAMAGE);
+  if (!uh_spellcardactive)
+    terminate;
+  if (uh_spellcardbroken || uh_spellcardtimeleft <= 0) {
+    UH_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_FAIL);
+    terminate;
+  }
+  UH_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_DAMAGE);
 }
 
 script "uh_SpellCardFail" (void) {
-	if (!uh_spellcardactive && !uh_spellcardbroken)
-		terminate;
-	UH_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_FAIL);
+  if (!uh_spellcardactive && !uh_spellcardbroken)
+    terminate;
+  UH_SpellCardTryCaptureOrFail(UH_SC_RESOLVE_FAIL);
 }
 
 script "uh_SpellCardBreak" (void) {
-	if (uh_spellcardactive) {
-		uh_spellcardbroken = true;
-		ACS_NamedExecuteAlways("uh_SpellCardClientBreak", 0);
-	}
+  if (uh_spellcardactive) {
+    uh_spellcardbroken = true;
+    ACS_NamedExecuteAlways("uh_SpellCardClientBreak", 0);
+  }
 }
 
 script "uh_SpellCardClientClear" (void) CLIENTSIDE {
-	uh_cl_spellcardgen++;
-	ClearHudMessage(UH_SC_HUD_NAME);
-	ClearHudMessage(UH_SC_HUD_TIMER);
-	ClearHudMessage(UH_SC_HUD_BONUS);
+  uh_cl_spellcardgen++;
+  ClearHudMessage(UH_SC_HUD_NAME);
+  ClearHudMessage(UH_SC_HUD_TIMER);
+  ClearHudMessage(UH_SC_HUD_BONUS);
 }
 
 script "uh_SpellCardClientBreak" (void) CLIENTSIDE {
-	uh_cl_spellcardbroken = true;
+  uh_cl_spellcardbroken = true;
 }
 
 script "uh_SpellCardClientSync" (int timeleftsec, int mygen, int phaseid) CLIENTSIDE {
-	if (uh_cl_spellcardgen != mygen) {
-		uh_cl_spellcardgen = mygen;
-		uh_cl_spellcardbroken = false;
-		uh_cl_spellcard_remaining_tics = timeleftsec * 35;
-		ACS_NamedExecuteAlways("uh_SpellCardClientHud", 0, phaseid, timeleftsec, mygen);
-	}
-	else {
-		uh_cl_spellcard_remaining_tics = timeleftsec * 35;
-	}
+  if (uh_cl_spellcardgen != mygen) {
+    uh_cl_spellcardgen = mygen;
+    uh_cl_spellcardbroken = false;
+    uh_cl_spellcard_remaining_tics = timeleftsec * 35;
+    ACS_NamedExecuteAlways("uh_SpellCardClientHud", 0, phaseid, timeleftsec, mygen);
+  }
+  else {
+    uh_cl_spellcard_remaining_tics = timeleftsec * 35;
+  }
 }
 
 script "uh_SpellCardClientHud" (int phaseid, int timelimitsec, int mygen) CLIENTSIDE {
-	uh_cl_spellcardgen = mygen;
-	uh_cl_spellcardbroken = false;
-	uh_cl_spellcard_remaining_tics = timelimitsec * 35;
+  uh_cl_spellcardgen = mygen;
+  uh_cl_spellcardbroken = false;
+  uh_cl_spellcard_remaining_tics = timelimitsec * 35;
 
-	while (uh_cl_spellcard_remaining_tics >= 0 && mygen == uh_cl_spellcardgen) {
-		int sec = uh_cl_spellcard_remaining_tics / 35;
-		int rem = uh_cl_spellcard_remaining_tics % 35;
-		int centi = (rem * 99) / 34;
+  while (uh_cl_spellcard_remaining_tics >= 0 && mygen == uh_cl_spellcardgen) {
+    int sec = uh_cl_spellcard_remaining_tics / 35;
+    int rem = uh_cl_spellcard_remaining_tics % 35;
+    int centi = (rem * 99) / 34;
 
-		UH_SpellCardDrawHud(sec, centi, phaseid);
+    UH_SpellCardDrawHud(sec, centi, phaseid);
 
-		Delay(1);
-		uh_cl_spellcard_remaining_tics--;
-	}
+    Delay(1);
+    uh_cl_spellcard_remaining_tics--;
+  }
 
-	if (mygen == uh_cl_spellcardgen) {
-		ClearHudMessage(UH_SC_HUD_NAME);
-		ClearHudMessage(UH_SC_HUD_TIMER);
-		ClearHudMessage(UH_SC_HUD_BONUS);
-	}
+  if (mygen == uh_cl_spellcardgen) {
+    ClearHudMessage(UH_SC_HUD_NAME);
+    ClearHudMessage(UH_SC_HUD_TIMER);
+    ClearHudMessage(UH_SC_HUD_BONUS);
+  }
 }
 
 script "uh_SpellCardStop" (void) {
-	UH_SpellCardEndQuiet();
+  UH_SpellCardEndQuiet();
 }
 
 script "uh_SpellCardIsActive" (void) {
-	SetResultValue(uh_spellcardactive);
+  SetResultValue(uh_spellcardactive);
 }
 
 script "uh_SpellCardGetTimeLeft" (void) {
-	SetResultValue(uh_spellcardtimeleft);
+  SetResultValue(uh_spellcardtimeleft);
 }
 
 // Strip all invuln stacks + APROP (core_invulnerableplayer false only pops one layer)
 script "uh_StripInvulnStacks" (void) {
-	TakeInventory("PlayerPropertyInvulnerable", 999);
-	SetActorProperty(0, APROP_INVULNERABLE, false);
+  TakeInventory("PlayerPropertyInvulnerable", 999);
+  SetActorProperty(0, APROP_INVULNERABLE, false);
 }
 
 // Boss unmorph: the spell-card session is library-global (phase, timer
@@ -425,11 +425,11 @@ script "uh_StripInvulnStacks" (void) {
 // Only this player's own phase markers are dropped; the PlayerProperty stack
 // layers themselves are returned by the generic demorph baseline.
 script "uh_ClownpieceUnmorphCancel" (void) {
-	UH_SpellCardEndQuiet();
-	TakeInventory("ClownpiecePhaseInvulnTics", 999);
-	TakeInventory("ClownpieceSurvivalInvuln_F", 1);
-	TakeInventory("ClownpieceGetUpDone_F", 1);
-	TakeInventory("ClownpiecePainFlag", 1);
-	TakeInventory("ClownpieceOrbFlag", 1);
-	TakeInventory("DuoBusterFlag", 1);
+  UH_SpellCardEndQuiet();
+  TakeInventory("ClownpiecePhaseInvulnTics", 999);
+  TakeInventory("ClownpieceSurvivalInvuln_F", 1);
+  TakeInventory("ClownpieceGetUpDone_F", 1);
+  TakeInventory("ClownpiecePainFlag", 1);
+  TakeInventory("ClownpieceOrbFlag", 1);
+  TakeInventory("DuoBusterFlag", 1);
 }

@@ -175,58 +175,56 @@ str uh_tippoollabel[UH_TIP_POOL_MAX];  // pool byline; "" = draw no byline
 // Appends one tip row.  Idempotent: an identical (pool, text, byline) row
 // (StrICmp) returns the existing entry index instead of duplicating — the
 // weight of the existing row is kept.
-function int UH_RegisterTip(str text, str author, int wrap, int pool, int weight)
-{
-	if (StrICmp(text, "") == 0)
-		return UH_TIP_FAIL;
-	if (pool < 0 || pool >= UH_TIP_POOL_MAX) {
-		UH_Log(UH_LOG_ERROR, StrParam(s:"deathtips: UH_RegisterTip rejected pool ", i:pool,
-			s:" (valid 0..", i:UH_TIP_POOL_MAX - 1, s:")"));
-		return UH_TIP_FAIL;
-	}
-	if (wrap < 0)
-		wrap = 0;
-	if (weight < 0)
-		weight = 0;
+function int UH_RegisterTip(str text, str author, int wrap, int pool, int weight) {
+  if (StrICmp(text, "") == 0)
+    return UH_TIP_FAIL;
+  if (pool < 0 || pool >= UH_TIP_POOL_MAX) {
+    UH_Log(UH_LOG_ERROR, StrParam(s:"deathtips: UH_RegisterTip rejected pool ", i:pool,
+      s:" (valid 0..", i:UH_TIP_POOL_MAX - 1, s:")"));
+    return UH_TIP_FAIL;
+  }
+  if (wrap < 0)
+    wrap = 0;
+  if (weight < 0)
+    weight = 0;
 
-	int i;
-	for (i = 0; i < uh_tipcount; i++) {
-		if (uh_tippool[i] != pool)
-			continue;
-		if (StrICmp(uh_tiptext[i], text) != 0)
-			continue;
-		if (StrICmp(uh_tipauthor[i], author) != 0)
-			continue;
-		return i;
-	}
+  int i;
+  for (i = 0; i < uh_tipcount; i++) {
+    if (uh_tippool[i] != pool)
+      continue;
+    if (StrICmp(uh_tiptext[i], text) != 0)
+      continue;
+    if (StrICmp(uh_tipauthor[i], author) != 0)
+      continue;
+    return i;
+  }
 
-	if (uh_tipcount >= UH_TIP_MAX) {
-		UH_Log(UH_LOG_ERROR, StrParam(s:"deathtips: tip registry full (", i:UH_TIP_MAX,
-			s:" rows); dropped tip"));
-		return UH_TIP_FAIL;
-	}
+  if (uh_tipcount >= UH_TIP_MAX) {
+    UH_Log(UH_LOG_ERROR, StrParam(s:"deathtips: tip registry full (", i:UH_TIP_MAX,
+      s:" rows); dropped tip"));
+    return UH_TIP_FAIL;
+  }
 
-	i = uh_tipcount;
-	uh_tipcount++;
-	uh_tiptext[i] = text;
-	uh_tipauthor[i] = author;
-	uh_tipwrap[i] = wrap;
-	uh_tippool[i] = pool;
-	uh_tipweight[i] = weight;
-	uh_tippoolsize[pool]++;
-	uh_tiptotalweight += weight;
-	UH_TipNormalizeWeights();
-	return i;
+  i = uh_tipcount;
+  uh_tipcount++;
+  uh_tiptext[i] = text;
+  uh_tipauthor[i] = author;
+  uh_tipwrap[i] = wrap;
+  uh_tippool[i] = pool;
+  uh_tipweight[i] = weight;
+  uh_tippoolsize[pool]++;
+  uh_tiptotalweight += weight;
+  UH_TipNormalizeWeights();
+  return i;
 }
 
 // Sets (or clears, with "") the byline drawn for pool tips that carry no
 // per-tip byline.  Returns 1 on success, UH_TIP_FAIL on a bad pool id.
-function int UH_SetTipPoolLabel(int pool, str label)
-{
-	if (pool <= 0 || pool >= UH_TIP_POOL_MAX)
-		return UH_TIP_FAIL;
-	uh_tippoollabel[pool] = label;
-	return 1;
+function int UH_SetTipPoolLabel(int pool, str label) {
+  if (pool <= 0 || pool >= UH_TIP_POOL_MAX)
+    return UH_TIP_FAIL;
+  uh_tippoollabel[pool] = label;
+  return 1;
 }
 
 // Keeps the selection space inside the 16-bit roll: total weight plus the
@@ -235,78 +233,70 @@ function int UH_SetTipPoolLabel(int pool, str label)
 // weight >= 1 row stays reachable.  Halving preserves the ratios; weights of
 // 1 are never halved away (that would park the row), and weight-0 rows stay
 // parked.
-function void UH_TipNormalizeWeights(void)
-{
-	while (uh_tiptotalweight + UH_TIP_SECRET_WEIGHT > UH_TIP_WEIGHT_TOTAL_MAX) {
-		int i, total = 0;
-		for (i = 0; i < uh_tipcount; i++) {
-			if (uh_tipweight[i] > 1)
-				uh_tipweight[i] = uh_tipweight[i] >> 1;
-			total += uh_tipweight[i];
-		}
-		uh_tiptotalweight = total;
-	}
+function void UH_TipNormalizeWeights(void) {
+  while (uh_tiptotalweight + UH_TIP_SECRET_WEIGHT > UH_TIP_WEIGHT_TOTAL_MAX) {
+    int i, total = 0;
+    for (i = 0; i < uh_tipcount; i++) {
+      if (uh_tipweight[i] > 1)
+        uh_tipweight[i] = uh_tipweight[i] >> 1;
+      total += uh_tipweight[i];
+    }
+    uh_tiptotalweight = total;
+  }
 }
 
 // --- registry queries --------------------------------------------------------
 
-function int UH_TipPoolCount(int pool)
-{
-	if (pool < 0 || pool >= UH_TIP_POOL_MAX)
-		return 0;
-	return uh_tippoolsize[pool];
+function int UH_TipPoolCount(int pool) {
+  if (pool < 0 || pool >= UH_TIP_POOL_MAX)
+    return 0;
+  return uh_tippoolsize[pool];
 }
 
-function int UH_TipWeightOf(int entry)
-{
-	if (entry < 0 || entry >= uh_tipcount)
-		return 0;
-	return uh_tipweight[entry];
+function int UH_TipWeightOf(int entry) {
+  if (entry < 0 || entry >= uh_tipcount)
+    return 0;
+  return uh_tipweight[entry];
 }
 
 // Entry index of the idx-th registered row of a pool, or UH_TIP_FAIL.  For
 // addons that enumerate their own pool; the display itself draws by weight.
-function int UH_TipEntryAt(int pool, int idx)
-{
-	if (idx < 0)
-		return UH_TIP_FAIL;
-	int seen = 0;
-	for (int i = 0; i < uh_tipcount; i++) {
-		if (uh_tippool[i] != pool)
-			continue;
-		if (seen == idx)
-			return i;
-		seen++;
-	}
-	return UH_TIP_FAIL;
+function int UH_TipEntryAt(int pool, int idx) {
+  if (idx < 0)
+    return UH_TIP_FAIL;
+  int seen = 0;
+  for (int i = 0; i < uh_tipcount; i++) {
+    if (uh_tippool[i] != pool)
+      continue;
+    if (seen == idx)
+      return i;
+    seen++;
+  }
+  return UH_TIP_FAIL;
 }
 
-function str UH_TipTextAt(int entry)
-{
-	if (entry < 0 || entry >= uh_tipcount)
-		return "";
-	return uh_tiptext[entry];
+function str UH_TipTextAt(int entry) {
+  if (entry < 0 || entry >= uh_tipcount)
+    return "";
+  return uh_tiptext[entry];
 }
 
-function str UH_TipAuthorAt(int entry)
-{
-	if (entry < 0 || entry >= uh_tipcount)
-		return "";
-	return uh_tipauthor[entry];
+function str UH_TipAuthorAt(int entry) {
+  if (entry < 0 || entry >= uh_tipcount)
+    return "";
+  return uh_tipauthor[entry];
 }
 
-function int UH_TipWrapAt(int entry)
-{
-	if (entry < 0 || entry >= uh_tipcount)
-		return 0;
-	return uh_tipwrap[entry];
+function int UH_TipWrapAt(int entry) {
+  if (entry < 0 || entry >= uh_tipcount)
+    return 0;
+  return uh_tipwrap[entry];
 }
 
-function int UH_TipPoolAt(int entry)
-{
-	if (entry < 0 || entry >= uh_tipcount)
-		return UH_POOL_NONE;
-	return uh_tippool[entry];
+function int UH_TipPoolAt(int entry) {
+  if (entry < 0 || entry >= uh_tipcount)
+    return UH_POOL_NONE;
+  return uh_tippool[entry];
 }
 
 // --- weighted selection ------------------------------------------------------
@@ -318,30 +308,29 @@ function int UH_TipPoolAt(int entry)
 // The roll must come from the server: FRandom::StaticClearRandom() re-seeds
 // pr_acs on every map change and clients never advance rngseed, so a
 // client-side random() would repeat the same sequence every round.
-function int UH_TipEntryFromEntropy(int roll)
-{
-	if (uh_tipcount <= 0)
-		return UH_TIP_FAIL;
-	int total = uh_tiptotalweight + UH_TIP_SECRET_WEIGHT;
-	if (roll < 0)
-		roll = 0;
-	else if (roll > UH_TIP_ROLL_VALUES - 1)
-		roll = UH_TIP_ROLL_VALUES - 1;
-	// roll * total <= (UH_TIP_ROLL_VALUES-1) * UH_TIP_WEIGHT_TOTAL_MAX, which
-	// is what keeps this inside a signed 32-bit ACS int.
-	int pos = (roll * total) / UH_TIP_ROLL_VALUES;
-	if (pos >= total)
-		pos = total - 1;
-	if (pos >= uh_tiptotalweight)
-		return UH_TIP_SECRET_ENTRY;
+function int UH_TipEntryFromEntropy(int roll) {
+  if (uh_tipcount <= 0)
+    return UH_TIP_FAIL;
+  int total = uh_tiptotalweight + UH_TIP_SECRET_WEIGHT;
+  if (roll < 0)
+    roll = 0;
+  else if (roll > UH_TIP_ROLL_VALUES - 1)
+    roll = UH_TIP_ROLL_VALUES - 1;
+  // roll * total <= (UH_TIP_ROLL_VALUES-1) * UH_TIP_WEIGHT_TOTAL_MAX, which
+  // is what keeps this inside a signed 32-bit ACS int.
+  int pos = (roll * total) / UH_TIP_ROLL_VALUES;
+  if (pos >= total)
+    pos = total - 1;
+  if (pos >= uh_tiptotalweight)
+    return UH_TIP_SECRET_ENTRY;
 
-	int cum = 0;
-	for (int i = 0; i < uh_tipcount; i++) {
-		cum += uh_tipweight[i];
-		if (pos < cum)
-			return i;
-	}
-	return UH_TIP_FAIL;
+  int cum = 0;
+  for (int i = 0; i < uh_tipcount; i++) {
+    cum += uh_tipweight[i];
+    if (pos < cum)
+      return i;
+  }
+  return UH_TIP_FAIL;
 }
 
 // --- built-in data + registration (map arrays, OPEN CLIENTSIDE twin) ---------
@@ -381,7 +370,7 @@ script "UH_ShowDeathTip_Menu" (void) {
 //               ForceRoll < 0 and the index is in range.  -1 = none.
 script "uh_DeathTipACS" (int ForceRoll, int ForceEntry) CLIENTSIDE {
   // if(ConsolePlayerNumber() != PlayerNumber()){
-  //		terminate;
+  //    terminate;
   // }
   int entry = -1;
   if (ForceRoll >= 0) {

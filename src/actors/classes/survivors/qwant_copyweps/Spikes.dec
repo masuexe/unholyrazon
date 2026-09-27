@@ -1,152 +1,143 @@
 actor SpikesWep_QwantBar : QwantBar {args 8}
 
-actor SpikesWep : BaseQwantWep
-{
-Weapon.AmmoUse 2 //4
-Weapon.AmmoGive 28
-Tag "$TAG_SPIKES"
-weapon.ammotype "GroundTypeAmmo"
-inventory.icon "PKMNI_Gd"
-States
-{
-Spawn:
-CHIL A 1
-loop
+actor SpikesWep : BaseQwantWep {
+  Weapon.AmmoUse 2  // 4
+  Weapon.AmmoGive 28
+  Tag "$TAG_SPIKES"
+  Weapon.AmmoType "GroundTypeAmmo"
+  Inventory.Icon "PKMNI_Gd"
+  States {
+   Spawn:
+    CHIL A 1
+    loop
 
-Deselect:
-TOMA C 0
-goto DeselectSwap
-Select:
-TOMA C 0
-goto SelectSwap
+   Deselect:
+    TOMA C 0
+    goto DeselectSwap
+   Select:
+    TOMA C 0
+    goto SelectSwap
 
-Ready:
-TOMA C 0 ACS_NamedExecuteWithResult("core_weaponcolor", Q_GROUND_DYE, CLRF_QWANTMENU)
-goto ReadyX
-ReadyX:
-TOMA C 0 A_JumpIfInventory("GroundTypeAmmo",2,"ReadyX2")
-TOMA C 8 A_WeaponReady(WRF_NOPRIMARY)
-TOMA C 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
-loop
-ReadyX2:
-TOMA C 8 A_WeaponReady
-TOMA C 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
-loop
+   Ready:
+    TOMA C 0 ACS_NamedExecuteWithResult("core_weaponcolor", Q_GROUND_DYE, CLRF_QWANTMENU)
+    goto ReadyX
+   ReadyX:
+    TOMA C 0 A_JumpIfInventory("GroundTypeAmmo", 2, "ReadyX2")
+    TOMA C 8 A_WeaponReady(WRF_NOPRIMARY)
+    TOMA C 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
+    loop
+   ReadyX2:
+    TOMA C 8 A_WeaponReady
+    TOMA C 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
+    loop
 
-Fire:
-TOMA C 0 A_TakeInventory("GroundTypeAmmo",1,1)
-TOMA C 0 A_TakeInventory("GroundTypeAmmo",1)
-TOMA C 0 A_PlaySoundEx("misc/stonethrow","Weapon")
-TOMA EEDDC 2 A_FireCustomMissile("PKMNSpikesProjectile",random(-4,4),0,8,0)
-TOMA C 0 A_GiveInventory("MoveRelearnAmmo",1)
-TOMA CC 8 A_GiveInventory("MoveRelearnAmmo",1) //12
-goto ReadyX
-
-}
+   Fire:
+    TOMA C 0 A_TakeInventory("GroundTypeAmmo", 1, 1)
+    TOMA C 0 A_TakeInventory("GroundTypeAmmo", 1)
+    TOMA C 0 A_PlaySoundEx("misc/stonethrow", "Weapon")
+    TOMA EEDDC 2 A_FireCustomMissile("PKMNSpikesProjectile", random(-4, 4), 0, 8, 0)
+    TOMA C 0 A_GiveInventory("MoveRelearnAmmo", 1)
+    TOMA CC 8 A_GiveInventory("MoveRelearnAmmo", 1)  // 12
+    goto ReadyX
+  }
 }
 
-Actor PKMNSpikesProjectile : BasicProjectile
-{
-Damagetype "SpikesPKMN"
-Translation "202:202=82:82","199:199=93:93"
-Obituary "%o did not see %k's Spikes."
--NOGRAVITY
-+DONTREFLECT
-+DONTSPLASH
-+BOUNCEONWALLS
-+BOUNCEONFLOORS
-+BOUNCEONCEILINGS
-Bouncefactor 0.45
-Wallbouncefactor 0.6
-BounceCount 4
-Gravity 0.90
-Damage (40)
-Radius 12
-Height 12
-Speed 20
-Scale 2.0
-States
-{
-Spawn:
-SHAH M 0
-SHAH M 0 ThrustThingZ(0,random(10,15),0,1)
-SHAH MNOPQRST 2
-goto Spawn+2
-XDeath:
-Crash:
-TNT1 A 0
-TNT1 A 1
-stop
-Death:
-TNT1 A 0 A_SpawnItemEx("PKMNSpikesProjectileX",0,0,0,0,0,0,0,1)
-TNT1 A 1
-stop
-}
+actor PKMNSpikesProjectile : BasicProjectile {
+  Damagetype "SpikesPKMN"
+  Translation "202:202=82:82", "199:199=93:93"
+  Obituary "%o did not see %k's Spikes."
+  -NOGRAVITY
+  +DONTREFLECT
+  +DONTSPLASH
+  +BOUNCEONWALLS
+  +BOUNCEONFLOORS
+  +BOUNCEONCEILINGS
+  BounceFactor 0.45
+  WallBounceFactor 0.6
+  BounceCount 4
+  Gravity 0.90
+  Damage (40)
+  Radius 12
+  Height 12
+  Speed 20
+  Scale 2.0
+  States {
+   Spawn:
+    SHAH M 0
+    SHAH M 0 ThrustThingZ(0, random(10, 15), 0, 1)
+    SHAH MNOPQRST 2
+    goto Spawn+2
+   XDeath:
+   Crash:
+    TNT1 A 0
+    TNT1 A 1
+    stop
+   Death:
+    TNT1 A 0 A_SpawnItemEx("PKMNSpikesProjectileX", 0, 0, 0, 0, 0, 0, 0, 1)
+    TNT1 A 1
+    stop
+  }
 }
 
-actor PKMNSpikesProjectileX : BasicProjectile
-{
-Damagetype "SpikesPKMN"
-Obituary "%o did not see %k's Spikes."
--NOGRAVITY
-+THRUGHOST
-+DONTBLAST
-Bouncetype Hexen
--BOUNCEONFLOORS
--BOUNCEONWALLS
--ALLOWBOUNCEONACTORS
-+DONTSPLASH
-+NOEXPLODEFLOOR
-+STEPMISSILE
-Maxstepheight 24
-BounceCount 1
-BounceFactor 1.0
-WallBounceFactor 0.15
-Gravity 1.0
-ReactionTime 2
-Damage (80)
-Radius 12
-Height 12
-Speed 20
-Scale 2.0
-States
-{
-Spawn:
-SHAH M 0
-SHAH M 0
-SHAH M 350 A_CountDown //330
-wait
-XDeath:
-Crash:
-TNT1 A 1 //A_PlaySound("S3_K/Spikes",1,0.65)
-stop
-Death:
-TNT1 A 1
-stop
-}
+actor PKMNSpikesProjectileX : BasicProjectile {
+  Damagetype "SpikesPKMN"
+  Obituary "%o did not see %k's Spikes."
+  -NOGRAVITY
+  +THRUGHOST
+  +DONTBLAST
+  Bouncetype Hexen
+  -BOUNCEONFLOORS
+  -BOUNCEONWALLS
+  -ALLOWBOUNCEONACTORS
+  +DONTSPLASH
+  +NOEXPLODEFLOOR
+  +STEPMISSILE
+  MaxStepHeight 24
+  BounceCount 1
+  BounceFactor 1.0
+  WallBounceFactor 0.15
+  Gravity 1.0
+  ReactionTime 2
+  Damage (80)
+  Radius 12
+  Height 12
+  Speed 20
+  Scale 2.0
+  States {
+   Spawn:
+    SHAH M 0
+    SHAH M 0
+    SHAH M 350 A_CountDown  // 330
+    wait
+   XDeath:
+   Crash:
+    TNT1 A 1  // A_PlaySound("S3_K/Spikes",1,0.65)
+    stop
+   Death:
+    TNT1 A 1
+    stop
+  }
 }
 
-Actor SpikesPKMNProtect : PowerProtection{powerup.duration 3 Damagefactor "SpikesPKMN", 0.2} //0.0
-Actor SpikesDmgWeaknessStage1 : PowerProtection{powerup.duration -5 Damagefactor "SpikesPKMN", 1.2}
-Actor SpikesDmgWeaknessStage2 : PowerProtection{powerup.duration -5 Damagefactor "SpikesPKMN", 1.4}
-Actor SpikesDmgWeaknessStage3 : PowerProtection{powerup.duration -5 Damagefactor "SpikesPKMN", 1.6}
-Actor SpikesDmgWeaknessStage4 : PowerProtection{powerup.duration -5 Damagefactor "SpikesPKMN", 1.8}
-Actor SpikesDmgWeaknessStage5 : PowerProtection{powerup.duration -5 Damagefactor "SpikesPKMN", 2.0}
+actor SpikesPKMNProtect : PowerProtection {powerup.duration 3 Damagefactor "SpikesPKMN", 0.2}  // 0.0
+actor SpikesDmgWeaknessStage1 : PowerProtection {powerup.duration -5 Damagefactor "SpikesPKMN", 1.2}
+actor SpikesDmgWeaknessStage2 : PowerProtection {powerup.duration -5 Damagefactor "SpikesPKMN", 1.4}
+actor SpikesDmgWeaknessStage3 : PowerProtection {powerup.duration -5 Damagefactor "SpikesPKMN", 1.6}
+actor SpikesDmgWeaknessStage4 : PowerProtection {powerup.duration -5 Damagefactor "SpikesPKMN", 1.8}
+actor SpikesDmgWeaknessStage5 : PowerProtection {powerup.duration -5 Damagefactor "SpikesPKMN", 2.0}
 
-/////////////////////////////
-//== Shiny ==//
-/////////////////////////////
+/////////////////
+// == Shiny == //
+/////////////////
 
-Actor S_PKMNSpikesProjectile : PKMNSpikesProjectile
-{
-Damage (60)
-States
-{
-Death:
-TNT1 A 0 A_SpawnItemEx("S_PKMNSpikesProjectileX",0,0,0,0,0,0,0,1)
-TNT1 A 1
-stop
-}
+actor S_PKMNSpikesProjectile : PKMNSpikesProjectile {
+  Damage (60)
+  States {
+   Death:
+    TNT1 A 0 A_SpawnItemEx("S_PKMNSpikesProjectileX", 0, 0, 0, 0, 0, 0, 0, 1)
+    TNT1 A 1
+    stop
+  }
 }
 
-actor S_PKMNSpikesProjectileX : PKMNSpikesProjectileX{ Damage (120) }
+actor S_PKMNSpikesProjectileX : PKMNSpikesProjectileX {Damage (120)}

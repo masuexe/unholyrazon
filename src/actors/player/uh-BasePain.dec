@@ -19,7 +19,7 @@ actor Basic_PainTID_H : BasicWatcher {
 actor Basic_PainFling_H : BasicWatcher {
   +NOTIMEFREEZE
   Args 777, 77, 2  // KNK_ADDZTHRUST
-  states {
+  States {
    Spawn:
     TNT1 A 0
    SpawnCheck:
@@ -27,7 +27,7 @@ actor Basic_PainFling_H : BasicWatcher {
     // TempPit
     TNT1 A 0 A_JumpIfInventory("HalfPushFlag", 1, "Half", AAPTR_TARGET)
    Fling:
-    TNT1 A 0 ACS_NamedExecuteWithResult("uh_knockback", Args[0]/(1.0+Args[3]), Args[1]/(1.0+Args[3]), Args[2], AAPTR_TARGET)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_knockback", args[0] / (1.0 + args[3]), args[1] / (1.0 + args[3]), args[2], AAPTR_TARGET)
     stop
    Half:
     TNT1 A 0 A_SetArg(3, 1)
@@ -38,7 +38,7 @@ actor Basic_PainFling_H : BasicWatcher {
   }
 }
 actor Basic_DeathFling_H : Basic_PainFling_H {
-  states {
+  States {
    Spawn:
     TNT1 A 0
     goto Fling
@@ -55,60 +55,59 @@ actor GravSlammerPower : PowerUp {
   Powerup.Duration -10
 }
 
-actor BasicPain_SlamHit : BasicWatcher  // Gravityman
-{
-  var int user_HIT;
-  var int user_GravStack;
+actor BasicPain_SlamHit : BasicWatcher {  // Gravityman
+  var int user_hit;
+  var int user_gravstack;
   +NOCLIP
   // +NOTARGETSWITCH
   Mass 250
-  states {
+  States {
    Spawn:
     TNT1 A 0
-    TNT1 A 0 A_SetUserVar("user_HIT", CallACS("core_gettarget"))
+    TNT1 A 0 A_SetUserVar("user_hit", CallACS("core_gettarget"))
     TNT1 A 0 A_RearrangePointers(0, 0, 2)
     TNT1 A 0 A_TransferPointer(2, 0, 2, 2)
-    TNT1 A 0 ACS_NamedExecuteWithResult("uh_GravitySlam", user_HIT)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_GravitySlam", user_hit)
     goto CollideWait
    CollideWait:
     TNT1 A 1 A_JumpIfInventory("CollideFlag", 1, "CollideCheck")
     loop
 
    CollideCheck:
-    TNT1 A 0  // A_LogInt(user_GravStack)
-    TNT1 A 0 A_SetArg(0, user_GravStack)
-    TNT1 A 0 Thing_Move(0, user_HIT, 1)
-    TNT1 A 0 A_JumpIf(user_GravStack>=Mass, "CollideX")
-    TNT1 A 0 A_JumpIf(user_GravStack>=1, "Collide")
+    TNT1 A 0  // A_LogInt(user_gravstack)
+    TNT1 A 0 A_SetArg(0, user_gravstack)
+    TNT1 A 0 Thing_Move(0, user_hit, 1)
+    TNT1 A 0 A_JumpIf(user_gravstack >= mass, "CollideX")
+    TNT1 A 0 A_JumpIf(user_gravstack >= 1, "Collide")
     TNT1 A 2  // A_Log("Gravity Slam = 0")
     stop
    Collide:
-    TNT1 A 2  // A_SpawnItemEX("SlamCollide",0,0,28,0,0,0,0,SXF_TRANSFERSPECIAL)
+    TNT1 A 2  // A_SpawnItemEx("SlamCollide",0,0,28,0,0,0,0,SXF_TRANSFERSPECIAL)
     stop
    CollideX:
-    TNT1 A 2  // A_SpawnItemEX("SlamCollideX",0,0,28,0,0,0,0,SXF_TRANSFERSPECIAL)
+    TNT1 A 2  // A_SpawnItemEx("SlamCollideX",0,0,28,0,0,0,0,SXF_TRANSFERSPECIAL)
     stop
   }
 }
 
 actor BasicCollideSlam : BasicExplosion {
-  damagetype "GravityM_Dunked"
+  DamageType "GravityM_Dunked"
   Obituary "$OB_GRAVITYBALL"
   Mass 1
   Meleerange 30
-  renderstyle none
-  states {
+  RenderStyle "None"
+  States {
    Spawn:
     TNT1 A 0
-    TNT1 A 0  // A_LOG("Args[0]")
-    TNT1 A 0  // A_LOGINT(Args[0])
+    TNT1 A 0  // A_LOG("args[0]")
+    TNT1 A 0  // A_LOGINT(args[0])
     TNT1 A 0  // A_LOG("Meleerange")
-    TNT1 A 0  // A_LOGINT(Meleerange)
+    TNT1 A 0  // A_LOGINT(meleerange)
     TNT1 A 0  // A_LOG("Args AND Dam Calc")
-    TNT1 A 0  // A_LOGINT(ScaleX)
+    TNT1 A 0  // A_LOGINT(scaleX)
     TNT1 A 0  // A_LOG("Total")
-    TNT1 A 0  // A_LOGINT(Mass*(Meleerange*0.1)*Args[0])
-    TNT1 A 0 A_Explode(Mass*(Meleerange*0.1)*Args[0]+1, 15, 0, 0, 15)
+    TNT1 A 0  // A_LOGINT(mass*(meleerange*0.1)*args[0])
+    TNT1 A 0 A_Explode(mass * (meleerange * 0.1) * args[0] + 1, 15, 0, 0, 15)
     TNT1 A 3
     stop
   }
@@ -151,14 +150,14 @@ actor GravitySmackDown_H : BasicWatcher {
   States {
    Spawn:
     TNT1 A 0
-    TNT1 AAAA 4 A_JumpIf(ACS_NamedExecuteWithResult("core_targetexists")==0, "Death")
-    TNT1 A 1 A_GiveToTarget("GravitySmackDownEnd_P", 1)
+    TNT1 AAAA 4 A_JumpIf(!CallACS("core_targetexists"), "Death")
+    TNT1 A 1 A_GiveToTarget("GravitySmackDownEnd_P")
     stop
   }
 }
 
-actor BasicPain_GroundedHit : BasicWatcher
-{  // Freeze/Frost/Cold/RaThor
+actor BasicPain_GroundedHit : BasicWatcher {
+  // Freeze/Frost/Cold/RaThor
   +SERVERSIDEONLY
   States {
    DeathEnd:
@@ -166,9 +165,6 @@ actor BasicPain_GroundedHit : BasicWatcher
     stop
   }
 }
-
-
-
 
 
 actor PainRecoilDelay_F : Powerup {
@@ -428,7 +424,7 @@ actor TimeBenderPain_P : CustomInventory {
   States {
    Pickup:
     TNT1 A 0 A_Stop
-    TNT1 A 0 A_SpawnItemEx("TimeBenderPainFX", random(16, 64), 0, random(4, 64), 0, 0, 0, random(0, 71)*5)
+    TNT1 A 0 A_SpawnItemEx("TimeBenderPainFX", random(16, 64), 0, random(4, 64), 0, 0, 0, random(0, 71) * 5)
     stop
   }
 }
@@ -437,7 +433,7 @@ actor TimeBenderPainFX : BasicGraphicEffect {
   // Translation "192:192=4:4","198:198=4:4"
   +FORCEXYBILLBOARD
   +BRIGHT
-  Renderstyle "Translucent"
+  RenderStyle "Translucent"
   Alpha 0.95
   States {
    Spawn:
@@ -487,17 +483,17 @@ actor TimeBenderWatcher_H : BasicWatcher {
   States {
    Spawn:
     TNT1 A 0
-    TNT1 A 1 A_GiveToTarget("TimeBenderPain_P", 1)
+    TNT1 A 1 A_GiveToTarget("TimeBenderPain_P")
     TNT1 A 0 A_TakeFromTarget("EternalPainFlag", 1)
    Spawn1:
-    TNT1 A 0 A_GiveToTarget("TimeBenderPain_P", 1)
+    TNT1 A 0 A_GiveToTarget("TimeBenderPain_P")
     TNT1 A 1 A_JumpIf(!CallACS("uh_PointerExists", AAPTR_TARGET), "Death")
     TNT1 A 0 A_JumpIfInTargetInventory("EternalPainFlag", 1, "Spawn2")
     TNT1 A 0 A_JumpIfInTargetInventory("TimeBenderFreezeDuration", 1, "Spawn1")
     goto Spawn2
    Spawn2:
     TNT1 A 0
-    TNT1 A 2 A_GiveToTarget("TimeBenderEnd_P", 1)
+    TNT1 A 2 A_GiveToTarget("TimeBenderEnd_P")
     stop
   }
 }
@@ -551,5 +547,5 @@ actor PlayerParalyzedOn : CustomInventory {
     stop
   }
 }
-actor PlayerParalyzedTimer : Inventory {inventory.maxamount 2100}
+actor PlayerParalyzedTimer : Inventory {Inventory.MaxAmount 2100}
 actor PlayerIsParalyzed : Once {}

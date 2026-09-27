@@ -1,118 +1,112 @@
-actor IceWallWepU_MegaManUBar : MegaManUBar { Args 200, 75 }
+actor IceWallWepU_MegaManUBar : MegaManUBar {Args 200, 75}
 actor IceWallWepU_ScriptBar : ScriptBar {}
 
-actor IceWallWepU : BaseMegaManUWep replaces IceWallWep
-{
-Weapon.AmmoUse 2
-Weapon.AmmoGive 28
-Weapon.SlotNumber 7
-Inventory.Pickupmessage "$PU_ICEWALL"
-Obituary "$OB_ICEWALL"
-Tag "$TAG_ICEWALL"
-weapon.ammotype "IceWallAmmo"
-inventory.icon "IWALL"
-States
-{
-SpawnLoop:
-ICWL X -1
-loop
-Ready:
-ICWL H 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_ICEWALL)
-ICWL H 0 A_JumpIfInventory("IceWallCooldownFlag",1,"ReadyCooldown")
-ICWL H 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen")
-ICWL H 1 A_WeaponReady
-Goto Ready+1
-ReadyCooldown:
-ICWL H 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen")
-ICWL H 1 A_WeaponReady(WRF_NOFIRE)
-Goto Ready+1
-Deselect:
-ICWL H 0
-goto DeselectSwap
-Select:
-ICWL H 0
-goto SelectSwap
-Fire:
-ICWL H 0 A_JumpIfNoAmmo("NoAmmo")
-ICWL H 0 A_GiveInventory("IceWallFlag")
-ICWL H 0 A_PlaySoundEx("weapons/mmb/icewallfire","Weapon")
-ICWL H 0 A_Stop
-ICWL H 0 A_GiveInventory("FireIceWall")
-ICWL H 0 A_TakeInventory("IceWallAmmo",2,TIF_NOTAKEINFINITE)
-ICWL JI 2
-ICWL H 0 A_GiveInventory("IceWallCooldownFlag")
-ICWL H 0 A_SpawnItemEx("IceWallCooldowner")
-goto Ready+1
-}
+actor IceWallWepU : BaseMegaManUWep replaces IceWallWep {
+  Weapon.AmmoUse 2
+  Weapon.AmmoGive 28
+  Weapon.SlotNumber 7
+  Inventory.Pickupmessage "$PU_ICEWALL"
+  Obituary "$OB_ICEWALL"
+  Tag "$TAG_ICEWALL"
+  Weapon.AmmoType "IceWallAmmo"
+  Inventory.Icon "IWALL"
+  States {
+   SpawnLoop:
+    ICWL X -1
+    loop
+   Ready:
+    ICWL H 0 ACS_NamedExecuteWithResult("core_weaponcolor", CLR_ICEWALL)
+    ICWL H 0 A_JumpIfInventory("IceWallCooldownFlag", 1, "ReadyCooldown")
+    ICWL H 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen")
+    ICWL H 1 A_WeaponReady
+    goto Ready+1
+   ReadyCooldown:
+    ICWL H 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen")
+    ICWL H 1 A_WeaponReady(WRF_NOFIRE)
+    goto Ready+1
+   Deselect:
+    ICWL H 0
+    goto DeselectSwap
+   Select:
+    ICWL H 0
+    goto SelectSwap
+   Fire:
+    ICWL H 0 A_JumpIfNoAmmo("NoAmmo")
+    ICWL H 0 A_GiveInventory("IceWallFlag")
+    ICWL H 0 A_PlaySoundEx("weapons/mmb/icewallfire", "Weapon")
+    ICWL H 0 A_Stop
+    ICWL H 0 A_GiveInventory("FireIceWall")
+    ICWL H 0 A_TakeInventory("IceWallAmmo", 2, TIF_NOTAKEINFINITE)
+    ICWL JI 2
+    ICWL H 0 A_GiveInventory("IceWallCooldownFlag")
+    ICWL H 0 A_SpawnItemEx("IceWallCooldowner")
+    goto Ready+1
+  }
 }
 
-actor IceWallSpawnerU : IceWallSpawner replaces IceWallSpawner
-{
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 1
-TNT1 A 1 A_Stop
-ICWL ABCDE 1
-ICWL F 0 A_ChangeFlag("NOGRAVITY",0)
-ICWL F 0 A_Explode(CallACS("uh_TodayDmgMul", 110), 64, 0)
-TNT1 A 0 A_SpawnItemEx("IcePitFreeze")
-ICWL F 0 A_SpawnItemEx("IceWallU")
-stop
-}
+actor IceWallSpawnerU : IceWallSpawner replaces IceWallSpawner {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1
+    TNT1 A 1 A_Stop
+    ICWL ABCDE 1
+    ICWL F 0 A_ChangeFlag("NOGRAVITY", 0)
+    ICWL F 0 A_Explode(CallACS("uh_TodayDmgMul", 110), 64, 0)
+    TNT1 A 0 A_SpawnItemEx("IcePitFreeze")
+    ICWL F 0 A_SpawnItemEx("IceWallU")
+    stop
+  }
 }
 
-actor IceWallU : IceWall replaces IceWall
-{
-Damage (CallACS("uh_TodayDmgMul", 110))
-States
-{
-Spawn:
-ICWL F 0
-ICWL F 1 A_TakeInventory("IceWallFlag",1,0,AAPTR_TARGET)
-SpawnLoop:
-ICWL F 1 A_JumpIfInventory("IceWallFlag",1,"Death",AAPTR_TARGET)
-ICWL F 0 A_JumpIf(momx>1||momy>1||momx<-1||momy<-1,"MoveBegin")
-ICWL F 0 Thing_Damage(0, 1)
-ICWL F 0 A_Explode(CallACS("uh_TodayDmgMul", 110), 64, 0)
-ICWL F 0 A_SpawnItemEx("IcePitFreeze")
-loop
-MoveBegin:
-ICWL F 0 ACS_NamedExecuteAlways("core_stickyLifts",0,STICKYMODE_GUTSLIFT)
-ICWL F 0 A_ChangeFlag("PUSHABLE",0)
-ICWL F 0 ACS_NamedExecuteAlways("core_icewallmanage", 0, 1)
-ICWL F 1 A_JumpIfInventory("IceWallFlag",1,"Death",AAPTR_TARGET)
-Accelerate:
-ICWL F 0 A_Recoil(-3)
-ICWL FFFFF 1 A_JumpIfInventory("IceWallFlag",1,"Death",AAPTR_TARGET)
-ICWL F 0 A_Recoil(-3)
-ICWL FFFFF 1 A_JumpIfInventory("IceWallFlag",1,"Death",AAPTR_TARGET)
-ICWL F 0 A_Recoil(-3)
-ICWL FFFFF 1 A_JumpIfInventory("IceWallFlag",1,"Death",AAPTR_TARGET)
-ICWL F 0 A_Recoil(-2)
-ICWL FFFFF 1 A_JumpIfInventory("IceWallFlag",1,"Death",AAPTR_TARGET)
-ICWL F 0 A_Recoil(-2)
-ICWL FFFFF 1 A_JumpIfInventory("IceWallFlag",1,"Death",AAPTR_TARGET)
-Moving:
-ICWL F 0 A_JumpIfInventory("IceWallFlag",1,"Death",AAPTR_TARGET)
-ICWL A 0 A_SpawnItemEx("IcePitFreeze")
-ICWL F 0 Thing_Damage(0, 1)
-ICWL F 1 A_JumpIfHealthLower(75,"MovingLow")
-loop
-MovingLow:
-ICWL K 0 A_JumpIfInventory("IceWallFlag",1,"Death",AAPTR_TARGET)
-ICWL A 0 A_SpawnItemEx("IcePitFreeze")
-ICWL K 1 Thing_Damage(0, 1)
-loop
-Death:
-ICWL K 0 A_TakeInventory("CutterFlag", 1)
-ICWL K 0 A_Stop
-ICWL K 0 A_ChangeFlag("NOGRAVITY", 1)
-ICWL K 0 A_ChangeFlag("SOLID", 0)
-ICWL K 0 A_ChangeFlag("SHOOTABLE", 0)
-ICWL K 10
-ICWL LM 5
-stop
-}
+actor IceWallU : IceWall replaces IceWall {
+  Damage (CallACS("uh_TodayDmgMul", 110))
+  States {
+   Spawn:
+    ICWL F 0
+    ICWL F 1 A_TakeInventory("IceWallFlag", 1, 0, AAPTR_TARGET)
+   SpawnLoop:
+    ICWL F 1 A_JumpIfInventory("IceWallFlag", 1, "Death", AAPTR_TARGET)
+    ICWL F 0 A_JumpIf(velx > 1 || vely > 1 || velx < -1 || vely < -1, "MoveBegin")
+    ICWL F 0 Thing_Damage(0, 1)
+    ICWL F 0 A_Explode(CallACS("uh_TodayDmgMul", 110), 64, 0)
+    ICWL F 0 A_SpawnItemEx("IcePitFreeze")
+    loop
+   MoveBegin:
+    ICWL F 0 ACS_NamedExecuteAlways("core_stickyLifts", 0, STICKYMODE_GUTSLIFT)
+    ICWL F 0 A_ChangeFlag("PUSHABLE", 0)
+    ICWL F 0 ACS_NamedExecuteAlways("core_icewallmanage", 0, 1)
+    ICWL F 1 A_JumpIfInventory("IceWallFlag", 1, "Death", AAPTR_TARGET)
+   Accelerate:
+    ICWL F 0 A_Recoil(-3)
+    ICWL FFFFF 1 A_JumpIfInventory("IceWallFlag", 1, "Death", AAPTR_TARGET)
+    ICWL F 0 A_Recoil(-3)
+    ICWL FFFFF 1 A_JumpIfInventory("IceWallFlag", 1, "Death", AAPTR_TARGET)
+    ICWL F 0 A_Recoil(-3)
+    ICWL FFFFF 1 A_JumpIfInventory("IceWallFlag", 1, "Death", AAPTR_TARGET)
+    ICWL F 0 A_Recoil(-2)
+    ICWL FFFFF 1 A_JumpIfInventory("IceWallFlag", 1, "Death", AAPTR_TARGET)
+    ICWL F 0 A_Recoil(-2)
+    ICWL FFFFF 1 A_JumpIfInventory("IceWallFlag", 1, "Death", AAPTR_TARGET)
+   Moving:
+    ICWL F 0 A_JumpIfInventory("IceWallFlag", 1, "Death", AAPTR_TARGET)
+    ICWL A 0 A_SpawnItemEx("IcePitFreeze")
+    ICWL F 0 Thing_Damage(0, 1)
+    ICWL F 1 A_JumpIfHealthLower(75, "MovingLow")
+    loop
+   MovingLow:
+    ICWL K 0 A_JumpIfInventory("IceWallFlag", 1, "Death", AAPTR_TARGET)
+    ICWL A 0 A_SpawnItemEx("IcePitFreeze")
+    ICWL K 1 Thing_Damage(0, 1)
+    loop
+   Death:
+    ICWL K 0 A_TakeInventory("CutterFlag", 1)
+    ICWL K 0 A_Stop
+    ICWL K 0 A_ChangeFlag("NOGRAVITY", 1)
+    ICWL K 0 A_ChangeFlag("SOLID", 0)
+    ICWL K 0 A_ChangeFlag("SHOOTABLE", 0)
+    ICWL K 10
+    ICWL LM 5
+    stop
+  }
 }

@@ -1,106 +1,102 @@
-actor GoldenKillerBoxDEItem : UnholyItem
-{
-Tag "$TAG_M_BOX09"
-Translation "8:8=178:178","4:4=228:228","13:13=160:160","14:14=161:161","15:15=162:162"
-inventory.pickupmessage "Golden-Box-Demoneye assist?"
-inventory.icon "MYSBOX09"
-states
-{
-Spawn:
-I_BA H 6
-loop
-UseX:
-TNT1 A 0
-TNT1 A 0 A_PlaySoundEx("items/ABoxEyeBox","Item")
-UseX_Silent:
-TNT1 A 0 A_SpawnItemEx("GoldenKillerBoxDE",56,0,38,1,0,0,0,32)
-TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread",1,"UseX2")
-goto End
-UseX2:
-TNT1 A 0 A_SpawnItemEx("GoldenKillerBoxDE",0,56,38,1,0,0,90,32)
-TNT1 A 0 A_SpawnItemEx("GoldenKillerBoxDE",0,-56,38,1,0,0,270,32)
-goto End
-}
+actor GoldenKillerBoxDEItem : UnholyItem {
+  Tag "$TAG_M_BOX09"
+  Translation "8:8=178:178", "4:4=228:228", "13:13=160:160", "14:14=161:161", "15:15=162:162"
+  inventory.pickupmessage "Golden-Box-Demoneye assist?"
+  Inventory.Icon "MYSBOX09"
+  States {
+   Spawn:
+    I_BA H 6
+    loop
+   UseX:
+    TNT1 A 0
+    TNT1 A 0 A_PlaySoundEx("items/ABoxEyeBox", "Item")
+   UseX_Silent:
+    TNT1 A 0 A_SpawnItemEx("GoldenKillerBoxDE", 56, 0, 38, 1, 0, 0, 0, 32)
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "UseX2")
+    goto End
+   UseX2:
+    TNT1 A 0 A_SpawnItemEx("GoldenKillerBoxDE", 0, 56, 38, 1, 0, 0, 90, 32)
+    TNT1 A 0 A_SpawnItemEx("GoldenKillerBoxDE", 0, -56, 38, 1, 0, 0, 270, 32)
+    goto End
+  }
 }
 
 actor AutoGoldenKillerBoxDEItem : GoldenKillerBoxDEItem {
-    Inventory.PickupSound ""
-    Inventory.MaxAmount 0
-    +ALWAYSPICKUP
-    States {
-        Pickup:
-            goto UseX
-    }
+  Inventory.PickupSound ""
+  Inventory.MaxAmount 0
+  +ALWAYSPICKUP
+  States {
+   Pickup:
+    goto UseX
+  }
 }
 actor AutoGoldenKillerBoxDEItemSilent : AutoGoldenKillerBoxDEItem {
-    States {
-        Pickup:
-            goto UseX_Silent
-    }
+  States {
+   Pickup:
+    goto UseX_Silent
+  }
 }
 actor GoldenKillerBoxDEItemFX : UnholyItemFX {
-    States {
-        Spawn:
-            I_BA H 0
-            goto Spawn2
-    }
+  States {
+   Spawn:
+    I_BA H 0
+    goto Spawn2
+  }
 }
 
-actor GoldenKillerBoxDE : KillerBoxDE
-{
-Translation "192:192=160:16","198:198=161:161","199:199=162:162","204:204=178:178","195:195=178:178","8:8=178:178"
-obituary "%o didn't have any \ckimagination\c-."
+actor GoldenKillerBoxDE : KillerBoxDE {
+  Translation "192:192=160:16", "198:198=161:161", "199:199=162:162", "204:204=178:178", "195:195=178:178", "8:8=178:178"
+  Obituary "%o didn't have any \ckimagination\c-."
 
-DropItem "AutoMysticBoxItem" 256 1
-painchance 8
-//MaxTargetRange 32
-//MeleeRange 32
-Health 2500
-reactiontime 1
-speed 23
-States
-{
-Spawn:
-I_BD N 30
-I_BD N 1 A_Wander
-I_BD N 0 A_Look
-goto Spawn+1
+  DropItem "AutoMysticBoxItem" 256 1
+  painchance 8
+  // MaxTargetRange 32
+  // MeleeRange 32
+  Health 2500
+  ReactionTime 1
+  Speed 23
+  States {
+   Spawn:
+    I_BD N 30
+    I_BD N 1 A_Wander
+    I_BD N 0 A_Look
+    goto Spawn+1
 
-See:
-I_BD N 0 A_GiveInventory("WeaponCharge",1)
-I_BD N 0 A_JumpIfInventory("WeaponCharge",160,"ScrewChasing")
-I_BD N 0 A_JumpIfCloser(412,"SeeC")
-I_BD NNN 1 A_FastChase
-I_BD NNN 1 A_Chase
-Loop
-SeeC:
-I_BD NNNNNN 1 A_Chase
-goto See
+   See:
+    I_BD N 0 A_GiveInventory("WeaponCharge", 1)
+    I_BD N 0 A_JumpIfInventory("WeaponCharge", 160, "ScrewChasing")
+    I_BD N 0 A_JumpIfCloser(412, "SeeC")
+    I_BD NNN 1 A_FastChase
+    I_BD NNN 1 A_Chase
+    loop
+   SeeC:
+    I_BD NNNNNN 1 A_Chase
+    goto See
 
-Melee:
-I_BD NN 0 A_FaceTarget
-I_BD N 0 A_CustomMeleeAttack(170,"weapon/pursuithit","","KillerBoxFling",0)
-I_BD N 1 A_TakeInventory("WeaponCharge", 999)
-I_BD N 1 A_GiveInventory("U_PSN",random(1,3))
-I_BD N 0 A_JumpIfInventory("U_PSN",10,"Melee2")
-goto MeleeWait
-MeleeWait:
-I_BD N 16
-I_BD N 8 A_ClearTarget
-goto Spawn+1
-Melee2:
-I_BD N 2
-I_BD N 6 A_TakeInventory("U_PSN",20)
-I_BD N 8 A_SpawnItemEx("MysticBoxEyeDrop")
-I_BD N 8 A_ClearTarget
-goto Spawn+1
+   Melee:
+    I_BD NN 0 A_FaceTarget
+    I_BD N 0 A_CustomMeleeAttack(170, "weapon/pursuithit", "", "KillerBoxFling", 0)
+    I_BD N 1 A_TakeInventory("WeaponCharge")
+    I_BD N 1 A_GiveInventory("U_PSN", random(1, 3))
+    I_BD N 0 A_JumpIfInventory("U_PSN", 10, "Melee2")
+    goto MeleeWait
+   MeleeWait:
+    I_BD N 16
+    I_BD N 8 A_ClearTarget
+    goto Spawn+1
+   Melee2:
+    I_BD N 2
+    I_BD N 6 A_TakeInventory("U_PSN", 20)
+    I_BD N 8 A_SpawnItemEx("MysticBoxEyeDrop")
+    I_BD N 8 A_ClearTarget
+    goto Spawn+1
 
-Pain:
-I_BD N 0 A_Pain
-I_BD NNNN 2 A_SpawnItem("PainFX",0,3)
-ScrewChasing:
-I_BD N 0 A_TakeInventory("WeaponCharge", 999)
-I_BD N 16 A_ClearTarget
-goto Spawn+1
-}
+   Pain:
+    I_BD N 0 A_Pain
+    I_BD NNNN 2 A_SpawnItem("PainFX", 0, 3)
+   ScrewChasing:
+    I_BD N 0 A_TakeInventory("WeaponCharge")
+    I_BD N 16 A_ClearTarget
+    goto Spawn+1
+  }
 }

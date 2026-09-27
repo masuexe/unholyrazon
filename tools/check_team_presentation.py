@@ -70,9 +70,9 @@ def parse_baseline(path: Path) -> tuple[dict[str, str], dict[str, str]]:
     for lineno, line in enumerate(read(path).splitlines(), 1):
         if not line.strip() or line.lstrip().startswith("//"):
             continue
-        parts = line.split("\t")
+        parts = line.split()
         if len(parts) != 3:
-            print(f"error: {path.name}:{lineno}: expected 3 tab-separated columns", file=sys.stderr)
+            print(f"error: {path.name}:{lineno}: expected 3 space-separated columns", file=sys.stderr)
             raise SystemExit(2)
         actor, mug, icon = (part.strip() for part in parts)
         portrait[actor] = "" if mug == "-" else mug

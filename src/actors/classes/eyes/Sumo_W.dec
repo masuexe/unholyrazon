@@ -1,114 +1,105 @@
-actor SumoDemoneye_W : BaseUnholyBossWep
-{
-Tag "$TAG_DEye04_W"
-Obituary "%o was bounced away by %k the \cjSumo Demoneye\c-!"
-States
-{
-Spawn:
-_E04 [ 6
-wait
+actor SumoDemoneye_W : BaseUnholyBossWep {
+  Tag "$TAG_DEye04_W"
+  Obituary "%o was bounced away by %k the \cjSumo Demoneye\c-!"
+  States {
+   Spawn:
+    _E04 [ 6
+    wait
 
-Ready:
-_E04 D 0 ACS_NamedExecuteWithResult("core_weaponcolor", SUMO_EYE_DYE)
-_E04 D 0 ACS_NamedExecuteWithResult("uh_DemoneyeMorph", 4)
-_E04 D 0 A_TakeInventory("DecoyFlag1")
-goto ReadyX
-ReadyX:
-_E04 D 2 A_WeaponReady
-Goto ReadyX
-Fire:
-_E04 D 1
-_E04 D 0 A_TakeInventory("DecoyFlag1")
-_E04 DE 2
-_E04 E 0 A_PlayWeaponSound("weapon/SumoLeap")
-_E04 E 0 ThrustThingZ(0,32,0,1)
-_E04 E 0 A_Recoil(-30)
-_E04 E 0 A_GiveInventory("DecoyFlag2")
-Goto Slam1
-Slam1:
-_E04 E 1 A_SpawnItemEx("SumoE_Check",0,0,-8,momx,momy,momz,0,8,0)
-_E04 E 0 A_JumpIf(CallACS("core_CheckFooting_ThruPlayer"),"SlamEnd")
-_E04 E 0 A_JumpIfInventory("DecoyFlag1",1,"SlamEnd")
-_E04 E 0 A_JumpIf(momz<=0,"Slam2")
-goto Slam1
-Slam2:
-_E04 E 1 A_SpawnItemEX("SumoE_Check",0,0,-8,momx,momy,momz,0,8,0)
-_E04 E 0 A_JumpIf(CallACS("core_CheckFooting_ThruPlayer"),"SlamEndLand")
-_E04 E 0 A_JumpIfInventory("DecoyFlag1",1,"SlamEnd")
-_E04 E 0 A_JumpIf(momz>=0,"SlamEnd")
-loop
-SlamEndLand:
-_E04 E 0
-goto SlamEnd
-SlamEnd:
-_E04 F 0 A_TakeInventory("DecoyFlag2")
-_E04 F 0 A_PlaySoundEx("weapon/SumoHit","Weapon")
-_E04 F 1
-_E04 F 2 A_FireCustomMissile("SumoE_Slam",0,0,0,0)
-TNT1 A 10
-_E04 D 2 Offset(0,112)
-_E04 D 2 Offset(0,92)
-_E04 D 2 Offset(0,72)
-_E04 D 2 Offset(0,52)
-Goto ReadyX
-}
+   Ready:
+    _E04 D 0 ACS_NamedExecuteWithResult("core_weaponcolor", SUMO_EYE_DYE)
+    _E04 D 0 ACS_NamedExecuteWithResult("uh_DemoneyeMorph", 4)
+    _E04 D 0 A_TakeInventory("DecoyFlag1")
+    goto ReadyX
+   ReadyX:
+    _E04 D 2 A_WeaponReady
+    goto ReadyX
+   Fire:
+    _E04 D 1
+    _E04 D 0 A_TakeInventory("DecoyFlag1")
+    _E04 DE 2
+    _E04 E 0 A_PlayWeaponSound("weapon/SumoLeap")
+    _E04 E 0 ThrustThingZ(0, 32, 0, 1)
+    _E04 E 0 A_Recoil(-30)
+    _E04 E 0 A_GiveInventory("DecoyFlag2")
+    goto Slam1
+   Slam1:
+    _E04 E 1 A_SpawnItemEx("SumoE_Check", 0, 0, -8, velx, vely, velz, 0, 8, 0)
+    _E04 E 0 A_JumpIf(CallACS("core_CheckFooting_ThruPlayer"), "SlamEnd")
+    _E04 E 0 A_JumpIfInventory("DecoyFlag1", 1, "SlamEnd")
+    _E04 E 0 A_JumpIf(velz <= 0, "Slam2")
+    goto Slam1
+   Slam2:
+    _E04 E 1 A_SpawnItemEx("SumoE_Check", 0, 0, -8, velx, vely, velz, 0, 8, 0)
+    _E04 E 0 A_JumpIf(CallACS("core_CheckFooting_ThruPlayer"), "SlamEndLand")
+    _E04 E 0 A_JumpIfInventory("DecoyFlag1", 1, "SlamEnd")
+    _E04 E 0 A_JumpIf(velz >= 0, "SlamEnd")
+    loop
+   SlamEndLand:
+    _E04 E 0
+    goto SlamEnd
+   SlamEnd:
+    _E04 F 0 A_TakeInventory("DecoyFlag2")
+    _E04 F 0 A_PlaySoundEx("weapon/SumoHit", "Weapon")
+    _E04 F 1
+    _E04 F 2 A_FireCustomMissile("SumoE_Slam", 0, 0, 0, 0)
+    TNT1 A 10
+    _E04 D 2 Offset(0, 112)
+    _E04 D 2 Offset(0, 92)
+    _E04 D 2 Offset(0, 72)
+    _E04 D 2 Offset(0, 52)
+    goto ReadyX
+  }
 }
 
-actor SumoE_Check : BasicProjectile
-{
-Damagetype "Sumoeye"
-Obituary "%o was hugged by %k the \cjSumo Demoneye\c-!"
-+DONTSPLASH
-+DONTBLAST
-+THRUGHOST
-+DONTREFLECT
-+INVISIBLE
-var int user_NoTranslation;
-damage (25)
-Radius 62
-Height 72
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 1
-TNT1 A 0
-stop
-XDeath:
-TNT1 A 0 A_GiveToTarget("DecoyFlag1",1)
-TNT1 A 0
-Stop
-Death:
-TNT1 A 0
-Stop
-}
+actor SumoE_Check : BasicProjectile {
+  DamageType "Sumoeye"
+  Obituary "%o was hugged by %k the \cjSumo Demoneye\c-!"
+  +DONTSPLASH
+  +DONTBLAST
+  +THRUGHOST
+  +DONTREFLECT
+  +INVISIBLE
+  var int user_NoTranslation;
+  Damage (25)
+  Radius 62
+  Height 72
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1
+    TNT1 A 0
+    stop
+   XDeath:
+    TNT1 A 0 A_GiveToTarget("DecoyFlag1", 1)
+    TNT1 A 0
+    stop
+   Death:
+    TNT1 A 0
+    stop
+  }
 }
 
-Actor SumoE_Tickle : BasicExplosion
-{
-Damagetype "Sumoeye"
-Obituary "%o was tickled by %k the \cjSumo Demoneye\c-!"
-//Obituary "%o was tickled by %k's insane attack that can't happen."
-States
-{
-Spawn:
-TNT1 A 0 
-TNT1 A 1 A_Explode(50000,128,0)
-stop
-}
+actor SumoE_Tickle : BasicExplosion {
+  DamageType "Sumoeye"
+  Obituary "%o was tickled by %k the \cjSumo Demoneye\c-!"
+  // Obituary "%o was tickled by %k's insane attack that can't happen."
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 A_Explode(50000, 128, 0)
+    stop
+  }
 }
 
 
-Actor SumoE_Slam : BasicExplosion
-{
-damagetype "Sumoeye"
-Obituary "%o was bounced away by %k the \cjSumo Demoneye\c-!"
-States
-{
-Spawn:
-TNT1 A 0
-TNT1 A 1 A_Explode(350,148,0,0,20)
-stop
+actor SumoE_Slam : BasicExplosion {
+  DamageType "Sumoeye"
+  Obituary "%o was bounced away by %k the \cjSumo Demoneye\c-!"
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 A_Explode(350, 148, 0, 0, 20)
+    stop
+  }
 }
-}
-

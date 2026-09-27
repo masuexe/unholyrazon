@@ -711,7 +711,7 @@ TAG_Clownpiece_W7 = "Hell Sign: Apollo Hoax";
 TAG_Clownpiece_W8 = "Hell Sign: Fake Asylum";
 // 113 Scrotoman
 TAG_Scrotoman_W = "Scroto Buster";
-TAG_ProtoManBadGuy_W = "Proto Bad Guy";
+TAG_ProtoManBadGuy_W = "Baddie Proto Buster";  // Proto Bad Guy
 // 114 GraniteMauler
 TAG_GraniteMauler_W = "The Most Powerful Weapon to PKRS Players GG2EZ STRATS";
 // 115 MagicDevilEye

@@ -1,359 +1,349 @@
 actor WishingStarItem : UnholyItem {
-    Tag "$TAG_M_BOX10"
-    inventory.amount 1
-    inventory.maxamount 10
-    inventory.pickupmessage "\ctMake a wish!"
-    inventory.icon "MYSBOX10"
-    States {
-     Spawn:
-      I_MA I 6
-      loop
-     UseX:
-     UseX_Silent:
-      TNT1 A 0 A_JumpIf(CallACS("uh_WishingStar", -1), "UseX2")
-      goto UseX1
-     UseX1:
-      TNT1 A 0 A_JumpIfInventory("PowerInvUseAll_F", 1, "UseX2")
-      TNT1 A 0 A_GiveInventory("PowerInvUseAll_F")
-      TNT1 A 0 ACS_NamedExecuteAlways("uh_WishingStar", 0, 0, 0)
-      TNT1 A 0 A_SpawnItemEx("WishingStar_Help")
-      TNT1 A 0 A_SpawnItemEx("WishingStarShot", 0, 0, 32)
-      goto End
-     UseX2:
-      TNT1 A 0 A_PlaySoundEx("GNT/FailUse", "Item")
-      fail
-    }
+  Tag "$TAG_M_BOX10"
+  Inventory.MaxAmount 10
+  inventory.pickupmessage "\ctMake a wish!"
+  Inventory.Icon "MYSBOX10"
+  States {
+   Spawn:
+    I_MA I 6
+    loop
+   UseX:
+   UseX_Silent:
+    TNT1 A 0 A_JumpIf(CallACS("uh_WishingStar", -1), "UseX2")
+    goto UseX1
+   UseX1:
+    TNT1 A 0 A_JumpIfInventory("PowerInvUseAll_F", 1, "UseX2")
+    TNT1 A 0 A_GiveInventory("PowerInvUseAll_F")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_WishingStar", 0, 0, 0)
+    TNT1 A 0 A_SpawnItemEx("WishingStar_Help")
+    TNT1 A 0 A_SpawnItemEx("WishingStarShot", 0, 0, 32)
+    goto End
+   UseX2:
+    TNT1 A 0 A_PlaySoundEx("GNT/FailUse", "Item")
+    fail
+  }
 }
 actor AutoWishingStarItem : WishingStarItem {
-    Inventory.PickupSound ""
-    Inventory.MaxAmount 0
-    +ALWAYSPICKUP
-    States {
-     Pickup:
-      goto UseX
-    }
+  Inventory.PickupSound ""
+  Inventory.MaxAmount 0
+  +ALWAYSPICKUP
+  States {
+   Pickup:
+    goto UseX
+  }
 }
 actor AutoWishingStarItemSilent : AutoWishingStarItem {
-    States {
-     Pickup:
-      goto UseX_Silent
-    }
+  States {
+   Pickup:
+    goto UseX_Silent
+  }
 }
 actor WishingStarItemFX : UnholyItemFX {
-    States {
-     Spawn:
-      I_MA I 0
-      goto Spawn2
-    }
+  States {
+   Spawn:
+    I_MA I 0
+    goto Spawn2
+  }
 }
 
 actor WishingStar_Help {
-    var int user_TID;
-    Translation "0:255=160:160"
-    Damagetype "WishingStar"
-    Obituary "%o realized the meaning of Critical Existence Failure."
-    -SOLID
-    +NOGRAVITY
-    +NOINTERACTION
-    ReactionTime 26
-    scale 2.5
-    States {
-     Spawn:
-      MMFX A 0
-      MMFX A 0 A_SetUserVar("user_TID", CallACS("core_gettarget"))
-      MMFX A 2 A_CountDown
-      TNT1 A 2 A_ChangeVelocity(0, 0, 2)
-      TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "SpawnNo")
-      Goto Spawn+2
-     SpawnNo:
-      MMFX A 0 A_GiveInventory("Once")
-      MMFX A 2 A_CountDown
-      TNT1 A 2 A_ChangeVelocity(0, 0, 2)
-      goto SpawnNo+1
-     Death:
-      TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death2")
-      TNT1 A 0 A_JumpIfInventory("Once", 1, "Death2")
-      TNT1 A 35 ACS_NamedExecuteAlways("uh_WishingStar", 0, 1, user_TID)
-      stop
-     Death2:
-      TNT1 A 35 ACS_NamedExecuteAlways("uh_WishingStar", 0, 66, 0)
-      stop
-    }
+  var int user_TID;
+  Translation "0:255=160:160"
+  DamageType "WishingStar"
+  Obituary "%o realized the meaning of Critical Existence Failure."
+  -SOLID
+  +NOGRAVITY
+  +NOINTERACTION
+  ReactionTime 26
+  Scale 2.5
+  States {
+   Spawn:
+    MMFX A 0
+    MMFX A 0 A_SetUserVar("user_TID", CallACS("core_gettarget"))
+    MMFX A 2 A_CountDown
+    TNT1 A 2 A_ChangeVelocity(0, 0, 2)
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "SpawnNo")
+    goto Spawn+2
+   SpawnNo:
+    MMFX A 0 A_GiveInventory("Once")
+    MMFX A 2 A_CountDown
+    TNT1 A 2 A_ChangeVelocity(0, 0, 2)
+    goto SpawnNo+1
+   Death:
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death2")
+    TNT1 A 0 A_JumpIfInventory("Once", 1, "Death2")
+    TNT1 A 35 ACS_NamedExecuteAlways("uh_WishingStar", 0, 1, user_TID)
+    stop
+   Death2:
+    TNT1 A 35 ACS_NamedExecuteAlways("uh_WishingStar", 0, 66, 0)
+    stop
+  }
 }
 
 actor WishingStarShot : BasicProjectile {
-    Translation "192:192=62:62", "198:198=63:63"
-    Damagetype "WishingStar"
-    Obituary "%o tried to stop %k's wish from happening!"
-    +RIPPER
-    Damage (9999)
-    Radius 16
-    Height 16
-    States {
-     Spawn:
-      X_5E C 0
-      X_5E C 2
-      X_5E D 2 A_ChangeVelocity(0, 0, 2)
-      X_5E E 2
-      X_5E F 2 A_ChangeVelocity(0, 0, 2)
-      Goto Spawn+1
-    }
+  Translation "192:192=62:62", "198:198=63:63"
+  DamageType "WishingStar"
+  Obituary "%o tried to stop %k's wish from happening!"
+  +RIPPER
+  Damage (9999)
+  Radius 16
+  Height 16
+  States {
+   Spawn:
+    X_5E C 0
+    X_5E C 2
+    X_5E D 2 A_ChangeVelocity(0, 0, 2)
+    X_5E E 2
+    X_5E F 2 A_ChangeVelocity(0, 0, 2)
+    goto Spawn+1
+  }
 }
 
 actor WishingStarXItem : WishingStarItem {
-    Tag "$TAG_M_BOX11"
-    Translation "62:62=63:63", "8:8=191:191"
-    inventory.pickupmessage "\crMake a wish!"
-    inventory.icon "MYSBOX11"
-    States {
-     UseX:
-      TNT1 A 0
-      TNT1 A 0 A_JumpIf(CallACS("uh_WishingStar", -1), "UseX2")
-      goto UseX1
-     UseX1:
-      TNT1 A 0 A_JumpIfInventory("PowerInvUseAll_F", 1, "UseX2")
-      TNT1 A 0 A_GiveInventory("PowerInvUseAll_F")
-      TNT1 A 0 ACS_NamedExecuteAlways("uh_WishingStar", 0, 0, 1)
-      TNT1 A 0 A_SpawnItemEx("WishingStar_Help2")
-      TNT1 A 0 A_SpawnItemEx("WishingStarShot", 0, 0, 32)
-      TNT1 A 0
-      goto End
-    }
+  Tag "$TAG_M_BOX11"
+  Translation "62:62=63:63", "8:8=191:191"
+  inventory.pickupmessage "\crMake a wish!"
+  Inventory.Icon "MYSBOX11"
+  States {
+   UseX:
+    TNT1 A 0
+    TNT1 A 0 A_JumpIf(CallACS("uh_WishingStar", -1), "UseX2")
+    goto UseX1
+   UseX1:
+    TNT1 A 0 A_JumpIfInventory("PowerInvUseAll_F", 1, "UseX2")
+    TNT1 A 0 A_GiveInventory("PowerInvUseAll_F")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_WishingStar", 0, 0, 1)
+    TNT1 A 0 A_SpawnItemEx("WishingStar_Help2")
+    TNT1 A 0 A_SpawnItemEx("WishingStarShot", 0, 0, 32)
+    TNT1 A 0
+    goto End
+  }
 }
 actor AutoWishingStarXItem : WishingStarXItem {
-    Inventory.PickupSound ""
-    Inventory.MaxAmount 0
-    +ALWAYSPICKUP
-    States {
-     Pickup:
-      goto UseX
-    }
+  Inventory.PickupSound ""
+  Inventory.MaxAmount 0
+  +ALWAYSPICKUP
+  States {
+   Pickup:
+    goto UseX
+  }
 }
 actor AutoWishingStarXItemSilent : AutoWishingStarXItem {
-    States {
-     Pickup:
-      goto UseX_Silent
-    }
+  States {
+   Pickup:
+    goto UseX_Silent
+  }
 }
 actor WishingStarXItemFX : WishingStarItemFX {
-    Translation "62:62=63:63", "8:8=191:191"
+  Translation "62:62=63:63", "8:8=191:191"
 }
 
 
 actor WishingStar_Help2 : WishingStar_Help {
-    Translation "0:255=191:191"
-    Obituary "%o couldn't escape."
-    States {
-     Death:
-      TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death2")
-      TNT1 A 0 A_JumpIfInventory("Once", 1, "Death2")
-      TNT1 A 1500 ACS_NamedExecuteAlways("uh_WishingStar", 0, 6)
-      stop
-    }
+  Translation "0:255=191:191"
+  Obituary "%o couldn't escape."
+  States {
+   Death:
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death2")
+    TNT1 A 0 A_JumpIfInventory("Once", 1, "Death2")
+    TNT1 A 1500 ACS_NamedExecuteAlways("uh_WishingStar", 0, 6)
+    stop
+  }
 }
 
 actor WishingStarCItem : WishingStarItem {
-    Tag "$TAG_M_BOX12"
-    Translation "62:62=107:107", "8:8=74:74"
-    inventory.pickupmessage "\cdMake a wish!"
-    inventory.icon "MYSBOX12"
-    States {
-     UseX:
-      TNT1 A 0
-      TNT1 A 0 A_JumpIf(CallACS("uh_WishingStar", -1), "UseX2")
-      goto UseX1
-     UseX1:
-      TNT1 A 0 A_JumpIfInventory("PowerInvUseAll_F", 1, "UseX2")
-      TNT1 A 0 A_GiveInventory("PowerInvUseAll_F")
-      TNT1 A 0 ACS_NamedExecuteAlways("uh_WishingStar", 0, 0, 2)
-      TNT1 A 0 A_SpawnItemEx("WishingStar_Help3")
-      TNT1 A 0 A_SpawnItemEx("WishingStarShot", 0, 0, 32)
-      TNT1 A 0
-      goto End
-    }
+  Tag "$TAG_M_BOX12"
+  Translation "62:62=107:107", "8:8=74:74"
+  inventory.pickupmessage "\cdMake a wish!"
+  Inventory.Icon "MYSBOX12"
+  States {
+   UseX:
+    TNT1 A 0
+    TNT1 A 0 A_JumpIf(CallACS("uh_WishingStar", -1), "UseX2")
+    goto UseX1
+   UseX1:
+    TNT1 A 0 A_JumpIfInventory("PowerInvUseAll_F", 1, "UseX2")
+    TNT1 A 0 A_GiveInventory("PowerInvUseAll_F")
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_WishingStar", 0, 0, 2)
+    TNT1 A 0 A_SpawnItemEx("WishingStar_Help3")
+    TNT1 A 0 A_SpawnItemEx("WishingStarShot", 0, 0, 32)
+    TNT1 A 0
+    goto End
+  }
 }
 actor AutoWishingStarCItem : WishingStarCItem {
-    Inventory.PickupSound ""
-    Inventory.MaxAmount 0
-    +ALWAYSPICKUP
-    States {
-     Pickup:
-      goto UseX
-    }
+  Inventory.PickupSound ""
+  Inventory.MaxAmount 0
+  +ALWAYSPICKUP
+  States {
+   Pickup:
+    goto UseX
+  }
 }
 actor AutoWishingStarCItemSilent : AutoWishingStarCItem {
-    States {
-     Pickup:
-      goto UseX_Silent
-    }
+  States {
+   Pickup:
+    goto UseX_Silent
+  }
 }
 actor WishingStarCItemFX : WishingStarItemFX {
-    Translation "62:62=107:107", "8:8=74:74"
+  Translation "62:62=107:107", "8:8=74:74"
 }
 
 actor WishingStar_Help3 : WishingStar_Help {
-    Translation "0:255=107:107"
-    Obituary "%o couldn't time travel?"
-    States {
-     Death:
-      TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death2")
-      TNT1 A 0 A_JumpIfInventory("Once", 1, "Death2")
-      TNT1 A 35 ACS_NamedExecuteAlways("uh_WishingStar", 0, 77)
-      stop
-    }
+  Translation "0:255=107:107"
+  Obituary "%o couldn't time travel?"
+  States {
+   Death:
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "Death2")
+    TNT1 A 0 A_JumpIfInventory("Once", 1, "Death2")
+    TNT1 A 35 ACS_NamedExecuteAlways("uh_WishingStar", 0, 77)
+    stop
+  }
 }
-
-
-
-
 
 
 actor WishingStar_Help1_Server : BasicWatcher {
-    Obituary "%o realized the meaning of Critical Existence Failure."
-    States {
-     Spawn:
-      TNT1 A 1
-      TNT1 A 100 ACS_NamedExecuteAlways("uh_WishingStar", 0, 0, 66)
-      TNT1 A 1500 ACS_NamedExecuteAlways("uh_WishingStar", 0, 1)
-      TNT1 A 1
-      stop
-    }
+  Obituary "%o realized the meaning of Critical Existence Failure."
+  States {
+   Spawn:
+    TNT1 A 1
+    TNT1 A 100 ACS_NamedExecuteAlways("uh_WishingStar", 0, 0, 66)
+    TNT1 A 1500 ACS_NamedExecuteAlways("uh_WishingStar", 0, 1)
+    TNT1 A 1
+    stop
+  }
 }
 
 actor WishingStar_Help2_Server : BasicWatcher {
-    Obituary "%o couldn't escape."
-    States {
-     Spawn:
-      TNT1 A 1
-      TNT1 A 100 ACS_NamedExecuteAlways("uh_WishingStar", 0, 0, 66)
-      TNT1 A 1500 ACS_NamedExecuteAlways("uh_WishingStar", 0, 6)
-      TNT1 A 1
-      stop
-    }
+  Obituary "%o couldn't escape."
+  States {
+   Spawn:
+    TNT1 A 1
+    TNT1 A 100 ACS_NamedExecuteAlways("uh_WishingStar", 0, 0, 66)
+    TNT1 A 1500 ACS_NamedExecuteAlways("uh_WishingStar", 0, 6)
+    TNT1 A 1
+    stop
+  }
 }
 
 actor WishingStar_Help3_Server : BasicWatcher {
-    Obituary "%o couldn't time travel?"
-    States {
-     Spawn:
-      TNT1 A 1
-      TNT1 A 100 ACS_NamedExecuteAlways("uh_WishingStar", 0, 0, 66)
-      TNT1 A 1500 ACS_NamedExecuteAlways("uh_WishingStar", 0, 77)
-      TNT1 A 1
-      stop
-    }
+  Obituary "%o couldn't time travel?"
+  States {
+   Spawn:
+    TNT1 A 1
+    TNT1 A 100 ACS_NamedExecuteAlways("uh_WishingStar", 0, 0, 66)
+    TNT1 A 1500 ACS_NamedExecuteAlways("uh_WishingStar", 0, 77)
+    TNT1 A 1
+    stop
+  }
 }
-
-
-
-
-
 
 
 actor SonicExeWishingStart_P : CustomInventory {
-    States {
-     Pickup:
-      TNT1 A 0 A_SpawnItemEx("SonicExeWishing_H", 0, 0, 24)
-      stop
-    }
+  States {
+   Pickup:
+    TNT1 A 0 A_SpawnItemEx("SonicExeWishing_H", 0, 0, 24)
+    stop
+  }
 }
 
 actor SonicExeWishingScare_P : CustomInventory {
-    States {
-     Pickup:
-      TNT1 A 0 ACS_NamedExecuteAlways("uh_ScreenScare", 0, random(3, 6), 40)
-      stop
-    }
+  States {
+   Pickup:
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ScreenScare", 0, random(3, 6), 40)
+    stop
+  }
 }
 
 actor SonicExeWishingScareSpec_P : CustomInventory {
-    States {
-     Pickup:
-      TNT1 A 0 ACS_NamedExecuteAlways("uh_WishingStar", 0, 7)
-      TNT1 A 0 ACS_NamedExecuteAlways("uh_ScreenScare", 0, random(3, 6), 40)
-      stop
-    }
+  States {
+   Pickup:
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_WishingStar", 0, 7)
+    TNT1 A 0 ACS_NamedExecuteAlways("uh_ScreenScare", 0, random(3, 6), 40)
+    stop
+  }
 }
 
 actor SonicExeWishing_H : BasicWatcher {
-    var int user_D;
-    RenderStyle "None"
-    ReactionTime 35
-    States {
-     Spawn:
-      TNT1 A 0
-      TNT1 A 5 A_SpawnItemEx("OrdinarySonicExe_Wait", 128, 0, 8)
-      TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 5 A_JumpIf(!CallACS("uh_PointerExists", 2), "D_Spec")
-      TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "D_Spec")
-      TNT1 A 5
-      TNT1 A 0 A_GiveToTarget("OrdinarySonicExe_Warper_P", 1)
-      goto Spawn1
-     Spawn1:
-      TNT1 AA 6 A_JumpIf(!CallACS("uh_PointerExists", 2), "D_Spec")
-      TNT1 A 0 A_CountDown
-      loop
-     Death:
-      TNT1 A 0 A_GiveToTarget("SonicExeWishingScare_P", 1)
-      TNT1 A 10
-      stop
-     D_Spec:
-      TNT1 A 0 A_GiveToTarget("SonicExeWishingScareSpec_P", 1)
-      TNT1 A 10
-      stop
-    }
+  var int user_d;
+  RenderStyle "None"
+  ReactionTime 35
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 5 A_SpawnItemEx("OrdinarySonicExe_Wait", 128, 0, 8)
+    TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 5 A_JumpIf(!CallACS("uh_PointerExists", 2), "D_Spec")
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "D_Spec")
+    TNT1 A 5
+    TNT1 A 0 A_GiveToTarget("OrdinarySonicExe_Warper_P")
+    goto Spawn1
+   Spawn1:
+    TNT1 AA 6 A_JumpIf(!CallACS("uh_PointerExists", 2), "D_Spec")
+    TNT1 A 0 A_CountDown
+    loop
+   Death:
+    TNT1 A 0 A_GiveToTarget("SonicExeWishingScare_P")
+    TNT1 A 10
+    stop
+   D_Spec:
+    TNT1 A 0 A_GiveToTarget("SonicExeWishingScareSpec_P")
+    TNT1 A 10
+    stop
+  }
 }
 
 actor OrdinarySonicExe_Wait : BasicClientSide {
-    Scale 1.0
-    ReactionTime 4
-    States {
-     Spawn:
-      I_MI S 9
-      I_MI STUTSTUTS 4
-      I_MI S 60
-      I_MI S 0 A_CountDown
-      loop
-     Death:
-      I_MI S 0
-      I_MI S 1 A_FadeOut(0.15)
-      wait
-    }
+  Scale 1.0
+  ReactionTime 4
+  States {
+   Spawn:
+    I_MI S 9
+    I_MI STUTSTUTS 4
+    I_MI S 60
+    I_MI S 0 A_CountDown
+    loop
+   Death:
+    I_MI S 0
+    I_MI S 1 A_FadeOut(0.15)
+    wait
+  }
 }
 
 actor OrdinarySonicExe_Warper_P : CustomInventory {
-    States {
-     Pickup:
-      TNT1 A 0 A_SpawnItemEx("OrdinarySonicExe_Warper", 436, 0, 32)
-      stop
-    }
+  States {
+   Pickup:
+    TNT1 A 0 A_SpawnItemEx("OrdinarySonicExe_Warper", 436, 0, 32)
+    stop
+  }
 }
 actor OrdinarySonicExe_Warper : BasicShieldWarper {
-    var int user_D;
-    ReactionTime 35
-    Scale 1.0
-    States {
-     Spawn:
-      TNT1 A 0
-      TNT1 A 0 ACS_NamedExecuteAlways("uc_clientwarper", 0, 0)
-      Goto SpawnL+1
-     SpawnL:
-      I_MI V 0 Radius_Quake(4-ReactionTime*0.2, 13, 0, 5, 0)
-      I_MI V 1 A_Warp(2, 436-user_D, 0, 32, 0, 24)
-      I_MI V 1 A_Warp(2, 435-user_D, 0, 32, 0, 24)
-      I_MI V 1 A_Warp(2, 434-user_D, 0, 32, 0, 24)
-      I_MI V 1 A_Warp(2, 433-user_D, 0, 32, 0, 24)
-      I_MI V 1 A_Warp(2, 432-user_D, 0, 32, 0, 24)
-      I_MI V 1 A_Warp(2, 431-user_D, 0, 32, 0, 24)
-      I_MI W 0 A_SetUserVar("user_D", user_D+6)
-      I_MI W 1 A_Warp(2, 436-user_D, 0, 32, 0, 24)
-      I_MI W 1 A_Warp(2, 435-user_D, 0, 32, 0, 24)
-      I_MI W 1 A_Warp(2, 434-user_D, 0, 32, 0, 24)
-      I_MI W 1 A_Warp(2, 433-user_D, 0, 32, 0, 24)
-      I_MI W 1 A_Warp(2, 432-user_D, 0, 32, 0, 24)
-      I_MI W 1 A_Warp(2, 431-user_D, 0, 32, 0, 24)
-      I_MI V 0 A_CountDown
-      I_MI V 0 A_SetUserVar("user_D", user_D+6)
-      I_MI V 0 A_JumpIf(ReactionTime<25, "SpawnL")
-      Goto SpawnL+1
-    }
+  var int user_d;
+  ReactionTime 35
+  Scale 1.0
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 ACS_NamedExecuteAlways("uc_clientwarper", 0, 0)
+    goto SpawnL+1
+   SpawnL:
+    I_MI V 0 Radius_Quake(4 - ReactionTime * 0.2, 13, 0, 5, 0)
+    I_MI V 1 A_Warp(2, 436 - user_d, 0, 32, 0, 24)
+    I_MI V 1 A_Warp(2, 435 - user_d, 0, 32, 0, 24)
+    I_MI V 1 A_Warp(2, 434 - user_d, 0, 32, 0, 24)
+    I_MI V 1 A_Warp(2, 433 - user_d, 0, 32, 0, 24)
+    I_MI V 1 A_Warp(2, 432 - user_d, 0, 32, 0, 24)
+    I_MI V 1 A_Warp(2, 431 - user_d, 0, 32, 0, 24)
+    I_MI W 0 A_SetUserVar("user_d", user_d + 6)
+    I_MI W 1 A_Warp(2, 436 - user_d, 0, 32, 0, 24)
+    I_MI W 1 A_Warp(2, 435 - user_d, 0, 32, 0, 24)
+    I_MI W 1 A_Warp(2, 434 - user_d, 0, 32, 0, 24)
+    I_MI W 1 A_Warp(2, 433 - user_d, 0, 32, 0, 24)
+    I_MI W 1 A_Warp(2, 432 - user_d, 0, 32, 0, 24)
+    I_MI W 1 A_Warp(2, 431 - user_d, 0, 32, 0, 24)
+    I_MI V 0 A_CountDown
+    I_MI V 0 A_SetUserVar("user_d", user_d + 6)
+    I_MI V 0 A_JumpIf(reactiontime < 25, "SpawnL")
+    goto SpawnL+1
+  }
 }

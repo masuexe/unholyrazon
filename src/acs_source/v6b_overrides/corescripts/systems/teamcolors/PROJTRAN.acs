@@ -4,63 +4,63 @@
 #include "8BDMDEFS.acs"
 
 function bool ProjTeamColorCvar(void) {
-	return(ProjTeamColorCvarServer() && ProjTeamColorCvarClient());
+  return (ProjTeamColorCvarServer() && ProjTeamColorCvarClient());
 }
 
 function bool ProjTeamColorCvarClient(void) {
-	return(GetUserCvar(ConsolePlayerNumber(), "mm8bdm_projteamcolor") > 0);
+  return (GetUserCvar(ConsolePlayerNumber(), "mm8bdm_projteamcolor") > 0);
 }
 
 function bool ProjTeamColorCvarServer(void) {
-	return(GetCvar("mm8bdm_sv_projteamcolor") > 0);
+  return (GetCvar("mm8bdm_sv_projteamcolor") > 0);
 }
 
 script "core_Set_Projectile_Translation" (int i, int whites, int blacks) CLIENTSIDE {
-	if (ProjTeamColorCvarClient() || i > 6) {  //$UH Team translation check
-		Thing_SetTranslation(0, WhitesBlacksOffset(whites, blacks) + i);
-	}
+  if (ProjTeamColorCvarClient() || i > 6) {  // $UH Team translation check
+    Thing_SetTranslation(0, WhitesBlacksOffset(whites, blacks) + i);
+  }
 }
 
 function int WhitesBlacksOffset(int whites, int blacks) {
-	if (whites && blacks) return PCLR_TEAMPROJ_ALL;
-	if (blacks) return PCLR_TEAMPROJ_BLACKS;
-	if (whites) return PCLR_TEAMPROJ_WHITES;
-	return PCLR_TEAMPROJ;
+  if (whites && blacks) return PCLR_TEAMPROJ_ALL;
+  if (blacks) return PCLR_TEAMPROJ_BLACKS;
+  if (whites) return PCLR_TEAMPROJ_WHITES;
+  return PCLR_TEAMPROJ;
 }
 
 script "core_Check_TranslateWhiteColors" (void) {
-	SetResultValue(CheckForVar("User_TranslateWhiteColors"));
+  SetResultValue(CheckForVar("User_TranslateWhiteColors"));
 }
 
 script "core_Check_TranslateBlackColors" (void) {
-	SetResultValue(CheckForVar("User_TranslateBlackColors"));
+  SetResultValue(CheckForVar("User_TranslateBlackColors"));
 }
 
 script "core_Check_NoTranslation" (void) {
-	SetResultValue(CheckForVar("User_NoTranslation"));
+  SetResultValue(CheckForVar("User_NoTranslation"));
 }
 
 // 1 = skip PickupClass / class-palette slots (i>6); team slots 0-3 still apply
 script "uh_Check_NoClassTranslation" (void) {
-	SetResultValue(CheckForVar("user_NoClassTranslation"));
+  SetResultValue(CheckForVar("user_NoClassTranslation"));
 }
 
 function bool CheckForVar(str thevar) {
-	SetUserVariable(0, thevar, 1);
-	return(GetUserVariable(0, thevar) == 1);
+  SetUserVariable(0, thevar, 1);
+  return (GetUserVariable(0, thevar) == 1);
 }
 
 script "core_Check_ProjectileColor_Server" (void) {
-	SetResultValue(ProjTeamColorCvarServer());
+  SetResultValue(ProjTeamColorCvarServer());
 }
 
 // Rail trail/puff CLIENTSIDEONLY FX often have null target, so ProjTeamColor2
 // cannot see IsDecoyBotFlag and falls through — leaving StealthS green Translation.
 // Force Decoy team slot after spawnfunc on Decoy_F_23* actors.
 script "uh_ForceDecoyRailProjColor" (void) CLIENTSIDE {
-	int slot = 16;
-	int cpn = ConsolePlayerNumber();
-	if (cpn >= 0 && CheckActorInventory(PLN_TID + cpn, "IsDecoyBotSFlag"))
-		slot = 17;
-	ACS_NamedExecuteWithResult("core_Set_Projectile_Translation", slot, 0, 0);
+  int slot = 16;
+  int cpn = ConsolePlayerNumber();
+  if (cpn >= 0 && CheckActorInventory(PLN_TID + cpn, "IsDecoyBotSFlag"))
+    slot = 17;
+  ACS_NamedExecuteWithResult("core_Set_Projectile_Translation", slot, 0, 0);
 }

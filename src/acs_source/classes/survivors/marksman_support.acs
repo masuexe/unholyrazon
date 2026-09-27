@@ -1,6 +1,6 @@
 function int FindNew_LockOnList(int owner, int limit) {
   for (int i = 0; i < limit; i++) {
-    if (GetUserArray(owner, "user_lockOnList", i) == 0) {
+    if (GetUserArray(owner, "user_marksman_lockonlist", i) == 0) {
       // Log(s:"A chance for lock on...", i:i);
       return i;
     }
@@ -11,15 +11,15 @@ function int FindNew_LockOnList(int owner, int limit) {
 function void CheckClear_LockOnList(int owner, int limit) {
   int curr_arr;
   for (int i = 0; i < limit; i++) {
-    curr_arr = GetUserArray(owner, "user_lockOnList", i);
+    curr_arr = GetUserArray(owner, "user_marksman_lockonlist", i);
     if (curr_arr != 0)
       if (GetActorProperty(curr_arr + 999, APROP_Health) <= 0 || CheckActorInventory(curr_arr + 999, "PowerProtectSurvivor"))
-        SetUserArray(owner, "user_lockOnList", i, 0);
+        SetUserArray(owner, "user_marksman_lockonlist", i, 0);
   }
 }
 function void Clear_LockOnList(int limit) {
   for (int i = 0; i < limit; i++) {
-    SetUserArray(0, "user_lockOnList", i, 0);
+    SetUserArray(0, "user_marksman_lockonlist", i, 0);
   }
 }
 
@@ -30,7 +30,7 @@ script "uc_MarksmanLockOn" (int mode, int type1, int type2, int type3) {
       break;
     case -1:  // Reset Array to 0
       Clear_LockOnList(type1);
-      // Log(s:"Clearing Lockons...checking 1 = ", i:GetUserArray(0, "user_lockOnList", 1));
+      // Log(s:"Clearing Lockons...checking 1 = ", i:GetUserArray(0, "user_marksman_lockonlist", 1));
       break;
     case 0:  // type1 = Owner TID //type2 = Tracer TID //type3 = LockOn limit
       if (CheckActorInventory(type2, "PowerProtectSurvivor"))
@@ -39,9 +39,9 @@ script "uc_MarksmanLockOn" (int mode, int type1, int type2, int type3) {
       if (lockon_num == -1)  // All slots filled, end the script
         terminate;
       // Check if last lock-on is that specific player
-      if (!(GetUserArray(type1, "user_lockOnList", lockon_num - (lockon_num != 0)) == type2 - 999 &&
+      if (!(GetUserArray(type1, "user_marksman_lockonlist", lockon_num - (lockon_num != 0)) == type2 - 999 &&
           CheckActorInventory(type1, "MarksmanLockOn_CD"))) {
-        SetUserArray(type1, "user_lockOnList", lockon_num, type2 - 999);
+        SetUserArray(type1, "user_marksman_lockonlist", lockon_num, type2 - 999);
         GiveActorInventory(type1, "MarksmanLockOn_CD_P", 1);
         ActivatorSound("CowboyKid/Chat", 127);
         NamedExecuteClientScript("uc_MarksmanClientSound", type1 - 1000);
@@ -50,8 +50,8 @@ script "uc_MarksmanLockOn" (int mode, int type1, int type2, int type3) {
       break;
     case 1:  // Missile copies TID in Targets slot
       SetActivatorToTarget(0);
-      // Log(s:"Fetching lock on ", i:CheckInventory("MarksmanMissile_F"),s:"...", i:GetUserArray(0, "user_lockOnList",CheckInventory("MarksmanMissile_F")));
-      SetResultValue(GetUserArray(0, "user_lockOnList", CheckInventory("MarksmanMissile_F")));
+      // Log(s:"Fetching lock on ", i:CheckInventory("MarksmanMissile_F"),s:"...", i:GetUserArray(0, "user_marksman_lockonlist",CheckInventory("MarksmanMissile_F")));
+      SetResultValue(GetUserArray(0, "user_marksman_lockonlist", CheckInventory("MarksmanMissile_F")));
       break;
     case 3:  // Check if locked on players are alive. Remove if not.
       CheckClear_LockOnList(ActivatorTID(), type1);

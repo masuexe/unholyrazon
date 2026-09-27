@@ -90,8 +90,8 @@ def main():
     assert any('DrawBar "002B_VAR", "VNOBAR", Ammo1,' in line
                for line in append_lines)
     formatted_h, formatted_v = generator.gen_append_files(source_config)
-    assert formatted_h.startswith("AppendStatusBar normal, forcescaled {\n")
-    assert formatted_v.startswith("AppendStatusBar fullscreen, forcescaled {\n")
+    assert formatted_h.startswith("AppendStatusBar Normal, forcescaled {\n")
+    assert formatted_v.startswith("AppendStatusBar Fullscreen, forcescaled {\n")
     assert '\n  InInventory "DrawStatusBarFlag", 1 {\n' in formatted_h
     assert '\n\tInInventory "DrawStatusBarFlag", 1 {\n' in formatted_v
     assert '\n        InInventory "UHBar_Source_P1L0Selector", 1 ' in formatted_h

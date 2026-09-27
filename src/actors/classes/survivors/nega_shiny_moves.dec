@@ -2,1134 +2,1080 @@
 // Charge on this base; Fire1/2/3 are the current cycle slot's attacks.
 // Full-charge (Fire3End) Give/Takes the next slot via uh_ShinyNegaAdvanceHeld.
 
-actor NegaShinyHeldBase_W : BaseMM8BDMWep_UH
-{
-	Weapon.SlotNumber 1
-	Weapon.AmmoUse 0
-	Weapon.AmmoGive 0
-	weapon.ammotype "S_NegaDuckAmmo"
-	Weapon.UpSound ""
-	inventory.icon "C_I_02B"
-	+WEAPON.NOALERT
-	+WEAPON.NOAUTOAIM
-States
-{
-Spawn:
-	7H02 [ 6
-	loop
-Deselect:
-	7H02 A 0
-	goto DeselectSwap
-Select:
-	7H02 A 0 A_JumpIfInventory("UH_SilentSelect_F",1,"SilentSelect")
-	goto SelectSwap
-SilentSelect:
-	7H02 A 0 A_StopSound(CHAN_WEAPON)
-	7H02 A 0 A_TakeInventory("UH_SilentSelect_F")
-	7H02 A 0 A_TakeInventory("NoWeaponSwitchSound")
-	7H02 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_SDYE)
-	7H02 A 0 A_WeaponReady(14)
-	goto Ready2
-Ready:
-	7H02 A 1 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_SDYE)
-	Goto Ready2
-Ready2:
-	7H02 A 0 A_JumpIfInventory("S_NegaDuckAmmo",100,"Ready3")
-	7H02 A 2 A_WeaponReady(8)
-	7H02 A 0 A_GiveInventory("S_NegaDuckAmmo",3)
-	loop
-Ready3:
-	7H02 A 2 A_WeaponReady
-	7H02 A 0 A_GiveInventory("S_NegaDuckAmmo",3)
-	loop
-Fire:
-Charge:
-	7H02 A 0
-	goto Charge0
-Charge0:
-	7H02 A 0 A_JumpIfInventory("WeaponCharge",25,"Charge1")
-	7H02 A 0 A_JumpIfInventory("WeaponCharge",24,"ChargeStart")
-	7H02 A 0 A_JumpIfInventory("PlayerPropertyRage",1,"Charge0R")
-	7H02 A 1 A_GiveInventory("WeaponCharge",1)
-	7H02 A 0 A_Refire("Charge0")
-	// A_Jump resolves Fire1/2/3 on the *held* class (goto would stick on base stubs).
-	7H02 A 0 A_Jump(256, "Fire1")
-ChargeStart:
-	7H02 A 0 A_PlaySoundEx("weapon/pcharge","Weapon")
-	Goto Charge1
-Charge0R:
-	7H02 A 1 A_GiveInventory("WeaponCharge",2)
-	7H02 A 0 A_Refire("Charge0")
-	7H02 A 0 A_Jump(256, "Fire1")
-Charge1:
-	7H02 B 0 A_JumpIfInventory("WeaponCharge",56,"Charge2")
-	7H02 B 0 A_JumpIfInventory("PlayerPropertyRage",1,"Charge1R")
-	7H02 B 1 A_GiveInventory("WeaponCharge",1)
-	7H02 B 0 A_Refire("Charge1")
-	7H02 B 0 A_Jump(256, "Fire2")
-Charge1R:
-	7H02 B 1 A_GiveInventory("WeaponCharge",2)
-	7H02 B 0 A_Refire("Charge1")
-	7H02 B 0 A_Jump(256, "Fire2")
-Charge2:
-	7H02 C 1 A_RailWait
-	7H02 C 0 A_Refire("Charge2")
-	7H02 C 0 A_Jump(256, "Fire3")
-Fire1:
-	7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-	7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-	goto Ready2
-Fire2:
-	7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-	goto Ready2
-Fire3:
-	7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-	goto Ready2
-Nega4End:
-	7H02 C 0 A_PlaySoundEx("weapon/skullcounter","Weapon")
-	7H02 C 0 A_TakeInventory("ShieldCheck")
-	7H02 BA 3
-	goto Ready2
-Nega4End3:
-	7H02 C 0 A_PlaySoundEx("weapon/skullcounter","Weapon")
-	7H02 C 0 A_TakeInventory("ShieldCheck")
-	7H02 BA 3
-	TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyNegaAdvanceHeld")
-	goto Ready2
-Fire2End:
-7H02 CB 4
-7H02 A 6
-goto Ready2
-Fire3End:
-7H02 CBA 3
-TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyNegaAdvanceHeld")
-goto Ready2
-Flash_Slide:
-TNT1 A 1
-7S02 A 1
-7S02 B 1
-7S02 C 1
-7S02 D 1
-7S02 E 4
-7S02 D 3
-7S02 C 2
-7S02 B 2
-7S02 A 1
-stop
+actor NegaShinyHeldBase_W : BaseMM8BDMWep_UH {
+  Weapon.SlotNumber 1
+  Weapon.AmmoUse 0
+  Weapon.AmmoGive 0
+  Weapon.AmmoType "S_NegaDuckAmmo"
+  Weapon.UpSound ""
+  Inventory.Icon "C_I_02B"
+  +WEAPON.NOALERT
+  +WEAPON.NOAUTOAIM
+  States {
+   Spawn:
+    7H02 [ 6
+    loop
+   Deselect:
+    7H02 A 0
+    goto DeselectSwap
+   Select:
+    7H02 A 0 A_JumpIfInventory("UH_SilentSelect_F", 1, "SilentSelect")
+    goto SelectSwap
+   SilentSelect:
+    7H02 A 0 A_StopSound(CHAN_WEAPON)
+    7H02 A 0 A_TakeInventory("UH_SilentSelect_F")
+    7H02 A 0 A_TakeInventory("NoWeaponSwitchSound")
+    7H02 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_SDYE)
+    7H02 A 0 A_WeaponReady(14)
+    goto Ready2
+   Ready:
+    7H02 A 1 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_SDYE)
+    goto Ready2
+   Ready2:
+    7H02 A 0 A_JumpIfInventory("S_NegaDuckAmmo", 100, "Ready3")
+    7H02 A 2 A_WeaponReady(8)
+    7H02 A 0 A_GiveInventory("S_NegaDuckAmmo", 3)
+    loop
+   Ready3:
+    7H02 A 2 A_WeaponReady
+    7H02 A 0 A_GiveInventory("S_NegaDuckAmmo", 3)
+    loop
+   Fire:
+   Charge:
+    7H02 A 0
+    goto Charge0
+   Charge0:
+    7H02 A 0 A_JumpIfInventory("WeaponCharge", 25, "Charge1")
+    7H02 A 0 A_JumpIfInventory("WeaponCharge", 24, "ChargeStart")
+    7H02 A 0 A_JumpIfInventory("PlayerPropertyRage", 1, "Charge0R")
+    7H02 A 1 A_GiveInventory("WeaponCharge", 1)
+    7H02 A 0 A_ReFire("Charge0")
+    // A_Jump resolves Fire1/2/3 on the *held* class (goto would stick on base stubs).
+    7H02 A 0 A_Jump(256, "Fire1")
+   ChargeStart:
+    7H02 A 0 A_PlaySoundEx("weapon/pcharge", "Weapon")
+    goto Charge1
+   Charge0R:
+    7H02 A 1 A_GiveInventory("WeaponCharge", 2)
+    7H02 A 0 A_ReFire("Charge0")
+    7H02 A 0 A_Jump(256, "Fire1")
+   Charge1:
+    7H02 B 0 A_JumpIfInventory("WeaponCharge", 56, "Charge2")
+    7H02 B 0 A_JumpIfInventory("PlayerPropertyRage", 1, "Charge1R")
+    7H02 B 1 A_GiveInventory("WeaponCharge", 1)
+    7H02 B 0 A_ReFire("Charge1")
+    7H02 B 0 A_Jump(256, "Fire2")
+   Charge1R:
+    7H02 B 1 A_GiveInventory("WeaponCharge", 2)
+    7H02 B 0 A_ReFire("Charge1")
+    7H02 B 0 A_Jump(256, "Fire2")
+   Charge2:
+    7H02 C 1 A_RailWait
+    7H02 C 0 A_ReFire("Charge2")
+    7H02 C 0 A_Jump(256, "Fire3")
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    goto Ready2
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    goto Ready2
+   Nega4End:
+    7H02 C 0 A_PlaySoundEx("weapon/skullcounter", "Weapon")
+    7H02 C 0 A_TakeInventory("ShieldCheck")
+    7H02 BA 3
+    goto Ready2
+   Nega4End3:
+    7H02 C 0 A_PlaySoundEx("weapon/skullcounter", "Weapon")
+    7H02 C 0 A_TakeInventory("ShieldCheck")
+    7H02 BA 3
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyNegaAdvanceHeld")
+    goto Ready2
+   Fire2End:
+    7H02 CB 4
+    7H02 A 6
+    goto Ready2
+   Fire3End:
+    7H02 CBA 3
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_ShinyNegaAdvanceHeld")
+    goto Ready2
+   Flash_Slide:
+    TNT1 A 1
+    7S02 A 1
+    7S02 B 1
+    7S02 C 1
+    7S02 D 1
+    7S02 E 4
+    7S02 D 3
+    7S02 C 2
+    7S02 B 2
+    7S02 A 1
+    stop
 
-Altfire:
-7H02 A 0 A_JumpIfInventory("S_NegaDuckAmmo",100,"Altfire2")
-7H02 A 0 A_GiveInventory("S_NegaDuckAmmo",1)
-goto Ready2
-Altfire2:
-// 7H02 A 0 A_TakeInventory("S_NegaDuckAmmo",100)
-7H02 A 0 A_GiveInventory("SlideVivifyFlag")
-7H02 A 0 A_Refire(1)
-7H02 A 0 A_GiveInventory("S_NegaSlideDelay")
-7H02 A 0 A_GiveInventory("S_NegaSlideAmmo_P")
-7H02 A 0 A_PlaySoundEx("weapon/tengudash","Weapon")
-7H02 A 0 A_GiveInventory("S_NegaSlideBoost_P")
-7H02 A 0 A_GunFlash("Flash_Slide")
-7H02 A 1 Offset(8, 40) A_TakeInventory("SlideVivifyFlag")
-7H02 A 1 Offset(16, 48) A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
-7H02 A 1 Offset(24, 56)
-7H02 A 1 Offset(40, 72) A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
-7H02 A 1 Offset(56, 88)
-7H02 A 1 Offset(74, 104) A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
-7H02 A 1 Offset(74, 102)
-7H02 A 1 Offset(70, 104) A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
-7H02 A 1 Offset(70, 102)
-7H02 A 3 Offset(54, 86) A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
-7H02 A 2 Offset(38, 70) A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
-7H02 A 2 Offset(22, 54) A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
-7H02 A 1 Offset(14, 46) A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
-7H02 A 1 Offset(6, 38)
-Goto Ready2
+   Altfire:
+    7H02 A 0 A_JumpIfInventory("S_NegaDuckAmmo", 100, "Altfire2")
+    7H02 A 0 A_GiveInventory("S_NegaDuckAmmo", 1)
+    goto Ready2
+   Altfire2:
+    // 7H02 A 0 A_TakeInventory("S_NegaDuckAmmo",100)
+    7H02 A 0 A_GiveInventory("SlideVivifyFlag")
+    7H02 A 0 A_ReFire(1)
+    7H02 A 0 A_GiveInventory("S_NegaSlideDelay")
+    7H02 A 0 A_GiveInventory("S_NegaSlideAmmo_P")
+    7H02 A 0 A_PlaySoundEx("weapon/tengudash", "Weapon")
+    7H02 A 0 A_GiveInventory("S_NegaSlideBoost_P")
+    7H02 A 0 A_GunFlash("Flash_Slide")
+    7H02 A 1 Offset(8, 40) A_TakeInventory("SlideVivifyFlag")
+    7H02 A 1 Offset(16, 48) A_FireCustomMissile("S_NegaSlideKick", 0, 0, 0, 0)
+    7H02 A 1 Offset(24, 56)
+    7H02 A 1 Offset(40, 72) A_FireCustomMissile("S_NegaSlideKick", 0, 0, 0, 0)
+    7H02 A 1 Offset(56, 88)
+    7H02 A 1 Offset(74, 104) A_FireCustomMissile("S_NegaSlideKick", 0, 0, 0, 0)
+    7H02 A 1 Offset(74, 102)
+    7H02 A 1 Offset(70, 104) A_FireCustomMissile("S_NegaSlideKick", 0, 0, 0, 0)
+    7H02 A 1 Offset(70, 102)
+    7H02 A 3 Offset(54, 86) A_FireCustomMissile("S_NegaSlideKick", 0, 0, 0, 0)
+    7H02 A 2 Offset(38, 70) A_FireCustomMissile("S_NegaSlideKick", 0, 0, 0, 0)
+    7H02 A 2 Offset(22, 54) A_FireCustomMissile("S_NegaSlideKick", 0, 0, 0, 0)
+    7H02 A 1 Offset(14, 46) A_FireCustomMissile("S_NegaSlideKick", 0, 0, 0, 0)
+    7H02 A 1 Offset(6, 38)
+    goto Ready2
 
 
-// 7H02 A 1 Offset(11,50)A_GunFlash
-// 7H02 A 2 Offset(22,68)A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
-// 7H02 AAAA 2 Offset(33,104)A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
-// 7H02 AA 2 Offset(22,68)A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
-// 7H02 AA 2 Offset(11,50)A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
-Goto Ready2
-}
+    // 7H02 A 1 Offset(11,50)A_GunFlash
+    // 7H02 A 2 Offset(22,68)A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
+    // 7H02 AAAA 2 Offset(33,104)A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
+    // 7H02 AA 2 Offset(22,68)A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
+    // 7H02 AA 2 Offset(11,50)A_FireCustomMissile("S_NegaSlideKick",0,0,0,0)
+    goto Ready2
+  }
 }
 
 
-actor NegaShiny_ThunderBeam_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/thunderbeam","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaThunderBeam",0,0,8,0)
-7H02 CB 4
-7H02 A 6
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/thunderbeam","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaThunderBeam2",0,0,8,0)
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/thunderbeam","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaThunderBeam3",0,0,8,0)
-goto Fire3End
-}
+actor NegaShiny_ThunderBeam_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/thunderbeam", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaThunderBeam", 0, 0, 8, 0)
+    7H02 CB 4
+    7H02 A 6
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/thunderbeam", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaThunderBeam2", 0, 0, 8, 0)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/thunderbeam", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaThunderBeam3", 0, 0, 8, 0)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_TimeStopper_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/pshot","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaTimeStopper",0,0,8,0)
-7H02 CB 4
-7H02 A 6
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/pshot","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaTimeStopper2",0,0,8,0)
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/pshot","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaTimeStopper3",0,0,8,0)
-goto Fire3End
-}
+actor NegaShiny_TimeStopper_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/pshot", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaTimeStopper", 0, 0, 8, 0)
+    7H02 CB 4
+    7H02 A 6
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/pshot", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaTimeStopper2", 0, 0, 8, 0)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/pshot", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaTimeStopper3", 0, 0, 8, 0)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_SearchSnake_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaSearchSnakeStart",0,0,8,0)
-goto Fire2End
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaSearchSnakeStart2",0,0,8,0)
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaSearchSnakeStart3",0,0,8,0)
-goto Fire3End
-}
+actor NegaShiny_SearchSnake_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaSearchSnakeStart", 0, 0, 8, 0)
+    goto Fire2End
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaSearchSnakeStart2", 0, 0, 8, 0)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaSearchSnakeStart3", 0, 0, 8, 0)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_Skull_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/skullcounter","Weapon")
-7H02 C 0 A_GiveInventory("SNBarrier_PU")
-7H02 BC 3
-goto Negaman4L
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/skullcounter","Weapon")
-7H02 C 0 A_GiveInventory("SNBarrier_PU2")
-7H02 BC 3
+actor NegaShiny_Skull_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/skullcounter", "Weapon")
+    7H02 C 0 A_GiveInventory("SNBarrier_PU")
+    7H02 BC 3
+    goto Negaman4L
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/skullcounter", "Weapon")
+    7H02 C 0 A_GiveInventory("SNBarrier_PU2")
+    7H02 BC 3
 
-TNT1 A 0 A_GiveInventory("ShieldCheck")
-TNT1 A 0 A_SpawnItemEx("NegaSkullBarrierWarper",0,0,28,0,0,0,0,1)
+    TNT1 A 0 A_GiveInventory("ShieldCheck")
+    TNT1 A 0 A_SpawnItemEx("NegaSkullBarrierWarper", 0, 0, 28, 0, 0, 0, 0, 1)
 
-goto Negaman4L2
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/skullcounter","Weapon")
-7H02 C 0 A_GiveInventory("SNBarrier_PU3")
-7H02 BC 3
+    goto Negaman4L2
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/skullcounter", "Weapon")
+    7H02 C 0 A_GiveInventory("SNBarrier_PU3")
+    7H02 BC 3
 
-TNT1 A 0 A_GiveInventory("ShieldCheck")
-TNT1 A 0 A_SpawnItemEx("NegaSkullBarrierWarper",0,0,28,0,0,0,0,1)
-goto Negaman4L3
-Negaman4L:
-7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P")
-7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU",0,0,28,momx,momy,momz,0,8,0)
-7H02 CC 1 A_WeaponReady
-7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P")
-7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU",0,0,28,momx,momy,momz,0,8,0)
-7H02 CC 1 A_WeaponReady
-7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P")
-7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU",0,0,28,momx,momy,momz,0,8,0)
-7H02 CC 1 A_WeaponReady
-7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P")
-7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU",0,0,28,momx,momy,momz,0,8,0)
-7H02 CC 1 A_WeaponReady
-7H02 C 0 A_JumpIfInventory("SNBarrier_PU",1,"Negaman4L")
-goto Nega4End
-Negaman4L2:
-7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P2")
-7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU",0,0,28,momx,momy,momz,0,8,0)
-7H02 CC 1 A_WeaponReady
-7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P2")
-7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU",0,0,28,momx,momy,momz,0,8,0)
-7H02 CC 1 A_WeaponReady
-7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P2")
-7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU",0,0,28,momx,momy,momz,0,8,0)
-7H02 CC 1 A_WeaponReady
-7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P2")
-7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU",0,0,28,momx,momy,momz,0,8,0)
-7H02 CC 1 A_WeaponReady
-7H02 C 0 A_JumpIfInventory("SNBarrier_PU2",1,"Negaman4L2")
-goto Nega4End
-Negaman4L3:
-7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P3")
-7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU",0,0,28,momx,momy,momz,0,8,0)
-7H02 C 1 A_WeaponReady
-7H02 C 1 A_WeaponReady
-7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P3")
-7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU",0,0,28,momx,momy,momz,0,8,0)
-7H02 C 1 A_WeaponReady
-7H02 C 1 A_WeaponReady
-7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P3")
-7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU",0,0,28,momx,momy,momz,0,8,0)
-7H02 C 1 A_WeaponReady
-7H02 C 1 A_WeaponReady
-7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P3")
-7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU",0,0,28,momx,momy,momz,0,8,0)
-7H02 C 1 A_WeaponReady
-7H02 C 1 A_WeaponReady
-7H02 C 0 A_JumpIfInventory("SNBarrier_PU3",1,"Negaman4L3")
-goto Nega4End3
-}
+    TNT1 A 0 A_GiveInventory("ShieldCheck")
+    TNT1 A 0 A_SpawnItemEx("NegaSkullBarrierWarper", 0, 0, 28, 0, 0, 0, 0, 1)
+    goto Negaman4L3
+   Negaman4L:
+    7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P")
+    7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU", 0, 0, 28, velx, vely, velz, 0, 8, 0)
+    7H02 CC 1 A_WeaponReady
+    7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P")
+    7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU", 0, 0, 28, velx, vely, velz, 0, 8, 0)
+    7H02 CC 1 A_WeaponReady
+    7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P")
+    7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU", 0, 0, 28, velx, vely, velz, 0, 8, 0)
+    7H02 CC 1 A_WeaponReady
+    7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P")
+    7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU", 0, 0, 28, velx, vely, velz, 0, 8, 0)
+    7H02 CC 1 A_WeaponReady
+    7H02 C 0 A_JumpIfInventory("SNBarrier_PU", 1, "Negaman4L")
+    goto Nega4End
+   Negaman4L2:
+    7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P2")
+    7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU", 0, 0, 28, velx, vely, velz, 0, 8, 0)
+    7H02 CC 1 A_WeaponReady
+    7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P2")
+    7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU", 0, 0, 28, velx, vely, velz, 0, 8, 0)
+    7H02 CC 1 A_WeaponReady
+    7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P2")
+    7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU", 0, 0, 28, velx, vely, velz, 0, 8, 0)
+    7H02 CC 1 A_WeaponReady
+    7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P2")
+    7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU", 0, 0, 28, velx, vely, velz, 0, 8, 0)
+    7H02 CC 1 A_WeaponReady
+    7H02 C 0 A_JumpIfInventory("SNBarrier_PU2", 1, "Negaman4L2")
+    goto Nega4End
+   Negaman4L3:
+    7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P3")
+    7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU", 0, 0, 28, velx, vely, velz, 0, 8, 0)
+    7H02 C 1 A_WeaponReady
+    7H02 C 1 A_WeaponReady
+    7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P3")
+    7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU", 0, 0, 28, velx, vely, velz, 0, 8, 0)
+    7H02 C 1 A_WeaponReady
+    7H02 C 1 A_WeaponReady
+    7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P3")
+    7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU", 0, 0, 28, velx, vely, velz, 0, 8, 0)
+    7H02 C 1 A_WeaponReady
+    7H02 C 1 A_WeaponReady
+    7H02 C 0 A_GiveInventory("S_NegaSkullBoost_P3")
+    7H02 C 0 A_SpawnItemEx("S_NegaSkullDamageU", 0, 0, 28, velx, vely, velz, 0, 8, 0)
+    7H02 C 1 A_WeaponReady
+    7H02 C 1 A_WeaponReady
+    7H02 C 0 A_JumpIfInventory("SNBarrier_PU3", 1, "Negaman4L3")
+    goto Nega4End3
+  }
 }
 
-actor NegaShiny_GravityHold_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 B 0 ThrustThingZ(0,80,0,1)
-7H02 B 0 A_SpawnItemEx("GravityHoldFX3U",0,0,0,0,0,0,0,1)
-7H02 B 5 A_GiveInventory("S_NegaGravityHold_P")
-7H02 CBA 5
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 B 0 ThrustThingZ(0,75,0,1)
-7H02 B 0 A_SpawnItemEx("GravityHoldFX3U",0,0,0,0,0,0,0,1)
-7H02 B 5 A_GiveInventory("S_NegaGravityHold_P")
-7H02 C 5
-7H02 B 0 ThrustThingZ(0,75,0,1)
-7H02 B 0 A_SpawnItemEx("GravityHoldFX4U",0,0,0,0,0,0,0,1)
-7H02 B 5 A_GiveInventory("S_NegaGravityHold_P")
-7H02 C 5
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 B 0 ThrustThingZ(0,75,0,1)
-7H02 B 0 A_SpawnItemEx("GravityHoldFX3U",0,0,0,0,0,0,0,1)
-7H02 B 5 A_GiveInventory("S_NegaGravityHold_P")
-7H02 C 5
-7H02 B 0 ThrustThingZ(0,75,0,1)
-7H02 B 0 A_SpawnItemEx("GravityHoldFX4U",0,0,0,0,0,0,0,1)
-7H02 B 5 A_GiveInventory("S_NegaGravityHold_P")
-7H02 C 5
-7H02 B 0 ThrustThingZ(0,75,0,1)
-7H02 B 0 A_SpawnItemEx("GravityHoldFX5U",0,0,0,0,0,0,0,1)
-7H02 B 5 A_GiveInventory("S_NegaGravityHold_P")
-7H02 C 5
-goto Fire3End
-}
+actor NegaShiny_GravityHold_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 B 0 ThrustThingZ(0, 80, 0, 1)
+    7H02 B 0 A_SpawnItemEx("GravityHoldFX3U", 0, 0, 0, 0, 0, 0, 0, 1)
+    7H02 B 5 A_GiveInventory("S_NegaGravityHold_P")
+    7H02 CBA 5
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 B 0 ThrustThingZ(0, 75, 0, 1)
+    7H02 B 0 A_SpawnItemEx("GravityHoldFX3U", 0, 0, 0, 0, 0, 0, 0, 1)
+    7H02 B 5 A_GiveInventory("S_NegaGravityHold_P")
+    7H02 C 5
+    7H02 B 0 ThrustThingZ(0, 75, 0, 1)
+    7H02 B 0 A_SpawnItemEx("GravityHoldFX4U", 0, 0, 0, 0, 0, 0, 0, 1)
+    7H02 B 5 A_GiveInventory("S_NegaGravityHold_P")
+    7H02 C 5
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 B 0 ThrustThingZ(0, 75, 0, 1)
+    7H02 B 0 A_SpawnItemEx("GravityHoldFX3U", 0, 0, 0, 0, 0, 0, 0, 1)
+    7H02 B 5 A_GiveInventory("S_NegaGravityHold_P")
+    7H02 C 5
+    7H02 B 0 ThrustThingZ(0, 75, 0, 1)
+    7H02 B 0 A_SpawnItemEx("GravityHoldFX4U", 0, 0, 0, 0, 0, 0, 0, 1)
+    7H02 B 5 A_GiveInventory("S_NegaGravityHold_P")
+    7H02 C 5
+    7H02 B 0 ThrustThingZ(0, 75, 0, 1)
+    7H02 B 0 A_SpawnItemEx("GravityHoldFX5U", 0, 0, 0, 0, 0, 0, 0, 1)
+    7H02 B 5 A_GiveInventory("S_NegaGravityHold_P")
+    7H02 C 5
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_FlameBlast_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_GiveInventory("S_NegaFlameBlast_P")
-7H02 CBAA 5
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_GiveInventory("S_NegaFlameBlast_P2")
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_GiveInventory("S_NegaFlameBlast_P3")
-goto Fire3End
-}
+actor NegaShiny_FlameBlast_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_GiveInventory("S_NegaFlameBlast_P")
+    7H02 CBAA 5
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_GiveInventory("S_NegaFlameBlast_P2")
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_GiveInventory("S_NegaFlameBlast_P3")
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_SlashClaw_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("nega/slashclaw","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaSlashClaw",0,0,8,0)
-7H02 CBAA 4
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("nega/slashclaw","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaSlashClaw2",0,0,8,0)
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("nega/slashclaw","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaSlashClaw3",0,0,8,0)
-goto Fire3End
-}
+actor NegaShiny_SlashClaw_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("nega/slashclaw", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaSlashClaw", 0, 0, 8, 0)
+    7H02 CBAA 4
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("nega/slashclaw", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaSlashClaw2", 0, 0, 8, 0)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("nega/slashclaw", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaSlashClaw3", 0, 0, 8, 0)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_IceWave_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaIceWave",0,0,8,0)
-7H02 CBAA 4
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaIceWave2",0,0,8,0)
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaIceWave3",0,0,8,0)
-goto Fire3End
-}
+actor NegaShiny_IceWave_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaIceWave", 0, 0, 8, 0)
+    7H02 CBAA 4
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaIceWave2", 0, 0, 8, 0)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaIceWave3", 0, 0, 8, 0)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_BlackHole_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/blackholebombC","Weapon")
-7H02 B 2 A_GiveInventory("NegaBlackHoleBomb_Fire_P")
-7H02 C 1
-7H02 C 1 A_GiveInventory("NegaBlackHoleBomb_Fire_P")
-7H02 B 2
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/blackholebombC","Weapon")
-7H02 B 2 A_FireCustomMissile("NegaBlackHoleBomb",16,0,8,0)
-7H02 C 0 A_PlaySoundEx("weapon/blackholebombC","Weapon")
-7H02 C 2 A_FireCustomMissile("NegaBlackHoleBomb1",12,0,8,0)
-7H02 C 0 A_PlaySoundEx("weapon/blackholebombC","Weapon")
-7H02 B 2 A_FireCustomMissile("NegaBlackHoleBomb2",8,0,8,0)
-7H02 C 0 A_PlaySoundEx("weapon/blackholebombC","Weapon")
-7H02 C 2 A_FireCustomMissile("NegaBlackHoleBomb3",4,0,8,0)
-7H02 C 0 A_PlaySoundEx("weapon/blackholebombC","Weapon")
-7H02 B 2 A_FireCustomMissile("NegaBlackHoleBomb4",0,0,8,0)
-7H02 C 0 A_PlaySoundEx("weapon/blackholebombC","Weapon")
-7H02 C 2 A_FireCustomMissile("NegaBlackHoleBomb5",-4,0,8,0)
-7H02 C 0 A_PlaySoundEx("weapon/blackholebombC","Weapon")
-7H02 B 2 A_FireCustomMissile("NegaBlackHoleBomb6",-8,0,8,0)
-7H02 C 0 A_PlaySoundEx("weapon/blackholebombC","Weapon")
-7H02 C 2 A_FireCustomMissile("NegaBlackHoleBomb7",-12,0,8,0)
-7H02 C 0 A_PlaySoundEx("weapon/blackholebombC","Weapon")
-7H02 B 2 A_FireCustomMissile("NegaBlackHoleBomb8",-16,0,8,0)
-goto Ready2
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaBlackHoleBomb",0,0,8,0)
-goto Fire3End
-}
+actor NegaShiny_BlackHole_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/blackholebombC", "Weapon")
+    7H02 B 2 A_GiveInventory("NegaBlackHoleBomb_Fire_P")
+    7H02 C 1
+    7H02 C 1 A_GiveInventory("NegaBlackHoleBomb_Fire_P")
+    7H02 B 2
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/blackholebombC", "Weapon")
+    7H02 B 2 A_FireCustomMissile("NegaBlackHoleBomb", 16, 0, 8, 0)
+    7H02 C 0 A_PlaySoundEx("weapon/blackholebombC", "Weapon")
+    7H02 C 2 A_FireCustomMissile("NegaBlackHoleBomb1", 12, 0, 8, 0)
+    7H02 C 0 A_PlaySoundEx("weapon/blackholebombC", "Weapon")
+    7H02 B 2 A_FireCustomMissile("NegaBlackHoleBomb2", 8, 0, 8, 0)
+    7H02 C 0 A_PlaySoundEx("weapon/blackholebombC", "Weapon")
+    7H02 C 2 A_FireCustomMissile("NegaBlackHoleBomb3", 4, 0, 8, 0)
+    7H02 C 0 A_PlaySoundEx("weapon/blackholebombC", "Weapon")
+    7H02 B 2 A_FireCustomMissile("NegaBlackHoleBomb4", 0, 0, 8, 0)
+    7H02 C 0 A_PlaySoundEx("weapon/blackholebombC", "Weapon")
+    7H02 C 2 A_FireCustomMissile("NegaBlackHoleBomb5", -4, 0, 8, 0)
+    7H02 C 0 A_PlaySoundEx("weapon/blackholebombC", "Weapon")
+    7H02 B 2 A_FireCustomMissile("NegaBlackHoleBomb6", -8, 0, 8, 0)
+    7H02 C 0 A_PlaySoundEx("weapon/blackholebombC", "Weapon")
+    7H02 C 2 A_FireCustomMissile("NegaBlackHoleBomb7", -12, 0, 8, 0)
+    7H02 C 0 A_PlaySoundEx("weapon/blackholebombC", "Weapon")
+    7H02 B 2 A_FireCustomMissile("NegaBlackHoleBomb8", -16, 0, 8, 0)
+    goto Ready2
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaBlackHoleBomb", 0, 0, 8, 0)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_ChillSpike_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapons/mm10/chillspikefire","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaChillShot",0,0,8,0)
-7H02 CBAA 4
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapons/mm10/chillspikefire","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaChillShot2",0,0,8,0)
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapons/mm10/chillspikefire","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaChillShot3",0,0,8,0)
-goto Fire3End
-}
+actor NegaShiny_ChillSpike_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapons/mm10/chillspikefire", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaChillShot", 0, 0, 8, 0)
+    7H02 CBAA 4
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapons/mm10/chillspikefire", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaChillShot2", 0, 0, 8, 0)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapons/mm10/chillspikefire", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaChillShot3", 0, 0, 8, 0)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_LightningBolt_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/lightningbolt","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaLightningBoltPinpoint",0,0,8,0)
-7H02 CBAA 4
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/lightningbolt","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaLightningBoltPinpoint2",0,0,8,0)
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/lightningbolt","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaLightningBoltPinpoint3",0,0,8,0)
-goto Fire3End
-}
+actor NegaShiny_LightningBolt_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/lightningbolt", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaLightningBoltPinpoint", 0, 0, 8, 0)
+    7H02 CBAA 4
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/lightningbolt", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaLightningBoltPinpoint2", 0, 0, 8, 0)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/lightningbolt", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaLightningBoltPinpoint3", 0, 0, 8, 0)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_BalladeCracker_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 B 3 A_TakeInventory("VivifyDelay8",999)
-7H02 C 0 A_PlaySoundEx("weapon/crackerthrow","Weapon")
-7H02 C 3 A_FireCustomMissile("S_NegaBalladeCracker",0,0,8,0)
-7H02 B 3
-goto NegaKHold_1
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 B 3 A_TakeInventory("VivifyDelay8",999)
-7H02 C 0 A_PlaySoundEx("weapon/crackerthrow","Weapon")
-7H02 C 3 A_FireCustomMissile("S_NegaBalladeCracker2",0,0,8,0)
-7H02 B 3
-goto NegaKHold_2
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/crackerthrow","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaBalladeCracker3",0,0,8,0)
-goto Fire3End
-NegaKHold_1:
-7H02 A 0 A_JumpIfInventory("VivifyDelay8",1,"NegaKEnd")
-7H02 A 0 A_GiveInventory("SNC_Pickup")
-7H02 A 1
-loop
-NegaKEnd:
-7H02 A 5
-goto Ready2
-NegaKHold_2:
-7H02 A 0 A_JumpIfInventory("VivifyDelay8",1,"NegaKEnd2")
-7H02 A 0 A_GiveInventory("SNC_Pickup2")
-7H02 A 1
-loop
-NegaKEnd2:
-goto Fire2End+2
-}
+actor NegaShiny_BalladeCracker_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 B 3 A_TakeInventory("VivifyDelay8")
+    7H02 C 0 A_PlaySoundEx("weapon/crackerthrow", "Weapon")
+    7H02 C 3 A_FireCustomMissile("S_NegaBalladeCracker", 0, 0, 8, 0)
+    7H02 B 3
+    goto NegaKHold_1
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 B 3 A_TakeInventory("VivifyDelay8")
+    7H02 C 0 A_PlaySoundEx("weapon/crackerthrow", "Weapon")
+    7H02 C 3 A_FireCustomMissile("S_NegaBalladeCracker2", 0, 0, 8, 0)
+    7H02 B 3
+    goto NegaKHold_2
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/crackerthrow", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaBalladeCracker3", 0, 0, 8, 0)
+    goto Fire3End
+   NegaKHold_1:
+    7H02 A 0 A_JumpIfInventory("VivifyDelay8", 1, "NegaKEnd")
+    7H02 A 0 A_GiveInventory("SNC_Pickup")
+    7H02 A 1
+    loop
+   NegaKEnd:
+    7H02 A 5
+    goto Ready2
+   NegaKHold_2:
+    7H02 A 0 A_JumpIfInventory("VivifyDelay8", 1, "NegaKEnd2")
+    7H02 A 0 A_GiveInventory("SNC_Pickup2")
+    7H02 A 1
+    loop
+   NegaKEnd2:
+    goto Fire2End+2
+  }
 }
 
-actor NegaShiny_GrabBuster_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/grabbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaGrabBuster",0,0,8,0)
-7H02 CB 4
-7H02 A 6
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/grabbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaGrabBuster2",0,0,8,0)
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/grabbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaGrabBuster3",0,0,8,0)
-goto Fire3End
-}
+actor NegaShiny_GrabBuster_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/grabbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaGrabBuster", 0, 0, 8, 0)
+    7H02 CB 4
+    7H02 A 6
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/grabbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaGrabBuster2", 0, 0, 8, 0)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/grabbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaGrabBuster3", 0, 0, 8, 0)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_TimeSlow_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaTimeSlowShot",0,0,8,0)
-7H02 CBAA 4
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaTimeSlowShot2",0,0,8,0)
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaTimeSlowShot3",0,0,8,0)
-goto Fire3End
-}
+actor NegaShiny_TimeSlow_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaTimeSlowShot", 0, 0, 8, 0)
+    7H02 CBAA 4
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaTimeSlowShot2", 0, 0, 8, 0)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaTimeSlowShot3", 0, 0, 8, 0)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_BubbleLead_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaBubbleLead",0,0,8,0)
-7H02 CBA 3
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaBubbleLead2",0,0,8,0)
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaBubbleLead3",0,0,8,0)
-goto Fire3End
-}
+actor NegaShiny_BubbleLead_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaBubbleLead", 0, 0, 8, 0)
+    7H02 CBA 3
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaBubbleLead2", 0, 0, 8, 0)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaBubbleLead3", 0, 0, 8, 0)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_NeedleCannon_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_GiveInventory("S_NegaNeedleCannon_P1")
-7H02 CBA 4
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_GiveInventory("S_NegaNeedleCannon_P2")
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_GiveInventory("S_NegaNeedleCannon_P3")
-goto Fire3End
-}
+actor NegaShiny_NeedleCannon_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_GiveInventory("S_NegaNeedleCannon_P1")
+    7H02 CBA 4
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_GiveInventory("S_NegaNeedleCannon_P2")
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_GiveInventory("S_NegaNeedleCannon_P3")
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_RainFlush_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaRainFlushMineSpawner",0,0,8,0)
-7H02 CBAA 4
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaRainFlushMineSpawner2",0,0,8,0)
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaRainFlushMineSpawner3",0,0,8,0)
-goto Fire3End
-}
+actor NegaShiny_RainFlush_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaRainFlushMineSpawner", 0, 0, 8, 0)
+    7H02 CBAA 4
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaRainFlushMineSpawner2", 0, 0, 8, 0)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaRainFlushMineSpawner3", 0, 0, 8, 0)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_NapalmBomb_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapons/mm5/napalmbombfire","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaNapalmBomb",0,0,8,0)
-7H02 CB 4
-7H02 A 6
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapons/mm5/napalmbombfire","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaNapalmBomb2",0,0,8,0)
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapons/mm5/napalmbombfire","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaNapalmBomb3",0,0,8,0)
-goto Fire3End
-}
+actor NegaShiny_NapalmBomb_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapons/mm5/napalmbombfire", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaNapalmBomb", 0, 0, 8, 0)
+    7H02 CB 4
+    7H02 A 6
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapons/mm5/napalmbombfire", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaNapalmBomb2", 0, 0, 8, 0)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapons/mm5/napalmbombfire", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaNapalmBomb3", 0, 0, 8, 0)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_YamatoSpear_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/CutterCatch","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",0,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(1,3)*2-1)*random(1,2),0,8,0)
-7H02 BC 1
-7H02 A 2
-7H02 C 0 A_PlaySoundEx("weapon/CutterCatch","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",3,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(1,3)*2-1)*random(1,2)+3,0,8,0)
-7H02 BC 1
-7H02 A 2
-7H02 C 0 A_PlaySoundEx("weapon/CutterCatch","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",-3,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(1,3)*2-1)*random(1,2)-3,0,8,0)
-7H02 BC 1
-7H02 A 5
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/CutterCatch","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",0,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(1,3)*2-1)*random(1,2),0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(3,5)*2-1)*random(1,2),0,8,0)
-7H02 BC 1
-7H02 A 2
-7H02 C 0 A_PlaySoundEx("weapon/CutterCatch","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",3,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(1,3)*2-1)*random(1,2)+3,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(3,5)*2-1)*random(1,2)+3,0,8,0)
-7H02 BC 1
-7H02 A 5
-7H02 C 0 A_PlaySoundEx("weapon/CutterCatch","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",0,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(1,3)*2-1)*random(1,2),0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(3,5)*2-1)*random(1,2),0,8,0)
-7H02 BC 1
-7H02 A 2
-7H02 C 0 A_PlaySoundEx("weapon/CutterCatch","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",-3,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(-1,-3)*2-1)*random(1,2)-3,1,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(-3,-5)*2-1)*random(1,2)-3,1,8,0)
-7H02 BC 1
-7H02 A 5
-goto Ready2
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/CutterCatch","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",0,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(1,3)*2-1)*random(1,2),0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(3,5)*2-1)*random(1,2),0,8,0)
-7H02 BC 1
-7H02 A 2
-7H02 C 0 A_PlaySoundEx("weapon/CutterCatch","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",3,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(1,3)*2-1)*random(1,2)+3,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(3,5)*2-1)*random(1,2)+3,0,8,0)
-7H02 BC 1
-7H02 A 5
-7H02 C 0 A_PlaySoundEx("weapon/CutterCatch","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",0,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(1,3)*2-1)*random(1,2),0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(3,5)*2-1)*random(1,2),0,8,0)
-7H02 BC 1
-7H02 A 2
-7H02 C 0 A_PlaySoundEx("weapon/CutterCatch","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",-3,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(-1,-3)*2-1)*random(1,2)-3,1,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(-3,-5)*2-1)*random(1,2)-3,1,8,0)
-7H02 BC 1
-7H02 A 5
-7H02 C 0 A_PlaySoundEx("weapon/CutterCatch","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",0,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(1,3)*2-1)*random(1,2),0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear",(random(3,5)*2-1)*random(1,2),0,8,0)
-7H02 BC 1
-7H02 A 12
-7H02 C 0 A_PlaySoundEx("Pokemon/HornAttack","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpearX",0,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpearX",0,0,38,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpearX",0,0,68,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpearX",0,0,-22,0)
-7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpearX",0,0,-52,0)
-7H02 BC 3
-7H02 A 6
-goto Fire3End
-}
+actor NegaShiny_YamatoSpear_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/CutterCatch", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", 0, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(1, 3) * 2 - 1) * random(1, 2), 0, 8, 0)
+    7H02 BC 1
+    7H02 A 2
+    7H02 C 0 A_PlaySoundEx("weapon/CutterCatch", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", 3, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(1, 3) * 2 - 1) * random(1, 2) + 3, 0, 8, 0)
+    7H02 BC 1
+    7H02 A 2
+    7H02 C 0 A_PlaySoundEx("weapon/CutterCatch", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", -3, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(1, 3) * 2 - 1) * random(1, 2) - 3, 0, 8, 0)
+    7H02 BC 1
+    7H02 A 5
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/CutterCatch", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", 0, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(1, 3) * 2 - 1) * random(1, 2), 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(3, 5) * 2 - 1) * random(1, 2), 0, 8, 0)
+    7H02 BC 1
+    7H02 A 2
+    7H02 C 0 A_PlaySoundEx("weapon/CutterCatch", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", 3, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(1, 3) * 2 - 1) * random(1, 2) + 3, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(3, 5) * 2 - 1) * random(1, 2) + 3, 0, 8, 0)
+    7H02 BC 1
+    7H02 A 5
+    7H02 C 0 A_PlaySoundEx("weapon/CutterCatch", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", 0, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(1, 3) * 2 - 1) * random(1, 2), 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(3, 5) * 2 - 1) * random(1, 2), 0, 8, 0)
+    7H02 BC 1
+    7H02 A 2
+    7H02 C 0 A_PlaySoundEx("weapon/CutterCatch", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", -3, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(-1, -3) * 2 - 1) * random(1, 2) - 3, 1, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(-3, -5) * 2 - 1) * random(1, 2) - 3, 1, 8, 0)
+    7H02 BC 1
+    7H02 A 5
+    goto Ready2
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/CutterCatch", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", 0, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(1, 3) * 2 - 1) * random(1, 2), 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(3, 5) * 2 - 1) * random(1, 2), 0, 8, 0)
+    7H02 BC 1
+    7H02 A 2
+    7H02 C 0 A_PlaySoundEx("weapon/CutterCatch", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", 3, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(1, 3) * 2 - 1) * random(1, 2) + 3, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(3, 5) * 2 - 1) * random(1, 2) + 3, 0, 8, 0)
+    7H02 BC 1
+    7H02 A 5
+    7H02 C 0 A_PlaySoundEx("weapon/CutterCatch", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", 0, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(1, 3) * 2 - 1) * random(1, 2), 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(3, 5) * 2 - 1) * random(1, 2), 0, 8, 0)
+    7H02 BC 1
+    7H02 A 2
+    7H02 C 0 A_PlaySoundEx("weapon/CutterCatch", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", -3, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(-1, -3) * 2 - 1) * random(1, 2) - 3, 1, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(-3, -5) * 2 - 1) * random(1, 2) - 3, 1, 8, 0)
+    7H02 BC 1
+    7H02 A 5
+    7H02 C 0 A_PlaySoundEx("weapon/CutterCatch", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", 0, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(1, 3) * 2 - 1) * random(1, 2), 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpear", (random(3, 5) * 2 - 1) * random(1, 2), 0, 8, 0)
+    7H02 BC 1
+    7H02 A 12
+    7H02 C 0 A_PlaySoundEx("Pokemon/HornAttack", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpearX", 0, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpearX", 0, 0, 38, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpearX", 0, 0, 68, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpearX", 0, 0, -22, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaYamatoSpearX", 0, 0, -52, 0)
+    7H02 BC 3
+    7H02 A 6
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_WildCoil_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/coilfire1","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaWildCoil",25,0,0,6)
-7H02 C 0 A_FireCustomMissile("S_NegaWildCoil",-25,0,0,6)
-7H02 CBAA 4
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/coilfire1","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaWildCoil",25,0,0,6)
-7H02 C 0 A_FireCustomMissile("S_NegaWildCoil",-25,0,0,6)
-7H02 C 0 A_FireCustomMissile("S_NegaWildCoil",50,0,0,6)
-7H02 C 0 A_FireCustomMissile("S_NegaWildCoil",-50,0,0,6)
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/coilfire2","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaWildCoil2",0,0,0,8)
-goto Fire3End
-}
+actor NegaShiny_WildCoil_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/coilfire1", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaWildCoil", 25, 0, 0, 6)
+    7H02 C 0 A_FireCustomMissile("S_NegaWildCoil", -25, 0, 0, 6)
+    7H02 CBAA 4
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/coilfire1", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaWildCoil", 25, 0, 0, 6)
+    7H02 C 0 A_FireCustomMissile("S_NegaWildCoil", -25, 0, 0, 6)
+    7H02 C 0 A_FireCustomMissile("S_NegaWildCoil", 50, 0, 0, 6)
+    7H02 C 0 A_FireCustomMissile("S_NegaWildCoil", -50, 0, 0, 6)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/coilfire2", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaWildCoil2", 0, 0, 0, 8)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_FlashBomb_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapons/mm8/flashbombfire","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaFlashBomb",0,0,8,0)
-7H02 C 2 Offset(24, 44)
-7H02 C 2 Offset(48, 64)
-7H02 C 2 Offset(44, 64)
-7H02 B 2 Offset(36, 56)
-7H02 B 2 Offset(16, 40)
-7H02 B 2 Offset(8, 36)
-7H02 A 4 A_WeaponReady(14)
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapons/mm8/flashbombfire","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaFlashBomb2",0,0,8,0)
-7H02 C 2 Offset(24, 44)
-7H02 C 2 Offset(48, 64)
-7H02 C 2 Offset(44, 64)
-7H02 B 2 Offset(36, 56)
-7H02 B 2 Offset(16, 40)
-7H02 B 2 Offset(8, 36)
-7H02 A 2 A_WeaponReady(14)
-goto Ready2
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapons/mm8/flashbombfire","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaFlashBomb3",0,0,8,0)
-7H02 C 2 Offset(24, 44)
-7H02 C 2 Offset(48, 64)
-7H02 C 2 Offset(44, 64)
-7H02 B 2 Offset(36, 56)
-7H02 B 2 Offset(16, 40)
-7H02 B 2 Offset(8, 36)
-goto Fire3End
-}
+actor NegaShiny_FlashBomb_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapons/mm8/flashbombfire", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaFlashBomb", 0, 0, 8, 0)
+    7H02 C 2 Offset(24, 44)
+    7H02 C 2 Offset(48, 64)
+    7H02 C 2 Offset(44, 64)
+    7H02 B 2 Offset(36, 56)
+    7H02 B 2 Offset(16, 40)
+    7H02 B 2 Offset(8, 36)
+    7H02 A 4 A_WeaponReady(14)
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapons/mm8/flashbombfire", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaFlashBomb2", 0, 0, 8, 0)
+    7H02 C 2 Offset(24, 44)
+    7H02 C 2 Offset(48, 64)
+    7H02 C 2 Offset(44, 64)
+    7H02 B 2 Offset(36, 56)
+    7H02 B 2 Offset(16, 40)
+    7H02 B 2 Offset(8, 36)
+    7H02 A 2 A_WeaponReady(14)
+    goto Ready2
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapons/mm8/flashbombfire", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaFlashBomb3", 0, 0, 8, 0)
+    7H02 C 2 Offset(24, 44)
+    7H02 C 2 Offset(48, 64)
+    7H02 C 2 Offset(44, 64)
+    7H02 B 2 Offset(36, 56)
+    7H02 B 2 Offset(16, 40)
+    7H02 B 2 Offset(8, 36)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_MagmaBazooka_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySound("weapon/magmabazooka",1)
-7H02 C 0 A_FireCustomMissile("S_NegaMagmaBazooka1",0,0,8,0)
-7H02 CBA 3
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySound("weapon/magmabazooka",1)
-7H02 C 0 A_FireCustomMissile("S_NegaMagmaBazooka1",-13,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaMagmaBazooka1",13,0,8,0)
-7H02 CCBB 1 A_FireCustomMissile("S_NegaMagmaBazookaX",frandom(-15,15),0,8,0,0,frandom(-15,15))
-7H02 A 3
-goto Ready2
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySound("weapon/magmabazooka",1)
-7H02 C 0 A_FireCustomMissile("S_NegaMagmaBazooka2",0,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaMagmaBazooka2L",0,0,8,0)
-7H02 C 0 A_FireCustomMissile("S_NegaMagmaBazooka2R",0,0,8,0)
-7H02 CCBB 2 A_FireCustomMissile("S_NegaMagmaBazookaX",frandom(-10,10),0,8,0,0,frandom(-10,10))
-7H02 AAAAA 1 A_FireCustomMissile("S_NegaMagmaBazookaX",frandom(-15,15),0,8,0,0,frandom(-15,15))
-goto Fire3End
-}
+actor NegaShiny_MagmaBazooka_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySound("weapon/magmabazooka", 1)
+    7H02 C 0 A_FireCustomMissile("S_NegaMagmaBazooka1", 0, 0, 8, 0)
+    7H02 CBA 3
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySound("weapon/magmabazooka", 1)
+    7H02 C 0 A_FireCustomMissile("S_NegaMagmaBazooka1", -13, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaMagmaBazooka1", 13, 0, 8, 0)
+    7H02 CCBB 1 A_FireCustomMissile("S_NegaMagmaBazookaX", frandom(-15, 15), 0, 8, 0, 0, frandom(-15, 15))
+    7H02 A 3
+    goto Ready2
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySound("weapon/magmabazooka", 1)
+    7H02 C 0 A_FireCustomMissile("S_NegaMagmaBazooka2", 0, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaMagmaBazooka2L", 0, 0, 8, 0)
+    7H02 C 0 A_FireCustomMissile("S_NegaMagmaBazooka2R", 0, 0, 8, 0)
+    7H02 CCBB 2 A_FireCustomMissile("S_NegaMagmaBazookaX", frandom(-10, 10), 0, 8, 0, 0, frandom(-10, 10))
+    7H02 AAAAA 1 A_FireCustomMissile("S_NegaMagmaBazookaX", frandom(-15, 15), 0, 8, 0, 0, frandom(-15, 15))
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_TripleBlade_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_SpawnItemEx("S_NegaTripleBladeWarper_H",0,0,28)
-7H02 CBAAAA 4
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_SpawnItemEx("S_NegaTripleBladeWarper_H2",0,0,28)
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mbuster","Weapon")
-7H02 C 0 A_SpawnItemEx("S_NegaTripleBladeWarper_H3",0,0,28)
-goto Fire3End
-}
+actor NegaShiny_TripleBlade_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_SpawnItemEx("S_NegaTripleBladeWarper_H", 0, 0, 28)
+    7H02 CBAAAA 4
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_SpawnItemEx("S_NegaTripleBladeWarper_H2", 0, 0, 28)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    7H02 C 0 A_SpawnItemEx("S_NegaTripleBladeWarper_H3", 0, 0, 28)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_IceWall_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 C 0 A_PlaySoundEx("weapon/mirrordeflect","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaIceWallPinpoint",0,0,8,0)
-7H02 CBAA 4
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mirrordeflect","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaIceWallPinpoint2",0,0,8,0)
-goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/mirrordeflect","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaIceWallPinpoint3",0,0,8,0)
-goto Fire3End
-}
+actor NegaShiny_IceWall_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 C 0 A_PlaySoundEx("weapon/mirrordeflect", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaIceWallPinpoint", 0, 0, 8, 0)
+    7H02 CBAA 4
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mirrordeflect", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaIceWallPinpoint2", 0, 0, 8, 0)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/mirrordeflect", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaIceWallPinpoint3", 0, 0, 8, 0)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_SparkChaser_W : NegaShinyHeldBase_W
-{
-States
-{
-Fire1:
-7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-7H02 A 0 A_PlaySoundEx("weapon/sparkchaser","Weapon")
-7H02 A 0 A_FireCustomMissile("S_NegaSparkChaser",0,0,8,0)
-7H02 CB 3
-7H02 A 14
-goto Ready2
-Fire2:
-7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/sparkchaser","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaSparkChaser2",0,0,8,0)
-Goto Fire2End
-Fire3:
-7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-7H02 C 0 A_PlaySoundEx("weapon/sparkchaser","Weapon")
-7H02 C 0 A_FireCustomMissile("S_NegaSparkChaser3",0,0,8,0)
-Goto Fire3End
-}
+actor NegaShiny_SparkChaser_W : NegaShinyHeldBase_W {
+  States {
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 A 0 A_PlaySoundEx("weapon/sparkchaser", "Weapon")
+    7H02 A 0 A_FireCustomMissile("S_NegaSparkChaser", 0, 0, 8, 0)
+    7H02 CB 3
+    7H02 A 14
+    goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/sparkchaser", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaSparkChaser2", 0, 0, 8, 0)
+    goto Fire2End
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_PlaySoundEx("weapon/sparkchaser", "Weapon")
+    7H02 C 0 A_FireCustomMissile("S_NegaSparkChaser3", 0, 0, 8, 0)
+    goto Fire3End
+  }
 }
 
-actor NegaShiny_SuperArm_W : NegaShinyHeldBase_W
-{
-States
-{
-// While carrying, Hold_P keeps A_WeaponReady(WRF_NOSECONDARY) alive, so a tap
-// reaches Fire: — dispatch the stored tier instead of re-entering the ladder.
-Fire:
-	7H02 A 0 A_JumpIfInventory("ZangiefHoldFlag",1,"SArmThrow")
-	7H02 A 0
-	goto Charge0
+actor NegaShiny_SuperArm_W : NegaShinyHeldBase_W {
+  States {
+    // While carrying, Hold_P keeps A_WeaponReady(WRF_NOSECONDARY) alive, so a tap
+    // reaches Fire: — dispatch the stored tier instead of re-entering the ladder.
+   Fire:
+    7H02 A 0 A_JumpIfInventory("ZangiefHoldFlag", 1, "SArmThrow")
+    7H02 A 0
+    goto Charge0
 
-Fire1:
-	7H02 A 0 A_TakeInventory("WeaponCharge", 999)
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
-	7H02 A 0 A_JumpIfInventory("ShieldCheck",1,"Nega4End")
-	7H02 A 0 A_PlaySoundEx("weapons/mm1/superarmload","Weapon")
-	7H02 A 1 A_FireCustomMissile("S_NegaSuperArmGrab",0,0,0,0,1,0)
-	7H02 A 1 A_JumpIfInventory("SuplexID",1,"SArmCarryStart")
-	7H02 A 1 A_JumpIfInventory("SuplexID",1,"SArmCarryStart")
-	7H02 A 1 A_JumpIfInventory("SuplexID",1,"SArmCarryStart")
-	7H02 A 1 A_JumpIfInventory("SuplexID",1,"SArmCarryStart")
-	7H02 A 1 A_JumpIfInventory("SuplexID",1,"SArmCarryStart")
-	goto Ready2
+   Fire1:
+    7H02 A 0 A_TakeInventory("WeaponCharge")
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
+    7H02 A 0 A_JumpIfInventory("ShieldCheck", 1, "Nega4End")
+    7H02 A 0 A_PlaySoundEx("weapons/mm1/superarmload", "Weapon")
+    7H02 A 1 A_FireCustomMissile("S_NegaSuperArmGrab", 0, 0, 0, 0, 1, 0)
+    7H02 A 1 A_JumpIfInventory("SuplexID", 1, "SArmCarryStart")
+    7H02 A 1 A_JumpIfInventory("SuplexID", 1, "SArmCarryStart")
+    7H02 A 1 A_JumpIfInventory("SuplexID", 1, "SArmCarryStart")
+    7H02 A 1 A_JumpIfInventory("SuplexID", 1, "SArmCarryStart")
+    7H02 A 1 A_JumpIfInventory("SuplexID", 1, "SArmCarryStart")
+    goto Ready2
 
-Fire2:
-	7H02 B 0 A_TakeInventory("WeaponCharge", 999)
-	7H02 B 0 A_TakeInventory("S_NegaSArmPow2")
-	7H02 B 0 A_TakeInventory("S_NegaSArmPow3")
-	7H02 B 0 A_GiveInventory("S_NegaSArmPow2",1)
-	7H02 C 0 A_PlaySoundEx("weapons/mm1/superarmload","Weapon")
-	7H02 C 1 A_FireCustomMissile("S_NegaSuperArmGrab",0,0,0,0,1,0)
-	7H02 C 1 A_JumpIfInventory("SuplexID",1,"SArmCarryStart")
-	7H02 C 1 A_JumpIfInventory("SuplexID",1,"SArmCarryStart")
-	7H02 C 1 A_JumpIfInventory("SuplexID",1,"SArmCarryStart")
-	7H02 C 1 A_JumpIfInventory("SuplexID",1,"SArmCarryStart")
-	7H02 C 1 A_JumpIfInventory("SuplexID",1,"SArmCarryStart")
-	goto Ready2
+   Fire2:
+    7H02 B 0 A_TakeInventory("WeaponCharge")
+    7H02 B 0 A_TakeInventory("S_NegaSArmPow2")
+    7H02 B 0 A_TakeInventory("S_NegaSArmPow3")
+    7H02 B 0 A_GiveInventory("S_NegaSArmPow2", 1)
+    7H02 C 0 A_PlaySoundEx("weapons/mm1/superarmload", "Weapon")
+    7H02 C 1 A_FireCustomMissile("S_NegaSuperArmGrab", 0, 0, 0, 0, 1, 0)
+    7H02 C 1 A_JumpIfInventory("SuplexID", 1, "SArmCarryStart")
+    7H02 C 1 A_JumpIfInventory("SuplexID", 1, "SArmCarryStart")
+    7H02 C 1 A_JumpIfInventory("SuplexID", 1, "SArmCarryStart")
+    7H02 C 1 A_JumpIfInventory("SuplexID", 1, "SArmCarryStart")
+    7H02 C 1 A_JumpIfInventory("SuplexID", 1, "SArmCarryStart")
+    goto Ready2
 
-Fire3:
-	7H02 C 0 A_TakeInventory("WeaponCharge", 999)
-	7H02 C 0 A_TakeInventory("S_NegaSArmPow2")
-	7H02 C 0 A_TakeInventory("S_NegaSArmPow3")
-	7H02 C 0 A_GiveInventory("S_NegaSArmPow3",1)
-	7H02 C 0 A_PlaySoundEx("weapons/mm1/superarmload","Weapon")
-	7H02 C 1 A_FireCustomMissile("S_NegaSuperArmGrab",0,0,0,0,1,0)
-	7H02 C 1 A_JumpIfInventory("SuplexID",1,"SArmCarryStart")
-	7H02 C 1 A_JumpIfInventory("SuplexID",1,"SArmCarryStart")
-	7H02 C 1 A_JumpIfInventory("SuplexID",1,"SArmCarryStart")
-	7H02 C 1 A_JumpIfInventory("SuplexID",1,"SArmCarryStart")
-	7H02 C 1 A_JumpIfInventory("SuplexID",1,"SArmCarryStart")
-	goto Ready2
+   Fire3:
+    7H02 C 0 A_TakeInventory("WeaponCharge")
+    7H02 C 0 A_TakeInventory("S_NegaSArmPow2")
+    7H02 C 0 A_TakeInventory("S_NegaSArmPow3")
+    7H02 C 0 A_GiveInventory("S_NegaSArmPow3", 1)
+    7H02 C 0 A_PlaySoundEx("weapons/mm1/superarmload", "Weapon")
+    7H02 C 1 A_FireCustomMissile("S_NegaSuperArmGrab", 0, 0, 0, 0, 1, 0)
+    7H02 C 1 A_JumpIfInventory("SuplexID", 1, "SArmCarryStart")
+    7H02 C 1 A_JumpIfInventory("SuplexID", 1, "SArmCarryStart")
+    7H02 C 1 A_JumpIfInventory("SuplexID", 1, "SArmCarryStart")
+    7H02 C 1 A_JumpIfInventory("SuplexID", 1, "SArmCarryStart")
+    7H02 C 1 A_JumpIfInventory("SuplexID", 1, "SArmCarryStart")
+    goto Ready2
 
-SArmCarryStart:
-	7H02 C 0 A_JumpIfInventory("PlayerPropertyRage", 1, "SArmCarryStartR")
-	7H02 C 1 A_GiveInventory("NegaSuperArmCarryStart_P")
-	// Same scoop/lift as NegaSuperArmWep (7H02 C = 6K02 R extended).
-	7H02 C 1 Offset(12, 28) A_JumpIf(CallACS("uh_ZangiefGrab", 340, angle*256/360, 100)==0, "SArmLost")
-	7H02 C 1 Offset(26, 13) A_JumpIf(CallACS("uh_ZangiefGrab", 335, angle*256/360, 98)==0, "SArmLost")
-	7H02 C 1 Offset(40, -8) A_JumpIf(CallACS("uh_ZangiefGrab", 330, angle*256/360, 96)==0, "SArmLost")
-	7H02 C 1 Offset(54, -32) A_JumpIf(CallACS("uh_ZangiefGrab", 320, angle*256/360, 90)==0, "SArmLost")
-	7H02 C 1 Offset(68, -56) A_JumpIf(CallACS("uh_ZangiefGrab", 310, angle*256/360, 84)==0, "SArmLost")
-	7H02 C 1 Offset(80, -78) A_JumpIf(CallACS("uh_ZangiefGrab", 300, angle*256/360, 76)==0, "SArmLost")
-	7H02 C 1 Offset(90, -96) A_JumpIf(CallACS("uh_ZangiefGrab", 285, angle*256/360, 70)==0, "SArmLost")
-	7H02 C 1 Offset(98, -110) A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle*256/360, 64)==0, "SArmLost")
-	TNT1 A 1 Offset(98, -110) A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle*256/360, 64)==0, "SArmLost")
-	goto SArmCarry
-SArmCarryStartR:
-	7H02 C 1 A_GiveInventory("NegaSuperArmCarryStart_P")
-	7H02 C 1 Offset(12, 28) A_JumpIf(CallACS("uh_ZangiefGrab", 340, angle*256/360, 100)==0, "SArmLost")
-	7H02 C 1 Offset(40, -8) A_JumpIf(CallACS("uh_ZangiefGrab", 330, angle*256/360, 96)==0, "SArmLost")
-	7H02 C 1 Offset(68, -56) A_JumpIf(CallACS("uh_ZangiefGrab", 310, angle*256/360, 84)==0, "SArmLost")
-	7H02 C 1 Offset(98, -110) A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle*256/360, 64)==0, "SArmLost")
-	TNT1 A 1 Offset(98, -110) A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle*256/360, 64)==0, "SArmLost")
-	goto SArmCarry
-SArmCarry:
-	// Hold_P calls A_WeaponReady, which resets psprite Offset — keep TNT1 here.
-	TNT1 A 0 A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle*256/360, 64)==0, "SArmLost")
-	TNT1 A 1 A_GiveInventory("NegaSuperArmHold_P")
-	loop
+   SArmCarryStart:
+    7H02 C 0 A_JumpIfInventory("PlayerPropertyRage", 1, "SArmCarryStartR")
+    7H02 C 1 A_GiveInventory("NegaSuperArmCarryStart_P")
+    // Same scoop/lift as NegaSuperArmWep (7H02 C = 6K02 R extended).
+    7H02 C 1 Offset(12, 28) A_JumpIf(CallACS("uh_ZangiefGrab", 340, angle * 256 / 360, 100) == 0, "SArmLost")
+    7H02 C 1 Offset(26, 13) A_JumpIf(CallACS("uh_ZangiefGrab", 335, angle * 256 / 360, 98) == 0, "SArmLost")
+    7H02 C 1 Offset(40, -8) A_JumpIf(CallACS("uh_ZangiefGrab", 330, angle * 256 / 360, 96) == 0, "SArmLost")
+    7H02 C 1 Offset(54, -32) A_JumpIf(CallACS("uh_ZangiefGrab", 320, angle * 256 / 360, 90) == 0, "SArmLost")
+    7H02 C 1 Offset(68, -56) A_JumpIf(CallACS("uh_ZangiefGrab", 310, angle * 256 / 360, 84) == 0, "SArmLost")
+    7H02 C 1 Offset(80, -78) A_JumpIf(CallACS("uh_ZangiefGrab", 300, angle * 256 / 360, 76) == 0, "SArmLost")
+    7H02 C 1 Offset(90, -96) A_JumpIf(CallACS("uh_ZangiefGrab", 285, angle * 256 / 360, 70) == 0, "SArmLost")
+    7H02 C 1 Offset(98, -110) A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle * 256 / 360, 64) == 0, "SArmLost")
+    TNT1 A 1 Offset(98, -110) A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle * 256 / 360, 64) == 0, "SArmLost")
+    goto SArmCarry
+   SArmCarryStartR:
+    7H02 C 1 A_GiveInventory("NegaSuperArmCarryStart_P")
+    7H02 C 1 Offset(12, 28) A_JumpIf(CallACS("uh_ZangiefGrab", 340, angle * 256 / 360, 100) == 0, "SArmLost")
+    7H02 C 1 Offset(40, -8) A_JumpIf(CallACS("uh_ZangiefGrab", 330, angle * 256 / 360, 96) == 0, "SArmLost")
+    7H02 C 1 Offset(68, -56) A_JumpIf(CallACS("uh_ZangiefGrab", 310, angle * 256 / 360, 84) == 0, "SArmLost")
+    7H02 C 1 Offset(98, -110) A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle * 256 / 360, 64) == 0, "SArmLost")
+    TNT1 A 1 Offset(98, -110) A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle * 256 / 360, 64) == 0, "SArmLost")
+    goto SArmCarry
+   SArmCarry:
+    // Hold_P calls A_WeaponReady, which resets psprite Offset — keep TNT1 here.
+    TNT1 A 0 A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle * 256 / 360, 64) == 0, "SArmLost")
+    TNT1 A 1 A_GiveInventory("NegaSuperArmHold_P")
+    loop
 
-SArmThrow:
-	7H02 C 0 A_TakeInventory("ZangiefHoldFlag")
-	// Shared wind-up; tier only picks which Throw_P fires mid-swing.
-	7H02 C 1 Offset(98, -110)
-	7H02 C 1 Offset(80, -90)
-	7H02 B 0 A_JumpIfInventory("S_NegaSArmPow3", 1, "SArmRelease3")
-	7H02 B 0 A_JumpIfInventory("S_NegaSArmPow2", 1, "SArmRelease2")
-	7H02 B 0 A_GiveInventory("S_NegaSuperArmThrow1_P")
-	goto SArmThrowSwing
-SArmRelease2:
-	7H02 B 0 A_GiveInventory("S_NegaSuperArmThrow2_P")
-	goto SArmThrowSwing
-SArmRelease3:
-	7H02 B 0 A_GiveInventory("S_NegaSuperArmThrow3_P")
-	goto SArmThrowSwing3
-SArmThrowSwing:
-	7H02 B 2 Offset(52, -46)
-	7H02 B 2 Offset(12, -12)
-	7H02 B 2 Offset(-42, 16)
-	7H02 A 2 Offset(-84, 48)
-	7H02 A 2 Offset(-112, 72)
-	7H02 A 2 Offset(-133, 96)
-	TNT1 A 10 A_WeaponReady(14)
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
-	7H02 A 0 A_GiveInventory("ZangiefResetFlags_P")
-	7H02 A 2 Offset(0, 72)
-	7H02 A 2 Offset(0, 52)
-	goto Ready2
-SArmThrowSwing3:
-	7H02 B 2 Offset(52, -46)
-	7H02 B 2 Offset(12, -12)
-	7H02 B 2 Offset(-42, 16)
-	7H02 A 2 Offset(-84, 48)
-	7H02 A 2 Offset(-112, 72)
-	7H02 A 2 Offset(-133, 96)
-	TNT1 A 10 A_WeaponReady(14)
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
-	7H02 A 0 A_GiveInventory("ZangiefResetFlags_P")
-	goto Fire3End
+   SArmThrow:
+    7H02 C 0 A_TakeInventory("ZangiefHoldFlag")
+    // Shared wind-up; tier only picks which Throw_P fires mid-swing.
+    7H02 C 1 Offset(98, -110)
+    7H02 C 1 Offset(80, -90)
+    7H02 B 0 A_JumpIfInventory("S_NegaSArmPow3", 1, "SArmRelease3")
+    7H02 B 0 A_JumpIfInventory("S_NegaSArmPow2", 1, "SArmRelease2")
+    7H02 B 0 A_GiveInventory("S_NegaSuperArmThrow1_P")
+    goto SArmThrowSwing
+   SArmRelease2:
+    7H02 B 0 A_GiveInventory("S_NegaSuperArmThrow2_P")
+    goto SArmThrowSwing
+   SArmRelease3:
+    7H02 B 0 A_GiveInventory("S_NegaSuperArmThrow3_P")
+    goto SArmThrowSwing3
+   SArmThrowSwing:
+    7H02 B 2 Offset(52, -46)
+    7H02 B 2 Offset(12, -12)
+    7H02 B 2 Offset(-42, 16)
+    7H02 A 2 Offset(-84, 48)
+    7H02 A 2 Offset(-112, 72)
+    7H02 A 2 Offset(-133, 96)
+    TNT1 A 10 A_WeaponReady(14)
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
+    7H02 A 0 A_GiveInventory("ZangiefResetFlags_P")
+    7H02 A 2 Offset(0, 72)
+    7H02 A 2 Offset(0, 52)
+    goto Ready2
+   SArmThrowSwing3:
+    7H02 B 2 Offset(52, -46)
+    7H02 B 2 Offset(12, -12)
+    7H02 B 2 Offset(-42, 16)
+    7H02 A 2 Offset(-84, 48)
+    7H02 A 2 Offset(-112, 72)
+    7H02 A 2 Offset(-133, 96)
+    TNT1 A 10 A_WeaponReady(14)
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
+    7H02 A 0 A_GiveInventory("ZangiefResetFlags_P")
+    goto Fire3End
 
-SArmLost:
-	7H02 A 0 A_GiveInventory("ZangiefResetFlags_P")
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
-	7H02 A 4
-	goto Ready2
+   SArmLost:
+    7H02 A 0 A_GiveInventory("ZangiefResetFlags_P")
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
+    7H02 A 4
+    goto Ready2
 
-Deselect:
-	7H02 A 0 A_JumpIfInventory("ZangiefHoldFlag",1,"SArmDeselectThrow")
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
-	goto DeselectSwap
-SArmDeselectThrow:
-	7H02 A 0 A_TakeInventory("ZangiefHoldFlag")
-	7H02 A 0 A_JumpIfInventory("S_NegaSArmPow3",1,"SArmDThrow3")
-	7H02 A 0 A_JumpIfInventory("S_NegaSArmPow2",1,"SArmDThrow2")
-	7H02 A 0 A_GiveInventory("S_NegaSuperArmThrow1_P")
-	7H02 A 2
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
-	7H02 A 0 A_GiveInventory("ZangiefResetFlags_P")
-	goto DeselectSwap
-SArmDThrow2:
-	7H02 A 0 A_GiveInventory("S_NegaSuperArmThrow2_P")
-	7H02 A 2
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
-	7H02 A 0 A_GiveInventory("ZangiefResetFlags_P")
-	goto DeselectSwap
-SArmDThrow3:
-	7H02 A 0 A_GiveInventory("S_NegaSuperArmThrow3_P")
-	7H02 A 2
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
-	7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
-	7H02 A 0 A_GiveInventory("ZangiefResetFlags_P")
-	goto DeselectSwap
-}
+   Deselect:
+    7H02 A 0 A_JumpIfInventory("ZangiefHoldFlag", 1, "SArmDeselectThrow")
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
+    goto DeselectSwap
+   SArmDeselectThrow:
+    7H02 A 0 A_TakeInventory("ZangiefHoldFlag")
+    7H02 A 0 A_JumpIfInventory("S_NegaSArmPow3", 1, "SArmDThrow3")
+    7H02 A 0 A_JumpIfInventory("S_NegaSArmPow2", 1, "SArmDThrow2")
+    7H02 A 0 A_GiveInventory("S_NegaSuperArmThrow1_P")
+    7H02 A 2
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
+    7H02 A 0 A_GiveInventory("ZangiefResetFlags_P")
+    goto DeselectSwap
+   SArmDThrow2:
+    7H02 A 0 A_GiveInventory("S_NegaSuperArmThrow2_P")
+    7H02 A 2
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
+    7H02 A 0 A_GiveInventory("ZangiefResetFlags_P")
+    goto DeselectSwap
+   SArmDThrow3:
+    7H02 A 0 A_GiveInventory("S_NegaSuperArmThrow3_P")
+    7H02 A 2
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow2")
+    7H02 A 0 A_TakeInventory("S_NegaSArmPow3")
+    7H02 A 0 A_GiveInventory("ZangiefResetFlags_P")
+    goto DeselectSwap
+  }
 }

@@ -6,137 +6,137 @@ int uh_cwregencount[64];
 int uh_cwregenlasttic[64];
 
 str uh_qwanttypeammo[18] = {
-	"NormalTypeAmmo",
-	"FireTypeAmmo",
-	"WaterTypeAmmo",
-	"ElectricTypeAmmo",
-	"GrassTypeAmmo",
-	"IceTypeAmmo",
-	"FightingTypeAmmo",
-	"PoisonTypeAmmo",
-	"GroundTypeAmmo",
-	"FlyingTypeAmmo",
-	"PsychicTypeAmmo",
-	"BugTypeAmmo",
-	"RockTypeAmmo",
-	"GhostTypeAmmo",
-	"DragonTypeAmmo",
-	"DarkTypeAmmo",
-	"SteelTypeAmmo",
-	"FairyTypeAmmo"
+  "NormalTypeAmmo",
+  "FireTypeAmmo",
+  "WaterTypeAmmo",
+  "ElectricTypeAmmo",
+  "GrassTypeAmmo",
+  "IceTypeAmmo",
+  "FightingTypeAmmo",
+  "PoisonTypeAmmo",
+  "GroundTypeAmmo",
+  "FlyingTypeAmmo",
+  "PsychicTypeAmmo",
+  "BugTypeAmmo",
+  "RockTypeAmmo",
+  "GhostTypeAmmo",
+  "DragonTypeAmmo",
+  "DarkTypeAmmo",
+  "SteelTypeAmmo",
+  "FairyTypeAmmo"
 };
 
 function void UH_CopyWepGiveRatio(str ammo) {
-	int give;
-	if (StrCmp(ammo, "") == 0)
-		return;
-	give = GetAmmoCapacity(ammo) / UH_COPYWEP_REGEN_BASE;
-	if (give < 1)
-		give = 1;
-	GiveInventory(ammo, give);
+  int give;
+  if (StrCmp(ammo, "") == 0)
+    return;
+  give = GetAmmoCapacity(ammo) / UH_COPYWEP_REGEN_BASE;
+  if (give < 1)
+    give = 1;
+  GiveInventory(ammo, give);
 }
 
 function str UH_CopyWepNegaAmmo(int slot) {
-	switch (slot) {
-		case 1: return "NegaMM1_Ammo";
-		case 2: return "NegaMM2_Ammo";
-		case 3: return "NegaMM3_Ammo";
-		case 4: return "NegaMM4_Ammo";
-		case 5: return "NegaMM5_Ammo";
-		case 6: return "NegaMM6_Ammo";
-		case 7: return "NegaMM7_Ammo";
-		case 8: return "NegaMM8_Ammo";
-		case 9: return "NegaMM9_Ammo";
-		case 10: return "NegaMM10_Ammo";
-		case 11: return "NegaMM11_Ammo";
-		case 12: return "NegaMMB_Ammo";
-		case 13: return "NegaMMK_Ammo";
-		case 14: return "NegaMMV_Ammo";
-		case 15: return "NegaMMWT_Ammo";
-	}
-	return "";
+  switch (slot) {
+    case 1: return "NegaMM1_Ammo";
+    case 2: return "NegaMM2_Ammo";
+    case 3: return "NegaMM3_Ammo";
+    case 4: return "NegaMM4_Ammo";
+    case 5: return "NegaMM5_Ammo";
+    case 6: return "NegaMM6_Ammo";
+    case 7: return "NegaMM7_Ammo";
+    case 8: return "NegaMM8_Ammo";
+    case 9: return "NegaMM9_Ammo";
+    case 10: return "NegaMM10_Ammo";
+    case 11: return "NegaMM11_Ammo";
+    case 12: return "NegaMMB_Ammo";
+    case 13: return "NegaMMK_Ammo";
+    case 14: return "NegaMMV_Ammo";
+    case 15: return "NegaMMWT_Ammo";
+  }
+  return "";
 }
 
 // immediate: 1 = one Ready pulse (8-tic DECORATE loops). 0 = MegaManU 1-tic gate.
 script "uh_CopyWepReadyRegen" (int immediate) {
-	int pn = PlayerNumber();
-	int len;
-	int t;
-	int row;
-	int kind;
-	int slot;
-	int skip;
-	str wep;
-	str ammo;
+  int pn = PlayerNumber();
+  int len;
+  int t;
+  int row;
+  int kind;
+  int slot;
+  int skip;
+  str wep;
+  str ammo;
 
-	if (pn < 0) {
-		SetResultValue(0);
-		terminate;
-	}
+  if (pn < 0) {
+    SetResultValue(0);
+    terminate;
+  }
 
-	wep = GetWeapon();
-	len = StrLen(wep);
+  wep = GetWeapon();
+  len = StrLen(wep);
 
-	if (!immediate) {
-		t = Timer();
-		if (uh_cwregenlasttic[pn] != t - 1)
-			uh_cwregencount[pn] = 0;
-		uh_cwregenlasttic[pn] = t;
+  if (!immediate) {
+    t = Timer();
+    if (uh_cwregenlasttic[pn] != t - 1)
+      uh_cwregencount[pn] = 0;
+    uh_cwregenlasttic[pn] = t;
 
-		uh_cwregencount[pn]++;
-		if (uh_cwregencount[pn] < UH_COPYWEP_REGEN_PULSES) {
-			SetResultValue(0);
-			terminate;
-		}
-		uh_cwregencount[pn] = 0;
-	}
+    uh_cwregencount[pn]++;
+    if (uh_cwregencount[pn] < UH_COPYWEP_REGEN_PULSES) {
+      SetResultValue(0);
+      terminate;
+    }
+    uh_cwregencount[pn] = 0;
+  }
 
-	if (len >= 4 && StrCmp(StrRight(wep, 4), "WepU") == 0) {
-		ammo = StrParam(s:StrLeft(wep, len - 4), s:"Ammo");
-		UH_CopyWepGiveRatio(ammo);
-		SetResultValue(1);
-		terminate;
-	}
+  if (len >= 4 && StrCmp(StrRight(wep, 4), "WepU") == 0) {
+    ammo = StrParam(s:StrLeft(wep, len - 4), s:"Ammo");
+    UH_CopyWepGiveRatio(ammo);
+    SetResultValue(1);
+    terminate;
+  }
 
-	row = FindCopyWepByActor(wep);
-	if (row < 0) {
-		SetResultValue(0);
-		terminate;
-	}
+  row = FindCopyWepByActor(wep);
+  if (row < 0) {
+    SetResultValue(0);
+    terminate;
+  }
 
-	kind = GetCopyWepKind(row);
-	slot = GetCopyWepSlot(row);
-	skip = GetCopyWepRegenFlags(row) & UHCOPY_REGEN_SKIP_ENERGY;
+  kind = GetCopyWepKind(row);
+  slot = GetCopyWepSlot(row);
+  skip = GetCopyWepRegenFlags(row) & UHCOPY_REGEN_SKIP_ENERGY;
 
-	if (kind == UHCOPY_QWANT) {
-		if (!skip && slot >= 0 && slot < 18)
-			UH_CopyWepGiveRatio(uh_qwanttypeammo[slot]);
-		GiveInventory("MoveRelearnAmmo", 1);
-		SetResultValue(1);
-		terminate;
-	}
+  if (kind == UHCOPY_QWANT) {
+    if (!skip && slot >= 0 && slot < 18)
+      UH_CopyWepGiveRatio(uh_qwanttypeammo[slot]);
+    GiveInventory("MoveRelearnAmmo", 1);
+    SetResultValue(1);
+    terminate;
+  }
 
-	if (kind == UHCOPY_NEGA) {
-		if (!skip)
-			UH_CopyWepGiveRatio(UH_CopyWepNegaAmmo(slot));
-		SetResultValue(1);
-		terminate;
-	}
+  if (kind == UHCOPY_NEGA) {
+    if (!skip)
+      UH_CopyWepGiveRatio(UH_CopyWepNegaAmmo(slot));
+    SetResultValue(1);
+    terminate;
+  }
 
-	SetResultValue(0);
+  SetResultValue(0);
 }
 
 script "uh_MegaManUNoAmmo" (void) {
-	if (PlayerIsBot(PlayerNumber())) {
-		str wep = GetWeapon();
-		int len = StrLen(wep);
-		str ammo = "BusterAmmo";
-		if (len >= 4 && StrCmp(StrRight(wep, 4), "WepU") == 0)
-			ammo = StrParam(s:StrLeft(wep, len - 4), s:"Ammo");
+  if (PlayerIsBot(PlayerNumber())) {
+    str wep = GetWeapon();
+    int len = StrLen(wep);
+    str ammo = "BusterAmmo";
+    if (len >= 4 && StrCmp(StrRight(wep, 4), "WepU") == 0)
+      ammo = StrParam(s:StrLeft(wep, len - 4), s:"Ammo");
 
-		ACS_NamedExecuteWithResult("core_freezeplayer", 0, 1);
-		GiveInventory(ammo, GetAmmoCapacity(ammo));
-		Delay(15);
-		ACS_NamedExecuteWithResult("core_freezeplayer", 0, 0);
-	}
+    ACS_NamedExecuteWithResult("core_freezeplayer", 0, 1);
+    GiveInventory(ammo, GetAmmoCapacity(ammo));
+    Delay(15);
+    ACS_NamedExecuteWithResult("core_freezeplayer", 0, 0);
+  }
 }

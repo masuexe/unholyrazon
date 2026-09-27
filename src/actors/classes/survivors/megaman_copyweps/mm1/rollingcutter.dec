@@ -1,181 +1,168 @@
-actor RollingCutterWepU_MegaManUBar : MegaManUBar { Args 4, 94 }
-actor RollingCutterWepU : BaseMegaManUWep replaces RollingCutterWep
-{
-Weapon.AmmoUse 4
-Weapon.AmmoGive 28
-Weapon.SlotNumber 4
-Inventory.Pickupmessage "$PU_ROLLINGCUTTER"
-Obituary "$OB_ROLLINGCUTTER"
-Tag "$TAG_ROLLINGCUTTER"
-weapon.ammotype "RollingCutterAmmo"
-inventory.icon "RCUTSI"
-States
-{
-SpawnLoop:
-WEA2 F -1
-loop
-Ready:
-BUSH S 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_ROLLINGCUTTER)
-BUSH S 0 A_JumpIfNoAmmo("ReadyNoAmmo")
-BUSH S 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen")
-BUSH S 1 A_WeaponReady
-Goto Ready+1
-ReadyNoAmmo:
-BUS2 B 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen")
-BUS2 B 1 A_WeaponReady(WRF_NOFIRE)
-BUS2 B 0 A_JumpIfNoAmmo("ReadyNoAmmo")
-Goto Ready+1
-Deselect:
-BUSH S 0 A_GunFlash("ReturnWaitEnd")
-goto DeselectSwap
-Select:
-BUSH S 0
-goto DeselectSwap
+actor RollingCutterWepU_MegaManUBar : MegaManUBar {Args 4, 94}
+actor RollingCutterWepU : BaseMegaManUWep replaces RollingCutterWep {
+  Weapon.AmmoUse 4
+  Weapon.AmmoGive 28
+  Weapon.SlotNumber 4
+  Inventory.Pickupmessage "$PU_ROLLINGCUTTER"
+  Obituary "$OB_ROLLINGCUTTER"
+  Tag "$TAG_ROLLINGCUTTER"
+  Weapon.AmmoType "RollingCutterAmmo"
+  Inventory.Icon "RCUTSI"
+  States {
+   SpawnLoop:
+    WEA2 F -1
+    loop
+   Ready:
+    BUSH S 0 ACS_NamedExecuteWithResult("core_weaponcolor", CLR_ROLLINGCUTTER)
+    BUSH S 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+    BUSH S 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen")
+    BUSH S 1 A_WeaponReady
+    Goto Ready+1
+   ReadyNoAmmo:
+    BUS2 B 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen")
+    BUS2 B 1 A_WeaponReady(WRF_NOFIRE)
+    BUS2 B 0 A_JumpIfNoAmmo("ReadyNoAmmo")
+    Goto Ready+1
+   Deselect:
+    BUSH S 0 A_GunFlash("ReturnWaitEnd")
+    goto DeselectSwap
+   Select:
+    BUSH S 0
+    goto DeselectSwap
 
-ReturnWait:
-TNT1 A 70 A_TakeInventory("RollingCutterFlag")
-ReturnWaitEnd:
-TNT1 A 0 A_GiveInventory("RollingCutterFlag")
-stop
+   ReturnWait:
+    TNT1 A 70 A_TakeInventory("RollingCutterFlag")
+   ReturnWaitEnd:
+    TNT1 A 0 A_GiveInventory("RollingCutterFlag")
+    stop
 
-Fire:
-BUSH S 0 A_JumpIfNoAmmo("NoAmmo")
-BUSH T 0 A_GiveInventory("DespawnOldCutter")
-TNT1 A 0 A_GunFlash("ReturnWait")
-BUSH T 2 A_FireCustomMissile("RollingCutterU",0,1,8,0)
-BUSH T 0 A_TakeInventory("DespawnOldCutter")
-BUSH UVWXY 2
-Check:
-TNT1 A 1 A_RailWait
-TNT1 A 0 A_JumpIfInventory("RollingCutterFlag",1,"Return")
-loop
-Return:
-TNT1 A 0 A_GunFlash("ReturnWaitEnd")
-TNT1 A 0 A_JumpIfNoAmmo("NoAmmoReturn")
-BUSH Z 2
-BUS2 A 2
-BUSH S 0 A_Refire
-Goto Ready+1
-NoAmmoReturn:
-BUS2 EF 2
-Goto ReadyNoAmmo
-NoAmmo:
-BUS2 B 0 ACS_NamedExecuteAlways("uh_MegaManUNoAmmo",0)
-Goto ReadyNoAmmo
-}
+   Fire:
+    BUSH S 0 A_JumpIfNoAmmo("NoAmmo")
+    BUSH T 0 A_GiveInventory("DespawnOldCutter")
+    TNT1 A 0 A_GunFlash("ReturnWait")
+    BUSH T 2 A_FireCustomMissile("RollingCutterU", 0, 1, 8, 0)
+    BUSH T 0 A_TakeInventory("DespawnOldCutter")
+    BUSH UVWXY 2
+   Check:
+    TNT1 A 1 A_RailWait
+    TNT1 A 0 A_JumpIfInventory("RollingCutterFlag", 1, "Return")
+    loop
+   Return:
+    TNT1 A 0 A_GunFlash("ReturnWaitEnd")
+    TNT1 A 0 A_JumpIfNoAmmo("NoAmmoReturn")
+    BUSH Z 2
+    BUS2 A 2
+    BUSH S 0 A_ReFire
+    Goto Ready+1
+   NoAmmoReturn:
+    BUS2 EF 2
+    Goto ReadyNoAmmo
+   NoAmmo:
+    BUS2 B 0 ACS_NamedExecuteAlways("uh_MegaManUNoAmmo", 0)
+    Goto ReadyNoAmmo
+  }
 }
 
 
-actor RollingCutterBaseU : RollingCutterBase
-{
-damage (CallACS("uh_TodayDmgMul", 150))
+actor RollingCutterBaseU : RollingCutterBase {
+  Damage (CallACS("uh_TodayDmgMul", 150))
 }
 
-actor RollingCutterU : RollingCutterBaseU
-{
-+DOOMBOUNCE
-+SKYEXPLODE
-bouncefactor 1.0
-wallbouncefactor 1.0
-+HITTRACER
-States
-{
-Spawn:
-RCUT A 0
-RCUT A 0 A_PlaySound("weapons/mm1/rollingcutterfly")
-RCUT AAAABBBBCCCCDDDD 1 A_GiveInventory("BouncerReflectedCheck")
-RCUT A 0 A_PlaySound("weapons/mm1/rollingcutterfly")
-RCUT AAAABBBB 1 A_GiveInventory("BouncerReflectedCheck")
-SpawnEnd:
-TNT1 A 0 A_GiveInventory("BouncerReflectedCheck")
-TNT1 A 0 A_SpawnItemEx("ReturningCutterMasterU")
-stop
-Death:
-"----" A 4 A_PlaySound("misc/tink")
-goto SpawnEnd
-}
+actor RollingCutterU : RollingCutterBaseU {
+  +DOOMBOUNCE
+  +SKYEXPLODE
+  BounceFactor 1.0
+  WallBounceFactor 1.0
+  +HITTRACER
+  States {
+   Spawn:
+    RCUT A 0
+    RCUT A 0 A_PlaySound("weapons/mm1/rollingcutterfly")
+    RCUT AAAABBBBCCCCDDDD 1 A_GiveInventory("BouncerReflectedCheck")
+    RCUT A 0 A_PlaySound("weapons/mm1/rollingcutterfly")
+    RCUT AAAABBBB 1 A_GiveInventory("BouncerReflectedCheck")
+   SpawnEnd:
+    TNT1 A 0 A_GiveInventory("BouncerReflectedCheck")
+    TNT1 A 0 A_SpawnItemEx("ReturningCutterMasterU")
+    stop
+   Death:
+    "----" A 4 A_PlaySound("misc/tink")
+    goto SpawnEnd
+  }
 }
 
-actor ReturningCutterMasterU : RollingCutterBaseU
-{
-+NOCLIP
-+NOINTERACTION
-reactiontime 350
-states
-{
-Spawn:
-TNT1 A 0
-TNT1 A 0 A_SpawnItemEx("ReturningCutterU",0,0,0,0,0,0,0,0,0,CallACS("core_NewUniqueTID"))
-TNT1 A 0 ACS_NamedExecuteWithResult("core_setTIDsPointerToThis",CallACS("core_CurrentUniqueTID"),AAPTR_MASTER)
-TNT1 A 0 ACS_NamedExecuteWithResult("core_ClearUniqueTID",0)
-RCUT CCCCDDDD 1 A_GiveInventory("ReturningCutterMasterFunc")
-SpawnLoop:
-RCUT A 0 A_PlaySound("weapons/mm1/rollingcutterfly")
-RCUT AAAABBBBCCCCDDDD 1 A_GiveInventory("ReturningCutterMasterFunc")
-loop
-Death:
-TNT1 A 0 A_RemoveChildren(true)
-stop
-}
+actor ReturningCutterMasterU : RollingCutterBaseU {
+  +NOCLIP
+  +NOINTERACTION
+  ReactionTime 350
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SpawnItemEx("ReturningCutterU", 0, 0, 0, 0, 0, 0, 0, 0, 0, CallACS("core_NewUniqueTID"))
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_setTIDsPointerToThis", CallACS("core_CurrentUniqueTID"), AAPTR_MASTER)
+    TNT1 A 0 ACS_NamedExecuteWithResult("core_ClearUniqueTID", 0)
+    RCUT CCCCDDDD 1 A_GiveInventory("ReturningCutterMasterFunc")
+   SpawnLoop:
+    RCUT A 0 A_PlaySound("weapons/mm1/rollingcutterfly")
+    RCUT AAAABBBBCCCCDDDD 1 A_GiveInventory("ReturningCutterMasterFunc")
+    loop
+   Death:
+    TNT1 A 0 A_RemoveChildren(true)
+    stop
+  }
 }
 
 
-actor ReturningCutterU : RollingCutterBaseU
-{
-+INVISIBLE
-var int user_NoTranslation;
-states
-{
-Spawn:
-TNT1 A 0
-Spawn2:
-BUST A 1 A_GiveInventory("ReturningCutterFuncU")
-loop
-Death:
-TNT1 A 0 A_SpawnItemEx("ReturningCutter2U",0,0,0,0,0,0,0,SXF_TRANSFERPOINTERS)
-stop
-}
+actor ReturningCutterU : RollingCutterBaseU {
+  +INVISIBLE
+  var int user_NoTranslation;
+  States {
+   Spawn:
+    TNT1 A 0
+   Spawn2:
+    BUST A 1 A_GiveInventory("ReturningCutterFuncU")
+    loop
+   Death:
+    TNT1 A 0 A_SpawnItemEx("ReturningCutter2U", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
+    stop
+  }
 }
 
-actor ReturningCutter2U : ReturningCutterU
-{
-+NOCLIP
-+NOINTERACTION
-states
-{
-Spawn:
-TNT1 A 0
-Spawn2:
-BUST A 1 A_GiveInventory("ReturningCutterFuncU")
-TNT1 A 0 A_SpawnItemEx("ReturningCutterU",0,0,0,0,0,0,0,SXF_TRANSFERPOINTERS)
-stop
-Death:
-TNT1 A 0
-stop
-}
+actor ReturningCutter2U : ReturningCutterU {
+  +NOCLIP
+  +NOINTERACTION
+  States {
+   Spawn:
+    TNT1 A 0
+   Spawn2:
+    BUST A 1 A_GiveInventory("ReturningCutterFuncU")
+    TNT1 A 0 A_SpawnItemEx("ReturningCutterU", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
+    stop
+   Death:
+    TNT1 A 0
+    stop
+  }
 }
 
 // Stolen from Trolling Super Tower 2 lol
-actor ReturningCutterFuncU : CustomInventory
-{
-states
-{
-Pickup:
-TNT1 A 0 A_GiveToTarget("AliveCheck",1)
-TNT1 A 0 A_JumpIfInTargetInventory("AliveCheckFlag",1,"Pickup2")
-RemoveThis:
-TNT1 A 0 A_RemoveMaster
-TNT1 A 0 Thing_Remove(0)
-stop
-Pickup2:
-TNT1 A 0 A_JumpIfInTargetInventory("DespawnOldCutter",1,"RemoveThis")
-TNT1 A 0 A_JumpIfCloser(60,"Returned")
-TNT1 A 0 A_GiveInventory("HeadTowardsTarget_Arg0")
-TNT1 A 0 A_GiveInventory("WarpMasterHere")
-stop
-Returned:
-TNT1 A 0 A_Explode(CallACS("uh_TodayDmgMul", 150),72,XF_HURTSOURCE,0,72)
-TNT1 A 0 A_GiveToTarget("RollingCutterFlag",1)
-goto RemoveThis
-}
+actor ReturningCutterFuncU : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_GiveToTarget("AliveCheck", 1)
+    TNT1 A 0 A_JumpIfInTargetInventory("AliveCheckFlag", 1, "Pickup2")
+   RemoveThis:
+    TNT1 A 0 A_RemoveMaster
+    TNT1 A 0 Thing_Remove(0)
+    stop
+   Pickup2:
+    TNT1 A 0 A_JumpIfInTargetInventory("DespawnOldCutter", 1, "RemoveThis")
+    TNT1 A 0 A_JumpIfCloser(60, "Returned")
+    TNT1 A 0 A_GiveInventory("HeadTowardsTarget_Arg0")
+    TNT1 A 0 A_GiveInventory("WarpMasterHere")
+    stop
+   Returned:
+    TNT1 A 0 A_Explode(CallACS("uh_TodayDmgMul", 150), 72, XF_HURTSOURCE, 0, 72)
+    TNT1 A 0 A_GiveToTarget("RollingCutterFlag", 1)
+    goto RemoveThis
+  }
 }

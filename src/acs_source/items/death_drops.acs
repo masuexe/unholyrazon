@@ -2,66 +2,66 @@
 // instead of the hardcoded fullItemList. DropItem spawns a pickup; Take clears
 // inventory. Coins become one money bag (lossy, same brackets as razon3).
 function str GetMoneyBagType(int credit) {
-	int n;
+  int n;
 
-	if (credit <= 0)
-		return "";
-	if (credit == 9999)
-		return "DLCMoneyBag9999";
-	if (credit >= 1000) {
-		n = credit / 1000;
-		if (n > 9)
-			n = 9;
-		return StrParam(s:"DLCMoneyBag", i:n * 1000);
-	}
-	if (credit >= 100)
-		return StrParam(s:"DLCMoneyBag", i:(credit / 100) * 100);
-	return "DLCMoneyBag";
+  if (credit <= 0)
+    return "";
+  if (credit == 9999)
+    return "DLCMoneyBag9999";
+  if (credit >= 1000) {
+    n = credit / 1000;
+    if (n > 9)
+      n = 9;
+    return StrParam(s:"DLCMoneyBag", i:n * 1000);
+  }
+  if (credit >= 100)
+    return StrParam(s:"DLCMoneyBag", i:(credit / 100) * 100);
+  return "DLCMoneyBag";
 }
 
 // Shared by real inventory and the server's leave-game snapshot.
 function void DropUnholyActorAmount(int source, str actor, int count) {
-	if (count <= 0 || StrCmp(actor, "") == 0)
-		return;
-	if (StrICmp(actor, "DLC_CoinItem") == 0) {
-		str bag = GetMoneyBagType(count);
-		if (StrCmp(bag, "") != 0)
-			DropItem(source, bag, 1);
-		return;
-	}
-	DropItem(source, actor, count);
+  if (count <= 0 || StrCmp(actor, "") == 0)
+    return;
+  if (StrICmp(actor, "DLC_CoinItem") == 0) {
+    str bag = GetMoneyBagType(count);
+    if (StrCmp(bag, "") != 0)
+      DropItem(source, bag, 1);
+    return;
+  }
+  DropItem(source, actor, count);
 }
 
 function void TakeAndDropUnholyActor(str actor) {
-	int count;
-	if (StrCmp(actor, "") == 0)
-		return;
-	count = CheckInventory(actor);
-	if (count <= 0)
-		return;
-	DropUnholyActorAmount(0, actor, count);
-	TakeInventory(actor, count);
+  int count;
+  if (StrCmp(actor, "") == 0)
+    return;
+  count = CheckInventory(actor);
+  if (count <= 0)
+    return;
+  DropUnholyActorAmount(0, actor, count);
+  TakeInventory(actor, count);
 }
 
 script "UH_DropItemsOnDeath" (void) {
-	int id;
-	int i;
-	int treasure;
+  int id;
+  int i;
+  int treasure;
 
-	for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
-		if (!IsItemDefined(id))
-			continue;
-		TakeAndDropUnholyActor(GetItemActor(id));
-	}
-	for (i = 0; i < uh_itemcustomcount; i++)
-		if (IsItemDefined(-1 - i))
-			TakeAndDropUnholyActor(GetItemActor(-1 - i));
+  for (id = 0; id < UH_MAX_VANILLA_ITEM; id++) {
+    if (!IsItemDefined(id))
+      continue;
+    TakeAndDropUnholyActor(GetItemActor(id));
+  }
+  for (i = 0; i < uh_itemcustomcount; i++)
+    if (IsItemDefined(-1 - i))
+      TakeAndDropUnholyActor(GetItemActor(-1 - i));
 
-	// Not a DefineUnholyItem — Unholy_GeneralDeath dropped these one-for-one.
-	treasure = CheckInventory("GauntletTreasure_F");
-	if (treasure > 0) {
-		for (i = 0; i < treasure; i++)
-			DropItem(0, "GauntletTreasure_P", 1);
-		TakeInventory("GauntletTreasure_F", treasure);
-	}
+  // Not a DefineUnholyItem — Unholy_GeneralDeath dropped these one-for-one.
+  treasure = CheckInventory("GauntletTreasure_F");
+  if (treasure > 0) {
+    for (i = 0; i < treasure; i++)
+      DropItem(0, "GauntletTreasure_P", 1);
+    TakeInventory("GauntletTreasure_F", treasure);
+  }
 }

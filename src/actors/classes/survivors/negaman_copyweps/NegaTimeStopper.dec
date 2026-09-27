@@ -7,8 +7,8 @@ actor NegaTimeStopperWep : BaseNegaManWep {
   Inventory.Pickupmessage "$PU_02_MM2"
   Obituary "$OB_TIMESTOPPER"
   Tag "$TAG_NegaMan_W2f"
-  weapon.ammotype "NegaMM2_Ammo"
-  inventory.icon "NEG_FLAS"
+  Weapon.AmmoType "NegaMM2_Ammo"
+  Inventory.Icon "NEG_FLAS"
   States {
    Spawn:
     6N02 C 0
@@ -28,16 +28,16 @@ actor NegaTimeStopperWep : BaseNegaManWep {
     6H02 G 0 A_JumpIfNoAmmo("NoAmmo")  // static full-slot (28) gate, not the daily cost
     6H02 G 8 A_WeaponReady
     6H02 G 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
-    Goto Ready+3
+    goto Ready+3
    Ready2:
     6H02 G 2 A_WeaponReady
     6H02 G 0 A_JumpIfInventory("NegaMM2_Flag", 1, "Ready2")
-    Goto ReadyX
+    goto ReadyX
    ReadyNoAmmo:
     6H02 G 8 A_WeaponReady(4)
     6H02 G 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
     6H02 G 0 A_JumpIfNoAmmo("ReadyNoAmmo")  // static full-slot (28) gate, not the daily cost
-    Goto Ready+2
+    goto Ready+2
 
    Fire:
     6H02 G 0 A_JumpIfInventory("NegaMM2_Flag", 1, "Fire2")
@@ -47,16 +47,16 @@ actor NegaTimeStopperWep : BaseNegaManWep {
     6H02 H 0 A_GiveInventory("NegaMM2_Flag", 1)
     6H02 HI 3
     6H02 G 3 A_JumpIfInventory("IsBot", 1, "BotFireH")
-    6H02 G 0 A_Refire("FireH")
-    Goto ReadyX
+    6H02 G 0 A_ReFire("FireH")
+    goto ReadyX
    FireH:
     6H02 G 1 A_RailWait
-    6H02 G 0 A_Refire("FireH")
-    Goto ReadyX
+    6H02 G 0 A_ReFire("FireH")
+    goto ReadyX
    BotFireH:
     6H02 G 1 A_Jump(8, "Fire2")
-    6H02 G 0 A_Refire("BotFireH")
-    Goto ReadyX
+    6H02 G 0 A_ReFire("BotFireH")
+    goto ReadyX
 
    Fire2:
     6H02 G 0
@@ -65,7 +65,7 @@ actor NegaTimeStopperWep : BaseNegaManWep {
     6H02 H 0 A_GiveInventory("Nudge")
     6H02 H 0 A_GiveInventory("NegaMM2_Flag", 1)
     6H02 H 0 A_SpawnItemEx("NegaTimeStopBoom", 0, 0, 28, 0, 0, 0, 0, 1)
-    6H02 H 0 Thing_Move(tid, tid+4400, 1)
+    6H02 H 0 Thing_Move(tid, tid + 4400, 1)
     // 6H02 H 0 A_SpawnItemEx("ResolidifyPlayer_H")
     6H02 HIG 3
     goto ReadyX
@@ -73,17 +73,17 @@ actor NegaTimeStopperWep : BaseNegaManWep {
 
    NoAmmo:
     6H02 G 1 A_JumpIfInventory("IsBot", 1, "NoAmmo_B")
-    Goto ReadyNoAmmo
+    goto ReadyNoAmmo
    BotAmmo:
     6H02 G 0 A_GiveInventory("NegaMM2_Ammo", 28)
-    Goto ReadyX
+    goto ReadyX
   }
 }
 
-actor NegaMM2_Flag : Inventory {inventory.amount 1 inventory.maxamount 2}
+actor NegaMM2_Flag : Inventory {Inventory.MaxAmount 2}
 
 actor NegaTimeStopBoom : BasicExplosion {
-  damagetype "NegaTimeSlow"
+  DamageType "NegaTimeSlow"
   Obituary "$OB_TIMESTOPPER"
   Args 100, 256, 64
   States {
@@ -91,7 +91,7 @@ actor NegaTimeStopBoom : BasicExplosion {
     TNT1 A 0
     TNT1 A 0 A_PlaySoundEx("wep_L/mm2/timestopperfire", "Weapon")
     TNT1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA 0 A_SpawnItemEx("FlashM_SparkleFX_Base", random(-256, 256), random(-256, 256), random(-256, 256), 0, 0, 0, 0, 129)
-    TNT1 A 4 A_Explode(Args[0]*(1+CallACS("uh_checkrune", RUNE_SPREAD, 2)*2), Args[1], 0, 0, Args[2])  // 155
+    TNT1 A 4 A_Explode(args[0] * (1 + CallACS("uh_checkrune", RUNE_SPREAD, 2) * 2), args[1], 0, 0, args[2])  // 155
     stop
   }
 }
@@ -99,7 +99,7 @@ actor NegaTimeStopBoom : BasicExplosion {
 actor NegaTimeStopMarker : BasicNoClassTranslationExplosion {
   var int user_cost1;
   var int user_cost10;
-  damagetype "NegaTimeSlow"  // TimeStopper
+  DamageType "NegaTimeSlow"  // TimeStopper
   Obituary "$OB_TIMESTOPPER"
   RenderStyle "Translucent"
   Alpha 0.5
@@ -109,8 +109,8 @@ actor NegaTimeStopMarker : BasicNoClassTranslationExplosion {
     EMEG G 0
     EMEG G 0 A_SetUserVar("user_cost1", CallACS("uh_NegaAmmoCost", 1, AAPTR_TARGET))
     EMEG G 0 A_SetUserVar("user_cost10", CallACS("uh_NegaAmmoCost", 10, AAPTR_TARGET))
-    EMEG G 0 Thing_Remove(CallACS("core_getptrtid", AAPTR_TARGET)+4400)
-    EMEG G 1 Thing_ChangeTID(0, CallACS("core_getptrtid", AAPTR_TARGET)+4400)
+    EMEG G 0 Thing_Remove(CallACS("core_getptrtid", AAPTR_TARGET) + 4400)
+    EMEG G 1 Thing_ChangeTID(0, CallACS("core_getptrtid", AAPTR_TARGET) + 4400)
     goto Spawn2
    Spawn2:
     EMEG G 0 A_JumpIf(!CallACS("uh_NegaTrySpendExact", 2, user_cost1, 2, AAPTR_TARGET), "Death")
@@ -138,15 +138,15 @@ actor NegaTimeStopMarker : BasicNoClassTranslationExplosion {
   }
 }
 
-/// //////////////////////////
-// == Shiny ==//
-/// //////////////////////////
+/////////////////
+// == Shiny == //
+/////////////////
 
-Actor S_NegaTimeStopper : BasicProjectile {
+actor S_NegaTimeStopper : BasicProjectile {
   Obituary "%o no longer felt the world thanks to %k."
   +DONTBLAST
   +THRUGHOST
-  Damagetype "NegaTimeSlow2"
+  DamageType "NegaTimeSlow2"
   Damage (25)
   Radius 8
   Height 8
@@ -164,7 +164,7 @@ Actor S_NegaTimeStopper : BasicProjectile {
   }
 }
 
-Actor S_NegaTimeStopper2 : S_NegaTimeStopper {
+actor S_NegaTimeStopper2 : S_NegaTimeStopper {
   Damage (85)
   Radius 12
   Height 12
@@ -179,7 +179,7 @@ Actor S_NegaTimeStopper2 : S_NegaTimeStopper {
   }
 }
 
-Actor S_NegaTimeStopper3 : S_NegaTimeStopper {
+actor S_NegaTimeStopper3 : S_NegaTimeStopper {
   Damage (150)
   Radius 14
   Height 14
@@ -199,4 +199,4 @@ Actor S_NegaTimeStopper3 : S_NegaTimeStopper {
   }
 }
 
-actor S_NegaTimeStopBoom : NegaTimeStopBoom { Damagetype "NegaTimeSlow2" Args 175, 320, 80 }
+actor S_NegaTimeStopBoom : NegaTimeStopBoom {Damagetype "NegaTimeSlow2" Args 175, 320, 80}

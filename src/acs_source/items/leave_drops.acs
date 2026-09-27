@@ -3,7 +3,7 @@
 // Counts intentionally lag by up to seven tics; positions update every tic.
 // No snapshot data is sent to clients. Fragment of uh_items.
 #define UH_LEAVE_PLAYERS 64
-#define UH_LEAVE_SLOTS 512 // 256 vanilla + 256 custom DefineUnholyItem slots
+#define UH_LEAVE_SLOTS 512  // 256 vanilla + 256 custom DefineUnholyItem slots
 #define UH_LEAVE_INTERVAL 7
 
 int uh_leavecount[UH_LEAVE_PLAYERS][UH_LEAVE_SLOTS];
@@ -19,96 +19,96 @@ int uh_leaveslotcount;
 // Refresh once per seven-tic cycle, not once per player. Stable slot indices
 // keep existing snapshots valid when addons register additional item types.
 function void UH_RefreshLeaveDropTypes(void) {
-	int slot;
-	int id;
-	int pn;
-	str actor;
-	uh_leaveslotcount = 0;
-	for (slot = 0; slot < UH_LEAVE_SLOTS; slot++) {
-		id = slot;
-		if (slot >= UH_MAX_VANILLA_ITEM)
-			id = -1 - (slot - UH_MAX_VANILLA_ITEM);
-		actor = "";
-		if (IsItemDefined(id))
-			actor = GetItemActor(id);
-		// Never reinterpret a saved quantity as a replacement actor type.
-		if (StrICmp(actor, uh_leaveactor[slot]) != 0) {
-			for (pn = 0; pn < UH_LEAVE_PLAYERS; pn++)
-				uh_leavecount[pn][slot] = 0;
-			uh_leaveactor[slot] = actor;
-		}
-		if (StrCmp(actor, "") != 0)
-			uh_leaveslots[uh_leaveslotcount++] = slot;
-	}
+  int slot;
+  int id;
+  int pn;
+  str actor;
+  uh_leaveslotcount = 0;
+  for (slot = 0; slot < UH_LEAVE_SLOTS; slot++) {
+    id = slot;
+    if (slot >= UH_MAX_VANILLA_ITEM)
+      id = -1 - (slot - UH_MAX_VANILLA_ITEM);
+    actor = "";
+    if (IsItemDefined(id))
+      actor = GetItemActor(id);
+    // Never reinterpret a saved quantity as a replacement actor type.
+    if (StrICmp(actor, uh_leaveactor[slot]) != 0) {
+      for (pn = 0; pn < UH_LEAVE_PLAYERS; pn++)
+        uh_leavecount[pn][slot] = 0;
+      uh_leaveactor[slot] = actor;
+    }
+    if (StrCmp(actor, "") != 0)
+      uh_leaveslots[uh_leaveslotcount++] = slot;
+  }
 }
 
 script "UH_ClearLeaveDrops" (int pn) {
-	if (pn >= 0 && pn < UH_LEAVE_PLAYERS)
-		uh_leavevalid[pn] = false;
+  if (pn >= 0 && pn < UH_LEAVE_PLAYERS)
+    uh_leavevalid[pn] = false;
 }
 
 script "UH_WatchLeaveDrops" OPEN {
-	int phase = 0;
-	int pn;
-	int i;
-	int slot;
-	if (!GetCvar("lastmanstanding"))
-		terminate;
-	while (true) {
-		if (phase == 0)
-			UH_RefreshLeaveDropTypes();
-		for (pn = 0; pn < UH_LEAVE_PLAYERS; pn++) {
-			// Preserve a departed player's snapshot until DISCONNECT consumes it.
-			if (!PlayerInGame(pn) || PlayerIsSpectator(pn) != 0)
-				continue;
-			if (!SetActivatorToPlayer(pn))
-				continue;
-			if (GetActorProperty(0, APROP_Health) <= 0
-				|| CheckInventory("SpawnTeleFragFlag")
-				|| CheckInventory("UnholyItem")) {
-				uh_leavevalid[pn] = false;
-				continue;
-			}
-			uh_leavex[pn] = GetActorX(0);
-			uh_leavey[pn] = GetActorY(0);
-			uh_leavez[pn] = GetActorZ(0);
-			if (pn % UH_LEAVE_INTERVAL != phase)
-				continue;
-			for (i = 0; i < uh_leaveslotcount; i++) {
-				slot = uh_leaveslots[i];
-				uh_leavecount[pn][slot] = CheckInventory(uh_leaveactor[slot]);
-			}
-			uh_leavetreasure[pn] = CheckInventory("GauntletTreasure_F");
-			uh_leavevalid[pn] = true;
-		}
-		// Disconnect stops scripts attached to that pawn. This OPEN watch must
-		// always belong to the world across Delay, never to the last player.
-		SetActivator(0);
-		phase = (phase + 1) % UH_LEAVE_INTERVAL;
-		Delay(1);
-	}
+  int phase = 0;
+  int pn;
+  int i;
+  int slot;
+  if (!GetCvar("lastmanstanding"))
+    terminate;
+  while (true) {
+    if (phase == 0)
+      UH_RefreshLeaveDropTypes();
+    for (pn = 0; pn < UH_LEAVE_PLAYERS; pn++) {
+      // Preserve a departed player's snapshot until DISCONNECT consumes it.
+      if (!PlayerInGame(pn) || PlayerIsSpectator(pn) != 0)
+        continue;
+      if (!SetActivatorToPlayer(pn))
+        continue;
+      if (GetActorProperty(0, APROP_Health) <= 0 ||
+          CheckInventory("SpawnTeleFragFlag") ||
+          CheckInventory("UnholyItem")) {
+        uh_leavevalid[pn] = false;
+        continue;
+      }
+      uh_leavex[pn] = GetActorX(0);
+      uh_leavey[pn] = GetActorY(0);
+      uh_leavez[pn] = GetActorZ(0);
+      if (pn % UH_LEAVE_INTERVAL != phase)
+        continue;
+      for (i = 0; i < uh_leaveslotcount; i++) {
+        slot = uh_leaveslots[i];
+        uh_leavecount[pn][slot] = CheckInventory(uh_leaveactor[slot]);
+      }
+      uh_leavetreasure[pn] = CheckInventory("GauntletTreasure_F");
+      uh_leavevalid[pn] = true;
+    }
+    // Disconnect stops scripts attached to that pawn. This OPEN watch must
+    // always belong to the world across Delay, never to the last player.
+    SetActivator(0);
+    phase = (phase + 1) % UH_LEAVE_INTERVAL;
+    Delay(1);
+  }
 }
 
 script "UH_DropItemsOnLeave" (int pn) {
-	int tid;
-	int i;
-	int slot;
-	if (!GetCvar("lastmanstanding") || pn < 0 || pn >= UH_LEAVE_PLAYERS)
-		terminate;
-	if (!uh_leavevalid[pn])
-		terminate;
-	// Consume before spawning: death -> spectate -> disconnect must not repeat.
-	uh_leavevalid[pn] = false;
-	tid = UniqueTID();
-	if (tid == 0)
-		terminate;
-	if (!SpawnForced("UHLeaveDropOrigin", uh_leavex[pn], uh_leavey[pn], uh_leavez[pn], tid))
-		terminate;
-	for (i = 0; i < uh_leaveslotcount; i++) {
-		slot = uh_leaveslots[i];
-		DropUnholyActorAmount(tid, uh_leaveactor[slot], uh_leavecount[pn][slot]);
-	}
-	for (i = 0; i < uh_leavetreasure[pn]; i++)
-		DropItem(tid, "GauntletTreasure_P", 1);
-	Thing_Remove(tid);
+  int tid;
+  int i;
+  int slot;
+  if (!GetCvar("lastmanstanding") || pn < 0 || pn >= UH_LEAVE_PLAYERS)
+    terminate;
+  if (!uh_leavevalid[pn])
+    terminate;
+  // Consume before spawning: death -> spectate -> disconnect must not repeat.
+  uh_leavevalid[pn] = false;
+  tid = UniqueTID();
+  if (tid == 0)
+    terminate;
+  if (!SpawnForced("UHLeaveDropOrigin", uh_leavex[pn], uh_leavey[pn], uh_leavez[pn], tid))
+    terminate;
+  for (i = 0; i < uh_leaveslotcount; i++) {
+    slot = uh_leaveslots[i];
+    DropUnholyActorAmount(tid, uh_leaveactor[slot], uh_leavecount[pn][slot]);
+  }
+  for (i = 0; i < uh_leavetreasure[pn]; i++)
+    DropItem(tid, "GauntletTreasure_P", 1);
+  Thing_Remove(tid);
 }

@@ -8,25 +8,25 @@
 // DECORATE evaluates this expression when a spike damager deals damage, so
 // the returned value remains the base damage before normal damage modifiers.
 script "uh_GetSpikeDamage" (void) {
-	int spike_damage = GetCVar("uh_sv_SpikeDamage");
-	if (spike_damage < 0)
-		spike_damage = 0;
-	SetResultValue(spike_damage);
+  int spike_damage = GetCVar("uh_sv_SpikeDamage");
+  if (spike_damage < 0)
+    spike_damage = 0;
+  SetResultValue(spike_damage);
 }
 
 // Map DeathPit actors register their sector damage during map startup.  A
 // value of 0 deliberately leaves those per-marker values untouched.
 script "uh_ApplyPitDamage" OPEN {
-	Delay(1);
+  Delay(1);
 
-	int pit_damage = GetCVar("uh_sv_PitDamage");
-	if (pit_damage <= 0)
-		terminate;
+  int pit_damage = GetCVar("uh_sv_PitDamage");
+  if (pit_damage <= 0)
+    terminate;
 
-	for (int i = 0; i < getPitCount(); i++) {
-		Sector_SetDamage(getPitTag(i), pit_damage, getPitMod(i), getPitInterval(i));
-		setPitDamage(i, pit_damage);
-	}
+  for (int i = 0; i < getPitCount(); i++) {
+    Sector_SetDamage(getPitTag(i), pit_damage, getPitMod(i), getPitInterval(i));
+    setPitDamage(i, pit_damage);
+  }
 }
 
 // Player Rune stacker
@@ -34,155 +34,155 @@ script "uh_ApplyPitDamage" OPEN {
 // Set player to 0 for the activator or specify a player number
 // $UH Add Endless Ammo Rune
 script "uh_runeplayer" (int player, int toggle, int mode) {
-	if (player == 0) {player = PlayerNumber() + 1;}
-	if (player <= 0 || !SetActivatorToPlayer(player - 1)) {terminate;}
+  if (player == 0) {player = PlayerNumber() + 1;}
+  if (player <= 0 || !SetActivatorToPlayer(player - 1)) {terminate;}
 
-	str counter;
-	str runepower;
-	switch (mode) {
-		case RUNE_STRENGTH:
-			counter = "PlayerPropertyStrength";
-			runepower = "PowerDoubleDamageRune";
-			break;
-		case RUNE_RAGE:
-			counter = "PlayerPropertyRage";
-			runepower = "PowerDoubleFiringSpeedRune";
-			break;
-		case RUNE_DRAIN:
-			counter = "PlayerPropertyDrain";
-			runepower = "PowerDrainRune";
-			break;
-		case RUNE_SPREAD:
-			counter = "PlayerPropertySpread";
-			runepower = "PowerSpreadRune";
-			break;
-		case RUNE_RESISTANCE:
-			counter = "PlayerPropertyResistance";
-			runepower = "PowerHalfDamageRune";
-			break;
-		case RUNE_REGENERATION:
-			counter = "PlayerPropertyRegeneration";
-			runepower = "PowerRegenerationRune";
-			break;
-		case RUNE_PROSPERITY:
-			counter = "PlayerPropertyProsperity";
-			runepower = "PowerProsperityRune";
-			break;
-		case RUNE_REFLECTION:
-			counter = "PlayerPropertyReflection";
-			runepower = "PowerReflectionRune";
-			break;
-		case RUNE_HIGHJUMP:
-			counter = "PlayerPropertyHighJump";
-			runepower = "PowerHighJumpRune";
-			break;
-		case RUNE_HASTE:
-			counter = "PlayerPropertyHaste";
-			runepower = "PowerSpeed25Rune";
-			break;
-		case RUNE_ENDLESSAMMO:
-			counter = "PlayerPropertyEndlessAmmo";
-			runepower = "PowerEndlessAmmoRune";
-			break;
-		case RUNE_LUCKYPENNY:
-			counter = "PlayerPropertyLuckyPenny";
-			runepower = "PowerLuckyPenny_ST";
-			break;
-	}
+  str counter;
+  str runepower;
+  switch (mode) {
+    case RUNE_STRENGTH:
+      counter = "PlayerPropertyStrength";
+      runepower = "PowerDoubleDamageRune";
+      break;
+    case RUNE_RAGE:
+      counter = "PlayerPropertyRage";
+      runepower = "PowerDoubleFiringSpeedRune";
+      break;
+    case RUNE_DRAIN:
+      counter = "PlayerPropertyDrain";
+      runepower = "PowerDrainRune";
+      break;
+    case RUNE_SPREAD:
+      counter = "PlayerPropertySpread";
+      runepower = "PowerSpreadRune";
+      break;
+    case RUNE_RESISTANCE:
+      counter = "PlayerPropertyResistance";
+      runepower = "PowerHalfDamageRune";
+      break;
+    case RUNE_REGENERATION:
+      counter = "PlayerPropertyRegeneration";
+      runepower = "PowerRegenerationRune";
+      break;
+    case RUNE_PROSPERITY:
+      counter = "PlayerPropertyProsperity";
+      runepower = "PowerProsperityRune";
+      break;
+    case RUNE_REFLECTION:
+      counter = "PlayerPropertyReflection";
+      runepower = "PowerReflectionRune";
+      break;
+    case RUNE_HIGHJUMP:
+      counter = "PlayerPropertyHighJump";
+      runepower = "PowerHighJumpRune";
+      break;
+    case RUNE_HASTE:
+      counter = "PlayerPropertyHaste";
+      runepower = "PowerSpeed25Rune";
+      break;
+    case RUNE_ENDLESSAMMO:
+      counter = "PlayerPropertyEndlessAmmo";
+      runepower = "PowerEndlessAmmoRune";
+      break;
+    case RUNE_LUCKYPENNY:
+      counter = "PlayerPropertyLuckyPenny";
+      runepower = "PowerLuckyPennyRune";
+      break;
+  }
 
-	if (toggle >= 1) {
-		if (CheckInventory(counter) <= 0) {
-			GiveInventory(StrParam(s:runepower, s:"Giver"), 1);
-			if (mode == RUNE_REGENERATION) {
-				ACS_NamedExecuteWithResult("core_RegenerationRune");
-			}
-		}
-		GiveInventory(counter, 1);
-	} else if (CheckInventory(counter) > 0) {
-		TakeInventory(counter, 1);
+  if (toggle >= 1) {
+    if (CheckInventory(counter) <= 0) {
+      GiveInventory(StrParam(s:runepower, s:"Giver"), 1);
+      if (mode == RUNE_REGENERATION) {
+        ACS_NamedExecuteWithResult("core_RegenerationRune");
+      }
+    }
+    GiveInventory(counter, 1);
+  } else if (CheckInventory(counter) > 0) {
+    TakeInventory(counter, 1);
 
-		if (CheckInventory(counter) == 0) {
-			TakeInventory(runepower, 999);
-		}
-	}
+    if (CheckInventory(counter) == 0) {
+      TakeInventory(runepower, 999);
+    }
+  }
 }
 
 // Script to check for specific runes on a pointer
 script "uh_checkrune" (int rune, int ptr) {
-	if (ptr != 0) {
-		SetActivator(0, ptr);
-	}
+  if (ptr != 0) {
+    SetActivator(0, ptr);
+  }
 
-	str runepower;
-	switch (rune) {
-		case RUNE_STRENGTH:
-			runepower = "PowerDoubleDamageRune";
-			break;
-		case RUNE_RAGE:
-			runepower = "PowerDoubleFiringSpeedRune";
-			break;
-		case RUNE_DRAIN:
-			runepower = "PowerDrainRune";
-			break;
-		case RUNE_SPREAD:
-			runepower = "PowerSpreadRune";
-			break;
-		case RUNE_RESISTANCE:
-			runepower = "PowerHalfDamageRune";
-			break;
-		case RUNE_REGENERATION:
-			runepower = "PowerRegenerationRune";
-			break;
-		case RUNE_PROSPERITY:
-			runepower = "PowerProsperityRune";
-			break;
-		case RUNE_REFLECTION:
-			runepower = "PowerReflectionRune";
-			break;
-		case RUNE_HIGHJUMP:
-			runepower = "PowerHighJumpRune";
-			break;
-		case RUNE_HASTE:
-			runepower = "PowerSpeed25Rune";
-			break;
-		case RUNE_ENDLESSAMMO:
-			runepower = "PowerEndlessAmmoRune";
-			break;
-		case RUNE_LUCKYPENNY:
-			runepower = "PowerLuckyPenny_ST";
-			break;
-	}
+  str runepower;
+  switch (rune) {
+    case RUNE_STRENGTH:
+      runepower = "PowerDoubleDamageRune";
+      break;
+    case RUNE_RAGE:
+      runepower = "PowerDoubleFiringSpeedRune";
+      break;
+    case RUNE_DRAIN:
+      runepower = "PowerDrainRune";
+      break;
+    case RUNE_SPREAD:
+      runepower = "PowerSpreadRune";
+      break;
+    case RUNE_RESISTANCE:
+      runepower = "PowerHalfDamageRune";
+      break;
+    case RUNE_REGENERATION:
+      runepower = "PowerRegenerationRune";
+      break;
+    case RUNE_PROSPERITY:
+      runepower = "PowerProsperityRune";
+      break;
+    case RUNE_REFLECTION:
+      runepower = "PowerReflectionRune";
+      break;
+    case RUNE_HIGHJUMP:
+      runepower = "PowerHighJumpRune";
+      break;
+    case RUNE_HASTE:
+      runepower = "PowerSpeed25Rune";
+      break;
+    case RUNE_ENDLESSAMMO:
+      runepower = "PowerEndlessAmmoRune";
+      break;
+    case RUNE_LUCKYPENNY:
+      runepower = "PowerLuckyPennyRune";
+      break;
+  }
 
-	SetResultValue(CheckInventory(runepower));
+  SetResultValue(CheckInventory(runepower));
 }
 
 script "uh_CheckForLuckyPenny" (int ptr) {
-	if (ptr != 0) {
-		SetActivator(0, ptr);
-	}
-	SetResultValue(CheckInventory("PowerLuckyPenny_ST"));
+  if (ptr != 0) {
+    SetActivator(0, ptr);
+  }
+  SetResultValue(CheckInventory("PowerLuckyPennyRune"));
 }
 
-#define KNK_AIMED 1 << 0  // $UH Future core flags?
+#define KNK_AIMED 1 << 0       // $UH Future core flags?
 #define KNK_ADDZTHRUST 1 << 1  // $UH
-script "uh_knockback" (int force, int forcez, int flags, int ptr)  // $UH Changes aimed into a flag
-{
-	SetActivatorToTarget(0);  // $UH Spawned actors are calling this script
+// $UH Changes aimed into a flag
+script "uh_knockback" (int force, int forcez, int flags, int ptr) {
+  SetActivatorToTarget(0);  // $UH Spawned actors are calling this script
 
-	int px = ACS_NamedExecuteWithResult("core_getactorx", ptr, 0, true);
-	int py = ACS_NamedExecuteWithResult("core_getactory", ptr, 0, true);
+  int px = ACS_NamedExecuteWithResult("core_getactorx", ptr, 0, true);
+  int py = ACS_NamedExecuteWithResult("core_getactory", ptr, 0, true);
 
-	int yaw = VectorAngle(GetActorX(0) - px, GetActorY(0) - py) >> 8;
+  int yaw = VectorAngle(GetActorX(0) - px, GetActorY(0) - py) >> 8;
 
-	if (flags & KNK_AIMED) {  // $UH
-		int pitch = ACS_NamedExecuteWithResult("core_GetPtrPitch", ptr, 0, true);
-		int heightmul = sin(-pitch);
-		int distmul = cos(pitch);
+  if (flags & KNK_AIMED) {  // $UH
+    int pitch = ACS_NamedExecuteWithResult("core_GetPtrPitch", ptr, 0, true);
+    int heightmul = sin(-pitch);
+    int distmul = cos(pitch);
 
-		ThrustThingZ(0, fixedMul(force, heightmul) * 4, 0, (flags & KNK_ADDZTHRUST));  // $UH
-		ThrustThing(yaw, fixedMul(force, distmul), 1, 0);
-	} else {
-		ThrustThingZ(0, forcez, 0, (flags & KNK_ADDZTHRUST));  // $UH
-		ThrustThing(yaw, force, 1, 0);
-	}
+    ThrustThingZ(0, fixedMul(force, heightmul) * 4, 0, (flags & KNK_ADDZTHRUST));  // $UH
+    ThrustThing(yaw, fixedMul(force, distmul), 1, 0);
+  } else {
+    ThrustThingZ(0, forcez, 0, (flags & KNK_ADDZTHRUST));  // $UH
+    ThrustThing(yaw, force, 1, 0);
+  }
 }

@@ -7,8 +7,8 @@ actor NegaRainFlushWep : BaseNegaManWep {
   Inventory.Pickupmessage "$PU_02_MM4z"
   Obituary "$OB_RAINFLUSH"
   Tag "$TAG_NegaMan_W4b"
-  weapon.ammotype "NegaMM4_Ammo"
-  inventory.icon "NEG_RAIN"
+  Weapon.AmmoType "NegaMM4_Ammo"
+  Inventory.Icon "NEG_RAIN"
   States {
    Spawn:
     6N02 R 0
@@ -25,20 +25,20 @@ actor NegaRainFlushWep : BaseNegaManWep {
     6I02 Y 0 ACS_NamedExecuteWithResult("core_weaponcolor", NEGAMAN_DYE4B)
    ReadyX:
     6I02 Y 0 A_SetArg(4, CallACS("uh_NegaReadyCost", 7))
-    6I02 Y 0 A_JumpIfInventory("NegaMM4_Ammo", Args[4], "ReadyHave")
-    6I02 Y 0 A_JumpIfInventory("NegaReadyRef_F", Args[4] <= 0, "ReadyHave")
-    Goto NoAmmo
+    6I02 Y 0 A_JumpIfInventory("NegaMM4_Ammo", args[4], "ReadyHave")
+    6I02 Y 0 A_JumpIfInventory("NegaReadyRef_F", args[4] <= 0, "ReadyHave")
+    goto NoAmmo
    ReadyHave:
     6I02 Y 8 A_WeaponReady
     6I02 Y 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
-    Goto ReadyX
+    goto ReadyX
    ReadyNoAmmo:
     6I02 Y 8 A_WeaponReady(4)
     6I02 Y 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen", 1)
     6I02 Y 0 A_SetArg(4, CallACS("uh_NegaReadyCost", 7))
-    6I02 Y 0 A_JumpIfInventory("NegaMM4_Ammo", Args[4], "ReadyX")
-    6I02 Y 0 A_JumpIfInventory("NegaReadyRef_F", Args[4] <= 0, "ReadyX")
-    Goto ReadyNoAmmo
+    6I02 Y 0 A_JumpIfInventory("NegaMM4_Ammo", args[4], "ReadyX")
+    6I02 Y 0 A_JumpIfInventory("NegaReadyRef_F", args[4] <= 0, "ReadyX")
+    goto ReadyNoAmmo
 
    Fire:  // Needs a version of hands specific for this attack
     6I02 Y 0 A_JumpIf(!CallACS("uh_NegaTrySpendAmmo", 7), "NoAmmo")
@@ -46,14 +46,14 @@ actor NegaRainFlushWep : BaseNegaManWep {
     6I02 Z 4 A_FireCustomMissile("NegaRainFlushMineSpawner", 0, 1, 0, 0)
     6J02 A 4
     6I02 Y 18  // 12
-    Goto ReadyX
+    goto ReadyX
 
    NoAmmo:
     6I02 Y 1 A_JumpIfInventory("IsBot", 1, "NoAmmo_B")
-    Goto ReadyNoAmmo
+    goto ReadyNoAmmo
    BotAmmo:
     6I02 Y 0 A_GiveInventory("NegaMM4_Ammo", 28)
-    Goto ReadyX
+    goto ReadyX
   }
 }
 
@@ -73,14 +73,14 @@ actor NegaRainFlushPod : BasicGraphicEffect {
 }
 
 actor NegaRainFlushMineSpawner : BasicProjectile {
-  Damagetype "RainFlush"  // Just in the very case this thing even damagesm, ever. - Trist
+  DamageType "RainFlush"  // Just in the very case this thing even damagesm, ever. - Trist
   -NOGRAVITY
   +RIPPER
   +BOUNCEONWALLS
   +BOUNCEONCEILINGS
   +BOUNCEONACTORS
   +EXPLODEONWATER
-  Bouncefactor 0.65
+  BounceFactor 0.65
   Radius 10
   Height 10
   Damage (0)
@@ -102,15 +102,15 @@ actor NegaRainFlushMineSpawner : BasicProjectile {
 
 actor NegaRainFlushMine : BasicProjectile {
   Obituary "%o found out where %k's 9th Rain Flush mine was."
-  Damagetype "RainFlush"
+  DamageType "RainFlush"
   +NOCLIP
   +NODROPOFF
   +NOEXPLODEFLOOR
-  Reactiontime 6
+  ReactionTime 6
   Damage (50)
   Radius 12
   Height 10
-  speed 0
+  Speed 0
   Scale 1.5
   States {
    Spawn:
@@ -130,37 +130,37 @@ actor NegaRainFlushMine : BasicProjectile {
 
 actor NegaRainFlush : BasicExplosion {
   Obituary "$OB_RAINFLUSH"
-  Damagetype "RainFlush"
-  var int user_RainArea;
-  var int user_RainDamage;
-  var int user_C;
-  Reactiontime 29
+  DamageType "RainFlush"
+  var int user_rainarea;
+  var int user_raindamage;
+  var int user_count;
+  ReactionTime 29
   States {
    Spawn:
     TNT1 A 0
-    TNT1 A 0 A_SetUserVar("user_RainArea", 128)
-    TNT1 A 0 A_SetUserVar("user_RainDamage", 100)  // 150
+    TNT1 A 0 A_SetUserVar("user_rainarea", 128)
+    TNT1 A 0 A_SetUserVar("user_raindamage", 100)  // 150
     TNT1 A 25 A_SpawnItemEx("NegaRainFlushPod", 0, 0, 0, 0, 0, 0, 0, 1)
     TNT1 A 0 A_PlaySoundEx("weapon/rainflush", "Voice")
     TNT1 A 0 A_SpawnItemEx("RainFlushSoakify")
-    TNT1 A 0 A_Explode(user_RainDamage, user_RainArea, 0)
+    TNT1 A 0 A_Explode(user_raindamage, user_rainarea, 0)
    Spawn2:
-    TNT1 AAAAAAAAA 0 A_SpawnItemEx("NegaRainSprinkle", random(-1*user_RainArea, user_RainArea), random(-1*user_RainArea, user_RainArea), 384, -25, 0, -25, 90, 129)
+    TNT1 AAAAAAAAA 0 A_SpawnItemEx("NegaRainSprinkle", random(-1 * user_rainarea, user_rainarea), random(-1 * user_rainarea, user_rainarea), 384, -25, 0, -25, 90, 129)
     TNT1 A 1 A_CountDown
-    TNT1 A 0 A_SetUserVar("user_RainArea", user_RainArea+26)
-    TNT1 A 0 A_SetUserVar("user_C", user_C+1)
-    TNT1 A 0 A_JumpIf(user_C>=7, "Spawn3")
+    TNT1 A 0 A_SetUserVar("user_rainarea", user_rainarea + 26)
+    TNT1 A 0 A_SetUserVar("user_count", user_count + 1)
+    TNT1 A 0 A_JumpIf(user_count >= 7, "Spawn3")
     loop
    Spawn3:
-    TNT1 A 0 A_SetUserVar("user_RainDamage", user_RainDamage-20)  // -30
+    TNT1 A 0 A_SetUserVar("user_raindamage", user_raindamage - 20)  // -30
     TNT1 A 0 A_SpawnItemEx("RainFlushSoakify")
-    TNT1 A 0 A_Explode(user_RainDamage, user_RainArea*0.5, 0, 0, user_RainArea*0.5)
-    TNT1 A 0 A_SetUserVar("user_C", 0)
+    TNT1 A 0 A_Explode(user_raindamage, user_rainarea * 0.5, 0, 0, user_rainarea * 0.5)
+    TNT1 A 0 A_SetUserVar("user_count", 0)
     goto Spawn2
   }
 }
 
-Actor NegaRainSprinkle : BasicGraphicEffect {
+actor NegaRainSprinkle : BasicGraphicEffect {
   States {
    SpawnFrame:
     X_4B D 30
@@ -168,9 +168,9 @@ Actor NegaRainSprinkle : BasicGraphicEffect {
   }
 }
 
-/// //////////////////////////
-// == Shiny ==//
-/// //////////////////////////
+/////////////////
+// == Shiny == //
+/////////////////
 
 actor S_NegaRainFlushMineSpawner : NegaRainFlushMineSpawner {
   States {
@@ -185,7 +185,7 @@ actor S_NegaRainFlushMineSpawner : NegaRainFlushMineSpawner {
 }
 
 actor S_NegaRainFlushMineSpawner2 : S_NegaRainFlushMineSpawner {
-  Renderstyle "Translucent"
+  RenderStyle "Translucent"
   Alpha 0.65
   Scale 2.0
   States {
@@ -200,7 +200,7 @@ actor S_NegaRainFlushMineSpawner2 : S_NegaRainFlushMineSpawner {
 }
 
 actor S_NegaRainFlushMineSpawner3 : S_NegaRainFlushMineSpawner {
-  Renderstyle "Translucent"
+  RenderStyle "Translucent"
   Alpha 0.3
   Scale 2.5
   States {
@@ -215,7 +215,7 @@ actor S_NegaRainFlushMineSpawner3 : S_NegaRainFlushMineSpawner {
 }
 
 actor S_NegaRainFlushMine : NegaRainFlushMine {
-  Reactiontime 6
+  ReactionTime 6
   Damage (90)
   Radius 12
   Height 10
@@ -228,9 +228,9 @@ actor S_NegaRainFlushMine : NegaRainFlushMine {
 }
 
 actor S_NegaRainFlushMine2 : S_NegaRainFlushMine {
-  Renderstyle "Translucent"
+  RenderStyle "Translucent"
   Alpha 0.65
-  Reactiontime 5
+  ReactionTime 5
   Damage (140)  // 110
   States {
    Death:
@@ -241,9 +241,9 @@ actor S_NegaRainFlushMine2 : S_NegaRainFlushMine {
 }
 
 actor S_NegaRainFlushMine3 : S_NegaRainFlushMine {
-  Renderstyle "Translucent"
+  RenderStyle "Translucent"
   Alpha 0.3
-  Reactiontime 4
+  ReactionTime 4
   Damage (200)
   States {
    Death:
@@ -255,32 +255,32 @@ actor S_NegaRainFlushMine3 : S_NegaRainFlushMine {
 
 actor S_NegaRainFlush : BasicExplosion {
   Obituary "$OB_RAINFLUSH"
-  var int user_RainArea;
-  var int user_RainDamage;
-  var int user_C;
+  var int user_rainarea;
+  var int user_raindamage;
+  var int user_count;
   Args 150, 128, 0
-  Reactiontime 29
+  ReactionTime 29
   States {
    Spawn:
     TNT1 A 25 A_SpawnItemEx("NegaRainFlushPod", 0, 0, 0, 0, 0, 0, 0, 1)
     TNT1 A 0 A_PlaySoundEx("weapon/rainflush", "Voice")
     TNT1 A 0 A_SpawnItemEx("RainFlushSoakify")
-    TNT1 A 0 A_Explode(Args[0], Args[1], 0)
+    TNT1 A 0 A_Explode(args[0], args[1], 0)
    Spawn2:
-    TNT1 AAAAAAAAA 0 A_SpawnItemEx("NegaRainSprinkle", random(-1*Args[1], Args[1]), random(-1*Args[1], Args[1]), 384, -25, 0, -25, 90, 129)
+    TNT1 AAAAAAAAA 0 A_SpawnItemEx("NegaRainSprinkle", random(-1 * args[1], args[1]), random(-1 * args[1], args[1]), 384, -25, 0, -25, 90, 129)
     TNT1 A 1 A_CountDown
-    TNT1 A 0 A_SetArg(1, Args[1]+26)
-    TNT1 A 0 A_SetArg(2, Args[2]+1)
-    TNT1 A 0 A_JumpIf(Args[2]>=7, "Spawn3")
+    TNT1 A 0 A_SetArg(1, args[1] + 26)
+    TNT1 A 0 A_SetArg(2, args[2] + 1)
+    TNT1 A 0 A_JumpIf(args[2] >= 7, "Spawn3")
     loop
    Spawn3:
-    TNT1 A 0 A_SetArg(0, Args[0]-25)
+    TNT1 A 0 A_SetArg(0, args[0] - 25)
     TNT1 A 0 A_SpawnItemEx("RainFlushSoakify")
-    TNT1 A 0 A_Explode(Args[0], Args[1]*0.5, 0, 0, Args[1]*0.5)
+    TNT1 A 0 A_Explode(args[0], args[1] * 0.5, 0, 0, args[1] * 0.5)
     TNT1 A 0 A_SetArg(2, 0)
     goto Spawn2
   }
 }
 
-actor S_NegaRainFlush2 : S_NegaRainFlush { Args 180, 160 Reactiontime 36 }
-actor S_NegaRainFlush3 : S_NegaRainFlush { Args 210, 192 Reactiontime 43 }
+actor S_NegaRainFlush2 : S_NegaRainFlush {Args 180, 160 ReactionTime 36}
+actor S_NegaRainFlush3 : S_NegaRainFlush {Args 210, 192 ReactionTime 43}

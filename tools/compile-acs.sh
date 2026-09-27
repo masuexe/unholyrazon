@@ -86,8 +86,8 @@ echo "== mmsp_script =="
 "$ACC" $INC "src/acs_source/coopenemies/mmsp_script.acs" "$OUT/mmsp_script.o" || fail=1
 echo "== uh_corereplace =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/utilities/uh_corereplace.acs" "$OUT/uh_corereplace.o" || fail=1
-echo "== uh_modcheck =="
-"$ACC" $INC "src/acs_source/compat/mods/rockforce/uh_modcheck.acs" "$OUT/uh_modcheck.o" || fail=1
+echo "== uh_rockforce =="
+"$ACC" $INC "src/acs_source/compat/mods/rockforce/uh_rockforce.acs" "$OUT/uh_rockforce.o" || fail=1
 echo "== uh_uix =="
 "$ACC" $INC -i src/acs_source/compat/mods/uix "src/acs_source/compat/mods/uix/uh_uix.acs" "$OUT/uh_uix.o" || fail=1
 echo "== uh_uixfw =="
