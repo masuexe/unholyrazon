@@ -36,8 +36,9 @@ function str UH_MugshotIndexName(str prefix, int amount) {
 
 function void DrawUHClassMugshot(int cam) {
   if (!CheckActorInventory(cam, "MugshotFlag")) {return;}
+  bool shinymega = StrICmp(GetActorClass(cam), "MegaManUShiny") == 0;
   // Boss/Demoneye morph: keep Player.ScoreIcon (SBARINFO playericon) visible
-  if (CheckActorInventory(cam, "MorphedFlag")) {return;}
+  if (CheckActorInventory(cam, "MorphedFlag") && !shinymega) {return;}
 
   int mode = AssistDisplayBar_HUDMode();
   int x, y;
@@ -52,6 +53,24 @@ function void DrawUHClassMugshot(int cam) {
   }
 
   SetHudSize(320, 200, 0);
+
+  // Unlike ordinary players, native DrawMugShot reads the morph class face.
+  // Render the selected skin's static face instead; it never uses bar colors.
+  if (shinymega && CheckActorInventory(cam, "SkinMugshotFlag")) {
+    int skin = GetPlayerSkin(PlayerNumber(), PLAYERSKIN_USERINFO);
+    if (skin >= 0 && GetSkinProperty(skin, "face", true) == SPROP_TYPE_STRING) {
+      str face = GetSkinProperty(skin, "face");
+      if (StrCmp(face, "") != 0) {
+        str mug = StrParam(s:face, s:"ST00");
+        if (CheckFont(mug)) {
+          BasicImageDisplay(mug, UH_IMAGE_ID_BASE + 61, x, y);
+          return;
+        }
+      }
+    }
+    // With no skin face, the existing SBARINFO Maestro layers remain visible.
+    return;
+  }
 
   // Dust Crusher skin: static YustMan face over MegaMan mugshot slot
   if (CheckActorInventory(cam, "YustManFlag")) {

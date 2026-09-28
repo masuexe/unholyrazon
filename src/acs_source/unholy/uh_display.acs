@@ -459,8 +459,31 @@ script "ub_BHW_DeadHudClientside" (int theboss, int bossnumb, int demisetype) CL
   Func_BHW_DeadHudMess2(theboss, bossnumb, demisetype);
 }
 
+// Resolve the selected skin locally: skin indices and ACS strings must never
+// be sent between peers. Match v6b DrawMugShot's userinfo skin face selection.
+function str UH_BHW_MegaManSkinMug(int player) {
+  int skin = GetPlayerSkin(player, PLAYERSKIN_USERINFO);
+  if (skin >= 0 && GetSkinProperty(skin, "face", true) == SPROP_TYPE_STRING) {
+    str face = GetSkinProperty(skin, "face");
+    if (StrCmp(face, "") != 0) {
+      str mug = StrParam(s:"UHB", s:face);
+      if (CheckFont(mug))
+        return mug;
+    }
+  }
+  return "UHBBASE";
+}
+
 function void Func_BHW_SetFontMug(int bossnumb) {
   str fontstr;
+  // Both ordinary and shiny MegaMan use the solo target's selected skin.
+  // Other classes retain their own portraits. This also serves the death row.
+  if ((bossnumb == EncodeSurvivorBossNumb(0)
+    || bossnumb == EncodeSurvivorShinyBossNumb(0)) && uhtiova
+    && uhtiovatarget >= 0 && uhtiovatarget < MAX_PLAYERS) {
+    SetFont(UH_BHW_MegaManSkinMug(uhtiovatarget));
+    return;
+  }
   // Survivor-packed bands (<= -100, includes shiny <= -600): never GetBossMugshot.
   if (IsSurvivorBossNumb(bossnumb)) {
     int sidsurv = DecodeSurvivorBossNumb(bossnumb);
