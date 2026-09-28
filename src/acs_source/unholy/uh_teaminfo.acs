@@ -313,8 +313,8 @@ function bool UH_CanSeeScoreIcon(int viewer, int subject) {
 }
 
 
-// Client-local appearance override. Identity remains the registered actor
-// class; a forced skin must not change team membership or definition ids.
+// Client-local MegaMan portrait resolution shared by teaminfo and scoreboard.
+// Identity stays the registered actor class; skins never alter team or ids.
 function str UH_PlayerAppearancePortrait(int tid) {
   str actor = GetActorClass(tid);
   if (StrICmp(actor, "MegaManU") != 0 && StrICmp(actor, "MegaManUShiny") != 0)
@@ -326,9 +326,23 @@ function str UH_PlayerAppearancePortrait(int tid) {
     return "";
   int skin = GetPlayerSkin(pn, PLAYERSKIN_VISIBLE);
   if (skin >= 0 && GetSkinProperty(skin, "name", true) == SPROP_TYPE_STRING
-    && StrICmp(GetSkinProperty(skin, "name"), "YustMan") == 0)
-    return "YUSTMUG";
-  return "";
+    && StrICmp(GetSkinProperty(skin, "name"), "Base") != 0
+    && GetSkinProperty(skin, "face", true) == SPROP_TYPE_STRING) {
+    str face = GetSkinProperty(skin, "face");
+    if (StrLen(face) != 0) {
+      str mug = StrParam(s:face, s:"ST00");
+      if (CheckFont(mug))
+        return mug;
+    }
+  }
+  // PBSKINS is optional. Its known font guards the call when UIX is absent.
+  // Reuse the same Maestro preference as killfeed when UIX is loaded.
+  if (CheckFont("PBOCMG1A")) {
+    str fallback = ACS_NamedExecuteWithResult("PBMug_Megaman", tid);
+    if (StrLen(fallback) != 0 && CheckFont(fallback))
+      return fallback;
+  }
+  return "UMUG_0";
 }
 
 function str UH_PlayerPortraitForTid(int tid) {

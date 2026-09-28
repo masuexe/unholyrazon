@@ -64,7 +64,11 @@ function void DrawUHClassMugshot(int cam) {
   // Render the selected skin's static face instead; it never uses bar colors.
   if (shinymega && CheckActorInventory(cam, "SkinMugshotFlag")) {
     int skin = GetPlayerSkin(PlayerNumber(), PLAYERSKIN_VISIBLE);
-    if (skin >= 0 && GetSkinProperty(skin, "face", true) == SPROP_TYPE_STRING) {
+    // Base inherits the engine's STF face, whose IWAD texture passes CheckFont.
+    // It is not a selected skin face and must use the Maestro fallback.
+    if (skin >= 0 && GetSkinProperty(skin, "name", true) == SPROP_TYPE_STRING
+      && StrICmp(GetSkinProperty(skin, "name"), "Base") != 0
+      && GetSkinProperty(skin, "face", true) == SPROP_TYPE_STRING) {
       str face = GetSkinProperty(skin, "face");
       if (StrCmp(face, "") != 0) {
         str mug = StrParam(s:face, s:"ST00");
@@ -74,8 +78,7 @@ function void DrawUHClassMugshot(int cam) {
         }
       }
     }
-    // With no skin face, the existing SBARINFO Maestro layers remain visible.
-    return;
+    // Base or an unavailable skin face falls through to our Maestro layers.
   }
 
   // Qwant_W ready: portrait (110, 130). Copy moves follow weapon dye (DrawBar2Color must not leak).
@@ -112,7 +115,7 @@ function void DrawUHClassMugshot(int cam) {
   str ncyn = "";
 
   // HudMessage: lower IDs draw on top. BACK must use the highest ID so color layers stay visible.
-  if (CheckActorInventory(cam, "UHMugshotMegaMan")) {
+  if (shinymega || CheckActorInventory(cam, "UHMugshotMegaMan")) {
     if (trans) {
       nblu = UH_MugshotIndexName("MGBLU", blue);
       nblk = UH_MugshotIndexName("MGBLK", black);

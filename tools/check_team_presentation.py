@@ -135,6 +135,11 @@ def main() -> int:
             fails += 1
 
     # 3. No row without a definition home and without an explicit morph note.
+    morph_additions = {"MegaManUShiny": ("Mega Man", "UMUG_0", "", 0)}
+    for cls, expected in morph_additions.items():
+        if rows.get(cls) != expected:
+            print(f"FAIL morph presentation {cls}: {rows.get(cls)!r} != {expected!r}")
+            fails += 1
     defined: set[str] = set()
     for path, call in ((SURVDEFS, "DefineSurvivor"), (BOSSDEFS, "DefineBoss"), (EYEDEFS, "DefineDemoneye")):
         defined |= {a for a in re.findall(rf"{call}\(\s*-?\d+,\s*\"([^\"]+)\"", read(path)) if a}
@@ -142,7 +147,7 @@ def main() -> int:
     # (so nothing can be drawn for it in the teammate bar) and must carry a
     # scoreboard icon.  Anything else is a registration that lost its identity.
     for cls in rows:
-        if cls in defined:
+        if cls in defined or cls in morph_additions:
             continue
         if rows[cls][1] != "" or rows[cls][2] == "":
             print(f"FAIL {cls}: no Define* registration and not a scoreboard-only morph body")
@@ -189,7 +194,7 @@ def main() -> int:
     if fails:
         print(f"team presentation check FAILED ({fails} problem(s))")
         return 1
-    print(f"ok: {len(rows)} presentation rows match the former hardcoded output")
+    print(f"ok: {len(portraits)} historical presentation rows preserved; {len(morph_additions)} morph addition verified")
     print(f"ok: {len(mugs)} UIX PBMug scripts agree")
     return 0
 
