@@ -149,11 +149,10 @@ Warning: ACS function strlen called with invalid string argument.
 
 ### ACS 编译
 
-使用原生 Linux ACC：
+使用原生 Linux ACC，将编译器放入 `PATH`，或通过 `ACC` 环境变量指定其位置：
 
 ```bash
-PATH=/home/user/appfiles/acc-1.60-linux64:$PATH \
-  ./tools/compile-acs.sh /tmp/unholyrazon4-bonus-ipc-fix
+./tools/compile-acs.sh /tmp/unholyrazon4-bonus-ipc-fix
 ```
 
 要求最终输出 `ACS COMPILE OK`。注意 ACC 编译不会验证 CVARINFO 中是否声明了运行时动态字符串名称，所以“编译通过”不能替代下一步运行验证。

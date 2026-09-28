@@ -71,8 +71,10 @@ collisions with v6b CVARINFO: NONE
 
 ## 3. ACS 编译
 
+编译器通过 `PATH` 或 `ACC` 环境变量提供。
+
 ```
-ACC=/home/user/appfiles/acc-1.60-linux64/acc bash tools/compile-acs.sh
+bash tools/compile-acs.sh
 => ACS COMPILE OK
 ```
 
