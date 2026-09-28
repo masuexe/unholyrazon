@@ -150,9 +150,9 @@ Before launching after a packaging change, run the read-only archive check:
 ./tools/validate-build-pk3.sh --json
 ```
 
-It checks ZIP integrity and the required `DECORATE`, `KEYCONF`, and `LOADACS`
-lumps. It does not build or rewrite the PK3, and it cannot replace engine-level
-DECORATE/ACS diagnostics.
+It checks ZIP integrity and the required `DECORATE`, `KEYCONF`, `LOADACS`, and
+`acs/CORE8BDT.o` lumps. It does not build or rewrite the PK3, and it cannot
+replace engine-level DECORATE/ACS diagnostics.
 
 ## Diagnostic log levels
 
@@ -191,6 +191,18 @@ Compiling the wrong aggregator silently leaves the old object in `src/acs/`, so
 the change simply does not happen in game (it cost a debugging round on
 2026-09-12). `src/acs_source/hud/**` builds `uh_bars.o` from
 `src/acs_source/hud/uh_bars.acs` the same way.
+
+The modified `v6b_overrides/_imports/8BDT.acs` declares `#library "CORE8BDT"`.
+Compile it to **`src/acs/CORE8BDT.o`**, never `src/acs/8BDT.o`:
+
+```bash
+$ACC $INC src/acs_source/v6b_overrides/_imports/8BDT.acs src/acs/CORE8BDT.o
+```
+
+Remove any stale `src/acs/8BDT.o` before packaging. ACS imports resolve by lump
+name, so the wrong filename silently leaves the base game's `CORE8BDT.o` in
+use. It lacks UH's `getPitCount`, causing `uh_ApplyPitDamage` to execute invalid
+bytecode and raise an ACS VM bounds error during map startup or client join.
 
 Package `src/` as a fresh archive (never update an existing ZIP in place), then
 validate. The file-list form below excludes what `src/.pk3ignore` excludes and

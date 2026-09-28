@@ -47,12 +47,12 @@ if (( ${#duplicates[@]} )); then
   fi
   exit 1
 fi
-required=(DECORATE KEYCONF LOADACS)
+# CORE8BDT must shadow the base-game lump. Naming it 8BDT.o leaves imports
+# using the stock library, which lacks UH's getPitCount and crashes in ACS.
+required=(DECORATE KEYCONF LOADACS acs/CORE8BDT.o)
 missing=()
 for lump in "${required[@]}"; do
-  # Do not use grep -q here: with `pipefail`, an early match makes printf see
-  # SIGPIPE and incorrectly turns a valid archive into a failure.
-  if ! printf '%s\n' "${entries[@]}" | grep -Fx "$lump" >/dev/null; then
+  if [[ ! -v 'seen[${lump,,}]' ]]; then
     missing+=("$lump")
   fi
 done
@@ -78,6 +78,6 @@ if (( json )); then
   printf '{"status":"ok","path":"%s","entries":%d,"size_bytes":%d}\n' \
     "$json_path" "${#entries[@]}" "$size_bytes"
 else
-  printf 'status=ok path=%s entries=%d size_bytes=%d required=DECORATE,KEYCONF,LOADACS\n' \
+  printf 'status=ok path=%s entries=%d size_bytes=%d required=DECORATE,KEYCONF,LOADACS,acs/CORE8BDT.o\n' \
     "$pk3_path" "${#entries[@]}" "$size_bytes"
 fi
