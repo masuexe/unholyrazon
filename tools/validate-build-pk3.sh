@@ -20,6 +20,33 @@ if ! unzip -t "$pk3_path" >/dev/null; then
 fi
 
 mapfile -t entries < <(unzip -Z1 "$pk3_path")
+# Engine authentication compares full lump paths case-insensitively.
+duplicates=()
+declare -A seen=()
+for entry in "${entries[@]}"; do
+  [[ "$entry" == */ ]] && continue
+  key="${entry,,}"
+  if [[ -v 'seen[$key]' ]]; then
+    duplicates+=("$key")
+  fi
+  seen[$key]=1
+done
+if (( ${#duplicates[@]} )); then
+  if (( json )); then
+    printf '{"status":"error","reason":"duplicate_lumps","duplicates":['
+    sep=""
+    for entry in "${duplicates[@]}"; do
+      entry="${entry//\\/\\\\}"
+      entry="${entry//\"/\\\"}"
+      printf '%s"%s"' "$sep" "$entry"
+      sep=,
+    done
+    printf ']}\n'
+  else
+    printf 'error: duplicate lump path (case-insensitive): %s\n' "${duplicates[@]}" >&2
+  fi
+  exit 1
+fi
 required=(DECORATE KEYCONF LOADACS)
 missing=()
 for lump in "${required[@]}"; do

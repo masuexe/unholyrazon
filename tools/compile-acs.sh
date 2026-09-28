@@ -27,6 +27,15 @@ if [[ -z "$ACC" ]]; then
 fi
 OUT="${1:-src/acs}"
 mkdir -p "$OUT"
+# Old manual builds used lowercase UIX filenames. Zandronum compares lump
+# paths without case, so keeping both copies breaks online authentication.
+for library in UIXITEMS UIXWEAP UIXTEAM; do
+  legacy="$OUT/${library,,}.o"
+  canonical="$OUT/$library.o"
+  if [[ -f "$legacy" ]] && ! [[ "$legacy" -ef "$canonical" ]]; then
+    rm -- "$legacy"
+  fi
+done
 INC="-i src/acs_source/v6b_overrides/_includes/common -i src/acs_source/v6b_overrides/_includes/mod_api -i src/acs_source/_includes/mod_api -i src/acs_source/_imports -i src/acs_source/v6b_overrides/_imports -i src/acs_source/unholy"
 fail=0
 echo "== uh_bars =="
