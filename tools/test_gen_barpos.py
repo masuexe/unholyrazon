@@ -229,7 +229,7 @@ def main():
         assert atomic_source.index(
             f"AtomicFireWepU_DrawBar(UHBAR_ATOMICFIRE_{constant});"
         ) < charge_call
-    assert 'GetUserCvar(ConsolePlayerNumber(), "mm8bdm_usechargebars")' in atomic_source
+    assert 'GetUserCVar(ConsolePlayerNumber(), "mm8bdm_usechargebars")' in atomic_source
     assert "Timer() % 2 == 1" in atomic_source
 
     base_graphics = load_fixture([("UHBar_BaseGraphics", [bar(
@@ -332,7 +332,7 @@ def main():
     assert not generator.is_transparent_fill("50_K_BAR", texture_defs, animations)
     # A definition that only exists in a comment is not a graphic at all.
     assert "50_only_comment" not in generator.parse_texture_defs(
-        generator.strip_line_comments("// graphic 50_ONLY_COMMENT,8,56{patch TNT1A0,0,0}")
+        generator.strip_line_comments("// graphic 50_ONLY_COMMENT, 8, 56 {Patch TNT1A0, 0, 0}")
     )
 
     fake_defs = {

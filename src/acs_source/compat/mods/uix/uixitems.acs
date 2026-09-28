@@ -27,9 +27,9 @@
 #define MAX_GROUPS 11
 
 int groupMapping[MAX_GROUPS] = {
-    IWGRP_MOBILITY, // DTADD_GRP_JUMP
-    IWGRP_MOBILITY, // DTADD_GRP_DASH
-    IWGRP_MOBILITY, // DTADD_GRP_FLIGHT
+    IWGRP_MOBILITY,  // DTADD_GRP_JUMP
+    IWGRP_MOBILITY,  // DTADD_GRP_DASH
+    IWGRP_MOBILITY,  // DTADD_GRP_FLIGHT
     IWGRP_MISC,     // DTADD_GRP_WEAPON
     IWGRP_MISC,     // DTADD_GRP_GIFT
     IWGRP_ATTACK,   // DTADD_GRP_ATTACK
@@ -46,27 +46,26 @@ int UIX_INV = 0;
 int UIX_BUSTERS = 0;
 
 #define IT_INIT       0
-#define IT_TYPE       1 // 0 - buster / 1 - item - atm unsure what's needed
+#define IT_TYPE       1  // 0 - buster / 1 - item - atm unsure what's needed
 #define IT_ACTOR      2
 #define IT_TAG        3
 #define IT_GROUP      4
 #define IT_AMOUNT     5
 #define IT_ICON       6
-#define IT_INGROUPIDX 7 // determined by the open script
+#define IT_INGROUPIDX 7  // determined by the open script
 
 int itemStore[UIX_INV_LMT][9];
-int groupIndex[UIX_INV_LMT]; // populated by the open script
+int groupIndex[UIX_INV_LMT];  // populated by the open script
 
-function int getItemProperty(int type, int idx)
-{
-    if(!itemStore[idx][IT_INIT]) {
+function int getItemProperty(int type, int idx) {
+    if (!itemStore[idx][IT_INIT]) {
         itemStore[idx][IT_INIT] = true;
-        if(idx < UIX_BUSTERS) {
+        if (idx < UIX_BUSTERS) {
             itemStore[idx][IT_INGROUPIDX] = groupIndex[idx];
 
-            itemStore[idx][IT_TYPE]  = 0;
+            itemStore[idx][IT_TYPE] = 0;
             itemStore[idx][IT_ACTOR] = getBusterUpgrade(idx);
-            itemStore[idx][IT_TAG]   = getBusterUpgradeTag(idx);
+            itemStore[idx][IT_TAG] = getBusterUpgradeTag(idx);
             itemStore[idx][IT_GROUP] = IWGRP_BUSTER;
             itemStore[idx][IT_AMOUNT] = 1;
             itemStore[idx][IT_ICON] = getBusterIcon(idx);
@@ -75,14 +74,14 @@ function int getItemProperty(int type, int idx)
 
             int dtidx = idx - UIX_BUSTERS;
             int group = getAssistItemGroup(dtidx);
-            if(group <= MAX_GROUPS)
+            if (group <= MAX_GROUPS)
                 group = groupMapping[group];
             else
                 group -= IWGRP_MAX;
 
-            itemStore[idx][IT_TYPE]  = 1;
+            itemStore[idx][IT_TYPE] = 1;
             itemStore[idx][IT_ACTOR] = getAssistItemActor(dtidx);
-            itemStore[idx][IT_TAG]   = getAssistItemTag(dtidx);
+            itemStore[idx][IT_TAG] = getAssistItemTag(dtidx);
             itemStore[idx][IT_GROUP] = group;
             itemStore[idx][IT_AMOUNT] = getAssistItemAmount(dtidx);
             itemStore[idx][IT_ICON] = getAssistItemIcon(dtidx);
@@ -106,7 +105,7 @@ GRP_HEAL 7
 GRP_RELOAD 8
 GRP_FULLRESTORE 9
 GRP_PASSIVE 10
-*/
+ */
 
 // Item Groups
 // Assume there can be an arbitrary number of groups in case these change in the future
@@ -118,23 +117,22 @@ int GROUP_ANG = 1.0;
 int groupCounts[GROUP_COUNT_LIMIT];
 int wheelInitialized = false;
 
-script "UIX_ItemWheelInit" OPEN CLIENTSIDE
-{
+script "UIX_ItemWheelInit" OPEN CLIENTSIDE {
     delay(3);
-    while(MAX_ITEMS_GLOBAL == 0 || MAX_BUSTERUPGRADES == 0) delay(1);
+    while (MAX_ITEMS_GLOBAL == 0 || MAX_BUSTERUPGRADES == 0) delay(1);
 
     UIX_BUSTERS = MAX_BUSTERUPGRADES;
     UIX_INV = UIX_BUSTERS + MAX_ITEMS_GLOBAL;
 
     int i, idx;
 
-    for(i = 0; i < UIX_INV; i++) {
+    for (i = 0; i < UIX_INV; i++) {
         int act = getItemProperty(IT_ACTOR, i);
-        if(StrLen(act) == 0)
+        if (StrLen(act) == 0)
             continue;
 
         int grp = getItemProperty(IT_GROUP, i);
-        if(grp == IWGRP_NULL)
+        if (grp == IWGRP_NULL)
             continue;
 
         // groupItems[grp][groupCounts[grp]] = getItemProperty(IT_ACTOR, i);
@@ -142,11 +140,11 @@ script "UIX_ItemWheelInit" OPEN CLIENTSIDE
         groupCounts[grp]++;
         // Log(s:act, s:" group id: ", i:groupIndex[i], s:"/", i:groupCounts[grp]);
 
-        if(groupCounts[grp] == 1)
+        if (groupCounts[grp] == 1)
             GROUP_COUNT++;
     }
 
-    for(i = 0; i < GROUP_COUNT; i++) {
+    for (i = 0; i < GROUP_COUNT; i++) {
         // Log(i:groupCounts[i]);
     }
 
@@ -164,22 +162,21 @@ int myInventoryGroupMax[GROUP_COUNT_LIMIT];
 int myInvCount = 0;
 int mySelection = -1;
 
-script "uix_items_inventory" ENTER CLIENTSIDE
-{
-    if(PlayerNumber() != ConsolePlayerNumber())
+script "uix_items_inventory" ENTER CLIENTSIDE {
+    if (PlayerNumber() != ConsolePlayerNumber())
         terminate;
 
-    while(!wheelInitialized) delay(1);
+    while (!wheelInitialized) delay(1);
     int i;
 
-    while(true) {
-        if(ClassifyActor(0) == ACTOR_NONE)
+    while (true) {
+        if (ClassifyActor(0) == ACTOR_NONE)
             terminate;
-        if(ClassifyActor(0) & ACTOR_WORLD)
+        if (ClassifyActor(0) & ACTOR_WORLD)
             terminate;
-        if(PlayerNumber() < 0)
+        if (PlayerNumber() < 0)
             terminate;
-        if(GetActorProperty(0, APROP_Health) <= 0)
+        if (GetActorProperty(0, APROP_Health) <= 0)
             terminate;
 
         // rebuild inventory if something is missing
@@ -192,9 +189,9 @@ script "uix_items_inventory" ENTER CLIENTSIDE
         // Wheel must be rebuilt when something fully leaves the inventory.
         bool rebuild = false;
 
-        for(i = 0; i < myInvCount; i++) {
+        for (i = 0; i < myInvCount; i++) {
             int c = checkInventory(getItemProperty(IT_ACTOR, myInventory[i]));
-            if(c > 0) {
+            if (c > 0) {
                 myNewInventory[myNewInvCount] = myInventory[i];
                 myHoldById[myInventory[i]] = c;
                 myInvById[myInventory[i]] = i;
@@ -205,22 +202,22 @@ script "uix_items_inventory" ENTER CLIENTSIDE
             }
         }
 
-        if(myNewInvCount != myInvCount) {
+        if (myNewInvCount != myInvCount) {
             rebuild = true;
-            if(mySelection > -1) {
-                if(myNewInvCount == 0) {
+            if (mySelection > -1) {
+                if (myNewInvCount == 0) {
                     mySelection = -1;
                 } else {
-                    while(true) { // ð»
-                        if(CheckInventory(getItemProperty(IT_ACTOR, myInventory[mySelection])) > 0)
+                    while (true) {  // ð»
+                        if (CheckInventory(getItemProperty(IT_ACTOR, myInventory[mySelection])) > 0)
                             break;
 
                         mySelection++;
                         mySelection = mySelection < myInvCount ? mySelection : 0;
                     }
 
-                    for(i = 0; i < myNewInvCount; i++) {
-                        if(StrCmp(getItemProperty(IT_ACTOR, myNewInventory[i]), getItemProperty(IT_ACTOR, myInventory[mySelection]))==0) {
+                    for (i = 0; i < myNewInvCount; i++) {
+                        if (StrCmp(getItemProperty(IT_ACTOR, myNewInventory[i]), getItemProperty(IT_ACTOR, myInventory[mySelection])) == 0) {
                             mySelection = i;
                             break;
                         }
@@ -231,19 +228,19 @@ script "uix_items_inventory" ENTER CLIENTSIDE
 
             // Log(s:"Rebuilding: new size = ", i:myNewInvCount);
             myInvCount = myNewInvCount;
-            for(i = 0; i < myNewInvCount; i++) {
+            for (i = 0; i < myNewInvCount; i++) {
                 myInventory[i] = myNewInventory[i];
             }
         }
 
         // now that we've dealt with what the player had and left behind...
         // let's handle the new items!
-        for(i = 0; i < UIX_INV; i++) {
+        for (i = 0; i < UIX_INV; i++) {
             // per the first loop, we already know if this item is held. Skip!
-            if(myHoldById[i] != 0) {
-                if(!rebuild) {
+            if (myHoldById[i] != 0) {
+                if (!rebuild) {
                     c = myHoldById[i];
-                    if(myInvCountsById[i] != c) {
+                    if (myInvCountsById[i] != c) {
                         ItemWheel_UpdateCount(myInvById[i], c);
                     }
                 }
@@ -254,20 +251,20 @@ script "uix_items_inventory" ENTER CLIENTSIDE
             }
 
             int grp = getItemProperty(IT_GROUP, i);
-            if(grp == IWGRP_NULL)
+            if (grp == IWGRP_NULL)
                 continue;
 
             // Check if the player has this other thing now.
             str act = getItemProperty(IT_ACTOR, i);
             c = CheckInventory(act);
-            if(c > 0) {
+            if (c > 0) {
                 myInventory[myInvCount] = i;
 
-                if(myInvCountsById[i] != c)
+                if (myInvCountsById[i] != c)
                     ItemWheel_AddItem(myInvCount);
 
                 // Log(s:"[", i:myInvCount, s:"] ", s:act, s:" group: ", i:grp);
-                if(mySelection == -1)
+                if (mySelection == -1)
                     mySelection = myInvCount;
                 myInvCount++;
                 myInventoryGroupMax[grp]++;
@@ -281,7 +278,7 @@ script "uix_items_inventory" ENTER CLIENTSIDE
             }
         }
 
-        if(rebuild)
+        if (rebuild)
             itemWheel_Rebuild();
 
         // str testOut = "";
@@ -296,28 +293,28 @@ script "uix_items_inventory" ENTER CLIENTSIDE
     mySelection = -1;
 }
 
-script "uix_items_inventory_respawn" RESPAWN CLIENTSIDE { CallACS0("uix_items_inventory"); }
-script "uix_items_inventory_disconnect" (int who) DISCONNECT { if(who == ConsolePlayerNumber()) mySelection = -1; }
+script "uix_items_inventory_respawn" RESPAWN CLIENTSIDE {CallACS0("uix_items_inventory");}
+script "uix_items_inventory_disconnect" (int who) DISCONNECT {if (who == ConsolePlayerNumber()) mySelection = -1;}
 
 // Select an Item =====================================================================================================
 
 // takes in the index of the selected item from myInventory.
 //
-script "uixitem_selectitem" (int selected, int time) //NET CLIENTSIDE
+script "uixitem_selectitem" (int selected, int time)  // NET CLIENTSIDE
 {
-    if(selected >= myInvCount)
+    if (selected >= myInvCount)
         terminate;
-    if(selected < 0)
+    if (selected < 0)
         terminate;
 
     int cln = ConsolePlayerNumber();
-    int tap = GetUserCvar(cln, "UIX_CL_ITEMWHEELTAP");
-    if(!tap) {
+    int tap = GetUserCVar(cln, "UIX_CL_ITEMWHEELTAP");
+    if (!tap) {
         selectItem(selected);
         terminate;
     }
 
-    if(tap < 2 && time >= GetUserCvar(cln, "UIX_CL_ITEMWHEELBUFFER")) {
+    if (tap < 2 && time >= GetUserCVar(cln, "UIX_CL_ITEMWHEELBUFFER")) {
         selectItem(selected);
         terminate;
     }
@@ -325,8 +322,7 @@ script "uixitem_selectitem" (int selected, int time) //NET CLIENTSIDE
     NamedSendNetworkString("uixitem_useitem_server", getItemProperty(IT_ACTOR, myInventory[selected]));
 }
 
-function void selectItem(int selected)
-{
+function void selectItem(int selected) {
     int i;
 
     GiveInventory("UIX_ItemSelected_PU", 1);
@@ -334,8 +330,8 @@ function void selectItem(int selected)
     // that is done here.
     // to preserve order, this cycles around, taking all the player's items in order
     // and returning them immediately in the same order, skipping the item we want selected
-    for(i = selected+1; i < selected+myInvCount; i++) {
-        int idx = i%myInvCount;
+    for (i = selected + 1; i < selected + myInvCount; i++) {
+        int idx = i % myInvCount;
 
         int act = getItemProperty(IT_ACTOR, myInventory[idx]);
         int c = CheckInventory(act);
@@ -358,12 +354,11 @@ function void selectItem(int selected)
 
 #define WHEEL_NAME "uixitem"
 
-script "uixitem_activate" (void) NET CLIENTSIDE
-{
+script "uixitem_activate" (void) NET CLIENTSIDE {
     int cln = ConsolePlayerNumber();
-    if(cln != PlayerNumber())
+    if (cln != PlayerNumber())
         terminate;
-    if(wheelName != -1)
+    if (wheelName != -1)
         terminate;
 
     newWheel(WHEEL_NAME, IWGRP_MAX, mySelection);
@@ -371,17 +366,15 @@ script "uixitem_activate" (void) NET CLIENTSIDE
     startWheel(-1, "uixitem_selectitem");
 }
 
-script "uixitem_deactivate" (void) NET CLIENTSIDE
-{
+script "uixitem_deactivate" (void) NET CLIENTSIDE {
     int cln = ConsolePlayerNumber();
-    if(cln != PlayerNumber())
+    if (cln != PlayerNumber())
         terminate;
 
     stopWheel();
 }
 
-script "uixitem_useitem_server" (int item) NET
-{
+script "uixitem_useitem_server" (int item) NET {
     UseInventory(item);
 }
 
@@ -397,25 +390,23 @@ script "uixitem_useitem_server" (int item) NET
 
 #define bits 8
 
-function void itemWheel_Rebuild(void)
-{
-    if(wheelName == -1)
+function void itemWheel_Rebuild(void) {
+    if (wheelName == -1)
         return;
-    if(StrCmp(wheelName, WHEEL_NAME) != 0)
+    if (StrCmp(wheelName, WHEEL_NAME) != 0)
         return;
 
     emptyWheel();
     WHEEL_GROUPS = IWGRP_MAX;
 
-    for(int i = 0; i < myInvCount; i++)
+    for (int i = 0; i < myInvCount; i++)
         ItemWheel_AddItem(i);
 }
 
-function void ItemWheel_AddItem(int idx)
-{
-    if(wheelName == -1)
+function void ItemWheel_AddItem(int idx) {
+    if (wheelName == -1)
         return;
-    if(StrCmp(wheelName, WHEEL_NAME) != 0)
+    if (StrCmp(wheelName, WHEEL_NAME) != 0)
         return;
 
     int item = myInventory[idx];
@@ -432,35 +423,34 @@ function void ItemWheel_AddItem(int idx)
 
     // ----- Deselected -----
     // Icon
-    addWheelElement("A",icon,0,WHEEL_MODE_UNSELECTED,UIX_IW_ICONX,UIX_IW_ICONY,IL_OP_ADD,IL_OP_ADD,0,0,1.0,0.5,ALIGN_CENTER,ALIGN_CENTER,0,0,0);
+    addWheelElement("A", icon, 0, WHEEL_MODE_UNSELECTED, UIX_IW_ICONX, UIX_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 0.5, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
     // Count
-    addWheelElement(count,"INDEXFONT","DarkGrey",WHEEL_MODE_UNSELECTED,UIX_IW_CNTMUL,UIX_IW_CNTMUL,IL_OP_MULTIPLY,IL_OP_MULTIPLY,1,1,UIX_IW_CNTSCALE,1.0,ALIGN_CENTER,ALIGN_CENTER,0,0,0);
+    addWheelElement(count, "INDEXFONT", "DarkGrey", WHEEL_MODE_UNSELECTED, UIX_IW_CNTMUL, UIX_IW_CNTMUL, IL_OP_MULTIPLY, IL_OP_MULTIPLY, 1, 1, UIX_IW_CNTSCALE, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
     // Background
-    addWheelElement("A","UXICB0",0,WHEEL_MODE_UNSELECTED,UIX_IW_ICONX,UIX_IW_ICONY,IL_OP_ADD,IL_OP_ADD,0,0,1.0,1.0,ALIGN_CENTER,ALIGN_CENTER,0,0,0);
+    addWheelElement("A", "UXICB0", 0, WHEEL_MODE_UNSELECTED, UIX_IW_ICONX, UIX_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
     // ----------------------
 
     // ----- Selected -----
     // Icon
-    addWheelElement("A",icon,0,WHEEL_MODE_SELECTED,UIX_IW_ICONX,UIX_IW_ICONY,IL_OP_ADD,IL_OP_ADD,0,0,1.5,1.0,ALIGN_CENTER,ALIGN_CENTER,0,0,0);
+    addWheelElement("A", icon, 0, WHEEL_MODE_SELECTED, UIX_IW_ICONX, UIX_IW_ICONY, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.5, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
     // Count
-    addWheelElement(count,"INDEXFONT","Gold",WHEEL_MODE_SELECTED,UIX_IW_CNTMUL,UIX_IW_CNTMUL,IL_OP_MULTIPLY,IL_OP_MULTIPLY,1,1,UIX_IW_CNTSCALE,1.0,ALIGN_CENTER,ALIGN_CENTER,0,0,0);
+    addWheelElement(count, "INDEXFONT", "Gold", WHEEL_MODE_SELECTED, UIX_IW_CNTMUL, UIX_IW_CNTMUL, IL_OP_MULTIPLY, IL_OP_MULTIPLY, 1, 1, UIX_IW_CNTSCALE, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
     // --------------------
 
     // ----- Centered -----
     // Icon
-    addWheelElement("A",icon,0,WHEEL_MODE_MIDDLE,UIX_IW_ICONX,UIX_IW_ICONY+UIX_IW_LABELPOS,IL_OP_ADD,IL_OP_ADD,0,0,1.5,1.0,ALIGN_CENTER,ALIGN_CENTER,0,0,0);
+    addWheelElement("A", icon, 0, WHEEL_MODE_MIDDLE, UIX_IW_ICONX, UIX_IW_ICONY + UIX_IW_LABELPOS, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.5, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
     // Count
-    addWheelElement(count,"INDEXFONT","White",WHEEL_MODE_MIDDLE,-6,-5,IL_OP_ADD,IL_OP_ADD,0,0,2.0,1.0,ALIGN_RIGHT,ALIGN_CENTER,0,0,0);
+    addWheelElement(count, "INDEXFONT", "White", WHEEL_MODE_MIDDLE, -6, -5, IL_OP_ADD, IL_OP_ADD, 0, 0, 2.0, 1.0, ALIGN_RIGHT, ALIGN_CENTER, 0, 0, 0);
     // Tag
-    addWheelElement(StrParam(l:tag),"SMALLFNT","Gold",WHEEL_MODE_MIDDLE,0,-UIX_IW_LABELPOS,IL_OP_ADD,IL_OP_ADD,0,0,1.0,1.0,ALIGN_CENTER,ALIGN_CENTER,0,0,0);
+    addWheelElement(StrParam(l:tag), "SMALLFNT", "Gold", WHEEL_MODE_MIDDLE, 0, -UIX_IW_LABELPOS, IL_OP_ADD, IL_OP_ADD, 0, 0, 1.0, 1.0, ALIGN_CENTER, ALIGN_CENTER, 0, 0, 0);
     // --------------------
 }
 
-function void ItemWheel_UpdateCount(int idx, int num)
-{
-    if(wheelName == -1)
+function void ItemWheel_UpdateCount(int idx, int num) {
+    if (wheelName == -1)
         return;
-    if(StrCmp(wheelName, WHEEL_NAME) != 0)
+    if (StrCmp(wheelName, WHEEL_NAME) != 0)
         return;
 
     myInvCountsById[idx] = num;
@@ -474,19 +464,18 @@ function void ItemWheel_UpdateCount(int idx, int num)
 str invNumbersCache[INV_NUMS_CACHE];
 int invNumbersCached[INV_NUMS_CACHE];
 
-function str getNumberString(int num)
-{
-    int idx = num-1;
+function str getNumberString(int num) {
+    int idx = num - 1;
 
-    if(idx < 0)
+    if (idx < 0)
         idx = 0;
-    if(idx >= INV_NUMS_CACHE)
-        idx = INV_NUMS_CACHE-1;
+    if (idx >= INV_NUMS_CACHE)
+        idx = INV_NUMS_CACHE - 1;
 
-    if(!invNumbersCached[idx]) {
-        if(num <= 1) {
+    if (!invNumbersCached[idx]) {
+        if (num <= 1) {
             invNumbersCache[idx] = "";
-        } else if(num >= INV_NUMS_CACHE) {
+        } else if (num >= INV_NUMS_CACHE) {
             invNumbersCache[idx] = StrParam(i:idx, s:"+");
         } else {
             invNumbersCache[idx] = StrParam(i:num);
@@ -499,23 +488,22 @@ function str getNumberString(int num)
 
 // Test functions =====================================================================================================
 
-script "uixitem_giver" (void)
-{
-    while(MAX_BUSTERUPGRADES == 0 || MAX_ITEMS_GLOBAL == 0)
+script "uixitem_giver" (void) {
+    while (MAX_BUSTERUPGRADES == 0 || MAX_ITEMS_GLOBAL == 0)
         delay(1);
 
     int i;
 
-    for(i = 0; i < MAX_BUSTERUPGRADES; i++) {
-        if(StrLen(getBusterUpgrade(i)) == 0)
+    for (i = 0; i < MAX_BUSTERUPGRADES; i++) {
+        if (StrLen(getBusterUpgrade(i)) == 0)
             continue;
         GiveInventory(getBusterUpgrade(i), 1);
     }
 
-    for(i = 0; i < MAX_ITEMS_GLOBAL; i++) {
-        if(StrLen(getAssistItemActor(i)) == 0)
+    for (i = 0; i < MAX_ITEMS_GLOBAL; i++) {
+        if (StrLen(getAssistItemActor(i)) == 0)
             continue;
-        if(getAssistItemGroup(i) == 10)
+        if (getAssistItemGroup(i) == 10)
             continue;
         GiveInventory(getAssistItemActor(i), getAssistItemAmount(i));
     }
@@ -524,12 +512,10 @@ script "uixitem_giver" (void)
 // script "uixitem_enter" ENTER { CallACS0("uixitem_giver"); }
 // script "uixitem_respawn" RESPAWN { CallACS0("uixitem_giver"); }
 
-script "uix_timer" (void)
-{
+script "uix_timer" (void) {
     print_time(GetActorClass(0), timer());
 }
 
-function void print_time(str source, int time)
-{
+function void print_time(str source, int time) {
     // Log(s:source, s:": ", i:time);
 }

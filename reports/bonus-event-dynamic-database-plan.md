@@ -359,7 +359,7 @@ DefineBonusEvent(
 ## 兼容策略
 
 - `UHEVENT_*` 常量暂时保留，供现有代码、RCON 和外部 addon 编译；它们只表示内建稳定 ID，不再是注册表完整性的来源。
-- `uh_sv_BonusEventNum` 继续接受整数。无效或未注册 ID 保持现有 warning 行为。
+- `uh_sv_bonuseventnum` 继续接受整数。无效或未注册 ID 保持现有 warning 行为。
 - 保留 `NormalizeForcedBonusEvent(50/150)` 一版兼容周期，并在注释中标成 legacy input alias。
 - 现有事件行为第一阶段不改，只把分派改为回调，因此游戏平衡、提示文本和音乐应逐字保持。
 - addon 新事件必须提供独立脚本名，避免命名冲突；引擎对同名静态脚本会按静态模块查找顺序解析，因此 API 文档应要求带 addon 前缀。

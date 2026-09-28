@@ -14,18 +14,18 @@ function void UH_ClearPublishedMusic(int context) {
   currentmusicalbum = "";
   currentmusicartist = "";
   currentmusiccontext = context;
-  gen = GetCVar("_uh_ServMusicGen");
+  gen = GetCVar("_uh_servmusicgen");
   if ((gen & 1) == 0)
     gen = gen + 1;
   else
     gen = gen + 2;
-  SetCVar("_uh_ServMusicGen", gen);
-  SetCVarString("_uh_ServMusicLump", "");
-  SetCVarString("_uh_ServMusicTitle", "");
-  SetCVarString("_uh_ServMusicAlbum", "");
-  SetCVarString("_uh_ServMusicArtist", "");
-  SetCVar("_uh_ServMusicContext", context);
-  SetCVar("_uh_ServMusicGen", gen + 1);
+  SetCVar("_uh_servmusicgen", gen);
+  SetCVarString("_uh_servmusiclump", "");
+  SetCVarString("_uh_servmusictitle", "");
+  SetCVarString("_uh_servmusicalbum", "");
+  SetCVarString("_uh_servmusicartist", "");
+  SetCVar("_uh_servmusiccontext", context);
+  SetCVar("_uh_servmusicgen", gen + 1);
 }
 
 function void PlayMusic(str music) {
@@ -65,24 +65,24 @@ function void UH_PublishMusic(str lump, str title, str album, str artist, int co
   currentmusicartist = artist;
   currentmusiccontext = context;
 
-  gen = GetCVar("_uh_ServMusicGen");
+  gen = GetCVar("_uh_servmusicgen");
   if ((gen & 1) == 0)
     gen = gen + 1;
   else
     gen = gen + 2;
-  SetCVar("_uh_ServMusicGen", gen);
-  SetCVarString("_uh_ServMusicLump", lump);
-  SetCVarString("_uh_ServMusicTitle", title);
-  SetCVarString("_uh_ServMusicAlbum", album);
-  SetCVarString("_uh_ServMusicArtist", artist);
-  SetCVar("_uh_ServMusicContext", context);
+  SetCVar("_uh_servmusicgen", gen);
+  SetCVarString("_uh_servmusiclump", lump);
+  SetCVarString("_uh_servmusictitle", title);
+  SetCVarString("_uh_servmusicalbum", album);
+  SetCVarString("_uh_servmusicartist", artist);
+  SetCVar("_uh_servmusiccontext", context);
   if (announce) {
-    ann = GetCVar("_uh_ServMusicAnnounce") + 1;
+    ann = GetCVar("_uh_servmusicannounce") + 1;
     if (ann < 1)
       ann = 1;
-    SetCVar("_uh_ServMusicAnnounce", ann);
+    SetCVar("_uh_servmusicannounce", ann);
   }
-  SetCVar("_uh_ServMusicGen", gen + 1);
+  SetCVar("_uh_servmusicgen", gen + 1);
 }
 
 function void UH_PingRoundMusicMode(int context) {
@@ -160,7 +160,7 @@ function void UH_ClientApplyRoundMusic(int mode, int context) {
     ACS_NamedExecuteAlways("uh_ApplyRoundMusicMode", 0, context);
     return;
   }
-  lump = GetCVarString("_uh_ServMusicLump");
+  lump = GetCVarString("_uh_servmusiclump");
   if (!UH_MusicLumpPublishable(lump))
     return;
   UH_ClientPlayMusic(lump);
@@ -201,26 +201,26 @@ script "uh_WatchRoundMusicMode" OPEN CLIENTSIDE {
       Delay(1);
       continue;
     }
-    gen = GetCVar("_uh_ServMusicGen");
+    gen = GetCVar("_uh_servmusicgen");
     if (gen & 1) {
       Delay(1);
       continue;
     }
     if (!primed) {
       Delay(1);
-      if (GetCVar("_uh_ServMusicGen") != gen)
+      if (GetCVar("_uh_servmusicgen") != gen)
         continue;
       primed = 1;
       lastgen = gen;
-      lastann = GetCVar("_uh_ServMusicAnnounce");
+      lastann = GetCVar("_uh_servmusicannounce");
       lastmode = GetUserCVar(cpn, "uh_cl_MusicMode");
-      lastcontext = GetCVar("_uh_ServMusicContext");
+      lastcontext = GetCVar("_uh_servmusiccontext");
       UH_ClientApplyRoundMusic(lastmode, lastcontext);
       continue;
     }
     mode = GetUserCVar(cpn, "uh_cl_MusicMode");
-    context = GetCVar("_uh_ServMusicContext");
-    ann = GetCVar("_uh_ServMusicAnnounce");
+    context = GetCVar("_uh_servmusiccontext");
+    ann = GetCVar("_uh_servmusicannounce");
     if (gen != lastgen || mode != lastmode || context != lastcontext)
       UH_ClientApplyRoundMusic(mode, context);
     if ((gen != lastgen && !UH_MusicSnapshotReady()) || (mode != lastmode && mode == 1))

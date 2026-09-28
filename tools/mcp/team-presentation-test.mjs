@@ -172,7 +172,7 @@ try {
     "-stdout", "-iwad", profileData.iwad, "-file", ...(profileData.files || []),
     "-host", "8", "-port", String(options.gamePort), "-lastmanstanding",
     "+set", "sv_minplayers", "1", "+set", "sv_updatemaster", "0", "+set", "sv_noplayertimeout", "1",
-    "+set", "sv_cheats", "1", "+set", "uh_sv_LogLevel", "4",
+    "+set", "sv_cheats", "1", "+set", "uh_sv_loglevel", "4",
     "+map", profileData.map || "MM2DW1", ...common,
   ];
   dedicated = spawn(join(serverDir, "zandronum"), serverArgs, {

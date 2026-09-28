@@ -12,7 +12,7 @@ function void ShowMeTheRCON(str var, int num) {
 }
 
 // This gathers a CVAR info, resets to NUM, and returns it.
-function int CheckClearCvar(str check, int num) {
+function int CheckClearCVar(str check, int num) {
   int checked = GetCVAR(check);
   if (checked != num) {UH_Log(UH_LOG_DEBUG, StrParam(s:"CVAR '", s:check, s:"' was '", i:checked, s:"' and was set to '", i:num, s:"'"));}
   SetCVar(check, num);
@@ -20,7 +20,7 @@ function int CheckClearCvar(str check, int num) {
 }
 
 // Read a user CVAR and clamp it to a safe range.
-function int GetClampedCvar(str check, int minval, int maxval) {
+function int GetClampedCVar(str check, int minval, int maxval) {
   int value = GetCVar(check);
   if (value < minval) {value = minval;}
   if (value > maxval) {value = maxval;}
@@ -89,19 +89,19 @@ int uhsrvid[MAX_PLAYERS];
 // Stable identity for an actor class, or UH_PLDEF_NONE.  The >= 0 test is what
 // rejects load-order-dependent custom ids.
 function int UH_Ti_KindForClass(str cls) {
-  if (FindSurvivorByActor(cls) >= 0) { return UH_PLDEF_SURVIVOR; }
-  if (FindBossByActor(cls) >= 0) { return UH_PLDEF_BOSS; }
-  if (FindEyeByActor(cls) >= 0) { return UH_PLDEF_EYE; }
+  if (FindSurvivorByActor(cls) >= 0) {return UH_PLDEF_SURVIVOR;}
+  if (FindBossByActor(cls) >= 0) {return UH_PLDEF_BOSS;}
+  if (FindEyeByActor(cls) >= 0) {return UH_PLDEF_EYE;}
   return UH_PLDEF_NONE;
 }
 
 function int UH_Ti_IdForClass(str cls) {
   int id = FindSurvivorByActor(cls);
-  if (id >= 0) { return id; }
+  if (id >= 0) {return id;}
   id = FindBossByActor(cls);
-  if (id >= 0) { return id; }
+  if (id >= 0) {return id;}
   id = FindEyeByActor(cls);
-  if (id >= 0) { return id; }
+  if (id >= 0) {return id;}
   return 0;
 }
 
@@ -112,8 +112,8 @@ function int UH_Ti_IdForClass(str cls) {
 // connected for delivery (UH_Ti_IsConnectedClient) but must not keep a previous
 // occupant's role or portrait.
 function bool UH_Ti_IsConnectedPlayer(int pn) {
-  if (pn < 0 || pn >= MAX_PLAYERS) { return false; }
-  if (PlayerInGame(pn)) { return true; }
+  if (pn < 0 || pn >= MAX_PLAYERS) {return false;}
+  if (PlayerInGame(pn)) {return true;}
   return PlayerIsSpectator(pn) == 2;
 }
 
@@ -152,12 +152,12 @@ function void UH_Ti_IdentityForPlayer(int pn) {
 
 // Read the server identity cache without re-reading the actor.
 function int UH_Ti_CachedKind(int pn) {
-  if (pn < 0 || pn >= MAX_PLAYERS) { return UH_PLDEF_NONE; }
+  if (pn < 0 || pn >= MAX_PLAYERS) {return UH_PLDEF_NONE;}
   return uhsrvkind[pn];
 }
 
 function int UH_Ti_CachedId(int pn) {
-  if (pn < 0 || pn >= MAX_PLAYERS) { return 0; }
+  if (pn < 0 || pn >= MAX_PLAYERS) {return 0;}
   return uhsrvid[pn];
 }
 
@@ -180,32 +180,32 @@ function void UH_TeamInfo_WarmIdentities(void) {
 // uhtiscorepolicy unsynchronized and the TAB portraits blank.  Iterate every
 // connected client explicitly instead.
 function bool UH_Ti_IsConnectedClient(int pn) {
-  if (pn < 0 || pn >= MAX_PLAYERS) { return false; }
+  if (pn < 0 || pn >= MAX_PLAYERS) {return false;}
   // PlayerInGame == playeringame && !bSpectating; PlayerIsSpectator is
   // non-zero exactly for connected spectators.  Their union is playeringame,
   // which is what NamedExecuteClientScript (PLAYER_IsValidPlayer) accepts.
-  if (PlayerInGame(pn)) { return true; }
+  if (PlayerInGame(pn)) {return true;}
   return PlayerIsSpectator(pn) != 0;
 }
 
 function void UH_Ti_SendStatusTo(int client, int pn, int status) {
-  if (!UH_Ti_IsConnectedClient(client)) { return; }
+  if (!UH_Ti_IsConnectedClient(client)) {return;}
   NamedExecuteClientScript("uh_ti_sync_status", client, pn, status,
     UH_Ti_CachedKind(pn), UH_Ti_CachedId(pn));
 }
 
 function void UH_Ti_SendOneVsAllTo(int client, int active, int target) {
-  if (!UH_Ti_IsConnectedClient(client)) { return; }
+  if (!UH_Ti_IsConnectedClient(client)) {return;}
   NamedExecuteClientScript("uh_ti_sync_ova", client, active, target);
 }
 
 function void UH_Ti_SendScorePolicyTo(int client, int policy) {
-  if (!UH_Ti_IsConnectedClient(client)) { return; }
+  if (!UH_Ti_IsConnectedClient(client)) {return;}
   NamedExecuteClientScript("uh_ti_sync_policy", client, policy);
 }
 
 function void UH_TeamInfo_BroadcastStatus(int pn, int status) {
-  if (pn < 0 || pn >= MAX_PLAYERS) { return; }
+  if (pn < 0 || pn >= MAX_PLAYERS) {return;}
   UH_Ti_IdentityForPlayer(pn);
   for (int c = 0; c < MAX_PLAYERS; c++) {
     UH_Ti_SendStatusTo(c, pn, status);
@@ -215,16 +215,16 @@ function void UH_TeamInfo_BroadcastStatus(int pn, int status) {
 // 1-vs-all is defined by the ACTIVE bonus event's UHBE_FLAG_ONEVSALL, never
 // by the target's current life status (uh_DemoneyeMorph rewrites it to PLS_EYE).
 function bool UH_TeamInfo_IsOneVsAllActive(void) {
-  if (!isbonuseventactive || bonuseventended) { return false; }
+  if (!isbonuseventactive || bonuseventended) {return false;}
   int eid = eventdataarr[EVENTDATA_MAINEVENT];
-  if (!IsBonusEventDefined(eid)) { return false; }
+  if (!IsBonusEventDefined(eid)) {return false;}
   return (GetBonusEventFlags(eid) & UHBE_FLAG_ONEVSALL) != 0;
 }
 
 function int UH_TeamInfo_OneVsAllTarget(void) {
-  if (!UH_TeamInfo_IsOneVsAllActive()) { return -1; }
+  if (!UH_TeamInfo_IsOneVsAllActive()) {return -1;}
   int tid = bossdataarr[0][BOSSDATA_TID];
-  if (tid < 1000 || tid > 1063) { return -1; }
+  if (tid < 1000 || tid > 1063) {return -1;}
   return tid - 1000;
 }
 
@@ -239,19 +239,19 @@ function int UH_TeamInfo_OneVsAllTarget(void) {
 // with none of them, or with more than one, is INVALID (never resolved by
 // priority).  UHBE_FLAG_EYE_TEAM is orthogonal metadata and is ignored.
 function int UH_TeamInfo_ScorePolicy(void) {
-  if (!isbonuseventactive || bonuseventended) { return UH_SCOREPOLICY_NORMAL; }
+  if (!isbonuseventactive || bonuseventended) {return UH_SCOREPOLICY_NORMAL;}
   int eid = eventdataarr[EVENTDATA_MAINEVENT];
-  if (!IsBonusEventDefined(eid)) { return UH_SCOREPOLICY_INVALID; }
+  if (!IsBonusEventDefined(eid)) {return UH_SCOREPOLICY_INVALID;}
   int f = GetBonusEventFlags(eid);
   int n = 0;
-  if (f & UHBE_FLAG_FFA) { n++; }
-  if (f & UHBE_FLAG_ONEVSALL) { n++; }
-  if (f & UHBE_FLAG_ALL_EYE) { n++; }
-  if (f & UHBE_FLAG_MULTITEAM) { n++; }
-  if (n != 1) { return UH_SCOREPOLICY_INVALID; }
-  if (f & UHBE_FLAG_FFA) { return UH_SCOREPOLICY_FFA; }
-  if (f & UHBE_FLAG_ONEVSALL) { return UH_SCOREPOLICY_ONEVSALL; }
-  if (f & UHBE_FLAG_ALL_EYE) { return UH_SCOREPOLICY_ALL_EYE; }
+  if (f & UHBE_FLAG_FFA) {n++;}
+  if (f & UHBE_FLAG_ONEVSALL) {n++;}
+  if (f & UHBE_FLAG_ALL_EYE) {n++;}
+  if (f & UHBE_FLAG_MULTITEAM) {n++;}
+  if (n != 1) {return UH_SCOREPOLICY_INVALID;}
+  if (f & UHBE_FLAG_FFA) {return UH_SCOREPOLICY_FFA;}
+  if (f & UHBE_FLAG_ONEVSALL) {return UH_SCOREPOLICY_ONEVSALL;}
+  if (f & UHBE_FLAG_ALL_EYE) {return UH_SCOREPOLICY_ALL_EYE;}
   return UH_SCOREPOLICY_MULTITEAM;
 }
 
@@ -259,7 +259,7 @@ function int UH_TeamInfo_ScorePolicy(void) {
 // The caller must have warmed the identity cache once
 // (UH_TeamInfo_WarmIdentities) so no definition-table scan happens per client.
 function void UH_Ti_SendSnapshotCore(int client) {
-  if (!UH_Ti_IsConnectedClient(client)) { return; }
+  if (!UH_Ti_IsConnectedClient(client)) {return;}
   for (int i = 0; i < MAX_PLAYERS; i++) {
     // Gate on the team-info row, NOT on PlayerInGame: a dead spectator
     // (PlayerIsSpectator == 2) has left the game but the slot is still assigned.
@@ -317,8 +317,8 @@ function void PlayerLifeStatusArr_UpdateFunc(int thedude, int newstatus) {
   totalplayersarr[playerlifestatusarr[thedude]]--;
   playerlifestatusarr[thedude] = newstatus;
   totalplayersarr[newstatus]++;
-  if (newstatus == PLS_NULL) { uhsrvrole[thedude] = PLS_NULL; }
-  else if (newstatus != PLS_DEAD) { uhsrvrole[thedude] = newstatus; }
+  if (newstatus == PLS_NULL) {uhsrvrole[thedude] = PLS_NULL;}
+  else if (newstatus != PLS_DEAD) {uhsrvrole[thedude] = newstatus;}
   UH_TeamInfo_BroadcastStatus(thedude, newstatus);
 }
 

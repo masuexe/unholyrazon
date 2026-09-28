@@ -158,7 +158,7 @@ if (!StrlenInvalidPrintedAlready)
 且两者都在 `CVARINFO.*` 中正确声明：
 
 - `unholy/uh_bosscore.acs:352` → `uh_dsw_out_str`（`CVARINFO.ipc`）
-- `unholy/uh_display.acs:894` → `_uh_ServMusicCredits`（`CVARINFO.internal`）
+- `unholy/uh_display.acs:894` → `_uh_servmusiccredits`（`CVARINFO.internal`）
 
 唯一能对无效 cell 调用 `StrLen` 的路径是 `hud/guard_factors.acs:11`（`StrLen(GetCVarString("uh_gf_actor"))`），
 其入口 `DefineUnholyGuardFactor` 本 mod 内部没有调用者；扫描全部 addon 的 ACS 产物也确认
@@ -178,7 +178,7 @@ Bonus Event 修复引入的问题；应在 miscfixes 的 `WEPHIDE.o` 中修复�
 
 ### 4.5 对 `rz_debug_BonusEventDBCheck` 的等价覆盖
 
-该脚本本身不可达：首行 `if (GetCvar("lastmanstanding") == 0) terminate;`，而 `lastmanstanding`
+该脚本本身不可达：首行 `if (GetCVar("lastmanstanding") == 0) terminate;`，而 `lastmanstanding`
 是 `CVAR_SERVERINFO` 引擎 cvar，只在 `-host` 服务端为真，服务端模式又观测不到 ACS 输出（§4.1）。
 
 因此按其四组检查逐项复刻为探针，改为**经公开 API** 执行（顺带把 CVARINFO mailbox 也跑了一遍），

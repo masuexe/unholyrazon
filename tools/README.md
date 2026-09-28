@@ -133,11 +133,11 @@ node tools/mcp/versus-207-test.mjs --combo 209 --expect any --json
 
 It launches a dedicated `-lastmanstanding` server plus two clients, adds four
 bots so the versus combo meets its four-player minimum, forces
-`uh_sv_BossEventNum <combo>`, and verifies on the live client that the two
+`uh_sv_bosseventnum <combo>`, and verifies on the live client that the two
 expected bosses spawn without `PowerProtectBoss` and that the round resolves.
 `--combo`/`--expect` default to 207 (Red Baron / Blue Jay); `--expect any`
 accepts the two random bosses of combo 209; `--forced1`/`--forced2` supply the
-`uh_sv_ForcedBoss1/2` pair for combo 206; `--resolve-wait` raises the
+`uh_sv_forcedboss1/2` pair for combo 206; `--resolve-wait` raises the
 post-inspection window for long high-HP duels. It does not drive real
 projectiles; that remains the manual gameplay gate.
 
@@ -159,7 +159,7 @@ DECORATE/ACS diagnostics.
 `UH_Log` uses only the existing verbosity thresholds: `0=OFF`, `1=ERROR`,
 `2=+WARN`, `3=+INFO` (default), `4=+DEBUG`. There is no separate debug toggle.
 Use `set uh_cl_LogLevel 4` for player/locally hosted diagnostics, or
-`set uh_sv_LogLevel 4` for dedicated-server calls without a player context.
+`set uh_sv_loglevel 4` for dedicated-server calls without a player context.
 Player-context calls still use that player's `uh_cl_LogLevel` on the server.
 Deferred round-start registry diagnostics run only when the applicable threshold
 includes DEBUG. The full launch profiles and versus test enable level 4.

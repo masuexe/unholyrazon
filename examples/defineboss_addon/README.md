@@ -37,8 +37,8 @@ Addon `LOADACS` only needs `uh_exaddon`; main mod already loads `uhdt` / `uhaddr
 ## Test (singleplayer)
 
 1. Main mod only: random LMS must not show "UH Phase3 Test".
-2. Main + this addon; RCON `uh_sv_ForcedBoss1 -1`; start LMS → body is CuttyCut clone, HUD name "UH Example Boss", instructions from DefineBoss.
-3. Shadow: `uh_sv_ForcedBoss1 300` (Shadowman fakeout) + `uh_sv_ForcedShadowBoss1 26` → after reveal, CuttyCut (id 26), not TrueBusterExpert.
+2. Main + this addon; RCON `uh_sv_forcedboss1 -1`; start LMS → body is CuttyCut clone, HUD name "UH Example Boss", instructions from DefineBoss.
+3. Shadow: `uh_sv_forcedboss1 300` (Shadowman fakeout) + `uh_sv_forcedshadowboss1 26` → after reveal, CuttyCut (id 26), not TrueBusterExpert.
 
 ## Test (online)
 

@@ -4,7 +4,7 @@
 //
 // Brings up one dedicated `-lastmanstanding` server plus two clients (one
 // bridge-controlled, one directly observed), adds bots so 207's four-player
-// minimum is met, forces `uh_sv_BossEventNum 207`, then verifies on the live
+// minimum is met, forces `uh_sv_bosseventnum 207`, then verifies on the live
 // client that the two versus bosses exist and that neither carries
 // `PowerProtectBoss`.  That is the network-side counterpart to the local
 // uh_BossMorph probe: without the versus exemption the bosses would be immune
@@ -115,7 +115,7 @@ try {
     "+set", "sv_cheats", "1",
     "+set", "sv_updatemaster", "0",
     "+set", "sv_noplayertimeout", "1",
-    "+set", "uh_sv_LogLevel", "4",
+    "+set", "uh_sv_loglevel", "4",
   ];
   dedicated = spawn(serverEngine, serverArgs, { cwd: serverDir, env: { ...process.env, SDL_VIDEODRIVER: "offscreen", ZANDRONUM_BRIDGE_PORT: String(options.port + 100) }, stdio: ["pipe", "pipe", "pipe"] });
   const serverLogPath = "/tmp/versus-207-server.log";
@@ -153,10 +153,10 @@ try {
   // Force the selection explicitly: the OPEN countdown script only selects
   // bosses when it observes GAMESTATE_INPROGRESS, which depends on when the
   // second player finishes connecting.
-  dedicated.stdin.write(`uh_sv_BossEventNum ${options.combo}\n`);
+  dedicated.stdin.write(`uh_sv_bosseventnum ${options.combo}\n`);
   await sleep(1500);
-  if (Number.isInteger(options.forced1)) { dedicated.stdin.write(`uh_sv_ForcedBoss1 ${options.forced1}\n`); await sleep(1000); }
-  if (Number.isInteger(options.forced2)) { dedicated.stdin.write(`uh_sv_ForcedBoss2 ${options.forced2}\n`); await sleep(1000); }
+  if (Number.isInteger(options.forced1)) { dedicated.stdin.write(`uh_sv_forcedboss1 ${options.forced1}\n`); await sleep(1000); }
+  if (Number.isInteger(options.forced2)) { dedicated.stdin.write(`uh_sv_forcedboss2 ${options.forced2}\n`); await sleep(1000); }
   dedicated.stdin.write("puke ub_SelectBossAndEvent\n");
   console.error("[versus-207] server puke ub_SelectBossAndEvent");
 
@@ -166,7 +166,7 @@ try {
   let selectionText = "";
   for (let attempt = 0; attempt < 240 && !selectionText; attempt += 1) {
     const logText = existsSync(serverLogPath) ? readFileSync(serverLogPath, "utf8") : dedicatedLog;
-    const idx = logText.lastIndexOf(`uh_sv_BossEventNum' was '${options.combo}'`);
+    const idx = logText.lastIndexOf(`uh_sv_bosseventnum' was '${options.combo}'`);
     if (idx >= 0) {
       const tail = logText.slice(idx);
       if (/Boss 1 TID = \d+[\s\S]*?Boss 2 TID = \d+/.test(tail)) selectionText = tail;
@@ -198,7 +198,7 @@ try {
   // combo's CVAR line: the engine's LMS winner/win limit, a map change, or the
   // next round's selection.  A soft-locked watcher would show none of these.
   const finalLog = existsSync(serverLogPath) ? readFileSync(serverLogPath, "utf8") : dedicatedLog;
-  const anchorIdx = finalLog.lastIndexOf(`uh_sv_BossEventNum' was '${options.combo}'`);
+  const anchorIdx = finalLog.lastIndexOf(`uh_sv_bosseventnum' was '${options.combo}'`);
   const afterVs = anchorIdx >= 0 ? finalLog.slice(anchorIdx) : "";
   const versusResolved = /multiBossCheck|Winlimit hit|ACS scripts unloaded|wins!/i.test(afterVs);
 

@@ -31,7 +31,7 @@
 #define OBJ_CTF 2
 #define OBJ_TEAMPOSS 3
 #define OBJ_MODES 4
-str objectiveModes[OBJ_MODES] = { "OneFlagCTF", "Skulltag", "CTF", "TeamPossession" };
+str objectiveModes[OBJ_MODES] = {"OneFlagCTF", "Skulltag", "CTF", "TeamPossession"};
 str objectiveItems[OBJ_MODES][4] = {
     {"MegaWhiteFlag", "MegaWhiteFlag", "MegaWhiteFlag", "MegaWhiteFlag"},
     {"MegaBlueHat", "MegaRedHat", "MegaGreenHat", "MegaYellowHat"},
@@ -46,42 +46,41 @@ int lastPickup = -1;
 // ----------------------------------
 
 #define SURVIVAL 3
-str survivalModes[SURVIVAL] = { "teamlms", "lastmanstanding", "survival" };
+str survivalModes[SURVIVAL] = {"teamlms", "lastmanstanding", "survival"};
 int maxLives = -1;
 
 #define COOP_MODES 3
-str coopModes[COOP_MODES] = { "cooperative", "survival", "invasion" };
+str coopModes[COOP_MODES] = {"cooperative", "survival", "invasion"};
 int isCoopMode = false;
 
 function int getPlayerTeam(int pln) {
-    if(isCoopMode)
+    if (isCoopMode)
         return 4;
     return GetPlayerInfo(pln, PLAYERINFO_TEAM);
 }
 
-script "UITweaks_TeamInfo_ModeTest" OPEN CLIENTSIDE
-{
+script "UITweaks_TeamInfo_ModeTest" OPEN CLIENTSIDE {
     str mode = GetCurrentGamemode();
     int i;
 
-    for(i = 0; i < COOP_MODES; i++) {
-        if(StrMatches(coopModes[i], mode)) {
+    for (i = 0; i < COOP_MODES; i++) {
+        if (StrMatches(coopModes[i], mode)) {
             isCoopMode = true;
             break;
         }
     }
 
-    for(i = 0; i < OBJ_MODES; i++) {
-        if(StrMatches(objectiveModes[i], mode)) {
+    for (i = 0; i < OBJ_MODES; i++) {
+        if (StrMatches(objectiveModes[i], mode)) {
             objective = i;
-            maxTeams = GetCvar("sv_maxteams");
+            maxTeams = GetCVar("sv_maxteams");
             terminate;
         }
     }
 
-    for(i = 0; i < SURVIVAL; i++) {
-        if(StrMatches(survivalModes[i], mode)) {
-            maxLives = GetCvar("sv_maxlives");
+    for (i = 0; i < SURVIVAL; i++) {
+        if (StrMatches(survivalModes[i], mode)) {
+            maxLives = GetCVar("sv_maxlives");
             break;
         }
     }
@@ -147,21 +146,20 @@ int tiWrapOffs;
 // agree on the same side model.
 int uixUnholyMode = 0;
 
-function int getPlayerAlive(int pln)
-{
-    if(PlayerIsSpectator(pln) == 2)
+function int getPlayerAlive(int pln) {
+    if (PlayerIsSpectator(pln) == 2)
         return STATUS_GHOST;
 
-    if(!PlayerInGame(pln))
+    if (!PlayerInGame(pln))
         return STATUS_GONE;
 
     int hp;
-    if(uixUnholyMode) {
+    if (uixUnholyMode) {
         hp = ACS_NamedExecuteWithResult("uh_GetTeammateHealth", pln);
     } else {
-        hp = GetActorProperty(pln+PLN_TID_SHRT, AProp_Health);
+        hp = GetActorProperty(pln + PLN_TID_SHRT, AProp_Health);
     }
-    if(hp <= 0)
+    if (hp <= 0)
         return STATUS_DEAD;
 
     return STATUS_ALIVE;
@@ -177,37 +175,36 @@ function bool uixIsDisplayTeammate(int viewer, int subject) {
 // mirroring the stock TPROP_NumPlayers / TPROP_NumLivePlayers split.
 function int uixUnholyDisplayCount(int pln, int showdead) {
     int count = 0;
-    for(int i = 0; i < MAX_PLAYERS_SHRT; i++) {
-        if(i == pln)
+    for (int i = 0; i < MAX_PLAYERS_SHRT; i++) {
+        if (i == pln)
             continue;
         int dead = getPlayerAlive(i);
-        if(dead == STATUS_GONE)
+        if (dead == STATUS_GONE)
             continue;
-        if(!showdead && dead == STATUS_GHOST)
+        if (!showdead && dead == STATUS_GHOST)
             continue;
-        if(!uixIsDisplayTeammate(pln, i))
+        if (!uixIsDisplayTeammate(pln, i))
             continue;
         count++;
     }
     return count;
 }
 
-script "UITweaks_TeamInfo" (int cam, int cpn, int cv)
-{
-    if(!GetCvar("UIX_SV_TEAMINFO"))
+script "UITweaks_TeamInfo" (int cam, int cpn, int cv) {
+    if (!GetCVar("UIX_SV_TEAMINFO"))
         terminate;
 
-    int baseAlpha = GetUserCvar(cpn, "UIX_CL_TEAMINFOALPHA");
-    if(baseAlpha == 0.0)
+    int baseAlpha = GetUserCVar(cpn, "UIX_CL_TEAMINFOALPHA");
+    if (baseAlpha == 0.0)
         terminate;
 
-    if(CheckActorInventory(cam, "UIX_NoTeamBar") > 0)
+    if (CheckActorInventory(cam, "UIX_NoTeamBar") > 0)
         terminate;
 
     SetActivator(cam);
 
     int pln = PlayerNumber();
-    if(pln == -1)
+    if (pln == -1)
         terminate;
 
     SetActivator(-1);
@@ -216,65 +213,64 @@ script "UITweaks_TeamInfo" (int cam, int cpn, int cv)
     int team = getPlayerTeam(pln);
     // Log(i:team, s:" cam: ", i:cam);
 
-    if(team == 255 && !uixUnholyMode) { // Spectator
-
+    if (team == 255 && !uixUnholyMode) {  // Spectator
     } else {
         // Ordinary LMS has no engine team.  Use a neutral palette index so the
         // untouched drawMugshot/drawStatus/drawLives code stays in range.
-        if(uixUnholyMode && (team < 0 || team > 3))
+        if (uixUnholyMode && (team < 0 || team > 3))
             team = 0;
-        dbShowSelf = GetUserCvar(cpn, "UIX_DEBUG_SHOWSELF");
+        dbShowSelf = GetUserCVar(cpn, "UIX_DEBUG_SHOWSELF");
 
-        cvars[CV_OFFSX] = GetUserCvar(cpn, "UIX_CL_TEAMINFOOFFSX");
-        cvars[CV_OFFSY] = GetUserCvar(cpn, "UIX_CL_TEAMINFOOFFSY");
-        cvars[CV_SCALE] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSCALE");
+        cvars[CV_OFFSX] = GetUserCVar(cpn, "UIX_CL_TEAMINFOOFFSX");
+        cvars[CV_OFFSY] = GetUserCVar(cpn, "UIX_CL_TEAMINFOOFFSY");
+        cvars[CV_SCALE] = GetUserCVar(cpn, "UIX_CL_TEAMINFOSCALE");
         cvars[CV_ALPHA] = baseAlpha;
-        cvars[CV_NAMESIZE] = GetUserCvar(cpn, "UIX_CL_TEAMINFONAMESIZE");
-        cvars[CV_MIRROR] = GetUserCvar(cpn, "UIX_CL_TEAMINFOMIRROR");
-        cvars[CV_DIR] = GetUserCvar(cpn, "UIX_CL_TEAMINFODIR");
-        cvars[CV_FONTDIR] = GetUserCvar(cpn, "UIX_CL_TEAMINFOFONTDIR");
-        cvars[CV_STACK] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSTACK");
-        cvars[CV_SHOWNAME] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSHOWNAME");
-        cvars[CV_SHOWHEALTH] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSHOWHEALTH");
-        cvars[CV_SHOWLOCATION] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSHOWLOCATION");
-        cvars[CV_SHOWLIVES] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSHOWLIVES");
-        cvars[CV_SHOWMUGSHOT] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSHOWMUGSHOT");
-        cvars[CV_SHOWWEAPON] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSHOWWEAPON");
-        cvars[CV_SEPARATION] = GetUserCvar(cpn, "UIX_CL_TEAMINFOSEPARATION");
-        cvars[CV_WRAPAMOUNT] = GetUserCvar(cpn, "UIX_CL_TEAMINFOWRAPAMOUNT");
-        cvars[CV_WRAPHIDE] = GetUserCvar(cpn, "UIX_CL_TEAMINFOWRAPHIDE");
-        cvars[CV_WRAPDIR] = GetUserCvar(cpn, "UIX_CL_TEAMINFOWRAPDIR");
-        cvars[CV_WRAPSEPARATION] = GetUserCvar(cpn, "UIX_CL_TEAMINFOWRAPSEPARATION");
-        cvars[CV_SHOWDEAD] = GetUserCvar(cpn, "UIX_CV_TEAMINFOSHOWDEAD");
-        cvars[CV_SHOWDEATHANIM] = GetUserCvar(cpn, "UIX_CV_TEAMINFOSHOWDEATHANIM");
-        cvars[CV_SHOWMENUSTATUS] = GetUserCvar(cpn, "UIX_CV_TEAMINFOSHOWMENUSTATUS");
-        cvars[CV_SHOWOBJECTIVES] = GetUserCvar(cpn, "UIX_CV_TEAMINFOSHOWOBJECTIVES");
-        cvars[CV_LAYER] = hudLayers[GetUserCvar(cpn, "UIX_CL_TEAMINFOLAYER")];
+        cvars[CV_NAMESIZE] = GetUserCVar(cpn, "UIX_CL_TEAMINFONAMESIZE");
+        cvars[CV_MIRROR] = GetUserCVar(cpn, "UIX_CL_TEAMINFOMIRROR");
+        cvars[CV_DIR] = GetUserCVar(cpn, "UIX_CL_TEAMINFODIR");
+        cvars[CV_FONTDIR] = GetUserCVar(cpn, "UIX_CL_TEAMINFOFONTDIR");
+        cvars[CV_STACK] = GetUserCVar(cpn, "UIX_CL_TEAMINFOSTACK");
+        cvars[CV_SHOWNAME] = GetUserCVar(cpn, "UIX_CL_TEAMINFOSHOWNAME");
+        cvars[CV_SHOWHEALTH] = GetUserCVar(cpn, "UIX_CL_TEAMINFOSHOWHEALTH");
+        cvars[CV_SHOWLOCATION] = GetUserCVar(cpn, "UIX_CL_TEAMINFOSHOWLOCATION");
+        cvars[CV_SHOWLIVES] = GetUserCVar(cpn, "UIX_CL_TEAMINFOSHOWLIVES");
+        cvars[CV_SHOWMUGSHOT] = GetUserCVar(cpn, "UIX_CL_TEAMINFOSHOWMUGSHOT");
+        cvars[CV_SHOWWEAPON] = GetUserCVar(cpn, "UIX_CL_TEAMINFOSHOWWEAPON");
+        cvars[CV_SEPARATION] = GetUserCVar(cpn, "UIX_CL_TEAMINFOSEPARATION");
+        cvars[CV_WRAPAMOUNT] = GetUserCVar(cpn, "UIX_CL_TEAMINFOWRAPAMOUNT");
+        cvars[CV_WRAPHIDE] = GetUserCVar(cpn, "UIX_CL_TEAMINFOWRAPHIDE");
+        cvars[CV_WRAPDIR] = GetUserCVar(cpn, "UIX_CL_TEAMINFOWRAPDIR");
+        cvars[CV_WRAPSEPARATION] = GetUserCVar(cpn, "UIX_CL_TEAMINFOWRAPSEPARATION");
+        cvars[CV_SHOWDEAD] = GetUserCVar(cpn, "UIX_CV_TEAMINFOSHOWDEAD");
+        cvars[CV_SHOWDEATHANIM] = GetUserCVar(cpn, "UIX_CV_TEAMINFOSHOWDEATHANIM");
+        cvars[CV_SHOWMENUSTATUS] = GetUserCVar(cpn, "UIX_CV_TEAMINFOSHOWMENUSTATUS");
+        cvars[CV_SHOWOBJECTIVES] = GetUserCVar(cpn, "UIX_CV_TEAMINFOSHOWOBJECTIVES");
+        cvars[CV_LAYER] = hudLayers[GetUserCVar(cpn, "UIX_CL_TEAMINFOLAYER")];
 
-        if(cvars[CV_WRAPHIDE] && cvars[CV_WRAPAMOUNT] > 0) {
-            if(uixUnholyMode) {
+        if (cvars[CV_WRAPHIDE] && cvars[CV_WRAPAMOUNT] > 0) {
+            if (uixUnholyMode) {
                 // Engine team properties are meaningless in LMS; count the rows
                 // the Unholy filter would actually draw.
-                if(uixUnholyDisplayCount(pln, cvars[CV_SHOWDEAD]) > cvars[CV_WRAPAMOUNT]) {
+                if (uixUnholyDisplayCount(pln, cvars[CV_SHOWDEAD]) > cvars[CV_WRAPAMOUNT]) {
                     terminate;
                 }
-            } else if(team < 4) { // Team games
-                if(cvars[CV_SHOWDEAD]) {
-                    if(GetTeamProperty(team, TPROP_NumPlayers)-1 > cvars[CV_WRAPAMOUNT]) {
+            } else if (team < 4) {  // Team games
+                if (cvars[CV_SHOWDEAD]) {
+                    if (GetTeamProperty(team, TPROP_NumPlayers) - 1 > cvars[CV_WRAPAMOUNT]) {
                         terminate;
                     }
                 } else {
-                    if(GetTeamProperty(team, TPROP_NumLivePlayers)-1 > cvars[CV_WRAPAMOUNT]) {
+                    if (GetTeamProperty(team, TPROP_NumLivePlayers) - 1 > cvars[CV_WRAPAMOUNT]) {
                         terminate;
                     }
                 }
-            } else { // Coop
-                if(cvars[CV_SHOWDEAD]) {
-                    if(countAllPlayers()-1 > cvars[CV_WRAPAMOUNT]) {
+            } else {  // Coop
+                if (cvars[CV_SHOWDEAD]) {
+                    if (countAllPlayers() - 1 > cvars[CV_WRAPAMOUNT]) {
                         terminate;
                     }
                 } else {
-                    if(PlayerCount()-1 > cvars[CV_WRAPAMOUNT]) {
+                    if (PlayerCount() - 1 > cvars[CV_WRAPAMOUNT]) {
                         terminate;
                     }
                 }
@@ -284,7 +280,7 @@ script "UITweaks_TeamInfo" (int cam, int cpn, int cv)
         cvars[CV_FONTIDX] = cvars[CV_FONTDIR] ^ cvars[CV_DIR];
         cvars[CV_REVERSETEXT] = cvars[CV_DIR] && !cvars[CV_FONTDIR];
 
-        if(
+        if (
             tiCache_Scale != cvars[CV_SCALE] ||
             tiCache_Stack != cvars[CV_STACK] ||
             tiCache_WrapDir != cvars[CV_WRAPDIR] ||
@@ -297,47 +293,47 @@ script "UITweaks_TeamInfo" (int cam, int cpn, int cv)
             tiCache_Separation = cvars[CV_SEPARATION];
             tiCache_WrapSeparation = cvars[CV_WRAPSEPARATION];
 
-            tiStackOffs = FixedMul(STACK_OFFS+tiCache_Separation, cvars[CV_SCALE]);
-            tiWrapOffs = FixedMul(WRAP_OFFS+tiCache_WrapSeparation, cvars[CV_SCALE]);
+            tiStackOffs = FixedMul(STACK_OFFS + tiCache_Separation, cvars[CV_SCALE]);
+            tiWrapOffs = FixedMul(WRAP_OFFS + tiCache_WrapSeparation, cvars[CV_SCALE]);
 
-            if(cvars[CV_STACK])
+            if (cvars[CV_STACK])
                 tiStackOffs *= -1;
 
-            if(cvars[CV_WRAPDIR])
+            if (cvars[CV_WRAPDIR])
                 tiWrapOffs *= -1;
         }
 
         int drawnPlayers = 0;
 
-        for(int i = 0; i < MAX_PLAYERS_SHRT; i++) {
+        for (int i = 0; i < MAX_PLAYERS_SHRT; i++) {
             // Log(i:i, s:" == ", i:pln);
-            if(!dbShowSelf)
-                if(i == pln)
+            if (!dbShowSelf)
+                if (i == pln)
                     continue;
 
             // Log(i:i, s:"in game? ", i:PlayerInGame(i));
             int dead = getPlayerAlive(i);
-            if(dead == STATUS_GONE)
+            if (dead == STATUS_GONE)
                 continue;
 
-            if(!cvars[CV_SHOWDEAD])
-                if(dead == STATUS_GHOST)
+            if (!cvars[CV_SHOWDEAD])
+                if (dead == STATUS_GHOST)
                     continue;
 
             // Log(i:i, s:" team: ", i:GetPlayerInfo(i, PLAYERINFO_TEAM), s:" == ", i:team);
-            if(uixUnholyMode) {
+            if (uixUnholyMode) {
                 // Unholy side model: Survivor<->Survivor, Boss<->Boss, Eye never
                 // teams, and an active 1-vs-all event splits on the frozen
                 // target player number.
-                if(!uixIsDisplayTeammate(pln, i))
+                if (!uixIsDisplayTeammate(pln, i))
                     continue;
-            } else if(getPlayerTeam(i) != team) {
+            } else if (getPlayerTeam(i) != team) {
                 continue;
             }
 
             int baseX, baseY;
 
-            if(cvars[CV_WRAPAMOUNT] > 0) {
+            if (cvars[CV_WRAPAMOUNT] > 0) {
                 int stackCount = drawnPlayers % cvars[CV_WRAPAMOUNT];
                 int wrapCount = drawnPlayers / cvars[CV_WRAPAMOUNT];
 
@@ -352,7 +348,7 @@ script "UITweaks_TeamInfo" (int cam, int cpn, int cv)
             }
 
             drawStatus(i, baseX, baseY);
-            if(dead == STATUS_ALIVE)
+            if (dead == STATUS_ALIVE)
                 drawObjective(i, baseX, baseY, team);
             drawMugshot(i, baseX, baseY, team, dead);
             drawName(i, baseX, baseY);
@@ -363,7 +359,7 @@ script "UITweaks_TeamInfo" (int cam, int cpn, int cv)
 
             drawnPlayers++;
         }
-        if(!objectiveDrawn) {
+        if (!objectiveDrawn) {
             lastPickup = -1;
         } else {
             objectiveDrawn = false;
@@ -420,25 +416,24 @@ str lastValidMug[MAX_PLAYERS_SHRT][4];
 #define MV_DEADTIME 2
 #define MV_DIEDONCE 3
 
-function void drawMugshot(int pln, int x, int y, int team, int dead)
-{
-    if(!cvars[CV_SHOWMUGSHOT])
+function void drawMugshot(int pln, int x, int y, int team, int dead) {
+    if (!cvars[CV_SHOWMUGSHOT])
         return;
 
-    str face = uixGetMugshotGraphic(pln+PLN_TID_SHRT);
+    str face = uixGetMugshotGraphic(pln + PLN_TID_SHRT);
 
-    if(StrLen(face) == 0) {
-        if(lastValidMug[pln][MV_INIT])
+    if (StrLen(face) == 0) {
+        if (lastValidMug[pln][MV_INIT])
             face = lastValidMug[pln][MV_MUG];
         else
             return;
     } else {
-        if(!lastValidMug[pln][MV_INIT])
+        if (!lastValidMug[pln][MV_INIT])
             lastValidMug[pln][MV_INIT] = true;
         lastValidMug[pln][MV_MUG] = face;
     }
 
-    if(mugCache_Scale != cvars[CV_SCALE]) {
+    if (mugCache_Scale != cvars[CV_SCALE]) {
         mugCache_Scale = cvars[CV_SCALE];
         mugScale = FixedMul(cvars[CV_SCALE], 4.0);
         mugShot_ExplodeScale = FixedMul(mugScale, 0.25);
@@ -471,62 +466,59 @@ function void drawMugshot(int pln, int x, int y, int team, int dead)
 // non-Unholy modes and old addons keep their exact former faces.
 function str uixGetMugshotGraphic(int tid) {
     str face = ACS_NamedExecuteWithResult("uh_GetTeamPortraitForTid", tid);
-    if(StrLen(face) != 0)
+    if (StrLen(face) != 0)
         return face;
     return getMugshotGraphicFromTID(tid);
 }
 
-function void drawStatus(int pln, int x, int y)
-{
-    if(!cvars[CV_SHOWMENUSTATUS])
+function void drawStatus(int pln, int x, int y) {
+    if (!cvars[CV_SHOWMENUSTATUS])
         return;
 
     int status = GetPlayerStatus(pln);
 
-    if(status == 0)
+    if (status == 0)
         return;
 
-    if(status & PLAYERSTATUS_CHATTING)
-        displayIcon(cvars[CV_LAYER], "UIXSTCHT", x+mugShot_StatusX, y+mugShot_StatusY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP);
-    if(status & PLAYERSTATUS_TALKING)
-        displayIcon(cvars[CV_LAYER], "UIXSTVC1", x+mugShot_StatusX, y+mugShot_VCY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_BOTTOM);
-    if(status & PLAYERSTATUS_INCONSOLE)
-        displayIcon(cvars[CV_LAYER], "UIXSTCO1", x+mugShot_StatusX, y+mugShot_StatusY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP);
-    if(status & PLAYERSTATUS_INMENU)
-        displayIcon(cvars[CV_LAYER], "UIXSTMN1", x+mugShot_StatusX, y+mugShot_StatusY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP);
-    if(status & PLAYERSTATUS_LAGGING)
-        displayIcon(cvars[CV_LAYER], "UIXSTLAG", x+mugShot_StatusX, y+mugShot_StatusY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP);
+    if (status & PLAYERSTATUS_CHATTING)
+        displayIcon(cvars[CV_LAYER], "UIXSTCHT", x + mugShot_StatusX, y + mugShot_StatusY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP);
+    if (status & PLAYERSTATUS_TALKING)
+        displayIcon(cvars[CV_LAYER], "UIXSTVC1", x + mugShot_StatusX, y + mugShot_VCY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_BOTTOM);
+    if (status & PLAYERSTATUS_INCONSOLE)
+        displayIcon(cvars[CV_LAYER], "UIXSTCO1", x + mugShot_StatusX, y + mugShot_StatusY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP);
+    if (status & PLAYERSTATUS_INMENU)
+        displayIcon(cvars[CV_LAYER], "UIXSTMN1", x + mugShot_StatusX, y + mugShot_StatusY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP);
+    if (status & PLAYERSTATUS_LAGGING)
+        displayIcon(cvars[CV_LAYER], "UIXSTLAG", x + mugShot_StatusX, y + mugShot_StatusY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP);
 }
 
-function void drawMugshotDead(int pln, int x, int y, int team, int dead)
-{
-    if(cvars[CV_SHOWDEATHANIM] && lastValidMug[pln][MV_DIEDONCE]) {
+function void drawMugshotDead(int pln, int x, int y, int team, int dead) {
+    if (cvars[CV_SHOWDEATHANIM] && lastValidMug[pln][MV_DIEDONCE]) {
         int explodeFrame = Timer() - lastValidMug[pln][MV_DEADTIME];
-        if(explodeFrame < FRAGMSG_EXPLODEFRAMES) {
-            displayIcon(cvars[CV_LAYER], explodeFrames[explodeFrame], x+mugShot_ExplodeX, y+mugShot_ExplodeY, mugShot_ExplodeScale, mugShot_ExplodeScale, cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER);
+        if (explodeFrame < FRAGMSG_EXPLODEFRAMES) {
+            displayIcon(cvars[CV_LAYER], explodeFrames[explodeFrame], x + mugShot_ExplodeX, y + mugShot_ExplodeY, mugShot_ExplodeScale, mugShot_ExplodeScale, cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER);
         }
     }
 
-    if(dead == STATUS_ALIVE)
+    if (dead == STATUS_ALIVE)
         return;
 
     SetFont("MUGSFX");
-    displayMessageColorString(cvars[CV_LAYER], "E", x, y+mugShot_SkullY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER, fontPalette[4]);
-    displayMessageColorString(cvars[CV_LAYER], "F", x, y+mugShot_SkullY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER, fontPalette[200]);
+    displayMessageColorString(cvars[CV_LAYER], "E", x, y + mugShot_SkullY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER, fontPalette[4]);
+    displayMessageColorString(cvars[CV_LAYER], "F", x, y + mugShot_SkullY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER, fontPalette[200]);
     displayMessage(cvars[CV_LAYER], "G", x, y, mugScale, mugScale, cvars[CV_ALPHA] >> 1, ALIGN_CENTER, ALIGN_CENTER);
 }
 
-script "UIXTeam_Mugshot_Death" DEATH CLIENTSIDE
-{
+script "UIXTeam_Mugshot_Death" DEATH CLIENTSIDE {
     int pln = PlayerNumber();
-    str face = uixGetMugshotGraphic(pln+PLN_TID_SHRT);
+    str face = uixGetMugshotGraphic(pln + PLN_TID_SHRT);
 
-    if(StrLen(face) == 0) {
-        if(lastValidMug[pln][MV_INIT]) {
+    if (StrLen(face) == 0) {
+        if (lastValidMug[pln][MV_INIT]) {
             face = lastValidMug[pln][MV_MUG];
         }
     } else {
-        if(!lastValidMug[pln][MV_INIT]) {
+        if (!lastValidMug[pln][MV_INIT]) {
             lastValidMug[pln][MV_INIT] = true;
         }
         lastValidMug[pln][MV_MUG] = face;
@@ -536,35 +528,34 @@ script "UIXTeam_Mugshot_Death" DEATH CLIENTSIDE
     lastValidMug[pln][MV_DIEDONCE] = true;
 }
 
-function void drawObjective(int pln, int x, int y, int team)
-{
-    if(objective == OBJ_IDC)
+function void drawObjective(int pln, int x, int y, int team) {
+    if (objective == OBJ_IDC)
         return;
 
-    if(!cvars[CV_SHOWOBJECTIVES])
+    if (!cvars[CV_SHOWOBJECTIVES])
         return;
 
-    if(objectiveDrawn)
+    if (objectiveDrawn)
         return;
 
-    for(int i = 0; i < maxTeams; i++) {
-        if(i == team)
+    for (int i = 0; i < maxTeams; i++) {
+        if (i == team)
             continue;
-        if(CheckActorInventory(pln+PLN_TID_SHRT, objectiveItems[objective][i]) == 0)
+        if (CheckActorInventory(pln + PLN_TID_SHRT, objectiveItems[objective][i]) == 0)
             continue;
 
         objectiveDrawn = true;
-        if(lastPickup == -1)
+        if (lastPickup == -1)
             lastPickup = Timer();
 
         SetFont("MUGSOBJS");
 
-        if(((Timer()-lastPickup) / 35) % 2 == 1) {
-            displayMessageColorString(cvars[CV_LAYER], objMessage[objective][0], x+mugShot_ObjX, y+mugShot_ObjY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP, fontPalette[4]);
+        if (((Timer() - lastPickup) / 35) % 2 == 1) {
+            displayMessageColorString(cvars[CV_LAYER], objMessage[objective][0], x + mugShot_ObjX, y + mugShot_ObjY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP, fontPalette[4]);
         }
 
-        displayMessageColorString(cvars[CV_LAYER], objMessage[objective][1], x+mugShot_ObjX, y+mugShot_ObjY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP, fontPalette[CallACS2("core_getteampalette", i, 0)]);
-        displayMessageColorString(cvars[CV_LAYER], objMessage[objective][2], x+mugShot_ObjX, y+mugShot_ObjY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP, fontPalette[CallACS2("core_getteampalette", i, 1)]);
+        displayMessageColorString(cvars[CV_LAYER], objMessage[objective][1], x + mugShot_ObjX, y + mugShot_ObjY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP, fontPalette[CallACS2("core_getteampalette", i, 0)]);
+        displayMessageColorString(cvars[CV_LAYER], objMessage[objective][2], x + mugShot_ObjX, y + mugShot_ObjY, mugScale, mugScale, cvars[CV_ALPHA], ALIGN_LEFT, ALIGN_TOP, fontPalette[CallACS2("core_getteampalette", i, 1)]);
     }
 }
 
@@ -581,13 +572,13 @@ function void drawObjective(int pln, int x, int y, int team)
 #define NAME_X_11 NAME_X_10
 #define NAME_Y_11 -18
 
-int nc[4]; // name cache
+int nc[4];  // name cache
 #define NC_SCALE    0
 #define NC_MIRROR   1
 #define NC_DIR      2
 #define NC_NAMESIZE 3
 
-int nv[6]; // name vars
+int nv[6];  // name vars
 #define N_X      0
 #define N_Y      1
 #define N_SCALE  2
@@ -595,18 +586,16 @@ int nv[6]; // name vars
 #define N_VALIGN 4
 #define N_LENGTH 5
 
-function void drawName(int pln, int x, int y)
-{
-    if(!cvars[CV_SHOWNAME])
+function void drawName(int pln, int x, int y) {
+    if (!cvars[CV_SHOWNAME])
         return;
 
-    if(
+    if (
         nc[NC_SCALE] != cvars[CV_SCALE] ||
         nc[NC_MIRROR] != cvars[CV_MIRROR] ||
         nc[NC_DIR] != cvars[CV_DIR] ||
         nc[NC_NAMESIZE] != cvars[CV_NAMESIZE]
-    )
-    {
+    ) {
         nc[NC_SCALE] = cvars[CV_SCALE];
         nc[NC_MIRROR] = cvars[CV_MIRROR];
         nc[NC_DIR] = cvars[CV_DIR];
@@ -624,7 +613,7 @@ function void drawName(int pln, int x, int y)
     int plrNameLength = getCacheNameWidth(pln, cvars[CV_DIR], cvars[CV_FONTIDX]);
     int nameLengthScale = 1.0;
 
-    if(plrNameLength > nv[N_LENGTH]) {
+    if (plrNameLength > nv[N_LENGTH]) {
         nameLengthScale = FixedDiv(nv[N_LENGTH], plrNameLength);
     }
 
@@ -648,13 +637,13 @@ function void drawName(int pln, int x, int y)
 #define LOC_X_11 LOC_X_10
 #define LOC_Y_11 NAME_Y_11-1
 
-int lc[4]; // location cvar cache
+int lc[4];  // location cvar cache
 #define LC_SCALE    0
 #define LC_MIRROR   1
 #define LC_DIR      2
 #define LC_NAMESIZE 3
 
-int lv[6]; // location variables
+int lv[6];  // location variables
 #define L_X      0
 #define L_Y      1
 #define L_SCALE  2
@@ -662,18 +651,16 @@ int lv[6]; // location variables
 #define L_VALIGN 4
 #define L_LENGTH 5
 
-function void drawLocation(int pln, int x, int y, int dead)
-{
-    if(!cvars[CV_SHOWLOCATION])
+function void drawLocation(int pln, int x, int y, int dead) {
+    if (!cvars[CV_SHOWLOCATION])
         return;
 
-    if(
+    if (
         lv[LC_SCALE] != cvars[CV_SCALE] ||
         lv[LC_MIRROR] != cvars[CV_MIRROR] ||
         lv[LC_DIR] != cvars[CV_DIR] ||
         lv[LC_NAMESIZE] != cvars[CV_NAMESIZE]
-    )
-    {
+    ) {
         lv[LC_SCALE] = cvars[CV_SCALE];
         lv[LC_MIRROR] = cvars[CV_MIRROR];
         lv[LC_DIR] = cvars[CV_DIR];
@@ -689,14 +676,14 @@ function void drawLocation(int pln, int x, int y, int dead)
 
     str loc = findLocation(pln, cvars[CV_DIR], cvars[CV_FONTIDX], dead);
 
-    if(loc == -1)
+    if (loc == -1)
         return;
 
     int plrLocLength = getLocWidthPlr(pln, cvars[CV_DIR], cvars[CV_FONTIDX]);
 
     int locLengthScale = 1.0;
 
-    if(plrLocLength > lv[L_LENGTH]) {
+    if (plrLocLength > lv[L_LENGTH]) {
         locLengthScale = FixedDiv(lv[L_LENGTH], plrLocLength);
     }
 
@@ -723,12 +710,12 @@ function void drawLocation(int pln, int x, int y, int dead)
 #define HP_L_CONST HP_LENGTH * 10
 #define HP_W_CONST HP_WIDTH * 10
 
-int hc[3]; // health cvar cache
+int hc[3];  // health cvar cache
 #define HC_SCALE  0
 #define HC_MIRROR 1
 #define HC_DIR    2
 
-int hv[7]; // health variables
+int hv[7];  // health variables
 #define H_X      0
 #define H_Y      1
 #define H_SCALE  2
@@ -739,20 +726,18 @@ int hv[7]; // health variables
 
 int healthBarDimensions[2] = {HP_L_CONST, HP_W_CONST};
 
-function void drawHealth(int pln, int x, int y, int dead)
-{
-    if(!cvars[CV_SHOWHEALTH])
+function void drawHealth(int pln, int x, int y, int dead) {
+    if (!cvars[CV_SHOWHEALTH])
         return;
 
-    if(dead == STATUS_GHOST)
+    if (dead == STATUS_GHOST)
         return;
 
-    if(
+    if (
         hc[HC_SCALE] != cvars[CV_SCALE] ||
         hc[HC_MIRROR] != cvars[CV_MIRROR] ||
         hc[HC_DIR] != cvars[CV_DIR]
-    )
-    {
+    ) {
         hc[HC_SCALE] = cvars[CV_SCALE];
         hc[HC_MIRROR] = cvars[CV_MIRROR];
         hc[HC_DIR] = cvars[CV_DIR];
@@ -767,17 +752,17 @@ function void drawHealth(int pln, int x, int y, int dead)
     }
 
     int mhp, chp;
-    if(uixUnholyMode) {
+    if (uixUnholyMode) {
         chp = ACS_NamedExecuteWithResult("uh_GetTeammateHealth", pln);
         mhp = ACS_NamedExecuteWithResult("uh_GetTeammateMaxHealth", pln);
-        if(mhp <= 0) {
+        if (mhp <= 0) {
             mhp = (chp > 0 ? chp : 100);
         }
     } else {
-        mhp = GetActorProperty(pln+PLN_TID_SHRT, AProp_SpawnHealth);
-        chp = GetActorProperty(pln+PLN_TID_SHRT, AProp_Health);
-        if(mhp == 0) {
-            if(chp == 0) {
+        mhp = GetActorProperty(pln + PLN_TID_SHRT, AProp_SpawnHealth);
+        chp = GetActorProperty(pln + PLN_TID_SHRT, AProp_Health);
+        if (mhp == 0) {
+            if (chp == 0) {
                 mhp = 1;
             } else {
                 mhp = chp;
@@ -785,17 +770,17 @@ function void drawHealth(int pln, int x, int y, int dead)
         }
     }
 
-    if(uixUnholyMode && dead == STATUS_ALIVE) {
+    if (uixUnholyMode && dead == STATUS_ALIVE) {
         int armor = ACS_NamedExecuteWithResult("uh_GetTeammateArmor", pln);
         int absorb = ACS_NamedExecuteWithResult("uh_GetTeammateAbsorb", pln);
-        if(armor > 0) {
+        if (armor > 0) {
             // 1. Text badge called FIRST -> rendered LAST (on top of all bars)
             int txtX, txtY, txtHAlign, txtVAlign;
             int badgeScale;
 
-            if(!cvars[CV_DIR]) { // Horizontal: right end of bar (or left if mirrored)
+            if (!cvars[CV_DIR]) {  // Horizontal: right end of bar (or left if mirrored)
                 badgeScale = FixedMul(cvars[CV_SCALE], TEXT_SCALE);
-                if(!cvars[CV_MIRROR]) {
+                if (!cvars[CV_MIRROR]) {
                     txtX = x + hv[H_X] + FixedMul(hv[H_SCALE], 640) + FixedMul(cvars[CV_SCALE], 2);
                     txtHAlign = ALIGN_LEFT;
                 } else {
@@ -804,11 +789,11 @@ function void drawHealth(int pln, int x, int y, int dead)
                 }
                 txtY = y + hv[H_Y];
                 txtVAlign = ALIGN_CENTER;
-            } else { // Vertical: bottom of bar (centered)
+            } else {  // Vertical: bottom of bar (centered)
                 badgeScale = FixedMul(cvars[CV_SCALE], 0.6);
                 txtX = x + hv[H_X];
                 txtHAlign = ALIGN_CENTER;
-                if(!cvars[CV_MIRROR]) {
+                if (!cvars[CV_MIRROR]) {
                     txtY = y + hv[H_Y] + FixedMul(hv[H_SCALE], 640) + FixedMul(cvars[CV_SCALE], 1);
                     txtVAlign = ALIGN_TOP;
                 } else {
@@ -817,7 +802,7 @@ function void drawHealth(int pln, int x, int y, int dead)
                 }
             }
 
-            if(absorb > 0) {
+            if (absorb > 0) {
                 SetFont("SMALLFNT");
                 displayMessage(
                     cvars[CV_LAYER],
@@ -831,7 +816,7 @@ function void drawHealth(int pln, int x, int y, int dead)
 
             // 2. Armor bar called SECOND -> rendered on top of health bar (ZDoom LIFO message order)
             int maxArmor = mhp;
-            if(armor > maxArmor) { maxArmor = armor; }
+            if (armor > maxArmor) {maxArmor = armor;}
 
             str armorBar = !cvars[CV_DIR] ? "UXTEMAH1" : "UXTEMAV1";
 
@@ -839,11 +824,11 @@ function void drawHealth(int pln, int x, int y, int dead)
                 cvars[CV_LAYER],
                 armorBar,
                 "UXNOBAR",
-                x+hv[H_X], y+hv[H_Y],
+                x + hv[H_X], y + hv[H_Y],
                 hv[H_WIDTH], hv[H_HEIGHT],
                 hv[H_SCALE], hv[H_SCALE], cvars[CV_ALPHA],
                 armor, maxArmor,
-                !cvars[CV_DIR]+1, false,
+                !cvars[CV_DIR] + 1, false,
                 hv[H_HALIGN], hv[H_VALIGN]
             );
         }
@@ -854,11 +839,11 @@ function void drawHealth(int pln, int x, int y, int dead)
         cvars[CV_LAYER],
         healthBars[0][cvars[CV_DIR]],
         healthBars[1][cvars[CV_DIR]],
-        x+hv[H_X], y+hv[H_Y],
+        x + hv[H_X], y + hv[H_Y],
         hv[H_WIDTH], hv[H_HEIGHT],
         hv[H_SCALE], hv[H_SCALE], cvars[CV_ALPHA],
         chp, mhp,
-        !cvars[CV_DIR]+1, false,
+        !cvars[CV_DIR] + 1, false,
         hv[H_HALIGN], hv[H_VALIGN]
     );
 }
@@ -920,12 +905,12 @@ function void drawHealth(int pln, int x, int y, int dead)
 
 #define WEP_ICON_SCALE 0.5
 
-int wc[3]; // weapon cvar cache
+int wc[3];  // weapon cvar cache
 #define WC_SCALE  0
 #define WC_MIRROR 1
 #define WC_DIR    2
 
-int wv[21]; // weapon variables
+int wv[21];  // weapon variables
 #define W_ICONX           0
 #define W_ICONY           1
 #define W_BARX            2
@@ -974,24 +959,22 @@ int playerWeaponInfo[10];
 #define PI_CYAN2 8
 #define PI_BLUE2 9
 
-function void drawWeapon(int pln, int x, int y, int dead)
-{
-    if(!cvars[CV_SHOWWEAPON])
+function void drawWeapon(int pln, int x, int y, int dead) {
+    if (!cvars[CV_SHOWWEAPON])
         return;
 
-    if(dead == STATUS_GHOST)
+    if (dead == STATUS_GHOST)
         return;
 
     // int mwep = GetActorProperty(pln+PLN_TID_SHRT, AProp_SpawnWeapon);
     // if(mwep == 0)
-        // return;
+    // return;
 
-    if(
+    if (
         wc[WC_SCALE] != cvars[CV_SCALE] ||
         wc[WC_MIRROR] != cvars[CV_MIRROR] ||
         wc[WC_DIR] != cvars[CV_DIR]
-    )
-    {
+    ) {
         wc[WC_SCALE] = cvars[CV_SCALE];
         wc[WC_MIRROR] = cvars[CV_MIRROR];
         wc[WC_DIR] = cvars[CV_DIR];
@@ -1016,7 +999,7 @@ function void drawWeapon(int pln, int x, int y, int dead)
         wv[W_BARSINGLEWIDTH] = wv[W_BARWIDTH];
         wv[W_BARSINGLEHEIGHT] = wv[W_BARHEIGHT];
 
-        if(cvars[CV_DIR]) {
+        if (cvars[CV_DIR]) {
             wv[W_BARSINGLEWIDTH] *= 2;
         } else {
             wv[W_BARSINGLEHEIGHT] *= 2;
@@ -1025,22 +1008,22 @@ function void drawWeapon(int pln, int x, int y, int dead)
 
     getPlayerWeaponInfo(pln);
 
-    if(!playerWeaponInfo[PI_SUCCESS]) {
+    if (!playerWeaponInfo[PI_SUCCESS]) {
         Log(s:"Canceling due to invalid data");
         return;
     }
 
-    if(playerWeaponInfo[PI_AMMO_MAX1] > 0 && playerWeaponInfo[PI_AMMO_MAX2] > 0) {
+    if (playerWeaponInfo[PI_AMMO_MAX1] > 0 && playerWeaponInfo[PI_AMMO_MAX2] > 0) {
         drawLayeredBarColor(
             cvars[CV_LAYER],
             weaponBars[2][cvars[CV_DIR]],
             fontPalette[playerWeaponInfo[PI_CYAN1]],
             fontPalette[playerWeaponInfo[PI_BLUE1]],
             fontPalette[0],
-            X+wv[W_BAR1X], Y+wv[W_BAR1Y], wv[W_BARWIDTH], wv[W_BARHEIGHT],
+            X + wv[W_BAR1X], Y + wv[W_BAR1Y], wv[W_BARWIDTH], wv[W_BARHEIGHT],
             wv[W_BARSCALE], wv[W_BARSCALE], cvars[CV_ALPHA],
             playerWeaponInfo[PI_AMMO_AMT1], playerWeaponInfo[PI_AMMO_MAX1],
-            !cvars[CV_DIR]+1, false,
+            !cvars[CV_DIR] + 1, false,
             wv[W_HALIGN], wv[W_VALIGN]
         );
         drawLayeredBarColor(
@@ -1049,45 +1032,45 @@ function void drawWeapon(int pln, int x, int y, int dead)
             fontPalette[playerWeaponInfo[PI_CYAN2]],
             fontPalette[playerWeaponInfo[PI_BLUE2]],
             fontPalette[0],
-            X+wv[W_BAR2X], Y+wv[W_BAR2Y], wv[W_BARWIDTH], wv[W_BARHEIGHT],
+            X + wv[W_BAR2X], Y + wv[W_BAR2Y], wv[W_BARWIDTH], wv[W_BARHEIGHT],
             wv[W_BARSCALE], wv[W_BARSCALE], cvars[CV_ALPHA],
             playerWeaponInfo[PI_AMMO_AMT2], playerWeaponInfo[PI_AMMO_MAX2],
-            !cvars[CV_DIR]+1, false,
+            !cvars[CV_DIR] + 1, false,
             wv[W_HALIGN], wv[W_VALIGN]
         );
     } else {
-        if(playerWeaponInfo[PI_AMMO_MAX1] > 0) {
+        if (playerWeaponInfo[PI_AMMO_MAX1] > 0) {
             drawLayeredBarColor(
                 cvars[CV_LAYER],
                 weaponBars[1][cvars[CV_DIR]],
                 fontPalette[playerWeaponInfo[PI_CYAN1]],
                 fontPalette[playerWeaponInfo[PI_BLUE1]],
                 fontPalette[0],
-                X+wv[W_BARX], Y+wv[W_BARY], wv[W_BARSINGLEWIDTH], wv[W_BARSINGLEHEIGHT],
+                X + wv[W_BARX], Y + wv[W_BARY], wv[W_BARSINGLEWIDTH], wv[W_BARSINGLEHEIGHT],
                 wv[W_BARSCALE], wv[W_BARSCALE], cvars[CV_ALPHA],
                 playerWeaponInfo[PI_AMMO_AMT1], playerWeaponInfo[PI_AMMO_MAX1],
-                !cvars[CV_DIR]+1, false,
+                !cvars[CV_DIR] + 1, false,
                 wv[W_HALIGN], wv[W_VALIGN]
             );
         }
 
-        if(playerWeaponInfo[PI_AMMO_MAX2] > 0) {
+        if (playerWeaponInfo[PI_AMMO_MAX2] > 0) {
             drawLayeredBarColor(
                 cvars[CV_LAYER],
                 weaponBars[1][cvars[CV_DIR]],
                 fontPalette[playerWeaponInfo[PI_CYAN1]],
                 fontPalette[playerWeaponInfo[PI_BLUE1]],
                 fontPalette[0],
-                X+wv[W_BARX], Y+wv[W_BARY], wv[W_BARSINGLEWIDTH], wv[W_BARSINGLEHEIGHT],
+                X + wv[W_BARX], Y + wv[W_BARY], wv[W_BARSINGLEWIDTH], wv[W_BARSINGLEHEIGHT],
                 wv[W_BARSCALE], wv[W_BARSCALE], cvars[CV_ALPHA],
                 playerWeaponInfo[PI_AMMO_AMT2], playerWeaponInfo[PI_AMMO_MAX2],
-                !cvars[CV_DIR]+1, false,
+                !cvars[CV_DIR] + 1, false,
                 wv[W_HALIGN], wv[W_VALIGN]
             );
         }
     }
 
-    displayIcon(cvars[CV_LAYER], playerWeaponInfo[PI_ICON], x+wv[W_ICONX], y+wv[W_ICONY], wv[W_ICONSCALE], wv[W_ICONSCALE], cvars[CV_ALPHA], wv[W_HALIGN], wv[W_VALIGN]);
+    displayIcon(cvars[CV_LAYER], playerWeaponInfo[PI_ICON], x + wv[W_ICONX], y + wv[W_ICONY], wv[W_ICONSCALE], wv[W_ICONSCALE], cvars[CV_ALPHA], wv[W_HALIGN], wv[W_VALIGN]);
 }
 
 // Draw Lives =======================================================================================================================================
@@ -1117,12 +1100,12 @@ function void drawWeapon(int pln, int x, int y, int dead)
 
 #define LIVES_OFFS 9
 
-int sc[3]; // lives cvar cache
+int sc[3];  // lives cvar cache
 #define SC_SCALE  0
 #define SC_MIRROR 1
 #define SC_DIR    2
 
-int sv[10]; // lives variables
+int sv[10];  // lives variables
 #define S_X          0
 #define S_Y          1
 #define S_TEXTX      2
@@ -1134,35 +1117,33 @@ int sv[10]; // lives variables
 #define S_TEXTHALIGN 8
 #define S_TEXTVALIGN 9
 
-function void drawLives(int pln, int x, int y, int dead)
-{
-    if(dead == STATUS_GHOST)
+function void drawLives(int pln, int x, int y, int dead) {
+    if (dead == STATUS_GHOST)
         return;
 
     int lives;
-    if(uixUnholyMode) {
-        if(!cvars[CV_SHOWLIVES])
+    if (uixUnholyMode) {
+        if (!cvars[CV_SHOWLIVES])
             return;
         lives = ACS_NamedExecuteWithResult("uh_GetTeammateLives", pln);
     } else {
-        if(maxLives == -1)
+        if (maxLives == -1)
             return;
 
-        if(!cvars[CV_SHOWLIVES])
+        if (!cvars[CV_SHOWLIVES])
             return;
 
         lives = GetPlayerLivesLeft(pln);
     }
 
-    if(lives <= 0)
+    if (lives <= 0)
         return;
 
-    if(
+    if (
         sc[SC_SCALE] != cvars[CV_SCALE] ||
         sc[SC_MIRROR] != cvars[CV_MIRROR] ||
         sc[SC_DIR] != cvars[CV_DIR]
-    )
-    {
+    ) {
         sc[SC_SCALE] = cvars[CV_SCALE];
         sc[SC_MIRROR] = cvars[CV_MIRROR];
         sc[SC_DIR] = cvars[CV_DIR];
@@ -1173,7 +1154,7 @@ function void drawLives(int pln, int x, int y, int dead)
         sv[S_TEXTY] = sv[S_Y] + FixedMul(cvars[CV_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? LIVES_TEXT_Y_00 : LIVES_TEXT_Y_01) : (!cvars[CV_MIRROR] ? LIVES_TEXT_Y_10 : LIVES_TEXT_Y_11)));
         sv[S_SCALE] = cvars[CV_SCALE];
         sv[S_OFFSX] = FixedMul(cvars[CV_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? -LIVES_OFFS : LIVES_OFFS) : 0));
-        sv[S_OFFSY] = FixedMul(cvars[CV_SCALE], ( cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? -LIVES_OFFS : LIVES_OFFS) : 0));
+        sv[S_OFFSY] = FixedMul(cvars[CV_SCALE], (cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? -LIVES_OFFS : LIVES_OFFS) : 0));
 
         sv[S_TEXTSCALE] = FixedMul(cvars[CV_SCALE], TEXT_SCALE);
         sv[S_TEXTHALIGN] = cvars[CV_DIR] == vertical ? ALIGN_CENTER : ALIGN_LEFT;
@@ -1181,14 +1162,14 @@ function void drawLives(int pln, int x, int y, int dead)
     }
 
     int team = GetPlayerInfo(pln, PLAYERINFO_TEAM);
-    if(uixUnholyMode && (team < 0 || team > 3))
+    if (uixUnholyMode && (team < 0 || team > 3))
         team = 0;
     int cyan = ACS_NamedExecuteWithResult("core_getteampalette", team, 0);
     int blue = ACS_NamedExecuteWithResult("core_getteampalette", team, 1);
 
     SetFont("LIVCOUNT");
-    displayMessageColorString(cvars[CV_LAYER], "A", x+sv[S_X], y+sv[S_Y], sv[S_SCALE], sv[S_SCALE], cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER, fontPalette[cyan]);
-    displayMessageColorString(cvars[CV_LAYER], "B", x+sv[S_X], y+sv[S_Y], sv[S_SCALE], sv[S_SCALE], cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER, fontPalette[blue]);
+    displayMessageColorString(cvars[CV_LAYER], "A", x + sv[S_X], y + sv[S_Y], sv[S_SCALE], sv[S_SCALE], cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER, fontPalette[cyan]);
+    displayMessageColorString(cvars[CV_LAYER], "B", x + sv[S_X], y + sv[S_Y], sv[S_SCALE], sv[S_SCALE], cvars[CV_ALPHA], ALIGN_CENTER, ALIGN_CENTER, fontPalette[blue]);
 
     SetFont(uiFonts[cvars[CV_FONTIDX]]);
     displayMessage(cvars[CV_LAYER], livesCounts[cvars[CV_DIR] + cvars[CV_REVERSETEXT]][lives < 100 ? lives : 99], x + sv[S_TEXTX], y + sv[S_TEXTY], sv[S_TEXTSCALE], sv[S_TEXTSCALE], cvars[CV_ALPHA], sv[S_TEXTHALIGN], sv[S_TEXTVALIGN]);
@@ -1205,13 +1186,13 @@ int nameColorless[NAME_MAX];
 int nameColors[NAME_MAX];
 int colorPos[NAME_MAX][3];
 
-function int getColorPos(int i) { return colorPos[i][0]; }
-function int getColorStart(int i) { return colorPos[i][1]; }
-function int getColorEnd(int i) { return colorPos[i][2]; }
+function int getColorPos(int i) {return colorPos[i][0];}
+function int getColorStart(int i) {return colorPos[i][1];}
+function int getColorEnd(int i) {return colorPos[i][2];}
 
-function void setColorPos(int i, int val) { colorPos[i][0] = val; }
-function void setColorStart(int i, int val) { colorPos[i][1] = val; }
-function void setColorEnd(int i, int val) { colorPos[i][2] = val; }
+function void setColorPos(int i, int val) {colorPos[i][0] = val;}
+function void setColorStart(int i, int val) {colorPos[i][1] = val;}
+function void setColorEnd(int i, int val) {colorPos[i][2] = val;}
 
 // output of rebuildString stored here.
 str cacheKey;
@@ -1240,10 +1221,10 @@ function void rebuildString(str name) {
 
     int nameWidth = 0;
 
-    for(i = 0; i < nameSize; i++) {
-        switch(inColor) {
+    for (i = 0; i < nameSize; i++) {
+        switch (inColor) {
             case 0:
-                if(nameBuilder[i] == CHAR_COLOR) {
+                if (nameBuilder[i] == CHAR_COLOR) {
                     inColor = 1;
                     setColorPos(colorsCount, colorLessSize);
                     setColorStart(colorsCount, colorsLength);
@@ -1252,8 +1233,8 @@ function void rebuildString(str name) {
                     nameWidth += getCharWidth(nameBuilder[i]);
                 }
                 break;
-            case 1: // check next char
-                if(nameBuilder[i] == '[') {
+            case 1:  // check next char
+                if (nameBuilder[i] == '[') {
                     colorStart = i;
                     inColor = 2;
                     setColorPos(colorsCount, colorLessSize);
@@ -1266,9 +1247,9 @@ function void rebuildString(str name) {
                     colorsCount++;
                 }
                 break;
-            case 2: // in big string
+            case 2:  // in big string
                 nameColors[colorsLength++] = nameBuilder[i];
-                if(nameBuilder[i] == ']') {
+                if (nameBuilder[i] == ']') {
                     inColor = 0;
                     setColorEnd(colorsCount, colorsLength);
                     colorsCount++;
@@ -1300,17 +1281,17 @@ function void rebuildString(str name) {
     // vertical
     nidx = 0;
     curCol = -1;
-    for(i = 0; i < colorLessSize; i++) {
-        if(colorsCount > 0) {
-            if(i == getColorPos(curCol+1)) {
+    for (i = 0; i < colorLessSize; i++) {
+        if (colorsCount > 0) {
+            if (i == getColorPos(curCol + 1)) {
                 curCol++;
             }
         }
 
-        if(nameColorless[i] != ' ') {
-            if(curCol > -1) {
+        if (nameColorless[i] != ' ') {
+            if (curCol > -1) {
                 nameBuilder[nidx++] = CHAR_COLOR;
-                for(c = getColorStart(curCol); c < getColorEnd(curCol); c++) {
+                for (c = getColorStart(curCol); c < getColorEnd(curCol); c++) {
                     nameBuilder[nidx++] = nameColors[c];
                 }
             }
@@ -1324,25 +1305,25 @@ function void rebuildString(str name) {
 
     // verticalreverse
     nidx = 0;
-    curCol = colorsCount-1;
-    for(i = colorLessSize; i > 0; i--) {
-        if(i == getColorPos(curCol)) {
+    curCol = colorsCount - 1;
+    for (i = colorLessSize; i > 0; i--) {
+        if (i == getColorPos(curCol)) {
             curCol--;
-            if(curCol < 0)
-                curCol = colorsCount-1;
+            if (curCol < 0)
+                curCol = colorsCount - 1;
         }
 
-        if(nameColorless[i-1] != ' ') {
-            if(curCol > -1 && curCol < colorsCount) {
+        if (nameColorless[i - 1] != ' ') {
+            if (curCol > -1 && curCol < colorsCount) {
                 // Log(s:"\\c");
                 nameBuilder[nidx++] = CHAR_COLOR;
-                for(c = getColorStart(curCol); c < getColorEnd(curCol); c++) {
+                for (c = getColorStart(curCol); c < getColorEnd(curCol); c++) {
                     // Log(c:nameColors[c]);
                     nameBuilder[nidx++] = nameColors[c];
                 }
             }
             // Log(c:nameColorless[i-1]);
-            nameBuilder[nidx++] = nameColorless[i-1];
+            nameBuilder[nidx++] = nameColorless[i - 1];
         }
 
         nameBuilder[nidx++] = '\n';
@@ -1372,34 +1353,32 @@ function void rebuildString(str name) {
 //
 str namesCache[MAX_PLAYERS_SHRT][7];
 
-function int isCacheInit(int plr) { return namesCache[plr][0]; }
-function void setCacheInit(int plr, int val) { namesCache[plr][0] = val; }
+function int isCacheInit(int plr) {return namesCache[plr][0];}
+function void setCacheInit(int plr, int val) {namesCache[plr][0] = val;}
 
-function str getCacheName(int plr, int o, int r) { return namesCache[plr][1 + (o ? o + r : 0)]; }
-function void setCacheName(int plr, int o, int r, str val) { namesCache[plr][1 + (o ? o + r : 0)] = val; }
+function str getCacheName(int plr, int o, int r) {return namesCache[plr][1 + (o ? o + r : 0)];}
+function void setCacheName(int plr, int o, int r, str val) {namesCache[plr][1 + (o ? o + r : 0)] = val;}
 
-function int getCacheNameWidth(int plr, int o, int r) { return namesCache[plr][4 + (o ? o + r : 0)]; }
-function void setCacheNameWidth(int plr, int o, int r, int val) { namesCache[plr][4 + (o ? o + r : 0)] = val; }
+function int getCacheNameWidth(int plr, int o, int r) {return namesCache[plr][4 + (o ? o + r : 0)];}
+function void setCacheNameWidth(int plr, int o, int r, int val) {namesCache[plr][4 + (o ? o + r : 0)] = val;}
 
-function bool needsReset(int plr, str name)
-{
+function bool needsReset(int plr, str name) {
     // [Russ] keeping in pattern with other uix stuff, short circuit the most important fail case
-    if(!isCacheInit(plr)) {
+    if (!isCacheInit(plr)) {
         return true;
     }
 
-    if(!StrEqual(name, getCacheName(plr, 0, 0))) {
+    if (!StrEqual(name, getCacheName(plr, 0, 0))) {
         return true;
     }
 
     return false;
 }
 
-function str getPlayerName(int plr, int o, int r)
-{
-    str name = StrParam(n:1+plr);
+function str getPlayerName(int plr, int o, int r) {
+    str name = StrParam(n:1 + plr);
 
-    if(needsReset(plr, name)) {
+    if (needsReset(plr, name)) {
         rebuildString(name);
 
         setCacheInit(plr, true);
@@ -1426,7 +1405,7 @@ int LOC_SIZE = 0;
 // int width vertical reverse
 //
 // Index size +1 to append an error state for the last slot
-str locs[LOC_SIZE_LIMIT+1][7];
+str locs[LOC_SIZE_LIMIT + 1][7];
 
 // previous locations so per-tic comparisons are reduced
 // int loc
@@ -1442,58 +1421,58 @@ int playerLocs[MAX_PLAYERS_SHRT][2];
 // I DON'T KNOW WHEN I DON'T KNOW HOW I JUST KNOW IT DOES.
 //
 function int findLoc(int id) {
-    for(int i = 0; i < LOC_SIZE; i++) {
-        if(StrEqual(getLocId(i), id))
+    for (int i = 0; i < LOC_SIZE; i++) {
+        if (StrEqual(getLocId(i), id))
             return i;
     }
     return -1;
 }
 
-function int getLocId(int idx) { return locs[idx][0]; }
-function void setLocId(int idx, int val) { locs[idx][0] = val; }
+function int getLocId(int idx) {return locs[idx][0];}
+function void setLocId(int idx, int val) {locs[idx][0] = val;}
 
-function str getLocName(int idx, int o, int r) { return locs[idx][(o ? o + r : 0)]; }
-function void setLocName(int idx, int o, int r, str val) { locs[idx][(o ? o + r : 0)] = val; }
+function str getLocName(int idx, int o, int r) {return locs[idx][(o ? o + r : 0)];}
+function void setLocName(int idx, int o, int r, str val) {locs[idx][(o ? o + r : 0)] = val;}
 
-function int getLocNameWidth(int idx, int o, int r) { return locs[idx][4 + (o ? o + r : 0)]; }
-function void setLocNameWidth(int idx, int o, int r, int val) { locs[idx][4 + (o ? o + r : 0)] = val; }
+function int getLocNameWidth(int idx, int o, int r) {return locs[idx][4 + (o ? o + r : 0)];}
+function void setLocNameWidth(int idx, int o, int r, int val) {locs[idx][4 + (o ? o + r : 0)] = val;}
 
-function int getLocWidthPlr(int plr, int o, int r) { return getLocNameWidth(playerLocs[plr][1], o, r); }
+function int getLocWidthPlr(int plr, int o, int r) {return getLocNameWidth(playerLocs[plr][1], o, r);}
 
 function str findLocation(int plr, int o, int r, int dead) {
     str loc = -1;
 
-    if(dead == STATUS_DEAD)
+    if (dead == STATUS_DEAD)
         loc = StrParam(l:"UIX_LOC_DEAD");
 
-    if(dead == STATUS_GHOST)
+    if (dead == STATUS_GHOST)
         loc = StrParam(l:"UIX_LOC_GHOST");
 
-    if(loc == -1)
-        loc = GetActorSectorLocation(plr+PLN_TID_SHRT, false);
+    if (loc == -1)
+        loc = GetActorSectorLocation(plr + PLN_TID_SHRT, false);
 
-    if(loc == -1 || StrLen(loc) == 0)
+    if (loc == -1 || StrLen(loc) == 0)
         return "";
 
-    if(StrEqual(playerLocs[plr][0], loc)) {
+    if (StrEqual(playerLocs[plr][0], loc)) {
         return getLocName(playerLocs[plr][1], o, r);
     }
 
     int idx = findLoc(loc);
 
-    if(idx != -1) {
+    if (idx != -1) {
         playerLocs[plr][0] = loc;
         playerLocs[plr][1] = idx;
         return getLocName(idx, o, r);
     }
 
-    if(LOC_SIZE > LOC_SIZE_LIMIT) {
+    if (LOC_SIZE > LOC_SIZE_LIMIT) {
         playerLocs[plr][0] = loc;
         playerLocs[plr][1] = LOC_SIZE_LIMIT;
         return getLocName(LOC_SIZE_LIMIT, o, r);
     }
 
-    if(LOC_SIZE == LOC_SIZE_LIMIT) {
+    if (LOC_SIZE == LOC_SIZE_LIMIT) {
         loc = StrParam(l:StrParam(s:"UIX_UNKNOWN_LOC_", i:random(1, 4)));
     }
 
@@ -1517,30 +1496,30 @@ function str findLocation(int plr, int o, int r, int dead) {
 // Character width calculator =======================================================================================================================
 
 int fontCharWidths[256] = {
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 };
 
 function int getCharWidth(int char) {
     int idx = char + 128;
-    if(fontCharWidths[idx] >= 0)
+    if (fontCharWidths[idx] >= 0)
         return fontCharWidths[idx];
 
-    int width = parseInt(StrParam(l:StrParam(s:"UI_SMALLFONT_", c:char<0?'N':'P', i:char)));
+    int width = parseInt(StrParam(l:StrParam(s:"UI_SMALLFONT_", c:char < 0 ? 'N' : 'P', i:char)));
     fontCharWidths[idx] = width;
     return width;
 }
@@ -1562,12 +1541,11 @@ int weapon_colors[MAX_WEAPONS_GLOBAL_LIMIT][5];
 
 
 // core function
-function int getWeaponColor(int idx, int prop)
-{
-    if(idx == -1 || prop == 0)
+function int getWeaponColor(int idx, int prop) {
+    if (idx == -1 || prop == 0)
         return -1;
 
-    if(weapon_colors[idx][WC_ISCACHED])
+    if (weapon_colors[idx][WC_ISCACHED])
         return weapon_colors[idx][prop];
 
     str act = getWeaponActor(idx);
@@ -1584,16 +1562,14 @@ function int getWeaponColor(int idx, int prop)
 function int findWeaponInDTs(str weap) {
     int i;
 
-  for(i = 0; i < MAX_WEAPONS_GLOBAL; i++)
-    {
-        if(StrMatches(weap, getWeaponActor(i)))
-            return i+1;
+    for (i = 0; i < MAX_WEAPONS_GLOBAL; i++) {
+        if (StrMatches(weap, getWeaponActor(i)))
+            return i + 1;
     }
 
-    for(i = 0; i < MAX_BUSTERUPGRADES; i++)
-    {
-        if(StrMatches(weap, getBusterActor(i)))
-            return -(i+1);
+    for (i = 0; i < MAX_BUSTERUPGRADES; i++) {
+        if (StrMatches(weap, getBusterActor(i)))
+            return -(i + 1);
     }
 
     return 0;
@@ -1612,8 +1588,7 @@ int playerWeapons[MAX_PLAYERS_SHRT][4];
 
 // this function will throw all of its information
 // to variables defined way earlier
-function void getPlayerWeaponInfo(int pln)
-{
+function void getPlayerWeaponInfo(int pln) {
     // flag to mark this function has initialized
     playerWeaponInfo[PI_SUCCESS] = false;
 
@@ -1624,15 +1599,15 @@ function void getPlayerWeaponInfo(int pln)
     // check if the data in the cache is still fresh
     // if a "stale timer" is added, check that here
     //
-    if(playerWeapons[pln][WP_INIT]) {
-        if(!CheckWeapon(playerWeapons[pln][WP_ACTOR])) {
+    if (playerWeapons[pln][WP_INIT]) {
+        if (!CheckWeapon(playerWeapons[pln][WP_ACTOR])) {
             playerWeapons[pln][WP_INIT] = false;
         } else {
             idx = playerWeapons[pln][WP_INDEX];
         }
     }
 
-    if(!playerWeapons[pln][WP_INIT]) {
+    if (!playerWeapons[pln][WP_INIT]) {
         str weap = GetWeapon();
         idx = findWeaponInDTs(weap);
         playerWeapons[pln][WP_INIT] = true;
@@ -1641,10 +1616,10 @@ function void getPlayerWeaponInfo(int pln)
         playerWeapons[pln][WP_ACTOR] = weap;
     }
 
-    if(idx <= 0) {
-        if(idx < 0) { // weapon is a known buster
-            playerWeaponInfo[PI_ICON] = getBusterIcon(-idx-1);
-        } else { // weapon is unknown
+    if (idx <= 0) {
+        if (idx < 0) {  // weapon is a known buster
+            playerWeaponInfo[PI_ICON] = getBusterIcon(-idx - 1);
+        } else {  // weapon is unknown
             playerWeaponInfo[PI_ICON] = "";
         }
 
@@ -1656,8 +1631,8 @@ function void getPlayerWeaponInfo(int pln)
         playerWeaponInfo[PI_BLUE1] = -1;
         playerWeaponInfo[PI_CYAN2] = -1;
         playerWeaponInfo[PI_BLUE2] = -1;
-    } else { // weapon is a known copywep
-        idx--; // convert the combined index into the copywep index
+    } else {  // weapon is a known copywep
+        idx--;  // convert the combined index into the copywep index
 
         int amo1 = getWeaponAmmoType(idx);
         int amo2 = getWeaponAmmo2Type(idx);
@@ -1669,14 +1644,14 @@ function void getPlayerWeaponInfo(int pln)
         playerWeaponInfo[PI_CYAN2] = getWeaponColor(idx, WC_CYAN2);
         playerWeaponInfo[PI_BLUE2] = getWeaponColor(idx, WC_BLUE2);
 
-        if(StrLen(amo1) != 0 && playerWeaponInfo[PI_CYAN1] != -1) {
+        if (StrLen(amo1) != 0 && playerWeaponInfo[PI_CYAN1] != -1) {
             playerWeaponInfo[PI_AMMO_AMT1] = CheckInventory(amo1);
             playerWeaponInfo[PI_AMMO_MAX1] = GetAmmoCapacity(amo1);
         } else {
             playerWeaponInfo[PI_AMMO_AMT1] = -1;
             playerWeaponInfo[PI_AMMO_MAX1] = -1;
         }
-        if(StrLen(amo2) != 0 && playerWeaponInfo[PI_CYAN2] != -1) {
+        if (StrLen(amo2) != 0 && playerWeaponInfo[PI_CYAN2] != -1) {
             playerWeaponInfo[PI_AMMO_AMT2] = CheckInventory(amo2);
             playerWeaponInfo[PI_AMMO_MAX2] = GetAmmoCapacity(amo2);
         } else {
@@ -1690,11 +1665,10 @@ function void getPlayerWeaponInfo(int pln)
     return;
 }
 
-function int countAllPlayers(void)
-{
+function int countAllPlayers(void) {
     int count = 0;
-    for(int i = 0; i < MAX_PLAYERS_SHRT; i++) {
-        if(getPlayerAlive(i) > STATUS_GONE)
+    for (int i = 0; i < MAX_PLAYERS_SHRT; i++) {
+        if (getPlayerAlive(i) > STATUS_GONE)
             count++;
     }
     return count;
