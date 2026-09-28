@@ -312,6 +312,39 @@ function bool UH_CanSeeScoreIcon(int viewer, int subject) {
   return false;
 }
 
+
+// Client-local appearance override. Identity remains the registered actor
+// class; a forced skin must not change team membership or definition ids.
+function str UH_PlayerAppearancePortrait(int tid) {
+  str actor = GetActorClass(tid);
+  if (StrICmp(actor, "MegaManU") != 0 && StrICmp(actor, "MegaManUShiny") != 0)
+    return "";
+  if (CheckActorInventory(tid, "YustManFlag"))
+    return "YUSTMUG";
+  int pn = tid - 1000;
+  if (pn < 0 || pn >= MAX_PLAYERS)
+    return "";
+  int skin = GetPlayerSkin(pn, PLAYERSKIN_VISIBLE);
+  if (skin >= 0 && GetSkinProperty(skin, "name", true) == SPROP_TYPE_STRING
+    && StrICmp(GetSkinProperty(skin, "name"), "YustMan") == 0)
+    return "YUSTMUG";
+  return "";
+}
+
+function str UH_PlayerPortraitForTid(int tid) {
+  str appearance = UH_PlayerAppearancePortrait(tid);
+  if (StrLen(appearance) != 0)
+    return appearance;
+  return UH_PlayerPortrait(GetActorClass(tid));
+}
+
+function str UH_PlayerScoreIconForTid(int tid) {
+  str appearance = UH_PlayerAppearancePortrait(tid);
+  if (StrLen(appearance) != 0)
+    return appearance;
+  return UH_PlayerScoreIcon(GetActorClass(tid));
+}
+
 // Resolve the display portrait for a player.  Live actors are looked up by
 // class (morph-aware) through the shared UH_PlayerScoreIcon resolver; the
 // server-synced definition identity is the dead/absent fallback.
@@ -319,11 +352,11 @@ function str UH_ClientPortraitTex(int pn) {
   if (pn < 0 || pn >= MAX_PLAYERS) { return ""; }
   if (uhtilife[pn] != PLS_DEAD && uhtilife[pn] != PLS_NULL) {
     str cls = GetActorClass(pn + 1000);
-    if (StrLen(cls) != 0
-        && (!uhtiscoreiconvalid[pn] || StrICmp(cls, uhticlasscache[pn]) != 0)) {
+    // Appearance can change without changing actor class (YustMan skin).
+    if (StrLen(cls) != 0) {
       uhticlasscache[pn] = cls;
       // Scoreboard icon, which falls back to the teammate-bar portrait.
-      str tex = UH_PlayerScoreIcon(cls);
+      str tex = UH_PlayerScoreIconForTid(pn + 1000);
       uhscoreiconcache[pn] = tex;
       uhscoreiconcachevalid[pn] = (StrLen(tex) != 0);
     }
@@ -396,7 +429,7 @@ script "uh_GetTeammateLives" (int pn) {
 // no registered portrait, which lets UIX keep its stock PBMug_<Class> fallback.
 script "uh_GetTeamPortraitForTid" (int tid) {
   if (tid < 1000 || tid > 1063) { SetResultValue(""); terminate; }
-  SetResultValue(UH_PlayerPortrait(GetActorClass(tid)));
+  SetResultValue(UH_PlayerPortraitForTid(tid));
 }
 
 // --- Definition identity -> actor class --------------------------------------

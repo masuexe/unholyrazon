@@ -152,6 +152,21 @@ def main() -> int:
     #    portraits (phase 2 keeps them as the fallback).
     mug_re = re.compile(r'script\s+"PBMug_([A-Za-z0-9_]+)"\s*\(int tid\)\s*\{SetResultValue\("([^"]+)"\);\}')
     mugs = dict(mug_re.findall(read(UIXMUGS)))
+    # MegaMan killfeed faces are dynamic: delegate to stock UIX PBSKINS so
+    # visible skins and pbskins_maestromug retain their original behaviour.
+    dynamic_re = re.compile(
+        r'script\s+"PBMug_([A-Za-z0-9_]+)"\s*\(int tid\)\s*'
+        r'\{SetResultValue\(ACS_NamedExecuteWithResult\("PBMug_Megaman", tid\)\);\}'
+    )
+    dynamic = set(dynamic_re.findall(read(UIXMUGS)))
+    if dynamic != {"MegaManU", "MegaManUShiny"}:
+        print(f"FAIL MegaMan UIX skin delegates: {sorted(dynamic)}")
+        fails += 1
+    markers = read(ROOT / "src/actors/compat/uix/MegaManU_Mugshot.dec")
+    for cls in dynamic:
+        if not re.search(rf'actor\s+PBMug_{cls}\s*\{{', markers):
+            print(f"FAIL missing UIX skin marker: {cls}")
+            fails += 1
     if not mugs:
         print("error: no PBMug_* scripts found", file=sys.stderr)
         raise SystemExit(2)
@@ -165,7 +180,7 @@ def main() -> int:
     # A row with a portrait but no PBMug_ script would silently lose its UIX
     # face; only the scoreboard-only morph may legitimately lack one.
     for cls in rows:
-        if cls in mugs:
+        if cls in mugs or cls in dynamic:
             continue
         if rows[cls][1] == "":
             continue
