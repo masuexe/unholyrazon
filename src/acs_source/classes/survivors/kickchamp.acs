@@ -1,0 +1,38 @@
+// Ground slide pulse: teammates receive protection and fling without Pain.
+// The enemy branch remains the ordinary damage / Pain.KickChamp_SlideKick path.
+script "uh_KickChampSlideTeammates" (int radius) {
+  int ownerTid = GetActorProperty(0, APROP_TargetTID);
+  int owner = ownerTid - 1000;
+  if (owner < 0 || owner >= ServerMAX || radius <= 0) {terminate;}
+  if (!PlayerInGame(owner) || GetActorProperty(ownerTid, APROP_Health) <= 0) {terminate;}
+
+  for (int p = 0; p < ServerMAX; p++) {
+    if (p == owner || !PlayerInGame(p) || PlayerIsSpectator(p)) {continue;}
+    int target = p + 1000;
+    if (!ThingCount(T_NONE, target) || GetActorProperty(target, APROP_Health) <= 0) {continue;}
+    if (!ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", owner, p)) {continue;}
+
+    // P_RadiusAttack uses the square XY footprint and distance to the body,
+    // rather than distance to the actor's origin or a circular XY footprint.
+    int dx = abs(GetActorX(target) - GetActorX(0));
+    int dy = abs(GetActorY(target) - GetActorY(0));
+    int xy = max(0, max(dx, dy) - GetActorProperty(target, APROP_Radius));
+    int dz = max(0, max(GetActorZ(target) - GetActorZ(0),
+                       GetActorZ(0) - GetActorZ(target) - GetActorProperty(target, APROP_Height)));
+    if (VectorLength(xy, dz) >= radius * 1.0 || !CheckSight(0, target, CSF_NOFAKEFLOORS)) {continue;}
+
+    // Do this even for NoPush players: resistance must not enable team damage.
+    GiveActorInventory(target, "KickChamp_SlideProtect", 1);
+    if (CheckActorInventory(target, "NoPushFlag")) {continue;}
+    int force = 70;
+    int forcez = 40;
+    if (CheckActorInventory(target, "HalfPushFlag")) {
+      force /= 2;
+      forcez /= 2;
+    }
+    int yaw = VectorAngle(GetActorX(target) - GetActorX(ownerTid),
+                          GetActorY(target) - GetActorY(ownerTid)) >> 8;
+    ThrustThing(yaw, force, 1, target);
+    ThrustThingZ(target, forcez, 0, 0);
+  }
+}

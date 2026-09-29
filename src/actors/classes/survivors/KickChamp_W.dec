@@ -531,7 +531,9 @@ actor KickChampSpinnerFX : BasicClientSide {
 
 actor KickBoomTemp : BasicExplosion_Args {
   Translation "192:192=228:228", "198:198=194:194"
-  DamageType "KickChamp"
+  DamageType "KickChamp_SlideKick"
+  // Both branches use explicit fling; suppress the explosion's extra thrust.
+  +NODAMAGETHRUST
   Obituary "$OB_58A1"
   Height 24
   Args 16, 64, 32
@@ -539,9 +541,20 @@ actor KickBoomTemp : BasicExplosion_Args {
    Spawn:
     TNT1 A 0
     TNT1 A 0 A_SpawnItemEx("KickChampSlide_H", 0, 0, -24, 0, 0, 0, 0, 1)
-    goto BasicExplosion_Args::Spawn
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_KickChampSlideTeammates", args[1])
+    TNT1 A 1 A_Explode(args[0], args[1], 0, 0, args[2])
+    stop
   }
 }
+
+// One-tic protection also covers logical allies in one-vs-all rounds.
+actor KickChamp_SlideProtect : PowerProtection {
+  Powerup.Duration 1
+  DamageFactor "KickChamp_SlideKick", 0.0
+}
+
+actor PainKickChampSlideHit : Basic_PainFling_H {Args 70, 40, 0}
+actor DeathKickChampSlideHit : Basic_DeathFling_H {Args 70, 40, 0}
 
 
 actor KickChampSlide_H : BasicClientSide {
