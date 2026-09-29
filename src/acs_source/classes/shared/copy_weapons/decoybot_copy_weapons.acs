@@ -1,6 +1,38 @@
 // Tokens retire a delayed controller start when a newer shiny morph replaces it.
 int uh_decoyshinystartserial[64];
 
+// Dynamically held copies are absent from the generic survivor/copy weapon
+// registries. Sweep the Decoy registry as well, including addon entries.
+// A fresh Shiny morph keeps its new controller; eye/boss conversions keep none.
+script "uh_StripDecoyBotHeldWeps" (int keepshiny) {
+  int pn = PlayerNumber();
+  if (pn < 0) terminate;
+  for (int i = 0; i < uh_decoymovecount; i++) {
+    str stem = uh_decoymovewep[i][0];
+    if (StrLen(stem) > 0) {
+      for (int slot = 1; slot <= 3; slot++)
+        TakeInventory(StrParam(s:stem, s:"_W", i:slot), 1);
+    }
+    if (!keepshiny && StrLen(uh_decoyshinywep[i]) > 0)
+      TakeInventory(uh_decoyshinywep[i], 1);
+  }
+  // Retire recorded loadouts too, even if an addon removed its registry row.
+  for (int held = 0; held < 3; held++) {
+    if (StrLen(uh_decoyheld[pn][held]) > 0)
+      TakeInventory(uh_decoyheld[pn][held], 1);
+    uh_decoyheld[pn][held] = "";
+  }
+  if (!keepshiny) {
+    if (StrLen(uh_decoyshinyheld[pn]) > 0)
+      TakeInventory(uh_decoyshinyheld[pn], 1);
+    uh_decoyshinyheld[pn] = "";
+    uh_decoyshinystartserial[pn]++;
+    TakeInventory("UH_DecoyShinyStartPending_F", 1);
+    TakeInventory("DecoyBotShiny_W", 1);
+    TakeInventory("DecoyBotShinyMorph_W", 1);
+  }
+}
+
 // Legacy M1 SetWeapon dispatch — unused; held copies fire in place.
 script "uh_DecoyBotCustomFire" (int which) {
   SetResultValue(0);
@@ -48,7 +80,7 @@ script "uh_DecoyBotApplyHeldWeps" (void) {
   str cur;
   str setto;
 
-  if (pn < 0)
+  if (pn < 0 || !CheckActorClass(0, "DecoyBot"))
     terminate;
   // Caller (WepSwap) waits for the table; do not bootstrap 00 here.
   if (uh_decoymovecount <= 0)
@@ -180,7 +212,7 @@ function int UH_DecoyBotShinyEquip(int advance) {
   str nextwep;
   str oldwep;
 
-  if (pn < 0 || count <= 0)
+  if (pn < 0 || count <= 0 || !CheckActorClass(0, "DecoyBotShiny"))
     return 0;
   slot = CheckInventory("DecoyBotFlag1");
   if (slot < 0 || slot >= count)
