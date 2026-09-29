@@ -36,7 +36,7 @@ actor Skullman4MI_W : BaseUnholyBossWep {
 
    Fire:
     SKUB A 0 A_JumpIfInventory("IsPissedFlag", 1, "FireX")
-    SKUB A 0 A_JumpIfInventory("Skull4MIFlag", 1, "Fire_WheelGo")
+    SKUB A 0 A_JumpIfInventory("Skull4MIFlag", 1, "Fire_WheelThrow")
     SKUB A 0 A_JumpIfHealthLower(CallACS("rz_CountInv_BossSpawnHealthFlag") * 0.32 + 1, "GetHypedForPain")
     SKUB A 0 A_PlaySoundEx("weapon/skullbust", "Weapon")
     SKUB A 0 A_FireCustomMissile("Skull4MI_Shot", 0, 0, 8, 0)
@@ -48,18 +48,22 @@ actor Skullman4MI_W : BaseUnholyBossWep {
     SKUB B 0 A_WeaponReady(14)
     SKUB BA 2 A_GiveInventory("UnholyBossAmmo200", 1)
     goto ReadyX
+   Fire_WheelThrow:
+    // Total manual throw cost: 100 ammo in both forms.
+    SKUB G 0 A_TakeInventory("UnholyBossAmmo200", 100)
+    goto Fire_WheelGo
    Fire_WheelGo:
     SKUB G 0 A_PlaySoundEx("weapon/skullcounter", "Body")
-    SKUB G 2 A_TakeInventory("UnholyBossAmmo200", 10)
+    SKUB G 2
     SKUB F 0 ACS_NamedExecuteWithResult("uh_BossPowerTake", 17)
-    SKUB F 2 A_TakeInventory("UnholyBossAmmo200", 10)
+    SKUB F 2
     SKUB F 0 A_FireCustomMissile("Skull4MI_HellWheel", 0, 0, 0, 0)
-    SKUB F 2 Offset(-29, 59) A_TakeInventory("UnholyBossAmmo200", 10)
+    SKUB F 2 Offset(-29, 59)
     SKUB F 2 Offset(-49, 85) A_TakeInventory("Skull4MIFlag")
     goto ReadyX
 
    FireX:
-    8H28 A 0 A_JumpIfInventory("Skull4MIFlag", 1, "FireX_WheelGo")
+    8H28 A 0 A_JumpIfInventory("Skull4MIFlag", 1, "FireX_WheelThrow")
     8H28 D 0 A_PlaySoundEx("weapon/skullbust", "Weapon")
     8H28 D 0 A_FireCustomMissile("Skull4MI_ShotX", 0, 0, 8, 0)
     8H28 C 2 Offset(7, 33) A_GiveInventory("UnholyBossAmmo200", 2)
@@ -68,13 +72,17 @@ actor Skullman4MI_W : BaseUnholyBossWep {
     8H28 BA 2 A_GiveInventory("UnholyBossAmmo200", 2)
     goto ReadyX
     goto ReadyX_Pissed
+   FireX_WheelThrow:
+    // Total manual throw cost: 100 ammo in both forms.
+    8H28 G 0 A_TakeInventory("UnholyBossAmmo200", 100)
+    goto FireX_WheelGo
    FireX_WheelGo:
     8H28 G 0 A_PlaySoundEx("misc/kingchop", "Body")
-    8H28 G 2 A_TakeInventory("UnholyBossAmmo200", 10)
+    8H28 G 2
     8H28 F 0 ACS_NamedExecuteWithResult("uh_BossPowerTake", 22)
-    8H28 F 2 A_TakeInventory("UnholyBossAmmo200", 10)
+    8H28 F 2
     8H28 F 0 A_FireCustomMissile("Skull4MI_HellWheelX", 0, 0, 0, 0)
-    8H28 F 2 Offset(-29, 59) A_TakeInventory("UnholyBossAmmo200", 10)
+    8H28 F 2 Offset(-29, 59)
     8H28 F 2 Offset(-49, 85) A_TakeInventory("Skull4MIFlag")
     goto ReadyX_Pissed
 
@@ -92,9 +100,12 @@ actor Skullman4MI_W : BaseUnholyBossWep {
     goto Flash
 
    AltFire:
-    SKUB A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "AltFire_Real")
-    SKUB A 0 A_JumpIfInventory("IsPissedFlag", 1, "AltFireX_Real")
+    // Both forms must refill before raising another shield.
+    SKUB A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "AltFire_Full")
     goto Fire
+   AltFire_Full:
+    SKUB A 0 A_JumpIfInventory("IsPissedFlag", 1, "AltFireX_Real")
+    goto AltFire_Real
    AltFire_Real:
     // TNT1 A 0 A_GiveInventory("Skull4MI_HellBoost1",1)
     // TNT1 A 0 A_GiveInventory("Skull4MI_HellBoost2",1)
