@@ -1,6 +1,7 @@
 ## 4.0.0-beta.260930
 - 补全 ShinNegaman 的 ReloadIcon
 - 优化 ShinNegaman 的 CopyAttack1（Nega Rolling Cutter）武器与弹道表现
+- 修复 MeisterWahwee 一阶段 M2 跳转到不存在的状态而报错的问题
 
 ## 4.0.0-beta.260929
 - 修复在线游戏中部分 Boss 的 Ready 重入问题
