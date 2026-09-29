@@ -1,3 +1,6 @@
+// Tokens retire a delayed controller start when a newer shiny morph replaces it.
+int uh_decoyshinystartserial[64];
+
 // Legacy M1 SetWeapon dispatch — unused; held copies fire in place.
 script "uh_DecoyBotCustomFire" (int which) {
   SetResultValue(0);
@@ -220,6 +223,8 @@ script "uh_DecoyBotShinyMorphSetup" (void) {
   int pn = PlayerNumber();
   if (pn < 0)
     terminate;
+  uh_decoyshinystartserial[pn]++;
+  TakeInventory("UH_DecoyShinyStartPending_F", 1);
 
   if (StrCmp(uh_decoyheld[pn][0], "") != 0)
     TakeInventory(uh_decoyheld[pn][0], 1);
@@ -233,13 +238,25 @@ script "uh_DecoyBotShinyMorphSetup" (void) {
   uh_decoyheld[pn][0] = "";
   uh_decoyheld[pn][1] = "";
   uh_decoyheld[pn][2] = "";
+  // Ready may have started a delayed task before this setup retired its token.
+  // Queue a start for the new token after the morph setup finishes.
+  ACS_NamedExecuteAlways("uh_DecoyBotShinyStart", 0);
 }
 
 script "uh_DecoyBotShinyStart" (void) {
   // Zandronum clears a pending SetWeapon when the active MorphWeapon is
   // removed in the same tic. Remove it first, then select on the next tic.
+  int pn = PlayerNumber();
+  if (pn < 0 || !CheckActorClass(0, "DecoyBotShiny") ||
+      CheckInventory("UH_DecoyShinyStartPending_F")) terminate;
+  int serial = uh_decoyshinystartserial[pn];
+  GiveInventory("UH_DecoyShinyStartPending_F", 1);
   TakeInventory("DecoyBotShiny_W", 1);
   Delay(1);
+  if (serial != uh_decoyshinystartserial[pn] ||
+      !CheckActorClass(0, "DecoyBotShiny") ||
+      !CheckInventory("UH_DecoyShinyStartPending_F") ||
+      GetActorProperty(0, APROP_HEALTH) <= 0 || CheckInventory("IsDead")) terminate;
   SetResultValue(UH_DecoyBotShinyEquip(false));
 }
 

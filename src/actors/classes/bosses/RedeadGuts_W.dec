@@ -21,10 +21,10 @@ actor RedeadGuts_W : BaseUnholyBossWep {
 
    Ready:
     8H48 A 3 ACS_NamedExecuteAlways("core_weaponcolor", 0, REDEADGUTS_DYE)
-    8H48 A 0 A_GiveInventory("ArmorBonusScale_F", 55)
-    8H48 A 0 A_GiveInventory("RedeadGuts_BasicArmor_P")
+    8H48 A 0  // Initial setup: boss morph hook.
+    8H48 A 0  // Initial setup: boss morph hook.
     // ExtraLife: morphActorToBoss (Ready may re-enter online)
-    8H48 A 0 A_TakeInventory("IsPissedFlag")
+    8H48 A 0  // Initial setup: boss morph hook.
     8H48 A 0 A_GunFlash
     goto ReadyX
 
@@ -266,6 +266,7 @@ actor RedeadGuts_W : BaseUnholyBossWep {
 actor RedeadGuts_W_Pissed : RedeadGuts_W {
   States {
    Ready:
+    TNT1 A 0 A_JumpIfInventory("UH_PhaseResume_F", 1, "PhaseResume")
     // Online can re-enter Ready; ReportedForFeeding only once per ExtraLife
     8I04 A 0 A_JumpIfInventory("RedeadGutsGetUpDone_F", 1, "ReadyAfterGetUp")
     8I04 A 0 A_JumpIfInventory("IsPissedFlag", 1, "ReadyAfterGetUp")
@@ -275,54 +276,137 @@ actor RedeadGuts_W_Pissed : RedeadGuts_W {
    ReadyAfterGetUp:
     8H48 A 0 A_GunFlash
     goto ReadyX
+   PhaseResume:
+    TNT1 A 0 A_JumpIfInventory("UH_PhaseResume_F", 43, "PhaseHold42")
+    TNT1 A 0 A_JumpIfInventory("UH_PhaseResume_F", 42, "PhaseHold41")
+    TNT1 A 0 A_JumpIfInventory("UH_PhaseResume_F", 39, "PhaseHold38")
+    TNT1 A 0 A_JumpIfInventory("UH_PhaseResume_F", 33, "PhaseHold32")
+    TNT1 A 0 A_JumpIfInventory("UH_PhaseResume_F", 27, "PhaseHold26")
+    TNT1 A 0 A_JumpIfInventory("UH_PhaseResume_F", 21, "PhaseHold20")
+    TNT1 A 0 A_JumpIfInventory("UH_PhaseResume_F", 15, "PhaseHold14")
+    TNT1 A 0 A_JumpIfInventory("UH_PhaseResume_F", 14, "PhaseHold13")
+    TNT1 A 1
+    goto PhaseResume
+
    ReportedForFeeding:
+   PhaseFrame0:
     8I04 A 0 A_GiveInventory("RedeadGutsPainFlag")
+   PhaseFrame1:
     8I04 A 0 ACS_NamedExecuteWithResult("uh_stopplayer", 0, 0)
+   PhaseFrame2:
     8I04 A 0 ACS_NamedExecuteWithResult("uh_cantpushwallsplayer", 0, 0)
+   PhaseFrame3:
     8I04 A 0 A_TakeInventory("NoJumpCancel")
+   PhaseFrame4:
     8I04 A 0 A_TakeInventory("UnholyBossAmmo200")
+   PhaseFrame5:
     8I04 A 0 A_TakeInventory("RedeadGutsJumpAmmo")
+   PhaseFrame6:
     8I04 A 0 A_TakeInventory("SuperArmTemp")
+   PhaseFrame7:
     8I04 A 0 ACS_NamedExecuteWithResult("uh_invulnerableplayer", 0, 1)
+   PhaseFrame8:
     8I04 A 0 ThrustThingZ(0, 25, 0, 0)
+   PhaseFrame9:
     8I04 A 0 ThrustThing(random(0, 255), 500, 1, 0)
+   PhaseFrame10:
     8I04 A 0 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 1)
+   PhaseFrame11:
     8I04 A 0 ACS_NamedExecuteAlways("ub_BossEnrageMusic", 0, 48)
+   PhaseFrame12:
     8I04 A 0 A_GunFlash("Flash.SionPassiveStart")
+   PhaseFrame13:
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_SetMorphInventory", UH_MORPHINV_PHASE_RESUME, 14)
+   PhaseHold13:
     8I04 B 2
-    8I04 C 2 ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, 0, ELP_NATIVE)
+   PhaseFrame14:
+    8I04 C 0 ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, 0, ELP_NATIVE)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_SetMorphInventory", UH_MORPHINV_PHASE_RESUME, 15)
+   PhaseHold14:
+    8I04 C 2
+   PhaseFrame15:
     8I04 C 0 A_Stop
     goto RITOSUPPORTSERVICE
    RITOSUPPORTSERVICE:
+   PhaseFrame16:
     8I04 H 0 A_GiveInventory("RedeadGutsHealthGiver")
-    8I04 H 0 A_PlaySound("item/energyup")  // Eargrating
-    8I04 HH 0 A_SpawnItemEx("RedeadGutsHealingGFX", random(-32, 32), random(-32, 32), 0, velx, vely, 20, 0, 8)
+   PhaseFrame17:
+    8I04 H 0 A_PlaySound("item/energyup")
+   PhaseFrame18:
+    8I04 H 0 A_SpawnItemEx("RedeadGutsHealingGFX", random(-32, 32), random(-32, 32), 0, velx, vely, 20, 0, 8)
+   PhaseFrame19:
+    8I04 H 0 A_SpawnItemEx("RedeadGutsHealingGFX", random(-32, 32), random(-32, 32), 0, velx, vely, 20, 0, 8)
+   PhaseFrame20:
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_SetMorphInventory", UH_MORPHINV_PHASE_RESUME, 21)
+   PhaseHold20:
     8I04 H 1 A_SetAngle(angle - 20.0)
+   PhaseFrame21:
     8I04 I 0 A_JumpIfInventory("IsPissedFlag", 1, "SPAGHETTICODEREVIVAL")
+   PhaseFrame22:
     8I04 I 0 A_GiveInventory("SadFaceToadManHealthGiver")
-    8I04 I 0 A_PlaySound("item/energyup")  // Many sounds we can use.
-    8I04 HH 0 A_SpawnItemEx("RedeadGutsHealingGFX", random(-32, 32), random(-32, 32), 0, velx, vely, 20, 0, 8)
+   PhaseFrame23:
+    8I04 I 0 A_PlaySound("item/energyup")
+   PhaseFrame24:
+    8I04 H 0 A_SpawnItemEx("RedeadGutsHealingGFX", random(-32, 32), random(-32, 32), 0, velx, vely, 20, 0, 8)
+   PhaseFrame25:
+    8I04 H 0 A_SpawnItemEx("RedeadGutsHealingGFX", random(-32, 32), random(-32, 32), 0, velx, vely, 20, 0, 8)
+   PhaseFrame26:
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_SetMorphInventory", UH_MORPHINV_PHASE_RESUME, 27)
+   PhaseHold26:
     8I04 I 1 A_SetAngle(angle - 20.0)
+   PhaseFrame27:
     8I04 C 0 A_JumpIfInventory("IsPissedFlag", 1, "SPAGHETTICODEREVIVAL")
+   PhaseFrame28:
     8I04 C 0 A_GiveInventory("SadFaceToadManHealthGiver")
-    8I04 C 0 A_PlaySound("item/energyup")  // Something silly.
-    8I04 HH 0 A_SpawnItemEx("RedeadGutsHealingGFX", random(-32, 32), random(-32, 32), 0, velx, vely, 20, 0, 8)
+   PhaseFrame29:
+    8I04 C 0 A_PlaySound("item/energyup")
+   PhaseFrame30:
+    8I04 H 0 A_SpawnItemEx("RedeadGutsHealingGFX", random(-32, 32), random(-32, 32), 0, velx, vely, 20, 0, 8)
+   PhaseFrame31:
+    8I04 H 0 A_SpawnItemEx("RedeadGutsHealingGFX", random(-32, 32), random(-32, 32), 0, velx, vely, 20, 0, 8)
+   PhaseFrame32:
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_SetMorphInventory", UH_MORPHINV_PHASE_RESUME, 33)
+   PhaseHold32:
     8I04 C 1 A_SetAngle(angle - 20.0)
+   PhaseFrame33:
     8I04 D 0 A_JumpIfInventory("IsPissedFlag", 1, "SPAGHETTICODEREVIVAL")
+   PhaseFrame34:
     8I04 D 0 A_GiveInventory("SadFaceToadManHealthGiver")
-    8I04 D 0 A_PlaySound("item/energyup")  // That isn't BUTTSCKS.
-    8I04 HH 0 A_SpawnItemEx("RedeadGutsHealingGFX", random(-32, 32), random(-32, 32), 0, velx, vely, 20, 0, 8)
+   PhaseFrame35:
+    8I04 D 0 A_PlaySound("item/energyup")
+   PhaseFrame36:
+    8I04 H 0 A_SpawnItemEx("RedeadGutsHealingGFX", random(-32, 32), random(-32, 32), 0, velx, vely, 20, 0, 8)
+   PhaseFrame37:
+    8I04 H 0 A_SpawnItemEx("RedeadGutsHealingGFX", random(-32, 32), random(-32, 32), 0, velx, vely, 20, 0, 8)
+   PhaseFrame38:
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_SetMorphInventory", UH_MORPHINV_PHASE_RESUME, 39)
+   PhaseHold38:
     8I04 D 1 A_SetAngle(angle - 20.0)
+   PhaseFrame39:
     8I04 H 0 A_JumpIfInventory("IsPissedFlag", 1, "SPAGHETTICODEREVIVAL")
-    loop
+    goto RITOSUPPORTSERVICE
    SPAGHETTICODEREVIVAL:
+   PhaseFrame40:
     8I04 F 0 A_PlaySound("Why/ThisSound", "SoundSlot7")
-    8I04 G 2 A_GunFlash("Flash.SionPassive")
-    8I04 F 2 A_GiveInventory("DrainRuneChecker_P")
+   PhaseFrame41:
+    8I04 G 0 A_GunFlash("Flash.SionPassive")
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_SetMorphInventory", UH_MORPHINV_PHASE_RESUME, 42)
+   PhaseHold41:
+    8I04 G 2
+   PhaseFrame42:
+    8I04 F 0 A_GiveInventory("DrainRuneChecker_P")
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_SetMorphInventory", UH_MORPHINV_PHASE_RESUME, 43)
+   PhaseHold42:
+    8I04 F 2
+   PhaseFrame43:
     8I04 I 0 ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, 0, ELP_NATIVE)
+   PhaseFrame44:
     8I04 F 0 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 0)
+   PhaseFrame45:
     8I04 F 0 ACS_NamedExecuteWithResult("uh_invulnerableplayer", 0, 0)
+   PhaseFrame46:
     8I04 F 0 A_TakeInventory("RedeadGutsPainFlag")
+    TNT1 A 0 A_TakeInventory("UH_PhaseResume_F")
     goto ReadyX
 
    ReadyX:
@@ -353,6 +437,7 @@ actor RedeadGutsHealthCheck_P : CustomInventory {
 actor RedeadGutsSwapPissed_P : CustomInventory {
   States {
    Pickup:
+    TNT1 A 0 A_TakeInventory("UH_PhaseResume_F")
     TNT1 A 0 A_TakeInventory("RedeadGutsGetUpDone_F")
     TNT1 A 0 A_GiveInventory("RedeadGuts_W_Pissed")
     TNT1 A 0 A_TakeInventory("RedeadGuts_W")

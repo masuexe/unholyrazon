@@ -235,6 +235,9 @@ script "uh_BossPhaseHealth" (int basehp, int addhp) {
 
 // Demoneyes + other morphes
 script "uh_DemoneyeMorph" (int whoisit, int bonus) {
+  if (PlayerNumber() < 0) terminate;
+  int setupidentity = whoisit + bonus * 100 + 1;
+  if (GetUserVariable(0, "user_uh_eye_setup_identity") == setupidentity) terminate;
   PlayerLifeStatusArr_UpdateFunc(PlayerNumber(), PLS_EYE);
 
   int eyeid = whoisit + bonus * 100;
@@ -262,12 +265,38 @@ script "uh_DemoneyeMorph" (int whoisit, int bonus) {
   GiveInventory("NoProjectileTeamTranslation", 1);
 
   // PowerMorph has no ACS MorphActor hook — one-time flag sweep + post pipeline.
-  if (!CheckInventory("UH_MorphPipelineDone_F")) {
+  if (!GetUserVariable(0, "user_uh_morph_pipeline_done")) {
     GiveInventory("UH_MorphFlagReset_P", 1);
     GiveInventory("Core_MorphFlagReset_P", 1);
     GiveInventory("Core_MorphFlagReset2_P", 1);
   }
   ACS_NamedExecuteWithResult("uh_MorphPostReset", 0);
+
+  // PowerMorph has no post-MorphActor hook. Claim this body/identity after
+  // the flag reset (which clears the claim), before any one-time effects.
+  SetUserVariable(0, "user_uh_eye_setup_identity", setupidentity);
+  SetInventory("UH_EyeSetupIdentity_F", setupidentity);
+  switch (whoisit) {
+    case 2: GiveInventory("UH_Eye2_MorphSetup_P", 1); break;
+    case 7: GiveInventory("UH_Eye7_MorphSetup_P", 1); break;
+    case 8: GiveInventory("UH_Eye8_MorphSetup_P", 1); break;
+    case 10: GiveInventory("UH_Eye10_MorphSetup_P", 1); break;
+    case 15: GiveInventory("UH_Eye15_MorphSetup_P", 1); break;
+    case 4: GiveInventory("UH_Eye4_MorphSetup_P", 1); break;
+  }
+  if (whoisit == 14) SetInventory("UH_EyeAppearance_F", Random(1, 17));
+  if (whoisit == 10) {
+    int appearance;
+    if (Random(0, 255) < 1) appearance = 1000;
+    else if (Random(0, 255) < 32) {
+      if (Random(0, 255) < 2) appearance = 1000;
+      else appearance = 2000 + Random(2, 59);
+    }
+    else appearance = Random(2, 59);
+    SetInventory("UH_EyeAppearance_F", appearance);
+    if (appearance >= 1000) GiveInventory("ShinySparkleItem", 1);
+    else TakeInventory("ShinySparkleFlag", 1);
+  }
 
   if (bonus && multibosscheck >= 2 && !versusfightevent) {
     GiveInventory("PowerProtectBoss", 1);  // If multi boss, protect them from each other.

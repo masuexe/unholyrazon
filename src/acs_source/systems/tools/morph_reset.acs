@@ -538,18 +538,31 @@ script "uh_MorphPreReset" (void) {
   TakeInventory("WallJumpsUsed", 99999);
 }
 
+// Absolute assignment for morph/phase configuration; GiveInventory accumulates.
+script "uh_SetMorphInventory" (int item, int amount) {
+  if (PlayerNumber() < 0) terminate;
+  // DECORATE strings are not ACS string handles; pass an integer selector.
+  switch (item) {
+    case 0: SetInventory("UnholyPowerLimit_F", amount); break;
+    case 1: SetInventory("WallJumpLimit", amount); break;
+    case 2: SetInventory("ArmorBonusScale_F", amount); break;
+    case 3: SetInventory("UH_PhaseResume_F", amount); break;
+  }
+}
+
 // Post-MorphActor: redefine defaults → strip PowerAprop → water gravity.
-// arg0 force: 1 = always run; 0 = skip if UH_MorphPipelineDone_F (PowerMorph / Ready re-entry).
+// A body-local claim cannot leak through PowerMorph inventory transfer.
 script "uh_MorphPostReset" (int force) {
   if (PlayerNumber() == -1)
     terminate;
-  if (!force && CheckInventory("UH_MorphPipelineDone_F"))
+  if (!force && GetUserVariable(0, "user_uh_morph_pipeline_done"))
     terminate;
 
   ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
   DefineDefaultProperties();
   GiveInventory("UH_MorphPowerPropReset_P", 1);
   ACS_NamedExecuteAlways("uh_IsUnderWaterGravity", 0);
+  SetUserVariable(0, "user_uh_morph_pipeline_done", 1);
   GiveInventory("UH_MorphPipelineDone_F", 1);
 }
 
@@ -572,7 +585,15 @@ script "uh_MorphDemorphReset" (int ownedfams) {
   TakeInventory("MorphedFlag", 1);
   TakeInventory("IsAnEye", 1);
   TakeInventory("TruePowerItemFlag", 1);
+  SetUserVariable(0, "user_uh_morph_pipeline_done", 0);
+  SetUserVariable(0, "user_uh_eye_setup_identity", 0);
   TakeInventory("UH_MorphPipelineDone_F", 1);
+  TakeInventory("UH_BossSetupDone_F", 1);
+  TakeInventory("UH_PhaseResume_F", 10000);
+  TakeInventory("UH_EyeSetupIdentity_F", 10000);
+  TakeInventory("UH_EyeAppearance_F", 10000);
+  TakeInventory("UH_ShinySetupDone_F", 1);
+  TakeInventory("UH_DecoyShinyStartPending_F", 1);
   UH_RestorePropStackBaseline(ownedfams);
   DefineDefaultProperties();
   // No blanket PowerAprop wipe here any more: it would delete a power a map, an

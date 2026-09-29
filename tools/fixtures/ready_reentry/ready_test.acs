@@ -1,0 +1,35 @@
+#library "RDYTEST"
+#include "zcommon.acs"
+script "ready_test_snapshot" (int pn) {
+ if (!SetActivatorToPlayer(pn)) terminate;
+ Log(s:"READY_TEST p=",i:pn,s:" actor=",s:GetActorClass(0),s:" hp=",i:GetActorProperty(0,APROP_HEALTH),s:" native=",i:CheckInventory("PlayerPropertyExtraLifeNative"),s:" total=",i:CheckInventory("PlayerPropertyExtraLife"),s:" limit=",i:CheckInventory("UnholyPowerLimit_F"),s:" ammo=",i:CheckInventory("DickGnawerAmmo"),s:" freeze=",i:CheckInventory("PlayerPropertyFrozen"),s:" invuln=",i:CheckInventory("PlayerPropertyInvulnerable"),s:" resume=",i:CheckInventory("UH_PhaseResume_F"),s:" wall=",i:CheckInventory("WallJumpLimit"),s:" scale=",i:CheckInventory("ArmorBonusScale_F"),s:" appearance=",i:CheckInventory("UH_EyeAppearance_F"),s:" eyeammo=",i:CheckInventory("UnholyBossAmmo400"),s:" eyeclaim=",i:GetUserVariable(0,"user_uh_eye_setup_identity"));
+}
+script "ready_test_reenter" (int pn, int count) {
+ if (!SetActivatorToPlayer(pn)) terminate;
+ for(int i=0;i<count;i++) GiveInventory("ReadyTestReentry_P",1);
+ ACS_NamedExecuteWithResult("ready_test_snapshot",pn);
+}
+script "ready_test_health" (int pn, int hp) {
+ if (!SetActivatorToPlayer(pn)) terminate;
+ SetActorProperty(0,APROP_HEALTH,hp);
+}
+
+// Real PowerMorph twice, with no UH demorph hook between the bodies.
+script "ready_test_eye_cycle" (int pn) {
+ if (!SetActivatorToPlayer(pn)) terminate;
+ GiveInventory("Tank_MoolaGiver",1);
+ Delay(2);
+ SetActivatorToPlayer(pn);
+ ACS_NamedExecuteWithResult("ready_test_snapshot",pn);
+ TakeInventory("UnholyBossAmmo400",123);
+ for(int i=0;i<20;i++) GiveInventory("ReadyTestReentry_P",1);
+ ACS_NamedExecuteWithResult("ready_test_snapshot",pn);
+ TakeInventory("PowerTank_Moola",1);
+ Delay(2);
+ SetActivatorToPlayer(pn);
+ ACS_NamedExecuteWithResult("ready_test_snapshot",pn);
+ GiveInventory("Tank_MoolaGiver",1);
+ Delay(2);
+ SetActivatorToPlayer(pn);
+ ACS_NamedExecuteWithResult("ready_test_snapshot",pn);
+}
