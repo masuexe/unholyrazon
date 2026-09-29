@@ -717,10 +717,16 @@ function bool UH_TeamInfo_UIXTakesOver(int cpn) {
   return true;
 }
 
+// Draw beneath SBARINFO, which the engine renders after the UnderHUD layer.
+// Match the renderer layer so disabled/hidden rows are cleared immediately.
+function void UH_Ti_ClearMessage(int id) {
+  HudMessage(s:""; HUDMSG_PLAIN | HUDMSG_LAYER_UNDERHUD, id, 0, 0.0, 0.0, 0.0);
+}
+
 function void UH_Ti_ClearSubject(int i) {
-  ClearHudMessage(UH_TI_ID_BASE - i);
-  ClearHudMessage(UH_TI_ID_BASE - 100 - i);
-  ClearHudMessage(UH_TI_ID_BASE - 200 - i);
+  UH_Ti_ClearMessage(UH_TI_ID_BASE - i);
+  UH_Ti_ClearMessage(UH_TI_ID_BASE - 100 - i);
+  UH_Ti_ClearMessage(UH_TI_ID_BASE - 200 - i);
 }
 
 // Clear only the IDs drawn on the preceding frame, plus everything when the
@@ -812,12 +818,12 @@ function void UH_Ti_Draw(int viewer, int cpn) {
     if (shownames) {
       if (showlives && uhtistatlives[i] > 0) {
         HudMessageBold(n:i + 1, s:" \cG[x", i:uhtistatlives[i], s:"]";
-          HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - i, CR_GREY,
+          HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - i, CR_GREY,
           fx, fy, 0.1, falpha);
       }
       else {
         HudMessageBold(n:i + 1;
-          HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - i, CR_GREY,
+          HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - i, CR_GREY,
           fx, fy, 0.1, falpha);
       }
     }
@@ -825,7 +831,7 @@ function void UH_Ti_Draw(int viewer, int cpn) {
     if (showhealth) {
       if (dead) {
         HudMessageBold(s:"dead";
-          HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, CR_RED,
+          HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 100 - i, CR_RED,
           fx, fy1, 0.1, falpha);
       }
       else {
@@ -847,17 +853,17 @@ function void UH_Ti_Draw(int viewer, int cpn) {
           case 0:  // HP / Max HP (+Armor)
             if (armor > 0 && absorb > 0) {
               HudMessageBold(i:hp, s:"\cD/", i:maxhp, s:" \cD[\cC+", i:armor, s:" \cA(", i:absorb, s:"%)\cD]";
-                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 100 - i, hcol,
                 fx, fy1, 0.1, falpha);
             }
             else if (armor > 0) {
               HudMessageBold(i:hp, s:"\cD/", i:maxhp, s:" \cD[\cC+", i:armor, s:"\cD]";
-                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 100 - i, hcol,
                 fx, fy1, 0.1, falpha);
             }
             else {
               HudMessageBold(i:hp, s:"\cD/", i:maxhp;
-                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 100 - i, hcol,
                 fx, fy1, 0.1, falpha);
             }
             break;
@@ -865,17 +871,17 @@ function void UH_Ti_Draw(int viewer, int cpn) {
           case 1:  // HP Only
             if (armor > 0 && absorb > 0) {
               HudMessageBold(i:hp, s:" \cD[\cC+", i:armor, s:" \cA(", i:absorb, s:"%)\cD]";
-                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 100 - i, hcol,
                 fx, fy1, 0.1, falpha);
             }
             else if (armor > 0) {
               HudMessageBold(i:hp, s:" \cD[\cC+", i:armor, s:"\cD]";
-                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 100 - i, hcol,
                 fx, fy1, 0.1, falpha);
             }
             else {
               HudMessageBold(i:hp;
-                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 100 - i, hcol,
                 fx, fy1, 0.1, falpha);
             }
             break;
@@ -883,17 +889,17 @@ function void UH_Ti_Draw(int viewer, int cpn) {
           case 2:  // Percentage
             if (armor > 0 && absorb > 0) {
               HudMessageBold(i:pct, s:"% \cD[\cC+", i:armor, s:" \cA(", i:absorb, s:"%)\cD]";
-                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 100 - i, hcol,
                 fx, fy1, 0.1, falpha);
             }
             else if (armor > 0) {
               HudMessageBold(i:pct, s:"% \cD[\cC+", i:armor, s:"\cD]";
-                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 100 - i, hcol,
                 fx, fy1, 0.1, falpha);
             }
             else {
               HudMessageBold(i:pct, s:"%";
-                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 100 - i, hcol,
                 fx, fy1, 0.1, falpha);
             }
             break;
@@ -901,17 +907,17 @@ function void UH_Ti_Draw(int viewer, int cpn) {
           case 3:  // HP / Armor (Classic Doom, only shows armor if armor > 0)
             if (armor > 0 && absorb > 0) {
               HudMessageBold(i:hp, s:"\cD / \cC", i:armor, s:" \cA(", i:absorb, s:"%)";
-                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 100 - i, hcol,
                 fx, fy1, 0.1, falpha);
             }
             else if (armor > 0) {
               HudMessageBold(i:hp, s:"\cD / \cC", i:armor;
-                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 100 - i, hcol,
                 fx, fy1, 0.1, falpha);
             }
             else {
               HudMessageBold(i:hp;
-                HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 100 - i, hcol,
+                HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 100 - i, hcol,
                 fx, fy1, 0.1, falpha);
             }
             break;
@@ -927,7 +933,7 @@ function void UH_Ti_Draw(int viewer, int cpn) {
         str clsname = UH_Ti_GetClassName(i);
         if (StrLen(clsname) != 0) {
           HudMessageBold(s:clsname;
-            HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_CYAN,
+            HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 200 - i, CR_CYAN,
             fx, wy, 0.1, falpha);
         }
       }
@@ -935,17 +941,17 @@ function void UH_Ti_Draw(int viewer, int cpn) {
         if (uhtistathasammo2[i]) {
           HudMessageBold(l:uhtistattag[i], s:"\cF ", i:uhtistatammo1[i],
             s:"\cF ", i:uhtistatammo2[i];
-            HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_GREEN,
+            HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 200 - i, CR_GREEN,
             fx, wy, 0.1, falpha);
         }
         else if (uhtistathasammo1[i]) {
           HudMessageBold(l:uhtistattag[i], s:"\cF ", i:uhtistatammo1[i];
-            HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_GREEN,
+            HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 200 - i, CR_GREEN,
             fx, wy, 0.1, falpha);
         }
         else {
           HudMessageBold(l:uhtistattag[i], s:"\cG -";
-            HUDMSG_PLAIN | HUDMSG_NOWRAP, UH_TI_ID_BASE - 200 - i, CR_GREEN,
+            HUDMSG_PLAIN | HUDMSG_NOWRAP | HUDMSG_LAYER_UNDERHUD, UH_TI_ID_BASE - 200 - i, CR_GREEN,
             fx, wy, 0.1, falpha);
         }
       }
