@@ -3,6 +3,7 @@
 - 移除 TimeStopper 的调试用效果
 - 修复 DecoyBot 变成恶魔眼武器不收回的问题
 - 取消通用受伤状态的默认减速
+- 恢复幸存者开局及重生时的 Unholy 道具友伤保护（ProtectUnholyItem），修复队友道具造成全额友伤的问题
 - 调整文本版（非 UIX）队友信息的绘制层级，使其被 SBARINFO 状态栏覆盖
 - 恢复 NegaBlackHoleBomb 各子弹变体的配色
 - 更正台风眼的配色
