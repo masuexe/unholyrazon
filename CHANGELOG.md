@@ -1,3 +1,7 @@
+## 4.0.0-beta.260930
+- 补全 ShinNegaman 的 ReloadIcon
+- 优化 ShinNegaman 的 CopyAttack1（Nega Rolling Cutter）武器与弹道表现
+
 ## 4.0.0-beta.260929
 - 修复在线游戏中部分 Boss 的 Ready 重入问题
 - 移除 TimeStopper 的调试用效果
