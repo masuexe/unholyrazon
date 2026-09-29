@@ -8,10 +8,13 @@
 - 修复砖块眼的配色对应关系
 - 更正台风眼和蚊子眼的武器名
 - Zangief（含 Shiny）现在可以抱摔队友；抱摔队友保留动作、位移和特效，不造成抓取或落地伤害，也不会移除队友的保护效果
-- BalladeGB 的血量 3000+400n -> 10+1n
-- Sampi 血量 4000+350n -> 30000
-- Pharaohman4MI 血量 2500+245n -> 3500+295n
-- TimemanC 血量 2539+500n -> 4010+724n
+- 优化 LMS 事件 12（ChanceBox）的横幅文本
+- 修复并校对部分组合 Boss 及特殊对决事件的 BGM 与曲目元数据
+- 血量更改：
+  - BalladeGB 3000+400n -> 10+1n
+  - Sampi 4000+350n -> 30000
+  - Pharaohman4MI 2500+245n -> 3500+295n
+  - TimemanC 2539+500n -> 4010+724n
 
 ## 4.0.0-beta.260928.hotfix1
 - 修复 `Out of bounds memory access in ACS VM` 报错问题
