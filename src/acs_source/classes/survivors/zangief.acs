@@ -8,6 +8,70 @@ str zangief_give_item[2] = {
   "AirSuplexGroundCheck"
 };
 
+// Explicit acquisition also works when team protection suppresses Pain.Suplex.
+// Player arguments are slots; SuplexID stores victim + 1 as before.
+script "uh_ZangiefBindGrab" (int owner, int victim) {
+  SetResultValue(0);
+  if (owner < 0 || owner >= ServerMAX || victim < 0 || victim >= ServerMAX || owner == victim) {terminate;}
+  if (!PlayerInGame(owner) || !PlayerInGame(victim)) {terminate;}
+  int ownerTid = 1000 + owner;
+  int victimTid = 1000 + victim;
+  if (!ThingCount(T_NONE, ownerTid) || !ThingCount(T_NONE, victimTid) ||
+      GetActorProperty(ownerTid, APROP_Health) <= 0 || GetActorProperty(victimTid, APROP_Health) <= 0 ||
+      CheckActorInventory(ownerTid, "SuplexID")) {terminate;}
+
+  TakeActorInventory(ownerTid, "ZangiefFriendlyGrab_F", 1);
+  if (ACS_NamedExecuteWithResult("uh_ZangiefAreTeammates", owner, victim)) {
+    GiveActorInventory(ownerTid, "ZangiefFriendlyGrab_F", 1);
+  }
+  GiveActorInventory(ownerTid, "SuplexID", victim + 1);
+  SetResultValue(1);
+}
+
+// Activator is a grab projectile/explosion. Return 1 only for a friendly
+// grab, so DECORATE can omit its damage while keeping the ordinary enemy hit.
+script "uh_ZangiefTryGrab" (int radius, int aerial) {
+  SetResultValue(0);
+  int ownerTid = GetActorProperty(0, APROP_TargetTID);
+  if (ownerTid < 1000 || ownerTid >= 1000 + ServerMAX || radius <= 0) {terminate;}
+  // These actors are also borrowed by other classes; extend Zangief only.
+  str ownerClass = GetActorClass(ownerTid);
+  if (StrICmp(ownerClass, "Zangief") && StrICmp(ownerClass, "ZangiefShiny")) {terminate;}
+  int owner = ownerTid - 1000;
+  if (!PlayerInGame(owner) || GetActorProperty(ownerTid, APROP_Health) <= 0) {terminate;}
+  if (CheckActorInventory(ownerTid, "SuplexID")) {
+    SetResultValue(CheckActorInventory(ownerTid, "ZangiefFriendlyGrab_F"));
+    terminate;
+  }
+
+  int best = -1;
+  int bestDistance = radius * 1.0;
+  for (int p = 0; p < ServerMAX; p++) {
+    if (p == owner || !PlayerInGame(p) || PlayerIsSpectator(p)) {continue;}
+    int target = 1000 + p;
+    if (!ThingCount(T_NONE, target) || GetActorProperty(target, APROP_Health) <= 0) {continue;}
+    // Preserve the existing airborne-only rule for the leap grab.
+    if (aerial && CheckActorInventory(target, "NoAirSuplex")) {continue;}
+
+    // Match modern P_RadiusAttack's square XY footprint and vertical gap.
+    int dx = abs(GetActorX(target) - GetActorX(0));
+    int dy = abs(GetActorY(target) - GetActorY(0));
+    int xy = max(dx, dy) - GetActorProperty(target, APROP_Radius);
+    xy = max(xy, 0);
+    int dz = max(GetActorZ(target) - GetActorZ(0),
+                 GetActorZ(0) - GetActorZ(target) - GetActorProperty(target, APROP_Height));
+    dz = max(dz, 0);
+    int distance = VectorLength(xy, dz);
+    if (distance >= bestDistance || !CheckSight(0, target, CSF_NOFAKEFLOORS)) {continue;}
+    best = p;
+    bestDistance = distance;
+  }
+  if (best < 0) {terminate;}
+  if (ACS_NamedExecuteWithResult("uh_ZangiefBindGrab", owner, best)) {
+    SetResultValue(CheckActorInventory(ownerTid, "ZangiefFriendlyGrab_F"));
+  }
+}
+
 script "uh_ZangiefGiver" (int i, int target) {
   // log(i:i,s:" & ",i:target);
   // zangief_give_item was reduced to the two entries actually used by the
@@ -15,6 +79,7 @@ script "uh_ZangiefGiver" (int i, int target) {
   // neighboring ACS string data (which can turn a map string into an item
   // name and make GiveActorInventory report a misleading class error).
   if (target == 999 || i < 0 || i >= 2) {terminate;}
+  if (i == 0 && CheckInventory("ZangiefFriendlyGrab_F")) {terminate;}
   GiveActorInventory(target, zangief_give_item[i], 1);
 }
 
@@ -31,6 +96,10 @@ script "uh_ZangiefFaceTarget" (int target) {
 script "uh_ZangiefStartGrab" (int target, int grabdist, int grablimit) {
   if (target == 999) {
     SetResultValue(1);
+    terminate;
+  }
+  if (!ThingCount(T_NONE, target) || GetActorProperty(target, APROP_Health) <= 0) {
+    SetResultValue(0);
     terminate;
   }
   // Discouraged: omit both args (0, 0) to fall back on these defines.
@@ -61,6 +130,10 @@ script "uh_ZangiefGrab" (int pitch, int angle, int grab_d, int grablimit) {
   int target = ACS_NamedExecuteWithResult("rz_CountInv_SuplexID") + 999;
   if (target == 999) {
     SetResultValue(1);
+    terminate;
+  }
+  if (!ThingCount(T_NONE, target) || GetActorProperty(target, APROP_Health) <= 0) {
+    SetResultValue(0);
     terminate;
   }
   // Discouraged: omit grablimit (0) to fall back on GRAB_DISTANCE_LIMIT.
