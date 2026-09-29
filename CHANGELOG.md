@@ -2,6 +2,8 @@
 - 补全 ShinNegaman 的 ReloadIcon
 - 优化 ShinNegaman 的 CopyAttack1（Nega Rolling Cutter）武器与弹道表现
 - 修复 MeisterWahwee 一阶段 M2 跳转到不存在的状态而报错的问题
+- 修复 Sampi 无法使用 Reload 技能的问题
+- 更新 Sampi 的 Reload 图标
 
 ## 4.0.0-beta.260929
 - 修复在线游戏中部分 Boss 的 Ready 重入问题
