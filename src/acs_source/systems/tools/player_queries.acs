@@ -16,34 +16,44 @@ script "uh_IsItOnline" (void) {
   }
 }
 
-// This is for projectiles to check if their owner spectated, disconnected, or is dead.
-script "uh_PointerExists" (int point) {
-  if (!SetActivator(0, point) || PlayerNumber() == -1 ||
-      CheckInventory("IsDead") || !PlayerInGame(PlayerNumber())) {
-    SetResultValue(0);
-    terminate;
-  }
-  SetResultValue(1);
+#define UH_POINTER_PLAYER 0
+#define UH_POINTER_MORPHED 1
+
+// Mode is a requirement chosen by the caller, not inferred from the current
+// class: a boss effect must not become valid as a survivor after unmorphing.
+// Keep the legacy player-validity checks unchanged for mode 0.
+function bool UH_IsValidPlayerActivator(int mode) {
+  if (PlayerNumber() == -1 || CheckInventory("IsDead") ||
+      !PlayerInGame(PlayerNumber()))
+    return false;
+  if (mode == UH_POINTER_PLAYER)
+    return true;
+  if (mode == UH_POINTER_MORPHED)
+    return CheckInventory("MorphedFlag") > 0 && !CheckInventory("IsAFakeBoss");
+  return false;
+}
+
+function bool UH_PlayerPointerExists(int pointer, int mode) {
+  if (!SetActivator(0, pointer))
+    return false;
+  return UH_IsValidPlayerActivator(mode);
+}
+
+// Public API: mode 0 = valid player; mode 1 = valid, real morphed player.
+// Existing one-argument CallACS calls supply mode 0 automatically.
+// Shared effects capture their requirement at startup and keep that mode.
+script "uh_PointerExists" (int pointer, int mode) {
+  SetResultValue(UH_PlayerPointerExists(pointer, mode));
 }
 
 script "uh_IsPlayerAliveByTID" (int tid) {
-  if (!SetActivator(tid) || PlayerNumber() == -1 ||
-      CheckInventory("IsDead") || !PlayerInGame(PlayerNumber())) {
-    SetResultValue(0);
-    terminate;
-  }
-  SetResultValue(1);
+  SetResultValue(SetActivator(tid) && UH_IsValidPlayerActivator(UH_POINTER_PLAYER));
 }
 
 // Curse watchers target survivors as well as bosses. Keep the watcher only
 // while its target still points to a living, connected player.
 script "uh_IsPlayerAliveByPointer" (int pointer) {
-  if (!SetActivator(0, pointer) || PlayerNumber() == -1 ||
-      CheckInventory("IsDead") || !PlayerInGame(PlayerNumber())) {
-    SetResultValue(0);
-    terminate;
-  }
-  SetResultValue(1);
+  SetResultValue(UH_PlayerPointerExists(pointer, UH_POINTER_PLAYER));
 }
 
 // True while the pointed player is a live, real boss.  The MorphedFlag test is
@@ -54,13 +64,7 @@ script "uh_IsPlayerAliveByPointer" (int pointer) {
 // MorphedFlag (uh_bosscore.acs, uh_events.acs), and it is removed by
 // uh_MorphDemorphReset.
 script "uh_IsLiveMorphedBossByPointer" (int pointer) {
-  if (!SetActivator(0, pointer) || PlayerNumber() == -1 || CheckInventory("IsDead") ||
-      !PlayerInGame(PlayerNumber()) || CheckInventory("IsAFakeBoss") ||
-      !CheckInventory("MorphedFlag")) {
-    SetResultValue(0);
-    terminate;
-  }
-  SetResultValue(1);
+  SetResultValue(UH_PlayerPointerExists(pointer, UH_POINTER_MORPHED));
 }
 
 // Only use for weapon flash states
