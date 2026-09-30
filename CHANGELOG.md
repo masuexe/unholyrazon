@@ -1,3 +1,6 @@
+## 4.0.0-beta.260930.hotfix1
+- 移除 ShinNegaman 的 Reload 的调试功能
+
 ## 4.0.0-beta.260930
 - 修复 Misery reload 后未满蓝期间客户端可连续 M2 的问题
 - 修复 Misery 的 reload 联机时只出现传送特效的问题
