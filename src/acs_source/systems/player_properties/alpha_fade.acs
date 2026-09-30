@@ -1,0 +1,125 @@
+// Shared server-side alpha fade for the Trickster weapon family.
+// The pickup reserves a job synchronously, before an async script can run.
+// The script keeps that exact body as activator rather than resolving its
+// reusable player TID on every tick.
+// A body-local lease cancels older jobs, including across slot reuse/morphs.
+// Dedicated PowerAprop layers never remove another skill's UH_*_AlphaPower.
+int uh_alphafadeserial[64];
+str uh_alphafadeidentity[64];
+bool uh_alphafademorphed[64];
+int uh_alphafadepowerindex[10];
+bool uh_alphafadepowersready;
+
+function void UH_ClearAlphaFade(void) {
+  bool removed = false;
+  for (int i = 0; i < 10; i++) {
+    if (CheckInventory(StrParam(s:"UH_Fade", i:i, s:"0_AlphaPower")))
+      removed = true;
+    TakeInventory(StrParam(s:"UH_Fade", i:i, s:"0_AlphaPowerGiver"), 9999);
+    TakeInventory(StrParam(s:"UH_Fade", i:i, s:"0_AlphaPower"), 9999);
+  }
+  // Recompute through core, including every remaining external AlphaPower.
+  // Do this synchronously: core's delayed revoke loop might otherwise miss
+  // a remove/re-grant in one tic, or still be attached to the pre-morph body.
+  if (removed && uh_alphafadepowersready)
+    ACS_NamedExecuteWithResult("core_revokeApropPower", uh_alphafadepowerindex[0]);
+}
+
+script "uh_AlphaFadeCancel" (void) {
+  // Invalidate first: a sleeping fade must not give a power after cleanup.
+  TakeInventory("UH_AlphaFadeLease_F", 0x7fffffff);
+  UH_ClearAlphaFade();
+}
+
+script "uh_AlphaFadeRetire" (int player, int lease) {
+  // ObtainInventory moves the lease with the powers when the engine morphs.
+  // An old body's worker must also clean its transferred job on the new body.
+  if (PlayerInGame(player) && SetActivatorToPlayer(player) &&
+      CheckInventory("UH_AlphaFadeLease_F") == lease) {
+    TakeInventory("UH_AlphaFadeLease_F", 0x7fffffff);
+    UH_ClearAlphaFade();
+  }
+}
+
+// This is a same-process query, not a CLIENTSIDE/network string payload.
+script "uh_AlphaFadeCurrent" (int player, int lease, int identity) {
+  SetResultValue(0);
+  if (!PlayerInGame(player) || PlayerIsSpectator(player) ||
+      !SetActivatorToPlayer(player) ||
+      CheckInventory("UH_AlphaFadeLease_F") != lease)
+    terminate;
+  if (StrICmp(identity, StrParam(s:GetActorClass(0), s:":", s:GetWeapon()))) {
+    // Morph inventory can move to a different body. Clear the transferred
+    // layers too, but only if this body still owns this job's lease.
+    TakeInventory("UH_AlphaFadeLease_F", 0x7fffffff);
+    UH_ClearAlphaFade();
+    terminate;
+  }
+  SetResultValue(1);
+}
+
+script "uh_AlphaFadeRequest" (int fadeout) {
+  int player = PlayerNumber();
+  if (player < 0 || player >= 64 || !PlayerInGame(player) ||
+      PlayerIsSpectator(player) || GetActorProperty(0, APROP_Health) <= 0 ||
+      CheckInventory("IsDead") || CheckInventory("IsAFakeBoss"))
+    terminate;
+
+  uh_alphafadeidentity[player] = StrParam(s:GetActorClass(0), s:":", s:GetWeapon());
+  uh_alphafademorphed[player] = CheckInventory("MorphedFlag") > 0;
+  uh_alphafadeserial[player]++;
+  if (uh_alphafadeserial[player] <= 0 || uh_alphafadeserial[player] > 999999998)
+    uh_alphafadeserial[player] = 1;
+  int lease = uh_alphafadeserial[player];
+  TakeInventory("UH_AlphaFadeLease_F", 0x7fffffff);
+  GiveInventory("UH_AlphaFadeLease_F", lease);
+  ACS_NamedExecuteAlways("uh_AlphaFade", 0, player, lease, fadeout);
+}
+
+script "uh_AlphaFade" (int player, int lease, int fadeout) {
+  if (player < 0 || player >= 64 || lease <= 0)
+    terminate;
+  if (CheckInventory("UH_AlphaFadeLease_F") != lease) {
+    ACS_NamedExecuteWithResult("uh_AlphaFadeRetire", player, lease);
+    terminate;
+  }
+  str identity = uh_alphafadeidentity[player];
+  bool morphed = uh_alphafademorphed[player];
+
+  if (fadeout) {
+    UH_ClearAlphaFade();
+  }
+
+  int step = 0;
+  while (CheckInventory("UH_AlphaFadeLease_F") == lease) {
+    if (GetActorProperty(0, APROP_Health) <= 0 || CheckInventory("IsDead") ||
+        (morphed && !CheckInventory("MorphedFlag")) ||
+        !ACS_NamedExecuteWithResult("uh_AlphaFadeCurrent", player, lease, identity)) {
+      TakeInventory("UH_AlphaFadeLease_F", 0x7fffffff);
+      UH_ClearAlphaFade();
+      ACS_NamedExecuteWithResult("uh_AlphaFadeRetire", player, lease);
+      terminate;
+    }
+
+    if (step < 10) {
+      if (fadeout)
+        GiveInventory(StrParam(s:"UH_Fade", i:9 - step, s:"0_AlphaPowerGiver"), 1);
+      else {
+        TakeInventory(StrParam(s:"UH_Fade", i:step, s:"0_AlphaPower"), 9999);
+        if (uh_alphafadepowersready)
+          ACS_NamedExecuteWithResult("core_revokeApropPower", uh_alphafadepowerindex[step]);
+      }
+      step++;
+    }
+    if (!fadeout && step == 10) {
+      TakeInventory("UH_AlphaFadeLease_F", 0x7fffffff);
+      terminate;
+    }
+    // Keep watching after fade-out: death, weapon/body changes and unmorph
+    // must clear the long-lived zero-alpha layer even without a reveal.
+    Delay(1);
+  }
+  // A newer job or explicit cancel owns cleanup; only a transferred lease
+  // bearing this exact serial may still belong to us.
+  ACS_NamedExecuteWithResult("uh_AlphaFadeRetire", player, lease);
+}
