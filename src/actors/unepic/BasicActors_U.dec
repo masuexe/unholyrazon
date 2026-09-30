@@ -460,10 +460,15 @@ actor BasicGroupHealPickup : CustomInventory {
 
 actor BasicBoss_Rooted : BasicWatcher {
   ReactionTime 80  // 45
+  var int user_pointermode;
   States {
    Spawn:
     TNT1 A 0
-    TNT1 A 0 A_JumpIf(!CallACS("uh_IsLiveMorphedBossByPointer", 2), "Death")
+    // Root victims can be survivors. Capture a boss requirement only for a
+    // target that is already morphed, so its root still ends on demorph.
+    TNT1 A 0 A_SetUserVar("user_pointermode", CallACS("uh_PointerExists", AAPTR_TARGET, 1))
+   RootTick:
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", AAPTR_TARGET, user_pointermode), "Death")
     TNT1 A 1 A_GiveToTarget("BasicBoss_Rooted_P")
     TNT1 A 0 A_CountDown
     loop

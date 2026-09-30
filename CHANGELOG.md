@@ -1,4 +1,6 @@
 ## 4.0.0-beta.260930
+- 按 Unbound 原版逻辑修复 Balrog 抓人后的速度恢复：抓取成功时解除冲刺减速，投掷与摔地共用清理流程，避免摔人后残留速度效果导致持续减速
+- 恢复 Balrog M2 摔地对幸存者的 root 效果（80 tic）：修复共用定身 watcher 误要求受击者为变身 Boss 而立即退出的问题，保留死亡、掉线及 Boss 解除变身时的清理
 - 统一玩家指针有效性检查：`uh_PointerExists` 支持普通玩家／真实变身两种检查模式，保留旧接口兼容；Boss 效果解除变身后仍按原检查要求停止
 - 修复 Trickster（含 Shiny）M2 隐身时第一人称武器未渐隐的问题；共用渐变使用独立 AlphaPower，并补全重叠取消、切武器、死亡及变身／解除变身时的清理，避免透明效果残留或影响其他技能；TricksterGiovanni 同步接入
 - 修复 CaptainAssShiny、HandyManShiny、SmokeBanditShiny、TidalManiacShiny 死亡时跳转到旧状态标签，导致 `left without a state` 报错的问题
