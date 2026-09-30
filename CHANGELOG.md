@@ -1,7 +1,9 @@
-## 4.0.0-beta.260930.hotfix1
+## 4.0.0-beta.261001
 - 移除 ShinNegaman 的 Reload 的调试功能
 - 修复变成 MosquitoDemoneye 瞬间有概率使游戏崩溃的问题
 - 修复 DecoyBot 的警告刷屏
+- 修复 Dawnbreaker 普通弹绕过友伤随机池、关闭随机友伤后仍能伤害队友的问题；普通弹与蓄力攻击统一按当日随机池判定友伤
+- 补齐 Dawnbreaker 的 BlastRuneB／D／M 直接命中伤害，统一与 BlastRuneA 使用基础伤害 50 及每日伤害倍率
 
 ## 4.0.0-beta.260930
 - 修复 Misery reload 后未满蓝期间客户端可连续 M2 的问题
