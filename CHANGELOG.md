@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261001
 - 修复 Eden 在线游戏中道具图标不显示的问题
+- 补充 Eden 泪弹的 +FORCEXYBILLBOARD 属性
 - 移除 ShinNegaman 的 Reload 的调试功能
 - 优化 ShinNegaman 的攻击 HUD 动画与音效表现
 - 优化 ShinNegaman 的 Obituary 文案
