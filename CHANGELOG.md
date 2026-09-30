@@ -1,4 +1,6 @@
 ## 4.0.0-beta.260930
+- 补全 PlainDevilDemoneye、RichDevilDemoneye、ProtoManBadGuy、WeakHorse 的队友栏／计分板头像登记
+- 补全 TyphoonDemoneye、BrickDemoneye、MosquitoDemoneye 的 HUD 头像（ScoreIcon）
 - 修复 Boss／LMS 音乐被客户端监听器重复请求播放、未加载音乐包时同一曲目提示两次 `Music "xxx" not found` 的问题；保留音乐模式切换及中途加入时的地图音乐覆盖
 - 补全 Berserker、SoccerRock、Floovy、SakikoTogawa、MakeAGoodZero、BlueElephant 的 HUD 头像（ScoreIcon）
 - 修复横版、竖版 HUD 在 Boss／恶魔眼及使用独立头像的幸存者头像背后仍绘制 Maestro 的问题；保留 MegaMan 的默认头像与皮肤回退

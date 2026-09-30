@@ -135,7 +135,13 @@ def main() -> int:
             fails += 1
 
     # 3. No row without a definition home and without an explicit morph note.
-    morph_additions = {"MegaManUShiny": ("Mega Man", "UMUG_0", "", 0)}
+    morph_additions = {
+        "MegaManUShiny": ("Mega Man", "UMUG_0", "", 0),
+        "PlainDevilDemoneye": ("PlainDevilDemoneye", "I_MUG00", "", 0),
+        "RichDevilDemoneye": ("RichDevilDemoneye", "I_MUG06", "", 0),
+        "ProtoManBadGuy": ("ProtoManBadGuy", "UL113MUG", "", 0),
+        "WeakHorse": ("WeakHorse", "UL066MUG", "", 0),
+    }
     for cls, expected in morph_additions.items():
         if rows.get(cls) != expected:
             print(f"FAIL morph presentation {cls}: {rows.get(cls)!r} != {expected!r}")
