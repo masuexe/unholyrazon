@@ -1,4 +1,5 @@
 ## 4.0.0-beta.260930
+- 修复 Boss／LMS 音乐被客户端监听器重复请求播放、未加载音乐包时同一曲目提示两次 `Music "xxx" not found` 的问题；保留音乐模式切换及中途加入时的地图音乐覆盖
 - 补全 ShinNegaman 的 ReloadIcon
 - 优化 ShinNegaman 的 CopyAttack1（Nega Rolling Cutter）武器与弹道表现
 - 修复 MeisterWahwee 一阶段 M2 跳转到不存在的状态而报错的问题

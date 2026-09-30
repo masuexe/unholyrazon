@@ -183,14 +183,15 @@ script "uh_ApplyRoundMusicMode" (int context) CLIENTSIDE {
 }
 
 // The first stable generation is the baseline (startup or a late join). Only a
-// later announce is a new selection. Mode and style changes refresh playback
-// without displaying.
+// later announce is a new selection. SetMusic already delivers Unholy playback
+// (including the current track on a late join); UH_PingRoundMusicMode applies
+// map-music overrides after each server selection. Only a local mode change
+// needs playback here. A late join in map mode also needs its local override.
 script "uh_WatchRoundMusicMode" OPEN CLIENTSIDE {
   int primed = 0;
   int lastgen = 0;
   int lastann = 0;
   int lastmode = -1;
-  int lastcontext = -1;
   while (true) {
     int cpn = ConsolePlayerNumber();
     int gen;
@@ -214,14 +215,14 @@ script "uh_WatchRoundMusicMode" OPEN CLIENTSIDE {
       lastgen = gen;
       lastann = GetCVar("_uh_servmusicannounce");
       lastmode = GetUserCVar(cpn, "uh_cl_MusicMode");
-      lastcontext = GetCVar("_uh_servmusiccontext");
-      UH_ClientApplyRoundMusic(lastmode, lastcontext);
+      if (lastmode == 1)
+        UH_ClientApplyRoundMusic(lastmode, GetCVar("_uh_servmusiccontext"));
       continue;
     }
     mode = GetUserCVar(cpn, "uh_cl_MusicMode");
     context = GetCVar("_uh_servmusiccontext");
     ann = GetCVar("_uh_servmusicannounce");
-    if (gen != lastgen || mode != lastmode || context != lastcontext)
+    if (mode != lastmode)
       UH_ClientApplyRoundMusic(mode, context);
     if ((gen != lastgen && !UH_MusicSnapshotReady()) || (mode != lastmode && mode == 1))
       ACS_NamedExecuteAlways("uh_MusicDismiss", 0);
@@ -230,7 +231,6 @@ script "uh_WatchRoundMusicMode" OPEN CLIENTSIDE {
     lastgen = gen;
     lastann = ann;
     lastmode = mode;
-    lastcontext = context;
     Delay(1);
   }
 }
