@@ -61,23 +61,29 @@ script "ub_enemypain" (void) {
 }
 
 script "UH_BeginXRayVision" (void) {
-  // Log(i:GetPlayerChasecam(0));
-  NamedExecuteClientScript("UH_XRayVisionManager", PlayerNumber());
+  int viewer = PlayerNumber();
+  if (viewer < 0) terminate;
+  NamedExecuteClientScript("UH_XRayVisionManager", viewer, viewer);
 }
 
 #define TWO_PLAYER_XRAY_DURATION (35 * 30)
 
 script "UH_BeginLimitedXRayVision" (void) {
-  NamedExecuteClientScript("UH_LimitedXRayVisionManager", PlayerNumber(), TWO_PLAYER_XRAY_DURATION);
+  int viewer = PlayerNumber();
+  if (viewer < 0) terminate;
+  NamedExecuteClientScript("UH_LimitedXRayVisionManager", viewer, TWO_PLAYER_XRAY_DURATION, viewer);
 }
 
 // NamedExecuteClientScript consumes PlayerNumber() as its client selector;
-// only the following duration argument is forwarded to this script.
-script "UH_LimitedXRayVisionManager" (int duration) CLIENTSIDE {
-  while (duration > 0 && GetActorProperty(ActivatorTID(), APROP_Health) > 0) {
-    for (int i = 1000; i < 1000 + ServerMAX; i++) {
-      if (PlayerInGame(i - 1000) && ActivatorTID() != i) {
-        HudMessageOnActor(i, i, 640, 480, 0, -24, 9028, -1, StrParam(n:i - 999), 0.1, CR_GREEN, 0);  // Displays nametags
+// only the following duration and viewer arguments are forwarded.
+// ServerMAX is server-owned and is not synchronized to remote clients.
+script "UH_LimitedXRayVisionManager" (int duration, int viewer) CLIENTSIDE {
+  if (viewer != ConsolePlayerNumber()) terminate;
+  while (duration > 0 && SetActivatorToPlayer(viewer) &&
+         GetActorProperty(0, APROP_Health) > 0) {
+    for (int i = PLN_TID; i < PLN_TID + MAX_PLAYERS; i++) {
+      if (PlayerInGame(i - PLN_TID) && viewer != i - PLN_TID) {
+        HudMessageOnActor(i, i, 640, 480, 0, -24, 9028, -1, StrParam(n:i - PLN_TID + 1), 0.1, CR_GREEN, 0);  // Displays nametags
         HudMessageOnActor(i, i + 100, 640, 480, 0, -32, 9028, -1, "", 0.1, CR_GREEN, 1);  // Displays distance
       }
     }
@@ -87,16 +93,14 @@ script "UH_LimitedXRayVisionManager" (int duration) CLIENTSIDE {
 }
 
 // Marker-gated so a boss-granted X-Ray can be cancelled from the server (see
-// UH_XRayVisionOn_F in GeneralThings_U.dec); without the server-issued marker
-// the old behaviour is preserved (only death ends the effect).
-script "UH_XRayVisionManager" (void) CLIENTSIDE {  // ENTER CLIENTSIDE
-  // Log(i:GetPlayerChasecam(0));
-  while (GetActorProperty(ActivatorTID(), APROP_Health) > 0 &&
+// UH_XRayVisionOn_F in GeneralThings_U.dec); removing the marker ends the effect.
+script "UH_XRayVisionManager" (int viewer) CLIENTSIDE {
+  if (viewer != ConsolePlayerNumber()) terminate;
+  while (SetActivatorToPlayer(viewer) && GetActorProperty(0, APROP_Health) > 0 &&
          CheckInventory("UH_XRayVisionOn_F") > 0) {
-    // Log(i:GetActorProperty(ActivatorTID(), APROP_Health));
-    for (int i = 1000; i < 1000 + ServerMAX; i++) {
-      if (PlayerInGame(i - 1000) && ActivatorTID() != i) {
-        HudMessageOnActor(i, i, 640, 480, 0, -24, 9028, -1, StrParam(n:i - 999), 0.1, CR_GREEN, 0);  // Displays nametags
+    for (int i = PLN_TID; i < PLN_TID + MAX_PLAYERS; i++) {
+      if (PlayerInGame(i - PLN_TID) && viewer != i - PLN_TID) {
+        HudMessageOnActor(i, i, 640, 480, 0, -24, 9028, -1, StrParam(n:i - PLN_TID + 1), 0.1, CR_GREEN, 0);  // Displays nametags
         HudMessageOnActor(i, i + 100, 640, 480, 0, -32, 9028, -1, "", 0.1, CR_GREEN, 1);  // Displays distance
       }
     }
