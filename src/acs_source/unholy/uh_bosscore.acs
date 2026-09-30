@@ -255,7 +255,11 @@ script "uh_DemoneyeMorph" (int whoisit, int bonus) {
 
   // MorphProjectile copies survivor inventory — strip weapons + class-color flags
   // (DecoyBot IsDecoyBotFlag / DecoyBot_W* otherwise keep auto-color after eye Ready).
-  GiveInventory("RemoveSurvivorWeps_P", 1);
+  // Call the strip directly, never through GiveInventory("RemoveSurvivorWeps_P"):
+  // ACS GiveInventory restores the pre-pickup PendingWeapon after the pickup, so
+  // a survivor weapon selected before the strip comes back as a destroyed
+  // PendingWeapon and the next weapon switch crashes the server.
+  ACS_NamedExecuteWithResult("uh_StripSurvivorWeps");
   TakeInventory("IsDecoyBotFlag", 1);
   TakeInventory("IsDecoyBotSFlag", 1);
   TakeInventory("IsNegaManFlag", 1);
@@ -322,8 +326,8 @@ script "uh_DemoneyeMorph" (int whoisit, int bonus) {
 }
 
 // --- Survivor weapon strip (registry-driven) ---------------------------------
-// Called via RemoveSurvivorWeps_P from BasicBossItem, uh_DemoneyeMorph and
-// uh_shinyclassmorpher — all strip BEFORE giving boss/morph weapons, and boss
+// Called via RemoveSurvivorWeps_P from BasicBossItem, and directly from
+// uh_DemoneyeMorph and uh_shinyclassmorpher — all strip BEFORE giving boss/morph weapons, and boss
 // weapons (BaseUnholyBossWep family) are absent from every swept registry.
 // Take amount 1: weapons carry Amount 1, so one take destroys the item.
 // Runs alongside the legacy per-class A_TakeInventory list until it retires.
