@@ -8,7 +8,7 @@
 - 恢复 Miu W1 M2（含 Shiny）的 Unbound 连续冲刺：停顿期间可再次按 M2 转向冲刺，普通状态满能量可连续三次；修复连续激活造成属性层数累积，并补齐无重力及切武器／死亡／Shiny 变身清理
 - 优化 Miu 的部分 HUD
 - Nega Super Arm（含 Shiny）现在可以抓取队友
-- 修复变成 MosquitoDemoneye 瞬间有概率使游戏崩溃的问题
+- 修复变成 MosquitoDemoneye 瞬间执行特定操作会使游戏崩溃的问题
 - 修复 DecoyBot 的警告刷屏
 - 修复 Dawnbreaker 普通弹绕过友伤随机池、关闭随机友伤后仍能伤害队友的问题；普通弹与蓄力攻击统一按当日随机池判定友伤
 - 补齐 Dawnbreaker 的 BlastRuneB／D／M 直接命中伤害，统一与 BlastRuneA 使用基础伤害 50 及每日伤害倍率
