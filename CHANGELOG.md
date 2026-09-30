@@ -7,6 +7,7 @@
 - 修复 Boss／LMS 音乐被客户端监听器重复请求播放、未加载音乐包时同一曲目提示两次 `Music "xxx" not found` 的问题；保留音乐模式切换及中途加入时的地图音乐覆盖
 - 补全 Berserker、SoccerRock、Floovy、SakikoTogawa、MakeAGoodZero、BlueElephant 的 HUD 头像（ScoreIcon）
 - 修复横版、竖版 HUD 在 Boss／恶魔眼及使用独立头像的幸存者头像背后仍绘制 Maestro 的问题；保留 MegaMan 的默认头像与皮肤回退
+- 修复 DecoyBot（含 Shiny）在线游戏中攻击 HUD 卡在待机帧、无法播放攻击动画的问题
 - 补全 ShinNegaman 的 ReloadIcon
 - 优化 ShinNegaman 的 CopyAttack1（Nega Rolling Cutter）武器与弹道表现
 - 修复 MeisterWahwee 一阶段 M2 跳转到不存在的状态而报错的问题

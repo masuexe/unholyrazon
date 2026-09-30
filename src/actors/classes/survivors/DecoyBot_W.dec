@@ -40,10 +40,25 @@ actor DecoyBot_W : BaseMM8BDMWep_UH {
     6H50 A 0  // A_GiveInventory("DecoyBotFlagResync_P")
     goto Ready2
    Ready2:
-    6H50 A 2 A_GiveInventory("DecoyBot_WepReady1_P")
+    // Pickup computes the server gate; psprite inventory jumps predict locally.
+    6H50 A 0 A_GiveInventory("DecoyBot_WepReady1_P")
+    6H50 A 0 A_JumpIfInventory("UH_DecoyCanFire_F", 1, "ReadyPrimary")
+    6H50 A 0 A_JumpIfInventory("FlukyNumberAmmo", 100, "ReadySecondary")
+    6H50 A 2 A_WeaponReady(WRF_NOPRIMARY | WRF_NOSECONDARY)
+    goto ReadyRegen
+   ReadyPrimary:
+    6H50 A 0 A_JumpIfInventory("FlukyNumberAmmo", 100, "ReadyBoth")
+    6H50 A 2 A_WeaponReady(WRF_NOSECONDARY)
+    goto ReadyRegen
+   ReadySecondary:
+    6H50 A 2 A_WeaponReady(WRF_NOPRIMARY)
+    goto ReadyRegen
+   ReadyBoth:
+    6H50 A 2 A_WeaponReady
+   ReadyRegen:
     6H50 A 0 A_GiveInventory("DecoyEnergyAmmo", 3)
     6H50 A 0 A_GiveInventory("FlukyNumberAmmo", 1)
-    loop
+    goto Ready2
 
    AltFire:
     6H50 D 0 A_GiveInventory("DecoyBotAlt_P")
@@ -103,10 +118,25 @@ actor DecoyBot_W2 : DecoyBot_W {
     6I50 A 0
     goto Ready2
    Ready2:
-    6I50 A 2 A_GiveInventory("DecoyBot_WepReady2_P")
+    // Pickup computes the server gate; psprite inventory jumps predict locally.
+    6I50 A 0 A_GiveInventory("DecoyBot_WepReady2_P")
+    6I50 A 0 A_JumpIfInventory("UH_DecoyCanFire_F", 1, "ReadyPrimary")
+    6I50 A 0 A_JumpIfInventory("FlukyNumberAmmo", 100, "ReadySecondary")
+    6I50 A 2 A_WeaponReady(WRF_NOPRIMARY | WRF_NOSECONDARY)
+    goto ReadyRegen
+   ReadyPrimary:
+    6I50 A 0 A_JumpIfInventory("FlukyNumberAmmo", 100, "ReadyBoth")
+    6I50 A 2 A_WeaponReady(WRF_NOSECONDARY)
+    goto ReadyRegen
+   ReadySecondary:
+    6I50 A 2 A_WeaponReady(WRF_NOPRIMARY)
+    goto ReadyRegen
+   ReadyBoth:
+    6I50 A 2 A_WeaponReady
+   ReadyRegen:
     6I50 A 0 A_GiveInventory("DecoyEnergyAmmo", 3)
     6I50 A 0 A_GiveInventory("FlukyNumberAmmo", 1)
-    loop
+    goto Ready2
 
    AltFire:
     6I50 D 0 A_GiveInventory("DecoyBotAlt_P")
@@ -149,10 +179,25 @@ actor DecoyBot_W3 : DecoyBot_W {
     6J50 A 0
     goto Ready2
    Ready2:
-    6J50 A 2 A_GiveInventory("DecoyBot_WepReady3_P")
+    // Pickup computes the server gate; psprite inventory jumps predict locally.
+    6J50 A 0 A_GiveInventory("DecoyBot_WepReady3_P")
+    6J50 A 0 A_JumpIfInventory("UH_DecoyCanFire_F", 1, "ReadyPrimary")
+    6J50 A 0 A_JumpIfInventory("FlukyNumberAmmo", 100, "ReadySecondary")
+    6J50 A 2 A_WeaponReady(WRF_NOPRIMARY | WRF_NOSECONDARY)
+    goto ReadyRegen
+   ReadyPrimary:
+    6J50 A 0 A_JumpIfInventory("FlukyNumberAmmo", 100, "ReadyBoth")
+    6J50 A 2 A_WeaponReady(WRF_NOSECONDARY)
+    goto ReadyRegen
+   ReadySecondary:
+    6J50 A 2 A_WeaponReady(WRF_NOPRIMARY)
+    goto ReadyRegen
+   ReadyBoth:
+    6J50 A 2 A_WeaponReady
+   ReadyRegen:
     6J50 A 0 A_GiveInventory("DecoyEnergyAmmo", 3)
     6J50 A 0 A_GiveInventory("FlukyNumberAmmo", 1)
-    loop
+    goto Ready2
 
    AltFire:
     6J50 D 0 A_GiveInventory("DecoyBotAlt_P")
@@ -352,21 +397,19 @@ actor DecoyBotDebugItem : CustomInventory {
 }
 
 
+actor UH_DecoyCanFire_F : Inventory {
+  Inventory.MaxAmount 1
+}
+
 actor DecoyBotFlagBase_P : CustomInventory {
+  // Give/Take in Pickup synchronizes this gate to the owning client.
+  // A_WeaponReady belongs on the weapon psprite, not in this state chain.
   States {
    Ready0:
-    TNT1 A 0 A_JumpIfInventory("FlukyNumberAmmo", 100, "Ready2")
-    TNT1 A 0 A_WeaponReady(WRF_NOPRIMARY | WRF_NOSECONDARY)
+    TNT1 A 0 A_TakeInventory("UH_DecoyCanFire_F")
     stop
    Ready1:
-    TNT1 A 0 A_JumpIfInventory("FlukyNumberAmmo", 100, "Ready3")
-    TNT1 A 0 A_WeaponReady(WRF_NOSECONDARY)
-    stop
-   Ready2:
-    TNT1 A 0 A_WeaponReady(WRF_NOPRIMARY)
-    stop
-   Ready3:
-    TNT1 A 0 A_WeaponReady
+    TNT1 A 0 A_GiveInventory("UH_DecoyCanFire_F", 1)
     stop
   }
 }
