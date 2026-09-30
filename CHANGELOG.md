@@ -16,9 +16,13 @@
 - 更新 Sampi 的 Reload 图标
 - 移植 Berserker 的 Diehard 技能，并改为血量降至 35% 及以下时自动触发持续回血（单条生命周期限触发一次）
 - 调整 GBeast 的蓝耗：Heat、Elec 每次消耗整条蓝（100），Slash（W4）每次消耗半条蓝（50）
-- 更新了 Beast 的部分音效
+- GBeast、FBeast 的武器切换音统一改为 MMBN 光标音效
 - GBeast 的 Erase 改为每次 M2 发射一颗、每颗消耗 10 蓝，按住 M2 可按原射速连射；暴怒阶段连续发射满 10 颗后追加结尾光束，松开 M2 或切换武器重置计数
 - GBeast 的 Heat、Elec 在蓝未满时屏蔽 M2，修复按住 M2 导致无法回蓝的问题
+- FBeast 的 Aqua 激活后松开再按 M2 可提前取消
+- 调整 FBeast 的蓝耗：Tomahawk、Ground 每次消耗半条蓝（50），Tengu、Dust 每次消耗整条蓝（100）；蓝不足时屏蔽对应 M2，避免按住导致无法回蓝
+- 补全 FBeast 的二段跳振翅音效，统一通过现有 `*airjump` 机制播放
+- 重构 `core_weaponcolor`，分离声音播放与染色处理；`core_chargecolor` 直接复用染色函数
 
 ## 4.0.0-beta.260929
 - 修复在线游戏中部分 Boss 的 Ready 重入问题
