@@ -165,6 +165,20 @@ def build() -> dict[Path, str]:
     # consumers resolve the visible face at runtime; this is the Base fallback.
     rows["surv"].append(("MegaManUShiny", "Mega Man", "UMUG_0", "", 0))
 
+    # Shiny bodies are separate actor keys. Use their DECORATE scoreicon;
+    # bodies without an override (Eden) inherit their ordinary body's face.
+    for path in sorted((ROOT / "src/actors/classes/survivors").glob("*.dec")):
+        text = re.sub(r"//[^\n]*|/\*[\s\S]*?\*/", "", read(path))
+        actors = list(re.finditer(r"\bactor\s+(\w+)\s*:\s*(\w+)[^{\n]*\{", text))
+        for i, actor in enumerate(actors):
+            cls, base = actor.group(1, 2)
+            if cls != base + "Shiny" or base == "MegaManU" or base not in survivors:
+                continue
+            body = text[actor.end():actors[i + 1].start() if i + 1 < len(actors) else len(text)]
+            icon = re.search(r'Player\.ScoreIcon\s+"([^"]+)"', body)
+            tex = icon.group(1) if icon else portrait[base]
+            rows["surv"].append((cls, short_name(base), tex, "", 0))
+
     # Boss-created morph bodies have no standalone Define* identity. Register
     # their existing HUD faces explicitly; presentation lookup is actor-keyed
     # and does not inherit the parent actor's row.

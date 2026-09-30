@@ -142,6 +142,24 @@ def main() -> int:
         "ProtoManBadGuy": ("ProtoManBadGuy", "UL113MUG", "", 0),
         "WeakHorse": ("WeakHorse", "UL066MUG", "", 0),
     }
+    # Check every shiny actor independently against its DECORATE face, including
+    # inherited Eden and the separate MegaMan skin fallback above.
+    for path in (ROOT / "src/actors/classes/survivors").glob("*.dec"):
+        source = re.sub(r"//[^\n]*|/\*[\s\S]*?\*/", "", read(path))
+        actors = list(re.finditer(r"\bactor\s+(\w+)\s*:\s*(\w+)[^{\n]*\{", source))
+        for i, actor in enumerate(actors):
+            cls, base = actor.group(1, 2)
+            if cls != base + "Shiny" or base == "MegaManU" or base not in portraits:
+                continue
+            body = source[actor.end():actors[i + 1].start() if i + 1 < len(actors) else len(source)]
+            icon = re.search(r'Player\.ScoreIcon\s+"([^"]+)"', body)
+            tex = icon.group(1) if icon else portraits[base]
+            morph_additions[cls] = (expected_short_name(base), tex, "", 0)
+    capacity = int(re.search(r"#libdefine UH_MAX_TEAM_PRESENTATION (\d+)",
+        read(ROOT / "src/acs_source/_imports/uhdt.acs")).group(1))
+    if len(rows) > capacity:
+        print(f"FAIL presentation capacity: {len(rows)} rows > {capacity}")
+        fails += 1
     for cls, expected in morph_additions.items():
         if rows.get(cls) != expected:
             print(f"FAIL morph presentation {cls}: {rows.get(cls)!r} != {expected!r}")
