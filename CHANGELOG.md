@@ -1,4 +1,5 @@
 ## 4.0.0-beta.261001
+- 恢复 Unbound 的 Boss／恶魔眼 True Power 效果：有怒气条时只补满怒气；无怒气条时增加最大血量并回血 2000，可重复使用
 - 修复 Eden 在线游戏中道具图标不显示的问题
 - 补充 Eden 泪弹的 +FORCEXYBILLBOARD 属性
 - 移除 ShinNegaman 的 Reload 的调试功能
