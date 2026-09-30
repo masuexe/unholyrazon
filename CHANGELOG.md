@@ -1,5 +1,6 @@
 ## 4.0.0-beta.260930
-- 修复 HomingSeeker 等未设置 NOMORPHLIMITATIONS 的机体使用 TruePower 后 HUD 仍显示普通头像的问题；Shiny 静态头像改由 presentation 绘制，保留磁极头像叠层及原有变身行为
+- 补齐 Shiny 机体缺少的 NOMORPHLIMITATIONS，统一变身后的移动、受伤音效及头像行为
+- 修复 HomingSeeker 等机体使用 TruePower 后 HUD 仍显示普通头像的问题；Shiny 静态头像改由 presentation 绘制，保留磁极头像叠层
 - 补全 Shiny 形态的头像登记，修复变身后计分板仍显示原头像及 UIX 队友栏头像为空的问题；保留 MegaManShiny 的皮肤回退和 EdenShiny 的继承头像
 - 补全 PlainDevilDemoneye、RichDevilDemoneye、ProtoManBadGuy、WeakHorse 的队友栏／计分板头像登记
 - 补全 TyphoonDemoneye、BrickDemoneye、MosquitoDemoneye 的 HUD 头像（ScoreIcon）
