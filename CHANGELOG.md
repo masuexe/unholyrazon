@@ -1,4 +1,5 @@
 ## 4.0.0-beta.261001
+- Nega Super Arm（含 Shiny）现在可以抓取队友
 - 移除 ShinNegaman 的 Reload 的调试功能
 - 修复变成 MosquitoDemoneye 瞬间有概率使游戏崩溃的问题
 - 修复 DecoyBot 的警告刷屏

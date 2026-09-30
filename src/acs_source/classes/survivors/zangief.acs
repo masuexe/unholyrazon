@@ -30,13 +30,13 @@ script "uh_ZangiefBindGrab" (int owner, int victim) {
 
 // Activator is a grab projectile/explosion. Return 1 only for a friendly
 // grab, so DECORATE can omit its damage while keeping the ordinary enemy hit.
-script "uh_ZangiefTryGrab" (int radius, int aerial) {
+script "uh_ZangiefTryGrab" (int radius, int aerial, int superarm) {
   SetResultValue(0);
   int ownerTid = GetActorProperty(0, APROP_TargetTID);
   if (ownerTid < 1000 || ownerTid >= 1000 + ServerMAX || radius <= 0) {terminate;}
-  // These actors are also borrowed by other classes; extend Zangief only.
+  // Super Arm explicitly opts in; other borrowers retain their behavior.
   str ownerClass = GetActorClass(ownerTid);
-  if (StrICmp(ownerClass, "Zangief") && StrICmp(ownerClass, "ZangiefShiny")) {terminate;}
+  if (!superarm && StrICmp(ownerClass, "Zangief") && StrICmp(ownerClass, "ZangiefShiny")) {terminate;}
   int owner = ownerTid - 1000;
   if (!PlayerInGame(owner) || GetActorProperty(ownerTid, APROP_Health) <= 0) {terminate;}
   if (CheckActorInventory(ownerTid, "SuplexID")) {
@@ -164,6 +164,14 @@ script "uh_ZangiefSetThrow" (int target, int force, int zforce) {
   ThrustThingZ(target, zforce, 0, 0);
 }
 
+// Snapshot the friendly flag before the thrower resets grab state.
+script "uh_NegaSuperArmFriendlyThrow" (void) {
+  SetResultValue(0);
+  if (SetActivator(0, AAPTR_TARGET)) {
+    SetResultValue(CheckInventory("ZangiefFriendlyGrab_F"));
+  }
+}
+
 // Flight watch for the SuperArm throw, called once per tic by the flying
 // NegaSuperArmSlam (activator = the slam). Shadows the thrown player
 // (tid = suplexid-1+1000) so the slam rides on them mid-air, and reports when
@@ -171,15 +179,13 @@ script "uh_ZangiefSetThrow" (int target, int force, int zforce) {
 // present), 2 = victim gone or dead -> the slam fizzles without a boom.
 // A thrown player never bounces: their horizontal velocity collapsing to ~0
 // while still airborne means they slammed into a wall.
-script "rz_NegaSuperArmThrowFollow" (int tid, int force) {
+script "rz_NegaSuperArmThrowFollow" (int tid, int force, int friendly) {
   if (!ThingCount(T_NONE, tid) || GetActorProperty(tid, APROP_HEALTH) <= 0) {
     setResultValue(2);
     terminate;
   }
-  // AntiInvincible_P strips the victim's own protections (Zangief parity: the
-  // slam is MEANT to hurt the thrown player). Refresh per tic so protection
-  // they pick up mid-flight cannot eat the landing boom.
-  GiveActorInventory(tid, "AntiInvincible_P", 1);
+  // Strip enemy protection per tic for the landing damage; teammates keep it.
+  if (!friendly) GiveActorInventory(tid, "AntiInvincible_P", 1);
   // Thing_Move's third arg is NOFOG (p_lnspec.cpp: arg2 ? false : true) —
   // 0 would spawn teleport fog on every per-tic shadow move.
   Thing_Move(0, tid, 1);
