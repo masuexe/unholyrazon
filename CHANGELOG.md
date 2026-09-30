@@ -1,4 +1,6 @@
 ## 4.0.0-beta.261001
+- 恢复 Miu W1 M2（含 Shiny）的 Unbound 连续冲刺：停顿期间可再次按 M2 转向冲刺，普通状态满能量可连续三次；修复连续激活造成属性层数累积，并补齐无重力及切武器／死亡／Shiny 变身清理
+- 优化 Miu 的部分 HUD
 - Nega Super Arm（含 Shiny）现在可以抓取队友
 - 移除 ShinNegaman 的 Reload 的调试功能
 - 修复变成 MosquitoDemoneye 瞬间有概率使游戏崩溃的问题
