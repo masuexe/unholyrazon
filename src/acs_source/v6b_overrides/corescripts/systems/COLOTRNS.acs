@@ -24,8 +24,8 @@ script "core_synccolors_respawn" RESPAWN {
   ACS_NamedExecuteAlways("core_synccolors", 0);
 }
 
-// Color Translation script
-script "core_weaponcolor" (int weap, int weapsound, int teamweap) {
+// Weapon switch audio is independent of body/mugshot translation.
+function void UH_PlayWeaponSwitchSound(int weapsound) {
   // timer check here helps a bug in Offline Skirmish, see Celebi for details
   if (CheckInventory("NoWeaponSwitchSound") == 0 && Timer() > 0) {
     switch (weapsound) {  // $UH
@@ -60,12 +60,19 @@ script "core_weaponcolor" (int weap, int weapsound, int teamweap) {
       case CLRF_VOIDWALKER_FIRE:
         LocalAmbientSound("MarioRPG/Drop", 127);
         break;
+      case CLRF_MMBN_CURSOR:
+        LocalAmbientSound("MMBN/Cursor", 127);
+        break;
         // $UH
     }
   }
+}
 
+// Apply weapon/team dye and the associated mugshot/Ready-dye bookkeeping.
+// Uses the caller's activator and never plays a weapon switch sound.
+function void UH_ApplyWeaponTranslation(int weap, int teamweap) {
   if ((CheckInventory("NoWeaponTranslation") > 0 && weap != CLR_ICEDEATH) || weap == CLR_PREVCOLOR)
-    terminate;
+    return;
 
   if (teamweap == TCLR_NONE) {teamweap = TCLR_DEFAULT;}
 
@@ -88,9 +95,15 @@ script "core_weaponcolor" (int weap, int weapsound, int teamweap) {
     SetInventory("UH_LastReadyDye", mugdye);
 }
 
+// Keep the DECORATE-facing API and sound-before-translation order unchanged.
+script "core_weaponcolor" (int weap, int weapsound, int teamweap) {
+  UH_PlayWeaponSwitchSound(weapsound);
+  UH_ApplyWeaponTranslation(weap, teamweap);
+}
+
 script "core_chargecolor" (int weap, int teamweap) {
   GiveInventory("UH_ChargeColor_F", 1);
-  ACS_NamedExecuteWithResult("core_weaponcolor", weap, CLRF_SILENT, teamweap);
+  UH_ApplyWeaponTranslation(weap, teamweap);
   TakeInventory("UH_ChargeColor_F", 1);
 }
 
