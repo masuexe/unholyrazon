@@ -4,6 +4,7 @@
 - 修复 MeisterWahwee 一阶段 M2 跳转到不存在的状态而报错的问题
 - 修复 Sampi 无法使用 Reload 技能的问题
 - 更新 Sampi 的 Reload 图标
+- 移植 Berserker 的 Diehard 技能，并改为血量降至 35% 及以下时自动触发持续回血（单条生命周期限触发一次）
 
 ## 4.0.0-beta.260929
 - 修复在线游戏中部分 Boss 的 Ready 重入问题
