@@ -1,6 +1,7 @@
 ## 4.0.0-beta.260930.hotfix1
 - 移除 ShinNegaman 的 Reload 的调试功能
 - 修复变成 MosquitoDemoneye 瞬间有概率使游戏崩溃的问题
+- 修复 DecoyBot 的警告刷屏
 
 ## 4.0.0-beta.260930
 - 修复 Misery reload 后未满蓝期间客户端可连续 M2 的问题
