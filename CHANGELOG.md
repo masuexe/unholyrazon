@@ -2,7 +2,7 @@
 
 - 为 Nega Napalm Bomb、Needle Cannon 和 Ice Wave（含 Shiny）使用独立伤害类型，移除每日随机友伤
 - 补全 Pharaohman4MI 的 Unknown 诅咒
-- 修复 NegaMan_W 在横屏模式下 M2 蓝条缺失的问题
+- 修复 NegaMan_W 和 Shiny NegaMan 在横屏模式下 M2 蓝条缺失的问题
 - 调整 Shiny NegaMan 的骷髅盾：未蓄力／中蓄力激活后再次按 M1 可立即中断；满蓄力释放期间不再允许 M1 中断，完整释放后切换至下一武器
 - 修复两个 Astromancer 的 M1 护盾缺失持续接触伤害的问题
 - 修复 Handyman（含 Shiny）M2 后下落时无法按 M1 向上推进的问题

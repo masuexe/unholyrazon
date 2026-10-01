@@ -43,7 +43,6 @@ COMMON_BAR_GRAPHICS = {"BAREMPTY", "VAREMPTY", "NOBAR", "VNOBAR"}
 # valid DrawBar graphics, but are intentionally absent from src/TEXTURES.
 BASE_BAR_GRAPHICS = {
     "BARAMM13", "VARAMM13", "BARFLS1", "VARFLS1",
-    "02_BSVAR",
 }
 INT32_MAX = 0x7FFFFFFF
 
