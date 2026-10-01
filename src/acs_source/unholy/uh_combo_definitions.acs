@@ -1,0 +1,301 @@
+// Built-in boss-combo definitions. Fragment of unholy, registered once per
+// map by ub_StartUpSettings. Every id, member, weight and credit is retained
+// from the former uh_def arrays; special policy stays in uh_boss_combos.
+// Addons use the same data contract through UHADD (see uhcombo_api.acs).
+
+// Keep definition failures identifiable even when no registry row was allocated.
+function int UH_DefineBuiltinCombo(int id, str key, str name, int count,
+    int minPlayers, int weight, int mode, int flags) {
+  int result = UH_ComboDefine(id, key, name, count, minPlayers, weight, mode, flags);
+  if (result == UH_COMBO_FAIL) {
+    UH_Log(UH_LOG_ERROR, StrParam(s:"Built-in boss combo ", i:id,
+      s:" (", s:name, s:"; key ", s:key,
+      s:") definition failed: invalid arguments, conflicting metadata or registry capacity."));
+  }
+  return result;
+}
+
+// One commit/error path for every built-in. Failed setter staging must never
+// commit a draft; the caller accumulates this result without skipping later rows.
+function bool UH_CommitBuiltinCombo(int combo, bool ok) {
+  if (combo == UH_COMBO_FAIL) return false;  // Definition failure already logged.
+  if (ok && UH_ComboCommit(combo)) return true;
+  int row = UH_ComboFindId(combo);
+  str reason = ok ? UH_ComboShapeErrorText(UH_ComboShapeError(row))
+                  : "member or music registration failed";
+  UH_Log(UH_LOG_ERROR, StrParam(s:"Built-in boss combo ", i:combo,
+    s:" (", s:UH_ComboString(row, UHC_STR_NAME),
+    s:") registration failed: ", s:reason, s:"."));
+  return false;
+}
+
+function void UH_RegisterBuiltinBossCombos(void) {
+  int combo;
+  bool ok;
+  bool complete = true;
+
+  // True Buster Duo
+  combo = UH_DefineBuiltinCombo(201, "true_buster_duo", "True Buster Duo",
+    2, 4, 10, BOSSCOMBO_MODE_FIXED, 0);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "TrueBusterExpert") & ok;
+  ok = UH_ComboSetMember(combo, 1, "TrueBusterMistress") & ok;
+  ok = UH_ComboSetMusic(combo, "", "", "", "") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Juggerbro Brothers
+  combo = UH_DefineBuiltinCombo(202, "juggerbro_brothers", "Juggerbro Brothers",
+    2, 4, 10, BOSSCOMBO_MODE_FIXED, 0);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "JuggerbroGold") & ok;
+  ok = UH_ComboSetMember(combo, 1, "JuggerbroSilver") & ok;
+  ok = UH_ComboSetMusic(combo, "", "", "", "") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Astromancer Twins
+  combo = UH_DefineBuiltinCombo(203, "astromancer_twins", "Astromancer Twins",
+    2, 4, 10, BOSSCOMBO_MODE_FIXED, 0);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "AstromancerComplex") & ok;
+  ok = UH_ComboSetMember(combo, 1, "AstromancerSimple") & ok;
+  ok = UH_ComboSetMusic(combo, "M_UB029X", "Boss Theme",
+    "Jazz Jackrabbit 2", "Alexander Brandon") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // 4MI Front
+  combo = UH_DefineBuiltinCombo(204, "4mi_front", "4MI Front",
+    2, 4, 10, BOSSCOMBO_MODE_FIXED, 0);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "Pharaohman4MI") & ok;
+  ok = UH_ComboSetMember(combo, 1, "Skullman4MI") & ok;
+  ok = UH_ComboSetMusic(combo, "M_RZ4MI 48", "Arena Battle",
+    "Rockman 4 Minus Infinity", "Puresabe") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Balrog & Misery
+  combo = UH_DefineBuiltinCombo(205, "balrog_misery", "Balrog & Misery",
+    2, 4, 10, BOSSCOMBO_MODE_FIXED, 0);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "Balrog") & ok;
+  ok = UH_ComboSetMember(combo, 1, "Misery") & ok;
+  ok = UH_ComboSetMusic(combo, "M_RZCAVE", "Last Battle",
+    "Cave Story", "Daisuke Amaya") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // G/F Beast
+  combo = UH_DefineBuiltinCombo(208, "gf_beast", "G/F Beast",
+    2, 4, 10, BOSSCOMBO_MODE_FIXED, 0);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "GBeast") & ok;
+  ok = UH_ComboSetMember(combo, 1, "FBeast") & ok;
+  ok = UH_ComboSetMusic(combo, "M_UB108", "Surge of Power!",
+    "Mega Man Battle Network 6", "Yoshino Aoki") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // GENERIC March
+  combo = UH_DefineBuiltinCombo(301, "generic_march", "GENERIC March",
+    3, 5, 10, BOSSCOMBO_MODE_FIXED, 0);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "GENERICBOSS") & ok;
+  ok = UH_ComboSetMember(combo, 1, "GENERICBOSS") & ok;
+  ok = UH_ComboSetMember(combo, 2, "GENERICBOSS") & ok;
+  ok = UH_ComboSetMusic(combo, "", "", "", "") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Tank Corps
+  combo = UH_DefineBuiltinCombo(302, "tank_corps", "Tank Corps",
+    3, 5, 10, BOSSCOMBO_MODE_FIXED, 0);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "RedTankBot") & ok;
+  ok = UH_ComboSetMember(combo, 1, "BluTankBot") & ok;
+  ok = UH_ComboSetMember(combo, 2, "YelTankBot") & ok;
+  ok = UH_ComboSetMusic(combo, "", "", "", "") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Guts Friends
+  combo = UH_DefineBuiltinCombo(303, "guts_friends", "Guts Friends",
+    3, 5, 10, BOSSCOMBO_MODE_FIXED, 0);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "GutsBuddy") & ok;
+  ok = UH_ComboSetMember(combo, 1, "RussianGuts") & ok;
+  ok = UH_ComboSetMember(combo, 2, "RedeadGuts") & ok;
+  ok = UH_ComboSetMusic(combo, "GUTSBOSS", "Guts Man Power Battle!",
+    "Mega Man 8-Bit Deathmatch", "Dr. Freeman") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Shooting Stars
+  combo = UH_DefineBuiltinCombo(306, "shooting_stars", "Shooting Stars",
+    3, 5, 10, BOSSCOMBO_MODE_FIXED, 0);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "WarRockStelar") & ok;
+  ok = UH_ComboSetMember(combo, 1, "HarpStrumm") & ok;
+  ok = UH_ComboSetMember(combo, 2, "Rogue") & ok;
+  ok = UH_ComboSetMusic(combo, "M_RZSHST", "Road to Victory",
+    "Mega Man Star Force 3", "Yoshino Aoki") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Destron Squad
+  combo = UH_DefineBuiltinCombo(307, "destron_squad", "Destron Squad",
+    3, 5, 10, BOSSCOMBO_MODE_FIXED, 0);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "PurpleDestron") & ok;
+  ok = UH_ComboSetMember(combo, 1, "RedDestron") & ok;
+  ok = UH_ComboSetMember(combo, 2, "BlueDestron") & ok;
+  // All three Destrons share the single-boss track (M_UB070, subsong 3).
+  // Inherit its registration so the combo follows later single-boss edits.
+  ok = UH_ComboSetMusic(combo, "", "", "", "") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Anti-Unholy Heroes
+  combo = UH_DefineBuiltinCombo(401, "anti_unholy_heroes", "Anti-Unholy Heroes",
+    4, 6, 10, BOSSCOMBO_MODE_FIXED, 0);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "RedHero") & ok;
+  ok = UH_ComboSetMember(combo, 1, "BlueHero") & ok;
+  ok = UH_ComboSetMember(combo, 2, "YellowHero") & ok;
+  ok = UH_ComboSetMember(combo, 3, "PurpleHero") & ok;
+  ok = UH_ComboSetMusic(combo, "M_UB038", "Urien Theme",
+    "Street Fighter 3: 2nd Impact", "Hideki Okugawa") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Speciman Rush
+  combo = UH_DefineBuiltinCombo(501, "speciman_rush", "Speciman Rush",
+    5, 7, 10, BOSSCOMBO_MODE_POOL, 0);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "Speciman") & ok;
+  ok = UH_ComboSetMember(combo, 1, "RedSpeciman") & ok;
+  ok = UH_ComboSetMember(combo, 2, "BlueSpeciman") & ok;
+  ok = UH_ComboSetMember(combo, 3, "YellowSpeciman") & ok;
+  ok = UH_ComboSetMember(combo, 4, "SuperSpeciman") & ok;
+  ok = UH_ComboSetMember(combo, 5, "GhostSpeciman") & ok;
+  ok = UH_ComboSetMember(combo, 6, "FinalSpeciman") & ok;
+  ok = UH_ComboSetMember(combo, 7, "SpecimanDX") & ok;
+  ok = UH_ComboSetMusic(combo, "", "", "", "") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Ballade GB Quintet
+  combo = UH_DefineBuiltinCombo(502, "ballade_gb_quintet", "Ballade GB Quintet",
+    5, 7, 10, BOSSCOMBO_MODE_FIXED, 0);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "BalladeGB") & ok;
+  ok = UH_ComboSetMember(combo, 1, "BalladeGB") & ok;
+  ok = UH_ComboSetMember(combo, 2, "BalladeGB") & ok;
+  ok = UH_ComboSetMember(combo, 3, "BalladeGB") & ok;
+  ok = UH_ComboSetMember(combo, 4, "BalladeGB") & ok;
+  ok = UH_ComboSetMusic(combo, "", "", "", "") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Red Baron vs Blue Jay
+  combo = UH_DefineBuiltinCombo(207, "red_baron_blue_jay", "Red Baron vs Blue Jay",
+    2, 4, 0, BOSSCOMBO_MODE_FIXED, BOSSCOMBO_FLAGS_HIGLUR);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "RedBaronDuo") & ok;
+  ok = UH_ComboSetMember(combo, 1, "BlueJayDuo") & ok;
+  ok = UH_ComboSetMusic(combo, "M_UB034", "Koniggratzer Marsch",
+    "Der Grosse Zapfenstreich: Parademarsche", "Johann Gottfried Piefke") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Dickster Dick vs Prickster Prick
+  combo = UH_DefineBuiltinCombo(210, "dickster_prickster", "Dickster Dick vs Prickster Prick",
+    2, 4, 1, BOSSCOMBO_MODE_FIXED, BOSSCOMBO_FLAG_VERSUS);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "DicksterDick") & ok;
+  ok = UH_ComboSetMember(combo, 1, "PricksterPrick") & ok;
+  ok = UH_ComboSetMusic(combo, "RKMRQUCK", "Iquickman Stage",
+    "Rokkumara 2", "JRkannai5") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Captain Devileye vs Devileye Richman
+  combo = UH_DefineBuiltinCombo(211, "devileye_richman", "Captain Devileye vs Devileye Richman",
+    2, 4, 1, BOSSCOMBO_MODE_FIXED, BOSSCOMBO_FLAG_VERSUS);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "CaptainDevilEye") & ok;
+  ok = UH_ComboSetMember(combo, 1, "RichDevilEye") & ok;
+  ok = UH_ComboSetMusic(combo, "M_UB060", "No More Nuzzles",
+    "Undertale: Halloween Hack", "Nobuo Uematsu") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Colonel Kachidonga vs Crazed Grenademan
+  combo = UH_DefineBuiltinCombo(212, "kachidonga_grenademan", "Colonel Kachidonga vs Crazed Grenademan",
+    2, 4, 1, BOSSCOMBO_MODE_FIXED, BOSSCOMBO_FLAG_VERSUS);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "ColonelKachidonga") & ok;
+  ok = UH_ComboSetMember(combo, 1, "CrazedGrenademan") & ok;
+  ok = UH_ComboSetMusic(combo, "M_UB060", "No More Nuzzles",
+    "Undertale: Halloween Hack", "Nobuo Uematsu") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Officer Johnson vs Scrotoman
+  combo = UH_DefineBuiltinCombo(213, "johnson_scrotoman", "Officer Johnson vs Scrotoman",
+    2, 4, 1, BOSSCOMBO_MODE_FIXED, BOSSCOMBO_FLAG_VERSUS);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "OfficerJohnson") & ok;
+  ok = UH_ComboSetMember(combo, 1, "Scrotoman") & ok;
+  ok = UH_ComboSetMusic(combo, "M_UB060", "No More Nuzzles",
+    "Undertale: Halloween Hack", "Nobuo Uematsu") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Harp Strumm vs Sakiko Togawa
+  combo = UH_DefineBuiltinCombo(214, "harp_sakiko", "Harp Strumm vs Sakiko Togawa",
+    2, 4, 1, BOSSCOMBO_MODE_FIXED, BOSSCOMBO_FLAG_VERSUS);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "HarpStrumm") & ok;
+  ok = UH_ComboSetMember(combo, 1, "SakikoTogawa") & ok;
+  ok = UH_ComboSetMusic(combo, "M_UB060", "No More Nuzzles",
+    "Undertale: Halloween Hack", "Nobuo Uematsu") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Super Megaman vs Lin
+  combo = UH_DefineBuiltinCombo(215, "super_megaman_lin", "Super Megaman vs Lin",
+    2, 4, 1, BOSSCOMBO_MODE_FIXED, BOSSCOMBO_FLAG_VERSUS);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "SuperMegaman") & ok;
+  ok = UH_ComboSetMember(combo, 1, "Lin") & ok;
+  ok = UH_ComboSetMusic(combo, "SMSMUS", "Theme of the Magician",
+    "The House of the Dead 2", "Tetsuya Kawauchi") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Blue Elephant vs Sakiko Togawa
+  combo = UH_DefineBuiltinCombo(216, "blue_elephant_sakiko", "Blue Elephant vs Sakiko Togawa",
+    2, 4, 1, BOSSCOMBO_MODE_FIXED, BOSSCOMBO_FLAG_VERSUS);
+  ok = combo >= 0;
+  ok = UH_ComboSetMember(combo, 0, "BlueElephant") & ok;
+  ok = UH_ComboSetMember(combo, 1, "SakikoTogawa") & ok;
+  ok = UH_ComboSetMusic(combo, "M_UB060", "No More Nuzzles",
+    "Undertale: Halloween Hack", "Toby Fox") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Admin-Forced Duel
+  combo = UH_DefineBuiltinCombo(206, "admin_forced_duel", "Admin-Forced Duel",
+    2, 4, 0, BOSSCOMBO_MODE_FORCED, BOSSCOMBO_FLAG_VERSUS);
+  ok = combo >= 0;
+  ok = UH_ComboSetMusic(combo, "M_UB060", "No More Nuzzles",
+    "Undertale: Halloween Hack", "Toby Fox") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Random Duel
+  combo = UH_DefineBuiltinCombo(209, "random_duel", "Random Duel",
+    2, 4, 0, BOSSCOMBO_MODE_RANDOM_PAIR, BOSSCOMBO_FLAG_VERSUS);
+  ok = combo >= 0;
+  ok = UH_ComboSetMusic(combo, "M_UB060", "No More Nuzzles",
+    "Undertale: Halloween Hack", "Toby Fox") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Shadow Tricks Duel
+  combo = UH_DefineBuiltinCombo(217, "shadow_tricks_duel", "Shadow Tricks Duel",
+    2, 4, 0, BOSSCOMBO_MODE_SHADOW_PAIR, BOSSCOMBO_FLAGS_SHADOW);
+  ok = combo >= 0;
+  ok = UH_ComboSetMusic(combo, "M_UB060", "No More Nuzzles",
+    "Undertale: Halloween Hack", "Toby Fox") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  // Zankokuna / Demoneye Duel
+  combo = UH_DefineBuiltinCombo(218, "zankokuna_demoneye_duel", "Zankokuna / Demoneye Duel",
+    2, 4, 0, BOSSCOMBO_MODE_ZANKOKUNA_PAIR, BOSSCOMBO_FLAGS_ZANKOKUNA);
+  ok = combo >= 0;
+  ok = UH_ComboSetMusic(combo, "M_UB060", "No More Nuzzles",
+    "Undertale: Halloween Hack", "Toby Fox") & ok;
+  complete = UH_CommitBuiltinCombo(combo, ok) & complete;
+
+  uh_combo_builtins_ready = complete;
+}

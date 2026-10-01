@@ -1,4 +1,10 @@
 ## 4.0.0-beta.261001
+
+- 将 Boss Combo 的阵容、人数限制、权重及音乐配置迁移到运行时注册表，新增 addon 注册与查询 API，支持固定阵容和候选池；用法见 [Boss Combo API](docs/boss-combo-api.md)
+- 修复 Three Destrons 播放错误音乐的问题，改为沿用 Destron 的登场音乐
+- 将 Final Speciman 和 Speciman DX 加入 Speciman Rush 候选池，从八种成员中选出五个 Boss
+- 调整 Shadow Tricks Duel：假身份首次变身后即可移动、攻击，并显示 Boss VS 名称、头像和血量；真实身份沿用普通 Shadow 的稀有度权重及历史出场次数抽选，保留双方目标不同的限制
+- Shadow 假 Boss 在揭露身份前死亡时取消换身，remorph 前再次检查存活状态，避免重新生成已死亡的 Boss
 - 将 Misery 的多段空中跳跃改为常驻悬浮：离地达到 160 时关闭飞行，降至 152 后恢复；危险坑上按 CBM Alien 规则消耗悬浮耐力，耗尽后下落，离开危险坑后恢复
 - 修复 Destron 击杀玩家时死亡音效缺失的问题
 - 新增 Destron 的受伤音效

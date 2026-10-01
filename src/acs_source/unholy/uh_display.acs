@@ -236,6 +236,13 @@ function void Func_BHW_ShowHudMess(bool force) {
 
 function void Func_BHW_Checker(int numb, int tidofboss, int whichboss, bool force) {
   if (PlayerInGame(tidofboss - 1000) && bossslotalive[numb]) {
+    // During the reveal the pawn is temporarily unmorphed. Draw the Shadow
+    // transition row before reading health so a transient pawn swap cannot
+    // mark the slot dead. The manager cancels dead slots before remorphing.
+    if (shadowrevealactive && shadowtricksarr[numb]) {
+      Func_BHW_DeadHudMess(numb + 1, whichboss, 8);
+      return;
+    }
     bosshparr[numb][BOSSHP_CURRHP] = GetActorProperty(tidofboss, APROP_HEALTH);
     bosshparr[numb][BOSSHP_CURRARMOR] = CheckActorInventory(tidofboss, "BasicArmor");
     if (bosshparr[numb][BOSSHP_CURRHP] <= 0) {  // Boss is Dead!
@@ -243,9 +250,6 @@ function void Func_BHW_Checker(int numb, int tidofboss, int whichboss, bool forc
       else {bosshparr[numb][BOSSHP_DEATH] = 5;}
       Func_BHW_DeadHudMess(numb + 1, whichboss, bosshparr[numb][BOSSHP_DEATH]);
       bossslotalive[numb] = false;
-    }
-    else if (shadowrevealactive && shadowtricksarr[numb]) {  // During Shadow, show Blue
-      Func_BHW_DeadHudMess(numb + 1, whichboss, 8);
     }
     else {
       int extralife = CheckActorInventory(tidofboss, "PlayerPropertyExtraLife");

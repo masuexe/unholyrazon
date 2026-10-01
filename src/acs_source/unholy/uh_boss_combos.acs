@@ -36,8 +36,8 @@ function void ResetBossComboState(void) {
 // Semantic combo policy lookup.  Special branches use this instead of
 // inferring behavior from a numeric combo-id range.
 function bool BossComboHasFlag(int flag) {
-  if (activebosscombo < 0 || activebosscombo >= BOSSCOMBO_MAX) {return false;}
-  return (bosscombodata[activebosscombo][7] & flag) != 0;
+  if (!UH_ComboAvailable(activebosscombo)) {return false;}
+  return (UH_ComboInt(activebosscombo, UHC_INT_FLAGS) & flag) != 0;
 }
 
 function int BossVersusOpponentTID(int tid) {
@@ -81,33 +81,7 @@ function void MultiBossFunction(bool reset) {
 // player-count checks this is a pure table check, shared by selection,
 // forced-combo validation and the debug validator so the rules cannot drift.
 function int BossComboShapeError(int combo) {
-  if (combo < 0 || combo >= BOSSCOMBO_MAX) {return BOSSCOMBO_SHAPE_RANGE;}
-  int count = bosscombodata[combo][1];
-  int mode = bosscombodata[combo][4];
-  int first = bosscombodata[combo][5];
-  int slice = bosscombodata[combo][6];
-  bool versus = (bosscombodata[combo][7] & BOSSCOMBO_FLAG_VERSUS) != 0;
-  if (count < 1 || count > MAX_BOSSES) {return BOSSCOMBO_SHAPE_COUNT;}
-  if (mode != BOSSCOMBO_MODE_FIXED && mode != BOSSCOMBO_MODE_POOL &&
-      mode != BOSSCOMBO_MODE_FORCED && mode != BOSSCOMBO_MODE_RANDOM_PAIR &&
-      mode != BOSSCOMBO_MODE_SHADOW_PAIR && mode != BOSSCOMBO_MODE_ZANKOKUNA_PAIR) {
-    return BOSSCOMBO_SHAPE_MODE;
-  }
-  // Dynamic modes expand at selection time and must use the reserved zero
-  // slice.  ApplyBossCombo always writes exactly slots 0 and 1 for them.
-  if (mode == BOSSCOMBO_MODE_FORCED || mode == BOSSCOMBO_MODE_RANDOM_PAIR ||
-      mode == BOSSCOMBO_MODE_SHADOW_PAIR || mode == BOSSCOMBO_MODE_ZANKOKUNA_PAIR) {
-    if (!versus || count != 2 || first != 0 || slice != 0) {
-      return BOSSCOMBO_SHAPE_DYNAMIC;
-    }
-    return BOSSCOMBO_SHAPE_OK;
-  }
-  if (slice < 1 || first < 0 || first + slice > BOSSCOMBO_BOSSID_COUNT) {return BOSSCOMBO_SHAPE_SLICE;}
-  if (mode == BOSSCOMBO_MODE_FIXED && slice < count) {return BOSSCOMBO_SHAPE_FIXEDSLICE;}
-  if (versus) {
-    if (count != 2 || mode != BOSSCOMBO_MODE_FIXED || slice != 2) {return BOSSCOMBO_SHAPE_VERSUS;}
-  }
-  return BOSSCOMBO_SHAPE_OK;
+  return UH_ComboShapeError(combo);
 }
 
 function bool BossComboShapeValid(int combo) {
@@ -115,52 +89,19 @@ function bool BossComboShapeValid(int combo) {
 }
 
 function str BossComboShapeErrorText(int err) {
-  switch (err) {
-    case BOSSCOMBO_SHAPE_RANGE: return "combo index out of range";
-    case BOSSCOMBO_SHAPE_COUNT: return "boss count must be 1..MAX_BOSSES";
-    case BOSSCOMBO_SHAPE_SLICE: return "boss-id slice out of bosscombobossids";
-    case BOSSCOMBO_SHAPE_FIXEDSLICE: return "fixed mode needs slice count >= boss count";
-    case BOSSCOMBO_SHAPE_VERSUS: return "versus needs exactly 2 fixed slots";
-    case BOSSCOMBO_SHAPE_MODE: return "unknown combo mode";
-    case BOSSCOMBO_SHAPE_DYNAMIC: return "dynamic mode needs versus, 2 slots, first 0 and slice 0";
-  }
-  return "unknown shape error";
+  return UH_ComboShapeErrorText(err);
 }
 
-// D6: every boss id referenced by the combo table must still be registered,
-// otherwise the combo is rejected for the round (invalid combos fall back to
-// the normal roll).  The bounds guard keeps a malformed row from reading past
-// bosscombobossids before BossComboShapeError gets a chance to report it.
+// Committed records with unresolved members are unavailable for this round.
+// Actor references are resolved through the server's own UHDT registry.
 function bool BossComboFullyRegistered(int combo) {
-  if (combo < 0 || combo >= BOSSCOMBO_MAX) {return false;}
-  if (!BossComboShapeValid(combo)) {return false;}
-  int mode = bosscombodata[combo][4];
-  // Dynamic modes resolve their ids at selection time; ApplyBossCombo owns
-  // their registration and eligibility validation, so the table has no ids
-  // to check here after its reserved zero slice passed shape validation.
-  if (mode == BOSSCOMBO_MODE_FORCED || mode == BOSSCOMBO_MODE_RANDOM_PAIR ||
-      mode == BOSSCOMBO_MODE_SHADOW_PAIR || mode == BOSSCOMBO_MODE_ZANKOKUNA_PAIR) {
-    return true;
-  }
-  int first = bosscombodata[combo][5];
-  int slice = bosscombodata[combo][6];
-  if (slice < 1 || first < 0 || first + slice > BOSSCOMBO_BOSSID_COUNT) {return false;}
-  for (int i = 0; i < slice; i++) {
-    if (!IsBossDefined(bosscombobossids[first + i])) {return false;}
-  }
-  return true;
+  return UH_ComboFullyRegistered(combo);
 }
 
-// True once every combo slice passes BossComboFullyRegistered.  The UHDT boss
-// registry is repopulated by uh_bossdefs' OPEN script in the same tic as
-// ub_StartUpSettings, so round-start validation waits on this instead of
-// assuming registration already finished.  Checking boss 0 alone is not
-// enough: the table's first entry can be ready while the rest are not.
+// Registration completion is independent of addon member availability.
+// Missing dependencies exclude one row; they must not hold up the database.
 function bool BossComboRegistryReady(void) {
-  for (int combo = 0; combo < BOSSCOMBO_MAX; combo++) {
-    if (!BossComboFullyRegistered(combo)) {return false;}
-  }
-  return true;
+  return uh_combo_builtins_ready != 0;
 }
 
 // V4: only bosses with a reviewed versus path may enter a boss-vs-boss duel.
@@ -295,6 +236,41 @@ function int PickZankokunaPrimaryBoss(int avoid) {
   return pick;
 }
 
+// Shadow uses the ordinary full-pool rarity roll, restricted to reviewed duel
+// bosses. Within that rarity use the same history + round-delta tie breaking.
+function int PickLeastSeenShadowVersusBoss(int rarity, int avoid) {
+  int pick = UHBOSS_FAIL;
+  int bestcount = 0;
+  int ties = 0;
+  for (int i = 0; i < GetBossPoolCount(rarity); i++) {
+    int id = GetBossPoolId(rarity, i);
+    if (id == avoid || !BossVersusEligible(id)) {continue;}
+    int c = GetBossPickCount(id);
+    if (c < 0) {continue;}
+    c += UH_BossRoundSeen(id);
+    if (pick == UHBOSS_FAIL || c < bestcount) {
+      pick = id; bestcount = c; ties = 1;
+    }
+    else if (c == bestcount) {
+      ties++;
+      if (random(1, ties) == 1) {pick = id;}
+    }
+  }
+  return pick;
+}
+
+function int PickShadowVersusRevealBoss(int fakeboss, int avoid) {
+  // Ordinary Shadow retains a 5% explicit no-change chance.
+  if (RandomPercent(5) && fakeboss != avoid && BossVersusEligible(fakeboss))
+    return fakeboss;
+  int pick = PickLeastSeenShadowVersusBoss(RollFullBossPool(), avoid);
+  if (pick == UHBOSS_FAIL)
+    pick = PickLeastSeenShadowVersusBoss(UHBOSS_POOL_COMMON, avoid);
+  if (pick == UHBOSS_FAIL)
+    pick = PickRandomVersusBoss(avoid);
+  return pick;
+}
+
 function int ResolveConfiguredVersusBoss(str cvar, int avoid) {
   int raw = GetCVAR(cvar);
   int id = ForceBossChange(cvar, false);
@@ -332,22 +308,22 @@ function bool BossShadowPairTargetsDistinct(int first, int second) {
 function int PickBossCombo(int wantcount, int plc) {
   int total = 0;
   int i;
-  for (i = 0; i < BOSSCOMBO_MAX; i++) {
-    if (bosscombodata[i][1] != wantcount) {continue;}
-    if (plc < bosscombodata[i][2]) {continue;}
+  for (i = 0; i < UH_ComboCount(); i++) {
+    if (UH_ComboInt(i, UHC_INT_COUNT) != wantcount) {continue;}
+    if (plc < UH_ComboInt(i, UHC_INT_MINPLAYERS)) {continue;}
     if (!BossComboShapeValid(i)) {continue;}
     if (!BossComboFullyRegistered(i)) {continue;}
-    total += bosscombodata[i][3];
+    total += UH_ComboInt(i, UHC_INT_WEIGHT);
   }
   if (total <= 0) {return -1;}
 
   int roll = random(1, total);
-  for (i = 0; i < BOSSCOMBO_MAX; i++) {
-    if (bosscombodata[i][1] != wantcount) {continue;}
-    if (plc < bosscombodata[i][2]) {continue;}
+  for (i = 0; i < UH_ComboCount(); i++) {
+    if (UH_ComboInt(i, UHC_INT_COUNT) != wantcount) {continue;}
+    if (plc < UH_ComboInt(i, UHC_INT_MINPLAYERS)) {continue;}
     if (!BossComboShapeValid(i)) {continue;}
     if (!BossComboFullyRegistered(i)) {continue;}
-    roll -= bosscombodata[i][3];
+    roll -= UH_ComboInt(i, UHC_INT_WEIGHT);
     if (roll <= 0) {return i;}
   }
   return -1;
@@ -359,19 +335,22 @@ function int PickBossCombo(int wantcount, int plc) {
 // Returns false (and changes nothing) for a malformed row, so a caller that
 // forgot to validate cannot half-apply a broken combo.
 function bool ApplyBossCombo(int combo) {
-  if (combo < 0 || combo >= BOSSCOMBO_MAX) {
+  if (combo < 0 || combo >= UH_ComboCount()) {
     UH_Log(UH_LOG_ERROR, "ApplyBossCombo refused: combo index out of range");
     return false;
   }
   int shapeerr = BossComboShapeError(combo);
   if (shapeerr != BOSSCOMBO_SHAPE_OK) {
-    UH_Log(UH_LOG_ERROR, StrParam(s:"ApplyBossCombo refused malformed combo ", i:bosscombodata[combo][0],
+    UH_Log(UH_LOG_ERROR, StrParam(s:"ApplyBossCombo refused malformed combo ", i:UH_ComboInt(combo, UHC_INT_ID),
                       s:": ", s:BossComboShapeErrorText(shapeerr)));
     return false;
   }
-  int count = bosscombodata[combo][1];
-  int mode = bosscombodata[combo][4];
-  int first = bosscombodata[combo][5];
+  if (!BossComboFullyRegistered(combo)) {
+    UH_Log(UH_LOG_WARN, "ApplyBossCombo refused: draft or unresolved members.");
+    return false;
+  }
+  int count = UH_ComboInt(combo, UHC_INT_COUNT);
+  int mode = UH_ComboInt(combo, UHC_INT_MODE);
   int i;
   int s;
   // Resolve dynamic modes before touching any state: a rejected 206/209 or
@@ -437,9 +416,9 @@ function bool ApplyBossCombo(int combo) {
     }
     UH_Log(UH_LOG_DEBUG, StrParam(s:"Boss combo 218 resolved: ", i:dyn0, s:" vs ", i:dyn1));
   }
-  else if ((bosscombodata[combo][7] & BOSSCOMBO_FLAG_VERSUS) != 0 &&
-           bosscombobossids[first] == bosscombobossids[first + 1]) {
-    UH_Log(UH_LOG_WARN, StrParam(s:"Boss combo ", i:bosscombodata[combo][0],
+  else if ((UH_ComboInt(combo, UHC_INT_FLAGS) & BOSSCOMBO_FLAG_VERSUS) != 0 &&
+           UH_ComboMemberId(combo, 0) == UH_ComboMemberId(combo, 1)) {
+    UH_Log(UH_LOG_WARN, StrParam(s:"Boss combo ", i:UH_ComboInt(combo, UHC_INT_ID),
                       s:" rejected: versus pair contains the same boss twice."));
     return false;
   }
@@ -461,29 +440,29 @@ function bool ApplyBossCombo(int combo) {
     bossdataarr[1][BOSSDATA_NUM] = dyn1;
   }
   else if (mode == BOSSCOMBO_MODE_POOL) {
-    int pooln = bosscombodata[combo][6];
+    int pooln = UH_ComboInt(combo, UHC_INT_MEMBERS);
     for (i = 0; i < count; i++) {
-      // Phase C: lowest-count pick inside the combo's own slice, with the
+      // Phase C: lowest-count pick inside the combo's own member list, with the
       // round-scoped delta so the slots of this combo spread out too.  The
-      // historical uniform roll stays as the fallback for an unusable slice.
-      int dynpick = PickLeastSeenBossFromIds(first, pooln, UHBOSS_FAIL);
+      // historical uniform roll stays as the fallback for an unusable member list.
+      int dynpick = PickLeastSeenComboBoss(combo, pooln, UHBOSS_FAIL);
       if (dynpick == UHBOSS_FAIL)
-        dynpick = bosscombobossids[first + random(0, pooln - 1)];
+        dynpick = UH_ComboMemberId(combo, random(0, pooln - 1));
       bossdataarr[i][BOSSDATA_NUM] = dynpick;
       UH_BossRoundRecord(dynpick);
     }
   }
   else {
     for (i = 0; i < count; i++) {
-      bossdataarr[i][BOSSDATA_NUM] = bosscombobossids[first + i];
+      bossdataarr[i][BOSSDATA_NUM] = UH_ComboMemberId(combo, i);
     }
   }
   multibosscheck = count;
   for (s = 0; s < count; s++) {bossslotalive[s] = true;}
   isbosseventactive = true;
   activebosscombo = combo;
-  versusfightevent = (bosscombodata[combo][7] & BOSSCOMBO_FLAG_VERSUS) != 0;
-  if ((bosscombodata[combo][7] & BOSSCOMBO_FLAG_SHADOW) != 0) {
+  versusfightevent = (UH_ComboInt(combo, UHC_INT_FLAGS) & BOSSCOMBO_FLAG_VERSUS) != 0;
+  if ((UH_ComboInt(combo, UHC_INT_FLAGS) & BOSSCOMBO_FLAG_SHADOW) != 0) {
     shadowtricksarr[0] = true;
     shadowtricksarr[1] = true;
     shadowfakeoutactive = true;
@@ -510,15 +489,15 @@ function bool TryBossComboRoll(void) {
   // selection without activating the event.
   int forced = CheckClearCVar("uh_sv_bosseventnum", -1);
   if (forced >= 0) {
-    for (int i = 0; i < BOSSCOMBO_MAX; i++) {
-      if (bosscombodata[i][0] != forced) {continue;}
+    int i = UH_ComboFindId(forced);
+    if (UH_ComboAvailable(i)) {
       int shapeerr = BossComboShapeError(i);
       if (shapeerr != BOSSCOMBO_SHAPE_OK) {
         UH_Log(UH_LOG_WARN, StrParam(s:"Boss combo ", i:forced, s:" rejected: ", s:BossComboShapeErrorText(shapeerr)));
         return false;
       }
-      if (bosscombodata[i][1] > cap) {
-        UH_Log(UH_LOG_WARN, StrParam(s:"Boss combo ", i:forced, s:" rejected: ", i:bosscombodata[i][1], s:" bosses need ", i:bosscombodata[i][2], s:" players."));
+      if (UH_ComboInt(i, UHC_INT_COUNT) > cap || plc < UH_ComboInt(i, UHC_INT_MINPLAYERS)) {
+        UH_Log(UH_LOG_WARN, StrParam(s:"Boss combo ", i:forced, s:" rejected: ", i:UH_ComboInt(i, UHC_INT_COUNT), s:" bosses need ", i:UH_ComboInt(i, UHC_INT_MINPLAYERS), s:" players."));
         return false;
       }
       if (!BossComboFullyRegistered(i)) {
@@ -558,7 +537,7 @@ function bool TryBossComboRoll(void) {
     return false;
   }
   bosseventcounter = 0;
-  ShowMeTheRCON("Boss Combo", bosscombodata[combo][0]);
+  ShowMeTheRCON("Boss Combo", UH_ComboInt(combo, UHC_INT_ID));
   return true;
 }
 

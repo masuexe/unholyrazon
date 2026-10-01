@@ -1,0 +1,122 @@
+// Boss-combo API; included by uhadd.acs after its mailbox diagnostics.
+#include "uhcombo_defs.acs"
+
+// Addon recipe (server only; no OPEN CLIENTSIDE twin):
+//   #library "MYCOMBOS"
+//   #include "zcommon.acs"
+//   #import "uh_log.acs"
+//   #include "uhadd.acs"
+//   script "my_define_combos" OPEN {
+//     int id = DefineBossCombo(-1, "my_addon_duo", "My Duo",
+//       2, 4, 10, BOSSCOMBO_MODE_FIXED, 0);
+//     if (id < 0) terminate;
+//     bool ok = SetBossComboMember(id, 0, "MyBossActor");
+//     ok = SetBossComboMember(id, 1, "MyOtherBossActor") & ok;
+//     ok = SetBossComboMusic(id, "MYMUSIC", "Title", "Album", "Artist") & ok;
+//     if (ok) CommitBossCombo(id);
+//   }
+// Register from a non-delaying OPEN script on every map load. Actor members
+// may precede DefineBoss; missing dependencies exclude only that combo when
+// selected. Keys match case-insensitively; display/music strings match exactly.
+// Preserve repeated members and pool ordering. Member slots start at 0 and
+// must be appended without holes. Dynamic modes declare no members.
+// Define returns a public id (explicit built-ins retain 201/207/etc.; -1 auto
+// allocates >=10000), or UH_COMBO_FAIL. Setters/Commit return bool. Repeat
+// registration with identical data is safe; conflicting ids/keys/metadata fail.
+// Committed records are immutable in this first migration. Before Commit a
+// draft never participates in random/forced selection; after Commit the server
+// still validates member registration and existing versus eligibility rules.
+// Count/IdAt enumerate allocated rows, including drafts for diagnostics. Never
+// network an internal row, ACS string cell or auto-allocated addon id.
+
+function int DefineBossCombo(int id, str key, str name, int count,
+    int minPlayers, int weight, int mode, int flags) {
+  int ipc = SetCVar("uh_bc_id", id);
+  ipc = ipc & SetCVarString("uh_bc_key", key);
+  ipc = ipc & SetCVarString("uh_bc_name", name);
+  ipc = ipc & SetCVar("uh_bc_count", count);
+  ipc = ipc & SetCVar("uh_bc_minp", minPlayers);
+  ipc = ipc & SetCVar("uh_bc_weight", weight);
+  ipc = ipc & SetCVar("uh_bc_mode", mode);
+  ipc = ipc & SetCVar("uh_bc_flags", flags);
+  if (!ipc) {
+    UH_ReportIPCFailure("DefineBossCombo");
+    return UH_COMBO_FAIL;
+  }
+  int result = ACS_NamedExecuteWithResult("uh_DefineBossCombo_S");
+  if (result == UH_COMBO_FAIL)
+    UH_Log(UH_LOG_ERROR, StrParam(s:"DefineBossCombo rejected key '", s:key,
+      s:"': invalid arguments, conflicting metadata or registry capacity."));
+  return result;
+}
+
+function bool SetBossComboMember(int id, int slot, str actor) {
+  if (!SetCVarString("uh_bc_actor", actor)) {
+    UH_ReportIPCFailure("SetBossComboMember");
+    return false;
+  }
+  return ACS_NamedExecuteWithResult("uh_SetBossComboMember_S", id, slot);
+}
+
+function bool SetBossComboMusic(int id, str music, str title, str album, str artist) {
+  int ipc = SetCVarString("uh_bc_music", music);
+  ipc = ipc & SetCVarString("uh_bc_title", title);
+  ipc = ipc & SetCVarString("uh_bc_album", album);
+  ipc = ipc & SetCVarString("uh_bc_artist", artist);
+  if (!ipc) {
+    UH_ReportIPCFailure("SetBossComboMusic");
+    return false;
+  }
+  return ACS_NamedExecuteWithResult("uh_SetBossComboMusic_S", id);
+}
+
+function bool CommitBossCombo(int id) {
+  bool result = ACS_NamedExecuteWithResult("uh_CommitBossCombo_S", id);
+  if (!result)
+    UH_Log(UH_LOG_ERROR, StrParam(s:"CommitBossCombo rejected id ", i:id,
+      s:": the draft's mode/count/member shape is invalid."));
+  return result;
+}
+
+function int FindBossComboByKey(str key) {
+  if (!SetCVarString("uh_bc_key", key)) {
+    UH_ReportIPCFailure("FindBossComboByKey");
+    return UH_COMBO_FAIL;
+  }
+  return ACS_NamedExecuteWithResult("uh_FindBossComboByKey_S");
+}
+
+function int GetBossComboCount(void) {
+  return ACS_NamedExecuteWithResult("uh_GetBossComboCount_S");
+}
+
+function int GetBossComboIdAt(int row) {
+  return ACS_NamedExecuteWithResult("uh_GetBossComboIdAt_S", row);
+}
+
+function bool IsBossComboDefined(int id) {
+  return ACS_NamedExecuteWithResult("uh_IsBossComboDefined_S", id);
+}
+
+function int GetBossComboInt(int id, int field) {
+  return ACS_NamedExecuteWithResult("uh_GetBossComboInt_S", id, field);
+}
+
+function str GetBossComboString(int id, int field) {
+  // Clear the mailbox first so an absent handler cannot return stale data.
+  if (!SetCVarString("uh_bc_out_str", "")) {
+    UH_ReportIPCFailure("GetBossComboString");
+    return "";
+  }
+  ACS_NamedExecuteWithResult("uh_GetBossComboString_S", id, field);
+  return GetCVarString("uh_bc_out_str");
+}
+
+function str GetBossComboMember(int id, int slot) {
+  if (!SetCVarString("uh_bc_out_str", "")) {
+    UH_ReportIPCFailure("GetBossComboMember");
+    return "";
+  }
+  ACS_NamedExecuteWithResult("uh_GetBossComboMember_S", id, slot);
+  return GetCVarString("uh_bc_out_str");
+}

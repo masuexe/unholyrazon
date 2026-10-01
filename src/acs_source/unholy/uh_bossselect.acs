@@ -104,14 +104,6 @@ script "ub_MorphSelectedBosses" (void) {
   // for the dead-row portrait fallback.
   UH_TeamInfo_FullSnapshot();
 
-  // A versus Shadow round must finish its fakeout/reveal before the generic
-  // morph retry and versus watcher start, so it has one setup owner and no
-  // concurrent ordinary-versus watcher race.
-  if (shadowfakeoutactive && BossComboHasFlag(BOSSCOMBO_FLAG_SHADOW)) {
-    ACS_NamedExecuteWait("ub_ShadowBossManager", 0);
-    shadowfakeoutactive = false;
-  }
-
   // Musical setting
   ACS_NamedExecute("ub_PlayVariantMusic", 0, bossdataarr[random(0, multibosscheck - 1)][BOSSDATA_NUM]);
 
@@ -119,6 +111,20 @@ script "ub_MorphSelectedBosses" (void) {
 
   GiveMeTheFuncExceptBosses("BasicSurvivorItem", 0);
   SetPlayerProperty(1, 0, 4);  // Allows players to move.
+
+  // Let everyone fight during the initial fake-identity phase, as in Unbound.
+  // Keep the Shadow setup synchronous so the generic morph retry and versus
+  // watcher only see the completed reveal, never the temporary unmorphed pawns.
+  if (shadowfakeoutactive && BossComboHasFlag(BOSSCOMBO_FLAG_SHADOW)) {
+    // Present the playable fake identities immediately. The versus manager
+    // presents the final identities after the reveal; it still owns results.
+    UHVS_ShowIntro(bossdataarr[0][BOSSDATA_NUM], bossdataarr[1][BOSSDATA_NUM],
+      bossdataarr[0][BOSSDATA_TID], bossdataarr[1][BOSSDATA_TID]);
+    ACS_NamedExecute("ub_BossHealthWatcher", 0);
+    ACS_NamedExecuteWait("ub_ShadowBossManager", 0);
+    shadowfakeoutactive = false;
+  }
+
   ACS_NamedExecuteWait("ub_BossMorphRetryWait", 0, -1);
 
   ACS_NamedExecute("ub_WatchSurvivors", 0);
@@ -305,6 +311,19 @@ script "ub_TestShadowBoss" (int tid, int bossid) {
   MorphActorToBoss(tid, bossid, "GigaAstroExplode");
 }
 
+function bool ShadowSlotCanReveal(int slot) {
+  int tid = bossdataarr[slot][BOSSDATA_TID];
+  int player = tid - 1000;
+  return PlayerInGame(player) && !PlayerIsSpectator(player) &&
+    ThingCount(0, tid) > 0 && GetActorProperty(tid, APROP_Health) > 0;
+}
+
+function void CancelShadowSlotReveal(int slot) {
+  shadowtricksarr[slot] = false;
+  // The fake identity became final when this slot stopped participating.
+  CommitBossHistorySlot(bossdataarr[slot][BOSSDATA_NUM]);
+}
+
 script "ub_ShadowBossManager" (void) {
   SetActivator(0, AAPTR_NULL);
 
@@ -313,12 +332,8 @@ script "ub_ShadowBossManager" (void) {
     bool ninjaexists = false;
     for (int i = 0; i < multibosscheck; i++) {
       if (shadowtricksarr[i]) {
-        if (ThingCount(0, bossdataarr[i][BOSSDATA_TID]) == 0 || PlayerIsBot(bossdataarr[i][BOSSDATA_TID] - 1000)) {
-          shadowtricksarr[i] = false;
-          // This slot keeps its original boss, which is now its final identity:
-          // the central commit skipped it while the flag was set and the reveal
-          // loop below will not see it any more.
-          CommitBossHistorySlot(bossdataarr[i][BOSSDATA_NUM]);
+        if (!ShadowSlotCanReveal(i) || PlayerIsBot(bossdataarr[i][BOSSDATA_TID] - 1000)) {
+          CancelShadowSlotReveal(i);
         }
         else
           ninjaexists = true;
@@ -361,24 +376,32 @@ script "ub_ShadowBossManager" (void) {
   for (i = 0; i < multibosscheck; i++) {
 
     if (shadowtricksarr[i]) {
+      // A fake boss can die during the playable opening. Never unmorph its
+      // corpse, including a death on the last tic of the opening delay.
+      if (!ShadowSlotCanReveal(i)) {
+        CancelShadowSlotReveal(i);
+        continue;
+      }
       ClearHudMessage(91 + i);  // Boss Healths
       // Pass the fake boss id explicitly: bossdataarr[BOSSDATA_NUM] is rewritten
       // to the reveal target below, so the async unmorph cannot re-read it.
       ACS_NamedExecuteAlways("ub_UnMorphThisTID", 0, bossdataarr[i][BOSSDATA_TID], bossdataarr[i][BOSSDATA_NUM]);
 
       str shadowcvar = StrParam(s:"uh_sv_forcedshadowboss", i:i + 1);
-      int rawshadow = GetCVAR(shadowcvar);
       tempboss = ForceBossChange(shadowcvar, false);
       // ShowMeTheRCON("Shadow Boss",TempBoss);
       if (shadowversus) {
-        // The special branch only accepts the reviewed versus allowlist.  An
-        // unset override keeps the already-reviewed base boss; an invalid or
-        // duplicate override is ignored rather than widening the duel.  Keep
-        // both resolved ids local until the pair has been checked below.
-        if (rawshadow == UHBOSS_FAIL || !BossVersusEligible(tempboss))
-          tempboss = bossdataarr[i][BOSSDATA_NUM];
+        // Reserve the other slot's configured/fake identity while picking the
+        // first target; the second excludes the first resolved target. This
+        // also keeps a surviving reveal distinct from a cancelled dead slot.
+        int avoid = shadowtarget0;
+        if (i == 0)
+          avoid = BossShadowOverrideTarget("uh_sv_forcedshadowboss2", shadowtarget1);
+        if (!BossVersusEligible(tempboss) || tempboss == avoid)
+          tempboss = PickShadowVersusRevealBoss(bossdataarr[i][BOSSDATA_NUM], avoid);
         if (i == 0) {shadowtarget0 = tempboss;}
         else {shadowtarget1 = tempboss;}
+        UH_BossRoundRecord(tempboss);
       }
       else {
         if (tempboss == UHBOSS_FAIL) {
@@ -469,7 +492,7 @@ script "ub_ShadowBossManager" (void) {
 
   for (i = 0; i < multibosscheck; i++) {
     if (shadowtricksarr[i]) {
-      if (PlayerInGame(bossdataarr[i][BOSSDATA_TID] - 1000)) {
+      if (ShadowSlotCanReveal(i)) {
         GiveActorInventory(bossdataarr[i][BOSSDATA_TID], "ShadowPreRoundEnd", 1);
         bossdataarr[i][BOSSDATA_NUM] = bossdataarr[i][BOSSDATA_MORPHED];  // Use borrowed Array
         // Shadow commit: this is the final identity for the slot, so count it
@@ -479,7 +502,7 @@ script "ub_ShadowBossManager" (void) {
         if (shadowtunesnum == -1)
           shadowtunesnum = bossdataarr[i][BOSSDATA_NUM];
       }
-      else {shadowtricksarr[i] = false;}
+      else {CancelShadowSlotReveal(i);}
     }
   }
 

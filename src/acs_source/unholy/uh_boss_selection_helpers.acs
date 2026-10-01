@@ -98,15 +98,15 @@ function void CommitSelectedBossHistory(void) {
   }
 }
 
-// Combo POOL mode picks inside its own id slice; same lowest-count rule, but the
+// Combo POOL mode picks inside its own member list; same lowest-count rule, but the
 // candidate set is given explicitly instead of by rarity.  avoid uses the same
 // "UHBOSS_FAIL excludes nothing" rule as PickLeastSeenBossFromPool.
-function int PickLeastSeenBossFromIds(int first, int count, int avoid) {
+function int PickLeastSeenComboBoss(int combo, int count, int avoid) {
   int best = UHBOSS_FAIL;
   int bestcount = 0;
   int ties = 0;
   for (int i = 0; i < count; i++) {
-    int id = bosscombobossids[first + i];
+    int id = UH_ComboMemberId(combo, i);
     if (!IsBossEnabled(id) || id == avoid)
       continue;
     int c = GetBossPickCount(id);
@@ -236,18 +236,20 @@ function int PickStandardBoss(int slot) {
 // NEW#BOSS — pool-based pick (no BOSSRNGMAX holes).  The rarity draw order and
 // probabilities are unchanged; only the in-pool pick now prefers the least-seen
 // boss.  Forced boss and UHBOSS_FORCE_TRUE_RANDOM semantics are untouched.
-function int TrueRandomBoss(void) {
-  int rngpick;
+function int RollFullBossPool(void) {
   if (RandomPercent(5))
-    rngpick = PickLeastSeenBossFromPool(UHBOSS_POOL_ULTRA, UHBOSS_FAIL);
+    return UHBOSS_POOL_ULTRA;
   else if (RandomPercent(1))
-    rngpick = PickLeastSeenBossFromPool(UHBOSS_POOL_SPECIAL, UHBOSS_FAIL);
+    return UHBOSS_POOL_SPECIAL;
   else if (RandomPercent(15))
-    rngpick = PickLeastSeenBossFromPool(UHBOSS_POOL_EX, UHBOSS_FAIL);
+    return UHBOSS_POOL_EX;
   else if (RandomPercent(30))
-    rngpick = PickLeastSeenBossFromPool(UHBOSS_POOL_RARE, UHBOSS_FAIL);
-  else
-    rngpick = PickLeastSeenBossFromPool(UHBOSS_POOL_COMMON, UHBOSS_FAIL);
+    return UHBOSS_POOL_RARE;
+  return UHBOSS_POOL_COMMON;
+}
+
+function int TrueRandomBoss(void) {
+  int rngpick = PickLeastSeenBossFromPool(RollFullBossPool(), UHBOSS_FAIL);
 
   if (rngpick == UHBOSS_FAIL || !IsBossDefined(rngpick))
     rngpick = PickLeastSeenBossFromPool(UHBOSS_POOL_COMMON, UHBOSS_FAIL);

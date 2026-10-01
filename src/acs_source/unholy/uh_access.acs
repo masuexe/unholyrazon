@@ -63,14 +63,16 @@ script "uh_GetActiveBonusEvent" (void) {
   SetResultValue(eventdataarr[EVENTDATA_MAINEVENT]);
 }
 
-// UHDBCRUD asks before tombstoning a boss.  These references live in the
-// unholy library, outside the UHDT import-only registry.
+// UHDBCRUD asks before tombstoning a boss. Include every registered combo
+// member (drafts too), and the current round's resolved/dynamic line-up.
 script "uh_IsBossRegistryReferenced" (int id) {
   int i;
-  for (i = 0; i < BOSSCOMBO_BOSSID_COUNT; i++) {
-    if (bosscombobossids[i] == id) {
-      SetResultValue(1);
-      terminate;
+  for (int combo = 0; combo < UH_ComboCount(); combo++) {
+    for (i = 0; i < UH_ComboInt(combo, UHC_INT_MEMBERS); i++) {
+      if (UH_ComboMemberId(combo, i) == id) {
+        SetResultValue(1);
+        terminate;
+      }
     }
   }
   for (i = 0; i < multibosscheck; i++) {

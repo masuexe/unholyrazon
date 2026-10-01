@@ -3,6 +3,60 @@
 
 #import "uhdt.acs"
 #import "uhdbcrud.acs"
+// ACC skips #include inside #import; dimension constants must precede it.
+#include "uhcombo_defs.acs"
+#import "uhcombodb.acs"
+
+// Server-only combo registration. Synchronous UHADD calls stage strings in
+// local noarchive cvars; no Delay and no CLIENTSIDE twin in these handlers.
+script "uh_DefineBossCombo_S" (void) {
+  SetResultValue(UH_ComboDefine(GetCVar("uh_bc_id"),
+    GetCVarString("uh_bc_key"), GetCVarString("uh_bc_name"),
+    GetCVar("uh_bc_count"), GetCVar("uh_bc_minp"), GetCVar("uh_bc_weight"),
+    GetCVar("uh_bc_mode"), GetCVar("uh_bc_flags")));
+}
+
+script "uh_SetBossComboMember_S" (int id, int slot) {
+  SetResultValue(UH_ComboSetMember(id, slot, GetCVarString("uh_bc_actor")));
+}
+
+script "uh_SetBossComboMusic_S" (int id) {
+  SetResultValue(UH_ComboSetMusic(id, GetCVarString("uh_bc_music"),
+    GetCVarString("uh_bc_title"), GetCVarString("uh_bc_album"),
+    GetCVarString("uh_bc_artist")));
+}
+
+script "uh_CommitBossCombo_S" (int id) {
+  SetResultValue(UH_ComboCommit(id));
+}
+
+script "uh_FindBossComboByKey_S" (void) {
+  SetResultValue(UH_ComboInt(UH_ComboFindKey(GetCVarString("uh_bc_key")), UHC_INT_ID));
+}
+
+script "uh_GetBossComboCount_S" (void) {
+  SetResultValue(UH_ComboCount());
+}
+
+script "uh_GetBossComboIdAt_S" (int row) {
+  SetResultValue(UH_ComboInt(row, UHC_INT_ID));
+}
+
+script "uh_IsBossComboDefined_S" (int id) {
+  SetResultValue(UH_ComboAvailable(UH_ComboFindId(id)));
+}
+
+script "uh_GetBossComboInt_S" (int id, int field) {
+  SetResultValue(UH_ComboInt(UH_ComboFindId(id), field));
+}
+
+script "uh_GetBossComboString_S" (int id, int field) {
+  SetCVarString("uh_bc_out_str", UH_ComboString(UH_ComboFindId(id), field));
+}
+
+script "uh_GetBossComboMember_S" (int id, int slot) {
+  SetCVarString("uh_bc_out_str", UH_ComboMemberActor(UH_ComboFindId(id), slot));
+}
 
 function int UH_DefineBossCore(
     int id,

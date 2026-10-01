@@ -68,6 +68,7 @@ script "ub_Disconnect_ChangeIsAlive" (int playernum) DISCONNECT {
 // These are start up variables so that they are valid numbers
 // This also resets variables at round start (such as the bossDataArr[][])
 script "ub_StartUpSettings" OPEN {
+  UH_RegisterBuiltinBossCombos();
   if (GetCVar("lastmanstanding") == 0) {
     PrintBold(s:"Gamemode must be set to \cgLast Man Standing\c- in order to play Unholy Razon!");
     if (GetCVar("mm8bdm_sv_respawnprotection") > 0) {ConsoleCommand("mm8bdm_sv_respawnprotection 0");}
@@ -160,16 +161,15 @@ script "ub_StartUpSettings" OPEN {
   ACS_NamedExecute("uh_BackgroundTimer", 0);
 }
 
-// Deferred D0 validation.  ub_StartUpSettings can run before uh_bossdefs has
-// finished registering the boss table, so wait (bounded) until every combo
-// slice passes BossComboRegistryReady and only then run the existing detailed
-// validation.  On timeout the detailed pass still runs, preceded by one
-// readiness-timeout line, so genuinely missing ids are still reported.
+// Deferred D0 validation. Yield once so non-delaying OPEN registrations in
+// other libraries finish. Readiness means built-in registration completed;
+// a missing addon boss must be reported, not stall the whole registry.
 script "ub_ValidateBossCombosDeferred" (void) {
   if (UH_LogLevel() != UH_LOG_ALL) {
     terminate;
   }
 
+  Delay(1);
   int waited = 0;
   bool ready = BossComboRegistryReady();
   while (!ready && waited < BOSSCOMBO_REGISTRY_WAIT_TICS) {
@@ -179,7 +179,7 @@ script "ub_ValidateBossCombosDeferred" (void) {
   }
 
   if (!ready) {
-    UH_Log(UH_LOG_ERROR, "boss registry readiness timeout");
+    UH_Log(UH_LOG_ERROR, "boss combo built-in registration readiness timeout");
   }
 
   DebugValidateRoundStart();

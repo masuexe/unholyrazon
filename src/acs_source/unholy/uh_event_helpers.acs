@@ -104,20 +104,25 @@ function void DebugValidateRoundStart(void) {
   // surfaces deterministically here instead of at selection time.  The same
   // BossComboShapeError helper is used by PickBossCombo / TryBossComboRoll, so
   // the debug report and the runtime rejection cannot drift.
-  for (int combo = 0; combo < BOSSCOMBO_MAX; combo++) {
+  for (int combo = 0; combo < UH_ComboCount(); combo++) {
     int shapeerr = BossComboShapeError(combo);
     if (shapeerr != BOSSCOMBO_SHAPE_OK) {
-      UH_Log(UH_LOG_ERROR, StrParam(s:"Boss combo ", i:bosscombodata[combo][0],
-                        s:" (", s:bosscomboname[combo],
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Boss combo ", i:UH_ComboInt(combo, UHC_INT_ID),
+                        s:" (", s:UH_ComboString(combo, UHC_STR_NAME),
                         s:") malformed: ", s:BossComboShapeErrorText(shapeerr)));
       continue;
     }
-    for (int slot = 0; slot < bosscombodata[combo][6]; slot++) {
-      int bossid = bosscombobossids[bosscombodata[combo][5] + slot];
+    if (!UH_ComboAvailable(combo)) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Boss combo ", i:UH_ComboInt(combo, UHC_INT_ID),
+        s:" was never committed."));
+      continue;
+    }
+    for (int slot = 0; slot < UH_ComboInt(combo, UHC_INT_MEMBERS); slot++) {
+      int bossid = UH_ComboMemberId(combo, slot);
       if (!IsBossDefined(bossid)) {
-        UH_Log(UH_LOG_ERROR, StrParam(s:"Boss combo ", i:bosscombodata[combo][0],
-                          s:" (", s:bosscomboname[combo],
-                          s:") references unregistered boss ", i:bossid));
+        UH_Log(UH_LOG_ERROR, StrParam(s:"Boss combo ", i:UH_ComboInt(combo, UHC_INT_ID),
+                          s:" (", s:UH_ComboString(combo, UHC_STR_NAME),
+                          s:") references unregistered boss actor ", s:UH_ComboMemberActor(combo, slot)));
       }
     }
   }

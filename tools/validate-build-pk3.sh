@@ -49,7 +49,8 @@ if (( ${#duplicates[@]} )); then
 fi
 # CORE8BDT must shadow the base-game lump. Naming it 8BDT.o leaves imports
 # using the stock library, which lacks UH's getPitCount and crashes in ACS.
-required=(DECORATE KEYCONF LOADACS acs/CORE8BDT.o)
+# UHCOMBDB is loaded through ACS imports, so LOADACS does not list it.
+required=(DECORATE KEYCONF LOADACS acs/CORE8BDT.o acs/UHCOMBDB.o)
 missing=()
 for lump in "${required[@]}"; do
   if [[ ! -v 'seen[${lump,,}]' ]]; then
@@ -78,6 +79,6 @@ if (( json )); then
   printf '{"status":"ok","path":"%s","entries":%d,"size_bytes":%d}\n' \
     "$json_path" "${#entries[@]}" "$size_bytes"
 else
-  printf 'status=ok path=%s entries=%d size_bytes=%d required=DECORATE,KEYCONF,LOADACS,acs/CORE8BDT.o\n' \
+  printf 'status=ok path=%s entries=%d size_bytes=%d required=DECORATE,KEYCONF,LOADACS,acs/CORE8BDT.o,acs/UHCOMBDB.o\n' \
     "$pk3_path" "${#entries[@]}" "$size_bytes"
 fi

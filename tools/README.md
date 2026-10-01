@@ -150,8 +150,8 @@ Before launching after a packaging change, run the read-only archive check:
 ./tools/validate-build-pk3.sh --json
 ```
 
-It checks ZIP integrity and the required `DECORATE`, `KEYCONF`, `LOADACS`, and
-`acs/CORE8BDT.o` lumps. It does not build or rewrite the PK3, and it cannot
+It checks ZIP integrity and the required `DECORATE`, `KEYCONF`, `LOADACS`,
+`acs/CORE8BDT.o`, and `acs/UHCOMBDB.o` lumps. It does not build or rewrite the PK3, and it cannot
 replace engine-level DECORATE/ACS diagnostics.
 
 ## Diagnostic log levels
@@ -185,7 +185,27 @@ $ACC $INC src/acs_source/classes/uh_classes.acs src/acs/uh_classes.o
 
 # src/acs_source/unholy/**   -> unholy.o       (round flow, boss select, uh_bossselect.acs)
 $ACC $INC src/acs_source/unholy/unholy.acs src/acs/unholy.o
+
+# Shared boss-combo registry (import-only; keep LOADACS unchanged).
+$ACC $INC src/acs_source/_imports/uhcombodb.acs src/acs/UHCOMBDB.o
 ```
+
+Boss-combo data is registered from `unholy/uh_combo_definitions.acs` into
+`UHCOMBDB`; recompile the registry, `unholy`, `uhaddr`, and `rz_debug` after
+changing its API/storage. `rz_debug` also needs `-i src/acs_source/unholy`.
+Public registration helpers live in `_includes/mod_api/uhcombo_api.acs`, included
+by `uhadd.acs`; changes there require recompiling the eight UHADD definition
+libraries. The addon recipe is at the top of that API file. Combo definitions
+run on the server only; no `OPEN CLIENTSIDE` twin is needed.
+
+Registration parameters, addon examples, member ordering, music fallback and
+Shadow Duel behavior are documented in [Boss Combo API](../docs/boss-combo-api.md).
+
+`python3 tools/check_batch_d.py --source-only` checks the combo migration against
+`tools/fixtures/boss_combos_v1.json`, including ordered duplicate members and
+all music credits, without requiring the external music archive. The normal
+command also checks audio resources; the baseline is frozen migration evidence,
+so do not regenerate it to silence a failed comparison.
 
 Compiling the wrong aggregator silently leaves the old object in `src/acs/`, so
 the change simply does not happen in game (it cost a debugging round on
@@ -314,7 +334,7 @@ one server plus two clients, forced event/combo paths, disconnect/reconnect,
 two-round cleanup, player-count soak, and live HUD aspect-ratio inspection cannot
 be proved by a startup-only process.
 
-- `check_batch_d.py` accepts `--music-pk3 PATH` and `--json`.
+- `check_batch_d.py` accepts `--music-pk3 PATH`, `--source-only`, and `--json`.
 - `direct-startup-test.mjs` accepts `--profile`, `--duration-sec`, `--dry-run`,
   and `--json`; paths may be overridden with the same engine/profile environment
   variables as the MCP smoke script.

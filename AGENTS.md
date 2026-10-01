@@ -174,6 +174,23 @@ in UH_TOOLS — the only UH library that may import 8BDT; do not add that bridge
 to `unholy`. `debug/rz_debug.acs` also includes `uh_def` and
 `uh_funclib` — keep them unrenamed or update that include list.
 
+Boss-combo metadata is a server-owned runtime registry in
+`_imports/uhcombodb.acs` (`#library "UHCOMBDB"`, import-only; compiled as
+`src/acs/UHCOMBDB.o`, absent from `LOADACS`). Both `unholy` and `rz_debug`
+import it so diagnostics read the same records. Include `uhcombo_defs.acs`
+before importing this source (ACC skips includes inside imports). Built-ins
+register from `unholy/uh_combo_definitions.acs` in `ub_StartUpSettings`; the
+round-core still belongs to the single `unholy` library. Addons register via
+`DefineBossCombo` / `SetBossComboMember` / `SetBossComboMusic` / `CommitBossCombo`
+in `uhadd.acs` from a server `OPEN` script. Drafts are never selected;
+committed records are immutable in this first migration. Members are ordered
+actor references, may repeat, and resolve through the server's UHDT table.
+Stable built-in ids (201/207/etc.) stay intact; auto addon ids start at 10000
+and are local registration results, never network identities. Registration
+readiness is separate from member availability: a missing addon boss excludes
+its combo, not the entire database. `check_batch_d.py --source-only` pins all
+26 migrated rows and 58 members to `tools/fixtures/boss_combos_v1.json`.
+
 ### Class presentation (teammate bar / scoreboard / UIX mugshot)
 
 Display data for a player actor class lives in ONE place: the actor-keyed

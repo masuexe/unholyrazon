@@ -1,0 +1,193 @@
+// UHCOMBDB — server-owned boss-combo registry. Import-only: no LOADACS entry.
+// unholy owns the built-in registration and every round/versus action; this
+// library owns only data so rz_debug and UHADDR see the same records.
+// Importers include uhcombo_defs.acs first: ACC skips includes inside imports.
+#library "UHCOMBDB"
+#include "zcommon.acs"
+#include "uhcombo_defs.acs"
+#import "uhdt.acs"
+
+int uh_combo_count;
+int uh_combo_builtins_ready;
+int uh_combo_int[UH_COMBO_CAPACITY][UHC_INT_FIELDS];
+str uh_combo_str[UH_COMBO_CAPACITY][UHC_STR_FIELDS];
+str uh_combo_members[UH_COMBO_CAPACITY][UH_COMBO_MEMBER_CAPACITY];
+
+function int UH_ComboCount(void) {
+  return uh_combo_count;
+}
+
+// All row getters guard their inputs, including draft records for diagnostics.
+function int UH_ComboInt(int row, int field) {
+  if (row < 0 || row >= uh_combo_count || field < 0 || field >= UHC_INT_FIELDS)
+    return UH_COMBO_FAIL;
+  return uh_combo_int[row][field];
+}
+
+function str UH_ComboString(int row, int field) {
+  if (row < 0 || row >= uh_combo_count || field < 0 || field >= UHC_STR_FIELDS)
+    return "";
+  return uh_combo_str[row][field];
+}
+
+function int UH_ComboFindId(int id) {
+  if (id < 0) return UH_COMBO_FAIL;
+  for (int row = 0; row < uh_combo_count; row++) {
+    if (uh_combo_int[row][UHC_INT_ID] == id) return row;
+  }
+  return UH_COMBO_FAIL;
+}
+
+function int UH_ComboFindKey(str key) {
+  if (StrCmp(key, "") == 0) return UH_COMBO_FAIL;
+  for (int row = 0; row < uh_combo_count; row++) {
+    if (StrICmp(uh_combo_str[row][UHC_STR_KEY], key) == 0) return row;
+  }
+  return UH_COMBO_FAIL;
+}
+
+function str UH_ComboMemberActor(int row, int slot) {
+  if (row < 0 || row >= uh_combo_count || slot < 0 ||
+      slot >= uh_combo_int[row][UHC_INT_MEMBERS]) return "";
+  return uh_combo_members[row][slot];
+}
+
+// Resolve locally on the server; custom DefineBoss ids depend on registration
+// order. Never send these ids or a registry row to a client as an identity.
+function int UH_ComboMemberId(int row, int slot) {
+  str actor = UH_ComboMemberActor(row, slot);
+  if (StrCmp(actor, "") == 0) return UHBOSS_FAIL;
+  return FindBossByActor(actor);
+}
+
+// Shape checks deliberately do not require boss registration: OPEN libraries
+// can declare combinations before UH_BOSSDEFS has populated its table.
+function int UH_ComboShapeError(int row) {
+  if (row < 0 || row >= uh_combo_count) return BOSSCOMBO_SHAPE_RANGE;
+  int count = uh_combo_int[row][UHC_INT_COUNT];
+  int mode = uh_combo_int[row][UHC_INT_MODE];
+  int members = uh_combo_int[row][UHC_INT_MEMBERS];
+  bool versus = (uh_combo_int[row][UHC_INT_FLAGS] & BOSSCOMBO_FLAG_VERSUS) != 0;
+  if (count < 1 || count > UH_COMBO_MAX_BOSSES) return BOSSCOMBO_SHAPE_COUNT;
+  if (mode < BOSSCOMBO_MODE_FIXED || mode > BOSSCOMBO_MODE_ZANKOKUNA_PAIR)
+    return BOSSCOMBO_SHAPE_MODE;
+  if (mode >= BOSSCOMBO_MODE_FORCED) {
+    if (!versus || count != 2 || members != 0) return BOSSCOMBO_SHAPE_DYNAMIC;
+    return BOSSCOMBO_SHAPE_OK;
+  }
+  if (members < 1 || members > UH_COMBO_MEMBER_CAPACITY) return BOSSCOMBO_SHAPE_SLICE;
+  if (mode == BOSSCOMBO_MODE_FIXED && members < count) return BOSSCOMBO_SHAPE_FIXEDSLICE;
+  if (versus && (count != 2 || mode != BOSSCOMBO_MODE_FIXED || members != 2))
+    return BOSSCOMBO_SHAPE_VERSUS;
+  return BOSSCOMBO_SHAPE_OK;
+}
+
+function str UH_ComboShapeErrorText(int err) {
+  switch (err) {
+    case BOSSCOMBO_SHAPE_RANGE: return "combo row out of range";
+    case BOSSCOMBO_SHAPE_COUNT: return "boss count must be 1..MAX_BOSSES";
+    case BOSSCOMBO_SHAPE_SLICE: return "member count must be 1..UH_COMBO_MEMBER_CAPACITY";
+    case BOSSCOMBO_SHAPE_FIXEDSLICE: return "fixed mode needs member count >= boss count";
+    case BOSSCOMBO_SHAPE_VERSUS: return "versus needs exactly 2 fixed members";
+    case BOSSCOMBO_SHAPE_MODE: return "unknown combo mode";
+    case BOSSCOMBO_SHAPE_DYNAMIC: return "dynamic mode needs versus, 2 slots and no members";
+  }
+  return "unknown shape error";
+}
+
+function bool UH_ComboAvailable(int row) {
+  return row >= 0 && row < uh_combo_count &&
+    uh_combo_int[row][UHC_INT_COMMITTED] != 0;
+}
+
+function bool UH_ComboFullyRegistered(int row) {
+  if (!UH_ComboAvailable(row) || UH_ComboShapeError(row) != BOSSCOMBO_SHAPE_OK)
+    return false;
+  for (int slot = 0; slot < uh_combo_int[row][UHC_INT_MEMBERS]; slot++) {
+    if (!IsBossDefined(UH_ComboMemberId(row, slot))) return false;
+  }
+  return true;
+}
+
+// Returns an explicit id or a map-local auto id; -1 requests an addon id. A repeat
+// is idempotent only for matching metadata. Neither repeats nor conflicting
+// ids/keys can mutate a committed row (including a live round's music/policy).
+function int UH_ComboDefine(int id, str key, str name, int count,
+    int minPlayers, int weight, int mode, int flags) {
+  if (id < -1 || StrCmp(key, "") == 0 || StrCmp(name, "") == 0 ||
+      count < 1 || count > UH_COMBO_MAX_BOSSES || minPlayers < count + 2 ||
+      weight < 0 || weight > UH_COMBO_MAX_WEIGHT ||
+      mode < BOSSCOMBO_MODE_FIXED || mode > BOSSCOMBO_MODE_ZANKOKUNA_PAIR ||
+      flags < 0 || (flags & ~15) != 0) return UH_COMBO_FAIL;
+  int row = UH_ComboFindKey(key);
+  if (row >= 0) {
+    if ((id != -1 && id != uh_combo_int[row][UHC_INT_ID]) ||
+        StrCmp(name, uh_combo_str[row][UHC_STR_NAME]) != 0 ||
+        count != uh_combo_int[row][UHC_INT_COUNT] ||
+        minPlayers != uh_combo_int[row][UHC_INT_MINPLAYERS] ||
+        weight != uh_combo_int[row][UHC_INT_WEIGHT] ||
+        mode != uh_combo_int[row][UHC_INT_MODE] ||
+        flags != uh_combo_int[row][UHC_INT_FLAGS]) return UH_COMBO_FAIL;
+    return uh_combo_int[row][UHC_INT_ID];
+  }
+  if (uh_combo_count >= UH_COMBO_CAPACITY) return UH_COMBO_FAIL;
+  if (id == -1) {
+    id = UH_COMBO_ADDON_ID_START;
+    while (UH_ComboFindId(id) >= 0) id++;
+  }
+  else if (UH_ComboFindId(id) >= 0) return UH_COMBO_FAIL;
+  row = uh_combo_count++;
+  uh_combo_int[row][UHC_INT_ID] = id;
+  uh_combo_int[row][UHC_INT_COUNT] = count;
+  uh_combo_int[row][UHC_INT_MINPLAYERS] = minPlayers;
+  uh_combo_int[row][UHC_INT_WEIGHT] = weight;
+  uh_combo_int[row][UHC_INT_MODE] = mode;
+  uh_combo_int[row][UHC_INT_FLAGS] = flags;
+  uh_combo_str[row][UHC_STR_KEY] = key;
+  uh_combo_str[row][UHC_STR_NAME] = name;
+  // Map arrays start as zero, not the ACS string "". Initialize every string
+  // field, even when the caller omits SetBossComboMusic for the fallback.
+  for (int field = UHC_STR_MUSIC; field < UHC_STR_FIELDS; field++)
+    uh_combo_str[row][field] = "";
+  return id;
+}
+
+// Ordered members; no deduplication. Append or replace within a draft, never
+// leave a hole. Committed rows accept identical repeats only.
+function bool UH_ComboSetMember(int id, int slot, str actor) {
+  int row = UH_ComboFindId(id);
+  if (row < 0 || slot < 0 || slot >= UH_COMBO_MEMBER_CAPACITY ||
+      slot > uh_combo_int[row][UHC_INT_MEMBERS] || StrCmp(actor, "") == 0)
+    return false;
+  if (uh_combo_int[row][UHC_INT_COMMITTED]) {
+    return slot < uh_combo_int[row][UHC_INT_MEMBERS] &&
+      StrICmp(uh_combo_members[row][slot], actor) == 0;
+  }
+  uh_combo_members[row][slot] = actor;
+  if (slot == uh_combo_int[row][UHC_INT_MEMBERS])
+    uh_combo_int[row][UHC_INT_MEMBERS]++;
+  return true;
+}
+
+function bool UH_ComboSetMusic(int id, str music, str title, str album, str artist) {
+  int row = UH_ComboFindId(id);
+  if (row < 0) return false;
+  if (uh_combo_int[row][UHC_INT_COMMITTED]) {
+    return StrCmp(uh_combo_str[row][UHC_STR_MUSIC], music) == 0 &&
+      StrCmp(uh_combo_str[row][UHC_STR_TITLE], title) == 0 &&
+      StrCmp(uh_combo_str[row][UHC_STR_ALBUM], album) == 0 &&
+      StrCmp(uh_combo_str[row][UHC_STR_ARTIST], artist) == 0;
+  }
+  uh_combo_str[row][UHC_STR_MUSIC] = music;
+  uh_combo_str[row][UHC_STR_TITLE] = title;
+  uh_combo_str[row][UHC_STR_ALBUM] = album;
+  uh_combo_str[row][UHC_STR_ARTIST] = artist;
+  return true;
+}
+
+function bool UH_ComboCommit(int id) {
+  int row = UH_ComboFindId(id);
+  if (UH_ComboShapeError(row) != BOSSCOMBO_SHAPE_OK) return false;
+  uh_combo_int[row][UHC_INT_COMMITTED] = 1;
+  return true;
+}
