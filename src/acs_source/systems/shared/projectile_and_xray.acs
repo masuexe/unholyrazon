@@ -74,6 +74,45 @@ script "UH_BeginLimitedXRayVision" (void) {
   NamedExecuteClientScript("UH_LimitedXRayVisionManager", viewer, TWO_PLAYER_XRAY_DURATION, viewer);
 }
 
+function void ClearXRayTarget(int tid) {
+  HudMessage(s:""; HUDMSG_PLAIN, tid, 0, 0, 0, 0.01);
+  HudMessage(s:""; HUDMSG_PLAIN, tid + 100, 0, 0, 0, 0.01);
+}
+
+function void ClearAllXRayTargets(void) {
+  for (int i = PLN_TID; i < PLN_TID + MAX_PLAYERS; i++) {
+    ClearXRayTarget(i);
+  }
+}
+
+function void UpdateXRayTargets(int viewer) {
+  for (int i = PLN_TID; i < PLN_TID + MAX_PLAYERS; i++) {
+    int targetPln = i - PLN_TID;
+    if (!PlayerInGame(targetPln) || viewer == targetPln) {
+      continue;
+    }
+
+    if (GetActorProperty(i, APROP_Health) <= 0) {
+      ClearXRayTarget(i);
+      continue;
+    }
+
+    int targetAlpha = GetActorProperty(i, APROP_Alpha);
+    int targetStyle = GetActorProperty(i, APROP_RenderStyle);
+    int isTargetVisible = (targetStyle != STYLE_None && targetAlpha >= 0.9 && !CheckFlag(i, "INVISIBLE"));
+
+    // When the enemy is directly in line of sight and visible, hide X-Ray
+    // to avoid obstructing crosshair and target silhouette during combat.
+    if (CheckSight(0, i, 1) && isTargetVisible) {
+      ClearXRayTarget(i);
+      continue;
+    }
+
+    HudMessageOnActor(i, i, 640, 480, 0, 0, 9028, -1, StrParam(n:targetPln + 1), 0.1, CR_GREEN, 0);  // Displays nametag
+    HudMessageOnActor(i, i + 100, 640, 480, 0, -10, 9028, -1, "", 0.1, CR_GREEN, 1);                  // Displays distance
+  }
+}
+
 // NamedExecuteClientScript consumes PlayerNumber() as its client selector;
 // only the following duration and viewer arguments are forwarded.
 // ServerMAX is server-owned and is not synchronized to remote clients.
@@ -81,15 +120,11 @@ script "UH_LimitedXRayVisionManager" (int duration, int viewer) CLIENTSIDE {
   if (viewer != ConsolePlayerNumber()) terminate;
   while (duration > 0 && SetActivatorToPlayer(viewer) &&
          GetActorProperty(0, APROP_Health) > 0) {
-    for (int i = PLN_TID; i < PLN_TID + MAX_PLAYERS; i++) {
-      if (PlayerInGame(i - PLN_TID) && viewer != i - PLN_TID) {
-        HudMessageOnActor(i, i, 640, 480, 0, -24, 9028, -1, StrParam(n:i - PLN_TID + 1), 0.1, CR_GREEN, 0);  // Displays nametags
-        HudMessageOnActor(i, i + 100, 640, 480, 0, -32, 9028, -1, "", 0.1, CR_GREEN, 1);  // Displays distance
-      }
-    }
+    UpdateXRayTargets(viewer);
     duration--;
     Delay(1);
   }
+  ClearAllXRayTargets();
 }
 
 // Marker-gated so a boss-granted X-Ray can be cancelled from the server (see
@@ -98,14 +133,10 @@ script "UH_XRayVisionManager" (int viewer) CLIENTSIDE {
   if (viewer != ConsolePlayerNumber()) terminate;
   while (SetActivatorToPlayer(viewer) && GetActorProperty(0, APROP_Health) > 0 &&
          CheckInventory("UH_XRayVisionOn_F") > 0) {
-    for (int i = PLN_TID; i < PLN_TID + MAX_PLAYERS; i++) {
-      if (PlayerInGame(i - PLN_TID) && viewer != i - PLN_TID) {
-        HudMessageOnActor(i, i, 640, 480, 0, -24, 9028, -1, StrParam(n:i - PLN_TID + 1), 0.1, CR_GREEN, 0);  // Displays nametags
-        HudMessageOnActor(i, i + 100, 640, 480, 0, -32, 9028, -1, "", 0.1, CR_GREEN, 1);  // Displays distance
-      }
-    }
+    UpdateXRayTargets(viewer);
     Delay(1);
   }
+  ClearAllXRayTargets();
 }
 
 function void HudMessageOnActor(int tid, int messageid,
@@ -138,17 +169,36 @@ function void HudMessageOnActor(int tid, int messageid,
 
   if ((angle < 0.2 || angle > 0.8) && (dist >> 16) < range) {
     if (GetActorPitch(0) >= -0.25 && GetActorPitch(0) <= 0.25) {
-      pitch = VectorAngle(dist, GetActorZ(tid) - (GetActorZ(0) + 41.0));
+      int eyeHeight = GetActorProperty(0, APROP_ViewHeight);
+      if (eyeHeight <= 0) eyeHeight = 41.0;
+      int eyeZ = GetActorZ(0) + eyeHeight;
+
+      int targetHeight = GetActorProperty(tid, APROP_Height);
+      if (targetHeight <= 0) targetHeight = 56.0;
+      int headZ = GetActorZ(tid) + targetHeight + 12.0;
+
+      pitch = VectorAngle(dist, headZ - eyeZ);
       pitch = (pitch + GetActorPitch(0) + 1.0) % 1.0;
-      if ((hudx / 2) * sin(angle) != 0 && cos(angle) != 0 && (hudx / 2) * sin(pitch) != 0 && cos(pitch) != 0) {  // Fixes divide by zero
+      if (cos(angle) != 0 && cos(pitch) != 0) {  // Fixes divide by zero
         x = hudx / 2 - ((hudx / 2) * sin(angle) / cos(angle));
         y = hudy / 2 - ((hudx / 2) * sin(pitch) / cos(pitch));
 
         x += xoffset;
         y += y_offset;
-        if (swap_var) {HudMessage(i:dist >> 16; HUDMSG_PLAIN, messageid, colour, (x << 16), (y << 16), holdtime);}
-        else {HudMessage(s:text; HUDMSG_PLAIN, messageid, colour, (x << 16), (y << 16), holdtime);}
+        if (swap_var) {
+          HudMessage(i:dist >> 16;
+                     HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOTWITHOVERLAYMAP | HUDMSG_LAYER_UNDERHUD | HUDMSG_NOTWITHFULLMAP,
+                     messageid, colour, (x << 16), (y << 16), holdtime, 0.65);
+        }
+        else {
+          HudMessage(s:text;
+                     HUDMSG_PLAIN | HUDMSG_ALPHA | HUDMSG_NOTWITHOVERLAYMAP | HUDMSG_LAYER_UNDERHUD | HUDMSG_NOTWITHFULLMAP,
+                     messageid, colour, (x << 16), (y << 16), holdtime, 0.65);
+        }
+        return;
       }
     }
   }
+
+  HudMessage(s:""; HUDMSG_PLAIN, messageid, 0, 0, 0, 0.01);
 }
