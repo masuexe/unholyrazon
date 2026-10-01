@@ -75,6 +75,35 @@ TAG_NegaMan_WBc = "Nega Lightning Bolt";
 TAG_NegaMan_WBd = "Nega Ice Wall";
 TAG_NegaMan_WKc = "Nega Ballade Cracker";
 TAG_NegaMan_WVc = "Nega Spark Chaser";
+TAG_NegaMan_GrabBuster = "Nega Grab Buster";
+TAG_NegaMan_ChillSpike = "Nega Chill Spike";
+
+TAG_NegaShiny_ThunderBeam_W = "\c[UH02]*\c- Nega Thunder Beam";
+TAG_NegaShiny_TimeStopper_W = "\c[UH02]*\c- Nega Time Stopper";
+TAG_NegaShiny_SearchSnake_W = "\c[UH02]*\c- Nega Search Snake";
+TAG_NegaShiny_Skull_W = "\c[UH02]*\c- Nega Skull Barrier";
+TAG_NegaShiny_GravityHold_W = "\c[UH02]*\c- Nega Gravity Hold";
+TAG_NegaShiny_FlameBlast_W = "\c[UH02]*\c- Nega Flame Blast";
+TAG_NegaShiny_SlashClaw_W = "\c[UH02]*\c- Nega Slash Claw";
+TAG_NegaShiny_IceWave_W = "\c[UH02]*\c- Nega Ice Wave";
+TAG_NegaShiny_BlackHole_W = "\c[UH02]*\c- Nega Black Hole Bomb";
+TAG_NegaShiny_ChillSpike_W = "\c[UH02]*\c- Nega Chill Spike";
+TAG_NegaShiny_LightningBolt_W = "\c[UH02]*\c- Nega Lightning Bolt";
+TAG_NegaShiny_BalladeCracker_W = "\c[UH02]*\c- Nega Ballade Cracker";
+TAG_NegaShiny_GrabBuster_W = "\c[UH02]*\c- Nega Grab Buster";
+TAG_NegaShiny_TimeSlow_W = "\c[UH02]*\c- Nega Time Slow";
+TAG_NegaShiny_BubbleLead_W = "\c[UH02]*\c- Nega Bubble Lead";
+TAG_NegaShiny_NeedleCannon_W = "\c[UH02]*\c- Nega Needle Cannon";
+TAG_NegaShiny_RainFlush_W = "\c[UH02]*\c- Nega Rain Flush";
+TAG_NegaShiny_NapalmBomb_W = "\c[UH02]*\c- Nega Napalm Bomb";
+TAG_NegaShiny_YamatoSpear_W = "\c[UH02]*\c- Nega Yamato Spear";
+TAG_NegaShiny_WildCoil_W = "\c[UH02]*\c- Nega Wild Coil";
+TAG_NegaShiny_FlashBomb_W = "\c[UH02]*\c- Nega Flash Bomb";
+TAG_NegaShiny_MagmaBazooka_W = "\c[UH02]*\c- Nega Magma Bazooka";
+TAG_NegaShiny_TripleBlade_W = "\c[UH02]*\c- Nega Triple Blade";
+TAG_NegaShiny_IceWall_W = "\c[UH02]*\c- Nega Ice Wall";
+TAG_NegaShiny_SparkChaser_W = "\c[UH02]*\c- Nega Spark Chaser";
+TAG_NegaShiny_SuperArm_W = "\c[UH02]*\c- Nega Super Arm";
 
 // ===========================================================================
 // Survivor Weapons - Core & Razon Classes
