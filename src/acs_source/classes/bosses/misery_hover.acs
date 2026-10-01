@@ -2,6 +2,9 @@
 // A small hysteresis avoids toggling the flight stack at the height boundary.
 #define UH_MISERY_HOVER_LIMIT 160.0
 #define UH_MISERY_HOVER_RESUME 152.0
+#define UH_MISERY_HOVER_PIT_COST 10
+#define UH_MISERY_HOVER_AIR_RECHARGE 1
+#define UH_MISERY_HOVER_GROUND_RECHARGE 4
 
 function void UH_MiseryHoverRelease(void) {
   if (!CheckInventory("Misery_HoverActive_F"))
@@ -38,7 +41,22 @@ script "uh_MiseryHover" (void) {
     else if (altitude <= UH_MISERY_HOVER_RESUME)
       limited = false;
 
-    if (limited)
+    // Match CBM Alien: only the eligible-flight branch over a damaging pit
+    // drains stamina. Over-height ticks neither drain nor recharge in a pit.
+    bool damagingpit = ACS_NamedExecuteWithResult("uh_CheckDamagingPit", 0);
+    bool exhausted = false;
+    if (damagingpit) {
+      if (!limited) {
+        TakeInventory("Misery_HoverStamina_F", UH_MISERY_HOVER_PIT_COST);
+        exhausted = !CheckInventory("Misery_HoverStamina_F");
+      }
+    }
+    else {
+      GiveInventory("Misery_HoverStamina_F", altitude == 0 ?
+        UH_MISERY_HOVER_GROUND_RECHARGE : UH_MISERY_HOVER_AIR_RECHARGE);
+    }
+
+    if (limited || exhausted)
       UH_MiseryHoverRelease();
     else if (!CheckInventory("Misery_HoverActive_F")) {
       // Toggle 2 preserves momentum; normal flight respects grounded effects.
