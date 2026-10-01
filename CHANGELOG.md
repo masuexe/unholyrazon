@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261001
 
+- 修复 Redead Gutsman 二阶段未自动扣血的问题
 - 将 Boss Combo 的阵容、人数限制、权重及音乐配置迁移到运行时注册表，新增 addon 注册与查询 API，支持固定阵容和候选池；用法见 [Boss Combo API](docs/boss-combo-api.md)
 - 修复 Three Destrons 播放错误音乐的问题，改为沿用 Destron 的登场音乐
 - 将 Final Speciman 和 Speciman DX 加入 Speciman Rush 候选池，从八种成员中选出五个 Boss
