@@ -1,3 +1,7 @@
+## 4.0.0-beta.261002
+
+- 修复 Handyman（含 Shiny）M2 后下落时无法按 M1 向上推进的问题
+
 ## 4.0.0-beta.261001
 
 - 修复 Redead Gutsman 二阶段未自动扣血的问题
