@@ -1,6 +1,7 @@
 ## 4.0.0-beta.261002
 
 - 为 Nega Napalm Bomb、Needle Cannon 和 Ice Wave（含 Shiny）使用独立伤害类型，移除每日随机友伤
+- 补全 Pharaohman4MI 的 Unknown 诅咒
 - 修复两个 Astromancer 的 M1 护盾缺失持续接触伤害的问题
 - 修复 Handyman（含 Shiny）M2 后下落时无法按 M1 向上推进的问题
 

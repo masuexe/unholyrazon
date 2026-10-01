@@ -440,7 +440,7 @@ def validate_generated_actor_names(config: dict):
             seen[key] = (kind, bar_label(bar), bank)
 
 
-def gen_namespaced_append_lines(config: dict, horiz: bool) -> list[str]:
+def gen_namespaced_append_lines(config: dict, horiz: bool, cursed: bool = False) -> list[str]:
     lines = []
     position_order = {pos[0]: index for index, pos in enumerate(POS_BANKS)}
     bars = sorted(
@@ -463,6 +463,14 @@ def gen_namespaced_append_lines(config: dict, horiz: bool) -> list[str]:
                                  next(p[5] for p in POS_BANKS if p[0] == bar["position"]))
             orientation = "vertical"
         indent = "  "
+        if cursed:
+            image = "CURSEVAR" if horiz else "CURSEBAR"
+            lines.append(
+                f'{indent * 4}InInventory "{selector}", {selector_id} '
+                f'{{InInventory not "{selector}", {selector_id + 1} '
+                f'{{DrawImage "{image}", {x}, {y};}}}}'
+            )
+            continue
         lines.append(
             f'{indent * 4}InInventory "{selector}", {selector_id} '
             f'{{InInventory not "{selector}", {selector_id + 1} '
@@ -480,8 +488,13 @@ def gen_append_files(config):
             f"AppendStatusBar {mode}, forcescaled {{",
             f'{indent}InInventory "DrawStatusBarFlag", 1 {{',
             f'{indent * 2}InInventory not "NoHud", 1 {{',
-            f'{indent * 3}InInventory not "NoHealthBar", 1 {{',
+            f'{indent * 3}InInventory not "NoHealthBar", 1 || "Pharaoh4MICurse_Unknown", 1 {{',
             *gen_namespaced_append_lines(config, horiz),
+            f"{indent * 3}}}",
+            f'{indent * 3}InInventory not "NoHealthBar", 1 {{',
+            f'{indent * 4}InInventory "Pharaoh4MICurse_Unknown", 1 {{',
+            *(indent + line for line in gen_namespaced_append_lines(config, horiz, cursed=True)),
+            f"{indent * 4}}}",
             f"{indent * 3}}}",
             f"{indent * 2}}}",
             f"{indent}}}",
