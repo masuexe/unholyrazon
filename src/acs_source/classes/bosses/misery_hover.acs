@@ -1,0 +1,50 @@
+// Permanent, floor-relative flight, following Alien / XGond's 160-unit limit.
+// A small hysteresis avoids toggling the flight stack at the height boundary.
+#define UH_MISERY_HOVER_LIMIT 160.0
+#define UH_MISERY_HOVER_RESUME 152.0
+
+function void UH_MiseryHoverRelease(void) {
+  if (!CheckInventory("Misery_HoverActive_F"))
+    return;
+  ACS_NamedExecuteWithResult("uh_flyplayer", 0, 0, false);
+  TakeInventory("Misery_HoverActive_F", 1);
+}
+
+script "uh_MiseryHoverRelease" (void) {
+  UH_MiseryHoverRelease();
+}
+
+script "uh_MiseryHover" (void) {
+  int player = PlayerNumber();
+  if (player < 0)
+    terminate;
+  int mygen = GetPlayerMorphGen(player);
+  bool limited = false;
+
+  while (PlayerInGame(player)) {
+    // The pre-unmorph hook releases our stack before the generation changes.
+    // Never release from an old watcher: its activator may now be a new body.
+    if (!UH_WatcherStillOwnsBoss(mygen, player))
+      terminate;
+    if (GetActorProperty(0, APROP_Health) <= 0 || CheckInventory("IsDead") ||
+        StrICmp(GetActorClass(0), "Misery")) {
+      UH_MiseryHoverRelease();
+      terminate;
+    }
+
+    int altitude = GetActorZ(0) - GetActorFloorZ(0);
+    if (altitude >= UH_MISERY_HOVER_LIMIT)
+      limited = true;
+    else if (altitude <= UH_MISERY_HOVER_RESUME)
+      limited = false;
+
+    if (limited)
+      UH_MiseryHoverRelease();
+    else if (!CheckInventory("Misery_HoverActive_F")) {
+      // Toggle 2 preserves momentum; normal flight respects grounded effects.
+      ACS_NamedExecuteWithResult("uh_flyplayer", 0, 2, false);
+      GiveInventory("Misery_HoverActive_F", 1);
+    }
+    Delay(1);
+  }
+}
