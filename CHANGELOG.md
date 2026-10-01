@@ -1,5 +1,7 @@
 ## 4.0.0-beta.261001
+- 修复 BlackDevileye 的弹体异常的问题
 - 补齐 classbase 缺失的冰系／火系伤害死亡映射，触发对应冰冻／燃烧死亡效果；保留已有特殊死亡定义，MakeAGoodZero 暂不调整；共用伤害类型的其他攻击也使用对应效果
+- 补齐冰／火攻击的场景交互
 - 恢复 Unbound 的 Boss／恶魔眼 True Power 效果：有怒气条时只补满怒气；无怒气条时增加最大血量并回血 2000，可重复使用
 - 修复 Eden 在线游戏中道具图标不显示的问题
 - 补充 Eden 泪弹的 +FORCEXYBILLBOARD 属性

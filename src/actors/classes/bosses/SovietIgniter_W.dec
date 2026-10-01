@@ -121,6 +121,24 @@ actor SovietIgniteShotFX : BasicGraphicEffect {
   }
 }
 
+actor SovietFlameThrowerFadeLow_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_SpawnItemEx("OilPitIgnite", 0, 0, 8)
+    TNT1 A 0 A_FadeTo(0.3, 0.1, 0)
+    stop
+  }
+}
+
+actor SovietFlameThrowerFadeHigh_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_SpawnItemEx("OilPitIgnite", 0, 0, 8)
+    TNT1 A 0 A_FadeTo(0.8, 0.1, 0)
+    stop
+  }
+}
+
 actor SovietFlameThrowerFlames : BasicProjectile {
   Translation "192:192=223:223", "198:198=5:5"
   DamageType "SovietIgnite"
@@ -141,12 +159,14 @@ actor SovietFlameThrowerFlames : BasicProjectile {
   Scale 2.5
   States {
    Spawn:
-    6P10 ABCDA 2 A_FadeTo(0.3, 0.1, 0)
-    6P10 BCDAB 2 A_FadeTo(0.8, 0.1, 0)
-    6P10 CDABC 2 A_FadeTo(0.3, 0.1, 0)
-    6P10 DABCD 2 A_FadeTo(0.8, 0.1, 0)
+    6P10 ABCDA 2 A_GiveInventory("SovietFlameThrowerFadeLow_P")
+    6P10 BCDAB 2 A_GiveInventory("SovietFlameThrowerFadeHigh_P")
+    6P10 CDABC 2 A_GiveInventory("SovietFlameThrowerFadeLow_P")
+    6P10 DABCD 2 A_GiveInventory("SovietFlameThrowerFadeHigh_P")
+   FirePulseWait:
+    6P10 D 0 A_SpawnItemEx("OilPitIgnite", 0, 0, 8)
     6P10 D 1 A_CountDown
-    wait
+    goto FirePulseWait
   }
 }
 
@@ -171,10 +191,12 @@ actor SovietIgniterCannon : BasicProjectile {
     TNT1 A 0 A_Explode(64, 80, 0)  // 56,72
     TNT1 A 0 A_SpawnItemEx("SovietIgniterCannonDeathFX")
     TNT1 A 0 A_SpawnItemEx("SovietIgniterCannonBit", 0, 0, 0, 0, cos(pitch) * 3.0, -sin(pitch) * 3.0, 0, 1)
+    TNT1 A 0 A_SpawnItemEx("OilPitIgnite", 0, 0, 8)
     TNT1 A 1 A_SpawnItemEx("SovietIgniterCannonBit", 0, 0, 0, 0, cos(pitch + 180) * 3.0, -sin(pitch + 180) * 3.0, 0, 1)
     TNT1 A 0 A_SetPitch(pitch % 360 + 30)
     TNT1 A 0 A_SpawnItemEx("SovietIgniterCannonDeathFX")
     TNT1 A 0 A_SpawnItemEx("SovietIgniterCannonBit", 0, 0, 0, 0, cos(pitch) * 3.0, -sin(pitch) * 3.0, 0, 1)
+    TNT1 A 0 A_SpawnItemEx("OilPitIgnite", 0, 0, 8)
     TNT1 A 1 A_SpawnItemEx("SovietIgniterCannonBit", 0, 0, 0, 0, cos(pitch + 180) * 3.0, -sin(pitch + 180) * 3.0, 0, 1)
     TNT1 A 0 A_SetPitch(pitch % 360 + 30)
     TNT1 A 0 A_GiveInventory("CutterFlag", 1)
@@ -200,6 +222,7 @@ actor SovietIgniterCannonDeath : BasicExplosion {
    Spawn:
     TNT1 A 0
     TNT1 A 0 A_PlaySoundEx("weapon/solarblaze", "SoundSlot5")
+    TNT1 A 0 A_SpawnItemEx("OilPitIgnite", 0, 0, 8)
     TNT1 A 0 A_Explode(250, 160, 0, 0, 20)
     TNT1 AAAAAAAAAAAA 0 A_SpawnItemEx("SovietIgniterCannonDeathFX", 0, 0, 0, random(-8, 8), 0, random(-8, 8), random(0, 359))
     TNT1 A 2
@@ -226,6 +249,15 @@ actor SovietIgniterCannonDeathFX : BasicGraphicEffect {
   }
 }
 
+actor SovietIgniterCannonBitPulse_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_SpawnItemEx("OilPitIgnite", 0, 0, 8)
+    TNT1 A 0 A_SetScale(scaleX - 0.5, scaleY - 0.5)
+    stop
+  }
+}
+
 actor SovietIgniterCannonBit : BasicProjectile {
   DamageType "SovietIgnite"
   Obituary "%o wasn't cool enough to survive (%k)'s \cmSoviet \ciIgniter \cgCannon\c-."
@@ -240,15 +272,15 @@ actor SovietIgniterCannonBit : BasicProjectile {
   States {
    Spawn:
     6P10 E 0
-    6P10 EFEFEFEF 3
+    6P10 EFEFEFEF 3 A_SpawnItemEx("OilPitIgnite", 0, 0, 8)
     6P10 E 0 A_SetTranslucent(0.8)
-    6P10 E 2 A_SetScale(scaleX - 0.5, scaleY - 0.5)
+    6P10 E 2 A_GiveInventory("SovietIgniterCannonBitPulse_P")
     6P10 E 0 A_SetTranslucent(0.6)
-    6P10 E 2 A_SetScale(scaleX - 0.5, scaleY - 0.5)
+    6P10 E 2 A_GiveInventory("SovietIgniterCannonBitPulse_P")
     6P10 E 0 A_SetTranslucent(0.4)
-    6P10 F 2 A_SetScale(scaleX - 0.5, scaleY - 0.5)
+    6P10 F 2 A_GiveInventory("SovietIgniterCannonBitPulse_P")
     6P10 E 0 A_SetTranslucent(0.2)
-    6P10 F 2 A_SetScale(scaleX - 0.5, scaleY - 0.5)
+    6P10 F 2 A_GiveInventory("SovietIgniterCannonBitPulse_P")
     stop
   }
 }
@@ -268,6 +300,9 @@ actor FireFlySpawner : BasicProjectile {
     X_1E E 0 A_Stop
     X_1E EEEEE 2
     X_1E E 0 A_SpawnItemEx("FireFlyHomeInShot", 0, 0, 0, 0, 0, 0, 0, 1)
+    stop
+   Death:
+    X_1E E 0 A_SpawnItemEx("OilPitIgnite", 0, 0, 8)
     stop
   }
 }
@@ -290,6 +325,7 @@ actor FireFlyHomeInShot : BasicProjectile {
     X_1E E 0 A_CountDown
     loop
    Death:
+    X_1E E 0 A_SpawnItemEx("OilPitIgnite", 0, 0, 8)
     X_1E E 1 A_Fadeout(0.2)
     stop
   }
