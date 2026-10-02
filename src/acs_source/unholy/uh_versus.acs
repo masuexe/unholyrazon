@@ -40,9 +40,10 @@
 #define UHVS_DRAW_DELAY (35 * 5)
 
 function void UHVS_ClearIntroHud(void) {
-  ClearHudMessageBold(UHVS_HUD_NAME1);
-  ClearHudMessageBold(UHVS_HUD_NAME2);
-  ClearHudMessageBold(UHVS_HUD_ICON);
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    if (UH_Ti_IsConnectedClient(c))
+      NamedExecuteClientScript("uh_vs_intro_clear", c);
+  }
 }
 
 // Same-boss duels would otherwise show one identical name twice; append the
@@ -56,12 +57,35 @@ function str UHVS_DisplayName(int bossid, int tid, bool sameboss) {
 // ub_ManageBossVsBossEvent layout.
 function void UHVS_ShowIntro(int boss1, int boss2, int tid1, int tid2) {
   bool sameboss = (boss1 == boss2);
+  str name1 = UHVS_DisplayName(boss1, tid1, sameboss);
+  str name2 = UHVS_DisplayName(boss2, tid2, sameboss);
+  str names = StrParam(s:name1, c:31, s:name2);
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    if (!UH_Ti_IsConnectedClient(c)) {continue;}
+    // One packet keeps both names together regardless of ACS script order.
+    // Send server text: custom ids and ACS string indices are not portable.
+    NamedSendNetworkString("uh_vs_intro_names", names, c);
+  }
+}
+
+script "uh_vs_intro_names" (int names) CLIENTSIDE {
+  int split = 0;
+  while (split < StrLen(names) && GetChar(names, split) != 31) {split++;}
+  if (split >= StrLen(names)) {terminate;}
+  str name1 = StrLeft(names, split);
+  str name2 = StrRight(names, StrLen(names) - split - 1);
   SetHudSize(640, 480, 0);
   SetFont("BIGFONT");
-  HudMessageBold(s:UHVS_DisplayName(boss1, tid1, sameboss); HUDMSG_FADEOUT, UHVS_HUD_NAME1, -1, 294.6, 48.0, UHVS_INTRO_TICS / 35.0 + 2.0, 2.0);
-  HudMessageBold(s:UHVS_DisplayName(boss2, tid2, sameboss); HUDMSG_FADEOUT, UHVS_HUD_NAME2, -1, 346.5, 48.0, UHVS_INTRO_TICS / 35.0 + 2.0, 2.0);
+  HudMessageBold(s:name1; HUDMSG_FADEOUT, UHVS_HUD_NAME1, -1, 294.6, 48.0, 5.0, 2.0);
+  HudMessageBold(s:name2; HUDMSG_FADEOUT, UHVS_HUD_NAME2, -1, 346.5, 48.0, 5.0, 2.0);
   SetFont("UFACEVS0");
-  HudMessageBold(s:"A"; HUDMSG_FADEOUT, UHVS_HUD_ICON, -1, 320.4, 48.0, UHVS_INTRO_TICS / 35.0 + 2.0, 2.0);
+  HudMessageBold(s:"A"; HUDMSG_FADEOUT, UHVS_HUD_ICON, -1, 320.4, 48.0, 5.0, 2.0);
+}
+
+script "uh_vs_intro_clear" (void) CLIENTSIDE {
+  ClearHudMessage(UHVS_HUD_NAME1);
+  ClearHudMessage(UHVS_HUD_NAME2);
+  ClearHudMessage(UHVS_HUD_ICON);
 }
 
 function bool UHVS_IsNormalDeathState(int deathstate) {
@@ -193,6 +217,10 @@ script "ub_ManageBossVsBossEvent" (void) {
   UHVS_ShowIntro(boss1, boss2, bossdataarr[0][BOSSDATA_TID], bossdataarr[1][BOSSDATA_TID]);
   Delay(1);
 
+  // A slot can settle to dead/spectator in this first tic. Keep the intro
+  // visible long enough for remote clients to receive and draw it.
+  Delay(35);
+
   // Morph failure is decided before this watcher starts
   // (ub_BossMorphRetryWait / ub_MorphFailureFallback).  Resolve instead of
   // waiting on a slot that will never fall.
@@ -216,7 +244,7 @@ script "ub_ManageBossVsBossEvent" (void) {
 
   // Intro countdown, cancelled early if a slot falls or another script ends
   // the round.
-  int introleft = UHVS_INTRO_TICS;
+  int introleft = UHVS_INTRO_TICS - 35;
   while (introleft > 0 && bossslotalive[0] && bossslotalive[1] && !gameover) {
     Delay(1);
     introleft--;
