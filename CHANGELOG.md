@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261002
 
+- 优化 RedeadGuts_W_Pissed（复活暴怒阶段）的奔跑与爬墙 HUD 动画表现，按住 M1 时交替展示攀爬抓扒动作
 - 修复 PlasmaSpark 满能量护盾在远端客户端提前消失的问题
 - 为 Nega Napalm Bomb、Needle Cannon 和 Ice Wave（含 Shiny）使用独立伤害类型，移除每日随机友伤
 - 补全 Pharaohman4MI 的 Unknown 诅咒
