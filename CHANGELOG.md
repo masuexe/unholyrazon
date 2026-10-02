@@ -14,7 +14,7 @@
 - 恢复 TimemanC 和 KFCDragon756 转阶段时的头像切换，统一更新 Boss 血条框、UIX 队友栏、计分板及横／竖 HUD 的 ScoreIcon；支持联机阶段同步、中途加入及死亡头像保留
 - 新增阶段头像注册接口 `DefineTeamPhasePresentation`，供其他 Boss／addon 扩展；用法见 [Boss 阶段头像](docs/boss-phase-portraits.md)
 - 更新 Misery 的皮肤（by Soundwave）
-- 更新 Misery 的武器 HUD
+- 更新 Misery 的武器 HUD，优化攻击动画
 
 ## 4.0.0-beta.261001
 
