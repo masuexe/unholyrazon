@@ -1,7 +1,7 @@
 ## 4.0.0-beta.261003
 
 - 移除 X-Ray 剩两人时的 30 秒限制
-- 补全 Magnetismo_W 的 ReloadIcon
+- 补全 Magnetismo 和 Elitist Sue 的 ReloadIcon
 - 将 Nega 其余复制武器共用的 Mega 伤害类型改为专用类型（含 Shiny、Search Snake 和 Chill Shot 的继承类型），补齐队友保护及受伤／死亡映射，移除每日随机友伤
 
 ## 4.0.0-beta.261002
