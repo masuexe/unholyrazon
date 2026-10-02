@@ -5,6 +5,7 @@
 - 修复 Scrotoman 开大下车后无敌的问题
 - 修复 Scrotoman 开大没有切换开车贴图的问题
 - 补全 Scrotoman 的开大音效
+- 优化 Scrotoman M2 的 Sprite
 - 为 Nega Napalm Bomb、Needle Cannon 和 Ice Wave（含 Shiny）使用独立伤害类型，移除每日随机友伤
 - 补全 Pharaohman4MI 的 Unknown 诅咒
 - 修复 NegaMan_W 和 Shiny NegaMan 在横屏模式下 M2 蓝条缺失的问题
