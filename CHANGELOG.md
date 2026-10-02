@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261003
 
+- 修复 LMS 惩罚自动触发 Super GUHU 后，因玩家未持有普通道具而在倒计时结束时计算出零爆炸伤害的问题；自动触发至少按一份道具计算，保留正常道具的叠加伤害倍率
 - 移除 X-Ray 剩两人时的 30 秒限制
 - 补全 Magnetismo 和 Elitist Sue 的 ReloadIcon
 - 将 Nega 其余复制武器共用的 Mega 伤害类型改为专用类型（含 Shiny、Search Snake 和 Chill Shot 的继承类型），补齐队友保护及受伤／死亡映射，移除每日随机友伤
