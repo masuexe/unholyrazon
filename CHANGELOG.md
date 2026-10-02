@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261003
 
+- 修复 Clownpiece 符卡名称、奖励状态及倒计时在联机客户端不显示的问题，并修正阶段切换后的计时器重启和中途加入同步
 - 补全 BlackDevilEye、ThomasTheTrain、MakeAGoodZero 二阶段武器及 TorontoCalifornia 的 Reload 图标定义
 - 修复 LMS 惩罚自动触发 Super GUHU 后，因玩家未持有普通道具而在倒计时结束时计算出零爆炸伤害的问题；自动触发至少按一份道具计算，保留正常道具的叠加伤害倍率
 - 移除 X-Ray 剩两人时的 30 秒限制
