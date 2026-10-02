@@ -2,6 +2,9 @@
 
 - 优化 RedeadGuts_W_Pissed（复活暴怒阶段）的奔跑与爬墙 HUD 动画表现，按住 M1 时交替展示攀爬抓扒动作
 - 修复 PlasmaSpark 满能量护盾在远端客户端提前消失的问题
+- 修复 Scrotoman 开大下车后无敌的问题
+- 修复 Scrotoman 开大没有切换开车贴图的问题
+- 补全 Scrotoman 的开大音效
 - 为 Nega Napalm Bomb、Needle Cannon 和 Ice Wave（含 Shiny）使用独立伤害类型，移除每日随机友伤
 - 补全 Pharaohman4MI 的 Unknown 诅咒
 - 修复 NegaMan_W 和 Shiny NegaMan 在横屏模式下 M2 蓝条缺失的问题
