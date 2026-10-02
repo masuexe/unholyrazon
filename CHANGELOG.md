@@ -1,3 +1,7 @@
+## 4.0.0-beta.261003
+
+- 补全 Magnetismo_W 的 ReloadIcon
+
 ## 4.0.0-beta.261002
 
 - 优化 RedeadGuts_W_Pissed（复活暴怒阶段）的奔跑与爬墙 HUD 动画表现，按住 M1 时交替展示攀爬抓扒动作
