@@ -416,24 +416,32 @@ script "ub_WatchSurvivors" (int skipacs) {
 }
 
 
-// Razon3-style limited X-Ray once exactly two players remain alive.
-// Server switch rz_sv_twoplayerxray (default 1 = historical behaviour):
-//   0 -> the watcher ends before waiting, so no nametags are granted and
-//        twoplayersxrayenabled stays false;
-//   1 -> unchanged.
-// The value is read again just before the grant so toggling the cvar mid-round
-// still takes effect (the loop already wakes every 2 tics).
+// Clear only the round-owned source; Lin/event X-Ray has its own marker.
+function void UH_ClearTwoPlayerXRay(void) {
+  GiveMeTheFunc("UH_TwoPlayerXRayOn_F", -1);
+  twoplayersxrayenabled = false;
+}
+
+// Re-evaluate both the cvar and live count throughout the round. Keep the
+// marker present as long as exactly two players remain; no 30-second expiry.
 script "rz_WatchTwoPlayerLeft" (void) {
-  if (GetCVar("rz_sv_twoplayerxray") != 1)
-    terminate;
-  while (totalplayersarr[PLS_SURVIVOR] + totalplayersarr[PLS_BOSS] + totalplayersarr[PLS_EYE] != 2 || twoplayersxrayenabled) {
-    if (gameover) {terminate;}
+  int i;
+  int tid;
+  bool enabled;
+  while (!gameover) {
+    enabled = GetCVar("rz_sv_twoplayerxray") == 1
+      && totalplayersarr[PLS_SURVIVOR] + totalplayersarr[PLS_BOSS]
+        + totalplayersarr[PLS_EYE] == 2;
+    twoplayersxrayenabled = enabled;
+    for (i = 0; i < MAX_PLAYERS; i++) {
+      if (!PlayerInGame(i)) continue;
+      tid = i + 1000;
+      SetActorInventory(tid, "UH_TwoPlayerXRayOn_F",
+        enabled && GetActorProperty(tid, APROP_Health) > 0);
+    }
     Delay(2);
   }
-  if (GetCVar("rz_sv_twoplayerxray") != 1)
-    terminate;
-  GiveMeTheFunc("XRayVisionEnableLimited_P", 1);
-  twoplayersxrayenabled = true;
+  UH_ClearTwoPlayerXRay();
 }
 
 // Boss streak compensation: five distinct runes per player without MercyFlag.
