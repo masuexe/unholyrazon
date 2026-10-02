@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261002
 
+- 修复 PlasmaSpark 满能量护盾在远端客户端提前消失的问题
 - 为 Nega Napalm Bomb、Needle Cannon 和 Ice Wave（含 Shiny）使用独立伤害类型，移除每日随机友伤
 - 补全 Pharaohman4MI 的 Unknown 诅咒
 - 修复 NegaMan_W 和 Shiny NegaMan 在横屏模式下 M2 蓝条缺失的问题

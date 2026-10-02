@@ -16,8 +16,7 @@ script "uh_PlasmaBarrierAuraView" (int type, int arg1, int arg2) EVENT CLIENTSID
   Delay(1);
   int shown = -1;
   while (!StrICmp(GetActorClass(0), "Plasma_Barrier_Aura")) {
-    int show = GetActorProperty(0, APROP_TargetTID) &&
-      !ACS_NamedExecuteWithResult("uh_IsPointerClient", AAPTR_TARGET, 0, 1);
+    int show = ACS_NamedExecuteWithResult("uh_PlasmaBarrierOwnerVisible");
     if (show != shown) {
       SetActorProperty(0, APROP_RenderStyle,
                        show ? STYLE_Translucent : STYLE_None);
@@ -25,6 +24,23 @@ script "uh_PlasmaBarrierAuraView" (int type, int arg1, int arg2) EVENT CLIENTSID
     }
     Delay(1);
   }
+}
+
+// Query the pointer itself: a valid network target need not have a TID.
+// A separate script keeps the view loop's activator on the aura.
+script "uh_PlasmaBarrierOwnerVisible" (void) CLIENTSIDE {
+  if (!SetActivator(0, AAPTR_TARGET))
+    terminate;
+  int owner = PlayerNumber();
+  SetResultValue(owner >= 0 &&
+    (owner != ConsolePlayerNumber() || GetPlayerChasecam(owner)));
+}
+
+// Used only by the aura's server-authoritative exit checks.
+script "uh_PlasmaBarrierPowered" (void) {
+  if (!SetActivator(0, AAPTR_TARGET))
+    terminate;
+  SetResultValue(CheckInventory("PlasmaSpark_Barrier_Power") > 0);
 }
 
 script "rz_projflipgrav" (void) {
