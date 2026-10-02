@@ -38,6 +38,9 @@ int uhtirole[MAX_PLAYERS];
 int uhtiova;
 int uhtiovatarget;
 int uhtiscorepolicy;
+// Stage ids are plain integers scoped to the locally resolved actor class.
+int uhtiphase[MAX_PLAYERS];
+str uhtiphaseactor[MAX_PLAYERS];
 
 // Per-viewer portrait resolution cache: the live actor class is preferred so a
 // morph is reflected before the next status sync; the server-published class is
@@ -95,6 +98,8 @@ function void UH_Ti_ClearStats(int pn) {
 function void UH_Ti_ResetClient(void) {
   for (int i = 0; i < MAX_PLAYERS; i++) {
     uhtilife[i] = PLS_NULL;
+    uhtiphase[i] = 0;
+    uhtiphaseactor[i] = "";
     uhtirole[i] = PLS_NULL;
     uhticlasscache[i] = "";
     uhtiscoreiconvalid[i] = false;
@@ -120,6 +125,8 @@ function void UH_Ti_SetClientLife(int pn, int status) {
   }
   else if (status == PLS_NULL) {
     uhtirole[pn] = PLS_NULL;
+    uhtiphase[pn] = 0;
+    uhtiphaseactor[pn] = "";
     uhticlasscache[pn] = "";
     uhtiscoreiconvalid[pn] = false;
     uhscoreiconcache[pn] = "";
@@ -153,10 +160,48 @@ script "uh_ti_sync_status" (int pn, int status, int kind, int id) CLIENTSIDE {
     // set derives its own content or nothing at all.
     cls = UH_Ti_ActorForIdentity(kind, id);
   }
+  else if (kind == UH_PLDEF_NONE) {
+    cls = UH_Ti_ActorClass(pn + 1000);
+    // A custom class has no stable wire identity. Keep only a class this peer
+    // observed itself; death may remove that body before the final snapshot.
+    if (!StrLen(cls) && status == PLS_DEAD) {cls = uhticlasscache[pn];}
+  }
   if (StrICmp(cls, uhticlasscache[pn]) != 0) {
     uhticlasscache[pn] = cls;
-    // Force the next lookup to refresh: the actor class changed.
+    // Network ACS scripts are linked at the head of the thinker list: a
+    // same-tic stage receiver may already have run. Retain only a stage that
+    // belongs to this exact new class, otherwise clear the old body's stage.
+    if (StrICmp(cls, uhtiphaseactor[pn])) {
+      uhtiphase[pn] = 0;
+      uhtiphaseactor[pn] = "";
+    }
+    uhscoreiconcachevalid[pn] = false;
     uhtiscoreiconvalid[pn] = false;
+  }
+}
+
+// Both messages carry the same identity and commute: the ACS thinker may run
+// same-tic scripts in reverse receive order. No life-cache prerequisite here.
+// Custom ids/rows/strings never cross the wire. A class without a vanilla
+// identity uses only a body class this client can actually observe.
+script "uh_ti_sync_phase" (int pn, int kind, int id, int phase) CLIENTSIDE {
+  if (pn < 0 || pn >= MAX_PLAYERS) {terminate;}
+  str actor = "";
+  if (kind != UH_PLDEF_NONE && id >= 0)
+    actor = UH_Ti_ActorForIdentity(kind, id);
+  else if (kind == UH_PLDEF_NONE) {
+    actor = UH_Ti_ActorClass(pn + 1000);
+    if (!StrLen(actor) && uhtilife[pn] == PLS_DEAD)
+      actor = uhtiphaseactor[pn];
+  }
+  if (!StrLen(actor) || phase < 0 || phase > 255) {phase = 0;}
+  bool changed = uhtiphase[pn] != phase || StrICmp(uhtiphaseactor[pn], actor) != 0;
+  uhtiphase[pn] = phase;
+  uhtiphaseactor[pn] = actor;
+  if (changed && StrLen(actor)) {
+    // Also repairs a dead row for a client that joined after the transition.
+    uhscoreiconcache[pn] = UH_PlayerPhaseScoreIcon(actor, phase);
+    uhscoreiconcachevalid[pn] = StrLen(uhscoreiconcache[pn]) != 0;
   }
 }
 
@@ -316,7 +361,7 @@ function bool UH_CanSeeScoreIcon(int viewer, int subject) {
 // Client-local MegaMan portrait resolution shared by teaminfo and scoreboard.
 // Identity stays the registered actor class; skins never alter team or ids.
 function str UH_PlayerAppearancePortrait(int tid) {
-  str actor = GetActorClass(tid);
+  str actor = UH_Ti_ActorClass(tid);
   if (StrICmp(actor, "MegaManU") != 0 && StrICmp(actor, "MegaManUShiny") != 0)
     return "";
   if (CheckActorInventory(tid, "YustManFlag"))
@@ -345,18 +390,26 @@ function str UH_PlayerAppearancePortrait(int tid) {
   return "UMUG_0";
 }
 
+function int UH_Ti_PhaseForActor(int pn, str actor) {
+  if (pn < 0 || pn >= MAX_PLAYERS || StrICmp(actor, uhtiphaseactor[pn]))
+    return 0;
+  return uhtiphase[pn];
+}
+
 function str UH_PlayerPortraitForTid(int tid) {
   str appearance = UH_PlayerAppearancePortrait(tid);
   if (StrLen(appearance) != 0)
     return appearance;
-  return UH_PlayerPortrait(GetActorClass(tid));
+  str actor = UH_Ti_ActorClass(tid);
+  return UH_PlayerPhasePortrait(actor, UH_Ti_PhaseForActor(tid - 1000, actor));
 }
 
 function str UH_PlayerScoreIconForTid(int tid) {
   str appearance = UH_PlayerAppearancePortrait(tid);
   if (StrLen(appearance) != 0)
     return appearance;
-  return UH_PlayerScoreIcon(GetActorClass(tid));
+  str actor = UH_Ti_ActorClass(tid);
+  return UH_PlayerPhaseScoreIcon(actor, UH_Ti_PhaseForActor(tid - 1000, actor));
 }
 
 // Resolve the display portrait for a player.  Live actors are looked up by
@@ -365,7 +418,7 @@ function str UH_PlayerScoreIconForTid(int tid) {
 function str UH_ClientPortraitTex(int pn) {
   if (pn < 0 || pn >= MAX_PLAYERS) {return "";}
   if (uhtilife[pn] != PLS_DEAD && uhtilife[pn] != PLS_NULL) {
-    str cls = GetActorClass(pn + 1000);
+    str cls = UH_Ti_ActorClass(pn + 1000);
     // Appearance can change without changing actor class (YustMan skin).
     if (StrLen(cls) != 0) {
       uhticlasscache[pn] = cls;
@@ -380,7 +433,8 @@ function str UH_ClientPortraitTex(int pn) {
   // to the server-synced definition identity when this client never saw the
   // live class.
   if (uhscoreiconcachevalid[pn]) {return uhscoreiconcache[pn];}
-  return UH_PlayerScoreIcon(uhticlasscache[pn]);
+  return UH_PlayerPhaseScoreIcon(uhticlasscache[pn],
+    UH_Ti_PhaseForActor(pn, uhticlasscache[pn]));
 }
 
 // Teammate-bar / subline short name.  The class is resolved the same way for
@@ -391,7 +445,7 @@ function str UH_Ti_GetClassName(int pn) {
   if (pn < 0 || pn >= MAX_PLAYERS) {return "";}
   str cls = "";
   if (uhtilife[pn] != PLS_DEAD && uhtilife[pn] != PLS_NULL) {
-    cls = GetActorClass(pn + 1000);
+    cls = UH_Ti_ActorClass(pn + 1000);
     if (StrLen(cls) != 0) {uhticlasscache[pn] = cls;}
   }
   if (StrLen(cls) == 0 && StrLen(uhticlasscache[pn]) != 0) {
@@ -583,6 +637,7 @@ function void UH_Ti_ServerForgetClient(int pn) {
 function void UH_Ti_RefreshStats(void) {
   // Newly connected clients (including true spectators) get the full snapshot
   // even though they never spawn and so never run the ENTER snapshot.
+  UH_Ti_RefreshPhases();
   UH_Ti_ServerHelloClients();
 
   // DF_INFINITE_AMMO = 1 << 11.
@@ -995,4 +1050,15 @@ script "uh_ti_clientinit_cs" OPEN CLIENTSIDE {
   // collide with the uhdt import in this library).
   ConsoleCommand(StrParam(s:"set 8bdmassistdisplay_name \"uh_assist_teaminfo\""));
   ACS_NamedExecuteWithResult("core_DefineAssistDisplay_S");
+}
+
+// Client-only stage/cache diagnostic, including body-less and dead subjects.
+script "uh_ti_PhaseCacheDump" (int pn) CLIENTSIDE {
+  if (pn < 0 || pn >= MAX_PLAYERS) {terminate;}
+  str actor = uhticlasscache[pn];
+  int phase = UH_Ti_PhaseForActor(pn, actor);
+  UH_Log(UH_LOG_INFO, StrParam(s:"PhaseCache: slot=", i:pn, s:" actor=", s:actor,
+    s:" phase=", i:phase, s:" portrait=", s:UH_PlayerPhasePortrait(actor, phase),
+    s:" icon=", s:UH_ClientPortraitTex(pn),
+    s:" bossmug=", s:UH_PlayerPhaseBossMug(actor, phase)));
 }

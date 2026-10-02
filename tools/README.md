@@ -121,6 +121,19 @@ This is the runtime gate for
 cannot prove the table was populated on a client, nor that the identity
 broadcast stopped being a load-order-dependent row index.
 
+For boss stage portraits:
+
+```bash
+node tools/mcp/boss-phase-test.mjs --json
+```
+
+This focused smoke-profile gate checks TimemanC/KFC stage changes at constant
+health through a dedicated server and remote client, independent boss rows,
+reset, and a real spectator reconnect snapshot. Additional controlled receiver
+checks cover death retention, slot reuse, clear, and reverse script order.
+See [Boss stage portraits](../docs/boss-phase-portraits.md) for the registration
+API and manual diagnostics.
+
 For the boss-versus combo directed probe:
 
 ```bash

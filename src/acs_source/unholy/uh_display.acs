@@ -19,6 +19,8 @@ function bool AnyBossSlotAlive(void) {
 #define HUDMESSAGE_REFRESHER_RATE 175  // 404
 bool refreshhudmessage;
 int rage_banner_seq[MAX_BOSSES + 1];
+int bhwphase[MAX_BOSSES];             // server, retained across death
+int bhwclientphase[MAX_BOSSES + 1];  // client, one-based HUD rows
 
 #define RAGE_BANNER_FRAMES 8
 str rage_banner_colors[RAGE_BANNER_FRAMES] = {
@@ -206,6 +208,7 @@ script "ub_BossHealthWatcher" (void) {
   SetActivator(0, AAPTR_NULL);
 
   for (int b = 0; b < MAX_BOSSES; b++) {
+    bhwphase[b] = 0;
     bosshparr[b][BOSSHP_HPMEM] = -1;
     bosshparr[b][BOSSHP_ARMORMEM] = -1;
     bosshparr[b][BOSSHP_EXTRALIFEMEM] = -1;
@@ -252,6 +255,9 @@ function void Func_BHW_Checker(int numb, int tidofboss, int whichboss, bool forc
       bossslotalive[numb] = false;
     }
     else {
+      int phase = UH_PlayerPresentationPhase(tidofboss);
+      bool phasechanged = phase != bhwphase[numb];
+      bhwphase[numb] = phase;
       int extralife = CheckActorInventory(tidofboss, "PlayerPropertyExtraLife");
       if (extralife < 0)
         extralife = 0;
@@ -270,7 +276,7 @@ function void Func_BHW_Checker(int numb, int tidofboss, int whichboss, bool forc
           bosshparr[numb][BOSSHP_ARMORMEM] != bosshparr[numb][BOSSHP_CURRARMOR] ||
           bosshparr[numb][BOSSHP_EXTRALIFEMEM] != extralife ||
           bosshparr[numb][BOSSHP_ARMORSAVEMEM] != armorsave ||
-          force) {
+          phasechanged || force) {
         bosshparr[numb][BOSSHP_HPMEM] = bosshparr[numb][BOSSHP_CURRHP];
         bosshparr[numb][BOSSHP_ARMORMEM] = bosshparr[numb][BOSSHP_CURRARMOR];
         bosshparr[numb][BOSSHP_EXTRALIFEMEM] = extralife;
@@ -292,6 +298,8 @@ function void Func_BHW_Checker(int numb, int tidofboss, int whichboss, bool forc
 
 script "ub_BHW_HudClientside" (int packed_boss, int bossnumb, int health, int packed_armor) CLIENTSIDE {
   int theboss = packed_boss & 0x0F;
+  if (theboss < 1 || theboss > MAX_BOSSES) {terminate;}
+  bhwclientphase[theboss] = (packed_boss >> 8) & 255;
   int extralife = (packed_boss >> 4) & 0x0F;
   int armor = packed_armor >> 8;
   int armorsave = packed_armor & 0xFF;
@@ -299,9 +307,13 @@ script "ub_BHW_HudClientside" (int packed_boss, int bossnumb, int health, int pa
 }
 
 function void Func_BHW_HudMess(int theboss, int bossnumb, int health, int armor, int extralife, int armorsave) {
-  int packed_boss = (theboss & 0x0F) | ((extralife & 0x0F) << 4);
+  int packed_boss = (theboss & 0x0F) | ((extralife & 0x0F) << 4)
+    | ((bhwphase[theboss - 1] & 255) << 8);
   int packed_armor = (armor << 8) | (armorsave & 0xFF);
-  ACS_NamedExecuteWithResult("ub_BHW_HudClientside", packed_boss, bossnumb, health, packed_armor);
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    if (UH_Ti_IsConnectedClient(c))
+      NamedExecuteClientScript("ub_BHW_HudClientside", c, packed_boss, bossnumb, health, packed_armor);
+  }
 }
 
 // BossNumb survivor HUD packing (parade / class face):
@@ -391,7 +403,7 @@ function void Func_BHW_DrawMugAndBorder(int theboss, int bossnumb, int x_aspect,
   }
 
   // 2. Layer -1000: Boss Mugshot (32x32)
-  Func_BHW_SetFontMug(bossnumb);
+  Func_BHW_SetFontMug(bossnumb, bhwclientphase[theboss]);
   HudMessage(s:"A"; 0, -1000 - theboss, -1, 10.1 + x_aspect, 280.1 + addtoy, 0, 1.0);
 
   // 3. Layer -1030: Boss Border Frame (36x36 compact border)
@@ -455,11 +467,18 @@ function void Func_BHW_HudMess2(int theboss, int bossnumb, int health, int armor
 }
 
 function void Func_BHW_DeadHudMess(int theboss, int bossnumb, int demisetype) {
-  ACS_NamedExecuteWithResult("ub_BHW_DeadHudClientside", theboss, bossnumb, demisetype);
+  int packed_boss = theboss | ((bhwphase[theboss - 1] & 255) << 8);
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    if (UH_Ti_IsConnectedClient(c))
+      NamedExecuteClientScript("ub_BHW_DeadHudClientside", c, packed_boss, bossnumb, demisetype);
+  }
 }
 
 
-script "ub_BHW_DeadHudClientside" (int theboss, int bossnumb, int demisetype) CLIENTSIDE {
+script "ub_BHW_DeadHudClientside" (int packed_boss, int bossnumb, int demisetype) CLIENTSIDE {
+  int theboss = packed_boss & 15;
+  if (theboss < 1 || theboss > MAX_BOSSES) {terminate;}
+  bhwclientphase[theboss] = (packed_boss >> 8) & 255;
   Func_BHW_DeadHudMess2(theboss, bossnumb, demisetype);
 }
 
@@ -480,7 +499,7 @@ function str UH_BHW_MegaManSkinMug(int player) {
   return "UHBBASE";
 }
 
-function void Func_BHW_SetFontMug(int bossnumb) {
+function void Func_BHW_SetFontMug(int bossnumb, int phase) {
   str fontstr;
   // Both ordinary and shiny MegaMan use the solo target's selected skin.
   // Other classes retain their own portraits. This also serves the death row.
@@ -508,7 +527,9 @@ function void Func_BHW_SetFontMug(int bossnumb) {
       SetFont("NOFAC_0");
     return;
   }
-  str mug = GetBossMugshot(bossnumb);
+  str mug = UH_PlayerPhaseBossMug(GetBossActor(bossnumb), phase);
+  if (!StrLen(mug) || !CheckFont(mug))
+    mug = GetBossMugshot(bossnumb);
   if (StrCmp(mug, "") != 0) {
     fontstr = mug;
     if (CheckFont(fontstr))

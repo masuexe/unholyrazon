@@ -80,6 +80,8 @@ function void PlayerLifeStatusArr_GatherFunc(void) {
 // falls back to the class it observed itself while the actor was alive.
 int uhsrvkind[MAX_PLAYERS];
 int uhsrvid[MAX_PLAYERS];
+int uhsrvphase[MAX_PLAYERS];
+str uhsrvphaseclass[MAX_PLAYERS];
 
 // Stable identity for an actor class, or UH_PLDEF_NONE.  The >= 0 test is what
 // rejects load-order-dependent custom ids.
@@ -112,6 +114,14 @@ function bool UH_Ti_IsConnectedPlayer(int pn) {
   return PlayerIsSpectator(pn) == 2;
 }
 
+// Engine GetActorClass returns "None" for a missing body, not an empty string.
+// Normalize it before any live-body / retained-presentation decision.
+function str UH_Ti_ActorClass(int tid) {
+  str actor = GetActorClass(tid);
+  if (!StrICmp(actor, "None")) {return "";}
+  return actor;
+}
+
 // Server-only: reads playerlifestatusarr, so it must never run on a pure client.
 function void UH_Ti_IdentityForPlayer(int pn) {
   int kind = UH_PLDEF_NONE;
@@ -123,7 +133,7 @@ function void UH_Ti_IdentityForPlayer(int pn) {
     // index 0; the other elements stay 0.
     if (playerlifestatusarr[pn] != PLS_NULL && UH_Ti_IsConnectedPlayer(pn)) {
       if (PlayerInGame(pn)) {
-        str cls = GetActorClass(pn + 1000);
+        str cls = UH_Ti_ActorClass(pn + 1000);
         if (StrCmp(cls, "") != 0) {
           int k = UH_Ti_KindForClass(cls);
           if (k != UH_PLDEF_NONE) {
@@ -140,6 +150,20 @@ function void UH_Ti_IdentityForPlayer(int pn) {
         id = uhsrvid[pn];
       }
     }
+    if (playerlifestatusarr[pn] == PLS_NULL || !UH_Ti_IsConnectedPlayer(pn)) {
+      uhsrvphase[pn] = 0;
+      uhsrvphaseclass[pn] = "";
+    }
+    else if (playerlifestatusarr[pn] != PLS_DEAD) {
+      str phaseclass = UH_Ti_ActorClass(pn + 1000);
+      // A transient body-less morph retains its last stage until the new body
+      // appears. A real class change re-evaluates the stage from scratch.
+      if (StrLen(phaseclass)) {
+        uhsrvphaseclass[pn] = phaseclass;
+        uhsrvphase[pn] = UH_PlayerPresentationPhase(pn + 1000);
+      }
+    }
+    // Death retains the final stage even after inventory/body removal.
     uhsrvkind[pn] = kind;
     uhsrvid[pn] = id;
   }
@@ -187,6 +211,27 @@ function void UH_Ti_SendStatusTo(int client, int pn, int status) {
   if (!UH_Ti_IsConnectedClient(client)) {return;}
   NamedExecuteClientScript("uh_ti_sync_status", client, pn, status,
     UH_Ti_CachedKind(pn), UH_Ti_CachedId(pn));
+  NamedExecuteClientScript("uh_ti_sync_phase", client, pn,
+    UH_Ti_CachedKind(pn), UH_Ti_CachedId(pn), uhsrvphase[pn]);
+}
+
+// Poll stages independently of health/stat visibility. Only changed subjects
+// are broadcast; late joiners receive every stage through SendStatusTo.
+function void UH_Ti_RefreshPhases(void) {
+  for (int pn = 0; pn < MAX_PLAYERS; pn++) {
+    int oldphase = uhsrvphase[pn];
+    int oldkind = uhsrvkind[pn];
+    int oldid = uhsrvid[pn];
+    str oldclass = uhsrvphaseclass[pn];
+    UH_Ti_IdentityForPlayer(pn);
+    if (oldphase == uhsrvphase[pn] && oldkind == uhsrvkind[pn]
+      && oldid == uhsrvid[pn] && !StrICmp(oldclass, uhsrvphaseclass[pn]))
+      continue;
+    int status = UH_Ti_IsConnectedPlayer(pn) ? playerlifestatusarr[pn] : PLS_NULL;
+    for (int c = 0; c < MAX_PLAYERS; c++) {
+      UH_Ti_SendStatusTo(c, pn, status);
+    }
+  }
 }
 
 function void UH_Ti_SendOneVsAllTo(int client, int active, int target) {

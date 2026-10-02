@@ -1313,6 +1313,30 @@ function int DefineTeamPresentation(
   return UHTIP_OK;
 }
 
+// Register from OPEN and OPEN CLIENTSIDE alongside DefineTeamPresentation.
+// phase: explicit 1..255, stable across peers; trigger: player inventory flag.
+// Highest matching phase wins. Empty portrait/scoreIcon fall back to the base
+// presentation; empty scoreIcon with a variant portrait uses that portrait.
+// bossMug is the raw health-bar font (e.g. PFACE91), not the scaled UIX texture.
+// Same actor+phase replaces the variant. Returns UHTIP_OK / FAIL / FULL.
+function int DefineTeamPhasePresentation(str actor, int phase, str trigger,
+  str portrait, str scoreIcon, str bossMug) {
+  int ipc = SetCVarString("uh_tip_actor", actor);
+  ipc = ipc & SetCVar("uh_tip_phase", phase);
+  ipc = ipc & SetCVarString("uh_tip_trigger", trigger);
+  ipc = ipc & SetCVarString("uh_tip_portrait", portrait);
+  ipc = ipc & SetCVarString("uh_tip_scoreicon", scoreIcon);
+  ipc = ipc & SetCVarString("uh_tip_bossmug", bossMug);
+  if (!ipc) {
+    UH_ReportIPCFailure("DefineTeamPhasePresentation");
+    return UHTIP_FAIL;
+  }
+  int row = ACS_NamedExecuteWithResult("uh_DefineTeamPhase_S");
+  if (row == UHTIP_TABLE_FULL) {return UHTIP_FULL;}
+  if (row < 0) {return UHTIP_FAIL;}
+  return UHTIP_OK;
+}
+
 // Row index of an actor's presentation, or UHTIP_FAIL when it has none.
 function int FindTeamPresentation(str actor) {
   SetCVarString("uh_tip_actor", actor);

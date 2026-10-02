@@ -478,3 +478,46 @@ script "rz_debug_TeamInfoSlots" (int probeFrom, int probeTo) {
       s:" id=", i:uhsrvid[i]));
   }
 }
+
+// Focused stage portrait probe. Run on a client; verifies both local variant
+// rows and the raw/scaled assets without reading remote inventories.
+script "rz_debug_BossPhaseCheck" (void) CLIENTSIDE {
+  int fails = 0;
+  str actor;
+  str ordinary;
+  str angry;
+  str raw;
+  for (int i = 0; i < 2; i++) {
+    if (i == 0) {
+      actor = "TimemanC"; ordinary = "UB091MUG"; angry = "UB091MPG"; raw = "PFACE91";
+    } else {
+      actor = "KFCDragon756"; ordinary = "UB069MUG"; angry = "UB069MPG"; raw = "PFACE69";
+    }
+    if (StrICmp(UH_PlayerPhasePortrait(actor, 0), ordinary)) {fails++;}
+    if (StrICmp(UH_PlayerPhasePortrait(actor, 1), angry)) {fails++;}
+    if (StrICmp(UH_PlayerPhaseScoreIcon(actor, 1), angry)) {fails++;}
+    if (StrICmp(UH_PlayerPhaseBossMug(actor, 1), raw)) {fails++;}
+    if (StrICmp(UH_PlayerPhasePortrait(actor, 255), ordinary)) {fails++;}
+    if (!CheckFont(ordinary) || !CheckFont(angry) || !CheckFont(raw)) {fails++;}
+  }
+  UH_Log(UH_LOG_INFO, StrParam(s:"BossPhaseCheck: failures=", i:fails));
+  SetResultValue(fails);
+}
+
+// Server diagnostic: phase -1 freezes/protects the subject for a HUD probe;
+// 0/1 also clear/set the existing gameplay flag for the two migrated bosses.
+// It does not send HUD packets: production watchers must observe the change.
+script "rz_debug_SetPortraitPhase" (int pn, int phase) {
+  if (pn < 0 || pn >= MAX_PLAYERS || phase < -1 || phase > 1
+    || !PlayerInGame(pn) || !GetCVar("sv_cheats")) {terminate;}
+  int tid = pn + 1000;
+  if (!SetActivator(tid)) {terminate;}
+  SetActorProperty(tid, APROP_Invulnerable, true);
+  SetPlayerProperty(0, true, PROP_TOTALLYFROZEN);
+  str actor = GetActorClass(tid);
+  if (StrICmp(actor, "TimemanC") && StrICmp(actor, "KFCDragon756")) {terminate;}
+  if (phase == 0) {TakeInventory("IsPissedFlag", 999);}
+  else if (phase == 1) {GiveInventory("IsPissedFlag", 1);}
+  UH_Log(UH_LOG_INFO, StrParam(s:"BossPhaseSet: slot=", i:pn, s:" actor=", s:actor,
+    s:" phase=", i:UH_PlayerPresentationPhase(tid), s:" hp=", i:GetActorProperty(tid, APROP_Health)));
+}

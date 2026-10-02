@@ -14,7 +14,8 @@ function void DrawReloadIcon(str image) {
 }
 
 function void DrawMugshotOverlay(str mug, int id) {
-  if (!CheckInventory("MugshotFlag")) {return;}
+  if (!CheckInventory("MugshotFlag") || CheckInventory("NoHealthBar")
+    || CheckInventory("NoDrawScoreIcon")) {return;}
   int x, y;
   switch (AssistDisplayBar_HUDMode()) {
     default:
@@ -31,6 +32,16 @@ function void DrawMugshotOverlay(str mug, int id) {
   }
   SetHudSize(320, 200, 0);
   BasicImageDisplay(mug, id, x, y);
+}
+
+// DrawBar runs with the current camera pawn as activator, including spectating.
+// Resolve through the server-synced stage cache instead of reading a remote
+// player's unsynchronized IsPissedFlag. Default HUD-message layer is OverHUD,
+// so this covers SBARINFO's static Player.ScoreIcon at the same coordinates.
+function void DrawBossPhaseMugOverlay(str ordinary) {
+  str mug = ACS_NamedExecuteWithResult("uh_GetTeamPortraitForTid", ActivatorTID());
+  if (!StrLen(mug) || !StrICmp(mug, ordinary) || !CheckFont(mug)) {return;}
+  DrawMugshotOverlay(mug, UH_IMAGE_ID_BASE + 62);
 }
 
 // The FUTURE

@@ -5,6 +5,9 @@
 
 #include "zcommon.acs"
 
+// The shared registry now exceeds compact bytecode's 256-function limit.
+#nocompact
+
 #libdefine UH_MAX_VANILLA_BOSS 1000
 #libdefine UH_MAX_CUSTOM_BOSS 256
 #libdefine UH_MAX_VANILLA_SURV 128
@@ -3653,11 +3656,17 @@ function bool RunBonusEventEnd(int id, int result) {
 #libdefine UHTIP_STR_NAME 1
 #libdefine UHTIP_STR_PORTRAIT 2
 #libdefine UHTIP_STR_SCOREICON 3
-#libdefine UHTIP_STR_COUNT 4
+#libdefine UHTIP_STR_BOSSMUG 4
+#libdefine UHTIP_STR_COUNT 5
+#libdefine UH_MAX_TEAM_PHASES 128
+#libdefine UHTIP_PHASE_COUNT 640
 
 int uh_tipcount = 0;
-str uh_tipstr[UH_MAX_TEAM_PRESENTATION][UHTIP_STR_COUNT];
-int uh_tipflags[UH_MAX_TEAM_PRESENTATION];
+// UHDT already occupies all 128 map-variable slots. Keep stage variants in
+// the reserved tail of the existing presentation arrays, without consuming
+// additional slots. Ordinary row indices/count/flags retain their contract.
+str uh_tipstr[UH_MAX_TEAM_PRESENTATION + UH_MAX_TEAM_PHASES][UHTIP_STR_COUNT];
+int uh_tipflags[UH_MAX_TEAM_PRESENTATION + UH_MAX_TEAM_PHASES + 1];
 
 function int FindTeamPresentation(str actor) {
   if (StrCmp(actor, "") == 0)
@@ -3722,6 +3731,51 @@ function int GetTeamPresentationFlags(int row) {
   if (row < 0 || row >= uh_tipcount)
     return 0;
   return uh_tipflags[row];
+}
+
+// Stage variants share the actor key, never the gameplay definition id.
+// Phase 0 is the ordinary presentation; 1..255 are explicit stable stage ids.
+// Highest matching inventory trigger wins. Registration order is not a wire id.
+
+function int FindTeamPhasePresentation(str actor, int phase) {
+  int end = UH_MAX_TEAM_PRESENTATION + uh_tipflags[UHTIP_PHASE_COUNT];
+  for (int i = UH_MAX_TEAM_PRESENTATION; i < end; i++) {
+    if (uh_tipflags[i] == phase && !StrICmp(actor, uh_tipstr[i][UHTIP_STR_ACTOR]))
+      return i;
+  }
+  return UHTIP_NONE;
+}
+
+function int TeamPhasePresentationRegister(str actor, int phase, str trigger,
+  str portrait, str scoreIcon, str bossMug) {
+  if (!StrLen(actor) || phase < 1 || phase > 255 || !StrLen(trigger))
+    return UHTIP_NONE;
+  int row = FindTeamPhasePresentation(actor, phase);
+  if (row == UHTIP_NONE) {
+    if (uh_tipflags[UHTIP_PHASE_COUNT] >= UH_MAX_TEAM_PHASES) {return UHTIP_TABLE_FULL;}
+    row = UH_MAX_TEAM_PRESENTATION + uh_tipflags[UHTIP_PHASE_COUNT];
+    uh_tipflags[UHTIP_PHASE_COUNT]++;
+  }
+  uh_tipstr[row][UHTIP_STR_ACTOR] = actor;
+  uh_tipflags[row] = phase;
+  uh_tipstr[row][UHTIP_STR_NAME] = trigger;
+  uh_tipstr[row][UHTIP_STR_PORTRAIT] = portrait;
+  uh_tipstr[row][UHTIP_STR_SCOREICON] = scoreIcon;
+  uh_tipstr[row][UHTIP_STR_BOSSMUG] = bossMug;
+  return row;
+}
+
+// SERVER ONLY: remote player inventories are not an authoritative client source.
+function int UH_PlayerPresentationPhase(int tid) {
+  str actor = GetActorClass(tid);
+  int phase = 0;
+  int end = UH_MAX_TEAM_PRESENTATION + uh_tipflags[UHTIP_PHASE_COUNT];
+  for (int i = UH_MAX_TEAM_PRESENTATION; i < end; i++) {
+    if (uh_tipflags[i] > phase && !StrICmp(actor, uh_tipstr[i][UHTIP_STR_ACTOR])
+      && CheckActorInventory(tid, uh_tipstr[i][UHTIP_STR_NAME]) > 0)
+      phase = uh_tipflags[i];
+  }
+  return phase;
 }
 
 // --- Unified player presentation resolver ------------------------------------
@@ -3804,6 +3858,30 @@ function str UH_PlayerScoreIcon(str actor) {
   if (StrCmp(icon, "") != 0)
     return icon;
   return uh_tipstr[row][UHTIP_STR_PORTRAIT];
+}
+
+// Unknown stages and empty variant textures retain the ordinary face.
+function str UH_PlayerPhasePortrait(str actor, int phase) {
+  int row = FindTeamPhasePresentation(actor, phase);
+  if (row != UHTIP_NONE && StrLen(uh_tipstr[row][UHTIP_STR_PORTRAIT]))
+    return uh_tipstr[row][UHTIP_STR_PORTRAIT];
+  return UH_PlayerPortrait(actor);
+}
+
+function str UH_PlayerPhaseScoreIcon(str actor, int phase) {
+  int row = FindTeamPhasePresentation(actor, phase);
+  if (row != UHTIP_NONE) {
+    if (StrLen(uh_tipstr[row][UHTIP_STR_SCOREICON])) {return uh_tipstr[row][UHTIP_STR_SCOREICON];}
+    if (StrLen(uh_tipstr[row][UHTIP_STR_PORTRAIT])) {return uh_tipstr[row][UHTIP_STR_PORTRAIT];}
+  }
+  return UH_PlayerScoreIcon(actor);
+}
+
+// Raw boss-HUD font differs in scale from the teammate/scoreboard texture.
+function str UH_PlayerPhaseBossMug(str actor, int phase) {
+  int row = FindTeamPhasePresentation(actor, phase);
+  if (row != UHTIP_NONE) {return uh_tipstr[row][UHTIP_STR_BOSSMUG];}
+  return "";
 }
 
 // --- Team-info identity sync -------------------------------------------------
