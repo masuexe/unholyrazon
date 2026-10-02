@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261003
 
+- 将 Deadly Firearms 的 assist 图标替换为 v7a 版本
 - 修复 Cobe 变身后未装配武器、无法攻击的问题
 - 调整 Cobe 武器条：使用 M1 掷出斧头后才填满，斧头返回或收回后清空，与 Unbound 原版一致
 - 优化 Cobe 的武器条特效
