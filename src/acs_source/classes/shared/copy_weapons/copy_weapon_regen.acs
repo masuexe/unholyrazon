@@ -57,6 +57,35 @@ function str UH_CopyWepNegaAmmo(int slot) {
   return "";
 }
 
+// Only the equipped weapon's cooldown blocks Ready regeneration.
+function int UH_CopyWepInCooldown(str wep) {
+  if (StrICmp(wep, "SparkShockWepU") == 0)
+    return CheckInventory("SparkShockCooldownFlag");
+  if (StrICmp(wep, "TornadoHoldWepU") == 0)
+    return CheckInventory("TornadoHoldCooldownFlag");
+  if (StrICmp(wep, "HornetChaserWepU") == 0)
+    return CheckInventory("HornetChaserCooldownFlag");
+  if (StrICmp(wep, "IceWallWepU") == 0)
+    return CheckInventory("IceWallCooldownFlag");
+  if (StrICmp(wep, "TimeSlowWepU") == 0)
+    return CheckInventory("TimeSlowCooldown");
+  if (StrICmp(wep, "SkullBarrierWepU") == 0)
+    return CheckInventory("SkullBarrierCooldown");
+  if (StrICmp(wep, "LightningBoltWepU") == 0)
+    return CheckInventory("LightningBoltCooldown");
+  if (StrICmp(wep, "BlackHoleBombWepU") == 0)
+    return CheckInventory("BlackHoleBombCooldown");
+  if (StrICmp(wep, "SolarBlazeWepU") == 0)
+    return CheckInventory("SolarBlazeCooldown");
+  if (StrICmp(wep, "CommandoBombWepU") == 0)
+    return CheckInventory("CommandoCooldown");
+  if (StrICmp(wep, "FlashStopperWepU") == 0)
+    return CheckInventory("FlashStopperWait");
+  if (StrICmp(wep, "NegaTimeSlowWep") == 0)
+    return CheckInventory("NegaTimeSlowCooldownFlag");
+  return 0;
+}
+
 // immediate: 1 = one Ready pulse (8-tic DECORATE loops). 0 = MegaManU 1-tic gate.
 script "uh_CopyWepReadyRegen" (int immediate) {
   int pn = PlayerNumber();
@@ -75,6 +104,11 @@ script "uh_CopyWepReadyRegen" (int immediate) {
   }
 
   wep = GetWeapon();
+  if (UH_CopyWepInCooldown(wep)) {
+    uh_cwregencount[pn] = 0;
+    SetResultValue(0);
+    terminate;
+  }
   len = StrLen(wep);
 
   if (!immediate) {
