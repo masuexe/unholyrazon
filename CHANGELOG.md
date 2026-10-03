@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261003
 
+- 移植 HarpStrumm 幸运值系统；幸运值改用玩家类专属变量，预防共享变量冲突问题
 - 将 Razon 3 的特有道具接入对应箱子池中
 - 将 1UP LMS 事件改为发放一个 Dickhead
 - 将 LMS 惩罚的提示、图标和效果迁移到动态数据库，统一由 `DefineLMSEvent` 定义普通／稀有／惩罚信息，并按事件编号整理奖励与惩罚注册；新增 addon 接口与示例，用法见 [LMS Event API](docs/lms-event-api.md)
