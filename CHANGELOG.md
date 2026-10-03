@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261004
 
+- 移除 Survivor 保护中的 EdenBomb 免伤，使 Eden 炸弹（含 Troll Bomb／Mega Troll Bomb）可伤害自己、队友及敌人
 - 将 TimeStopperUFlag 上限从 560 调整为 2240，保持每 tic 恢复 1 点，使充满时间恢复为 Unbound 原版的 64 秒
 - 修复 FFA 小游戏将敌人误判为队友，导致 Zangief 抓取／摔投不造成伤害、KickChamp 滑踢给予敌人免伤的问题（含 Shiny）
 - 将 KamikazeEye 长按 M1 爆炸接入 v7a 版爆炸后回血：每 2 tic 恢复 2 点生命，总计 250 点
