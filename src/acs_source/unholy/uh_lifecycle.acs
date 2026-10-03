@@ -481,65 +481,22 @@ script "rz_MercyRuneGiver" (int tid) {
   }
 }
 
-// Reverse rewards for Bad LMS.  The original event id is preserved so each
-// vanilla event can punish the last survivor in its own Razon3-style way.
+// Execute the penalty registered for this event (or the shared default).
 function void GrantBadLMSEventDrops(int tid, int lmsnum) {
-  int itemid;
-  switch (lmsnum) {
-    case 0:
-      GiveActorInventory(tid, "AutoSuperGUHUItem", 1);
-      break;
-    case 1:
-      GiveActorInventory(tid, "PowerLMSBadProtection", 1);
-      break;
-    case 2:
-      GiveBossesTheFunc("BadEventBossProtection", 1);
-      break;
-    case 3:
-      break;
-    case 4:
-      GiveBossesTheFunc("GoldenWaspBombItem", 1);
-      break;
-    case 5:
-      for (itemid = 0; itemid < 256; itemid++) {
-        if (IsItemDefined(itemid)) {
-          TakeActorInventory(tid, GetItemActor(itemid), 9999);
-        }
-      }
-      itemid = -1;
-      while (IsItemDefined(itemid)) {
-        TakeActorInventory(tid, GetItemActor(itemid), 9999);
-        itemid--;
-      }
-      break;
-    case 6:
-      GiveBossesTheFunc("InfiniteRocketItem", 1);
-      break;
-    case 7:
-      GiveBossesTheFunc("PancakeFoodItem", 1);
-      GiveBossesTheFunc("CakeFoodItem", 1);
-      GiveBossesTheFunc("HotdogFoodItem", 1);
-      GiveBossesTheFunc("SundaeFoodItem", 1);
-      GiveBossesTheFunc("HamburgerFoodItem", 1);
-      break;
-    case 8:
-      GiveBossesTheFunc("InfiniteRubberBandItem", 1);
-      break;
-    case 9:
-      break;
-    case 10:
-      GiveActorInventory(tid, "PowerLMSDarkness", 1);
-      break;
-    case 11:
-      GiveActorInventory(tid, "HorseMorphGiver", 1);
-      break;
-    case 12:
-      GiveActorInventory(tid, "LMSBadGuyAppears_P", 1);
-      break;
-    default:
-      GiveActorInventory(tid, "PowerLMSBadProtection", 1);
-      GiveActorInventory(tid, "LMSBadGuyAppears_P", 1);
-      break;
+  if (GetLMSEventPenaltyFlags(lmsnum) & UHLMS_PENALTY_CLEAR_ITEMS) {
+    for (int itemid = 0; itemid < UH_MAX_VANILLA_ITEM; itemid++) {
+      if (IsItemDefined(itemid)) TakeActorInventory(tid, GetItemActor(itemid), 9999);
+    }
+    int customid = -1;
+    while (IsItemDefined(customid)) {
+      TakeActorInventory(tid, GetItemActor(customid), 9999);
+      customid--;
+    }
+  }
+  GrantLMSEventPenaltyDrops(tid, lmsnum, UHLMS_PENALTY_SURVIVOR);
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    if (PlayerInGame(p) && playerlifestatusarr[p] == PLS_BOSS)
+      GrantLMSEventPenaltyDrops(p + 1000, lmsnum, UHLMS_PENALTY_BOSSES);
   }
 }
 

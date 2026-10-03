@@ -45,6 +45,12 @@
 #libdefine UH_MAX_LMS_EVENTS 256
 #libdefine UHLMS_MAX_WEIGHT 1000000
 #libdefine UH_MAX_LMS_DROPS 512
+#libdefine UHLMS_PENALTY_CLEAR_ITEMS 1
+#libdefine UHLMS_PENALTY_USE_DEFAULT 2
+#libdefine UHLMS_PENALTY_SURVIVOR 0
+#libdefine UHLMS_PENALTY_BOSSES 1
+#define UHLMS_PENALTY_DEFINED 65536
+#define UHLMS_PENALTY_DEFAULT (UH_MAX_LMS_EVENTS * 2)
 #libdefine UHCOPY_FAIL -9999
 #libdefine UHMUS_FAIL -9999
 #libdefine UHLMS_FAIL -9999
@@ -2471,11 +2477,11 @@ function int PickEventMusicRow(int kind, int phase) {
 
 int uh_lmsdefined[UH_MAX_LMS_EVENTS];
 str uh_lmsstem[UH_MAX_LMS_EVENTS];
-str uh_lmsmessage[UH_MAX_LMS_EVENTS];
+str uh_lmsmessage[UH_MAX_LMS_EVENTS * 2 + 1];
 str uh_lmsraremessage[UH_MAX_LMS_EVENTS];
-str uh_lmsicon[UH_MAX_LMS_EVENTS];
+str uh_lmsicon[UH_MAX_LMS_EVENTS * 2 + 1];
 str uh_lmsrareicon[UH_MAX_LMS_EVENTS];
-int uh_lmsflags[UH_MAX_LMS_EVENTS];
+int uh_lmsflags[UH_MAX_LMS_EVENTS * 2 + 1];
 int uh_lmsweight[UH_MAX_LMS_EVENTS];
 int uh_lmsnextcustomid = 12;
 
@@ -2503,12 +2509,13 @@ function int FindLMSEventByStem(str stem) {
   return UHLMS_FAIL;
 }
 
-function int DefineLMSEventCore(int id, str stem, str message, str raremessage, str icon, str rareicon, int flags, int weight) {
+function int DefineLMSEventCore(int id, str stem, str message, str raremessage, str penaltymessage, str icon, str rareicon, str penaltyicon, int flags, int penaltyflags, int weight) {
   int other;
   int i;
   if (StrCmp(stem, "") == 0)
     return UHLMS_FAIL;
-  if (weight < 0 || weight > UHLMS_MAX_WEIGHT)
+  if (weight < 0 || weight > UHLMS_MAX_WEIGHT || penaltyflags < 0 ||
+      penaltyflags > UHLMS_PENALTY_USE_DEFAULT)
     return UHLMS_FAIL;
 
   if (id == -1) {
@@ -2546,6 +2553,7 @@ function int DefineLMSEventCore(int id, str stem, str message, str raremessage, 
   uh_lmsrareicon[id] = rareicon;
   uh_lmsflags[id] = flags;
   uh_lmsweight[id] = weight;
+  SetLMSEventPenaltyCore(id, penaltymessage, penaltyicon, penaltyflags);
 
   if (id >= 12 && id >= uh_lmsnextcustomid)
     uh_lmsnextcustomid = id + 1;
@@ -3890,3 +3898,76 @@ function str UH_PlayerPhaseBossMug(str actor, int phase) {
 // lesson is that both definition ids and presentation rows are assigned in load
 // order, which makes them unsafe to synchronise between peers that may have
 // loaded a different addon set.
+
+// --- LMS penalties ---------------------------------------------------------
+// Configure metadata before registering drops. Missing variants use the
+// registered default; explicit variants (including empty ones) suppress it.
+// Metadata uses the second half of existing LMS arrays to preserve import
+// indices and stay within ACC's 128 map-variable limit. Last cell = default.
+// Drops share the LMS drop table: rare 2 = survivor, 3 = boss team.
+
+function int FindLMSEventPenaltyId(str stem) {
+  if (StrCmp(stem, "") == 0) return -1;
+  return FindLMSEventByStem(stem);
+}
+
+function int SetLMSEventPenaltyCore(int id, str message, str icon, int flags) {
+  if (id != -1 && !IsLMSEventDefined(id)) return UHLMS_FAIL;
+  if (flags < 0 || flags > UHLMS_PENALTY_USE_DEFAULT ||
+      (id == -1 && flags == UHLMS_PENALTY_USE_DEFAULT)) return UHLMS_FAIL;
+  int slot = UH_MAX_LMS_EVENTS + id;
+  if (id == -1) slot = UHLMS_PENALTY_DEFAULT;
+  uh_lmsmessage[slot] = message;
+  uh_lmsicon[slot] = icon;
+  if (flags == UHLMS_PENALTY_USE_DEFAULT) uh_lmsflags[slot] = 0;
+  else uh_lmsflags[slot] = flags | UHLMS_PENALTY_DEFINED;
+  return id;
+}
+
+function int GetLMSEventPenaltySlot(int id) {
+  if (IsLMSEventDefined(id) &&
+      (uh_lmsflags[UH_MAX_LMS_EVENTS + id] & UHLMS_PENALTY_DEFINED))
+    return UH_MAX_LMS_EVENTS + id;
+  return UHLMS_PENALTY_DEFAULT;
+}
+
+function str GetLMSEventPenaltyMessage(int id) {
+  return uh_lmsmessage[GetLMSEventPenaltySlot(id)];
+}
+
+function str GetLMSEventPenaltyIcon(int id) {
+  return uh_lmsicon[GetLMSEventPenaltySlot(id)];
+}
+
+function int GetLMSEventPenaltyFlags(int id) {
+  return uh_lmsflags[GetLMSEventPenaltySlot(id)] & ~UHLMS_PENALTY_DEFINED;
+}
+
+// Same (event, actor, amount, target) is idempotent, just like normal drops.
+function int AddLMSEventPenaltyDropCore(int id, str actor, int amt, int target) {
+  if (id != -1 && !IsLMSEventDefined(id)) return UHLMS_FAIL;
+  if (StrCmp(actor, "") == 0 || amt < 1 || target < 0 || target > 1)
+    return UHLMS_FAIL;
+  int mode = target + 2;
+  for (int i = 0; i < uh_lmsdropcount; i++) {
+    if (uh_lmsdropeventid[i] == id && uh_lmsdroprare[i] == mode &&
+        uh_lmsdropamt[i] == amt && !StrICmp(uh_lmsdropitem[i], actor)) return i;
+  }
+  if (uh_lmsdropcount >= UH_MAX_LMS_DROPS) return UHLMS_FAIL;
+  int row = uh_lmsdropcount++;
+  uh_lmsdropeventid[row] = id;
+  uh_lmsdropitem[row] = actor;
+  uh_lmsdropamt[row] = amt;
+  uh_lmsdroprare[row] = mode;
+  return row;
+}
+
+// The round core supplies the recipient TID; UHDT has no Unholy side state.
+function void GrantLMSEventPenaltyDrops(int tid, int id, int target) {
+  if (target < 0 || target > 1) return;
+  if (GetLMSEventPenaltySlot(id) == UHLMS_PENALTY_DEFAULT) id = -1;
+  for (int i = 0; i < uh_lmsdropcount; i++) {
+    if (uh_lmsdropeventid[i] == id && uh_lmsdroprare[i] == target + 2)
+      GiveActorInventory(tid, uh_lmsdropitem[i], uh_lmsdropamt[i]);
+  }
+}

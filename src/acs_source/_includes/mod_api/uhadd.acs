@@ -526,7 +526,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 // Empty pool for that eventid → ub_LMS_EventTime falls back to lmsListArray music.
 //
 // === DefineLMSEvent addon recipe =============================================
-// Full last-survivor event (messages, icons, drops, dual-rune flag, pool weight).
+// Full last-survivor event: normal/rare/penalty messages and icons, flags, weight.
 // Drops and music bind by stem (stable). DefineLMSEvent(-1) still returns id for RCON.
 // 1. LOADACS after Unholy: YOUR_LMSDEFS
 // 2. ACS:
@@ -535,10 +535,11 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 //      #import "uh_log.acs"   // required: UHADD's own bodies call UH_Log()
 //      #include "uhadd.acs"   // lowercase: ACC include paths are case-sensitive
 //      function void YourRegisterLMS(void) {
-//          DefineLMSEvent(-1, "my_lms", "Normal msg", "Rare msg",
-//              "MYLMS_E", "MYLMS_X", 0, 1);
+//          DefineLMSEvent(-1, "my_lms", "Normal msg", "Rare msg", "They get stronger!",
+//              "MYLMS_E", "MYLMS_X", "MYLMS_B", 0, 0, 1);
 //          AddLMSEventDrop("my_lms", "GUHUItem", 1, 0);
 //          AddLMSEventDrop("my_lms", "SuperGUHUItem", 1, 1);
+//          AddLMSEventPenaltyDrop("my_lms", "GoldenWaspBombItem", 1, UHLMS_PENALTY_BOSSES);
 //          AddLMSMusicByStem("my_lms", "M_MYLMS", "My LMS Theme", "Game", "", 1, 0);
 //      }
 //      script "your_define_lms" OPEN {
@@ -553,6 +554,13 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 // 5. icon "" → LMS_E# / LMS_X# fallback (vanilla). Custom ids need explicit fonts.
 // 6. Drops optional (vanilla dual-rune event has none). rare 0=normal, 1=rare fire.
 // 7. Do not pass -1 to AddLMSEventDrop — use the stem string.
+// 8. DefineLMSEvent and UpdateLMSEvent include penaltymessage, penaltyicon and
+//    penaltyflags. AddLMSEventPenaltyDrop targets SURVIVOR or BOSSES.
+//    UHLMS_PENALTY_CLEAR_ITEMS clears registered items before penalty grants.
+//    UHLMS_PENALTY_USE_DEFAULT selects shared fallback metadata and drops;
+//    otherwise empty penalty fields/no drops mean no extra penalty effects.
+//    Stem "" addresses the shared fallback when adding penalty drops.
+//    Rune reversal follows ordinary flags. Metadata updates retain drop rows.
 
 // === DefineBonusEvent addon recipe ==========================================
 // Full round-level bonus event: metadata, random eligibility, EX relation and
@@ -721,6 +729,10 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 #define UHMUS_ERR_CAPACITY 4
 #define UHMUS_ERR_BADARG 5
 #define UHLMS_FLAG_DUALRUNE 1
+#define UHLMS_PENALTY_CLEAR_ITEMS 1
+#define UHLMS_PENALTY_USE_DEFAULT 2
+#define UHLMS_PENALTY_SURVIVOR 0
+#define UHLMS_PENALTY_BOSSES 1
 #define UHEYE_FLAG_NOSUFFIX 1
 
 #define UHBOSS_POOL_NONE 0
@@ -1710,14 +1722,17 @@ function int AddLMSMusic(int eventid, str lump, str title, str album, str artist
 }
 
 // Define a last-survivor LMS event. id -1 = auto >=12. weight 0 = force only.
-function int DefineLMSEvent(int id, str stem, str message, str raremessage, str icon, str rareicon, int flags, int weight) {
+function int DefineLMSEvent(int id, str stem, str message, str raremessage, str penaltymessage, str icon, str rareicon, str penaltyicon, int flags, int penaltyflags, int weight) {
   SetCVar("uh_le_id", id);
   SetCVarString("uh_le_stem", stem);
   SetCVarString("uh_le_message", message);
   SetCVarString("uh_le_raremessage", raremessage);
+  SetCVarString("uh_le_penaltymessage", penaltymessage);
   SetCVarString("uh_le_icon", icon);
   SetCVarString("uh_le_rareicon", rareicon);
+  SetCVarString("uh_le_penaltyicon", penaltyicon);
   SetCVar("uh_le_flags", flags);
+  SetCVar("uh_le_penaltyflags", penaltyflags);
   SetCVar("uh_le_weight", weight);
   return ACS_NamedExecuteWithResult("uh_DefineLMSEvent_S");
 }
@@ -1733,13 +1748,16 @@ function int SetLMSEventEnabled(int id, int enabled) {
 function int DisableLMSEvent(int id) {return SetLMSEventEnabled(id, 0);}
 function int EnableLMSEvent(int id) {return SetLMSEventEnabled(id, 1);}
 
-function int UpdateLMSEvent(int id, str message, str raremessage,
-  str icon, str rareicon, int flags, int weight) {
+function int UpdateLMSEvent(int id, str message, str raremessage, str penaltymessage,
+  str icon, str rareicon, str penaltyicon, int flags, int penaltyflags, int weight) {
   int ipc = SetCVarString("uh_le_message", message);
   ipc = ipc & SetCVarString("uh_le_raremessage", raremessage);
+  ipc = ipc & SetCVarString("uh_le_penaltymessage", penaltymessage);
   ipc = ipc & SetCVarString("uh_le_icon", icon);
   ipc = ipc & SetCVarString("uh_le_rareicon", rareicon);
+  ipc = ipc & SetCVarString("uh_le_penaltyicon", penaltyicon);
   ipc = ipc & SetCVar("uh_le_flags", flags);
+  ipc = ipc & SetCVar("uh_le_penaltyflags", penaltyflags);
   ipc = ipc & SetCVar("uh_le_weight", weight);
   if (!ipc)
     return UHDB_ERR_BADARG;
@@ -1756,11 +1774,11 @@ function int SetLMSEventEnabledByStem(str stem, int enabled) {
   return SetLMSEventEnabled(id, enabled);
 }
 
-function int UpdateLMSEventByStem(str stem, str message, str raremessage,
-  str icon, str rareicon, int flags, int weight) {
+function int UpdateLMSEventByStem(str stem, str message, str raremessage, str penaltymessage,
+  str icon, str rareicon, str penaltyicon, int flags, int penaltyflags, int weight) {
   int id = UH_FindLMSEventByStem(stem);
   if (id == UHLMS_FAIL) return UHDB_ERR_NOTFOUND;
-  return UpdateLMSEvent(id, message, raremessage, icon, rareicon, flags, weight);
+  return UpdateLMSEvent(id, message, raremessage, penaltymessage, icon, rareicon, penaltyicon, flags, penaltyflags, weight);
 }
 
 function int RemoveLMSEventByStem(str stem) {
@@ -2414,4 +2432,35 @@ function int DefineShinyMegaCopyWep(str fireactor, int which, int weight) {
   SetCVarString("uh_sm_wep", fireactor);
   SetCVar("uh_sm_weight", weight);
   return ACS_NamedExecuteWithResult("uh_DefineShinyMegaCopyWep_S");
+}
+
+// Shared Bad LMS fallback for events selecting UHLMS_PENALTY_USE_DEFAULT.
+// DefineLMSEvent / UpdateLMSEvent own per-event penalty metadata.
+function int SetDefaultLMSEventPenalty(str message, str icon, int flags) {
+  SetCVarString("uh_le_penaltymessage", message);
+  SetCVarString("uh_le_penaltyicon", icon);
+  SetCVar("uh_le_penaltyflags", flags);
+  return ACS_NamedExecuteWithResult("uh_SetDefaultLMSEventPenalty_S");
+}
+
+function int AddLMSEventPenaltyDrop(str stem, str actor, int amt, int target) {
+  SetCVarString("uh_le_stem", stem);
+  SetCVarString("uh_le_item", actor);
+  SetCVar("uh_le_amt", amt);
+  SetCVar("uh_le_rare", target);
+  return ACS_NamedExecuteWithResult("uh_AddLMSEventPenaltyDrop_S");
+}
+
+function str UH_GetLMSEventPenaltyMessage(int id) {
+  ACS_NamedExecuteWithResult("uh_GetLMSEventPenaltyMessage_S", id);
+  return GetCVarString("uh_le_out_str");
+}
+
+function str UH_GetLMSEventPenaltyIcon(int id) {
+  ACS_NamedExecuteWithResult("uh_GetLMSEventPenaltyIcon_S", id);
+  return GetCVarString("uh_le_out_str");
+}
+
+function int UH_GetLMSEventPenaltyFlags(int id) {
+  return ACS_NamedExecuteWithResult("uh_GetLMSEventPenaltyFlags_S", id);
 }
