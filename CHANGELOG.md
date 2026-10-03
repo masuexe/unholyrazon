@@ -32,12 +32,17 @@
 - Cobe 攻击和嘲讽语音现在会随机播放四种语言的 dadadadada
 - 修复在线 Boss 对决的名称与 VS 图标显示
 - 修复 Clownpiece 符卡名称、奖励状态及倒计时在联机客户端不显示的问题，并修正阶段切换后的计时器重启和中途加入同步
-- 补全 BlackDevilEye、ThomasTheTrain、MakeAGoodZero 二阶段武器及 TorontoCalifornia 的 Reload 图标定义
+- 补全以下机体的 Reload 图标定义
+  - BlackDevilEye
+  - ThomasTheTrain
+  - Magnetismo
+  - Elitist Sue
+  - MakeAGoodZero 二阶段武器
+  - TorontoCalifornia
 - 修复 LMS 惩罚自动触发 Super GUHU 后，因玩家未持有普通道具而在倒计时结束时计算出零爆炸伤害的问题；自动触发至少按一份道具计算，保留正常道具的叠加伤害倍率
 - 移除 X-Ray 剩两人时的 30 秒限制
 - 移除 Clownpiece 的后面两个非符阶段
 - 修复 BlueElephant 击杀没有跳脸的问题，补全相关音效
-- 补全 Magnetismo 和 Elitist Sue 的 ReloadIcon
 - 将 Nega 其余复制武器共用的 Mega 伤害类型改为专用类型（含 Shiny、Search Snake 和 Chill Shot 的继承类型），补齐队友保护及受伤／死亡映射，移除每日随机友伤
 - 弹簧眼的存活时间 61 -> 600
 - Misery 的移动速度 1.2 -> 1.0
