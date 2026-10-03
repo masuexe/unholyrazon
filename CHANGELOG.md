@@ -1,6 +1,7 @@
 ## 4.0.0-beta.261003
 
 - 将 Razon 3 的特有道具接入对应箱子池中
+- 将 1UP LMS 事件改为发放一个 Dickhead
 - 将 Deadly Firearms 的 assist 图标替换为 v7a 版本
 - 修复 Cobe 变身后未装配武器、无法攻击的问题
 - 调整 Cobe 武器条：使用 M1 掷出斧头后才填满，斧头返回或收回后清空，与 Unbound 原版一致
