@@ -4,6 +4,9 @@
 - 调整 Spark Shock 等带冷却的复制武器：冷却期间暂停自动回蓝，冷却结束后恢复，期间不累计回蓝计时
 - 移植 Razon 3 的 Death Shitting 机制到 Bonus Stage
 - 新增 Bonus Stage Death Shitting 服务器开关（`uh_sv_bonusdeathshitting`），默认开启，可在 Server Options → Events 中调整，修改立即影响后续死亡；普通 Boss 回合不触发
+- 重做 MegaMan 每日复制武器随机：服主可分别设置普通武器、小神装和大神装的倍率区间，小／大神装独立开关，并可设置两档神装及友伤武器每日随机数量的 min／max；两档神装不重复，友伤名单独立抽选，同一天相同配置下结果固定，配置修改即时生效
+- 移除 MegaMan 原先 40–60 倍及 80–120 倍超稀有神装档；默认普通倍率为 0.75–1.25，小神装每天 2–4 把、2–3 倍，大神装每天 0–1 把、4–6 倍，友伤武器每天 6–10 把（数量指整个官方武器池，不保证单个玩家获得）
+- 新增 MegaMan Daily Weapons 服务器设置菜单，数值支持直接输入；关闭每日伤害随机时相关设置置灰，友伤数量由独立友伤开关控制；配置说明见 [MegaMan 每日武器](docs/megaman-daily-weapons.md)
 
 ## 4.0.0-beta.261003
 

@@ -1,55 +1,34 @@
 // --- Daily MegaMan copywep team-FF (leak weapons only; damage = uh_TodayDmgMul result) ---
-#define UH_TEAMFF_LEAK_MAX 8
+#define UH_TEAMFF_LEAK_MAX UH_MEGA_DAILY_MAX
 #define UH_TEAMFF_SALT 424242
 
 int uh_teamffleakids[UH_TEAMFF_LEAK_MAX];
 int uh_teamffleakdate;
 int uh_teamffleakofficial;
 int uh_teamffleakcount;
+int uh_teamffleakwant = -1;
 
 function void UH_EnsureTodayTeamFFLeaks(void) {
   int date = UH_DateToInt();
-  int official = GetMegaOfficialCopyCount();
-  int want;
-  int picked;
-  int attempt;
+  int official = UH_MegaDailyOfficialCount();
+  int want = UH_MegaDailyCount("rz_sv_mega_ff_count_min", "rz_sv_mega_ff_count_max", UH_TEAMFF_SALT);
   int i;
   int j;
-  int id;
-  int dup;
-
-  if (official < 1)
-    official = 103;
-  if (uh_teamffleakdate == date && uh_teamffleakofficial == official)
+  int temp;
+  if (uh_teamffleakdate == date && uh_teamffleakofficial == official && uh_teamffleakwant == want)
     return;
-
   uh_teamffleakdate = date;
   uh_teamffleakofficial = official;
-  want = UH_TEAMFF_LEAK_MAX;
-  if (want > official)
-    want = official;
-
-  for (i = 0; i < UH_TEAMFF_LEAK_MAX; i++)
-    uh_teamffleakids[i] = 0;
-
-  picked = 0;
-  attempt = 0;
-  while (picked < want && attempt < 1000) {
-    attempt++;
-    id = UH_SeedRandom(date + UH_TEAMFF_SALT + attempt * 97, 1, official);
-    dup = 0;
-    for (j = 0; j < picked; j++) {
-      if (uh_teamffleakids[j] == id) {
-        dup = 1;
-        break;
-      }
-    }
-    if (!dup) {
-      uh_teamffleakids[picked] = id;
-      picked++;
-    }
+  uh_teamffleakwant = want;
+  for (i = 0; i < official; i++)
+    uh_teamffleakids[i] = i + 1;
+  for (i = 0; i < want; i++) {
+    j = UH_MegaDailyRandom(date + UH_TEAMFF_SALT + (i + 1) * 97, i, official - 1);
+    temp = uh_teamffleakids[i];
+    uh_teamffleakids[i] = uh_teamffleakids[j];
+    uh_teamffleakids[j] = temp;
   }
-  uh_teamffleakcount = picked;
+  uh_teamffleakcount = want;
 }
 
 function int UH_IsTodayTeamFFLeak(int wepid) {
