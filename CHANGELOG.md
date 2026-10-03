@@ -1,5 +1,7 @@
 ## 4.0.0-beta.261003
 
+- 补全 Neru 的弹匣、技能及怒气进度条和 Rage／Wrath 层数显示
+- 修复 Neru 子弹调用缺失的 `neru_countinv_acs` 导致报错刷屏、无法读取射手 Rage／Wrath 层数的问题，保留原有伤害数值
 - 修复 Zangief Shiny 空摔后半段将方向值误作被抓玩家 ID 的迁移错误
 - 修复 Zangief 抓住队友后再次 M1 只放下、不扔出的问题；普通版和 Shiny 版均补上与敌人相同的水平推力，保留队友免伤
 - 修复 Shiny／True Power 攻击链误用普通版定义的问题，恢复已有强化数值：
