@@ -1,5 +1,22 @@
 ## 4.0.0-beta.261003
 
+- 修复 Shiny／True Power 攻击链误用普通版定义的问题，恢复已有强化数值：
+  - Kate 刺击
+  - RageUnit 高怒气爆发
+  - HandyMan 下落攻击
+  - Trickster 分裂弹
+  - Igniter 碎片及死亡攻击
+  - GloryGuster 漩涡及死亡旋风
+  - Tristana 爆炸装药
+  - HeavyBomber 子弹
+  - TidalManiac 波浪及死亡水柱
+  - PartyBomber 冲撞及死亡爆炸
+  - Quickster 死亡弹
+  - DecoyBot 摔投及死亡攻击
+  - GreenElf／KickChamp／SumoWrestler 的 Bot 攻击
+- 修复 Electrician Shiny 残留弹继承普通爆炸链时伤害未强化的问题，在最终爆炸 actor 按射手机体判定，普通版保持 100，Shiny 为 150（含 DecoyBot Shiny 复制武器）
+- 修复 Kate／TidalManiac Shiny 的 Bot 选择普通武器、YellowWizard Shiny 的 Bot 尝试切换不存在的备用武器，以及 Nega Shiny SearchSnake 跳跃后回到普通子弹链的问题
+- 修复普通 Juggernaut 冲刺误用 Shiny 版爆炸的问题：普通版恢复 200 基础伤害，Shiny 版保留 300
 - 移植 HarpStrumm 幸运值系统；幸运值改用玩家类专属变量，预防共享变量冲突问题
 - 将 Razon 3 的特有道具接入对应箱子池中
 - 将 1UP LMS 事件改为发放一个 Dickhead
@@ -9,7 +26,6 @@
 - 调整 Cobe 武器条：使用 M1 掷出斧头后才填满，斧头返回或收回后清空，与 Unbound 原版一致
 - 优化 Cobe 的武器条特效
 - Cobe 攻击和嘲讽语音现在会随机播放四种语言的 dadadadada
-- 修复普通 Juggernaut 冲刺误用 Shiny 版爆炸的问题：普通版恢复 200 基础伤害，Shiny 版保留 300
 - 修复在线 Boss 对决的名称与 VS 图标显示
 - 修复 Clownpiece 符卡名称、奖励状态及倒计时在联机客户端不显示的问题，并修正阶段切换后的计时器重启和中途加入同步
 - 补全 BlackDevilEye、ThomasTheTrain、MakeAGoodZero 二阶段武器及 TorontoCalifornia 的 Reload 图标定义
