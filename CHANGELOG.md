@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261004
 
+- 将 KamikazeEye 长按 M1 爆炸接入 v7a 版爆炸后回血：每 2 tic 恢复 2 点生命，总计 250 点
 - 修复 GhostEye 事件隐身与 M2 隐身叠加时，事件隐身到期会提前解除仍有弹药的 M2 隐身的问题
 - 调整 Spark Shock 等带冷却的复制武器：冷却期间暂停自动回蓝，冷却结束后恢复，期间不累计回蓝计时
 - 移植 Razon 3 的 Death Shitting 机制到 Bonus Stage
