@@ -1,8 +1,9 @@
 ## 4.0.0-beta.261004
 
 - 修复 GhostEye 事件隐身与 M2 隐身叠加时，事件隐身到期会提前解除仍有弹药的 M2 隐身的问题
-
 - 调整 Spark Shock 等带冷却的复制武器：冷却期间暂停自动回蓝，冷却结束后恢复，期间不累计回蓝计时
+- 移植 Razon 3 的 Death Shitting 机制到 Bonus Stage
+- 新增 Bonus Stage Death Shitting 服务器开关（`uh_sv_bonusdeathshitting`），默认开启，可在 Server Options → Events 中调整，修改立即影响后续死亡；普通 Boss 回合不触发
 
 ## 4.0.0-beta.261003
 
