@@ -37,6 +37,7 @@
 - 补全 Magnetismo 和 Elitist Sue 的 ReloadIcon
 - 将 Nega 其余复制武器共用的 Mega 伤害类型改为专用类型（含 Shiny、Search Snake 和 Chill Shot 的继承类型），补齐队友保护及受伤／死亡映射，移除每日随机友伤
 - 弹簧眼的存活时间 61 -> 600
+- Misery 的移动速度 1.2 -> 1.0
 
 ## 4.0.0-beta.261002
 
