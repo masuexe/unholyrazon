@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261005
 
+- 还原并优化 Slugger（含 Shiny）的 DrawBar 与武器弹药显示
 - 修复 BirdNest（Crow Nest）速射弹／散射弹命中时缺少伤害归属 actor，导致 `core_damageactor` 报错且归属伤害未生效的问题
 
 ## 4.0.0-beta.261004.hotfix1
