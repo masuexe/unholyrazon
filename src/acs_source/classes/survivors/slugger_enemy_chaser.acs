@@ -1,0 +1,88 @@
+// Razon3 Enemy Chaser: seeker(11,15), each tic, 96/256 reacquisition chance.
+// Use the UH side model instead of native LMS hostility when choosing players.
+#define UH_SLUGGER_CHASER_RANGE 1536.0 // Original SMF_LOOK distance: 12 map blocks.
+
+function bool UH_SluggerChaserTracerValid(void) {
+  int missile = ActivatorTID();
+  bool temporaryMissile = missile == 0;
+  if (temporaryMissile) {
+    missile = UniqueTID();
+    Thing_ChangeTID(0, missile);
+  }
+  bool hasTarget = SetActivator(0, AAPTR_TRACER);
+  int victim = 0;
+  bool temporaryVictim = false;
+  if (hasTarget) {
+    victim = ActivatorTID();
+    temporaryVictim = victim == 0;
+    if (temporaryVictim) {
+      victim = UniqueTID();
+      Thing_ChangeTID(0, victim);
+    }
+  }
+  SetActivator(missile);
+  bool valid = hasTarget &&
+    ACS_NamedExecuteWithResult("uh_SluggerRocketEnemy", victim) &&
+    CheckSight(0, victim, 0);
+  if (temporaryVictim)
+    Thing_ChangeTID(victim, 0);
+  if (temporaryMissile)
+    Thing_ChangeTID(0, 0);
+  return valid;
+}
+
+function int UH_SluggerChaserCandidate(int victim) {
+  if (GetActorProperty(victim, APROP_Health) <= 0)
+    return -1;
+  int dx = GetActorX(victim) - GetActorX(0);
+  int dy = GetActorY(victim) - GetActorY(0);
+  int dz = GetActorZ(victim) - GetActorZ(0);
+  int distance = VectorLength(VectorLength(dx, dy), dz);
+  if (distance > UH_SLUGGER_CHASER_RANGE ||
+      !ACS_NamedExecuteWithResult("uh_SluggerRocketEnemy", victim) ||
+      !CheckSight(0, victim, 0))
+    return -1;
+  return distance;
+}
+
+script "uh_SluggerEnemyChaserAcquire" (void) {
+  if (UH_SluggerChaserTracerValid())
+    terminate;
+  SetPointer(AAPTR_TRACER, 0, AAPTR_NULL);
+  if (Random(0, 255) >= 96)
+    terminate;
+
+  int bestDistance = UH_SLUGGER_CHASER_RANGE + 1;
+  // Full-circle player search, unlike Rocket Launcher's narrow first lock.
+  for (int player = 0; player < MAX_PLAYERS; player++) {
+    if (!PlayerInGame(player) || PlayerIsSpectator(player))
+      continue;
+    int victim = PLN_TID + player;
+    int distance = UH_SluggerChaserCandidate(victim);
+    if (distance >= 0 && distance < bestDistance) {
+      SetPointer(AAPTR_TRACER, victim);
+      bestDistance = distance;
+    }
+  }
+
+  // Bounded ray search additionally supports shootable monsters without TIDs.
+  int temporaryTid = UniqueTID();
+  int heading = VectorAngle(GetActorVelX(0), GetActorVelY(0));
+  for (int h = 0; h < 8; h++) {
+    for (int v = -1; v <= 1; v++) {
+      int picked = PickActor(0, heading + h * (45.0 / 360), v * (45.0 / 360),
+                            UH_SLUGGER_CHASER_RANGE, temporaryTid,
+                            MF_SHOOTABLE, ML_BLOCKEVERYTHING | ML_BLOCKHITSCAN,
+                            PICKAF_RETURNTID);
+      if (!picked)
+        continue;
+      int candidateDistance = UH_SluggerChaserCandidate(picked);
+      if (candidateDistance >= 0 && candidateDistance < bestDistance) {
+        SetPointer(AAPTR_TRACER, picked);
+        bestDistance = candidateDistance;
+      }
+      if (picked == temporaryTid)
+        Thing_ChangeTID(picked, 0);
+    }
+  }
+}

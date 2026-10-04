@@ -5,6 +5,7 @@
 - 将 Slugger Shotgun 的武器 HUD 替换为 Razon 3 的素材与开火／换弹动画
 - 为 Slugger 的手枪、重机枪、火箭筒和霰弹枪加入自动近战：首次按下 M1 时，瞄准线前方 48 单位内有敌人则使用不耗弹的刺刀；优化刺刀 HUD 贴图配色为 Slugger 军绿袖口与肤色，重构持枪下沉与出刀收刀的平滑过渡动画，并补充挥刀音效与命中敌人／墙体的音效与火花反馈
 - 为 Slugger Rocket Launcher 加入轻微跟踪
+- 移植 Razon 3 的 Slugger Flame Shot、Enemy Chaser、Drop Shot 和 Two Machine Guns，接入武器箱、弹药 HUD、武器语音及共用刺刀动作；保留原版弹药量、伤害和抽取比例，Enemy Chaser 使用强跟踪并按 Unholy 阵营规则重新搜敌
 - 修复 BirdNest（Crow Nest）速射弹／散射弹命中时缺少伤害归属 actor，导致 `core_damageactor` 报错且归属伤害未生效的问题
 
 ## 4.0.0-beta.261004.hotfix1

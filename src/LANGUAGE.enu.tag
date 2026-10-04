@@ -159,6 +159,11 @@ TAG_SluggerHeavyMachineGun_W = "Slugger Machine Gun";
 TAG_SluggerRocketLauncher_W = "Slugger Lawnchair";
 TAG_SluggerShotgun_W = "Slugger Shotgun";
 TAG_SluggerZantetsuSword_W = "Slugger Zantetsu Sword";
+TAG_SluggerFlameShot_W = "Slugger Flame Shot";
+TAG_SluggerEnemyChaser_W = "Slugger Enemy Chaser";
+TAG_SluggerDropShot_W = "Slugger Drop Shot";
+TAG_SluggerTwoMachineGuns_W = "Slugger Two Machine Guns";
+
 TAG_S_Slugger_W = "\c[UH21]*\c- Slugger Flamethrower";
 TAG_Saboteur_W = "Schrodingers Preference";
 TAG_S_Saboteur_W = "\c[UH22]*\c- Schrodingers Preference";
