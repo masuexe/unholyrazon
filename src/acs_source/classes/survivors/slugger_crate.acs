@@ -1,0 +1,135 @@
+// Server-owned, map-local Slugger crate database. A weapon has one row:
+// actor, voice, inherited SluggerCrateWeaponIcon state, and relative weight.
+// Add a built-in below; UH_RegisterSluggerCrateWeapon also accepts runtime
+// registration from this library. Duplicate actors update their existing row.
+// Weight 0 disables drops but retains cleanup and roulette membership.
+#define UH_SLUGGER_CRATE_MAX 64
+#define UH_SLUGGER_CRATE_MAX_WEIGHT 1000000
+
+str uh_slugger_crate_weapon[UH_SLUGGER_CRATE_MAX];
+str uh_slugger_crate_voice[UH_SLUGGER_CRATE_MAX];
+str uh_slugger_crate_icon[UH_SLUGGER_CRATE_MAX];
+int uh_slugger_crate_weight[UH_SLUGGER_CRATE_MAX];
+int uh_slugger_crate_count;
+int uh_slugger_crate_total;
+int uh_slugger_crate_sequence[MAX_PLAYERS];
+
+function int UH_RegisterSluggerCrateWeapon(str weapon, str voice, str icon, int weight) {
+  if (StrLen(weapon) == 0 || StrICmp(weapon, "SluggerPistol_W") == 0 ||
+      weight < 0 || weight > UH_SLUGGER_CRATE_MAX_WEIGHT)
+    return -1;
+  int row = uh_slugger_crate_count;
+  for (int i = 0; i < uh_slugger_crate_count; i++) {
+    if (StrICmp(weapon, uh_slugger_crate_weapon[i]) == 0) {
+      row = i;
+      break;
+    }
+  }
+  if (row == UH_SLUGGER_CRATE_MAX)
+    return -1;
+  int total = uh_slugger_crate_total - uh_slugger_crate_weight[row] + weight;
+  if (total > UH_SLUGGER_CRATE_MAX_WEIGHT ||
+      UH_RegisterMultiWeapon("Slugger", weapon) == UH_MULTIWEAPON_FAIL)
+    return -1;
+  uh_slugger_crate_weapon[row] = weapon;
+  uh_slugger_crate_voice[row] = voice;
+  uh_slugger_crate_icon[row] = icon;
+  uh_slugger_crate_weight[row] = weight;
+  uh_slugger_crate_total = total;
+  if (row == uh_slugger_crate_count)
+    uh_slugger_crate_count++;
+  return row;
+}
+
+script "uh_RegisterSluggerCrateWeapons" OPEN {
+  // Sword: 7/112 = 1/16. Each other weapon: 15/112.
+  UH_RegisterSluggerCrateWeapon("SluggerHeavyMachineGun_W", "MetalSlugXX/VoiceH", "S1", 15);
+  UH_RegisterSluggerCrateWeapon("SluggerRocketLauncher_W", "MetalSlugXX/VoiceR", "S2", 15);
+  UH_RegisterSluggerCrateWeapon("SluggerShotgun_W", "MetalSlugXX/VoiceS", "S3", 15);
+  UH_RegisterSluggerCrateWeapon("SluggerZantetsuSword_W", "MetalSlugXX/VoiceZ", "S4", 7);
+  UH_RegisterSluggerCrateWeapon("SluggerFlameShot_W", "MetalSlugXX/VoiceF", "S5", 15);
+  UH_RegisterSluggerCrateWeapon("SluggerEnemyChaser_W", "MetalSlugXX/VoiceC", "S6", 15);
+  UH_RegisterSluggerCrateWeapon("SluggerDropShot_W", "MetalSlugXX/VoiceD", "S7", 15);
+  UH_RegisterSluggerCrateWeapon("SluggerTwoMachineGuns_W", "MetalSlugXX/Voice2H", "S8", 15);
+}
+
+function int UH_SluggerCratePick(int roll) {
+  if (roll < 0 || roll >= uh_slugger_crate_total)
+    return -1;
+  for (int i = 0; i < uh_slugger_crate_count; i++) {
+    if (roll < uh_slugger_crate_weight[i])
+      return i;
+    roll -= uh_slugger_crate_weight[i];
+  }
+  return -1;
+}
+
+// Player activator. Crate pickup replaces special weapons; bot grants retain
+// the original additive behavior. Ammo still comes from Weapon.AmmoGive.
+function bool UH_SluggerCrateGive(bool replace) {
+  int player = PlayerNumber();
+  if (player < 0 || GetActorProperty(0, APROP_Health) <= 0 ||
+      !CheckInventory("SluggerPistol_W") || uh_slugger_crate_total <= 0)
+    return false;
+  int row = UH_SluggerCratePick(Random(0, uh_slugger_crate_total - 1));
+  if (row < 0)
+    return false;
+  if (replace) {
+    for (int i = 0; i < uh_slugger_crate_count; i++)
+      TakeInventory(uh_slugger_crate_weapon[i], 1);
+    TakeInventory("SluggerCrateWeapon2_P", 2147483647);
+  }
+  GiveInventory(uh_slugger_crate_weapon[row], 1);
+  if (!CheckInventory(uh_slugger_crate_weapon[row]))
+    return false;
+  if (StrLen(uh_slugger_crate_voice[row]))
+    PlaySound(0, uh_slugger_crate_voice[row], CHAN_VOICE);
+  uh_slugger_crate_sequence[player]++;
+  ACS_NamedExecuteAlways("uh_SluggerCrateSelect", 0, row,
+                        uh_slugger_crate_sequence[player]);
+  return true;
+}
+
+script "uh_SluggerCrateGive" (void) {
+  SetResultValue(UH_SluggerCrateGive(false));
+}
+
+// Activator is the crate watcher; never give inventory with a null activator.
+script "uh_SluggerCrateReplace" (void) {
+  if (!SetActivator(0, AAPTR_TARGET))
+    terminate;
+  SetResultValue(UH_SluggerCrateGive(true));
+}
+
+// Preserve the previous one-tic delay before the icon and pending weapon.
+// A newer grant cancels any earlier queued selection for this player.
+script "uh_SluggerCrateSelect" (int row, int sequence) {
+  int player = PlayerNumber();
+  Delay(1);
+  if (player < 0 || PlayerNumber() != player ||
+      sequence != uh_slugger_crate_sequence[player] ||
+      GetActorProperty(0, APROP_Health) <= 0 ||
+      row < 0 || row >= uh_slugger_crate_count ||
+      !CheckInventory(uh_slugger_crate_weapon[row]))
+    terminate;
+  if (StrLen(uh_slugger_crate_icon[row])) {
+    int owner = ActivatorTID();
+    bool temporaryOwner = owner == 0;
+    if (temporaryOwner) {
+      owner = UniqueTID();
+      Thing_ChangeTID(0, owner);
+    }
+    int icon = UniqueTID();
+    if (SpawnForced("SluggerCrateWeaponIcon", GetActorX(0), GetActorY(0),
+                    GetActorZ(0) + 56.0, icon)) {
+      SetActivator(icon);
+      SetPointer(AAPTR_TARGET, owner);
+      SetActorState(icon, uh_slugger_crate_icon[row]);
+      Thing_ChangeTID(icon, 0);
+      SetActivator(owner);
+    }
+    if (temporaryOwner)
+      Thing_ChangeTID(0, 0);
+  }
+  SetWeapon(uh_slugger_crate_weapon[row]);
+}
