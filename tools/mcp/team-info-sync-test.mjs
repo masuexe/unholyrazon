@@ -23,7 +23,7 @@
 //
 // Usage:
 //   node tools/mcp/team-info-sync-test.mjs [--profile NAME] [--game-port N]
-//        [--bridge-port N] [--json] [--dry-run]
+//        [--bridge-port N] [--stress] [--json] [--dry-run]
 //
 // Env overrides (same family as the other tools/mcp scripts):
 //   ZANDRONUM_MCP_DIR, ZANDRONUM_MCP_SERVER, ZANDRONUM_EXE,
@@ -43,21 +43,24 @@ const SERVER_LOG = "/tmp/team-info-sync-server.log";
 const STAT_SLOTS = 8;
 
 function usage() {
-  return "Usage: team-info-sync-test.mjs [--profile NAME] [--game-port N] [--bridge-port N] [--json] [--dry-run]\n" +
+  return "Usage: team-info-sync-test.mjs [--profile NAME] [--game-port N] [--bridge-port N] [--stress] [--json] [--dry-run]\n" +
     "\n" +
     "Launch one local Zandronum listen server plus one MCP-controlled remote client,\n" +
     "then verify every team-info CLIENTSIDE receiver over the network: the spectator\n" +
     "hello, uh_ti_sync_status / uh_ti_sync_ova / uh_ti_sync_policy after join, and\n" +
     "uh_ti_stat / uh_ti_stat_clear via a spectator observing a bot that is removed.\n" +
+    "--stress also fills 33/64 slots with bots, checks server execution budgets,\n" +
+    "then verifies a full-server map reload and spectator reconnect.\n" +
     "Requires local TCP/UDP ports and the bridge-patched engine.\n";
 }
 
-const options = { profile: "mm8bdm-v6b-smoke", gamePort: 10767, bridgePort: 7777, json: false, dryRun: false };
+const options = { profile: "mm8bdm-v6b-smoke", gamePort: 10767, bridgePort: 7777, stress: false, json: false, dryRun: false };
 for (let i = 2; i < process.argv.length; i += 1) {
   const arg = process.argv[i];
   if (arg === "--help" || arg === "-h") { console.log(usage()); process.exit(0); }
   if (arg === "--json") { options.json = true; continue; }
   if (arg === "--dry-run") { options.dryRun = true; continue; }
+  if (arg === "--stress") { options.stress = true; continue; }
   if (arg === "--profile") { options.profile = process.argv[++i] || ""; continue; }
   if (arg === "--game-port") { options.gamePort = Number.parseInt(process.argv[++i], 10); continue; }
   if (arg === "--bridge-port") { options.bridgePort = Number.parseInt(process.argv[++i], 10); continue; }
@@ -144,7 +147,8 @@ try {
   writeFileSync(SERVER_LOG, "");
   const serverArgs = [
     "-stdout", "-iwad", profileData.iwad, "-file", ...(profileData.files || []),
-    "-host", "8", "-port", String(options.gamePort), "-lastmanstanding",
+    "-host", options.stress ? "64" : "8", "-port", String(options.gamePort), "-lastmanstanding",
+    ...(options.stress ? ["+set", "sv_maxplayers", "64", "+set", "bot_allowchat", "0"] : []),
     "+set", "sv_minplayers", "1", "+set", "sv_updatemaster", "0", "+set", "sv_noplayertimeout", "1",
     "+set", "sv_cheats", "1", "+map", profileData.map || "MM2DW1", ...common,
   ];
@@ -182,7 +186,7 @@ try {
   // rebuild path early-returns outside a bonus event), so force the round's
   // role gather + FullSnapshot, as the directed versus test does, to prove
   // uh_ti_sync_status reaches a true spectator.
-  sendServer("puke ub_StartUpSettings");
+  sendServer("pukename ub_StartUpSettings");
 
   let statSlots = [];
   let spectatorRoles = [];
@@ -196,6 +200,7 @@ try {
     if (statsSeeded && rolesSeen) break;
   }
   const seededSlots = statSlots.map((v, k) => (v === true || v === 1) ? k : -1).filter(k => k >= 0);
+  const statDelivery = seededSlots.length >= 2;
   const spectatorRolesSynced = spectatorRoles.some(v => v !== null && v !== -1);
 
   let networkClear = false;
@@ -279,17 +284,110 @@ try {
     actorClass = (actor.structuredContent || {}).class || (text(actor).match(/"class"\s*:\s*"([^"]+)"/) || [])[1] || "";
   } catch { /* a spectator has no actor */ }
 
+  const stress = [];
+  if (options.stress) {
+    if (!(spectatorHello && spectatorRolesSynced && ovaDelivered && joinSnapshot && statDelivery && networkClear)) {
+      throw new Error("basic network delivery must pass before the load test");
+    }
+    const { parseAcsProfile } = await import(pathToFileURL(join(MCP_DIR, "dist/parsers/acsprofile.js")));
+    // Dedicated-server bridge commands print to stdout but may not complete
+    // the bridge response. Read their real console output instead.
+    const serverCommand = async (line, pattern, timeoutMs = 5_000) => {
+      const start = readFileSync(SERVER_LOG, "utf8").length;
+      sendServer(line);
+      for (let i = 0; i < timeoutMs / 100; i++) {
+        await delay(100);
+        if (dedicated.exitCode !== null) throw new Error("server exited during " + line);
+        const out = readFileSync(SERVER_LOG, "utf8").slice(start);
+        const match = out.match(pattern);
+        if (match) return { out, match };
+      }
+      throw new Error("server console response timed out: " + line);
+    };
+    const serverArray = async (name, index) => {
+      const { match } = await serverCommand(`getmaparray ${name} ${index}`, new RegExp(`maparray ${name}\\[${index}\\] = (-?\\d+)`));
+      return Number(match[1]);
+    };
+    const connectedSlots = async () => {
+      const slots = [];
+      for (let i = 0; i < 64; i++) {
+        if (await serverArray("uhsrvHelloSeen", i)) slots.push(i);
+      }
+      return slots;
+    };
+    const checkLoad = async (label, expected) => {
+      await delay(2_000);
+      let slots = await connectedSlots();
+      for (let i = 0; i < 4 && slots.length !== expected; i++) {
+        await delay(2_000);
+        slots = await connectedSlots();
+      }
+      if (slots.length !== expected) throw new Error(`${label}: expected ${expected} connected slots, got ${slots.length}`);
+      // Include first-time identity resolution and all-client snapshot bursts
+      // in the measured window, rather than measuring only the warm cache.
+      sendServer("acsprofile clear");
+      await delay(300);
+      sendServer("pukename ub_StartUpSettings");
+      await delay(3_000);
+      const pending = [];
+      for (const pn of slots) pending.push(await serverArray("uhsrvSnapshotRows", pn));
+      const { out } = await serverCommand("acsprofile max 0", /All functions:/);
+      const watch = parseAcsProfile(out.split(/\r?\n/)).find(r => r.section === "script" && r.module.toLowerCase() === "unholy" && r.name.includes("uh_ti_serverwatch"));
+      const errors = /Runaway|Bad script definition|VM execution aborted|ACS execution error/i.test(readFileSync(SERVER_LOG, "utf8"));
+      const pass = !!watch && watch.runs > 0 && watch.max > 0 && watch.max < 2_000_000
+        && pending.every(n => n === 0) && !errors;
+      stress.push({ label, pass, connected: slots.length, snapshotsDrained: pending.every(n => n === 0), watch });
+      if (!pass) throw new Error(`${label}: script budget/snapshot failure: ${JSON.stringify(stress.at(-1))}`);
+    };
+    // Keep the real client as a spectator so it can verify the highest slot's
+    // authorized stats and identity over the network.
+    await tool("run_command", { instance: 1, text: "spectate" }, 15_000);
+    await delay(2_000);
+    // Hold the LMS countdown so bot combat cannot end a round or change maps
+    // mid-measurement. sv_minplayers is not an LMS start gate in this engine.
+    sendServer("sv_lmscountdowntime 3600");
+    await delay(300);
+    sendServer("map " + (profileData.map || "MM2DW1"));
+    await delay(12_000);
+    let count = (await connectedSlots()).length;
+    for (const target of [33, 64]) {
+      while (count < target) {
+        sendServer("addbot");
+        await delay(250);
+        count++;
+      }
+      await checkLoad(`${target} slots`, target);
+    }
+    // Re-enter a populated map, exercising OPEN hello for every connected
+    // slot. The profile assertion also ensures the watch survives that burst.
+    // changemap includes an intermission; wait for the actual new level, not
+    // a fixed sleep that can sample half of each map's arrays.
+    await serverCommand("changemap " + (profileData.map || "MM2DW1"), /\*\*\* [A-Z0-9]+:/, 30_000);
+    await delay(2_000);
+    await checkLoad("64 slots after map reload", 64);
+    await tool("run_command", { instance: 1, text: "disconnect" }, 15_000);
+    await delay(2_000);
+    await tool("run_command", { instance: 1, text: "connect 127.0.0.1:" + options.gamePort }, 25_000);
+    await delay(8_000);
+    await checkLoad("64 slots after spectator reconnect", 64);
+    const highRole = await mapArray("uhtirole", 63);
+    const highStat = await mapArray("uhtistatvalid", 63);
+    const pass = highRole !== null && highRole !== -1 && (highStat === true || highStat === 1);
+    stress.push({ label: "remote slot 63 delivery", pass, role: highRole, stats: highStat });
+    if (!pass) throw new Error(`highest slot delivery failed: role=${highRole}, stats=${highStat}`);
+  }
+
   const log = readFileSync(SERVER_LOG, "utf8");
-  const statDelivery = seededSlots.length >= 2;
   // Every receiver must be proven over the network.  The local receiver
   // round-trip is a diagnostic only: it must never stand in for network
   // delivery, or a broken sender could still let the gate pass.
   const clearVerified = networkClear;
   const pass = spectatorHello && spectatorRolesSynced && ovaDelivered
-    && joinSnapshot && statDelivery && networkClear;
+    && joinSnapshot && statDelivery && networkClear && stress.every(r => r.pass);
   result = {
     status: pass ? "pass" : "fail",
     profile: options.profile,
+    stress,
     gamePort: options.gamePort,
     phases: {
       spectatorHello: { pass: spectatorHello, snapshot: spectator },

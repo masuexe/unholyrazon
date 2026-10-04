@@ -80,6 +80,14 @@ function void PlayerLifeStatusArr_GatherFunc(void) {
 // falls back to the class it observed itself while the actor was alive.
 int uhsrvkind[MAX_PLAYERS];
 int uhsrvid[MAX_PLAYERS];
+// Identity table scans are needed only when the live class changes. Explicit
+// round snapshots invalidate this cache so new/updated definitions are resolved.
+str uhsrvidentityclass[MAX_PLAYERS];
+bool uhsrvidentityvalid[MAX_PLAYERS];
+// Remaining rows in a per-client snapshot, drained by the server watch in
+// bounded subject batches. A request can start at any watch cursor: the next
+// MAX_PLAYERS subjects still cover every slot exactly once.
+int uhsrvSnapshotRows[MAX_PLAYERS];
 int uhsrvphase[MAX_PLAYERS];
 str uhsrvphaseclass[MAX_PLAYERS];
 
@@ -135,11 +143,19 @@ function void UH_Ti_IdentityForPlayer(int pn) {
       if (PlayerInGame(pn)) {
         str cls = UH_Ti_ActorClass(pn + 1000);
         if (StrCmp(cls, "") != 0) {
-          int k = UH_Ti_KindForClass(cls);
-          if (k != UH_PLDEF_NONE) {
-            kind = k;
-            id = UH_Ti_IdForClass(cls);
+          if (uhsrvidentityvalid[pn] && !StrICmp(cls, uhsrvidentityclass[pn])) {
+            kind = uhsrvkind[pn];
+            id = uhsrvid[pn];
+          } else {
+            kind = UH_Ti_KindForClass(cls);
+            if (kind != UH_PLDEF_NONE) {id = UH_Ti_IdForClass(cls);}
+            uhsrvidentityclass[pn] = cls;
+            // Unknown/custom bodies must be retried: an OPEN registration may
+            // not have run yet, and custom ids never become wire identities.
+            uhsrvidentityvalid[pn] = kind != UH_PLDEF_NONE;
           }
+        } else {
+          uhsrvidentityvalid[pn] = false;
         }
       }
       else {
@@ -153,6 +169,8 @@ function void UH_Ti_IdentityForPlayer(int pn) {
     if (playerlifestatusarr[pn] == PLS_NULL || !UH_Ti_IsConnectedPlayer(pn)) {
       uhsrvphase[pn] = 0;
       uhsrvphaseclass[pn] = "";
+      uhsrvidentityclass[pn] = "";
+      uhsrvidentityvalid[pn] = false;
     }
     else if (playerlifestatusarr[pn] != PLS_DEAD) {
       str phaseclass = UH_Ti_ActorClass(pn + 1000);
@@ -178,16 +196,6 @@ function int UH_Ti_CachedKind(int pn) {
 function int UH_Ti_CachedId(int pn) {
   if (pn < 0 || pn >= MAX_PLAYERS) {return 0;}
   return uhsrvid[pn];
-}
-
-// Refresh the identity cache for every slot once.  Snapshot delivery then reads
-// the cache instead of walking the definition tables once per client
-// (N clients x M subjects).  Every slot is refreshed, not just the live ones, so
-// a finished slot is actively cleared rather than left stale.
-function void UH_TeamInfo_WarmIdentities(void) {
-  for (int i = 0; i < MAX_PLAYERS; i++) {
-    UH_Ti_IdentityForPlayer(i);
-  }
 }
 
 // --- Per-client delivery ------------------------------------------------------
@@ -217,20 +225,18 @@ function void UH_Ti_SendStatusTo(int client, int pn, int status) {
 
 // Poll stages independently of health/stat visibility. Only changed subjects
 // are broadcast; late joiners receive every stage through SendStatusTo.
-function void UH_Ti_RefreshPhases(void) {
-  for (int pn = 0; pn < MAX_PLAYERS; pn++) {
-    int oldphase = uhsrvphase[pn];
-    int oldkind = uhsrvkind[pn];
-    int oldid = uhsrvid[pn];
-    str oldclass = uhsrvphaseclass[pn];
-    UH_Ti_IdentityForPlayer(pn);
-    if (oldphase == uhsrvphase[pn] && oldkind == uhsrvkind[pn]
-      && oldid == uhsrvid[pn] && !StrICmp(oldclass, uhsrvphaseclass[pn]))
-      continue;
-    int status = UH_Ti_IsConnectedPlayer(pn) ? playerlifestatusarr[pn] : PLS_NULL;
-    for (int c = 0; c < MAX_PLAYERS; c++) {
-      UH_Ti_SendStatusTo(c, pn, status);
-    }
+function void UH_Ti_RefreshPhase(int pn) {
+  int oldphase = uhsrvphase[pn];
+  int oldkind = uhsrvkind[pn];
+  int oldid = uhsrvid[pn];
+  str oldclass = uhsrvphaseclass[pn];
+  UH_Ti_IdentityForPlayer(pn);
+  if (oldphase == uhsrvphase[pn] && oldkind == uhsrvkind[pn]
+    && oldid == uhsrvid[pn] && !StrICmp(oldclass, uhsrvphaseclass[pn]))
+    return;
+  int status = UH_Ti_IsConnectedPlayer(pn) ? playerlifestatusarr[pn] : PLS_NULL;
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    UH_Ti_SendStatusTo(c, pn, status);
   }
 }
 
@@ -295,36 +301,40 @@ function int UH_TeamInfo_ScorePolicy(void) {
   return UH_SCOREPOLICY_MULTITEAM;
 }
 
-// Full current state (every subject plus both display policies) to one client.
-// The caller must have warmed the identity cache once
-// (UH_TeamInfo_WarmIdentities) so no definition-table scan happens per client.
-function void UH_Ti_SendSnapshotCore(int client) {
+// Queue snapshots instead of sending N clients x 64 subjects in one script
+// execution. Policies arrive immediately and again after each complete pass.
+function void UH_TeamInfo_QueueSnapshot(int client, int repeats) {
   if (!UH_Ti_IsConnectedClient(client)) {return;}
-  for (int i = 0; i < MAX_PLAYERS; i++) {
-    // Gate on the team-info row, NOT on PlayerInGame: a dead spectator
-    // (PlayerIsSpectator == 2) has left the game but the slot is still assigned.
-    // Sending PLS_NULL for them would drop their retained role and identity.
-    // A true spectator (1) fails UH_Ti_IsConnectedPlayer and is cleared below.
-    if (UH_Ti_IsConnectedPlayer(i)) {
-      // PLS_DEAD for an out-of-game subject, which retains the role on the
-      // client (only PLS_NULL clears it).
-      UH_Ti_SendStatusTo(client, i, playerlifestatusarr[i]);
-    } else {
-      // Explicitly clear unused slots so no stale role/identity can remain
-      // after a player leaves and the slot is reused.  WarmIdentities has
-      // already published NONE for them, so the pair below is empty.
-      UH_Ti_SendStatusTo(client, i, PLS_NULL);
-    }
-  }
+  int rows = MAX_PLAYERS * repeats;
+  // Coalesce requests without starving an in-progress snapshot.
+  if (uhsrvSnapshotRows[client] < rows) {uhsrvSnapshotRows[client] = rows;}
   UH_Ti_SendOneVsAllTo(client,
     UH_TeamInfo_IsOneVsAllActive() ? 1 : 0, UH_TeamInfo_OneVsAllTarget());
   UH_Ti_SendScorePolicyTo(client, UH_TeamInfo_ScorePolicy());
 }
 
-// Late-join entry point: one client, cache warmed here so it is safe standalone.
+// Called after this subject's identity/phase was refreshed, so every pending
+// client reads the SAME cache without any per-client definition-table scans.
+function void UH_Ti_SendSnapshotRow(int pn) {
+  int status = UH_Ti_IsConnectedPlayer(pn) ? playerlifestatusarr[pn] : PLS_NULL;
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    if (uhsrvSnapshotRows[c] <= 0) {continue;}
+    if (!UH_Ti_IsConnectedClient(c)) {
+      uhsrvSnapshotRows[c] = 0;
+      continue;
+    }
+    UH_Ti_SendStatusTo(c, pn, status);
+    uhsrvSnapshotRows[c]--;
+    if (uhsrvSnapshotRows[c] % MAX_PLAYERS == 0) {
+      UH_Ti_SendOneVsAllTo(c,
+        UH_TeamInfo_IsOneVsAllActive() ? 1 : 0, UH_TeamInfo_OneVsAllTarget());
+      UH_Ti_SendScorePolicyTo(c, UH_TeamInfo_ScorePolicy());
+    }
+  }
+}
+
 function void UH_TeamInfo_SendSnapshotTo(int client) {
-  UH_TeamInfo_WarmIdentities();
-  UH_Ti_SendSnapshotCore(client);
+  UH_TeamInfo_QueueSnapshot(client, 1);
 }
 
 // Re-publish the frozen 1-vs-all split and the scoreboard policy on the same
@@ -345,9 +355,9 @@ function void UH_TeamInfo_BroadcastOneVsAll(void) {
 // round setup and after the one-vs-all target freezes; the ENTER late join uses
 // UH_TeamInfo_SendSnapshotTo for just the entering client.
 function void UH_TeamInfo_FullSnapshot(void) {
-  UH_TeamInfo_WarmIdentities();
   for (int c = 0; c < MAX_PLAYERS; c++) {
-    UH_Ti_SendSnapshotCore(c);
+    uhsrvidentityvalid[c] = false;
+    UH_TeamInfo_QueueSnapshot(c, 1);
   }
 }
 

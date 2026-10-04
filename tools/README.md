@@ -44,6 +44,7 @@ For the team-info CLIENTSIDE sync delivery regression:
 ```bash
 node tools/mcp/team-info-sync-test.mjs --json
 node tools/mcp/team-info-sync-test.mjs --dry-run
+node tools/mcp/team-info-sync-test.mjs --stress --json
 ```
 
 It launches one listen server plus one MCP-controlled remote client, then
@@ -66,6 +67,14 @@ The gate requires every receiver to be proven **over the network**
 (`statDelivery` + `networkClear` are part of the pass condition). A direct
 local `run_script` round-trip is recorded as a diagnostic only and must never
 substitute for network delivery, so a broken sender cannot let the gate pass.
+
+`--stress` adds bots to fill 33 and 64 connected slots, measures the server's
+`uh_ti_serverwatch` with cold identity caches and all-client snapshots, and
+requires its maximum execution to stay below the normal 2,000,000-instruction
+guard. It also checks that queued snapshots drain, then repeats at 64 slots
+after a map reload and spectator reconnect, and verifies remote delivery for
+slot 63. Bots exercise server slot/delivery loops; this is not a 64-human
+network bandwidth test.
 
 This is the runtime gate for the P1 per-client delivery fix
 (`ACS_NamedExecuteAlways` to a CLIENTSIDE receiver does not reach a remote

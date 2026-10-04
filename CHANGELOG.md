@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261004
 
+- 修复超过 32 人时队友信息同步可能触发 ACS 执行超限并导致服务器报错的问题
 - 修复 MosquitoEye 将持有 Survivor 保护的敌人误判为队友，导致无法抓住并吸血的问题
 - 移除 Survivor 保护中的 EdenBomb 免伤，使 Eden 炸弹（含 Troll Bomb／Mega Troll Bomb）可伤害自己、队友及敌人
 - 将 TimeStopperUFlag 上限从 560 调整为 2240，保持每 tic 恢复 1 点，使充满时间恢复为 Unbound 原版的 64 秒

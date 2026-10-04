@@ -561,23 +561,30 @@ script "uh_ti_enter" ENTER {
 }
 
 // --- Server-authoritative teammate stats -------------------------------------
-// Mirrors UH_AreDisplayTeammates server-side from the retained role cache, so
+// Uses the per-batch event snapshot and retained server roles, so
 // the per-viewer snapshot authorizes exactly the rows the bar may draw.
-function bool UH_Ti_ServerAreDisplayTeammates(int viewer, int subject) {
+function bool UH_Ti_ServerTeammatesForSplit(int viewer, int subject, bool onevsall, int target) {
   if (viewer < 0 || viewer >= MAX_PLAYERS) {return false;}
   if (subject < 0 || subject >= MAX_PLAYERS) {return false;}
   if (viewer == subject) {return false;}
   if (uhsrvrole[viewer] == PLS_NULL || uhsrvrole[subject] == PLS_NULL) {return false;}
-  if (UH_TeamInfo_IsOneVsAllActive()) {
-    int t = UH_TeamInfo_OneVsAllTarget();
-    if (t < 0) {return false;}
-    if (viewer == t || subject == t) {return false;}
+  if (onevsall) {
+    if (target < 0) {return false;}
+    if (viewer == target || subject == target) {return false;}
     return true;
   }
   if (uhsrvrole[viewer] == PLS_EYE || uhsrvrole[subject] == PLS_EYE) {return false;}
   if (uhsrvrole[viewer] == PLS_SURVIVOR && uhsrvrole[subject] == PLS_SURVIVOR) {return true;}
   if (uhsrvrole[viewer] == PLS_BOSS && uhsrvrole[subject] == PLS_BOSS) {return true;}
   return false;
+}
+
+// Public gameplay/API callers resolve the current split on demand; the watch
+// uses the same relation function with its once-per-batch event snapshot.
+function bool UH_Ti_ServerAreDisplayTeammates(int viewer, int subject) {
+  bool onevsall = UH_TeamInfo_IsOneVsAllActive();
+  int target = onevsall ? UH_TeamInfo_OneVsAllTarget() : -1;
+  return UH_Ti_ServerTeammatesForSplit(viewer, subject, onevsall, target);
 }
 
 // Gameplay callers must use server roles, never the client display cache.
@@ -600,45 +607,44 @@ bool uhsrvWasingame[MAX_PLAYERS];
 // Per-client initial-snapshot handshake.  A client that connects as a true
 // spectator never spawns, so the ENTER snapshot (uh_ti_enter) never fires for
 // it and its cache would stay PLS_NULL / INVALID with no portraits.  The watch
-// loop detects each new connection and repeats the full snapshot for ~0.6 s so
-// it survives the client's own uh_ti_clientinit_cs reset at map load.
+// loop detects each new connection and queues three complete snapshot passes
+// (~0.7 s), surviving the client's uh_ti_clientinit_cs reset at map load.
 bool uhsrvHelloSeen[MAX_PLAYERS];
-int uhsrvHelloTics[MAX_PLAYERS];
+// Eight subjects per tic bounds both table scans and per-client deliveries.
+// All 64 slots (including unused-slot clears) are visited every eight tics.
+#define UH_TI_SUBJECT_BATCH 8
 
 function void UH_Ti_ServerHelloClients(void) {
   for (int c = 0; c < MAX_PLAYERS; c++) {
     if (!UH_Ti_IsConnectedClient(c)) {
       uhsrvHelloSeen[c] = false;
-      uhsrvHelloTics[c] = 0;
+      uhsrvSnapshotRows[c] = 0;
       continue;
     }
     if (!uhsrvHelloSeen[c]) {
       uhsrvHelloSeen[c] = true;
-      uhsrvHelloTics[c] = 3;  // ~0.6 s at the 7-tic watch cadence
-    }
-    if (uhsrvHelloTics[c] > 0) {
-      UH_TeamInfo_SendSnapshotTo(c);
-      uhsrvHelloTics[c]--;
+      UH_TeamInfo_QueueSnapshot(c, 3);
     }
   }
 }
 
 // Immediate hello-slot reset for a disconnecting client.  The watch also clears
 // the slot when it observes the disconnect, but a disconnect followed by a
-// same-slot reconnect between two 7-tic polls would otherwise leave
+// same-slot reconnect between two watch polls would otherwise leave
 // uhsrvHelloSeen set and the new client would never receive its hello.  Called
 // from the server DISCONNECT handler (ub_Disconnect_ChangeIsAlive).
 function void UH_Ti_ServerForgetClient(int pn) {
   if (pn < 0 || pn >= MAX_PLAYERS) {return;}
   uhsrvHelloSeen[pn] = false;
-  uhsrvHelloTics[pn] = 0;
+  uhsrvSnapshotRows[pn] = 0;
+  uhsrvidentityvalid[pn] = false;
 }
 
-function void UH_Ti_RefreshStats(void) {
-  // Newly connected clients (including true spectators) get the full snapshot
-  // even though they never spawn and so never run the ENTER snapshot.
-  UH_Ti_RefreshPhases();
-  UH_Ti_ServerHelloClients();
+function void UH_Ti_RefreshStats(int first, int end) {
+  // Re-evaluate authorization for each batch: round/event/connection state may
+  // change while the script yields between batches.
+  bool onevsall = UH_TeamInfo_IsOneVsAllActive();
+  int ovatarget = onevsall ? UH_TeamInfo_OneVsAllTarget() : -1;
 
   // DF_INFINITE_AMMO = 1 << 11.
   bool infinite = (GetCVar("dmflags") & 2048) != 0;
@@ -659,7 +665,9 @@ function void UH_Ti_RefreshStats(void) {
     velig[v] = true;
   }
 
-  for (int s = 0; s < MAX_PLAYERS; s++) {
+  for (int s = first; s < end; s++) {
+    UH_Ti_RefreshPhase(s);
+    UH_Ti_SendSnapshotRow(s);
     int tid = s + 1000;
     // HUD_DrawCoopInfo draws a row while the player is in game AND has a body
     // (a dead body with health <= 0 still shows "dead"), and skips spectators /
@@ -735,8 +743,8 @@ function void UH_Ti_RefreshStats(void) {
       // own stats so that row is available without widening anyone else's
       // authorization set.
       if (!vspec[vw] && s != vw
-          && !UH_Ti_ServerAreDisplayTeammates(vw, s)) {continue;}
-        NamedExecuteClientScript("uh_ti_stat", vw, packed_s, packed1, tag, packed2);
+          && !UH_Ti_ServerTeammatesForSplit(vw, s, onevsall, ovatarget)) {continue;}
+      NamedExecuteClientScript("uh_ti_stat", vw, packed_s, packed1, tag, packed2);
     }
   }
 }
@@ -748,11 +756,27 @@ script "uh_ti_serverwatch_start" OPEN {
 
 script "uh_ti_serverwatch" (void) {
   SetActivator(0, AAPTR_NULL);
+  int cursor = 0;
   while (true) {
-    Delay(7);
+    // Delay belongs in the SCRIPT, never in an ACS function. Keep the normal
+    // runaway guard enabled; each execution processes at most eight subjects.
+    Delay(1);
     if (GetCVar("lastmanstanding") != 1) {continue;}
-    if (gameover) {continue;}
-    UH_Ti_RefreshStats();
+    // Hello/status snapshots must also drain at gameover, when new spectators
+    // can connect. Only live stats stop there, as in the former watch loop.
+    UH_Ti_ServerHelloClients();
+    int end = cursor + UH_TI_SUBJECT_BATCH;
+    if (end > MAX_PLAYERS) {end = MAX_PLAYERS;}
+    if (!gameover) {
+      UH_Ti_RefreshStats(cursor, end);
+    } else {
+      for (int s = cursor; s < end; s++) {
+        UH_Ti_RefreshPhase(s);
+        UH_Ti_SendSnapshotRow(s);
+      }
+    }
+    cursor = end;
+    if (cursor >= MAX_PLAYERS) {cursor = 0;}
   }
 }
 
