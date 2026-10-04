@@ -6,6 +6,7 @@
 - 调整 CXAirMan 的 Reload 音效：起手和传送后现形各播放一次 `weapon/airshooter`，消除起手特效造成的重复叠音
 - 调整 CXAirMan 的现形时序：`CXAirManTeleportFX` 最后一帧播放结束时才解除隐身或恢复 Alpha，避免旧特效误清除重新开启的隐身状态
 - 为 CXAirMan 增加与 Misery 相同的常驻浮空能力
+- CXAirMan 的 M1 子弹现在可以被打掉
 - 将 Misery 与 CXAirMan 的浮空逻辑封装为共用控制器，统一高度限制、体力消耗及飞行状态管理，保留各自库存标记、HUD 和死亡／解除变身时的清理，原有数值不变
 - 为 Nega Super Arm（含 Shiny）增加 5 秒抓取时限，到时自动投掷
 - 为 RNC Clashman 的 Reload 隐身增加 5 秒时限，到时自动解除并进入原有冷却
