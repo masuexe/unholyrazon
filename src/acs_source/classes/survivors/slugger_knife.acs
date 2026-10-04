@@ -1,0 +1,92 @@
+// Slugger's automatic knife uses the same short, pitch-aware ray for
+// selection and damage. A wall or friendly actor blocks the ray.
+#define UH_SLUGGER_KNIFE_RANGE 48.0
+#define UH_SLUGGER_KNIFE_DAMAGE 30
+
+function bool UH_SluggerKnifeHasEnemy(void) {
+  int shooter = PlayerNumber();
+  if (shooter < 0 || GetActorProperty(0, APROP_Health) <= 0)
+    return false;
+  int team = GetPlayerInfo(shooter, PLAYERINFO_TEAM);
+  int temporaryTid = UniqueTID();
+  int picked = PickActor(0, GetActorAngle(0), GetActorPitch(0),
+                         UH_SLUGGER_KNIFE_RANGE, temporaryTid,
+                         MF_SHOOTABLE, ML_BLOCKEVERYTHING | ML_BLOCKHITSCAN,
+                         PICKAF_RETURNTID);
+  if (!picked)
+    return false;
+
+  // PickActor preserves existing TIDs. Only remove the temporary TID
+  // assigned to an actor that originally had none.
+  SetActivator(picked);
+  if (picked == temporaryTid)
+    Thing_ChangeTID(0, 0);
+  int subject = PlayerNumber();
+  bool enemy = GetActorProperty(0, APROP_Health) > 0;
+  if (subject >= 0) {
+    if (subject == shooter)
+      enemy = false;
+    else if (ACS_NamedExecuteWithResult("uh_IsUnholyTeamMode"))
+      enemy = enemy && !ACS_NamedExecuteWithResult("uh_IsDisplayTeammate", shooter, subject);
+    else if (IsTeamGame)
+      enemy = enemy && GetPlayerInfo(subject, PLAYERINFO_TEAM) != team;
+    else if (GameType() != GAME_NET_DEATHMATCH)
+      enemy = false;
+  } else {
+    enemy = enemy && CheckFlag(0, "ISMONSTER") && !CheckFlag(0, "FRIENDLY");
+  }
+  SetActivatorToPlayer(shooter);
+  return enemy;
+}
+
+function void UH_SluggerResetAttack(void) {
+  if (CheckInventory("SluggerGunHold_F"))
+    TakeInventory("SluggerGunHold_F", 1);
+  if (CheckInventory("SluggerKnifeReady_F"))
+    TakeInventory("SluggerKnifeReady_F", 1);
+}
+
+// Watch release every tic, even during a long gun/knife animation. Checking
+// only on the next attack would miss a release and re-press between shots.
+script "uh_SluggerAttackWatch" ENTER {
+  int player = PlayerNumber();
+  str previousWeapon = GetWeapon();
+  UH_SluggerResetAttack();
+  while (PlayerInGame(player)) {
+    if (SetActivatorToPlayer(player)) {
+      str weapon = GetWeapon();
+      if (!(GetPlayerInput(-1, INPUT_BUTTONS) & BT_ATTACK) ||
+          GetActorProperty(0, APROP_Health) <= 0 ||
+          StrICmp(weapon, previousWeapon))
+        UH_SluggerResetAttack();
+      previousWeapon = weapon;
+    }
+    Delay(1);
+  }
+}
+
+script "uh_SluggerAttackRespawn" RESPAWN {
+  UH_SluggerResetAttack();
+}
+
+// CustomInventory invokes this at each primary attack entry, but once a
+// gun attack starts no further distance trace runs until M1 is released.
+// Knife attacks leave the hold unlocked so each completed knife can decide
+// again. Give/Take synchronizes both decision tokens to the owning client.
+script "uh_SluggerKnifeProbe" (void) {
+  TakeInventory("SluggerKnifeReady_F", 1);
+  if (CheckInventory("SluggerGunHold_F"))
+    terminate;
+  if (UH_SluggerKnifeHasEnemy())
+    GiveInventory("SluggerKnifeReady_F", 1);
+  else
+    GiveInventory("SluggerGunHold_F", 1);
+}
+
+script "uh_SluggerKnifeHit" (void) {
+  if (!UH_SluggerKnifeHasEnemy())
+    terminate;
+  LineAttack(0, GetActorAngle(0), GetActorPitch(0),
+             UH_SLUGGER_KNIFE_DAMAGE, "SluggerKnifePuff", "Slugger",
+             UH_SLUGGER_KNIFE_RANGE);
+}
