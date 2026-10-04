@@ -1,5 +1,7 @@
 ## 4.0.0-beta.261004
 
+- 为 Nega Super Arm（含 Shiny）增加 5 秒抓取时限，到时自动投掷
+- 为 RNC Clashman 的 Reload 隐身增加 5 秒时限，到时自动解除并进入原有冷却
 - 修复超过 32 人时队友信息同步可能触发 ACS 执行超限并导致服务器报错的问题
 - 修复 MosquitoEye 将持有 Survivor 保护的敌人误判为队友，导致无法抓住并吸血的问题
 - 移除 Survivor 保护中的 EdenBomb 免伤，使 Eden 炸弹（含 Troll Bomb／Mega Troll Bomb）可伤害自己、队友及敌人

@@ -1,0 +1,19 @@
+// One deadline per grabber, reset for each successful ordinary/Shiny grab.
+// Game time keeps the carry limit independent of Rage weapon animation speed.
+#define NEGA_SUPERARM_HOLD_TICS (5 * 35)
+int uh_nega_superarm_deadline[64];
+
+script "uh_NegaSuperArmHoldTimeout" (int start) {
+  int pn = PlayerNumber();
+  SetResultValue(0);
+  if (pn < 0 || pn >= 64) {terminate;}
+  if (start) {
+    uh_nega_superarm_deadline[pn] = Timer() + NEGA_SUPERARM_HOLD_TICS;
+    TakeInventory("NegaSuperArmHoldTime", NEGA_SUPERARM_HOLD_TICS);
+    GiveInventory("NegaSuperArmHoldTime", NEGA_SUPERARM_HOLD_TICS);
+  } else {
+    int remaining = max(0, uh_nega_superarm_deadline[pn] - Timer());
+    TakeInventory("NegaSuperArmHoldTime", max(0, CheckInventory("NegaSuperArmHoldTime") - remaining));
+    SetResultValue(Timer() >= uh_nega_superarm_deadline[pn]);
+  }
+}

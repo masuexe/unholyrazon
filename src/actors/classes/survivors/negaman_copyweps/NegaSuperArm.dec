@@ -1,4 +1,6 @@
 actor NegaSuperArmWep_NegaManBar : NegaManBar {args 1, 220}
+actor NegaSuperArmWep_ScriptBar : ScriptBar {}
+actor NegaSuperArmHoldTime : Inventory {Inventory.MaxAmount 175}
 
 actor NegaSuperArmWep : BaseNegaManWep {
   Weapon.AmmoUse 0
@@ -101,6 +103,7 @@ actor NegaSuperArmWep : BaseNegaManWep {
    CarryLoop:
     // Hold_P calls A_WeaponReady, which resets psprite Offset — keep TNT1 here.
     TNT1 A 0 A_JumpIf(CallACS("uh_ZangiefGrab", 270, angle * 256 / 360, 64) == 0, "GrabLost")
+    TNT1 A 0 A_JumpIf(CallACS("uh_NegaSuperArmHoldTimeout", 0), "Throw")
     TNT1 A 1 A_GiveInventory("NegaSuperArmHold_P")
     loop
 
@@ -173,14 +176,13 @@ actor NegaSuperArmGrab : BasicFastProjectile {
 
 // Carry start: toggle the grabber stacks. Victim positioning is handled by the
 // per-tic uh_SuperArmCarry pull-in in the weapon states (overhead anchor).
-// Deliberately no invulnerable/nonshootable here: the carry has no time limit,
-// so the grabber must stay killable (Zangief's invuln is balanced by his
-// 60-tic hold cap).
+// The grabber stays killable throughout the five-second carry limit.
 actor NegaSuperArmCarryStart_P : CustomInventory {
   States {
    Pickup:
     TNT1 A 0 A_PlaySound("KirbyNES/FoeGrab", 1)
     TNT1 A 0 A_GiveInventory("ZangiefHoldFlag", 1)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_NegaSuperArmHoldTimeout", 1)
     TNT1 A 0 A_GiveInventory("IsPerformingSuplex")
     TNT1 A 0 ACS_NamedExecuteWithResult("core_nopushplayer", 0, true)
     TNT1 A 0 ACS_NamedExecuteWithResult("uh_NoHitStunplayer", 0, true)

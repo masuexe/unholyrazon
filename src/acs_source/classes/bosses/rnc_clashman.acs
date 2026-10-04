@@ -9,6 +9,7 @@
 // armed after the first landing so activating mid-air is allowed.
 
 #define RNCSTEALTH_RADIUS 256        // circle radius in map units
+#define RNCSTEALTH_DURATION_TICS (5 * 35)
 #define RNCSTEALTH_FOOTING_TOL 32    // core_CheckFooting tol: <= one stair step, << jump apex 98
 #define RNCSTEALTH_AIR_DEBOUNCE 4    // consecutive airborne tics before breaking (stairs handled by TOL)
 #define RNCSTEALTH_RING_STEPS 48     // angle steps per revolution (each step = 1.0/48 turn = 7.5 deg)
@@ -26,6 +27,9 @@ script "uh_rncstealth_monitor" (void) {
     terminate;
   int cx = GetActorX(0);
   int cy = GetActorY(0);
+  int deadline = Timer() + RNCSTEALTH_DURATION_TICS;
+  TakeInventory("RNCStealthTime", RNCSTEALTH_DURATION_TICS);
+  GiveInventory("RNCStealthTime", RNCSTEALTH_DURATION_TICS);
 
   // Judgement-circle ring marker, clientside on the boss's own client only
   // (singleplayer runs it locally).
@@ -49,6 +53,11 @@ script "uh_rncstealth_monitor" (void) {
 
     if (GetActorProperty(0, APROP_Health) <= 0)
       terminate;  // ClassDeath gives RNCStealthBreak_P for cleanup
+
+    int remaining = max(0, deadline - Timer());
+    TakeInventory("RNCStealthTime", max(0, CheckInventory("RNCStealthTime") - remaining));
+    if (Timer() >= deadline)
+      break;  // five seconds elapsed; use the normal stealth-break cleanup
 
     int dx = (GetActorX(0) - cx) >> 16;
     int dy = (GetActorY(0) - cy) >> 16;
