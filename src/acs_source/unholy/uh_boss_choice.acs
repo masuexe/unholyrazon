@@ -1,0 +1,115 @@
+// Port of Razon3 RBLACS rb_BossSelector. Included only by unholy.acs.
+// Rolls/input run on the server; option text goes to the winner with
+// NamedSendNetworkString so k: resolves that client's own key bindings.
+
+// Reservoir sampling avoids retry loops if an addon supplies a small pool.
+function int PickBonusBossOption(int pool, int avoid1, int avoid2) {
+  int picked = UHBOSS_FAIL;
+  int seen = 0;
+  for (int i = 0; i < GetBossPoolCount(pool); i++) {
+    int id = GetBossPoolId(pool, i);
+    if (!IsBossDefined(id) || id == avoid1 || id == avoid2) {continue;}
+    seen++;
+    if (random(1, seen) == 1) {picked = id;}
+  }
+  return picked;
+}
+
+function void ClearBonusBossOptions(void) {
+  HudMessage(s:""; HUDMSG_PLAIN, 65, CR_GOLD, 0.5, 0.45, 0.0);
+  int player = PlayerNumber();
+  if (player >= 0) {NamedExecuteClientScript("ub_BonusBossOptionsClear", player);}
+}
+
+script "ub_BonusBossOptionsClear" (void) CLIENTSIDE {
+  for (int i = 0; i < 4; i++) {
+    HudMessage(s:""; HUDMSG_PLAIN, 8850 + i, CR_WHITE, 0.5, 0.60, 0.0);
+  }
+}
+
+// Receive actual names, not server string handles or addon registration ids.
+// ASCII 31 separates rows, as in the versus intro name transport.
+script "ub_BonusBossOptions" (int names) CLIENTSIDE {
+  str commands[4] = {"+moveleft", "+moveright", "+attack", "+altattack"};
+  SetFont("BIGFONT");
+  SetHudSize(0, 0, 0);
+  int start = 0;
+  for (int row = 0; row < 4; row++) {
+    int end = start;
+    while (end < StrLen(names) && GetChar(names, end) != 31) {end++;}
+    str name = StrMid(names, start, end - start);
+    HudMessageBold(k:commands[row], s:": ", s:name; HUDMSG_FADEOUT, 8850 + row,
+      CR_WHITE, 0.5, 0.60 + row * 0.05, 0.3, 0.1);
+    start = end + 1;
+  }
+}
+
+script "ub_BonusBossSelector" (int player) {
+  if (player < 0 || player >= MAX_PLAYERS) {terminate;}
+  int tid = player + 1000;
+  // Pawn/TID and definition OPEN scripts may not be ready on the first tic.
+  bool ready = false;
+  for (int retry = 0; retry < 105; retry++) {
+    if (!PlayerInGame(player) || PlayerIsSpectator(player) != 0 ||
+        GetGameModeState() == GAMESTATE_INPROGRESS) {terminate;}
+    if (GetActorProperty(tid, APROP_HEALTH) > 0 &&
+        GetBossPoolCount(UHBOSS_POOL_COMMON) > 0 && SetActivator(tid)) {
+      ready = true;
+      break;
+    }
+    Delay(1);
+  }
+  if (!ready) {terminate;}
+  bosschoicetid = tid;
+
+  int options[4];
+  options[0] = PickBonusBossOption(UHBOSS_POOL_COMMON, UHBOSS_FAIL, UHBOSS_FAIL);
+  options[1] = PickBonusBossOption(UHBOSS_POOL_COMMON, options[0], UHBOSS_FAIL);
+  options[2] = PickBonusBossOption(UHBOSS_POOL_COMMON, options[0], options[1]);
+  options[3] = PickBonusBossOption(UHBOSS_POOL_RARE, UHBOSS_FAIL, UHBOSS_FAIL);
+  int masks[4] = {BT_MOVELEFT, BT_MOVERIGHT, BT_ATTACK, BT_ALTATTACK};
+  str names = "";
+  for (int row = 0; row < 4; row++) {
+    str name = "Unavailable";
+    if (IsBossDefined(options[row])) {name = GetBossName(options[row]);}
+    names = StrParam(s:names, s:name, c:31);
+  }
+
+  // Old eight-tic grace period, then require a fresh press so a held spawn
+  // button cannot silently spend the reward.
+  Delay(8);
+  int previous = GetPlayerInput(player, INPUT_BUTTONS);
+  int timeleft = max(0, GetCVar("sv_lmscountdowntime") * 35 - 5);
+  while (timeleft-- > 0 && bosschoicetid == tid && PlayerInGame(player) &&
+      PlayerIsSpectator(player) == 0 && GetActorProperty(tid, APROP_HEALTH) > 0 &&
+      (GetGameModeState() == GAMESTATE_WAITFORPLAYERS ||
+       GetGameModeState() == GAMESTATE_COUNTDOWN)) {
+    // Refresh at 5 Hz; input still polls every tic.
+    if (timeleft % 7 == 0) {
+      SetFont("BIGFONT");
+      SetHudSize(0, 0, 0);
+      HudMessage(n:player + 1, s:", the arena awaits your Unholy Power!\nPress the corresponding key to become...";
+        HUDMSG_FADEOUT, 65, CR_GOLD, 0.5, 0.45, 0.3, 0.1);
+      NamedSendNetworkString("ub_BonusBossOptions", names, player);
+    }
+    int buttons = GetPlayerInput(player, INPUT_BUTTONS);
+    int pressed = buttons & ~previous;
+    previous = buttons;
+    for (int pick = 0; pick < 4; pick++) {
+      if ((pressed & masks[pick]) && IsBossDefined(options[pick])) {
+        bosschoiceid = options[pick];
+        bosschoiceconfirmed = true;
+        // Map variables disappear at LMS FIGHT, before morphing starts.
+        uh_bosschoicecommit[0] = player + 1;
+        uh_bosschoicecommit[1] = bosschoiceid;
+        ClearBonusBossOptions();
+        HudMessage(s:"You selected: ", s:GetBossName(bosschoiceid);
+          HUDMSG_FADEOUT, 8855, CR_WHITE, 0.5, 0.55, 3.0, 1.0);
+        terminate;
+      }
+    }
+    Delay(1);
+  }
+  ClearBonusBossOptions();
+  bosschoicetid = 0;
+}

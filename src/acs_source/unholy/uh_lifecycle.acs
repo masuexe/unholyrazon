@@ -56,6 +56,15 @@ script "ub_Death_ChangeIsAlive" DEATH {
 }
 script "ub_Disconnect_ChangeIsAlive" (int playernum) DISCONNECT {
   if (GetCVar("lastmanstanding") == 1) {
+    if (uh_bosschoicewinner == playernum + 1) {uh_bosschoicewinner = 0;}
+    if (uh_bosschoicecommit[0] == playernum + 1) {
+      uh_bosschoicecommit[0] = 0;
+      uh_bosschoicecommit[1] = 0;
+    }
+    if (bosschoicetid == playernum + 1000) {
+      bosschoicetid = 0;
+      bosschoiceconfirmed = false;
+    }
     // DISCONNECT also covers true spectators; the original inventory is gone.
     ACS_NamedExecuteWithResult("UH_DropItemsOnLeave", playernum);
     UH_Log(UH_LOG_DEBUG, StrParam(i:playernum, s:" has disconnected!!"));
@@ -214,6 +223,13 @@ script "ub_CountdownStartup" OPEN {
     if (ued >= 0 && eventdataarr[EVENTDATA_DELAY] != 77) {  // Sets EventDelay if forced
       eventdataarr[EVENTDATA_DELAY] = ued;
       ShowMeTheRCON("Bonus Event Delay", ued);
+    }
+    // Retain the reward if an admin schedules consecutive bonus rounds.
+    if (uh_bosschoicewinner > 0 &&
+        eventdataarr[EVENTDATA_DELAY] < GetClampedCVar("uh_sv_bonuseventlimit", 1, 100)) {
+      int choiceplayer = uh_bosschoicewinner - 1;
+      uh_bosschoicewinner = 0;  // One countdown only, including timeout/leave.
+      ACS_NamedExecute("ub_BonusBossSelector", 0, choiceplayer);
     }
     Delay(11);
 

@@ -404,14 +404,21 @@ script "ub_WhoWonTheRound" (void) {
     Delay(5);
   }
   Delay(1);
-  int findtid = 0;
-  until (findtid == 64) {
-    if (PlayerInGame(findtid) && CheckActorInventory(findtid + 1000, "IsDead") != 1) {
-      AdjustPlayerForceNumArray(findtid + 1000);
-      UH_Log(UH_LOG_DEBUG, StrParam(s:"Player ", i:findtid, s:" (", n:findtid + 1, s:") won the round! "));
-      terminate;
+  int winner = -1;
+  int alive = 0;
+  for (int findtid = 0; findtid < MAX_PLAYERS; findtid++) {
+    if (PlayerInGame(findtid) && PlayerIsSpectator(findtid) == 0 &&
+        GetActorProperty(findtid + 1000, APROP_HEALTH) > 0 &&
+        CheckActorInventory(findtid + 1000, "IsDead") != 1) {
+      winner = findtid;
+      alive++;
     }
-    findtid++;
+  }
+  if (alive == 1) {
+    AdjustPlayerForceNumArray(winner + 1000);
+    uh_bosschoicewinner = winner + 1;
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Player ", i:winner, s:" (", n:winner + 1, s:") won the round! "));
+    terminate;
   }
   UH_Log(UH_LOG_DEBUG, StrParam(s:"Match was a draw! No winner set."));
 }

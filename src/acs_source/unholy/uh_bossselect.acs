@@ -22,6 +22,19 @@ function int RandomRune(int type) {
 }
 
 script "ub_SelectBossAndEvent" (void) {
+  // Restore the countdown choice after the engine's LMS map reset, and claim
+  // it once. Keep the local copy through ub_MorphSelectedBosses for assignment.
+  bosschoiceconfirmed = uh_bosschoicecommit[0] > 0;
+  if (bosschoiceconfirmed) {
+    bosschoicetid = uh_bosschoicecommit[0] + 999;
+    bosschoiceid = uh_bosschoicecommit[1];
+    uh_bosschoicecommit[0] = 0;
+    uh_bosschoicecommit[1] = 0;
+    if (!IsBossDefined(bosschoiceid) || !PlayerPickCheck(bosschoicetid, 0) ||
+        PlayerIsSpectator(bosschoicetid - 1000) != 0) {
+      bosschoiceconfirmed = false;
+    }
+  }
   // This makes specific bosses/events happen
   survivorstartitem = "SurvivorBoxItems_P";
   ClearMujicaState();
@@ -44,7 +57,16 @@ script "ub_SelectBossAndEvent" (void) {
   while (strongmancheck[0] >= 0 && !CheckBossList(strongmancheck[0]))
     Minus_StrongmanCheckArray();
 
-  if (strongmancheck[0] >= 0) {
+  if (bosschoiceconfirmed && IsBossDefined(bosschoiceid) &&
+      PlayerPickCheck(bosschoicetid, 0) &&
+      PlayerIsSpectator(bosschoicetid - 1000) == 0) {
+    // The reward is a single-boss round; queued ultras remain for later rounds.
+    bossdataarr[0][BOSSDATA_NUM] = bosschoiceid;
+    multibosscheck = 1;
+    bossslotalive[0] = true;
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Bonus winner selected boss: ", i:bosschoiceid));
+  }
+  else if (strongmancheck[0] >= 0) {
     bossdataarr[0][BOSSDATA_NUM] = strongmancheck[0];
     Minus_StrongmanCheckArray();
     multibosscheck = 1;
