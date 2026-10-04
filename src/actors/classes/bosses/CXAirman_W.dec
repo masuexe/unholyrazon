@@ -84,6 +84,7 @@ actor CXAirMan_W : BaseUnholyBossWep {
     TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo200", 200, "Jump")
     goto ReadyX
    Jump:
+    TNT1 A 0 A_GiveInventory("CXAirManReloadSound_F")
     TNT1 A 0 A_TakeInventory("UnholyBossAmmo200", 200)
     TNT1 A 0 A_PlaySoundEx("weapon/airshooter", "Weapon")
     8I01 A 0 ACS_NamedExecuteWithResult("uh_invulnerableplayer", 0, 1)
@@ -92,6 +93,7 @@ actor CXAirMan_W : BaseUnholyBossWep {
     8I01 A 24 A_GiveInventory("CXAirManFlashOn_P")
     8I01 A 0 ACS_NamedExecuteWithResult("rz_AirManWarp")  // A_GiveInventory("UH_ArtiTeleport_P")
     8I01 A 0 A_GiveInventory("CXAirManFlashOff_P")
+    8I01 A 0 A_TakeInventory("CXAirManReloadSound_F")
     8I01 A 0 ACS_NamedExecuteWithResult("uh_invulnerableplayer", 0, 0)
     8I01 A 0 ACS_NamedExecuteWithResult("uh_stopplayer", 0, 0)
     8I01 A 0 ACS_NamedExecuteWithResult("uh_nogravityplayer", 0, 0, 0)
@@ -110,6 +112,10 @@ actor CXAirMan_W : BaseUnholyBossWep {
     // 8I01 A 1 A_SpawnItemEx("CXAirShotX",0,0,32,25,0,0,0)
     // goto ReadyX
   }
+}
+
+actor CXAirManReloadSound_F : Inventory {
+  Inventory.MaxAmount 1
 }
 
 actor CXAirManFlag : Inventory {
@@ -165,6 +171,8 @@ actor CXAirMan_Ready8_P : CXAirMan_Ready0_P {
 actor CXAirManFlashOn_P : CustomInventory {
   States {
    Pickup:
+    // M2 and Reload share one cloak. Do not acquire a second property layer.
+    TNT1 A 0 A_JumpIfInventory("DecoyFlag1", 1, "End")
     TNT1 A 0 A_GiveInventory("DecoyFlag1")
     TNT1 A 0 ACS_NamedExecuteWithResult("uh_cantseekplayer", 0, 1)
     TNT1 A 0 ACS_NamedExecuteWithResult("uh_dontidentifytargetplayer", 0, 1)
@@ -176,7 +184,11 @@ actor CXAirManFlashOn_P : CustomInventory {
     TNT1 A 0 ACS_NamedExecuteWithResult("uh_BossPowerTake", 34)
     TNT1 A 0 ACS_NamedExecuteWithResult("uh_BossPowerTake", 35)
     TNT1 A 0 A_JumpIfInventory("CXAirManAltFlag", 0, "End")
+    TNT1 A 0 A_JumpIfInventory("CXAirManReloadSound_F", 1, "SilentFX")
     TNT1 A 0 A_SpawnItemEx("CXAirManTeleportFX2_Helper", 0, 0, 32, 0, 0, 0, 0, 1)
+    stop
+   SilentFX:
+    TNT1 A 0 A_SpawnItemEx("CXAirManTeleportFX2_SilentHelper", 0, 0, 32, 0, 0, 0, 0, 1)
     stop
    End:
     TNT1 A 0
@@ -214,6 +226,19 @@ actor CXAirManFlashOff_P : CustomInventory {
     goto End
    End:
     TNT1 A 0 A_TakeInventory("CXAirManFlag")
+    stop
+  }
+}
+
+// Temporary server-side sight endpoint for validating Reload destinations.
+actor CXAirManWarpProbe {
+  +NOBLOCKMAP
+  +NOGRAVITY
+  Radius 1
+  Height 1
+  States {
+   Spawn:
+    TNT1 A 1
     stop
   }
 }
@@ -389,4 +414,14 @@ actor AirBrg2 : AirBrg {
   ReactionTime 45
   Damage (30)
   Scale 3.0
+}
+
+// Reload plays its opening sound directly; suppress only the opening FX sound.
+actor CXAirManTeleportFX2_SilentHelper : CXAirManTeleportFX2_Helper {
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 2 A_SpawnItemEx("CXAirManTeleportFX2", 0, 0, 0, 0, 0, 0, 0, 1)
+    stop
+  }
 }

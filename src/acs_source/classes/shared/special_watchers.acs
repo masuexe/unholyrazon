@@ -573,7 +573,24 @@ script "rz_AirManWarp" (void) {
     if (warptotid == -1) {
       break;
     }
-    res = Warp(warptotid, Random(-128, 128) << 16, Random(-128, 128) << 16, Random(16, 32) << 16, 0, WARPF_USECALLERANGLE);
+    // Warp checks the destination footprint, but not the wall between the
+    // reference player and that destination. Outside-map void can pass that
+    // footprint test; require sight from the reference before moving.
+    int xofs = Random(-128, 128) << 16;
+    int yofs = Random(-128, 128) << 16;
+    int angle = GetActorAngle(0);
+    int x = GetActorX(warptotid) + FixedMul(xofs, cos(angle)) + FixedMul(yofs, sin(angle));
+    int y = GetActorY(warptotid) + FixedMul(xofs, sin(angle)) - FixedMul(yofs, cos(angle));
+    int z = GetActorZ(warptotid) + (Random(16, 32) << 16);
+    int probe = UniqueTID();
+    if (probe <= 0) {break;}
+    if (SpawnForced("CXAirManWarpProbe", x, y, z + GetActorProperty(0, APROP_Height) / 2, probe)) {
+      bool visible = CheckSight(warptotid, probe, 0);
+      Thing_Remove(probe);
+      if (visible) {
+        res = Warp(warptotid, x, y, z, 0, WARPF_ABSOLUTEPOSITION | WARPF_USECALLERANGLE);
+      }
+    }
   } while (!res && retrycount < 64);
 }
 
