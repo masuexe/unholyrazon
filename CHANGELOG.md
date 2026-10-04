@@ -4,6 +4,8 @@
 - 修复 CXAirMan 的 Reload 在传送目标位于墙角时可能传送到地图外的问题
 - 修复 CXAirMan 在第 6 次 M2 完全隐身后使用 Reload 会重复叠加隐身属性、导致永久隐身的问题
 - 调整 CXAirMan 的 Reload 音效：起手和传送后现形各播放一次 `weapon/airshooter`，消除起手特效造成的重复叠音
+- 为 CXAirMan 增加与 Misery 相同的常驻浮空能力
+- 将 Misery 与 CXAirMan 的浮空逻辑封装为共用控制器，统一高度限制、体力消耗及飞行状态管理，保留各自库存标记、HUD 和死亡／解除变身时的清理，原有数值不变
 - 为 Nega Super Arm（含 Shiny）增加 5 秒抓取时限，到时自动投掷
 - 为 RNC Clashman 的 Reload 隐身增加 5 秒时限，到时自动解除并进入原有冷却
 - 修复超过 32 人时队友信息同步可能触发 ACS 执行超限并导致服务器报错的问题

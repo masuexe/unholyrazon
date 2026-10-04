@@ -1,69 +1,9 @@
-// Permanent, floor-relative flight, following Alien / XGond's 160-unit limit.
-// A small hysteresis avoids toggling the flight stack at the height boundary.
-#define UH_MISERY_HOVER_LIMIT 160.0
-#define UH_MISERY_HOVER_RESUME 152.0
-#define UH_MISERY_HOVER_PIT_COST 10
-#define UH_MISERY_HOVER_AIR_RECHARGE 1
-#define UH_MISERY_HOVER_GROUND_RECHARGE 4
-
-function void UH_MiseryHoverRelease(void) {
-  if (!CheckInventory("Misery_HoverActive_F"))
-    return;
-  ACS_NamedExecuteWithResult("uh_flyplayer", 0, 0, false);
-  TakeInventory("Misery_HoverActive_F", 1);
-}
-
+// Class entry points for the shared height-limited hover controller.
 script "uh_MiseryHoverRelease" (void) {
-  UH_MiseryHoverRelease();
+  UH_BossHoverRelease("Misery_HoverActive_F");
 }
 
 script "uh_MiseryHover" (void) {
-  int player = PlayerNumber();
-  if (player < 0)
-    terminate;
-  int mygen = GetPlayerMorphGen(player);
-  bool limited = false;
-
-  while (PlayerInGame(player)) {
-    // The pre-unmorph hook releases our stack before the generation changes.
-    // Never release from an old watcher: its activator may now be a new body.
-    if (!UH_WatcherStillOwnsBoss(mygen, player))
-      terminate;
-    if (GetActorProperty(0, APROP_Health) <= 0 || CheckInventory("IsDead") ||
-        StrICmp(GetActorClass(0), "Misery")) {
-      UH_MiseryHoverRelease();
-      terminate;
-    }
-
-    int altitude = GetActorZ(0) - GetActorFloorZ(0);
-    if (altitude >= UH_MISERY_HOVER_LIMIT)
-      limited = true;
-    else if (altitude <= UH_MISERY_HOVER_RESUME)
-      limited = false;
-
-    // Match CBM Alien: only the eligible-flight branch over a damaging pit
-    // drains stamina. Over-height ticks neither drain nor recharge in a pit.
-    bool damagingpit = ACS_NamedExecuteWithResult("uh_CheckDamagingPit", 0);
-    bool exhausted = false;
-    if (damagingpit) {
-      if (!limited) {
-        GiveInventory("PowerStaminaFlagDeplete", 1);
-        TakeInventory("Misery_HoverStamina_F", UH_MISERY_HOVER_PIT_COST);
-        exhausted = !CheckInventory("Misery_HoverStamina_F");
-      }
-    }
-    else {
-      GiveInventory("Misery_HoverStamina_F", altitude == 0 ?
-        UH_MISERY_HOVER_GROUND_RECHARGE : UH_MISERY_HOVER_AIR_RECHARGE);
-    }
-
-    if (limited || exhausted)
-      UH_MiseryHoverRelease();
-    else if (!CheckInventory("Misery_HoverActive_F")) {
-      // Toggle 2 preserves momentum; normal flight respects grounded effects.
-      ACS_NamedExecuteWithResult("uh_flyplayer", 0, 2, false);
-      GiveInventory("Misery_HoverActive_F", 1);
-    }
-    Delay(1);
-  }
+  ACS_NamedExecuteAlways("uh_BossHover", 0,
+    "Misery", "Misery_HoverActive_F", "Misery_HoverStamina_F");
 }
