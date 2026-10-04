@@ -1,0 +1,71 @@
+// A reveal owns one completion callback, tied to the original morph body.
+int uh_cx_airman_reveal_generation[64];
+
+function void UH_CXAirManClearCloak(void) {
+  if (CheckInventory("DecoyFlag1")) {
+    ACS_NamedExecuteWithResult("uh_cantseekplayer", 0, 0);
+    ACS_NamedExecuteWithResult("uh_dontidentifytargetplayer", 0, 0);
+    ACS_NamedExecuteWithResult("uh_invisibleplayer", 0, 0);
+    TakeInventory("DecoyFlag1", 1);
+  }
+  for (int power = 30; power <= 35; power++) {
+    ACS_NamedExecuteWithResult("uh_BossPowerTake", power);
+  }
+  TakeInventory("CXAirManRevealPending_F", 1);
+}
+
+// A new cloak replaces the old reveal; its FX must not clear the new powers.
+// The same entry point releases pending layers before unmorph baseline cleanup.
+script "uh_CXAirManRevealCancel" (void) {
+  if (!CheckInventory("CXAirManRevealPending_F")) {terminate;}
+  int player = PlayerNumber();
+  if (player >= 0 && player < 64) {
+    uh_cx_airman_reveal_generation[player]++;
+  }
+  UH_CXAirManClearCloak();
+}
+
+script "uh_CXAirManRevealBegin" (void) {
+  TakeInventory("CXAirManFlag", 50);
+  if (CheckInventory("CXAirManRevealPending_F")) {terminate;}
+  bool cloaked = CheckInventory("DecoyFlag1");
+  for (int power = 0; power < 5; power++) {
+    cloaked |= CheckInventory(StrParam(s:"UH_", i:power + 1, s:"0_AlphaPower")) > 0;
+  }
+  if (!cloaked) {terminate;}
+  int player = PlayerNumber();
+  if (player < 0 || player >= 64) {terminate;}
+  // End the gameplay stacks/wind now; retain visual cloak until the FX ends.
+  TakeInventory("CXAirManAltFlag", 6);
+  GiveInventory("CXAirManRevealPending_F", 1);
+  int generation = ++uh_cx_airman_reveal_generation[player];
+  int morph = GetPlayerMorphGen(player);
+  int owner = ActivatorTID();
+  int fx = UniqueTID();
+  if (fx <= 0 || !SpawnForced("CXAirManTeleportFX",
+      GetActorX(0), GetActorY(0), GetActorZ(0) + 32.0, fx)) {
+    UH_CXAirManClearCloak();
+    terminate;
+  }
+  // -1 copies the activator's current translation, including team/dye colors.
+  Thing_SetTranslation(fx, -1);
+  SetUserVariable(fx, "user_reveal_generation", generation);
+  SetUserVariable(fx, "user_morph_generation", morph);
+  SetActivator(fx);
+  SetPointer(AAPTR_TARGET, owner);
+  Thing_ChangeTID(fx, 0);
+}
+
+// Called by the last state of the server-owned animation, immediately before stop.
+script "uh_CXAirManRevealDone" (void) {
+  int generation = GetUserVariable(0, "user_reveal_generation");
+  int morph = GetUserVariable(0, "user_morph_generation");
+  if (!SetActivator(0, AAPTR_TARGET)) {terminate;}
+  int player = PlayerNumber();
+  if (player < 0 || player >= 64) {terminate;}
+  if (generation != uh_cx_airman_reveal_generation[player]
+      || !UH_WatcherStillOwnsBoss(morph, player)
+      || StrICmp(GetActorClass(0), "CXAirMan")
+      || !CheckInventory("CXAirManRevealPending_F")) {terminate;}
+  UH_CXAirManClearCloak();
+}
