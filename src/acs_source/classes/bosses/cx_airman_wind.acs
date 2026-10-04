@@ -1,0 +1,50 @@
+// Wind exists only during the first five M2 invisibility stacks.
+#define CXAIRMAN_WIND_RANGE 512
+#define CXAIRMAN_WIND_CONE_COS 0.707107
+#define CXAIRMAN_WIND_PUSH 2.0
+#define CXAIRMAN_WIND_SPEED 24.0
+#define CXAIRMAN_WIND_LIFT 0.75
+#define CXAIRMAN_WIND_LIFT_SPEED 6.0
+
+int uh_cx_airman_wind_generation[64];
+
+script "uh_CXAirManWind" (void) {
+  int owner = PlayerNumber();
+  if (owner < 0 || owner >= 64) {terminate;}
+  int generation = ++uh_cx_airman_wind_generation[owner];
+  int morph = GetPlayerMorphGen(owner);
+  int tick = 0;
+  while (generation == uh_cx_airman_wind_generation[owner]
+      && UH_WatcherStillOwnsBoss(morph, owner)
+      && GetActorProperty(0, APROP_Health) > 0
+      && !CheckInventory("IsDead")
+      && CheckInventory("CXAirManAltFlag") > 0
+      && CheckInventory("CXAirManAltFlag") < 6) {
+    // Real game tics: Rage changes neither strength nor update frequency.
+    if ((tick++ % 2) == 0) {
+      int facing = GetActorAngle(0);
+      int fx = cos(facing);
+      int fy = sin(facing);
+      for (int p = 0; p < ServerMAX; p++) {
+        if (p == owner || !PlayerInGame(p) || PlayerIsSpectator(p)) {continue;}
+        int tid = 1000 + p; // MM8BDM v6b PLN_TID.
+        if (GetActorProperty(tid, APROP_Health) <= 0
+            || CheckActorInventory(tid, "IsDead")) {continue;}
+        if (ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", owner, p)) {continue;}
+        int dx = GetActorX(tid) - GetActorX(0);
+        int dy = GetActorY(tid) - GetActorY(0);
+        int distance = VectorLength(dx, dy);
+        if (distance <= 0 || XYZDistance(0, tid) > CXAIRMAN_WIND_RANGE) {continue;}
+        int forward = FixedMul(dx, fx) + FixedMul(dy, fy);
+        if (forward < FixedMul(distance, CXAIRMAN_WIND_CONE_COS)
+            || !CheckSight(0, tid, 0)) {continue;}
+        // Cap only the wind contribution; preserve existing lateral velocity.
+        int speed = FixedMul(GetActorVelX(tid), fx) + FixedMul(GetActorVelY(tid), fy);
+        int push = max(0, min(CXAIRMAN_WIND_PUSH, CXAIRMAN_WIND_SPEED - speed));
+        int lift = max(0, min(CXAIRMAN_WIND_LIFT, CXAIRMAN_WIND_LIFT_SPEED - GetActorVelZ(tid)));
+        SetActorVelocity(tid, FixedMul(push, fx), FixedMul(push, fy), lift, true, false);
+      }
+    }
+    Delay(1);
+  }
+}
