@@ -1,3 +1,7 @@
+## 4.0.0-beta.261005
+
+- 修复 BirdNest（Crow Nest）速射弹／散射弹命中时缺少伤害归属 actor，导致 `core_damageactor` 报错且归属伤害未生效的问题
+
 ## 4.0.0-beta.261004.hotfix1
 
 - 修复 GBeast／FBeast 死亡爆炸动画中的 0 tic 循环导致联机客户端直接退出的问题，并修正两者共用的死亡闪白色表编号
