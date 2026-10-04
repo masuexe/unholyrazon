@@ -4,6 +4,7 @@
 - 重做 Slugger 的副攻击（M2）：从手动投掷木箱改为定点呼叫空投，一段时间后空投箱从天而降砸向地面，落地引发爆炸范围伤害并生成武器箱补给
 - 将 Slugger Shotgun 的武器 HUD 替换为 Razon 3 的素材与开火／换弹动画
 - 为 Slugger 的手枪、重机枪、火箭筒和霰弹枪加入自动近战：首次按下 M1 时，瞄准线前方 48 单位内有敌人则使用不耗弹的刺刀
+- 为 Slugger Rocket Launcher 加入轻微跟踪
 - 修复 BirdNest（Crow Nest）速射弹／散射弹命中时缺少伤害归属 actor，导致 `core_damageactor` 报错且归属伤害未生效的问题
 
 ## 4.0.0-beta.261004.hotfix1

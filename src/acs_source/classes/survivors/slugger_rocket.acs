@@ -1,0 +1,178 @@
+// Rocket Launcher gets small aim corrections, not Enemy Chaser reacquisition.
+// PLN_TID from v6b 8BDMDEFS.acs. Mirror only this constant: the full
+// header conflicts with MAX_PLAYERS exported by the imported uh_acsutils.
+#define PLN_TID 1000
+// ACS angles are turns; all geometry and velocity values below are fixed.
+#define UH_SLUGGER_ROCKET_CONE (10.0 / 360)
+#define UH_SLUGGER_ROCKET_RANGE 1024.0
+#define UH_SLUGGER_ROCKET_THRESHOLD (1.0 / 360)
+#define UH_SLUGGER_ROCKET_TURN (2.0 / 360)
+
+// Isolated query: changing this script's activator never changes its caller.
+script "uh_SluggerRocketEnemy" (int victim) {
+  if (!SetActivator(0, AAPTR_TARGET))
+    terminate;
+  int shooter = PlayerNumber();
+  if (shooter < 0)
+    terminate;
+  int team = GetPlayerInfo(shooter, PLAYERINFO_TEAM);
+  if (!SetActivator(victim) || GetActorProperty(0, APROP_Health) <= 0 ||
+      !CheckFlag(0, "SHOOTABLE") || CheckFlag(0, "CANTSEEK"))
+    terminate;
+  int subject = PlayerNumber();
+  bool enemy;
+  if (subject >= 0) {
+    if (subject == shooter)
+      terminate;
+    if (ACS_NamedExecuteWithResult("uh_IsUnholyTeamMode"))
+      enemy = !ACS_NamedExecuteWithResult("uh_IsDisplayTeammate", shooter, subject);
+    else if (IsTeamGame)
+      enemy = GetPlayerInfo(subject, PLAYERINFO_TEAM) != team;
+    else
+      enemy = GameType() == GAME_NET_DEATHMATCH;
+  } else {
+    enemy = CheckFlag(0, "ISMONSTER") && !CheckFlag(0, "FRIENDLY");
+  }
+  SetResultValue(enemy);
+}
+
+// Score only visible enemies inside the circular forward cone. Prefer the
+// smallest aim error, then the closer target. Player targets are enumerated
+// exactly; a bounded ray fan additionally supports monsters without TIDs.
+function int UH_SluggerRocketCandidate(int victim, int heading, int pitch) {
+  if (GetActorProperty(victim, APROP_Health) <= 0)
+    return -1;
+  int dx = GetActorX(victim) - GetActorX(0);
+  int dy = GetActorY(victim) - GetActorY(0);
+  int dz = GetActorZ(victim) + GetActorProperty(victim, APROP_Height) / 2 -
+           GetActorZ(0) - GetActorProperty(0, APROP_Height) / 2;
+  int xy = VectorLength(dx, dy);
+  int distance = VectorLength(xy, dz);
+  if (distance > UH_SLUGGER_ROCKET_RANGE)
+    return -1;
+  int yawDelta = WrapAround(VectorAngle(dx, dy) - heading, -0.5, 0.5);
+  int pitchDelta = WrapAround(-VectorAngle(xy, dz) - pitch, -0.5, 0.5);
+  int angularDistance = VectorLength(yawDelta, pitchDelta);
+  if (angularDistance > UH_SLUGGER_ROCKET_CONE)
+    return -1;
+  if (!ACS_NamedExecuteWithResult("uh_SluggerRocketEnemy", victim) ||
+      !CheckSight(0, victim, 0))
+    return -1;
+  return angularDistance * 2048 + (distance >> 16);
+}
+
+script "uh_SluggerRocketLock" (void) {
+  SetUserVariable(0, "user_RocketSeeking", 0);
+  SetPointer(AAPTR_TRACER, 0, AAPTR_NULL);
+  int vx = GetActorVelX(0);
+  int vy = GetActorVelY(0);
+  int heading = VectorAngle(vx, vy);
+  int pitch = -VectorAngle(VectorLength(vx, vy), GetActorVelZ(0));
+  int bestScore = 0x7fffffff;
+  // MM8BDM's player TIDs are stable and avoid gaps between sampled rays.
+  for (int player = 0; player < MAX_PLAYERS; player++) {
+    if (!PlayerInGame(player) || PlayerIsSpectator(player))
+      continue;
+    int victim = PLN_TID + player;
+    int score = UH_SluggerRocketCandidate(victim, heading, pitch);
+    if (score >= 0 && score < bestScore) {
+      SetPointer(AAPTR_TRACER, victim);
+      SetUserVariable(0, "user_RocketSeeking", 1);
+      bestScore = score;
+    }
+  }
+
+  int temporaryTid = UniqueTID();
+  // Sample centre, then +/-5 and +/-10 degrees on each axis for monsters.
+  // PickActor preserves existing TIDs; remove only IDs assigned here.
+  // The tracer pointer survives that cleanup.
+  for (int h = 0; h < 5; h++) {
+    int yawOffset = ((h + 1) / 2) * (5.0 / 360);
+    if (h % 2) yawOffset = -yawOffset;
+    for (int v = 0; v < 5; v++) {
+      int pitchOffset = ((v + 1) / 2) * (5.0 / 360);
+      if (v % 2) pitchOffset = -pitchOffset;
+      int picked = PickActor(0, heading + yawOffset, pitch + pitchOffset,
+                            UH_SLUGGER_ROCKET_RANGE, temporaryTid,
+                            MF_SHOOTABLE, ML_BLOCKEVERYTHING | ML_BLOCKHITSCAN,
+                            PICKAF_RETURNTID);
+      if (!picked)
+        continue;
+      int candidateScore = UH_SluggerRocketCandidate(picked, heading, pitch);
+      if (candidateScore >= 0 && candidateScore < bestScore) {
+        SetPointer(AAPTR_TRACER, picked);
+        SetUserVariable(0, "user_RocketSeeking", 1);
+        bestScore = candidateScore;
+      }
+      if (picked == temporaryTid)
+        Thing_ChangeTID(picked, 0);
+    }
+  }
+}
+
+// Match seeker(1, 2)'s horizontal threshold/half-error rule on both axes.
+// There is no vertical snap and no automatic search when the target is lost.
+function int UH_SluggerRocketTurn(int current, int desired) {
+  int delta = WrapAround(desired - current, -0.5, 0.5);
+  if (abs(delta) > UH_SLUGGER_ROCKET_THRESHOLD)
+    delta /= 2;
+  if (delta > UH_SLUGGER_ROCKET_TURN)
+    delta = UH_SLUGGER_ROCKET_TURN;
+  if (delta < -UH_SLUGGER_ROCKET_TURN)
+    delta = -UH_SLUGGER_ROCKET_TURN;
+  return current + delta;
+}
+
+script "uh_SluggerRocketGuide" (void) {
+  if (!GetUserVariable(0, "user_RocketSeeking"))
+    terminate;
+  // Temporarily identify the rocket so we can read its tracer then restore
+  // the activator. No TID changes persist beyond this synchronous call.
+  int rocket = ActivatorTID();
+  bool temporaryRocket = rocket == 0;
+  if (temporaryRocket) {
+    rocket = UniqueTID();
+    Thing_ChangeTID(0, rocket);
+  }
+  bool hasTarget = SetActivator(0, AAPTR_TRACER);
+  int victim = 0;
+  bool temporaryVictim = false;
+  if (hasTarget) {
+    victim = ActivatorTID();
+    temporaryVictim = victim == 0;
+    if (temporaryVictim) {
+      victim = UniqueTID();
+      Thing_ChangeTID(0, victim);
+    }
+  }
+  SetActivator(rocket);
+  if (!hasTarget ||
+      !ACS_NamedExecuteWithResult("uh_SluggerRocketEnemy", victim) ||
+      !CheckSight(0, victim, 0)) {
+    SetUserVariable(0, "user_RocketSeeking", 0);
+    SetPointer(AAPTR_TRACER, 0, AAPTR_NULL);
+  } else {
+    int dx = GetActorX(victim) - GetActorX(0);
+    int dy = GetActorY(victim) - GetActorY(0);
+    int dz = GetActorZ(victim) + GetActorProperty(victim, APROP_Height) / 2 -
+             GetActorZ(0) - GetActorProperty(0, APROP_Height) / 2;
+    int vx = GetActorVelX(0);
+    int vy = GetActorVelY(0);
+    int vz = GetActorVelZ(0);
+    int xySpeed = VectorLength(vx, vy);
+    int speed = VectorLength(xySpeed, vz);
+    int heading = UH_SluggerRocketTurn(VectorAngle(vx, vy), VectorAngle(dx, dy));
+    int pitch = UH_SluggerRocketTurn(-VectorAngle(xySpeed, vz),
+                                   -VectorAngle(VectorLength(dx, dy), dz));
+    int horizontal = FixedMul(speed, Cos(pitch));
+    SetActorAngle(0, heading);
+    SetActorPitch(0, pitch);
+    SetActorVelocity(0, FixedMul(horizontal, Cos(heading)),
+                    FixedMul(horizontal, Sin(heading)),
+                    -FixedMul(speed, Sin(pitch)), false, false);
+  }
+  if (temporaryVictim)
+    Thing_ChangeTID(victim, 0);
+  if (temporaryRocket)
+    Thing_ChangeTID(0, 0);
+}
