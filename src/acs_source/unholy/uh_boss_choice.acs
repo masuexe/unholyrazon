@@ -1,6 +1,15 @@
 // Port of Razon3 RBLACS rb_BossSelector. Included only by unholy.acs.
-// Rolls/input run on the server; option text goes to the winner with
-// NamedSendNetworkString so k: resolves that client's own key bindings.
+// Rolls/input run on the server; option text and face graphics go to the
+// winner with NamedSendNetworkString so k: resolves that client's own key bindings.
+
+#define UHBOSS_CHOICE_HUD_HEADER    8840
+#define UHBOSS_CHOICE_HUD_TIMER     8841
+#define UHBOSS_CHOICE_HUD_CONFIRM_H 8842
+#define UHBOSS_CHOICE_HUD_CONFIRM_S 8843
+#define UHBOSS_CHOICE_HUD_CONFIRM_B 8846
+#define UHBOSS_CHOICE_HUD_CONFIRM_M 8845
+#define UHBOSS_CHOICE_HUD_CONFIRM_O 8844
+#define UHBOSS_CHOICE_HUD_CARD_BASE 8850
 
 // Reservoir sampling avoids retry loops if an addon supplies a small pool.
 function int PickBonusBossOption(int pool, int avoid1, int avoid2) {
@@ -15,32 +24,231 @@ function int PickBonusBossOption(int pool, int avoid1, int avoid2) {
   return picked;
 }
 
+function str UH_GetBossChoiceFace(int id) {
+  if (!IsBossDefined(id)) {return "";}
+  str mug = GetBossMugshot(id);
+  if (StrLen(mug)) {return mug;}
+  if (id >= 0) {
+    return StrParam(s:"UFACE", i:id);
+  }
+  str actor = GetBossActor(id);
+  if (StrLen(actor)) {
+    str port = UH_PlayerPortrait(actor);
+    if (StrLen(port)) {return port;}
+  }
+  return "";
+}
+
 function void ClearBonusBossOptions(void) {
-  HudMessage(s:""; HUDMSG_PLAIN, 65, CR_GOLD, 0.5, 0.45, 0.0);
+  ClearHudMessage(65);
   int player = PlayerNumber();
   if (player >= 0) {NamedExecuteClientScript("ub_BonusBossOptionsClear", player);}
 }
 
 script "ub_BonusBossOptionsClear" (void) CLIENTSIDE {
-  for (int i = 0; i < 4; i++) {
-    HudMessage(s:""; HUDMSG_PLAIN, 8850 + i, CR_WHITE, 0.5, 0.60, 0.0);
+  for (int id = 8840; id <= 8899; id++) {
+    ClearHudMessage(id);
   }
 }
 
-// Receive actual names, not server string handles or addon registration ids.
-// ASCII 31 separates rows, as in the versus intro name transport.
-script "ub_BonusBossOptions" (int names) CLIENTSIDE {
+script "ub_BonusBossOpenSound" (void) CLIENTSIDE {
+  LocalAmbientSound("core/menu/cursor", 127);
+}
+
+// Receive actual names and face textures, not server string handles or addon registration ids.
+// ASCII 31 separates tokens: 4 pairs of (name, face) followed by status ("TIME:<sec>" or "PICK:<idx>").
+script "ub_BonusBossOptions" (int payload) CLIENTSIDE {
   str commands[4] = {"+moveleft", "+moveright", "+attack", "+altattack"};
-  SetFont("BIGFONT");
-  SetHudSize(0, 0, 0);
+  str actionlabels[4] = {"STRAFE LEFT", "STRAFE RIGHT", "FIRE", "ALT-FIRE"};
+  int cardX[4] = {125, 255, 385, 515};
+
+  str names[4];
+  str faces[4];
   int start = 0;
-  for (int row = 0; row < 4; row++) {
+  for (int i = 0; i < 4; i++) {
     int end = start;
-    while (end < StrLen(names) && GetChar(names, end) != 31) {end++;}
-    str name = StrMid(names, start, end - start);
-    HudMessageBold(k:commands[row], s:": ", s:name; HUDMSG_FADEOUT, 8850 + row,
-      CR_WHITE, 0.5, 0.60 + row * 0.05, 0.3, 0.1);
+    while (end < StrLen(payload) && GetChar(payload, end) != 31) {end++;}
+    names[i] = StrMid(payload, start, end - start);
     start = end + 1;
+
+    end = start;
+    while (end < StrLen(payload) && GetChar(payload, end) != 31) {end++;}
+    faces[i] = StrMid(payload, start, end - start);
+    start = end + 1;
+  }
+
+  bool is_confirmed = false;
+  int confirmed_pick = -1;
+  str seconds = "0";
+  if (start < StrLen(payload)) {
+    str tail = StrMid(payload, start, StrLen(payload) - start);
+    if (GetChar(tail, 0) == 80) { // 'P' for "PICK:<idx>"
+      is_confirmed = true;
+      confirmed_pick = GetChar(tail, 5) - 48; // '0'..'3'
+    } else if (GetChar(tail, 0) == 84 && StrLen(tail) > 5) { // 'T' for "TIME:<sec>"
+      seconds = StrMid(tail, 5, StrLen(tail) - 5);
+    } else {
+      seconds = tail;
+    }
+  }
+
+  SetHudSize(640, 480, 0);
+
+  // === CONFIRMATION STATE (PLAYER CHOSE A BOSS) ===
+  if (is_confirmed && confirmed_pick >= 0 && confirmed_pick < 4) {
+    // 1. Clear the 4 cards
+    for (int r = 0; r < 4; r++) {
+      int cBase = UHBOSS_CHOICE_HUD_CARD_BASE + r * 10;
+      for (int sub = 0; sub < 7; sub++) {
+        ClearHudMessage(cBase + sub);
+      }
+    }
+
+    // 2. Play confirm sound
+    LocalAmbientSound("misc/teleport", 127);
+
+    // 3. Header Title
+    SetFont("BIGFONT");
+    HudMessage(s:"\cd== UNHOLY POWER AWAKENS ==";
+      HUDMSG_FADEOUT, UHBOSS_CHOICE_HUD_HEADER, CR_GOLD, 320.4, 126.1, 3.5, 1.0);
+
+    // 4. Subtitle
+    SetFont("BIGFONT");
+    HudMessage(s:"\ckYou will spawn as:";
+      HUDMSG_FADEOUT, UHBOSS_CHOICE_HUD_TIMER, CR_WHITE, 320.4, 150.1, 3.5, 1.0);
+
+    // 5. Badge
+    SetFont("SMALLFONT");
+    HudMessage(s:"\cd* SELECTED! *";
+      HUDMSG_FADEOUT, 8890, CR_GREEN, 320.4, 174.1, 3.5, 1.0);
+
+    // 6. Rarity
+    SetFont("SMALLFONT");
+    if (confirmed_pick == 3) {
+      HudMessage(s:"\cg* [RARE BOSS] *";
+        HUDMSG_FADEOUT, 8891, CR_RED, 320.4, 188.1, 3.5, 1.0);
+    } else {
+      HudMessage(s:"\cd[COMMON BOSS]";
+        HUDMSG_FADEOUT, 8891, CR_GREEN, 320.4, 188.1, 3.5, 1.0);
+    }
+
+    // 7. Mugshot Box (32x32 centered at X=320, Y=204)
+    int spotMugX = ((320 - 16) * 1.0);
+    int spotMugY = 204.0;
+    int spotBorderX = ((320 - 18) * 1.0);
+    int spotBorderY = 202.0;
+
+    // Layer 1: Solid black backing
+    if (CheckFont("MG_FBLK")) {
+      SetFont("MG_FBLK");
+      HudMessage(s:"A"; HUDMSG_FADEOUT, 8894, -1, spotMugX + 0.1, spotMugY + 0.1, 3.5, 1.0);
+    }
+
+    // Layer 2: Mugshot
+    if (StrLen(faces[confirmed_pick]) && CheckFont(faces[confirmed_pick])) {
+      SetFont(faces[confirmed_pick]);
+      HudMessage(s:"A"; HUDMSG_FADEOUT, 8893, -1, spotMugX + 0.1, spotMugY + 0.1, 3.5, 1.0);
+    }
+
+    // Layer 3: Border Frame (Pulsing animated border)
+    if (CheckFont("MG_OT1RR")) {
+      SetFont("MG_OT1RR");
+      HudMessage(s:"A"; HUDMSG_FADEOUT, 8892, -1, spotBorderX + 0.1, spotBorderY + 0.1, 3.5, 1.0);
+    } else if (CheckFont("MG_OTL1S")) {
+      SetFont("MG_OTL1S");
+      HudMessage(s:"A"; HUDMSG_FADEOUT, 8892, -1, spotBorderX + 0.1, spotBorderY + 0.1, 3.5, 1.0);
+    }
+
+    // 8. Boss Name
+    SetFont("BIGFONT");
+    HudMessage(s:names[confirmed_pick];
+      HUDMSG_FADEOUT, 8895, CR_WHITE, 320.4, 244.1, 3.5, 1.0);
+
+    // 9. Prompt below
+    SetFont("SMALLFONT");
+    HudMessage(s:"\cjGet ready for battle! The arena awaits...";
+      HUDMSG_FADEOUT, 8896, CR_GRAY, 320.4, 268.1, 3.5, 1.0);
+
+    terminate;
+  }
+
+  // === COUNTDOWN STATE (SHOW 4 CANDIDATE CARDS) ===
+  // 1. Header Title
+  SetFont("BIGFONT");
+  HudMessage(s:"\cg== \ckBONUS WINNER: SELECT YOUR BOSS \cg==";
+    HUDMSG_FADEOUT, UHBOSS_CHOICE_HUD_HEADER, CR_GOLD, 320.4, 116.1, 0.3, 0.1);
+
+  // 2. Subtitle / Countdown Timer
+  SetFont("SMALLFONT");
+  HudMessage(s:"\cdTime Remaining: \cg", s:seconds, s:"s  \cj|  \ckPress key to claim Unholy Power...";
+    HUDMSG_FADEOUT, UHBOSS_CHOICE_HUD_TIMER, CR_WHITE, 320.4, 136.1, 0.3, 0.1);
+
+  // 3. Render 4 Horizontal Cards
+  for (int row = 0; row < 4; row++) {
+    int cx = (cardX[row] * 1.0);
+    int baseId = UHBOSS_CHOICE_HUD_CARD_BASE + row * 10;
+    bool available = (StrCmp(names[row], "Unavailable") != 0 && StrLen(names[row]) > 0);
+
+    // [A] Key Binding Badge
+    SetFont("BIGFONT");
+    if (available) {
+      HudMessage(s:"\ck[ ", k:commands[row], s:" \ck]";
+        HUDMSG_FADEOUT, baseId + 0, CR_GOLD, cx + 0.4, 160.1, 0.3, 0.1);
+    } else {
+      HudMessage(s:"\cu[ - ]";
+        HUDMSG_FADEOUT, baseId + 0, CR_GRAY, cx + 0.4, 160.1, 0.3, 0.1);
+    }
+
+    // [B] Action Label (e.g. STRAFE LEFT)
+    SetFont("SMALLFONT");
+    HudMessage(s:actionlabels[row];
+      HUDMSG_FADEOUT, baseId + 1, CR_WHITE, cx + 0.4, 178.1, 0.3, 0.1);
+
+    // [C] Rarity Tag
+    if (available) {
+      if (row == 3) {
+        HudMessage(s:"\cg* [RARE] *";
+          HUDMSG_FADEOUT, baseId + 2, CR_RED, cx + 0.4, 192.1, 0.3, 0.1);
+      } else {
+        HudMessage(s:"\cd[COMMON]";
+          HUDMSG_FADEOUT, baseId + 2, CR_GREEN, cx + 0.4, 192.1, 0.3, 0.1);
+      }
+    } else {
+      HudMessage(s:"\cm[NONE]";
+        HUDMSG_FADEOUT, baseId + 2, CR_GRAY, cx + 0.4, 192.1, 0.3, 0.1);
+    }
+
+    // [D] Mugshot Box (32x32 at cx - 16, Y = 208)
+    int mugX = ((cardX[row] - 16) * 1.0);
+    int mugY = 208.0;
+
+    // Layer 1: Solid black backing
+    if (available && CheckFont("MG_FBLK")) {
+      SetFont("MG_FBLK");
+      HudMessage(s:"A"; HUDMSG_FADEOUT, baseId + 5, -1, mugX + 0.1, mugY + 0.1, 0.3, 0.1);
+    }
+
+    // Layer 2: Mugshot
+    if (available && StrLen(faces[row]) && CheckFont(faces[row])) {
+      SetFont(faces[row]);
+      HudMessage(s:"A"; HUDMSG_FADEOUT, baseId + 4, -1, mugX + 0.1, mugY + 0.1, 0.3, 0.1);
+    }
+
+    // Layer 3: Border Frame (36x36 at cx - 18, Y = 206)
+    int borderX = ((cardX[row] - 18) * 1.0);
+    int borderY = 206.0;
+    if (row == 3 && CheckFont("MG_OT1RR")) {
+      SetFont("MG_OT1RR");
+      HudMessage(s:"A"; HUDMSG_FADEOUT, baseId + 3, -1, borderX + 0.1, borderY + 0.1, 0.3, 0.1);
+    } else if (CheckFont("MG_OTL1S")) {
+      SetFont("MG_OTL1S");
+      HudMessage(s:"A"; HUDMSG_FADEOUT, baseId + 3, -1, borderX + 0.1, borderY + 0.1, 0.3, 0.1);
+    }
+
+    // [E] Boss Name
+    SetFont("SMALLFONT");
+    HudMessage(s:names[row];
+      HUDMSG_FADEOUT, baseId + 6, CR_WHITE, cx + 0.4, 248.1, 0.3, 0.1);
   }
 }
 
@@ -68,12 +276,20 @@ script "ub_BonusBossSelector" (int player) {
   options[2] = PickBonusBossOption(UHBOSS_POOL_COMMON, options[0], options[1]);
   options[3] = PickBonusBossOption(UHBOSS_POOL_RARE, UHBOSS_FAIL, UHBOSS_FAIL);
   int masks[4] = {BT_MOVELEFT, BT_MOVERIGHT, BT_ATTACK, BT_ALTATTACK};
-  str names = "";
+
+  str options_data = "";
   for (int row = 0; row < 4; row++) {
     str name = "Unavailable";
-    if (IsBossDefined(options[row])) {name = GetBossName(options[row]);}
-    names = StrParam(s:names, s:name, c:31);
+    str face = "";
+    if (IsBossDefined(options[row])) {
+      name = GetBossName(options[row]);
+      face = UH_GetBossChoiceFace(options[row]);
+    }
+    options_data = StrParam(s:options_data, s:name, c:31, s:face, c:31);
   }
+
+  // Play open sound once to notify winner
+  NamedExecuteClientScript("ub_BonusBossOpenSound", player);
 
   // Old eight-tic grace period, then require a fresh press so a held spawn
   // button cannot silently spend the reward.
@@ -86,11 +302,8 @@ script "ub_BonusBossSelector" (int player) {
        GetGameModeState() == GAMESTATE_COUNTDOWN)) {
     // Refresh at 5 Hz; input still polls every tic.
     if (timeleft % 7 == 0) {
-      SetFont("BIGFONT");
-      SetHudSize(0, 0, 0);
-      HudMessage(n:player + 1, s:", the arena awaits your Unholy Power!\nPress the corresponding key to become...";
-        HUDMSG_FADEOUT, 65, CR_GOLD, 0.5, 0.45, 0.3, 0.1);
-      NamedSendNetworkString("ub_BonusBossOptions", names, player);
+      str payload = StrParam(s:options_data, s:"TIME:", i:(timeleft / 35));
+      NamedSendNetworkString("ub_BonusBossOptions", payload, player);
     }
     int buttons = GetPlayerInput(player, INPUT_BUTTONS);
     int pressed = buttons & ~previous;
@@ -102,9 +315,19 @@ script "ub_BonusBossSelector" (int player) {
         // Map variables disappear at LMS FIGHT, before morphing starts.
         uh_bosschoicecommit[0] = player + 1;
         uh_bosschoicecommit[1] = bosschoiceid;
+
+        // Send lock-in confirmation to client
+        str confirm_payload = StrParam(s:options_data, s:"PICK:", i:pick);
+        NamedSendNetworkString("ub_BonusBossOptions", confirm_payload, player);
+
+        // Keep confirmation screen visible for up to 3 seconds or until fight starts
+        int holdtics = 35 * 3;
+        while (holdtics-- > 0 &&
+               (GetGameModeState() == GAMESTATE_WAITFORPLAYERS ||
+                GetGameModeState() == GAMESTATE_COUNTDOWN)) {
+          Delay(1);
+        }
         ClearBonusBossOptions();
-        HudMessage(s:"You selected: ", s:GetBossName(bosschoiceid);
-          HUDMSG_FADEOUT, 8855, CR_WHITE, 0.5, 0.55, 3.0, 1.0);
         terminate;
       }
     }
@@ -112,4 +335,68 @@ script "ub_BonusBossSelector" (int player) {
   }
   ClearBonusBossOptions();
   bosschoicetid = 0;
+}
+
+// Debug command: `pukename uh_debug_bosschoice` (or alias `debug_bosschoice` via KEYCONF.debug) in console.
+// Immediately opens the selection UI for the calling player to test layout, faces, and input.
+script "uh_debug_bosschoice" (int duration) NET {
+  int player = PlayerNumber();
+  if (player < 0) {player = ConsolePlayerNumber();}
+  if (player < 0) {player = 0;}
+  if (!PlayerInGame(player)) {terminate;}
+
+  int options[4];
+  options[0] = PickBonusBossOption(UHBOSS_POOL_COMMON, UHBOSS_FAIL, UHBOSS_FAIL);
+  options[1] = PickBonusBossOption(UHBOSS_POOL_COMMON, options[0], UHBOSS_FAIL);
+  options[2] = PickBonusBossOption(UHBOSS_POOL_COMMON, options[0], options[1]);
+  options[3] = PickBonusBossOption(UHBOSS_POOL_RARE, UHBOSS_FAIL, UHBOSS_FAIL);
+  int masks[4] = {BT_MOVELEFT, BT_MOVERIGHT, BT_ATTACK, BT_ALTATTACK};
+
+  str options_data = "";
+  for (int row = 0; row < 4; row++) {
+    str name = "Unavailable";
+    str face = "";
+    if (IsBossDefined(options[row])) {
+      name = GetBossName(options[row]);
+      face = UH_GetBossChoiceFace(options[row]);
+    }
+    options_data = StrParam(s:options_data, s:name, c:31, s:face, c:31);
+  }
+
+  NamedExecuteClientScript("ub_BonusBossOpenSound", player);
+
+  int previous = GetPlayerInput(player, INPUT_BUTTONS);
+  int timeleft = (duration > 0 ? duration * 35 : 35 * 10);
+  while (timeleft-- > 0 && PlayerInGame(player)) {
+    if (timeleft % 7 == 0) {
+      str payload = StrParam(s:options_data, s:"TIME:", i:(timeleft / 35));
+      NamedSendNetworkString("ub_BonusBossOptions", payload, player);
+    }
+    int buttons = GetPlayerInput(player, INPUT_BUTTONS);
+    int pressed = buttons & ~previous;
+    previous = buttons;
+    for (int pick = 0; pick < 4; pick++) {
+      if ((pressed & masks[pick]) && IsBossDefined(options[pick])) {
+        int choice = options[pick];
+        str confirm_payload = StrParam(s:options_data, s:"PICK:", i:pick);
+        NamedSendNetworkString("ub_BonusBossOptions", confirm_payload, player);
+
+        // Keep confirmation on screen for 3.5 seconds in debug mode
+        Delay(35 * 3 + 18);
+        ClearBonusBossOptions();
+        terminate;
+      }
+    }
+    Delay(1);
+  }
+  ClearBonusBossOptions();
+}
+
+// Grant the bonus winner reward to the calling player for the next round's countdown.
+script "uh_grant_bosschoice" (void) NET {
+  int player = PlayerNumber();
+  if (player < 0) {player = ConsolePlayerNumber();}
+  if (player < 0) {player = 0;}
+  uh_bosschoicewinner = player + 1;
+  Log(s:"\cd[DEBUG] Bonus Boss Choice granted to player ", i:player, s:" for the next round.");
 }
