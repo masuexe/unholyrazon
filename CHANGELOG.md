@@ -2,6 +2,7 @@
 
 - 还原并优化 Slugger（含 Shiny）的 DrawBar 与武器弹药显示
 - 重做 Slugger 的副攻击（M2）：从手动投掷木箱改为定点呼叫空投，一段时间后空投箱从天而降砸向地面，落地引发爆炸范围伤害并生成武器箱补给
+- 更新 Slugger Shotgun 的武器 HUD
 - 修复 BirdNest（Crow Nest）速射弹／散射弹命中时缺少伤害归属 actor，导致 `core_damageactor` 报错且归属伤害未生效的问题
 
 ## 4.0.0-beta.261004.hotfix1
