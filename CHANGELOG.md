@@ -1,5 +1,7 @@
 ## 4.0.0-beta.261005
 
+- 为 Slugger Flame Shot 的子火焰补充油池点燃，并使用 SluggerFire 伤害类型触发火焰死亡效果
+- 削弱 Slugger Flame Shot：每个火焰由三次伤害改为一次，伤害从 15～35 降至 15～25
 - Slugger 空投落地后直接显示抽中的武器字母图标，拾取时发放对应武器；抽取时机从拾取改为落地
 - 将 Typhoon Bonus 移入与普通 FFA 相同的无额外人数门槛随机池；其余高人数 Bonus 使用 Unbound v7b 的 12 人门槛
 - 修复 Typhoon Bonus 启动时误将事件编号 16 作为 Demoneye 机体编号、导致转换失效的问题，改为机体编号 13，并为全员 Demoneye 事件加入启动参数校验
