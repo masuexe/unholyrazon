@@ -36,6 +36,29 @@ script "DrawBar_Crystrap_W" (void) {
   DrawCrystrapSpyingHud();
 }
 
+script "DrawBar_MegaManU_W" (void) {
+  // Follow CBM Mega Man's client-side timer blink; respect this weapon's
+  // 18/56 charge thresholds. NormalBar already drew the default display.
+  if (!GetUserCVar(ConsolePlayerNumber(), "mm8bdm_usechargebars"))
+    terminate;
+  int charge = CheckInventory("WeaponCharge");
+  if (charge >= 56) {
+    if (Timer() % 3 == 1)
+      DrawBarColorGlow(198, 247, 192);
+    else if (Timer() % 3 == 2)
+      DrawBarColorGlow(247, 192, 198);
+    else
+      DrawBarColor(192, 198);
+  } else if (charge >= 18 && Timer() % 2 == 1) {
+    DrawBarColorGlow(192, 198, 39);
+  } else {
+    DrawBarColor(192, 198);
+  }
+  // DrawBarColor preserves MugshotTransFlag set by the normal bar. Explicitly
+  // copy its final colors so the base portrait shares the charge blink.
+  UH_CopyBarColorsToMugshot();
+}
+
 script "DrawBar_MegamanUShiny_W" (void) {
   int t = Timer() / 5;
   switch (t % 7) {

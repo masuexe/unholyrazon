@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261005
 
+- 参考 CBM Mega Man，使用蓄力值和客户端计时驱动 MegaManU_W 弹药条与 base 皮肤头像的蓄力闪烁，关闭 chargebar 设置时保留原有显示
 - 修复 Commando Bomb 的 M2 导弹仍使用 v6b 原版 20 点直击伤害的问题，将直击基准伤害修正为 200 并接入每日伤害倍率
 - 为 Slugger Flame Shot 的子火焰补充油池点燃，并使用 SluggerFire 伤害类型触发火焰死亡效果
 - 削弱 Slugger Flame Shot：每个火焰由三次伤害改为一次，伤害从 15～35 降至 15～25
