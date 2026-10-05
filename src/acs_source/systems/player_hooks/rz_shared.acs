@@ -1,7 +1,14 @@
 #library "rz_shared"
 #include "zcommon.acs"
 
+function bool RZ_PlayerUsesSkin(str name) {
+  int skin = GetPlayerSkin(PlayerNumber(), PLAYERSKIN_VISIBLE);
+  return skin >= 0 && StrICmp(GetSkinProperty(skin, "name"), name) == 0;
+}
+
 script "rz_ForceSpectatePlayer" (int why) {
+  if (why == 0 && RZ_PlayerUsesSkin("NeedleMan"))
+    terminate;
   str reason = "Cold Dragoon did it";
   switch (why) {
     case 0:
@@ -19,7 +26,10 @@ script "rz_SetPlayerSkin" (int skin) {
   str skinname = "Base";
   switch (skin) {
     case 1:
+      if (RZ_PlayerUsesSkin("DustMan"))
+        terminate;
       skinname = "YustMan";
+      GiveInventory("YustManFlag", 1);
       break;
   }
   SetPlayerSkin(PlayerNumber(), skinname, 1);
