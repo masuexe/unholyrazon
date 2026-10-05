@@ -377,6 +377,20 @@ script "rz_EdenDamoclesShouldFall" (void) {
     SetResultValue(0);
 }
 
+// The sword's common state must fall through on remote clients. Validate its
+// owner on the server and reserve DECORATE jumps for terminal transitions.
+script "rz_EdenDamoclesVisualValid" (void) {
+  if (!SetActivator(0, AAPTR_TARGET)) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(PlayerNumber() >= 0 && PlayerInGame(PlayerNumber()) &&
+    !CheckInventory("IsDead") && GetActorProperty(0, APROP_Health) > 0 &&
+    (CheckActorClass(0, "Eden") || CheckActorClass(0, "EdenShiny")) &&
+    CheckInventory("C577Flag") &&
+    (CheckInventory("EdenDamoclesActive_F") || CheckInventory("EdenDamoclesSpent_F")));
+}
+
 script "rz_EdenDamoclesKill" (void) {
   // A queued fall must not damage the replacement pawn after a morph.
   if ((!CheckActorClass(0, "Eden") && !CheckActorClass(0, "EdenShiny")) ||

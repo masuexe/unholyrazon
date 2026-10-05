@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261005
 
+- 修复 Eden 达摩克利斯之剑在远程客户端因库存跳转不执行而提前删除、导致头顶剑及线条特效无法持续显示的问题
 - 清理 Unbound／CBM 遗留且未使用的 `CopyNerfGiver_P`、`WeaknessBase_P`、`BasicPain_SlamHit` actor 和 DecoyBot 的旧 `P_CheckOld` 状态，移除对四个缺失 ACS 脚本的调用
 - 修复 Sutoka 鞭子命中时调用已改名的 `uc_istracerenemy` 导致 Unknown Script 报错、无法进入偷取判定的问题；排查其他 actor 并修复雷电爪挂点的缺失脚本调用，补回 Wonder Stone 的出现提示及联机客户端广播；Eyelento Major 的抓取改为直接调用当前 tracer 检查，避免旧接口告警
 - 将 Bonus Stage 音乐接入与 Boss 音乐共用的加权曲池，通过 `AddBonusEventMusic`／`AddBonusEventMusicByStem` 注册曲目；MLG、Sumo、Kamikaze 和 Business eyes 在原曲与 Unbound 旧版曲目间等概率随机播放，音频由独立音乐包提供
