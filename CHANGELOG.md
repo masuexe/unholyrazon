@@ -7,6 +7,7 @@
 - 挂机检测计入按钮、视角和三个移动轴输入，原地转动视角搜敌不会被判为挂机；仅对正式回合中的存活真人玩家计时，死亡、复活及换机体后清零，惩罚前 10 秒警告
 - 模组挂机惩罚与引擎 `sv_afk2spec` 同时开启时，每张地图提示服主一次；使用模组惩罚替代强制观战时需设置 `sv_afk2spec 0`，配置说明见 [挂机惩罚](docs/afk-penalties.md)
 - 禁止 coop 杂兵因误伤而互相攻击，在共用 GenericRobot 基类中加入 NOINFIGHTING；保留攻击玩家及原有伤害
+- 将 Razon 3 的 TopFiend 移植为 coop 杂兵，包含普通版及 3BC 弹跳陀螺变种，补齐攻击精灵与伤害归属，并恢复杂兵箱的 TopFiend 随机生成
 - 为洛克人的复制武器增加皮肤豁免：NeedleMan 皮肤使用 Needle Cannon 不会被强制观战，DustMan 皮肤使用 Dust Crusher 不会变成 YustMan
 - 修复 Slugger 变成 Boss 后仍保留手枪及武器箱枪械的问题，将这些武器接入共用变身清理注册表
 - 更正 EyelentoMajor 的手榴弹投掷动画

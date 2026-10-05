@@ -1,0 +1,97 @@
+// Ported from V-Classes
+actor TopFiendU : GenericRobot replaces TopFiend {
+  Health 600
+  Height 48
+  Radius 32
+  Speed 0
+  States {
+   Look:
+    TOPF AB 6 A_LookEx(LOF_NOSOUNDCHECK, 0, 2000, 0, 270, "See")
+    loop
+   See:
+    TOPF A 0 A_FaceTarget
+    TOPF AB 4
+   Shoot:
+    TOPF C 4
+    TOPF D 4 A_CustomMissile("KomaTopU", 16, 8, frandom(-4, 4))
+    TOPF D 4
+    goto Look
+  }
+}
+
+actor KomaTopU : GenericRobot {
+  Obituary "%o was sent for a spin by a Top Fiend."
+  DropItem ""
+  -SOLID
+  -COUNTKILL
+  +MISSILE
+  -NOBLOCKMAP
+  +SHOOTABLE
+  +NOEXPLODEFLOOR
+  +FLOORHUGGER
+  +BOUNCEONWALLS
+  Health 100
+  Radius 16
+  Height 16
+  Scale 2.5
+  Speed 40
+  Damage (100)
+  WallBounceFactor 0.9
+  ReactionTime 30
+  DamageType "TopFiendU"
+  States {
+   Spawn:
+    TOPA IJKIJK 2
+   Start:
+    TOPA I 2 A_CountDown
+    TOPA JKIJK 2
+    loop
+   Crash:
+    goto DeathQuiet
+   Death:
+    TNT1 A 0 A_JumpIf(health != 0, "DeathQuiet")
+    TNT1 A 0 A_PlaySoundEx("weapon/napalm", 0)
+   DeathQuiet:
+    TNT1 A 0 A_Stop
+    TNT1 A 0 A_ChangeFlag("NOGRAVITY", 1)
+    TNT1 A 1 A_Fall
+    TNT1 A 1 A_SpawnItemEx("ExplosionEffect1", 0, 0, 28)
+    stop
+  }
+}
+
+actor TopFiendU_3BC : TopFiendU {
+  Translation "41:41=93:93"
+  States {
+   Look:
+    TOPF AB 6 A_LookEx(LOF_NOSOUNDCHECK, 0, 2000, 0, 270, "See")
+    loop
+   See:
+    TOPF A 0 A_FaceTarget
+    TOPF AB 4
+   Shoot:
+    TOPF C 4
+    TOPF D 4 A_CustomMissile("KomaTopU_3BC", 16, 8, frandom(-4, 4), CMF_OFFSETPITCH, 30)
+    TOPF D 4
+    goto Look
+  }
+}
+
+actor KomaTopU_3BC : KomaTopU {
+  Translation "41:41=93:93"
+  -FLOORHUGGER
+  +BOUNCEONFLOORS
+  +BOUNCEONWALLS
+  +BOUNCEONCEILINGS
+  +CANBOUNCEWATER
+  Speed 24
+  Damage (100)
+  BounceFactor 1.0
+  WallBounceFactor 1.0
+  ReactionTime 30
+}
+
+actor HazardTag_TopFiendU : BasicACSDamager {
+  DamageType "TopFiendU"
+  Obituary "%o was sent for a spin by a Top Fiend while fighting %k."
+}
