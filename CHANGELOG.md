@@ -1,3 +1,7 @@
+## 4.0.0-beta.261006
+
+- 更正 EyelentoMajor 的手榴弹投掷动画
+
 ## 4.0.0-beta.261005
 
 - 常规 LMS 中 Boss 胜利时，在设置 gameover 的同时立即移除 Boss 友伤保护，使存活 Boss 可在回合结束后互相伤害
