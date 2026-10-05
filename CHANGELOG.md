@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261005
 
+- 将 MegaMan 的 Homing Sniper 随机池分类更新为 v6b 原版槽 4，Centaur Flash 更新为槽 7，统一随机池、UIX 显示、数字键选择与滚轮切换的槽位；保留两把武器的每日随机固定 ID
 - 修复 BlackHoleWepU 弹药条变灰期间仍自动回蓝的问题；灰条结束后恢复回蓝，期间不累计回蓝计时
 - 参考 CBM Mega Man，使用蓄力值和客户端计时驱动 MegaManU_W 弹药条与 base 皮肤头像的蓄力闪烁，关闭 chargebar 设置时保留原有显示
 - 修复 Commando Bomb 的 M2 导弹仍使用 v6b 原版 20 点直击伤害的问题，将直击基准伤害修正为 200 并接入每日伤害倍率
