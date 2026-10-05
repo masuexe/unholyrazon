@@ -87,6 +87,14 @@ function void DebugValidateRoundStart(void) {
     if (StrCmp(GetBonusEventRebuildCallback(eventid), "") != 0 && !CheckScript(GetBonusEventRebuildCallback(eventid), true)) {
       UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event rebuild callback missing: ", s:GetBonusEventRebuildCallback(eventid)));
     }
+    // The all-eye start callback receives an eye id, not an event id.
+    // These differ for Typhoon (event 16, eye 13). Verify the mapping so a
+    // selectable event cannot silently spawn "_MoolaGiver" with no prefix.
+    if (!StrICmp(GetBonusEventStartCallback(eventid), "ub_DemoneyeEvent") &&
+        StrCmp(GetEyeEventStem(GetBonusEventArg1(eventid)), "") == 0) {
+      UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event ", i:eventid,
+        s:" has no eye morph stem for start eye id ", i:GetBonusEventArg1(eventid)));
+    }
     if (GetBonusEventEXThreshold(eventid) > 0 && ResolveBonusEventEX(eventid) == UHBE_FAIL) {
       UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event EX target missing: ", i:eventid));
     }

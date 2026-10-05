@@ -1,5 +1,7 @@
 ## 4.0.0-beta.261005
 
+- 将 Typhoon Bonus 移入与普通 FFA 相同的无额外人数门槛随机池；其余高人数 Bonus 使用 Unbound v7b 的 12 人门槛
+- 修复 Typhoon Bonus 启动时误将事件编号 16 作为 Demoneye 机体编号、导致转换失效的问题，改为机体编号 13，并为全员 Demoneye 事件加入启动参数校验
 - 修复 C-Section 的 M1 武器 HUD 在联机中等待服务器跳转后才开始播放的问题，为其提供可本地预测的直接开火入口，保留 Bob’s Rotten Head 投掷分支和原有动画、射击时序
 - 补齐 Razon 3 Eden 已启用道具池中的 Holy Mantle、Soy Milk、The Bible、Guppy’s Head 和 Free Lemonade，接入共享道具注册表、HUD 图标及主动道具充能；Shiny Eden 的天使道具改为从注册池抽取 Holy Mantle／Godhead
 - 修复 Eden 达摩克利斯之剑在远程客户端因库存跳转不执行而提前删除、导致头顶剑及线条特效无法持续显示的问题

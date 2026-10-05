@@ -3,15 +3,16 @@
 #import "uh_log.acs"
 #include "uhadd.acs"
 
-// Keep in sync with MULTIB_PLAYERLIMIT3 in uh_def.acs (the boss-combo family
-// still owns that header; definitions libraries cannot include it).
+// Unbound v7b UH_LIB.acs: MULTIB_PLAYERLIMIT3 is 12 (the trailing //8 is
+// historical). Keep in sync with uh_def.acs; definitions cannot include it.
 #define BONUS_MINPLAYERS_TIER3 12
 
 // Vanilla bonus events, registered through the dynamic DefineBonusEvent API.
 // Stable ids are frozen (v4): 13=Football, 113=Rune FFA, 51/151 force-only.
-// Former low/high candidate pools become minPlayers: events 11-16 need
-// MULTIB_PLAYERLIMIT3 (12) players to enter the random pool; the rest are
-// weight 1 with no player bound.  Force-only rows use weight 0.
+// Former low/high candidate pools become minPlayers: events 11-15 need
+// MULTIB_PLAYERLIMIT3 (12) players to enter the random pool, except Typhoon
+// (16), which shares the ordinary FFA pool with no extra player bound.
+// Weighted rows use weight 1; force-only rows use weight 0.
 // Metadata strings are transcribed verbatim from the former bonuseventlist —
 // keep them byte-identical (music, credits, HUD text and balance depend on it).
 
@@ -77,6 +78,12 @@ function void UH_RegisterVanillaBonusEvents(void) {
     "ub_DemoneyeEvent", "uh_RebuildEyeEvent", "",
     10, 10, 0, UHBE_FLAG_ALL_EYE | UHBE_FLAG_EYE_TEAM, 1, 0, 0);
 
+  DefineBonusEvent(UHEVENT_TYPHOON, "typhoon_eyes", "Typhoon eyes",
+    "M_EYE13", "Dark Side of Fate (NES 8-bit remix)", "Touhou 10: MoF", "40nix",
+    "", "Typhoon disaster! The parking center is waiting for everyone!", "",
+    "ub_DemoneyeEvent", "uh_RebuildEyeEvent", "",
+    13, 13, 0, UHBE_FLAG_ALL_EYE | UHBE_FLAG_EYE_TEAM, 1, 0, 0);
+
   // --- Weighted pool: high-player events (>= MULTIB_PLAYERLIMIT3) -----------
   DefineBonusEvent(UHEVENT_EYEPARADE, "demoneye_parade", "Demoneye parade",
     "EYEMUS", "Speed Test", "Super Mario Sunshine", "Koji Kondo, Shinobu Tanaka",
@@ -107,12 +114,6 @@ function void UH_RegisterVanillaBonusEvents(void) {
     "", "Oh no! The room is noisy!", "",
     "ub_OneVsAllEvent", "uh_RebuildOneVsAllEvent", "",
     15, 0, 0, UHBE_FLAG_ONEVSALL | UHBE_FLAG_EYE_TEAM, 1, BONUS_MINPLAYERS_TIER3, 0);
-
-  DefineBonusEvent(UHEVENT_TYPHOON, "typhoon_eyes", "Typhoon eyes",
-    "M_EYE13", "Dark Side of Fate (NES 8-bit remix)", "Touhou 10: MoF", "40nix",
-    "", "Typhoon disaster! The parking center is waiting for everyone!", "",
-    "ub_DemoneyeEvent", "uh_RebuildEyeEvent", "",
-    16, 13, 0, UHBE_FLAG_ALL_EYE | UHBE_FLAG_EYE_TEAM, 1, BONUS_MINPLAYERS_TIER3, 0);
 
   // --- Force-only (RCON / EX target / morph-failure fallback) ---------------
   DefineBonusEvent(UHEVENT_BOSSEFFA, "boss_ffa", "\cmFree for All",
