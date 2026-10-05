@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261005
 
+- 修复 C-Section 的 M1 武器 HUD 在联机中等待服务器跳转后才开始播放的问题，为其提供可本地预测的直接开火入口，保留 Bob’s Rotten Head 投掷分支和原有动画、射击时序
 - 补齐 Razon 3 Eden 已启用道具池中的 Holy Mantle、Soy Milk、The Bible、Guppy’s Head 和 Free Lemonade，接入共享道具注册表、HUD 图标及主动道具充能；Shiny Eden 的天使道具改为从注册池抽取 Holy Mantle／Godhead
 - 修复 Eden 达摩克利斯之剑在远程客户端因库存跳转不执行而提前删除、导致头顶剑及线条特效无法持续显示的问题
 - 清理 Unbound／CBM 遗留且未使用的 `CopyNerfGiver_P`、`WeaknessBase_P`、`BasicPain_SlamHit` actor 和 DecoyBot 的旧 `P_CheckOld` 状态，移除对四个缺失 ACS 脚本的调用
