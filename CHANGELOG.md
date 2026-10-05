@@ -1,5 +1,8 @@
 ## 4.0.0-beta.261006
 
+- 移植 Razon 3 的挂机惩罚，支持着火、GUHU、Super GUHU、Money Bait、Money Bomb 及随机模式；新增服务器菜单设置 `rz_sv_noafk_item`／`rz_sv_noafk_delay`，默认关闭、延迟 60 秒，支持 30～300 秒
+- 挂机检测计入按钮、视角和三个移动轴输入，原地转动视角搜敌不会被判为挂机；仅对正式回合中的存活真人玩家计时，死亡、复活及换机体后清零，惩罚前 10 秒警告
+- 模组挂机惩罚与引擎 `sv_afk2spec` 同时开启时，每张地图提示服主一次；使用模组惩罚替代强制观战时需设置 `sv_afk2spec 0`，配置说明见 [挂机惩罚](docs/afk-penalties.md)
 - 禁止 coop 杂兵因误伤而互相攻击，在共用 GenericRobot 基类中加入 NOINFIGHTING；保留攻击玩家及原有伤害
 - 为洛克人的复制武器增加皮肤豁免：NeedleMan 皮肤使用 Needle Cannon 不会被强制观战，DustMan 皮肤使用 Dust Crusher 不会变成 YustMan
 - 修复 Slugger 变成 Boss 后仍保留手枪及武器箱枪械的问题，将这些武器接入共用变身清理注册表

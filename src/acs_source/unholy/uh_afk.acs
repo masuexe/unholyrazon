@@ -1,0 +1,101 @@
+// Server-owned Razon3 AFK penalties. One OPEN watcher follows the current
+// player pawn instead of starting another script on each morph or revival.
+// Mode ids match Razon3's RZ_NoAFK_Item; see docs/afk-penalties.md.
+int uh_afkidle[MAX_PLAYERS];
+str uh_afkclass[MAX_PLAYERS];
+
+function void UH_AFKResetPlayer(int player) {
+  if (player < 0 || player >= MAX_PLAYERS) {return;}
+  uh_afkidle[player] = 0;
+  uh_afkclass[player] = "";
+}
+
+function bool UH_AFKHasInput(int player) {
+  // Original input also counts while gameplay modifies movement. A sniper
+  // looking for targets is active even when standing still and not firing.
+  return GetPlayerInput(player, INPUT_BUTTONS) != 0
+      || GetPlayerInput(player, INPUT_YAW) != 0
+      || GetPlayerInput(player, INPUT_PITCH) != 0
+      || GetPlayerInput(player, INPUT_FORWARDMOVE) != 0
+      || GetPlayerInput(player, INPUT_SIDEMOVE) != 0
+      || GetPlayerInput(player, INPUT_UPMOVE) != 0;
+}
+
+function void UH_AFKGivePenalty(int mode) {
+  bool randommode = (mode == 0);
+  if (randommode) {mode = random(1, 5);}
+  switch (mode) {
+    case 1: GiveInventory("AutoOnFireItem", 1); break;
+    case 2: GiveInventory("AutoGUHUItem", 1); break;
+    case 3:
+      // Razon3 used ordinary Super GUHU in the random pool, and the
+      // round-timeout variant for the explicitly selected Super GUHU mode.
+      if (randommode) {GiveInventory("AutoSuperGUHUItem", 1);}
+      else {GiveInventory("SGEXDItem", 1);}
+      break;
+    case 4: GiveInventory("MoneyBaitGiver", 1); break;
+    case 5: GiveInventory("MoneyBombGiver", 1); break;
+  }
+}
+
+script "uh_AFKWatch" OPEN {
+  if (GetCVar("lastmanstanding") != 1) {terminate;}
+  int oldmode = -2;
+  int olddelay = -1;
+  bool conflictwarned = false;
+
+  while (true) {
+    int mode = GetCVar("rz_sv_noafk_item");
+    int seconds = GetClampedCVar("rz_sv_noafk_delay", 30, 300);
+    bool enabled = (mode >= 0 && mode <= 5);
+    bool changed = (mode != oldmode || seconds != olddelay);
+    oldmode = mode;
+    olddelay = seconds;
+
+    // Warn once per map, including settings enabled through RCON mid-round.
+    // Do not silently rewrite the server owner's engine policy.
+    SetActivator(0, AAPTR_NULL);
+    if (enabled && GetCVar("sv_afk2spec") != 0 && !conflictwarned) {
+      UH_Log(UH_LOG_WARN, "AFK penalties and sv_afk2spec are both enabled. Set sv_afk2spec 0 to replace forced spectating with mod penalties.");
+      conflictwarned = true;
+    }
+
+    bool active = enabled && !gameover
+      && GetGameModeState() == GAMESTATE_INPROGRESS
+      && (!isbonuseventactive || !bonuseventended);
+
+    for (int player = 0; player < MAX_PLAYERS; player++) {
+      if (changed || !active || !PlayerInGame(player)
+          || PlayerIsSpectator(player) != 0 || PlayerIsBot(player)) {
+        UH_AFKResetPlayer(player);
+        continue;
+      }
+      if (!SetActivatorToPlayer(player) || GetActorProperty(0, APROP_HEALTH) <= 0) {
+        UH_AFKResetPlayer(player);
+        continue;
+      }
+
+      str pawnclass = GetActorClass(0);
+      if (StrICmp(pawnclass, uh_afkclass[player]) != 0) {
+        UH_AFKResetPlayer(player);
+        uh_afkclass[player] = pawnclass;
+      }
+      if (UH_AFKHasInput(player)) {
+        uh_afkidle[player] = 0;
+        continue;
+      }
+
+      uh_afkidle[player]++;
+      if (uh_afkidle[player] == (seconds - 10) * 35) {
+        Print(s:"\cgAFK penalty in 10 seconds. Move, aim or press a game button to cancel.");
+      }
+      if (uh_afkidle[player] >= seconds * 35) {
+        // Reset before giving: a penalty can synchronously trigger DEATH.
+        uh_afkidle[player] = 0;
+        UH_AFKGivePenalty(mode);
+      }
+    }
+    SetActivator(0, AAPTR_NULL);
+    Delay(1);
+  }
+}
