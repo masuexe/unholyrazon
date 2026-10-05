@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261006
 
+- 禁止 coop 杂兵因误伤而互相攻击，在共用 GenericRobot 基类中加入 NOINFIGHTING；保留攻击玩家及原有伤害
 - 为洛克人的复制武器增加皮肤豁免：NeedleMan 皮肤使用 Needle Cannon 不会被强制观战，DustMan 皮肤使用 Dust Crusher 不会变成 YustMan
 - 修复 Slugger 变成 Boss 后仍保留手枪及武器箱枪械的问题，将这些武器接入共用变身清理注册表
 - 更正 EyelentoMajor 的手榴弹投掷动画
