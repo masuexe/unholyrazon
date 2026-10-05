@@ -393,19 +393,16 @@ script "rz_FloovyReviveGuard" (void) {
 }
 
 script "rz_FloovyDeath" (int tid, int type) {
-  // int i;
-  // for (i = 1000; i < 1064; i++) {
-  //  if (CheckActorClass(i, "Floovy")) {
-  //    Thing_Damage(i, 30000, 5);
-  //  }
-  // }
-  int health;
-
   if (type == ELP_FLOOVY_G) {
     // Preserve Floovy as the healer activator while inspecting/killing the
     // linked enemy.  Calling uh_IsPlayerAliveByTID would otherwise leave ACS
     // activated on the enemy and heal the wrong player.
     int floovyplayer = PlayerNumber();
+    // Restore the full current maximum, independent of the marked enemy's
+    // remaining HP and whether its own protection prevents the retaliation.
+    int floovymax = GetActorProperty(0, APROP_SpawnHealth);
+    int floovycurrent = max(GetActorProperty(0, APROP_Health), 0);
+    ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, max(floovymax - floovycurrent, 0));
     if (tid <= 0 || !SetActivator(tid) || !SetActivator(0, AAPTR_TRACER)) {
       terminate;
     }
@@ -414,10 +411,6 @@ script "rz_FloovyDeath" (int tid, int type) {
       if (floovyplayer >= 0) SetActivatorToPlayer(floovyplayer);
       terminate;
     }
-    // The linked enemy's current HP is the amount exchanged back to Floovy.
-    // Read and damage it through the link actor's TRACER pointer so a target
-    // with TID 0 is still handled correctly.
-    health = GetActorProperty(0, APROP_Health);
     // Keep the link actor as the activator while its kill state performs an
     // A_Explode.  This preserves the link's direct pointers and makes the
     // watcher the inflictor, allowing its custom obituary to use Floovy as
@@ -429,7 +422,6 @@ script "rz_FloovyDeath" (int tid, int type) {
     if (floovyplayer < 0 || !SetActivatorToPlayer(floovyplayer)) {
       terminate;
     }
-    ACS_NamedExecuteWithResult("uh_Health", UHEALTH_HEAL, health);
     terminate;
   }
 
