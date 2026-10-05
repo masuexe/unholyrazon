@@ -20,6 +20,7 @@
 - 移植 Razon 3 的 Slugger Flame Shot、Enemy Chaser、Drop Shot 和 Two Machine Guns，接入武器箱、弹药 HUD、武器语音及共用刺刀动作；保留原版弹药量、伤害和抽取比例，Enemy Chaser 使用强跟踪并按 Unholy 阵营规则重新搜敌
 - 修复 BirdNest（Crow Nest）速射弹／散射弹命中时缺少伤害归属 actor，导致 `core_damageactor` 报错且归属伤害未生效的问题
 - 修复 Floovy 大招保命触发后，开火打断受伤状态可能残留永久无敌的问题
+- 修复 Floovy 普通 M1 命中敌人后，受伤状态提前发放脱体保护导致弹丸跳过摄像机生成、无法切换到脱体视角的问题
 - 调整 Floovy 大招自身保命触发后的回血：立即回满当前最大 HP，不再按被标记敌人的剩余 HP 回血；包括 Pit 等环境伤害触发时，反杀目标仍为被标记敌人，并保留其无敌、护盾及额外生命等保命效果
 
 ## 4.0.0-beta.261004.hotfix1
