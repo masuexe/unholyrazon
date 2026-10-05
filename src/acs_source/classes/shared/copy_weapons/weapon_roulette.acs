@@ -4,7 +4,9 @@
 #define RZ_COPY_QWANT 2
 #define RZ_COPY_NEGA 3
 
-str rz_copyownedbuf[16];
+// Include the Buster plus the entire registered Mega pool when M2 grants all.
+#define RZ_COPYOWNED_MAX (UH_MEGA_LOADOUT_MAX + 1)
+str rz_copyownedbuf[RZ_COPYOWNED_MAX];
 int rz_copyownedn;
 
 function int RZ_CopyWepKind(void) {
@@ -19,20 +21,10 @@ function int RZ_CopyWepKind(void) {
 }
 
 function void RZ_CopyOwnedPush(str weap) {
-  if (rz_copyownedn >= 16 || StrLen(weap) == 0)
+  if (rz_copyownedn >= RZ_COPYOWNED_MAX || StrLen(weap) == 0)
     return;
   rz_copyownedbuf[rz_copyownedn] = weap;
   rz_copyownedn++;
-}
-
-function void RZ_CopyOwnedPushMegaSlot(str slotflag, int slot) {
-  int idx = CheckInventory(slotflag) - 1;
-  str cand;
-  if (idx < 0)
-    return;
-  cand = GetCopyWepActorByKindSlotIndex(UHCOPY_MEGA, slot, idx);
-  if (StrLen(cand) > 0)
-    RZ_CopyOwnedPush(cand);
 }
 
 function int RZ_CollectCopyOwned(void) {
@@ -47,12 +39,12 @@ function int RZ_CollectCopyOwned(void) {
   if (kind == RZ_COPY_MEGA) {
     if (CheckInventory("MegaManU_W"))
       RZ_CopyOwnedPush("MegaManU_W");
-    RZ_CopyOwnedPushMegaSlot("MegaSlotRanged_F", UHCOPY_SLOT_RANGED);
-    RZ_CopyOwnedPushMegaSlot("MegaSlotRapid_F", UHCOPY_SLOT_RAPID);
-    RZ_CopyOwnedPushMegaSlot("MegaSlotClose_F", UHCOPY_SLOT_CLOSE);
-    RZ_CopyOwnedPushMegaSlot("MegaSlotPower_F", UHCOPY_SLOT_POWER);
-    RZ_CopyOwnedPushMegaSlot("MegaSlotAoE_F", UHCOPY_SLOT_AOE);
-    RZ_CopyOwnedPushMegaSlot("MegaSlotShield_F", UHCOPY_SLOT_SHIELD);
+    ncount = CountCopyWepByKind(UHCOPY_MEGA);
+    for (i = 0; i < ncount; i++) {
+      wep = GetCopyWepActorByKindIndex(UHCOPY_MEGA, i);
+      if (CheckInventory(wep))
+        RZ_CopyOwnedPush(wep);
+    }
     return rz_copyownedn;
   }
   if (kind == RZ_COPY_QWANT) {

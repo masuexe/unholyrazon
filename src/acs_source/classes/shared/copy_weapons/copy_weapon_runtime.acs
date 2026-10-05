@@ -1,93 +1,105 @@
-function int MegaWepRNG_Func(int max_r2, int skip) {
-  int dwep;
-  if (max_r2 <= 0)
-    return -1;
-  if (max_r2 == 1)
-    return 0;
-  do {
-    dwep = random(0, max_r2 - 1);
-  } while (dwep == skip);
-  return dwep;
+// UHDT's shared copy-weapon registry holds at most 256 rows, including addons.
+#define UH_MEGA_LOADOUT_MAX 256
+#define UH_MEGA_LOADOUT_SLOTS 6
+int uh_megaloadoutcount[UH_MEGA_LOADOUT_SLOTS];
+int uh_megaloadoutquota[UH_MEGA_LOADOUT_SLOTS];
+int uh_megaloadoutoffset[UH_MEGA_LOADOUT_SLOTS];
+int uh_megaloadoutfresh[UH_MEGA_LOADOUT_SLOTS];
+int uh_megaloadoutindices[UH_MEGA_LOADOUT_MAX];
+str uh_megaloadoutflags[UH_MEGA_LOADOUT_SLOTS] = {
+  "MegaSlotRanged_F", "MegaSlotRapid_F", "MegaSlotClose_F",
+  "MegaSlotPower_F", "MegaSlotAoE_F", "MegaSlotShield_F"
+};
+
+// Scratch arrays are safe to share: the roll has no Delay or external scripts.
+function void UH_MegaRollLoadout(void) {
+  int total = 0;
+  int slot;
+  int i;
+  int j;
+  int pass;
+  int n;
+  int want;
+  int lowest;
+  int ties;
+  int pick;
+  int offset;
+  int temp;
+  str wep;
+
+  // Partition each slot into unowned and previously held candidates. Prefer
+  // fresh weapons, preserving the old six-weapon roll's no-immediate-repeat rule.
+  for (slot = 0; slot < UH_MEGA_LOADOUT_SLOTS; slot++) {
+    n = CountCopyWepByKindSlot(UHCOPY_MEGA, slot);
+    uh_megaloadoutcount[slot] = n;
+    uh_megaloadoutquota[slot] = 0;
+    uh_megaloadoutoffset[slot] = total;
+    for (pass = 0; pass < 2; pass++) {
+      for (i = 0; i < n; i++) {
+        wep = GetCopyWepActorByKindSlotIndex(UHCOPY_MEGA, slot, i);
+        if ((CheckInventory(wep) > 0) == pass) {
+          uh_megaloadoutindices[total] = i;
+          total++;
+        }
+      }
+      if (pass == 0)
+        uh_megaloadoutfresh[slot] = total - uh_megaloadoutoffset[slot];
+    }
+  }
+  if (total <= 0)
+    return;
+  want = min(max(1, GetCVar("rz_sv_mega_m2_weapon_count")), total);
+
+  // Water-fill the six slots. Random tie-breaking spreads remainders and gives
+  // distinct slots below six. Exhausted slots stop participating in allocation.
+  for (i = 0; i < want; i++) {
+    lowest = UH_MEGA_LOADOUT_MAX + 1;
+    ties = 0;
+    pick = -1;
+    for (slot = 0; slot < UH_MEGA_LOADOUT_SLOTS; slot++) {
+      n = uh_megaloadoutquota[slot];
+      if (n >= uh_megaloadoutcount[slot])
+        continue;
+      if (n < lowest) {
+        lowest = n;
+        ties = 1;
+        pick = slot;
+      }
+      else if (n == lowest) {
+        ties++;
+        if (random(1, ties) == 1)
+          pick = slot;
+      }
+    }
+    uh_megaloadoutquota[pick]++;
+  }
+
+  // Clear every registered copy weapon, not just the legacy first-weapon flags.
+  n = CountCopyWepByKind(UHCOPY_MEGA);
+  for (i = 0; i < n; i++)
+    TakeInventory(GetCopyWepActorByKindIndex(UHCOPY_MEGA, i), 1);
+  for (slot = 0; slot < UH_MEGA_LOADOUT_SLOTS; slot++) {
+    SetInventory(uh_megaloadoutflags[slot], 0);
+    offset = uh_megaloadoutoffset[slot];
+    for (i = 0; i < uh_megaloadoutquota[slot]; i++) {
+      n = uh_megaloadoutfresh[slot];
+      if (i >= n)
+        n = uh_megaloadoutcount[slot];
+      j = random(i, n - 1);
+      temp = uh_megaloadoutindices[offset + i];
+      uh_megaloadoutindices[offset + i] = uh_megaloadoutindices[offset + j];
+      uh_megaloadoutindices[offset + j] = temp;
+      wep = GetCopyWepActorByKindSlotIndex(UHCOPY_MEGA, slot, uh_megaloadoutindices[offset + i]);
+      GiveInventory(wep, 1);
+      // Keep the original flags as first-weapon references for compatibility.
+      if (i == 0)
+        SetInventory(uh_megaloadoutflags[slot], uh_megaloadoutindices[offset + i] + 1);
+    }
+  }
 }
 
 script "uh_MegamanWeapons" (int check) {
-  int n1 = CountCopyWepByKindSlot(UHCOPY_MEGA, UHCOPY_SLOT_RANGED);
-  int n2 = CountCopyWepByKindSlot(UHCOPY_MEGA, UHCOPY_SLOT_RAPID);
-  int n3 = CountCopyWepByKindSlot(UHCOPY_MEGA, UHCOPY_SLOT_CLOSE);
-  int n4 = CountCopyWepByKindSlot(UHCOPY_MEGA, UHCOPY_SLOT_POWER);
-  int n5 = CountCopyWepByKindSlot(UHCOPY_MEGA, UHCOPY_SLOT_AOE);
-  int n6 = CountCopyWepByKindSlot(UHCOPY_MEGA, UHCOPY_SLOT_SHIELD);
-  int w1 = CheckInventory("MegaSlotRanged_F") - 1;
-  int w2 = CheckInventory("MegaSlotRapid_F") - 1;
-  int w3 = CheckInventory("MegaSlotClose_F") - 1;
-  int w4 = CheckInventory("MegaSlotPower_F") - 1;
-  int w5 = CheckInventory("MegaSlotAoE_F") - 1;
-  int w6 = CheckInventory("MegaSlotShield_F") - 1;
-  str wep;
-
-  if (w1 >= 0) {
-    wep = GetCopyWepActorByKindSlotIndex(UHCOPY_MEGA, UHCOPY_SLOT_RANGED, w1);
-    if (StrCmp(wep, "") != 0)
-      TakeInventory(wep, 1);
-  }
-  if (w2 >= 0) {
-    wep = GetCopyWepActorByKindSlotIndex(UHCOPY_MEGA, UHCOPY_SLOT_RAPID, w2);
-    if (StrCmp(wep, "") != 0)
-      TakeInventory(wep, 1);
-  }
-  if (w3 >= 0) {
-    wep = GetCopyWepActorByKindSlotIndex(UHCOPY_MEGA, UHCOPY_SLOT_CLOSE, w3);
-    if (StrCmp(wep, "") != 0)
-      TakeInventory(wep, 1);
-  }
-  if (w4 >= 0) {
-    wep = GetCopyWepActorByKindSlotIndex(UHCOPY_MEGA, UHCOPY_SLOT_POWER, w4);
-    if (StrCmp(wep, "") != 0)
-      TakeInventory(wep, 1);
-  }
-  if (w5 >= 0) {
-    wep = GetCopyWepActorByKindSlotIndex(UHCOPY_MEGA, UHCOPY_SLOT_AOE, w5);
-    if (StrCmp(wep, "") != 0)
-      TakeInventory(wep, 1);
-  }
-  if (w6 >= 0) {
-    wep = GetCopyWepActorByKindSlotIndex(UHCOPY_MEGA, UHCOPY_SLOT_SHIELD, w6);
-    if (StrCmp(wep, "") != 0)
-      TakeInventory(wep, 1);
-  }
-
-  w1 = MegaWepRNG_Func(n1, w1);
-  w2 = MegaWepRNG_Func(n2, w2);
-  w3 = MegaWepRNG_Func(n3, w3);
-  w4 = MegaWepRNG_Func(n4, w4);
-  w5 = MegaWepRNG_Func(n5, w5);
-  w6 = MegaWepRNG_Func(n6, w6);
-
-  if (w1 >= 0)
-    SetInventory("MegaSlotRanged_F", w1 + 1);
-  if (w2 >= 0)
-    SetInventory("MegaSlotRapid_F", w2 + 1);
-  if (w3 >= 0)
-    SetInventory("MegaSlotClose_F", w3 + 1);
-  if (w4 >= 0)
-    SetInventory("MegaSlotPower_F", w4 + 1);
-  if (w5 >= 0)
-    SetInventory("MegaSlotAoE_F", w5 + 1);
-  if (w6 >= 0)
-    SetInventory("MegaSlotShield_F", w6 + 1);
-
-  if (w1 >= 0)
-    GiveInventory(GetCopyWepActorByKindSlotIndex(UHCOPY_MEGA, UHCOPY_SLOT_RANGED, w1), 1);
-  if (w2 >= 0)
-    GiveInventory(GetCopyWepActorByKindSlotIndex(UHCOPY_MEGA, UHCOPY_SLOT_RAPID, w2), 1);
-  if (w3 >= 0)
-    GiveInventory(GetCopyWepActorByKindSlotIndex(UHCOPY_MEGA, UHCOPY_SLOT_CLOSE, w3), 1);
-  if (w4 >= 0)
-    GiveInventory(GetCopyWepActorByKindSlotIndex(UHCOPY_MEGA, UHCOPY_SLOT_POWER, w4), 1);
-  if (w5 >= 0)
-    GiveInventory(GetCopyWepActorByKindSlotIndex(UHCOPY_MEGA, UHCOPY_SLOT_AOE, w5), 1);
-  if (w6 >= 0)
-    GiveInventory(GetCopyWepActorByKindSlotIndex(UHCOPY_MEGA, UHCOPY_SLOT_SHIELD, w6), 1);
+  UH_MegaRollLoadout();
 }
 
 script "uh_QwantMoveRelearn" (void) {

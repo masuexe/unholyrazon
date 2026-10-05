@@ -1,9 +1,32 @@
 # MegaMan daily weapons
 
-Open **Unholy Server Options → Rules → MegaMan Daily Weapons**. Press Enter
+Open **Unholy Server Options → Rules → MegaMan Weapons**. Press Enter
 on a numeric field to type its value. Multiplier fields accept decimals.
 The damage switch grays out all damage settings; the independent friendly-fire
 switch grays out its count fields. Turning a switch off preserves its settings.
+
+## M2 loadout size
+
+`Weapons Per M2` (`rz_sv_mega_m2_weapon_count`) sets how many copy weapons
+MegaMan receives each time M2 replaces his loadout. The default is **3**,
+reduced from the previous fixed six. Enter a positive integer; this setting is
+independent of daily damage and friendly-fire randomization. The base Buster
+is retained and does not count toward this limit.
+
+Below six, random distinct slots contribute one weapon each. At six or more,
+weapons are distributed as evenly as possible across the six slots: 6 gives
+one per slot, 12 gives two per slot, and 7 gives one per slot plus a second
+weapon in a random slot. When a slot runs out of candidates, the remaining
+slots fill the shortfall. A request at or above the registered pool size gives
+every copy weapon, including registered addons. No duplicate weapons are given.
+
+Each M2 removes the previous copy-weapon loadout before giving the new one;
+lowering the setting takes effect on the next M2. Fresh weapons are preferred
+within each slot, with previous weapons reused only when needed to meet its
+quota. Pharaoh Roulette recognizes the full owned loadout, including multiple
+weapons in one slot. Nonpositive input is treated as one weapon at runtime.
+
+## Daily randomization
 
 | Category | Daily count defaults | Multiplier defaults |
 | --- | --- | --- |
@@ -23,8 +46,9 @@ first, then small jackpots without duplicates. Friendly-fire selection is
 independent and may overlap either tier. Each weapon gets its own multiplier
 within its tier's range, rather than all jackpot weapons sharing one value.
 
-Counts apply to the frozen official pool of 103 copy weapons, not the six
-weapons in one player's loadout. Addon weapons use the normal multiplier range
+Daily counts apply to the frozen official pool of 103 copy weapons, not the
+configured number of weapons in one player's loadout. Addon weapons use the
+normal multiplier range
 and remain outside daily jackpot and friendly-fire selection.
 
 ## Console settings
