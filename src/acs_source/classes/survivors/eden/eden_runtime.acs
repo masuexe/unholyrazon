@@ -247,6 +247,8 @@ script "rz_EdenPiggyBankDamage" (int evt, int dmg, int dmgtype) EVENT {
   int effectivedamage;
   if (evt != GAMEEVENT_ACTOR_DAMAGED || dmg <= 0)
     terminate;
+  if (EdenMantleBlocksDamage(dmgtype))
+    terminate;
   if (!CheckActorClass(0, "Eden") && !CheckActorClass(0, "EdenShiny"))
     terminate;
   if (PlayerNumber() < 0 || !CheckInventory("C227Flag") || CheckInventory("IsDead"))
@@ -282,6 +284,8 @@ function bool EdenDamageTypeIsBomb(str dmgtype) {
 script "rz_EdenCurseTowerDamage" (int evt, int dmg, int dmgtype) EVENT {
   int effectivedamage;
   if (evt != GAMEEVENT_ACTOR_DAMAGED || dmg <= 0)
+    terminate;
+  if (EdenMantleBlocksDamage(dmgtype))
     terminate;
   if (!CheckActorClass(0, "Eden") && !CheckActorClass(0, "EdenShiny"))
     terminate;
@@ -332,6 +336,8 @@ script "rz_EdenDamoclesDamage" (int evt, int dmg, int dmgtype) EVENT {
   int risk;
 
   if (evt != GAMEEVENT_ACTOR_DAMAGED || dmg <= 0)
+    terminate;
+  if (EdenMantleBlocksDamage(dmgtype))
     terminate;
   if (!CheckActorClass(0, "Eden") && !CheckActorClass(0, "EdenShiny"))
     terminate;
@@ -405,9 +411,13 @@ script "rz_EdenDamoclesKill" (void) {
 function void EdenApplyIpecacStats(void) {
   if (!CheckInventory("C149Flag"))
     return;
-  GiveInventory("EdenDamageAttr", 70);
-  GiveInventory("EdenTearsAttr", 12);
-  SyncEdenTears(CONVERTTEARS_FIRE2TEARS);
+  // With Brimstone + Soy Milk, omit Ipecac's ignored bonuses BEFORE the
+  // tear multiplier/damage division; the Brimstone getter cannot undo them.
+  if (!CheckInventory("C118Flag") || !CheckInventory("C330Flag")) {
+    GiveInventory("EdenDamageAttr", 70);
+    GiveInventory("EdenTearsAttr", 12);
+    SyncEdenTears(CONVERTTEARS_FIRE2TEARS);
+  }
   TakeInventory("EdenShotSpeedAttr", CheckInventory("EdenShotSpeedAttr") / 5);
 }
 
@@ -484,7 +494,9 @@ function void EdenApplyCSectionSkin(void) {
 
 function void EdenApplyMainPassives(void) {
   EdenApplyIpecacStats();
+  EdenApplySoyMilkStats();
   EdenApplyGodheadStats();
+  EdenApplyHolyMantle();
   EdenApplyDamocles();
   EdenApplyPiggyBankPickup();
   EdenApplyAntiGravityStats();
@@ -499,6 +511,7 @@ function void EdenClearMorphState(void) {
   int i;
   str flag;
 
+  EdenClearRestoredItems();
   EdenEnsureVanillaAltRegistered();
   EdenEnsureVanillaMainRegistered();
 
@@ -588,6 +601,27 @@ function void EdenRebuildNormalMainPool(void) {
   eden_normal_main_count = count;
 }
 
+function int EdenRollFormItem(int form) {
+  int i;
+  int total = 0;
+  int roll;
+  for (i = 0; i < edenisaac_main_count; i++) {
+    if (edenisaac_main_form[i] == form)
+      total += EdenGetMainPickWeight(edenisaac_main_quality[i]);
+  }
+  if (total <= 0)
+    return 0;
+  roll = Random(0, total - 1);
+  for (i = 0; i < edenisaac_main_count; i++) {
+    if (edenisaac_main_form[i] != form)
+      continue;
+    roll -= EdenGetMainPickWeight(edenisaac_main_quality[i]);
+    if (roll < 0)
+      return edenisaac_main_id[i];
+  }
+  return 0;
+}
+
 function void EdenRollMainItemsShiny(void) {
   int poolsize = edenisaac_main_count;
   int pickcount = EdenRollMainItemCount(poolsize);
@@ -617,11 +651,11 @@ function void EdenRollMainItemsShiny(void) {
   isangel = Random(0, 1);
   if (isangel) {
     GiveInventory("EdenShinyAngel_F", 1);
-    forced_id = 331;
+    forced_id = EdenRollFormItem(EDEN_FORM_ANGEL);
   }
   else {
     GiveInventory("EdenShinyDevil_F", 1);
-    forced_id = 118;
+    forced_id = EdenRollFormItem(EDEN_FORM_DEVIL);
   }
 
   EdenRebuildNormalMainPool();
@@ -1114,12 +1148,12 @@ script "rz_GetEdenBrimstoneAttr" (int pointer, int attr) {
   switch (attr) {
     case EDENATTR_TEARS:
       value = CheckInventory("EdenTearsAttr");
-      if (CheckInventory("C149Flag"))
+      if (CheckInventory("C149Flag") && !CheckInventory("C330Flag"))
         value = max(1, value - 12);
       break;
     case EDENATTR_DAMAGE:
       value = CheckInventory("EdenDamageAttr");
-      if (CheckInventory("C149Flag"))
+      if (CheckInventory("C149Flag") && !CheckInventory("C330Flag"))
         value = max(1, value - 70);
       break;
     case EDENATTR_SHOTSPEED:

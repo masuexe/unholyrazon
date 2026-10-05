@@ -1,0 +1,193 @@
+// Restored enabled razon3 items. Server owns effects and timers; the shared
+// item registry supplies the existing HUD with icons and active costs.
+int eden_mantle_epoch[64];
+int eden_bible_epoch[64];
+
+function bool EdenRestoredOwnerActive(void) {
+  int pn = PlayerNumber();
+  return pn >= 0 && PlayerInGame(pn) &&
+    (CheckActorClass(0, "Eden") || CheckActorClass(0, "EdenShiny")) &&
+    GetActorProperty(0, APROP_Health) > 0 && !CheckInventory("IsDead");
+}
+
+function void EdenReleaseBible(void) {
+  if (CheckInventory("EdenBibleFlightOwned_F")) {
+    TakeInventory("EdenBibleFlightOwned_F", 1);
+    ACS_NamedExecuteWithResult("core_flyplayer", 0, 0, 0);
+  }
+  SetInventory("TheBibleFlightFlag", 0);
+}
+
+function void EdenClearRestoredItems(void) {
+  int pn = PlayerNumber();
+  if (pn >= 0) {
+    eden_mantle_epoch[pn]++;
+    eden_bible_epoch[pn]++;
+  }
+  EdenReleaseBible();
+  TakeInventory("EdenMantleController_F", 1);
+  TakeInventory("EdenMantleReady_F", 1);
+  SetInventory("EdenMantleCooldown", 0);
+}
+
+script "rz_EdenBibleTimer" (int epoch) {
+  int pn = PlayerNumber();
+  if (pn < 0)
+    terminate;
+  while (eden_bible_epoch[pn] == epoch && EdenRestoredOwnerActive() &&
+         CheckInventory("C33Flag") && CheckInventory("TheBibleFlightFlag") > 0) {
+    Delay(1);
+    if (eden_bible_epoch[pn] != epoch)
+      terminate;
+    TakeInventory("TheBibleFlightFlag", 1);
+  }
+  if (eden_bible_epoch[pn] == epoch)
+    EdenReleaseBible();
+}
+
+script "rz_EdenUseBible" (void) {
+  int pn = PlayerNumber();
+  if (!EdenRestoredOwnerActive() || !CheckInventory("C33Flag"))
+    terminate;
+  // Car Battery refreshes the same 180-tic effect; never add a second flight
+  // stack or a second timer that consumes its duration twice as fast.
+  SetInventory("TheBibleFlightFlag", 180);
+  if (!CheckInventory("EdenBibleFlightOwned_F")) {
+    GiveInventory("EdenBibleFlightOwned_F", 1);
+    ACS_NamedExecuteWithResult("core_flyplayer", 0, 2, 0);
+    eden_bible_epoch[pn]++;
+    ACS_NamedExecuteAlways("rz_EdenBibleTimer", 0, eden_bible_epoch[pn]);
+  }
+}
+
+script "rz_EdenMantleTimer" (int epoch) {
+  int pn = PlayerNumber();
+  if (pn < 0)
+    terminate;
+  while (eden_mantle_epoch[pn] == epoch && EdenRestoredOwnerActive() &&
+         CheckInventory("C313Flag") && CheckInventory("EdenMantleController_F")) {
+    Delay(1);
+    if (eden_mantle_epoch[pn] != epoch)
+      terminate;
+    if (!EdenRestoredOwnerActive() || !CheckInventory("C313Flag"))
+      break;
+    if (CheckInventory("EdenMantleCooldown"))
+      TakeInventory("EdenMantleCooldown", 1);
+    if (!CheckInventory("EdenMantleCooldown") && !CheckInventory("EdenMantleReady_F")) {
+      GiveInventory("EdenMantleReady_F", 1);
+      GiveInventory("HolyMantleRegen_P", 1);
+    }
+  }
+  if (eden_mantle_epoch[pn] == epoch) {
+    TakeInventory("EdenMantleController_F", 1);
+    TakeInventory("EdenMantleReady_F", 1);
+    SetInventory("EdenMantleCooldown", 0);
+  }
+}
+
+function void EdenApplyHolyMantle(void) {
+  int pn = PlayerNumber();
+  if (!EdenRestoredOwnerActive() || !CheckInventory("C313Flag") ||
+      CheckInventory("EdenMantleController_F"))
+    return;
+  GiveInventory("EdenMantleController_F", 1);
+  GiveInventory("EdenMantleReady_F", 1);
+  GiveInventory("HolyMantleRegen_P", 1);
+  eden_mantle_epoch[pn]++;
+  ACS_NamedExecuteAlways("rz_EdenMantleTimer", 0, eden_mantle_epoch[pn]);
+}
+
+script "rz_EdenMantleVisualValid" (void) {
+  if (!SetActivator(0, AAPTR_TARGET)) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(EdenRestoredOwnerActive() && CheckInventory("C313Flag") &&
+    CheckInventory("EdenMantleReady_F"));
+}
+
+// Named EVENT scripts are sorted by engine-assigned number, not source order.
+// Each Eden hook calls this first, so cancellation precedes all Eden hit procs
+// while preserving that EVENT script's AAPTR_DAMAGE_* context.
+function bool EdenMantleBlocksDamage(str dmgtype) {
+  if (!EdenRestoredOwnerActive() || GetEventResult() <= 0 ||
+      !CheckInventory("C313Flag") || !CheckInventory("EdenMantleReady_F"))
+    return false;
+  if (!StrICmp(dmgtype, "Damocles") || !StrICmp(dmgtype, "Telefrag") ||
+      !StrICmp(dmgtype, "GiveUpHope") || !StrICmp(dmgtype, "SuperGiveUpHope"))
+    return false;
+  TakeInventory("EdenMantleReady_F", 1);
+  SetInventory("EdenMantleCooldown", 120);
+  SetResultValue(0);
+  GiveInventory("HolyMantleBreak_P", 1);
+  return true;
+}
+
+script "rz_EdenMantleDamage" (int evt, int dmg, int dmgtype) EVENT {
+  if (evt == GAMEEVENT_ACTOR_DAMAGED && dmg > 0)
+    EdenMantleBlocksDamage(dmgtype);
+}
+
+function void EdenApplySoyMilkStats(void) {
+  if (!CheckInventory("C330Flag"))
+    return;
+  SetInventory("EdenTearsHUDAttr", CheckInventory("EdenTearsHUDAttr") * 5);
+  SyncEdenTears(CONVERTTEARS_TEARS2FIRE);
+  SetInventory("EdenDamageAttr", CheckInventory("EdenDamageAttr") / 5);
+}
+
+script "rz_EdenActiveEmitterValid" (int id) {
+  if (!SetActivator(0, AAPTR_TARGET)) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(EdenRestoredOwnerActive() && CheckInventory(StrParam(s:"C", i:id, s:"Flag")));
+}
+
+function bool EdenFlyEnemy(int owner, int victim) {
+  if (owner == victim || !PlayerInGame(victim) ||
+      GetActorProperty(victim + 1000, APROP_Health) <= 0 ||
+      CheckActorInventory(victim + 1000, "IsDead"))
+    return false;
+  if (IsTeamGame && GetPlayerInfo(owner, PLAYERINFO_TEAM) == GetPlayerInfo(victim, PLAYERINFO_TEAM))
+    return false;
+  return !ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", owner, victim);
+}
+
+script "rz_EdenBlueFlyFindEnemy" (void) {
+  int owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  int p;
+  int candidate = 0;
+  int distance;
+  int nearest = 200.0;
+  if (owner < 1000 || owner >= 1064 ||
+      !PlayerInGame(owner - 1000) || GetActorProperty(owner, APROP_Health) <= 0 ||
+      CheckActorInventory(owner, "IsDead") ||
+      (!CheckActorClass(owner, "Eden") && !CheckActorClass(owner, "EdenShiny")) ||
+      !CheckActorInventory(owner, "C145Flag")) {
+    SetResultValue(0);
+    terminate;
+  }
+  for (p = 0; p < 64; p++) {
+    if (!EdenFlyEnemy(owner - 1000, p))
+      continue;
+    distance = VectorLength(VectorLength(GetActorX(p + 1000) - GetActorX(0),
+      GetActorY(p + 1000) - GetActorY(0)), GetActorZ(p + 1000) - GetActorZ(0));
+    if (distance <= nearest && CheckSight(0, p + 1000, 0)) {
+      nearest = distance;
+      candidate = p + 1000;
+    }
+  }
+  if (candidate)
+    SetPointer(AAPTR_TARGET, candidate);
+  else
+    SetPointer(AAPTR_TARGET, 0, AAPTR_NULL);
+  SetResultValue(1);
+}
+
+script "rz_EdenBlueFlyCanHit" (void) {
+  int owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  int victim = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  SetResultValue(owner >= 1000 && owner < 1064 && victim >= 1000 && victim < 1064 &&
+    EdenFlyEnemy(owner - 1000, victim - 1000));
+}

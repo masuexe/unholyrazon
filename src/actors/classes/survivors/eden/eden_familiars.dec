@@ -1,11 +1,4 @@
-actor EdenFamiliarBase {
-  States {
-   Spawn:
-    TNT1 A 0
-    stop
-  }
-}
-
+// Guppy's Head familiar; the server picks targets using Unholy teams.
 actor EdenBlueFly {
   damagefactor "Normal", 1.0
   Height 20
@@ -14,7 +7,7 @@ actor EdenBlueFly {
   Health 200
   Scale 2.5
   Translation "192:192=[51,95,179]:[51,95,179]", "198:198=[19,43,75]:[19,43,75]"
-  bloodtype "EnemyHurtFX1"
+  +NOBLOOD
   Species "EdenBlueFly"
   painchance 0
   MaxStepHeight 100
@@ -51,43 +44,25 @@ actor EdenBlueFly {
     TNT1 A 0
     TNT1 A 2
     TNT1 A 1 A_TransferPointer(AAPTR_DEFAULT, AAPTR_DEFAULT, AAPTR_FRIENDPLAYER, AAPTR_MASTER)
-    // TNT1 A 0 Thing_ChangeTID(0,ACS_NamedExecuteWithResult("core_getmaster")+10000)
    LookClear:
-    1SFL A 0 A_ClearTarget
    Look:
-    1SFL A 1 A_Chase
-    1SFL A 0 A_LookEx(LOF_NOSOUNDCHECK, 0, 200, 0, 360, "See")
-    1SFL B 1 A_Chase
-    1SFL B 0 A_LookEx(LOF_NOSOUNDCHECK, 0, 200, 0, 360, "See")
-    loop
    See:
+    1SFL A 0 A_JumpIf(!CallACS("rz_EdenBlueFlyFindEnemy"), "Death")
+    1SFL A 0 A_JumpIf(!CallACS("rz_EdenBlueFlyCanHit"), "Idle")
     1SFL AB 1 A_Chase("Melee", "")
-    goto LookClear
+    goto Look
+   Idle:
+    1SFL AB 1 A_Wander
+    goto Look
    Melee:
-    1SFL F 0 A_CustomMeleeAttack(CallACS("rz_GetEdenAttr", 4, 2, 0) * 2, "", "", "Eden", 0)
+    1SFL A 0 A_JumpIf(!CallACS("rz_EdenBlueFlyCanHit"), "Look")
+    1SFL A 0 A_CustomMeleeAttack(CallACS("rz_GetEdenAttr", 4, 2, 0) * 2, "", "", "Eden", 0)
     goto Death
    Pain:
-    1SFL F 0 A_ChangeFlag("NOPAIN", 1)
-    goto LookClear
+    1SFL A 0 A_ChangeFlag("NOPAIN", 1)
+    goto Look
    Death:
     TNT1 A 1 A_SpawnItemEx("EdenPoofFX2")
     stop
-  }
-}
-
-actor EdenBlueFlyDebugItem : CustomInventory {
-  inventory.pickupmessage "Decoy Weapon Cycler"
-  Inventory.Icon "UMUG_S50"
-  inventory.PickupSound "WilyWar/Snd_37"
-  +COUNTITEM
-  +INVBAR
-  Scale 1.0
-  States {
-   Spawn:
-    7H50 "[" 4
-    wait
-   Use:
-    TNT1 A 0 A_SpawnItemEx("EdenBlueFly", 0, 0, 32, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
-    fail
   }
 }
