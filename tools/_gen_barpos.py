@@ -124,7 +124,8 @@ def parse_texture_defs(text: str) -> dict:
         body = m.group(2)
         entry = defs.setdefault(name, {"patches": [], "offset": (0, 0)})
         entry["patches"].extend(
-            patch.casefold() for patch in re.findall(r"\bpatch\s+([A-Za-z0-9_]+)", body)
+            patch.casefold() for patch in re.findall(
+                r"\bpatch\s+([A-Za-z0-9_]+)", body, re.IGNORECASE)
         )
         offset = TEXTURE_OFFSET_RX.search(body)
         if offset:
@@ -254,6 +255,7 @@ def load_bar_graphics():
     known = {name.casefold() for name in re.findall(
         r"\b(?:graphic|patch|texture)\s+([A-Za-z0-9_]+)", textures + "\n" + animdefs,
     )} | {name.casefold() for name in COMMON_BAR_GRAPHICS | BASE_BAR_GRAPHICS}
+    known |= {path.stem.casefold() for path in (ROOT / "graphics").rglob("*.png")}
     return known, parse_texture_defs(textures), parse_texture_animations(animdefs)
 
 

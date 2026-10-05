@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261005
 
+- 调整 Atomic Fire 弹药条：WeaponCharge 30／40 档使用 Unbound 双色闪动，50 档使用 v7a 彩虹动画，横／竖 HUD 同步；拆分弹药特效与蓄力进度层，修复特效被覆盖的问题
 - 将 MegaMan 的 Homing Sniper 随机池分类更新为 v6b 原版槽 4，Centaur Flash 更新为槽 7，同步更新 UIX 的 DTADD 武器注册，统一随机池、UIX 显示、数字键选择与滚轮切换的槽位；保留两把武器的每日随机固定 ID
 - 修复 BlackHoleWepU 弹药条变灰期间仍自动回蓝的问题；灰条结束后恢复回蓝，期间不累计回蓝计时
 - 参考 CBM Mega Man，使用蓄力值和客户端计时驱动 MegaManU_W 弹药条与 base 皮肤头像的蓄力闪烁，关闭 chargebar 设置时保留原有显示
