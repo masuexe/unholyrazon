@@ -1,5 +1,6 @@
 // Server-owned, map-local Slugger crate database. A weapon has one row:
-// actor, voice, inherited SluggerCrateWeaponIcon state, and relative weight.
+// actor, voice, icon identity (S1 etc.), and relative weight. Each icon has
+// SluggerCrateWeaponIcon<identity> pickup art and a matching floating FX state.
 // Add a built-in below; UH_RegisterSluggerCrateWeapon also accepts runtime
 // registration from this library. Duplicate actors update their existing row.
 // Weight 0 disables drops but retains cleanup and roulette membership.
@@ -66,13 +67,10 @@ function int UH_SluggerCratePick(int roll) {
 
 // Player activator. Crate pickup replaces special weapons; bot grants retain
 // the original additive behavior. Ammo still comes from Weapon.AmmoGive.
-function bool UH_SluggerCrateGive(bool replace) {
+function bool UH_SluggerCrateGiveRow(int row, bool replace) {
   int player = PlayerNumber();
   if (player < 0 || GetActorProperty(0, APROP_Health) <= 0 ||
-      !CheckInventory("SluggerPistol_W") || uh_slugger_crate_total <= 0)
-    return false;
-  int row = UH_SluggerCratePick(Random(0, uh_slugger_crate_total - 1));
-  if (row < 0)
+      !CheckInventory("SluggerPistol_W") || row < 0 || row >= uh_slugger_crate_count)
     return false;
   if (replace) {
     for (int i = 0; i < uh_slugger_crate_count; i++)
@@ -91,14 +89,49 @@ function bool UH_SluggerCrateGive(bool replace) {
 }
 
 script "uh_SluggerCrateGive" (void) {
-  SetResultValue(UH_SluggerCrateGive(false));
+  if (uh_slugger_crate_total <= 0)
+    terminate;
+  SetResultValue(UH_SluggerCrateGiveRow(
+    UH_SluggerCratePick(Random(0, uh_slugger_crate_total - 1)), false));
 }
 
-// Activator is the crate watcher; never give inventory with a null activator.
-script "uh_SluggerCrateReplace" (void) {
-  if (!SetActivator(0, AAPTR_TARGET))
+// Activator: landed drop helper. The actor class encodes the icon identity,
+// which survives native pickup without relying on the original item's args
+// (CustomInventory Pickup actions run with the touching player as activator).
+script "uh_SluggerCrateDrop" (void) {
+  if (uh_slugger_crate_total <= 0)
     terminate;
-  SetResultValue(UH_SluggerCrateGive(true));
+  int row = UH_SluggerCratePick(Random(0, uh_slugger_crate_total - 1));
+  if (row < 0)
+    terminate;
+  int helper = ActivatorTID();
+  bool temporaryHelper = helper == 0;
+  if (temporaryHelper) {
+    helper = UniqueTID();
+    Thing_ChangeTID(0, helper);
+  }
+  int dropTid = UniqueTID();
+  if (SpawnForced(StrParam(s:"SluggerCrateWeaponIcon", s:uh_slugger_crate_icon[row]),
+                  GetActorX(0), GetActorY(0), GetActorZ(0), dropTid)) {
+    SetActivator(dropTid);
+    SetPointer(AAPTR_TARGET, helper, AAPTR_TARGET);
+    Thing_ChangeTID(dropTid, 0);
+    SetActivator(helper);
+  }
+  if (temporaryHelper)
+    Thing_ChangeTID(0, 0);
+}
+
+// Native pickup calls this with the icon's identity; do not draw again.
+script "uh_SluggerCratePickup" (int icon) {
+  str state = StrParam(s:"S", d:icon);
+  for (int row = 0; row < uh_slugger_crate_count; row++) {
+    if (StrICmp(uh_slugger_crate_icon[row], state) == 0) {
+      SetResultValue(UH_SluggerCrateGiveRow(row, true));
+      terminate;
+    }
+  }
+  SetResultValue(false);
 }
 
 // Preserve the previous one-tic delay before the icon and pending weapon.

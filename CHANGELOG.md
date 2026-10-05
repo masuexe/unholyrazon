@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261005
 
+- Slugger 空投落地后直接显示抽中的武器字母图标，拾取时发放对应武器；抽取时机从拾取改为落地
 - 将 Typhoon Bonus 移入与普通 FFA 相同的无额外人数门槛随机池；其余高人数 Bonus 使用 Unbound v7b 的 12 人门槛
 - 修复 Typhoon Bonus 启动时误将事件编号 16 作为 Demoneye 机体编号、导致转换失效的问题，改为机体编号 13，并为全员 Demoneye 事件加入启动参数校验
 - 修复 C-Section 的 M1 武器 HUD 在联机中等待服务器跳转后才开始播放的问题，为其提供可本地预测的直接开火入口，保留 Bob’s Rotten Head 投掷分支和原有动画、射击时序
@@ -15,7 +16,7 @@
 - 还原并优化 Slugger（含 Shiny）的 DrawBar 与武器弹药显示
 - 重做 Slugger 的副攻击（M2）：从手动投掷木箱改为定点呼叫空投，一段时间后空投箱从天而降砸向地面，落地引发爆炸范围伤害并生成武器箱补给
 - 将 Slugger Shotgun 的武器 HUD 替换为 Razon 3 的素材与开火／换弹动画
-- 为 Slugger 的手枪、重机枪、火箭筒和霰弹枪加入自动近战：首次按下 M1 时，瞄准线前方 48 单位内有敌人则使用不耗弹的刺刀；优化刺刀 HUD 贴图配色为 Slugger 军绿袖口与肤色，重构持枪下沉与出刀收刀的平滑过渡动画，并补充挥刀音效与命中敌人／墙体的音效与火花反馈
+- 为 Slugger 的手枪、重机枪、火箭筒和霰弹枪加入自动近战：首次按下 M1 时，瞄准线前方 48 单位内有敌人则使用不耗弹的刺刀
 - 为 Slugger Rocket Launcher 加入轻微跟踪
 - 移植 Razon 3 的 Slugger Flame Shot、Enemy Chaser、Drop Shot 和 Two Machine Guns，接入武器箱、弹药 HUD、武器语音及共用刺刀动作；保留原版弹药量、伤害和抽取比例，Enemy Chaser 使用强跟踪并按 Unholy 阵营规则重新搜敌
 - 修复 BirdNest（Crow Nest）速射弹／散射弹命中时缺少伤害归属 actor，导致 `core_damageactor` 报错且归属伤害未生效的问题
