@@ -381,6 +381,17 @@ script "rz_FloovyExtraLifePointer" (int pointer, int toggle, int type) {
   SetResultValue(ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, toggle, type));
 }
 
+// WithResult applies the guard synchronously before the death/heal transaction.
+// Delay leaves this instance running independently of the player's Pain state;
+// firing or another state change cannot skip the matching one-layer removal.
+// Each invocation owns one core stack, including overlapping revivals.
+script "rz_FloovyReviveGuard" (void) {
+  if (PlayerNumber() < 0) {terminate;}
+  ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true);
+  Delay(1);
+  ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false);
+}
+
 script "rz_FloovyDeath" (int tid, int type) {
   // int i;
   // for (i = 1000; i < 1064; i++) {

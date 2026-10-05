@@ -19,6 +19,7 @@
 - 为 Slugger Rocket Launcher 加入轻微跟踪
 - 移植 Razon 3 的 Slugger Flame Shot、Enemy Chaser、Drop Shot 和 Two Machine Guns，接入武器箱、弹药 HUD、武器语音及共用刺刀动作；保留原版弹药量、伤害和抽取比例，Enemy Chaser 使用强跟踪并按 Unholy 阵营规则重新搜敌
 - 修复 BirdNest（Crow Nest）速射弹／散射弹命中时缺少伤害归属 actor，导致 `core_damageactor` 报错且归属伤害未生效的问题
+- 修复 Floovy 大招保命触发后，开火打断受伤状态可能残留永久无敌的问题
 
 ## 4.0.0-beta.261004.hotfix1
 
