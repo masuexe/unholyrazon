@@ -1,5 +1,7 @@
 ## 4.0.0-beta.261005
 
+- 将 Bonus Stage 音乐接入与 Boss 音乐共用的加权曲池，通过 `AddBonusEventMusic`／`AddBonusEventMusicByStem` 注册曲目；MLG、Sumo、Kamikaze 和 Business eyes 在原曲与 Unbound 旧版曲目间等概率随机播放，音频由独立音乐包提供
+- 修复 Boss Combo 静态基线检查遗漏已有音乐及曲名调整导致的误报，保留冻结基线并逐字段列出预期差异
 - 为 CrowNest 的四种鸟炮台启用重力，使其生成后自然落地
 - 修复 GBeast 的 EraseCross 在联机客户端错误进入 Claws 动画、导致 HUD 抖动的问题
 - 将 Slugger 武器箱改为动态注册数据库，统一管理武器、抽取权重、语音和图标，并由共用逻辑清理旧武器、发放及切枪；保留原有抽取比例

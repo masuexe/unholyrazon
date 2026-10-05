@@ -336,13 +336,24 @@ def main() -> int:
         defines = {name: int(value) for name, value in re.findall(r"#define\s+(\w+)\s+(-?\d+)\b", defs)}
         rows = parse_combo_registrations(combo_data, defines, bosses)
         baseline = json.loads(COMBO_BASELINE.read_text(encoding="utf-8"))["combos"]
-        # Intentional post-migration changes: these events inherit member music,
-        # and Speciman Rush includes Razon3's Final/DX candidates. Keep the
-        # frozen migration evidence and apply explicit expected differences.
+        # Keep the frozen migration evidence. Pin subsequent music edits by
+        # field rather than accepting arbitrary differences in these records.
+        music_overrides = {
+            303: {"title": "Guts Man Power Battle!"},
+            307: {"music": "", "title": "", "album": "", "artist": ""},
+            501: {"music": "", "title": "", "album": "", "artist": ""},
+            502: {"music": "", "title": "", "album": "", "artist": ""},
+            210: {"title": "Iquickman Stage"},
+            211: {"music": "M_UB060", "title": "No More Nuzzles",
+                  "album": "Undertale: Halloween Hack", "artist": "Nobuo Uematsu"},
+            213: {"music": "M_UB060", "title": "No More Nuzzles",
+                  "album": "Undertale: Halloween Hack"},
+            214: {"music": "M_UB060", "title": "No More Nuzzles",
+                  "album": "Undertale: Halloween Hack", "artist": "Nobuo Uematsu"},
+        }
         expected_combos = [dict(row) for row in baseline]
         for row in expected_combos:
-            if row["id"] in (307, 501):
-                row.update(music="", title="", album="", artist="")
+            row.update(music_overrides.get(row["id"], {}))
             if row["id"] == 501:
                 row["members"] = row["members"] + ["FinalSpeciman", "SpecimanDX"]
                 row["member_ids"] = row["member_ids"] + [404, 542]
@@ -375,7 +386,7 @@ def main() -> int:
     check("dynamic combo registry", initial_schema,
           "capacity, metadata, ordered members and committed availability are separate")
     check("combo migration preserves frozen data", rows == expected_combos,
-          "26 rows match the frozen baseline with explicit member-music and Speciman Final/DX changes")
+          "26 rows match the frozen baseline with explicit music metadata and Speciman Final/DX changes")
     check("combo stable ids and keys", all(row["id"] >= 0 for row in rows)
           and len({row["id"] for row in rows}) == len(rows)
           and len({row["key"].casefold() for row in rows}) == len(rows),

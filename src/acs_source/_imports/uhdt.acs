@@ -60,6 +60,7 @@
 #libdefine UHMUS_KIND_WINNER 2
 #libdefine UHMUS_KIND_LOSER 3
 #libdefine UHMUS_KIND_LMS 4
+#libdefine UHMUS_KIND_BONUS 5
 #libdefine UHMUS_MAX_WEIGHT 1000000
 // New music-row ops. Add* still returns a row or UHMUS_FAIL.
 #libdefine UHMUS_OK 0
@@ -2187,7 +2188,7 @@ function int UH_MusicBossKeyOk(int bossid, int kind, int phase, str lump) {
 }
 
 function int UH_MusicEventKeyOk(int kind, int phase, str lump) {
-  if (kind != UHMUS_KIND_WINNER && kind != UHMUS_KIND_LOSER && kind != UHMUS_KIND_LMS)
+  if (kind != UHMUS_KIND_WINNER && kind != UHMUS_KIND_LOSER && kind != UHMUS_KIND_LMS && kind != UHMUS_KIND_BONUS)
     return 0;
   if (phase < 0)
     return 0;
@@ -2249,13 +2250,13 @@ function int AddBossMusicCore(int bossid, int kind, int phase, str lump, str tit
   return row;
 }
 
-// Global event pools (winner/loser/LMS). Identity = (kind, phase, lump).
-// Winner/Loser: phase 0. LMS: phase = eventid (>=0, no upper bound).
+// Global event pools (winner/loser/LMS/bonus). Identity = (kind, phase, lump).
+// Winner/Loser: phase 0. LMS/Bonus: phase = eventid (>=0, no upper bound).
 // duration: ACS fixed seconds (-1.0 unknown). emuflag: 1 = MAME (+12 tics).
 function int AddEventMusicCore(int kind, int phase, str lump, str title, str album, str artist, int weight, int optional, int duration, int emuflag) {
   int row;
   int emuf;
-  if (kind != UHMUS_KIND_WINNER && kind != UHMUS_KIND_LOSER && kind != UHMUS_KIND_LMS)
+  if (kind != UHMUS_KIND_WINNER && kind != UHMUS_KIND_LOSER && kind != UHMUS_KIND_LMS && kind != UHMUS_KIND_BONUS)
     return UHMUS_FAIL;
   if (StrCmp(lump, "") == 0 || StrCmp(lump, "*") == 0)
     return UHMUS_FAIL;
@@ -2438,14 +2439,14 @@ function int PickBossMusicRow(int bossid, int kind, int phase) {
   return -1;
 }
 
-// Global winner/loser/LMS pick. Same filter on the sum and the landing pass.
+// Global winner/loser/LMS/bonus pick. Same filter on the sum and the landing pass.
 function int PickEventMusicRow(int kind, int phase) {
   int i;
   int sum;
   int roll;
   int allowoptional;
 
-  if (kind != UHMUS_KIND_WINNER && kind != UHMUS_KIND_LOSER && kind != UHMUS_KIND_LMS)
+  if (kind != UHMUS_KIND_WINNER && kind != UHMUS_KIND_LOSER && kind != UHMUS_KIND_LMS && kind != UHMUS_KIND_BONUS)
     return -1;
   if (phase < 0)
     return -1;

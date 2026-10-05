@@ -722,6 +722,7 @@ function str GetEyeMorphPoolActor(str pool, int eyeid, int mode) {
 #define UHMUS_KIND_WINNER 2
 #define UHMUS_KIND_LOSER 3
 #define UHMUS_KIND_LMS 4
+#define UHMUS_KIND_BONUS 5
 #define UHMUS_OK 0
 #define UHMUS_ERR_NOTFOUND 1
 #define UHMUS_ERR_CONFLICT 2
@@ -2463,4 +2464,28 @@ function str UH_GetLMSEventPenaltyIcon(int id) {
 
 function int UH_GetLMSEventPenaltyFlags(int id) {
   return ACS_NamedExecuteWithResult("uh_GetLMSEventPenaltyFlags_S", id);
+}
+
+// Bonus-stage music pool: phase = bonus event id. Same weight/optional and
+// EnableEventMusic/DisableEventMusic/RemoveEventMusic operations as LMS pools.
+// Register after DefineBonusEvent; use the returned id or resolve its stem.
+function int AddBonusEventMusic(int eventid, str lump, str title, str album, str artist, int weight, int optional) {
+  SetCVar("uh_bm_kind", UHMUS_KIND_BONUS);
+  SetCVar("uh_bm_phase", eventid);
+  SetCVarString("uh_bm_lump", lump);
+  SetCVarString("uh_bm_title", title);
+  SetCVarString("uh_bm_album", album);
+  SetCVarString("uh_bm_artist", artist);
+  SetCVar("uh_bm_weight", weight);
+  SetCVar("uh_bm_optional", optional);
+  SetCVar("uh_bm_duration", 0);
+  SetCVar("uh_bm_emuflag", 0);
+  return ACS_NamedExecuteWithResult("uh_AddEventMusic_S");
+}
+
+function int AddBonusEventMusicByStem(str stem, str lump, str title, str album, str artist, int weight, int optional) {
+  int eventid = UH_FindBonusEventByStem(stem);
+  if (eventid == UHBE_FAIL)
+    return UHMUS_FAIL;
+  return AddBonusEventMusic(eventid, lump, title, album, artist, weight, optional);
 }
