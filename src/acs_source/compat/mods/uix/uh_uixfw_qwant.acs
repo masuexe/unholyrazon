@@ -1,43 +1,16 @@
-// Qwant 5-group weapon wheel: server MoveMem snapshot + display adapter.
-// Indices pack in 8 bits (0..254 valid, 255 unused). UHCOPY_QWANT == 2.
-
+// Dynamic Qwant wheel: synchronized inventory is the move list.
+// Base weapon owns group 0; copy moves use up to 11 other scrollable groups.
 #define UHFW_UHCOPY_QWANT 2
-#define UHFW_QW_SLOTS 4
-#define UHFW_QW_GROUPS 5
+#define UHFW_QW_MAX_WEAP 257
+#define UHFW_QW_CACHE 257
 #define UHFW_QW_WAIT 35
-#define UHFW_QW_IDXMAX 254
-#define UHFW_QW_PLAYERS 64
-#define UHFW_QW_CACHE 64
+#define UHFW_QW_GROUPS 12
+#define UHFW_QW_MIN_WEAP 2
 #define UHFW_QW_TYPE_N 18
 #define UHFW_QW_BAR2_C 138
 #define UHFW_QW_BAR2_B 130
 #define UHFW_QW_BODY_C 138
 #define UHFW_QW_BODY_B 130
-
-int uhqw_svlife[UHFW_QW_PLAYERS];
-int uhqw_svseq[UHFW_QW_PLAYERS];
-int uhqw_sv_req_timer[UHFW_QW_PLAYERS];
-
-int uhqw_cl_life[UHFW_QW_PLAYERS];
-int uhqw_cl_seq[UHFW_QW_PLAYERS];
-int uhqw_cl_ok[UHFW_QW_PLAYERS];
-int uhqw_cl_m[UHFW_QW_PLAYERS][UHFW_QW_SLOTS];
-int uhqw_cl_req_timer[UHFW_QW_PLAYERS];
-
-int uhqw_bar_life[UHFW_QW_PLAYERS];
-int uhqw_bar_seq[UHFW_QW_PLAYERS];
-int uhqw_bar_ok[UHFW_QW_PLAYERS];
-int uhqw_bar_m[UHFW_QW_PLAYERS][UHFW_QW_SLOTS];
-
-int uhqw_clife = 0;
-int uhqw_pend_ok = 0;
-int uhqw_pend_seq = 0;
-int uhqw_pend_m[UHFW_QW_SLOTS];
-int uhqw_show_seq = -1;
-int uhqw_show_m[UHFW_QW_SLOTS];
-int uhqw_can[UHFW_QW_GROUPS];
-int uhqw_wait = 0;
-int uhqw_kind[UHFW_QW_GROUPS];
 
 int uhqw_cn = 0;
 str uhqw_cwep[UHFW_QW_CACHE];
@@ -84,26 +57,7 @@ function int UHFW_IsPlainQwant(void) {
   return 0;
 }
 
-function void UHFW_QwantClearClient(void) {
-  int i;
-
-  uhqw_pend_ok = 0;
-  uhqw_pend_seq = 0;
-  uhqw_show_seq = -1;
-  uhqw_wait = 0;
-  for (i = 0; i < UHFW_QW_SLOTS; i++) {
-    uhqw_pend_m[i] = -1;
-    uhqw_show_m[i] = -1;
-  }
-  for (i = 0; i < UHFW_QW_GROUPS; i++) {
-    uhqw_can[i] = 0;
-    uhqw_kind[i] = -1;
-  }
-}
-
 function str UHFW_QwantActor(int idx) {
-  if (idx < 0 || idx > UHFW_QW_IDXMAX)
-    return "";
   return ACS_NamedExecuteWithResult("uh_copykind_actor", UHFW_UHCOPY_QWANT, idx);
 }
 
@@ -258,547 +212,303 @@ function int UHFW_QwantCacheWep(str wep) {
   return i;
 }
 
-// Empty slots are -1 locally and 255 in the packed network snapshot.
-function int UHFW_QwantMoveOk(int move) {
-  return move == -1 || (move >= 0 && move <= UHFW_QW_IDXMAX && StrLen(UHFW_QwantActor(move)) > 0);
-}
+int uhqwd_snapn = 0;
+int uhqwd_groupcount = 0;
+int uhqwd_metaok = 1;
+str uhqwd_snapwep[UHFW_QW_MAX_WEAP];
+str uhqwd_snaptag[UHFW_QW_MAX_WEAP];
+str uhqwd_snapicon[UHFW_QW_MAX_WEAP];
+str uhqwd_snapammo1[UHFW_QW_MAX_WEAP];
+str uhqwd_snapammo2[UHFW_QW_MAX_WEAP];
+int uhqwd_amt1[UHFW_QW_MAX_WEAP];
+int uhqwd_max1[UHFW_QW_MAX_WEAP];
+int uhqwd_amt2[UHFW_QW_MAX_WEAP];
+int uhqwd_max2[UHFW_QW_MAX_WEAP];
+str uhqwd_cyan1[UHFW_QW_MAX_WEAP];
+str uhqwd_blue1[UHFW_QW_MAX_WEAP];
+str uhqwd_cyan2[UHFW_QW_MAX_WEAP];
+str uhqwd_blue2[UHFW_QW_MAX_WEAP];
+int uhqwd_group[UHFW_QW_MAX_WEAP];
+int uhqwd_can[UHFW_QW_MAX_WEAP];
 
-function int UHFW_QwantMovesOk(int m0, int m1, int m2, int m3) {
-  if (m0 < 0 || !UHFW_QwantMoveOk(m0) || !UHFW_QwantMoveOk(m1) || !UHFW_QwantMoveOk(m2) || !UHFW_QwantMoveOk(m3))
-    return 0;
-  if ((m0 == m1 || m0 == m2 || m0 == m3) ||
-      (m1 >= 0 && (m1 == m2 || m1 == m3)) || (m2 >= 0 && m2 == m3))
-    return 0;
-  // Opening/relearn logic keeps occupied slots contiguous.
-  if ((m1 < 0 && (m2 >= 0 || m3 >= 0)) || (m2 < 0 && m3 >= 0))
-    return 0;
-  return 1;
-}
-
-function int UHFW_QwantInvMatch(int m0, int m1, int m2, int m3) {
-  if (CheckInventory("Qwant_W") <= 0)
-    return 0;
-  if (m0 >= 0 && CheckInventory(UHFW_QwantActor(m0)) <= 0)
-    return 0;
-  if (m1 >= 0 && CheckInventory(UHFW_QwantActor(m1)) <= 0)
-    return 0;
-  if (m2 >= 0 && CheckInventory(UHFW_QwantActor(m2)) <= 0)
-    return 0;
-  if (m3 >= 0 && CheckInventory(UHFW_QwantActor(m3)) <= 0)
-    return 0;
-  return 1;
-}
-
-function void UHFW_QwantPushCached(int c) {
+function void UHFW_QwantSnapClear(void) {
   int i;
 
-  if (uhfw_snapn >= UHFW_MAX_WEAP)
-    return;
-  if (c < 0 || StrCmp(uhqw_cicon[c], "") == 0) {
-    uhfw_metaok = 0;
-    return;
+  uhqwd_snapn = 0;
+  uhqwd_groupcount = 0;
+  uhqwd_metaok = 1;
+  for (i = 0; i < UHFW_QW_MAX_WEAP; i++) {
+    uhqwd_snapwep[i] = "";
+    uhqwd_snaptag[i] = "";
+    uhqwd_snapicon[i] = "";
+    uhqwd_snapammo1[i] = "";
+    uhqwd_snapammo2[i] = "";
+    uhqwd_amt1[i] = 0;
+    uhqwd_max1[i] = 0;
+    uhqwd_amt2[i] = 0;
+    uhqwd_max2[i] = 0;
+    uhqwd_cyan1[i] = UHFW_BAR_BLACK;
+    uhqwd_blue1[i] = UHFW_BAR_BLACK;
+    uhqwd_cyan2[i] = UHFW_BAR_BLACK;
+    uhqwd_blue2[i] = UHFW_BAR_BLACK;
+    uhqwd_group[i] = 0;
+    uhqwd_can[i] = 0;
   }
-  i = uhfw_snapn;
-  uhfw_snapwep[i] = uhqw_cwep[c];
-  uhfw_snaptag[i] = uhqw_ctag[c];
-  uhfw_snapicon[i] = uhqw_cicon[c];
-  if (StrICmp(uhqw_cwep[c], "Qwant_W") == 0) {
-    uhfw_snapammo1[i] = "MoveRelearnAmmo";
-    uhfw_snapammo2[i] = "";
-    uhfw_cyan1[i] = UHFW_Pal(UHFW_QW_BAR2_C);
-    uhfw_blue1[i] = UHFW_Pal(UHFW_QW_BAR2_B);
-    uhfw_cyan2[i] = UHFW_BAR_BLACK;
-    uhfw_blue2[i] = UHFW_BAR_BLACK;
-  } else {
-    uhfw_snapammo1[i] = uhqw_cammo[c];
-    uhfw_snapammo2[i] = "";
-    uhfw_cyan1[i] = UHFW_Pal(uhqw_ccyan[c]);
-    uhfw_blue1[i] = UHFW_Pal(uhqw_cblue[c]);
-    uhfw_cyan2[i] = UHFW_BAR_BLACK;
-    uhfw_blue2[i] = UHFW_BAR_BLACK;
-  }
-  UHFW_ReadAmmo(i);
-  if (uhfw_max1[i] <= 0 && uhqw_cmax[c] > 0)
-    uhfw_max1[i] = uhqw_cmax[c];
-  uhfw_snapn++;
 }
 
-function void UHFW_QwantLoadSnap(int m0, int m1, int m2, int m3) {
+function int UHFW_QwantSnapFind(str wep) {
+  int i;
+
+  if (StrCmp(wep, "") == 0)
+    return UHFW_FAIL;
+  for (i = 0; i < uhqwd_snapn; i++) {
+    if (StrICmp(uhqwd_snapwep[i], wep) == 0)
+      return i;
+  }
+  return UHFW_FAIL;
+}
+
+function void UHFW_QwantReadAmmo(int i) {
+  str ammo = uhqwd_snapammo1[i];
+  int cached = UHFW_QwantCacheFind(uhqwd_snapwep[i]);
+  uhqwd_amt1[i] = 0;
+  uhqwd_max1[i] = 0;
+  uhqwd_amt2[i] = 0;
+  uhqwd_max2[i] = 0;
+  if (StrLen(ammo) > 0) {
+    uhqwd_amt1[i] = CheckInventory(ammo);
+    uhqwd_max1[i] = GetAmmoCapacity(ammo);
+    if (uhqwd_max1[i] <= 0 && cached != UHFW_FAIL)
+      uhqwd_max1[i] = uhqw_cmax[cached];
+  }
+}
+
+function void UHFW_QwantSnapPush(str wep, int group) {
+  int i;
   int c;
+
+  if (uhqwd_snapn >= UHFW_QW_MAX_WEAP)
+    return;
+  c = UHFW_QwantCacheWep(wep);
+  if (c == UHFW_FAIL) {
+    uhqwd_metaok = 0;
+    return;
+  }
+  i = uhqwd_snapn;
+  uhqwd_snapwep[i] = wep;
+  uhqwd_snaptag[i] = uhqw_ctag[c];
+  uhqwd_snapicon[i] = uhqw_cicon[c];
+  uhqwd_snapammo1[i] = uhqw_cammo[c];
+  uhqwd_snapammo2[i] = "";
+  uhqwd_amt1[i] = 0;
+  uhqwd_max1[i] = uhqw_cmax[c];
+  uhqwd_amt2[i] = 0;
+  uhqwd_max2[i] = 0;
+  uhqwd_cyan1[i] = UHFW_Pal(uhqw_ccyan[c]);
+  uhqwd_blue1[i] = UHFW_Pal(uhqw_cblue[c]);
+  uhqwd_cyan2[i] = UHFW_BAR_BLACK;
+  uhqwd_blue2[i] = UHFW_BAR_BLACK;
+  uhqwd_group[i] = group;
+  uhqwd_can[i] = 1;
+  UHFW_QwantReadAmmo(i);
+  uhqwd_snapn++;
+}
+
+function int UHFW_QwantCollect(void) {
+  int registered;
+  int group;
+  str weapon;
+  UHFW_QwantSnapClear();
+  if (!CheckInventory("Qwant_W"))
+    return 0;
+  registered = ACS_NamedExecuteWithResult("uh_copykind_count", UHFW_UHCOPY_QWANT);
+  if (registered <= 0)
+    return 0;
+  UHFW_QwantSnapPush("Qwant_W", 0);
+  for (int i = 0; i < registered; i++) {
+    weapon = UHFW_QwantActor(i);
+    if (StrLen(weapon) == 0 || !CheckInventory(weapon) || UHFW_QwantSnapFind(weapon) != UHFW_FAIL)
+      continue;
+    group = 1 + ((uhqwd_snapn - 1) % (UHFW_QW_GROUPS - 1));
+    UHFW_QwantSnapPush(weapon, group);
+  }
+  uhqwd_groupcount = min(uhqwd_snapn, UHFW_QW_GROUPS);
+  return uhqwd_snapn;
+}
+
+function int UHFW_QwantCurrentSnapIndex(void) {
   int i;
 
-  uhfw_snapn = 0;
-  uhfw_heldn = 1 + (m0 >= 0) + (m1 >= 0) + (m2 >= 0) + (m3 >= 0);
-  uhfw_metaok = 1;
-  c = UHFW_QwantCacheWep("Qwant_W");
-  UHFW_QwantPushCached(c);
-  uhqw_kind[0] = 0;
-  if (m0 >= 0) {
-    c = UHFW_QwantCacheWep(UHFW_QwantActor(m0));
-    UHFW_QwantPushCached(c);
+  for (i = 0; i < uhqwd_snapn; i++) {
+    if (CheckWeapon(uhqwd_snapwep[i]))
+      return i;
   }
-  uhqw_kind[1] = m0;
-  if (m1 >= 0) {
-    c = UHFW_QwantCacheWep(UHFW_QwantActor(m1));
-    UHFW_QwantPushCached(c);
-  }
-  uhqw_kind[2] = m1;
-  if (m2 >= 0) {
-    c = UHFW_QwantCacheWep(UHFW_QwantActor(m2));
-    UHFW_QwantPushCached(c);
-  }
-  uhqw_kind[3] = m2;
-  if (m3 >= 0) {
-    c = UHFW_QwantCacheWep(UHFW_QwantActor(m3));
-    UHFW_QwantPushCached(c);
-  }
-  uhqw_kind[4] = m3;
-  for (i = 0; i < UHFW_QW_GROUPS; i++)
-    uhqw_can[i] = (i == 0 || uhqw_kind[i] >= 0);
+  return 0;
 }
 
 function void UHFW_QwantPaintItems(void) {
   int i;
 
   emptyWheel();
-  WHEEL_GROUPS = uhfw_snapn;
-  for (i = 0; i < uhfw_snapn; i++)
-    UHFW_AddSnapItem(i);
-}
-
-function int UHFW_QwantTryCommit(void) {
-  if (!uhqw_pend_ok)
-    return 0;
-  if (!UHFW_QwantMovesOk(uhqw_pend_m[0], uhqw_pend_m[1], uhqw_pend_m[2], uhqw_pend_m[3]))
-    return 0;
-  if (!UHFW_QwantInvMatch(uhqw_pend_m[0], uhqw_pend_m[1], uhqw_pend_m[2], uhqw_pend_m[3]))
-    return 0;
-  if (uhqw_show_seq == uhqw_pend_seq)
-    return 0;
-  uhqw_show_m[0] = uhqw_pend_m[0];
-  uhqw_show_m[1] = uhqw_pend_m[1];
-  uhqw_show_m[2] = uhqw_pend_m[2];
-  uhqw_show_m[3] = uhqw_pend_m[3];
-  uhqw_show_seq = uhqw_pend_seq;
-  uhqw_wait = 0;
-  UHFW_QwantLoadSnap(uhqw_show_m[0], uhqw_show_m[1], uhqw_show_m[2], uhqw_show_m[3]);
-  return 1;
-}
-
-function void UHFW_QwantMarkPending(void) {
-  int i;
-  int olda;
-  int newa;
-
-  if (!uhqw_pend_ok)
-    return;
-  if (uhqw_show_seq == uhqw_pend_seq)
-    return;
-  uhqw_can[0] = 1;
-  for (i = 0; i < UHFW_QW_SLOTS; i++) {
-    olda = uhqw_show_m[i];
-    newa = uhqw_pend_m[i];
-    if (olda == newa)
-      uhqw_can[i + 1] = 1;
-    else
-      uhqw_can[i + 1] = 0;
+  WHEEL_GROUPS = uhqwd_groupcount;
+  for (i = 0; i < uhqwd_snapn; i++) {
+    UHFW_AddWheelItemEntry(
+      uhqwd_snapwep[i], uhqwd_group[i],
+      uhqwd_snapicon[i], uhqwd_snaptag[i],
+      uhqwd_amt1[i], uhqwd_max1[i], uhqwd_cyan1[i], uhqwd_blue1[i],
+      uhqwd_amt2[i], uhqwd_max2[i], uhqwd_cyan2[i], uhqwd_blue2[i],
+      uhqwd_can[i]);
   }
-}
-
-function void UHFW_QwantPublish(void) {
-  int pn;
-  int t1;
-  int t2;
-  int t3;
-  int t4;
-  int pack;
-  int life;
-  int seq;
-
-  if (!UHFW_IsPlainQwant())
-    return;
-  if (GetUserArray(0, "user_pkmn_movemem", 7) != 777)
-    return;
-  t1 = GetUserArray(0, "user_pkmn_movemem", 0);
-  t2 = GetUserArray(0, "user_pkmn_movemem", 1);
-  t3 = GetUserArray(0, "user_pkmn_movemem", 2);
-  t4 = GetUserArray(0, "user_pkmn_movemem", 3);
-  if (!UHFW_QwantMovesOk(t1, t2, t3, t4)) {
-    UH_Log(UH_LOG_WARN, "uh_uixfw: Qwant MoveMem snapshot rejected");
-    return;
-  }
-  pn = PlayerNumber();
-  if (pn < 0 || pn >= UHFW_QW_PLAYERS)
-    return;
-  uhqw_svseq[pn]++;
-  if (uhqw_svseq[pn] <= 0)
-    uhqw_svseq[pn] = 1;
-  if (uhqw_svlife[pn] <= 0)
-    uhqw_svlife[pn] = 1;
-  seq = uhqw_svseq[pn];
-  life = uhqw_svlife[pn];
-  pack = (t1 & 255) | ((t2 & 255) << 8) | ((t3 & 255) << 16) | ((t4 & 255) << 24);
-  int pack_seq = (seq & 0x00FFFFFF) | ((pn + 1) << 24);
-  ACS_NamedExecuteAlways("uh_qw_recv", 0, pack, pack_seq, life);
-}
-
-function void UHFW_QwantBumpLife(void) {
-  int pn;
-  int pack_life;
-
-  if (!UHFW_IsPlainQwant())
-    return;
-  pn = PlayerNumber();
-  if (pn < 0 || pn >= UHFW_QW_PLAYERS)
-    return;
-  uhqw_svlife[pn]++;
-  if (uhqw_svlife[pn] <= 0)
-    uhqw_svlife[pn] = 1;
-  uhqw_svseq[pn] = 0;
-  pack_life = (uhqw_svlife[pn] & 0x00FFFFFF) | ((pn + 1) << 24);
-  ACS_NamedExecuteAlways("uh_qw_newlife", 0, pack_life);
 }
 
 function int UHFW_OpenQwant(void) {
   int cur;
-  int i;
+  int collected;
 
-  if (uhqw_show_seq < 0) {
-    if (!UHFW_QwantTryCommit())
-      return -1;
-  }
-  if (uhfw_snapn != uhfw_heldn)
-    UHFW_QwantLoadSnap(uhqw_show_m[0], uhqw_show_m[1], uhqw_show_m[2], uhqw_show_m[3]);
-  if (!uhfw_metaok || uhfw_snapn != uhfw_heldn) {
-    Print(s:"Weapon wheel cannot open: missing weapon display data.");
-    UHFW_SnapClear();
+  if (wheelName != -1)
+    return -1;
+
+  collected = UHFW_QwantCollect();
+  if (collected < UHFW_QW_MIN_WEAP || !uhqwd_metaok) {
+    UHFW_QwantSnapClear();
     UHFW_ResetOwner();
     return -1;
   }
-  if (wheelName != -1)
-    return -1;
+
   uhfw_route = UHFW_ROUTE_QWANT;
   uhfw_snapclass = "Qwant";
   uhfw_cancel = 0;
   uhww_own = UHFW_OWN_UH;
   uhww_pn = PlayerNumber();
-  cur = UHFW_CurrentSnapIndex();
-  newWheel(UHFW_WHEEL_NAME, uhfw_snapn, cur);
+
+  cur = UHFW_QwantCurrentSnapIndex();
+  newWheel(UHFW_WHEEL_NAME, uhqwd_groupcount, cur);
   UHFW_QwantPaintItems();
   startWheel("uh_ww_tick", "uh_ww_select");
-  for (i = 0; i < UHFW_QW_GROUPS; i++)
-    uhqw_can[i] = (i < uhfw_snapn);
   return 1;
 }
 
 function void UHFW_QwantTick(void) {
-  int rebuilt;
+  int i;
+  int held;
+  int statusChanged;
+  int a1;
+  int m1;
+  int a2;
+  int m2;
 
   if (!UHFW_PlayerOk() || !UHFW_IsPlainQwant()) {
     UHFW_DoCancel();
     return;
   }
-  rebuilt = UHFW_QwantTryCommit();
-  if (rebuilt) {
-    if (!uhfw_metaok || uhfw_snapn != uhfw_heldn) {
-      UHFW_DoCancel();
-      return;
+
+  int currentHeld = 0;
+  int registered = ACS_NamedExecuteWithResult("uh_copykind_count", UHFW_UHCOPY_QWANT);
+  if (CheckInventory("Qwant_W"))
+    currentHeld++;
+  for (i = 0; i < registered; i++) {
+    str candidate = UHFW_QwantActor(i);
+    if (CheckInventory(candidate)) {
+      currentHeld++;
+      if (UHFW_QwantSnapFind(candidate) == UHFW_FAIL) {
+        UHFW_DoCancel();
+        return;
+      }
     }
-    UHFW_QwantPaintItems();
+  }
+  if (currentHeld != uhqwd_snapn) {
+    UHFW_DoCancel();
     return;
   }
-  if (uhqw_pend_ok && uhqw_show_seq != uhqw_pend_seq) {
-    UHFW_QwantMarkPending();
-    uhqw_wait++;
-    if (uhqw_wait > UHFW_QW_WAIT) {
-      UH_Log(UH_LOG_WARN, "uh_uixfw: Qwant snapshot wait timed out");
-      UHFW_DoCancel();
-      return;
+  statusChanged = 0;
+
+  for (i = 0; i < uhqwd_snapn; i++) {
+    held = (CheckInventory(uhqwd_snapwep[i]) > 0);
+    if (held != uhqwd_can[i]) {
+      uhqwd_can[i] = held;
+      statusChanged = 1;
     }
-  } else
-    uhqw_wait = 0;
-  UHFW_RefreshAmmo();
+
+    a1 = uhqwd_amt1[i];
+    m1 = uhqwd_max1[i];
+    a2 = uhqwd_amt2[i];
+    m2 = uhqwd_max2[i];
+    UHFW_QwantReadAmmo(i);
+
+    // If capacity changed, layout elements need rebuild
+    if (uhqwd_max1[i] != m1 || uhqwd_max2[i] != m2) {
+      statusChanged = 1;
+    } else if (uhqwd_amt1[i] != a1 || uhqwd_amt2[i] != a2) {
+      UHFW_UpdateBarsForItem(i, uhqwd_amt1[i], uhqwd_max1[i], uhqwd_amt2[i], uhqwd_max2[i]);
+    }
+  }
+
+  if (statusChanged) {
+    UHFW_QwantPaintItems();
+  }
 }
 
 function void UHFW_QwantSelect(int idx) {
   str wep;
 
-  UHFW_QwantTryCommit();
   if (uhfw_cancel)
     return;
-  if (idx < 0 || idx >= uhfw_snapn)
+  if (idx < 0 || idx >= uhqwd_snapn)
     return;
-  if (!uhqw_can[idx])
+  if (!uhqwd_can[idx])
     return;
-  wep = uhfw_snapwep[idx];
+
+  wep = uhqwd_snapwep[idx];
+  if (CheckInventory(wep) <= 0)
+    return;
+
   UHFW_SubmitSelect(wep, "uh_qw_sel_sv");
 }
 
-script "uh_qw_pub" (void) {
-  UHFW_QwantPublish();
-}
-
-script "uh_qw_req" (void) NET {
-  UHFW_QwantPublish();
-}
-
-script "uh_qw_newlife" (int pack_life) CLIENTSIDE {
-  int pn;
-  int life;
-  int sender = (pack_life >> 24) & 255;
-  if (sender > 0) {
-    pn = sender - 1;
-    life = pack_life & 0x00FFFFFF;
-  } else {
-    pn = PlayerNumber();
-    life = pack_life;
-  }
-  if (pn < 0 || pn >= UHFW_QW_PLAYERS)
-    terminate;
-
-  uhqw_cl_life[pn] = life;
-  uhqw_cl_seq[pn] = 0;
-  uhqw_cl_ok[pn] = 0;
-  for (int i = 0; i < UHFW_QW_SLOTS; i++) {
-    uhqw_cl_m[pn][i] = -1;
-    uhqw_bar_m[pn][i] = -1;
-  }
-
-  uhqw_bar_life[pn] = life;
-  uhqw_bar_seq[pn] = -1;
-  uhqw_bar_ok[pn] = 0;
-
-  if (pn == ConsolePlayerNumber()) {
-    uhqw_clife = life;
-    UHFW_QwantClearClient();
-  }
-}
-
-script "uh_qw_recv" (int pack, int pack_seq, int life) CLIENTSIDE {
-  int pn;
-  int seq;
-  int t1;
-  int t2;
-  int t3;
-  int t4;
-  int sender = (pack_seq >> 24) & 255;
-
-  if (sender > 0) {
-    pn = sender - 1;
-    seq = pack_seq & 0x00FFFFFF;
-  } else {
-    pn = PlayerNumber();
-    seq = pack_seq;
-  }
-
-  if (pn < 0 || pn >= UHFW_QW_PLAYERS)
-    terminate;
-
-  if (uhqw_cl_life[pn] != 0 && life < uhqw_cl_life[pn])
-    terminate;
-  if (uhqw_cl_life[pn] != 0 && life == uhqw_cl_life[pn] && seq < uhqw_cl_seq[pn])
-    terminate;
-
-  t1 = pack & 255;
-  if (t1 == 255)
-    t1 = -1;
-  t2 = (pack >> 8) & 255;
-  if (t2 == 255)
-    t2 = -1;
-  t3 = (pack >> 16) & 255;
-  if (t3 == 255)
-    t3 = -1;
-  t4 = (pack >> 24) & 255;
-  if (t4 == 255)
-    t4 = -1;
-  if (!UHFW_QwantMovesOk(t1, t2, t3, t4))
-    terminate;
-
-  uhqw_cl_m[pn][0] = t1;
-  uhqw_cl_m[pn][1] = t2;
-  uhqw_cl_m[pn][2] = t3;
-  uhqw_cl_m[pn][3] = t4;
-  uhqw_cl_seq[pn] = seq;
-  uhqw_cl_life[pn] = life;
-  uhqw_cl_ok[pn] = 1;
-
-  if (pn == ConsolePlayerNumber()) {
-    if (uhqw_clife == 0)
-      uhqw_clife = life;
-    uhqw_pend_m[0] = t1;
-    uhqw_pend_m[1] = t2;
-    uhqw_pend_m[2] = t3;
-    uhqw_pend_m[3] = t4;
-    uhqw_pend_seq = seq;
-    uhqw_pend_ok = 1;
-  }
-}
-
-script "uh_qw_req_target" (int target_pn) NET {
-  int req_pn = PlayerNumber();
-  if (req_pn < 0 || req_pn >= UHFW_QW_PLAYERS)
-    terminate;
-  if (target_pn < 0 || target_pn >= UHFW_QW_PLAYERS)
-    terminate;
-  if (!PlayerInGame(target_pn))
-    terminate;
-
-  int target_tid = target_pn + 1000;
-  if (StrICmp(GetActorClass(target_tid), "Qwant") != 0)
-    terminate;
-  if (GetUserArray(target_tid, "user_pkmn_movemem", 7) != 777)
-    terminate;
-
-  if (Timer() < uhqw_sv_req_timer[req_pn] + 15)
-    terminate;
-  uhqw_sv_req_timer[req_pn] = Timer();
-
-  int t1 = GetUserArray(target_tid, "user_pkmn_movemem", 0);
-  int t2 = GetUserArray(target_tid, "user_pkmn_movemem", 1);
-  int t3 = GetUserArray(target_tid, "user_pkmn_movemem", 2);
-  int t4 = GetUserArray(target_tid, "user_pkmn_movemem", 3);
-  if (!UHFW_QwantMovesOk(t1, t2, t3, t4))
-    terminate;
-
-  int pack = (t1 & 255) | ((t2 & 255) << 8) | ((t3 & 255) << 16) | ((t4 & 255) << 24);
-  int seq = uhqw_svseq[target_pn];
-  int life = uhqw_svlife[target_pn];
-  int pack_seq = (seq & 0x00FFFFFF) | ((target_pn + 1) << 24);
-
-  NamedExecuteClientScript("uh_qw_recv", req_pn, pack, pack_seq, life);
-}
-
-script "uh_qw_disconnect" (int gone) DISCONNECT {
-  if (gone >= 0 && gone < UHFW_QW_PLAYERS) {
-    uhqw_svlife[gone] = 0;
-    uhqw_svseq[gone] = 0;
-    uhqw_sv_req_timer[gone] = 0;
-  }
-}
-
-script "uh_qw_cl_disconnect" (int gone) DISCONNECT CLIENTSIDE {
+script "uh_qw_sel_sv" (int wep) NET {
   int i;
-  if (gone >= 0 && gone < UHFW_QW_PLAYERS) {
-    uhqw_cl_life[gone] = 0;
-    uhqw_cl_seq[gone] = 0;
-    uhqw_cl_ok[gone] = 0;
-    uhqw_cl_req_timer[gone] = 0;
-    for (i = 0; i < UHFW_QW_SLOTS; i++) {
-      uhqw_cl_m[gone][i] = -1;
-      uhqw_bar_m[gone][i] = -1;
-    }
-    uhqw_bar_life[gone] = 0;
-    uhqw_bar_seq[gone] = -1;
-    uhqw_bar_ok[gone] = 0;
-  }
-  if (gone == ConsolePlayerNumber()) {
-    uhqw_clife = 0;
-    UHFW_QwantClearClient();
-  }
-}
+  int ncount;
+  str cand;
+  int allowed;
 
-function int UHQB_CheckCamera(void) {
-  if (StrICmp(GetActorClass(0), "Qwant") != 0)
-    return UHQB_UNSUPPORTED;
-  int pn = PlayerNumber();
-  if (pn < 0 || pn >= UHFW_QW_PLAYERS)
-    return UHQB_UNSUPPORTED;
-  return pn;
-}
+  if (!UHFW_IsPlainQwant())
+    terminate;
+  if (!UHFW_PlayerOk())
+    terminate;
+  if (StrCmp(wep, "") == 0)
+    terminate;
 
-function int UHQB_UpdateBar(int pn) {
-  int i;
-  str act;
-
-  if (pn < 0 || pn >= UHFW_QW_PLAYERS)
-    return 0;
-
-  // Invalidate bar cache if life changed
-  if (uhqw_bar_life[pn] != uhqw_cl_life[pn]) {
-    uhqw_bar_ok[pn] = 0;
-    uhqw_bar_seq[pn] = -1;
-    uhqw_bar_life[pn] = uhqw_cl_life[pn];
-    for (i = 0; i < UHFW_QW_SLOTS; i++)
-      uhqw_bar_m[pn][i] = -1;
-  }
-
-  // If client moves not ready, request them with rate limit
-  if (!uhqw_cl_ok[pn]) {
-    if (Timer() >= uhqw_cl_req_timer[pn] + 35) {
-      uhqw_cl_req_timer[pn] = Timer();
-      ACS_NamedExecuteAlways("uh_qw_req_target", 0, pn);
-    }
-    return uhqw_bar_ok[pn];
-  }
-
-  // Try committing newly synced moves if they differ from bar sequence
-  if (uhqw_bar_seq[pn] != uhqw_cl_seq[pn]) {
-    int canCommit = 1;
-    if (CheckInventory("Qwant_W") <= 0)
-      canCommit = 0;
-    for (i = 0; i < UHFW_QW_SLOTS && canCommit; i++) {
-      if (uhqw_cl_m[pn][i] < 0)
-        continue;
-      act = UHFW_QwantActor(uhqw_cl_m[pn][i]);
-      if (StrLen(act) == 0 || CheckInventory(act) <= 0)
-        canCommit = 0;
-    }
-    if (canCommit) {
-      for (i = 0; i < UHFW_QW_SLOTS; i++)
-        uhqw_bar_m[pn][i] = uhqw_cl_m[pn][i];
-      uhqw_bar_seq[pn] = uhqw_cl_seq[pn];
-      uhqw_bar_ok[pn] = 1;
-    } else {
-      if (Timer() >= uhqw_cl_req_timer[pn] + 70) {
-        uhqw_cl_req_timer[pn] = Timer();
-        ACS_NamedExecuteAlways("uh_qw_req_target", 0, pn);
+  allowed = 0;
+  if (StrICmp(wep, "Qwant_W") == 0) {
+    allowed = 1;
+  } else {
+    ncount = ACS_NamedExecuteWithResult("uh_copykind_count", UHFW_UHCOPY_QWANT);
+    for (i = 0; i < ncount; i++) {
+      cand = ACS_NamedExecuteWithResult("uh_copykind_actor", UHFW_UHCOPY_QWANT, i);
+      if (StrICmp(cand, wep) == 0) {
+        allowed = 1;
+        break;
       }
     }
   }
 
-  return uhqw_bar_ok[pn];
+  if (!allowed) {
+    UH_Log(UH_LOG_WARN, StrParam(s:"uh_uixfw: invalid Qwant weapon select: ", s:wep));
+    terminate;
+  }
+
+  if (CheckInventory(wep) <= 0) {
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"uh_uixfw: Qwant weapon not held at select: ", s:wep));
+    terminate;
+  }
+
+  if (!SetWeapon(wep)) {
+    UH_Log(UH_LOG_WARN, StrParam(s:"uh_uixfw: SetWeapon failed for: ", s:wep));
+  }
 }
 
-str uh_qwant_moves[UHQB_MOVE_COUNT] = {
-  "GustWep",
-  "SpikesWep",
-  "ToxicWep",
-  "AttackOrderWep",
-  "HiddenPowerWep",
-  "CalmMindWep",
-  "MoonlightWep",
-  "ShadowPunchWep",
-  "DragonBreathWep",
-  "NightSlashWep",
-  "ThunderWep",
-  "IceShardWep",
-  "AnchorShotWep",
-  "MatBlockWep",
-  "RockSlideWep",
-  "FlameWheelWep",
-  "NeedleArmWep",
-  "WaterSpoutWep",
-  "WaterShurikenWep",
-  "ThunderWaveWep",
-  "SonicBoomWep",
-  "ShadowForceWep",
-  "RapidSpinWep",
-  "NightDazeWep",
-  "MoonBlastWep",
-  "LeafBladeWep",
-  "IceBeamWep",
-  "FreezeDryWep",
-  "FlameBurstWep",
-  "FireBlastWep",
-  "FeintAttackWep",
-  "DazzlingGleamWep",
-  "ChargeBeamWep",
-  "BulletSeedWep",
-  "BlazeKickWep"
-};
-
 int uhqw_held_count = 0;
-int uhqw_held_moves[UHQB_MAX_HELD];
+int uhqw_held_moves[UHFW_QW_MAX_WEAP - 1];
 int uhqw_held_selected = -1;
 
 script "uh_qb_count" (void) {
@@ -817,12 +527,13 @@ script "uh_qb_scan_moves" (void) {
   int i;
   int count = 0;
   uhqw_held_selected = -1;
-  for (i = 0; i < UHQB_MOVE_COUNT; i++) {
-    str wep = uh_qwant_moves[i];
+  int registered = ACS_NamedExecuteWithResult("uh_copykind_count", UHFW_UHCOPY_QWANT);
+  for (i = 0; i < registered; i++) {
+    str wep = UHFW_QwantActor(i);
     if (CheckInventory(wep) > 0) {
       if (CheckWeapon(wep))
         uhqw_held_selected = count;
-      if (count < UHQB_MAX_HELD) {
+      if (count < UHFW_QW_MAX_WEAP - 1) {
         uhqw_held_moves[count] = i;
         count++;
       }
@@ -840,7 +551,7 @@ script "uh_qb_slot2_string" (int heldIdx, int field) {
   str val = "";
   if (heldIdx >= 0 && heldIdx < uhqw_held_count) {
     int moveIdx = uhqw_held_moves[heldIdx];
-    str wep = uh_qwant_moves[moveIdx];
+    str wep = UHFW_QwantActor(moveIdx);
     int c = UHFW_QwantCacheWep(wep);
     if (c != UHFW_FAIL) {
       if (field == UHQB_ACTOR)
@@ -860,7 +571,7 @@ script "uh_qb_slot2_int" (int heldIdx, int field) {
   int ival = 0;
   if (heldIdx >= 0 && heldIdx < uhqw_held_count) {
     int moveIdx = uhqw_held_moves[heldIdx];
-    str wep = uh_qwant_moves[moveIdx];
+    str wep = UHFW_QwantActor(moveIdx);
     int c = UHFW_QwantCacheWep(wep);
     if (c != UHFW_FAIL) {
       if (field == UHQB_CYAN1)
@@ -908,42 +619,4 @@ script "uh_qb_slot1_int" (int field) {
   else if (field == UHQB_DEFMAX2)
     sival = 0;
   SetResultValue(sival);
-}
-
-script "uh_qw_life" ENTER {
-  UHFW_QwantBumpLife();
-}
-
-script "uh_qw_respawn" RESPAWN {
-  UHFW_QwantBumpLife();
-}
-
-script "uh_qw_sel_sv" (int wep) NET {
-  int i;
-  int mem;
-  str actor;
-
-  if (!UHFW_IsPlainQwant())
-    terminate;
-  if (!UHFW_PlayerOk())
-    terminate;
-  if (GetUserArray(0, "user_pkmn_movemem", 7) != 777)
-    terminate;
-  if (StrCmp(wep, "") == 0)
-    terminate;
-  if (StrICmp(wep, "Qwant_W") == 0) {
-    if (CheckInventory("Qwant_W") > 0)
-      SetWeapon("Qwant_W");
-    terminate;
-  }
-  for (i = 0; i < UHFW_QW_SLOTS; i++) {
-    mem = GetUserArray(0, "user_pkmn_movemem", i);
-    actor = ACS_NamedExecuteWithResult("uh_copykind_actor", UHFW_UHCOPY_QWANT, mem);
-    if (StrICmp(actor, wep) != 0)
-      continue;
-    if (CheckInventory(wep) <= 0)
-      terminate;
-    SetWeapon(wep);
-    terminate;
-  }
 }

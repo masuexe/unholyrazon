@@ -1,6 +1,7 @@
 ## 4.0.0-beta.261007
 
-- 新增 Qwant／NegaMan 开局复制武器数量的服务器设置，支持在 Server Options → Rules 中直接输入：Qwant 为 1–4 招，默认 4；NegaMan 默认 3 把，达到或超过注册武器池总数时发放全部复制武器；保留基础武器，抽选不重复，并同步适配 Qwant 空招式槽的招式重学及 UIX 武器轮盘；配置说明见 [开局复制武器数量](docs/copy-weapon-start-counts.md)
+- 解除 Qwant 开局招式数量的四招上限，支持全部注册招式及 addon；招式重学改为替换当前招式并排除所有已持有招式，持有全部招式时不消耗重学资源；Pharaoh Roulette、UIX 武器条和轮盘改为读取完整持有列表，轮盘使用基础武器独立分组及最多 11 个可滚动招式分组
+- 新增 Qwant／NegaMan 开局复制武器数量的服务器设置，支持在 Server Options → Rules 中直接输入：Qwant 默认 4 招；NegaMan 默认 3 把，达到或超过注册武器池总数时发放全部复制武器；保留基础武器，抽选不重复，并同步适配 Qwant 空招式槽的招式重学及 UIX 武器轮盘；配置说明见 [开局复制武器数量](docs/copy-weapon-start-counts.md)
 - 修复 MegaMan 的 GyroAttack 旋转辅助弹、FireStorm 火圈、ChillSpike 初始弹／落地首击、OilSlider 燃烧油池、PharaohShot 头顶蓄力球和 TenguBlade 冲刺／斩击绕过每日随机友伤名单的问题，将各自的辅助伤害类型映射到对应复制武器
 - 补齐关闭随机复制武器友伤时对 `GyroChopper` 和 `WheelCutterSaw` 的保护；保留 NapalmBomb 核爆原有的友伤行为
 

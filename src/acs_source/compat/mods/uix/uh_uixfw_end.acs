@@ -94,9 +94,8 @@ script "uh_ww_open" (void) NET CLIENTSIDE {
     uhfw_cancel = 0;
     uhww_own = UHFW_OWN_UH;
     uhww_pn = PlayerNumber();
-    NamedRequestScriptPuke("uh_qw_req");
     waits = 0;
-    while (waits < UHFW_QW_WAIT) {
+    while (ACS_NamedExecuteWithResult("uh_copykind_count", UHFW_UHCOPY_QWANT) <= 0 && waits < UHFW_QW_WAIT) {
       if (uhfw_cancel)
         terminate;
       if (uhww_own != UHFW_OWN_UH)
@@ -107,17 +106,15 @@ script "uh_ww_open" (void) NET CLIENTSIDE {
         UHFW_ResetOwner();
         terminate;
       }
-      if (UHFW_QwantTryCommit())
-        break;
       Delay(1);
       waits++;
     }
-    if (uhqw_show_seq < 0) {
-      UH_Log(UH_LOG_INFO, "uh_uixfw: Qwant wheel not ready");
+    if (ACS_NamedExecuteWithResult("uh_copykind_count", UHFW_UHCOPY_QWANT) <= 0) {
+      UH_Log(UH_LOG_WARN, "uh_uixfw: Qwant copy registry not ready");
       UHFW_ResetOwner();
       terminate;
     }
-    if (wheelName != -1) {
+    if (uhfw_cancel || uhww_own != UHFW_OWN_UH || !UHFW_PlayerOk() || !UHFW_IsPlainQwant() || wheelName != -1) {
       UHFW_ResetOwner();
       terminate;
     }

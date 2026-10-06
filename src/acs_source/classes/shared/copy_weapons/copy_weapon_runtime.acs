@@ -102,55 +102,69 @@ script "uh_MegamanWeapons" (int check) {
   UH_MegaRollLoadout();
 }
 
-script "uh_QwantMoveRelearn" (void) {
-  int qcount = CountCopyWepByKind(UHCOPY_QWANT);
+// The inventory is authoritative; legacy MoveMem keeps only a compatibility
+// view of the first four held moves and must not limit the actual loadout.
+function void UH_QwantRefreshMoveMemory(void) {
+  int slot = 0;
   int i;
-  int t1;
-  int t2;
-  int t3;
-  int t4;
-  int temp;
-  int newmove;
-  str currwep;
-
-  if (GetUserArray(0, "user_pkmn_movemem", 7) != 777) {
-    UH_Log(UH_LOG_ERROR, "Qwant variables are not set!");
-    terminate;
+  int count = CountCopyWepByKind(UHCOPY_QWANT);
+  for (i = 0; i < 4; i++)
+    SetUserArray(0, "user_pkmn_movemem", i, -1);
+  for (i = 0; i < count && slot < 4; i++) {
+    if (CheckInventory(GetCopyWepActorByKindIndex(UHCOPY_QWANT, i))) {
+      SetUserArray(0, "user_pkmn_movemem", slot, i);
+      slot++;
+    }
   }
-  currwep = GetWeapon();
-  for (i = 0; i < qcount; i++) {
-    if (StrCmp(currwep, GetCopyWepActorByKindIndex(UHCOPY_QWANT, i)) == 0)
+}
+
+function int UH_QwantChooseUnownedMove(void) {
+  int count = CountCopyWepByKind(UHCOPY_QWANT);
+  int choice = -1;
+  int candidates = 0;
+  for (int i = 0; i < count; i++) {
+    if (CheckInventory(GetCopyWepActorByKindIndex(UHCOPY_QWANT, i)))
+      continue;
+    candidates++;
+    if (random(1, candidates) == 1)
+      choice = i;
+  }
+  return choice;
+}
+
+function int UH_QwantRelearnMove(void) {
+  int count = CountCopyWepByKind(UHCOPY_QWANT);
+  int i;
+  int newmove;
+  str current = GetWeapon();
+  str replacement;
+  if (GetUserArray(0, "user_pkmn_movemem", 7) != 777 || CheckInventory("MoveRelearnAmmo") < 28)
+    return 0;
+  for (i = 0; i < count; i++) {
+    if (StrICmp(current, GetCopyWepActorByKindIndex(UHCOPY_QWANT, i)) == 0)
       break;
   }
-  if (i >= qcount) {
-    UH_Log(UH_LOG_ERROR, StrParam(s:"This weapon is not in the move list! >> ", s:currwep));
-    terminate;
-  }
-
-  t1 = GetUserArray(0, "user_pkmn_movemem", 0);
-  t2 = GetUserArray(0, "user_pkmn_movemem", 1);
-  t3 = GetUserArray(0, "user_pkmn_movemem", 2);
-  t4 = GetUserArray(0, "user_pkmn_movemem", 3);
-  newmove = Func_QwantCheckRNG(t1, t2, t3, t4);
+  if (i >= count || !CheckInventory(current))
+    return 0;
+  newmove = UH_QwantChooseUnownedMove();
   if (newmove < 0)
-    terminate;
+    return 0;
+  replacement = GetCopyWepActorByKindIndex(UHCOPY_QWANT, newmove);
+  GiveInventory(replacement, 1);
+  if (!CheckInventory(replacement))
+    return 0;
+  if (!SetWeapon(replacement)) {
+    TakeInventory(replacement, 1);
+    return 0;
+  }
+  TakeInventory(current, 1);
+  TakeInventory("MoveRelearnAmmo", 28);
+  UH_QwantRefreshMoveMemory();
+  return 1;
+}
 
-  if (i == t1)
-    temp = 0;
-  else if (i == t2)
-    temp = 1;
-  else if (i == t3)
-    temp = 2;
-  else if (i == t4)
-    temp = 3;
-  else
-    terminate;
-
-  SetUserArray(0, "user_pkmn_movemem", temp, newmove);
-  GiveInventory(GetCopyWepActorByKindIndex(UHCOPY_QWANT, newmove), 1);
-  SetWeapon(GetCopyWepActorByKindIndex(UHCOPY_QWANT, newmove));
-  TakeInventory(GetCopyWepActorByKindIndex(UHCOPY_QWANT, i), 1);
-  ACS_NamedExecuteAlways("uh_qw_pub", 0);
+script "uh_QwantMoveRelearn" (void) {
+  SetResultValue(UH_QwantRelearnMove());
 }
 
 script "uh_QwantDebugUserArray" (void) {
@@ -166,9 +180,6 @@ script "uh_QwantDebugUserArray" (void) {
 int uh_startcopyindices[UH_MEGA_LOADOUT_MAX];
 function void UH_GiveStartCopyWeapons(int kind, int requested, int limit) {
   int count = CountCopyWepByKind(kind);
-  // UIX packs Qwant indices in bytes; 255 is reserved for an empty slot.
-  if (kind == UHCOPY_QWANT)
-    count = min(count, 255);
   int want = min(max(1, requested), min(count, limit));
   int i;
   int j;
@@ -184,7 +195,7 @@ function void UH_GiveStartCopyWeapons(int kind, int requested, int limit) {
     temp = uh_startcopyindices[i];
     uh_startcopyindices[i] = uh_startcopyindices[j];
     uh_startcopyindices[j] = temp;
-    if (kind == UHCOPY_QWANT)
+    if (kind == UHCOPY_QWANT && i < 4)
       SetUserArray(0, "user_pkmn_movemem", i, uh_startcopyindices[i]);
     GiveInventory(GetCopyWepActorByKindIndex(kind, uh_startcopyindices[i]), 1);
   }
@@ -201,23 +212,8 @@ script "uh_QwantStartMoves" (void) {
   }
   if (qcount <= 0)
     terminate;
-  UH_GiveStartCopyWeapons(UHCOPY_QWANT, GetCVar("rz_sv_qwant_start_weapon_count"), 4);
+  UH_GiveStartCopyWeapons(UHCOPY_QWANT, GetCVar("rz_sv_qwant_start_weapon_count"), UH_MEGA_LOADOUT_MAX);
   SetUserArray(0, "user_pkmn_movemem", 7, 777);
-  ACS_NamedExecuteAlways("uh_qw_pub", 0);
-}
-
-function int Func_QwantCheckRNG(int p1, int p2, int p3, int p4) {
-  int qcount = min(CountCopyWepByKind(UHCOPY_QWANT), 255);
-  int choice = -1;
-  int candidates = 0;
-  for (int i = 0; i < qcount; i++) {
-    if (i == p1 || i == p2 || i == p3 || i == p4)
-      continue;
-    candidates++;
-    if (random(1, candidates) == 1)
-      choice = i;
-  }
-  return choice;
 }
 
 function void GiveNegaStartCopyWeps(void) {
