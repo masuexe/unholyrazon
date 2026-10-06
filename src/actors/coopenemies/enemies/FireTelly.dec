@@ -1,0 +1,89 @@
+actor FireTellyEnemyU : TellyEnemyU replaces FireTelly {
+  Health 200
+  -FLOAT
+  // FloatSpeed 1
+  Species "FireTelly"
+  Obituary "%o was bashed by a Fire Telly."
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 ACS_NamedExecuteAlways("sp_overflowcheck_FireTelly", 0, 30)
+    TNT1 A 0 ACS_NamedExecuteAlways("sp_enemystart", 0)
+    TNT1 A 0 ACS_NamedExecuteAlways("sp_FireTellyDropFlames", 0)
+   Look:
+    TELY GHIJKLMN 6 A_LookEx(LOF_NOSOUNDCHECK, 0, 0, 0, 360, "See")
+    TELY G 0 A_GiveInventory("CutterFlag", 1)
+    TELY G 0 A_JumpIfInventory("CutterFlag", 30, "DeathQuiet")
+    loop
+   See:
+    TELY GGGGGGHHHHHHIIIIIIJJJJJJKKKKKKLLLLLLMMMMMMNNNNNN 1 A_Chase
+    TELY G 0 A_GiveInventory("CutterFlag", 1)
+    TELY G 0 A_JumpIfInventory("CutterFlag", 30, "DeathQuiet")
+    loop
+   Melee:
+    TELY G 0 A_FaceTarget
+    TELY G 0 A_CustomMeleeAttack(100, "", "", "FireTellyEnemy")
+    TELY GGGGGGHHHHHHIIIIIIJJJJJJKKKKKKLLLLLLMMMMMMNNNNNN 1 A_Chase("", "")
+    goto See
+   DropFlame:
+    TELY O 2 A_Stop
+    TELY P 0 A_PlaySoundEx("misc/sunstarshot", "Weapon")
+    TELY P 2 A_SpawnItemEx("FireTellyFlameU", 0, 0, 0, 0, 0, -2)
+    TELY O 2
+    goto Look
+  }
+}
+
+actor HazardTag_FireTellyEnemy : BasicACSDamager {
+  DamageType "FireTellyEnemy"
+  Obituary "%o was bashed by a Fire Telly while fighting %k."
+}
+
+actor FireTellyFlameU {
+  Projectile
+  -NOGRAVITY
+  +DONTBLAST
+  +THRUGHOST
+  +BRIGHT
+  Scale 2.5
+  Radius 8
+  Height 12
+  Speed 0
+  Damage (100)
+  DamageType "FireTellyFlameU"
+  Obituary "%o was burned by a Fire Telly's flame."
+  States {
+   Spawn:
+    TELF AB 2
+    loop
+   Death:
+    TNT1 A 0 A_SpawnItemEx("OilPitIgnite", 0, 0, 8)
+    TNT1 A 0 A_JumpIf(z <= floorz, "GroundBurn")
+    stop
+   GroundBurn:
+    TNT1 A 0 A_SpawnItemEx("FireTellyGroundFlameU", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERPOINTERS)
+    stop
+  }
+}
+
+actor FireTellyGroundFlameU : BasicExplosion {
+  +BRIGHT
+  Radius 8
+  Height 12
+  DamageType "FireTellyFlameU"
+  Obituary "%o was burned by a Fire Telly's flame."
+  States {
+   Spawn:
+    TNT1 A 0
+    TELF C 1
+    TELF DEFDEF 4 A_Explode(100, 40, 0, 0, 8)
+    TELF GHI 2
+    TELF JK 1
+    stop
+  }
+}
+
+actor HazardTag_FireTellyFlameU : BasicACSDamager {
+  DamageType "FireTellyFlameU"
+  Obituary "%o was burned by a Fire Telly's flame while fighting %k."
+}
