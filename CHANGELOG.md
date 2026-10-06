@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261006
 
+- 将 SpaceMetall 从装饰弹体改为类似 Telly 的飞行 coop 杂兵
 - 将 MegaMan 的 3、4 阶蓄力从多发改为单发；清理 MegaMan 四档洛克炮的重复射击分支和遗留 NoWeaponsBusterOnlyFinalFlag 标记，移除单发改动后失效的相对跳转
 - 修复 BreakDash M2 和 CopyVision 洛克炮仍发射原版 10 点伤害子弹的问题，统一改用 100 点伤害的 MegaShotU；同时修复 BlackHole、TimeStopper、SkullBarrier 和 FlashStopper 的机器人洛克炮分支
 - 新增 MegaMan 每次 M2 获取复制武器数量的服务器设置 `rz_sv_mega_m2_weapon_count`，支持直接输入正整数，默认由 6 把减少为 3 把；不足 6 把时随机选择不同槽，达到 6 把后尽量均分到六槽，余数随机分配，槽内武器不足时由其他槽补足，数量达到或超过武器池总数时发放全部武器；再次 M2 替换整套复制武器，保留基础 Buster，并补全 Pharaoh Roulette 对每槽多把武器的识别
