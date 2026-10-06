@@ -1,3 +1,8 @@
+## 4.0.0-beta.261007
+
+- 修复 MegaMan 的 GyroAttack 旋转辅助弹、FireStorm 火圈、ChillSpike 初始弹／落地首击、OilSlider 燃烧油池、PharaohShot 头顶蓄力球和 TenguBlade 冲刺／斩击绕过每日随机友伤名单的问题，将各自的辅助伤害类型映射到对应复制武器
+- 补齐关闭随机复制武器友伤时对 `GyroChopper` 和 `WheelCutterSaw` 的保护；保留 NapalmBomb 核爆原有的友伤行为
+
 ## 4.0.0-beta.261006
 
 - 将以下敌人改为 coop 杂兵：

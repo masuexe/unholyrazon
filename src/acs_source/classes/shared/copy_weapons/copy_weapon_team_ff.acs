@@ -49,6 +49,20 @@ function str UH_StripMegaMPrefix(str dtype) {
   return dtype;
 }
 
+// Core helper damage types whose names do not start with their weapon stem.
+// Keep the damage types themselves intact for pain/death and weakness rules.
+function str UH_CopywepTeamFFStem(str dtype) {
+  str stem = UH_StripMegaMPrefix(dtype);
+  if (!StrICmp(stem, "GyroChopper")) return "GyroAttack";
+  if (!StrICmp(stem, "FireSpin")) return "FireStorm";
+  if (!StrICmp(stem, "ChillShot")) return "ChillSpike";
+  if (!StrICmp(stem, "OilFlame")) return "OilSlider";
+  if (!StrICmp(stem, "PharaohHold")) return "PharaohShot";
+  if (!StrICmp(stem, "TenguSlash")) return "TenguBlade";
+  // NapalmBomb's MeteorItem nuclear blast deliberately bypasses daily FF.
+  return stem;
+}
+
 script "uh_ApplyCopywepTeamFF" (void) {
   TakeInventory("PowerProtectMegaCopywep", 1);
   if (!CheckInventory("PowerProtectSurvivor"))
@@ -90,7 +104,7 @@ script "uh_CopywepTeamFF" (int evt, int dmg, int dmgtype) EVENT {
   if (GetPlayerInfo(victpn, PLAYERINFO_TEAM) != GetPlayerInfo(srcpn, PLAYERINFO_TEAM))
     terminate;
 
-  stem = UH_StripMegaMPrefix(dmgtype);
+  stem = UH_CopywepTeamFFStem(dmgtype);
   wepid = FindMegaCopyIdByStemPrefix(stem);
   if (wepid < 1)
     terminate;
