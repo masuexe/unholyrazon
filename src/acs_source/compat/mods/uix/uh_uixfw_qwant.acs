@@ -258,20 +258,19 @@ function int UHFW_QwantCacheWep(str wep) {
   return i;
 }
 
+// Empty slots are -1 locally and 255 in the packed network snapshot.
+function int UHFW_QwantMoveOk(int move) {
+  return move == -1 || (move >= 0 && move <= UHFW_QW_IDXMAX && StrLen(UHFW_QwantActor(move)) > 0);
+}
+
 function int UHFW_QwantMovesOk(int m0, int m1, int m2, int m3) {
-  if (m0 < 0 || m1 < 0 || m2 < 0 || m3 < 0)
+  if (m0 < 0 || !UHFW_QwantMoveOk(m0) || !UHFW_QwantMoveOk(m1) || !UHFW_QwantMoveOk(m2) || !UHFW_QwantMoveOk(m3))
     return 0;
-  if (m0 > UHFW_QW_IDXMAX || m1 > UHFW_QW_IDXMAX || m2 > UHFW_QW_IDXMAX || m3 > UHFW_QW_IDXMAX)
+  if ((m0 == m1 || m0 == m2 || m0 == m3) ||
+      (m1 >= 0 && (m1 == m2 || m1 == m3)) || (m2 >= 0 && m2 == m3))
     return 0;
-  if (m0 == m1 || m0 == m2 || m0 == m3 || m1 == m2 || m1 == m3 || m2 == m3)
-    return 0;
-  if (StrCmp(UHFW_QwantActor(m0), "") == 0)
-    return 0;
-  if (StrCmp(UHFW_QwantActor(m1), "") == 0)
-    return 0;
-  if (StrCmp(UHFW_QwantActor(m2), "") == 0)
-    return 0;
-  if (StrCmp(UHFW_QwantActor(m3), "") == 0)
+  // Opening/relearn logic keeps occupied slots contiguous.
+  if ((m1 < 0 && (m2 >= 0 || m3 >= 0)) || (m2 < 0 && m3 >= 0))
     return 0;
   return 1;
 }
@@ -279,13 +278,13 @@ function int UHFW_QwantMovesOk(int m0, int m1, int m2, int m3) {
 function int UHFW_QwantInvMatch(int m0, int m1, int m2, int m3) {
   if (CheckInventory("Qwant_W") <= 0)
     return 0;
-  if (CheckInventory(UHFW_QwantActor(m0)) <= 0)
+  if (m0 >= 0 && CheckInventory(UHFW_QwantActor(m0)) <= 0)
     return 0;
-  if (CheckInventory(UHFW_QwantActor(m1)) <= 0)
+  if (m1 >= 0 && CheckInventory(UHFW_QwantActor(m1)) <= 0)
     return 0;
-  if (CheckInventory(UHFW_QwantActor(m2)) <= 0)
+  if (m2 >= 0 && CheckInventory(UHFW_QwantActor(m2)) <= 0)
     return 0;
-  if (CheckInventory(UHFW_QwantActor(m3)) <= 0)
+  if (m3 >= 0 && CheckInventory(UHFW_QwantActor(m3)) <= 0)
     return 0;
   return 1;
 }
@@ -329,32 +328,40 @@ function void UHFW_QwantLoadSnap(int m0, int m1, int m2, int m3) {
   int i;
 
   uhfw_snapn = 0;
-  uhfw_heldn = 5;
+  uhfw_heldn = 1 + (m0 >= 0) + (m1 >= 0) + (m2 >= 0) + (m3 >= 0);
   uhfw_metaok = 1;
   c = UHFW_QwantCacheWep("Qwant_W");
   UHFW_QwantPushCached(c);
   uhqw_kind[0] = 0;
-  c = UHFW_QwantCacheWep(UHFW_QwantActor(m0));
-  UHFW_QwantPushCached(c);
+  if (m0 >= 0) {
+    c = UHFW_QwantCacheWep(UHFW_QwantActor(m0));
+    UHFW_QwantPushCached(c);
+  }
   uhqw_kind[1] = m0;
-  c = UHFW_QwantCacheWep(UHFW_QwantActor(m1));
-  UHFW_QwantPushCached(c);
+  if (m1 >= 0) {
+    c = UHFW_QwantCacheWep(UHFW_QwantActor(m1));
+    UHFW_QwantPushCached(c);
+  }
   uhqw_kind[2] = m1;
-  c = UHFW_QwantCacheWep(UHFW_QwantActor(m2));
-  UHFW_QwantPushCached(c);
+  if (m2 >= 0) {
+    c = UHFW_QwantCacheWep(UHFW_QwantActor(m2));
+    UHFW_QwantPushCached(c);
+  }
   uhqw_kind[3] = m2;
-  c = UHFW_QwantCacheWep(UHFW_QwantActor(m3));
-  UHFW_QwantPushCached(c);
+  if (m3 >= 0) {
+    c = UHFW_QwantCacheWep(UHFW_QwantActor(m3));
+    UHFW_QwantPushCached(c);
+  }
   uhqw_kind[4] = m3;
   for (i = 0; i < UHFW_QW_GROUPS; i++)
-    uhqw_can[i] = 1;
+    uhqw_can[i] = (i == 0 || uhqw_kind[i] >= 0);
 }
 
 function void UHFW_QwantPaintItems(void) {
   int i;
 
   emptyWheel();
-  WHEEL_GROUPS = UHFW_QW_GROUPS;
+  WHEEL_GROUPS = uhfw_snapn;
   for (i = 0; i < uhfw_snapn; i++)
     UHFW_AddSnapItem(i);
 }
@@ -460,9 +467,9 @@ function int UHFW_OpenQwant(void) {
     if (!UHFW_QwantTryCommit())
       return -1;
   }
-  if (uhfw_snapn != UHFW_QW_GROUPS)
+  if (uhfw_snapn != uhfw_heldn)
     UHFW_QwantLoadSnap(uhqw_show_m[0], uhqw_show_m[1], uhqw_show_m[2], uhqw_show_m[3]);
-  if (!uhfw_metaok || uhfw_snapn != UHFW_QW_GROUPS) {
+  if (!uhfw_metaok || uhfw_snapn != uhfw_heldn) {
     Print(s:"Weapon wheel cannot open: missing weapon display data.");
     UHFW_SnapClear();
     UHFW_ResetOwner();
@@ -476,11 +483,11 @@ function int UHFW_OpenQwant(void) {
   uhww_own = UHFW_OWN_UH;
   uhww_pn = PlayerNumber();
   cur = UHFW_CurrentSnapIndex();
-  newWheel(UHFW_WHEEL_NAME, UHFW_QW_GROUPS, cur);
+  newWheel(UHFW_WHEEL_NAME, uhfw_snapn, cur);
   UHFW_QwantPaintItems();
   startWheel("uh_ww_tick", "uh_ww_select");
   for (i = 0; i < UHFW_QW_GROUPS; i++)
-    uhqw_can[i] = 1;
+    uhqw_can[i] = (i < uhfw_snapn);
   return 1;
 }
 
@@ -493,7 +500,7 @@ function void UHFW_QwantTick(void) {
   }
   rebuilt = UHFW_QwantTryCommit();
   if (rebuilt) {
-    if (!uhfw_metaok || uhfw_snapn != UHFW_QW_GROUPS) {
+    if (!uhfw_metaok || uhfw_snapn != uhfw_heldn) {
       UHFW_DoCancel();
       return;
     }
@@ -519,7 +526,7 @@ function void UHFW_QwantSelect(int idx) {
   UHFW_QwantTryCommit();
   if (uhfw_cancel)
     return;
-  if (idx < 0 || idx >= UHFW_QW_GROUPS)
+  if (idx < 0 || idx >= uhfw_snapn)
     return;
   if (!uhqw_can[idx])
     return;
@@ -593,9 +600,17 @@ script "uh_qw_recv" (int pack, int pack_seq, int life) CLIENTSIDE {
     terminate;
 
   t1 = pack & 255;
+  if (t1 == 255)
+    t1 = -1;
   t2 = (pack >> 8) & 255;
+  if (t2 == 255)
+    t2 = -1;
   t3 = (pack >> 16) & 255;
+  if (t3 == 255)
+    t3 = -1;
   t4 = (pack >> 24) & 255;
+  if (t4 == 255)
+    t4 = -1;
   if (!UHFW_QwantMovesOk(t1, t2, t3, t4))
     terminate;
 
@@ -722,6 +737,8 @@ function int UHQB_UpdateBar(int pn) {
     if (CheckInventory("Qwant_W") <= 0)
       canCommit = 0;
     for (i = 0; i < UHFW_QW_SLOTS && canCommit; i++) {
+      if (uhqw_cl_m[pn][i] < 0)
+        continue;
       act = UHFW_QwantActor(uhqw_cl_m[pn][i]);
       if (StrLen(act) == 0 || CheckInventory(act) <= 0)
         canCommit = 0;
