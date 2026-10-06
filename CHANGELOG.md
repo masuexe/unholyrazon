@@ -17,6 +17,8 @@
 - 加强 RedBaron 导弹爆炸：主爆炸伤害由 35～50 提升至 120～150，五次次级爆炸伤害由 35～50 提升至 80～120；两类爆炸半径由 50 扩大至 100，次级爆炸的随机生成距离由 0～32 扩大至 0～200
 - Napalm Bomb 的核爆概率 1/32 -> 1/128
 - 现在被冰墙类子弹杀死时会播放特殊音效
+- 修复 GUHU、Super GUHU、Fortune Coin、OnFire 最终自燃和 Damocles 在被其他玩家攻击后致死时回退到通用 hazard 死亡提示的问题；为其他可自伤的道具、角色爆炸及其变体补充对应 HazardTag，提示保留最近攻击者的击杀归属，定义放在各自的 DECORATE 文件中；通用 Normal／Item 伤害继续使用默认提示
+- 将 Dickhead 复活爆炸改为专用 `DickheadRevive` 伤害类型并添加对应 HazardTag；沿用原 Telefrag 保护倍率和死亡效果，保留 Eden Holy Mantle 对该伤害的排除规则
 
 ## 4.0.0-beta.261005
 
