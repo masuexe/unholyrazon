@@ -20,8 +20,7 @@ replacement; owning all registered moves, insufficient ammo or an invalid curren
 weapon leaves the loadout and resource unchanged.
 
 Pharaoh Roulette and the UIX fixed bar scan the complete held move list. The UIX
-wheel reserves group 0 for the base weapon and distributes copy moves across up
-to 11 other scrollable groups, following the NegaMan wheel layout. It uses the
+wheel uses seven fixed groups matching the actual weapon slots below. It uses the
 engine's replicated inventory rather than the former four-index network snapshot.
 A held-set change while the wheel is open closes it; reopening collects the new
 loadout. Legacy MoveMem exposes only the first four held moves for compatibility
@@ -30,3 +29,23 @@ and no longer limits gameplay or the UI.
 These settings are independent of daily damage and ammo randomization. For
 MegaMan's M2 count and daily multiplier settings, see
 [MegaMan daily weapons](megaman-daily-weapons.md).
+
+## Qwant functional slots
+
+Element type, ammo and move registration order are independent of these slots.
+The UIX weapon bar and wheel use the same groups as weapon slot keys.
+
+| Slot | Purpose | Moves |
+| --- | --- | --- |
+| 1 | Base | Qwant_W |
+| 2 | Ranged | AttackOrder, FlameBurst, HiddenPower, IceShard, SonicBoom, ThunderWave, Toxic, WaterShuriken |
+| 3 | Rapid fire | BulletSeed, ChargeBeam, DragonBreath, FreezeDry, IceBeam |
+| 4 | Melee | AnchorShot, BlazeKick, FeintAttack, FlameWheel, Gust, LeafBlade, NeedleArm, NightSlash, RapidSpin, ShadowForce, ShadowPunch |
+| 5 | Power | FireBlast, MoonBlast, Thunder, WaterSpout |
+| 6 | Area / control | DazzlingGleam, NightDaze, RockSlide, Spikes |
+| 7 | Defense / support | CalmMind, MatBlock, Moonlight |
+
+For addon moves, set `Weapon.SlotNumber` and the third argument (`args[2]`) of
+`<Weapon>_QwantBar` to the same slot (2–7). Keep the first argument as the element
+and the second as the existing custom ammo setting. UIX treats missing or invalid
+slot metadata as slot 2 for compatibility with older addons.

@@ -4,7 +4,7 @@
 #define UHFW_QW_MAX_WEAP 257
 #define UHFW_QW_CACHE 257
 #define UHFW_QW_WAIT 35
-#define UHFW_QW_GROUPS 12
+#define UHFW_QW_GROUPS 7
 #define UHFW_QW_MIN_WEAP 2
 #define UHFW_QW_TYPE_N 18
 #define UHFW_QW_BAR2_C 138
@@ -21,6 +21,7 @@ int uhqw_cmax[UHFW_QW_CACHE];
 int uhqw_ctype[UHFW_QW_CACHE];
 int uhqw_ccyan[UHFW_QW_CACHE];
 int uhqw_cblue[UHFW_QW_CACHE];
+int uhqw_cslot[UHFW_QW_CACHE];
 
 str uhqw_typeammo[UHFW_QW_TYPE_N] = {
   "NormalTypeAmmo",
@@ -156,11 +157,13 @@ function int UHFW_QwantCacheWep(str wep) {
   uhqw_cicon[i] = "";
   uhqw_cammo[i] = "";
   uhqw_cmax[i] = 0;
+  uhqw_cslot[i] = 2;
   uhqw_ctype[i] = 0;
   uhqw_ccyan[i] = UHFW_QW_BODY_C;
   uhqw_cblue[i] = UHFW_QW_BODY_B;
 
   if (StrICmp(wep, "Qwant_W") == 0) {
+    uhqw_cslot[i] = 1;
     uhqw_ctag[i] = "TAG_Qwant_W";
     uhqw_cicon[i] = "6N01S0";
     uhqw_cammo[i] = "MoveRelearnAmmo";
@@ -182,6 +185,9 @@ function int UHFW_QwantCacheWep(str wep) {
   mx = UHFW_QwantTypeMax(0);
   bu = UniqueTID();
   if (SpawnForced(StrParam(s:wep, s:"_QwantBar"), 0, 0, 0, bu, 0)) {
+    int slot = ACS_NamedExecuteWithResult("core_GetActorArg", bu, 2);
+    if (slot >= 2 && slot <= 7)
+      uhqw_cslot[i] = slot;
     type = ACS_NamedExecuteWithResult("core_GetActorArg", bu, 0);
     if (type < 0 || type >= UHFW_QW_TYPE_N)
       type = 0;
@@ -329,10 +335,11 @@ function int UHFW_QwantCollect(void) {
     weapon = UHFW_QwantActor(i);
     if (StrLen(weapon) == 0 || !CheckInventory(weapon) || UHFW_QwantSnapFind(weapon) != UHFW_FAIL)
       continue;
-    group = 1 + ((uhqwd_snapn - 1) % (UHFW_QW_GROUPS - 1));
+    int cache = UHFW_QwantCacheWep(weapon);
+    group = (cache != UHFW_FAIL ? uhqw_cslot[cache] - 1 : 1);
     UHFW_QwantSnapPush(weapon, group);
   }
-  uhqwd_groupcount = min(uhqwd_snapn, UHFW_QW_GROUPS);
+  uhqwd_groupcount = UHFW_QW_GROUPS;
   return uhqwd_snapn;
 }
 
@@ -574,7 +581,9 @@ script "uh_qb_slot2_int" (int heldIdx, int field) {
     str wep = UHFW_QwantActor(moveIdx);
     int c = UHFW_QwantCacheWep(wep);
     if (c != UHFW_FAIL) {
-      if (field == UHQB_CYAN1)
+      if (field == UHQB_SLOT)
+        ival = uhqw_cslot[c];
+      else if (field == UHQB_CYAN1)
         ival = uhqw_ccyan[c];
       else if (field == UHQB_BLUE1)
         ival = uhqw_cblue[c];

@@ -13,6 +13,10 @@ int qwantSlot2Amt[UHQB_MAX_HELD];
 int qwantSlot2Max[UHQB_MAX_HELD];
 int qwantSlot2Cyan[UHQB_MAX_HELD];
 int qwantSlot2Blue[UHQB_MAX_HELD];
+int qwantMoveSlot[UHQB_MAX_HELD];
+int qwantSlotCount[8];
+int qwantSlotSelected[8];
+int qwantSlotMoves[8][UHQB_MAX_HELD];
 
 int negaSlotCount[UHNB_MAX_SLOTS];
 int negaSlotSelected[UHNB_MAX_SLOTS];
@@ -156,11 +160,22 @@ function void weaponBarQwant(void) {
     int s1Cyan2 = ACS_NamedExecuteWithResult("uh_qb_slot1_int", UHQB_CYAN2);
     int s1Blue2 = ACS_NamedExecuteWithResult("uh_qb_slot1_int", UHQB_BLUE2);
 
-    // 2. Scan Slot 2 moves from camera player
+    // Capture all moves and their functional slots before releasing the camera.
+    for(i = 2; i <= 7; i++) {
+        qwantSlotCount[i] = 0;
+        qwantSlotSelected[i] = -1;
+    }
+    // Legacy slot2 API names enumerate the complete held list.
     int slot2Count = ACS_NamedExecuteWithResult("uh_qb_scan_moves");
     int slot2SelectedWep = ACS_NamedExecuteWithResult("uh_qb_slot2_selected");
 
     for(i = 0; i < slot2Count && i < UHQB_MAX_HELD; i++) {
+        int moveSlot = ACS_NamedExecuteWithResult("uh_qb_slot2_int", i, UHQB_SLOT);
+        if(moveSlot < 2 || moveSlot > 7) moveSlot = 2;
+        qwantMoveSlot[i] = moveSlot;
+        int row = qwantSlotCount[moveSlot]++;
+        qwantSlotMoves[moveSlot][row] = i;
+        if(i == slot2SelectedWep) qwantSlotSelected[moveSlot] = row;
         qwantSlot2Icon[i] = ACS_NamedExecuteWithResult("uh_qb_slot2_string", i, UHQB_ICON);
         str ammo = ACS_NamedExecuteWithResult("uh_qb_slot2_string", i, UHQB_AMMO1);
         int cap = 0;
@@ -184,7 +199,7 @@ function void weaponBarQwant(void) {
     if(isSlot1Selected)
         activeSlot = 1;
     else if(slot2SelectedWep >= 0)
-        activeSlot = 2;
+        activeSlot = qwantMoveSlot[slot2SelectedWep];
 
     // 4. Render Slot 1
     int baseX1 = cvOffsX + slotOffsX * 1;
@@ -199,28 +214,28 @@ function void weaponBarQwant(void) {
         weaponBarSlotHint(1, baseX1, baseY1, (activeSlot == 1 ? "\c[gold]" : "\c[darkgray]"));
     }
 
-    // 5. Render Slot 2
-    int baseX2 = cvOffsX + slotOffsX * 2;
-    int baseY2 = cvOffsY + slotOffsY * 2;
-    if(slot2Count > 0) {
-        int idx = (activeSlot == 2 ? slot2SelectedWep : -1);
-        int maxVisible = min(slot2Count, cvMaxRow + (activeSlot == 2));
-
+    // Render each functional slot, rotating its selected move to the front.
+    for(int slot = 2; slot <= 7; slot++) {
+        int count = qwantSlotCount[slot];
+        if(count <= 0) continue;
+        int baseX = cvOffsX + slotOffsX * slot;
+        int baseY = cvOffsY + slotOffsY * slot;
+        int idx = qwantSlotSelected[slot];
+        int maxVisible = min(count, cvMaxRow + (activeSlot == slot));
         for(i = 0; i < maxVisible; i++) {
-            int weap = (idx > -1 ? (i + idx) % slot2Count : i);
-            int isSelected = (idx > -1 && weap == slot2SelectedWep);
-            int weight = (idx > -1 ? i - 1 : i);
-            weaponBarDrawItem(2, weight, isSelected, qwantSlot2Icon[weap], -1,
+            int rowIdx = (idx >= 0 ? (i + idx) % count : i);
+            int weap = qwantSlotMoves[slot][rowIdx];
+            int isSelected = (idx >= 0 && rowIdx == idx);
+            int weight = (idx >= 0 ? i - 1 : i);
+            weaponBarDrawItem(slot, weight, isSelected, qwantSlot2Icon[weap], -1,
                 qwantSlot2Amt[weap], qwantSlot2Max[weap], qwantSlot2Cyan[weap], qwantSlot2Blue[weap],
                 0, 0, 0, 0);
         }
-
         SetFont("SMALLFONT");
-        weaponBarSlotHint(2, baseX2, baseY2, (activeSlot == 2 ? "\c[gold]" : "\c[darkgray]"));
-
-        if(slot2Count > cvMaxRow) {
-            displayMessage(layer, UIXWEAP_OverflowNums[slot2Count - i],
-                baseX2 + overflowX, baseY2 + overflowY,
+        weaponBarSlotHint(slot, baseX, baseY, (activeSlot == slot ? "\c[gold]" : "\c[darkgray]"));
+        if(count > cvMaxRow) {
+            displayMessage(layer, UIXWEAP_OverflowNums[count - i],
+                baseX + overflowX, baseY + overflowY,
                 overflowScale, overflowScale, cvAlpha, OverflowHAlign, 0);
         }
     }
