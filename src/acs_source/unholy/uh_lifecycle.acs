@@ -58,16 +58,17 @@ script "ub_Death_ChangeIsAlive" DEATH {
   }
 }
 script "ub_Disconnect_ChangeIsAlive" (int playernum) DISCONNECT {
+  // Zandronum PLAYER_LeavesGame also fires DISCONNECT on voluntary spectate.
+  // Latch departure so rejoining during the countdown cannot reclaim a choice.
   UH_AFKResetPlayer(playernum);
   if (GetCVar("lastmanstanding") == 1) {
     if (uh_bosschoicewinner == playernum + 1) {uh_bosschoicewinner = 0;}
     if (uh_bosschoicecommit[0] == playernum + 1) {
-      uh_bosschoicecommit[0] = 0;
-      uh_bosschoicecommit[1] = 0;
+      uh_bosschoicecommit[0] = -(playernum + 1);
     }
     if (bosschoicetid == playernum + 1000) {
-      bosschoicetid = 0;
-      bosschoiceconfirmed = false;
+      if (bosschoiceconfirmed) {bosschoicereassign = true;}
+      else {bosschoicetid = 0;}
     }
     // DISCONNECT also covers true spectators; the original inventory is gone.
     ACS_NamedExecuteWithResult("UH_DropItemsOnLeave", playernum);

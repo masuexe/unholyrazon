@@ -24,16 +24,14 @@ function int RandomRune(int type) {
 script "ub_SelectBossAndEvent" (void) {
   // Restore the countdown choice after the engine's LMS map reset, and claim
   // it once. Keep the local copy through ub_MorphSelectedBosses for assignment.
-  bosschoiceconfirmed = uh_bosschoicecommit[0] > 0;
+  bosschoiceconfirmed = uh_bosschoicecommit[0] != 0;
+  bosschoicereassign = uh_bosschoicecommit[0] < 0;
   if (bosschoiceconfirmed) {
-    bosschoicetid = uh_bosschoicecommit[0] + 999;
+    bosschoicetid = abs(uh_bosschoicecommit[0]) + 999;
     bosschoiceid = uh_bosschoicecommit[1];
     uh_bosschoicecommit[0] = 0;
     uh_bosschoicecommit[1] = 0;
-    if (!IsBossDefined(bosschoiceid) || !PlayerPickCheck(bosschoicetid, 0) ||
-        PlayerIsSpectator(bosschoicetid - 1000) != 0) {
-      bosschoiceconfirmed = false;
-    }
+    if (!IsBossDefined(bosschoiceid)) {bosschoiceconfirmed = false;}
   }
   // This makes specific bosses/events happen
   survivorstartitem = "SurvivorBoxItems_P";
@@ -57,9 +55,7 @@ script "ub_SelectBossAndEvent" (void) {
   while (strongmancheck[0] >= 0 && !CheckBossList(strongmancheck[0]))
     Minus_StrongmanCheckArray();
 
-  if (bosschoiceconfirmed && IsBossDefined(bosschoiceid) &&
-      PlayerPickCheck(bosschoicetid, 0) &&
-      PlayerIsSpectator(bosschoicetid - 1000) == 0) {
+  if (bosschoiceconfirmed) {
     // The reward is a single-boss round; queued ultras remain for later rounds.
     bossdataarr[0][BOSSDATA_NUM] = bosschoiceid;
     multibosscheck = 1;
@@ -92,6 +88,17 @@ script "ub_SelectBossAndEvent" (void) {
 // This is the main script for managing who becomes the boss, as well as morphing them.
 script "ub_MorphSelectedBosses" (void) {
   Delay(1);  // Wait a tic so the engine processes boss selection script
+
+  if (bosschoiceconfirmed && (bosschoicereassign ||
+      !PlayerPickCheck(bosschoicetid, 0) ||
+      PlayerIsSpectator(bosschoicetid - 1000) != 0)) {
+    bosschoicereassign = true;
+    int replacement = PickBonusBossReplacement(bosschoicetid);
+    // No eligible pawn remains: do not enter the ordinary unbounded RNG loop.
+    if (replacement == 0) {terminate;}
+    bosschoicetid = replacement;
+    UH_Log(UH_LOG_DEBUG, StrParam(s:"Bonus boss choice reassigned to player: ", i:replacement - 1000));
+  }
 
   SetUpPlayerSelection_Func(false);
 

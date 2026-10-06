@@ -302,7 +302,12 @@ function void SetUpPlayerSelection_Func(bool updateaggregate) {
     if (tempplayer >= 0 && tempplayer <= MAX_PLAYERS) {
       tempplayer += 1000;
     }
-    if (PlayerPickCheck(tempplayer, i)) {  // If above check isn't -1, is a player number, and is in the game
+    if (i == 0 && bosschoiceconfirmed && bosschoicereassign) {
+      // A departed winner's confirmed boss must go to the random replacement,
+      // ahead of both the admin player override and the reward player queue.
+      bossdataarr[i][BOSSDATA_TID] = bosschoicetid;
+    }
+    else if (PlayerPickCheck(tempplayer, i)) {  // If above check isn't -1, is a player number, and is in the game
       bossdataarr[i][BOSSDATA_TID] = tempplayer;
       ShowMeTheRCON(StrParam(s:"Boss-Forced Player ", i:i + 1), tempplayer);
     }
@@ -331,6 +336,22 @@ function void SetUpPlayerSelection_Func(bool updateaggregate) {
     playerlifestatusarr[tempplayer - 1000] = PLS_BOSS;
     uhsrvrole[tempplayer - 1000] = PLS_BOSS;  // Direct write: keep role cache in step.
   }
+}
+
+// Uniform reservoir sample over other connected, living, non-spectator pawns.
+// Bounded scan also handles an empty server without an endless random retry.
+function int PickBonusBossReplacement(int excludedtid) {
+  int picked = 0;
+  int count = 0;
+  for (int player = 0; player < MAX_PLAYERS; player++) {
+    int tid = player + 1000;
+    if (tid == excludedtid || !PlayerPickCheck(tid, 0) ||
+        PlayerIsSpectator(player) != 0 || GetActorProperty(tid, APROP_HEALTH) <= 0)
+      continue;
+    count++;
+    if (random(1, count) == 1) {picked = tid;}
+  }
+  return picked;
 }
 
 // Randomly pick a player, if they are not ingame or are in use TID's, pick another random player.
