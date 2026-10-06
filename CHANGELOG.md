@@ -19,6 +19,8 @@
 - 现在被冰墙类子弹杀死时会播放特殊音效
 - 修复 GUHU、Super GUHU、Fortune Coin、OnFire 最终自燃和 Damocles 在被其他玩家攻击后致死时回退到通用 hazard 死亡提示的问题；为其他可自伤的道具、角色爆炸及其变体补充对应 HazardTag，提示保留最近攻击者的击杀归属，定义放在各自的 DECORATE 文件中；通用 Normal／Item 伤害继续使用默认提示
 - 将 Dickhead 复活爆炸改为专用 `DickheadRevive` 伤害类型并添加对应 HazardTag；沿用原 Telefrag 保护倍率和死亡效果，保留 Eden Holy Mantle 对该伤害的排除规则
+- 更正 SniperArmorShotU_Exile 的爆炸颜色
+- 更正 TropicalMWS_W 的 Reload 图标
 
 ## 4.0.0-beta.261005
 
