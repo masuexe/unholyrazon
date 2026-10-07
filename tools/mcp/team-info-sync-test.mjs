@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 //
 // team-info-sync-test.mjs - runtime regression gate for the Unholy team-info
-// CLIENTSIDE sync delivery (reports/unholy-team-info-and-scoreboard-icons-report.md,
-// "P1 fix - per-client delivery for CLIENTSIDE receivers").
+// CLIENTSIDE sync delivery ("P1 fix - per-client delivery for CLIENTSIDE
+// receivers").
 //
 // Why this exists: the team-info receivers (uh_ti_sync_status, uh_ti_sync_ova,
 // uh_ti_sync_policy, uh_ti_stat, uh_ti_stat_clear) are CLIENTSIDE scripts.  A

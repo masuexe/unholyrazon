@@ -125,8 +125,8 @@ asserts the example addon's own class resolves to its registered short name and
 textures — i.e. a new class needs no edit to any Unholy source file. Pack
 `examples/teampresentation_addon` into `out/teampresentation_addon.pk3` first.
 
-This is the runtime gate for
-`reports/team-info-definition-api-implementation-plan.md`; static compilation
+This is the runtime gate for the actor-keyed team-presentation migration
+(`DefineTeamPresentation` in `uhadd.acs`); static compilation
 cannot prove the table was populated on a client, nor that the identity
 broadcast stopped being a load-order-dependent row index.
 

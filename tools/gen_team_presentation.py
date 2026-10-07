@@ -3,9 +3,9 @@
 
 The Unholy teammate bar, the SCORINFO UHPlayerIcon column and the UIX Better
 Team Display all resolve their display data through one actor-keyed
-presentation table in UHDT (see reports/team-info-definition-api-implementation-
-plan.md).  The built-in rows are generated so the resolver output stays
-byte-identical to the former hardcoded tables:
+presentation table in UHDT (see DefineTeamPresentation in
+src/acs_source/_includes/mod_api/uhadd.acs).  The built-in rows are generated
+so the resolver output stays byte-identical to the former hardcoded tables:
 
   * shortName  reproduces the former UH_Ti_GetClassName() special cases
                (MegaManU -> "Mega Man", the four BusterExpert variants, and

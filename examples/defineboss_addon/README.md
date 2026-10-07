@@ -58,7 +58,7 @@ belongs for custom bosses.
 queryable, and removes it from the random Boss pool. Passing `1` restores pool
 eligibility. The script returns `UHDB_OK` (0) on success. For the full set of
 update, count, and remove operations, see
-`reports/uhdt-identity-crud-contract.md` in the main repository. A removal
+`docs/modding/uhdt-identity-crud-contract.md` in the main repository. A removal
 returns `UHDB_ERR_REFERENCED` while the music row or morph setup row exists;
 those references must be removed first. Auto-assigned negative IDs remain
 reserved for the lifetime of the map.

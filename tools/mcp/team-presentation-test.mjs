@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 //
 // team-presentation-test.mjs - runtime gate for the actor-keyed presentation
-// migration (reports/team-info-definition-api-implementation-plan.md).
+// migration (DefineTeamPresentation in _includes/mod_api/uhadd.acs).
 //
 // Static compilation cannot prove that the UHDT presentation table is populated
 // at map load on the CLIENT (which is where the HUD resolves from), that the
