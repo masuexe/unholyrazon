@@ -3,7 +3,6 @@
 - 为生还者失败画面补充对局用时，胜利与失败画面的用时统一四舍五入并显示小数点后两位（如 `Battle Time: 12.34s`），保留原有速杀奖励判定规则
 - 新增 Keep on Fire（On Fire）入水烧开水效果：身体至少一半浸水后约半秒进入沸腾，普通水域共享温度并在热源离开后逐渐冷却，全局水域仅影响热源周围 128 单位且视线可达的水中玩家；每约半秒造成 `80 × 火焰层数` 的烫伤，队友伤害减半，多热源按队友伤害倍率取最强的一份并保留击杀归属；水中以烫伤替换原火焰范围伤害，保留自身烧血，加入气泡、水面蒸汽与声音
 - 新增 trill-pingbutton-v5h 兼容覆盖：Unholy LMS 中所有玩家与旁观者均可看见各阵营的 ping，包含死亡标记和定位结果，支持死亡及第三人称视角，保留个人显示、静音和声音设置；定位目标接入 Unholy 队友关系，头像接入统一职业展示接口；需将 PingButton 加载在 Unholy 之前
-- 将 PingButton 所需数学与 3D HUD 工具并入共享 `uh_acsutils`，移除独立 ACSUtils 副本，保留原有投影、文字居中与距离缩放效果
 - 将 TidalManiac（含 Shiny）的水雷 M1 合并到主武器的 Reload，保留原有耗能、动画和护盾分支；移除独立水雷武器及其初始装备、武器槽、变身发放和多武器注册，补充普通／Shiny 的 Reload 图标；Bot 改为直接发射水雷，特殊攻击使用地雷散射与 Torrent，不再切换武器
 - 优化 TidalManiac 的武器 HUD 动画
 - 补齐 Razon 3 的服主自定义阈值：连胜、连败、Hell Mark、Speciman 击杀、Gauntlet 宝藏兑换、Bad LMS 次数及 Bonus Event 回合间隔，支持在 Server Options → Game Rules → Round Thresholds 中直接输入 1～100 并保存配置；保留当前默认值，宝藏兑换只扣除设定数量并保留余数；配置说明见 [回合阈值](docs/round-thresholds.md)
