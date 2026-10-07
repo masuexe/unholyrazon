@@ -369,10 +369,23 @@ script "uh_BackgroundTimer" (void) {  // OPEN
 
 
 
+// Round to hundredths from 35 Hz ticks; split first to avoid multiplying
+// the whole elapsed time. Explicit padding keeps values such as 12.03s.
+function void UH_DrawBattleTime(int ticks, int color, int y) {
+  int centiseconds = (ticks / 35) * 100 + ((ticks % 35) * 100 + 17) / 35;
+  int fraction = centiseconds % 100;
+  str padding = "";
+  if (fraction < 10) padding = "0";
+  HudMessageBold(s:"Battle Time: ", d:centiseconds / 100, s:".", s:padding, d:fraction, s:"s";
+    HUDMSG_FADEOUT, 100, color, 240.4, y, 5.0, 2.0);
+}
+
 // Script used to end the round for no survivors
 script "ub_WatchSurvivors" (int skipacs) {
 
   Delay(1);  // Important! Otherwise the BossDataArr[][] isn't set correctly from another script!
+  // Same start tick as the boss watcher launched below, including skipacs rounds.
+  int extratimer = Timer();
 
   if (!skipacs) {
     ACS_NamedExecute("ub_BossHealthWatcher", 0);
@@ -425,6 +438,7 @@ script "ub_WatchSurvivors" (int skipacs) {
   SetFont("BIGFONT");
   SetHudSize(480, 360, 0);
   HudMessageBold(s:"The survivors have been defeated..."; HUDMSG_FADEOUT, 66, CR_RED, 240.4, 54.0, 5.0, 2.0);
+  UH_DrawBattleTime(Timer() - extratimer, CR_GRAY, 72.0);
 
   if (winstreak > 0) {winstreak = -1;}
   else {winstreak--;}
@@ -568,13 +582,14 @@ script "ub_WatchBossesAndEyes" (void) {
 
   int next_y = 72.0;
 
-  battletime = (Timer() - extratimer) / 35;
+  battletime = Timer() - extratimer;
   int battle_color = CR_GRAY;
-  if (fastkilltime > 0 && battletime <= fastkilltime) {
+  // Preserve the existing whole-second fast-kill reward threshold.
+  if (fastkilltime > 0 && battletime / 35 <= fastkilltime) {
     eventdataarr[EVENTDATA_DELAY] += 1;
     battle_color = CR_GOLD;
   }
-  HudMessageBold(s:"Battle Time: ", d:battletime, s:"s"; HUDMSG_FADEOUT, 100, battle_color, 240.4, next_y, 5.0, 2.0);
+  UH_DrawBattleTime(battletime, battle_color, next_y);
   next_y += 18.0;
 
   if (winstreak < 0) {winstreak = 1;}
