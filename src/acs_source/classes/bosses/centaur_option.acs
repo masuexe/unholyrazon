@@ -4,14 +4,74 @@
 #define CENTOPT_ORBIT_R 48  // orbit radius around the master, map units
 #define CENTOPT_REST_OFF 192  // byte-angle offset for the right-hand rest slot
 
+// Server-owned handles, allocated before A_SpawnItemEx so repeated pickup
+// pulses in one tic cannot claim the same slot. No fixed/shared TID range.
+int centopt_tid[64][2];
+
+function bool UH_CentaurOptionExists(int pnum, int slot) {
+  int tid = centopt_tid[pnum][slot];
+  return tid > 0 && ThingCountName("DLCCentaurOption", tid) > 0 &&
+      GetActorProperty(tid, APROP_TargetTID) == pnum + 1000;
+}
+
+function int UH_CentaurOptionCount(int pnum) {
+  if (pnum < 0 || pnum >= 64) return 0;
+  return UH_CentaurOptionExists(pnum, 0) + UH_CentaurOptionExists(pnum, 1);
+}
+
+// Called by the player's CustomInventory spawner immediately before spawning.
+script "rz_CentaurOptionSpawnTid" (void) {
+  int pnum = PlayerNumber();
+  if (pnum < 0 || pnum >= 64) { SetResultValue(0); terminate; }
+  for (int slot = 0; slot < 2 && slot < CheckInventory("DLCCentaurOptionStack"); slot++) {
+    if (!UH_CentaurOptionExists(pnum, slot)) {
+      centopt_tid[pnum][slot] = UniqueTID();
+      SetResultValue(centopt_tid[pnum][slot]);
+      terminate;
+    }
+  }
+  SetResultValue(0);
+}
+
+// The slot belongs to this owner, rather than to a map-wide spawn ordinal.
+script "rz_CentaurOptionSlot" (void) {
+  int tid = ActivatorTID();
+  if (!SetActivator(0, AAPTR_TARGET)) { SetResultValue(-1); terminate; }
+  int pnum = PlayerNumber();
+  if (pnum < 0 || pnum >= 64) { SetResultValue(-1); terminate; }
+  for (int slot = 0; slot < 2; slot++) {
+    if (centopt_tid[pnum][slot] == tid) { SetResultValue(slot); terminate; }
+  }
+  SetResultValue(-1);
+}
+
+script "rz_CentaurOptionValid" (int slot) {
+  int tid = ActivatorTID();
+  if (slot < 0 || slot > 1 ||
+      !ACS_NamedExecuteWithResult("uh_IsLiveMorphedBossByPointer", AAPTR_TARGET) ||
+      !SetActivator(0, AAPTR_TARGET)) {
+    SetResultValue(0); terminate;
+  }
+  int pnum = PlayerNumber();
+  SetResultValue(pnum >= 0 && pnum < 64 && centopt_tid[pnum][slot] == tid &&
+      CheckInventory("DLCCentaurOptionMode") > 0 &&
+      CheckInventory("DLCCentaurOptionStack") > slot);
+}
+
 // Shared R-mode phase so both options rotate in lockstep (left is +128).
 script "rz_CentaurTic" (void) {
   SetResultValue(Timer() % 256);
 }
 
-// DECORATE-facing count of live option satellites on the map.
+// Unlike DECORATE A_SetAngle, SetActorAngle broadcasts the server's result.
+// Clients do not have the server-owned slot/orbit variables to compute it.
+script "rz_CentaurOptionAngle" (int angle) {
+  SetActorAngle(0, angle);
+}
+
+// DECORATE-facing count for the calling player only.
 script "rz_CentaurOptionCount" (void) {
-  SetResultValue(ThingCountName("DLCCentaurOption", 0));
+  SetResultValue(UH_CentaurOptionCount(PlayerNumber()));
 }
 
 // DLCCentaurOption S-mode: byte angle the right(0)/left(1) option's orbit slot
@@ -116,10 +176,16 @@ script "rz_CentaurOptionKill" (void) {
 
 // True while live options are fewer than the master's owned count level.
 script "rz_CentaurOptionSyncNeeded" (void) {
-  SetResultValue(ThingCountName("DLCCentaurOption", 0) < CheckInventory("DLCCentaurOptionStack"));
+  int pnum = PlayerNumber();
+  int stack = CheckInventory("DLCCentaurOptionStack");
+  // A surplus left slot awaiting cleanup must not block a missing right slot
+  // after reducing the stack to one.
+  SetResultValue(pnum >= 0 && pnum < 64 && CheckInventory("DLCCentaurOptionMode") > 0 &&
+      ((stack >= 1 && !UH_CentaurOptionExists(pnum, 0)) ||
+       (stack >= 2 && !UH_CentaurOptionExists(pnum, 1))));
 }
 
-// Offline debug / quick-tune helper:
+// Server console debug / quick-tune helper (also works offline):
 //   pukename rz_CentaurOptDebug <player 0-based> <mode 0-5> <stack 0-2>
 // mode 0 clears the option state (satellites clean themselves up); otherwise
 // sets the mode + count level and pulses DLCCentaurOptionSync_P to respawn.
@@ -138,5 +204,5 @@ script "rz_CentaurOptDebug" (int pnum, int mode, int stack) {
   }
   UH_Log(UH_LOG_DEBUG, StrParam(s:"[CentOpt] p", i:pnum, s:" mode=", i:CheckActorInventory(tid, "DLCCentaurOptionMode"),
       s:" stack=", i:CheckActorInventory(tid, "DLCCentaurOptionStack"),
-      s:" live=", i:ThingCountName("DLCCentaurOption", 0)));
+      s:" live=", i:UH_CentaurOptionCount(pnum)));
 }

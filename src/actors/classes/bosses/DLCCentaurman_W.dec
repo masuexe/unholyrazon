@@ -696,15 +696,16 @@ actor DLCCentaurOptionPickupS : DLCCentaurOptionPickupB {
   }
 }
 
-// Idempotent option spawner: fills the map up to the owned option count.
-// Count at first tick decides the slot (1st spawned = right, 2nd = left).
+// Idempotent option spawner: fills this player's two independently tracked slots.
 actor DLCCentaurOptionSync_P : CustomInventory {
   States {
    Pickup:
     TNT1 A 0 A_JumpIf(!CallACS("rz_CentaurOptionSyncNeeded"), "Nothing")
     // Non-monster spawn: engine sets TARGET=caller; SXF_SETMASTER is ignored
     // (only applies to MF3_ISMONSTER). Orbit/input use AAPTR_TARGET.
-    TNT1 A 0 A_SpawnItemEx("DLCCentaurOption", 0, 0, 32, 0, 0, 0, 0, SXF_NOCHECKPOSITION)
+    TNT1 A 0 A_SpawnItemEx("DLCCentaurOption", 0, 0, 32, 0, 0, 0, 0, SXF_NOCHECKPOSITION, 0, CallACS("rz_CentaurOptionSpawnTid"))
+    TNT1 A 0 A_JumpIf(!CallACS("rz_CentaurOptionSyncNeeded"), "Nothing")
+    TNT1 A 0 A_SpawnItemEx("DLCCentaurOption", 0, 0, 32, 0, 0, 0, 0, SXF_NOCHECKPOSITION, 0, CallACS("rz_CentaurOptionSpawnTid"))
     stop
    Nothing:
     TNT1 A 0
@@ -940,14 +941,13 @@ actor DLCCentaurOption : ProjSpawnFuncActor {
   States {
    Spawn:
     TNT1 A 0
-    X_4G B 0 A_SetUserVar("user_idx", CallACS("rz_CentaurOptionCount") > 1)
+    X_4G B 0 A_SetUserVar("user_idx", CallACS("rz_CentaurOptionSlot"))
     goto LoopHead
 
    LoopHead:
-    X_4G B 0 A_JumpIf(!CallACS("uh_IsLiveMorphedBossByPointer", AAPTR_TARGET), "Cleanup")
+    X_4G B 0 A_JumpIf(!CallACS("rz_CentaurOptionValid", user_idx), "Cleanup")
     X_4G B 0 A_SetUserVar("user_rep", (user_rep + 1) % 71)
     X_4G B 0 A_JumpIf(user_rep > 0, "ModeDispatch")
-    X_4G B 0 A_JumpIf(user_idx > 0, "ModeDispatch")
     X_4G B 0 A_GiveToTarget("DLCCentaurOptionSync_P")
    ModeDispatch:
     X_4G B 0 A_JumpIfInTargetInventory("DLCCentaurOptionMode", 5, "ModeS")
@@ -955,7 +955,9 @@ actor DLCCentaurOption : ProjSpawnFuncActor {
     X_4G B 0 A_JumpIfInTargetInventory("DLCCentaurOptionMode", 3, "ModeF")
     X_4G B 0 A_JumpIfInTargetInventory("DLCCentaurOptionMode", 2, "ModeC")
     X_4G B 0 A_JumpIfInTargetInventory("DLCCentaurOptionMode", 1, "ModeB")
-    goto Cleanup
+    // Clients skip these server-owned inventory jumps. Keep their actor alive
+    // until the server's state/position/removal packets arrive.
+    goto TailTick
 
     // B: rear diagonals relative to master facing (right = -135).
    ModeB:
@@ -965,7 +967,7 @@ actor DLCCentaurOption : ProjSpawnFuncActor {
     // forward by 30 degrees (right = -30, left = +30).
    ModeF:
     X_4G B 0 A_Warp(AAPTR_TARGET, 48, 0, 32, 270 - user_idx * 180, WARPF_NOCHECKPOSITION | WARPF_INTERPOLATE)
-    X_4G B 0 A_SetAngle(CallACS("uh_FetchPointerAngle", AAPTR_TARGET) * 360 / 256 + 330 + user_idx * 60)
+    X_4G B 0 ACS_NamedExecuteWithResult("rz_CentaurOptionAngle", CallACS("uh_FetchPointerAngle", AAPTR_TARGET) * 256 + (330 + user_idx * 60) * 65536 / 360)
     goto Tail
     // R: fast shared rotation, opposite phases.
    ModeR:
@@ -978,13 +980,13 @@ actor DLCCentaurOption : ProjSpawnFuncActor {
     X_4G B 0 A_JumpIf(user_tmp < 0, "Tail")
     X_4G B 0 A_SetUserVar("user_theta", (user_tmp + 192 - user_idx * 128) % 256)
     X_4G B 0 A_Warp(AAPTR_TARGET, 48, 0, 32, user_theta * 1.40625, WARPF_ABSOLUTEANGLE | WARPF_NOCHECKPOSITION | WARPF_INTERPOLATE)
-    X_4G B 0 A_SetAngle((user_tmp + 128) * 1.40625)
+    X_4G B 0 ACS_NamedExecuteWithResult("rz_CentaurOptionAngle", (user_tmp + 128) * 256)
     goto Tail
     // S: slide the slot toward its tangent aim point; muzzle rides the tangent.
    ModeS:
     X_4G B 0 A_SetUserVar("user_theta", CallACS("uh_GradualAngleTurn", user_theta, CallACS("rz_CentaurOptionSeek", user_idx, 896), 2, 256))
     X_4G B 0 A_Warp(AAPTR_TARGET, 48, 0, 32, user_theta * 1.40625, WARPF_ABSOLUTEANGLE | WARPF_NOCHECKPOSITION | WARPF_INTERPOLATE)
-    X_4G B 0 A_SetAngle((user_theta + 64 - user_idx * 128) * 1.40625)
+    X_4G B 0 ACS_NamedExecuteWithResult("rz_CentaurOptionAngle", (user_theta + 64 - user_idx * 128) * 256)
     goto Tail
 
    WarpSlot:
@@ -1016,18 +1018,18 @@ actor DLCCentaurOption : ProjSpawnFuncActor {
     goto LoopHead
 
    Cleanup:
-    X_4G B 0 ACS_NamedExecute("rz_CentaurOptionKill", 0)
+    X_4G B 0 ACS_NamedExecuteAlways("rz_CentaurOptionKill", 0)
     X_4G B 1
-    stop
+    // Only the server removes the actor; a predicted stop destroys the client's
+    // net-id before later state updates can find it.
+    wait
    Death:
     TNT1 A 1
     stop
   }
 }
 
-// Plain projectile on purpose: do NOT inherit DLCCentaurArrow1/BasicProjectile
-// here — their USESPAWNEVENTSCRIPT hook expects a weapon-spawn context, which
-// an option-launched missile does not have, and crashes this engine build.
+// A_CustomMissile on the satellite preserves TARGET=player for attribution.
 actor DLCCentaurOptionShot : BasicProjectile {
   +THRUSPECIES
   Translation "192:192=229:229", "198:198=165:165"
