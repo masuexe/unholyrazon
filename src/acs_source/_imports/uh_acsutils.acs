@@ -388,3 +388,402 @@ function int PitchBetween(int looker, int target, int xoff, int yoff, int zoff) 
   pitch = -VectorAngle(len, z);
   return pitch;
 }
+
+// Ported from ACSUtils in Trillster's Ping Button
+
+// ACSUtils additions used by the optional PingButton shadow.
+// Shared math and 3D HUD drawing; addon options belong in the caller.
+function int XYZHypot(int x, int y, int z) {
+  return VectorLength(VectorLength(x, y), z);
+}
+
+function int TruncFixed(int x) {
+  if (x > 0) return x & 0xffff0000;
+  return ((x - 1) & 0xffff0000) + 1.0;
+}
+
+#libdefine HUDTIC 0.03
+#libdefine HUD_STAYTIME_FOREVER (-1)
+
+#libdefine HUD_BLENDSTYLE_NORMAL 0
+#libdefine HUD_BLENDSTYLE_ADDITIVE 1
+
+#libdefine HUD_ALIGN_CENTER 0
+#libdefine HUD_ALIGN_LEFT 1
+#libdefine HUD_ALIGN_RIGHT 2
+#libdefine HUD_ALIGN_TOP 1
+#libdefine HUD_ALIGN_BOTTOM 2
+
+#libdefine HUD_PROJECTION_AUTO 0
+#libdefine HUD_PROJECTION_3D 1
+#libdefine HUD_PROJECTION_YSHEARING 2
+
+int UH_HudInts[55] = {
+  240.0,  // CursorY
+  false,  // R_TextColorIsString
+  480.0,  // CursorAreaHeight
+  CR_UNTRANSLATED,  // R_TextColor
+  -1,  // CachedPort
+  0.0,  // R_AppearTime
+  HUD_STAYTIME_FOREVER,  // R_StayTime
+  1.0,  // CursorSpeedY
+  false,  // CursorWrapX
+  0.0,  // R3D_CameraY
+  false,  // R_TextWordWrap
+  0.0,  // R3D_CameraPitch
+  0.0,  // R3D_2DOffsetX
+  HUD_ALIGN_CENTER,  // R_AlignX
+  0,  // R_RotatedX
+  0.0,  // R3D_Y
+  320.0,  // CursorPrevX
+  HUD_PROJECTION_AUTO,  // R3D_ProjectionMode
+  0.0,  // R_Y
+  0.0,  // R3D_CameraX
+  0.0,  // R3D_Z
+  0.0,  // R3D_2DOffsetY
+  0,  // R_RotatedZ
+  640.0,  // R_BaseWidth
+  true,  // R_ShowIn3DView
+  1.0,  // R_Alpha
+  false,  // R_CenterText
+  HUDMSG_LAYER_OVERHUD,  // R_Layer
+  0.0,  // R3D_CameraAngle
+  0,  // CursorMotionX
+  1.0,  // R_IScaleX
+  1.0,  // CursorSpeedX
+  0.0,  // R3D_X
+  false,  // R_LogMessage
+  true,  // R_ShowOnOverlayAutomap
+  320.0,  // CursorX
+  0,  // HudStateStackTop
+  false,  // R_ShowToEveryone
+  0,  // CursorMotionY
+  HUD_BLENDSTYLE_NORMAL,  // R_BlendStyle
+  0.0,  // R3D_CameraZ
+  0.0,  // R_X
+  true,  // R3D_AutoDistanceScale
+  false,  // CursorWrapY
+  0,  // R_RotatedY
+  false,  // R_ExcludeStatusBar
+  480.0,  // R_BaseHeight
+  240.0,  // CursorPrevY
+  0.0,  // R_DisappearTime
+  HUD_ALIGN_CENTER,  // R_AlignY
+  true,  // R_ShowOnFullAutomap
+  1.0,  // R_IScaleY
+  false,  // R_Is3DPoint
+  640.0,  // CursorAreaWidth
+  false,  // R_TextTypeOn
+};
+
+str UH_HudStrings[1] = {
+  "SMALLFONT",  // R_TextFont
+};
+
+
+int UH_HudDistanceScaleFactor = 1.0;
+
+// Configure distance scaling without coupling shared drawing to addon CVARs.
+function void HudSetDistanceScaleFactor(int factor) {
+  UH_HudDistanceScaleFactor = factor;
+}
+
+function int clamp(int x, int a, int b) {
+  if (x > b)
+    return b;
+  if (x < a)
+    return a;
+  return x;
+}
+
+function int lerp(int a, int b, int alpha) {
+  return FixedMul(a, 1.0 - alpha) + FixedMul(b, alpha);
+}
+
+function void HudResetState(void) {
+  UH_HudDistanceScaleFactor = 1.0;
+  UH_HudInts[52] = false;
+
+
+  UH_HudInts[19] = 0.0;
+  UH_HudInts[9] = 0.0;
+  UH_HudInts[40] = 0.0;
+  UH_HudInts[28] = 0.0;
+  UH_HudInts[11] = 0.0;
+
+  UH_HudInts[32] = 0.0;
+  UH_HudInts[15] = 0.0;
+  UH_HudInts[20] = 0.0;
+
+  UH_HudInts[12] = 0.0;
+  UH_HudInts[21] = 0.0;
+
+  UH_HudInts[42] = true;
+  UH_HudInts[17] = HUD_PROJECTION_AUTO;
+
+  UH_HudInts[23] = 640.0;
+  UH_HudInts[46] = 480.0;
+  UH_HudInts[45] = false;
+
+  UH_HudInts[41] = 0.0;
+  UH_HudInts[18] = 0.0;
+
+  UH_HudInts[30] = 1.0;
+  UH_HudInts[51] = 1.0;
+
+  UH_HudInts[37] = false;
+
+  UH_HudInts[5] = 0.0;
+  UH_HudInts[6] = HUD_STAYTIME_FOREVER;
+  UH_HudInts[48] = 0.0;
+
+  UH_HudInts[39] = HUD_BLENDSTYLE_NORMAL;
+  UH_HudInts[25] = 1.0;
+
+  UH_HudInts[24] = true;
+  UH_HudInts[50] = true;
+  UH_HudInts[34] = true;
+
+  UH_HudInts[27] = HUDMSG_LAYER_OVERHUD;
+
+  UH_HudInts[13] = HUD_ALIGN_CENTER;
+  UH_HudInts[49] = HUD_ALIGN_CENTER;
+  UH_HudInts[26] = false;
+  UH_HudStrings[0] = "SMALLFONT";
+  UH_HudInts[1] = false;
+  UH_HudInts[3] = CR_UNTRANSLATED;
+  UH_HudInts[54] = false;
+  UH_HudInts[33] = false;
+  UH_HudInts[10] = false;
+}
+
+function void HudSetLayer(int layer) {
+  UH_HudInts[27] = layer;
+}
+
+function void HudSetShowOnFullAutomap(bool show) {
+  UH_HudInts[50] = show;
+}
+
+function void HudSetScaleXY(int scaleX, int scaleY) {
+  if (scaleX != 0.0)
+    UH_HudInts[30] = FixedDiv(1.0, scaleX);
+  else
+    UH_HudInts[30] = 0.0;
+
+  if (scaleY != 0.0)
+    UH_HudInts[51] = FixedDiv(1.0, scaleY);
+  else
+    UH_HudInts[51] = 0.0;
+}
+
+function void HudSetShowToEveryone(bool showToEveryone) {
+  UH_HudInts[37] = showToEveryone;
+}
+
+function void HudSetStayTime(int stayTime) {
+  UH_HudInts[6] = stayTime;
+}
+
+function void HudSetPoint3D(int x, int y, int z) {
+  UH_HudInts[52] = true;
+  UH_HudInts[32] = x;
+  UH_HudInts[15] = y;
+  UH_HudInts[20] = z;
+}
+
+function void HudSetCenterText(bool centerText) {
+  UH_HudInts[26] = centerText;
+}
+
+function void HudUseRealSize(void) {
+  UH_HudInts[23] = (GetScreenWidth() << 16);
+  UH_HudInts[46] = (GetScreenHeight() << 16);
+}
+
+function void HudSetCameraPosition(int x, int y, int z) {
+  UH_HudInts[19] = x;
+  UH_HudInts[9] = y;
+  UH_HudInts[40] = z;
+}
+
+function void HudSetCameraAngles(int angle, int pitch) {
+  UH_HudInts[28] = angle;
+  UH_HudInts[11] = pitch;
+}
+
+function void HudSetAlpha(int alpha) {
+  UH_HudInts[25] = alpha;
+}
+
+function void HudSetFont(str font) {
+  UH_HudStrings[0] = font;
+}
+
+function void HudDrawText(int id, str text) {
+  int type = HUDMSG_FADEINOUT;
+  if (UH_HudInts[5] > 0 && UH_HudInts[54])
+    type = HUDMSG_TYPEON;
+
+  if (UH_HudInts[33])
+    type |= HUDMSG_LOG;
+  if (UH_HudInts[1])
+    type |= HUDMSG_COLORSTRING;
+  if (!UH_HudInts[10])
+    type |= HUDMSG_NOWRAP;
+
+  SetFont(UH_HudStrings[0]);
+  ACSUtils_HudDrawHudMessage(id, type, text, true);
+}
+
+function void ACSUtils_HudDrawHudMessage(int id, int type, str text, bool isText) {
+  if (UH_HudInts[30] == 0 || UH_HudInts[51] == 0)
+    return;
+
+  type |= UH_HudInts[27];
+  if (!UH_HudInts[24])
+    type |= HUDMSG_NOTWITH3DVIEW;
+  if (!UH_HudInts[50])
+    type |= HUDMSG_NOTWITHFULLMAP;
+  if (!UH_HudInts[34])
+    type |= HUDMSG_NOTWITHOVERLAYMAP;
+
+  if (UH_HudInts[39] == HUD_BLENDSTYLE_ADDITIVE)
+    type |= HUDMSG_ADDBLEND;
+  else if (UH_HudInts[25] != 1.0)
+    type |= HUDMSG_ALPHA;
+
+  int x = UH_HudInts[41];
+  int y = UH_HudInts[18];
+  int iScaleX = UH_HudInts[30];
+  int iScaleY = UH_HudInts[51];
+
+  if (UH_HudInts[52]) {
+    ACSUtils_HudRotate3DPoint();
+
+    // Check if point is behind the camera.
+    if (UH_HudInts[14] <= 0) {
+      ClearHudMessage(id);
+      return;
+    }
+
+    // I don't know what this factor means, but it fixes positioning bugs.
+    int yFactor = 1.6;
+    /* 8BDM doesn't use this
+    if (StatusBarVisible())
+      yFactor = 1.9;
+     */
+
+    // Half heights.
+    int hw = ((UH_HudInts[23]) / 2);
+    int hh = ((UH_HudInts[46]) / 2);
+
+    // Project point.
+    x = -FixedDiv(UH_HudInts[44], UH_HudInts[14]);
+    y = -FixedDiv(UH_HudInts[22], UH_HudInts[14]);
+
+    if (ACSUtils_IsYShearing())
+      y += FixedDiv(sin(UH_HudInts[11]), cos(UH_HudInts[11]));
+
+    // Postprocess projected point.
+    x += UH_HudInts[12] + hw + FixedMul(hw, x);
+    y += UH_HudInts[21] + hh + FixedMul(FixedMul(hh, yFactor), y);
+
+    int distanceScaleFactor = min(UH_HudDistanceScaleFactor, 1.0);
+    if (UH_HudInts[42] && distanceScaleFactor > 0.0) {
+      iScaleX = FixedMul(iScaleX, FixedMul(UH_HudInts[14], distanceScaleFactor) / 128);
+      iScaleY = FixedMul(iScaleY, FixedMul(UH_HudInts[14], distanceScaleFactor) / 128);
+    }
+  }
+
+  int w = FixedMul(UH_HudInts[23], iScaleX);
+  int h = FixedMul(UH_HudInts[46], iScaleY);
+  SetHudSize((w >> 16), (h >> 16), !(UH_HudInts[52] || UH_HudInts[45]));
+
+  x = TruncFixed(FixedMul(x, iScaleX));
+  y = TruncFixed(FixedMul(y, iScaleY));
+
+  if (UH_HudInts[13] == HUD_ALIGN_LEFT)
+    x += 0.1;
+  else if (UH_HudInts[13] == HUD_ALIGN_RIGHT)
+    x += 0.2;
+
+  if (UH_HudInts[49] == HUD_ALIGN_TOP)
+    y += 0.1;
+  else if (UH_HudInts[49] == HUD_ALIGN_BOTTOM)
+    y += 0.2;
+
+  // realistically all the cases should be like this..
+  // but I only care about this one for my purposes.
+  if (UH_HudInts[26]) {
+    if (x > 0.0) {
+      x += 0.4;
+    } else {
+      x -= 0.4;
+    }
+  }
+
+  // BUG: this really simplifies the code, but the messages will only stay
+  // for 9 hours.
+  int stayTime = UH_HudInts[6];
+  if (stayTime < 0.0)
+    stayTime = 0x7fffffff;
+
+  if (UH_HudInts[37]) {
+    HudMessageBold(s:text;
+      type,
+      id,
+      UH_HudInts[3],
+      x, y,
+      stayTime, UH_HudInts[5], UH_HudInts[48],
+      UH_HudInts[25]
+    );
+  }
+  else {
+    HudMessage(s:text;
+      type,
+      id,
+      UH_HudInts[3],
+      x, y,
+      stayTime, UH_HudInts[5], UH_HudInts[48],
+      UH_HudInts[25]
+    );
+  }
+}
+
+function void ACSUtils_HudRotate3DPoint(void) {
+  // Translated point coordinates.
+  int x = UH_HudInts[32] - UH_HudInts[19];
+  int y = UH_HudInts[15] - UH_HudInts[9];
+  int z = UH_HudInts[20] - UH_HudInts[40];
+
+  int rx, ry, rz;
+  int s, c;
+
+  // Rotate around Z axis.
+  s = sin(-UH_HudInts[28]);
+  c = cos(-UH_HudInts[28]);
+  rx = FixedMul(x, c) - FixedMul(y, s);
+  ry = FixedMul(x, s) + FixedMul(y, c);
+  x = rx; y = ry;
+
+  // Rotate around Y axis.
+  if (!ACSUtils_IsYShearing()) {
+    s = sin(-UH_HudInts[11]);
+    c = cos(-UH_HudInts[11]);
+    rx = FixedMul(x, c) - FixedMul(z, s);
+    rz = FixedMul(x, s) + FixedMul(z, c);
+    x = rx; z = rz;
+  }
+
+  UH_HudInts[14] = x;
+  UH_HudInts[44] = y;
+  UH_HudInts[22] = z;
+}
+
+function bool ACSUtils_IsYShearing(void) {
+  if (UH_HudInts[17] == HUD_PROJECTION_AUTO)
+    return (GetCVar("vid_renderer") != 1 || GetCVar("gl_nogl") != 0);
+
+  return UH_HudInts[17] == HUD_PROJECTION_YSHEARING;
+}

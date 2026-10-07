@@ -191,7 +191,15 @@ includes DEBUG. The full launch profiles and versus test enable level 4.
 ACS edits only take effect once the affected library is recompiled with the
 native Linux ACC into `src/acs/` and the PK3 is repackaged. Pick the aggregator
 that includes the file you edited — `src/LOADACS` lists every library, and each
-aggregator has the matching `#library` name:
+aggregator has the matching `#library` name.
+
+The optional [PingButton override](../src/acs_source/compat/mods/pingbutton/README.md)
+is compiled by `tools/compile-acs.sh` to `src/acs/PNGBUTTN.o`. Load
+`trill-pingbutton-v5h` before Unholy. Its own LOADACS activates the shadow;
+Unholy's LOADACS must not list it. In Unholy LMS all pings are public, including
+locate results; personal display/mute settings still apply.
+
+For example:
 
 ```bash
 ACC=${ACC:-acc}

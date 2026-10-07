@@ -1,5 +1,7 @@
 ## 4.0.0-beta.261007
 
+- 新增 trill-pingbutton-v5h 兼容覆盖：Unholy LMS 中所有玩家与旁观者均可看见各阵营的 ping，包含死亡标记和定位结果，支持死亡及第三人称视角，保留个人显示、静音和声音设置；定位目标接入 Unholy 队友关系，头像接入统一职业展示接口；需将 PingButton 加载在 Unholy 之前，测试通过
+- 将 PingButton 所需数学与 3D HUD 工具并入共享 `uh_acsutils`，移除独立 ACSUtils 副本，保留原有投影、文字居中与距离缩放效果
 - 将 TidalManiac（含 Shiny）的水雷 M1 合并到主武器的 Reload，保留原有耗能、动画和护盾分支；移除独立水雷武器及其初始装备、武器槽、变身发放和多武器注册，补充普通／Shiny 的 Reload 图标；Bot 改为直接发射水雷，特殊攻击使用地雷散射与 Torrent，不再切换武器
 - 优化 TidalManiac 的武器 HUD 动画
 - 补齐 Razon 3 的服主自定义阈值：连胜、连败、Hell Mark、Speciman 击杀、Gauntlet 宝藏兑换、Bad LMS 次数及 Bonus Event 回合间隔，支持在 Server Options → Game Rules → Round Thresholds 中直接输入 1～100 并保存配置；保留当前默认值，宝藏兑换只扣除设定数量并保留余数；配置说明见 [回合阈值](docs/round-thresholds.md)

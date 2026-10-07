@@ -24,9 +24,9 @@ if [[ -z "$ACC" ]]; then
 fi
 OUT="${1:-src/acs}"
 mkdir -p "$OUT"
-# Old manual builds used lowercase UIX filenames. Zandronum compares lump
+# Old manual builds used lowercase shadow filenames. Zandronum compares lump
 # paths without case, so keeping both copies breaks online authentication.
-for library in UIXITEMS UIXWEAP UIXTEAM; do
+for library in UIXITEMS UIXWEAP UIXTEAM PNGBUTTN; do
   legacy="$OUT/${library,,}.o"
   canonical="$OUT/$library.o"
   if [[ -f "$legacy" ]] && ! [[ "$legacy" -ef "$canonical" ]]; then
@@ -139,5 +139,10 @@ echo "== PROJTRAN =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/teamcolors/PROJTRAN.acs" "$OUT/PROJTRAN.o" || fail=1
 echo "== TEAMCOL =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/teamcolors/TEAMCOL.acs" "$OUT/TEAMCOL.o" || fail=1
+
+# Optional PingButton shadow: addon LOADACS loads PNGBUTTN, not Unholy.
+echo "== PNGBUTTN =="
+"$ACC" $INC "src/acs_source/compat/mods/pingbutton/PNGBUTTN.acs" "$OUT/PNGBUTTN.o" || fail=1
+
 if [ "$fail" -ne 0 ]; then echo "ACS COMPILE FAILED"; else echo "ACS COMPILE OK"; fi
 exit $fail

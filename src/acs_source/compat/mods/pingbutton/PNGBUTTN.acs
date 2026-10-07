@@ -1,0 +1,566 @@
+// Unholy override of trill-pingbutton-v5h. Load PingButton before Unholy.
+// Keep PINGBUTT / PNGBUTTN.o; the optional addon owns the LOADACS entry.
+#library "PINGBUTT"
+#include "zcommon.acs"
+#import "uh_acsutils.acs"
+
+script "PingButton_Notifier" OPEN CLIENTSIDE {
+	int cpn = ConsolePlayerNumber();
+	if(GetUserCvar(cpn,"trill_pb_notification")) {
+		Log(s:StrParam (
+			s:"\c", s:GetUserCvarString(cpn,"trill_pb_pingcolor"),
+			s:"Ping button \c", s:GetUserCvarString(cpn,"trill_pb_textcolor"),
+			s:"enabled. Type \c", s:GetUserCvarString(cpn,"trill_pb_enemycolor"),
+			s:"pboptions\c", s:GetUserCvarString(cpn,"trill_pb_textcolor"),
+			s:" in console for available options."
+		));
+	}
+}
+
+script "PingButton_Disconnect" (int goner) DISCONNECT {
+	SetCvarString(StrParam(s:"Player_", i:goner, s:"_Name"), "[NONE]");
+}
+
+script "PingButton_Enter" ENTER {
+	int pln = PlayerNumber();
+	SetCvarString(StrParam(s:"Player_", i:pln, s:"_Name"), StrParam(n:pln + 1));
+}
+
+script "PingButton_Respawn" RESPAWN {
+	ACS_NamedExecuteWithResult("PingButton_Enter");
+}
+
+#define PING_NOTIFY 0
+#define PING_ALERT 1
+#define PING_HEAL 2
+#define PING_HUH 3
+#define PING_DEATH 4
+#define PING_LOCATE 5
+
+#define MAX_TEAMS 4
+#define PLN_TID 1000
+#define PING_COOLDOWN 15
+int playerPingCooldown[MAX_PLAYERS];
+bool playerPingDoubleTap[MAX_PLAYERS];
+
+script "PingButton_Ping" (int type) NET {
+	if(type < PING_NOTIFY || type > PING_HUH)
+		terminate;
+
+	int pln = PlayerNumber();
+
+	if(!PlayerInGame(pln))
+		terminate;
+
+	if(GetActorProperty(pln + PLN_TID, APROP_Health) <= 0)
+		terminate;
+
+	if(playerPingCooldown[pln] + PING_COOLDOWN < Timer()) {
+		if(GetUserCvar(pln, "trill_pb_doubletap") && type == PING_NOTIFY) {
+			playerPingDoubleTap[pln] = true;
+		}
+
+		playerPingCooldown[pln] = Timer();
+
+		int cam = CheckPlayerCamera(pln);
+		if (cam == -1) { cam = ActivatorTID(); }
+
+		int u = UniqueTID();
+		SpawnForced (
+			"Trill_PingActor",
+			GetActorX(cam),
+			GetActorY(cam),
+			GetActorZ(cam) + (GetActorProperty(cam, APROP_Height) / 2) + GetActorProperty(cam, APROP_AttackZOffset),
+			u,
+			0
+		);
+
+		SetActorProperty(u, APROP_Mass, type);
+		SetActorProperty(u, APROP_Accuracy, pln);
+		SetActorProperty(u, APROP_Stamina, pln);
+		SetActorVelocity(u,
+			1000 * FixedMul(cos(GetActorAngle(cam)), cos(-GetActorPitch(cam))),
+			1000 * FixedMul(sin(GetActorAngle(cam)), cos(-GetActorPitch(cam))),
+			1000 * sin(-GetActorPitch(cam)),
+			0, 0
+		);
+		Thing_ChangeTID(u, 0);
+	} else if (playerPingDoubleTap[pln] && type == PING_NOTIFY) {
+		playerPingDoubleTap[PlayerNumber()] = false;
+		GiveInventory("Trill_PingDoubleTap", 1);
+	}
+}
+
+script "PingButton_Locate" (void) NET {
+	int pln = PlayerNumber();
+
+	if(!PlayerInGame(pln))
+		terminate;
+
+	if(GetActorProperty(pln + PLN_TID, APROP_Health) <= 0)
+		terminate;
+
+	if(playerPingCooldown[pln] + PING_COOLDOWN >= Timer())
+		terminate;
+
+	playerPingCooldown[pln] = Timer();
+
+	int team = GetPlayerInfo(pln, PLAYERINFO_TEAM);
+	bool unholy = ACS_NamedExecuteWithResult("uh_IsUnholyTeamMode") != 0;
+	if(!unholy && team >= MAX_TEAMS)
+		terminate;
+
+	for(int i = 0; i < MAX_PLAYERS; i++) {
+		if(i == pln || !PlayerInGame(i) || PlayerIsSpectator(i))
+			continue;
+		if(ThingCount(T_NONE, i + PLN_TID) == 0 || GetActorProperty(i + PLN_TID, APROP_Health) <= 0)
+			continue;
+		if(unholy) {
+			if(!ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", pln, i))
+				continue;
+		} else if(GetPlayerInfo(i, PLAYERINFO_TEAM) != team) {
+			continue;
+		}
+		{
+			int u = UniqueTID();
+			SpawnForced (
+				"Trill_PingActor_Instant",
+				GetActorX(i + PLN_TID),
+				GetActorY(i + PLN_TID),
+				GetActorZ(i + PLN_TID) + (GetActorProperty(i + PLN_TID, APROP_Height) / 2),
+				u,
+				0
+			);
+			SetActorProperty(u, APROP_Mass, PING_LOCATE);
+			SetActorProperty(u, APROP_Accuracy, i);
+			SetActorProperty(u, APROP_Stamina, pln);
+			Thing_ChangeTID(u, 0);
+
+			// this delay looks a bit odd
+			// but it helps for sounds
+			Delay(2);
+		}
+	}
+}
+
+script "PingButton_DeathPing" DEATH {
+	int pln = PlayerNumber();
+	int u = UniqueTID();
+	SpawnForced (
+		"Trill_PingActor_Instant",
+		GetActorX(0),
+		GetActorY(0),
+		GetActorZ(0) + 28.0,
+		u,
+		0
+	);
+	SetActorProperty(u, APROP_Mass, PING_DEATH);
+	SetActorProperty(u, APROP_Accuracy, pln);
+	SetActorProperty(u, APROP_Stamina, pln);
+	Thing_ChangeTID(u, 0);
+}
+
+script "PingButton_ReturnPingVolume" (void) CLIENTSIDE {
+	SetResultValue(GetUserCvar(ConsolePlayerNumber(), "trill_pb_new_volume"));
+}
+
+#define ONE_TIC 1873
+#define SOUND_OFFSET 128
+
+script "PingButton_ShowPing" (int type, int originPlayer, int callingPlayer) CLIENTSIDE {
+	int cpn = ConsolePlayerNumber();
+
+	int x = GetActorX(0);
+	int y = GetActorY(0);
+	int z = GetActorZ(0);
+	str location = GetActorSectorLocation(0, false);
+
+	if(type == PING_ALERT || type == PING_NOTIFY) { // both for double-tap players
+		str graphic = getAlertGraphic(cpn, originPlayer, x, y, z);
+	} else if (type == PING_DEATH) {
+		graphic = getDeathGraphic(originPlayer);
+	} else {
+		graphic = "";
+	}
+
+	int duration = max(GetUserCvar(cpn, "trill_pb_duration"), 0) * 35;
+
+	SetActivatorToPlayer(cpn);
+
+	int cam = CheckPlayerCamera(cpn);
+	if(cam == -1) { cam = 0; }
+
+	int oldX = GetActorX(cam) - GetActorVelX(cam);
+	int oldY = GetActorY(cam) - GetActorVelY(cam);
+	int oldZ = (GetActorZ(cam) + GetActorViewHeight(cam)) - GetActorVelZ(cam);
+	int oldAng = GetActorAngle(cam);
+	int oldPitch = -GetActorPitch(cam);
+
+	if(showPing(cpn, originPlayer, type, callingPlayer) && GetUserCvar(cpn, "trill_pb_sound")) {
+		if(CheckPlayerCamera(cpn) == CheckPlayerCamera(originPlayer)) {
+			PlayLocalPingSound(type);
+		} else {
+			PlayPingSound(type, cam, x, y, z);
+		}
+	}
+
+	SetActivator(-1);
+
+	int time = 0;
+	while(time < duration) {
+		if(type == PING_NOTIFY && time <= PING_COOLDOWN) {
+			if(CheckActorInventory(originPlayer + PLN_TID, "Trill_PingDoubleTap") > 0) {
+				SetActivatorToPlayer(cpn);
+				type = PING_ALERT;
+				if(showPing(cpn, originPlayer, type, callingPlayer) && GetUserCvar(cpn, "trill_pb_sound")) {
+					if(CheckPlayerCamera(cpn) == CheckPlayerCamera(originPlayer)) {
+						PlayLocalPingSound(type);
+					} else {
+						PlayPingSound(type, cam, x, y, z);
+					}
+				}
+				SetActivator(-1);
+			}
+		}
+
+		if(showPing(cpn, originPlayer, type, callingPlayer)) {
+			SetActivatorToPlayer(cpn);
+
+			HudResetState();
+			HudSetDistanceScaleFactor(GetUserCvar(cpn, "trill_pb_distancescalefactor"));
+			HudSetLayer(HUDMSG_LAYER_UNDERHUD);
+			HudSetShowOnFullAutomap(false);
+			int scale = max(GetUserCvar(cpn, "trill_pb_pingscale"), 0.0);
+			HudSetScaleXY(scale / 640 * GetScreenWidth(), scale / 480 * GetScreenHeight());
+			HudSetShowToEveryone(true);
+			HudSetStayTime(ONE_TIC);
+			HudSetPoint3D(x, y, z);
+			HudSetCenterText(true);
+			HudUseRealSize();
+
+			cam = CheckPlayerCamera(cpn);
+			if(cam == -1) { cam = 0; }
+
+			int interpolation = clamp(GetUserCvar(cpn, "trill_pb_pinginterpolation"), 0.0, 0.95);
+
+			int cX = lerp(GetActorX(cam) - GetActorVelX(cam), oldX, interpolation);
+			int cY = lerp(GetActorY(cam) - GetActorVelY(cam), oldY, interpolation);
+			int cZ = lerp((GetActorZ(cam) + GetActorViewHeight(cam)) - GetActorVelZ(cam), oldZ, interpolation);
+			int pitch = lerp(-GetActorPitch(cam), oldPitch, interpolation);
+
+			// this one is special because it circles
+			int newAng = GetActorAngle(cam);
+			if(abs(oldAng - newAng) > 0.9) {
+				int ang = newAng;
+			} else {
+				ang = lerp(GetActorAngle(cam), oldAng, interpolation);
+			}
+
+			HudSetCameraPosition(cX, cY, cZ);
+			HudSetCameraAngles(ang, pitch);
+
+			oldX = cX;
+			oldY = cY;
+			oldZ = cZ;
+			oldAng = ang;
+			oldPitch = pitch;
+
+			HudSetAlpha(clamp(GetUserCvar(cpn, "trill_pb_pingopacity"), 0.0, 1.0));
+
+			if(GetUserCvar(cpn,"trill_pb_newshowdistance") > 0) {
+				int mu_distance = ActorDistanceFromCoord(cam, x, y, z);
+				if(GetUserCvar(cpn, "trill_pb_newshowdistance") == 1) {
+					str distance = StrParam(i:((mu_distance / 32) >> 16), s:"m");
+				} else {
+					distance = StrParam(i:((mu_distance) >> 16), s:"mu");
+				}
+			} else {
+				distance = "";
+			}
+
+			if(GetUserCvar(cpn, "trill_pb_shownames")) {
+				str name = StrParam(n:originPlayer + 1);
+			} else {
+				name = "";
+			}
+
+			str text_col = getPingTextColor(cpn, originPlayer);
+			str ping_col = getPingColor(cpn, type);
+			str ping = getPingIcon(type);
+
+			// Shared HUD drawing preserves v5h projection and text centering.
+			if(StrICmp(location, "") != 0 && GetUserCvar(cpn, "trill_pb_showlocations")) {
+				if((type == PING_ALERT || type == PING_DEATH) && StrICmp(graphic, "") != 0) {
+					HudSetFont(graphic);
+					HudDrawText(0, "A");
+
+					HudSetFont("SMALLFONT");
+					HudDrawText(0, StrParam(
+						s:"\n",
+						s:"\c", s:text_col, s:distance, s:"\n",
+						s:"\c", s:ping_col, s:ping, s:"     ", s:ping, s:"\n",
+						s:"\c", s:text_col, s:location, s:"\n",
+						s:name
+					));
+				} else {
+					HudSetFont("SMALLFONT");
+					HudDrawText(0, StrParam(
+						s:"\n",
+						s:"\c", s:text_col, s:distance, s:"\n",
+						s:"\c", s:ping_col, s:ping, s:"\n",
+						s:"\c", s:text_col, s:location, s:"\n",
+						s:name
+					));
+				}
+			} else {
+				if((type == PING_ALERT || type == PING_DEATH) && StrICmp(graphic, "") != 0) {
+					HudSetFont(graphic);
+					HudDrawText(0, "A");
+
+					HudSetFont("SMALLFONT");
+					HudDrawText(0, StrParam(
+						s:"\c", s:text_col, s:distance, s:"\n",
+						s:"\c", s:ping_col, s:ping, s:"     ", s:ping, s:"\n",
+						s:name
+					));
+				} else {
+					HudSetFont("SMALLFONT");
+					HudDrawText(0, StrParam(
+						s:"\c", s:text_col, s:distance, s:"\n",
+						s:"\c", s:ping_col, s:ping, s:"\n",
+						s:name
+					));
+				}
+			}
+
+			SetActivator(-1);
+		}
+
+		Delay(1);
+		time++;
+	}
+}
+
+function void PlayLocalPingSound(int type) {
+	int vol = FixedMul(127.0, GetUserCvar(ConsolePlayerNumber(), "trill_pb_new_selfvolume")) >> 16;
+	AmbientSound("apex/ping", vol);
+
+	switch(type) {
+		case PING_NOTIFY:
+		case PING_LOCATE:
+			AmbientSound("apex/ping", vol);
+			break;
+		case PING_ALERT:
+			AmbientSound("apex/alert", vol);
+			break;
+		case PING_HEAL:
+			AmbientSound("apex/heal", vol);
+			break;
+		case PING_HUH:
+			AmbientSound("apex/missing", vol);
+			break;
+		case PING_DEATH:
+			AmbientSound("apex/death", vol);
+			break;
+	}
+}
+
+function void PlayPingSound(int type, int cam, int x, int y, int z) {
+	int dX = x - GetActorX(cam);
+	int dY = y - GetActorY(cam);
+	int dZ = z - GetActorZ(cam);
+
+	int magnitude = ActorDistanceFromCoord(cam, x, y, z);
+	int u = UniqueTID();
+	if(magnitude > 0) {
+		SpawnForced(
+			StrParam(s:"Trill_PingActor_Sound_", i:type),
+			GetActorX(cam) + SOUND_OFFSET * FixedDiv(dX, magnitude),
+			GetActorY(cam) + SOUND_OFFSET * FixedDiv(dY, magnitude),
+			GetActorZ(cam) + SOUND_OFFSET * FixedDiv(dZ, magnitude),
+			u
+		);
+	} else {
+		SpawnForced(
+			StrParam(s:"Trill_PingActor_Sound_", i:type),
+			GetActorX(cam),
+			GetActorY(cam),
+			GetActorZ(cam),
+			u
+		);
+	}
+
+	SetActorVelocity(u, GetActorVelX(cam), GetActorVelY(cam), GetActorVelZ(cam), 0, 0);
+	Thing_ChangeTID(u, 0);
+}
+
+function int ActorDistanceFromCoord(int tid, int x, int y, int z) {
+	return XYZHypot(GetActorX(tid) - x, GetActorY(tid) - y, GetActorZ(tid) - z);
+}
+
+function bool showPing(int cpn, int originPlayer, int type, int callingPlayer) {
+	// LMS pings are public, including locate results and death pings. Personal
+	// toggles/mutes still apply. Chasecam and dead viewers may see them too.
+	if(ACS_NamedExecuteWithResult("uh_IsUnholyTeamMode")) {
+		if(cpn < 0 || cpn >= MAX_PLAYERS || originPlayer < 0 || originPlayer >= MAX_PLAYERS)
+			return false;
+		if(callingPlayer < 0 || callingPlayer >= MAX_PLAYERS)
+			return false;
+		if(!GetUserCvar(cpn, "trill_pb_show"))
+			return false;
+		if(GetUserCvar(cpn, StrParam(s:"trill_player_", i:callingPlayer, s:"_muted")))
+			return false;
+		if(GetPlayerInfo(originPlayer, PLAYERINFO_TEAM) == -1)
+			return false;
+		if(type == PING_DEATH)
+			return GetUserCvar(cpn, "trill_pb_showdeath") != 0;
+		return PlayerIsSpectator(originPlayer) != 1;
+	}
+
+	int cam = CheckPlayerCamera(cpn);
+
+
+	return (
+		// deal with basic toggles
+		GetUserCvar(cpn, "trill_pb_show") > 0
+		&& GetUserCvar(cpn, StrParam(s:"trill_player_", i:callingPlayer, s:"_muted")) == false
+
+		// deal with chasecam and friends
+		&& !GetPlayerChasecam(cpn)
+		&& (cam <= 0 || (cam > 0 && GetActorProperty(cam, APROP_Health) > 0))
+
+		// deal with players that no longer exist
+		&& GetPlayerInfo(originPlayer, PLAYERINFO_TEAM) != -1
+		&& PlayerIsSpectator(originPlayer) != 1
+
+		// deal with team allegiences
+		&& (
+			PlayerIsSpectator(cpn) == 1
+			|| cpn == originPlayer
+			|| (
+				GetPlayerInfo(originPlayer, PLAYERINFO_TEAM) == GetPlayerInfo(cpn, PLAYERINFO_TEAM)
+				&& GetPlayerInfo(originPlayer, PLAYERINFO_TEAM) < MAX_TEAMS
+			)
+		)
+
+		// deal with special pings
+		&& (type != PING_DEATH || (type == PING_DEATH && GetUserCvar(cpn, "trill_pb_showdeath")))
+		&& (type != PING_LOCATE || (type == PING_LOCATE && cpn == callingPlayer))
+	);
+}
+
+#define ARBITRARY_MUGSHOT_DIST 160.0
+function str getAlertGraphic(int cpn, int originPlayer, int x, int y, int z) {
+	if(!GetUserCvar(cpn, "trill_pb_showmugshot_alert") || !GetCvar("trill_pb_sv_allowidentifyingalerts"))
+		return "";
+
+	int closest = -1;
+	int closest_dist = 0;
+	for(int i = 0; i < MAX_PLAYERS; i++) {
+		// What no short circuiting does to a man
+		if(i == originPlayer)
+			continue;
+
+		if(!PlayerInGame(i))
+			continue;
+
+		if(ACS_NamedExecuteWithResult("uh_IsUnholyTeamMode")) {
+			if(ACS_NamedExecuteWithResult("uh_IsDisplayTeammate", originPlayer, i))
+				continue;
+		} else if(GetPlayerInfo(i, PLAYERINFO_TEAM) == GetPlayerInfo(originPlayer, PLAYERINFO_TEAM) && GetPlayerInfo(originPlayer, PLAYERINFO_TEAM) < MAX_TEAMS) {
+			continue;
+		}
+
+		if(GetActorProperty(i + PLN_TID, APROP_Health) <= 0)
+			continue;
+
+		if(GetActorProperty(i + PLN_TID, APROP_Alpha) == 0.0)
+			continue;
+
+		if(CheckFlag(i + PLN_TID, "DONTIDENTIFYTARGET"))
+			continue;
+
+		int dist = ActorDistanceFromCoord(i + PLN_TID, x, y, z);
+		if(dist > ARBITRARY_MUGSHOT_DIST)
+			continue;
+
+		if(closest != -1 && dist >= closest_dist)
+			continue;
+
+		if(!CheckSight(i + PLN_TID, originPlayer + PLN_TID, 0))
+			continue;
+
+		closest = i;
+		closest_dist = dist;
+	}
+
+	if(closest < 0)
+		return "";
+	return getMugshotGraphicFromTID(closest + PLN_TID);
+}
+
+function str getDeathGraphic(int pln) {
+	if(!GetUserCvar(ConsolePlayerNumber(), "trill_pb_showmugshot_death"))
+		return "";
+
+	return getMugshotGraphicFromTID(pln + PLN_TID);
+}
+
+function str getMugshotGraphicFromTID(int tid) {
+	str face = ACS_NamedExecuteWithResult("uh_GetTeamPortraitForTid", tid);
+	if(StrLen(face) != 0)
+		return face;
+	str class = GetActorClass(tid);
+
+	int u = UniqueTID();
+	if(!SpawnForced(StrParam(s:"PBMug_", s:class), 0, 0, 0, u, 0)) {
+		return "";
+	}
+	Thing_Remove(u);
+
+	return ACS_NamedExecuteWithResult(StrParam(s:"PBMug_", s:class), tid);
+}
+
+function str getPingTextColor(int cpn, int originPlayer) {
+	if(PlayerIsSpectator(cpn) == 1 && GetPlayerInfo(originPlayer, PLAYERINFO_TEAM) < MAX_TEAMS) {
+		return GetUserCvarString(cpn, StrParam(s:"trill_pb_textcolor", i:GetPlayerInfo(originPlayer,PLAYERINFO_TEAM)));
+	}
+
+	return GetUserCvarString(cpn, "trill_pb_textcolor");
+}
+
+function str getPingColor(int cpn, int type) {
+	switch(type) {
+		case PING_NOTIFY:
+		case PING_LOCATE:
+			return GetUserCvarString(cpn, "trill_pb_pingcolor");
+		case PING_ALERT:
+			return GetUserCvarString(cpn, "trill_pb_enemycolor");
+		case PING_HEAL:
+			return GetUserCvarString(cpn, "trill_pb_healcolor");
+		case PING_HUH:
+			return GetUserCvarString(cpn, "trill_pb_missingcolor");
+		case PING_DEATH:
+			return GetUserCvarString(cpn, "trill_pb_deathcolor");
+	}
+
+	return "[q6]";
+}
+
+function str getPingIcon(int type) {
+	switch(type) {
+		case PING_LOCATE:
+		case PING_NOTIFY:
+			return "<*>";
+		case PING_HEAL:
+			return "[+]";
+		case PING_HUH:
+			return "(?)";
+		case PING_DEATH:
+			return "_#_";
+		case PING_ALERT:
+			return "/!\\";
+	}
+
+	return "???";
+}
