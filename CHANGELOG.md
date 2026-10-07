@@ -1,5 +1,7 @@
 ## 4.0.0-beta.261007
 
+- 优化玩家旁观时按 Enter 打开的选人与加入界面：支持通过 TextField 手动输入职业名加入游戏
+- 补齐 Unbound 遗漏的自定义文本颜色定义：在 `TEXTCOLO` 中恢复 `w Ice`、`x Fire`、`y Sapphire` 及 `z Teal`，使 `\c[Teal]` 与 `\c[Sapphire]` 在界面和提示中正常渲染
 - 修复 Nega Super Arm（含 Shiny）投掷后抓取时限条仍闪烁的问题
 - Bonus Event 胜者确认自选 Boss 后，若在开战分配前旁观或掉线，保留所选 Boss 并强制交给另一名随机的在场存活玩家；胜者在倒计时内重新加入也不会取回选择
 - 按用途重新划分 Qwant 招式：2 远程、3 连射、4 近战、5 强力、6 范围／控制、7 防御／辅助；UIX weaponbar 与 wheel 同步使用实际槽位，保留元素属性、弹药和开局抽选规则
