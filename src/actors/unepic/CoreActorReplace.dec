@@ -2,6 +2,25 @@
 actor NoTeleportFX_Flag : PowerUp {
   powerup.duration 3
 }
+
+// A second damaging Time Stopper hit must not immediately apply a new freeze.
+actor UH_TimeStopHitBreak_F : Once {}
+
+// Own the single unfreeze operation; damage only removes TimeStoppedCounter.
+// This avoids popping another core_freezeplayer claim twice after a hit break.
+actor UH_TimeStoppedWatcher : BasicWatcher replaces TimeStoppedWatcher {
+  States {
+   Spawn:
+    TNT1 A 0
+   Watch:
+    TNT1 A 1 A_Warp(AAPTR_TARGET, 0, 0, 0, 0, WARPF_NOCHECKPOSITION)
+    TNT1 A 0 A_SpawnItemEx("TimeStopGFX", random(8, 64), 0, random(0, 64), 0, 0, 0, random(0, 359))
+    TNT1 A 0 A_JumpIfInTargetInventory("TimeStoppedCounter", 1, "Watch")
+    TNT1 A 0 A_GiveToTarget("TimeUnstopped")
+    TNT1 A 0 A_TakeFromTarget("UH_TimeStopHitBreak_F", 1)
+    stop
+  }
+}
 actor TeleportFX_Flag6 : NoTeleportFX_Flag {}
 
 actor UH_TeleportFogGiver : TeleportFogGiver replaces TeleportFogGiver {

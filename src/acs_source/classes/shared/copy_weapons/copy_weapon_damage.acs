@@ -260,6 +260,19 @@ script "uh_TodayDmgMul" (int damage, int allowneg) {
   SetResultValue(FixedMul(mul, damage));
 }
 
+// The engine sends this after armor absorption and before entering Pain.
+// The original Time Stopper hit has no counter yet, so it cannot break itself.
+script "uh_TimeStopBreakOnDamage" (int evt, int dmg, int dmgtype) EVENT {
+  if (evt != GAMEEVENT_ACTOR_DAMAGED || dmg <= 0)
+    terminate;
+  if (!SetActivator(0, AAPTR_DAMAGE_TARGET) || PlayerNumber() < 0)
+    terminate;
+  if (!CheckInventory("TimeStoppedCounter"))
+    terminate;
+  GiveInventory("UH_TimeStopHitBreak_F", 1);
+  TakeInventory("TimeStoppedCounter", 1);
+}
+
 script "uh_debug_ShowTodayDmgMul" (void) {
   int date = UH_DateToInt();
   int official = GetMegaOfficialCopyCount();
