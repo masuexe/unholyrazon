@@ -1,5 +1,7 @@
 ## 4.0.0-beta.261008
 
+- 将以下敌人改为 coop 杂兵：
+  - Biribaree
 - 修复 Zangief（含 Shiny）死亡时出现两个尸体的问题
 - 修复 DLC Centaurman 的 Option 在联机客户端提前消失、不可见及朝向不同步的问题；左右 Option 按玩家独立生成和补齐，多个 DLC Centaurman 不再互相占用名额；关闭 Option、减少数量或主人离场时正确回收，并修复两个 Option 同时清理时遗留一个的问题
 - 调整普通 Time Stopper 定身：目标再次受到护甲结算后的正伤害时提前解除，下一 tic 恢复移动；首次定身命中不触发解除，后续 Time Stopper 伤害不立即重新定身；全局时停分支保持原有规则
