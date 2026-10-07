@@ -72,6 +72,7 @@ actor OnFireItemFlag : Inventory {
 actor OnFire_P : CustomInventory {
   States {
    Pickup:
+    TNT1 A 0 A_JumpIf(CallACS("uh_OnFireInWater"), "WaterFX")
     TNT1 A 0 A_SpawnItemEx("OnFireItemExplode", 0, 0, 28, velx, vely, velz, 0, 8)
     TNT1 A 0 A_JumpIfInventory("OnFireItemFlag", 10, "OnFire9")
     TNT1 A 0 A_JumpIfInventory("OnFireItemFlag", 9, "OnFire8")
@@ -93,6 +94,9 @@ actor OnFire_P : CustomInventory {
    OnFire7: TNT1 A 0 A_SpawnItemEx("OnFireFX7") goto Done
    OnFire8: TNT1 A 0 A_SpawnItemEx("OnFireFX8") goto Done
    OnFire9: TNT1 A 0 A_SpawnItemEx("OnFireFX9") goto Done
+   WaterFX:
+    TNT1 A 0
+    goto Done
    Done:
     TNT1 A 0 A_JumpIf(!CallACS("UB_OnFireBurning"), "YouDie")
     stop
@@ -183,4 +187,61 @@ actor OnFireFX9 : OnFireFX0 {Translation "192:192=239:239", "198:198=253:253"}
 actor HazardTag_OnFireB : BasicACSDamager {
   DamageType "OnFireB"
   Obituary "%o became too hot to handle while fighting %k."
+}
+
+// core_damageactor supplies user_damage and the heat source's target pointer.
+// Retain the existing fire protection/pain semantics, including boss damage.
+actor OnFireWaterDamage_U : BasicACSDamager {
+  DamageType "OnFire"
+  Obituary "%o was boiled by %k's hot body."
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1 A_Explode(user_damage, 1, 0, 0, 1)
+    stop
+  }
+}
+actor OnFireWaterBossDamage_U : OnFireWaterDamage_U {
+  DamageType "OnFireB"
+}
+
+// Server-spawned visual: it must reach remote clients too.
+actor OnFireWaterBubble_U {
+  +NOINTERACTION
+  +NOGRAVITY
+  +FORCEXYBILLBOARD
+  -SOLID
+  Height 0
+  Radius 0
+  Scale 2.5
+  var int user_topz;
+  States {
+   Spawn:
+    PUBU E 0
+    PUBU E 0 A_ChangeVelocity(0, 0, 2, CVF_REPLACE)
+    // Native z is map units; the ACS-supplied waterline is 16.16 fixed.
+    PUBU EEE 4 A_JumpIf(z >= user_topz / 65536.0, "Pop")
+   Pop:
+    PUBU F 2
+    stop
+  }
+}
+actor OnFireWaterSteam_U {
+  +NOINTERACTION
+  +NOGRAVITY
+  +FORCEXYBILLBOARD
+  -SOLID
+  Height 0
+  Radius 0
+  Scale 1.5
+  RenderStyle Translucent
+  Alpha 0.4
+  States {
+   Spawn:
+    POOF A 0
+    POOF A 0 A_ChangeVelocity(0, 0, 1, CVF_REPLACE)
+    POOF A 0 A_PlaySound("misc/piratebubble", CHAN_BODY, 0.25)
+    POOF AAAAAA 3 A_FadeOut(0.07)
+    stop
+  }
 }

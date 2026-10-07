@@ -1,0 +1,191 @@
+// UH_TOOLS is the sole UH consumer of 8BDT. Keep map water metadata here.
+// Registered tags share temperature; GLOBAL_WATER_TID uses local heat only.
+// Heights are 16.16 fixed. Heat is measured in tics: 18 to boil (~0.5 s),
+// capped at 35; without a source it loses one unit every three tics.
+#define UH_WATER_SLOTS 128
+#define UH_WATER_PLAYERS 64
+#define UH_WATER_STEP 3
+#define UH_WATER_BOIL 18
+#define UH_WATER_HEAT_MAX 35
+#define UH_WATER_PULSE 18
+#define UH_WATER_RADIUS 128
+// Raw HP damage per pulse/layer; standard UH players have 1000 HP.
+#define UH_WATER_DAMAGE 80
+
+int uhwaterheat[UH_WATER_SLOTS];
+int uhwaterpower[UH_WATER_SLOTS];
+int uhwatersourcewater[UH_WATER_PLAYERS];
+int uhwatersourcestrength[UH_WATER_PLAYERS];
+int uhwatersourceseen[UH_WATER_PLAYERS];
+int uhwaterlocalheat[UH_WATER_PLAYERS];
+int uhwatercurrent[UH_WATER_PLAYERS];
+
+function bool UH_WaterPlayerAlive(int pn) {
+  return PlayerInGame(pn) && !PlayerIsSpectator(pn) &&
+    GetActorProperty(pn + 1000, APROP_Health) > 0 &&
+    !CheckActorInventory(pn + 1000, "IsDead");
+}
+
+function int UH_SubmergedWater(int tid) {
+  int tag = findActorWater(tid);
+  if (tag != 0 && isZPosInWaterTag(tag,
+      GetActorZ(tid) + GetActorProperty(tid, APROP_Height) / 2)) {
+    return tag;
+  }
+  return 0;
+}
+
+// Called on the player by OnFire_P. Suppress the air explosion immediately,
+// including the warm-up period, but retain the existing self-burn callback.
+script "uh_OnFireInWater" (void) {
+  SetResultValue(UH_SubmergedWater(ActivatorTID()) != 0);
+}
+
+// Percentage before the target's usual fire protection/armor is applied.
+function int UH_WaterDamagePercent(int source, int victim) {
+  if (source == victim) {return 0;}
+  if (GetCVar("lastmanstanding")) {
+    if (ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", source, victim)) {
+      return 50;
+    }
+    return 100;
+  }
+  if (IsTeamGame && GetPlayerInfo(source, PLAYERINFO_TEAM) ==
+      GetPlayerInfo(victim, PLAYERINFO_TEAM)) {return 50;}
+  return 100;
+}
+
+function void UH_WaterBubble(int tid, int tag, bool boiling) {
+  int x = GetActorX(tid) + Random(-12, 12) * 1.0;
+  int y = GetActorY(tid) + Random(-12, 12) * 1.0;
+  int z = GetActorZ(tid) + GetActorProperty(tid, APROP_Height) / 2;
+  int fx = UniqueTID();
+  int top = getWaterTopZ(tag);
+  if (SpawnForced("OnFireWaterBubble_U", x, y, z, fx, 0)) {
+    SetUserVariable(fx, "user_topz", top);
+    Thing_ChangeTID(fx, 0);
+  }
+  // Upwards/full-sector water has no exposed upper surface. Only ordinary
+  // downwards water receives a steam puff at its registered waterline.
+  if (boiling && GetUserVariable(tag, "user_direction") == 0) {
+    SpawnForced("OnFireWaterSteam_U", x, y, top, 0, 0);
+  }
+}
+
+script "uh_BoilingWater" OPEN {
+  int pulse = 0;
+  int p;
+  int i;
+  int tag;
+  int idx;
+  int strength;
+  int victim;
+  int source;
+  int best;
+  int bestdamage;
+  int damage;
+  bool hot;
+  // OPEN runs server-side only; temperature and damage never depend on clients.
+  while (true) {
+    for (i = 0; i < UH_WATER_SLOTS; i++) {uhwaterpower[i] = 0;}
+    for (p = 0; p < UH_WATER_PLAYERS; p++) {
+      uhwatercurrent[p] = 0;
+      if (!UH_WaterPlayerAlive(p)) {
+        uhwatersourcewater[p] = 0;
+        uhwatersourcestrength[p] = 0;
+        uhwaterlocalheat[p] = 0;
+        continue;
+      }
+      tag = UH_SubmergedWater(p + 1000);
+      uhwatercurrent[p] = tag;
+      strength = CheckActorInventory(p + 1000, "OnFireItemFlag");
+      if (tag == 0 || strength == 0 ||
+          !CheckActorInventory(p + 1000, "SUDDENLYONFIRE")) {
+        uhwaterlocalheat[p] = 0;
+        // Registered water retains its contributor for cooling/kill credit.
+        continue;
+      }
+      uhwatersourcewater[p] = tag;
+      uhwatersourcestrength[p] = strength;
+      uhwatersourceseen[p] = Timer();
+      if (tag == GLOBAL_WATER_TID) {
+        uhwaterlocalheat[p] = min(UH_WATER_HEAT_MAX,
+          uhwaterlocalheat[p] + UH_WATER_STEP);
+      } else {
+        uhwaterlocalheat[p] = 0;
+        idx = findWaterByTag(tag);
+        if (idx >= 0 && idx < UH_WATER_SLOTS) {
+          uhwaterpower[idx] = max(uhwaterpower[idx], strength);
+        }
+      }
+    }
+    for (i = 0; i < UH_WATER_SLOTS; i++) {
+      if (uhwaterpower[i] > 0) {
+        uhwaterheat[i] = min(UH_WATER_HEAT_MAX,
+          uhwaterheat[i] + UH_WATER_STEP);
+      } else {
+        uhwaterheat[i] = max(0, uhwaterheat[i] - 1);
+      }
+    }
+    // Do not let an old contributor claim a later reheating of the same pool.
+    for (p = 0; p < UH_WATER_PLAYERS; p++) {
+      tag = uhwatersourcewater[p];
+      if (tag == 0 || tag == GLOBAL_WATER_TID) {continue;}
+      idx = findWaterByTag(tag);
+      if (idx < 0 || idx >= UH_WATER_SLOTS || uhwaterheat[idx] == 0 ||
+          Timer() - uhwatersourceseen[p] > UH_WATER_HEAT_MAX * UH_WATER_STEP) {
+        uhwatersourcewater[p] = 0;
+        uhwatersourcestrength[p] = 0;
+      }
+    }
+    pulse += UH_WATER_STEP;
+    if (pulse >= UH_WATER_PULSE) {
+      pulse = 0;
+      for (victim = 0; victim < UH_WATER_PLAYERS; victim++) {
+        tag = uhwatercurrent[victim];
+        if (tag == 0) {continue;}
+        hot = false;
+        best = -1;
+        bestdamage = 0;
+        if (tag != GLOBAL_WATER_TID) {
+          idx = findWaterByTag(tag);
+          if (idx < 0 || idx >= UH_WATER_SLOTS ||
+              uhwaterheat[idx] < UH_WATER_BOIL) {
+            if (CheckActorInventory(victim + 1000, "SUDDENLYONFIRE")) {
+              UH_WaterBubble(victim + 1000, tag, false);
+            }
+            continue;
+          }
+          hot = true;
+        }
+        for (source = 0; source < UH_WATER_PLAYERS; source++) {
+          if (uhwatersourcewater[source] != tag ||
+              !UH_WaterPlayerAlive(source)) {continue;}
+          if (tag == GLOBAL_WATER_TID) {
+            if (uhwaterlocalheat[source] < UH_WATER_BOIL ||
+                XYZDistance(source + 1000, victim + 1000) > UH_WATER_RADIUS ||
+                !CheckSight(source + 1000, victim + 1000, 0)) {continue;}
+            hot = true;
+          }
+          damage = UH_WATER_DAMAGE * uhwatersourcestrength[source] *
+            UH_WaterDamagePercent(source, victim) / 100;
+          if (damage <= bestdamage) {continue;}
+          best = source;
+          bestdamage = damage;
+        }
+        if (hot || uhwaterlocalheat[victim] > 0) {
+          UH_WaterBubble(victim + 1000, tag, hot);
+        }
+        if (best >= 0) {
+          str damager = "OnFireWaterDamage_U";
+          if (CheckActorInventory(best + 1000, "BAWS")) {
+            damager = "OnFireWaterBossDamage_U";
+          }
+          ACS_NamedExecuteWithResult("core_damageactor", damager,
+            bestdamage, victim + 1000, best + 1000);
+        }
+      }
+    }
+    Delay(UH_WATER_STEP);
+  }
+}
