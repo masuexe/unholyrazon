@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261007
 
+- 补齐 Razon 3 的服主自定义阈值：连胜、连败、Hell Mark、Speciman 击杀、Gauntlet 宝藏兑换、Bad LMS 次数及 Bonus Event 回合间隔，支持在 Server Options → Game Rules → Round Thresholds 中直接输入 1～100 并保存配置；保留当前默认值，宝藏兑换只扣除设定数量并保留余数；配置说明见 [回合阈值](docs/round-thresholds.md)
 - 将 Bonus Event 随机选择接入与 Boss 相同的低频优先机制：优先抽取出现次数最少的合格事件，同次数时按原权重随机；保留人数限制、上一场排除、强制指定及 EX 升级规则，仅在事件实际启动时计数，EX 计入对应基础事件的次数，记录跨回合与地图保留
 - 优化玩家旁观时按 Enter 打开的选人与加入界面：支持通过 TextField 手动输入职业名加入游戏
 - 补齐 Unbound 遗漏的自定义文本颜色定义：在 `TEXTCOLO` 中恢复 `w Ice`、`x Fire`、`y Sapphire` 及 `z Teal`，使 `\c[Teal]` 与 `\c[Sapphire]` 在界面和提示中正常渲染
