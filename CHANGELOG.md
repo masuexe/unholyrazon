@@ -2,6 +2,7 @@
 
 - 将以下敌人改为 coop 杂兵：
   - Biribaree
+  - Blader
   - KillerBullet：先沿原朝向飞行，发现玩家后加速直线冲向目标；穿过玩家，撞墙或被击毁时爆炸
 - 修复 Zangief（含 Shiny）死亡时出现两个尸体的问题
 - 修复 DLC Centaurman 的 Option 在联机客户端提前消失、不可见及朝向不同步的问题；左右 Option 按玩家独立生成和补齐，多个 DLC Centaurman 不再互相占用名额；关闭 Option、减少数量或主人离场时正确回收，并修复两个 Option 同时清理时遗留一个的问题

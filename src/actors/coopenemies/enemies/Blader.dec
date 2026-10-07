@@ -1,0 +1,49 @@
+actor BladerU : GenericRobot replaces Blader {
+  Health 100
+  Radius 16
+  Height 24
+  Speed 5
+  Damage (300)
+  +NOGRAVITY
+  +LOOKALLAROUND
+  +DONTBLAST
+  -SOLID
+  DropItem ""
+  Obituary "%o was struck by a Blader."
+  var int user_flyAngle;
+  var int user_motionTics;
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SetUserVar("user_flyAngle", angle)
+    TNT1 A 0 ACS_NamedExecuteAlways("sp_enemystart", 0)
+   Patrol:
+    BLAD A 0 A_ClearTarget
+    BLAD A 0 A_SetAngle(user_flyAngle)
+    BLAD A 0 A_ChangeVelocity(5, 0, 0, CVF_RELATIVE | CVF_REPLACE)
+   Look:
+    BLAD AB 4 A_LookEx(LOF_NOSOUNDCHECK, 0, 0, 0, 360, "Dive")
+    loop
+   Dive:
+    BLAD A 0 A_Stop
+    BLAD A 0 A_SetUserVar("user_motionTics", 0)
+    BLAD A 0 A_SkullAttack(20)
+   Diving:
+    BLAD A 1 A_SetUserVar("user_motionTics", user_motionTics + 1)
+    BLAD A 0 A_JumpIf(user_motionTics >= 12 || z <= floorz + 4, "Ascend")
+    BLAD B 1
+    goto Diving
+   // A skull charge returns to See after hitting an actor or a wall.
+   See:
+   Ascend:
+    BLAD A 0 A_ChangeFlag("SKULLFLY", 0)
+    BLAD A 0 A_Stop
+    BLAD A 0 A_SetUserVar("user_motionTics", 0)
+    BLAD A 0 A_ChangeVelocity(5, 0, 8, CVF_RELATIVE | CVF_REPLACE)
+   Ascending:
+    BLAD A 1 A_SetUserVar("user_motionTics", user_motionTics + 1)
+    BLAD A 0 A_JumpIf(user_motionTics >= 9 || ceilingz - z <= height + 4, "Patrol")
+    BLAD B 1
+    goto Ascending
+  }
+}
