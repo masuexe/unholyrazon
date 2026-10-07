@@ -1,7 +1,61 @@
 // Bonus-event validation and event-state helpers for library unholy.
 // This fragment is textually included by uh_funclib.acs.
 // Event data lives in the UHDT dynamic table (DefineBonusEvent); these helpers
-// only read it — validity, eligibility and classification are database-driven.
+// read its metadata; appearance history belongs to the round core's world
+// array. Validity, eligibility and classification remain database-driven.
+
+// Count actual appearances; the picker reads only and abandoned countdown
+// previews never advance history. Forced events count when they start too.
+function void CommitBonusEventHistory(int id) {
+  if (id < 0 || id >= UH_MAX_BONUS_EVENTS || !IsBonusEventDefined(id))
+    return;
+  int old = uh_eventpickcount[id];
+  uh_eventpickcount[id] = old + 1;
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"Bonus event pick count ", s:GetBonusEventName(id),
+    s:" (id ", i:id, s:"): ", i:old, s:" -> ", i:old + 1));
+}
+
+// An EX upgrade is an appearance of its base family as well: otherwise an
+// upgraded draw would leave the base artificially below the other candidates.
+function int GetBonusEventFamilyPickCount(int id) {
+  int count = uh_eventpickcount[id];
+  int exid = ResolveBonusEventEX(id);
+  if (exid != UHBE_FAIL)
+    count += uh_eventpickcount[exid];
+  return count;
+}
+
+// Boss-style least-seen selection, preserving UHDT eligibility and using the
+// registered weights only to break ties. Retry without the last-event
+// exclusion only if it leaves no eligible candidate, as PickBonusEvent does.
+function int PickLeastSeenBonusEvent(int plccount, int excludedid) {
+  for (int pass = 0; pass < 2; pass++) {
+    int best = UHBE_FAIL;
+    int bestcount = 0;
+    int sum = 0;
+    for (int id = 0; id < UH_MAX_BONUS_EVENTS; id++) {
+      if (!UH_BonusEligible(id, plccount, excludedid))
+        continue;
+      int count = GetBonusEventFamilyPickCount(id);
+      int weight = GetBonusEventWeight(id);
+      if (best == UHBE_FAIL || count < bestcount) {
+        best = id;
+        bestcount = count;
+        sum = weight;
+      }
+      else if (count == bestcount) {
+        sum += weight;
+        // Weighted reservoir sampling among the least-seen rows.
+        if (random(1, sum) <= weight)
+          best = id;
+      }
+    }
+    if (best != UHBE_FAIL)
+      return best;
+    excludedid = -1;
+  }
+  return UHBE_FAIL;
+}
 
 // EX counter tick: called after a RANDOM pick only (forced events bypass it).
 // The counter stays in the world array (per base event id, survives map

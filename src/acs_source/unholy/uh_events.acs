@@ -42,10 +42,8 @@ script "ub_InitiateUltraBoss" (int Ultra) {
 
 script "ub_EventManagementACS" (int perform) {
   if (perform == -2) {
-    // Database pick: weight/player-count filtering and last-event exclusion
-    // happen inside PickBonusEvent (a single-candidate pool repeats the last
-    // event instead of looping — documented in UHDT).
-    eventdataarr[EVENTDATA_MAINEVENT] = PickBonusEvent(PlayerCount(), eventdataarr[EVENTDATA_LASTEVENT]);
+    // Least-seen first; registered weights break ties within the eligible pool.
+    eventdataarr[EVENTDATA_MAINEVENT] = PickLeastSeenBonusEvent(PlayerCount(), eventdataarr[EVENTDATA_LASTEVENT]);
     bool eventselected = false;
 
     int rawcvar = CheckClearCVar("uh_sv_bonuseventnum", -1);
@@ -112,6 +110,7 @@ script "ub_EventManagementACS" (int perform) {
     // it (uh_DemoneyeMorph rewrites the target's life status to PLS_EYE).
     UH_TeamInfo_BroadcastOneVsAll();
     if (RunBonusEventStart(startevent)) {
+      CommitBonusEventHistory(startevent);
       // Core-owned end-callback observer: covers the engine-driven LMS ending
       // path (FFA / all-eye) that has no ACS ending script.  Idempotent with
       // UH_StartStandardBonusWatcher — the one-shot guard dedupes.
