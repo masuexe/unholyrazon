@@ -162,26 +162,6 @@ accepts the two random bosses of combo 209; `--forced1`/`--forced2` supply the
 `uh_sv_forcedboss1/2` pair for combo 206; `--resolve-wait` raises the
 post-inspection window for long high-HP duels. It does not drive real
 projectiles; that remains the manual gameplay gate.
-
-## DLC Centaurman option regression
-
-For DLC Centaurman option networking:
-
-```bash
-node tools/mcp/centaur-option-test.mjs --json
-```
-
-This uses the smoke profile with a dedicated LMS server and one remote client.
-It forces two DLC Centaurman owners and freezes the bots using the existing
-server diagnostic, then checks all five option modes, independent right/left
-slots, F-mode muzzle angles, player-owned AltFire shots, stack changes, repair
-from the surviving left option, simultaneous cleanup, reconnect snapshots, and
-owner disconnect cleanup. The repair probe invalidates the right slot's server
-handle so the old satellite retires and the left satellite fills the vacancy.
-The visibility assertions read actors on the remote client; server counts alone
-cannot pass this gate. It requires local TCP/UDP ports and leaves its screenshot
-at `/tmp/centaur-option-fixed.png`.
-
 ## PK3 validation
 
 Before launching after a packaging change, run the read-only archive check:

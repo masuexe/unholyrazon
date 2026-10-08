@@ -291,6 +291,6 @@ All override `DeselectDeath` to check `uh_IsItOnline` for net sync.
 
 ## Fast MCP debug loop
 
-Use `tools/mm8bdm-v6b-linux.launch.json` for the configured Linux MCP and
-`tools/mm8bdm-v6b.launch.json` for Windows clients. Commands, profile choices,
+Use `tools/mm8bdm-v6b.launch.json` for both Linux MCP and Windows clients.
+Commands, profile choices,
 direct-call guidance, and build/runtime traps live in `tools/README.md`.

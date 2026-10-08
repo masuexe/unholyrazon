@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { loadResolvedProfile } from "./resolve-launch-profile.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const DEFAULT_PROFILES = join(ROOT, "tools/mm8bdm-v6b-linux.launch.json");
+const DEFAULT_PROFILES = join(ROOT, "tools/mm8bdm-v6b.launch.json");
 
 function usage() {
   return `Usage: direct-startup-test.mjs [options]

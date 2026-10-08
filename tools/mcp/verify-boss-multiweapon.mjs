@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { launchInstanceArgs, loadResolvedProfile } from "../resolve-launch-profile.mjs";
 
 const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const DEFAULT_PROFILE = join(PROJECT_ROOT, "tools/mm8bdm-v6b-linux.launch.json");
+const DEFAULT_PROFILE = join(PROJECT_ROOT, "tools/mm8bdm-v6b.launch.json");
 const SERVER_RUNNER = join(PROJECT_ROOT, "tools/mcp/server-runner.mjs");
 
 function textFromResult(result) {
