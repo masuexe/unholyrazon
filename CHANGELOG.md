@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261009
 
+- 重分 Bonus Event 随机池：Boss FFA、Football FFA 加入无人数门槛池，仅 Parade、Darkness、Brick、Mosquito 保留 12 人门槛；Satan Seal FFA 改为无人数门槛的 Boss FFA EX 版，Boss FFA 随机抽中三次后第四次升级，沿用低频优先选择及 EX 家族计数
 - 修复变身恶魔眼后仍保留原角色多段跳和蹬墙跳的问题：开局 Bonus Event、钱袋及钱炸弹变身统一清除继承的跳跃次数、无限跳标记和旧跳跃高度，仅在首次初始化时清理，保留后续恶魔眼自身能力的发放
 - 修复 Clownpiece 符卡名、倒计时和奖励状态在联机远端玩家及旁观者处不显示的问题：客户端绘制不再受 Boss 激活者限制，并防止旧阶段的清除、失败通知或计时脚本覆盖新阶段 HUD
 - 调整 MegaMan Noise Crush 二阶段声波：碰到地板后立即检查回收，使近距离射地板也能回收充能并接三阶段
