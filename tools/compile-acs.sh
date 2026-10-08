@@ -49,6 +49,8 @@ echo "== uh_acsutils =="
 echo "== uh_log =="
 "$ACC" $INC "src/acs_source/_imports/uh_log.acs" "$OUT/uh_log.o" || fail=1
 echo "== uhdt =="
+# Import-only host Bonus Event settings, read by UHDT. No LOADACS entry.
+"$ACC" $INC "src/acs_source/_imports/uhbeset.acs" "$OUT/UHBESET.o" || fail=1
 "$ACC" $INC "src/acs_source/_imports/uhdt.acs" "$OUT/uhdt.o" || fail=1
 echo "== uhdbcrud =="
 # Import-only CRUD logic. UHADDR imports this lump; it has no LOADACS entry.

@@ -187,6 +187,15 @@ includes DEBUG. The full launch profiles and versus test enable level 4.
 
 ## Rebuilding ACS and the PK3 locally
 
+Bonus Event host overrides use the import-only `UHBESET` library
+(`src/acs/UHBESET.o`, absent from `LOADACS`). `tools/compile-acs.sh` compiles it
+before UHDT. The console commands and configuration format are documented in
+[Bonus Event settings](../docs/bonus-event-settings.md). Run
+`python3 tools/check_bonus_event_settings.py` for the parser, command queue,
+override, persistence, addon identity and reset regression checks. This check
+uses GCC to run the integer/string-only ACS functions with test stubs;
+it does not replace ACC compilation or an engine test.
+
 ACS edits only take effect once the affected library is recompiled with the
 native Linux ACC into `src/acs/` and the PK3 is repackaged. Pick the aggregator
 that includes the file you edited — `src/LOADACS` lists every library, and each

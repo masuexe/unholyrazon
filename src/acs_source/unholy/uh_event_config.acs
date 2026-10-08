@@ -1,0 +1,199 @@
+// Host aliases enqueue text; a server OPEN watcher drains the queue. A single
+// last-command mailbox would lose cfg lines executed in one tic. Neither the
+// watcher nor its handler is NET/CLIENTSIDE; client queues cannot reach them.
+// RCON executes aliases on the server. Avoid one cheating broadcast per puke.
+
+function int UH_EC_Field(str name) {
+  if (!StrICmp(name, "mode")) return UH_ER_MODE;
+  if (!StrICmp(name, "weight")) return UH_ER_WEIGHT;
+  if (!StrICmp(name, "minplayers")) return UH_ER_MIN;
+  if (!StrICmp(name, "maxplayers")) return UH_ER_MAX;
+  return -1;
+}
+
+function str UH_EC_ModeName(int mode) {
+  if (mode == UH_ER_RANDOM) return "random";
+  if (mode == UH_ER_FORCED) return "forced";
+  return "disabled";
+}
+
+function str UH_EC_Token(str record, int part) {
+  int start = 0;
+  int current = 0;
+  for (int pos = 0; pos <= StrLen(record); pos++) {
+    if (pos == StrLen(record) || GetChar(record, pos) == ':') {
+      if (current == part) return StrMid(record, start, pos - start);
+      current++;
+      start = pos + 1;
+    }
+  }
+  return "";
+}
+
+function str UH_EC_Source(int id, str stem, int field) {
+  if (UH_ER_Get(stem, field) >= 0) return "override";
+  if (id == UHBE_FAIL) return "pending registration";
+  if (field == UH_ER_MIN &&
+      (!StrICmp(stem, "demoneye_parade") || !StrICmp(stem, "clone_darkness") ||
+       !StrICmp(stem, "brick_eyes") || !StrICmp(stem, "mosquito_eyes")))
+    return "global uh_sv_bonusminplayers";
+  if (field == UH_ER_WEIGHT && GetBonusEventMode(id) == UH_ER_RANDOM &&
+      uh_beint[id][UHBE_INT_WEIGHT] == 0) return "random mode default";
+  return "registration";
+}
+
+function void UH_EC_Show(str stem) {
+  int id = FindBonusEventByStem(stem);
+  if (id == UHBE_FAIL) {
+    Log(s:"Event ", s:stem, s:" is not registered.");
+    if (UH_ER_Get(stem, UH_ER_MODE) < 0 && UH_ER_Get(stem, UH_ER_WEIGHT) < 0 &&
+        UH_ER_Get(stem, UH_ER_MIN) < 0 && UH_ER_Get(stem, UH_ER_MAX) < 0) {
+      Log(s:"  No saved overrides."); return;
+    }
+    Log(s:"  Saved overrides wait for its addon.");
+    Log(s:"  mode=", i:UH_ER_Get(stem, UH_ER_MODE),
+      s:" weight=", i:UH_ER_Get(stem, UH_ER_WEIGHT),
+      s:" minplayers=", i:UH_ER_Get(stem, UH_ER_MIN),
+      s:" maxplayers=", i:UH_ER_Get(stem, UH_ER_MAX), s:" (-1 means inherit)");
+    return;
+  }
+  Log(s:"Event ", s:GetBonusEventStem(id), s:" (", s:GetBonusEventName(id), s:"):");
+  Log(s:"  mode=", s:UH_EC_ModeName(GetBonusEventMode(id)),
+    s:" [", s:UH_EC_Source(id, stem, UH_ER_MODE), s:"]");
+  Log(s:"  weight=", i:GetBonusEventWeight(id),
+    s:" [", s:UH_EC_Source(id, stem, UH_ER_WEIGHT), s:"]");
+  Log(s:"  minplayers=", i:GetBonusEventMinPlayers(id),
+    s:" [", s:UH_EC_Source(id, stem, UH_ER_MIN), s:"]");
+  Log(s:"  maxplayers=", i:GetBonusEventMaxPlayers(id),
+    s:" [", s:UH_EC_Source(id, stem, UH_ER_MAX), s:"]");
+  int maximum = GetBonusEventMaxPlayers(id);
+  if (maximum > 0 && maximum < GetBonusEventMinPlayers(id))
+    Log(s:"  No player count meets these limits. Reduce the minimum or increase the maximum.");
+}
+
+function void UH_EC_List(void) {
+  for (int id = 0; id < UH_MAX_BONUS_EVENTS; id++)
+    if (IsBonusEventDefined(id)) UH_EC_Show(GetBonusEventStem(id));
+  for (int row = 0; row < UH_ER_Count(); row++) {
+    str pending = UH_ER_StemAt(row);
+    if (FindBonusEventByStem(pending) == UHBE_FAIL) UH_EC_Show(pending);
+  }
+}
+
+// Read-only menu display works for connected clients too. It reads the
+// synchronized server CVAR and local metadata; it cannot edit server rules.
+script "uh_EventConfigPrint" (void) CLIENTSIDE {
+  UH_EC_List();
+}
+
+function void UH_EC_Run(str record) {
+  str op = UH_EC_Token(record, 0);
+  str stem = UH_EC_Token(record, 1);
+  str fieldname = UH_EC_Token(record, 2);
+  str input = UH_EC_Token(record, 3);
+  if (StrLen(UH_EC_Token(record, 4)) > 0) {
+    Log(s:"Event settings: too many arguments."); return;
+  }
+  if (!StrICmp(op, "list") || !StrICmp(op, "export") || !StrICmp(op, "reload")) {
+    if (StrLen(stem) || StrLen(fieldname) || StrLen(input)) {
+      Log(s:"Event settings: this command takes no arguments."); return;
+    }
+    if (!StrICmp(op, "reload")) {
+      if (UH_ER_Load()) Log(s:"Event settings loaded from uh_sv_eventrules.");
+      return;
+    }
+    if (!StrICmp(op, "export")) {
+      if (!UH_ER_Load()) return;
+      Log(s:"uh_sv_eventrules \"", s:GetCVarString("uh_sv_eventrules"), s:"\"");
+      return;
+    }
+    UH_EC_List();
+    return;
+  }
+  if (!UH_ER_ValidStem(stem)) {
+    Log(s:"Event settings: use an event stem with 1-63 letters, digits, underscores, hyphens or periods.");
+    return;
+  }
+  if (!StrICmp(op, "show")) {
+    if (StrLen(fieldname) || StrLen(input)) {
+      Log(s:"Usage: uh_event_show <stem>"); return;
+    }
+    UH_EC_Show(stem); return;
+  }
+  int field = UH_EC_Field(fieldname);
+  if (!StrICmp(op, "reset")) {
+    if (StrLen(input) || (StrLen(fieldname) && field < 0)) {
+      Log(s:"Usage: uh_event_reset <stem> [mode|weight|minplayers|maxplayers]"); return;
+    }
+    if (!UH_ER_Edit(stem, field, -1)) {
+      Log(s:"Event reset rejected; previous overrides remain active."); return;
+    }
+    UH_EC_Show(stem); return;
+  }
+  if (StrICmp(op, "set") || field < 0 || !StrLen(input)) {
+    Log(s:"Usage: uh_event_set <stem> <mode|weight|minplayers|maxplayers> <value>"); return;
+  }
+  int value = UH_ER_Number(input);
+  if (field == UH_ER_MODE) {
+    value = -2;
+    if (!StrICmp(input, "random")) value = UH_ER_RANDOM;
+    if (!StrICmp(input, "forced")) value = UH_ER_FORCED;
+    if (!StrICmp(input, "disabled")) value = UH_ER_DISABLED;
+  }
+  if (value < 0 || !UH_ER_ValidValue(field, value)) {
+    Log(s:"Event settings: mode=random/forced/disabled, weight=1-1000000, player limits=0-64."); return;
+  }
+  int id = FindBonusEventByStem(stem);
+  if (id != UHBE_FAIL) {
+    if (field == UH_ER_MODE && value == UH_ER_RANDOM &&
+        !CheckScript(GetBonusEventStartCallback(id), true)) {
+      Log(s:"Event settings: the random event needs a valid start callback."); return;
+    }
+    int minimum = GetBonusEventMinPlayers(id);
+    int maximum = GetBonusEventMaxPlayers(id);
+    if (field == UH_ER_MIN) minimum = value;
+    if (field == UH_ER_MAX) maximum = value;
+    if ((field == UH_ER_MIN || field == UH_ER_MAX) && maximum > 0 && minimum > maximum) {
+      Log(s:"Event settings: maxplayers must be 0 or at least minplayers."); return;
+    }
+  }
+  if (!UH_ER_Edit(stem, field, value)) {
+    Log(s:"Event update rejected; check the saved data, player limits and storage capacity."); return;
+  }
+  UH_EC_Show(stem);
+}
+
+script "uh_EventConfigCommands" (void) {
+  // Consume all queued commands, including exec lines that ran in one tic.
+  SetCVar("uh_event_configbusy", 1);
+  int total = 0;
+  while (StrLen(GetCVarString("uh_event_commands")) > 0) {
+    str queue = GetCVarString("uh_event_commands");
+    SetCVarString("uh_event_commands", "");
+    if (StrLen(queue) > UH_ER_TEXT_CAP) {
+      SetCVar("uh_event_configbusy", 0);
+      Log(s:"Event command queue is too long; split the configuration file."); terminate;
+    }
+    int start = 0;
+    for (int pos = 0; pos < StrLen(queue); pos++) {
+      if (GetChar(queue, pos) != '|') continue;
+      if (++total > 256) {
+        SetCVar("uh_event_configbusy", 0);
+        Log(s:"Event command limit reached; split the configuration file."); terminate;
+      }
+      UH_EC_Run(StrMid(queue, start, pos - start));
+      start = pos + 1;
+      // One edit per tic keeps large cfg files below ACS's instruction limit.
+      Delay(1);
+    }
+  }
+  SetCVar("uh_event_configbusy", 0);
+}
+
+script "uh_EventConfigWatch" OPEN {
+  while (true) {
+    if (!GetCVar("uh_event_configbusy") && StrLen(GetCVarString("uh_event_commands")))
+      ACS_NamedExecute("uh_EventConfigCommands", 0);
+    Delay(1);
+  }
+}

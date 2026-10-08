@@ -1,0 +1,189 @@
+// Import-only host overrides. This library must not import UHDT: UHDT reads
+// these fields, and registration remains independent of host configuration.
+#library "UHBESET"
+#include "zcommon.acs"
+
+#libdefine UH_ER_MODE 0
+#libdefine UH_ER_WEIGHT 1
+#libdefine UH_ER_MIN 2
+#libdefine UH_ER_MAX 3
+#libdefine UH_ER_FIELDS 4
+#libdefine UH_ER_DISABLED 0
+#libdefine UH_ER_FORCED 1
+#libdefine UH_ER_RANDOM 2
+#libdefine UH_ER_CAP 256
+#libdefine UH_ER_TEXT_CAP 16384
+
+// Double-buffered parse/edit: invalid input never replaces the last good data.
+// No numeric event ids or ACS string handles are saved across map changes.
+str uh_er_stems[2][UH_ER_CAP];
+int uh_er_values[2][UH_ER_CAP][UH_ER_FIELDS];
+int uh_er_counts[2];
+int uh_er_bank;
+str uh_er_seen = "";
+bool uh_er_valid = true;
+// Consecutive effective-field reads for one event need only one stem lookup.
+str uh_er_laststem = "";
+int uh_er_lastrow = -2;
+
+function bool UH_ER_ValidStem(str stem) {
+  int length = StrLen(stem);
+  if (length < 1 || length > 63) return false;
+  for (int i = 0; i < length; i++) {
+    int ch = GetChar(stem, i);
+    // Token identity: no whitespace, quote, command or record delimiters.
+    if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+          (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' || ch == '.'))
+      return false;
+  }
+  return true;
+}
+
+// Strict decimal parser; -1 is the private "inherit" value. No atoi coercion.
+function int UH_ER_Number(str token) {
+  if (!StrCmp(token, "-1")) return -1;
+  int length = StrLen(token);
+  if (length < 1 || length > 7) return -2;
+  int value = 0;
+  for (int i = 0; i < length; i++) {
+    int ch = GetChar(token, i);
+    if (ch < '0' || ch > '9') return -2;
+    value = value * 10 + ch - '0';
+    if (value > 1000000) return -2;
+  }
+  return value;
+}
+
+function bool UH_ER_ValidValue(int field, int value) {
+  if (value == -1) return true;
+  if (value < 0) return false;
+  if (field == UH_ER_MODE) return value <= UH_ER_RANDOM;
+  if (field == UH_ER_WEIGHT) return value >= 1 && value <= 1000000;
+  return (field == UH_ER_MIN || field == UH_ER_MAX) && value <= 64;
+}
+
+function int UH_ER_FindIn(int bank, str stem) {
+  for (int row = 0; row < uh_er_counts[bank]; row++)
+    if (!StrICmp(uh_er_stems[bank][row], stem)) return row;
+  return -1;
+}
+
+// Saved syntax: stem:mode,weight,min,max; (all four numbers; -1 = inherit).
+function bool UH_ER_Parse(str raw, int bank) {
+  int length = StrLen(raw);
+  if (length > UH_ER_TEXT_CAP) return false;
+  uh_er_counts[bank] = 0;
+  int pos = 0;
+  while (pos < length) {
+    if (uh_er_counts[bank] >= UH_ER_CAP) return false;
+    int start = pos;
+    while (pos < length && GetChar(raw, pos) != ':') pos++;
+    if (pos == length) return false;
+    str stem = StrMid(raw, start, pos - start);
+    if (!UH_ER_ValidStem(stem) || UH_ER_FindIn(bank, stem) >= 0) return false;
+    int row = uh_er_counts[bank];
+    uh_er_stems[bank][row] = stem;
+    pos++;
+    for (int field = 0; field < UH_ER_FIELDS; field++) {
+      int delimiter = ',';
+      if (field == UH_ER_MAX) delimiter = ';';
+      start = pos;
+      while (pos < length && GetChar(raw, pos) != delimiter) pos++;
+      if (pos == length) return false;
+      int value = UH_ER_Number(StrMid(raw, start, pos - start));
+      if (!UH_ER_ValidValue(field, value)) return false;
+      uh_er_values[bank][row][field] = value;
+      pos++;
+    }
+    int minimum = uh_er_values[bank][row][UH_ER_MIN];
+    int maximum = uh_er_values[bank][row][UH_ER_MAX];
+    if (maximum > 0 && minimum > maximum) return false;
+    uh_er_counts[bank]++;
+  }
+  return true;
+}
+
+function bool UH_ER_Load(void) {
+  str raw = GetCVarString("uh_sv_eventrules");
+  if (!StrCmp(raw, uh_er_seen)) return uh_er_valid;
+  uh_er_seen = raw;
+  int next = 1 - uh_er_bank;
+  uh_er_valid = UH_ER_Parse(raw, next);
+  if (uh_er_valid) {
+    uh_er_bank = next;
+    uh_er_lastrow = -2;
+  }
+  else Log(s:"Event settings: invalid uh_sv_eventrules; the last valid settings remain active.");
+  return uh_er_valid;
+}
+
+function int UH_ER_Get(str stem, int field) {
+  UH_ER_Load();
+  if (field < 0 || field >= UH_ER_FIELDS) return -1;
+  if (uh_er_lastrow == -2 || StrICmp(stem, uh_er_laststem)) {
+    uh_er_laststem = stem;
+    uh_er_lastrow = UH_ER_FindIn(uh_er_bank, stem);
+  }
+  int row = uh_er_lastrow;
+  if (row < 0) return -1;
+  return uh_er_values[uh_er_bank][row][field];
+}
+
+function int UH_ER_Count(void) {
+  UH_ER_Load();
+  return uh_er_counts[uh_er_bank];
+}
+
+function str UH_ER_StemAt(int row) {
+  UH_ER_Load();
+  if (row < 0 || row >= uh_er_counts[uh_er_bank]) return "";
+  return uh_er_stems[uh_er_bank][row];
+}
+
+// Edit a staging bank, then write the archived CVAR. Map state is committed
+// only if the engine accepts the write. Reset never touches appearance/EX counts.
+function bool UH_ER_Edit(str stem, int field, int value) {
+  if (!UH_ER_Load() || !UH_ER_ValidStem(stem)) return false;
+  if (field < -1 || field >= UH_ER_FIELDS) return false;
+  if (field != -1 && !UH_ER_ValidValue(field, value)) return false;
+  int next = 1 - uh_er_bank;
+  int count = uh_er_counts[uh_er_bank];
+  uh_er_counts[next] = count;
+  for (int row = 0; row < count; row++) {
+    uh_er_stems[next][row] = uh_er_stems[uh_er_bank][row];
+    for (int f = 0; f < UH_ER_FIELDS; f++)
+      uh_er_values[next][row][f] = uh_er_values[uh_er_bank][row][f];
+  }
+  int target = UH_ER_FindIn(next, stem);
+  if (target < 0) {
+    if (value == -1 || field == -1) return true;
+    if (count >= UH_ER_CAP) return false;
+    target = count++;
+    uh_er_counts[next] = count;
+    uh_er_stems[next][target] = stem;
+    for (f = 0; f < UH_ER_FIELDS; f++) uh_er_values[next][target][f] = -1;
+  }
+  if (field == -1) {
+    for (f = 0; f < UH_ER_FIELDS; f++) uh_er_values[next][target][f] = -1;
+  }
+  else uh_er_values[next][target][field] = value;
+  int minimum = uh_er_values[next][target][UH_ER_MIN];
+  int maximum = uh_er_values[next][target][UH_ER_MAX];
+  if (maximum > 0 && minimum > maximum) return false;
+
+  str raw = "";
+  for (row = 0; row < count; row++) {
+    bool empty = true;
+    for (f = 0; f < UH_ER_FIELDS; f++)
+      if (uh_er_values[next][row][f] != -1) empty = false;
+    if (empty) continue;
+    raw = StrParam(s:raw, s:uh_er_stems[next][row], s:":",
+      i:uh_er_values[next][row][0], s:",", i:uh_er_values[next][row][1], s:",",
+      i:uh_er_values[next][row][2], s:",", i:uh_er_values[next][row][3], s:";");
+    if (StrLen(raw) > UH_ER_TEXT_CAP) return false;
+  }
+  if (!SetCVarString("uh_sv_eventrules", raw)) return false;
+  // Reload canonical data, discarding empty rows so resets release capacity.
+  uh_er_seen = "!reload";
+  return UH_ER_Load();
+}

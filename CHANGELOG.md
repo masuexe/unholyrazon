@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261009
 
+- 新增按事件 stem 配置 Bonus Event 的服主命令：分别覆盖随机／仅指定／禁用模式、权重及人数上下限，提供查询有效值与来源、字段／事件重置、配置保存与加载；覆盖跨地图保存并支持延迟注册的 addon，重置不清除历史次数，随机池为空时使用普通 Boss 回合；Events 菜单增加配置输出入口，命令说明见 [Bonus Event settings](docs/bonus-event-settings.md)
 - 新增 Bonus Event 全局人数门槛和 EX 升级次数设置，支持在 Server Options → Events 中直接输入并保存：默认 12 人／3 次，0 分别表示取消人数门槛／关闭 EX；每次抽选时读取最新值，关闭 EX 时暂停计数并保留进度，addon 保留自身注册规则；配置说明见 [Bonus Event settings](docs/bonus-event-settings.md)
 - 重分 Bonus Event 随机池：Boss FFA、Football FFA 加入无人数门槛池，仅 Parade、Darkness、Brick、Mosquito 保留 12 人门槛；Satan Seal FFA 改为无人数门槛的 Boss FFA EX 版，Boss FFA 随机抽中三次后第四次升级，沿用低频优先选择及 EX 家族计数
 - 修复变身恶魔眼后仍保留原角色多段跳和蹬墙跳的问题：开局 Bonus Event、钱袋及钱炸弹变身统一清除继承的跳跃次数、无限跳标记和旧跳跃高度，仅在首次初始化时清理，保留后续恶魔眼自身能力的发放

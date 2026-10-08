@@ -80,7 +80,14 @@ script "ub_EventManagementACS" (int perform) {
 
     // Resolve before announcement/RCON echo so the round never previews an
     // event it cannot start.
-    eventdataarr[EVENTDATA_MAINEVENT] = UH_ResolveStartableBonusEvent(eventdataarr[EVENTDATA_MAINEVENT]);
+    // An empty random pool means a normal boss round. Never resurrect a
+    // disabled FFA as the default event when every event was excluded.
+    if (eventdataarr[EVENTDATA_MAINEVENT] != UHBE_FAIL)
+      eventdataarr[EVENTDATA_MAINEVENT] = UH_ResolveStartableBonusEvent(eventdataarr[EVENTDATA_MAINEVENT]);
+    if (eventdataarr[EVENTDATA_MAINEVENT] == UHBE_FAIL) {
+      eventdataarr[EVENTDATA_DELAY] = 0;
+      UH_Log(UH_LOG_WARN, "No eligible Bonus Event; this round uses normal boss selection.");
+    }
   }
 
   else if (perform != -2) {
@@ -104,6 +111,11 @@ script "ub_EventManagementACS" (int perform) {
     // failed dispatch (unreachable today — startability was resolved above
     // with no intervening Delay — kept as a guard for future edits).
     int startevent = UH_ResolveStartableBonusEvent(eventdataarr[EVENTDATA_MAINEVENT]);
+    if (startevent == UHBE_FAIL) {
+      eventdataarr[EVENTDATA_DELAY] = 0;
+      ACS_NamedExecute("ub_SelectBossAndEvent", 0);
+      terminate;
+    }
     eventdataarr[EVENTDATA_MAINEVENT] = startevent;
     isbonuseventactive = true;
     // Publish the frozen 1-vs-all target before any start callback can morph

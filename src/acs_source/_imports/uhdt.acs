@@ -4,6 +4,7 @@
 #library "uhdt"
 
 #include "zcommon.acs"
+#import "uhbeset.acs"
 
 // The shared registry now exceeds compact bytecode's 256-function limit.
 #nocompact
@@ -3419,7 +3420,7 @@ function int ResolveBonusEventEX(int baseid) {
   int row = FindBonusEventEXRow(baseid);
   if (row < 0)
     return UHBE_FAIL;
-  if (uh_bedefined[uh_beexevent[row]] != UHDB_ROW_ACTIVE)
+  if (GetBonusEventMode(uh_beexevent[row]) == UH_ER_DISABLED)
     return UHBE_FAIL;
   return uh_beexevent[row];
 }
@@ -3523,6 +3524,11 @@ function int GetBonusEventFlags(int id) {
 function int GetBonusEventWeight(int id) {
   if (!IsBonusEventDefined(id))
     return 0;
+  int weight = UH_ER_Get(uh_bestr[id][UHBE_STR_STEM], UH_ER_WEIGHT);
+  if (weight >= 0) return weight;
+  // Explicitly enabling an EX/force-only row gives it a usable default weight.
+  if (UH_ER_Get(uh_bestr[id][UHBE_STR_STEM], UH_ER_MODE) == UH_ER_RANDOM &&
+      uh_beint[id][UHBE_INT_WEIGHT] == 0) return 1;
   return uh_beint[id][UHBE_INT_WEIGHT];
 }
 
@@ -3531,6 +3537,8 @@ function int GetBonusEventMinPlayers(int id) {
     return 0;
   // Read at selection time, not registration time: no map change is needed.
   str stem = uh_bestr[id][UHBE_STR_STEM];
+  int override = UH_ER_Get(stem, UH_ER_MIN);
+  if (override >= 0) return override;
   if (!StrICmp(stem, "demoneye_parade") || !StrICmp(stem, "clone_darkness") ||
       !StrICmp(stem, "brick_eyes") || !StrICmp(stem, "mosquito_eyes")) {
     int minimum = GetCVar("uh_sv_bonusminplayers");
@@ -3544,6 +3552,8 @@ function int GetBonusEventMinPlayers(int id) {
 function int GetBonusEventMaxPlayers(int id) {
   if (!IsBonusEventDefined(id))
     return 0;
+  int maximum = UH_ER_Get(uh_bestr[id][UHBE_STR_STEM], UH_ER_MAX);
+  if (maximum >= 0) return maximum;
   return uh_beint[id][UHBE_INT_MAXP];
 }
 
@@ -3566,15 +3576,16 @@ function int GetBonusEventArg3(int id) {
 }
 
 function bool UH_BonusEligible(int id, int plccount, int excludedid) {
-  if (uh_bedefined[id] != UHDB_ROW_ACTIVE)
+  if (GetBonusEventMode(id) != UH_ER_RANDOM)
     return false;
-  if (uh_beint[id][UHBE_INT_WEIGHT] < 1)
+  if (GetBonusEventWeight(id) < 1)
     return false;
   if (id == excludedid)
     return false;
   if (plccount < GetBonusEventMinPlayers(id))
     return false;
-  if (uh_beint[id][UHBE_INT_MAXP] > 0 && plccount > uh_beint[id][UHBE_INT_MAXP])
+  int maximum = GetBonusEventMaxPlayers(id);
+  if (maximum > 0 && plccount > maximum)
     return false;
   return true;
 }
@@ -3594,14 +3605,14 @@ function int PickBonusEvent(int plccount, int excludedid) {
   sum = 0;
   for (i = 0; i < UH_MAX_BONUS_EVENTS; i++) {
     if (UH_BonusEligible(i, plccount, excludedid))
-      sum += uh_beint[i][UHBE_INT_WEIGHT];
+      sum += GetBonusEventWeight(i);
   }
   if (sum <= 0) {
     allowrepeat = true;
     sum = 0;
     for (i = 0; i < UH_MAX_BONUS_EVENTS; i++) {
       if (UH_BonusEligible(i, plccount, -1))
-        sum += uh_beint[i][UHBE_INT_WEIGHT];
+        sum += GetBonusEventWeight(i);
     }
   }
   if (sum <= 0)
@@ -3611,7 +3622,7 @@ function int PickBonusEvent(int plccount, int excludedid) {
   for (i = 0; i < UH_MAX_BONUS_EVENTS; i++) {
     if (!UH_BonusEligible(i, plccount, allowrepeat ? -1 : excludedid))
       continue;
-    roll -= uh_beint[i][UHBE_INT_WEIGHT];
+    roll -= GetBonusEventWeight(i);
     if (roll <= 0)
       return i;
   }
@@ -3991,4 +4002,15 @@ function void GrantLMSEventPenaltyDrops(int tid, int id, int target) {
     if (uh_lmsdropeventid[i] == id && uh_lmsdroprare[i] == target + 2)
       GiveActorInventory(tid, uh_lmsdropitem[i], uh_lmsdropamt[i]);
   }
+}
+
+// Append public helpers so existing UHDT function indices stay stable.
+// Only selection uses the host mode; frozen callbacks continue after changes.
+function int GetBonusEventMode(int id) {
+  if (!IsBonusEventDefined(id)) return UH_ER_DISABLED;
+  int mode = UH_ER_Get(uh_bestr[id][UHBE_STR_STEM], UH_ER_MODE);
+  if (mode >= 0) return mode;
+  if (uh_bedefined[id] != UHDB_ROW_ACTIVE) return UH_ER_DISABLED;
+  if (uh_beint[id][UHBE_INT_WEIGHT] > 0) return UH_ER_RANDOM;
+  return UH_ER_FORCED;
 }

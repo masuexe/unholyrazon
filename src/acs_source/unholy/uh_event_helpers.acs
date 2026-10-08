@@ -19,9 +19,10 @@ function void CommitBonusEventHistory(int id) {
 // upgraded draw would leave the base artificially below the other candidates.
 function int GetBonusEventFamilyPickCount(int id) {
   int count = uh_eventpickcount[id];
-  int exid = ResolveBonusEventEX(id);
-  if (exid != UHBE_FAIL)
-    count += uh_eventpickcount[exid];
+  // Disabling an EX target must not erase its past appearances from fairness.
+  int row = FindBonusEventEXRow(id);
+  if (row >= 0 && IsBonusEventDefined(uh_beexevent[row]))
+    count += uh_eventpickcount[uh_beexevent[row]];
   return count;
 }
 
@@ -87,7 +88,7 @@ function int NormalizeForcedBonusEvent(int eventid) {
 // Returns a registered bonus event id, or -1 on failure.
 function int ResolveForcedBonusEvent(int eventid) {
   int normalized = NormalizeForcedBonusEvent(eventid);
-  if (IsBonusEventDefined(normalized)) {
+  if (IsBonusEventDefined(normalized) && GetBonusEventMode(normalized) != UH_ER_DISABLED) {
     return normalized;
   }
   return -1;
@@ -113,6 +114,8 @@ function int UH_ResolveStartableBonusEvent(int eventid) {
     UH_Log(UH_LOG_ERROR, StrParam(s:"Bonus event ", i:eventid, s:" is not startable (no start callback); falling back to the registered Free For All entry."));
   }
   eventdataarr[EVENTDATA_LASTEVENT] = UHEVENT_FFA;
+  // Do not defeat a host disable through the historical FFA safety fallback.
+  if (GetBonusEventMode(UHEVENT_FFA) == UH_ER_DISABLED) return UHBE_FAIL;
   return UHEVENT_FFA;
 }
 
