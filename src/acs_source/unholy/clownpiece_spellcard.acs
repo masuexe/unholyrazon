@@ -35,6 +35,7 @@ int uh_spellcardphase;
 int uh_spellcardtimergen;  // bump on each Start; stale Always timers must not tick
 
 int uh_cl_spellcardgen;
+int uh_cl_spellcardhudgen = -1;
 bool uh_cl_spellcardbroken;
 int uh_cl_spellcard_remaining_tics;
 
@@ -77,7 +78,7 @@ function void UH_SpellCardClearHud(void) {
   ClearHudMessageBold(UH_SC_HUD_BONUS);
   for (int c = 0; c < MAX_PLAYERS; c++) {
     if (UH_Ti_IsConnectedClient(c))
-      NamedExecuteClientScript("uh_SpellCardClientClear", c);
+      NamedExecuteClientScript("uh_SpellCardClientClear", c, uh_spellcardtimergen);
   }
 }
 
@@ -127,22 +128,25 @@ function void UH_SpellCardDrawHud(int sec, int centi, int phaseid) {
     centi_str = StrParam(i:centi);
 
   timerstr = StrParam(s:sec_str, s:".", s:centi_str);
-  HudMessage(s:timerstr; HUDMSG_PLAIN, UH_SC_HUD_TIMER, color, draw_x, 16.1, 0);
+  // ExecuteClientScript keeps the boss activator. Ordinary HudMessage would
+  // therefore draw only on that player's client, even though every peer got
+  // the sync. Bold draws on this CLIENTSIDE VM regardless of its activator.
+  HudMessageBold(s:timerstr; HUDMSG_PLAIN, UH_SC_HUD_TIMER, color, draw_x, 16.1, 0);
 
   // Spell Card Name and Bonus (Top-Right, placed at Y=56.1 and 68.1 to clear LMS event banner)
   SetFont("SMALLFONT");
   if (UH_SpellCardShowsName(phaseid)) {
-    HudMessage(s:UH_SpellCardNameOf(phaseid); HUDMSG_PLAIN, UH_SC_HUD_NAME, CR_GOLD, draw_x, 56.1, 0);
+    HudMessageBold(s:UH_SpellCardNameOf(phaseid); HUDMSG_PLAIN, UH_SC_HUD_NAME, CR_GOLD, draw_x, 56.1, 0);
     if (uh_cl_spellcardbroken) {
-      HudMessage(s:"\cuBONUS  \cgFAILED"; HUDMSG_PLAIN, UH_SC_HUD_BONUS, CR_UNTRANSLATED, draw_x, 68.1, 0);
+      HudMessageBold(s:"\cuBONUS  \cgFAILED"; HUDMSG_PLAIN, UH_SC_HUD_BONUS, CR_UNTRANSLATED, draw_x, 68.1, 0);
     }
     else {
-      HudMessage(s:"\ckBONUS  \cdSURVIVOR BOX"; HUDMSG_PLAIN, UH_SC_HUD_BONUS, CR_UNTRANSLATED, draw_x, 68.1, 0);
+      HudMessageBold(s:"\ckBONUS  \cdSURVIVOR BOX"; HUDMSG_PLAIN, UH_SC_HUD_BONUS, CR_UNTRANSLATED, draw_x, 68.1, 0);
     }
   }
   else {
-    ClearHudMessage(UH_SC_HUD_NAME);
-    ClearHudMessage(UH_SC_HUD_BONUS);
+    ClearHudMessageBold(UH_SC_HUD_NAME);
+    ClearHudMessageBold(UH_SC_HUD_BONUS);
   }
 }
 
@@ -251,7 +255,8 @@ script "uh_SpellCardStart" (int phaseid, int timelimitsec) {
 
   uh_spellcardtimergen++;
   ACS_NamedTerminate("uh_SpellCardTimer", 0);
-  UH_SpellCardClearHud();
+  // Sync replaces all three HUD rows itself. A separate clear in the same
+  // tic can run after the new sync (ACS queues scripts at the list head).
 
   uh_spellcardphase = phaseid;
   uh_spellcardtimeleft = timelimitsec;
@@ -366,40 +371,41 @@ script "uh_SpellCardBreak" (void) {
     uh_spellcardbroken = true;
     for (int c = 0; c < MAX_PLAYERS; c++) {
       if (UH_Ti_IsConnectedClient(c))
-        NamedExecuteClientScript("uh_SpellCardClientBreak", c);
+        NamedExecuteClientScript("uh_SpellCardClientBreak", c, uh_spellcardtimergen);
     }
   }
 }
 
-script "uh_SpellCardClientClear" (void) CLIENTSIDE {
-  // The server increments its generation after clearing the previous card.
-  // A local increment could equal that new generation and suppress ClientHud.
-  uh_cl_spellcardgen = -1;
-  ClearHudMessage(UH_SC_HUD_NAME);
-  ClearHudMessage(UH_SC_HUD_TIMER);
-  ClearHudMessage(UH_SC_HUD_BONUS);
+script "uh_SpellCardClientClear" (int mygen) CLIENTSIDE {
+  if (mygen <= uh_cl_spellcardgen)
+    terminate;
+  uh_cl_spellcardgen = mygen;
+  uh_cl_spellcard_remaining_tics = -1;
+  ClearHudMessageBold(UH_SC_HUD_NAME);
+  ClearHudMessageBold(UH_SC_HUD_TIMER);
+  ClearHudMessageBold(UH_SC_HUD_BONUS);
 }
 
-script "uh_SpellCardClientBreak" (void) CLIENTSIDE {
-  uh_cl_spellcardbroken = true;
+script "uh_SpellCardClientBreak" (int mygen) CLIENTSIDE {
+  if (mygen == uh_cl_spellcardgen)
+    uh_cl_spellcardbroken = true;
 }
 
 script "uh_SpellCardClientSync" (int timeleftsec, int mygen, int phaseid, int broken) CLIENTSIDE {
-  if (uh_cl_spellcardgen != mygen) {
-    uh_cl_spellcardgen = mygen;
-    uh_cl_spellcardbroken = broken != 0;
-    uh_cl_spellcard_remaining_tics = timeleftsec * 35;
+  if (mygen < uh_cl_spellcardgen)
+    terminate;
+  uh_cl_spellcardgen = mygen;
+  uh_cl_spellcardbroken = broken != 0;
+  uh_cl_spellcard_remaining_tics = timeleftsec * UH_SC_TICRATE;
+  if (uh_cl_spellcardhudgen != mygen)
     ACS_NamedExecuteAlways("uh_SpellCardClientHud", 0, phaseid, timeleftsec, mygen);
-  }
-  else {
-    uh_cl_spellcardbroken = broken != 0;
-    uh_cl_spellcard_remaining_tics = timeleftsec * 35;
-  }
 }
 
 script "uh_SpellCardClientHud" (int phaseid, int timelimitsec, int mygen) CLIENTSIDE {
-  uh_cl_spellcardgen = mygen;
-  uh_cl_spellcard_remaining_tics = timelimitsec * 35;
+  // A queued old runner must never restore an obsolete generation or timer.
+  if (mygen != uh_cl_spellcardgen || uh_cl_spellcardhudgen == mygen)
+    terminate;
+  uh_cl_spellcardhudgen = mygen;
 
   while (uh_cl_spellcard_remaining_tics >= 0 && mygen == uh_cl_spellcardgen) {
     int sec = uh_cl_spellcard_remaining_tics / 35;
@@ -413,10 +419,12 @@ script "uh_SpellCardClientHud" (int phaseid, int timelimitsec, int mygen) CLIENT
   }
 
   if (mygen == uh_cl_spellcardgen) {
-    ClearHudMessage(UH_SC_HUD_NAME);
-    ClearHudMessage(UH_SC_HUD_TIMER);
-    ClearHudMessage(UH_SC_HUD_BONUS);
+    ClearHudMessageBold(UH_SC_HUD_NAME);
+    ClearHudMessageBold(UH_SC_HUD_TIMER);
+    ClearHudMessageBold(UH_SC_HUD_BONUS);
   }
+  if (uh_cl_spellcardhudgen == mygen)
+    uh_cl_spellcardhudgen = -1;
 }
 
 script "uh_SpellCardStop" (void) {
