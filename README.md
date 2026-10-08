@@ -1,6 +1,6 @@
 # Unholy Razon
 
-Unholy Razon is an open-source fork of [Unholy](https://mm8bdm.net/forum/thread/unholy-classes-bosses-v8a-in-progress-170), a Last Man Standing (LMS) gameplay mod for [Mega Man 8-Bit Deathmatch](https://mm8bdm.net/) (MM8BDM).
+Unholy Razon is an open-source fork of **Unholy Unbound** (v7b), a Last Man Standing (LMS) gameplay mod for [Mega Man 8-Bit Deathmatch](https://mm8bdm.net/) (MM8BDM) originally rooted in [Unholy Classes & Bosses](https://mm8bdm.net/forum/thread/unholy-classes-bosses-v8a-in-progress-170).
 
 ## Overview
 
@@ -233,3 +233,5 @@ If you use VS Code, install the [zandronum-vscode](https://github.com/masuexe/za
 - [ZandronumMCP](https://github.com/rc4l/ZandronumMCP): Automated testing and headless engine introspection.
 - CBM Gondola Patch: Weapon offset references.
 - Rebellion Unholy, Saxton Hale: Inspiration and concepts.
+
+For detailed sprite, texture, and community asset attributions, see [CREDITS.md](CREDITS.md).
