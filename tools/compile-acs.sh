@@ -2,15 +2,16 @@
 # Full ACS compile check for the project. Libraries are compiled in the same
 # order as LOADACS with the documented include search order: modified v6b
 # shared includes first, then the UH-owned mod_api include dir, then the UH
-# _imports library sources (uh_acsutils, uh_log, uhdt, uhdbcrud, uhedenisaac) and the
-# v6b override imports (8BDT compiled as CORE8BDT.o).
+# _imports library sources (uh_acsutils, uh_log, uhdt, uhdbcrud, uhedenisaac,
+# UHCOMBDB) and the v6b override imports (8BDT compiled as CORE8BDT.o).
 # Output objects are named after the SOURCE lump (not the internal #library
 # name): the base game LOADACS lists lump names such as COLOTRNS, and a
 # differently named .o would not shadow the base lump. CORE8BDT.o and
 # DTADDR.o must keep those names so they replace v6b's Assist Item table.
 # UIXITEMS.o must keep that name so it can replace 8bdm-uix-v3bh when this
 # pk3 loads after UIX.  WHEELDT.o is an import-only library (no LOADACS entry);
-# it must ship because the UIX libraries import it.
+# it must ship because the UIX libraries import it. UHCOMBDB.o is likewise
+# import-only and must keep that name.
 # Usage: compile-acs.sh [outdir]   (default: src/acs)
 set -u
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -54,6 +55,10 @@ echo "== uhdbcrud =="
 "$ACC" $INC "src/acs_source/_imports/uhdbcrud.acs" "$OUT/uhdbcrud.o" || fail=1
 echo "== uhedenisaac =="
 "$ACC" $INC "src/acs_source/_imports/uhedenisaac.acs" "$OUT/uhedenisaac.o" || fail=1
+echo "== UHCOMBDB =="
+# Import-only boss-combo registry (unholy, uhaddr and rz_debug import it). Not
+# in LOADACS, but the lump must ship and keep the UHCOMBDB name.
+"$ACC" $INC "src/acs_source/_imports/uhcombodb.acs" "$OUT/UHCOMBDB.o" || fail=1
 echo "== uhaddr =="
 "$ACC" $INC "src/acs_source/corescripts/api_handlers/uhaddr.acs" "$OUT/uhaddr.o" || fail=1
 echo "== uh_bossdefs =="
