@@ -1,0 +1,44 @@
+// Server-authoritative power meters.
+//
+// A_GiveInventory/A_TakeInventory called from a player's weapon or flash
+// states are never sent over the network: the server and the client each run
+// the psprite locally and keep separate amounts. A meter whose regen or spend
+// depends on state the client learns late (health, server-given flags) can
+// drift apart, and once the two sides disagree around the full threshold one
+// side casts the ultimate while the other does not, leaving the HUD bar stuck
+// full or empty.
+//
+// Route such meter changes through these helpers instead. They only act on
+// the server (or offline), where ACS GiveInventory/TakeInventory send the
+// absolute amount to the client, so the client's copy is just a mirror of the
+// server. Network clients skip them and report "no cast".
+
+function bool UH_IsNetworkClient(void) {
+  return ConsolePlayerNumber() >= 0 && IsNetworkGame();
+}
+
+function void UH_ServerPowerGive(str item, int amount) {
+  if (UH_IsNetworkClient())
+    return;
+  GiveInventory(item, amount);
+}
+
+// Spends cost from the meter if the server's meter is full enough.
+// Returns 1 only on the side that actually spent it (server or offline).
+function int UH_ServerPowerSpend(str item, int cost) {
+  if (UH_IsNetworkClient())
+    return 0;
+  if (CheckInventory(item) < cost)
+    return 0;
+  TakeInventory(item, cost);
+  return 1;
+}
+
+// Captain Blitzkrieg: desperation regen and the reload ultimate.
+script "uh_Blitzkrieg_PowerRegen" (void) {
+  UH_ServerPowerGive("UnholyPower1500", 3);
+}
+
+script "uh_Blitzkrieg_PowerCast" (void) {
+  SetResultValue(UH_ServerPowerSpend("UnholyPower1500", 1500));
+}
