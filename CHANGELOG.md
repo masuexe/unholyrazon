@@ -12,6 +12,7 @@
 - 将 MegaMan Noise Crush 第三阶声波的单次爆炸基础伤害由 314 降为 50，与 Razon 3 一致；保留每日伤害倍率、现有爆炸频率和范围
 - 修复 Sad Toadman 二阶段 MadFire、StormFlush 与 Toadgasso 大招期间无法转向的问题：改为只锁定移动（`uh_stopplayer`），恢复原版施放时可转向及 Toadgasso 冲刺方向随视角变化；施放期间禁用跳跃，与原版一致
 - 修复联机时 Captain Blitzkrieg 大招能量条两端不同步的问题：在能量将满时按 R，服务器和客户端可能一边放了大、另一边没放，导致用完大后条仍显示已满，或条已清空但大没有放出；现在回能、扣能和是否放大都由服务器决定并同步给客户端（新增通用辅助 `classes/shared/server_power.acs`）
+- 补全 ColdDragoon 黑漆效果的 `FISHBLACKPAINT_DYE = 19999` 全黑色表，并移除未使用的 ACS 配色常量 `POWERFLIGHT = 10680`
 - `tools/compile-acs.sh` 现在会一并编译 `UHCOMBDB`，干净构建不再需要手动编译
 
 ## 4.0.0-beta.261007
