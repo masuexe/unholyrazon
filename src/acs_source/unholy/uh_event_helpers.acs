@@ -59,13 +59,16 @@ function int PickLeastSeenBonusEvent(int plccount, int excludedid) {
 
 // EX counter tick: called after a RANDOM pick only (forced events bypass it).
 // The counter stays in the world array (per base event id, survives map
-// changes); the base -> EX relation and its threshold come from UHDT.
+// changes); UHDT resolves the relation and the live host threshold.
 function int ExEventChecker(int inputevent) {
   int exid = ResolveBonusEventEX(inputevent);
   if (exid == UHBE_FAIL) {
     return inputevent;
   }
-  if (eventexcountarray[inputevent] >= GetBonusEventEXThreshold(inputevent)) {
+  int threshold = GetBonusEventEXThreshold(inputevent);
+  // A disabled upgrade neither consumes nor advances the existing progress.
+  if (threshold <= 0) {return inputevent;}
+  if (eventexcountarray[inputevent] >= threshold) {
     eventexcountarray[inputevent] = 0;
     return exid;
   }

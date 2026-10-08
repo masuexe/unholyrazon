@@ -3428,6 +3428,17 @@ function int GetBonusEventEXThreshold(int baseid) {
   int row = FindBonusEventEXRow(baseid);
   if (row < 0)
     return 0;
+  // Apply the host's live setting only to the five built-in base events.
+  // Stem identity keeps addon rows on their own registered thresholds.
+  str stem = uh_bestr[baseid][UHBE_STR_STEM];
+  if (!StrICmp(stem, "ffa") || !StrICmp(stem, "demoneye_parade") ||
+      !StrICmp(stem, "clone_darkness") || !StrICmp(stem, "football_ffa") ||
+      !StrICmp(stem, "boss_ffa")) {
+    int count = GetCVar("uh_sv_bonusexcount");
+    if (count < 0) {count = 0;}
+    if (count > 100) {count = 100;}
+    return count;
+  }
   return uh_beexthreshold[row];
 }
 
@@ -3518,6 +3529,15 @@ function int GetBonusEventWeight(int id) {
 function int GetBonusEventMinPlayers(int id) {
   if (!IsBonusEventDefined(id))
     return 0;
+  // Read at selection time, not registration time: no map change is needed.
+  str stem = uh_bestr[id][UHBE_STR_STEM];
+  if (!StrICmp(stem, "demoneye_parade") || !StrICmp(stem, "clone_darkness") ||
+      !StrICmp(stem, "brick_eyes") || !StrICmp(stem, "mosquito_eyes")) {
+    int minimum = GetCVar("uh_sv_bonusminplayers");
+    if (minimum < 0) {minimum = 0;}
+    if (minimum > 64) {minimum = 64;}
+    return minimum;
+  }
   return uh_beint[id][UHBE_INT_MINP];
 }
 
@@ -3552,7 +3572,7 @@ function bool UH_BonusEligible(int id, int plccount, int excludedid) {
     return false;
   if (id == excludedid)
     return false;
-  if (plccount < uh_beint[id][UHBE_INT_MINP])
+  if (plccount < GetBonusEventMinPlayers(id))
     return false;
   if (uh_beint[id][UHBE_INT_MAXP] > 0 && plccount > uh_beint[id][UHBE_INT_MAXP])
     return false;
