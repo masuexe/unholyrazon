@@ -1,0 +1,76 @@
+// Only friendly proximity pickups bypass impact damage. Enemies board through
+// OilBlobU's HITTRACER / Crash path after normal missile damage is resolved.
+script "uh_OilSliderReset" (void) {
+  if (!CheckInventory("UH_OilRiding_F"))
+    terminate;
+  ACS_NamedExecuteWithResult("uh_stopplayer", 0, 0);
+  TakeInventory("UH_OilRiding_F", 1);
+  TakeInventory("OilSliderFlag", 30);
+}
+
+// Called with the watcher as activator. ACS StopSound also sends the stop to
+// remote clients, so a removed watcher does not leave a positional sound tail.
+script "uh_OilSliderStopSound" (void) {
+  StopSound(0, 4); // Watcher's CHAN_BODY; never the player's weapon channel.
+}
+
+function bool UH_OilPlayersFriendly(int owner, int rider) {
+  if (owner < 0 || owner >= 64 || rider < 0 || rider >= 64)
+    return false;
+  if (owner == rider)
+    return true;
+  if (ACS_NamedExecuteWithResult("uh_IsUnholyTeamMode"))
+    return ACS_NamedExecuteWithResult("uh_IsDisplayTeammate", owner, rider);
+  if (IsTeamGame)
+    return GetPlayerInfo(owner, PLAYERINFO_TEAM) == GetPlayerInfo(rider, PLAYERINFO_TEAM);
+  return GameType() == GAME_NET_COOPERATIVE;
+}
+
+// A player can collide before the next proximity check. That path must also
+// allow teammates to board safely, including days when copy-weapon FF is on.
+script "uh_OilBlobFriendlyDamage" (int evt, int damage, int damage_type) EVENT {
+  if (evt != GAMEEVENT_ACTOR_DAMAGED_PREMOD)
+    terminate;
+  if (!SetActivator(0, AAPTR_DAMAGE_INFLICTOR)
+      || StrICmp(GetActorClass(0), "OilBlobU"))
+    terminate;
+  if (!SetActivator(0, AAPTR_DAMAGE_SOURCE))
+    terminate;
+  int owner = PlayerNumber();
+  if (!SetActivator(0, AAPTR_DAMAGE_TARGET))
+    terminate;
+  if (UH_OilPlayersFriendly(owner, PlayerNumber()))
+    SetResultValue(0);
+}
+
+script "uh_OilBlobFindFriendlyRider" (void) {
+  int owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET) - 1000;
+  if (owner < 0 || owner >= 64 || !PlayerInGame(owner)) {
+    SetResultValue(0);
+    terminate;
+  }
+
+  int px = GetActorX(0);
+  int py = GetActorY(0);
+  int pz = GetActorZ(0);
+  int tid;
+  for (int p = 0; p < 64; p++) {
+    tid = p + 1000;
+    if (!PlayerInGame(p) || PlayerIsSpectator(p)
+        || GetActorProperty(tid, APROP_Health) <= 0
+        || CheckActorInventory(tid, "IsDead"))
+      continue;
+
+    if (!UH_OilPlayersFriendly(owner, p)
+        || VectorLength(GetActorX(tid) - px, GetActorY(tid) - py) >= 40.0)
+      continue;
+    if (pz > GetActorZ(tid) + GetActorProperty(tid, APROP_Height) + 40.0
+        || GetActorZ(tid) > pz + 10.0 + 40.0)
+      continue;
+    if (!CheckSight(0, tid, 0))
+      continue;
+    SetResultValue(SetPointer(AAPTR_TARGET, tid));
+    terminate;
+  }
+  SetResultValue(0);
+}
