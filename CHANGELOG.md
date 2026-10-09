@@ -1,3 +1,8 @@
+## 4.0.0-beta.261010
+
+- 修复发布构建包遗漏 PingButton 兼容覆盖字节码导致普通 LMS 中只能看见自己标记的问题
+
+
 ## 4.0.0-beta.261009
 
 - 新增 Boss 抽取服务器只读诊断命令 `uh_boss_check <actor>` 与 `uh_boss_pool [tier]`：支持查看特定 Boss 或各等级池（common/rare/special/ultra/ex 或 1～5，默认 all）的选择资格、人数门槛、历史次数、同回合计数、重复排除、最低次数候选、权重及空池回退状态；查询仅反映当前快照，不调用随机数、不消耗指定请求或修改历史；指定请求、胜者自选与 Boss Combo 可影响最终抽取结果；配置说明见 [Boss Selection settings](docs/boss-selection-settings.md)
