@@ -22,6 +22,7 @@ STUBS = r'''
 #include <string.h>
 #include <strings.h>
 #include <stdarg.h>
+#include <stdint.h>
 typedef const char *str;
 str saved="", queue="", output[4096];
 int can_write=1, busy, writes, lines;
@@ -66,9 +67,34 @@ str GetBossActor(int id) { assert(id==registered_id); return registered_actor; }
 str GetBossName(int id) { assert(id==registered_id); return "Known Boss"; }
 int IsBossEnabled(int id) { return id==registered_id; }
 #define UHBOSS_POOL_NONE 0
+#define UHBOSS_POOL_COMMON 1
+#define UHBOSS_POOL_RARE 2
+#define UHBOSS_POOL_SPECIAL 3
+#define UHBOSS_POOL_ULTRA 4
+#define UHBOSS_POOL_EX 5
 int GetBossRarity(int id) { (void)id; return 1; }
 int PlayerCount(void) { return 8; }
-int GetCVar(str name) { assert(!strcmp(name,"uh_sv_bossforcedplayerlimits")); return 0; }
+int select_mode, avoid_repeat, avoid_duplicates, appearances, delta, previous;
+int GetCVar(str name) {
+ if(!strcmp(name,"uh_sv_bossforcedplayerlimits")) return 0;
+ if(!strcmp(name,"uh_sv_bossselectmode")) return select_mode;
+ if(!strcmp(name,"uh_sv_bossavoidrepeat")) return avoid_repeat;
+ if(!strcmp(name,"uh_sv_bossavoidduplicates")) return avoid_duplicates;
+ assert(!"unexpected CVAR"); return 0;
+}
+int GetBossPickCount(int id) { return id==registered_id?appearances:-1; }
+int UH_BossRoundSeen(int id) { return id==registered_id?delta:0; }
+int BossWasInPreviousLineup(int id) { return id==registered_id && previous; }
+int GetBossPoolCount(int pool) { return pool==1?1:0; }
+int GetBossPoolId(int pool,int row) { assert(pool==1 && row==0); return registered_id; }
+void check_diagnostics(str actor);
+void pool_diagnostics(int tier);
+void acs_wait(str name,int map,intptr_t arg) {
+ assert(map==0);
+ if(!strcmp(name,"uh_BossCheckDiagnostics")) check_diagnostics((str)arg);
+ else { assert(!strcmp(name,"uh_BossPoolDiagnostics")); pool_diagnostics((int)arg); }
+}
+#define ACS_NamedExecuteWait(name,map,arg) acs_wait(name,map,(intptr_t)(arg))
 bool printed(str text) {
  for(int i=0;i<lines;i++) if(strstr(output[i],text)) return true;
  return false;
@@ -169,6 +195,21 @@ int main(void) {
  queue="";
  for(int i=1;i<=257;i++) queue=concat(3,queue,concat(3,"set:KnownBoss:weight:",number(i),":|"),"");
  drain(); assert(!busy && UH_BR_Get("KnownBoss",UH_BR_WEIGHT)==256);
+ // Diagnostics do not edit archived rules or gameplay history. An empty
+ // optional-repeat pool relaxes; the forced-only reason remains explicit.
+ assert(UH_BR_Edit("KnownBoss",UH_BR_WEIGHT,3));
+ appearances=9; delta=2; previous=1; avoid_repeat=avoid_duplicates=1;
+ snapshot_writes=writes; before=saved;
+ queue="check:KnownBoss:::|pool:common:::|pool::::|"; drain();
+ assert(writes==snapshot_writes && !strcmp(saved,before));
+ assert(appearances==9 && delta==2 && previous==1);
+ assert(printed("Optional repeat exclusions relax") && printed("appearances=9"));
+ assert(printed("candidates=1 draw weight=3"));
+ assert(UH_BC_Run("pool:invalid:::")==0 && UH_BC_Run("pool:rare:extra::")==0);
+ assert(UH_BC_Run("check:KnownBoss:extra::")==0);
+ UH_BC_Run("set:KnownBoss:mode:forced:");
+ lines=0; check_diagnostics("KnownBoss");
+ assert(printed("Random blocked: forced-only mode."));
  // Capacity is bounded; resets release rows for another actor.
  saved="";
  for(int i=0;i<UH_BR_CAP;i++) saved=concat(3,saved,concat(3,"B",number(i),":-1,1,-1,-1;"),"");
@@ -200,6 +241,7 @@ int main(void) {
 def main():
     storage = (ROOT / "src/acs_source/_imports/uhbsset.acs").read_text()
     commands = (ROOT / "src/acs_source/unholy/uh_boss_config.acs").read_text()
+    diagnostics = (ROOT / "src/acs_source/unholy/uh_boss_diagnostics.acs").read_text()
     # Make ACS's function-scoped loop variables explicit to the C compiler.
     edit = function(storage, "UH_BR_Edit")
     c_edit = edit.replace("int value) {", "int value) { int row, f;")
@@ -216,17 +258,26 @@ def main():
     helpers = (ROOT / "src/acs_source/unholy/uh_boss_selection_helpers.acs").read_text()
     getters = "\n".join(function(helpers, name) for name in
                         ("GetBossSelectionMode", "GetBossSelectionWeight", "GetBossSelectionMinPlayers",
-                         "GetBossSelectionMaxPlayers", "BossSelectionMeetsPlayerLimits", "CanPickRandomBoss", "CanPickSpecifiedBoss"))
+                         "GetBossSelectionMaxPlayers", "BossSelectionMeetsPlayerLimits", "CanPickRandomBoss", "CanPickSpecifiedBoss", "BossSelectionSetting"))
+    diag_functions = function(diagnostics, "UH_BD_Tier") + function(diagnostics, "UH_BD_Eligible")
+    diag_scripts = diagnostics[diagnostics.index('script "uh_BossCheckDiagnostics"'):]
+    diag_scripts = diag_scripts.replace('script "uh_BossCheckDiagnostics" (int actor)', "void check_diagnostics(str actor)")
+    diag_scripts = diag_scripts.replace('script "uh_BossPoolDiagnostics" (int tier) {', "void pool_diagnostics(int tier) { int i, id, count;")
+    pool_start = diag_scripts.index("void pool_diagnostics")
+    diag_scripts = diag_scripts[:pool_start] + diag_scripts[pool_start:].replace("for (int i =", "for (i =").replace("int id =", "id =").replace("int count =", "count =")
+    for forbidden in ("random(", "PickBossPoolPass(", "TrueRandomBoss(", "ForceBossChange(",
+                      "SetCVar(", "SetCVarString(", "CommitBossHistorySlot(", "IncrementBossPickCount("):
+        assert forbidden not in diagnostics
     aliases = (ROOT / "src/KEYCONF").read_text()
-    for op in ("set", "show", "reset", "list", "export", "reload"):
+    for op in ("set", "show", "reset", "list", "export", "reload", "check", "pool"):
         assert f"eval + $uh_boss_commands {op}:%1:%2:%3:%4|" in aliases
     assert 'alias uh_boss_save "wait 1; uh_boss_save_check"' in aliases
-    assert 'server string uh_sv_bossrules = "";' in (ROOT / "src/CVARINFO.server").read_text()
+    assert 'local string uh_sv_bossrules = "";' in (ROOT / "src/CVARINFO.server").read_text()
     assert 'local noarchive string uh_boss_commands = "";' in (ROOT / "src/CVARINFO.ipc").read_text()
     assert "UHBSSET" not in (ROOT / "src/LOADACS").read_text()
     with tempfile.TemporaryDirectory(prefix="uh-boss-overrides-") as tmp:
         path = Path(tmp)
-        (path / "test.c").write_text(STUBS + translate(storage + getters + functions + handler) + TESTS)
+        (path / "test.c").write_text(STUBS + translate(storage + getters + diag_functions + functions + diag_scripts + handler) + TESTS)
         subprocess.run(["gcc", "-D_POSIX_C_SOURCE=200809L", "-std=c99", "-Wall",
                         "-Wextra", "-Werror", str(path / "test.c"), "-o", str(path / "test")], check=True)
         subprocess.run([str(path / "test")], check=True)

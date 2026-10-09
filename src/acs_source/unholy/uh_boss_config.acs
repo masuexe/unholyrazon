@@ -51,14 +51,22 @@ function void UH_BC_Show(str actor) {
   }
 }
 
-// Returns true for a list request; the script yields between each list row.
-function bool UH_BC_Run(str record) {
+// Actions: 0 done, 1 list, 2..7 pool (action-2 is tier), 8 actor check.
+// The queue script owns yielding scans, so large registries cannot run away.
+function int UH_BC_Run(str record) {
   str op = UH_BC_Token(record, 0);
   str actor = UH_BC_Token(record, 1);
   str fieldname = UH_BC_Token(record, 2);
   str input = UH_BC_Token(record, 3);
   if (StrLen(UH_BC_Token(record, 4))) {
     Log(s:"Boss settings: too many arguments."); return false;
+  }
+  if (!StrICmp(op, "pool")) {
+    int tier = UH_BD_Tier(actor);
+    if (tier < 0 || StrLen(fieldname) || StrLen(input)) {
+      Log(s:"Usage: uh_boss_pool [all|common|rare|special|ultra|ex|1-5]"); return 0;
+    }
+    return tier + 2;
   }
   if (!StrICmp(op, "list") || !StrICmp(op, "export") || !StrICmp(op, "reload")) {
     if (StrLen(actor) || StrLen(fieldname) || StrLen(input)) {
@@ -78,6 +86,12 @@ function bool UH_BC_Run(str record) {
   if (!UH_BR_ValidActor(actor)) {
     Log(s:"Boss settings: use an actor name with 1-127 letters, digits, underscores, hyphens or periods.");
     return false;
+  }
+  if (!StrICmp(op, "check")) {
+    if (StrLen(fieldname) || StrLen(input)) {
+      Log(s:"Usage: uh_boss_check <actor>"); return 0;
+    }
+    return 8;
   }
   if (!StrICmp(op, "show")) {
     if (StrLen(fieldname) || StrLen(input)) {
@@ -139,12 +153,18 @@ script "uh_BossConfigCommands" (void) {
         SetCVar("uh_boss_configbusy", 0);
         Log(s:"Boss command limit reached; split the configuration file."); terminate;
       }
-      if (UH_BC_Run(StrMid(queue, start, pos - start))) {
+      str record = StrMid(queue, start, pos - start);
+      int action = UH_BC_Run(record);
+      if (action == 1) {
         for (int row = 0; row < UH_BR_Count(); row++) {
           UH_BC_Show(UH_BR_ActorAt(row));
           Delay(1);
         }
       }
+      else if (action >= 2 && action <= 7)
+        ACS_NamedExecuteWait("uh_BossPoolDiagnostics", 0, action - 2);
+      else if (action == 8)
+        ACS_NamedExecuteWait("uh_BossCheckDiagnostics", 0, UH_BC_Token(record, 1));
       start = pos + 1;
       Delay(1);
     }

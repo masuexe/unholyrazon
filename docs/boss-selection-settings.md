@@ -97,10 +97,10 @@ Server operators can define overrides for individual boss actors. Overrides acti
 - **Actor name key:** Overrides are keyed by actor class name (1 to 127 characters; letters, digits, underscores, hyphens, and periods).
 - **Case-insensitive:** Actor lookups ignore letter case (`gembanker` matches `GemBanker`).
 - **Pending addons:** Overrides can be defined before an addon boss is loaded. Rules remain stored and pending until the matching actor registers.
-- **Storage format:** Stored in the archived string CVAR `uh_sv_bossrules` as:
+- **Storage format:** Stored in the host-archived string CVAR `uh_sv_bossrules` as:
   `actor:mode,weight,minplayers,maxplayers;`
   A value of `-1` denotes inheritance from registered defaults.
-- **Storage capacity:** Supports up to 256 boss records (up to 16,384 characters). Commands process sequentially through the server queue.
+- **Host-local storage:** `uh_sv_bossrules` is archived locally on the server host (`local string`) rather than broadcast over the network. This avoids Zandronum's 2,048-byte limit on server string replication, preventing client disconnects when large override datasets are saved. The server retains the full 16,384 character capacity (up to 256 boss records).
 
 ### Override fields
 
@@ -123,6 +123,8 @@ Server operators can define overrides for individual boss actors. Overrides acti
 |---------|-------------|
 | `uh_boss_set <actor> <field> <value>` | Sets an override field for a boss actor. Accepts `inherit` for any field. |
 | `uh_boss_show <actor>` | Displays stored overrides, effective values, registration status, and eligibility. |
+| `uh_boss_check <actor>` | Runs read-only diagnostics on eligibility, history counts, weights, and blocking reasons. |
+| `uh_boss_pool [tier]` | Displays the candidate pool snapshot, history counts, weights, and fallback status for a tier. |
 | `uh_boss_reset <actor> [field]` | Resets a specific field or clears the entire override record for the actor. |
 | `uh_boss_list` | Lists all stored boss overrides and record count. |
 | `uh_boss_export` | Prints the current `uh_sv_bossrules` string to copy into `server.cfg`. |
@@ -146,6 +148,11 @@ uh_boss_set Fireman mode disabled
 uh_boss_show GemBanker
 uh_boss_list
 
+// Run read-only diagnostics (does not consume RNG or requests)
+uh_boss_check GemBanker
+uh_boss_pool common
+uh_boss_pool all
+
 // Reset overrides
 uh_boss_reset GemBanker weight
 uh_boss_reset Fireman
@@ -158,6 +165,33 @@ writeini      // Execute directly in the server console
 exec examples/boss_overrides.cfg  // Execute directly in the server console
 uh_boss_reload                    // Reload and apply the updated CVAR rules
 ```
+
+---
+
+## Diagnostics
+
+Use read-only diagnostic commands to inspect boss eligibility and candidate pools without modifying game state:
+
+| Command | Description |
+|---------|-------------|
+| `uh_boss_check <actor>` | Shows detailed diagnostic status for a boss actor. |
+| `uh_boss_pool [tier]` | Shows the candidate draw pool for a specific tier or all tiers. |
+
+### Diagnostic rules
+
+- **Read-only execution:** Diagnostic commands do not roll random numbers, consume admin forced requests, advance appearance history, or alter world arrays.
+- **Current state snapshot:** Queries report the state at the moment of execution. They do not predict future rounds. Final selections can be overridden by admin requests, Ultra pity hits, winner choices, or Boss Combos.
+- **Tier argument (`uh_boss_pool [tier]`)**:
+  - Defaults to `all` (or 0) to display all tiers.
+  - Accepts tier names or numbers: `common` (1), `rare` (2), `special` (3), `ultra` (4), `ex` (5).
+- **Diagnostic output fields**:
+  - **Eligibility**: Reports whether the boss is eligible for random selection under current player count and mode settings.
+  - **Player limits**: Reports minimum and maximum player thresholds and whether the current player count satisfies them.
+  - **History and delta**: Displays permanent appearance count and the current round's count delta.
+  - **Exclusions**: Identifies whether the boss is blocked by previous-lineup repeat avoidance (`uh_sv_bossavoidrepeat`) or same-round duplicate avoidance (`uh_sv_bossavoidduplicates`).
+  - **Lowest-count candidacy**: In least-seen mode (`uh_sv_bossselectmode 0`), shows whether the boss belongs to the minimum appearance count group.
+  - **Weights**: Shows relative selection weights and total pool weight.
+  - **Empty-pool relaxation and fallbacks**: Indicates when optional repeat exclusions relax, or when fallback to Common occurs.
 
 ---
 

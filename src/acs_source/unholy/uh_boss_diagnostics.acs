@@ -1,0 +1,133 @@
+// Server-only observations of the current draw state. No picker, request
+// consumer or history writer. The host queue serializes these yielding scans.
+
+function int UH_BD_Tier(str name) {
+  if (!StrLen(name) || !StrICmp(name, "all")) return 0;
+  if (!StrICmp(name, "common") || !StrCmp(name, "1")) return UHBOSS_POOL_COMMON;
+  if (!StrICmp(name, "rare") || !StrCmp(name, "2")) return UHBOSS_POOL_RARE;
+  if (!StrICmp(name, "special") || !StrCmp(name, "3")) return UHBOSS_POOL_SPECIAL;
+  if (!StrICmp(name, "ultra") || !StrCmp(name, "4")) return UHBOSS_POOL_ULTRA;
+  if (!StrICmp(name, "ex") || !StrCmp(name, "5")) return UHBOSS_POOL_EX;
+  return -1;
+}
+
+function bool UH_BD_Eligible(int id, int players, bool restrictions) {
+  if (!CanPickRandomBoss(id, players)) return false;
+  if (restrictions && GetCVar("uh_sv_bossavoidrepeat") && BossWasInPreviousLineup(id)) return false;
+  if (restrictions && GetCVar("uh_sv_bossavoidduplicates") && UH_BossRoundSeen(id)) return false;
+  return GetBossPickCount(id) >= 0;
+}
+
+script "uh_BossCheckDiagnostics" (int actor) {
+  UH_BC_Show(actor);
+  int id = FindBossByActor(actor);
+  if (id == UHBOSS_FAIL) {terminate;}
+  int players = PlayerCount();
+  int pool = GetBossRarity(id);
+  int eligible = 0;
+  int strict = 0;
+  int minimum = -1;
+  int strictminimum = -1;
+  for (int i = 0; i < GetBossPoolCount(pool); i++) {
+    int candidate = GetBossPoolId(pool, i);
+    if (UH_BD_Eligible(candidate, players, false)) {
+      int count = GetBossPickCount(candidate) + UH_BossRoundSeen(candidate);
+      eligible++;
+      if (minimum < 0 || count < minimum) minimum = count;
+      if (UH_BD_Eligible(candidate, players, true)) {
+        strict++;
+        if (strictminimum < 0 || count < strictminimum) strictminimum = count;
+      }
+    }
+    Delay(1);
+  }
+  if (strict > 0) minimum = strictminimum;
+  Log(s:"Boss diagnostic: actor=", s:actor, s:" players=", i:players, s:" tier=", i:pool,
+    s:" appearances=", i:GetBossPickCount(id), s:" round delta=", i:UH_BossRoundSeen(id));
+  int mode = GetBossSelectionMode(id);
+  if (!IsBossEnabled(id)) Log(s:"  Random blocked: registration is disabled.");
+  else if (mode == UH_BR_DISABLED) Log(s:"  Random blocked: disabled override.");
+  else if (mode == UH_BR_FORCED) Log(s:"  Random blocked: forced-only mode.");
+  if (pool == UHBOSS_POOL_NONE) Log(s:"  Random blocked: no rarity pool membership.");
+  if (players < GetBossSelectionMinPlayers(id)) Log(s:"  Random blocked: too few players.");
+  int maximum = GetBossSelectionMaxPlayers(id);
+  if (maximum > 0 && players > maximum) Log(s:"  Random blocked: too many players.");
+  if (CanPickRandomBoss(id, players)) {
+    if (strict > 0 && !UH_BD_Eligible(id, players, true)) {
+      if (GetCVar("uh_sv_bossavoidrepeat") && BossWasInPreviousLineup(id))
+        Log(s:"  Random blocked: previous-lineup exclusion.");
+      if (GetCVar("uh_sv_bossavoidduplicates") && UH_BossRoundSeen(id))
+        Log(s:"  Random blocked: same-round exclusion.");
+    }
+    else {
+      if (!strict && eligible) Log(s:"  Optional repeat exclusions relax: the restricted pool is empty.");
+      if (BossSelectionSetting("uh_sv_bossselectmode", 1) == 0 &&
+          GetBossPickCount(id) + UH_BossRoundSeen(id) != minimum)
+        Log(s:"  Eligible, but not a lowest-count candidate: minimum=", i:minimum);
+      else Log(s:"  Random draw candidate in this tier.");
+    }
+  }
+  if (mode == UH_BR_DISABLED) Log(s:"  Specified selection blocked: disabled or unregistered Boss.");
+  else if (GetCVar("uh_sv_bossforcedplayerlimits") && !BossSelectionMeetsPlayerLimits(id, players))
+    Log(s:"  Specified selection blocked: player limits.");
+  else Log(s:"  Specified selection permitted by mode and player limits.");
+  Log(s:"Boss diagnostic complete. Requests and history are unchanged.");
+}
+
+script "uh_BossPoolDiagnostics" (int tier) {
+  int first = tier;
+  int last = tier;
+  if (tier == 0) {first = UHBOSS_POOL_COMMON; last = UHBOSS_POOL_EX;}
+  if (first < UHBOSS_POOL_COMMON || last > UHBOSS_POOL_EX) {terminate;}
+  int players = PlayerCount();
+  int mode = BossSelectionSetting("uh_sv_bossselectmode", 1);
+  Log(s:"Boss pool snapshot: players=", i:players, s:" selectmode=", i:mode,
+    s:" avoidrepeat=", i:GetCVar("uh_sv_bossavoidrepeat"),
+    s:" avoidduplicates=", i:GetCVar("uh_sv_bossavoidduplicates"));
+  Log(s:"Current round delta and previous-lineup snapshot are used. This is not a next-round prediction.");
+  Log(s:"Per-slot requests, rarity rolls, winner choices and Combos can override this draw. This query consumes none of them.");
+  for (int pool = first; pool <= last; pool++) {
+    int eligible = 0;
+    int strict = 0;
+    int minimum = -1;
+    int strictminimum = -1;
+    for (int i = 0; i < GetBossPoolCount(pool); i++) {
+      int id = GetBossPoolId(pool, i);
+      if (UH_BD_Eligible(id, players, false)) {
+        int count = GetBossPickCount(id) + UH_BossRoundSeen(id);
+        eligible++;
+        if (minimum < 0 || count < minimum) minimum = count;
+        if (UH_BD_Eligible(id, players, true)) {
+          strict++;
+          if (strictminimum < 0 || count < strictminimum) strictminimum = count;
+        }
+      }
+      Delay(1);
+    }
+    if (strict > 0) minimum = strictminimum;
+    Log(s:"Tier ", i:pool, s:": eligible=", i:eligible, s:" restricted=", i:strict, s:" minimum count=", i:minimum);
+    if (eligible && !strict) Log(s:"  Optional repeat exclusions relax for this tier.");
+    int candidates = 0;
+    int totalweight = 0;
+    for (i = 0; i < GetBossPoolCount(pool); i++) {
+      id = GetBossPoolId(pool, i);
+      if (UH_BD_Eligible(id, players, false)) {
+        count = GetBossPickCount(id) + UH_BossRoundSeen(id);
+        bool draw = (!strict || UH_BD_Eligible(id, players, true)) && (mode == 1 || count == minimum);
+        int weight = GetBossSelectionWeight(id);
+        if (draw) {candidates++; totalweight += weight;}
+        Log(s:"  ", s:GetBossActor(id), s:" id=", i:id, s:" weight=", i:weight,
+          s:" appearances=", i:GetBossPickCount(id), s:" effective count=", i:count, s:" candidate=", i:draw);
+      }
+      Delay(1);
+    }
+    Log(s:"Boss pool totals: tier=", i:pool, s:" eligible=", i:eligible,
+      s:" candidates=", i:candidates, s:" draw weight=", i:totalweight);
+    if (!candidates) {
+      if (pool == UHBOSS_POOL_COMMON)
+        Log(s:"  No Common fallback. If the primary draw also fails, ordinary selection ends the round.");
+      else Log(s:"  Empty primary tier retries eligible Common candidates; it does not force Boss 0.");
+    }
+  }
+  Log(s:"Boss pool diagnostic complete. Requests and history are unchanged.");
+}
