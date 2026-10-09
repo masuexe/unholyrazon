@@ -82,7 +82,7 @@ Configure event selection behavior with these server CVARs:
 - **State and timing:** Policy changes take effect on the next selection. In-progress rounds do not re-evaluate. Policy changes do not reset event history or EX progress.
 - **Empty pool fallback:** If no event meets random eligibility conditions, the server runs a standard boss round.
 - **Policy inspection:** Use `uh_event_policy` to print active policy values. `uh_event_list` and menu configuration output also display them.
-- **Storage:** Policy CVARs are engine CVARs (saved in `server.cfg` or via `uh_event_save`). They do not appear in menus and are not written to `uh_sv_eventrules`.
+- **Storage:** Policy CVARs are engine CVARs (saved in `server.cfg` or via `writeini`). They do not appear in menus and are not written to `uh_sv_eventrules`.
 
 ### Policy configuration examples
 
@@ -138,10 +138,13 @@ If no random event meets the selection conditions, the game proceeds with a norm
 | `uh_event_policy` | Displays active selection policy CVARs. |
 | `uh_event_reset <stem> [field]` | Clears overrides for a specific field or the entire event. |
 | `uh_sv_eventrules ""` | Clears all overrides across all events. |
-| `uh_event_save` | Flushes pending commands and writes configuration to disk (`writeini`). |
+| `uh_event_save` | Waits for queued commands to finish, then prompts to run `writeini`. |
 | `uh_event_export` | Prints a single `uh_sv_eventrules` line to copy into `server.cfg`. |
-| `uh_event_load <path>` | Executes a command file (e.g. `examples/bonus_event_settings/host.cfg`). |
+| `uh_event_load <path>` | Prints instructions to run `exec <path>`, then `uh_event_reload`. |
 | `uh_event_reload` | Re-parses the current `uh_sv_eventrules` CVAR string. |
+
+> [!NOTE]
+> The game engine prevents KEYCONF aliases from running `writeini` or `exec`. Run `writeini` directly in the console after `uh_event_save` confirms queued edits. To load a script, run `exec <path>` directly in the console, then run `uh_event_reload`.
 
 #### Usage examples
 
@@ -165,6 +168,14 @@ uh_event_reset boss_ffa ex_count
 uh_event_reset boss_ffa ex_target
 uh_event_reset demoneye_parade minplayers
 uh_sv_eventrules ""  // Clear all overrides
+
+// Save configuration to disk
+uh_event_save  // Wait for the prompt: "Event edits are complete. Run writeini directly in the server console to save."
+writeini       // Execute directly in the server console
+
+// Load configuration from file
+exec examples/bonus_event_settings/host.cfg  // Execute directly in the server console
+uh_event_reload                              // Reload and apply the updated CVAR rules
 ```
 
 ### Persistence and Addons
