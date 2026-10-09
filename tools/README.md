@@ -350,6 +350,43 @@ Scripts should accept paths or environment overrides where practical, return a
 non-zero exit code on failure, and print a concise summary. Do not commit MCP
 logs, generated build output, or Python bytecode.
 
+## Clownpiece phase timing
+
+Boss Setup exposes `uh_sv_clownpiece_autotime` (default true),
+`uh_sv_clownpiece_w2_time` and `uh_sv_clownpiece_w8_time` (default 30 seconds,
+runtime clamp 1–300). W2/W8 remain invulnerable survival spells. Other active
+phases keep a 30-second base; disabled phases W3/W5 do not count toward budgets.
+
+At each phase entry, automatic timing shares the normal round timer's actual
+remaining time between the remaining phases, weighted by their base durations.
+It reserves 10 seconds for the ending plus 2 seconds per future phase switch.
+The selected duration stays fixed for that phase and never exceeds its base.
+Early damage clears leave more time for later phases. Changes to settings apply
+on the next phase entry. Disabling automatic timing or the normal round timer
+uses base durations; versus/replacement event flows clear the normal deadline.
+
+During W2/W8, survivor attacks cancel HP damage and add timer credit. Damage
+is measured after damage-type/PowerProtection/team modifiers and before armor
+absorption, so armor is not consumed. One starting phase HP budget removes half
+of the adapted initial duration, capped at that half; small hits accumulate.
+Environment, boss/teammate, telefrag and instant-death hits give no credit.
+The shared Clownpiece session pools hits across simultaneous Clownpieces against
+the starting boss's HP budget. HUD `ATTACK TIME -Xs` reports accumulated credit;
+server updates are throttled to five per second. W2/W8 reset credit separately,
+and accelerated timeout keeps the normal no-survivor-deaths capture condition.
+Native transition invulnerability is popped on entry: the server damage EVENT
+provides survival protection, because native invulnerability skips that EVENT.
+Other invulnerability layers can still block damage credit until they expire.
+
+The minimum is one second per phase: an extremely late morph or unusually long
+health refill cannot be guaranteed to finish before round timeout. For 130
+seconds actually remaining at W1 entry, the initial budget is 110 seconds and
+W1 receives 18 seconds (the game timer itself also includes its existing
+10-second startup allowance). This adaptation does not change damage, health,
+capture rewards or round timeout behavior. Phase transitions retain protection
+while healing and switching weapons, then release it immediately; the former
+extra three seconds of post-transition invulnerability have been removed.
+
 ## Batch D acceptance
 
 Run the repeatable Batch D gates from one entry point:

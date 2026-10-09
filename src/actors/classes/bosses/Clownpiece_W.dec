@@ -114,10 +114,9 @@ actor Clownpiece_W : BaseUnholyBossWep {
    SpellBreakDone:
     TNT1 A 0 A_TakeInventory("UH_PhaseResume_F")
     8I12 A 0 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 0)
-    // End Time Sign invuln if leaving W2/W8; then start normal 3s phase invuln
+    // End survival protection and release the transition invulnerability now.
     8I12 A 0 A_TakeInventory("ClownpieceSurvivalInvuln_F")
-    8I12 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics")
-    8I12 A 0 A_GiveInventory("ClownpiecePhaseInvulnTics", 105)  // 3s @ 35tic
+    8I12 A 0 ACS_NamedExecuteWithResult("uh_invulnerableplayer", 0, 0)
     8I12 A 0 A_GiveInventory("UnholyBossAmmo200", 200)
     8I12 A 0 A_GunFlash("Flash", true)
     goto Ready2
@@ -342,13 +341,8 @@ actor ClownpiecePainFlag : Once {}
 actor ClownpieceOrbFlag : Once {}
 actor ClownpieceOrbAmmoEmpty_F : Once {}
 actor ClownpieceOrbEndPending_F : Once {}
-// Survival spell (Time Sign W2/W8): boss stays invuln until timer ends
+// Survival spell (Time Sign W2/W8): ACS cancels incoming damage until timer ends
 actor ClownpieceSurvivalInvuln_F : Once {}
-// Post-phase invuln timer (105 = 3s). Drained 1/tic by HealthCheck while Flash runs.
-actor ClownpiecePhaseInvulnTics : Inventory {
-  Inventory.MaxAmount 105
-  +INVENTORY.UNDROPPABLE
-}
 // Shared HP poll. DoSwapGo is a no-op (W8 / inherited Fire+Ready). Each Wn Flash gives HealthCheck_Wn_P.
 actor ClownpieceHealthCheck_P : CustomInventory {
   +INVENTORY.AUTOACTIVATE
@@ -357,16 +351,12 @@ actor ClownpieceHealthCheck_P : CustomInventory {
   States {
    Pickup:
     TNT1 A 0 A_JumpIfInventory("ClownpieceSurvivalInvuln_F", 1, "SurvivalHold")
-    TNT1 A 0 A_JumpIfInventory("ClownpiecePhaseInvulnTics", 1, "TickInvuln")
     goto CheckSwap
    SurvivalHold:
-    // Do NOT call core_invulnerableplayer here — it STACKS (+1/Give). SpellBreak already enabled invuln once.
+    // The survival EVENT cancels damage; do not add native invulnerability
+    // here, because it would prevent the EVENT from recording hits.
     TNT1 A 0
     stop
-   TickInvuln:
-    TNT1 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics", 1)
-    TNT1 A 0 A_JumpIfInventory("ClownpiecePhaseInvulnTics", 1, "CheckSwap")
-    TNT1 A 0 ACS_NamedExecuteWithResult("uh_invulnerableplayer", 0, 0)
    CheckSwap:
     TNT1 A 0 A_JumpIfHealthLower(2, "DoSwap")
     stop
@@ -395,7 +385,6 @@ actor ClownpieceClearSurvivalInvuln_P : CustomInventory {
     stop
    ClearGo:
     TNT1 A 0 A_TakeInventory("ClownpieceSurvivalInvuln_F")
-    TNT1 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics")
     TNT1 A 0 ACS_NamedExecuteWithResult("uh_invulnerableplayer", 0, 0)
     stop
   }
@@ -543,7 +532,6 @@ actor ClownpieceForceSwap_W3_P : CustomInventory {
     goto Skip
    Swap:
     TNT1 A 0 A_TakeInventory("ClownpieceSurvivalInvuln_F")
-    TNT1 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics")
     TNT1 A 0 ACS_NamedExecuteWithResult("uh_StripInvulnStacks", 0)
     TNT1 A 0 A_GiveInventory("ClownpieceOrbAbort_P")
     TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
@@ -577,7 +565,6 @@ actor ClownpieceForceSwap_W4_P : CustomInventory {
    Swap:
     // W2 now goes straight to W4; retire its orbiting survival projectile.
     TNT1 A 0 A_TakeInventory("ClownpieceSurvivalInvuln_F")
-    TNT1 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics")
     TNT1 A 0 ACS_NamedExecuteWithResult("uh_StripInvulnStacks", 0)
     TNT1 A 0 A_GiveInventory("ClownpieceOrbAbort_P")
     TNT1 A 0 A_GiveInventory("ClownpiecePainFlag")
@@ -728,7 +715,6 @@ actor ClownpieceTimeoutKill_P : CustomInventory {
    KillGo:
     TNT1 A 0 A_GiveInventory("ClownpieceOrbAbort_P")
     TNT1 A 0 A_TakeInventory("ClownpieceSurvivalInvuln_F")
-    TNT1 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics")
     TNT1 A 0 A_TakeInventory("PlayerPropertyExtraLife")
     TNT1 A 0 A_TakeInventory("PlayerPropertyExtraLifeNative")
     TNT1 A 0 A_TakeInventory("PlayerPropertyBuddha")
@@ -861,13 +847,13 @@ actor Clownpiece_W2 : Clownpiece_SpellWep {
    StartSpell:
     8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 2, 30)
     goto SpellBreakDone
-    // Time Sign: keep SpellBreak invuln for the whole timer (do not re-stack invuln)
+    // Time Sign: cancel damage in ACS so hits can accelerate the timer.
    SpellBreakDone:
     TNT1 A 0 A_TakeInventory("UH_PhaseResume_F")
     8I12 A 0 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 0)
-    8I12 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics")
     8I12 A 0 A_GiveInventory("ClownpieceSurvivalInvuln_F")
-    // Invuln already on from SpellBreak; calling core_invulnerableplayer again would STACK
+    // Drop only the transition stack: native invulnerability skips damage events.
+    8I12 A 0 ACS_NamedExecuteWithResult("uh_invulnerableplayer", 0, 0)
     8I12 A 0 A_GiveInventory("UnholyBossAmmo200", 200)
     8I12 A 0 A_GunFlash("Flash", true)
     goto Ready2
@@ -1474,13 +1460,13 @@ actor Clownpiece_W8 : Clownpiece_W {
    StartSpell:
     8I12 A 0 ACS_NamedExecuteAlways("uh_SpellCardStart", 0, 8, 30)
     goto SpellBreakDone
-    // Time Sign: keep SpellBreak invuln for the whole timer; only timeout ends the fight
+    // Time Sign: cancel damage in ACS; accelerated timeout ends the fight.
    SpellBreakDone:
     TNT1 A 0 A_TakeInventory("UH_PhaseResume_F")
     8I12 A 0 ACS_NamedExecuteWithResult("uh_freezeplayer", 0, 0)
-    8I12 A 0 A_TakeInventory("ClownpiecePhaseInvulnTics")
     8I12 A 0 A_GiveInventory("ClownpieceSurvivalInvuln_F")
-    // Invuln already on from SpellBreak; do not re-stack
+    // Drop only the transition stack: native invulnerability skips damage events.
+    8I12 A 0 ACS_NamedExecuteWithResult("uh_invulnerableplayer", 0, 0)
     8I12 A 0 A_GiveInventory("UnholyBossAmmo200", 200)
     8I12 A 0 A_GunFlash("Flash", true)
     goto Ready2

@@ -4,7 +4,9 @@
 // Spell card timer + capture bonus (LMS).
 // Normal: clear spell-card phase in time, no survivor deaths → bonus.
 // Active nonspell (1): timer only, no bonus/reward. Phases 3/5 are disabled.
-// Survival Time Sign (W2/W8): boss invuln until timer ends; timeout + no deaths → bonus.
+// Survival Time Sign (W2/W8): cancel HP damage and convert survivor hits into
+// timer credit (one phase HP budget = half the initial duration, capped at half).
+// Timeout + no deaths → bonus; damage acceleration does not break capture.
 //
 // DECORATE / CallACS API:
 //   ACS_NamedExecuteAlways("uh_SpellCardStart", 0, phaseId, timeLimitSec)
@@ -20,6 +22,7 @@
 #define UH_SC_HUD_TIMER 1721
 #define UH_SC_HUD_RESULT 1722
 #define UH_SC_HUD_BONUS 1723
+#define UH_SC_HUD_ACCEL 1724
 
 #define UH_SC_PHASE_MAX 8
 #define UH_SC_TICRATE 35
@@ -32,12 +35,15 @@ bool uh_spellcardactive;
 bool uh_spellcardbroken;
 int uh_spellcardtimeleft;
 int uh_spellcardphase;
+// One map-array slot: the round-core is near ACC's map-variable limit.
+int uh_spellcardattack[5]; // remaining tics, initial tics, HP budget, damage, removed tics
 int uh_spellcardtimergen;  // bump on each Start; stale Always timers must not tick
 
 int uh_cl_spellcardgen;
 int uh_cl_spellcardhudgen = -1;
 bool uh_cl_spellcardbroken;
 int uh_cl_spellcard_remaining_tics;
+int uh_cl_spellcard_removed_tics;
 
 str uh_spellcardnamelist[UH_SC_PHASE_MAX + 1] = {
   "",
@@ -72,22 +78,95 @@ function bool UH_SpellCardIsSurvival(int phaseid) {
   return (phaseid == 2 || phaseid == 8);
 }
 
+// Allocate only on phase entry: the running countdown never changes speed.
+// Disabled nonspells 3/5 contribute no weight. Ordinary phases remain 30s.
+function int UH_ClownpieceBaseTime(int phaseid, int fallback) {
+  if (phaseid == 2)
+    return min(300, max(1, GetCVar("uh_sv_clownpiece_w2_time")));
+  if (phaseid == 8)
+    return min(300, max(1, GetCVar("uh_sv_clownpiece_w8_time")));
+  return min(300, max(1, fallback));
+}
+
+function int UH_ClownpiecePhaseTime(int phaseid, int fallback) {
+  int base = UH_ClownpieceBaseTime(phaseid, fallback);
+  if (!GetCVar("uh_sv_clownpiece_autotime") || uh_roundtimerdeadline < 0)
+    return base;
+
+  int weight = 0;
+  int count = 0;
+  for (int phase = phaseid; phase <= UH_SC_PHASE_MAX; phase++) {
+    if (phase == 3 || phase == 5)
+      continue;
+    weight += UH_ClownpieceBaseTime(phase, 30);
+    count++;
+  }
+  if (count == 0)
+    return base;
+
+  // Floor to whole seconds; leave 10s for the ending and 2s per future swap
+  // (heal/weapon selection). This is a budget, not a guarantee for extreme
+  // health scaling or a late morph with less than one second per phase left.
+  int remaining = max(0, (uh_roundtimerdeadline - Timer()) / UH_SC_TICRATE);
+  int budget = max(0, remaining - 10 - 2 * (count - 1));
+  return min(base, max(1, budget * base / weight));
+}
+
 function void UH_SpellCardClearHud(void) {
   ClearHudMessageBold(UH_SC_HUD_NAME);
   ClearHudMessageBold(UH_SC_HUD_TIMER);
   ClearHudMessageBold(UH_SC_HUD_BONUS);
+  ClearHudMessageBold(UH_SC_HUD_ACCEL);
   for (int c = 0; c < MAX_PLAYERS; c++) {
     if (UH_Ti_IsConnectedClient(c))
       NamedExecuteClientScript("uh_SpellCardClientClear", c, uh_spellcardtimergen);
   }
 }
 
-function void UH_SpellCardSyncClients(int timeleftsec, int mygen, int phaseid) {
+function void UH_SpellCardSyncClients(int remainingtics, int mygen, int phaseid) {
   for (int c = 0; c < MAX_PLAYERS; c++) {
     if (UH_Ti_IsConnectedClient(c))
-      NamedExecuteClientScript("uh_SpellCardClientSync", c, timeleftsec, mygen,
-        phaseid, uh_spellcardbroken);
+      NamedExecuteClientScript("uh_SpellCardClientSync", c, remainingtics, mygen,
+        phaseid, uh_spellcardattack[4] * 2 + uh_spellcardbroken);
   }
+}
+
+// Keep actual HP/armor unchanged: native INVULNERABLE returns before these
+// events, so survival phases pop their transition stack and use cancellation.
+// PREMOD sees PowerProtection/type/team modifiers and runs before armor/procs.
+// The session is shared by all Clownpieces: their damage shares one credit cap.
+script "uh_ClownpieceTimeDamage" (int evt, int dmg, int dmgtype) EVENT {
+  if (evt != GAMEEVENT_ACTOR_DAMAGED_PREMOD)
+    terminate;
+  if (!SetActivator(0, AAPTR_DAMAGE_TARGET) || !CheckActorClass(0, "Clownpiece"))
+    terminate;
+  if (!CheckInventory("ClownpieceSurvivalInvuln_F"))
+    terminate;
+
+  int effective = GetEventResult();
+  SetResultValue(0); // Cancel all hits, including non-credit environmental hits.
+  if (!uh_spellcardactive || !UH_SpellCardIsSurvival(uh_spellcardphase))
+    terminate;
+  if (effective <= 0 || effective >= 1000000 ||
+      !StrICmp(dmgtype, "Telefrag") || !StrICmp(dmgtype, "SpawnTelefrag") ||
+      !StrICmp(dmgtype, "DeathPit") || !StrICmp(dmgtype, "InstantDeath"))
+    terminate;
+  if (!SetActivator(0, AAPTR_DAMAGE_SOURCE))
+    terminate;
+  int shooter = PlayerNumber();
+  if (shooter < 0 || playerlifestatusarr[shooter] != PLS_SURVIVOR || CheckInventory("IsDead"))
+    terminate;
+
+  uh_spellcardattack[3] += min(effective, uh_spellcardattack[2] - uh_spellcardattack[3]);
+  int cap = uh_spellcardattack[1] / 2;
+  // FixedDiv takes raw cells; their ratio is fixed regardless of their units.
+  // Accumulating damage before division preserves small-hit contributions.
+  int removed = cap;
+  if (uh_spellcardattack[3] < uh_spellcardattack[2])
+    removed = FixedMul(FixedDiv(uh_spellcardattack[3], uh_spellcardattack[2]), cap);
+  uh_spellcardattack[0] = max(0, uh_spellcardattack[0] - (removed - uh_spellcardattack[4]));
+  uh_spellcardattack[4] = removed;
+  uh_spellcardtimeleft = (uh_spellcardattack[0] + UH_SC_TICRATE - 1) / UH_SC_TICRATE;
 }
 
 function void UH_SpellCardDrawHud(int sec, int centi, int phaseid) {
@@ -133,6 +212,17 @@ function void UH_SpellCardDrawHud(int sec, int centi, int phaseid) {
   // the sync. Bold draws on this CLIENTSIDE VM regardless of its activator.
   HudMessageBold(s:timerstr; HUDMSG_PLAIN, UH_SC_HUD_TIMER, color, draw_x, 16.1, 0);
 
+  SetFont("SMALLFONT");
+  if (UH_SpellCardIsSurvival(phaseid)) {
+    int removedcenti = uh_cl_spellcard_removed_tics * 100 / UH_SC_TICRATE;
+    str padding = "";
+    if (removedcenti % 100 < 10) padding = "0";
+    HudMessageBold(s:"ATTACK TIME -", i:removedcenti / 100, s:".", s:padding,
+      i:removedcenti % 100, s:"s"; HUDMSG_PLAIN, UH_SC_HUD_ACCEL, CR_GREEN,
+      draw_x, 80.1, 0);
+  }
+  else ClearHudMessageBold(UH_SC_HUD_ACCEL);
+
   // Spell Card Name and Bonus (Top-Right, placed at Y=56.1 and 68.1 to clear LMS event banner)
   SetFont("SMALLFONT");
   if (UH_SpellCardShowsName(phaseid)) {
@@ -147,6 +237,7 @@ function void UH_SpellCardDrawHud(int sec, int centi, int phaseid) {
   else {
     ClearHudMessageBold(UH_SC_HUD_NAME);
     ClearHudMessageBold(UH_SC_HUD_BONUS);
+    ClearHudMessageBold(UH_SC_HUD_ACCEL);
   }
 }
 
@@ -166,6 +257,8 @@ function void UH_SpellCardEndQuiet(void) {
   UH_SpellCardStopTimer();
   uh_spellcardbroken = false;
   uh_spellcardtimeleft = 0;
+  uh_spellcardattack[0] = 0;
+  uh_spellcardattack[4] = 0;
   UH_SpellCardClearHud();
 }
 
@@ -194,7 +287,6 @@ function void UH_ClownpieceClearSurvInv(void) {
       && CheckActorInventory(tid, "PlayerPropertyInvulnerable") < 1)
       continue;
     TakeActorInventory(tid, "ClownpieceSurvivalInvuln_F", 1);
-    TakeActorInventory(tid, "ClownpiecePhaseInvulnTics", 999);
     TakeActorInventory(tid, "PlayerPropertyInvulnerable", 999);
     SetActivator(tid);
     SetActorProperty(0, APROP_INVULNERABLE, false);
@@ -259,11 +351,17 @@ script "uh_SpellCardStart" (int phaseid, int timelimitsec) {
   // tic can run after the new sync (ACS queues scripts at the list head).
 
   uh_spellcardphase = phaseid;
+  timelimitsec = UH_ClownpiecePhaseTime(phaseid, timelimitsec);
   uh_spellcardtimeleft = timelimitsec;
+  uh_spellcardattack[1] = timelimitsec * UH_SC_TICRATE;
+  uh_spellcardattack[0] = uh_spellcardattack[1];
+  uh_spellcardattack[2] = max(1, GetActorProperty(0, APROP_SPAWNHEALTH));
+  uh_spellcardattack[3] = 0;
+  uh_spellcardattack[4] = 0;
   uh_spellcardbroken = false;
   uh_spellcardactive = true;
 
-  UH_SpellCardSyncClients(timelimitsec, uh_spellcardtimergen, phaseid);
+  UH_SpellCardSyncClients(uh_spellcardattack[0], uh_spellcardtimergen, phaseid);
   ACS_NamedExecuteAlways("uh_SpellCardTimer", 0, uh_spellcardtimergen);
 }
 
@@ -303,20 +401,32 @@ script "uh_ClownpieceSelectW" (int phase) {
 script "uh_SpellCardTimer" (int mygen) {
   int phase;
 
-  while (uh_spellcardactive && uh_spellcardtimeleft > 0) {
+  int syncage = UH_SC_TICRATE;
+  int syncedremoved = -1;
+  int warnedsec = -1;
+  while (uh_spellcardactive && uh_spellcardattack[0] > 0) {
     if (mygen != uh_spellcardtimergen)
       terminate;
-    UH_SpellCardSyncClients(uh_spellcardtimeleft, mygen, uh_spellcardphase);
-    if (uh_spellcardtimeleft <= 9 && uh_spellcardtimeleft >= 5)
-      AmbientSound("Touhou/Timeout", 127);
-    if (uh_spellcardtimeleft <= 4)
-      AmbientSound("Touhou/Timeout2", 127);
-    Delay(UH_SC_TICRATE);
-    if (mygen != uh_spellcardtimergen)
+    // At most five damage updates per second, plus the regular 1Hz sync.
+    if (syncage >= UH_SC_TICRATE ||
+        (syncage >= 7 && syncedremoved != uh_spellcardattack[4])) {
+      UH_SpellCardSyncClients(uh_spellcardattack[0], mygen, uh_spellcardphase);
+      syncage = 0;
+      syncedremoved = uh_spellcardattack[4];
+    }
+    if (warnedsec != uh_spellcardtimeleft) {
+      if (uh_spellcardtimeleft <= 9 && uh_spellcardtimeleft >= 5)
+        AmbientSound("Touhou/Timeout", 127);
+      if (uh_spellcardtimeleft <= 4)
+        AmbientSound("Touhou/Timeout2", 127);
+      warnedsec = uh_spellcardtimeleft;
+    }
+    Delay(1);
+    if (mygen != uh_spellcardtimergen || !uh_spellcardactive)
       terminate;
-    if (!uh_spellcardactive)
-      terminate;
-    uh_spellcardtimeleft--;
+    uh_spellcardattack[0] = max(0, uh_spellcardattack[0] - 1);
+    uh_spellcardtimeleft = (uh_spellcardattack[0] + UH_SC_TICRATE - 1) / UH_SC_TICRATE;
+    syncage++;
   }
 
   if (uh_spellcardactive && mygen == uh_spellcardtimergen) {
@@ -384,6 +494,7 @@ script "uh_SpellCardClientClear" (int mygen) CLIENTSIDE {
   ClearHudMessageBold(UH_SC_HUD_NAME);
   ClearHudMessageBold(UH_SC_HUD_TIMER);
   ClearHudMessageBold(UH_SC_HUD_BONUS);
+  ClearHudMessageBold(UH_SC_HUD_ACCEL);
 }
 
 script "uh_SpellCardClientBreak" (int mygen) CLIENTSIDE {
@@ -391,14 +502,15 @@ script "uh_SpellCardClientBreak" (int mygen) CLIENTSIDE {
     uh_cl_spellcardbroken = true;
 }
 
-script "uh_SpellCardClientSync" (int timeleftsec, int mygen, int phaseid, int broken) CLIENTSIDE {
+script "uh_SpellCardClientSync" (int remainingtics, int mygen, int phaseid, int status) CLIENTSIDE {
   if (mygen < uh_cl_spellcardgen)
     terminate;
   uh_cl_spellcardgen = mygen;
-  uh_cl_spellcardbroken = broken != 0;
-  uh_cl_spellcard_remaining_tics = timeleftsec * UH_SC_TICRATE;
+  uh_cl_spellcardbroken = (status % 2) != 0;
+  uh_cl_spellcard_removed_tics = status / 2;
+  uh_cl_spellcard_remaining_tics = remainingtics;
   if (uh_cl_spellcardhudgen != mygen)
-    ACS_NamedExecuteAlways("uh_SpellCardClientHud", 0, phaseid, timeleftsec, mygen);
+    ACS_NamedExecuteAlways("uh_SpellCardClientHud", 0, phaseid, 0, mygen);
 }
 
 script "uh_SpellCardClientHud" (int phaseid, int timelimitsec, int mygen) CLIENTSIDE {
@@ -422,6 +534,7 @@ script "uh_SpellCardClientHud" (int phaseid, int timelimitsec, int mygen) CLIENT
     ClearHudMessageBold(UH_SC_HUD_NAME);
     ClearHudMessageBold(UH_SC_HUD_TIMER);
     ClearHudMessageBold(UH_SC_HUD_BONUS);
+    ClearHudMessageBold(UH_SC_HUD_ACCEL);
   }
   if (uh_cl_spellcardhudgen == mygen)
     uh_cl_spellcardhudgen = -1;
@@ -453,7 +566,6 @@ script "uh_StripInvulnStacks" (void) {
 // layers themselves are returned by the generic demorph baseline.
 script "uh_ClownpieceUnmorphCancel" (void) {
   UH_SpellCardEndQuiet();
-  TakeInventory("ClownpiecePhaseInvulnTics", 999);
   TakeInventory("ClownpieceSurvivalInvuln_F", 1);
   TakeInventory("ClownpieceGetUpDone_F", 1);
   TakeInventory("ClownpiecePainFlag", 1);
