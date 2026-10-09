@@ -105,3 +105,79 @@ uh_sv_bossavoidduplicates true
 // Uniform random selection ignoring appearance history
 uh_sv_bossselectmode 1
 ```
+
+---
+
+## Per-boss overrides
+
+> [!IMPORTANT]
+> **Implementation status:** This phase implements data storage, host commands, and input validation. Stored override values **do not affect boss selection algorithms yet**. Integration with pool filtering and weights will follow in the next release phase.
+
+Server operators can define rules for individual boss actors.
+
+### Actor keys and storage format
+
+- **Actor name key:** Overrides are keyed by actor class name (1 to 127 characters; letters, digits, underscores, hyphens, and periods).
+- **Case-insensitive:** Actor lookups ignore letter case (`gembanker` matches `GemBanker`).
+- **Pending addons:** Overrides can be defined before an addon boss is loaded. Rules remain stored and pending until the matching actor registers.
+- **Storage format:** Stored in the archived string CVAR `uh_sv_bossrules` as:
+  `actor:mode,weight,minplayers,maxplayers;`
+  A value of `-1` denotes inheritance from registered defaults.
+- **Storage capacity:** Supports up to 256 boss records (up to 16,384 characters). Commands process sequentially through the server queue.
+
+### Override fields
+
+| Field | Values | Description |
+|-------|--------|-------------|
+| `mode` | `inherit`, `random`, `forced`, `disabled` | Availability mode for selection (`inherit` restores registered default). |
+| `weight` | `inherit` (-1), 1 to 1000000 | Relative selection weight within the boss pool. |
+| `minplayers` | `inherit` (-1), 0 to 64 | Minimum player count (0 removes lower limit). |
+| `maxplayers` | `inherit` (-1), 0 to 64 | Maximum player count (0 removes upper limit; must be $\ge$ minplayers if non-zero). |
+
+#### Modes
+- **`random`**: Eligible for random pool selection.
+- **`forced`**: Excluded from random selection. Can still be triggered manually or via script queues.
+- **`disabled`**: Fully disabled from random and forced selection.
+- **`inherit`**: Inherits the registration default mode.
+
+### Console commands
+
+| Command | Description |
+|---------|-------------|
+| `uh_boss_set <actor> <field> <value>` | Sets an override field for a boss actor. Accepts `inherit` for any field. |
+| `uh_boss_show <actor>` | Displays stored overrides, registration status, and enabled state. |
+| `uh_boss_reset <actor> [field]` | Resets a specific field or clears the entire override record for the actor. |
+| `uh_boss_list` | Lists all stored boss overrides. |
+| `uh_boss_export` | Prints the current `uh_sv_bossrules` string to copy into `server.cfg`. |
+| `uh_boss_reload` | Re-parses the current `uh_sv_bossrules` CVAR string. |
+| `uh_boss_save` | Waits for queued commands to finish, then prompts to run `writeini`. |
+| `uh_boss_load <path>` | Prints instructions to run `exec <path>`, then `uh_boss_reload`. |
+
+> [!NOTE]
+> The game engine prevents KEYCONF aliases from running `writeini` or `exec`. Run `writeini` directly in the server console after `uh_boss_save` confirms queued edits. To load a script, run `exec <path>` directly in the console, then run `uh_boss_reload`.
+
+#### Usage examples
+
+```cfg
+// Set boss overrides
+uh_boss_set GemBanker mode random
+uh_boss_set GemBanker weight 2
+uh_boss_set GemBanker minplayers 8
+uh_boss_set Fireman mode disabled
+
+// Inspect stored overrides
+uh_boss_show GemBanker
+uh_boss_list
+
+// Reset overrides
+uh_boss_reset GemBanker weight
+uh_boss_reset Fireman
+
+// Save configuration to disk
+uh_boss_save  // Wait for the prompt: "Boss edits are complete. Run writeini directly in the server console to save."
+writeini      // Execute directly in the server console
+
+// Load configuration from file
+exec examples/boss_overrides.cfg  // Execute directly in the server console
+uh_boss_reload                    // Reload and apply the updated CVAR rules
+```

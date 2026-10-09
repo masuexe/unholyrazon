@@ -1,0 +1,151 @@
+// First migration: storage, host commands and validation only. Selection does
+// not consume UH_BR_Get yet. Do not label stored fields as effective policies.
+
+function int UH_BC_Field(str name) {
+  if (!StrICmp(name, "mode")) return UH_BR_MODE;
+  if (!StrICmp(name, "weight")) return UH_BR_WEIGHT;
+  if (!StrICmp(name, "minplayers")) return UH_BR_MIN;
+  if (!StrICmp(name, "maxplayers")) return UH_BR_MAX;
+  return -1;
+}
+
+function str UH_BC_ModeName(int mode) {
+  if (mode == UH_BR_RANDOM) return "random";
+  if (mode == UH_BR_FORCED) return "forced";
+  if (mode == UH_BR_DISABLED) return "disabled";
+  return "inherit";
+}
+
+function str UH_BC_Token(str record, int part) {
+  int start = 0;
+  int current = 0;
+  for (int pos = 0; pos <= StrLen(record); pos++) {
+    if (pos == StrLen(record) || GetChar(record, pos) == ':') {
+      if (current == part) return StrMid(record, start, pos - start);
+      current++;
+      start = pos + 1;
+    }
+  }
+  return "";
+}
+
+function void UH_BC_Show(str actor) {
+  int id = FindBossByActor(actor);
+  Log(s:"Stored Boss overrides for ", s:actor, s:":");
+  if (id == UHBOSS_FAIL) Log(s:"  Pending: the Boss actor is not registered.");
+  else Log(s:"  Registered Boss: ", s:GetBossName(id), s:"; enabled=", i:IsBossEnabled(id));
+  Log(s:"  mode=", s:UH_BC_ModeName(UH_BR_Get(actor, UH_BR_MODE)));
+  Log(s:"  weight=", i:UH_BR_Get(actor, UH_BR_WEIGHT),
+    s:" minplayers=", i:UH_BR_Get(actor, UH_BR_MIN),
+    s:" maxplayers=", i:UH_BR_Get(actor, UH_BR_MAX), s:" (-1 means inherit)");
+  Log(s:"  Storage only: these overrides do not affect selection yet.");
+}
+
+// Returns true for a list request; the script yields between each list row.
+function bool UH_BC_Run(str record) {
+  str op = UH_BC_Token(record, 0);
+  str actor = UH_BC_Token(record, 1);
+  str fieldname = UH_BC_Token(record, 2);
+  str input = UH_BC_Token(record, 3);
+  if (StrLen(UH_BC_Token(record, 4))) {
+    Log(s:"Boss settings: too many arguments."); return false;
+  }
+  if (!StrICmp(op, "list") || !StrICmp(op, "export") || !StrICmp(op, "reload")) {
+    if (StrLen(actor) || StrLen(fieldname) || StrLen(input)) {
+      Log(s:"Boss settings: this command takes no arguments."); return false;
+    }
+    if (!StrICmp(op, "reload")) {
+      if (UH_BR_Load()) Log(s:"Stored Boss settings loaded from uh_sv_bossrules.");
+      return false;
+    }
+    if (!StrICmp(op, "export")) {
+      if (UH_BR_Load()) Log(s:"uh_sv_bossrules \"", s:GetCVarString("uh_sv_bossrules"), s:"\"");
+      return false;
+    }
+    Log(s:"Stored Boss overrides: ", i:UH_BR_Count(), s:" records. Selection does not use them yet.");
+    return true;
+  }
+  if (!UH_BR_ValidActor(actor)) {
+    Log(s:"Boss settings: use an actor name with 1-127 letters, digits, underscores, hyphens or periods.");
+    return false;
+  }
+  if (!StrICmp(op, "show")) {
+    if (StrLen(fieldname) || StrLen(input)) {
+      Log(s:"Usage: uh_boss_show <actor>"); return false;
+    }
+    UH_BC_Show(actor); return false;
+  }
+  int field = UH_BC_Field(fieldname);
+  // Registered actor spelling is canonical; missing addons retain their token.
+  int id = FindBossByActor(actor);
+  if (id != UHBOSS_FAIL) actor = GetBossActor(id);
+  if (!StrICmp(op, "reset")) {
+    if (StrLen(input) || (StrLen(fieldname) && field < 0)) {
+      Log(s:"Usage: uh_boss_reset <actor> [mode|weight|minplayers|maxplayers]"); return false;
+    }
+    if (!UH_BR_Edit(actor, field, -1)) {
+      Log(s:"Boss reset rejected; previous data remains loaded."); return false;
+    }
+    UH_BC_Show(actor); return false;
+  }
+  if (StrICmp(op, "set") || field < 0 || !StrLen(input)) {
+    Log(s:"Usage: uh_boss_set <actor> <mode|weight|minplayers|maxplayers> <value>"); return false;
+  }
+  int value = UH_BR_Number(input);
+  if (field == UH_BR_MODE) {
+    value = -2;
+    if (!StrICmp(input, "random")) value = UH_BR_RANDOM;
+    if (!StrICmp(input, "forced")) value = UH_BR_FORCED;
+    if (!StrICmp(input, "disabled")) value = UH_BR_DISABLED;
+  }
+  if (!StrICmp(input, "inherit")) value = -1;
+  if (!UH_BR_ValidValue(field, value)) {
+    Log(s:"Boss settings: mode=inherit/random/forced/disabled, weight=1-1000000, player limits=0-64. Any field accepts inherit.");
+    return false;
+  }
+  if (!UH_BR_Edit(actor, field, value)) {
+    Log(s:"Boss update rejected: check the saved data, player range and storage capacity."); return false;
+  }
+  UH_BC_Show(actor);
+  return false;
+}
+
+// Like the event queue: local noarchive mailboxes, no NET or CLIENTSIDE entry.
+// Execute CFG files directly on the server. Client queues cannot edit its data.
+script "uh_BossConfigCommands" (void) {
+  SetCVar("uh_boss_configbusy", 1);
+  int total = 0;
+  while (StrLen(GetCVarString("uh_boss_commands"))) {
+    str queue = GetCVarString("uh_boss_commands");
+    SetCVarString("uh_boss_commands", "");
+    if (StrLen(queue) > UH_BR_TEXT_CAP || GetChar(queue, StrLen(queue) - 1) != '|') {
+      SetCVar("uh_boss_configbusy", 0);
+      Log(s:"Boss command queue is invalid or too long; split the configuration file."); terminate;
+    }
+    int start = 0;
+    for (int pos = 0; pos < StrLen(queue); pos++) {
+      if (GetChar(queue, pos) != '|') continue;
+      if (++total > 256) {
+        SetCVar("uh_boss_configbusy", 0);
+        Log(s:"Boss command limit reached; split the configuration file."); terminate;
+      }
+      if (UH_BC_Run(StrMid(queue, start, pos - start))) {
+        for (int row = 0; row < UH_BR_Count(); row++) {
+          UH_BC_Show(UH_BR_ActorAt(row));
+          Delay(1);
+        }
+      }
+      start = pos + 1;
+      Delay(1);
+    }
+  }
+  SetCVar("uh_boss_configbusy", 0);
+}
+
+script "uh_BossConfigWatch" OPEN {
+  while (true) {
+    if (!GetCVar("uh_boss_configbusy") && StrLen(GetCVarString("uh_boss_commands")))
+      ACS_NamedExecute("uh_BossConfigCommands", 0);
+    Delay(1);
+  }
+}
