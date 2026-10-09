@@ -104,7 +104,10 @@ uh_sv_bonusavoidrepeat false
 
 Server operators can override rules for individual events by stem name (e.g. `boss_ffa`). Overrides take precedence over global settings and registration defaults.
 
-Use `uh_event_list` (or **Print Event Settings** in the menu) to view all registered stems, active settings, and selection policies.
+### Menu and console display
+
+- **Server host:** `uh_event_list` (and **Print Event Settings** in the menu on a host) displays registered events, active overrides, and selection policies. Output prints row-by-row across game tics to avoid engine instruction limits. Wait for the completion notice (`Event settings list complete.`) before reading the full list.
+- **Remote clients:** On connected network clients, **Print Event Settings** displays the synchronized selection policy CVARs and informs the client that per-event overrides are stored on the server host (use `uh_event_list` or `uh_event_show <stem>` on the host to inspect them).
 
 ### Override fields
 
@@ -134,12 +137,12 @@ If no random event meets the selection conditions, the game proceeds with a norm
 | `uh_event_show <stem>` | Displays active settings, sources, and EX progress on server console. |
 | `uh_event_check <stem>` | Runs read-only diagnostics on event eligibility, blocking reasons, and EX state. |
 | `uh_event_pool` | Displays current eligible pool, draw candidates, and selection weights. |
-| `uh_event_list` | Lists all registered events, active overrides, and selection policies. |
+| `uh_event_list` | Lists registered events and overrides row-by-row across game tics. Wait for the completion notice. |
 | `uh_event_policy` | Displays active selection policy CVARs. |
 | `uh_event_reset <stem> [field]` | Clears overrides for a specific field or the entire event. |
 | `uh_sv_eventrules ""` | Clears all overrides across all events. |
 | `uh_event_save` | Waits for queued commands to finish, then prompts to run `writeini`. |
-| `uh_event_export` | Prints a single `uh_sv_eventrules` line to copy into `server.cfg`. |
+| `uh_event_export` | Prints chunked append commands to clear, populate, and reload rules in a .cfg file for `exec`. |
 | `uh_event_load <path>` | Prints instructions to run `exec <path>`, then `uh_event_reload`. |
 | `uh_event_reload` | Re-parses the current `uh_sv_eventrules` CVAR string. |
 
@@ -161,7 +164,7 @@ uh_event_show boss_ffa
 uh_event_check demoneye_parade
 uh_event_pool
 uh_event_policy
-uh_event_list
+uh_event_list  // Wait for "Event settings list complete."
 
 // Reset overrides
 uh_event_reset boss_ffa ex_count
@@ -169,22 +172,33 @@ uh_event_reset boss_ffa ex_target
 uh_event_reset demoneye_parade minplayers
 uh_sv_eventrules ""  // Clear all overrides
 
+// Export configuration
+uh_event_export
+// Console outputs chunked append commands:
+//   uh_sv_eventrules ""
+//   eval + $uh_sv_eventrules "<chunk 1>" uh_sv_eventrules
+//   eval + $uh_sv_eventrules "<chunk 2>" uh_sv_eventrules
+//   uh_event_reload
+// Copy all output lines into a .cfg file (e.g. host_events.cfg).
+
 // Save configuration to disk
 uh_event_save  // Wait for the prompt: "Event edits are complete. Run writeini directly in the server console to save."
 writeini       // Execute directly in the server console
 
 // Load configuration from file
-exec examples/bonus_event_settings/host.cfg  // Execute directly in the server console
-uh_event_reload                              // Reload and apply the updated CVAR rules
+exec host_events.cfg  // Execute directly in the server console
 ```
 
 ### Persistence and Addons
 
-- **Storage format:** Overrides are stored in the archived string CVAR `uh_sv_eventrules` as:
+- **Host-local storage:** Overrides are stored in the host-archived string CVAR `uh_sv_eventrules` (`local string`) rather than broadcast over the network. This avoids Zandronum's 2,048-byte limit on server string replication, preventing client disconnects when saving large datasets.
+- **Storage format:** Stored as:
   `stem:mode,weight,minplayers,maxplayers,ex_count,ex_target;`
-  A value of `-1` or an empty `ex_target` denotes inheritance. Legacy 4-field formats are automatically supported.
+  A value of `-1` or an empty `ex_target` denotes inheritance from registered defaults.
+- **Storage capacity:** Supports up to 256 event records and up to 16,384 characters of rule text. Commands process one per game tic, with a queue limit of 256 commands per batch.
+- **Lossless multiline INI storage:** Datasets longer than 200 characters automatically prefix a newline (`\n`) so `writeini` saves them in a multiline format. This avoids Zandronum's 256-byte single-line buffer limit during INI writes, preserving datasets up to 16,384 characters across server restarts.
+- **Legacy INI compatibility:** Existing single-line server configurations and legacy 4-field formats load automatically.
 - **Addon support:** Overrides can be defined before an addon event is registered. Settings remain pending until an event matching the stem is loaded.
-- **Storage capacity:** Supports up to 256 event records (up to 16,384 characters). Commands process one per game tic, with a queue limit of 256 commands per batch.
 
 ---
 

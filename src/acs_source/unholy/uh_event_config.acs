@@ -116,98 +116,135 @@ function void UH_EC_Policy(void) {
   Log(s:"  uh_sv_bonusexplayerlimits=", i:GetCVar("uh_sv_bonusexplayerlimits"));
 }
 
-function void UH_EC_List(bool progress) {
+// Process one display row at a time; the owning script yields after output.
+function bool UH_EC_ListRow(int slot, bool progress) {
+  if (slot < UH_MAX_BONUS_EVENTS) {
+    if (!IsBonusEventDefined(slot)) return false;
+    UH_EC_Show(GetBonusEventStem(slot), progress);
+    return true;
+  }
+  int row = slot - UH_MAX_BONUS_EVENTS;
+  if (row >= UH_ER_Count()) return false;
+  str pending = UH_ER_StemAt(row);
+  if (FindBonusEventByStem(pending) != UHBE_FAIL) return false;
+  UH_EC_Show(pending, progress);
+  return true;
+}
+
+script "uh_EventConfigList" (int progress) {
   UH_EC_Policy();
-  for (int id = 0; id < UH_MAX_BONUS_EVENTS; id++)
-    if (IsBonusEventDefined(id)) UH_EC_Show(GetBonusEventStem(id), progress);
-  for (int row = 0; row < UH_ER_Count(); row++) {
-    str pending = UH_ER_StemAt(row);
-    if (FindBonusEventByStem(pending) == UHBE_FAIL) UH_EC_Show(pending, progress);
+  for (int slot = 0; slot < UH_MAX_BONUS_EVENTS + UH_ER_Count(); slot++)
+    if (UH_EC_ListRow(slot, progress)) Delay(1);
+  Log(s:"Event settings list complete.");
+}
+
+// Full overrides are host-only. A remote client's local archive is unrelated
+// to the connected server; never present it as that server's active settings.
+function bool UH_EC_Print(bool remote) {
+  if (remote) {
+    UH_EC_Policy();
+    Log(s:"Per-event settings are stored on the server and are not synchronized.");
+    Log(s:"Ask the host to use uh_event_list or uh_event_show <stem> on the server.");
+    return false;
+  }
+  Log(s:"EX progress is server-owned. Use uh_event_show on the server to read it.");
+  return true;
+}
+
+script "uh_EventConfigPrint" (void) CLIENTSIDE {
+  // ConsolePlayerNumber is -1 on both dedicated and listen servers.
+  if (UH_EC_Print(ConsolePlayerNumber() >= 0 && IsNetworkGame())) {
+    UH_EC_Policy();
+    for (int slot = 0; slot < UH_MAX_BONUS_EVENTS + UH_ER_Count(); slot++)
+      if (UH_EC_ListRow(slot, false)) Delay(1);
+    Log(s:"Event settings list complete.");
   }
 }
 
-// Read-only menu display works for connected clients too. It reads the
-// synchronized server CVAR and local metadata; it cannot edit server rules.
-script "uh_EventConfigPrint" (void) CLIENTSIDE {
-  Log(s:"EX progress is server-owned. Use uh_event_show on the server to read it.");
-  UH_EC_List(false);
+// exec reads a fixed 4096-byte line buffer. Emit short append commands so
+// every valid archived configuration can be restored from a cfg file.
+function void UH_EC_Export(void) {
+  if (!UH_ER_Load()) return;
+  str raw = UH_ER_Data(GetCVarString("uh_sv_eventrules"));
+  Log(s:"uh_sv_eventrules \"\"");
+  for (int pos = 0; pos < StrLen(raw); pos += 1024)
+    Log(s:"eval + $uh_sv_eventrules \"", s:StrMid(raw, pos, 1024), s:"\" uh_sv_eventrules");
+  Log(s:"uh_event_reload");
 }
 
-function void UH_EC_Run(str record) {
+function bool UH_EC_Run(str record) {
   str op = UH_EC_Token(record, 0);
   str stem = UH_EC_Token(record, 1);
   str fieldname = UH_EC_Token(record, 2);
   str input = UH_EC_Token(record, 3);
   if (StrLen(UH_EC_Token(record, 4)) > 0) {
-    Log(s:"Event settings: too many arguments."); return;
+    Log(s:"Event settings: too many arguments."); return false;
   }
   if (!StrICmp(op, "list") || !StrICmp(op, "export") || !StrICmp(op, "reload") || !StrICmp(op, "policy") || !StrICmp(op, "pool")) {
     if (StrLen(stem) || StrLen(fieldname) || StrLen(input)) {
-      Log(s:"Event settings: this command takes no arguments."); return;
+      Log(s:"Event settings: this command takes no arguments."); return false;
     }
     if (!StrICmp(op, "pool")) {
-      UH_ED_Pool(); return;
+      UH_ED_Pool(); return false;
     }
     if (!StrICmp(op, "policy")) {
-      UH_EC_Policy(); return;
+      UH_EC_Policy(); return false;
     }
     if (!StrICmp(op, "reload")) {
       if (UH_ER_Load()) Log(s:"Event settings loaded from uh_sv_eventrules.");
-      return;
+      return false;
     }
     if (!StrICmp(op, "export")) {
-      if (!UH_ER_Load()) return;
-      Log(s:"uh_sv_eventrules \"", s:GetCVarString("uh_sv_eventrules"), s:"\"");
-      return;
+      UH_EC_Export();
+      return false;
     }
-    UH_EC_List(true);
-    return;
+    return true;
   }
   if (!UH_ER_ValidStem(stem)) {
     Log(s:"Event settings: use an event stem with 1-63 letters, digits, underscores, hyphens or periods.");
-    return;
+    return false;
   }
   if (!StrICmp(op, "check")) {
     if (StrLen(fieldname) || StrLen(input)) {
-      Log(s:"Usage: uh_event_check <stem>"); return;
+      Log(s:"Usage: uh_event_check <stem>"); return false;
     }
-    UH_ED_Check(stem); return;
+    UH_ED_Check(stem); return false;
   }
   if (!StrICmp(op, "show")) {
     if (StrLen(fieldname) || StrLen(input)) {
-      Log(s:"Usage: uh_event_show <stem>"); return;
+      Log(s:"Usage: uh_event_show <stem>"); return false;
     }
-    UH_EC_Show(stem, true); return;
+    UH_EC_Show(stem, true); return false;
   }
   int field = UH_EC_Field(fieldname);
   int eventid = FindBonusEventByStem(stem);
   SyncBonusEventEXProgress(eventid);
   if (!StrICmp(op, "reset")) {
     if (StrLen(input) || (StrLen(fieldname) && field < 0)) {
-      Log(s:"Usage: uh_event_reset <stem> [mode|weight|minplayers|maxplayers|ex_count|ex_target]"); return;
+      Log(s:"Usage: uh_event_reset <stem> [mode|weight|minplayers|maxplayers|ex_count|ex_target]"); return false;
     }
     if ((field == UH_ER_EXTARGET || field == -1) && ValidateBonusEventEXTarget(stem, stem, "") >= 2) {
-      Log(s:"Event reset rejected: the registered target would create an invalid EX graph."); return;
+      Log(s:"Event reset rejected: the registered target would create an invalid EX graph."); return false;
     }
     if (!UH_ER_Edit(stem, field, -1)) {
-      Log(s:"Event reset rejected; previous overrides remain active."); return;
+      Log(s:"Event reset rejected; previous overrides remain active."); return false;
     }
     SyncBonusEventEXProgress(eventid);
-    UH_EC_Show(stem, true); return;
+    UH_EC_Show(stem, true); return false;
   }
   if (StrICmp(op, "set") || field < 0 || !StrLen(input)) {
-    Log(s:"Usage: uh_event_set <stem> <mode|weight|minplayers|maxplayers|ex_count|ex_target> <value>"); return;
+    Log(s:"Usage: uh_event_set <stem> <mode|weight|minplayers|maxplayers|ex_count|ex_target> <value>"); return false;
   }
   if (field == UH_ER_EXTARGET) {
     int error = ValidateBonusEventEXTarget(stem, stem, input);
     if (!UH_ER_ValidStem(input) || !StrICmp(stem, input) || error >= 2) {
-      Log(s:"EX target rejected: use a different event with a valid start callback and no cycle."); return;
+      Log(s:"EX target rejected: use a different event with a valid start callback and no cycle."); return false;
     }
     if (!UH_ER_EditTarget(stem, input)) {
-      Log(s:"EX target update rejected; previous overrides remain active."); return;
+      Log(s:"EX target update rejected; previous overrides remain active."); return false;
     }
     SyncBonusEventEXProgress(eventid);
-    UH_EC_Show(stem, true); return;
+    UH_EC_Show(stem, true); return false;
   }
   int value = UH_ER_Number(input);
   if (field == UH_ER_MODE) {
@@ -217,27 +254,28 @@ function void UH_EC_Run(str record) {
     if (!StrICmp(input, "disabled")) value = UH_ER_DISABLED;
   }
   if (value < 0 || !UH_ER_ValidValue(field, value)) {
-    Log(s:"Event settings: mode=random/forced/disabled, weight=1-1000000, player limits=0-64, ex_count=0-100."); return;
+    Log(s:"Event settings: mode=random/forced/disabled, weight=1-1000000, player limits=0-64, ex_count=0-100."); return false;
   }
   int id = FindBonusEventByStem(stem);
   if (id != UHBE_FAIL) {
     if (field == UH_ER_MODE && value == UH_ER_RANDOM &&
         !CheckScript(GetBonusEventStartCallback(id), true)) {
-      Log(s:"Event settings: the random event needs a valid start callback."); return;
+      Log(s:"Event settings: the random event needs a valid start callback."); return false;
     }
     int minimum = GetBonusEventMinPlayers(id);
     int maximum = GetBonusEventMaxPlayers(id);
     if (field == UH_ER_MIN) minimum = value;
     if (field == UH_ER_MAX) maximum = value;
     if ((field == UH_ER_MIN || field == UH_ER_MAX) && maximum > 0 && minimum > maximum) {
-      Log(s:"Event settings: maxplayers must be 0 or at least minplayers."); return;
+      Log(s:"Event settings: maxplayers must be 0 or at least minplayers."); return false;
     }
   }
   if (!UH_ER_Edit(stem, field, value)) {
-    Log(s:"Event update rejected; check the saved data, player limits and storage capacity."); return;
+    Log(s:"Event update rejected; check the saved data, player limits and storage capacity."); return false;
   }
   SyncBonusEventEXProgress(eventid);
   UH_EC_Show(stem, true);
+  return false;
 }
 
 script "uh_EventConfigCommands" (void) {
@@ -258,7 +296,8 @@ script "uh_EventConfigCommands" (void) {
         SetCVar("uh_event_configbusy", 0);
         Log(s:"Event command limit reached; split the configuration file."); terminate;
       }
-      UH_EC_Run(StrMid(queue, start, pos - start));
+      if (UH_EC_Run(StrMid(queue, start, pos - start)))
+        ACS_NamedExecuteWait("uh_EventConfigList", 0, 1);
       start = pos + 1;
       // One edit per tic keeps large cfg files below ACS's instruction limit.
       Delay(1);

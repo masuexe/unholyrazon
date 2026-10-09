@@ -62,7 +62,15 @@ def translate(source):
     begin = source.find("bool UH_ER_EditCore(")
     if begin >= 0:
         source = source[:begin] + source[begin:].replace("for (int row =", "for (row =").replace("for (int f =", "for (f =")
-    source = re.sub(r'script "uh_EventConfigPrint" \(void\) CLIENTSIDE \{.*?\}', "", source, flags=re.S)
+    for name in ("uh_EventConfigPrint", "uh_EventConfigList"):
+        match = re.search(r'script "' + name + r'"[^\n]*\{', source)
+        if match is None:
+            continue
+        start, end, depth = match.start(), match.end(), 1
+        while depth:
+            depth += (source[end] == "{") - (source[end] == "}")
+            end += 1
+        source = source[:start] + source[end:]
     source = source.split('script "uh_EventConfigWatch" OPEN')[0]
     source = source.replace('script "uh_EventConfigCommands" (void)', "void drain(void)")
     source = source.replace("terminate;", "return;")
@@ -163,6 +171,9 @@ int GetBonusEventMode(int id);
 bool BonusEventMeetsPlayerLimits(int id, int count);
 int GetBonusEventSelectionMode(void);
 void test_policy(void);
+void ACS_NamedExecuteWait(str script, int map, int progress);
+void test_menu(void);
+void test_export(void);
 void test_diagnostics(void);
 void UH_ED_Check(str stem);
 void UH_ED_Pool(void);
@@ -315,14 +326,72 @@ int main(void) {
     assert(!UH_ER_Edit("too_many",UH_ER_WEIGHT,1));
     assert(UH_ER_Edit("pending_0",-1,-1)); assert(UH_ER_Edit("replacement",UH_ER_WEIGHT,1));
     assert(UH_ER_Count()==256);
+    test_menu();
+    test_export();
     test_policy();
     test_diagnostics();
-    puts("PASS: ACS settings logic, EX progression/pause, target validation, pending addons, frozen history, persistence, legacy format, capacity, selection policies and read-only diagnostics");
+    puts("PASS: ACS settings logic, EX progression/pause, target validation, pending addons, frozen history, host-only persistence, menu policy, legacy format, capacity, selection policies and read-only diagnostics");
 }
 '''
 
 
 POLICY_TESTS = r'''
+void ACS_NamedExecuteWait(str script, int map, int progress) {
+    assert(map==0);
+    assert(!StrCmp(script,"uh_EventConfigList"));
+    for(int slot=0;slot<UH_MAX_BONUS_EVENTS+UH_ER_Count();slot++) UH_EC_ListRow(slot,progress);
+}
+
+void test_export(void) {
+    // Execute each exported clear/append line against a fresh string, including
+    // chunks split inside a row. This models eval's string concatenation.
+    saved=""; assert(UH_ER_Load());
+    for(int i=0;i<100;i++) assert(UH_ER_Edit(concat(2,"export_pending_",number(i)),UH_ER_WEIGHT,1));
+    str original=saved;
+    assert(StrLen(original)>2048);
+    assert(GetChar(original,0)==10);
+    int calls=random_calls, writes=config_writes;
+    lines=0; UH_EC_Run("export::::");
+    assert(has_output("uh_sv_eventrules \"\""));
+    str rebuilt="";
+    str prefix="eval + $uh_sv_eventrules \"";
+    str suffix="\" uh_sv_eventrules";
+    for(int i=1;i<lines-1;i++) {
+      assert(StrLen(output[i])<4095);
+      assert(!strncmp(output[i],prefix,strlen(prefix)));
+      int n=StrLen(output[i])-StrLen(prefix)-StrLen(suffix);
+      assert(n>0 && n<=1024);
+      assert(!strcmp(output[i]+StrLen(output[i])-StrLen(suffix),suffix));
+      rebuilt=concat(2,rebuilt,StrMid(output[i],StrLen(prefix),n));
+    }
+    assert(!StrCmp(output[lines-1],"uh_event_reload"));
+    assert(!StrCmp(rebuilt,UH_ER_Data(original)));
+    assert(random_calls==calls && config_writes==writes);
+    assert(!StrCmp(saved,original));
+    // A direct long load acquires the multiline marker. Failed writes keep
+    // the active bank intact and can retry without changing the input.
+    saved=UH_ER_Data(original);
+    can_write=0; assert(!UH_ER_Load()); can_write=1;
+    assert(UH_ER_Load()); assert(!StrCmp(saved,original));
+    writes=config_writes; assert(UH_ER_Load()); assert(config_writes==writes);
+    saved=""; assert(UH_ER_Load());
+}
+
+void test_menu(void) {
+    // A peer's archive must never appear as the connected host's settings.
+    saved="boss_ffa:0,13,-1,-1;";
+    str before=saved;
+    lines=0; assert(!UH_EC_Print(true));
+    assert(has_output("Bonus Event selection policy:"));
+    assert(has_output("Per-event settings are stored on the server"));
+    assert(!has_output("weight=13"));
+    assert(!StrCmp(saved,before));
+    lines=0; assert(UH_EC_Print(false));
+    for(int slot=0;slot<UH_MAX_BONUS_EVENTS+UH_ER_Count();slot++) UH_EC_ListRow(slot,false);
+    assert(has_output("weight=13 [override]"));
+    assert(!StrCmp(saved,before));
+}
+
 void test_policy(void) {
     saved=""; assert(UH_ER_Load());
     memset(uh_bedefined,0,sizeof(uh_bedefined));
@@ -513,6 +582,7 @@ def main():
         "BonusEventMeetsPlayerLimits", "GetBonusEventSelectionMode", "PickBonusEvent"))
     cvars = (ROOT / "src/CVARINFO.server").read_text()
     for declaration in (
+        'local string uh_sv_eventrules = "";',
         "server int uh_sv_bonusselectmode = 0;", "server bool uh_sv_bonusavoidrepeat = true;",
         "server bool uh_sv_bonusforcedplayerlimits = false;", "server bool uh_sv_bonusexplayerlimits = false;"
     ):
@@ -525,6 +595,8 @@ def main():
     assert "ResolveForcedBonusEvent" not in frozen and "ExEventChecker" not in frozen
     # Permission gate and frozen-event behavior are engine-facing source checks.
     assert 'script "uh_EventConfigCommands" (void) {' in commands
+    assert 'UH_EC_Print(ConsolePlayerNumber() >= 0 && IsNetworkGame())' in commands
+    assert 'ACS_NamedExecuteWait("uh_EventConfigList", 0, 1);' in commands
     assert not re.search(r'uh_EventConfigCommands"[^\n]*(?:NET|CLIENTSIDE)', commands)
     start = function(registry, "RunBonusEventStart")
     assert "GetBonusEventMode" not in start

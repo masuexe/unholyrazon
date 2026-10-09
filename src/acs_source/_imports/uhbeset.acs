@@ -124,13 +124,36 @@ function bool UH_ER_Parse(str raw, int bank) {
   return true;
 }
 
+function str UH_ER_Data(str stored) {
+  // One leading LF is an archive marker, not part of the rule text budget.
+  if (StrLen(stored) && GetChar(stored, 0) == 10)
+    return StrMid(stored, 1, StrLen(stored) - 1);
+  return stored;
+}
+
+function str UH_ER_Archive(str raw) {
+  // INI reads single lines through a 256-byte buffer. A leading LF makes
+  // writeini use its lossless multiline format, including for one long row.
+  if (StrLen(raw) > 200) return StrParam(s:"\n", s:raw);
+  return raw;
+}
+
 function bool UH_ER_Load(void) {
-  str raw = GetCVarString("uh_sv_eventrules");
-  if (!StrCmp(raw, uh_er_seen)) return uh_er_valid;
-  uh_er_seen = raw;
+  str stored = GetCVarString("uh_sv_eventrules");
+  if (!StrCmp(stored, uh_er_seen)) return uh_er_valid;
+  uh_er_seen = stored;
+  str raw = UH_ER_Data(stored);
   int next = 1 - uh_er_bank;
   uh_er_valid = UH_ER_Parse(raw, next);
   if (uh_er_valid) {
+    str archived = UH_ER_Archive(raw);
+    if (StrCmp(stored, archived) && !SetCVarString("uh_sv_eventrules", archived)) {
+      uh_er_valid = false;
+      uh_er_seen = "!archive retry";
+      Log(s:"Event settings: archive update failed; the last valid settings remain active.");
+      return false;
+    }
+    uh_er_seen = archived;
     uh_er_bank = next;
     uh_er_lastrow = -2;
   }
@@ -212,7 +235,7 @@ function bool UH_ER_EditCore(str stem, int field, int value, str exstem) {
       i:uh_er_values[next][row][UH_ER_EXCOUNT], s:",", s:uh_er_targets[next][row], s:";");
     if (StrLen(raw) > UH_ER_TEXT_CAP) return false;
   }
-  if (!SetCVarString("uh_sv_eventrules", raw)) return false;
+  if (!SetCVarString("uh_sv_eventrules", UH_ER_Archive(raw))) return false;
   // Reload canonical data, discarding empty rows so resets release capacity.
   uh_er_seen = "!reload";
   return UH_ER_Load();
