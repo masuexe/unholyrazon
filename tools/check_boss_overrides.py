@@ -220,6 +220,29 @@ int main(void) {
  assert(UH_BR_Edit("B0",-1,-1) && UH_BR_Count()==255);
  assert(UH_BR_Edit("Overflow",UH_BR_WEIGHT,1) && UH_BR_Count()==256);
  assert(UH_BR_Edit("B1",UH_BR_WEIGHT,-1) && UH_BR_Count()==255);
+ // Export contains short commands and omits the internal multiline marker.
+ saved=""; assert(UH_BR_Load());
+ for(int i=0;i<100;i++) assert(UH_BR_Edit(concat(2,"ExportBoss_",number(i)),UH_BR_WEIGHT,1));
+ str archived=saved;
+ assert(StrLen(archived)>2048 && GetChar(archived,0)==10);
+ snapshot_writes=writes; lines=0; UH_BC_Run("export::::");
+ assert(!strcmp(output[0],"uh_sv_bossrules \"\""));
+ str prefix="eval + $uh_sv_bossrules \"", suffix="\" uh_sv_bossrules", rebuilt="";
+ for(int i=1;i<lines-1;i++) {
+   assert(StrLen(output[i])<4095 && !strncmp(output[i],prefix,strlen(prefix)));
+   int n=StrLen(output[i])-StrLen(prefix)-StrLen(suffix);
+   assert(n>0 && n<=1024);
+   assert(!strcmp(output[i]+StrLen(output[i])-StrLen(suffix),suffix));
+   rebuilt=concat(2,rebuilt,StrMid(output[i],StrLen(prefix),n));
+ }
+ assert(!strcmp(output[lines-1],"uh_boss_reload"));
+ assert(!strcmp(rebuilt,UH_BR_Data(archived)));
+ assert(writes==snapshot_writes && !strcmp(saved,archived));
+ // Normalize direct long loads. Failed writes preserve the current bank and
+ // retry successfully when writes become available again.
+ saved=rebuilt; can_write=0; assert(!UH_BR_Load()); can_write=1;
+ assert(UH_BR_Load() && !strcmp(saved,archived));
+ snapshot_writes=writes; assert(UH_BR_Load() && writes==snapshot_writes);
  // Text capacity is independent of record count; rejection is transactional.
  saved="";
  str key="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
@@ -232,7 +255,7 @@ int main(void) {
  assert(!strcmp(saved,before) && UH_BR_Count()<UH_BR_CAP);
  saved=large;
  assert(!UH_BR_Load() && UH_BR_Count()>110);
- puts("PASS: boss override transactions, actor identity, strict validation, pending addons, reset/capacity, read-only commands and batch queues");
+ puts("PASS: boss override transactions, actor identity, strict validation, pending addons, reset/capacity, multiline archives, chunked export, read-only commands and batch queues");
  return 0;
 }
 '''
@@ -250,7 +273,7 @@ def main():
     handler = commands[commands.index('script "uh_BossConfigCommands"'):commands.index('script "uh_BossConfigWatch"')]
     handler = handler.replace('script "uh_BossConfigCommands" (void)', "void drain(void)")
     functions = "\n".join(function(commands, name) for name in
-                          ("UH_BC_Field", "UH_BC_ModeName", "UH_BC_Token", "UH_BC_Show", "UH_BC_Run"))
+                          ("UH_BC_Field", "UH_BC_ModeName", "UH_BC_Token", "UH_BC_Show", "UH_BC_Export", "UH_BC_Run"))
     assert '#import "uhdt.acs"' not in storage
     for name in ("uh_BossConfigCommands", "uh_BossConfigWatch"):
         assert not re.search(r'script "' + name + r'"[^\n]*(?:NET|CLIENTSIDE)', commands)

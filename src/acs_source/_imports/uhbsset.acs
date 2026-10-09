@@ -102,17 +102,40 @@ function bool UH_BR_Parse(str raw, int bank) {
   return true;
 }
 
+function str UH_BR_Data(str stored) {
+  // One leading LF is an archive marker, not part of the rule text budget.
+  if (StrLen(stored) && GetChar(stored, 0) == 10)
+    return StrMid(stored, 1, StrLen(stored) - 1);
+  return stored;
+}
+
+function str UH_BR_Archive(str raw) {
+  // INI reads single lines through a 256-byte buffer. A leading LF makes
+  // writeini use its lossless multiline format, including for one long row.
+  if (StrLen(raw) > 200) return StrParam(s:"\n", s:raw);
+  return raw;
+}
+
 function bool UH_BR_Load(void) {
-  str raw = GetCVarString("uh_sv_bossrules");
-  if (!StrCmp(raw, uh_br_seen)) return uh_br_valid;
-  uh_br_seen = raw;
+  str stored = GetCVarString("uh_sv_bossrules");
+  if (!StrCmp(stored, uh_br_seen)) return uh_br_valid;
+  uh_br_seen = stored;
+  str raw = UH_BR_Data(stored);
   int next = 1 - uh_br_bank;
   uh_br_valid = UH_BR_Parse(raw, next);
   if (uh_br_valid) {
+    str archived = UH_BR_Archive(raw);
+    if (StrCmp(stored, archived) && !SetCVarString("uh_sv_bossrules", archived)) {
+      uh_br_valid = false;
+      uh_br_seen = "!archive retry";
+      Log(s:"Boss settings: archive update failed; the last valid settings remain active.");
+      return false;
+    }
+    uh_br_seen = archived;
     uh_br_bank = next;
     uh_br_lastrow = -2;
   }
-  else Log(s:"Boss settings: invalid uh_sv_bossrules; the last valid data remains loaded.");
+  else Log(s:"Boss settings: invalid uh_sv_bossrules; the last valid settings remain active.");
   return uh_br_valid;
 }
 
@@ -178,7 +201,7 @@ function bool UH_BR_Edit(str actor, int field, int value) {
       i:uh_br_values[next][row][2], s:",", i:uh_br_values[next][row][3], s:";");
     if (StrLen(raw) > UH_BR_TEXT_CAP) return false;
   }
-  if (!SetCVarString("uh_sv_bossrules", raw)) return false;
+  if (!SetCVarString("uh_sv_bossrules", UH_BR_Archive(raw))) return false;
   // Reparse canonical data so reset rows release capacity.
   uh_br_seen = "!reload";
   return UH_BR_Load();

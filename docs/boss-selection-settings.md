@@ -100,7 +100,10 @@ Server operators can define overrides for individual boss actors. Overrides acti
 - **Storage format:** Stored in the host-archived string CVAR `uh_sv_bossrules` as:
   `actor:mode,weight,minplayers,maxplayers;`
   A value of `-1` denotes inheritance from registered defaults.
-- **Host-local storage:** `uh_sv_bossrules` is archived locally on the server host (`local string`) rather than broadcast over the network. This avoids Zandronum's 2,048-byte limit on server string replication, preventing client disconnects when large override datasets are saved. The server retains the full 16,384 character capacity (up to 256 boss records).
+- **Host-local storage:** `uh_sv_bossrules` is archived locally on the server host (`local string`) rather than broadcast over the network. This avoids Zandronum's 2,048-byte limit on server string replication, preventing client disconnects when large override datasets are saved.
+- **Storage capacity:** Supports up to 256 boss records and up to 16,384 characters of rule text. Internal multiline archive markers do not consume the rule text budget.
+- **Lossless multiline INI storage:** Datasets longer than 200 characters automatically prefix a newline (`\n`) so `writeini` saves them in a multiline format. This avoids Zandronum's 256-byte single-line buffer limit during INI writes, preserving datasets up to 16,384 characters across server restarts.
+- **Legacy INI compatibility:** Existing single-line server configurations load automatically. Truncated data from previous single-line saves cannot be recovered automatically and must be restored from a full backup.
 
 ### Override fields
 
@@ -127,7 +130,7 @@ Server operators can define overrides for individual boss actors. Overrides acti
 | `uh_boss_pool [tier]` | Displays the candidate pool snapshot, history counts, weights, and fallback status for a tier. |
 | `uh_boss_reset <actor> [field]` | Resets a specific field or clears the entire override record for the actor. |
 | `uh_boss_list` | Lists all stored boss overrides and record count. |
-| `uh_boss_export` | Prints the current `uh_sv_bossrules` string to copy into `server.cfg`. |
+| `uh_boss_export` | Prints chunked append commands to clear, populate, and reload rules in a .cfg file for `exec`. |
 | `uh_boss_reload` | Re-parses the current `uh_sv_bossrules` CVAR string. |
 | `uh_boss_save` | Waits for queued commands to finish, then prompts to run `writeini`. |
 | `uh_boss_load <path>` | Prints instructions to run `exec <path>`, then `uh_boss_reload`. |
@@ -157,13 +160,21 @@ uh_boss_pool all
 uh_boss_reset GemBanker weight
 uh_boss_reset Fireman
 
+// Export configuration
+uh_boss_export
+// Console outputs chunked append commands:
+//   uh_sv_bossrules ""
+//   eval + $uh_sv_bossrules "<chunk 1>" uh_sv_bossrules
+//   eval + $uh_sv_bossrules "<chunk 2>" uh_sv_bossrules
+//   uh_boss_reload
+// Copy all output lines into a .cfg file (e.g. host_bosses.cfg).
+
 // Save configuration to disk
 uh_boss_save  // Wait for the prompt: "Boss edits are complete. Run writeini directly in the server console to save."
 writeini      // Execute directly in the server console
 
 // Load configuration from file
-exec examples/boss_overrides.cfg  // Execute directly in the server console
-uh_boss_reload                    // Reload and apply the updated CVAR rules
+exec host_bosses.cfg  // Execute directly in the server console
 ```
 
 ---

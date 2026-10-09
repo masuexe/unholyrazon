@@ -51,6 +51,16 @@ function void UH_BC_Show(str actor) {
   }
 }
 
+// exec reads a fixed 4096-byte line buffer. Keep every export command short.
+function void UH_BC_Export(void) {
+  if (!UH_BR_Load()) return;
+  str raw = UH_BR_Data(GetCVarString("uh_sv_bossrules"));
+  Log(s:"uh_sv_bossrules \"\"");
+  for (int pos = 0; pos < StrLen(raw); pos += 1024)
+    Log(s:"eval + $uh_sv_bossrules \"", s:StrMid(raw, pos, 1024), s:"\" uh_sv_bossrules");
+  Log(s:"uh_boss_reload");
+}
+
 // Actions: 0 done, 1 list, 2..7 pool (action-2 is tier), 8 actor check.
 // The queue script owns yielding scans, so large registries cannot run away.
 function int UH_BC_Run(str record) {
@@ -77,7 +87,7 @@ function int UH_BC_Run(str record) {
       return false;
     }
     if (!StrICmp(op, "export")) {
-      if (UH_BR_Load()) Log(s:"uh_sv_bossrules \"", s:GetCVarString("uh_sv_bossrules"), s:"\"");
+      UH_BC_Export();
       return false;
     }
     Log(s:"Stored Boss overrides: ", i:UH_BR_Count(), s:" records. Ordinary selection uses these settings; Combo member rules are separate.");

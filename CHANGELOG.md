@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261010
 
+- 优化单 Boss 规则存储 `uh_sv_bossrules`：长配置自动使用多行 INI 格式保存，避免 256 字节单行截断并保留 256 条规则和 16384 字符容量，兼容旧版单行配置（已截断的历史数据需从完整备份恢复）；`uh_boss_export` 改为分段追加命令输出以兼容 4096 字节 `exec` 行限制，支持直接将全部导出内容复制到 `.cfg` 文件并由服主 `exec` 导入；配置说明见 [Boss Selection settings](docs/boss-selection-settings.md)
 - 现在 Morshu 举炸弹、投掷及收招期间也可按 Reload 释放绳索，不中断当前武器动作
 - 现在 TropicalMWS 滑板、射击及收招期间也可按 Reload 释放大招
 - 修复自动随机触发 Boss Event 时误显示 `RCON set …` 的问题，仅在强制指定 Boss Combo 或设置事件计数器时显示该提示
