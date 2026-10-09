@@ -3580,12 +3580,7 @@ function bool UH_BonusEligible(int id, int plccount, int excludedid) {
     return false;
   if (id == excludedid)
     return false;
-  if (plccount < GetBonusEventMinPlayers(id))
-    return false;
-  int maximum = GetBonusEventMaxPlayers(id);
-  if (maximum > 0 && plccount > maximum)
-    return false;
-  return true;
+  return BonusEventMeetsPlayerLimits(id, plccount);
 }
 
 // Weighted pick among defined events with weight >= 1 whose player range
@@ -4053,4 +4048,19 @@ function int GetBonusEventEXTarget(int baseid) {
   int row = FindBonusEventEXRow(baseid);
   if (row < 0 || !IsBonusEventDefined(uh_beexevent[row])) return UHBE_FAIL;
   return uh_beexevent[row];
+}
+
+// Shared player-range test. Force-only EX rows have no random-mode requirement.
+function bool BonusEventMeetsPlayerLimits(int id, int plccount) {
+  if (!IsBonusEventDefined(id)) return false;
+  if (plccount < GetBonusEventMinPlayers(id)) return false;
+  int maximum = GetBonusEventMaxPlayers(id);
+  return maximum <= 0 || plccount <= maximum;
+}
+
+function int GetBonusEventSelectionMode(void) {
+  int mode = GetCVar("uh_sv_bonusselectmode");
+  if (mode < 0) return 0;
+  if (mode > 1) return 1;
+  return mode;
 }

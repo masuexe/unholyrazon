@@ -68,6 +68,7 @@ def translate(source):
     source = source.replace("terminate;", "return;")
     source = source.replace("Delay(1);", "/* Separate ACS tic in engine. */")
     source = source.replace("for (field = 0;", "for (int field = 0;")
+    source = re.sub(r"\brandom\(", "acs_random(", source)
     return format_calls(source)
 
 
@@ -82,6 +83,14 @@ STUBS = r'''
 typedef const char *str;
 str saved = "", queue = "";
 int minimum_setting = 12, ex_setting = 3, can_write = 1;
+int select_mode, avoid_repeat=1, forced_limits, ex_limits, players=8;
+int roll_override;
+int PlayerCount(void) { return players; }
+int acs_random(int low, int high) {
+    assert(high>=low);
+    if(roll_override) { assert(roll_override>=low && roll_override<=high); return roll_override; }
+    return high;
+}
 str output[2048]; int lines;
 int StrLen(str s) { return strlen(s); }
 int GetChar(str s, int p) { return p >= 0 && p < StrLen(s) ? s[p] : 0; }
@@ -104,7 +113,15 @@ int SetCVarString(str name, str value) {
     if(!strcmp(name,"uh_event_commands")) queue = value; else saved = value;
     return 1;
 }
-int GetCVar(str name) { return !strcmp(name,"uh_sv_bonusminplayers") ? minimum_setting : ex_setting; }
+int GetCVar(str name) {
+    if(!strcmp(name,"uh_sv_bonusminplayers")) return minimum_setting;
+    if(!strcmp(name,"uh_sv_bonusexcount")) return ex_setting;
+    if(!strcmp(name,"uh_sv_bonusselectmode")) return select_mode;
+    if(!strcmp(name,"uh_sv_bonusavoidrepeat")) return avoid_repeat;
+    if(!strcmp(name,"uh_sv_bonusforcedplayerlimits")) return forced_limits;
+    if(!strcmp(name,"uh_sv_bonusexplayerlimits")) return ex_limits;
+    assert(!"Unknown CVAR"); return 0;
+}
 void SetCVar(str name, int value) { (void)name; (void)value; }
 int CheckScript(str name, int unused) { (void)unused; return name[0] != 0; }
 #define UH_MAX_BONUS_EVENTS 256
@@ -124,7 +141,10 @@ str uh_eventextargetseen[256]; bool uh_eventextargetknown[256];
 int eventdataarr[5];
 #define EVENTDATA_EXORIGIN 4
 #define UH_LOG_DEBUG 0
-void UH_Log(int level, str message) { (void)level; (void)message; }
+#define UH_LOG_WARN 1
+#define UHEVENT_FOOTBALL 13
+#define UHEVENT_RUNES 113
+void UH_Log(int level, str message) { (void)level; log_text(message); }
 int GetBonusEventEXTarget(int id);
 int GetBonusEventEXThreshold(int id);
 int ValidateBonusEventEXTarget(str stem, str changed, str candidate);
@@ -133,6 +153,9 @@ str UH_BE_EXNext(str stem, str changed, str candidate);
 str GetBonusEventStem(int id);
 str GetBonusEventStartCallback(int id);
 int GetBonusEventMode(int id);
+bool BonusEventMeetsPlayerLimits(int id, int count);
+int GetBonusEventSelectionMode(void);
+void test_policy(void);
 bool IsBonusEventDefined(int id) { return id>=0 && id<256 && uh_bedefined[id]; }
 int FindBonusEventByStem(str stem) {
     for(int i=0;i<256;i++) if(IsBonusEventDefined(i) && !StrICmp(uh_bestr[i][0],stem)) return i;
@@ -280,7 +303,89 @@ int main(void) {
     assert(!UH_ER_Edit("too_many",UH_ER_WEIGHT,1));
     assert(UH_ER_Edit("pending_0",-1,-1)); assert(UH_ER_Edit("replacement",UH_ER_WEIGHT,1));
     assert(UH_ER_Count()==256);
-    puts("PASS: ACS settings logic, EX progression/pause, target validation, pending addons, frozen history, persistence, legacy format and capacity");
+    test_policy();
+    puts("PASS: ACS settings logic, EX progression/pause, target validation, pending addons, frozen history, persistence, legacy format, capacity and selection policies");
+}
+'''
+
+
+POLICY_TESTS = r'''
+void test_policy(void) {
+    saved=""; assert(UH_ER_Load());
+    memset(uh_bedefined,0,sizeof(uh_bedefined));
+    register_event(0,"ffa",1,0,0); register_event(1,"heavy",3,0,0);
+    uh_eventpickcount[0]=0; uh_eventpickcount[1]=20;
+    uh_eventfamilyextra[0]=uh_eventfamilyextra[1]=0;
+    uh_beexcount=0;
+    select_mode=0; avoid_repeat=1; forced_limits=ex_limits=0;
+    assert(PickConfiguredBonusEvent(8,-1)==0);
+    assert(PickConfiguredBonusEvent(8,0)==1); // Previous event is excluded before fairness.
+    avoid_repeat=0; assert(PickConfiguredBonusEvent(8,0)==0);
+    // Pure weighted mode covers the complete 1:3 interval, even with unequal histories.
+    select_mode=1;
+    for(int roll=1;roll<=4;roll++) {
+        roll_override=roll;
+        assert(PickConfiguredBonusEvent(8,-1)==(roll==1 ? 0 : 1));
+    }
+    roll_override=0;
+    select_mode=-10; assert(GetBonusEventSelectionMode()==0);
+    select_mode=10; assert(GetBonusEventSelectionMode()==1);
+    select_mode=0; uh_eventpickcount[1]=0;
+    for(int roll=1;roll<=4;roll++) {
+        roll_override=roll;
+        assert(PickConfiguredBonusEvent(8,-1)==(roll<=3 ? 1 : 0)); // Reservoir tie weight.
+    }
+    roll_override=0;
+    // Repeat policy and single-candidate retry work in both strategies.
+    assert(UH_ER_Edit("heavy",UH_ER_MODE,UH_ER_DISABLED));
+    for(select_mode=0;select_mode<=1;select_mode++) {
+        avoid_repeat=1; assert(PickConfiguredBonusEvent(8,0)==0);
+        avoid_repeat=0; assert(PickConfiguredBonusEvent(8,0)==0);
+        assert(UH_ER_Edit("ffa",UH_ER_MODE,UH_ER_DISABLED));
+        assert(PickConfiguredBonusEvent(8,-1)==UHBE_FAIL);
+        assert(UH_ER_Edit("ffa",UH_ER_MODE,-1));
+    }
+    // Forced selections use effective min/max but do not require random mode.
+    register_event(2,"forced_only",0,12,16);
+    players=8; forced_limits=0; assert(ResolveForcedBonusEvent(2)==2);
+    forced_limits=1; assert(ResolveForcedBonusEvent(2)==-1);
+    LogForcedBonusEventRejection(2,"CVAR"); assert(has_output("players=8 minplayers=12 maxplayers=16"));
+    players=12; assert(ResolveForcedBonusEvent(2)==2);
+    players=16; assert(ResolveForcedBonusEvent(2)==2);
+    players=17; assert(ResolveForcedBonusEvent(2)==-1);
+    assert(UH_ER_Edit("forced_only",UH_ER_MIN,4));
+    players=4; assert(ResolveForcedBonusEvent(2)==2);
+    assert(UH_ER_Edit("forced_only",UH_ER_MAX,0));
+    players=64; assert(ResolveForcedBonusEvent(2)==2);
+    assert(UH_ER_Edit("forced_only",UH_ER_MODE,UH_ER_DISABLED));
+    forced_limits=0; assert(ResolveForcedBonusEvent(2)==-1);
+    assert(UH_ER_Edit("forced_only",UH_ER_MODE,-1));
+    // Legacy ids use normalized target limits too.
+    register_event(13,"football_ffa",1,12,0); register_event(113,"rune_ffa",0,12,0);
+    players=8; forced_limits=1;
+    assert(ResolveForcedBonusEvent(50)==-1 && ResolveForcedBonusEvent(150)==-1);
+    players=12; assert(ResolveForcedBonusEvent(50)==13 && ResolveForcedBonusEvent(150)==113);
+    // A blocked EX neither advances a partial count nor consumes a ready count.
+    assert(UH_ER_Edit("forced_only",-1,-1));
+    uh_beexcount=1; uh_beexbase[0]=0; uh_beexevent[0]=2; uh_beexthreshold[0]=3;
+    SyncBonusEventEXProgress(0); ex_setting=3; players=8; ex_limits=1;
+    eventexcountarray[0]=1; assert(ExEventChecker(0)==0 && eventexcountarray[0]==1);
+    eventexcountarray[0]=3; assert(ExEventChecker(0)==0 && eventexcountarray[0]==3);
+    players=17; assert(ExEventChecker(0)==0 && eventexcountarray[0]==3);
+    UH_EC_Run("show:ffa:::"); assert(has_output("target does not meet the player limits"));
+    players=12; assert(ExEventChecker(0)==2 && eventexcountarray[0]==0);
+    players=8; ex_limits=0; eventexcountarray[0]=3;
+    assert(ExEventChecker(0)==2 && eventexcountarray[0]==0);
+    // A live target override is used by the EX range policy.
+    ex_limits=1; assert(UH_ER_Edit("forced_only",UH_ER_MIN,4));
+    eventexcountarray[0]=1; assert(ExEventChecker(0)==0 && eventexcountarray[0]==2);
+    eventexcountarray[0]=3;
+    assert(UH_ER_Edit("forced_only",UH_ER_MODE,UH_ER_DISABLED));
+    assert(ExEventChecker(0)==0 && eventexcountarray[0]==3);
+    select_mode=1; avoid_repeat=0;
+    UH_EC_Run("policy::::"); assert(has_output("uh_sv_bonusselectmode=1 (weighted random)"));
+    assert(has_output("uh_sv_bonusavoidrepeat=0"));
+    UH_EC_Run("show:ffa:::"); assert(has_output("target is disabled"));
 }
 '''
 
@@ -293,14 +398,27 @@ def main():
     getters = "\n".join(function(registry, name) for name in (
         "GetBonusEventWeight", "GetBonusEventMinPlayers", "GetBonusEventMaxPlayers",
         "GetBonusEventMode", "UH_BonusEligible", "ResolveBonusEventEX",
-        "GetBonusEventEXThreshold", "UH_BE_EXNext", "ValidateBonusEventEXTarget", "GetBonusEventEXTarget"))
+        "GetBonusEventEXThreshold", "UH_BE_EXNext", "ValidateBonusEventEXTarget", "GetBonusEventEXTarget",
+        "BonusEventMeetsPlayerLimits", "GetBonusEventSelectionMode", "PickBonusEvent"))
+    cvars = (ROOT / "src/CVARINFO.server").read_text()
+    for declaration in (
+        "server int uh_sv_bonusselectmode = 0;", "server bool uh_sv_bonusavoidrepeat = true;",
+        "server bool uh_sv_bonusforcedplayerlimits = false;", "server bool uh_sv_bonusexplayerlimits = false;"
+    ):
+        assert declaration in cvars
+    events = (ROOT / "src/acs_source/unholy/uh_events.acs").read_text()
+    selection, frozen = events.split("  else if (perform != -2)", 1)
+    assert "PickConfiguredBonusEvent(PlayerCount()" in selection
+    assert 'CheckClearCVar("uh_sv_bonuseventnum", -1)' in selection
+    assert "eventdataarr[EVENTDATA_FORCED] = -1;" in selection
+    assert "ResolveForcedBonusEvent" not in frozen and "ExEventChecker" not in frozen
     # Permission gate and frozen-event behavior are engine-facing source checks.
     assert 'script "uh_EventConfigCommands" (void) {' in commands
     assert not re.search(r'uh_EventConfigCommands"[^\n]*(?:NET|CLIENTSIDE)', commands)
     start = function(registry, "RunBonusEventStart")
     assert "GetBonusEventMode" not in start
     aliases = (ROOT / "src/KEYCONF").read_text()
-    for command in ("set", "reset", "show", "list", "reload", "export"):
+    for command in ("set", "reset", "show", "list", "reload", "export", "policy"):
         assert f"eval + $uh_event_commands {command}:%1:%2:%3:%4|" in aliases
     assert 'alias uh_event_save "wait 1; uh_event_save_check"' in aliases
     assert 'test || $uh_event_configbusy != $uh_event_commands' in aliases
@@ -309,8 +427,10 @@ def main():
     assert "pukename uh_EventConfigCommands" not in aliases
     source = STUBS + translate(storage) + translate(getters)
     source += translate("\n".join(function(helpers, name) for name in (
-        "GetBonusEventFamilyPickCount", "SyncBonusEventEXProgress", "ExEventChecker", "CommitBonusEventHistory")))
-    source += translate(commands) + TESTS
+        "GetBonusEventFamilyPickCount", "SyncBonusEventEXProgress", "ExEventChecker", "CommitBonusEventHistory",
+        "PickLeastSeenBonusEvent", "PickConfiguredBonusEvent", "NormalizeForcedBonusEvent",
+        "ResolveForcedBonusEvent", "LogForcedBonusEventRejection")))
+    source += translate(commands) + POLICY_TESTS + TESTS
     with tempfile.TemporaryDirectory(prefix="uh-event-settings-") as tmp:
         path = Path(tmp)
         (path / "test.c").write_text(source)

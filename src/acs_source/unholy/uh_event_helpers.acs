@@ -62,6 +62,15 @@ function int PickLeastSeenBonusEvent(int plccount, int excludedid) {
   return UHBE_FAIL;
 }
 
+// Host policies apply when the next random event is selected. Pickers preserve
+// their single-candidate retry and eligibility rules in either strategy.
+function int PickConfiguredBonusEvent(int plccount, int excludedid) {
+  if (!GetCVar("uh_sv_bonusavoidrepeat")) excludedid = -1;
+  if (GetBonusEventSelectionMode() == 1)
+    return PickBonusEvent(plccount, excludedid);
+  return PickLeastSeenBonusEvent(plccount, excludedid);
+}
+
 // EX counter tick: called after a RANDOM pick only (forced events bypass it).
 // The counter stays in the world array (per base event id, survives map
 // changes); UHDT resolves the relation and the live host threshold.
@@ -74,6 +83,9 @@ function int ExEventChecker(int inputevent) {
   int threshold = GetBonusEventEXThreshold(inputevent);
   // A disabled upgrade neither consumes nor advances the existing progress.
   if (threshold <= 0) {return inputevent;}
+  // Pause even before the upgrade is due. Do not consume or advance progress.
+  if (GetCVar("uh_sv_bonusexplayerlimits") &&
+      !BonusEventMeetsPlayerLimits(exid, PlayerCount())) return inputevent;
   if (eventexcountarray[inputevent] >= threshold) {
     eventexcountarray[inputevent] = 0;
     return exid;
@@ -94,9 +106,24 @@ function int NormalizeForcedBonusEvent(int eventid) {
 function int ResolveForcedBonusEvent(int eventid) {
   int normalized = NormalizeForcedBonusEvent(eventid);
   if (IsBonusEventDefined(normalized) && GetBonusEventMode(normalized) != UH_ER_DISABLED) {
+    if (GetCVar("uh_sv_bonusforcedplayerlimits") &&
+        !BonusEventMeetsPlayerLimits(normalized, PlayerCount())) return -1;
     return normalized;
   }
   return -1;
+}
+
+function void LogForcedBonusEventRejection(int eventid, str source) {
+  int id = NormalizeForcedBonusEvent(eventid);
+  if (IsBonusEventDefined(id) && GetBonusEventMode(id) != UH_ER_DISABLED &&
+      GetCVar("uh_sv_bonusforcedplayerlimits") && !BonusEventMeetsPlayerLimits(id, PlayerCount())) {
+    UH_Log(UH_LOG_WARN, StrParam(s:"Forced Bonus Event rejected (", s:source, s:"): ",
+      s:GetBonusEventStem(id), s:"; players=", i:PlayerCount(),
+      s:" minplayers=", i:GetBonusEventMinPlayers(id),
+      s:" maxplayers=", i:GetBonusEventMaxPlayers(id), s:" (0 means no maximum)."));
+    return;
+  }
+  UH_Log(UH_LOG_WARN, StrParam(s:"Invalid or disabled forced Bonus Event (", s:source, s:"): ", i:eventid));
 }
 
 // A selected event must be startable.  Anything else (unregistered id, or a

@@ -98,12 +98,26 @@ function void UH_EC_Show(str stem, bool progress) {
   if (target != UHBE_FAIL && GetBonusEventMode(target) == UH_ER_DISABLED)
     Log(s:"  EX progress is paused: the target is disabled.");
   if (GetBonusEventEXThreshold(id) <= 0) Log(s:"  EX progress is paused: ex_count is 0.");
+  if (progress && target != UHBE_FAIL && GetCVar("uh_sv_bonusexplayerlimits") &&
+      !BonusEventMeetsPlayerLimits(target, PlayerCount()))
+    Log(s:"  EX progress is paused: the target does not meet the player limits.");
   int maximum = GetBonusEventMaxPlayers(id);
   if (maximum > 0 && maximum < GetBonusEventMinPlayers(id))
     Log(s:"  No player count meets these limits. Reduce the minimum or increase the maximum.");
 }
 
+function void UH_EC_Policy(void) {
+  str strategy = "least-seen first";
+  if (GetBonusEventSelectionMode() == 1) strategy = "weighted random";
+  Log(s:"Bonus Event selection policy:");
+  Log(s:"  uh_sv_bonusselectmode=", i:GetBonusEventSelectionMode(), s:" (", s:strategy, s:")");
+  Log(s:"  uh_sv_bonusavoidrepeat=", i:GetCVar("uh_sv_bonusavoidrepeat"));
+  Log(s:"  uh_sv_bonusforcedplayerlimits=", i:GetCVar("uh_sv_bonusforcedplayerlimits"));
+  Log(s:"  uh_sv_bonusexplayerlimits=", i:GetCVar("uh_sv_bonusexplayerlimits"));
+}
+
 function void UH_EC_List(bool progress) {
+  UH_EC_Policy();
   for (int id = 0; id < UH_MAX_BONUS_EVENTS; id++)
     if (IsBonusEventDefined(id)) UH_EC_Show(GetBonusEventStem(id), progress);
   for (int row = 0; row < UH_ER_Count(); row++) {
@@ -127,9 +141,12 @@ function void UH_EC_Run(str record) {
   if (StrLen(UH_EC_Token(record, 4)) > 0) {
     Log(s:"Event settings: too many arguments."); return;
   }
-  if (!StrICmp(op, "list") || !StrICmp(op, "export") || !StrICmp(op, "reload")) {
+  if (!StrICmp(op, "list") || !StrICmp(op, "export") || !StrICmp(op, "reload") || !StrICmp(op, "policy")) {
     if (StrLen(stem) || StrLen(fieldname) || StrLen(input)) {
       Log(s:"Event settings: this command takes no arguments."); return;
+    }
+    if (!StrICmp(op, "policy")) {
+      UH_EC_Policy(); return;
     }
     if (!StrICmp(op, "reload")) {
       if (UH_ER_Load()) Log(s:"Event settings loaded from uh_sv_eventrules.");

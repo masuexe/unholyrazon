@@ -43,8 +43,8 @@ script "ub_InitiateUltraBoss" (int Ultra) {
 script "ub_EventManagementACS" (int perform) {
   if (perform == -2) {
     eventdataarr[EVENTDATA_EXORIGIN] = 0;
-    // Least-seen first; registered weights break ties within the eligible pool.
-    eventdataarr[EVENTDATA_MAINEVENT] = PickLeastSeenBonusEvent(PlayerCount(), eventdataarr[EVENTDATA_LASTEVENT]);
+    // Freeze the host-selected strategy and restrictions into this round pick.
+    eventdataarr[EVENTDATA_MAINEVENT] = PickConfiguredBonusEvent(PlayerCount(), eventdataarr[EVENTDATA_LASTEVENT]);
     bool eventselected = false;
 
     int rawcvar = CheckClearCVar("uh_sv_bonuseventnum", -1);
@@ -56,7 +56,7 @@ script "ub_EventManagementACS" (int perform) {
       eventselected = true;
     }
     else if (rawcvar != -1) {
-      UH_Log(UH_LOG_WARN, StrParam(s:"Invalid forced bonus event CVAR: ", i:rawcvar));
+      LogForcedBonusEventRejection(rawcvar, "CVAR");
     }
 
     if (!eventselected && eventdataarr[EVENTDATA_FORCED] >= 0) {
@@ -70,7 +70,7 @@ script "ub_EventManagementACS" (int perform) {
         eventselected = true;
       }
       else {
-        UH_Log(UH_LOG_WARN, StrParam(s:"Invalid forced bonus event world value: ", i:rawworldforced));
+        LogForcedBonusEventRejection(rawworldforced, "queued request");
       }
     }
 
