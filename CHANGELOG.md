@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261009
 
+- 新增 Boss 抽取策略与概率控制服务器 CVAR：支持配置抽选模式 `uh_sv_bossselectmode`（0 最少出现优先／1 均匀随机，目前所有候选权重均为 1）、跨回合重复排除 `uh_sv_bossavoidrepeat` 与同回合多 Boss 重复排除 `uh_sv_bossavoidduplicates`（候选池为空时自动放宽可选限制，强制排除保持有效）；支持配置普通槽位 Rare 保底门槛 `uh_sv_bossrarelimit`（0 暂停晋级并保留进度）与 Shadow 转化几率 `uh_sv_bossshadowchance`；支持配置全池抽取条件概率 `uh_sv_bossfullultrachance`、`uh_sv_bossfullspecialchance`、`uh_sv_bossfullexchance` 与 `uh_sv_bossfullrarechance`（按 Ultra→Special→EX→Rare 顺序判定，均失败落入 Common）；抽取限制不影响指定 Boss、Strongman、胜者自选及固定 Combo；已通过全量 ACS 编译与选择逻辑回归测试；配置说明见 [Boss Selection settings](docs/boss-selection-settings.md)
 - 完成 Bonus Event 配置功能在实际 Zandronum 引擎环境下的联机配置验收：24 项测试全部通过（包含抽选策略、EX 升级与人数门槛暂停、只读诊断不污染状态、预选结果冻结、换图与服务器重启后的配置持久化；未进行完整战斗与菜单视觉测试）
 - 新增 Bonus Event 服务器只读诊断命令 `uh_event_check <stem>` 与 `uh_event_pool`：支持查看事件有效设置、出现历史、随机阻挡原因、强制资格及 EX 进度与暂停原因，支持查看当前人数下的合格池、抽选候选、数量与总权重；查询不调用抽选、不修改历史或 EX 进度、不消耗强制请求，目标变更未同步时分别展示存储进度与预测进度；未加载 addon、待验证 EX 覆盖与缺失启动脚本均提供明确提示，配置说明见 [Bonus Event settings](docs/bonus-event-settings.md)
 - 新增 Bonus Event 抽取策略与人数门槛限制的服务器 CVAR 及查询命令：支持配置抽选模式 `uh_sv_bonusselectmode`（0 最少出现优先／1 纯权重随机）、上一场排除 `uh_sv_bonusavoidrepeat`、强制事件人数门槛限制 `uh_sv_bonusforcedplayerlimits` 与 EX 目标人数限制 `uh_sv_bonusexplayerlimits`（不满足时暂停升级并保留进度）；新增控制台查询命令 `uh_event_policy`，`uh_event_list` 与菜单配置输出一并展示当前策略；策略切换不清除历史与 EX 进度；配置说明见 [Bonus Event settings](docs/bonus-event-settings.md)
