@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261010
 
+- 现在 TropicalMWS 滑板、射击及收招期间也可按 Reload 释放大招
 - 修复自动随机触发 Boss Event 时误显示 `RCON set …` 的问题，仅在强制指定 Boss Combo 或设置事件计数器时显示该提示
 - 移除 Clownpiece 转阶段完成后额外的 3 秒无敌，仅保留回血和切换武器期间的保护；下一阶段开始后可立即攻击，W2／W8 继续使用时符伤害取消与攻击缩短倒计时机制
 - 为 Clownpiece 六阶段加入回合剩余时间适配：每段开始时按剩余阶段的基础时长分配计时预算，预留收尾和转阶段时间，阶段内倒计时保持固定；新增服主设置 `uh_sv_clownpiece_autotime`（默认开启）、`uh_sv_clownpiece_w2_time`／`uh_sv_clownpiece_w8_time`（默认各 30 秒，范围 1～300 秒），可在 Server Options → Boss Setup 调整；关闭适配或回合计时后使用基础时长
