@@ -1,0 +1,33 @@
+// Item-style skills share input/lifetime handling, not their release conditions.
+// Add a class/payload pair here and start the watcher from its morph setup.
+function str UH_BossReloadPayload(str actor) {
+  if (!StrICmp(actor, "TropicalMWS"))
+    return "TropicalMWS_Melon_P";
+  if (!StrICmp(actor, "MorshuBoss"))
+    return "Morshu_Rope_P";
+  return "";
+}
+
+// Server-side raw press detection never changes the weapon or flash psprite.
+script "uh_BossReloadWatcher" (void) {
+  int player = PlayerNumber();
+  if (player < 0)
+    terminate;
+  int mygen = GetPlayerMorphGen(player);
+  str actor = GetActorClass(0);
+  str payload = UH_BossReloadPayload(actor);
+  if (!StrCmp(payload, ""))
+    terminate;
+
+  while (PlayerHealth() > 0) {
+    if (!UH_WatcherStillOwnsBoss(mygen, player) ||
+        StrICmp(GetActorClass(0), actor))
+      terminate;
+
+    int buttons = GetPlayerInput(-1, INPUT_BUTTONS);
+    int oldbuttons = GetPlayerInput(-1, INPUT_OLDBUTTONS);
+    if (buttons & ~oldbuttons & BT_RELOAD)
+      GiveInventory(payload, 1);
+    Delay(1);
+  }
+}

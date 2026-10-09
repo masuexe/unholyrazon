@@ -124,21 +124,6 @@ TNT1 A 4 A_WeaponReady(14)//2
     8H56 A 1 Offset(0, 32)
     goto ReadyX
 
-   Reload:
-    8H56 A 0 A_JumpIfInventory("WireHookShotDelay", 1, "ReadyX")
-    8H56 A 1 A_JumpIfInventory("UnholyBossAmmo100", 100, 1)
-    goto ReadyX
-    8H56 A 0 A_GiveInventory("WireHookShotDelay")
-    // TNT1 A 0 A_TakeInventory("UnholyBossAmmo100",100)
-    8H56 A 0 A_PlaySoundEx("KirbyNES/Hit_D", "Item")
-    8H56 A 1 A_SpawnItemEx("MorshuRopeProjectile", -2, 0, 32, cos(-pitch) * 1, 0, sin(-pitch) * 1, 0, 0)
-    // goto ReadyX  // Funny, but too op
-    goto ReReloadLoop
-   ReReloadLoop:
-    8H56 A 1
-    8H56 A 0 A_JumpIf(!(CallACS("uh_GetPointerButtonInput", 0, 0) & BT_RELOAD), "ReadyX")
-    loop
-
     // I'm sorry, I can't give credit!
     // Come back when you're a little...
     // MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
@@ -200,17 +185,30 @@ actor MorshuArmorPower : BasePowerPro {
   damagefactor "Normal", 0.15
 }
 
+// Unbound's rope item: full meter is a requirement, not an ammo cost.
+// This payload runs on the player without interrupting weapon animations.
+actor Morshu_Rope_P : CustomInventory {
+  States {
+   Pickup:
+    TNT1 A 0 A_JumpIfInventory("WireHookShotDelay", 1, "TooSoon")
+    TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo100", 100, "Rope")
+    fail
+   Rope:
+    TNT1 A 0 A_GiveInventory("WireHookShotDelay")
+    TNT1 A 0 A_PlaySoundEx("KirbyNES/Hit_D", "Item")
+    TNT1 A 0 A_SpawnItemEx("MorshuRopeProjectile", -2, 0, 32, cos(-pitch), 0, sin(-pitch), 0, 0)
+    stop
+   TooSoon:
+    TNT1 A 0
+    fail
+  }
+}
+
 actor Morshu_Ready0_P : CustomInventory {
   States {
    Pickup:
-    TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo100", 100, "PickupReload")
-    TNT1 A 0 A_Jump(256, "PickupNormal")
-    goto PickupNormal
    PickupNormal:
     TNT1 A 0 A_WeaponReady
-    goto Ammo
-   PickupReload:
-    TNT1 A 0 A_WeaponReady(WRF_ALLOWRELOAD)
     goto Ammo
    Ammo:
     8H56 A 0 A_GiveInventory("UnholyBossAmmo150", 3)
@@ -222,9 +220,6 @@ actor Morshu_Ready8_P : Morshu_Ready0_P {
   States {
    PickupNormal:
     TNT1 A 0 A_WeaponReady(8)
-    goto Ammo
-   PickupReload:
-    TNT1 A 0 A_WeaponReady(8 + 16)
     goto Ammo
   }
 }
