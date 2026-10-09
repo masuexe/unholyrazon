@@ -8,6 +8,8 @@ function int UH_EC_Field(str name) {
   if (!StrICmp(name, "weight")) return UH_ER_WEIGHT;
   if (!StrICmp(name, "minplayers")) return UH_ER_MIN;
   if (!StrICmp(name, "maxplayers")) return UH_ER_MAX;
+  if (!StrICmp(name, "ex_count")) return UH_ER_EXCOUNT;
+  if (!StrICmp(name, "ex_target")) return UH_ER_EXTARGET;
   return -1;
 }
 
@@ -31,8 +33,16 @@ function str UH_EC_Token(str record, int part) {
 }
 
 function str UH_EC_Source(int id, str stem, int field) {
-  if (UH_ER_Get(stem, field) >= 0) return "override";
+  if ((field == UH_ER_EXTARGET && StrLen(UH_ER_Target(stem))) || UH_ER_Get(stem, field) >= 0) {
+    if (field == UH_ER_EXTARGET && id != UHBE_FAIL && ValidateBonusEventEXTarget(stem, "", ""))
+      return "registration; override pending";
+    return "override";
+  }
   if (id == UHBE_FAIL) return "pending registration";
+  if (field == UH_ER_EXCOUNT &&
+      (!StrICmp(stem, "ffa") || !StrICmp(stem, "demoneye_parade") ||
+       !StrICmp(stem, "clone_darkness") || !StrICmp(stem, "football_ffa") ||
+       !StrICmp(stem, "boss_ffa"))) return "global uh_sv_bonusexcount";
   if (field == UH_ER_MIN &&
       (!StrICmp(stem, "demoneye_parade") || !StrICmp(stem, "clone_darkness") ||
        !StrICmp(stem, "brick_eyes") || !StrICmp(stem, "mosquito_eyes")))
@@ -42,12 +52,13 @@ function str UH_EC_Source(int id, str stem, int field) {
   return "registration";
 }
 
-function void UH_EC_Show(str stem) {
+function void UH_EC_Show(str stem, bool progress) {
   int id = FindBonusEventByStem(stem);
   if (id == UHBE_FAIL) {
     Log(s:"Event ", s:stem, s:" is not registered.");
     if (UH_ER_Get(stem, UH_ER_MODE) < 0 && UH_ER_Get(stem, UH_ER_WEIGHT) < 0 &&
-        UH_ER_Get(stem, UH_ER_MIN) < 0 && UH_ER_Get(stem, UH_ER_MAX) < 0) {
+        UH_ER_Get(stem, UH_ER_MIN) < 0 && UH_ER_Get(stem, UH_ER_MAX) < 0 &&
+        UH_ER_Get(stem, UH_ER_EXCOUNT) < 0 && !StrLen(UH_ER_Target(stem))) {
       Log(s:"  No saved overrides."); return;
     }
     Log(s:"  Saved overrides wait for its addon.");
@@ -55,6 +66,8 @@ function void UH_EC_Show(str stem) {
       s:" weight=", i:UH_ER_Get(stem, UH_ER_WEIGHT),
       s:" minplayers=", i:UH_ER_Get(stem, UH_ER_MIN),
       s:" maxplayers=", i:UH_ER_Get(stem, UH_ER_MAX), s:" (-1 means inherit)");
+    Log(s:"  ex_count=", i:UH_ER_Get(stem, UH_ER_EXCOUNT),
+      s:" ex_target=", s:UH_ER_Target(stem));
     return;
   }
   Log(s:"Event ", s:GetBonusEventStem(id), s:" (", s:GetBonusEventName(id), s:"):");
@@ -66,24 +79,44 @@ function void UH_EC_Show(str stem) {
     s:" [", s:UH_EC_Source(id, stem, UH_ER_MIN), s:"]");
   Log(s:"  maxplayers=", i:GetBonusEventMaxPlayers(id),
     s:" [", s:UH_EC_Source(id, stem, UH_ER_MAX), s:"]");
+  int target = GetBonusEventEXTarget(id);
+  Log(s:"  ex_count=", i:GetBonusEventEXThreshold(id),
+    s:" [", s:UH_EC_Source(id, stem, UH_ER_EXCOUNT), s:"]");
+  Log(s:"  ex_target=", s:GetBonusEventStem(target),
+    s:" [", s:UH_EC_Source(id, stem, UH_ER_EXTARGET), s:"]");
+  if (progress) {
+    SyncBonusEventEXProgress(id);
+    Log(s:"  EX progress=", i:eventexcountarray[id]);
+  }
+  if (StrLen(UH_ER_Target(stem))) {
+    Log(s:"  saved_ex_target=", s:UH_ER_Target(stem));
+    int reason = ValidateBonusEventEXTarget(stem, "", "");
+    if (reason == 1) Log(s:"  Pending EX override: base or target addon is missing; registration remains active.");
+    if (reason == 2) Log(s:"  Pending EX override: target start callback is missing; registration remains active.");
+    if (reason == 3) Log(s:"  Pending EX override: cyclic graph; registration remains active.");
+  }
+  if (target != UHBE_FAIL && GetBonusEventMode(target) == UH_ER_DISABLED)
+    Log(s:"  EX progress is paused: the target is disabled.");
+  if (GetBonusEventEXThreshold(id) <= 0) Log(s:"  EX progress is paused: ex_count is 0.");
   int maximum = GetBonusEventMaxPlayers(id);
   if (maximum > 0 && maximum < GetBonusEventMinPlayers(id))
     Log(s:"  No player count meets these limits. Reduce the minimum or increase the maximum.");
 }
 
-function void UH_EC_List(void) {
+function void UH_EC_List(bool progress) {
   for (int id = 0; id < UH_MAX_BONUS_EVENTS; id++)
-    if (IsBonusEventDefined(id)) UH_EC_Show(GetBonusEventStem(id));
+    if (IsBonusEventDefined(id)) UH_EC_Show(GetBonusEventStem(id), progress);
   for (int row = 0; row < UH_ER_Count(); row++) {
     str pending = UH_ER_StemAt(row);
-    if (FindBonusEventByStem(pending) == UHBE_FAIL) UH_EC_Show(pending);
+    if (FindBonusEventByStem(pending) == UHBE_FAIL) UH_EC_Show(pending, progress);
   }
 }
 
 // Read-only menu display works for connected clients too. It reads the
 // synchronized server CVAR and local metadata; it cannot edit server rules.
 script "uh_EventConfigPrint" (void) CLIENTSIDE {
-  UH_EC_List();
+  Log(s:"EX progress is server-owned. Use uh_event_show on the server to read it.");
+  UH_EC_List(false);
 }
 
 function void UH_EC_Run(str record) {
@@ -107,7 +140,7 @@ function void UH_EC_Run(str record) {
       Log(s:"uh_sv_eventrules \"", s:GetCVarString("uh_sv_eventrules"), s:"\"");
       return;
     }
-    UH_EC_List();
+    UH_EC_List(true);
     return;
   }
   if (!UH_ER_ValidStem(stem)) {
@@ -118,20 +151,37 @@ function void UH_EC_Run(str record) {
     if (StrLen(fieldname) || StrLen(input)) {
       Log(s:"Usage: uh_event_show <stem>"); return;
     }
-    UH_EC_Show(stem); return;
+    UH_EC_Show(stem, true); return;
   }
   int field = UH_EC_Field(fieldname);
+  int eventid = FindBonusEventByStem(stem);
+  SyncBonusEventEXProgress(eventid);
   if (!StrICmp(op, "reset")) {
     if (StrLen(input) || (StrLen(fieldname) && field < 0)) {
-      Log(s:"Usage: uh_event_reset <stem> [mode|weight|minplayers|maxplayers]"); return;
+      Log(s:"Usage: uh_event_reset <stem> [mode|weight|minplayers|maxplayers|ex_count|ex_target]"); return;
+    }
+    if ((field == UH_ER_EXTARGET || field == -1) && ValidateBonusEventEXTarget(stem, stem, "") >= 2) {
+      Log(s:"Event reset rejected: the registered target would create an invalid EX graph."); return;
     }
     if (!UH_ER_Edit(stem, field, -1)) {
       Log(s:"Event reset rejected; previous overrides remain active."); return;
     }
-    UH_EC_Show(stem); return;
+    SyncBonusEventEXProgress(eventid);
+    UH_EC_Show(stem, true); return;
   }
   if (StrICmp(op, "set") || field < 0 || !StrLen(input)) {
-    Log(s:"Usage: uh_event_set <stem> <mode|weight|minplayers|maxplayers> <value>"); return;
+    Log(s:"Usage: uh_event_set <stem> <mode|weight|minplayers|maxplayers|ex_count|ex_target> <value>"); return;
+  }
+  if (field == UH_ER_EXTARGET) {
+    int error = ValidateBonusEventEXTarget(stem, stem, input);
+    if (!UH_ER_ValidStem(input) || !StrICmp(stem, input) || error >= 2) {
+      Log(s:"EX target rejected: use a different event with a valid start callback and no cycle."); return;
+    }
+    if (!UH_ER_EditTarget(stem, input)) {
+      Log(s:"EX target update rejected; previous overrides remain active."); return;
+    }
+    SyncBonusEventEXProgress(eventid);
+    UH_EC_Show(stem, true); return;
   }
   int value = UH_ER_Number(input);
   if (field == UH_ER_MODE) {
@@ -141,7 +191,7 @@ function void UH_EC_Run(str record) {
     if (!StrICmp(input, "disabled")) value = UH_ER_DISABLED;
   }
   if (value < 0 || !UH_ER_ValidValue(field, value)) {
-    Log(s:"Event settings: mode=random/forced/disabled, weight=1-1000000, player limits=0-64."); return;
+    Log(s:"Event settings: mode=random/forced/disabled, weight=1-1000000, player limits=0-64, ex_count=0-100."); return;
   }
   int id = FindBonusEventByStem(stem);
   if (id != UHBE_FAIL) {
@@ -160,7 +210,8 @@ function void UH_EC_Run(str record) {
   if (!UH_ER_Edit(stem, field, value)) {
     Log(s:"Event update rejected; check the saved data, player limits and storage capacity."); return;
   }
-  UH_EC_Show(stem);
+  SyncBonusEventEXProgress(eventid);
+  UH_EC_Show(stem, true);
 }
 
 script "uh_EventConfigCommands" (void) {
@@ -195,5 +246,15 @@ script "uh_EventConfigWatch" OPEN {
     if (!GetCVar("uh_event_configbusy") && StrLen(GetCVarString("uh_event_commands")))
       ACS_NamedExecute("uh_EventConfigCommands", 0);
     Delay(1);
+  }
+}
+
+// Observe direct CVAR loads and late addon registration as well as commands.
+script "uh_EventEXConfigWatch" OPEN {
+  while (true) {
+    for (int base = 0; base < UH_MAX_BONUS_EVENTS; base++) {
+      SyncBonusEventEXProgress(base);
+      Delay(1);
+    }
   }
 }

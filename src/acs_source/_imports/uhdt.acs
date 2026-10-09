@@ -3413,22 +3413,19 @@ function int FindBonusEventEXRow(int baseid) {
   return -1;
 }
 
-// Resolved EX event id for a base, or UHBE_FAIL when the base has no relation
-// or the target is not (any longer) defined.  Callers fall back to the base
-// event and log a warning.
+// Resolve the effective, enabled EX target. Invalid pending host overrides
+// retain the registered relation; a disabled target pauses EX progression.
 function int ResolveBonusEventEX(int baseid) {
-  int row = FindBonusEventEXRow(baseid);
-  if (row < 0)
-    return UHBE_FAIL;
-  if (GetBonusEventMode(uh_beexevent[row]) == UH_ER_DISABLED)
-    return UHBE_FAIL;
-  return uh_beexevent[row];
+  int target = GetBonusEventEXTarget(baseid);
+  if (GetBonusEventMode(target) == UH_ER_DISABLED) return UHBE_FAIL;
+  return target;
 }
 
 function int GetBonusEventEXThreshold(int baseid) {
+  if (!IsBonusEventDefined(baseid)) return 0;
+  int value = UH_ER_Get(GetBonusEventStem(baseid), UH_ER_EXCOUNT);
+  if (value >= 0) return value;
   int row = FindBonusEventEXRow(baseid);
-  if (row < 0)
-    return 0;
   // Apply the host's live setting only to the five built-in base events.
   // Stem identity keeps addon rows on their own registered thresholds.
   str stem = uh_bestr[baseid][UHBE_STR_STEM];
@@ -3440,6 +3437,7 @@ function int GetBonusEventEXThreshold(int baseid) {
     if (count > 100) {count = 100;}
     return count;
   }
+  if (row < 0) return 0;
   return uh_beexthreshold[row];
 }
 
@@ -4013,4 +4011,46 @@ function int GetBonusEventMode(int id) {
   if (uh_bedefined[id] != UHDB_ROW_ACTIVE) return UH_ER_DISABLED;
   if (uh_beint[id][UHBE_INT_WEIGHT] > 0) return UH_ER_RANDOM;
   return UH_ER_FORCED;
+}
+
+// Structural EX graph. Ignore mode/count: disabling an edge must not conceal
+// a cycle that becomes active when the host enables it later.
+function str UH_BE_EXNext(str stem, str changed, str candidate) {
+  str target = "";
+  if (StrLen(changed) && !StrICmp(stem, changed)) target = candidate;
+  else target = UH_ER_Target(stem);
+  if (StrLen(target)) return target;
+  int id = FindBonusEventByStem(stem);
+  int row = FindBonusEventEXRow(id);
+  if (row < 0) return "";
+  return GetBonusEventStem(uh_beexevent[row]);
+}
+
+// 0 valid; 1 missing base/target; 2 missing start callback; 3 cyclic graph.
+// Missing addons are stored, but cannot replace a registered relation yet.
+function int ValidateBonusEventEXTarget(str stem, str changed, str candidate) {
+  bool missing = FindBonusEventByStem(stem) == UHBE_FAIL;
+  str current = stem;
+  for (int step = 0; step <= UH_MAX_BONUS_EVENTS + UH_ER_CAP; step++) {
+    str next = UH_BE_EXNext(current, changed, candidate);
+    if (!StrLen(next)) return missing;
+    if (!StrICmp(next, stem)) return 3;
+    int id = FindBonusEventByStem(next);
+    if (id == UHBE_FAIL) missing = true;
+    else if (!StrLen(GetBonusEventStartCallback(id)) ||
+             !CheckScript(GetBonusEventStartCallback(id), true)) return 2;
+    current = next;
+  }
+  return 3;
+}
+
+function int GetBonusEventEXTarget(int baseid) {
+  if (!IsBonusEventDefined(baseid)) return UHBE_FAIL;
+  str stem = GetBonusEventStem(baseid);
+  str target = UH_ER_Target(stem);
+  if (StrLen(target) && !ValidateBonusEventEXTarget(stem, "", ""))
+    return FindBonusEventByStem(target);
+  int row = FindBonusEventEXRow(baseid);
+  if (row < 0 || !IsBonusEventDefined(uh_beexevent[row])) return UHBE_FAIL;
+  return uh_beexevent[row];
 }

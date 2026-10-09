@@ -9,6 +9,15 @@
 function void CommitBonusEventHistory(int id) {
   if (id < 0 || id >= UH_MAX_BONUS_EVENTS || !IsBonusEventDefined(id))
     return;
+  int origin = eventdataarr[EVENTDATA_EXORIGIN] - 1;
+  if (origin >= 0 && origin != id) uh_eventfamilyextra[origin]++;
+  else {
+    // Forced EX appearances belong to the families configured when they start.
+    for (int base = 0; base < UH_MAX_BONUS_EVENTS; base++)
+      if (base != id && IsBonusEventDefined(base) && GetBonusEventEXTarget(base) == id)
+        uh_eventfamilyextra[base]++;
+  }
+  eventdataarr[EVENTDATA_EXORIGIN] = 0;
   int old = uh_eventpickcount[id];
   uh_eventpickcount[id] = old + 1;
   UH_Log(UH_LOG_DEBUG, StrParam(s:"Bonus event pick count ", s:GetBonusEventName(id),
@@ -18,12 +27,7 @@ function void CommitBonusEventHistory(int id) {
 // An EX upgrade is an appearance of its base family as well: otherwise an
 // upgraded draw would leave the base artificially below the other candidates.
 function int GetBonusEventFamilyPickCount(int id) {
-  int count = uh_eventpickcount[id];
-  // Disabling an EX target must not erase its past appearances from fairness.
-  int row = FindBonusEventEXRow(id);
-  if (row >= 0 && IsBonusEventDefined(uh_beexevent[row]))
-    count += uh_eventpickcount[uh_beexevent[row]];
-  return count;
+  return uh_eventpickcount[id] + uh_eventfamilyextra[id];
 }
 
 // Boss-style least-seen selection, preserving UHDT eligibility and using the
@@ -62,6 +66,7 @@ function int PickLeastSeenBonusEvent(int plccount, int excludedid) {
 // The counter stays in the world array (per base event id, survives map
 // changes); UHDT resolves the relation and the live host threshold.
 function int ExEventChecker(int inputevent) {
+  SyncBonusEventEXProgress(inputevent);
   int exid = ResolveBonusEventEX(inputevent);
   if (exid == UHBE_FAIL) {
     return inputevent;
@@ -207,4 +212,17 @@ function bool HasEyeTeamEvent(void) {
 
 function bool IsDemoneyeEvent(void) {
   return isbonuseventactive && HasEyeTeamEvent();
+}
+
+// A target change starts a new EX sequence. Count/mode changes only pause it.
+// Compare stem identities, not addon ids that can change with registration order.
+function void SyncBonusEventEXProgress(int base) {
+  if (!IsBonusEventDefined(base)) return;
+  int target = GetBonusEventEXTarget(base);
+  str stem = "-";
+  if (target != UHBE_FAIL) stem = GetBonusEventStem(target);
+  if (uh_eventextargetknown[base] && StrICmp(uh_eventextargetseen[base], stem))
+    eventexcountarray[base] = 0;
+  uh_eventextargetseen[base] = StrParam(s:stem);
+  uh_eventextargetknown[base] = true;
 }

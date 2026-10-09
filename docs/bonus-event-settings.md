@@ -63,7 +63,7 @@ To force an event, select it from **Force Bonus Event** in the menu, or enter `u
 
 Server operators can override rules for individual events by stem name (e.g. `boss_ffa`). Overrides take precedence over global settings and registration defaults.
 
-Use `uh_event_list` (or **Print Event Settings** in the menu) to view all registered stems and their active settings.
+Use `uh_event_list` (or **Print Event Settings** in the menu) to view all registered stems and active settings.
 
 ### Override fields
 
@@ -73,6 +73,8 @@ Use `uh_event_list` (or **Print Event Settings** in the menu) to view all regist
 | `weight` | 1 to 1000000 | Relative selection weight among events with the same appearance count. |
 | `minplayers` | 0 to 64 | Minimum player count (0 removes limit). Overrides `uh_sv_bonusminplayers`. |
 | `maxplayers` | 0 to 64 | Maximum player count (0 removes limit). Must be $\ge$ minplayers if non-zero. |
+| `ex_count` | 0 to 100 | Picks before EX upgrade (0 pauses upgrades). Overrides `uh_sv_bonusexcount`. |
+| `ex_target` | event stem | Target event stem for EX upgrade. Changing target resets EX progress to 0. |
 
 #### Modes
 - **`random`**: Eligible for random selection. Former EX-only events use weight 1 by default unless set.
@@ -80,6 +82,7 @@ Use `uh_event_list` (or **Print Event Settings** in the menu) to view all regist
 - **`disabled`**: Fully disabled. Cannot be randomly selected, forced, or upgraded.
 
 Player limits apply to random selection only; forced and EX selections ignore player limits.
+Changing `ex_count` preserves existing EX progress.
 If no random event meets the selection conditions, the game proceeds with a normal boss round.
 
 ### Console commands
@@ -87,7 +90,7 @@ If no random event meets the selection conditions, the game proceeds with a norm
 | Command | Description |
 |---------|-------------|
 | `uh_event_set <stem> <field> <value>` | Sets an override field for an event. |
-| `uh_event_show <stem>` | Displays active settings and their sources for an event. |
+| `uh_event_show <stem>` | Displays active settings, sources, and EX progress on server console. |
 | `uh_event_list` | Lists all registered events and active overrides in console. |
 | `uh_event_reset <stem> [field]` | Clears overrides for a specific field or the entire event. |
 | `uh_sv_eventrules ""` | Clears all overrides across all events. |
@@ -100,8 +103,10 @@ If no random event meets the selection conditions, the game proceeds with a norm
 
 ```cfg
 // Set specific event overrides
+uh_event_set boss_ffa ex_count 5
+uh_event_set boss_ffa ex_target satan_seal_ffa
+uh_event_set football_ffa ex_count 0
 uh_event_set demoneye_parade minplayers 8
-uh_event_set boss_ffa weight 2
 uh_event_set brick_eyes mode forced
 
 // Inspect settings
@@ -109,13 +114,17 @@ uh_event_show boss_ffa
 uh_event_list
 
 // Reset overrides
-uh_event_reset demoneye_parade minplayers  // Reset single field
-uh_event_reset boss_ffa                    // Reset all fields for event
-uh_sv_eventrules ""                        // Clear all overrides
+uh_event_reset boss_ffa ex_count
+uh_event_reset boss_ffa ex_target
+uh_event_reset demoneye_parade minplayers
+uh_sv_eventrules ""  // Clear all overrides
 ```
 
 ### Persistence and Addons
 
-- **Persistence:** Overrides are stored in the archived string CVAR `uh_sv_eventrules` and persist across map changes.
+- **Storage format:** Overrides are stored in the archived string CVAR `uh_sv_eventrules` as:
+  `stem:mode,weight,minplayers,maxplayers,ex_count,ex_target;`
+  A value of `-1` or an empty `ex_target` denotes inheritance. Legacy 4-field formats are automatically supported.
+- **Persistence:** Overrides persist across map changes.
 - **Addon support:** Overrides can be defined before an addon event is registered. Settings remain pending until an event matching the stem is loaded.
 - **Storage capacity:** Supports up to 256 event records (up to 16,384 characters). Commands process one per game tic, with a queue limit of 256 commands per batch.

@@ -1,5 +1,7 @@
 ## 4.0.0-beta.261009
 
+- 新增单事件 EX 升级次数（ex_count）与 EX 目标（ex_target）配置命令：支持分别覆盖升级阈值（0 暂停升级并保留进度）与升级目标事件；提供 EX 目标自指与循环引用校验，支持延迟验证未加载的 addon 目标；修改次数保留当前进度，有效目标变更时重置该基础事件的 EX 进度；支持在控制台查询有效设置、来源及当前 EX 进度，导出格式兼容旧版四字段配置；配置说明见 [Bonus Event settings](docs/bonus-event-settings.md)
+
 - 新增按事件 stem 配置 Bonus Event 的服主命令：分别覆盖随机／仅指定／禁用模式、权重及人数上下限，提供查询有效值与来源、字段／事件重置、配置保存与加载；覆盖跨地图保存并支持延迟注册的 addon，重置不清除历史次数，随机池为空时使用普通 Boss 回合；Events 菜单增加配置输出入口，命令说明见 [Bonus Event settings](docs/bonus-event-settings.md)
 - 新增 Bonus Event 全局人数门槛和 EX 升级次数设置，支持在 Server Options → Events 中直接输入并保存：默认 12 人／3 次，0 分别表示取消人数门槛／关闭 EX；每次抽选时读取最新值，关闭 EX 时暂停计数并保留进度，addon 保留自身注册规则；配置说明见 [Bonus Event settings](docs/bonus-event-settings.md)
 - 重分 Bonus Event 随机池：Boss FFA、Football FFA 加入无人数门槛池，仅 Parade、Darkness、Brick、Mosquito 保留 12 人门槛；Satan Seal FFA 改为无人数门槛的 Boss FFA EX 版，Boss FFA 随机抽中三次后第四次升级，沿用低频优先选择及 EX 家族计数

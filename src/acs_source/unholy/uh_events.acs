@@ -42,6 +42,7 @@ script "ub_InitiateUltraBoss" (int Ultra) {
 
 script "ub_EventManagementACS" (int perform) {
   if (perform == -2) {
+    eventdataarr[EVENTDATA_EXORIGIN] = 0;
     // Least-seen first; registered weights break ties within the eligible pool.
     eventdataarr[EVENTDATA_MAINEVENT] = PickLeastSeenBonusEvent(PlayerCount(), eventdataarr[EVENTDATA_LASTEVENT]);
     bool eventselected = false;
@@ -75,7 +76,10 @@ script "ub_EventManagementACS" (int perform) {
 
     if (!eventselected) {
       // EX upgrade resolves per registered relation; forced events skip it.
-      eventdataarr[EVENTDATA_MAINEVENT] = ExEventChecker(eventdataarr[EVENTDATA_MAINEVENT]);
+      int baseevent = eventdataarr[EVENTDATA_MAINEVENT];
+      eventdataarr[EVENTDATA_MAINEVENT] = ExEventChecker(baseevent);
+      if (eventdataarr[EVENTDATA_MAINEVENT] != baseevent)
+        eventdataarr[EVENTDATA_EXORIGIN] = baseevent + 1;
     }
 
     // Resolve before announcement/RCON echo so the round never previews an
@@ -83,7 +87,11 @@ script "ub_EventManagementACS" (int perform) {
     // An empty random pool means a normal boss round. Never resurrect a
     // disabled FFA as the default event when every event was excluded.
     if (eventdataarr[EVENTDATA_MAINEVENT] != UHBE_FAIL)
-      eventdataarr[EVENTDATA_MAINEVENT] = UH_ResolveStartableBonusEvent(eventdataarr[EVENTDATA_MAINEVENT]);
+      {
+        int preview = eventdataarr[EVENTDATA_MAINEVENT];
+        eventdataarr[EVENTDATA_MAINEVENT] = UH_ResolveStartableBonusEvent(preview);
+        if (preview != eventdataarr[EVENTDATA_MAINEVENT]) eventdataarr[EVENTDATA_EXORIGIN] = 0;
+      }
     if (eventdataarr[EVENTDATA_MAINEVENT] == UHBE_FAIL) {
       eventdataarr[EVENTDATA_DELAY] = 0;
       UH_Log(UH_LOG_WARN, "No eligible Bonus Event; this round uses normal boss selection.");
@@ -116,6 +124,7 @@ script "ub_EventManagementACS" (int perform) {
       ACS_NamedExecute("ub_SelectBossAndEvent", 0);
       terminate;
     }
+    if (startevent != eventdataarr[EVENTDATA_MAINEVENT]) eventdataarr[EVENTDATA_EXORIGIN] = 0;
     eventdataarr[EVENTDATA_MAINEVENT] = startevent;
     isbonuseventactive = true;
     // Publish the frozen 1-vs-all target before any start callback can morph

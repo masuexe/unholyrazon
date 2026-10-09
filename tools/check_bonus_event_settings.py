@@ -57,9 +57,9 @@ def translate(source):
     source = re.sub(r"^#(?:library|include|import).*\n", "", source, flags=re.M)
     source = source.replace("#libdefine", "#define").replace("function ", "")
     # ACS loop variables are function-scoped. Make that scope explicit in C.
-    source = source.replace("bool UH_ER_Edit(str stem, int field, int value) {",
-                            "bool UH_ER_Edit(str stem, int field, int value) { int row, f;")
-    begin = source.find("bool UH_ER_Edit(")
+    source = source.replace("bool UH_ER_EditCore(str stem, int field, int value, str exstem) {",
+                            "bool UH_ER_EditCore(str stem, int field, int value, str exstem) { int row, f;")
+    begin = source.find("bool UH_ER_EditCore(")
     if begin >= 0:
         source = source[:begin] + source[begin:].replace("for (int row =", "for (row =").replace("for (int f =", "for (f =")
     source = re.sub(r'script "uh_EventConfigPrint" \(void\) CLIENTSIDE \{.*?\}', "", source, flags=re.S)
@@ -67,6 +67,7 @@ def translate(source):
     source = source.replace('script "uh_EventConfigCommands" (void)', "void drain(void)")
     source = source.replace("terminate;", "return;")
     source = source.replace("Delay(1);", "/* Separate ACS tic in engine. */")
+    source = source.replace("for (field = 0;", "for (int field = 0;")
     return format_calls(source)
 
 
@@ -117,16 +118,28 @@ int CheckScript(str name, int unused) { (void)unused; return name[0] != 0; }
 #define UHBE_INT_MINP 1
 #define UHBE_INT_MAXP 2
 str uh_bestr[256][3]; int uh_bedefined[256], uh_beint[256][3];
-int uh_beexevent[256], uh_beexthreshold[256], uh_beexcount;
-int uh_eventpickcount[256], eventexcountarray[256];
+int uh_beexbase[256], uh_beexevent[256], uh_beexthreshold[256], uh_beexcount;
+int uh_eventpickcount[256], eventexcountarray[256], uh_eventfamilyextra[256];
+str uh_eventextargetseen[256]; bool uh_eventextargetknown[256];
+int eventdataarr[5];
+#define EVENTDATA_EXORIGIN 4
+#define UH_LOG_DEBUG 0
+void UH_Log(int level, str message) { (void)level; (void)message; }
+int GetBonusEventEXTarget(int id);
+int GetBonusEventEXThreshold(int id);
+int ValidateBonusEventEXTarget(str stem, str changed, str candidate);
+void SyncBonusEventEXProgress(int id);
+str UH_BE_EXNext(str stem, str changed, str candidate);
+str GetBonusEventStem(int id);
+str GetBonusEventStartCallback(int id);
 int GetBonusEventMode(int id);
 bool IsBonusEventDefined(int id) { return id>=0 && id<256 && uh_bedefined[id]; }
 int FindBonusEventByStem(str stem) {
     for(int i=0;i<256;i++) if(IsBonusEventDefined(i) && !StrICmp(uh_bestr[i][0],stem)) return i;
     return UHBE_FAIL;
 }
-int FindBonusEventEXRow(int id) { return id==0 ? 0 : -1; }
-str GetBonusEventStem(int id) { return uh_bestr[id][0]; }
+int FindBonusEventEXRow(int id) { for(int i=0;i<uh_beexcount;i++) if(uh_beexbase[i]==id) return i; return -1; }
+str GetBonusEventStem(int id) { return IsBonusEventDefined(id) ? uh_bestr[id][0] : ""; }
 str GetBonusEventName(int id) { return uh_bestr[id][1]; }
 str GetBonusEventStartCallback(int id) { return uh_bestr[id][2]; }
 void register_event(int id, str stem, int weight, int minplayers, int maxplayers) {
@@ -143,7 +156,7 @@ TESTS = r'''
 int main(void) {
     register_event(0,"ffa",1,0,0); register_event(1,"demoneye_parade",1,12,0);
     register_event(2,"boss_ffa",1,0,0); register_event(3,"satan_seal_ffa",0,0,0);
-    register_event(200,"addon_a",7,4,20); uh_beexevent[0]=3; uh_beexthreshold[0]=3;
+    register_event(200,"addon_a",7,4,20); uh_beexcount=1; uh_beexbase[0]=0; uh_beexevent[0]=3; uh_beexthreshold[0]=3;
     assert(UH_ER_Load()); assert(UH_ER_Count()==0);
     assert(GetBonusEventMinPlayers(1)==12); minimum_setting=8; assert(GetBonusEventMinPlayers(1)==8);
     assert(GetBonusEventMinPlayers(200)==4);
@@ -162,7 +175,7 @@ int main(void) {
     assert(GetBonusEventWeight(3)==3);
     UH_EC_Run("reset:satan_seal_ffa:weight::"); assert(GetBonusEventWeight(3)==1);
     UH_EC_Run("set:satan_seal_ffa:mode:disabled:"); assert(ResolveBonusEventEX(0)==UHBE_FAIL);
-    uh_eventpickcount[0]=5; uh_eventpickcount[3]=2; assert(GetBonusEventFamilyPickCount(0)==7);
+    uh_eventpickcount[0]=5; uh_eventpickcount[3]=2; uh_eventfamilyextra[0]=2; assert(GetBonusEventFamilyPickCount(0)==7);
     eventexcountarray[0]=2; UH_EC_Run("reset:satan_seal_ffa:::");
     assert(eventexcountarray[0]==2 && uh_eventpickcount[3]==2);
     assert(GetBonusEventMode(3)==UH_ER_FORCED); assert(ResolveBonusEventEX(0)==3);
@@ -176,7 +189,7 @@ int main(void) {
     UH_EC_Run("set:boss_ffa:weight:2oops:"); assert(!StrCmp(saved,good));
     UH_EC_Run("set:boss_ffa:minplayers:65:"); assert(!StrCmp(saved,good));
     UH_EC_Run("set:boss_ffa:minplayers:11:"); assert(!StrCmp(saved,good));
-    UH_EC_Run("set:boss_ffa:ex_count:2:"); assert(!StrCmp(saved,good));
+
     UH_EC_Run("set::weight:2:"); assert(!StrCmp(saved,good));
     UH_EC_Run("set:boss_ffa:weight:2:extra"); assert(!StrCmp(saved,good));
     saved="boss_ffa:2,4,12,8;"; assert(!UH_ER_Load()); assert(GetBonusEventWeight(2)==2);
@@ -198,12 +211,76 @@ int main(void) {
     assert(GetBonusEventWeight(200)==7);
     saved=""; assert(UH_ER_Load()); assert(UH_ER_Count()==0);
     assert(GetBonusEventWeight(219)==1);
+    // Per-event EX controls: progression, pause, target replacement and frozen origin.
+    UH_EC_Run("set:ffa:ex_count:2:"); assert(GetBonusEventEXThreshold(0)==2);
+    SyncBonusEventEXProgress(0); eventexcountarray[0]=1;
+    UH_EC_Run("set:ffa:ex_count:0:"); assert(ExEventChecker(0)==0 && eventexcountarray[0]==1);
+    UH_EC_Run("set:ffa:ex_count:2:"); assert(ExEventChecker(0)==0 && eventexcountarray[0]==2);
+    assert(ExEventChecker(0)==3 && eventexcountarray[0]==0);
+    eventexcountarray[0]=2;
+    UH_EC_Run("set:satan_seal_ffa:mode:disabled:");
+    assert(ExEventChecker(0)==0 && eventexcountarray[0]==2);
+    UH_EC_Run("reset:satan_seal_ffa:mode::");
+    assert(ExEventChecker(0)==3);
+    eventexcountarray[0]=1;
+    UH_EC_Run("set:ffa:ex_target:boss_ffa:"); assert(GetBonusEventEXTarget(0)==2);
+    assert(eventexcountarray[0]==0);
+    eventexcountarray[0]=1; UH_EC_Run("set:ffa:ex_target:BOSS_FFA:");
+    assert(eventexcountarray[0]==1);
+    str exgood=saved;
+    UH_EC_Run("set:ffa:ex_count:101:"); assert(!StrCmp(saved,exgood));
+    UH_EC_Run("set:ffa:ex_count:-1:"); assert(!StrCmp(saved,exgood));
+    // A new relation for an addon uses its per-event count, not the built-in global.
+    UH_EC_Run("set:addon_a:ex_target:boss_ffa:");
+    assert(GetBonusEventEXTarget(200)==2 && GetBonusEventEXThreshold(200)==0);
+    UH_EC_Run("set:addon_a:ex_count:4:");
+    assert(GetBonusEventEXThreshold(200)==4);
+    UH_EC_Run("set:boss_ffa:ex_target:addon_a:");
+    assert(!StrLen(UH_ER_Target("boss_ffa"))); // Indirect cycle ffa->boss->addon->boss.
+    UH_EC_Run("reset:addon_a:::"); exgood=saved;
+    UH_EC_Run("set:ffa:ex_target:ffa:"); assert(!StrCmp(saved,exgood));
+    UH_EC_Run("set:boss_ffa:ex_target:ffa:"); assert(!StrCmp(saved,exgood));
+    uh_bestr[200][2]="";
+    UH_EC_Run("set:ffa:ex_target:addon_a:"); assert(!StrCmp(saved,exgood));
+    uh_bestr[200][2]="start";
+    UH_EC_Run("set:ffa:ex_target:pending_ex:"); assert(GetBonusEventEXTarget(0)==3);
+    assert(has_output("addon is missing"));
+    register_event(222,"pending_ex",0,0,0); SyncBonusEventEXProgress(0);
+    assert(GetBonusEventEXTarget(0)==222 && eventexcountarray[0]==0);
+    // Missing bases also retain settings until registration, independent of numeric ids.
+    UH_EC_Run("set:missing_base:ex_target:missing_target:");
+    UH_EC_Run("set:missing_base:ex_count:5:");
+    register_event(223,"missing_base",1,0,0);
+    assert(GetBonusEventEXTarget(223)==UHBE_FAIL);
+    register_event(224,"missing_target",0,0,0);
+    assert(GetBonusEventEXTarget(223)==224 && GetBonusEventEXThreshold(223)==5);
+    // Reloaded invalid edges stay pending and retain the original registered target.
+    saved="ffa:-1,-1,-1,-1,2,boss_ffa;boss_ffa:-1,-1,-1,-1,2,ffa;";
+    assert(UH_ER_Load()); assert(GetBonusEventEXTarget(0)==3);
+    saved=exgood; assert(UH_ER_Load()); SyncBonusEventEXProgress(0);
+    uh_eventpickcount[2]=40;
+    assert(GetBonusEventFamilyPickCount(0)==7); // New target's old history is not imported.
+    eventdataarr[EVENTDATA_EXORIGIN]=1;
+    UH_EC_Run("set:ffa:ex_target:satan_seal_ffa:");
+    CommitBonusEventHistory(2); assert(GetBonusEventFamilyPickCount(0)==8);
+    assert(eventdataarr[EVENTDATA_EXORIGIN]==0);
+    UH_EC_Run("reset:ffa:ex_target::"); assert(GetBonusEventEXTarget(0)==3);
+    UH_EC_Run("reset:ffa:ex_count::"); assert(GetBonusEventEXThreshold(0)==3);
+    assert(GetBonusEventFamilyPickCount(0)==8);
+    // Extended serialization and legacy rows both load without loss.
+    assert(UH_ER_EditTarget("ffa","pending_ex")); str roundtrip=saved;
+    uh_er_seen="!reload"; assert(UH_ER_Load()); assert(!StrCmp(UH_ER_Target("ffa"),"pending_ex"));
+    saved="ffa:-1,-1,-1,-1,4,ffa;"; assert(!UH_ER_Load());
+    saved="ffa:-1,-1,-1,-1,101,pending_ex;"; assert(!UH_ER_Load());
+    saved="ffa:-1,-1,-1,-1,4;"; assert(!UH_ER_Load());
+    saved=roundtrip; assert(UH_ER_Load());
+    saved=""; assert(UH_ER_Load());
     // All capacity slots can be reused after reset; over-capacity edits are atomic.
     for(int i=0;i<256;i++) assert(UH_ER_Edit(concat(2,"pending_",number(i)),UH_ER_WEIGHT,1));
     assert(!UH_ER_Edit("too_many",UH_ER_WEIGHT,1));
     assert(UH_ER_Edit("pending_0",-1,-1)); assert(UH_ER_Edit("replacement",UH_ER_WEIGHT,1));
     assert(UH_ER_Count()==256);
-    puts("PASS: real ACS parser, commands, queue, overrides, persistence, addon identity, limits, atomic rejection, reset, EX history, sources and capacity");
+    puts("PASS: ACS settings logic, EX progression/pause, target validation, pending addons, frozen history, persistence, legacy format and capacity");
 }
 '''
 
@@ -215,7 +292,8 @@ def main():
     commands = (ROOT / "src/acs_source/unholy/uh_event_config.acs").read_text()
     getters = "\n".join(function(registry, name) for name in (
         "GetBonusEventWeight", "GetBonusEventMinPlayers", "GetBonusEventMaxPlayers",
-        "GetBonusEventMode", "UH_BonusEligible", "ResolveBonusEventEX"))
+        "GetBonusEventMode", "UH_BonusEligible", "ResolveBonusEventEX",
+        "GetBonusEventEXThreshold", "UH_BE_EXNext", "ValidateBonusEventEXTarget", "GetBonusEventEXTarget"))
     # Permission gate and frozen-event behavior are engine-facing source checks.
     assert 'script "uh_EventConfigCommands" (void) {' in commands
     assert not re.search(r'uh_EventConfigCommands"[^\n]*(?:NET|CLIENTSIDE)', commands)
@@ -230,7 +308,8 @@ def main():
     assert 'script "uh_EventConfigWatch" OPEN {' in commands
     assert "pukename uh_EventConfigCommands" not in aliases
     source = STUBS + translate(storage) + translate(getters)
-    source += translate(function(helpers, "GetBonusEventFamilyPickCount"))
+    source += translate("\n".join(function(helpers, name) for name in (
+        "GetBonusEventFamilyPickCount", "SyncBonusEventEXProgress", "ExEventChecker", "CommitBonusEventHistory")))
     source += translate(commands) + TESTS
     with tempfile.TemporaryDirectory(prefix="uh-event-settings-") as tmp:
         path = Path(tmp)
