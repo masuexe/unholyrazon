@@ -69,6 +69,7 @@ def translate(source):
     source = source.replace("Delay(1);", "/* Separate ACS tic in engine. */")
     source = source.replace("for (field = 0;", "for (int field = 0;")
     source = re.sub(r"\brandom\(", "acs_random(", source)
+    source = source.replace("for (id = 0;", "for (int id = 0;")
     return format_calls(source)
 
 
@@ -84,9 +85,11 @@ typedef const char *str;
 str saved = "", queue = "";
 int minimum_setting = 12, ex_setting = 3, can_write = 1;
 int select_mode, avoid_repeat=1, forced_limits, ex_limits, players=8;
-int roll_override;
+int roll_override, random_calls, config_writes;
+int forced_request=-1;
 int PlayerCount(void) { return players; }
 int acs_random(int low, int high) {
+    random_calls++;
     assert(high>=low);
     if(roll_override) { assert(roll_override>=low && roll_override<=high); return roll_override; }
     return high;
@@ -109,6 +112,7 @@ str concat(int count, ...) {
 void log_text(str s) { assert(lines < 2048); output[lines++]=s; }
 str GetCVarString(str name) { return !strcmp(name,"uh_event_commands") ? queue : saved; }
 int SetCVarString(str name, str value) {
+    config_writes++;
     if(!can_write) return 0;
     if(!strcmp(name,"uh_event_commands")) queue = value; else saved = value;
     return 1;
@@ -120,6 +124,7 @@ int GetCVar(str name) {
     if(!strcmp(name,"uh_sv_bonusavoidrepeat")) return avoid_repeat;
     if(!strcmp(name,"uh_sv_bonusforcedplayerlimits")) return forced_limits;
     if(!strcmp(name,"uh_sv_bonusexplayerlimits")) return ex_limits;
+    if(!strcmp(name,"uh_sv_bonuseventnum")) return forced_request;
     assert(!"Unknown CVAR"); return 0;
 }
 void SetCVar(str name, int value) { (void)name; (void)value; }
@@ -140,6 +145,8 @@ int uh_eventpickcount[256], eventexcountarray[256], uh_eventfamilyextra[256];
 str uh_eventextargetseen[256]; bool uh_eventextargetknown[256];
 int eventdataarr[5];
 #define EVENTDATA_EXORIGIN 4
+#define EVENTDATA_LASTEVENT 2
+#define EVENTDATA_FORCED 3
 #define UH_LOG_DEBUG 0
 #define UH_LOG_WARN 1
 #define UHEVENT_FOOTBALL 13
@@ -156,6 +163,11 @@ int GetBonusEventMode(int id);
 bool BonusEventMeetsPlayerLimits(int id, int count);
 int GetBonusEventSelectionMode(void);
 void test_policy(void);
+void test_diagnostics(void);
+void UH_ED_Check(str stem);
+void UH_ED_Pool(void);
+void UH_EC_Show(str stem, bool progress);
+void UH_EC_Policy(void);
 bool IsBonusEventDefined(int id) { return id>=0 && id<256 && uh_bedefined[id]; }
 int FindBonusEventByStem(str stem) {
     for(int i=0;i<256;i++) if(IsBonusEventDefined(i) && !StrICmp(uh_bestr[i][0],stem)) return i;
@@ -304,7 +316,8 @@ int main(void) {
     assert(UH_ER_Edit("pending_0",-1,-1)); assert(UH_ER_Edit("replacement",UH_ER_WEIGHT,1));
     assert(UH_ER_Count()==256);
     test_policy();
-    puts("PASS: ACS settings logic, EX progression/pause, target validation, pending addons, frozen history, persistence, legacy format, capacity and selection policies");
+    test_diagnostics();
+    puts("PASS: ACS settings logic, EX progression/pause, target validation, pending addons, frozen history, persistence, legacy format, capacity, selection policies and read-only diagnostics");
 }
 '''
 
@@ -390,11 +403,109 @@ void test_policy(void) {
 '''
 
 
+DIAGNOSTIC_TESTS = r'''
+void test_diagnostics(void) {
+    saved=""; assert(UH_ER_Load());
+    memset(uh_bedefined,0,sizeof(uh_bedefined));
+    memset(uh_eventpickcount,0,sizeof(uh_eventpickcount));
+    memset(uh_eventfamilyextra,0,sizeof(uh_eventfamilyextra));
+    memset(uh_eventextargetknown,0,sizeof(uh_eventextargetknown));
+    register_event(0,"ffa",1,0,0); register_event(1,"heavy",3,0,0);
+    register_event(2,"target",0,12,16); register_event(3,"limited",1,12,0);
+    register_event(4,"upper",1,0,4);
+    uh_eventpickcount[1]=10; uh_eventfamilyextra[1]=2;
+    uh_beexcount=1; uh_beexbase[0]=0; uh_beexevent[0]=2; uh_beexthreshold[0]=3;
+    select_mode=0; avoid_repeat=1; ex_limits=1; forced_limits=1; players=8;
+    eventdataarr[EVENTDATA_LASTEVENT]=0; eventdataarr[EVENTDATA_FORCED]=-1;
+    eventexcountarray[0]=3;
+    // Force a pending target reset: a query must report it, not perform it.
+    uh_eventextargetknown[0]=true; uh_eventextargetseen[0]="old_target";
+    int old_calls=random_calls, old_writes=config_writes;
+    int history[256], extra[256], progress[256], state[5];
+    bool known[256]; str seen[256];
+    memcpy(history,uh_eventpickcount,sizeof(history));
+    memcpy(extra,uh_eventfamilyextra,sizeof(extra));
+    memcpy(progress,eventexcountarray,sizeof(progress));
+    memcpy(state,eventdataarr,sizeof(state));
+    memcpy(known,uh_eventextargetknown,sizeof(known));
+    memcpy(seen,uh_eventextargetseen,sizeof(seen));
+    str original=saved;
+    lines=0; UH_EC_Run("check:ffa:::");
+    assert(has_output("previous-event exclusion"));
+    assert(has_output("EX stored progress=3; next-selection progress=0"));
+    assert(has_output("next selection resets progress to 0"));
+    assert(has_output("EX paused: target player limits"));
+    lines=0; UH_EC_Run("check:heavy:::");
+    assert(has_output("appearances=10 family appearances=12"));
+    assert(has_output("Random draw candidate")); // ffa excluded, heavy is the only candidate.
+    lines=0; UH_EC_Run("check:limited:::");
+    assert(has_output("too few players")); assert(has_output("Forced selection blocked: player limits"));
+    lines=0; UH_EC_Run("check:upper:::"); assert(has_output("too many players"));
+    lines=0; UH_EC_Run("check:target:::"); assert(has_output("forced-only"));
+    lines=0; UH_EC_Run("pool::::");
+    assert(has_output("Pool totals: eligible=2 draw candidates=1 total draw weight=3"));
+    assert(has_output("minimum family appearances=12"));
+    assert(random_calls==old_calls && config_writes==old_writes);
+    assert(!StrCmp(saved,original));
+    assert(!memcmp(history,uh_eventpickcount,sizeof(history)));
+    assert(!memcmp(extra,uh_eventfamilyextra,sizeof(extra)));
+    assert(!memcmp(progress,eventexcountarray,sizeof(progress)));
+    assert(!memcmp(state,eventdataarr,sizeof(state)));
+    assert(!memcmp(known,uh_eventextargetknown,sizeof(known)));
+    assert(!memcmp(seen,uh_eventextargetseen,sizeof(seen)));
+    // With repeat avoidance off, the least-seen group excludes eligible high-history events.
+    avoid_repeat=0; lines=0; UH_EC_Run("check:heavy:::");
+    assert(has_output("Eligible, but not in the lowest-count draw"));
+    lines=0; UH_EC_Run("pool::::");
+    assert(has_output("Pool totals: eligible=2 draw candidates=1 total draw weight=1"));
+    select_mode=1; lines=0; UH_EC_Run("pool::::");
+    assert(has_output("Pool totals: eligible=2 draw candidates=2 total draw weight=4"));
+    // A single-candidate pool retries without excluding the previous event.
+    assert(UH_ER_Edit("heavy",UH_ER_MODE,UH_ER_DISABLED));
+    avoid_repeat=1; assert(UH_ED_Excluded(players)==-1);
+    lines=0; UH_EC_Run("check:ffa:::"); assert(has_output("Previous event may repeat"));
+    assert(UH_ER_Edit("ffa",UH_ER_MODE,UH_ER_DISABLED));
+    lines=0; UH_EC_Run("pool::::");
+    assert(has_output("Pool totals: eligible=0 draw candidates=0 total draw weight=0"));
+    assert(has_output("normal Boss round"));
+    lines=0; UH_EC_Run("check:ffa:::"); assert(has_output("event is disabled"));
+    // Pending requests are read, not consumed or used to draw an event.
+    forced_request=2; eventdataarr[EVENTDATA_FORCED]=3;
+    lines=0; UH_EC_Run("pool::::"); assert(has_output("Pending forced requests"));
+    assert(forced_request==2 && eventdataarr[EVENTDATA_FORCED]==3);
+    forced_request=-1; eventdataarr[EVENTDATA_FORCED]=-1;
+    assert(UH_ER_Edit("missing_addon",UH_ER_WEIGHT,2));
+    lines=0; UH_EC_Run("check:missing_addon:::"); assert(has_output("Saved overrides wait for its addon"));
+    lines=0; UH_EC_Run("check:unknown:::"); assert(has_output("No saved overrides"));
+    lines=0; UH_EC_Run("check:ffa:extra::"); assert(has_output("Usage: uh_event_check"));
+    lines=0; UH_EC_Run("pool:extra:::"); assert(has_output("takes no arguments"));
+    // Callback failures are warnings, not invented eligibility exclusions.
+    assert(UH_ER_Edit("ffa",UH_ER_MODE,-1)); uh_bestr[0][2]="";
+    lines=0; UH_EC_Run("check:ffa:::"); assert(has_output("start resolver will attempt its FFA fallback"));
+    uh_bestr[0][2]="start";
+    // EX readiness uses projected progress, while disabled/count-zero reasons remain visible.
+    uh_eventextargetseen[0]="target"; players=12;
+    lines=0; UH_EC_Run("check:ffa:::"); assert(has_output("EX ready"));
+    assert(UH_ER_Edit("target",UH_ER_MODE,UH_ER_DISABLED));
+    lines=0; UH_EC_Run("check:ffa:::"); assert(has_output("EX paused: the target is disabled"));
+    assert(UH_ER_Edit("ffa",UH_ER_EXCOUNT,0));
+    lines=0; UH_EC_Run("check:ffa:::"); assert(has_output("EX paused: ex_count is 0"));
+    assert(UH_ER_EditTarget("ffa","not_loaded"));
+    lines=0; UH_EC_Run("check:ffa:::");
+    assert(has_output("saved_ex_target=not_loaded"));
+    assert(has_output("Pending EX override"));
+    assert(eventexcountarray[0]==3);
+    assert(random_calls==old_calls);
+}
+'''
+
+
 def main():
     registry = (ROOT / "src/acs_source/_imports/uhdt.acs").read_text()
     helpers = (ROOT / "src/acs_source/unholy/uh_event_helpers.acs").read_text()
     storage = (ROOT / "src/acs_source/_imports/uhbeset.acs").read_text()
     commands = (ROOT / "src/acs_source/unholy/uh_event_config.acs").read_text()
+    diagnostics = (ROOT / "src/acs_source/unholy/uh_event_diagnostics.acs").read_text()
     getters = "\n".join(function(registry, name) for name in (
         "GetBonusEventWeight", "GetBonusEventMinPlayers", "GetBonusEventMaxPlayers",
         "GetBonusEventMode", "UH_BonusEligible", "ResolveBonusEventEX",
@@ -418,7 +529,7 @@ def main():
     start = function(registry, "RunBonusEventStart")
     assert "GetBonusEventMode" not in start
     aliases = (ROOT / "src/KEYCONF").read_text()
-    for command in ("set", "reset", "show", "list", "reload", "export", "policy"):
+    for command in ("set", "reset", "show", "list", "reload", "export", "policy", "check", "pool"):
         assert f"eval + $uh_event_commands {command}:%1:%2:%3:%4|" in aliases
     assert 'alias uh_event_save "wait 1; uh_event_save_check"' in aliases
     assert 'test || $uh_event_configbusy != $uh_event_commands' in aliases
@@ -430,7 +541,12 @@ def main():
         "GetBonusEventFamilyPickCount", "SyncBonusEventEXProgress", "ExEventChecker", "CommitBonusEventHistory",
         "PickLeastSeenBonusEvent", "PickConfiguredBonusEvent", "NormalizeForcedBonusEvent",
         "ResolveForcedBonusEvent", "LogForcedBonusEventRejection")))
-    source += translate(commands) + POLICY_TESTS + TESTS
+    for forbidden in ("SyncBonusEventEXProgress(", "ExEventChecker(", "PickConfiguredBonusEvent(",
+                      "PickBonusEvent(", "PickLeastSeenBonusEvent(", "random(", "SetCVar(",
+                      "SetCVarString(", "CheckClearCVar(", "CommitBonusEventHistory("):
+        assert forbidden not in diagnostics
+    assert "UH_EC_Show(stem, false);" in diagnostics
+    source += translate(diagnostics) + translate(commands) + POLICY_TESTS + DIAGNOSTIC_TESTS + TESTS
     with tempfile.TemporaryDirectory(prefix="uh-event-settings-") as tmp:
         path = Path(tmp)
         (path / "test.c").write_text(source)

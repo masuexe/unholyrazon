@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261009
 
+- 新增 Bonus Event 服务器只读诊断命令 `uh_event_check <stem>` 与 `uh_event_pool`：支持查看事件有效设置、出现历史、随机阻挡原因、强制资格及 EX 进度与暂停原因，支持查看当前人数下的合格池、抽选候选、数量与总权重；查询不调用抽选、不修改历史或 EX 进度、不消耗强制请求，目标变更未同步时分别展示存储进度与预测进度；未加载 addon、待验证 EX 覆盖与缺失启动脚本均提供明确提示，配置说明见 [Bonus Event settings](docs/bonus-event-settings.md)
 - 新增 Bonus Event 抽取策略与人数门槛限制的服务器 CVAR 及查询命令：支持配置抽选模式 `uh_sv_bonusselectmode`（0 最少出现优先／1 纯权重随机）、上一场排除 `uh_sv_bonusavoidrepeat`、强制事件人数门槛限制 `uh_sv_bonusforcedplayerlimits` 与 EX 目标人数限制 `uh_sv_bonusexplayerlimits`（不满足时暂停升级并保留进度）；新增控制台查询命令 `uh_event_policy`，`uh_event_list` 与菜单配置输出一并展示当前策略；策略切换不清除历史与 EX 进度；配置说明见 [Bonus Event settings](docs/bonus-event-settings.md)
 - 新增单事件 EX 升级次数（ex_count）与 EX 目标（ex_target）配置命令：支持分别覆盖升级阈值（0 暂停升级并保留进度）与升级目标事件；提供 EX 目标自指与循环引用校验，支持延迟验证未加载的 addon 目标；修改次数保留当前进度，有效目标变更时重置该基础事件的 EX 进度；支持在控制台查询有效设置、来源及当前 EX 进度，导出格式兼容旧版四字段配置；配置说明见 [Bonus Event settings](docs/bonus-event-settings.md)
 

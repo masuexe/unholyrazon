@@ -132,6 +132,8 @@ If no random event meets the selection conditions, the game proceeds with a norm
 |---------|-------------|
 | `uh_event_set <stem> <field> <value>` | Sets an override field for an event. |
 | `uh_event_show <stem>` | Displays active settings, sources, and EX progress on server console. |
+| `uh_event_check <stem>` | Runs read-only diagnostics on event eligibility, blocking reasons, and EX state. |
+| `uh_event_pool` | Displays current eligible pool, draw candidates, and selection weights. |
 | `uh_event_list` | Lists all registered events, active overrides, and selection policies. |
 | `uh_event_policy` | Displays active selection policy CVARs. |
 | `uh_event_reset <stem> [field]` | Clears overrides for a specific field or the entire event. |
@@ -151,8 +153,10 @@ uh_event_set football_ffa ex_count 0
 uh_event_set demoneye_parade minplayers 8
 uh_event_set brick_eyes mode forced
 
-// Inspect settings
+// Inspect settings and diagnostics
 uh_event_show boss_ffa
+uh_event_check demoneye_parade
+uh_event_pool
 uh_event_policy
 uh_event_list
 
@@ -170,3 +174,26 @@ uh_sv_eventrules ""  // Clear all overrides
   A value of `-1` or an empty `ex_target` denotes inheritance. Legacy 4-field formats are automatically supported.
 - **Addon support:** Overrides can be defined before an addon event is registered. Settings remain pending until an event matching the stem is loaded.
 - **Storage capacity:** Supports up to 256 event records (up to 16,384 characters). Commands process one per game tic, with a queue limit of 256 commands per batch.
+
+---
+
+## Diagnostics
+
+Use read-only diagnostic commands to inspect event status and selection pools without affecting game state:
+
+| Command | Description |
+|---------|-------------|
+| `uh_event_check <stem>` | Shows active configuration, appearance history, eligibility blocking reasons, forced eligibility, and EX status for an event. |
+| `uh_event_pool` | Shows current eligible events, active draw candidates, candidate count, and total weight under current player counts and policies. |
+
+### Diagnostic rules
+
+- **Read-only execution:** Queries do not roll random numbers, advance appearance history, consume forced requests, or execute EX resets.
+- **Stem parameter:** Provide the full event stem (e.g. `demoneye_parade`).
+- **Pool snapshot:** `uh_event_pool` captures the candidate pool for the next random draw before EX upgrades. Pending forced requests may override this draw. In-progress rounds are not affected.
+- **Candidate resolution:**
+  - In least-seen first mode (`uh_sv_bonusselectmode 0`), an event meeting player limits is not a candidate if other eligible events have fewer appearances.
+  - In weighted random mode (`uh_sv_bonusselectmode 1`), all eligible events are active candidates.
+  - If repeat avoidance (`uh_sv_bonusavoidrepeat true`) leaves no candidates, the previous event is allowed to repeat.
+- **EX projection:** If an EX target override changed but has not yet synchronized, `uh_event_check` reports both stored progress and projected next-selection progress (0) without executing the reset.
+- **Missing assets:** Diagnostics report unloaded addons, pending EX overrides, and missing start callbacks. Missing start callbacks log a warning but do not disqualify the event from random selection.

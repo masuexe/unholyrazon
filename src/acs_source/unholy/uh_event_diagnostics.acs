@@ -1,0 +1,139 @@
+// Read-only server diagnostics. Reuse eligibility and history getters, never
+// a picker, EX checker, progress synchronizer, or one-shot request consumer.
+// This is a snapshot for the next random draw, not a prediction of a frozen round.
+
+function int UH_ED_Excluded(int players) {
+  if (!GetCVar("uh_sv_bonusavoidrepeat")) return -1;
+  int previous = eventdataarr[EVENTDATA_LASTEVENT];
+  for (int id = 0; id < UH_MAX_BONUS_EVENTS; id++)
+    if (UH_BonusEligible(id, players, previous)) return previous;
+  // Match both pickers' retry when excluding the previous event empties the pool.
+  return -1;
+}
+
+function int UH_ED_MinCount(int players, int excluded) {
+  int minimum = -1;
+  for (int id = 0; id < UH_MAX_BONUS_EVENTS; id++) {
+    if (!UH_BonusEligible(id, players, excluded)) continue;
+    int count = GetBonusEventFamilyPickCount(id);
+    if (minimum < 0 || count < minimum) minimum = count;
+  }
+  return minimum;
+}
+
+function bool UH_ED_IsCandidate(int id, int players, int excluded, int minimum) {
+  return UH_BonusEligible(id, players, excluded) &&
+    (GetBonusEventSelectionMode() == 1 || GetBonusEventFamilyPickCount(id) == minimum);
+}
+
+// Project the reset that the next selection will perform without writing it.
+function int UH_ED_EXProgress(int id) {
+  int target = GetBonusEventEXTarget(id);
+  str stem = "-";
+  if (target != UHBE_FAIL) stem = GetBonusEventStem(target);
+  if (uh_eventextargetknown[id] && StrICmp(uh_eventextargetseen[id], stem)) return 0;
+  return eventexcountarray[id];
+}
+
+function void UH_ED_EX(int id, int players) {
+  int target = GetBonusEventEXTarget(id);
+  int threshold = GetBonusEventEXThreshold(id);
+  int progress = UH_ED_EXProgress(id);
+  Log(s:"  EX stored progress=", i:eventexcountarray[id], s:"; next-selection progress=", i:progress);
+  str targetstem = "-";
+  if (target != UHBE_FAIL) targetstem = GetBonusEventStem(target);
+  if (uh_eventextargetknown[id] && StrICmp(uh_eventextargetseen[id], targetstem))
+    Log(s:"  EX target changed: the next selection resets progress to 0.");
+  if (GetBonusEventMode(id) != UH_ER_RANDOM)
+    Log(s:"  EX counting requires a random selection of this base event.");
+  if (target == UHBE_FAIL) {
+    Log(s:"  EX paused: no valid effective target."); return;
+  }
+  if (threshold <= 0) {
+    Log(s:"  EX paused: ex_count is 0."); return;
+  }
+  if (GetBonusEventMode(target) == UH_ER_DISABLED) {
+    Log(s:"  EX paused: the target is disabled."); return;
+  }
+  if (GetCVar("uh_sv_bonusexplayerlimits") && !BonusEventMeetsPlayerLimits(target, players)) {
+    Log(s:"  EX paused: target player limits; players=", i:players,
+      s:" minplayers=", i:GetBonusEventMinPlayers(target),
+      s:" maxplayers=", i:GetBonusEventMaxPlayers(target)); return;
+  }
+  if (progress >= threshold)
+    Log(s:"  EX ready: the next random selection upgrades to ", s:targetstem, s:".");
+  else Log(s:"  EX counting: the next random selection keeps the base event.");
+  if (!StrLen(GetBonusEventStartCallback(target)) || !CheckScript(GetBonusEventStartCallback(target), true))
+    Log(s:"  EX target start callback is missing; the start resolver will attempt its FFA fallback.");
+}
+
+function void UH_ED_Check(str stem) {
+  // false avoids the older show's progress synchronizer; it still prints all
+  // effective fields, sources and pending-addon/EX override reasons.
+  UH_EC_Show(stem, false);
+  int id = FindBonusEventByStem(stem);
+  if (id == UHBE_FAIL) return;
+  int players = PlayerCount();
+  int excluded = UH_ED_Excluded(players);
+  int minimum = UH_ED_MinCount(players, excluded);
+  Log(s:"  Diagnostic snapshot: players=", i:players, s:" (bots included; spectators excluded)");
+  Log(s:"  appearances=", i:uh_eventpickcount[id],
+    s:" family appearances=", i:GetBonusEventFamilyPickCount(id));
+  if (GetBonusEventMode(id) == UH_ER_DISABLED) Log(s:"  Random blocked: event is disabled.");
+  if (GetBonusEventMode(id) == UH_ER_FORCED) Log(s:"  Random blocked: event is forced-only.");
+  if (GetBonusEventWeight(id) < 1) Log(s:"  Random blocked: weight is below 1.");
+  if (players < GetBonusEventMinPlayers(id)) Log(s:"  Random blocked: too few players.");
+  int maximum = GetBonusEventMaxPlayers(id);
+  if (maximum > 0 && players > maximum) Log(s:"  Random blocked: too many players.");
+  if (id == eventdataarr[EVENTDATA_LASTEVENT] && GetCVar("uh_sv_bonusavoidrepeat")) {
+    if (excluded == id) Log(s:"  Random blocked: previous-event exclusion.");
+    else if (UH_BonusEligible(id, players, -1))
+      Log(s:"  Previous event may repeat: excluding it leaves no eligible candidate.");
+  }
+  if (UH_BonusEligible(id, players, excluded)) {
+    if (UH_ED_IsCandidate(id, players, excluded, minimum)) Log(s:"  Random draw candidate.");
+    else Log(s:"  Eligible, but not in the lowest-count draw: minimum family appearances=", i:minimum);
+  }
+  if (!StrLen(GetBonusEventStartCallback(id)) || !CheckScript(GetBonusEventStartCallback(id), true))
+    Log(s:"  Start callback is missing; the start resolver will attempt its FFA fallback.");
+  if (GetBonusEventMode(id) == UH_ER_DISABLED) Log(s:"  Forced selection blocked: event is disabled.");
+  else if (GetCVar("uh_sv_bonusforcedplayerlimits") && !BonusEventMeetsPlayerLimits(id, players))
+    Log(s:"  Forced selection blocked: player limits.");
+  else Log(s:"  Forced selection is permitted by mode and player limits.");
+  UH_ED_EX(id, players);
+}
+
+function void UH_ED_Pool(void) {
+  int players = PlayerCount();
+  int previous = eventdataarr[EVENTDATA_LASTEVENT];
+  int excluded = UH_ED_Excluded(players);
+  int minimum = UH_ED_MinCount(players, excluded);
+  int eligible = 0;
+  int candidates = 0;
+  int weight = 0;
+  UH_EC_Policy();
+  Log(s:"Random pool snapshot: players=", i:players, s:" previous id=", i:previous, s:" effective excluded id=", i:excluded);
+  if (GetCVar("uh_sv_bonuseventnum") >= 0 || eventdataarr[EVENTDATA_FORCED] >= 0)
+    Log(s:"Pending forced requests can override this random draw; this query does not consume them.");
+  Log(s:"This snapshot is before EX upgrades and does not change the selected round.");
+  Log(s:"Eligible before the repeat rule:");
+  for (int id = 0; id < UH_MAX_BONUS_EVENTS; id++) {
+    if (!UH_BonusEligible(id, players, -1)) continue;
+    eligible++;
+    Log(s:"  ", s:GetBonusEventStem(id), s:" weight=", i:GetBonusEventWeight(id),
+      s:" family appearances=", i:GetBonusEventFamilyPickCount(id));
+  }
+  if (!eligible) Log(s:"  (none)");
+  if (GetBonusEventSelectionMode() == 0)
+    Log(s:"Random draw candidates: minimum family appearances=", i:minimum);
+  else Log(s:"Random draw candidates: weighted random");
+  for (id = 0; id < UH_MAX_BONUS_EVENTS; id++) {
+    if (!UH_ED_IsCandidate(id, players, excluded, minimum)) continue;
+    candidates++;
+    weight += GetBonusEventWeight(id);
+    Log(s:"  ", s:GetBonusEventStem(id), s:" weight=", i:GetBonusEventWeight(id),
+      s:" family appearances=", i:GetBonusEventFamilyPickCount(id));
+  }
+  if (!candidates) Log(s:"  (none); without an accepted forced request, this uses a normal Boss round.");
+  Log(s:"Pool totals: eligible=", i:eligible, s:" draw candidates=", i:candidates, s:" total draw weight=", i:weight);
+}
