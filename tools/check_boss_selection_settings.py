@@ -18,6 +18,8 @@ STUBS = r'''
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdarg.h>
 typedef const char *str;
 #define UHBOSS_FAIL -9999
 #define UHBOSS_POOL_COMMON 1
@@ -26,24 +28,69 @@ typedef const char *str;
 #define UHBOSS_POOL_ULTRA 4
 #define UHBOSS_POOL_EX 5
 #define MAX_BOSSES 5
+#define UH_BR_MODE 0
+#define UH_BR_WEIGHT 1
+#define UH_BR_MIN 2
+#define UH_BR_MAX 3
+#define UH_BR_DISABLED 0
+#define UH_BR_FORCED 1
+#define UH_BR_RANDOM 2
+#define UHBOSS_POOL_NONE 0
+#define UHBOSS_FORCE_TRUE_RANDOM -666
+#define BOSSDATA_NUM 0
+#define AAPTR_NULL 0
+#define ShowMeTheRCON(...) ((void)0)
 #define UH_BOSSROUND_MAX (MAX_BOSSES * 2)
 int uh_bosslastlineup[6], uh_bosspreviouslineup[6];
 int uh_bossroundpicked[UH_BOSSROUND_MAX], uh_bossroundpickedcount;
 int pools[6][8], sizes[6], counts[64];
 bool shadowtricksarr[5];
 int rarebosschance;
+int overrides[33][4], enabled[33], players=8, forced_limits;
+int bossdataarr[5][1], multibosscheck, requests[5], exit_requests;
+bool shadowfakeoutactive, shadowrevealactive, gameover, bosschoiceconfirmed, bosschoicereassign;
+int TrueRandomBoss(void);
+bool CheckBossList(int id);
+str number(int value) { char s[32]; snprintf(s,sizeof(s),"%d",value); return strdup(s); }
+str concat(int count,...) {
+ va_list ap; size_t size=1; va_start(ap,count);
+ for(int i=0;i<count;i++) size+=strlen(va_arg(ap,str));
+ va_end(ap); char *s=calloc(size,1); va_start(ap,count);
+ for(int i=0;i<count;i++) strcat(s,va_arg(ap,str));
+ va_end(ap); return s;
+}
+int PlayerCount(void) { return players; }
+void ResetBossComboState(void) {}
+void SetActivator(int a,int b) { (void)a; (void)b; }
+void SetPlayerProperty(int a,int b,int c) { assert(a==1 && b==0 && c==4); }
+void ACS_NamedExecute(str name,int map,int delay) {
+ assert(!strcmp(name,"ub_ExitFinishedRound") && map==0 && delay==105); exit_requests++;
+}
 const char *names[] = {"uh_sv_bossselectmode", "uh_sv_bossavoidrepeat",
  "uh_sv_bossavoidduplicates", "uh_sv_bossrarelimit", "uh_sv_bossshadowchance",
  "uh_sv_bossfullultrachance", "uh_sv_bossfullspecialchance",
  "uh_sv_bossfullexchance", "uh_sv_bossfullrarechance"};
 int defaults[] = {0,0,0,25,10,5,1,15,30}, settings[9];
 int GetCVar(str name) {
+ if(!strcmp(name,"uh_sv_bossforcedplayerlimits")) return forced_limits;
+ if(!strncmp(name,"uh_sv_forcedboss",16)) return requests[atoi(name+16)-1];
  for(int i=0;i<9;i++) if(!strcmp(name,names[i])) return settings[i];
  assert(!"unexpected CVAR"); return 0;
 }
+void SetCVar(str name,int value) { assert(!strncmp(name,"uh_sv_forcedboss",16)); requests[atoi(name+16)-1]=value; }
 int GetBossPoolCount(int pool) { return sizes[pool]; }
 int GetBossPoolId(int pool,int index) { return pools[pool][index]; }
 bool IsBossDefined(int id) { return id>=-1 && id<32; }
+bool IsBossEnabled(int id) { return IsBossDefined(id) && enabled[id+1]; }
+str GetBossActor(int id) {
+ assert(IsBossDefined(id)); static char actors[33][12];
+ snprintf(actors[id+1],sizeof(actors[0]),"%d",id); return actors[id+1];
+}
+int GetBossRarity(int id) {
+ for(int pool=1;pool<6;pool++) for(int i=0;i<sizes[pool];i++) if(pools[pool][i]==id) return pool;
+ return UHBOSS_POOL_NONE;
+}
+int UH_BR_Get(str actor,int field) { return overrides[atoi(actor)+1][field]; }
 int GetBossPickCount(int id) { return IsBossDefined(id)?counts[id+1]:-1; }
 void IncrementBossPickCount(int id) { counts[id+1]++; }
 int rolls[64], roll_count, roll_index, random_calls;
@@ -54,6 +101,10 @@ int acs_random(int low,int high) {
 }
 void reset(void) {
  memcpy(settings,defaults,sizeof(settings));
+ for(int i=0;i<33;i++) { enabled[i]=1; for(int f=0;f<4;f++) overrides[i][f]=-1; }
+ for(int i=0;i<5;i++) requests[i]=UHBOSS_FAIL;
+ forced_limits=0; players=8; exit_requests=0; multibosscheck=1;
+ gameover=bosschoiceconfirmed=bosschoicereassign=shadowfakeoutactive=shadowrevealactive=false;
  memset(sizes,0,sizeof(sizes)); memset(counts,0,sizeof(counts));
  memset(shadowtricksarr,0,sizeof(shadowtricksarr));
  memset(uh_bosslastlineup,0,sizeof(uh_bosslastlineup));
@@ -148,8 +199,78 @@ int main(void) {
  assert(RollFullBossPool()==1);
  settings[5]=200; assert(RollFullBossPool()==4);
  sizes[1]=1; assert(TrueRandomBoss()==0);
- sizes[1]=0; assert(TrueRandomBoss()==0);
- puts("PASS: boss selection defaults, strategies, signed identities, lineup snapshots, repeat fallback, pity pause/clamps and conditional tier probabilities");
+ sizes[1]=0; assert(TrueRandomBoss()==UHBOSS_FAIL);
+ // Disabled/forced-only rows cannot leak through either random mode or an
+ // empty-tier Common fallback. Registry-disabled rows stay unavailable.
+ reset(); settings[3]=0;
+ overrides[1][UH_BR_MODE]=UH_BR_DISABLED;
+ overrides[2][UH_BR_MODE]=UH_BR_FORCED;
+ assert(PickStandardBoss(0)==-1);
+ overrides[0][UH_BR_MODE]=UH_BR_DISABLED;
+ assert(PickStandardBoss(0)==UHBOSS_FAIL);
+ assert(!SetUpBossSelection_Func());
+ assert(PickBossPoolPass(1,UHBOSS_FAIL,false)==UHBOSS_FAIL);
+ settings[5]=100; assert(TrueRandomBoss()==UHBOSS_FAIL);
+ overrides[1][UH_BR_MODE]=UH_BR_RANDOM; enabled[1]=0;
+ assert(!CanPickSpecifiedBoss(0) && !CanPickRandomBoss(0,8));
+ // Player ranges are inclusive and mandatory for random draws. Specified
+ // requests bypass only player bounds by default, never disabled mode.
+ reset(); sizes[1]=1; overrides[1][UH_BR_MIN]=8; overrides[1][UH_BR_MAX]=12;
+ assert(CanPickRandomBoss(0,8) && CanPickRandomBoss(0,12));
+ assert(!CanPickRandomBoss(0,7) && !CanPickRandomBoss(0,13));
+ players=7; requests[0]=0;
+ assert(ConfiguredForceBossChange("uh_sv_forcedboss1",false)==0 && requests[0]==UHBOSS_FAIL);
+ forced_limits=1; requests[0]=0;
+ assert(ConfiguredForceBossChange("uh_sv_forcedboss1",false)==UHBOSS_FAIL && requests[0]==UHBOSS_FAIL);
+ forced_limits=0; overrides[1][UH_BR_MODE]=UH_BR_DISABLED; requests[0]=0;
+ assert(ConfiguredForceBossChange("uh_sv_forcedboss1",false)==UHBOSS_FAIL);
+ // Combo's legacy explicit-id resolver is deliberately independent.
+ requests[0]=0; assert(ForceBossChange("uh_sv_forcedboss1",false)==0);
+ // Custom signed ids use the same policy, and forcing true-random still has
+ // to satisfy random player limits even when explicit-id limits are off.
+ reset(); overrides[0][UH_BR_MODE]=UH_BR_FORCED; requests[0]=-1;
+ assert(ConfiguredForceBossChange("uh_sv_forcedboss1",false)==-1);
+ assert(!CanPickRandomBoss(-1,8) && CanPickSpecifiedBoss(-1));
+ for(int id=-1;id<=2;id++) overrides[id+1][UH_BR_MIN]=9;
+ requests[0]=UHBOSS_FORCE_TRUE_RANDOM;
+ assert(ConfiguredForceBossChange("uh_sv_forcedboss1",false)==UHBOSS_FAIL);
+ // A random override cannot promote a registry row that has no pool.
+ overrides[4][UH_BR_MODE]=UH_BR_RANDOM;
+ assert(!CanPickRandomBoss(3,8));
+ // Winner cards are specified choices: they allow forced-only rows, filter
+ // disabled rows, and obey the configured specified-player policy.
+ reset(); overrides[1][UH_BR_MODE]=UH_BR_DISABLED;
+ overrides[2][UH_BR_MODE]=UH_BR_FORCED; overrides[0][UH_BR_MIN]=9; forced_limits=1;
+ assert(PickBonusBossOption(1,UHBOSS_FAIL,UHBOSS_FAIL)==1);
+ assert(PickBonusBossOption(1,1,UHBOSS_FAIL)==UHBOSS_FAIL);
+ forced_limits=0; assert(PickBonusBossOption(1,1,UHBOSS_FAIL)==-1);
+ // Both strategies respect weights; the minority of minimum-count bosses
+ // wins only its share. A higher appearance count is excluded in mode 0.
+ reset(); sizes[1]=2; overrides[1][UH_BR_WEIGHT]=1; overrides[2][UH_BR_WEIGHT]=3;
+ int frequency[2]={0,0};
+ for(int roll=1;roll<=4;roll++) {
+   rolls[0]=roll; roll_count=1; roll_index=0;
+   int id=PickLeastSeenBossFromPool(1,UHBOSS_FAIL); assert(id==0 || id==1); frequency[id]++;
+ }
+ assert(frequency[0]==1 && frequency[1]==3);
+ counts[2]=20; roll_count=0;
+ assert(PickLeastSeenBossFromPool(1,UHBOSS_FAIL)==0);
+ settings[0]=1; rolls[0]=3; roll_count=1; roll_index=0;
+ assert(PickLeastSeenBossFromPool(1,UHBOSS_FAIL)==1);
+ // Weight totals remain in range at the per-boss maximum, and player bounds
+ // do not relax when avoiding a previous/duplicate boss exhausts the pool.
+ reset(); sizes[1]=2; overrides[1][UH_BR_WEIGHT]=overrides[2][UH_BR_WEIGHT]=1000000;
+ rolls[0]=1000001; roll_count=1; assert(PickLeastSeenBossFromPool(1,UHBOSS_FAIL)==0);
+ overrides[1][UH_BR_MIN]=overrides[2][UH_BR_MIN]=9; settings[1]=settings[2]=1;
+ assert(PickLeastSeenBossFromPool(1,UHBOSS_FAIL)==UHBOSS_FAIL);
+ // No-candidate termination is idempotent, schedules the existing exit owner
+ // once, and restores the preceding committed lineup without adding history.
+ reset(); CommitBossHistorySlot(-1); UH_BossRoundReset();
+ int old_count=GetBossPickCount(-1);
+ AbortBossSelection("test"); AbortBossSelection("again");
+ assert(gameover && exit_requests==1 && GetBossPickCount(-1)==old_count);
+ assert(uh_bosslastlineup[0]==1 && uh_bosslastlineup[1]==-1);
+ puts("PASS: boss selection defaults, weighted ties/strategies, override/player gates, signed requests, Combo isolation, repeat fallback, pity/tier probabilities and empty-pool abort");
  return 0;
 }
 '''
@@ -158,23 +279,41 @@ int main(void) {
 def main():
     helpers = (ROOT / "src/acs_source/unholy/uh_boss_selection_helpers.acs").read_text()
     round_helpers = (ROOT / "src/acs_source/unholy/uh_round_helpers.acs").read_text()
-    names = ("CommitBossHistorySlot", "UH_BossRoundReset", "UH_BossRoundRecord",
+    choice = (ROOT / "src/acs_source/unholy/uh_boss_choice.acs").read_text()
+    names = ("ForceBossChange", "CheckBossList", "GetBossSelectionMode", "GetBossSelectionWeight",
+             "GetBossSelectionMinPlayers", "GetBossSelectionMaxPlayers", "BossSelectionMeetsPlayerLimits",
+             "CanPickRandomBoss", "CanPickSpecifiedBoss", "ConfiguredForceBossChange", "AbortBossSelection",
+             "CommitBossHistorySlot", "UH_BossRoundReset", "UH_BossRoundRecord",
              "UH_BossRoundSeen", "BossSelectionSetting", "BossWasInPreviousLineup",
              "PickBossPoolPass", "PickLeastSeenBossFromPool", "PickStandardBoss",
-             "RollFullBossPool", "TrueRandomBoss")
+             "RollFullBossPool", "TrueRandomBoss", "SetUpBossSelection_Func")
     acs = function(round_helpers, "RandomPercent") + "\n" + "\n".join(
         function(helpers, name) for name in names)
+    acs += function(choice, "PickBonusBossOption")
     # Remove logging only; selection, state updates and RNG calls are intact.
     acs = re.sub(r"UH_Log\(.*?\);", "", acs, flags=re.S)
+    acs = acs.replace("GetCVAR(", "GetCVar(")
     cvars = (ROOT / "src/CVARINFO.server").read_text()
     settings = re.findall(r'server (?:int|bool) (uh_sv_boss(?:selectmode|avoidrepeat|avoidduplicates|rarelimit|shadowchance|full\w+chance)) = (\w+);', cvars)
     assert len(settings) == 9, settings
     expected = ("0", "false", "false", "25", "10", "5", "1", "15", "30")
     assert tuple(value for _, value in settings) == expected, settings
+    assert "server bool uh_sv_bossforcedplayerlimits = false;" in cvars
+    flow = (ROOT / "src/acs_source/unholy/uh_bossselect.acs").read_text()
+    assert "!CanPickSpecifiedBoss(bosschoiceid)" in flow
+    assert "strongmancheck[0] >= 0 && !CanPickSpecifiedBoss(strongmancheck[0])" in flow
+    assert "if (!SetUpBossSelection_Func())" in flow
+    assert flow.index('AbortBossSelection("ordinary round")') < flow.index("CommitSelectedBossHistory();")
+    assert 'AbortBossSelection("Shadow reveal"); terminate;' in flow
+    event = (ROOT / "src/acs_source/unholy/uh_events.acs").read_text()
+    assert event.index('AbortBossSelection("True Power event")') < event.index('// UnholyBoss1')
+    assert "CanPickSpecifiedBoss(options[pick])" in choice
+    combo = (ROOT / "src/acs_source/unholy/uh_boss_combos.acs").read_text()
+    assert "ConfiguredForceBossChange" not in combo and "CanPickSpecifiedBoss" not in combo
     with tempfile.TemporaryDirectory(prefix="uh-boss-settings-") as tmp:
         path = Path(tmp)
         (path / "test.c").write_text(STUBS + translate(acs) + TESTS)
-        subprocess.run(["gcc", "-std=c99", "-Wall", "-Wextra", "-Werror",
+        subprocess.run(["gcc", "-D_POSIX_C_SOURCE=200809L", "-std=c99", "-Wall", "-Wextra", "-Werror", "-Wno-unused-parameter",
                         str(path / "test.c"), "-o", str(path / "test")], check=True)
         subprocess.run([str(path / "test")], check=True)
 

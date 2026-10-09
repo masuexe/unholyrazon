@@ -1,5 +1,5 @@
-// First migration: storage, host commands and validation only. Selection does
-// not consume UH_BR_Get yet. Do not label stored fields as effective policies.
+// Host settings for ordinary pool and specified selection. Combo member
+// rules remain separate. Stored fields and effective defaults are both shown.
 
 function int UH_BC_Field(str name) {
   if (!StrICmp(name, "mode")) return UH_BR_MODE;
@@ -38,7 +38,17 @@ function void UH_BC_Show(str actor) {
   Log(s:"  weight=", i:UH_BR_Get(actor, UH_BR_WEIGHT),
     s:" minplayers=", i:UH_BR_Get(actor, UH_BR_MIN),
     s:" maxplayers=", i:UH_BR_Get(actor, UH_BR_MAX), s:" (-1 means inherit)");
-  Log(s:"  Storage only: these overrides do not affect selection yet.");
+  if (id != UHBOSS_FAIL) {
+    Log(s:"  effective mode=", s:UH_BC_ModeName(GetBossSelectionMode(id)),
+      s:" weight=", i:GetBossSelectionWeight(id),
+      s:" minplayers=", i:GetBossSelectionMinPlayers(id),
+      s:" maxplayers=", i:GetBossSelectionMaxPlayers(id));
+    Log(s:"  random eligible=", i:CanPickRandomBoss(id, PlayerCount()),
+      s:" specified eligible=", i:CanPickSpecifiedBoss(id),
+      s:" uh_sv_bossforcedplayerlimits=", i:GetCVar("uh_sv_bossforcedplayerlimits"));
+    if (GetBossRarity(id) == UHBOSS_POOL_NONE)
+      Log(s:"  This Boss has no rarity pool. A random override does not add a pool membership.");
+  }
 }
 
 // Returns true for a list request; the script yields between each list row.
@@ -62,7 +72,7 @@ function bool UH_BC_Run(str record) {
       if (UH_BR_Load()) Log(s:"uh_sv_bossrules \"", s:GetCVarString("uh_sv_bossrules"), s:"\"");
       return false;
     }
-    Log(s:"Stored Boss overrides: ", i:UH_BR_Count(), s:" records. Selection does not use them yet.");
+    Log(s:"Stored Boss overrides: ", i:UH_BR_Count(), s:" records. Ordinary selection uses these settings; Combo member rules are separate.");
     return true;
   }
   if (!UH_BR_ValidActor(actor)) {

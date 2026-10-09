@@ -24,6 +24,86 @@ function bool CheckBossList(int checkme) {
   return IsBossDefined(checkme);
 }
 
+// Host overrides never resurrect a disabled/tombstoned registry row or move
+// it to a different rarity pool. Inherited limits are unbounded, weight is 1.
+function int GetBossSelectionMode(int id) {
+  if (!IsBossEnabled(id)) return UH_BR_DISABLED;
+  int mode = UH_BR_Get(GetBossActor(id), UH_BR_MODE);
+  if (mode >= 0) return mode;
+  if (GetBossRarity(id) == UHBOSS_POOL_NONE) return UH_BR_FORCED;
+  return UH_BR_RANDOM;
+}
+
+function int GetBossSelectionWeight(int id) {
+  int weight = UH_BR_Get(GetBossActor(id), UH_BR_WEIGHT);
+  if (weight < 1) return 1;
+  return weight;
+}
+
+function int GetBossSelectionMinPlayers(int id) {
+  int value = UH_BR_Get(GetBossActor(id), UH_BR_MIN);
+  if (value < 0) return 0;
+  return value;
+}
+
+function int GetBossSelectionMaxPlayers(int id) {
+  int value = UH_BR_Get(GetBossActor(id), UH_BR_MAX);
+  if (value < 0) return 0;
+  return value;
+}
+
+function bool BossSelectionMeetsPlayerLimits(int id, int players) {
+  int minimum = GetBossSelectionMinPlayers(id);
+  int maximum = GetBossSelectionMaxPlayers(id);
+  return players >= minimum && (maximum == 0 || players <= maximum);
+}
+
+function bool CanPickRandomBoss(int id, int players) {
+  return GetBossSelectionMode(id) == UH_BR_RANDOM && GetBossRarity(id) != UHBOSS_POOL_NONE &&
+    BossSelectionMeetsPlayerLimits(id, players);
+}
+
+function bool CanPickSpecifiedBoss(int id) {
+  return GetBossSelectionMode(id) != UH_BR_DISABLED &&
+    (!GetCVar("uh_sv_bossforcedplayerlimits") ||
+      BossSelectionMeetsPlayerLimits(id, PlayerCount()));
+}
+
+// Keep ForceBossChange's legacy behavior for Combo callers. Ordinary host
+// requests are one-shot even when rejected; selection then uses its fallback.
+function int ConfiguredForceBossChange(str force, bool truerandom) {
+  int id = ForceBossChange(force, truerandom);
+  if (id != UHBOSS_FAIL && !CanPickSpecifiedBoss(id)) {
+    UH_Log(UH_LOG_WARN, StrParam(s:"Boss request ", s:force, s:" rejected for id ", i:id,
+      s:": disabled/unregistered Boss or player range."));
+    return UHBOSS_FAIL;
+  }
+  return id;
+}
+
+// No eligible Boss is an administrative configuration outcome, not a victory.
+// Stop round controllers synchronously and use the core's normal exit owner.
+function void AbortBossSelection(str context) {
+  if (gameover) return;
+  gameover = true;
+  bosschoiceconfirmed = false;
+  bosschoicereassign = false;
+  shadowfakeoutactive = false;
+  shadowrevealactive = false;
+  ResetBossComboState();
+  // A failed uncommitted lineup must not erase the preceding Boss round.
+  if (uh_bosslastlineup[0] == 0) {
+    uh_bosslastlineup[0] = uh_bosspreviouslineup[0];
+    for (int i = 1; i <= uh_bosspreviouslineup[0]; i++)
+      uh_bosslastlineup[i] = uh_bosspreviouslineup[i];
+  }
+  SetActivator(0, AAPTR_NULL);
+  SetPlayerProperty(1, 0, 4);
+  UH_Log(UH_LOG_WARN, StrParam(s:"No eligible Boss (", s:context,
+    s:"). Round ends without a Boss selection or streak reward; check uh_sv_bossrules."));
+  ACS_NamedExecute("ub_ExitFinishedRound", 0, 105);
+}
+
 // --- Boss pick history (phase A: storage + accessors) -----------------------
 // Razon 3-style least-seen fairness. Permanent history is written at the
 // central selection commit and the final Shadow identity commit. The temporary
@@ -178,17 +258,18 @@ function bool BossWasInPreviousLineup(int id) {
   return false;
 }
 
-// Mode 1 currently gives every eligible boss weight 1. Mode 0 retains the
-// original least-seen reservoir, including the soft in-round count delta.
+// Weighted reservoir: mode 0 restricts it to the lowest appearance count;
+// mode 1 samples all eligible candidates. Default weight 1 keeps legacy rolls.
 function int PickBossPoolPass(int rarity, int avoid, bool restrictions) {
   int n = GetBossPoolCount(rarity);
   int mode = BossSelectionSetting("uh_sv_bossselectmode", 1);
   int best = UHBOSS_FAIL;
   int bestcount = 0;
-  int ties = 0;
+  int totalweight = 0;
+  int players = PlayerCount();
   for (int i = 0; i < n; i++) {
     int id = GetBossPoolId(rarity, i);
-    if (id == UHBOSS_FAIL || id == avoid)
+    if (id == UHBOSS_FAIL || id == avoid || !CanPickRandomBoss(id, players))
       continue;
     if (restrictions && GetCVar("uh_sv_bossavoidrepeat") && BossWasInPreviousLineup(id))
       continue;
@@ -199,14 +280,16 @@ function int PickBossPoolPass(int rarity, int avoid, bool restrictions) {
       continue;
     count += UH_BossRoundSeen(id);
     if (mode == 1) {count = 0;}
+    int weight = GetBossSelectionWeight(id);
     if (best == UHBOSS_FAIL || count < bestcount) {
       best = id;
       bestcount = count;
-      ties = 1;
+      totalweight = weight;
     }
     else if (count == bestcount) {
-      ties++;
-      if (random(1, ties) == 1)
+      // UHDT limits a pool to 1000 members; 1000 * 1000000 fits an ACS int.
+      totalweight += weight;
+      if (random(1, totalweight) <= weight)
         best = id;
     }
   }
@@ -214,7 +297,7 @@ function int PickBossPoolPass(int rarity, int avoid, bool restrictions) {
 }
 
 // Configured random pick inside one rarity pool. Single-pass reservoir sampling
-// gives every tied candidate the same chance. Mode 0 ties the lowest counts;
+// gives tied candidates their configured weights. Mode 0 ties the lowest counts;
 // mode 1 ties all candidates. avoid is a mandatory exclusion (versus pairs).
 // Plain rounds pass UHBOSS_FAIL: the loop already skips that value as "no
 // candidate", so it excludes nothing.  Do NOT use -1 as "no exclusion" — -1 is
@@ -238,7 +321,7 @@ function int PickLeastSeenBossFromPool(int rarity, int avoid) {
 // consults Ultra/Special/EX -- those only appear through an active Strongman
 // queue, an explicit forced id, or a deliberate full-pool TrueRandomBoss()
 // path.  The slot is only used to flag the Shadow trick on the right line-up
-// slot.  Falls back to Common, then to a safe defined boss 0.
+// slot. Falls back to an eligible Common Boss, then reports selection failure.
 function int PickStandardBoss(int slot) {
   int pool = UHBOSS_POOL_COMMON;
   int picked;
@@ -263,8 +346,6 @@ function int PickStandardBoss(int slot) {
   picked = PickLeastSeenBossFromPool(pool, UHBOSS_FAIL);
   if (picked == UHBOSS_FAIL || !IsBossDefined(picked))
     picked = PickLeastSeenBossFromPool(UHBOSS_POOL_COMMON, UHBOSS_FAIL);
-  if (picked == UHBOSS_FAIL || !IsBossDefined(picked))
-    picked = 0;
 
   UH_Log(UH_LOG_DEBUG, StrParam(s:"StandardBoss slot ", i:slot, s:" pool=", i:pool,
       s:" rarechance=", i:rarebosschance, s:" picked=", i:picked));
@@ -298,18 +379,16 @@ function int TrueRandomBoss(void) {
 
   if (rngpick == UHBOSS_FAIL || !IsBossDefined(rngpick))
     rngpick = PickLeastSeenBossFromPool(UHBOSS_POOL_COMMON, UHBOSS_FAIL);
-  if (rngpick == UHBOSS_FAIL || !IsBossDefined(rngpick))
-    rngpick = 0;
   return rngpick;
 }
 
 
 // Select Bosses
-function void SetUpBossSelection_Func(void) {
+function bool SetUpBossSelection_Func(void) {
   int tempboss;
   int selected;
   for (int i = 0; i < multibosscheck; i++) {
-    tempboss = ForceBossChange(StrParam(s:"uh_sv_forcedboss", i:i + 1), false);
+    tempboss = ConfiguredForceBossChange(StrParam(s:"uh_sv_forcedboss", i:i + 1), false);
     if (IsBossDefined(tempboss)) {
       selected = tempboss;
       UH_Log(UH_LOG_DEBUG, StrParam(s:"BossSelect slot ", i:i + 1, s:" entry=forced picked=", i:selected));
@@ -328,6 +407,8 @@ function void SetUpBossSelection_Func(void) {
       UH_Log(UH_LOG_DEBUG, StrParam(s:"BossSelect slot ", i:i + 1, s:" entry=shadow-fullpool picked=", i:selected));
     }
 
+    if (selected == UHBOSS_FAIL) return false;
+
     bossdataarr[i][BOSSDATA_NUM] = selected;
 
     // Feed this slot back into the round-scoped delta so the next slot prefers
@@ -338,6 +419,7 @@ function void SetUpBossSelection_Func(void) {
       UH_BossRoundRecord(bossdataarr[i][BOSSDATA_NUM]);
     UH_Log(UH_LOG_DEBUG, StrParam(s:"UnholyBoss", i:i + 1, s:" = ", i:bossdataarr[i][BOSSDATA_NUM]));
   }
+  return true;
 }
 
 // Assigns players as Bosses

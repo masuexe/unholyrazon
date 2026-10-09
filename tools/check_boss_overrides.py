@@ -3,7 +3,7 @@
 
 This checks transactions and command queues, not engine networking. ACC checks
 ACS syntax separately; source checks pin server-only entry points and this
-storage-only migration's separation from selection.
+integration with the effective selection getters.
 """
 from pathlib import Path
 import re
@@ -65,6 +65,10 @@ int FindBossByActor(str actor) {
 str GetBossActor(int id) { assert(id==registered_id); return registered_actor; }
 str GetBossName(int id) { assert(id==registered_id); return "Known Boss"; }
 int IsBossEnabled(int id) { return id==registered_id; }
+#define UHBOSS_POOL_NONE 0
+int GetBossRarity(int id) { (void)id; return 1; }
+int PlayerCount(void) { return 8; }
+int GetCVar(str name) { assert(!strcmp(name,"uh_sv_bossforcedplayerlimits")); return 0; }
 bool printed(str text) {
  for(int i=0;i<lines;i++) if(strstr(output[i],text)) return true;
  return false;
@@ -141,7 +145,7 @@ int main(void) {
  assert(UH_BR_Get("FutureBoss",UH_BR_WEIGHT)==-1);
  UH_BC_Run("reset:KnownBoss:::");
  assert(UH_BR_Get("KnownBoss",UH_BR_WEIGHT)==-1);
- assert(printed("Storage only: these overrides do not affect selection yet."));
+ assert(printed("effective mode="));
  // Show/list/export/reload do not change stored data.
  snapshot_writes=writes;
  UH_BC_Run("show:AddonBoss:::");
@@ -209,7 +213,10 @@ def main():
     for name in ("uh_BossConfigCommands", "uh_BossConfigWatch"):
         assert not re.search(r'script "' + name + r'"[^\n]*(?:NET|CLIENTSIDE)', commands)
     assert "Delay(1);" in handler and "uh_boss_configbusy" in handler
-    assert "UH_BR_" not in (ROOT / "src/acs_source/unholy/uh_boss_selection_helpers.acs").read_text()
+    helpers = (ROOT / "src/acs_source/unholy/uh_boss_selection_helpers.acs").read_text()
+    getters = "\n".join(function(helpers, name) for name in
+                        ("GetBossSelectionMode", "GetBossSelectionWeight", "GetBossSelectionMinPlayers",
+                         "GetBossSelectionMaxPlayers", "BossSelectionMeetsPlayerLimits", "CanPickRandomBoss", "CanPickSpecifiedBoss"))
     aliases = (ROOT / "src/KEYCONF").read_text()
     for op in ("set", "show", "reset", "list", "export", "reload"):
         assert f"eval + $uh_boss_commands {op}:%1:%2:%3:%4|" in aliases
@@ -219,7 +226,7 @@ def main():
     assert "UHBSSET" not in (ROOT / "src/LOADACS").read_text()
     with tempfile.TemporaryDirectory(prefix="uh-boss-overrides-") as tmp:
         path = Path(tmp)
-        (path / "test.c").write_text(STUBS + translate(storage + functions + handler) + TESTS)
+        (path / "test.c").write_text(STUBS + translate(storage + getters + functions + handler) + TESTS)
         subprocess.run(["gcc", "-D_POSIX_C_SOURCE=200809L", "-std=c99", "-Wall",
                         "-Wextra", "-Werror", str(path / "test.c"), "-o", str(path / "test")], check=True)
         subprocess.run([str(path / "test")], check=True)

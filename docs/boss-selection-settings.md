@@ -10,9 +10,10 @@ All settings are archived server CVARs. To write runtime changes to disk, run `w
 
 | Server CVAR | Default | Permitted values | Description |
 |-------------|---------|------------------|-------------|
-| `uh_sv_bossselectmode` | 0 | 0, 1 | Selection strategy within pools: 0 = least-seen first; 1 = uniform random. |
+| `uh_sv_bossselectmode` | 0 | 0, 1 | Selection strategy within pools: 0 = least-seen with weighted ties; 1 = weighted random. |
 | `uh_sv_bossavoidrepeat` | false | true, false | Excludes bosses from the previous committed round lineup. |
 | `uh_sv_bossavoidduplicates` | false | true, false | Excludes bosses already recorded for the current round in multi-boss lineups. |
+| `uh_sv_bossforcedplayerlimits` | false | true, false | Enforces effective player limits on specified requests (admin forced, Strongman, winner choices). |
 | `uh_sv_bossrarelimit` | 25 | 0 to 100 | Standard slot Rare pity threshold (0 pauses Rare and Shadow promotion). |
 | `uh_sv_bossshadowchance` | 10 | 0 to 100 | Percent chance that a Rare promotion triggers a Shadow Trick. |
 | `uh_sv_bossfullultrachance` | 5 | 0 to 100 | Full-pool conditional chance for Ultra tier. |
@@ -26,8 +27,10 @@ All settings are archived server CVARs. To write runtime changes to disk, run `w
 
 ### Selection strategies (`uh_sv_bossselectmode`)
 
-- `0` (Least-seen first, default): Prioritizes eligible bosses with the lowest appearance count in history. Resolves ties randomly with equal chance. In multi-boss rounds, bosses chosen in earlier slots of the same round receive a soft +1 count so selection spreads across equally-seen bosses.
-- `1` (Uniform random): Ignores past appearance counts and selects across all eligible candidates in the target pool with equal weight. All boss candidates currently have weight 1.
+- `0` (Least-seen with weighted ties, default): Finds eligible bosses with the lowest appearance count in history. When multiple candidates share the lowest count, resolves ties using their relative weights (`weight`). In multi-boss rounds, bosses chosen in earlier slots of the same round receive a soft +1 count so selection spreads across equally-seen bosses.
+- `1` (Weighted random): Selects across all eligible candidates in the target pool using their relative weights, regardless of appearance history.
+
+In both strategies, the default weight is 1.
 
 ### Standard vs Full-pool draws
 
@@ -51,69 +54,43 @@ Boss selection uses two distinct draw pathways:
   3. If Special fails, EX roll: `uh_sv_bossfullexchance` (default: 15%).
   4. If EX fails, Rare roll: `uh_sv_bossfullrarechance` (default: 30%).
   5. If all fail, selects Common tier.
-- If the selected tier has no eligible candidates, selection falls back to Common, then to safe defined boss 0.
+- If the selected tier has no eligible candidates, selection falls back to an eligible Common boss.
 
----
-
-## Lineup exclusions and fallbacks
+### Lineup exclusions and fallbacks
 
 - **Previous round lineup (`uh_sv_bossavoidrepeat`)**: Snapshots the final committed lineup from the previous round at round start. When set to `true`, bosses in that snapshot are excluded from random selection.
 - **Current round duplicates (`uh_sv_bossavoidduplicates`)**: When set to `true`, excludes bosses already recorded for the current round across multi-boss slots. For Shadow Bosses, this reserves the initial disguise body during selection.
-- **Empty-pool relaxation**: If `uh_sv_bossavoidrepeat` or `uh_sv_bossavoidduplicates` empties the eligible candidate pool, the server retries the draw without these optional restrictions. Mandatory exclusions requested by the caller (such as versus mode opponents) are never relaxed.
+- **Empty-pool relaxation**: If `uh_sv_bossavoidrepeat` or `uh_sv_bossavoidduplicates` leaves no eligible candidates, the server retries without these optional repeat restrictions. Player limits and mode restrictions are never relaxed. Mandatory exclusions requested by the caller (such as versus mode opponents) are never relaxed.
+- **Empty pool abort**: If no eligible boss exists after fallback (e.g. all candidates disabled or outside player limits), the round aborts immediately without selecting a boss or granting win streak rewards. The game does not select boss 0.
 
 ---
 
-## Selection priority
+## Specified boss requests and limits
 
-Selection policies apply only to random pool picks. They do not override or alter:
-
+Specified boss requests include:
 - Admin forced boss CVARs (`uh_sv_forcedboss1` through `uh_sv_forcedboss5`)
-- Strongman queue activations
-- Round-winner boss selection or reassignment
-- Fixed Boss Combo member slots
+- Admin forced Shadow CVARs (`uh_sv_forcedshadowboss1` through `uh_sv_forcedshadowboss5`)
+- Strongman and Ultra queue activations
+- Round-winner boss selection options
 
----
+### Specified rules
 
-## Configuration examples
-
-### Default configuration
-
-```cfg
-// Default boss selection
-uh_sv_bossselectmode 0
-uh_sv_bossavoidrepeat false
-uh_sv_bossavoidduplicates false
-uh_sv_bossrarelimit 25
-uh_sv_bossshadowchance 10
-uh_sv_bossfullultrachance 5
-uh_sv_bossfullspecialchance 1
-uh_sv_bossfullexchance 15
-uh_sv_bossfullrarechance 30
-```
-
-### Strict non-repeating configuration
-
-```cfg
-// Prevent back-to-back repeats and duplicate multi-bosses
-uh_sv_bossavoidrepeat true
-uh_sv_bossavoidduplicates true
-```
-
-### Uniform random configuration
-
-```cfg
-// Uniform random selection ignoring appearance history
-uh_sv_bossselectmode 1
-```
+- **Disabled mode (`mode disabled`)**: Always blocks the boss from specified requests and random draws.
+- **Player limits (`uh_sv_bossforcedplayerlimits`)**:
+  - `false` (default): Specified requests bypass player count limits.
+  - `true`: Specified requests must meet the boss's effective `minplayers` and `maxplayers` range. Non-qualifying requests are rejected.
+- **Rejection behavior**:
+  - Rejected admin forced requests log a warning and fall back to ordinary unforced selection.
+  - Rejected Strongman entries are removed from the queue and log a warning; selection checks the next queue entry or proceeds normally.
+  - Rejected round-winner choices log a warning and fall back to ordinary unforced selection.
+  - Rejected Shadow forced choices fall back to random reveal selection.
+- **Boss Combos**: Fixed Boss Combo member slots use independent combo rules and registry definitions. Configured per-boss rules and `uh_sv_bossforcedplayerlimits` do not alter Boss Combo members.
 
 ---
 
 ## Per-boss overrides
 
-> [!IMPORTANT]
-> **Implementation status:** This phase implements data storage, host commands, and input validation. Stored override values **do not affect boss selection algorithms yet**. Integration with pool filtering and weights will follow in the next release phase.
-
-Server operators can define rules for individual boss actors.
+Server operators can define overrides for individual boss actors. Overrides actively govern random pool filtering, selection weights, and player count limits.
 
 ### Actor keys and storage format
 
@@ -130,14 +107,14 @@ Server operators can define rules for individual boss actors.
 | Field | Values | Description |
 |-------|--------|-------------|
 | `mode` | `inherit`, `random`, `forced`, `disabled` | Availability mode for selection (`inherit` restores registered default). |
-| `weight` | `inherit` (-1), 1 to 1000000 | Relative selection weight within the boss pool. |
+| `weight` | `inherit` (-1), 1 to 1000000 | Relative selection weight within the boss pool (default: 1). |
 | `minplayers` | `inherit` (-1), 0 to 64 | Minimum player count (0 removes lower limit). |
 | `maxplayers` | `inherit` (-1), 0 to 64 | Maximum player count (0 removes upper limit; must be $\ge$ minplayers if non-zero). |
 
 #### Modes
-- **`random`**: Eligible for random pool selection.
+- **`random`**: Eligible for random pool selection. Requires membership in a rarity pool. Overriding `mode random` on a boss without a rarity pool does not make it randomly selectable. An override cannot enable a boss disabled in the registry.
 - **`forced`**: Excluded from random selection. Can still be triggered manually or via script queues.
-- **`disabled`**: Fully disabled from random and forced selection.
+- **`disabled`**: Fully disabled from random selection, forced CVARs, Strongman, and winner options.
 - **`inherit`**: Inherits the registration default mode.
 
 ### Console commands
@@ -145,9 +122,9 @@ Server operators can define rules for individual boss actors.
 | Command | Description |
 |---------|-------------|
 | `uh_boss_set <actor> <field> <value>` | Sets an override field for a boss actor. Accepts `inherit` for any field. |
-| `uh_boss_show <actor>` | Displays stored overrides, registration status, and enabled state. |
+| `uh_boss_show <actor>` | Displays stored overrides, effective values, registration status, and eligibility. |
 | `uh_boss_reset <actor> [field]` | Resets a specific field or clears the entire override record for the actor. |
-| `uh_boss_list` | Lists all stored boss overrides. |
+| `uh_boss_list` | Lists all stored boss overrides and record count. |
 | `uh_boss_export` | Prints the current `uh_sv_bossrules` string to copy into `server.cfg`. |
 | `uh_boss_reload` | Re-parses the current `uh_sv_bossrules` CVAR string. |
 | `uh_boss_save` | Waits for queued commands to finish, then prompts to run `writeini`. |
@@ -161,11 +138,11 @@ Server operators can define rules for individual boss actors.
 ```cfg
 // Set boss overrides
 uh_boss_set GemBanker mode random
-uh_boss_set GemBanker weight 2
+uh_boss_set GemBanker weight 3
 uh_boss_set GemBanker minplayers 8
 uh_boss_set Fireman mode disabled
 
-// Inspect stored overrides
+// Inspect stored and effective settings
 uh_boss_show GemBanker
 uh_boss_list
 
@@ -180,4 +157,40 @@ writeini      // Execute directly in the server console
 // Load configuration from file
 exec examples/boss_overrides.cfg  // Execute directly in the server console
 uh_boss_reload                    // Reload and apply the updated CVAR rules
+```
+
+---
+
+## Configuration examples
+
+### Default configuration
+
+```cfg
+// Default boss selection
+uh_sv_bossselectmode 0
+uh_sv_bossavoidrepeat false
+uh_sv_bossavoidduplicates false
+uh_sv_bossforcedplayerlimits false
+uh_sv_bossrarelimit 25
+uh_sv_bossshadowchance 10
+uh_sv_bossfullultrachance 5
+uh_sv_bossfullspecialchance 1
+uh_sv_bossfullexchance 15
+uh_sv_bossfullrarechance 30
+```
+
+### Strict non-repeating and player-limited configuration
+
+```cfg
+// Prevent repeats, duplicates, and enforce player limits on forced bosses
+uh_sv_bossavoidrepeat true
+uh_sv_bossavoidduplicates true
+uh_sv_bossforcedplayerlimits true
+```
+
+### Weighted random configuration
+
+```cfg
+// Weighted random selection across all eligible bosses
+uh_sv_bossselectmode 1
 ```
