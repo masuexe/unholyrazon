@@ -36,8 +36,15 @@ Before commit, a record is a draft and cannot participate in random or forced ev
 ## Definition parameters
 
 ```c
-int DefineBossCombo(int id, str key, str name, int count,
-    int minPlayers, int weight, int mode, int flags);
+function int DefineBossCombo(
+  int id,
+  str key,
+  str name,
+  int count,
+  int minPlayers,
+  int weight,
+  int mode,
+  int flags)
 ```
 
 | Parameter | Meaning |
@@ -69,7 +76,7 @@ Repeated registration of the same key with identical metadata is safe. Conflicti
 The last four dynamic modes require `count=2`, the versus flag, and **no registered members**. Use the corresponding combined flags below for special modes.
 
 ```c
-bool SetBossComboMember(int id, int slot, str actor);
+function bool SetBossComboMember(int id, int slot, str actor)
 ```
 
 Members use boss actor names, not display names or numeric boss IDs. Indices start at `0` and must be appended consecutively without gaps. Existing indices in a draft can be replaced. Registration preserves member order and duplicates. Each actor is eventually resolved through the local boss definition table to a boss ID.
@@ -100,7 +107,7 @@ Ordinary fixed duels use `BOSSCOMBO_MODE_FIXED` with `BOSSCOMBO_FLAG_VERSUS`. Dy
 ## Music
 
 ```c
-bool SetBossComboMusic(int id, str music, str title, str album, str artist);
+function bool SetBossComboMusic(int id, str music, str title, str album, str artist)
 ```
 
 The four strings are the music resource, track title, album, and artist. Resources support the track/subsong strings used by the existing music system, such as `"M_UB042 5"`.

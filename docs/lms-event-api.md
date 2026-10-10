@@ -14,10 +14,18 @@ A complete addon is in [`lms_penalty_addon`](../examples/lms_penalty_addon).
 ## Defining an event
 
 ```c
-int DefineLMSEvent(int id, str stem,
-    str message, str raremessage, str penaltymessage,
-    str icon, str rareicon, str penaltyicon,
-    int flags, int penaltyflags, int weight);
+function int DefineLMSEvent(
+  int id,
+  str stem,
+  str message,
+  str raremessage,
+  str penaltymessage,
+  str icon,
+  str rareicon,
+  str penaltyicon,
+  int flags,
+  int penaltyflags,
+  int weight)
 ```
 
 | Parameter | Meaning |
@@ -43,8 +51,8 @@ process that needs it.
 ## Adding rewards and penalties
 
 ```c
-int AddLMSEventDrop(str stem, str itemactor, int amt, int rare);
-int AddLMSEventPenaltyDrop(str stem, str actor, int amt, int target);
+function int AddLMSEventDrop(str stem, str itemactor, int amt, int rare)
+function int AddLMSEventPenaltyDrop(str stem, str actor, int amt, int target)
 ```
 
 Register the event first. `rare` is `0` for normal rewards and `1` for rare
@@ -72,9 +80,8 @@ it ignores the event's own penalty fields and rows. Use it alone, without
 combining it with `UHLMS_PENALTY_CLEAR_ITEMS`.
 
 ```c
-int SetDefaultLMSEventPenalty(str message, str icon, int flags);
-AddLMSEventPenaltyDrop("", "PowerLMSBadProtection", 1,
-    UHLMS_PENALTY_SURVIVOR);
+function int SetDefaultLMSEventPenalty(str message, str icon, int flags)
+function int AddLMSEventPenaltyDrop(str stem, str actor, int amt, int target)
 ```
 
 Stem `""` identifies the shared fallback when adding penalty drops. Default
@@ -125,14 +132,29 @@ Unholy Razon. Use the include search paths documented in
 ## Updating, disabling and removing
 
 ```c
-int UpdateLMSEvent(int id,
-    str message, str raremessage, str penaltymessage,
-    str icon, str rareicon, str penaltyicon,
-    int flags, int penaltyflags, int weight);
-int UpdateLMSEventByStem(str stem,
-    str message, str raremessage, str penaltymessage,
-    str icon, str rareicon, str penaltyicon,
-    int flags, int penaltyflags, int weight);
+function int UpdateLMSEvent(
+  int id,
+  str message,
+  str raremessage,
+  str penaltymessage,
+  str icon,
+  str rareicon,
+  str penaltyicon,
+  int flags,
+  int penaltyflags,
+  int weight)
+
+function int UpdateLMSEventByStem(
+  str stem,
+  str message,
+  str raremessage,
+  str penaltymessage,
+  str icon,
+  str rareicon,
+  str penaltyicon,
+  int flags,
+  int penaltyflags,
+  int weight)
 ```
 
 Updates replace all metadata and retain identity, enabled state and drop rows.
