@@ -1,3 +1,7 @@
+## 4.0.0-beta.261011
+
+- 修复 Boss FFA 中 Boss 受伤无法积攒怒气的问题
+
 ## 4.0.0-beta.261010
 
 - 优化 Shin Negaman、Alpha 和 AlphaEX 在资源充足时持续按住 M1 无法使用 Reload、必须松开主攻的问题；恢复 Alpha／AlphaEX 原版三连斩起手、衔接和收尾及普通副攻击收招期间的升龙响应窗口
