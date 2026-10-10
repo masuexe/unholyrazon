@@ -33,6 +33,7 @@
 //              UH_AreDisplayTeammates, NOT scoreboard visibility).
 // uhtiscorepolicy: synchronized UH_SCOREPOLICY_* for the scoreboard icon matrix.
 //              Starts INVALID so only self is visible until the server snapshot.
+bool uhticlientinitialized;
 int uhtilife[MAX_PLAYERS];
 int uhtirole[MAX_PLAYERS];
 int uhtiova;
@@ -113,6 +114,14 @@ function void UH_Ti_ResetClient(void) {
   uhtilocalplayer = -1;
 }
 
+// Network receivers can run before OPEN. Initialize once, and let OPEN
+// preserve any snapshot that already arrived in this map.
+function void UH_Ti_EnsureClientInitialized(void) {
+  if (uhticlientinitialized) {return;}
+  UH_Ti_ResetClient();
+  uhticlientinitialized = true;
+}
+
 function void UH_Ti_SetClientLife(int pn, int status) {
   if (pn < 0 || pn >= MAX_PLAYERS) {return;}
   uhtilife[pn] = status;
@@ -148,6 +157,7 @@ function void UH_Ti_SetClientLife(int pn, int status) {
 // actor repopulates the cache on the next frame, so a morph or a custom addon
 // class is unaffected.
 script "uh_ti_sync_status" (int pn, int status, int kind, int id) CLIENTSIDE {
+  UH_Ti_EnsureClientInitialized();
   UH_Ti_SetClientLife(pn, status);
   if (pn < 0 || pn >= MAX_PLAYERS) {terminate;}
   // PLS_NULL means the slot is finished.  UH_Ti_SetClientLife has already
@@ -185,6 +195,7 @@ script "uh_ti_sync_status" (int pn, int status, int kind, int id) CLIENTSIDE {
 // Custom ids/rows/strings never cross the wire. A class without a vanilla
 // identity uses only a body class this client can actually observe.
 script "uh_ti_sync_phase" (int pn, int kind, int id, int phase) CLIENTSIDE {
+  UH_Ti_EnsureClientInitialized();
   if (pn < 0 || pn >= MAX_PLAYERS) {terminate;}
   str actor = "";
   if (kind != UH_PLDEF_NONE && id >= 0)
@@ -206,6 +217,7 @@ script "uh_ti_sync_phase" (int pn, int kind, int id, int phase) CLIENTSIDE {
 }
 
 script "uh_ti_sync_ova" (int active, int target) CLIENTSIDE {
+  UH_Ti_EnsureClientInitialized();
   int nextactive = active ? 1 : 0;
   int nexttarget = (nextactive && target >= 0 && target < MAX_PLAYERS) ? target : -1;
 
@@ -226,6 +238,7 @@ script "uh_ti_sync_ova" (int active, int target) CLIENTSIDE {
 // or missing broadcast can never widen visibility.  The refresh loop re-derives
 // every row from this value on the next tic while TAB is held.
 script "uh_ti_sync_policy" (int policy) CLIENTSIDE {
+  UH_Ti_EnsureClientInitialized();
   if (policy < UH_SCOREPOLICY_NORMAL || policy > UH_SCOREPOLICY_MULTITEAM) {
     policy = UH_SCOREPOLICY_INVALID;
   }
@@ -237,6 +250,7 @@ script "uh_ti_sync_policy" (int policy) CLIENTSIDE {
 // subject+absorb+lives, hp/maxhp, and armor/ammo so the four-int limit is never
 // exceeded.
 script "uh_ti_stat" (int packed_s, int packed1, int tag, int packed2) CLIENTSIDE {
+  UH_Ti_EnsureClientInitialized();
   int pn = packed_s & 63;
   if (pn < 0 || pn >= MAX_PLAYERS) {terminate;}
   uhtistatabsorb[pn] = (packed_s >> 6) & 127;
@@ -257,10 +271,12 @@ script "uh_ti_stat" (int packed_s, int packed1, int tag, int packed2) CLIENTSIDE
 // and the remaining teammates compact into the freed slot, matching
 // HUD_DrawCoopInfo's corpse behaviour.
 script "uh_ti_stat_clear" (int pn) CLIENTSIDE {
+  UH_Ti_EnsureClientInitialized();
   UH_Ti_ClearStats(pn);
 }
 
 script "uh_ti_client_disconnect" (int gone) DISCONNECT CLIENTSIDE {
+  UH_Ti_EnsureClientInitialized();
   if (gone < 0 || gone >= MAX_PLAYERS) {terminate;}
   UH_Ti_SetClientLife(gone, PLS_NULL);
   uhticlasscache[gone] = "";
@@ -532,6 +548,7 @@ function str UH_Ti_ActorForIdentity(int kind, int id) {
 // never to another class's face.  Run it on a client:
 //   puke uh_ti_TeamInfoCacheDump     (needs uh_cl_LogLevel >= 3)
 script "uh_ti_TeamInfoCacheDump" (void) CLIENTSIDE {
+  UH_Ti_EnsureClientInitialized();
   // Boundary marker: a reader must only parse the lines after the LAST "begin",
   // because the engine log is append-only and an earlier dump would otherwise
   // keep slots that a later dump no longer reports.
@@ -1047,6 +1064,7 @@ function void UH_Ti_Draw(int viewer, int cpn) {
 }
 
 script "uh_assist_teaminfo" (int cam) CLIENTSIDE {
+  UH_Ti_EnsureClientInitialized();
   int cpn = ConsolePlayerNumber();
 
   // A listen server (hosted with -host) reports -1 even for client-side
@@ -1068,7 +1086,7 @@ script "uh_assist_teaminfo" (int cam) CLIENTSIDE {
 }
 
 script "uh_ti_clientinit_cs" OPEN CLIENTSIDE {
-  UH_Ti_ResetClient();
+  UH_Ti_EnsureClientInitialized();
   // Register the bar with the MM8BDM Assist Display.  This mirrors DTADD's
   // DefineAssistDisplay without importing DTADD (which pulls 8BDT and would
   // collide with the uhdt import in this library).
@@ -1078,6 +1096,7 @@ script "uh_ti_clientinit_cs" OPEN CLIENTSIDE {
 
 // Client-only stage/cache diagnostic, including body-less and dead subjects.
 script "uh_ti_PhaseCacheDump" (int pn) CLIENTSIDE {
+  UH_Ti_EnsureClientInitialized();
   if (pn < 0 || pn >= MAX_PLAYERS) {terminate;}
   str actor = uhticlasscache[pn];
   int phase = UH_Ti_PhaseForActor(pn, actor);

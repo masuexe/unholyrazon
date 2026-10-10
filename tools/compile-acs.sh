@@ -27,7 +27,7 @@ OUT="${1:-src/acs}"
 mkdir -p "$OUT"
 # Old manual builds used lowercase shadow filenames. Zandronum compares lump
 # paths without case, so keeping both copies breaks online authentication.
-for library in UIXITEMS UIXWEAP UIXTEAM PNGBUTTN; do
+for library in UIXITEMS UIXWEAP UIXTEAM PNGBUTTN WEPHIDE; do
   legacy="$OUT/${library,,}.o"
   canonical="$OUT/$library.o"
   if [[ -f "$legacy" ]] && ! [[ "$legacy" -ef "$canonical" ]]; then
@@ -152,6 +152,10 @@ echo "== TEAMCOL =="
 # Optional PingButton shadow: addon LOADACS loads PNGBUTTN, not Unholy.
 echo "== PNGBUTTN =="
 "$ACC" $INC "src/acs_source/compat/mods/pingbutton/PNGBUTTN.acs" "$OUT/PNGBUTTN.o" || fail=1
+
+# Required v6b miscfixes shadow. Its LOADACS entry loads WEPHIDE.
+echo "== WEPHIDE =="
+"$ACC" $INC "src/acs_source/compat/mods/miscfixes/WEPHIDE.acs" "$OUT/WEPHIDE.o" || fail=1
 
 if [ "$fail" -ne 0 ]; then echo "ACS COMPILE FAILED"; else echo "ACS COMPILE OK"; fi
 exit $fail
