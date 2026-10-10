@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261010
 
+- 优化 Shin Negaman、Alpha 和 AlphaEX 在资源充足时持续按住 M1 无法使用 Reload、必须松开主攻的问题；恢复 Alpha／AlphaEX 原版三连斩起手、衔接和收尾及普通副攻击收招期间的升龙响应窗口
 - 修复 MegaMan 的 Gyro Attack、Black Hole Bomb 和 Spread Drill 不会自动回蓝的问题
 - 修复地图加载、Boss 转换及阶段头像查询时的 `strlen called with invalid string argument` 警告：队友栏在接收同步前初始化缓存，Decoy 武器清理跳过未赋值的记录，阶段头像查询先检查记录是否存在；同时覆盖必需修复包的 WEPHIDE 字符串检查，避免对数值 0 调用 `StrLen`，无需修改外部修复包
 - 优化单 Boss 规则存储 `uh_sv_bossrules`：长配置自动使用多行 INI 格式保存，避免 256 字节单行截断并保留 256 条规则和 16384 字符容量，兼容此前保存的单行 INI 配置（已截断的历史数据需从完整备份恢复）；`uh_boss_export` 改为分段追加命令输出以兼容 4096 字节 `exec` 行限制，支持直接将全部导出内容复制到 `.cfg` 文件并由服主 `exec` 导入；配置说明见 [Boss Selection settings](docs/boss-selection-settings.md)

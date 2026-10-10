@@ -33,9 +33,19 @@ actor ShinNegaman_W : BaseUnholyBossWep {
     goto ReadyX
 
    Fire:
-    8H21 A 0 A_JumpIfInventory("IsPissedFlag", 1, 2)
+    8H21 A 0 A_JumpIfInventory("IsPissedFlag", 1, "FirePellet")
     // 8H21 A 0 A_JumpIfHealthLower(1500,"GetHypedForPain")
     8H21 A 0 A_JumpIfHealthLower(CallACS("rz_CountInv_BossSpawnHealthFlag") * 0.25 + 1, "GetHypedForPain")
+   FirePellet:
+    // P_MovePsprites checks primary fire before reload, and entering Fire
+    // clears the ready-state reload permission. Restore it for a full-meter
+    // pellet shot so held M1 cannot starve Reload at every ReadyX return.
+    // Keep this after the phase check; transformation and other moves stay locked.
+    8H21 A 0 A_JumpIfInventory("MightyNegaDuckAmmo", 300, "FirePelletReload")
+    goto FirePelletShot
+   FirePelletReload:
+    8H21 A 0 A_WeaponReady(WRF_ALLOWRELOAD | WRF_NOFIRE | WRF_NOSWITCH | WRF_NOBOB)
+   FirePelletShot:
     8H21 A 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
     8H21 A 0 A_FireCustomMissile("ShinNegaPelletShot", 0, 0, 8, 0)
     8H21 CCBBA 1 A_GiveInventory("MightyNegaDuckAmmo", 3)
