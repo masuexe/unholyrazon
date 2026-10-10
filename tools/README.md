@@ -413,3 +413,11 @@ be proved by a startup-only process.
 - `direct-startup-test.mjs` accepts `--profile`, `--duration-sec`, `--dry-run`,
   and `--json`; paths may be overridden with the same engine/profile environment
   variables as the MCP smoke script.
+
+## Star Force scroll inputs
+
+`node tools/mcp/starforce-input-test.mjs [--pk3 PATH]` checks the actual boss's
+scroll direction isolation, automatic return, held Reload/release, cooldown gating and six-card hand
+through the local smoke profile. It uses the same MCP environment settings as
+`smoke-test.sh`. See [Star Force controls](../docs/starforce-controls.md) for the
+single-slot requirement and the remaining multiplayer gameplay checks.

@@ -389,21 +389,6 @@ actor WarRockStelar_W : BaseUnholyBossWep {
 
 
    Reload:
-    8H51 A 0 A_TakeInventory("UnholyBossAmmo250", 250)
-    8H51 A 0 ACS_NamedExecuteWithResult("rz_DrawSFCards")
-    8H51 A 2 A_PlaySoundEx("MMSF2/BattleStart", "Weapon")
-    goto ReadyX
-  }
-}
-
-actor WarRockStelar_W2 : WarRockStelar_W {
-  Tag "$TAG_WarRockStelar_W2"
-  Inventory.Icon "MAGII"
-  States {
-   ReadyX:
-    8H51 A 1 A_GiveInventory("WarRockStelar2_Ready0_P")
-    loop
-   Fire:
     8H51 A 0 A_JumpIfInventory("MoaiFall_BCFlag", 1, "MoaiFallAmmoCheck")
     8H51 A 0 A_JumpIfInventory("GhostPulse_BCFlag", 1, "GhostPulseAmmoCheck")
     8H51 A 0 A_JumpIfInventory("RadarMissile_BCFlag", 1, "RadarMissileAmmoCheck")
@@ -417,21 +402,6 @@ actor WarRockStelar_W2 : WarRockStelar_W {
     8H51 A 0 A_JumpIfInventory("ElectricSlash_BCFlag", 1, "ElectricSlashAmmoCheck")
     8H51 AA 2 A_GiveInventory("SFBusterCharge", 2)
     goto ReadyX
-
-   Reload:
-    8H51 A 0 A_JumpIfInventory("WR_LockOnFlag", 1, "DisLock")
-    8H51 A 1 A_JumpIfInventory("SF_CanLockOn", 1, 1)
-    goto ReadyX
-    8H51 A 1 A_GiveInventory("WR_LockOnFlag")
-    8H51 A 1 A_SpawnItemEx("WR_LockOnWatcher")
-    goto ReReloadLoop
-   DisLock:
-    8H51 A 1 A_TakeInventory("WR_LockOnFlag")
-    goto ReReloadLoop
-   ReReloadLoop:
-    8H51 A 1
-    8H51 A 0 A_JumpIf(!(CallACS("uh_GetPointerButtonInput", 0, 0) & BT_RELOAD), "ReadyX")
-    loop
 
    RadarMissileAmmoCheck:
     8H51 A 0 A_JumpIfInventory("WR_LockedTID", 1000, "RadarMissile_LockOn")
@@ -644,6 +614,12 @@ actor WarRockStelar_W2 : WarRockStelar_W {
   }
 }
 
+// Legacy name retained; the boss no longer switches to a card-only mode.
+actor WarRockStelar_W2 : WarRockStelar_W {
+  Tag "$TAG_WarRockStelar_W2"
+  Inventory.Icon "MAGII"
+}
+
 actor SFBusterCharge : Ammo {
   Inventory.MaxAmount 120  // 29tic in SF1, 41 in SF2/3
   +INVENTORY.IGNORESKILL
@@ -694,9 +670,10 @@ actor WR_Locked : Powerup {Powerup.duration 3}
 actor WarRockStelar_Ready0_P : CustomInventory {
   States {
    Pickup:
+    // Held Reload repeats only after the current card returns here and its
+    // cooldown ends. An empty hand must not keep entering the card dispatcher.
     TNT1 A 0 A_JumpIfInventory("BattleCardDelay", 1, "PickupNormal")
-    TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo250", 250, "PickupReload")
-    TNT1 A 0 A_Jump(256, "PickupNormal")
+    TNT1 A 0 A_JumpIfInventory("SF_CardQ0", 1, "PickupReload")
     goto PickupNormal
    PickupNormal:
     TNT1 A 0 A_WeaponReady

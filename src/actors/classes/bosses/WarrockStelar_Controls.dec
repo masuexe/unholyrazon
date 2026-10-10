@@ -1,0 +1,69 @@
+// All three weapons share slot 1. Do not spread them across Player.WeaponSlot:
+// Zandronum's slot traversal then wraps and a scroll burst can cross inputs.
+// Explicit priorities put DRAW < MAIN < LOCK; normal bindings are wheel up/down.
+actor WR_ScrollCooldown : Powerup { Powerup.Duration 8 }
+
+actor WR_DrawCardsInput_P : CustomInventory {
+  States {
+  Pickup:
+    TNT1 A 0 A_JumpIfInventory("WR_ScrollCooldown", 1, "Done")
+    TNT1 A 0 A_JumpIfInventory("BattleCardDelay", 1, "Done")
+    TNT1 A 0 A_JumpIfInventory("UnholyBossAmmo250", 250, "DrawCards")
+    goto Done
+  DrawCards:
+    TNT1 A 0 A_GiveInventory("WR_ScrollCooldown")
+    TNT1 A 0 A_TakeInventory("UnholyBossAmmo250", 250)
+    TNT1 A 0 ACS_NamedExecuteWithResult("rz_DrawSFCards")
+    TNT1 A 0 A_PlaySoundEx("MMSF2/BattleStart", "Weapon")
+  Done:
+    TNT1 A 0
+    stop
+  }
+}
+actor WR_LockInput_P : CustomInventory {
+  States {
+  Pickup:
+    TNT1 A 0 A_JumpIfInventory("WR_ScrollCooldown", 1, "Done")
+    TNT1 A 0 A_JumpIfInventory("WR_LockOnFlag", 1, "DisableLock")
+    TNT1 A 0 A_JumpIfInventory("SF_CanLockOn", 1, "EnableLock")
+    goto Done
+  EnableLock:
+    TNT1 A 0 A_GiveInventory("WR_ScrollCooldown")
+    TNT1 A 0 A_GiveInventory("WR_LockOnFlag")
+    TNT1 A 0 A_SpawnItemEx("WR_LockOnWatcher")
+    goto Done
+  DisableLock:
+    TNT1 A 0 A_GiveInventory("WR_ScrollCooldown")
+    TNT1 A 0 A_TakeInventory("WR_LockOnFlag")
+    TNT1 A 0 A_TakeInventory("WR_LockedTID")
+  Done:
+    TNT1 A 0
+    stop
+  }
+}
+actor WarRockStelar_Control_W_ScriptBar : WarRockStelar_W_ScriptBar {}
+actor WarRockStelar_Control_W_ReloadIcon : WarRockStelar_W2_ReloadIcon {}
+actor WarRockStelar_Control_W : WarRockStelar_W {
+  Weapon.SlotNumber 1
+  Weapon.SlotPriority 101.0
+}
+actor WarRockStelar_DrawInput_W : WarRockStelar_Control_W {
+  Tag "Draw battle cards"
+  Weapon.SlotPriority 100.0
+  States {
+  Select:
+    8H51 A 0 A_GiveInventory("WR_DrawCardsInput_P")
+    8H51 A 0 A_SelectWeapon("WarRockStelar_Control_W")
+    goto SelectSwap
+  }
+}
+actor WarRockStelar_LockInput_W : WarRockStelar_Control_W {
+  Tag "Toggle card lock-on"
+  Weapon.SlotPriority 102.0
+  States {
+  Select:
+    8H51 A 0 A_GiveInventory("WR_LockInput_P")
+    8H51 A 0 A_SelectWeapon("WarRockStelar_Control_W")
+    goto SelectSwap
+  }
+}
