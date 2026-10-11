@@ -38,13 +38,59 @@ str mmsf_card_graphic[MMSF_MAX_CARDS + 1] = {
   "BC_ELECS",
 };
 
+// Client HUD phase per viewed player; the pawn flag resets it on a new full gauge.
+int mmsf_custom_start[64];
+
 script "DrawBar_WarRockStelar_W" (void) {
   DrawBarColor(201, 110);
-  DrawBar2Color(192, 198);
+  int custom_ammo = CheckInventory("UnholyBossAmmo250");
+  int custom_capacity = GetAmmoCapacity("UnholyBossAmmo250");
+  if (custom_capacity <= 0) custom_capacity = 250;
+  str custom_graphic;
+  int fill_height = 0;
+  int custom_player = PlayerNumber();
+  if (custom_ammo >= custom_capacity) {
+    if (!CheckInventory("WR_FullCustomSoundPlayed")) {
+      if (custom_player >= 0 && custom_player < 64) {
+        mmsf_custom_start[custom_player] = Timer();
+      }
+      GiveInventory("WR_FullCustomSoundPlayed", 1);
+      LocalAmbientSound("MMSF3/FullCustom", 127);
+    }
+    // SF2 48-row tile/flip pattern, six phases moving down eight pixels.
+    // Four source frames at 60 fps = 2.33 engine tics; round to 2 tics.
+    int custom_elapsed = Timer();
+    if (custom_player >= 0 && custom_player < 64) {
+      custom_elapsed -= mmsf_custom_start[custom_player];
+    }
+    int custom_frame = (custom_elapsed / 2) % 6;
+    custom_graphic = StrParam(s:"WRGRD0", i:custom_frame);
+  } else {
+    TakeInventory("WR_FullCustomSoundPlayed", 1);
+    fill_height = custom_ammo * 56 / custom_capacity;
+    if (fill_height < 0) fill_height = 0;
+    custom_graphic = "WRGEMPTY";
+  }
+  // Native ammo2 is replaced by this dedicated image. Use the existing
+  // HUD-mode / automap routing, and a one-tic image lifetime like other bars.
+  // SF2 border tiles assembled around a 56px core: native 320x200 HUD size.
+  SetHudSize(320, 200, false);
+  AdjustedImageDisplay(custom_graphic, custom_graphic,
+                       UH_IMAGE_ID_BASE - 133, UH_IMAGE_ID_BASE - 134,
+                       296.1, 0.1, 296.1, 0.1);
+  if (fill_height > 0) {
+    // Frame 20x72, interior 8x56 at (7,8); bottom edge y=64.
+    // Clip coordinates are integer HUD pixels, image coordinates are fixed.
+    SetHUDClipRect(303, 64 - fill_height, 8, fill_height);
+    AdjustedImageDisplay("WRGFILL", "WRGFILL",
+                         UH_IMAGE_ID_BASE - 135, UH_IMAGE_ID_BASE - 136,
+                         303.1, 8.1, 303.1, 8.1);
+    SetHUDClipRect(0, 0, 0, 0);
+  }
   SetHudSize(320, 200, false);
   if (CheckInventory("WR_LockOnFlag")) {
     AdjustedImageDisplay("UGB051A", "UGB051A", UH_IMAGE_ID_BASE - 131, UH_IMAGE_ID_BASE - 132,
-                         272.1, 4.1, 272.1, 4.1);
+                         250.1, 4.1, 250.1, 4.1);
   }
   int card_id = ACS_NamedExecuteWithResult("rz_GetSFCard", 0);
   if (card_id > 0) {
