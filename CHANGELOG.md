@@ -1,5 +1,9 @@
 ## 4.0.0-beta.261012
 
+- 修复 Dickhead 等 9 个主动道具因误归为被动而不显示在 UIX 道具轮盘的问题：
+  - Super Mystic Tank、Unholy Insurance、Dickhead 改为恢复类
+  - On Fire、Ztar、Demoneye.exe Wishing Star、Ass Counter Device 改为攻击类
+  - Periwinkle Tank 改为武器增益类、Invincible Candy 改为避险类，两者显示在轮盘杂项区
 - 修复 Lim（含 Shiny）在 M2 站立施放期间变成恶魔眼后无法移动的问题
 - 优化对局剩余 1 分钟及强制结束提示的配色（由原本容易混淆的暗红字改为更醒目的黄/橙白配色），避免在暗色地图下难以看清或误认成 Boss 狂暴预警
 
