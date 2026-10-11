@@ -187,6 +187,12 @@ includes DEBUG. The full launch profiles and versus test enable level 4.
 
 ## Rebuilding ACS and the PK3 locally
 
+Ordinary-round settlement can be made cancellable with
+`uh_sv_resumeonrevive true` (default `true`). Native LMS wins remain final.
+See [Cancellable round settlement](../docs/round-settlement.md) for scope,
+option timing and manual checks. Run `python3 tools/check_round_settlement.py`
+for the actual ACS logic under C stubs; recompile `unholy` and `rz_debug`.
+
 Bonus Event host overrides use the import-only `UHBESET` library
 (`src/acs/UHBESET.o`, absent from `LOADACS`). `tools/compile-acs.sh` compiles it
 before UHDT. The console commands and configuration format are documented in

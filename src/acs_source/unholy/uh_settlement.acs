@@ -1,0 +1,129 @@
+// Fragment of unholy. The owning victory watcher keeps its original start
+// time and waits in place; its counterpart and the player status hooks stay
+// alive. No rewards, protections or combo/event state change before commit.
+
+function bool UH_CanWaitForRevival(void) {
+  return GetCVar("uh_sv_resumeonrevive") && !isbonuseventactive
+    && !versusfightevent && GetGameModeState() == GAMESTATE_INPROGRESS;
+}
+
+function bool UH_SettlementHasOpponents(void) {
+  bool survivor = false;
+  bool enemy = false;
+  // A status count alone can briefly refer to a dead/replaced pawn. Require
+  // real living, nonspectating players after all revival/morph updates finish.
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    if (!PlayerInGame(p) || PlayerIsSpectator(p) != 0) continue;
+    if (GetActorProperty(p + 1000, APROP_HEALTH) <= 0) continue;
+    if (playerlifestatusarr[p] == PLS_SURVIVOR) survivor = true;
+    else if (playerlifestatusarr[p] == PLS_BOSS ||
+             playerlifestatusarr[p] == PLS_EYE) enemy = true;
+  }
+  return survivor && enemy;
+}
+
+function int UH_SettlementDecision(bool forced, int enginestate,
+                                  bool opponents, int now, int deadline) {
+  if (forced) return UH_SETTLE_ABORT;
+  // Native LMS wins are final, even if a revival has happened this tic.
+  if (enginestate == GAMESTATE_INRESULTSEQUENCE) return UH_SETTLE_COMMIT;
+  // Check revival before expiry, including the exact deadline tic.
+  if (opponents) return UH_SETTLE_RESUME;
+  if (now >= deadline) return UH_SETTLE_COMMIT;
+  return UH_SETTLE_WAIT;
+}
+
+function int UH_BeginSettlement(int delaytics, bool survivorwin) {
+  uh_settlementstate[UH_SETTLEMENT_PENDING] = true;
+  uh_settlementstate[UH_SETTLEMENT_GENERATION]++;
+  uh_settlementstate[UH_SETTLEMENT_STARTED] = Timer();
+  uh_settlementstate[UH_SETTLEMENT_DEADLINE] = Timer() + delaytics;
+  uh_settlementmusic[0] = currentmusiclump;
+  uh_settlementmusic[1] = currentmusictitle;
+  uh_settlementmusic[2] = currentmusicalbum;
+  uh_settlementmusic[3] = currentmusicartist;
+  uh_settlementstate[UH_SETTLEMENT_MUSIC_CONTEXT] = currentmusiccontext;
+  uh_settlementstate[UH_SETTLEMENT_PREVIOUS_STREAK] = winstreak;
+  // The displayed streak is provisional; rewards still wait for commit.
+  if (survivorwin) {
+    if (winstreak < 0) winstreak = 1;
+    else winstreak++;
+  }
+  else {
+    if (winstreak > 0) winstreak = -1;
+    else winstreak--;
+  }
+  return uh_settlementstate[UH_SETTLEMENT_GENERATION];
+}
+
+function int UH_PollSettlement(int generation) {
+  if (!uh_settlementstate[UH_SETTLEMENT_PENDING] || generation != uh_settlementstate[UH_SETTLEMENT_GENERATION])
+    return UH_SETTLE_ABORT;
+  int decision = UH_SettlementDecision(gameover, GetGameModeState(),
+    UH_SettlementHasOpponents(), Timer(), uh_settlementstate[UH_SETTLEMENT_DEADLINE]);
+  if (decision == UH_SETTLE_WAIT) return decision;
+  uh_settlementstate[UH_SETTLEMENT_PENDING] = false;
+  if (decision == UH_SETTLE_RESUME || decision == UH_SETTLE_ABORT) {
+    winstreak = uh_settlementstate[UH_SETTLEMENT_PREVIOUS_STREAK];
+    ClearHudMessageBold(67);
+  }
+  if (decision == UH_SETTLE_RESUME) {
+    // Preserve the timer instead of restarting its configured full duration.
+    if (uh_roundtimerdeadline >= 0)
+      uh_roundtimerdeadline += Timer() - uh_settlementstate[UH_SETTLEMENT_STARTED];
+    ClearHudMessageBold(66);
+    ClearHudMessageBold(100);
+    UH_ShowSettlementResumed();
+    UH_PlayTrack(uh_settlementmusic[0], uh_settlementmusic[1],
+      uh_settlementmusic[2], uh_settlementmusic[3], uh_settlementstate[UH_SETTLEMENT_MUSIC_CONTEXT], 0);
+    // Boss HP display can have finished while every boss was dead. Execute
+    // is single-instance, so an already-running display is left alone.
+    ACS_NamedExecute("ub_BossHealthWatcher", 0);
+    UH_Log(UH_LOG_INFO, "Opposing sides returned; round settlement cancelled.");
+  }
+  else if (decision == UH_SETTLE_COMMIT) {
+    // Atomic claim before another watcher can submit a competing result.
+    gameover = true;
+  }
+  return decision;
+}
+
+function bool UH_CanExitSettlement(int generation) {
+  return generation == 0 ||
+    (generation == uh_settlementstate[UH_SETTLEMENT_GENERATION] &&
+     !uh_settlementstate[UH_SETTLEMENT_PENDING] && gameover);
+}
+
+// --- Unified round-exit entry ------------------------------------------------
+// Every Unholy-owned round settlement funnels its final map change through this
+// script instead of calling Exit_Normal itself.
+// This script lives in unholy only: shared helpers are also included by
+// rz_debug, whose private map variables must not own settlement validation.
+//
+// Why: Exit_Normal runs CheckIfExitIsGood with the CALLING SCRIPT's activator
+// (p_lnspec.cpp:850 -> p_spec.cpp:184).  A NULL activator is the world and always
+// passes; any non-NULL actor is treated as "a player is using an exit line", so
+// DF_NO_EXIT / sv_noexit applies and the exit telefrags that actor.  A settlement
+// watcher can inherit a boss pawn as its activator (MorphActorToBoss ends with
+// SetActivator(tid) and the watchers are started from the same script), so the
+// round must never depend on whichever actor it happened to inherit.
+//
+// Contract:
+//   - the activator is cleared on entry, BEFORE the delay, so no stale pawn is
+//     acted on during the result window;
+//   - only a core settlement owner starts it: the gameover / one-shot guards
+//     stay with the callers;
+//   - ACS_NamedExecute is single-instance (p_acs.cpp:13097), so a duplicate
+//     start is a no-op and cannot reset the delay or race a second exit;
+//   - the caller keeps owning result text, music, streak and event cleanup;
+//   - never use ConsoleCommand("changemap"), and never rely on sv_noexit 0.
+script "ub_ExitFinishedRound" (int delaytics, int settlementgeneration) {
+  SetActivator(0, AAPTR_NULL);
+  if (delaytics > 0) {
+    Delay(delaytics);
+  }
+  // Legacy/forced endings pass zero. Cancellable settlements supply their
+  // generation so an obsolete task can never exit a resumed/new settlement.
+  if (!UH_CanExitSettlement(settlementgeneration)) {terminate;}
+  Exit_Normal(0);
+}

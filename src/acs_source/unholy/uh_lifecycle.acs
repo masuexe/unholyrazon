@@ -110,6 +110,8 @@ script "ub_StartUpSettings" OPEN {
   // Most variables are redundant
 
   gameover = false;
+  uh_settlementstate[UH_SETTLEMENT_PENDING] = false;
+  uh_settlementstate[UH_SETTLEMENT_GENERATION] = 0;
 
   PlayerLifeStatusArr_GatherFunc();
 
@@ -303,6 +305,7 @@ script "uh_BackgroundTimer" (void) {  // OPEN
   SetFont("BIGFONT");
   SetHudSize(640, 480, 0);
   until (timeleft <= 0 || gameover) {  // Countdown
+    if (uh_settlementstate[UH_SETTLEMENT_PENDING]) {Delay(1); continue;}
     // HudMessageBold(d:TimeLeft; HUDMSG_FADEOUT, 888, CR_DARKGREEN,0.5, 0.10, 3.0,2.0);
     // Log(d:TimeLeft);
     int timerend = GetCVar("uh_sv_timerend");
@@ -334,10 +337,15 @@ script "uh_BackgroundTimer" (void) {  // OPEN
     }
 
     Delay(35);
-    timeleft--;
+    if (!uh_settlementstate[UH_SETTLEMENT_PENDING]) {
+      if (uh_settlementstate[UH_SETTLEMENT_GENERATION] > 0)
+        timeleft = Max(0, (uh_roundtimerdeadline - Timer() + 34) / 35);
+      else timeleft--;
+    }
   }
   uh_roundtimerdeadline = -1;
   while (timeleft < 0 && !gameover) {  // If Timer is disabled
+    if (uh_settlementstate[UH_SETTLEMENT_PENDING]) {Delay(1); continue;}
     if (GetCVar("uh_sv_timerend") != 0) {
       int requestedend = CheckClearCVar("uh_sv_timerend", 0);
       if (requestedend == -2 || (requestedend >= 1 && requestedend <= 4)) {
@@ -389,6 +397,28 @@ function void UH_DrawBattleTime(int ticks, int color, int y) {
     HUDMSG_FADEOUT, 100, color, 240.4, y, 5.0, 2.0);
 }
 
+function void UH_DrawPendingStreak(bool survivorwin) {
+  int color = CR_RED;
+  if (survivorwin) {
+    color = CR_GREEN;
+    if (winstreak % GetClampedCVar("uh_sv_winstreaklimit", 1, 100) == 0)
+      color = CR_DARKRED;
+    HudMessageBold(s:"Survivor win streak: ", d:winstreak;
+      HUDMSG_PLAIN, 67, color, 240.4, 90.0, 0);
+  }
+  else {
+    HudMessageBold(s:"Boss win streak: ", d:-winstreak;
+      HUDMSG_PLAIN, 67, color, 240.4, 90.0, 0);
+  }
+}
+
+function void UH_ShowSettlementResumed(void) {
+  SetFont("BIGFONT");
+  SetHudSize(480, 360, 0);
+  HudMessageBold(s:"Opponents returned!\nRound result cancelled - battle continues!";
+    HUDMSG_FADEOUT, 66, CR_YELLOW, 240.4, 54.0, 3.0, 1.0);
+}
+
 // Script used to end the round for no survivors
 script "ub_WatchSurvivors" (int skipacs) {
 
@@ -408,34 +438,69 @@ script "ub_WatchSurvivors" (int skipacs) {
     ACS_NamedExecute("ub_WatchBossesAndEyes", 0);
   }
 
-  while (totalplayersarr[PLS_SURVIVOR] >= 1 && !standardlmseventlocked && !gameover) {
-    Delay(1);
-    if (totalplayersarr[PLS_SURVIVOR] == 1) {
-      ACS_NamedExecute("ub_LMS_EventTime", 0, -1);
-      UH_Log(UH_LOG_DEBUG, StrParam(s:"Last Man Standing!"));
-      standardlmseventlocked = true;
+  int settlementgeneration = 0;
+  int settlementdecision;
+  int exitdelay = 35 * 9;
+  int battletime;
+  while (true) {
+    while (totalplayersarr[PLS_SURVIVOR] >= 1 && !standardlmseventlocked && !gameover) {
+      Delay(1);
+      if (!uh_settlementstate[UH_SETTLEMENT_PENDING] && totalplayersarr[PLS_SURVIVOR] == 1) {
+        ACS_NamedExecute("ub_LMS_EventTime", 0, -1);
+        UH_Log(UH_LOG_DEBUG, StrParam(s:"Last Man Standing!"));
+        standardlmseventlocked = true;
+      }
     }
-  }
 
-  while (totalplayersarr[PLS_SURVIVOR] >= 1 && !gameover) {
+    while ((totalplayersarr[PLS_SURVIVOR] >= 1 || uh_settlementstate[UH_SETTLEMENT_PENDING]) && !gameover) {
+      Delay(1);
+    }
+
+    if (gameover) {terminate;}
+
     Delay(1);
+
+    // Re-check after the yield: ub_WatchBossesAndEyes may have claimed the round
+    // while this script slept, and it terminates this watcher.  Without the
+    // re-check a stale instance could still start a second settlement.
+    if (gameover) {terminate;}
+
+    // With the option enabled, a revival during the one-tic death recheck
+    // must return to watching rather than announce a stale defeat.
+    // Another watcher may have claimed a window during Delay(1), even if the
+    // administrator changed the option since then. Its policy stays frozen.
+    if (uh_settlementstate[UH_SETTLEMENT_PENDING]) continue;
+    if (UH_CanWaitForRevival() && totalplayersarr[PLS_SURVIVOR] >= 1) continue;
+    battletime = Timer() - extratimer;
+    if (!UH_CanWaitForRevival()) break;
+    settlementgeneration = UH_BeginSettlement(exitdelay, false);
+    PlayMusic_Loser(-1);
+    SetFont("BIGFONT");
+    SetHudSize(480, 360, 0);
+    HudMessageBold(s:"The survivors have been defeated...";
+      HUDMSG_PLAIN, 66, CR_RED, 240.4, 54.0, 0);
+    UH_DrawBattleTime(battletime, CR_GRAY, 72.0);
+    UH_DrawPendingStreak(false);
+    // Always yield once: revival hooks may still be assigning their final side.
+    do {
+      Delay(1);
+      settlementdecision = UH_PollSettlement(settlementgeneration);
+    } while (settlementdecision == UH_SETTLE_WAIT);
+    if (settlementdecision == UH_SETTLE_ABORT) {terminate;}
+    if (settlementdecision == UH_SETTLE_RESUME) {
+      settlementgeneration = 0;
+      continue;
+    }
+    exitdelay = Max(0, uh_settlementstate[UH_SETTLEMENT_DEADLINE] - Timer());
+    break;
   }
-
-  if (gameover) {terminate;}
-
-  Delay(1);
-
-  // Re-check after the yield: ub_WatchBossesAndEyes may have claimed the round
-  // while this script slept, and it terminates this watcher.  Without the
-  // re-check a stale instance could still start a second settlement.
-  if (gameover) {terminate;}
 
   ACS_NamedTerminate("ub_WatchBossesAndEyes", 0);
   // Unified bonus-event end entry: boss side took the round.  No-op outside
   // bonus rounds; the one-shot guard keeps it single-fire.
   UH_TryFinishBonusEvent(eventdataarr[EVENTDATA_MAINEVENT], UHBE_RESULT_BOSS, false);
   // PlayMusic_Loss(0);
-  PlayMusic_Loser(-1);
+  if (settlementgeneration == 0) PlayMusic_Loser(-1);
   // MakeAllPlayersInvun();
   gameover = true;
   // Normal LMS boss victory: surviving bosses may fight during settlement.
@@ -447,10 +512,13 @@ script "ub_WatchSurvivors" (int skipacs) {
   SetFont("BIGFONT");
   SetHudSize(480, 360, 0);
   HudMessageBold(s:"The survivors have been defeated..."; HUDMSG_FADEOUT, 66, CR_RED, 240.4, 54.0, 5.0, 2.0);
-  UH_DrawBattleTime(Timer() - extratimer, CR_GRAY, 72.0);
+  UH_DrawBattleTime(battletime, CR_GRAY, 72.0);
 
-  if (winstreak > 0) {winstreak = -1;}
-  else {winstreak--;}
+  if (settlementgeneration == 0) {
+    if (winstreak > 0) {winstreak = -1;}
+    else {winstreak--;}
+  }
+  else ClearHudMessageBold(67);
   if (winstreak % GetClampedCVar("uh_sv_losestreaklimit", 1, 100) == 0 && winstreak < 0) {
     HudMessageBold(s:"We have been defeated too many times!\nLet Helltatoru give you mercy..."; HUDMSG_FADEOUT, 67, CR_DARKRED, 240.4, 108.0, 5.0, 2.0);
     mercygiven = true;
@@ -463,7 +531,7 @@ script "ub_WatchSurvivors" (int skipacs) {
   // World-activated exit: this watcher may have inherited a boss pawn as its
   // activator, and a player activator would make the round exit subject to
   // DF_NO_EXIT / sv_noexit and telefrag that pawn.
-  ACS_NamedExecute("ub_ExitFinishedRound", 0, 35 * 9);
+  ACS_NamedExecute("ub_ExitFinishedRound", 0, exitdelay, settlementgeneration);
   Delay(35 * 6);
 }
 
@@ -481,7 +549,7 @@ script "rz_WatchTwoPlayerLeft" (void) {
   int tid;
   bool enabled;
   while (!gameover) {
-    enabled = GetCVar("rz_sv_twoplayerxray") == 1
+    enabled = !uh_settlementstate[UH_SETTLEMENT_PENDING] && GetCVar("rz_sv_twoplayerxray") == 1
       && totalplayersarr[PLS_SURVIVOR] + totalplayersarr[PLS_BOSS]
         + totalplayersarr[PLS_EYE] == 2;
     twoplayersxrayenabled = enabled;
@@ -557,12 +625,46 @@ script "ub_WatchBossesAndEyes" (void) {
   int extratimer = Timer();
   int fastkilltime = GetClampedCVar("uh_sv_fastkilltime", 0, 300);
   int battletime;
-  while (totalplayersarr[PLS_BOSS] >= 1 || totalplayersarr[PLS_EYE] >= 1) {
+  int settlementgeneration = 0;
+  int settlementdecision;
+  int exitdelay = 36 * 10;
+  bool declined;
+  bool perfect;
+  while (true) {
+    while (totalplayersarr[PLS_BOSS] >= 1 || totalplayersarr[PLS_EYE] >= 1
+           || uh_settlementstate[UH_SETTLEMENT_PENDING]) {
+      if (gameover) {terminate;}
+      Delay(2);
+    }
     if (gameover) {terminate;}
-    Delay(2);
+    battletime = Timer() - extratimer;
+    declined = multibosscheck == 1
+      && !PlayerInGame(bossdataarr[0][BOSSDATA_TID] - 1000)
+      && Timer() <= 35 * 7 + extratimer;
+    perfect = roundstartsurvivors > 0
+      && totalplayersarr[PLS_SURVIVOR] == roundstartsurvivors;
+    // An early boss departure is an administrative forfeit, not a revival window.
+    if (declined || !UH_CanWaitForRevival()) break;
+    settlementgeneration = UH_BeginSettlement(exitdelay, true);
+    PlayMusic_Winner(-1);
+    SetFont("BIGFONT");
+    SetHudSize(480, 360, 0);
+    HudMessageBold(s:"The survivors are victorious!";
+      HUDMSG_PLAIN, 66, CR_GREEN, 240.4, 54.0, 0);
+    UH_DrawBattleTime(battletime, CR_GRAY, 72.0);
+    UH_DrawPendingStreak(true);
+    do {
+      Delay(1);
+      settlementdecision = UH_PollSettlement(settlementgeneration);
+    } while (settlementdecision == UH_SETTLE_WAIT);
+    if (settlementdecision == UH_SETTLE_ABORT) {terminate;}
+    if (settlementdecision == UH_SETTLE_RESUME) {
+      settlementgeneration = 0;
+      continue;
+    }
+    exitdelay = Max(0, uh_settlementstate[UH_SETTLEMENT_DEADLINE] - Timer());
+    break;
   }
-
-  if (gameover) {terminate;}
 
   GiveMeTheFunc("PowerProtectSurvivor", -1);
   GiveMeTheFunc("PowerProtectMegaCopywep", -1);
@@ -578,7 +680,13 @@ script "ub_WatchBossesAndEyes" (void) {
   SetFont("BIGFONT");
   SetHudSize(480, 360, 0);
 
-  if (multibosscheck == 1 && !PlayerInGame(bossdataarr[0][BOSSDATA_TID] - 1000) && timer() <= 35 * 7 + extratimer) {
+  // Legacy/bonus callbacks retain their original evaluation order. Only a
+  // cancellable window uses the snapshots taken before its delay.
+  if (settlementgeneration == 0)
+    declined = multibosscheck == 1
+      && !PlayerInGame(bossdataarr[0][BOSSDATA_TID] - 1000)
+      && Timer() <= 35 * 7 + extratimer;
+  if (declined) {
     PlayMusic_Win(-2);
     HudMessageBold(s:"The boss has declined the duel!"; HUDMSG_FADEOUT, 66, CR_GREEN, 240.4, 54.0, 5.0, 2.0);
     ACS_NamedExecute("ub_ExitFinishedRound", 0, 36 * 4);
@@ -586,12 +694,12 @@ script "ub_WatchBossesAndEyes" (void) {
     terminate;
   }
   // PlayMusic_Win(0);
-  PlayMusic_Winner(-1);
+  if (settlementgeneration == 0) PlayMusic_Winner(-1);
   HudMessageBold(s:"The survivors are victorious!"; HUDMSG_FADEOUT, 66, CR_GREEN, 240.4, 54.0, 5.0, 2.0);
 
   int next_y = 72.0;
 
-  battletime = Timer() - extratimer;
+  if (settlementgeneration == 0) battletime = Timer() - extratimer;
   int battle_color = CR_GRAY;
   // Preserve the existing whole-second fast-kill reward threshold.
   if (fastkilltime > 0 && battletime / 35 <= fastkilltime) {
@@ -601,19 +709,26 @@ script "ub_WatchBossesAndEyes" (void) {
   UH_DrawBattleTime(battletime, battle_color, next_y);
   next_y += 18.0;
 
-  if (winstreak < 0) {winstreak = 1;}
-  else {winstreak++;}
+  if (settlementgeneration == 0) {
+    if (winstreak < 0) {winstreak = 1;}
+    else {winstreak++;}
+  }
   mercygiven = false;
   if (winstreak % GetClampedCVar("uh_sv_winstreaklimit", 1, 100) == 0) {
     HudMessageBold(s:"Survivor win streak: ", d:winstreak; HUDMSG_FADEOUT, 67, CR_DARKRED, 240.4, next_y, 5.0, 2.0);
-    ACS_NamedExecuteAlways("ub_InitiateUltraBoss", 0, 1);
+    if (settlementgeneration != 0)
+      ACS_NamedExecuteWithResult("ub_InitiateUltraBoss", 1);
+    else ACS_NamedExecuteAlways("ub_InitiateUltraBoss", 0, 1);
   }
   else {
     HudMessageBold(s:"Survivor win streak: ", d:winstreak; HUDMSG_FADEOUT, 67, CR_GREEN, 240.4, next_y, 5.0, 2.0);
   }
   next_y += 18.0;
 
-  if (roundstartsurvivors > 0 && totalplayersarr[PLS_SURVIVOR] == roundstartsurvivors) {
+  if (settlementgeneration == 0)
+    perfect = roundstartsurvivors > 0
+      && totalplayersarr[PLS_SURVIVOR] == roundstartsurvivors;
+  if (perfect) {
     eventdataarr[EVENTDATA_DELAY] += 2;
     HudMessageBold(s:"PERFECT! No survivors were lost."; HUDMSG_FADEOUT, 101, CR_GREEN, 240.4, next_y, 5.0, 2.0);
     next_y += 18.0;
@@ -625,7 +740,9 @@ script "ub_WatchBossesAndEyes" (void) {
     if (hellmarkfrags >= hellmarklimit) {
       AmbientSound("misc/SampiRises", 127);
       HudMessageBold(s:"The Helltatoru knows no limits..."; HUDMSG_FADEOUT, 60, CR_DARKRED, 240.4, next_y, 5.0, 2.0);
-      ACS_NamedExecuteAlways("ub_InitiateUltraBoss", 0, 402);
+      if (settlementgeneration != 0)
+        ACS_NamedExecuteWithResult("ub_InitiateUltraBoss", 402);
+      else ACS_NamedExecuteAlways("ub_InitiateUltraBoss", 0, 402);
     }
     else {
       HudMessageBold(s:"Marks of Helltatoru ", d:hellmarkfrags, s:"/", d:hellmarklimit, s:" collected."; HUDMSG_FADEOUT, 60, CR_DARKRED, 240.4, next_y, 5.0, 2.0);
@@ -633,6 +750,6 @@ script "ub_WatchBossesAndEyes" (void) {
     next_y += 18.0;
   }
 
-  ACS_NamedExecute("ub_ExitFinishedRound", 0, 36 * 10);
+  ACS_NamedExecute("ub_ExitFinishedRound", 0, exitdelay, settlementgeneration);
   Delay(36 * 6);
 }

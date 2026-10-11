@@ -1,5 +1,8 @@
 ## 4.0.0-beta.261012
 
+- 新增普通 Survivor 对 Boss／Demoneye 回合的可取消结算：结算等待期间敌对双方重新存活时，取消本次结果并继续战斗，恢复战斗音乐及剩余计时，明确提示结算已取消；原生 LMS 胜利序列、特殊事件及强制结束保持原流程
+- 胜负及连胜次数在结算开始时立即显示，取消结算时回滚连胜并清除原提示；连胜奖励及其他结算奖励在最终确认后只发放一次
+- 新增服主开关 `uh_sv_resumeonrevive`，默认开启；可在 Unholy Server Options → Game Rules → Resume Battle If Enemies Return 切换，关闭后恢复原有结束行为，结算等待期间修改从下一次胜负判定生效；说明见 [可取消的回合结算](docs/round-settlement.md)
 - 修复 Dickhead 等 9 个主动道具因误归为被动而不显示在 UIX 道具轮盘的问题：
   - Super Mystic Tank、Unholy Insurance、Dickhead 改为恢复类
   - On Fire、Ztar、Demoneye.exe Wishing Star、Ass Counter Device 改为攻击类
