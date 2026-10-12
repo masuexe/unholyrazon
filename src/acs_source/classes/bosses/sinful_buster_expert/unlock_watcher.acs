@@ -1,0 +1,39 @@
+// Server-owned entry point. The morph setup passes a CVAR snapshot so changes
+// affect the next morph, never a boss already fighting. Only 1 selects the
+// progressive policy; unknown values fall back to the default Unbound policy.
+// Included by uh_classes after both policies and UH_WatcherStillOwnsBoss.
+script "rz_SinfulBusterExpertSinWatcher" (int unlockmode) {
+  int tid = ActivatorTID();
+  int player = PlayerNumber();
+  int mygen = GetPlayerMorphGen(player);
+  int maxhp = GetActorProperty(tid, APROP_SpawnHealth);
+  if (maxhp <= 0) {
+    terminate;
+  }
+  int initial = 7;
+  if (unlockmode == 1)
+    initial = 1;
+  int given = 1;  // W1 is supplied by the morph setup.
+  while (!CheckInventory("IsDead") && !CheckInventory("IsAFakeBoss")) {
+    // A real boss lacks IsAFakeBoss; the generation check also retires this
+    // watcher on unmorph or a re-morph into a different boss.
+    if (!UH_WatcherStillOwnsBoss(mygen, player))
+      terminate;
+    int hp = GetActorProperty(tid, APROP_Health);
+    if (hp <= 0)
+      terminate;
+    int count;
+    if (unlockmode == 1)
+      count = UH_SBE_ProgressiveWeaponCount(maxhp, hp);
+    else
+      count = UH_SBE_UnboundWeaponCount(maxhp, hp);
+    // Catch up after a large hit. Granted weapons remain owned after healing.
+    while (given < count) {
+      given++;
+      GiveInventory(StrParam(s:"SinfulBusterExpert_W", i:given), 1);
+      if (given > initial)
+        PlaySound(0, "misc/eclipsegravitywellsummon", CHAN_AUTO);
+    }
+    Delay(1);
+  }
+}

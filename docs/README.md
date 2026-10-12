@@ -30,6 +30,7 @@ Guides and CVAR references for dedicated server operators and host setups.
 | [**Bonus Event Settings**](bonus-event-settings.md) | Host commands (`uh_event_set`, `uh_event_show`, `uh_event_export`), per-event rules (`uh_sv_eventrules`), player thresholds, and EX counters. |
 | [**Round Thresholds**](round-thresholds.md) | Host settings for win/loss streak mercy, Hell Mark, Speciman kills, Gauntlet rewards, and Bad LMS thresholds. |
 | [**Copy Weapon Start Counts**](copy-weapon-start-counts.md) | Server settings controlling initial copy weapon distribution for Qwant and NegaMan. |
+| [**SinfulBusterExpert Unlocks**](sinful-buster-expert-unlocks.md) | Host selection of Unbound or progressive weapon unlocks. |
 | [**AFK Penalties**](afk-penalties.md) | Server AFK detection rules, punishment items (Fire, GUHU, Money Bait, Money Bomb), and delay thresholds. |
 | [**MegaMan Daily Weapons**](megaman-daily-weapons.md) | Server CVARs for MegaMan M2 weapon pool size and daily weapon synchronization. |
 
