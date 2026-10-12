@@ -427,3 +427,23 @@ scroll direction isolation, automatic return, held Reload/release, cooldown gati
 through the local smoke profile. It uses the same MCP environment settings as
 `smoke-test.sh`. See [Star Force controls](../docs/starforce-controls.md) for the
 single-slot requirement and the remaining multiplayer gameplay checks.
+
+## Environment & External References
+
+See [REFERENCES.md](REFERENCES.md) for full catalog and download links.
+
+- **Check environment health**:
+  ```bash
+  python3 tools/check_environment.py
+  python3 tools/check_environment.py --json
+  ```
+  Validates compiler (`acc`), test assets (`megagame.wad`, `mm8bdm-v6b.pk3`), and reference sources.
+- **Unpack references from PK3 archives**:
+  ```bash
+  python3 tools/unpack_references.py
+  python3 tools/unpack_references.py --all  # Extract sprites/audio as well
+  ```
+  Extracts code-only definition lumps (`.dec`, `.txt`, `.acs`) from `.pk3` files in `../wads` into `../references/for_8bdm-v6b/` for fast inspection.
+- **Local machine path overrides**:
+  Copy `tools/paths.json.example` to `tools/paths.local.json` to customize paths without modifying git-tracked files.
+

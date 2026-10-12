@@ -12,15 +12,17 @@ For engine or mod behavior questions, consult the relevant source below rather
 than relying on generic Doom/GZDoom knowledge. Use only the sources implicated
 by the question.
 
-| Priority | Location | What to consult |
-|----------|----------|-----------------|
-| Engine behavior | `../references/zandronum/zandronum-stable-branch-default/` | Zandronum engine source (actors, DECORATE, networking, inventory, etc.) |
-| ACS semantics | `../references/zandronum/acc-branch-zandronum/` | Zandronum ACC source — builtins and compile rules |
-| MM8BDM behavior | `../references/for_8bdm-v6b/mm8bdm-v6b/` | Base game assets, actors, ClassBase, weapons, and ACS APIs |
-| When useful | `../references/for_8bdm-v6b/classes-v9gh_/` | Class Based Modification v9gh — **primary architectural template**; prefer its patterns when a feature already exists there |
-| When useful | `../references/for_8bdm-v6a/` | MM8BDM v6a, CBM v9fh, and the Unholy v7b pb1 packages used as legacy behavior references |
+### Reference targets
 
-All paths under `../references/` are **read-only reference**. Never edit them as part of normal work, and never load the reference trees as the mod unless a task explicitly requires a reference package for comparison or testing.
+| Priority | Target / Role | Default Relative Path | What to consult |
+|----------|---------------|-----------------------|-----------------|
+| Engine behavior | Zandronum engine source | `../references/zandronum/zandronum-stable-branch-default/` | Zandronum engine source (actors, DECORATE, networking, inventory, etc.) |
+| ACS semantics | Zandronum ACC compiler | `../references/zandronum/acc-branch-zandronum/` | Zandronum ACC source — builtins and compile rules (`zdefs.acs`, etc.) |
+| MM8BDM behavior | MM8BDM v6b base game | `../references/for_8bdm-v6b/mm8bdm-v6b/` | Base game assets, actors, ClassBase, weapons, and ACS APIs (`megagame.pk3` / `mm8bdm-v6b.pk3`) |
+| When useful | CBM v9gh template | `../references/for_8bdm-v6b/classes-v9gh_/` | Class Based Modification v9gh — **primary architectural template**; prefer its patterns when a feature already exists there |
+| When useful | Legacy packages | `../references/for_8bdm-v6a/` | MM8BDM v6a, CBM v9fh, and legacy Unholy packages (`*unholy*` / `*uh-*` archives) used as historical behavior references |
+
+All reference sources are **strictly read-only**. Never edit them as part of normal work, and never load the reference trees as the mod unless a task explicitly requires a reference package for comparison or testing.
 
 When loading the three Unholy v7b pb1 reference packages under `../references/for_8bdm-v6a/`, preserve this order:
 
@@ -28,9 +30,25 @@ When loading the three Unholy v7b pb1 reference packages under `../references/fo
 2. `unholy_bosses_unbound_v7b_pb1`
 3. `unholy_bossesclasses_v7b_pb1_snacks_fix`
 
+### Reference discovery protocol for agents
+
+External reference locations vary across machines and modder setups. Agents must follow this resolution order:
+
+1. **Local config override**: Check if `tools/paths.local.json` exists in the repo root or if the `MM8BDM_REFERENCES_DIR` environment variable is set. If present, resolve paths using those definitions (see template in `tools/paths.json.example`).
+2. **Default relative paths**: Probe the default relative paths listed in the table above.
+3. **Workspace / filesystem search**: If a default path is missing:
+   - Search sibling directories (`../`, `../../`, or user-specified wad folders) for directories or `.pk3`/`.zip` archives matching the target names (e.g. `classes-v9gh*`, `mm8bdm-v6b*`, `zandronum*`, `*unholy*`, `*uh-*`).
+   - If a reference exists as a `.pk3` archive rather than an unpacked directory, inspect contents directly (e.g. via `unzip -l`, Python `zipfile`, or extracting specific lumps to a temporary scratch path) rather than failing.
+4. **Prompt the user (Do not hallucinate)**: If a required reference source cannot be found through the steps above, **ask the user directly for the location** of the relevant file or directory. **Do NOT silently fall back to guessing or generic GZDoom assumptions.**
+
+Helpers:
+- Run `python3 tools/check_environment.py` to inspect the status of all toolchains and reference tiers.
+- Run `python3 tools/unpack_references.py` to extract code/definition lumps from PK3 files in `wads/` into `references/`.
+- Full catalog and download links are documented in [tools/REFERENCES.md](tools/REFERENCES.md).
+
 ## Build
 
-There is no build tool. The mod is a ZIP file with `.pk3` extension: pack `src/` recursively into `out/build.pk3`. **Do not invent build/CI tooling.** The `.gitignore` already excludes compiled ACS bytecode (`src/acs/`), `.o`, `.err`, and `out/`; reference sources live outside this repository under `../references/`.
+There is no build tool. The mod is a ZIP file with `.pk3` extension: pack `src/` recursively into `out/build.pk3`. **Do not invent build/CI tooling.** The `.gitignore` already excludes compiled ACS bytecode (`src/acs/`), `.o`, `.err`, `out/`, and local path overrides (`tools/paths.local.json`); reference sources live outside this repository (by default under `../references/`).
 
 ## Runtime testing
 
