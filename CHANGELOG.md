@@ -1,3 +1,8 @@
+## 4.0.0-beta.261013
+
+- 新增默认开启的结算友伤开关 `uh_sv_postroundfriendlyfire`，可在 Unholy Server Options → Game Rules → Friendly Fire After Round End 切换；统一覆盖结算等待、正式结束和原生 LMS 胜利序列中的生还者、Boss 与恶魔眼，包括 Bonus Event 的特殊友伤保护
+- 开放结算友伤时不再给予结算用全员无敌，保留角色自身防御能力；撤销结算继续战斗或关闭开关时恢复已移除的友伤保护，死亡、复活、变身及离场时丢弃旧机体快照，避免错误恢复
+
 ## 4.0.0-beta.261012
 
 - 移植 Razon3 automap 玩家位置、朝向点阵和 5 秒死亡标记，复用客户端 marker 与现有阵营快照；普通回合存活时显示自己及队友，特殊事件只显示自己，死亡／旁观时显示所有存活玩家；支持单机及远程独立客户端（注：listen server 房主本地不显示）

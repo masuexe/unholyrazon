@@ -21,7 +21,15 @@ def main():
     source = source.split('script "ub_ExitFinishedRound"')[0]
     source = re.sub(r"\bfunction\s+", "", source)
     # All included functions use plain integers/strings, no fixed/latent code.
-    code = STUBS + definitions + source + TESTS
+    ff = (ROOT / "src/acs_source/unholy/uh_postround_ff.acs").read_text()
+    ff = ff.split('script "uh_RefreshPostRoundFF"')[0].replace("function ", "")
+    ff = ff.replace("int row;", "int row; int i;").replace("for (int i =", "for (i =")
+    helpers = (ROOT / "src/acs_source/unholy/uh_round_helpers.acs").read_text()
+    begin = helpers.index("function void MakeAllPlayersInvun(void)")
+    end = helpers.index("// Presets a random number", begin)
+    invun = helpers[begin:end].replace("function ", "").replace(
+        "until (playernum == 1064)", "while (playernum != 1064)")
+    code = STUBS + definitions + ff + invun + source + TESTS
     with tempfile.TemporaryDirectory(prefix="uh-settlement-") as directory:
         path = Path(directory)
         (path / "test.c").write_text(code)
@@ -35,12 +43,14 @@ STUBS = r'''
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 typedef const char *str;
 #define MAX_PLAYERS 64
 #define PLS_SURVIVOR 1
 #define PLS_BOSS 2
 #define PLS_EYE 6
 #define APROP_HEALTH 0
+#define APROP_DamageFactor 1
 #define GAMESTATE_INPROGRESS 2
 #define GAMESTATE_INRESULTSEQUENCE 3
 #define UH_LOG_INFO 3
@@ -55,7 +65,26 @@ int currentmusiccontext = 2;
 int restores, clears, displays, notices;
 int winstreak = 3;
 void UH_ShowSettlementResumed(void) { notices++; }
-int GetCVar(str name) { assert(!strcmp(name, "uh_sv_resumeonrevive")); return option; }
+int postff = 1, inventory[MAX_PLAYERS][10], invunwrites;
+void SetActorProperty(int tid, int prop, int value) {
+  assert(tid >= 1000 && tid < 1064 && prop == APROP_DamageFactor && value == 0);
+  invunwrites++;
+}
+str pawnclasses[MAX_PLAYERS];
+str UH_PostRoundProtection(int index);
+str GetActorClass(int tid) { return pawnclasses[tid-1000] ? pawnclasses[tid-1000] : "Player"; }
+int StrICmp(str a, str b) { return strcasecmp(a,b); }
+int protection_index(str name) {
+  for (int i=0;i<10;i++) if (!strcmp(name,UH_PostRoundProtection(i))) return i;
+  assert(0); return -1;
+}
+int CheckActorInventory(int tid, str name) { return inventory[tid-1000][protection_index(name)]; }
+void TakeActorInventory(int tid, str name, int count) { inventory[tid-1000][protection_index(name)] -= count; }
+void GiveActorInventory(int tid, str name, int count) { inventory[tid-1000][protection_index(name)] += count; }
+int GetCVar(str name) {
+  if (!strcmp(name,"uh_sv_postroundfriendlyfire")) return postff;
+  assert(!strcmp(name, "uh_sv_resumeonrevive")); return option;
+}
 int GetGameModeState(void) { return engine; }
 int Timer(void) { return tick; }
 bool PlayerInGame(int p) { return connected[p]; }
@@ -146,7 +175,40 @@ int main(void) {
   assert(UH_PollSettlement(sixth) == UH_SETTLE_RESUME && winstreak == -3);
   int seventh = UH_BeginSettlement(360, true); assert(winstreak == 1);
   assert(UH_PollSettlement(seventh) == UH_SETTLE_RESUME && winstreak == -3);
-  puts("Round settlement logic: PASS");
+  // Friendly fire: ordinary combat leaves all immunity powers unchanged.
+  gameover = false; engine = GAMESTATE_INPROGRESS;
+  uh_settlementstate[UH_SETTLEMENT_PENDING] = false;
+  UH_RefreshPostRoundFF();
+  for (int i=0;i<10;i++) inventory[0][i] = 1;
+  UH_RefreshPostRoundFF();
+  assert(inventory[0][0] == 1 && inventory[0][9] == 1);
+  // Pending settlement removes Survivor/Boss/Eye and bonus-event powers alike.
+  uh_settlementstate[UH_SETTLEMENT_PENDING] = true;
+  UH_RefreshPostRoundFF();
+  for (int i=0;i<10;i++) assert(inventory[0][i] == 0);
+  inventory[0][3] = 1; UH_RefreshPostRoundFF(); assert(inventory[0][3] == 0);
+  // Cancellation restores exact original powers, including a re-grant.
+  uh_settlementstate[UH_SETTLEMENT_PENDING] = false;
+  UH_RefreshPostRoundFF();
+  for (int i=0;i<10;i++) assert(inventory[0][i] == 1);
+  // Final bonus/forced results and native results use the same policy.
+  gameover = true; UH_RefreshPostRoundFF(); assert(inventory[0][6] == 0);
+  postff = 0; UH_RefreshPostRoundFF(); assert(inventory[0][6] == 1);
+  postff = 1; gameover = false; engine = GAMESTATE_INRESULTSEQUENCE;
+  UH_RefreshPostRoundFF(); assert(inventory[0][6] == 0);
+  // Morphs cannot inherit the preceding pawn's protection snapshot.
+  pawnclasses[0] = "OtherClass";
+  memset(inventory[0],0,sizeof(inventory[0])); inventory[0][4] = 1;
+  UH_RefreshPostRoundFF();
+  engine = GAMESTATE_INPROGRESS; UH_RefreshPostRoundFF();
+  assert(inventory[0][4] == 1 && inventory[0][0] == 0);
+  // Death/departure discards a snapshot instead of granting it on reuse.
+  gameover = true; UH_RefreshPostRoundFF(); hp[0] = 0; UH_RefreshPostRoundFF();
+  gameover = false; hp[0] = 100; UH_RefreshPostRoundFF(); assert(inventory[0][4] == 0);
+  // Special result-wide invulnerability must not block enabled friendly fire.
+  postff = 1; MakeAllPlayersInvun(); assert(invunwrites == 0);
+  postff = 0; MakeAllPlayersInvun(); assert(invunwrites == 64);
+  puts("Round settlement and post-round friendly fire logic: PASS");
   return 0;
 }
 '''

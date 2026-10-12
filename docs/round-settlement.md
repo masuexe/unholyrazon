@@ -23,8 +23,7 @@ is shown immediately. Result and streak text use the normal wording, without
 a pending label. `gameover` stays
 false. Victory watchers, status broadcasts and revival hooks remain alive.
 The round timer pauses, AFK penalties reset and the two-player X-Ray marker is
-cleared. Gameplay protections remain as they were during combat; their existing
-settlement changes happen only at final confirmation.
+cleared. Post-round team damage follows the independent option below.
 
 If at least one living, nonspectating Survivor and one living, nonspectating
 Boss or Demoneye return before confirmation, the result is cancelled. The HUD
@@ -50,3 +49,21 @@ ownership and restoration logic under C stubs, and compile `unholy` plus
 delivery. Manual multiplayer checks should cover both victory directions,
 Boss/Demoneye revival, same-side revival, repeated cancellation, deadline revival,
 native LMS victory and a forced ending during the window.
+
+## Friendly fire after round end
+
+`uh_sv_postroundfriendlyfire` defaults to `true`. It is available in
+Unholy Server Options → Game Rules → Friendly Fire After Round End.
+
+When enabled, team damage is allowed immediately during cancellable settlement,
+UH-owned final results and native LMS results. The policy covers Survivor,
+Boss and Demoneye protections, including the special immunities used by Bonus
+Events. Result-wide invulnerability is skipped so special endings can also
+allow combat. Personal invulnerability, defenses and damage immunities remain.
+
+When disabled, combat's existing team protections remain in place; FFA events
+that already allow mutual damage retain that behavior. Disabling the option
+restores the removed powers on surviving, unchanged player bodies. Cancelling
+settlement restores those powers before combat resumes. Death, departure,
+respawn and class changes discard the old body's snapshot, so it cannot be
+applied to another body or a new player occupying the same slot.

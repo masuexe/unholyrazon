@@ -1,6 +1,7 @@
 // Fragment of unholy. The owning victory watcher keeps its original start
 // time and waits in place; its counterpart and the player status hooks stay
-// alive. No rewards, protections or combo/event state change before commit.
+// alive. Rewards and combo/event state wait for commit; team protections
+// follow the independent post-round friendly-fire policy.
 
 function bool UH_CanWaitForRevival(void) {
   return GetCVar("uh_sv_resumeonrevive") && !isbonuseventactive
@@ -53,6 +54,7 @@ function int UH_BeginSettlement(int delaytics, bool survivorwin) {
     if (winstreak > 0) winstreak = -1;
     else winstreak--;
   }
+  UH_RefreshPostRoundFF();
   return uh_settlementstate[UH_SETTLEMENT_GENERATION];
 }
 
@@ -68,6 +70,7 @@ function int UH_PollSettlement(int generation) {
     ClearHudMessageBold(67);
   }
   if (decision == UH_SETTLE_RESUME) {
+    UH_RefreshPostRoundFF();
     // Preserve the timer instead of restarting its configured full duration.
     if (uh_roundtimerdeadline >= 0)
       uh_roundtimerdeadline += Timer() - uh_settlementstate[UH_SETTLEMENT_STARTED];
@@ -84,6 +87,7 @@ function int UH_PollSettlement(int generation) {
   else if (decision == UH_SETTLE_COMMIT) {
     // Atomic claim before another watcher can submit a competing result.
     gameover = true;
+    UH_RefreshPostRoundFF();
   }
   return decision;
 }

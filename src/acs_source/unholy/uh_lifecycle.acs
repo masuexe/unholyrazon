@@ -15,11 +15,15 @@ function void BasicTLMSEnterState(void) {
 
 script "ub_BasicTLMSEnter" ENTER {
   UH_AFKResetPlayer(PlayerNumber());
+  if (PlayerNumber() >= 0)
+    uh_settlementstate[UH_POSTFF_BASE + PlayerNumber() * UH_POSTFF_ROW_SIZE] = false;
   BasicTLMSEnterState();
 }
 
 script "ub_BasicTLMSRespawn" RESPAWN {
   UH_AFKResetPlayer(PlayerNumber());
+  if (PlayerNumber() >= 0)
+    uh_settlementstate[UH_POSTFF_BASE + PlayerNumber() * UH_POSTFF_ROW_SIZE] = false;
   BasicTLMSEnterState();
   int pn = PlayerNumber();
   if (pn >= 0) {
@@ -34,6 +38,7 @@ script "ub_Death_ChangeIsAlive" DEATH {
 
   if (GetCVar("lastmanstanding") == 1) {
     pn = PlayerNumber();
+    uh_settlementstate[UH_POSTFF_BASE + pn * UH_POSTFF_ROW_SIZE] = false;
     // Clear synchronously, including deaths exempted by DropItemsOnDeath_P.
     ACS_NamedExecuteWithResult("UH_ClearLeaveDrops", pn);
     oldstatus = playerlifestatusarr[pn];
@@ -61,6 +66,7 @@ script "ub_Disconnect_ChangeIsAlive" (int playernum) DISCONNECT {
   // Zandronum PLAYER_LeavesGame also fires DISCONNECT on voluntary spectate.
   // Latch departure so rejoining during the countdown cannot reclaim a choice.
   UH_AFKResetPlayer(playernum);
+  uh_settlementstate[UH_POSTFF_BASE + playernum * UH_POSTFF_ROW_SIZE] = false;
   if (GetCVar("lastmanstanding") == 1) {
     if (uh_bosschoicewinner == playernum + 1) {uh_bosschoicewinner = 0;}
     if (uh_bosschoicecommit[0] == playernum + 1) {
@@ -503,10 +509,8 @@ script "ub_WatchSurvivors" (int skipacs) {
   if (settlementgeneration == 0) PlayMusic_Loser(-1);
   // MakeAllPlayersInvun();
   gameover = true;
-  // Normal LMS boss victory: surviving bosses may fight during settlement.
-  // Keep this synchronous with gameover, before any result-sequence delay.
-  if (!isbonuseventactive)
-    GiveMeTheFunc("PowerProtectBoss", -1);
+  UH_RefreshPostRoundFF();
+  // The unified post-round FF policy owns all sides, including bonus rounds.
   ResetBossComboState();  // D6: clear combo state for the result sequence.
 
   SetFont("BIGFONT");
@@ -666,14 +670,11 @@ script "ub_WatchBossesAndEyes" (void) {
     break;
   }
 
-  GiveMeTheFunc("PowerProtectSurvivor", -1);
-  GiveMeTheFunc("PowerProtectMegaCopywep", -1);
-  GiveMeTheFunc("PowerProtectUnholyItem", -1);
-
   ACS_NamedTerminate("ub_WatchSurvivors", 0);
   // Unified bonus-event end entry: survivors took the round.
   UH_TryFinishBonusEvent(eventdataarr[EVENTDATA_MAINEVENT], UHBE_RESULT_SURVIVOR, false);
   gameover = true;
+  UH_RefreshPostRoundFF();
   ResetBossComboState();  // D6: clear combo state for the result sequence.
   // Log(i:PlayerInGame(BossDataArr[0][BOSSDATA_TID]-1000));
 

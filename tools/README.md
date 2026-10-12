@@ -192,6 +192,9 @@ Ordinary-round settlement can be made cancellable with
 See [Cancellable round settlement](../docs/round-settlement.md) for scope,
 option timing and manual checks. Run `python3 tools/check_round_settlement.py`
 for the actual ACS logic under C stubs; recompile `unholy` and `rz_debug`.
+`uh_sv_postroundfriendlyfire` (default `true`) controls team damage during
+pending/final results for every round type, including Bonus Events. The same
+logic check covers immunity removal/restoration, option changes and body changes.
 
 Bonus Event host overrides use the import-only `UHBESET` library
 (`src/acs/UHBESET.o`, absent from `LOADACS`). `tools/compile-acs.sh` compiles it
