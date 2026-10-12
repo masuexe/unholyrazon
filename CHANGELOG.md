@@ -2,7 +2,8 @@
 
 - 新增默认开启的结算友伤开关 `uh_sv_postroundfriendlyfire`，可在 Unholy Server Options → Game Rules → Friendly Fire After Round End 切换；统一覆盖结算等待、正式结束和原生 LMS 胜利序列中的生还者、Boss 与恶魔眼，包括 Bonus Event 的特殊友伤保护
 - 开放结算友伤时不再给予结算用全员无敌，保留角色自身防御能力；撤销结算继续战斗或关闭开关时恢复已移除的友伤保护，死亡、复活、变身及离场时丢弃旧机体快照，避免错误恢复
-- 修复 Zangief 变身恶魔眼后无法使用物品的问题
+- 修复 Zangief 抓取期间变身（如恶魔眼）后无法使用物品的问题，变身时解除抓取产生的道具限制，保留其他来源的限制
+- 移植 Razon3 的 Zangief 蓄力副攻击吸人效果，普通版最大吸力 25、Shiny 版 50，范围 250，吸力随距离衰减；新增默认开启的服务器开关 `uh_sv_zangiefpull`，可在 Unholy Server Options → Game Rules → Zangief Charge Pull 切换，修改从下一次吸力脉冲立即生效；说明见 [Zangief 蓄力吸人](docs/zangief-charge-pull.md)
 
 ## 4.0.0-beta.261012
 

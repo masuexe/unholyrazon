@@ -8,6 +8,32 @@ str zangief_give_item[2] = {
   "AirSuplexGroundCheck"
 };
 
+// Razon3 UB_PUSHPULLACS(25/50, 250, 2), scoped to Zangief's charge.
+// One pulse per charge tic; no delayed script survives release or morphing.
+script "uh_ZangiefChargePull" (int maxforce) {
+  if (!GetCVar("uh_sv_zangiefpull") || maxforce <= 0) {terminate;}
+  int owner = PlayerNumber();
+  if (owner < 0 || !PlayerInGame(owner) || PlayerIsSpectator(owner) ||
+      GetActorProperty(0, APROP_Health) <= 0) {terminate;}
+  str actor = GetActorClass(0);
+  if (StrICmp(actor, "Zangief") && StrICmp(actor, "ZangiefShiny")) {terminate;}
+
+  for (int p = 0; p < ServerMAX; p++) {
+    if (p == owner || !PlayerInGame(p) || PlayerIsSpectator(p)) {continue;}
+    int target = PLN_TID + p;
+    if (!ThingCount(T_NONE, target) || GetActorProperty(target, APROP_Health) <= 0 ||
+        CheckActorInventory(target, "PowerProtectBoss")) {continue;}
+    // Preserve the legacy Swap=2 filter and native team-game exclusion.
+    if (IsTeamGame && GetPlayerInfo(owner, PLAYERINFO_TEAM) == GetPlayerInfo(p, PLAYERINFO_TEAM)) {continue;}
+    int distance = XYZDistance(0, target);
+    if (distance <= 40 || distance >= 250) {continue;}
+    int force = CeilFixedToInt(FixedMul(maxforce << 16, 1.0 - FixedDiv(distance, 250)));
+    force = min(force, maxforce);
+    int angle = VectorAngle(GetActorX(0) - GetActorX(target), GetActorY(0) - GetActorY(target)) >> 8;
+    ThrustThing(angle, force, false, target);
+  }
+}
+
 // Explicit acquisition also works when team protection suppresses Pain.Suplex.
 // Player arguments are slots; SuplexID stores victim + 1 as before.
 script "uh_ZangiefBindGrab" (int owner, int victim) {
