@@ -94,4 +94,4 @@ Assets inherited from the Unholy Classes & Bosses Unbound release (`unholy_class
 - **[ACSUtils](https://github.com/Korshun/acsutils)**: Utility library by Korshun and contributors.
 - **[ZandronumMCP](https://github.com/rc4l/ZandronumMCP)**: Automated testing and headless engine introspection tooling.
 - **Rebellion Unholy & Saxton Hale**: Gameplay and boss concepts.
-- **CBM Gondola Patch**: Weapon offsets and reload animations.
+- **CBM Gondola Patch**: Weapon offsets, reload animations, and automap directional/death marker concept & sprites (originally by Trillster).

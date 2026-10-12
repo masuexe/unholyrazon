@@ -1,0 +1,139 @@
+// Fragment of unholy, included after uh_teaminfo. Razon3 automap visuals,
+// using the synchronized client life/role/policy cache, never server arrays.
+// Mirror PLN_TID from v6b's 8BDMDEFS.acs. Including the full header here
+// conflicts with MAX_PLAYERS exported by the existing uh_acsutils import.
+#define UH_AM_PLAYER_TID 1000
+
+#define UH_AM_DOTS 20
+// ACSF_Warp consumes a raw 32-bit binary angle, unlike GetActorAngle.
+#define UH_AM_45_DEGREES 0x20000000
+#define UH_AM_ICON 0
+#define UH_AM_ROLE 1
+#define UH_AM_DEATH 2
+#define UH_AM_VISIBLE 3
+#define UH_AM_X 4
+#define UH_AM_Y 5
+#define UH_AM_Z 6
+#define UH_AM_DOT_BASE 7
+
+function bool UH_AM_CanSee(int viewer, int subject) {
+  if (viewer < 0 || viewer >= MAX_PLAYERS) {return false;}
+  if (subject < 0 || subject >= MAX_PLAYERS) {return false;}
+  if (uhtirole[subject] == PLS_NULL) {return false;}
+  if (viewer == subject) {return true;}
+  if (PlayerIsSpectator(viewer) == 1 || uhtilife[viewer] == PLS_DEAD) {return true;}
+  // Razon3: special rounds show self only while alive. Unknown policy is
+  // also self-only until the server snapshot arrives.
+  if (uhtiscorepolicy != UH_SCOREPOLICY_NORMAL) {return false;}
+  return UH_AreDisplayTeammates(viewer, subject);
+}
+
+function int UH_AM_Spawn(str actor, int x, int y, int z) {
+  // Dynamic client-only TIDs; do not reserve a range shared with gameplay.
+  int tid = UniqueTID();
+  if (tid == 0 || !SpawnForced(actor, x, y, z, tid, 0)) {return 0;}
+  return tid;
+}
+
+script "uh_AutomapMarkers" OPEN CLIENTSIDE {
+  // Local array persists across Delay without consuming a map-variable slot.
+  // The round-core has already reached ACC's 128 map-variable limit.
+  int uham[MAX_PLAYERS][UH_AM_DOT_BASE + UH_AM_DOTS];
+  int pn, j;
+  UH_Ti_EnsureClientInitialized();
+  // As with SCORINFO, a listen host still has NETSTATE_SERVER: ACS spawns
+  // broadcast and destroy CLIENTSIDEONLY actors there. Never create these
+  // per-viewer markers in that VM. Offline and remote clients are supported.
+  if (ConsolePlayerNumber() < 0) {terminate;}
+  // Preserve Razon3's map-change startup grace period.
+  Delay(70);
+  while (true) {
+    int viewer = ConsolePlayerNumber();
+    if (UH_IsUnholyTeamMode()) {
+      for (pn = 0; pn < MAX_PLAYERS; pn++) {
+        bool visible = UH_AM_CanSee(viewer, pn);
+        bool alive = uhtilife[pn] == PLS_SURVIVOR
+          || uhtilife[pn] == PLS_BOSS || uhtilife[pn] == PLS_EYE;
+        bool body = PlayerInGame(pn)
+          && ClassifyActor(UH_AM_PLAYER_TID + pn) != ACTOR_NONE;
+        if (uham[pn][UH_AM_DEATH] != 0) {
+          if (!visible || alive || uhtilife[pn] == PLS_NULL) {
+            Thing_Remove(uham[pn][UH_AM_DEATH]);
+            uham[pn][UH_AM_DEATH] = 0;
+          }
+          else if (ClassifyActor(uham[pn][UH_AM_DEATH]) == ACTOR_NONE) {uham[pn][UH_AM_DEATH] = 0;}
+        }
+        if (visible && alive && body) {
+          int player = UH_AM_PLAYER_TID + pn;
+          int x = GetActorX(player);
+          int y = GetActorY(player);
+          int z = GetActorZ(player);
+          if (uham[pn][UH_AM_ICON] == 0 || ClassifyActor(uham[pn][UH_AM_ICON]) == ACTOR_NONE) {
+            uham[pn][UH_AM_ICON] = UH_AM_Spawn("UH_AutomapMarker", x, y, z);
+            uham[pn][UH_AM_ROLE] = PLS_NULL;
+            if (uham[pn][UH_AM_ICON] != 0) {
+              // am_map.cpp draws this sprite at every actor matching args[0].
+              SetThingSpecial(uham[pn][UH_AM_ICON], 0, player, 0, 0, 0, 0);
+            }
+          }
+          if (uham[pn][UH_AM_ICON] != 0 && uham[pn][UH_AM_ROLE] != uhtirole[pn]) {
+            str state = "Survivor";
+            if (uhtirole[pn] == PLS_BOSS) {state = "Boss";}
+            else if (uhtirole[pn] == PLS_EYE) {state = "Eye";}
+            SetActorState(uham[pn][UH_AM_ICON], state);
+            uham[pn][UH_AM_ROLE] = uhtirole[pn];
+          }
+          // Preserve the two ten-dot rays, +/-45 degrees, at 16-unit intervals.
+          // Warp bypasses collision so dots cannot get stuck at walls/teleports.
+          for (j = 0; j < UH_AM_DOTS; j++) {
+            if (uham[pn][UH_AM_DOT_BASE + j] == 0 || ClassifyActor(uham[pn][UH_AM_DOT_BASE + j]) == ACTOR_NONE) {
+              uham[pn][UH_AM_DOT_BASE + j] = UH_AM_Spawn("UH_AutomapDirection", x, y, z);
+            }
+            if (uham[pn][UH_AM_DOT_BASE + j] == 0) {continue;}
+            if (SetActivator(uham[pn][UH_AM_DOT_BASE + j])) {
+              Warp(player, ((j / 2) + 1) * 16.0, 0, 0,
+                                (j % 2 == 0) ? UH_AM_45_DEGREES : -UH_AM_45_DEGREES,
+                                WARPF_NOCHECKPOSITION);
+            }
+          }
+          // Cache only positions this viewer was permitted to see. A later death
+          // may remove the body/TID before the life snapshot reaches this client.
+          uham[pn][UH_AM_X] = x;
+          uham[pn][UH_AM_Y] = y;
+          uham[pn][UH_AM_Z] = z;
+          uham[pn][UH_AM_VISIBLE] = true;
+        }
+        else {
+          // One death mark per observed alive->dead transition; no marks
+          // for unseen enemies, disconnects, or a late-join dead snapshot.
+          if (visible && uham[pn][UH_AM_VISIBLE] && uhtilife[pn] == PLS_DEAD) {
+            uham[pn][UH_AM_DEATH] = UH_AM_Spawn("UH_AutomapDeath", uham[pn][UH_AM_X], uham[pn][UH_AM_Y], uham[pn][UH_AM_Z]);
+          }
+          if (uham[pn][UH_AM_ICON] != 0) {Thing_Remove(uham[pn][UH_AM_ICON]);}
+          uham[pn][UH_AM_ICON] = 0;
+          uham[pn][UH_AM_ROLE] = PLS_NULL;
+          for (j = 0; j < UH_AM_DOTS; j++) {
+            if (uham[pn][UH_AM_DOT_BASE + j] != 0) {Thing_Remove(uham[pn][UH_AM_DOT_BASE + j]);}
+            uham[pn][UH_AM_DOT_BASE + j] = 0;
+          }
+          uham[pn][UH_AM_VISIBLE] = false;
+        }
+      }
+    }
+    else {
+      for (pn = 0; pn < MAX_PLAYERS; pn++) {
+        if (uham[pn][UH_AM_ICON] != 0) {Thing_Remove(uham[pn][UH_AM_ICON]);}
+        uham[pn][UH_AM_ICON] = 0;
+        uham[pn][UH_AM_ROLE] = PLS_NULL;
+        for (j = 0; j < UH_AM_DOTS; j++) {
+          if (uham[pn][UH_AM_DOT_BASE + j] != 0) {Thing_Remove(uham[pn][UH_AM_DOT_BASE + j]);}
+          uham[pn][UH_AM_DOT_BASE + j] = 0;
+        }
+        uham[pn][UH_AM_VISIBLE] = false;
+        if (uham[pn][UH_AM_DEATH] != 0) {Thing_Remove(uham[pn][UH_AM_DEATH]);}
+        uham[pn][UH_AM_DEATH] = 0;
+      }
+    }
+    Delay(1);
+  }
+}

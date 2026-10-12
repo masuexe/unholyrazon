@@ -1,5 +1,6 @@
 ## 4.0.0-beta.261012
 
+- 移植 Razon3 automap 玩家位置、朝向点阵和 5 秒死亡标记，复用客户端 marker 与现有阵营快照；普通回合存活时显示自己及队友，特殊事件只显示自己，死亡／旁观时显示所有存活玩家；支持单机及远程独立客户端（注：listen server 房主本地不显示）
 - 为 SinfulBusterExpert 新增服主解锁设置 `uh_sv_sbe_unlockmode`：默认 `0` 使用 Unbound 规则，开局获得 W1～W7，剩余血量降至最大血量的 40% 时解锁 W8；设为 `1` 保留现有随掉血逐步解锁方式。可在 Unholy Server Options → Boss Setup → Weapon Unlocks 切换，每次变身时读取，中途修改从下一次变身生效；保留现有八个武器槽及两套解锁实现，说明见 [SinfulBusterExpert 解锁设置](docs/sinful-buster-expert-unlocks.md)
 - 新增普通 Survivor 对 Boss／Demoneye 回合的可取消结算：结算等待期间敌对双方重新存活时，取消本次结果并继续战斗，恢复战斗音乐及剩余计时，明确提示结算已取消；原生 LMS 胜利序列、特殊事件及强制结束保持原流程
 - 胜负及连胜次数在结算开始时立即显示，取消结算时回滚连胜并清除原提示；连胜奖励及其他结算奖励在最终确认后只发放一次
