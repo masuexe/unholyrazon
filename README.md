@@ -174,8 +174,7 @@ parent/
 │   └── tools/             # Build and test scripts
 ├── wads/                  # megagame.wad, mm8bdm-v6b.pk3, miscfixes (can be a symlink)
 ├── references/            # Extracted/unpacked base game & template sources (see tools/REFERENCES.md)
-├── unholyrazon_music/     # Optional: music packs for full launch profile
-└── hudex/                 # Optional: HudMessage preview tool
+└── unholyrazon_music/     # Optional: music packs for full launch profile
 ```
 
 ### Environment & Toolchain Setup
@@ -251,6 +250,7 @@ If you use VS Code, install the [zandronum-vscode](https://github.com/masuexe/za
 - [Class Based Modification](https://mm8bdm.net/forum/thread/class-based-modification-v9gh-42): Core code references.
 - [ACSUtils](https://github.com/Korshun/acsutils): Utility code adapted into `uh_acsutils.acs`.
 - [ZandronumMCP](https://github.com/rc4l/ZandronumMCP): Automated testing and headless engine introspection.
+- hude: HUD preview tooling by [StardustMotion](https://github.com/StardustMotion).
 - CBM Gondola Patch: Weapon offset references.
 - Rebellion Unholy, Saxton Hale: Inspiration and concepts.
 

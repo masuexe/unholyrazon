@@ -58,13 +58,12 @@ skills. This project's mod entry is `out/build.pk3`.
 Launch profiles under `tools/*.launch.json` use paths **relative to the repo root**:
 `out/build.pk3` for this mod, and `../wads/…` for the shared IWAD/base packages
 (place or symlink the WAD directory as a sibling of this repo). Optional addons
-in the `mm8bdm-v6b-full` profile similarly live under `../wads/`, `../unholyrazon_music/`,
-and `../hudex/out/`.
+in the `mm8bdm-v6b-full` profile similarly live under `../wads/` and
+`../unholyrazon_music/`.
 
 Optional debugging mods, loaded in step 3 when relevant:
 
 - `../wads/8bdm-hitvoxel-0.pk3` — visualize projectile hitboxes
-- `../hudex/out/hudex.pk3` — preview `HudMessage` layouts
 
 ## Entry points (in load order)
 
