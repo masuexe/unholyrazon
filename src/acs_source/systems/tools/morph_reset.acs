@@ -501,10 +501,21 @@ function void UH_ClearGenericBossAirDisable(void) {
   }
 }
 
+// Morphing interrupts the ground hold before ZangiefResetFlags_P can run.
+// Release only its owned item lock, preserving restrictions from other sources.
+function void UH_ClearZangiefItemLock(void) {
+  if (!CheckInventory("ZangiefItemLock_F"))
+    return;
+  TakeInventory("ZangiefItemLock_F", 1);
+  ACS_NamedExecuteWithResult("uh_cantuseitemsplayer", 0, 0);
+}
+
 // Pre-MorphActor: flag sweeps + strip jump-mod inventory (Bearer CTF morph).
 script "uh_MorphPreReset" (void) {
   if (PlayerNumber() == -1)
     terminate;
+  // Clear before taking the baseline so demorph cannot restore the stale lock.
+  UH_ClearZangiefItemLock();
   // Dismount before saving movement-stack baselines for the new body.
   ACS_NamedExecuteWithResult("uh_OilSliderReset");
   ACS_NamedExecuteWithResult("uh_AlphaFadeCancel");
@@ -558,6 +569,8 @@ script "uh_SetMorphInventory" (int item, int amount) {
 script "uh_MorphPostReset" (int force) {
   if (PlayerNumber() == -1)
     terminate;
+  // PowerMorph/MorphProjectile skip PreReset and transfer this inventory.
+  UH_ClearZangiefItemLock();
   if (!force && GetUserVariable(0, "user_uh_morph_pipeline_done"))
     terminate;
 
