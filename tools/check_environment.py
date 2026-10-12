@@ -49,6 +49,20 @@ def check_any_glob(base_dir: Path, patterns: list[str]) -> bool:
     return False
 
 
+def find_first_existing(candidates: list[Path]) -> Path | None:
+    for p in candidates:
+        if p.exists():
+            return p
+    return None
+
+
+def find_first_glob(base_dir: Path, pattern: str) -> Path | None:
+    if not base_dir.is_dir():
+        return None
+    matches = list(base_dir.glob(pattern))
+    return matches[0] if matches else None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Check Unholy Razon environment & reference assets")
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
@@ -64,6 +78,39 @@ def main() -> int:
 
     acc_path = os.environ.get("ACC") or shutil.which("acc")
     python_ver = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+
+    # Tier 1 reference resolution (hierarchical or flat or pk3)
+    mm8bdm_ref_candidates = [
+        ref_root / "for_8bdm-v6b" / "mm8bdm-v6b",
+        ref_root / "mm8bdm-v6b",
+        ref_root / "mm8bdm",
+    ]
+    mm8bdm_ref_found = find_first_existing(mm8bdm_ref_candidates)
+    mm8bdm_ref_ok = (mm8bdm_ref_found is not None) or (wads_dir / "mm8bdm-v6b.pk3").is_file()
+    mm8bdm_ref_display = str(mm8bdm_ref_found or (wads_dir / "mm8bdm-v6b.pk3") if (wads_dir / "mm8bdm-v6b.pk3").is_file() else mm8bdm_ref_candidates[0])
+
+    # Tier 2 CBM template resolution (hierarchical or flat or pk3)
+    cbm_candidates = [
+        ref_root / "for_8bdm-v6b" / "classes-v9gh_",
+        ref_root / "for_8bdm-v6b" / "classes-v9gh",
+        ref_root / "classes-v9gh_",
+        ref_root / "classes-v9gh",
+    ]
+    cbm_found = find_first_existing(cbm_candidates)
+    cbm_pk3 = find_first_glob(wads_dir, "classes-v9gh*.pk3")
+    cbm_ok = (cbm_found is not None) or (cbm_pk3 is not None)
+    cbm_display = str(cbm_found or cbm_pk3 or cbm_candidates[0])
+
+    # Tier 4 legacy Unholy resolution (hierarchical, flat, or pk3)
+    legacy_candidates = [
+        ref_root / "for_8bdm-v6a",
+        ref_root / "unholy_legacy",
+        ref_root / "legacy",
+    ]
+    legacy_found = find_first_existing(legacy_candidates)
+    legacy_pk3_ok = check_any_glob(wads_dir, ["*unholy*.pk3", "*uh-*.pk3", "*uh_*.pk3"])
+    legacy_ok = (legacy_found is not None) or legacy_pk3_ok
+    legacy_display = str(legacy_found or (wads_dir if legacy_pk3_ok else legacy_candidates[0]))
 
     # Item checklist
     results = {
@@ -83,17 +130,16 @@ def main() -> int:
                 "desc": "MM8BDM v6b game package",
             },
             "mm8bdm_v6b_reference": {
-                "ok": (ref_root / "for_8bdm-v6b" / "mm8bdm-v6b").is_dir() or (wads_dir / "mm8bdm-v6b.pk3").is_file(),
-                "path": str(ref_root / "for_8bdm-v6b" / "mm8bdm-v6b"),
-                "desc": "MM8BDM v6b source/actors (directory or pk3 in wads)",
+                "ok": mm8bdm_ref_ok,
+                "path": mm8bdm_ref_display,
+                "desc": "MM8BDM v6b source/actors (hierarchical/flat directory or pk3)",
             },
         },
         "tier2_template": {
             "cbm_v9gh": {
-                "ok": (ref_root / "for_8bdm-v6b" / "classes-v9gh_").is_dir()
-                or check_glob(wads_dir, "classes-v9gh*.pk3"),
-                "path": str(ref_root / "for_8bdm-v6b" / "classes-v9gh_"),
-                "desc": "CBM v9gh architectural template",
+                "ok": cbm_ok,
+                "path": cbm_display,
+                "desc": "CBM v9gh architectural template (hierarchical/flat directory or pk3)",
             }
         },
         "tier3_engine": {
@@ -110,11 +156,8 @@ def main() -> int:
         },
         "tier4_optional": {
             "unholy_legacy": {
-                "ok": (
-                    (ref_root / "for_8bdm-v6a").is_dir()
-                    or check_any_glob(wads_dir, ["*unholy*.pk3", "*uh-*.pk3", "*uh_*.pk3"])
-                ),
-                "path": str(ref_root / "for_8bdm-v6a"),
+                "ok": legacy_ok,
+                "path": legacy_display,
                 "desc": "Legacy Unholy packages (*unholy*.pk3 / *uh-*.pk3)",
             },
             "uix_v3bh": {

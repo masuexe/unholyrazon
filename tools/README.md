@@ -441,9 +441,10 @@ See [REFERENCES.md](REFERENCES.md) for full catalog and download links.
 - **Unpack references from PK3 archives**:
   ```bash
   python3 tools/unpack_references.py
-  python3 tools/unpack_references.py --all  # Extract sprites/audio as well
+  python3 tools/unpack_references.py --include-legacy # Also extract legacy Unholy reference packages
+  python3 tools/unpack_references.py --all            # Extract sprites/audio as well
   ```
-  Extracts code-only definition lumps (`.dec`, `.txt`, `.acs`) from `.pk3` files in `../wads` into `../references/for_8bdm-v6b/` for fast inspection.
+  Extracts code-only definition lumps (`.dec`, `.txt`, `.acs`) from `.pk3` files in `../wads` into `../references/` for fast inspection.
 - **Local machine path overrides**:
   Copy `tools/paths.json.example` to `tools/paths.local.json` to customize paths without modifying git-tracked files.
 
