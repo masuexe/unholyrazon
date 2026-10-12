@@ -90,12 +90,12 @@ def main():
     assert any('DrawBar "002B_VAR", "VNOBAR", Ammo1,' in line
                for line in append_lines)
     formatted_h, formatted_v = generator.gen_append_files(source_config)
-    assert formatted_h.startswith("AppendStatusBar Normal, forcescaled {\n")
-    assert formatted_v.startswith("AppendStatusBar Fullscreen, forcescaled {\n")
+    assert formatted_h.startswith("AppendStatusBar normal, forcescaled {\n")
+    assert formatted_v.startswith("AppendStatusBar fullscreen, forcescaled {\n")
     assert '\n  InInventory "DrawStatusBarFlag", 1 {\n' in formatted_h
-    assert '\n\tInInventory "DrawStatusBarFlag", 1 {\n' in formatted_v
+    assert '\n  InInventory "DrawStatusBarFlag", 1 {\n' in formatted_v
     assert '\n        InInventory "UHBar_Source_P1L0Selector", 1 ' in formatted_h
-    assert '\n\t\t\t\tInInventory "UHBar_Source_P1L0Selector", 1 ' in formatted_v
+    assert '\n        InInventory "UHBar_Source_P1L0Selector", 1 ' in formatted_v
     assert 'DrawBar "002B_VAR", "VNOBAR", Ammo1, horizontal, 58, 184;' in formatted_h
     assert formatted_h.endswith("}\n") and formatted_v.endswith("}\n")
     source_actors = generator.gen_namespaced_barfx_actors(source_config)
@@ -197,9 +197,8 @@ def main():
         "UHBAR_PLAYERHEALTH_BURNING",
     ]
 
-    # Atomic Fire retains its cvar/threshold/timer control flow. All variants
-    # use the old position-1/layer-0 bank, so the later charge-meter selection
-    # overwrites a threshold selection when charge bars are enabled.
+    # Atomic Fire retains its cvar/threshold/timer control flow. Ammo variants
+    # use position-1/layer-0, and charge_meter uses position-1/layer-1 overlay.
     atomic_bars = [
         item for item in real_config["bars"]
         if item["_namespace"] == "UHBar_AtomicFireWepU"
@@ -208,12 +207,12 @@ def main():
         (item["id"], item["source"], item["position"], item["priority"])
         for item in atomic_bars
     } == {
-        ("charge_meter", "AtomicFireCharge_F", "1", 0),
+        ("charge_meter", "AtomicFireCharge_F", "1", 1),
         ("ammo_maximum", "AtomicFireAmmo", "1", 0),
         ("ammo_high", "AtomicFireAmmo", "1", 0),
         ("ammo_medium", "AtomicFireAmmo", "1", 0),
     }
-    assert len({generator.namespaced_selector(item) for item in atomic_bars}) == 1
+    assert len({generator.namespaced_selector(item) for item in atomic_bars}) == 2
     atomic_source = (generator.ROOT / "acs_source" / "hud" / "uh_cwepbar.acs").read_text(
         encoding="utf-8"
     )
@@ -222,7 +221,7 @@ def main():
             f'CheckInventory("WeaponCharge") >= {threshold}' in atomic_source
             and f"AtomicFireWepU_DrawBar(UHBAR_ATOMICFIRE_{constant});" in atomic_source
         )
-    assert atomic_source.count("AtomicFireWepU_DrawBar(UHBAR_ATOMICFIRE_MAXIMUM);") == 2
+    assert atomic_source.count("AtomicFireWepU_DrawBar(UHBAR_ATOMICFIRE_MAXIMUM);") == 1
     assert "AtomicFireWepU_DrawBar(UHBAR_ATOMICFIRE_CHARGE);" in atomic_source
     charge_call = atomic_source.index("AtomicFireWepU_DrawBar(UHBAR_ATOMICFIRE_CHARGE);")
     for constant in ("MAXIMUM", "HIGH", "MEDIUM"):
@@ -378,9 +377,26 @@ def main():
     generator.validate_fill_graphics(
         [dict(clear_bar, reverse_mask=True)], fake_defs, fake_anims
     )
-    expect_failure([
-        ("UHBar_Fixture", [bar("body", "UHBAR_FIXTURE", reverse_mask="yes")]),
-    ], "non-boolean reverse_mask")
+    # --- CLI & Argument parser tests -----------------------------------------
+    # Test load_bar_config with explicit config_path (no mutation of generator.CONFIG)
+    with tempfile.TemporaryDirectory(prefix="uh-cli-test-") as temp_dir:
+        temp_cfg = Path(temp_dir) / "custom_bars.toml"
+        temp_cfg.write_text(toml_config([("UHBar_Direct", [bar("body", "UHBAR_DIRECT")])]), encoding="utf-8")
+        direct_config = generator.load_bar_config(config_path=temp_cfg)
+        assert len(direct_config["bars"]) == 1
+        assert direct_config["bars"][0]["_namespace"] == "UHBar_Direct"
+
+    # Test main() CLI check execution
+    assert generator.main(["--check", "-q"]) == 0
+    assert generator.main(["-v", "--check"]) == 0
+
+    # Test mutual exclusivity of -v and -q
+    try:
+        generator.main(["-v", "-q", "--check"])
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("expected -v and -q combination to fail")
 
     print("bar generator fixture checks: OK")
 

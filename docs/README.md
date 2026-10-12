@@ -55,6 +55,7 @@ Architecture specifications and data contracts for internal Unholy core subsyste
 
 | Document | Description |
 |---|---|
+| [**Custom HUD Bars**](custom-bars.md) | Data-driven HUD bar compiler (`bars.toml` + `tools/_gen_barpos.py`), multi-bank positions, sparse layer priorities, SBARINFO generation, and unified clearing. |
 | [**UHDT Identity CRUD Contract**](modding/uhdt-identity-crud-contract.md) | Internal lifecycle, tombstone rules, and IPC contracts for UHDT identity tables. |
 | [**UHDT Music Row Contract**](modding/uhdt-music-row-contract.md) | Internal lifecycle, capacity, and pick logic for shared boss and event music tables. |
 

@@ -323,12 +323,14 @@ Three of these cost a debugging round each; check them before blaming the mod:
   writing. Format the source with the project's DECORATE editor settings; the
   generator preserves that formatting in W1/W2/W3. This generator no longer
   rewrites `DecoyBot_W.dec`.
-- `_gen_barpos.py` — regenerate `SBARINFO.h.uhappend` /
-  `SBARINFO.v.uhappend` (AppendStatusBar) and the TOML bar actors/ACS from
-  `tools/bars.toml`. The v6b numeric `BRSL/VRSL` compatibility banks remain
-  hand-maintained in `SBARINFO.*._core`.
-  `--check` verifies all generated outputs (and stale-file absence) without
-  writing; exits 1 on drift. Run after adding String-bar graphics.
+- `_gen_barpos.py` — compiler CLI to regenerate `SBARINFO.h.uhappend` /
+  `SBARINFO.v.uhappend` (AppendStatusBar), DECORATE selector/ammo actors in
+  `UH_BarFX.dec`, and generated ACS from `tools/bars.toml`. Detailed architectural
+  guide in [docs/custom-bars.md](../docs/custom-bars.md).
+  - Flags: `-c/--config <FILE>` (default: `tools/bars.toml`), `-o/--output-dir <DIR>` (default: `src`),
+    `--check` (verify without writing; exit 1 on drift), `-v/--verbose` (diagnostic logging),
+    `-q/--quiet` (suppress non-error output).
+  - Run `python3 tools/_gen_barpos.py --check` in CI or after modifying bar graphics/definitions.
 - `bars.toml` is the schema-versioned hand-authored input for namespaced bars.
   `python3 tools/_gen_barpos.py --check` verifies its checked-in numeric ACS
   helper, namespaced selector/ammo actors in `UH_BarFX.dec`, and sparse-priority

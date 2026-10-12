@@ -277,6 +277,15 @@ directories before the UH-owned include directory. Compiled `.o` files go in
 `src/acs/` (gitignored). `LOADACS` contains library names, not source paths,
 so its order and entries must remain unchanged when ACS source files move.
 
+### Custom HUD bars (bars.toml & code generation)
+
+Custom HUD bars are generated from `tools/bars.toml` via `python3 tools/_gen_barpos.py`.
+Never edit `SBARINFO.*.uhappend`, `class_bars_generated.acs`, or the TOML marker section
+of `UH_BarFX.dec` by hand. All bar groups share one clear callback (`UHBar_ClearAll`)
+registered once with `core_DrawBar_RegisterClear` to prevent runtime registry overflow.
+Full architecture and schema in [docs/custom-bars.md](docs/custom-bars.md). Run
+`python3 tools/_gen_barpos.py --check` and `python3 tools/test_gen_barpos.py` to verify.
+
 ## Naming conventions
 
 | Suffix | Meaning | Example |

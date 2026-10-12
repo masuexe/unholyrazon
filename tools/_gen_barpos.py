@@ -12,8 +12,12 @@ order. All namespaces share one clear callback (`UHBar_ClearAll`) that is
 registered once; core_DrawBar_RegisterClear's capacity must not scale with
 the number of TOML groups.
 
-With --check, regenerate everything in memory and compare against the files
-on disk; exit 1 with a per-file report on any drift (never writes).
+CLI Flags:
+  -c, --config <FILE>     Path to bar definitions TOML (default: tools/bars.toml)
+  -o, --output-dir <DIR>  Path to mod source directory (default: src)
+  --check                 Verify generated files are up to date without writing
+  -v, --verbose           Print detailed processing and diagnostic messages
+  -q, --quiet             Suppress informational messages
 """
 import argparse
 import re
@@ -59,15 +63,21 @@ def draw_helper(namespace: str) -> str:
     stem = namespace[6:] if namespace.casefold().startswith("uhbar_") else namespace
     return f"{stem}_DrawBar"
 
-STALE_GENERATED = (
-    ROOT / "actors" / "inventory" / "sbar" / "BarFX.txt",
-    ROOT / "acs_source" / "hud" / "stealthsniper_generated.acs",
-    ROOT / "TEXTURES.barscat",
-    ROOT / "TEXTURES.barspos",
-    ROOT / "TEXTURES.barpos",
-    ROOT / "ANIMDEFS.barscat",
-    ROOT / "ANIMDEFS.barpos",
-)
+
+def get_stale_paths(root_dir: Path | str | None = None) -> tuple[Path, ...]:
+    root = Path(root_dir) if root_dir is not None else ROOT
+    return (
+        root / "actors" / "inventory" / "sbar" / "BarFX.txt",
+        root / "acs_source" / "hud" / "stealthsniper_generated.acs",
+        root / "TEXTURES.barscat",
+        root / "TEXTURES.barspos",
+        root / "TEXTURES.barpos",
+        root / "ANIMDEFS.barscat",
+        root / "ANIMDEFS.barpos",
+    )
+
+
+STALE_GENERATED = get_stale_paths(ROOT)
 
 
 # --- DrawBar fill sanity -----------------------------------------------------
@@ -109,10 +119,11 @@ def strip_line_comments(text: str) -> str:
     return LINE_COMMENT_RX.sub("", text)
 
 
-def bar_graphics_text(pattern: str) -> str:
+def bar_graphics_text(pattern: str, root_dir: Path | str | None = None) -> str:
+    root = Path(root_dir) if root_dir is not None else ROOT
     return "\n".join(
         path.read_text(encoding="utf-8", errors="ignore")
-        for path in sorted(ROOT.glob(pattern))
+        for path in sorted(root.glob(pattern))
     )
 
 
@@ -209,8 +220,14 @@ def is_transparent_fill(name: str, defs: dict, animations: dict) -> bool:
     return all(patch == TRANSPARENT_PATCH for patch in patches)
 
 
-def validate_fill_graphics(bars: list, defs: dict, animations: dict):
+def validate_fill_graphics(
+    bars: list,
+    defs: dict,
+    animations: dict,
+    config_path: Path | str | None = None,
+):
     """Reject fill graphics that cannot render as a growing slot bar."""
+    cfg_display = config_path if config_path is not None else CONFIG
     for bar in bars:
         label = bar_label(bar)
         reverse_mask = bar.get("reverse_mask", False)
@@ -224,7 +241,7 @@ def validate_fill_graphics(bars: list, defs: dict, animations: dict):
             if offsets and not offset_fill_ack:
                 frame, dx, dy = offsets[0]
                 raise SystemExit(
-                    f"{CONFIG}: {label}: {axis} fill {fill!r} renders at offset "
+                    f"{cfg_display}: {label}: {axis} fill {fill!r} renders at offset "
                     f"({dx}, {dy}) via {frame!r}. DrawBar draws the fill at the slot "
                     "coordinates and the renderer applies the texture offset "
                     "(v_draw.cpp: parms->left/top default to GetScaledLeftOffset/"
@@ -238,59 +255,65 @@ def validate_fill_graphics(bars: list, defs: dict, animations: dict):
                 bar[empty_key], defs, animations
             ):
                 raise SystemExit(
-                    f"{CONFIG}: {label}: {axis} fill {fill!r} is fully transparent "
+                    f"{cfg_display}: {label}: {axis} fill {fill!r} is fully transparent "
                     f"while empty {bar[empty_key]!r} is not, which draws the inverse "
                     "of the value. Set reverse_mask = true if that is intended."
                 )
 
 
-def load_bar_graphics():
+def load_bar_graphics(root_dir: Path | str | None = None):
     """Return (known graphics, texture definitions, animations).
 
     Comments are stripped first so a commented-out definition neither counts as
     a known graphic nor contributes patches/offsets/animation frames.
     """
-    textures = strip_line_comments(bar_graphics_text("TEXTURES*"))
-    animdefs = strip_line_comments(bar_graphics_text("ANIMDEFS*"))
+    root = Path(root_dir) if root_dir is not None else ROOT
+    textures = strip_line_comments(bar_graphics_text("TEXTURES*", root_dir=root))
+    animdefs = strip_line_comments(bar_graphics_text("ANIMDEFS*", root_dir=root))
     known = {name.casefold() for name in re.findall(
         r"\b(?:graphic|patch|texture)\s+([A-Za-z0-9_]+)", textures + "\n" + animdefs,
     )} | {name.casefold() for name in COMMON_BAR_GRAPHICS | BASE_BAR_GRAPHICS}
-    known |= {path.stem.casefold() for path in (ROOT / "graphics").rglob("*.png")}
+    known |= {path.stem.casefold() for path in (root / "graphics").rglob("*.png")}
     return known, parse_texture_defs(textures), parse_texture_animations(animdefs)
 
 
-def load_bar_config() -> dict:
+def load_bar_config(
+    config_path: Path | str | None = None,
+    root_dir: Path | str | None = None,
+) -> dict:
     """Load and validate the hand-authored TOML bar definitions."""
-    with CONFIG.open("rb") as fp:
+    cfg_file = Path(config_path) if config_path is not None else CONFIG
+    root = Path(root_dir) if root_dir is not None else ROOT
+    with cfg_file.open("rb") as fp:
         config = tomllib.load(fp)
     if type(config.get("schema_version")) is not int or config["schema_version"] != 1:
-        raise SystemExit(f"{CONFIG}: schema_version must be 1")
+        raise SystemExit(f"{cfg_file}: schema_version must be 1")
     groups = config.get("groups")
     if not isinstance(groups, list) or not groups:
-        raise SystemExit(f"{CONFIG}: expected at least one [[groups]] entry")
+        raise SystemExit(f"{cfg_file}: expected at least one [[groups]] entry")
     bars = []
     seen_namespaces = set()
     for group in groups:
         if not isinstance(group, dict):
-            raise SystemExit(f"{CONFIG}: each [[groups]] entry must be a table")
+            raise SystemExit(f"{cfg_file}: each [[groups]] entry must be a table")
         namespace = group.get("namespace")
         if not isinstance(namespace, str) or not ACTOR_NAME_RX.fullmatch(namespace):
-            raise SystemExit(f"{CONFIG}: group has invalid namespace")
+            raise SystemExit(f"{cfg_file}: group has invalid namespace")
         namespace_key = namespace.casefold()
         if namespace_key in seen_namespaces:
-            raise SystemExit(f"{CONFIG}: duplicate group namespace {namespace!r}")
+            raise SystemExit(f"{cfg_file}: duplicate group namespace {namespace!r}")
         seen_namespaces.add(namespace_key)
         group_bars = group.get("bars")
         if not isinstance(group_bars, list) or not group_bars:
-            raise SystemExit(f"{CONFIG}: {namespace}: expected [[groups.bars]] entries")
+            raise SystemExit(f"{cfg_file}: {namespace}: expected [[groups.bars]] entries")
         for source_bar in group_bars:
             if not isinstance(source_bar, dict):
-                raise SystemExit(f"{CONFIG}: each [[groups.bars]] entry must be a table")
+                raise SystemExit(f"{cfg_file}: each [[groups.bars]] entry must be a table")
             bar = dict(source_bar)
             bar["_namespace"] = namespace
             bars.append(bar)
     config["bars"] = bars
-    known_graphics, texture_defs, animations = load_bar_graphics()
+    known_graphics, texture_defs, animations = load_bar_graphics(root_dir=root)
     seen_ids = set()
     seen_constants = set()
     seen_helpers = {}
@@ -299,76 +322,76 @@ def load_bar_config() -> dict:
         for key in ("id", "position", "priority", "vertical_full", "vertical_empty",
                     "horizontal_full", "horizontal_empty"):
             if key not in bar:
-                raise SystemExit(f"{CONFIG}: {label}: missing {key!r}")
+                raise SystemExit(f"{cfg_file}: {label}: missing {key!r}")
         if not isinstance(bar["id"], str) or not ACTOR_NAME_RX.fullmatch(bar["id"]):
-            raise SystemExit(f"{CONFIG}: {label}: invalid bar id {bar['id']!r}")
+            raise SystemExit(f"{cfg_file}: {label}: invalid bar id {bar['id']!r}")
         constant_name = bar.get("constant_name")
         if not isinstance(constant_name, str) or not ACTOR_NAME_RX.fullmatch(constant_name):
-            raise SystemExit(f"{CONFIG}: {label}: invalid constant_name")
+            raise SystemExit(f"{cfg_file}: {label}: invalid constant_name")
         if len(constant_name) >= 32:
             raise SystemExit(
-                f"{CONFIG}: {label}: constant_name exceeds ACC's 31-character limit"
+                f"{cfg_file}: {label}: constant_name exceeds ACC's 31-character limit"
             )
         if not constant_name.upper().startswith("UHBAR_"):
-            raise SystemExit(f"{CONFIG}: {label}: constant_name must start with UHBAR_")
+            raise SystemExit(f"{cfg_file}: {label}: constant_name must start with UHBAR_")
         bar_namespace = bar["_namespace"]
         folded_id = (bar_namespace.casefold(), bar["id"].casefold())
         if folded_id in seen_ids:
-            raise SystemExit(f"{CONFIG}: duplicate bar id {label!r}")
+            raise SystemExit(f"{cfg_file}: duplicate bar id {label!r}")
         seen_ids.add(folded_id)
         if constant_name.casefold() in seen_constants:
-            raise SystemExit(f"{CONFIG}: {label}: duplicate constant_name {constant_name!r}")
+            raise SystemExit(f"{cfg_file}: {label}: duplicate constant_name {constant_name!r}")
         seen_constants.add(constant_name.casefold())
         namespace_key = bar_namespace.casefold()
         helper = draw_helper(bar_namespace)
         if len(helper) >= 32:
             raise SystemExit(
-                f"{CONFIG}: {label}: generated draw helper exceeds ACC's "
+                f"{cfg_file}: {label}: generated draw helper exceeds ACC's "
                 "31-character limit"
             )
         previous_helper_namespace = seen_helpers.get(helper.casefold())
         if (previous_helper_namespace is not None
                 and previous_helper_namespace.casefold() != namespace_key):
             raise SystemExit(
-                f"{CONFIG}: {label}: generated draw helper {helper!r} is not unique"
+                f"{cfg_file}: {label}: generated draw helper {helper!r} is not unique"
             )
         seen_helpers[helper.casefold()] = bar_namespace
         if bar["position"] not in {p[0] for p in POS_BANKS}:
-            raise SystemExit(f"{CONFIG}: {label}: invalid position {bar['position']!r}")
+            raise SystemExit(f"{cfg_file}: {label}: invalid position {bar['position']!r}")
         priority = bar["priority"]
         if type(priority) is not int or priority < 0:
-            raise SystemExit(f"{CONFIG}: {label}: invalid layer priority")
+            raise SystemExit(f"{cfg_file}: {label}: invalid layer priority")
         has_source = "source" in bar
         has_capacity = "capacity" in bar
         if has_source and has_capacity:
-            raise SystemExit(f"{CONFIG}: {label}: source and capacity are mutually exclusive")
+            raise SystemExit(f"{cfg_file}: {label}: source and capacity are mutually exclusive")
         if has_source:
             source = bar["source"]
             if not isinstance(source, str) or not ACTOR_NAME_RX.fullmatch(source):
-                raise SystemExit(f"{CONFIG}: {label}: source must be a valid identifier")
+                raise SystemExit(f"{cfg_file}: {label}: source must be a valid identifier")
         else:
             if not has_capacity:
-                raise SystemExit(f"{CONFIG}: {label}: missing 'capacity'")
+                raise SystemExit(f"{cfg_file}: {label}: missing 'capacity'")
             capacity = bar["capacity"]
             if type(capacity) is not int or capacity <= 0 or capacity > INT32_MAX:
                 raise SystemExit(
-                    f"{CONFIG}: {label}: capacity must be an integer in 1..{INT32_MAX}"
+                    f"{cfg_file}: {label}: capacity must be an integer in 1..{INT32_MAX}"
                 )
         reverse_mask = bar.get("reverse_mask", False)
         if not isinstance(reverse_mask, bool):
-            raise SystemExit(f"{CONFIG}: {label}: reverse_mask must be boolean")
+            raise SystemExit(f"{cfg_file}: {label}: reverse_mask must be boolean")
         offset_fill_ack = bar.get("offset_fill_ack", False)
         if not isinstance(offset_fill_ack, bool):
-            raise SystemExit(f"{CONFIG}: {label}: offset_fill_ack must be boolean")
+            raise SystemExit(f"{cfg_file}: {label}: offset_fill_ack must be boolean")
         for key in ("vertical_full", "vertical_empty", "horizontal_full", "horizontal_empty"):
             image = bar[key]
             if not isinstance(image, str) or not image:
-                raise SystemExit(f"{CONFIG}: {label}: empty {key}")
+                raise SystemExit(f"{cfg_file}: {label}: empty {key}")
             if image.casefold() not in known_graphics:
-                raise SystemExit(f"{CONFIG}: {label}: missing image reference {image!r}")
-    validate_fill_graphics(bars, texture_defs, animations)
-    validate_selector_banks(config)
-    validate_generated_actor_names(config)
+                raise SystemExit(f"{cfg_file}: {label}: missing image reference {image!r}")
+    validate_fill_graphics(bars, texture_defs, animations, config_path=cfg_file)
+    validate_selector_banks(config, config_path=cfg_file)
+    validate_generated_actor_names(config, config_path=cfg_file)
     return config
 
 
@@ -402,8 +425,9 @@ def layer_selector_capacity(config: dict, bar: dict) -> int:
                    other["priority"]) == bank)
 
 
-def validate_selector_banks(config: dict):
+def validate_selector_banks(config: dict, config_path: Path | str | None = None):
     """Ensure shared selector banks receive dense, deterministic amounts."""
+    cfg_display = config_path if config_path is not None else CONFIG
     banks = {}
     for bar in config["bars"]:
         bank = (bar["_namespace"].casefold(), bar["position"], bar["priority"])
@@ -414,12 +438,13 @@ def validate_selector_banks(config: dict):
         if actual != expected:
             names = ", ".join(bar_label(bar) for bar in bars)
             raise SystemExit(
-                f"{CONFIG}: selector bank numbering is not dense for {names}"
+                f"{cfg_display}: selector bank numbering is not dense for {names}"
             )
 
 
-def validate_generated_actor_names(config: dict):
+def validate_generated_actor_names(config: dict, config_path: Path | str | None = None):
     """Match Zandronum's case-insensitive actor-name collision behavior."""
+    cfg_display = config_path if config_path is not None else CONFIG
     seen = {}
     for bar in config["bars"]:
         bank = (bar["_namespace"].casefold(), bar["position"], bar["priority"])
@@ -435,7 +460,7 @@ def validate_generated_actor_names(config: dict):
                         and bank == previous_bank):
                     continue
                 raise SystemExit(
-                    f"{CONFIG}: generated actor collision {actor!r} ({kind}) "
+                    f"{cfg_display}: generated actor collision {actor!r} ({kind}) "
                     f"between {previous_label} and {bar_label(bar)}"
                 )
             seen[key] = (kind, bar_label(bar), bank)
@@ -528,11 +553,12 @@ def gen_namespaced_barfx_actors(config: dict) -> str:
     return "\n".join(block)
 
 
-def barfx_updated_text(config):
-    text = UH_BARFX.read_text(encoding="utf-8")
+def barfx_updated_text(config: dict, barfx_path: Path | str | None = None) -> str:
+    path = Path(barfx_path) if barfx_path is not None else UH_BARFX
+    text = path.read_text(encoding="utf-8")
     m = re.search(r"(?m)^\s*//\s*\$UH — TOML namespaced bar selectors / ammo.*$", text)
     if not m:
-        raise SystemExit("UH_BarFX.dec missing TOML bar marker")
+        raise SystemExit(f"{path}: missing TOML bar marker")
     return text[:m.start()] + gen_namespaced_barfx_actors(config)
 
 
@@ -618,20 +644,81 @@ def gen_generated_acs(config: dict) -> str:
     return "\n".join(lines)
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--check", action="store_true",
-                    help="verify generated files are up to date; exit 1 on drift")
-    args = ap.parse_args()
-
-    config = load_bar_config()
+def get_target_outputs(config: dict, root_dir: Path | str | None = None) -> dict[Path, str]:
+    root = Path(root_dir) if root_dir is not None else ROOT
     hz, vz = gen_append_files(config)
-    outputs = {
-        SBAR_HZ: hz,
-        SBAR_VZ: vz,
-        UH_BARFX: barfx_updated_text(config),
-        GENERATED_ACS: gen_generated_acs(config),
+    barfx_file = root / "actors" / "inventory" / "sbar" / "UH_BarFX.dec"
+    return {
+        root / "SBARINFO.h.uhappend": hz,
+        root / "SBARINFO.v.uhappend": vz,
+        barfx_file: barfx_updated_text(config, barfx_path=barfx_file),
+        root / "acs_source" / "hud" / "class_bars_generated.acs": gen_generated_acs(config),
     }
+
+
+generate_outputs = get_target_outputs
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(
+        prog="_gen_barpos.py",
+        description="Compile Unholy namespaced bar definitions (bars.toml) into ACS, SBARINFO, and DECORATE.",
+    )
+    ap.add_argument(
+        "-c", "--config",
+        dest="config_path",
+        type=Path,
+        default=None,
+        help="path to bar definitions TOML file (default: tools/bars.toml)",
+    )
+    ap.add_argument(
+        "-o", "--output-dir",
+        dest="output_dir",
+        type=Path,
+        default=None,
+        help="mod source root directory (default: src)",
+    )
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="verify generated files are up to date without writing; exit 1 on drift",
+    )
+    ap.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="enable verbose diagnostic logging",
+    )
+    ap.add_argument(
+        "-q", "--quiet",
+        action="store_true",
+        help="suppress informational messages",
+    )
+    return ap
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = build_arg_parser()
+    args = ap.parse_args(argv)
+
+    if args.verbose and args.quiet:
+        ap.error("cannot specify both --verbose and --quiet")
+
+    config_path = args.config_path if args.config_path is not None else CONFIG
+    root_dir = args.output_dir if args.output_dir is not None else ROOT
+
+    if args.verbose:
+        print(f"Reading bar configuration from: {config_path}")
+        print(f"Target mod source directory:    {root_dir}")
+
+    config = load_bar_config(config_path=config_path, root_dir=root_dir)
+
+    if args.verbose:
+        bar_count = len(config.get("bars", []))
+        group_count = len(config.get("groups", []))
+        print(f"Loaded {bar_count} bars across {group_count} groups.")
+
+    outputs = get_target_outputs(config, root_dir=root_dir)
+    stale_paths = get_stale_paths(root_dir=root_dir)
 
     if args.check:
         drift = []
@@ -639,26 +726,40 @@ def main():
             old = path.read_text(encoding="utf-8") if path.exists() else None
             if old != new:
                 drift.append(path.name)
-        for p in STALE_GENERATED:
+        for p in stale_paths:
             if p.exists():
-                drift.append(p.name + " (stale file still present)")
+                drift.append(f"{p.name} (stale file still present)")
         if drift:
             print("DRIFT — regenerate with: python3 tools/_gen_barpos.py")
             for d in drift:
                 print(f"  {d}")
-            sys.exit(1)
-        print("check OK: all generated outputs up to date")
-        return
+            return 1
+        if not args.quiet:
+            print("check OK: all generated outputs up to date")
+        return 0
 
+    wrote_count = 0
     for path, new in outputs.items():
         if not path.exists() or path.read_text(encoding="utf-8") != new:
+            path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(new, encoding="utf-8")
-            print(f"wrote {path.name}")
-    for p in STALE_GENERATED:
+            wrote_count += 1
+            if not args.quiet:
+                print(f"wrote {path.name}")
+        elif args.verbose:
+            print(f"up to date: {path.name}")
+
+    for p in stale_paths:
         if p.exists():
             p.unlink()
-            print(f"deleted {p.name}")
+            if not args.quiet:
+                print(f"deleted {p.name}")
+
+    if args.verbose and wrote_count == 0:
+        print("all generated files were already up to date")
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
