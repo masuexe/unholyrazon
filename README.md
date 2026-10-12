@@ -166,16 +166,35 @@ Build scripts and launch profiles use relative paths. Place base files alongside
 
 ```
 parent/
-├── unholyrazon/           # This repository
+├── unholyrazon4/          # This repository
 │   ├── src/               # Mod source files (packed into out/build.pk3)
 │   ├── out/build.pk3      # Built PK3 output (git-ignored)
 │   ├── docs/              # Documentation
 │   ├── examples/          # Example addon PK3 sources
 │   └── tools/             # Build and test scripts
-├── wads/                  # megagame.wad, mm8bdm-v6b.pk3, miscfixes
+├── wads/                  # megagame.wad, mm8bdm-v6b.pk3, miscfixes (can be a symlink)
+├── references/            # Extracted/unpacked base game & template sources (see tools/REFERENCES.md)
 ├── unholyrazon_music/     # Optional: music packs for full launch profile
 └── hudex/                 # Optional: HudMessage preview tool
 ```
+
+### Environment & Toolchain Setup
+
+1. **Verify toolchain and assets**:
+   ```bash
+   python3 tools/check_environment.py
+   ```
+   Checks for the `acc` compiler, test WADs (`megagame.wad`, `mm8bdm-v6b.pk3`), and external references.
+   See [tools/REFERENCES.md](tools/REFERENCES.md) for reference catalogs, download links, and local path overrides (`tools/paths.local.json`).
+
+2. **Unpack references for code consultation (Optional)**:
+   If you have `.pk3` files in `wads/` and want lightweight, code-only reference trees for IDE/Agent code navigation:
+   ```bash
+   python3 tools/unpack_references.py
+   ```
+
+> [!TIP]
+> For core codebase architecture, actor include chains, class hierarchies, and engineering conventions, see [AGENTS.md](AGENTS.md).
 
 ### Build Steps
 
