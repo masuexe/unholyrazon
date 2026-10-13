@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261014
+
+- Fixed `ub_LMS_EventTime` entering an infinite reward retry loop when the last survivor died, disconnected, or lost their pawn, triggering `Runaway script` / `Bad script definition` errors and disconnecting players.
+
 ## 4.0.0-beta.261013
 
 - Fixed multiplayer jump gauges staying full for Redead Guts, GutsBuddy, and Russian Guts. Ammo spent in Flash states or immediately after server-controlled weapon branches now synchronizes the actual remaining amount; applied the same fix to other affected bosses, normal/shiny survivors, and copy weapons while preserving costs, charge timing, and infinite-ammo rules.

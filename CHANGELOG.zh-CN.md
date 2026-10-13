@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261014
+
+- 修复最后一名生还者死亡、断线或角色消失时，`ub_LMS_EventTime` 陷入奖励发放重试死循环，触发 `Runaway script`／`Bad script definition` 报错并导致玩家断开连接的问题
+
 ## 4.0.0-beta.261013
 
 - 修复 Redead Guts、GutsBuddy 和 Russian Guts 联机跳跃后能量条仍显示满条的问题；Flash 状态和服务器控制的武器跳转入口扣除弹药后，现在同步实际余额，并一并处理其他受影响 Boss、普通／Shiny 生还者及复制武器的同类显示不同步，保留原有消耗量、充能时序和无限弹药规则

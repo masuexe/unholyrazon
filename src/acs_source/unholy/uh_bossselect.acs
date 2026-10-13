@@ -568,6 +568,17 @@ script "ub_ShadowBossManager" (void) {
 }
 
 
+// Re-check after every yield: the last survivor may die/disconnect before
+// receiving the marker, and a missing pawn has no inventory to end retries.
+function bool UH_LMSTargetAlive(int playernum) {
+  if (playernum < 0 || playernum >= MAX_PLAYERS || gameover)
+    return false;
+  int tid = playernum + 1000;
+  return PlayerInGame(playernum) &&
+    GetActorProperty(tid, APROP_Health) > 0 &&
+    !CheckActorInventory(tid, "IsDead");
+}
+
 // The LMS script
 script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
   bool rareitemcheck = false;
@@ -586,6 +597,9 @@ script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
     lmscount++;
   }
 
+  if (!UH_LMSTargetAlive(lmscount))
+    terminate;
+
   if (lmscount < 64) {
     lmsdudearr[lmscount]++;
     if (lmsdudearr[lmscount] >= GetClampedCVar("uh_sv_lmscountlimit", 1, 100)) {
@@ -595,6 +609,9 @@ script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
   }
 
   Delay(1);
+
+  if (!UH_LMSTargetAlive(lmscount))
+    terminate;
 
   int lms_cvar = CheckClearCVar("uh_sv_lmsevent", -1);
   if (lms_cvar >= 0 && IsLMSEventDefined(lms_cvar)) {
@@ -678,6 +695,8 @@ script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
   survwinwithlms = true;
 
   while (CheckActorInventory(thelmsdude, "IsBlessedWithLMSPower") == 0) {
+    if (!UH_LMSTargetAlive(lmscount))
+      terminate;
 
     // Failsafe for a player not getting the LMS
     GiveActorInventory(thelmsdude, "IsBlessedWithLMSPower", 1);
@@ -718,9 +737,11 @@ script "ub_LMS_EventTime" (int lmsnum, int forcerare) {
     }
 
     for (int i = 0; i < 35; i++) {
-      if (!PlayerInGame(thelmsdude - 1000) ||
-         CheckActorInventory(thelmsdude, "IsDead") ||
-         CheckActorInventory(thelmsdude, "IsBlessedWithLMSPower"))
+      // Death/disconnect must exit the script, not just this inner wait:
+      // otherwise the outer retry can spin forever without reaching Delay.
+      if (!UH_LMSTargetAlive(lmscount))
+        terminate;
+      if (CheckActorInventory(thelmsdude, "IsBlessedWithLMSPower"))
         break;
       Delay(2);
     }
