@@ -257,6 +257,8 @@ If you use VS Code, install the [zandronum-vscode](https://github.com/masuexe/za
 - CBM Gondola Patch: The Gondola team for reload mechanics, weapon offsets, and automap extensions.
 - Rebellion Unholy & Saxton Hale: Boss mechanics, item concepts, and asymmetric game mode inspiration.
 - [ACSUtils](https://github.com/Korshun/acsutils): Korshun and contributors for ACS utility functions adapted into `uh_acsutils.acs`.
+- [UIX](https://github.com/RusselCS/UIX): Russ and the UIX development team for the team HUD and weapon display framework (`8bdm-uix-v3bh`), adapted for bundled compatibility scripts.
+- [PingButton](https://mm8bdm.net/forum/thread/ping-button-127): Trillster for the tactical ping system (`trill-pingbutton-v5h`), adapted for the multiplayer compatibility shadow.
 - [ZandronumMCP](https://github.com/rc4l/ZandronumMCP): Headless engine introspection and automated regression testing harness.
 - hude: HUD preview tooling by [StardustMotion](https://github.com/StardustMotion).
 

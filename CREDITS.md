@@ -101,5 +101,7 @@ Assets inherited from the Unholy Classes & Bosses Unbound release (`unholy_class
 - **Rebellion Unholy**: Custom boss mechanics, unique items, and gameplay concepts.
 - **Saxton Hale**: Original asymmetric multi-player boss battle gameplay concept inspiration.
 - **[ACSUtils](https://github.com/Korshun/acsutils)**: Utility library by Korshun and contributors (math, vector, and angle routines adapted into `uh_acsutils.acs`).
+- **[UIX](https://github.com/RusselCS/UIX)**: Russ and the UIX development team for the team display and weapon bar framework (`8bdm-uix-v3bh`), referenced for bundled compatibility scripts (`uixteam.acs` and `uixweap.acs`).
+- **[PingButton](https://mm8bdm.net/forum/thread/ping-button-127)**: Trillster for the tactical ping and location marker system (`trill-pingbutton-v5h`), referenced for the Unholy LMS multiplayer compatibility shadow (`PNGBUTTN.acs`).
 - **[ZandronumMCP](https://github.com/rc4l/ZandronumMCP)**: Automated testing and headless engine introspection tooling by rc4l.
 - **hude**: HUD preview tooling by [StardustMotion](https://github.com/StardustMotion).
