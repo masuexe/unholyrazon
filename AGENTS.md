@@ -320,3 +320,12 @@ All override `DeselectDeath` to check `uh_IsItOnline` for net sync.
 Use `tools/mm8bdm-v6b.launch.json` for both Linux MCP and Windows clients.
 Commands, profile choices,
 direct-call guidance, and build/runtime traps live in `tools/README.md`.
+
+## Changelog conventions
+
+When writing release notes, changelogs, or user-facing summaries:
+- **Audience**: Players, server hosts, and addon creators — NOT code reviewers or PR maintainers.
+- **Focus on behavior & impact**: Describe the bug's trigger condition, user-visible symptom, and the fixed outcome (or breaking changes).
+- **Strictly prohibit implementation details**: Do NOT mention internal file paths, DECORATE actor property edits, ACS script names, variable changes, or "added null checks".
+- **Rule of thumb**: Communicate "what was broken and how it affects the user/gameplay", never "how the code was modified".
+
