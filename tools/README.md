@@ -331,8 +331,13 @@ Three of these cost a debugging round each; check them before blaming the mod:
   `UH_BarFX.dec`, and generated ACS from `tools/bars.toml`. Detailed architectural
   guide in [docs/custom-bars.md](../docs/custom-bars.md).
   - Flags: `-c/--config <FILE>` (default: `tools/bars.toml`), `-o/--output-dir <DIR>` (default: `src`),
+    `--emit <TYPE[=PATH],...>` (repeatable; types: `sbar-h`, `sbar-v`, `decorate`, `acs`; `PATH=-` for stdout),
+    `--source-dir <DIR>` (graphic validation input, default: repository `src`),
+    `--barfx-template <FILE>` (DECORATE input, default: `UH_BarFX.dec` under the source directory),
     `--check` (verify without writing; exit 1 on drift), `-v/--verbose` (diagnostic logging),
     `-q/--quiet` (suppress non-error output).
+  - `-o out/bars` exports to an empty directory. Explicit emit paths are relative to the working directory;
+    progress goes to stderr. For another source tree, pass both `--source-dir other/src -o other/src`.
   - Run `python3 tools/_gen_barpos.py --check` in CI or after modifying bar graphics/definitions.
 - `bars.toml` is the schema-versioned hand-authored input for namespaced bars.
   `python3 tools/_gen_barpos.py --check` verifies its checked-in numeric ACS

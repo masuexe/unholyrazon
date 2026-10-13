@@ -3,6 +3,7 @@
 
 from pathlib import Path
 import re
+import subprocess
 import sys
 import tempfile
 
@@ -62,6 +63,99 @@ def expect_failure(groups, label):
     except SystemExit:
         return
     raise AssertionError(f"fixture unexpectedly passed: {label}")
+
+
+def check_cli_outputs():
+    """Exercise the actual CLI, destination routing, and input isolation."""
+    def run(*args, cwd=None, code=0):
+        result = subprocess.run(
+            [sys.executable, str(TOOLS / "_gen_barpos.py"), *map(str, args)],
+            cwd=cwd, capture_output=True, text=True,
+        )
+        assert result.returncode == code, (args, result.stdout, result.stderr)
+        return result
+
+    expected = generator.get_target_outputs(generator.load_bar_config())
+    with tempfile.TemporaryDirectory(prefix="uh-emit-test-") as temporary:
+        scratch = Path(temporary)
+        output = scratch / "empty-output"
+        run("-o", output, "-q")
+        for original, content in expected.items():
+            assert (output / original.relative_to(generator.ROOT)).read_text() == content
+        run("-o", output, "--check", "-q")
+
+        # Explicit paths are cwd-relative, not relative to --output-dir.
+        selected = scratch / "selected"
+        run("--emit", "sbar-h=custom/hud.txt", "--emit", "acs", "-o", selected, cwd=scratch)
+        horizontal = scratch / "custom/hud.txt"
+        assert horizontal.read_text() == expected[generator.SBAR_HZ]
+        assert (selected / generator.OUTPUT_PATHS["acs"]).read_text() == expected[generator.GENERATED_ACS]
+        assert not (selected / generator.OUTPUT_PATHS["sbar-h"]).exists()
+        assert not (selected / generator.OUTPUT_PATHS["decorate"]).exists()
+        run("--emit", "sbar-h=custom/hud.txt", "--check", cwd=scratch)
+        horizontal.write_text("drift\n")
+        drift = run("--emit", "sbar-h=custom/hud.txt", "--check", cwd=scratch, code=1)
+        assert "DRIFT" in drift.stderr and horizontal.read_text() == "drift\n"
+        horizontal.unlink()
+        run("--emit", "sbar-h=custom/hud.txt", "--check", cwd=scratch, code=1)
+        assert not horizontal.exists()
+
+        # A non-DECORATE emission never opens the template; stdout stays clean.
+        streamed = run("--emit", "sbar-v=-", "--barfx-template", scratch / "missing.dec", "-v")
+        assert streamed.stdout == expected[generator.SBAR_VZ]
+        assert "Loaded" in streamed.stderr
+        streamed = run("--emit", "acs=-,sbar-h=combined.txt", "-q", cwd=scratch)
+        assert streamed.stdout == expected[generator.GENERATED_ACS]
+        assert (scratch / "combined.txt").read_text() == expected[generator.SBAR_HZ]
+
+        # Independent graphics input and DECORATE template, with custom config.
+        resources = scratch / "resources"
+        resources.mkdir()
+        (resources / "TEXTURES.fixture").write_text(
+            "graphic FIXTURE_FILL, 1, 1 { patch FIXTURE_PATCH, 0, 0 }\n"
+        )
+        config = scratch / "bars.toml"
+        config.write_text(toml_config([("UHBar_Fixture", [bar(
+            "body", "UHBAR_FIXTURE",
+            vertical_full="FIXTURE_FILL", horizontal_full="FIXTURE_FILL",
+        )])]))
+        template = scratch / "template.dec"
+        prefix = "// preserved template preamble\n"
+        template.write_text(prefix + "// $UH — TOML namespaced bar selectors / ammo\nold generated text\n")
+        arguments = ["-c", config, "--source-dir", resources, "--barfx-template", template]
+        custom_output = scratch / "custom-output"
+        run(*arguments, "-o", custom_output)
+        decorate = custom_output / generator.OUTPUT_PATHS["decorate"]
+        assert decorate.read_text().startswith(prefix)
+        assert "old generated text" not in decorate.read_text()
+        assert "actor UHBar_Fixture_P1L0Selector" in decorate.read_text()
+        run(*arguments, "-o", custom_output, "--check")
+        # Omitting the resource input must fail, even if output contains graphics.
+        failed = run("-c", config, "-o", resources, "--emit", "acs", code=1)
+        assert "FIXTURE_FILL" in failed.stderr
+        default_template = resources / generator.OUTPUT_PATHS["decorate"]
+        default_template.parent.mkdir(parents=True)
+        default_template.write_text(template.read_text())
+        run("-c", config, "--source-dir", resources, "--emit", "decorate=-")
+
+        # Export/partial generation must not remove historical files.
+        stale = output / "actors/inventory/sbar/BarFX.txt"
+        stale.write_text("keep this file\n")
+        run("-o", output)
+        run("-o", output, "--emit", "sbar-h", "--check")
+        assert stale.read_text() == "keep this file\n"
+
+        for invalid in (
+            ["--emit", "unknown"], ["--emit", ""],
+            ["--emit", "sbar-h="], ["--emit", "sbar-h,"],
+            ["--emit", "sbar-h", "--emit", "sbar-h=other.txt"],
+            ["--emit", "sbar-h=same.txt,sbar-v=./same.txt"],
+            ["--emit", "sbar-h=-,sbar-v=-"],
+            ["--emit", "sbar-h=-", "--check"],
+        ):
+            rejected = run(*invalid, cwd=scratch, code=2)
+            assert not rejected.stdout and "error:" in rejected.stderr
+        assert not (scratch / "same.txt").exists()
 
 
 def main():
@@ -398,6 +492,7 @@ def main():
     else:
         raise AssertionError("expected -v and -q combination to fail")
 
+    check_cli_outputs()
     print("bar generator fixture checks: OK")
 
 

@@ -200,10 +200,35 @@ The generator functions as a standalone compiler CLI.
 | Option | Flag | Description | Default |
 |---|---|---|---|
 | `--config` | `-c <FILE>` | Path to bar definitions TOML | `tools/bars.toml` |
-| `--output-dir` | `-o <DIR>` | Mod source directory | `src` |
+| `--output-dir` | `-o <DIR>` | Output root for default filenames; may be an empty directory | `src` |
+| `--emit` | `<TYPE[=PATH],...>` | Select outputs and optionally override each path; repeatable | All four outputs |
+| `--source-dir` | `<DIR>` | Resource input root for `TEXTURES*`, `ANIMDEFS*`, and `graphics/` validation | Repository `src` |
+| `--barfx-template` | `<FILE>` | DECORATE input; preserves content before the TOML marker | `actors/inventory/sbar/UH_BarFX.dec` under `--source-dir` |
 | `--check` | | Verification mode: check if files are up to date without writing; exits with `1` on drift | Disabled |
 | `--verbose` | `-v` | Enable detailed diagnostic and progress output | Disabled |
 | `--quiet` | `-q` | Suppress all informational output (errors only) | Disabled |
+
+`--emit` accepts `sbar-h`, `sbar-v`, `decorate`, and `acs`. Each type retains
+the default relative output path documented above unless given `=PATH`.
+Explicit relative paths are relative to the current working directory and
+override `--output-dir`. A path of `-` emits that artifact to stdout. Only one
+artifact may use stdout; duplicate types, colliding output paths, empty paths,
+and `--check` with stdout are rejected before generation. Diagnostics and
+progress go to stderr so stdout contains only the emitted text.
+
+Input and output directories are independent. `-o export/` now exports from
+the repository's resources and template without requiring an existing mod
+tree in `export/`. To regenerate a different source tree in place, use
+`--source-dir other/src -o other/src`. The DECORATE template is read only when
+`decorate` is selected, and must contain the TOML marker. Its pre-marker content
+is preserved in the generated output, even when the destination already exists.
+
+`--check` compares only the selected destinations without writing. Historical
+generated-file cleanup runs only when `--emit` is omitted and the output root
+is the repository's `src`; exports and explicit selections leave historical
+files alone. Selecting fewer artifacts is useful for previews or exports;
+regenerate all four when bar definitions change in the mod so actors, ACS IDs,
+and HUD references stay synchronized.
 
 ### Common Invocations
 
@@ -222,6 +247,27 @@ The generator functions as a standalone compiler CLI.
 - **Run the deterministic test suite**:
   ```bash
   python3 tools/test_gen_barpos.py
+  ```
+- **Export all four artifacts to an empty directory**:
+  ```bash
+  python3 tools/_gen_barpos.py -o out/bars
+  ```
+- **Generate one HUD with a custom filename**:
+  ```bash
+  python3 tools/_gen_barpos.py --emit sbar-h=out/my-hud.txt
+  ```
+- **Select multiple outputs, with repeatable options**:
+  ```bash
+  python3 tools/_gen_barpos.py --emit sbar-h,sbar-v --emit acs -o out/bars
+  ```
+- **Preview one artifact on stdout**:
+  ```bash
+  python3 tools/_gen_barpos.py --emit sbar-v=-
+  ```
+- **Use another resource tree and DECORATE template**:
+  ```bash
+  python3 tools/_gen_barpos.py -c addon/bars.toml --source-dir addon/src \
+    --barfx-template addon/template.dec -o out/addon-bars
   ```
 
 ---

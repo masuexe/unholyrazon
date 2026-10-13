@@ -14,7 +14,11 @@ the number of TOML groups.
 
 CLI Flags:
   -c, --config <FILE>     Path to bar definitions TOML (default: tools/bars.toml)
-  -o, --output-dir <DIR>  Path to mod source directory (default: src)
+  -o, --output-dir <DIR>  Output root for default filenames (default: src)
+  --emit <TYPE[=PATH],...> Select outputs: sbar-h, sbar-v, decorate, acs
+                          Repeatable; PATH=- writes one output to stdout
+  --source-dir <DIR>     Resource input directory (default: src)
+  --barfx-template <FILE> DECORATE template (default: source-dir's UH_BarFX.dec)
   --check                 Verify generated files are up to date without writing
   -v, --verbose           Print detailed processing and diagnostic messages
   -q, --quiet             Suppress informational messages
@@ -33,6 +37,12 @@ TEX_BARS = ROOT / "TEXTURES.bars"
 ANIM_BARS = ROOT / "ANIMDEFS.bars"
 CONFIG = Path(__file__).resolve().parent / "bars.toml"
 GENERATED_ACS = ROOT / "acs_source" / "hud" / "class_bars_generated.acs"
+OUTPUT_PATHS = {
+    "sbar-h": Path("SBARINFO.h.uhappend"),
+    "sbar-v": Path("SBARINFO.v.uhappend"),
+    "decorate": Path("actors/inventory/sbar/UH_BarFX.dec"),
+    "acs": Path("acs_source/hud/class_bars_generated.acs"),
+}
 
 POS_BANKS = [
     ("1", "Custom Bar Pos1 (bar1)", 58, 184, 16, 8),
@@ -644,19 +654,66 @@ def gen_generated_acs(config: dict) -> str:
     return "\n".join(lines)
 
 
+def generate_artifacts(
+    config: dict,
+    kinds: tuple[str, ...] | list[str] | None = None,
+    barfx_path: Path | str | None = None,
+) -> dict[str, str]:
+    """Render selected artifacts without reading or writing their destinations."""
+    selected = tuple(OUTPUT_PATHS) if kinds is None else tuple(kinds)
+    artifacts = {}
+    if "sbar-h" in selected or "sbar-v" in selected:
+        hz, vz = gen_append_files(config)
+        if "sbar-h" in selected:
+            artifacts["sbar-h"] = hz
+        if "sbar-v" in selected:
+            artifacts["sbar-v"] = vz
+    if "decorate" in selected:
+        artifacts["decorate"] = barfx_updated_text(config, barfx_path=barfx_path)
+    if "acs" in selected:
+        artifacts["acs"] = gen_generated_acs(config)
+    return {kind: artifacts[kind] for kind in selected}
+
+
 def get_target_outputs(config: dict, root_dir: Path | str | None = None) -> dict[Path, str]:
+    """Compatibility API: update all four files in an existing source tree."""
     root = Path(root_dir) if root_dir is not None else ROOT
-    hz, vz = gen_append_files(config)
-    barfx_file = root / "actors" / "inventory" / "sbar" / "UH_BarFX.dec"
-    return {
-        root / "SBARINFO.h.uhappend": hz,
-        root / "SBARINFO.v.uhappend": vz,
-        barfx_file: barfx_updated_text(config, barfx_path=barfx_file),
-        root / "acs_source" / "hud" / "class_bars_generated.acs": gen_generated_acs(config),
-    }
+    artifacts = generate_artifacts(config, barfx_path=root / OUTPUT_PATHS["decorate"])
+    return {root / OUTPUT_PATHS[kind]: content for kind, content in artifacts.items()}
 
 
 generate_outputs = get_target_outputs
+
+
+def resolve_output_paths(
+    emit: list[str] | None, root_dir: Path, check: bool = False,
+) -> dict[str, Path | None]:
+    """Plan destinations; None denotes stdout. Explicit paths are cwd-relative."""
+    if emit is None:
+        return {kind: root_dir / path for kind, path in OUTPUT_PATHS.items()}
+    outputs = {}
+    destinations = set()
+    for specification in emit:
+        for entry in specification.split(","):
+            kind, separator, filename = entry.partition("=")
+            if kind not in OUTPUT_PATHS:
+                raise ValueError(f"unknown emit type {kind!r}; choose from {', '.join(OUTPUT_PATHS)}")
+            if kind in outputs:
+                raise ValueError(f"duplicate emit type {kind!r}")
+            if separator and not filename:
+                raise ValueError(f"empty output path for {kind!r}")
+            if separator:
+                path = None if filename == "-" else Path(filename)
+            else:
+                path = root_dir / OUTPUT_PATHS[kind]
+            destination = path.resolve() if path is not None else None
+            if destination in destinations:
+                raise ValueError("outputs must have distinct paths; only one output may use stdout")
+            if check and path is None:
+                raise ValueError("--check cannot compare an output sent to stdout")
+            destinations.add(destination)
+            outputs[kind] = path
+    return outputs
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -676,7 +733,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
         dest="output_dir",
         type=Path,
         default=None,
-        help="mod source root directory (default: src)",
+        help="output root for default filenames (default: src); explicit emit paths override it",
+    )
+    ap.add_argument(
+        "--emit", action="append", metavar="TYPE[=PATH],...",
+        help="select sbar-h, sbar-v, decorate, acs; repeatable; PATH=- sends one artifact to stdout",
+    )
+    ap.add_argument(
+        "--source-dir", type=Path, default=None,
+        help="resource input root for graphic validation (default: src; independent of --output-dir)",
+    )
+    ap.add_argument(
+        "--barfx-template", type=Path, default=None,
+        help="DECORATE input whose pre-marker content is preserved (default: source-dir's UH_BarFX.dec)",
     )
     ap.add_argument(
         "--check",
@@ -705,58 +774,84 @@ def main(argv: list[str] | None = None) -> int:
 
     config_path = args.config_path if args.config_path is not None else CONFIG
     root_dir = args.output_dir if args.output_dir is not None else ROOT
+    source_dir = args.source_dir if args.source_dir is not None else ROOT
+    template = (
+        args.barfx_template if args.barfx_template is not None
+        else source_dir / OUTPUT_PATHS["decorate"]
+    )
+    try:
+        targets = resolve_output_paths(args.emit, root_dir, check=args.check)
+    except ValueError as error:
+        ap.error(str(error))
+
+    def report(message: str):
+        # Keep stdout available for the emitted artifact, including with -v.
+        print(message, file=sys.stderr)
 
     if args.verbose:
-        print(f"Reading bar configuration from: {config_path}")
-        print(f"Target mod source directory:    {root_dir}")
+        report(f"Reading bar configuration from: {config_path}")
+        report(f"Resource input directory:       {source_dir}")
+        report(f"Target output directory:        {root_dir}")
 
-    config = load_bar_config(config_path=config_path, root_dir=root_dir)
+    try:
+        config = load_bar_config(config_path=config_path, root_dir=source_dir)
+        artifacts = generate_artifacts(config, list(targets), barfx_path=template)
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        ap.exit(1, f"{ap.prog}: {error}\n")
 
     if args.verbose:
         bar_count = len(config.get("bars", []))
         group_count = len(config.get("groups", []))
-        print(f"Loaded {bar_count} bars across {group_count} groups.")
+        report(f"Loaded {bar_count} bars across {group_count} groups.")
 
-    outputs = get_target_outputs(config, root_dir=root_dir)
-    stale_paths = get_stale_paths(root_dir=root_dir)
+    # Legacy cleanup belongs to the default full in-place regeneration only.
+    stale_paths = (
+        get_stale_paths(root_dir)
+        if args.emit is None and root_dir.resolve() == ROOT.resolve() else ()
+    )
 
     if args.check:
         drift = []
-        for path, new in outputs.items():
+        for kind, path in targets.items():
+            new = artifacts[kind]
             old = path.read_text(encoding="utf-8") if path.exists() else None
             if old != new:
-                drift.append(path.name)
+                drift.append(str(path))
         for p in stale_paths:
             if p.exists():
                 drift.append(f"{p.name} (stale file still present)")
         if drift:
-            print("DRIFT — regenerate with: python3 tools/_gen_barpos.py")
+            report("DRIFT — rerun the same command without --check to regenerate")
             for d in drift:
-                print(f"  {d}")
+                report(f"  {d}")
             return 1
         if not args.quiet:
-            print("check OK: all generated outputs up to date")
+            report("check OK: all generated outputs up to date")
         return 0
 
     wrote_count = 0
-    for path, new in outputs.items():
+    for kind, path in targets.items():
+        new = artifacts[kind]
+        if path is None:
+            sys.stdout.write(new)
+            continue
         if not path.exists() or path.read_text(encoding="utf-8") != new:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(new, encoding="utf-8")
             wrote_count += 1
             if not args.quiet:
-                print(f"wrote {path.name}")
+                report(f"wrote {path}")
         elif args.verbose:
-            print(f"up to date: {path.name}")
+            report(f"up to date: {path}")
 
     for p in stale_paths:
         if p.exists():
             p.unlink()
             if not args.quiet:
-                print(f"deleted {p.name}")
+                report(f"deleted {p}")
 
-    if args.verbose and wrote_count == 0:
-        print("all generated files were already up to date")
+    if args.verbose and wrote_count == 0 and any(path is not None for path in targets.values()):
+        report("all generated files were already up to date")
 
     return 0
 
