@@ -57,6 +57,7 @@ Ready-to-use launch profiles are available in `tools/mm8bdm-v6b.launch.json`.
 Unholy Razon provides a public addon API via the `uhadd.acs` header.
 External PK3 addons can register custom bosses, survivors, boss combos, and events at runtime without modifying the core mod files.
 For comprehensive API specifications and guides, consult the [Documentation Index](docs/README.md).
+For release history and recent updates, see [CHANGELOG.md](CHANGELOG.md) ([简体中文](CHANGELOG.zh-CN.md)).
 
 To use the API, include `uhadd.acs` in your addon's ACS script:
 
