@@ -6,7 +6,8 @@ script "rz_spawnfuncs" OPEN {
 }
 
 // Keep the shield's damaging actor authoritative while hiding its sprite from
-// its owner in first person. The default invisible style prevents a spawn flash.
+// anyone viewing its owner in first person, including spectators. The default
+// invisible style prevents a spawn flash.
 script "uh_PlasmaBarrierAuraView" (int type, int arg1, int arg2) EVENT CLIENTSIDE {
   if (type != GAMEEVENT_ACTOR_SPAWNED ||
       StrICmp(GetActorClass(0), "Plasma_Barrier_Aura"))
@@ -32,8 +33,17 @@ script "uh_PlasmaBarrierOwnerVisible" (void) CLIENTSIDE {
   if (!SetActivator(0, AAPTR_TARGET))
     terminate;
   int owner = PlayerNumber();
-  SetResultValue(owner >= 0 &&
-    (owner != ConsolePlayerNumber() || GetPlayerChasecam(owner)));
+  if (owner < 0)
+    terminate;
+
+  // The console player may be spying through another player's eyes. Resolve
+  // their actual camera rather than comparing the owner to their player slot.
+  // Chasecam belongs to the viewer, not to the player being spectated.
+  int viewer = ConsolePlayerNumber();
+  int cameraPlayer = -1;
+  if (SetActivatorToPlayer(viewer) && SetActivator(0, AAPTR_PLAYER_GETCAMERA))
+    cameraPlayer = PlayerNumber();
+  SetResultValue(owner != cameraPlayer || GetPlayerChasecam(viewer));
 }
 
 // Used only by the aura's server-authoritative exit checks.

@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261013
 
+- 修复以第一人称旁观 Plasma Spark 时严重闪屏的问题
 - 修复以撒（Eden）的 Ipecac 泪弹在联机中不显示爆炸特效的问题
 - 新增默认开启的结算友伤开关 `uh_sv_postroundfriendlyfire`，可在 Unholy Server Options → Game Rules → Friendly Fire After Round End 切换；统一覆盖结算等待、正式结束和原生 LMS 胜利序列中的生还者、Boss 与恶魔眼，包括 Bonus Event 的特殊友伤保护
 - 开放结算友伤时不再给予结算用全员无敌，保留角色自身防御能力；撤销结算继续战斗或关闭开关时恢复已移除的友伤保护，死亡、复活、变身及离场时丢弃旧机体快照，避免错误恢复

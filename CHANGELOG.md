@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261013
 
+- Fixed severe screen flashing when spectating Plasma Spark in first person.
 - Fixed an issue where Eden's Ipecac tear projectile explosion effect would not display in multiplayer.
 - Added a server toggle `uh_sv_postroundfriendlyfire` (enabled by default) under **Unholy Server Options → Game Rules → Friendly Fire After Round End**; uniformly covers survivors, bosses, and demoneyes across settlement delays, round completions, and native LMS victory sequences, including Bonus Event friendly-fire protection overrides.
 - Enabling post-round friendly fire no longer grants post-round team invulnerability, preserving character innate defenses; cancelling settlement to resume battle or turning off the CVAR restores previously stripped protections, discarding stale player snapshots upon death, revival, morph, or disconnect to prevent erroneous restoration.
