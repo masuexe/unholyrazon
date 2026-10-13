@@ -15,6 +15,17 @@ actor EdenTearIpecacApply_P : CustomInventory {
   }
 }
 
+// Pickup runs on the server, so this explosion must be replicated to clients.
+// Translation is already copied from the tear; bypass the client-only spawn hook.
+actor EdenIpecacExplosionFX : BasicBoom4FX_ColorX_Scale5 {
+  -CLIENTSIDEONLY
+  States {
+   Spawn:
+    TNT1 A 0
+    goto SpawnFrame
+  }
+}
+
 // Tear death replace — given by rz_EdenTearRunDeath when EdenIpecacDeath_F is set.
 actor EdenIpecacDeath_P : CustomInventory {
   States {
@@ -23,7 +34,7 @@ actor EdenIpecacDeath_P : CustomInventory {
     TNT1 A 0 A_Explode(CallACS("rz_GetEdenAttr", 2, 2, 0) / 2, 140, XF_HURTSOURCE, 0, 50)
     TNT1 A 0 ACS_NamedExecuteWithResult("rz_EdenIpecacMarkShooter")
     TNT1 A 0 A_RadiusGive("EdenIpecacPoisonStart_P", 140, RGF_PLAYERS | RGF_NOSIGHT | RGF_NOTARGET, 1)
-    TNT1 A 0 A_SpawnItemEx("BasicBoom4FX_ColorX_Scale5", 0, 0, 0, 0, 0, 0, 0, 1)
+    TNT1 A 0 A_SpawnItemEx("EdenIpecacExplosionFX", 0, 0, 0, 0, 0, 0, 0, SXF_TRANSFERTRANSLATION)
     stop
   }
 }
