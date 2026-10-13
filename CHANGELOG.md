@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261013
 
+- Fixed multiplayer jump gauges staying full for Redead Guts, GutsBuddy, and Russian Guts. Ammo spent in Flash states or immediately after server-controlled weapon branches now synchronizes the actual remaining amount; applied the same fix to other affected bosses, normal/shiny survivors, and copy weapons while preserving costs, charge timing, and infinite-ammo rules.
 - Added configurable NegaMan daily copy-weapon ammo multiplier bounds `rz_sv_nega_ammo_mul_min` / `rz_sv_nega_ammo_mul_max` under **Unholy Server Options → Rules → NegaMan Weapons**; defaults remain 0–2, with decimal, fixed-multiplier and zero-cost support. Settings take effect immediately, including registered addon weapons; the existing randomization toggle restores original ammo costs when disabled. See [NegaMan Daily Ammo Cost](docs/server-gameplay-cvars.md#negaman-daily-ammo-cost).
 - Fixed severe screen flashing when spectating Plasma Spark in first person.
 - Fixed an issue where Eden's Ipecac tear projectile explosion effect would not display in multiplayer.

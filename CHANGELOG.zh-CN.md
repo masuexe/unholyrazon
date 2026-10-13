@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261013
 
+- 修复 Redead Guts、GutsBuddy 和 Russian Guts 联机跳跃后能量条仍显示满条的问题；Flash 状态和服务器控制的武器跳转入口扣除弹药后，现在同步实际余额，并一并处理其他受影响 Boss、普通／Shiny 生还者及复制武器的同类显示不同步，保留原有消耗量、充能时序和无限弹药规则
 - 新增 NegaMan 每日复制武器耗蓝倍率上下限设置 `rz_sv_nega_ammo_mul_min` / `rz_sv_nega_ammo_mul_max`，可在 **Unholy Server Options → Rules → NegaMan Weapons** 中输入；默认保留 0～2 倍，支持小数、固定倍率与零耗蓝，修改即时生效并适用于已注册的 addon 武器；保留原有随机开关，关闭后恢复原始耗蓝。配置说明见 [NegaMan 每日耗蓝](docs/server-gameplay-cvars.md#negaman-daily-ammo-cost)。
 - 修复以第一人称旁观 Plasma Spark 时严重闪屏的问题
 - 修复以撒（Eden）的 Ipecac 泪弹在联机中不显示爆炸特效的问题
