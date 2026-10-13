@@ -88,11 +88,14 @@ Assets inherited from the Unholy Classes & Bosses Unbound release (`unholy_class
 
 ## 3. Core References & Community Credits
 
-- **[Mega Man 8-Bit Deathmatch](https://mm8bdm.net/)**: CutmanMike and the MM8BDM development team for the base game, assets, and APIs.
-- **Original [Unholy Classes & Bosses](https://mm8bdm.net/forum/thread/unholy-classes-bosses-v8a-in-progress-170)**: Ivory and the Unholy development team.
-- **[Class Based Modification](https://mm8bdm.net/forum/thread/class-based-modification-v9gh-42) (CBM)**: CBM team for core architectural references and weapon implementations.
-- **[ACSUtils](https://github.com/Korshun/acsutils)**: Utility library by Korshun and contributors.
-- **[ZandronumMCP](https://github.com/rc4l/ZandronumMCP)**: Automated testing and headless engine introspection tooling.
-- **Rebellion Unholy & Saxton Hale**: Gameplay and boss concepts.
-- **CBM Gondola Patch**: Weapon offsets, reload animations, and automap directional/death marker concept & sprites (originally by Trillster).
+- **[Zandronum](https://zandronum.com/)**: The Zandronum development team for the multiplayer source port engine, ACS runtime, and netcode.
+- **[Mega Man 8-Bit Deathmatch](https://mm8bdm.net/)**: CutmanMike and the MM8BDM development team for the base game, assets, ClassBase architecture, and core APIs.
+- **Original [Unholy Classes & Bosses](https://mm8bdm.net/forum/thread/unholy-classes-bosses-v8a-in-progress-170)**: The Unholy development team for the original asymmetric boss-vs-survivor LMS mod, gamemode design, and character foundation.
+- **Unholy Classes & Bosses Unbound (v7b)**: The Unholy Unbound development team for the direct upstream codebase and assets.
+- **[Class Based Modification](https://mm8bdm.net/forum/thread/class-based-modification-v9gh-42) (CBM)**: The CBM team for core architectural references, weapon implementations, and slot systems.
+- **CBM Gondola Patch**: The Gondola team for reload animation mechanics, weapon offsets, and automap directional/death marker concept & sprites (`CCBM-ALLYINFOFUCTIONS`).
+- **Rebellion Unholy**: Custom boss mechanics, unique items, and gameplay concepts.
+- **Saxton Hale**: Original asymmetric multi-player boss battle gameplay concept inspiration.
+- **[ACSUtils](https://github.com/Korshun/acsutils)**: Utility library by Korshun and contributors (math, vector, and angle routines adapted into `uh_acsutils.acs`).
+- **[ZandronumMCP](https://github.com/rc4l/ZandronumMCP)**: Automated testing and headless engine introspection tooling by rc4l.
 - **hude**: HUD preview tooling by [StardustMotion](https://github.com/StardustMotion).

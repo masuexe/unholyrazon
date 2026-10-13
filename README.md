@@ -249,13 +249,15 @@ If you use VS Code, install the [zandronum-vscode](https://github.com/masuexe/za
 
 ## Credits
 
-- [MM8BDM](https://mm8bdm.net/): The base game and modding API.
-- [Unholy](https://mm8bdm.net/forum/thread/unholy-classes-bosses-v8a-in-progress-170): The original mod.
-- [Class Based Modification](https://mm8bdm.net/forum/thread/class-based-modification-v9gh-42): Core code references.
-- [ACSUtils](https://github.com/Korshun/acsutils): Utility code adapted into `uh_acsutils.acs`.
-- [ZandronumMCP](https://github.com/rc4l/ZandronumMCP): Automated testing and headless engine introspection.
+- [Zandronum](https://zandronum.com/): The Zandronum development team for the multiplayer source port engine and netcode.
+- [MM8BDM](https://mm8bdm.net/): CutmanMike and the MM8BDM development team for the base game, assets, ClassBase architecture, and core APIs.
+- [Unholy Classes & Bosses](https://mm8bdm.net/forum/thread/unholy-classes-bosses-v8a-in-progress-170): The Unholy development team for the original mod and gamemode foundation.
+- Unholy Classes & Bosses Unbound (v7b): The Unholy Unbound development team for the direct upstream codebase and assets.
+- [Class Based Modification](https://mm8bdm.net/forum/thread/class-based-modification-v9gh-42) (CBM): The CBM team for core architectural patterns and weapon templates.
+- CBM Gondola Patch: The Gondola team for reload mechanics, weapon offsets, and automap extensions.
+- Rebellion Unholy & Saxton Hale: Boss mechanics, item concepts, and asymmetric game mode inspiration.
+- [ACSUtils](https://github.com/Korshun/acsutils): Korshun and contributors for ACS utility functions adapted into `uh_acsutils.acs`.
+- [ZandronumMCP](https://github.com/rc4l/ZandronumMCP): Headless engine introspection and automated regression testing harness.
 - hude: HUD preview tooling by [StardustMotion](https://github.com/StardustMotion).
-- CBM Gondola Patch: Weapon offset references.
-- Rebellion Unholy, Saxton Hale: Inspiration and concepts.
 
 For detailed sprite, texture, and community asset attributions, see [CREDITS.md](CREDITS.md).
