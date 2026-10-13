@@ -4,6 +4,10 @@ Unholy Razon is an open-source fork based on **Unholy Unbound (v7b)**, originall
 
 This document attributes sprites, skins, mugshots, sound effects, and gameplay assets contributed by community creators across Unholy Razon, Unholy Unbound, and upstream projects.
 
+> [!NOTE]
+> *Some credits are lost to the sands of time.*  
+> Due to the decade-long history of Unholy and missing attribution records in upstream releases (such as *Unholy Bosses Unbound*), some creators of legacy sprites, skins, sounds, or concepts may not be recorded. If you recognize any unattributed, missing, or misattributed work, please open an issue or pull request so we can properly credit the original creators!
+
 ---
 
 ## 1. Unholy Razon Additions
