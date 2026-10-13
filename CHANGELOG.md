@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261014
 
+- Fixed SadFaceToadMan remaining unable to move in phase two when the phase transition interrupted a normal rain attack.
 - Fixed `ub_LMS_EventTime` entering an infinite reward retry loop when the last survivor died, disconnected, or lost their pawn, triggering `Runaway script` / `Bad script definition` errors and disconnecting players.
 
 ## 4.0.0-beta.261013

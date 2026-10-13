@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261014
 
+- 修复 SadFaceToadMan 普通雨攻击被转阶段打断后，二阶段持续无法移动的问题
 - 修复最后一名生还者死亡、断线或角色消失时，`ub_LMS_EventTime` 陷入奖励发放重试死循环，触发 `Runaway script`／`Bad script definition` 报错并导致玩家断开连接的问题
 
 ## 4.0.0-beta.261013
