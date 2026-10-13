@@ -198,4 +198,33 @@ Mod scripts can query the active bonus event at runtime:
 | `UH_FindBonusEventByStem(str stem)` | Resolves a stem string to its event ID. |
 | `UH_GetBonusEventArg(int eventId, int argIndex)` | Returns the value of `arg1`, `arg2`, or `arg3` (index `0..2`). |
 
+---
+
+## 7. Bonus Event Music Pools
+
+Addon packages can provide multiple randomized BGM tracks for a Bonus Event using the music pool extension API in `uhadd.acs`:
+
+```c
+// Register by numeric event ID:
+AddBonusEventMusic(eventId, "M_MYTRACK", "Track Title", "Album", "Artist", weight, optional);
+
+// Or register by stable stem:
+AddBonusEventMusicByStem("my_custom_event", "M_MYTRACK", "Track Title", "Album", "Artist", 1, 0);
+```
+
+- **Arguments**:
+  - `lump`: Music lump name (audio belongs in the music package; these entries define metadata).
+  - `title`, `album`, `artist`: Metadata displayed on the client music ticker.
+  - `weight`: Positive integer weight determining selection probability.
+  - `optional`: When `1`, the track only plays if the host has enabled `uh_sv_optionalmusic`.
+- **Management API**:
+  - `EnableEventMusic(UHMUS_KIND_BONUS, eventId, "M_MYTRACK")`
+  - `DisableEventMusic(UHMUS_KIND_BONUS, eventId, "M_MYTRACK")`
+  - `RemoveEventMusic(UHMUS_KIND_BONUS, eventId, "M_MYTRACK")`
+  - `IsEventMusicDefined(UHMUS_KIND_BONUS, eventId, "M_MYTRACK")`
+  - `IsEventMusicEnabled(UHMUS_KIND_BONUS, eventId, "M_MYTRACK")`
+- **Fallback**: If no music pool entries are registered or eligible, playback falls back cleanly to the primary track passed into `DefineBonusEvent`.
+
+---
+
 For host configuration, player count overrides, and export diagnostics, consult [`docs/bonus-event-settings.md`](bonus-event-settings.md).

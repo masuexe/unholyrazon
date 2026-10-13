@@ -3,12 +3,12 @@
 - 新增默认开启的结算友伤开关 `uh_sv_postroundfriendlyfire`，可在 Unholy Server Options → Game Rules → Friendly Fire After Round End 切换；统一覆盖结算等待、正式结束和原生 LMS 胜利序列中的生还者、Boss 与恶魔眼，包括 Bonus Event 的特殊友伤保护
 - 开放结算友伤时不再给予结算用全员无敌，保留角色自身防御能力；撤销结算继续战斗或关闭开关时恢复已移除的友伤保护，死亡、复活、变身及离场时丢弃旧机体快照，避免错误恢复
 - 修复 Zangief 抓取期间变身（如恶魔眼）后无法使用物品的问题，变身时解除抓取产生的道具限制，保留其他来源的限制
-- 移植 Razon3 的 Zangief 蓄力副攻击吸人效果，普通版最大吸力 25、Shiny 版 50，范围 250，吸力随距离衰减；新增默认开启的服务器开关 `uh_sv_zangiefpull`，可在 Unholy Server Options → Game Rules → Zangief Charge Pull 切换，修改从下一次吸力脉冲立即生效；说明见 [Zangief 蓄力吸人](docs/zangief-charge-pull.md)
+- 移植 Razon3 的 Zangief 蓄力副攻击吸人效果，普通版最大吸力 25、Shiny 版 50，范围 250，吸力随距离衰减；新增默认开启的服务器开关 `uh_sv_zangiefpull`，可在 Unholy Server Options → Game Rules → Zangief Charge Pull 切换，修改从下一次吸力脉冲立即生效；说明见 [Zangief 蓄力吸人](docs/class-mechanics.md#1-zangief-charge-pull-altfire2)
 
 ## 4.0.0-beta.261012
 
 - 移植 Razon3 automap 玩家位置、朝向点阵和 5 秒死亡标记，复用客户端 marker 与现有阵营快照；普通回合存活时显示自己及队友，特殊事件只显示自己，死亡／旁观时显示所有存活玩家；支持单机及远程独立客户端（注：listen server 房主本地不显示）
-- 为 SinfulBusterExpert 新增服主解锁设置 `uh_sv_sbe_unlockmode`：默认 `0` 使用 Unbound 规则，开局获得 W1～W7，剩余血量降至最大血量的 40% 时解锁 W8；设为 `1` 保留现有随掉血逐步解锁方式。可在 Unholy Server Options → Boss Setup → Weapon Unlocks 切换，每次变身时读取，中途修改从下一次变身生效；保留现有八个武器槽及两套解锁实现，说明见 [SinfulBusterExpert 解锁设置](docs/sinful-buster-expert-unlocks.md)
+- 为 SinfulBusterExpert 新增服主解锁设置 `uh_sv_sbe_unlockmode`：默认 `0` 使用 Unbound 规则，开局获得 W1～W7，剩余血量降至最大血量的 40% 时解锁 W8；设为 `1` 保留现有随掉血逐步解锁方式。可在 Unholy Server Options → Boss Setup → Weapon Unlocks 切换，每次变身时读取，中途修改从下一次变身生效；保留现有八个武器槽及两套解锁实现，说明见 [SinfulBusterExpert 解锁设置](docs/server-gameplay-cvars.md#3-sinfulbusterexpert-weapon-unlock-policy)
 - 新增普通 Survivor 对 Boss／Demoneye 回合的可取消结算：结算等待期间敌对双方重新存活时，取消本次结果并继续战斗，恢复战斗音乐及剩余计时，明确提示结算已取消；原生 LMS 胜利序列、特殊事件及强制结束保持原流程
 - 胜负及连胜次数在结算开始时立即显示，取消结算时回滚连胜并清除原提示；连胜奖励及其他结算奖励在最终确认后只发放一次
 - 新增服主开关 `uh_sv_resumeonrevive`，默认开启；可在 Unholy Server Options → Game Rules → Resume Battle If Enemies Return 切换，关闭后恢复原有结束行为，结算等待期间修改从下一次胜负判定生效；说明见 [可取消的回合结算](docs/round-settlement.md)
@@ -21,7 +21,7 @@
 
 ## 4.0.0-beta.261011
 
-- 简化流星洛克人（WarRockStelar）Boss 操作：M1 固定为手炮、M2 按住拉盾、Reload 按顺序使用战斗卡，长按可在当前卡片动作及冷却结束后连续出牌，松开停止后续出牌；默认滚轮上在槽满时抽取六张卡并替换剩余手牌，滚轮下开关 Lockon，无需额外绑键或切换战斗模式；两个滚轮入口自动返回主武器，并加入短冷却减少连续触发；操作说明见 [流星洛克人操作](docs/starforce-controls.md)
+- 简化流星洛克人（WarRockStelar）Boss 操作：M1 固定为手炮、M2 按住拉盾、Reload 按顺序使用战斗卡，长按可在当前卡片动作及冷却结束后连续出牌，松开停止后续出牌；默认滚轮上在槽满时抽取六张卡并替换剩余手牌，滚轮下开关 Lockon，无需额外绑键或切换战斗模式；两个滚轮入口自动返回主武器，并加入短冷却减少连续触发；操作说明见 [流星洛克人操作](docs/class-mechanics.md#2-star-force-mega-man-controls--battle-cards)
 - 为流星洛克人加入 Lockon 状态 HUD 提示
 - 将流星洛克人的 Ammo2 抽卡槽改为 2 代原版图块拼装的 Custom Gauge
 - 修复流星洛克人六张卡片队列前移时读取第七个位置的问题，手牌用尽后正确清空并停止连续出牌，不自动抽取新手牌
@@ -87,7 +87,7 @@
 - 新增 trill-pingbutton-v5h 兼容覆盖：Unholy LMS 中所有玩家与旁观者均可看见各阵营的 ping，包含死亡标记和定位结果，支持死亡及第三人称视角，保留个人显示、静音和声音设置；定位目标接入 Unholy 队友关系，头像接入统一职业展示接口；需将 PingButton 加载在 Unholy 之前
 - 将 TidalManiac（含 Shiny）的水雷 M1 合并到主武器的 Reload，保留原有耗能、动画和护盾分支；移除独立水雷武器及其初始装备、武器槽、变身发放和多武器注册，补充普通／Shiny 的 Reload 图标；Bot 改为直接发射水雷，特殊攻击使用地雷散射与 Torrent，不再切换武器
 - 优化 TidalManiac 的武器 HUD 动画
-- 补齐 Razon 3 的服主自定义阈值：连胜、连败、Hell Mark、Speciman 击杀、Gauntlet 宝藏兑换、Bad LMS 次数及 Bonus Event 回合间隔，支持在 Server Options → Game Rules → Round Thresholds 中直接输入 1～100 并保存配置；保留当前默认值，宝藏兑换只扣除设定数量并保留余数；配置说明见 [回合阈值](docs/round-thresholds.md)
+- 补齐 Razon 3 的服主自定义阈值：连胜、连败、Hell Mark、Speciman 击杀、Gauntlet 宝藏兑换、Bad LMS 次数及 Bonus Event 回合间隔，支持在 Server Options → Game Rules → Round Thresholds 中直接输入 1～100 并保存配置；保留当前默认值，宝藏兑换只扣除设定数量并保留余数；配置说明见 [回合阈值](docs/server-gameplay-cvars.md#1-round-threshold-limits)
 - 将 Bonus Event 随机选择接入与 Boss 相同的低频优先机制：优先抽取出现次数最少的合格事件，同次数时按原权重随机；保留人数限制、上一场排除、强制指定及 EX 升级规则，仅在事件实际启动时计数，EX 计入对应基础事件的次数，记录跨回合与地图保留
 - 优化玩家旁观时按 Enter 打开的选人与加入界面：支持通过 TextField 手动输入职业名加入游戏
 - 补齐 Unbound 遗漏的自定义文本颜色定义：在 `TEXTCOLO` 中恢复 `w Ice`、`x Fire`、`y Sapphire` 及 `z Teal`，使 `\c[Teal]` 与 `\c[Sapphire]` 在界面和提示中正常渲染
@@ -95,7 +95,7 @@
 - Bonus Event 胜者确认自选 Boss 后，若在开战分配前旁观或掉线，保留所选 Boss 并强制交给另一名随机的在场存活玩家；胜者在倒计时内重新加入也不会取回选择
 - 按用途重新划分 Qwant 招式：2 远程、3 连射、4 近战、5 强力、6 范围／控制、7 防御／辅助；UIX weaponbar 与 wheel 同步使用实际槽位，保留元素属性、弹药和开局抽选规则
 - 解除 Qwant 开局招式数量的四招上限，支持全部注册招式及 addon；招式重学改为替换当前招式并排除所有已持有招式，持有全部招式时不消耗重学资源；Pharaoh Roulette、UIX 武器条和轮盘改为读取完整持有列表，轮盘支持完整招式列表和可滚动分组
-- 新增 Qwant／NegaMan 开局复制武器数量的服务器设置，支持在 Server Options → Rules 中直接输入：Qwant 默认 4 招；NegaMan 默认 3 把，达到或超过注册武器池总数时发放全部复制武器；保留基础武器，抽选不重复，并同步适配 Qwant 空招式槽的招式重学及 UIX 武器轮盘；配置说明见 [开局复制武器数量](docs/copy-weapon-start-counts.md)
+- 新增 Qwant／NegaMan 开局复制武器数量的服务器设置，支持在 Server Options → Rules 中直接输入：Qwant 默认 4 招；NegaMan 默认 3 把，达到或超过注册武器池总数时发放全部复制武器；保留基础武器，抽选不重复，并同步适配 Qwant 空招式槽的招式重学及 UIX 武器轮盘；配置说明见 [开局复制武器数量](docs/server-gameplay-cvars.md#2-opening-copy-weapon-counts-qwant--negaman)
 - 修复 MegaMan 的 GyroAttack 旋转辅助弹、FireStorm 火圈、ChillSpike 初始弹／落地首击、OilSlider 燃烧油池、PharaohShot 头顶蓄力球和 TenguBlade 冲刺／斩击绕过每日随机友伤名单的问题，将各自的辅助伤害类型映射到对应复制武器
 - 补齐关闭随机复制武器友伤时对 `GyroChopper` 和 `WheelCutterSaw` 的保护；保留 NapalmBomb 核爆原有的友伤行为
 

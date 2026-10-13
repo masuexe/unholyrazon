@@ -26,14 +26,12 @@ Guides and CVAR references for dedicated server operators and host setups.
 
 | Document | Description |
 |---|---|
+| [**Server Gameplay CVARs**](server-gameplay-cvars.md) | Centralized reference for round thresholds, copy weapon counts, SinfulBusterExpert unlocks, bonus stage death effects, and Zangief pull toggles. |
 | [**Boss Selection Settings**](boss-selection-settings.md) | Host commands (`uh_boss_set`, `uh_boss_show`, `uh_boss_export`), per-boss rule overrides (`uh_sv_bossrules`), selection strategies, and tier probabilities. |
 | [**Bonus Event Settings**](bonus-event-settings.md) | Host commands (`uh_event_set`, `uh_event_show`, `uh_event_export`), per-event rules (`uh_sv_eventrules`), player thresholds, and EX counters. |
-| [**Round Thresholds**](round-thresholds.md) | Host settings for win/loss streak mercy, Hell Mark, Speciman kills, Gauntlet rewards, and Bad LMS thresholds. |
 | [**Round Settlement**](round-settlement.md) | Server option `uh_sv_resumeonrevive`, cancellable exit windows, and mid-settlement revival rules. |
-| [**Copy Weapon Start Counts**](copy-weapon-start-counts.md) | Server settings controlling initial copy weapon distribution for Qwant and NegaMan. |
-| [**SinfulBusterExpert Unlocks**](sinful-buster-expert-unlocks.md) | Host selection of Unbound or progressive weapon unlocks. |
-| [**AFK Penalties**](afk-penalties.md) | Server AFK detection rules, punishment items (Fire, GUHU, Money Bait, Money Bomb), and delay thresholds. |
 | [**MegaMan Daily Weapons**](megaman-daily-weapons.md) | Server CVARs for MegaMan M2 weapon pool size and daily weapon synchronization. |
+| [**AFK Penalties**](afk-penalties.md) | Server AFK detection rules, punishment items (Fire, GUHU, Money Bait, Money Bomb), and delay thresholds. |
 
 ---
 
@@ -41,11 +39,8 @@ Guides and CVAR references for dedicated server operators and host setups.
 
 | Document | Description |
 |---|---|
+| [**Class Specific Mechanics**](class-mechanics.md) | In-depth combat mechanics and control references for specialized classes (Zangief charge pull, Star Force Mega Man Battle Cards, and Eden Isaac item artifacts). |
 | [**Bonus Boss Choice**](bonus-boss-choice.md) | Rules and timing for winner boss selection during bonus events. |
-| [**Bonus Death Shitting**](bonus-death-shitting.md) | Death effect items and event-specific on-death drops. |
-| [**Bonus Music Pools**](bonus-music-pools.md) | Shared event BGM pools and random track selection. |
-| [**Eden Razon 3 Items**](eden-razon3-items.md) | Behavior and mechanics of ported Isaac item artifacts for Eden. |
-| [**Star Force Boss Controls**](starforce-controls.md) | Single-slot combat weapon controls, Battle Card chain usage, lock-on toggling, and wheel input priority rules. |
 
 ---
 

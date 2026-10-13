@@ -128,20 +128,23 @@ Avoid the following Translation ID ranges when calling `CreateTranslation` in cu
 
 For in-depth specifications, refer to the guides in [`docs/`](docs/):
 
-#### Modding APIs
+#### Modding APIs & Tooling
+- [Boss API](docs/boss-api.md) — Custom boss class registration.
+- [Survivor & Class API](docs/survivor-api.md) — Custom survivor registration.
+- [Bonus Event API](docs/bonus-event-api.md) — Custom LMS round variants and music pools.
 - [Boss Combo API](docs/boss-combo-api.md) — Multi-boss combinations and stage music.
-- [LMS Event API](docs/lms-event-api.md) — Mid-round events.
-- [Identity Table CRUD Contract](docs/modding/uhdt-identity-crud-contract.md) — UHDT database manipulation.
-- [Music Row Contract](docs/modding/uhdt-music-row-contract.md) — UHDT music registry schema.
+- [LMS Event API](docs/lms-event-api.md) — Mid-round events and penalties.
+- [Demoneye API](docs/demoneye-api.md) — Demoneye classes and weighted morph pools.
+- [Custom HUD Bars](docs/custom-bars.md) — Data-driven HUD bar compiler pipeline.
 
-#### Game Rules & Mechanics
-- [Boss Stage Portraits](docs/boss-phase-portraits.md)
-- [Bonus Winner Boss Choice](docs/bonus-boss-choice.md)
-- [Bonus-Stage Music Pools](docs/bonus-music-pools.md)
-- [AFK Penalties](docs/afk-penalties.md)
-- [Round Thresholds](docs/round-thresholds.md)
-- [Opening Copy-Weapon Counts](docs/copy-weapon-start-counts.md)
-- [MegaMan Daily Weapons](docs/megaman-daily-weapons.md)
+#### Server Administration & Gameplay
+- [Server Gameplay CVARs](docs/server-gameplay-cvars.md) — Round thresholds, copy weapon counts, unlocks, and death effects.
+- [Boss Selection Settings](docs/boss-selection-settings.md) — Host boss selection strategies and overrides.
+- [Bonus Event Settings](docs/bonus-event-settings.md) — Event selection rules and thresholds.
+- [Round Settlement](docs/round-settlement.md) — Cancellable exit windows and revival resume rules.
+- [Class Specific Mechanics](docs/class-mechanics.md) — Zangief pull, Star Force Battle Cards, and Eden items.
+- [MegaMan Daily Weapons](docs/megaman-daily-weapons.md) — Daily weapon pool randomization.
+- [AFK Penalties](docs/afk-penalties.md) — AFK detection rules and punishment items.
 
 ---
 

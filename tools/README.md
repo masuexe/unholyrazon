@@ -435,7 +435,7 @@ be proved by a startup-only process.
 `node tools/mcp/starforce-input-test.mjs [--pk3 PATH]` checks the actual boss's
 scroll direction isolation, automatic return, held Reload/release, cooldown gating and six-card hand
 through the local smoke profile. It uses the same MCP environment settings as
-`smoke-test.sh`. See [Star Force controls](../docs/starforce-controls.md) for the
+`smoke-test.sh`. See [Star Force controls](../docs/class-mechanics.md#2-star-force-mega-man-controls--battle-cards) for the
 single-slot requirement and the remaining multiplayer gameplay checks.
 
 ## Environment & External References
