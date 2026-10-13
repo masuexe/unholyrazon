@@ -17,11 +17,11 @@ This document describes how Unholy Razon manages external references, base game 
 
 ## 2. Recommended Workspace Layout
 
-By default, the project expects sibling directories next to `unholyrazon4`:
+By default, the project expects sibling directories next to `unholyrazon`:
 
 ```text
 parent_directory/
-├── unholyrazon4/                   # (This repository)
+├── unholyrazon/                    # (This repository)
 ├── wads/                           # Runtime .wad / .pk3 files for testing (can be a symlink)
 │   ├── megagame.wad
 │   ├── mm8bdm-v6b.pk3

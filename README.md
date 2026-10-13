@@ -170,7 +170,7 @@ Build scripts and launch profiles use relative paths. Place base files alongside
 
 ```
 parent/
-├── unholyrazon4/          # This repository
+├── unholyrazon/           # This repository
 │   ├── src/               # Mod source files (packed into out/build.pk3)
 │   ├── out/build.pk3      # Built PK3 output (git-ignored)
 │   ├── docs/              # Documentation
