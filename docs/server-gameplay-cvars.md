@@ -57,6 +57,39 @@ Controls the quantity of copy weapons distributed to Qwant and NegaMan at the st
 
 ---
 
+## NegaMan daily ammo cost
+
+Open **Unholy Server Options → Rules → NegaMan Weapons**. Press Enter on
+the multiplier fields to enter decimals.
+
+| CVAR | Default | Meaning |
+|---|:---:|---|
+| `rz_sv_randnegamancopywepammo` | `true` | Enable daily random copy-weapon ammo costs |
+| `rz_sv_nega_ammo_mul_min` | `0.0` | Minimum ammo cost multiplier |
+| `rz_sv_nega_ammo_mul_max` | `2.0` | Maximum ammo cost multiplier |
+
+Each registered NegaMan copy weapon, including addons, gets its own multiplier
+from the configured range, keyed by its actor name and the UTC date. The
+defaults preserve existing daily costs. Settings are read live by both the
+server's spending logic and the client's weapon-ready prediction. Delayed
+attacks that already saved a cost keep that cost until settlement.
+
+Costs are rounded to the nearest integer, with halves rounded up. Zero remains
+a free attack. Equal endpoints set a fixed multiplier; reversed endpoints are
+swapped during calculation. Negative endpoints are treated as zero. Enter
+finite multipliers in the ACS nonnegative 16.16 range (0–32767). Runtime
+adjustments do not rewrite saved settings. Turning the switch off restores
+original ammo costs and grays out the multiplier fields without clearing them.
+
+For example, `rz_sv_nega_ammo_mul_min 0.5` and
+`rz_sv_nega_ammo_mul_max 1.5` give each weapon a daily cost multiplier between
+0.5 and 1.5. Set both to `1` for original costs, or both to `0` for free copy
+weapon attacks. Existing infinite-ammo and committed-drain rules still apply.
+`uh_debug_ShowTodayNegaAmmo` logs the configured range, daily multipliers and
+sample costs.
+
+---
+
 ## 3. SinfulBusterExpert Weapon Unlock Policy
 
 Controls weapon progression for the SinfulBusterExpert boss:

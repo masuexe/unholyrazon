@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261013
 
+- 新增 NegaMan 每日复制武器耗蓝倍率上下限设置 `rz_sv_nega_ammo_mul_min` / `rz_sv_nega_ammo_mul_max`，可在 **Unholy Server Options → Rules → NegaMan Weapons** 中输入；默认保留 0～2 倍，支持小数、固定倍率与零耗蓝，修改即时生效并适用于已注册的 addon 武器；保留原有随机开关，关闭后恢复原始耗蓝。配置说明见 [NegaMan 每日耗蓝](docs/server-gameplay-cvars.md#negaman-daily-ammo-cost)。
 - 修复以第一人称旁观 Plasma Spark 时严重闪屏的问题
 - 修复以撒（Eden）的 Ipecac 泪弹在联机中不显示爆炸特效的问题
 - 新增默认开启的结算友伤开关 `uh_sv_postroundfriendlyfire`，可在 Unholy Server Options → Game Rules → Friendly Fire After Round End 切换；统一覆盖结算等待、正式结束和原生 LMS 胜利序列中的生还者、Boss 与恶魔眼，包括 Bonus Event 的特殊友伤保护

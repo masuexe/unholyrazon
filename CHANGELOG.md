@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261013
 
+- Added configurable NegaMan daily copy-weapon ammo multiplier bounds `rz_sv_nega_ammo_mul_min` / `rz_sv_nega_ammo_mul_max` under **Unholy Server Options → Rules → NegaMan Weapons**; defaults remain 0–2, with decimal, fixed-multiplier and zero-cost support. Settings take effect immediately, including registered addon weapons; the existing randomization toggle restores original ammo costs when disabled. See [NegaMan Daily Ammo Cost](docs/server-gameplay-cvars.md#negaman-daily-ammo-cost).
 - Fixed severe screen flashing when spectating Plasma Spark in first person.
 - Fixed an issue where Eden's Ipecac tear projectile explosion effect would not display in multiplayer.
 - Added a server toggle `uh_sv_postroundfriendlyfire` (enabled by default) under **Unholy Server Options → Game Rules → Friendly Fire After Round End**; uniformly covers survivors, bosses, and demoneyes across settlement delays, round completions, and native LMS victory sequences, including Bonus Event friendly-fire protection overrides.

@@ -77,10 +77,14 @@ function str UH_NegaAmmoForRow(int row) {
   return UH_CopyWepNegaAmmo(GetCopyWepSlot(row));
 }
 
-// Today's fixed multiplier in [0.0, 2.0] for one weapon actor name.
+// Today's fixed multiplier in the host's range for one weapon actor name.
+// Server float CVars also reach the client-predicted Ready calculation.
+// Keep the legacy seed/generator so defaults preserve existing daily costs.
 function int UH_NegaAmmoMultiplierForActor(str w) {
   int date = UH_DateToIntUTC();
-  return UH_SeedRandom(date + UH_HashStr(w) * UH_NEGA_AMMO_SALT, 0.0, 2.0);
+  int lo = max(0, min(GetCVar("rz_sv_nega_ammo_mul_min"), 32767.0));
+  int hi = max(0, min(GetCVar("rz_sv_nega_ammo_mul_max"), 32767.0));
+  return UH_SeedRandom(date + UH_HashStr(w) * UH_NEGA_AMMO_SALT, lo, hi);
 }
 
 // round(multiplier * baseCost).  -1 marks an invalid negative base cost.
@@ -92,10 +96,14 @@ function int UH_NegaAmmoCostForActor(str w, int baseCost) {
     return 0;
   if (!GetCVar("rz_sv_randnegamancopywepammo"))
     return baseCost;
-  // mul is Q16; mul * baseCost + 0.5 then >>16 is round-half-up without
-  // overflow (max 131072 * 28 = 3.7M, well inside 32-bit).
+  // FixedMul uses a wide intermediate: configured multipliers may exceed 2.0.
+  // Only the low 16 product bits are needed for round-half-up; masking the
+  // operands to 15 bits keeps that remainder calculation inside signed int.
   mul = UH_NegaAmmoMultiplierForActor(w);
-  return (mul * baseCost + 0.5) >> 16;
+  int remainder = ((mul & 0x7FFF) * (baseCost & 0x7FFF)
+    + (((mul & 0x8000) && (baseCost & 1)) ? 0x8000 : 0)
+    + (((baseCost & 0x8000) && (mul & 1)) ? 0x8000 : 0)) & 0xFFFF;
+  return FixedMul(mul, baseCost) + (remainder >= 0.5);
 }
 
 // Simulate TIF_NOTAKEINFINITE: sv_infiniteammo (dmflags DF_INFINITE_AMMO) and
@@ -322,7 +330,9 @@ script "uh_debug_ShowTodayNegaAmmo" (void) {
   int date = UH_DateToIntUTC();
   int n = CountCopyWepByKind(UHCOPY_NEGA);
   UH_Log(UH_LOG_DEBUG, StrParam(s:"uh_debug_ShowTodayNegaAmmo date=", i:date,
-    s:" rz_sv_randnegamancopywepammo=", i:GetCVar("rz_sv_randnegamancopywepammo")));
+    s:" rz_sv_randnegamancopywepammo=", i:GetCVar("rz_sv_randnegamancopywepammo"),
+    s:" min=", f:GetCVar("rz_sv_nega_ammo_mul_min"),
+    s:" max=", f:GetCVar("rz_sv_nega_ammo_mul_max")));
   for (int i = 0; i < n; i++) {
     int row = FindCopyWepRowByKindIndex(UHCOPY_NEGA, i);
     str actor = GetCopyWepActor(row);
