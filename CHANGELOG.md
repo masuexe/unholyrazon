@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261014
 
+- Awful Box Demoneye now displays the correct item icon in the UIX Item Wheel.
 - Fixed SuperMegaman's rage kills missing the frozen death effect.
 - Fixed DecoyBot occasionally starting empty-handed until the player switched weapons with the mouse wheel.
 - Fixed recruited Ave Mujica members surviving Sakiko Togawa's death; her death now kills all living recruited members and cancels the finisher if it is preparing.
