@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261015
+
+- Added the "A Random Maverick" death tip group featuring community quotes and unhinged takes, alongside new quotes added to the miscellaneous pool.
+
 ## 4.0.0-beta.261014
 
 - Added 50 addon extension slots for coop enemies to share damage resistances and reactions.
