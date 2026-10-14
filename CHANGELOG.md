@@ -17,6 +17,7 @@
 - Adjusted Eden's vertical stat HUD placement to the right of the health and energy bars.
 - Fixed SadFaceToadMan remaining unable to move in phase two when the phase transition interrupted a normal rain attack.
 - Fixed `ub_LMS_EventTime` entering an infinite reward retry loop when the last survivor died, disconnected, or lost their pawn, triggering `Runaway script` / `Bad script definition` errors and disconnecting players.
+- Fixed MM2 Telly enemies visually glitching with incorrect animation frames while rotating.
 
 ## 4.0.0-beta.261013
 
