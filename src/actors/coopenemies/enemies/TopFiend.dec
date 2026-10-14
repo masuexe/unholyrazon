@@ -37,13 +37,17 @@ actor KomaTopU : GenericRobot {
   Speed 40
   Damage (100)
   WallBounceFactor 0.9
-  ReactionTime 30
+  // A_CountDownArg checks before decrementing: 29 gives 30 spin cycles.
+  // Keep the lifetime separate from the monster's damage reaction timer.
+  Args 29
   DamageType "TopFiendU"
   States {
    Spawn:
     TOPA IJKIJK 2
    Start:
-    TOPA I 2 A_CountDown
+    // A blocked top must not linger until its full lifetime runs out.
+    TOPA I 0 A_JumpIf(velx == 0 && vely == 0 && velz == 0, "DeathQuiet")
+    TOPA I 2 A_CountDownArg(0)
     TOPA JKIJK 2
     loop
    Crash:
@@ -52,6 +56,8 @@ actor KomaTopU : GenericRobot {
     TNT1 A 0 A_JumpIf(health != 0, "DeathQuiet")
     TNT1 A 0 A_PlaySoundEx("weapon/napalm", 0)
    DeathQuiet:
+    TNT1 A 0 A_ChangeFlag("MISSILE", 0)
+    TNT1 A 0 A_ChangeFlag("SHOOTABLE", 0)
     TNT1 A 0 A_Stop
     TNT1 A 0 A_ChangeFlag("NOGRAVITY", 1)
     TNT1 A 1 A_Fall
@@ -88,7 +94,6 @@ actor KomaTopU_3BC : KomaTopU {
   Damage (100)
   BounceFactor 1.0
   WallBounceFactor 1.0
-  ReactionTime 30
 }
 
 actor HazardTag_TopFiendU : BasicACSDamager {
