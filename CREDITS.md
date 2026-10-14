@@ -5,7 +5,7 @@ Unholy Razon is an open-source fork based on **Unholy Unbound (v7b)**, originall
 This document attributes sprites, skins, mugshots, sound effects, and gameplay assets contributed by community creators across Unholy Razon, Unholy Unbound, and upstream projects.
 
 > [!NOTE]
-> *Some credits are lost to the sands of time.*  
+> *Some credits are lost to the sands of time.*
 > Due to the decade-long history of Unholy and missing attribution records in upstream releases (such as *Unholy Bosses Unbound*), some creators of legacy sprites, skins, sounds, or concepts may not be recorded. If you recognize any unattributed, missing, or misattributed work, please open an issue or pull request so we can properly credit the original creators!
 
 ---
@@ -96,7 +96,9 @@ Assets inherited from the Unholy Classes & Bosses Unbound release (`unholy_class
 - **[Mega Man 8-Bit Deathmatch](https://mm8bdm.net/)**: CutmanMike and the MM8BDM development team for the base game, assets, ClassBase architecture, and core APIs.
 - **Original [Unholy Classes & Bosses](https://mm8bdm.net/forum/thread/unholy-classes-bosses-v8a-in-progress-170)**: The Unholy development team for the original asymmetric boss-vs-survivor LMS mod, gamemode design, and character foundation.
 - **Unholy Classes & Bosses Unbound (v7b)**: The Unholy Unbound development team for the direct upstream codebase and assets.
-- **[Class Based Modification](https://mm8bdm.net/forum/thread/class-based-modification-v9gh-42) (CBM)**: The CBM team for core architectural references, weapon implementations, and slot systems.
+- **[Class Based Modification](https://mm8bdm.net/forum/thread/class-based-modification-v9gh-42) (CBM)**: The CBM team for core architectural references, weapon implementations, and player/shootable-object extension slot designs.
+- **MMSP**: CutmanMike and the MMSP contributors for the single-player enemy foundation, enemy sprites, and shared enemy behavior adapted for Unholy's coop enemies.
+- **8BDM Coop Pack (v1f)**: Théophile for the GenericRobot extension slot design adapted to Unholy's own structure.
 - **CBM Gondola Patch**: The Gondola team for reload animation mechanics, weapon offsets, and automap directional/death marker concept & sprites (`CCBM-ALLYINFOFUCTIONS`).
 - **Rebellion Unholy**: Custom boss mechanics, unique items, and gameplay concepts.
 - **Saxton Hale**: Original asymmetric multi-player boss battle gameplay concept inspiration.

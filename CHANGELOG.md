@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261014
 
+- Added 50 addon extension slots for coop enemies to share damage resistances and reactions.
 - Added 50 addon extension slots for destructible walls, mines and other supported shootable objects, allowing addons to share damage resistances and reactions.
 - Fixed Battle Time disappearing before the victory/defeat and streak messages during round settlement.
 - Awful Box Demoneye now displays the correct item icon in the UIX Item Wheel.

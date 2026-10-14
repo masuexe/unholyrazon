@@ -254,6 +254,8 @@ If you use VS Code, install the [zandronum-vscode](https://github.com/masuexe/za
 - [Unholy Classes & Bosses](https://mm8bdm.net/forum/thread/unholy-classes-bosses-v8a-in-progress-170): The Unholy development team for the original mod and gamemode foundation.
 - Unholy Classes & Bosses Unbound (v7b): The Unholy Unbound development team for the direct upstream codebase and assets.
 - [Class Based Modification](https://mm8bdm.net/forum/thread/class-based-modification-v9gh-42) (CBM): The CBM team for core architectural patterns and weapon templates.
+- MMSP: CutmanMike and the MMSP contributors for enemy foundations, sprites, and behavior.
+- 8BDM Coop Pack (v1f): Théophile for enemy extension slot design.
 - CBM Gondola Patch: The Gondola team for reload mechanics, weapon offsets, and automap extensions.
 - Rebellion Unholy & Saxton Hale: Boss mechanics, item concepts, and asymmetric game mode inspiration.
 - [ACSUtils](https://github.com/Korshun/acsutils): Korshun and contributors for ACS utility functions adapted into `uh_acsutils.acs`.
