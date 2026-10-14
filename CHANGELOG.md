@@ -6,6 +6,8 @@
 
 ## 4.0.0-beta.261014
 
+- Added Isaac-style dynamic stat change indicators for Eden: when attributes increase or decrease (such as from starting items upon spawning, picking up passives, Void stat absorption, or D8 rerolls), a green `+` or red `-` delta hint appears next to the modified stat for 2 seconds.
+- Adjusted Eden's vertical stat HUD placement to the right of the health and energy bars.
 - Fixed SadFaceToadMan remaining unable to move in phase two when the phase transition interrupted a normal rain attack.
 - Fixed `ub_LMS_EventTime` entering an infinite reward retry loop when the last survivor died, disconnected, or lost their pawn, triggering `Runaway script` / `Bad script definition` errors and disconnecting players.
 

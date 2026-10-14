@@ -3,6 +3,120 @@
 // active CI64C* / BobHeadFlag, passive EdenItemSlot1-4. Graphics are C_I_59* / CI59C*.
 // Icons: EdenLookup* in UHEDENISAAC (EdenRegisterMain/Alt at OPEN).
 
+#define EDEN_ATTR_COUNT 6
+#define EDEN_DELTA_HOLD_TICS 70
+#define EDEN_DELTA_ID_BASE (UH_IMAGE_ID_BASE - 170)
+
+// Map-local and client-local; PlayerNumber is the camera pawn, not the viewer.
+str eden_hud_attr[EDEN_ATTR_COUNT] = {
+  "EdenSpeedAttr", "EdenHeightAttr", "EdenTearsHUDAttr",
+  "EdenDamageAttr", "EdenRangeAttr", "EdenShotSpeedAttr"
+};
+str eden_hud_base_attr[EDEN_ATTR_COUNT] = {
+  "EdenHudBaseSpeed", "EdenHudBaseHeight", "EdenHudBaseTears",
+  "EdenHudBaseDamage", "EdenHudBaseRange", "EdenHudBaseShotSpeed"
+};
+int eden_last_attr[64][EDEN_ATTR_COUNT];
+int eden_delta_val[64][EDEN_ATTR_COUNT];
+int eden_delta_until[64][EDEN_ATTR_COUNT];
+int eden_attr_initialized[64];
+int eden_hud_start[64];
+int eden_hud_last_tick[64];
+int eden_hud_view_player = -1;
+
+function void ClearEdenStatDeltas(void) {
+  for (int i = 0; i < EDEN_ATTR_COUNT * 2; i++) {
+    ClearHudMessageBold(EDEN_DELTA_ID_BASE - i);
+  }
+}
+
+function int UpdateEdenStatDeltas(void) {
+  int pn = PlayerNumber();
+  int now = Timer();
+  int start = CheckInventory("EdenHudStartTic");
+  int current;
+  int baseline;
+  int first;
+  int changedlife;
+  int resumed;
+
+  if (pn < 0 || pn >= 64) {return -1;}
+  if (GetActorProperty(0, APROP_Health) <= 0 || !CheckInventory("EdenInitFlag") || !start) {
+    eden_attr_initialized[pn] = 0;
+    eden_hud_view_player = -1;
+    return -1;
+  }
+
+  first = !eden_attr_initialized[pn];
+  changedlife = eden_hud_start[pn] != start;
+  resumed = eden_hud_view_player != pn || now > eden_hud_last_tick[pn] + 1;
+  for (int i = 0; i < EDEN_ATTR_COUNT; i++) {
+    current = CheckInventory(eden_hud_attr[i]);
+    if (first || changedlife || resumed) {
+      baseline = current;
+      // Opening an already established spectator view must not replay spawn
+      // gains. Only a freshly initialized body uses the initial roll snapshot.
+      if (changedlife && now >= start - 1 && now < start - 1 + EDEN_DELTA_HOLD_TICS) {
+        baseline = CheckInventory(eden_hud_base_attr[i]);
+      }
+      eden_last_attr[pn][i] = baseline;
+      eden_delta_val[pn][i] = 0;
+      eden_delta_until[pn][i] = 0;
+    }
+    if (current != eden_last_attr[pn][i]) {
+      eden_delta_val[pn][i] = current - eden_last_attr[pn][i];
+      eden_delta_until[pn][i] = now + EDEN_DELTA_HOLD_TICS;
+      eden_last_attr[pn][i] = current;
+    }
+  }
+  eden_attr_initialized[pn] = 1;
+  eden_hud_start[pn] = start;
+  eden_hud_last_tick[pn] = now;
+  eden_hud_view_player = pn;
+  return pn;
+}
+
+function void DrawEdenStatDeltas(int pn) {
+  if (pn < 0) {return;}
+  int now = Timer();
+  int delta;
+  int color;
+  str text;
+  int vx, vy, hx, hy;
+  // SMALLFONT at half size leaves room for a signed four-digit difference.
+  // Horizontal deltas sit just below the values to avoid the next column.
+  SetHudSize(640, 400, 0);
+  SetFont("SMALLFONT");
+  for (int i = 0; i < EDEN_ATTR_COUNT; i++) {
+    if (now >= eden_delta_until[pn][i]) {continue;}
+    delta = eden_delta_val[pn][i];
+    color = CR_RED;
+    text = StrParam(i:delta);
+    if (delta > 0) {
+      color = CR_GREEN;
+      text = StrParam(s:"+", i:delta);
+    }
+    vx = 170.1;  // x=85 on the 320-wide HUD, to the right of the value (x=67).
+    vy = ((11 + i * 9) * 2.0) + 0.1;
+    hx = 144.1;
+    if (i >= 3) {hx = 198.1;}
+    hy = ((160 + (i % 3) * 8) * 2.0) + 0.1;
+    // One tic of hold time: a stopped draw (death/weapon/camera change)
+    // removes the text without an extra clear callback or a network script.
+    if (AssistDisplayBar_HUDMode() == BAR_DISPLAY_HORI) {
+      HudMessageBold(s:text; HUDMSG_PLAIN, EDEN_DELTA_ID_BASE - i * 2, color, hx, hy, 0.03);
+    } else {
+      HudMessageBold(s:text; HUDMSG_NOTWITHOVERLAYMAP | HUDMSG_NOTWITH3DVIEW,
+        EDEN_DELTA_ID_BASE - i * 2 - 1, color, hx, hy, 0.03);
+      if (AssistDisplayBar_HUDMode() == BAR_DISPLAY_VERT) {
+        HudMessageBold(s:text; HUDMSG_NOTWITHFULLMAP,
+          EDEN_DELTA_ID_BASE - i * 2, color, vx, vy, 0.03);
+      }
+    }
+  }
+  SetHudSize(320, 200, 0);
+}
+
 function int EdenPassiveSlotAmount(int slotindex) {
   switch (slotindex) {
     case 0: return CheckInventory("EdenItemSlot1");
@@ -39,31 +153,33 @@ function void DrawEdenPassiveSlots(int baseid) {
 
 function void DrawEdenStatHud(void) {
   SetHudSize(320, 200, 0);
+  ClearEdenStatDeltas();
+  int pn = UpdateEdenStatDeltas();
   int baseid = UH_IMAGE_ID_BASE - 130;
-  // Stats/active stay with the ammo bar (VB top-left / HB bottom, razon3 +center).
+  // Stats/active: VB right of health bar (safe from 5-digit HP, ammo numbers & boss hud) / HB bottom.
   // Passives: right-side row like razon3 DrawImage -64..-15,106 (fullscreenoffsets).
-  AdjustedImageDisplay("C_I_59A", "C_I_59A", baseid, baseid - 1, -18.1, 9.1, 53.1, 155.1);
-  AdjustedImageDisplay("C_I_59B", "C_I_59B", baseid - 2, baseid - 3, -18.1, 18.1, 53.1, 163.1);
-  AdjustedImageDisplay("C_I_59C", "C_I_59C", baseid - 4, baseid - 5, -18.1, 27.1, 53.1, 171.1);
-  AdjustedImageDisplay("C_I_59D", "C_I_59D", baseid - 6, baseid - 7, -18.1, 36.1, 80.1, 155.1);
-  AdjustedImageDisplay("C_I_59E", "C_I_59E", baseid - 8, baseid - 9, -18.1, 45.1, 80.1, 163.1);
-  AdjustedImageDisplay("C_I_59F", "C_I_59F", baseid - 10, baseid - 11, -18.1, 54.1, 80.1, 171.1);
+  AdjustedImageDisplay("C_I_59A", "C_I_59A", baseid, baseid - 1, 58.1, 9.1, 53.1, 155.1);
+  AdjustedImageDisplay("C_I_59B", "C_I_59B", baseid - 2, baseid - 3, 58.1, 18.1, 53.1, 163.1);
+  AdjustedImageDisplay("C_I_59C", "C_I_59C", baseid - 4, baseid - 5, 58.1, 27.1, 53.1, 171.1);
+  AdjustedImageDisplay("C_I_59D", "C_I_59D", baseid - 6, baseid - 7, 58.1, 36.1, 80.1, 155.1);
+  AdjustedImageDisplay("C_I_59E", "C_I_59E", baseid - 8, baseid - 9, 58.1, 45.1, 80.1, 163.1);
+  AdjustedImageDisplay("C_I_59F", "C_I_59F", baseid - 10, baseid - 11, 58.1, 54.1, 80.1, 171.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenSpeedAttr"),
-    baseid - 12, baseid - 13, -9.1, 11.1, 62.1, 156.1);
+    baseid - 12, baseid - 13, 67.1, 11.1, 62.1, 156.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenHeightAttr"),
-    baseid - 14, baseid - 15, -9.1, 20.1, 62.1, 164.1);
+    baseid - 14, baseid - 15, 67.1, 20.1, 62.1, 164.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenTearsHUDAttr"),
-    baseid - 16, baseid - 17, -9.1, 29.1, 62.1, 172.1);
+    baseid - 16, baseid - 17, 67.1, 29.1, 62.1, 172.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenDamageAttr"),
-    baseid - 18, baseid - 19, -9.1, 38.1, 89.1, 156.1);
+    baseid - 18, baseid - 19, 67.1, 38.1, 89.1, 156.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenRangeAttr"),
-    baseid - 20, baseid - 21, -9.1, 47.1, 89.1, 164.1);
+    baseid - 20, baseid - 21, 67.1, 47.1, 89.1, 164.1);
   AdjustedDrawNumberC("CMBHQFONT", CR_UNTRANSLATED, CheckInventory("EdenShotSpeedAttr"),
-    baseid - 22, baseid - 23, -9.1, 56.1, 89.1, 172.1);
+    baseid - 22, baseid - 23, 67.1, 56.1, 89.1, 172.1);
 
   str active = EdenLookupActiveItemIcon();
   if (StrCmp(active, "TNT1A0")) {
-    AdjustedImageDisplay(active, active, baseid - 24, baseid - 25, -18.1, 64.1, 40.1, 181.1);
+    AdjustedImageDisplay(active, active, baseid - 24, baseid - 25, 0.1, 64.1, 40.1, 181.1);
   }
 
   int bob = CheckInventory("BobHeadFlag");
@@ -73,6 +189,7 @@ function void DrawEdenStatHud(void) {
   }
 
   DrawEdenPassiveSlots(baseid);
+  DrawEdenStatDeltas(pn);
 }
 
 script "DrawBar_Eden_W" (void) {
