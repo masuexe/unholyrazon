@@ -58,6 +58,29 @@ script "uh_DecoyBotCustomFire" (int which) {
   SetResultValue(0);
 }
 
+// Synchronous display query: use the local registry and synced ownership,
+// not server-only uh_decoyheld or registration-order DecoyBotFlag IDs.
+// Empty/ambiguous slots during Give/Take replacement are not selectable.
+script "uh_DecoyBotHeldWeapon" (int slot) {
+  str held = "";
+  str candidate;
+  if (slot >= 1 && slot <= 3 && CheckActorClass(0, "DecoyBot")) {
+    for (int i = 0; i < uh_decoymovecount; i++) {
+      if (StrLen(uh_decoymovewep[i][0]) <= 0)
+        continue;
+      candidate = StrParam(s:uh_decoymovewep[i][0], s:"_W", i:slot);
+      if (CheckInventory(candidate) <= 0)
+        continue;
+      if (StrLen(held) > 0) {
+        SetResultValue(StrParam(s:""));
+        terminate;
+      }
+      held = candidate;
+    }
+  }
+  SetResultValue(StrParam(s:held));
+}
+
 // Which weapon slot is currently ready (1/2/3) from GetWeapon() suffix.
 function int UH_DecoyHeldSlotFromWeapon(str wep) {
   int len = StrLen(wep);

@@ -9,6 +9,7 @@
 #define UHFW_ROUTE_FIXED 1
 #define UHFW_ROUTE_QWANT 2
 #define UHFW_ROUTE_NEGA 3
+#define UHFW_ROUTE_DECOY 4
 #define UHFW_OWN_NONE 0
 #define UHFW_OWN_UH 1
 #define UHFW_OWN_UIX 2
@@ -344,6 +345,9 @@ function void UHFW_AddWheelItemEntry(str wep, int group, str icon, str tag,
 // Shared energy adds no per-weapon information to these wheels.
 // Keep the inventory metadata intact; this is only a wheel display policy.
 function int UHFW_HideSharedEnergyBars(void) {
+  // DecoyBot shares both energy and reroll charge across its three slots.
+  if (uhfw_route == UHFW_ROUTE_DECOY)
+    return 1;
   if (uhfw_route != UHFW_ROUTE_FIXED)
     return 0;
   return StrICmp(uhfw_snapclass, "Arcanist") == 0
@@ -431,6 +435,13 @@ function int UHFW_ShouldCancel(void) {
     return 1;
   if (StrICmp(GetActorClass(0), uhfw_snapclass) != 0)
     return 1;
+  if (uhfw_route == UHFW_ROUTE_DECOY) {
+    for (i = 0; i < uhfw_snapn; i++) {
+      if (StrICmp(uhfw_snapwep[i],
+          ACS_NamedExecuteWithResult("uh_DecoyBotHeldWeapon", i + 1)) != 0)
+        return 1;
+    }
+  }
   if (UHFW_IsMakeAGoodZero(uhfw_snapclass)) {
     if (!UHFW_IsZeroPhase2())
       return 1;
