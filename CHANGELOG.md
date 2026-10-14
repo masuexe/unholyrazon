@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261014
 
+- Fixed Battle Time disappearing before the victory/defeat and streak messages during round settlement.
 - Awful Box Demoneye now displays the correct item icon in the UIX Item Wheel.
 - Fixed SuperMegaman's rage kills missing the frozen death effect.
 - Fixed DecoyBot occasionally starting empty-handed until the player switched weapons with the mouse wheel.
