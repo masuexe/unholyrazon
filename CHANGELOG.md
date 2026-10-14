@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261015
 
+- Sutoka now automatically opens all 4 Pandora Boxes at full Rage, granting random items without manual box use.
 - Added UIX weapon wheel and weapon bar support for regular DecoyBot.
 - Added the "A Random Maverick" death tip group featuring community quotes and unhinged takes, alongside new quotes added to the miscellaneous pool.
 
