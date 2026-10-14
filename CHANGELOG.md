@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261014
 
+- Fixed SuperMegaman's rage kills missing the frozen death effect.
 - Fixed DecoyBot occasionally starting empty-handed until the player switched weapons with the mouse wheel.
 - Fixed recruited Ave Mujica members surviving Sakiko Togawa's death; her death now kills all living recruited members and cancels the finisher if it is preparing.
 - Added Isaac-style dynamic stat change indicators for Eden: when attributes increase or decrease (such as from starting items upon spawning, picking up passives, Void stat absorption, or D8 rerolls), a green `+` or red `-` delta hint appears next to the modified stat for 2 seconds.
