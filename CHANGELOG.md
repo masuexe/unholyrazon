@@ -6,7 +6,7 @@
 
 ## 4.0.0-beta.261015
 
-- Added UIX weapon wheel support for regular DecoyBot.
+- Added UIX weapon wheel and weapon bar support for regular DecoyBot.
 - Added the "A Random Maverick" death tip group featuring community quotes and unhinged takes, alongside new quotes added to the miscellaneous pool.
 
 ## 4.0.0-beta.261014

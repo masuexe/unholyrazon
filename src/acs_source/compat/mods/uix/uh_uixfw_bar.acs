@@ -1,5 +1,19 @@
-// Weaponbar reads definitions only: never collect/open/reset a wheel here.
+// Weaponbar reads camera-local metadata/ownership: never collect/open/reset
+// a wheel here. DecoyBot's slots resolve through its held-copy registry.
 #include "uh_uixbar_api.acs"
+
+function int UHFW_IsPlainDecoyBot(void) {
+  return StrICmp(GetActorClass(0), "DecoyBot") == 0;
+}
+
+function str UHFW_DecoyIcon(int slot) {
+  // Raw 16x16 sprites have Offset 8,16 for both UIX display anchors.
+  // C_I_50A/B/C are half-size inventory graphics with no texture offsets.
+  if (slot == 1) return "6N50U0";
+  if (slot == 2) return "6N50V0";
+  if (slot == 3) return "6N50W0";
+  return "";
+}
 
 function int UHFB_ClassIndex(void) {
   str actor = GetActorClass(0);
@@ -27,6 +41,11 @@ function int UHFB_ClassIndex(void) {
 // -1: stock path; -2: supported but OPEN has not finished; >= 0: row count.
 // Synchronous, non-NET; inherits and preserves the camera activator.
 script "uh_fb_count" (void) {
+  if (UHFW_IsPlainDecoyBot()) {
+    // Missing held copies are skipped by the renderer and retried next call.
+    SetResultValue(3);
+    terminate;
+  }
   int idx = UHFB_ClassIndex();
   if (idx < 0)
     SetResultValue(idx);
@@ -37,6 +56,12 @@ script "uh_fb_count" (void) {
 // Real binding slot, not the row's display position. -1 means no hint.
 script "uh_fb_slot" (int row) {
   int slot = -1;
+  if (UHFW_IsPlainDecoyBot()) {
+    if (row >= 0 && row < 3)
+      slot = row + 1;
+    SetResultValue(slot);
+    terminate;
+  }
   int idx = UHFB_ClassIndex();
   if (idx >= 0 && row >= 0) {
     if (row < uhfw_classwepcount[idx])
@@ -68,6 +93,17 @@ function int UHFW_ZeroWeaponIndex(str wep) {
 // Always return global dynamic strings, including invalid/empty results.
 script "uh_fb_string" (int row, int field) {
   str value = "";
+  if (UHFW_IsPlainDecoyBot()) {
+    if (row >= 0 && row < 3) {
+      if (field == UHFB_ACTOR)
+        value = ACS_NamedExecuteWithResult("uh_DecoyBotHeldWeapon", row + 1);
+      else if (field == UHFB_ICON)
+        value = UHFW_DecoyIcon(row + 1);
+    }
+    // Both resources are shared: bar icons/selection/bindings only.
+    SetResultValue(StrParam(s:value));
+    terminate;
+  }
   int idx = UHFB_ClassIndex();
   if (idx >= 0 && row >= 0) {
     if (row < uhfw_classwepcount[idx]) {
