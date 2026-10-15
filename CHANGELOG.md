@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261016
+
+- Void Walker now announces elemental specials with a skill banner.
+
 ## 4.0.0-beta.261015
 
 - Fixed short result themes (including NSF and MIDI tracks) looping during the post-round wait.

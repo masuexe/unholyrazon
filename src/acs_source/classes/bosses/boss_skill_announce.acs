@@ -1,0 +1,61 @@
+#define UH_BOSS_SKILL_BANNER_ID -8850
+
+// VoidWalker (Boss 54) Skills
+#define UH_SKILL_VW_STATICSTORM   5401
+#define UH_SKILL_VW_TERRATRACKER  5402
+#define UH_SKILL_VW_FRIGIDFREEZER 5403
+#define UH_SKILL_VW_RAZINGRAY     5404
+
+// Server entry point: broadcasts boss skill notice to all connected peers
+script "uh_AnnounceBossSkill" (int skillId) {
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    if (PlayerInGame(p) || PlayerIsSpectator(p)) {
+      NamedExecuteClientScript("uh_BossSkillNotice_Client", p, skillId);
+    }
+  }
+}
+
+// Client-side RPG-style skill announcement banner
+script "uh_BossSkillNotice_Client" (int skillId) CLIENTSIDE {
+  str skillName = "";
+  str skillColor = "";
+  str skillSound = "MarioRPG/EnemyCrystal";
+
+  switch (skillId) {
+    case UH_SKILL_VW_STATICSTORM:
+      skillName = "Static Storm";
+      skillColor = "\cd"; // Light green (Wind)
+      break;
+
+    case UH_SKILL_VW_TERRATRACKER:
+      skillName = "Terra Tracker";
+      skillColor = "\ck"; // Yellow/gold (Earth)
+      break;
+
+    case UH_SKILL_VW_FRIGIDFREEZER:
+      skillName = "Frigid Freezer";
+      skillColor = "\cv"; // Cyan/light blue (Water)
+      break;
+
+    case UH_SKILL_VW_RAZINGRAY:
+      skillName = "Razing Ray";
+      skillColor = "\cg"; // Red/orange (Fire)
+      break;
+
+    default:
+      terminate;
+  }
+
+  // Play SMRPG crystal chime
+  LocalAmbientSound(skillSound, 127);
+
+  // Set HUD virtual resolution to 640x480
+  SetHudSize(640, 480, 0);
+  SetFont("BIGFONT");
+
+  // Center horizontally at X=320.4, near top at Y=50.8
+  // HUDMSG_FADEOUT: display for 1.5 seconds, fade out over 0.4 seconds
+  HudMessage(s:"\cc[ ", s:skillColor, s:skillName, s:"\cc ]";
+             HUDMSG_FADEOUT, UH_BOSS_SKILL_BANNER_ID, CR_WHITE,
+             320.4, 50.8, 1.5, 0.4);
+}
