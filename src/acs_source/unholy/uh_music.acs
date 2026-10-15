@@ -285,8 +285,8 @@ script "ub_BossEnrageMusic" (int which, int type) {
   UH_PlayBossRow(row, 1, 1);
 }
 
-// Duration is an authored one-pass cutoff, not the result-screen duration.
-// Unknown durations retain ordinary playback until the next music selection.
+// Authored one-pass cutoff. Unknown durations have no timed stop and return 0.
+// Callers cover this cutoff with their result-screen delay independently.
 function int UH_PlayResultMusic(int row) {
   int duration;
   int ticks;
@@ -299,7 +299,6 @@ function int UH_PlayResultMusic(int row) {
     return 0;
 
   ticks = Max(1, RoundFixedToInt(35 * duration));
-  // Preserve the existing emulated-format startup allowance.
   if (GetBossMusicEmuFlagByRow(row))
     ticks += 12;
   ACS_NamedExecuteAlways("uh_StopResultMusic", 0, ticks, uh_musicstate[UH_MUSIC_GENERATION]);
@@ -308,9 +307,18 @@ function int UH_PlayResultMusic(int row) {
 
 script "uh_StopResultMusic" (int ticks, int generation) {
   Delay(ticks);
-  // A revival, another result, or any other server selection owns playback now.
+  // A replacement selection (even the same lump) invalidates this timer.
   if (generation == uh_musicstate[UH_MUSIC_GENERATION])
     PlayMusic("");
+}
+
+function int UH_CoverResultMusic(int screentics, int musicticks) {
+  // Leave a short tail before changing maps, without extending playback.
+  if (musicticks > 0)
+    musicticks += 12;
+  if (musicticks > screentics)
+    return musicticks;
+  return screentics;
 }
 
 function int PlayMusic_Winner(int force) {

@@ -457,6 +457,7 @@ script "ub_WatchSurvivors" (int skipacs) {
   int settlementgeneration = 0;
   int settlementdecision;
   int exitdelay = 35 * 9;
+  int musicticks;
   int battletime;
   while (true) {
     while (totalplayersarr[PLS_SURVIVOR] >= 1 && !standardlmseventlocked && !gameover) {
@@ -489,8 +490,11 @@ script "ub_WatchSurvivors" (int skipacs) {
     if (UH_CanWaitForRevival() && totalplayersarr[PLS_SURVIVOR] >= 1) continue;
     battletime = Timer() - extratimer;
     if (!UH_CanWaitForRevival()) break;
-    settlementgeneration = UH_BeginSettlement(exitdelay, false);
-    PlayMusic_Loser(-1);
+    // Save battle music before selecting the result theme.
+    settlementgeneration = UH_BeginSettlement(35 * 9, false);
+    musicticks = PlayMusic_Loser(-1);
+    exitdelay = UH_CoverResultMusic(35 * 9, musicticks);
+    uh_settlementstate[UH_SETTLEMENT_DEADLINE] = Timer() + exitdelay;
     SetFont("BIGFONT");
     SetHudSize(480, 360, 0);
     HudMessageBold(s:"The survivors have been defeated...";
@@ -516,7 +520,10 @@ script "ub_WatchSurvivors" (int skipacs) {
   // bonus rounds; the one-shot guard keeps it single-fire.
   UH_TryFinishBonusEvent(eventdataarr[EVENTDATA_MAINEVENT], UHBE_RESULT_BOSS, false);
   // PlayMusic_Loss(0);
-  if (settlementgeneration == 0) PlayMusic_Loser(-1);
+  if (settlementgeneration == 0) {
+    musicticks = PlayMusic_Loser(-1);
+    exitdelay = UH_CoverResultMusic(exitdelay, musicticks);
+  }
   // MakeAllPlayersInvun();
   gameover = true;
   UH_RefreshPostRoundFF();
@@ -642,6 +649,7 @@ script "ub_WatchBossesAndEyes" (void) {
   int settlementgeneration = 0;
   int settlementdecision;
   int exitdelay = 36 * 10;
+  int musicticks;
   bool declined;
   bool perfect;
   while (true) {
@@ -659,8 +667,11 @@ script "ub_WatchBossesAndEyes" (void) {
       && totalplayersarr[PLS_SURVIVOR] == roundstartsurvivors;
     // An early boss departure is an administrative forfeit, not a revival window.
     if (declined || !UH_CanWaitForRevival()) break;
-    settlementgeneration = UH_BeginSettlement(exitdelay, true);
-    PlayMusic_Winner(-1);
+    // Save battle music before selecting the result theme.
+    settlementgeneration = UH_BeginSettlement(36 * 10, true);
+    musicticks = PlayMusic_Winner(-1);
+    exitdelay = UH_CoverResultMusic(36 * 10, musicticks);
+    uh_settlementstate[UH_SETTLEMENT_DEADLINE] = Timer() + exitdelay;
     SetFont("BIGFONT");
     SetHudSize(480, 360, 0);
     HudMessageBold(s:"The survivors are victorious!";
@@ -705,7 +716,10 @@ script "ub_WatchBossesAndEyes" (void) {
     terminate;
   }
   // PlayMusic_Win(0);
-  if (settlementgeneration == 0) PlayMusic_Winner(-1);
+  if (settlementgeneration == 0) {
+    musicticks = PlayMusic_Winner(-1);
+    exitdelay = UH_CoverResultMusic(exitdelay, musicticks);
+  }
   HudMessageBold(s:"The survivors are victorious!"; HUDMSG_FADEOUT, 66, CR_GREEN, 240.4, 54.0, 5.0, 2.0);
 
   int next_y = 72.0;

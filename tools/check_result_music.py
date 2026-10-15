@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Exercise result-music ACS with C stubs; ACC checks language compatibility.
 
-Delay injects replacement playback to check stale timers, including selecting
-the same lump again. This does not emulate network or audio-device timing.
+Checks one-pass stops, stale timers and screen holds for short/long themes.
+Delay injects replacement playback, including selecting the same lump again.
+This does not emulate network or audio-device timing.
 """
 from pathlib import Path
 import subprocess
@@ -89,9 +90,14 @@ int main(void) {
     assert(UH_PlayResultMusic(0) == 82);
     StopResultMusic(scheduledticks, scheduledgeneration);
     assert(waitticks == 82 && stops == 2);
+    /* Screen hold is independent of the one-pass stop, with a map-change tail. */
+    assert(UH_CoverResultMusic(315, 70) == 315);
+    assert(UH_CoverResultMusic(315, 420) == 432);
+    assert(UH_CoverResultMusic(315, 0) == 315);
+    assert(UH_CoverResultMusic(70, 82) == 94);
     duration = 1; emulated = 0;
     assert(UH_PlayResultMusic(0) == 1);
-    puts("Result music: known/unknown duration, emulation allowance, stale timers passed.");
+    puts("Result music: known/unknown duration, emulation allowance, stale timers and short/long screen holds passed.");
     return 0;
 }
 '''

@@ -9,6 +9,7 @@
 - Void Walker now announces elemental specials with a skill banner.
 - Fixed Berserker's falling slam crediting Dixieandoff in the Obituary.
 - Fixed becoming a Demoneye removing the "Prepare yourselves!" banner. The identity line now appears below it.
+- Win/loss results now wait long enough for themes with a registered duration before advancing, while retaining the stop after one pass that prevents short themes from looping.
 
 ## 4.0.0-beta.261015
 

@@ -833,20 +833,23 @@ function bool UH_TryFinishBonusEvent(int eventid, int result, bool runsequence) 
 // draw).  Mirrors the bookkeeping of the standard watchers minimally: win
 // clears mercy, streak flips and bumps follow the core watcher rules.
 script "ub_BonusResultSequence" (int result) {
+  int musicticks;
+  int exitdelay;
   SetActivator(0, AAPTR_NULL);
   gameover = true;
   UH_RefreshPostRoundFF();
   SetFont("BIGFONT");
   SetHudSize(480, 360, 0);
+  musicticks = 0;
   if (result == UHBE_RESULT_SURVIVOR) {
-    PlayMusic_Winner(-1);
+    musicticks = PlayMusic_Winner(-1);
     HudMessageBold(s:"The survivors are victorious!"; HUDMSG_FADEOUT, 66, CR_GREEN, 240.4, 54.0, 5.0, 2.0);
     if (winstreak < 0) {winstreak = 1;}
     else {winstreak++;}
     mercygiven = false;
   }
   else if (result == UHBE_RESULT_BOSS) {
-    PlayMusic_Loser(-1);
+    musicticks = PlayMusic_Loser(-1);
     HudMessageBold(s:"The survivors have been defeated..."; HUDMSG_FADEOUT, 66, CR_RED, 240.4, 54.0, 5.0, 2.0);
     if (winstreak > 0) {winstreak = -1;}
     else {winstreak--;}
@@ -855,7 +858,8 @@ script "ub_BonusResultSequence" (int result) {
     HudMessageBold(s:"The event has ended."; HUDMSG_FADEOUT, 66, CR_GRAY, 240.4, 54.0, 5.0, 2.0);
   }
   // Unified world-activated round exit.
-  ACS_NamedExecute("ub_ExitFinishedRound", 0, 35 * 9);
+  exitdelay = UH_CoverResultMusic(35 * 9, musicticks);
+  ACS_NamedExecute("ub_ExitFinishedRound", 0, exitdelay);
   Delay(35 * 6);
 }
 
