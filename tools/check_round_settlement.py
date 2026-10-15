@@ -61,7 +61,8 @@ int playerlifestatusarr[MAX_PLAYERS], hp[MAX_PLAYERS], spec[MAX_PLAYERS];
 bool connected[MAX_PLAYERS];
 str currentmusiclump = "BATTLE", currentmusictitle = "Battle";
 str currentmusicalbum = "Album", currentmusicartist = "Artist";
-int currentmusiccontext = 2;
+#define UH_MUSIC_CONTEXT 0
+int uh_musicstate[2] = {2, 0};
 int restores, clears, displays, notices;
 int winstreak = 3;
 void UH_ShowSettlementResumed(void) { notices++; }
