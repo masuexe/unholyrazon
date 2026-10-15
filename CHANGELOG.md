@@ -12,6 +12,7 @@
 - Win/loss results now wait long enough for themes with a registered duration before advancing, while retaining the stop after one pass that prevents short themes from looping.
 - Fixed Brick Eyes showing the round timer and its own countdown together. Only the brick countdown remains.
 - Fixed Qwant's Flame Wheel hiding its charge bar behind the energy bar.
+- Fixed Chieftain Tomahawk's charge bar staying on a single frame.
 
 ## 4.0.0-beta.261015
 
