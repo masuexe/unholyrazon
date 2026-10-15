@@ -7,6 +7,7 @@
 ## 4.0.0-beta.261016
 
 - Void Walker now announces elemental specials with a skill banner.
+- Fixed Berserker's falling slam crediting Dixieandoff in the Obituary.
 
 ## 4.0.0-beta.261015
 
