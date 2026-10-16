@@ -14,6 +14,8 @@
 - Fixed Qwant's Flame Wheel hiding its charge bar behind the energy bar.
 - Fixed Chieftain Tomahawk's charge bar staying on a single frame.
 - Fixed Eden's stat numbers drawing under teammate info.
+- Fixed infinite rocket and infinite rubber band item icon.
+- Infinite football icon now uses the red outline.
 
 ## 4.0.0-beta.261015
 
