@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261016
 
+- Completed the rare "Invalid LMS Event" reward.
 - Void Walker now announces elemental specials with a skill banner.
 - Fixed Berserker's falling slam crediting Dixieandoff in the Obituary.
 - Fixed becoming a Demoneye removing the "Prepare yourselves!" banner. The identity line now appears below it.

@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261016
 
+- 补齐稀有 LMS 事件「Invalid LMS Event」的奖励效果
 - Void Walker 施放 M2 时现在会显示技能名横幅
 - 修复狂战士下落砸击击杀时显示圣骑士击杀文本的问题
 - 修复变成恶魔眼时会清掉开局 “Prepare yourselves!” 提示的问题，身份提示改到横幅下方
