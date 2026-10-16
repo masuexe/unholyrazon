@@ -13,6 +13,7 @@
 - Fixed Brick Eyes showing the round timer and its own countdown together. Only the brick countdown remains.
 - Fixed Qwant's Flame Wheel hiding its charge bar behind the energy bar.
 - Fixed Chieftain Tomahawk's charge bar staying on a single frame.
+- Fixed Eden's stat numbers drawing under teammate info.
 
 ## 4.0.0-beta.261015
 
