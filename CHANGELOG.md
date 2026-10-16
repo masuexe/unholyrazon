@@ -18,6 +18,8 @@
 - Fixed infinite rocket and infinite rubber band item icon.
 - Infinite football icon now uses the red outline.
 - Fixed being crushed by Gutsman bosses not showing butt jumpscare.
+- Tree Hugger's aura heals 20 → 30, shiny form 30 → 90.
+- Purple Hero gets survivor box when he first drops to half health.
 
 ## 4.0.0-beta.261015
 
