@@ -263,7 +263,8 @@ script "ub_PlayVariantMusic" (int thenum) {
   }
 }
 
-// Phase-2 / enrage music. which = legacy boss id from DECORATE; type = phase.
+// Phase-2 / enrage music. which = legacy boss id (-1 silences a transition);
+// type = phase.
 // Prefer activator class; fall back to which if class not in UHDT.
 script "ub_BossEnrageMusic" (int which, int type) {
   int id;
@@ -271,6 +272,13 @@ script "ub_BossEnrageMusic" (int which, int type) {
 
   if (!CheckInventory("Is_UH_BossNum") || CheckInventory("IsGonnaBeFake"))
     terminate;
+
+  // Razon3's Zero hides for 200 tics before revealing phase 2. Handle its
+  // legacy silence request before resolving the activator's boss music.
+  if (which == -1) {
+    PlayMusic("");
+    terminate;
+  }
 
   id = FindBossByActor(GetActorClass(0));
   if (id == UHBOSS_FAIL && IsBossDefined(which))
