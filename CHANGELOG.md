@@ -16,6 +16,7 @@
 - Fixed Eden's stat numbers drawing under teammate info.
 - Fixed infinite rocket and infinite rubber band item icon.
 - Infinite football icon now uses the red outline.
+- Fixed being crushed by Gutsman bosses not showing butt jumpscare.
 
 ## 4.0.0-beta.261015
 
