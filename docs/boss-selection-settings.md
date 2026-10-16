@@ -10,6 +10,10 @@ All settings are archived server CVARs. To write runtime changes to disk, run `w
 
 | Server CVAR | Default | Permitted values | Description |
 |-------------|---------|------------------|-------------|
+| `uh_sv_multiboss_minplayers2` | 6 | 0 to 64 | Minimum players for automatic counts up to 2 bosses. |
+| `uh_sv_multiboss_minplayers3` | 9 | 0 to 64 | Minimum players for automatic counts up to 3 bosses. |
+| `uh_sv_multiboss_minplayers4` | 12 | 0 to 64 | Minimum players for automatic counts up to 4 bosses. |
+| `uh_sv_multiboss_minplayers5` | 15 | 0 to 64 | Minimum players for automatic counts up to 5 bosses. |
 | `uh_sv_bossselectmode` | 0 | 0, 1 | Selection strategy within pools: 0 = least-seen with weighted ties; 1 = weighted random. |
 | `uh_sv_bossavoidrepeat` | false | true, false | Excludes bosses from the previous committed round lineup. |
 | `uh_sv_bossavoidduplicates` | false | true, false | Excludes bosses already recorded for the current round in multi-boss lineups. |
@@ -24,6 +28,37 @@ All settings are archived server CVARs. To write runtime changes to disk, run `w
 ---
 
 ## Selection rules
+
+### Automatic boss count
+
+Menu: **Unholy Menu → Server Options → Boss Setup → Automatic Boss Count**.
+Select a threshold and press **Enter** to type a number directly (0–64), then
+press **Enter** again to confirm.
+
+Default player thresholds match Razon3: **6 / 9 / 12 / 15** for 2 / 3 / 4 / 5
+bosses. Existing saved server settings take precedence over these defaults;
+update the four settings explicitly to apply them to an already configured host.
+
+The server checks the four player thresholds in order, then randomly chooses
+from 1 through the highest unlocked count, with equal probability for each
+count. All lower thresholds must also be met. Set a threshold to **0** to
+disable that tier and every higher tier for automatic selection. Values outside
+0–64 are clamped when read. Settings apply at the next boss selection and remain
+in effect until changed.
+
+For example, with the 3-boss threshold at 0 and the 4-boss threshold at 10,
+automatic selection still stops at two bosses: the disabled 3-boss tier blocks
+both higher tiers. Restore a nonzero 3-boss threshold before unlocking four.
+
+For example, `uh_sv_multiboss_minplayers3 10` allows 1–3 bosses at ten players
+with the other settings at their defaults. To cap automatic selection at three
+bosses regardless of population, use `uh_sv_multiboss_minplayers4 0`.
+
+The one-shot `uh_sv_multiboss` override (menu: **Next Round Boss Count (0=Auto)**)
+and special boss combos retain their separate rules and can exceed these
+automatic thresholds. Existing limits that keep survivor slots available still
+apply; the mod supports at most five standard boss slots. These settings do not
+change bonus-event player requirements.
 
 ### Selection strategies (`uh_sv_bossselectmode`)
 

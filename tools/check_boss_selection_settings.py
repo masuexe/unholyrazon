@@ -66,12 +66,15 @@ void SetPlayerProperty(int a,int b,int c) { assert(a==1 && b==0 && c==4); }
 void ACS_NamedExecute(str name,int map,int delay) {
  assert(!strcmp(name,"ub_ExitFinishedRound") && map==0 && delay==105); exit_requests++;
 }
+void ACS_NamedExecuteWithResult(str name) { assert(!strcmp(name,"uh_RefreshPostRoundFF")); }
 const char *names[] = {"uh_sv_bossselectmode", "uh_sv_bossavoidrepeat",
  "uh_sv_bossavoidduplicates", "uh_sv_bossrarelimit", "uh_sv_bossshadowchance",
  "uh_sv_bossfullultrachance", "uh_sv_bossfullspecialchance",
  "uh_sv_bossfullexchance", "uh_sv_bossfullrarechance"};
 int defaults[] = {0,0,0,25,10,5,1,15,30}, settings[9];
+int multiboss_thresholds[] = {6,9,12,15};
 int GetCVar(str name) {
+ if(!strncmp(name,"uh_sv_multiboss_minplayers",26)) return multiboss_thresholds[atoi(name+26)-2];
  if(!strcmp(name,"uh_sv_bossforcedplayerlimits")) return forced_limits;
  if(!strncmp(name,"uh_sv_forcedboss",16)) return requests[atoi(name+16)-1];
  for(int i=0;i<9;i++) if(!strcmp(name,names[i])) return settings[i];
@@ -119,6 +122,34 @@ void reset(void) {
 TESTS = r'''
 int main(void) {
  reset();
+ // Every Razon3 default threshold keeps the current uniform draw range.
+ for(int p=0;p<=64;p++) {
+   int limit=p>=15?5:p>=12?4:p>=9?3:p>=6?2:1;
+   roll_count=0;
+   assert(AutoBossCountForPlayers(p)==limit);
+   rolls[0]=1; roll_count=1; roll_index=0;
+   assert(AutoBossCountForPlayers(p)==1);
+ }
+ roll_count=0;
+ // Host can unlock three bosses at ten players; changes persist across draws.
+ multiboss_thresholds[1]=10;
+ assert(AutoBossCountForPlayers(9)==2);
+ assert(AutoBossCountForPlayers(10)==3);
+ assert(AutoBossCountForPlayers(10)==3);
+ // Zero/negative disables that tier and higher, even if their gates are met.
+ multiboss_thresholds[1]=0;
+ multiboss_thresholds[2]=10;
+ assert(AutoBossCountForPlayers(10)==2);
+ assert(AutoBossCountForPlayers(64)==2);
+ multiboss_thresholds[1]=-1;
+ assert(AutoBossCountForPlayers(64)==2);
+ // Out-of-order thresholds cannot skip a lower tier; oversized values clamp.
+ multiboss_thresholds[0]=999; multiboss_thresholds[1]=1;
+ assert(AutoBossCountForPlayers(63)==1);
+ assert(AutoBossCountForPlayers(64)==5);
+ multiboss_thresholds[0]=0;
+ assert(AutoBossCountForPlayers(64)==1);
+ multiboss_thresholds[0]=6; multiboss_thresholds[1]=9; multiboss_thresholds[2]=12;
  // Default fairness includes signed custom ids and the soft round delta.
  counts[1]=2; counts[2]=1;
  assert(PickLeastSeenBossFromPool(1,UHBOSS_FAIL)==-1);
@@ -270,7 +301,7 @@ int main(void) {
  AbortBossSelection("test"); AbortBossSelection("again");
  assert(gameover && exit_requests==1 && GetBossPickCount(-1)==old_count);
  assert(uh_bosslastlineup[0]==1 && uh_bosslastlineup[1]==-1);
- puts("PASS: boss selection defaults, weighted ties/strategies, override/player gates, signed requests, Combo isolation, repeat fallback, pity/tier probabilities and empty-pool abort");
+ puts("PASS: automatic count thresholds/boundaries, boss selection defaults, weighted ties/strategies, override/player gates, signed requests, Combo isolation, repeat fallback, pity/tier probabilities and empty-pool abort");
  return 0;
 }
 '''
@@ -310,6 +341,9 @@ def main():
     assert "CanPickSpecifiedBoss(options[pick])" in choice
     combo = (ROOT / "src/acs_source/unholy/uh_boss_combos.acs").read_text()
     assert "ConfiguredForceBossChange" not in combo and "CanPickSpecifiedBoss" not in combo
+    thresholds = re.findall(r'server int uh_sv_multiboss_minplayers[2-5] = (\d+);', cvars)
+    assert thresholds == ["6", "9", "12", "15"], thresholds
+    acs += function(round_helpers, "GetClampedCVar") + "\n" + function(combo, "AutoBossCountForPlayers")
     with tempfile.TemporaryDirectory(prefix="uh-boss-settings-") as tmp:
         path = Path(tmp)
         (path / "test.c").write_text(STUBS + translate(acs) + TESTS)

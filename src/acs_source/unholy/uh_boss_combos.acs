@@ -1,16 +1,17 @@
 // Boss-combo selection and validation helpers for library unholy.
 // This fragment is textually included by uh_funclib.acs.
 
-// Automatic boss count: uniform draw over every count whose player-count
-// threshold (the MULTIB_PLAYERLIMIT* constants, the single source of truth)
-// is met.  Replaces Razon3's stateful multib_rng_arr pity-roll.
-//   plc 7 -> 1 | 8-11 -> 1-2 | 12-15 -> 1-3 | 16-19 -> 1-4 | 20+ -> 1-5
+// Persistent host thresholds, evaluated in order. Zero disables this tier
+// and all higher tiers; a higher tier cannot bypass an unmet lower one.
+// Razon3 default thresholds: <=5 -> 1 | 6-8 -> 1-2 | 9-11 -> 1-3 |
+// 12-14 -> 1-4 | 15+ -> 1-5.
 function int AutoBossCountForPlayers(int plc) {
   int maxcount = 1;
-  if (plc >= MULTIB_PLAYERLIMIT2) {maxcount = 2;}
-  if (plc >= MULTIB_PLAYERLIMIT3) {maxcount = 3;}
-  if (plc >= MULTIB_PLAYERLIMIT4) {maxcount = 4;}
-  if (plc >= MULTIB_PLAYERLIMIT5) {maxcount = 5;}
+  for (int count = 2; count <= MAX_BOSSES; count++) {
+    int threshold = GetClampedCVar(StrParam(s:"uh_sv_multiboss_minplayers", i:count), 0, 64);
+    if (threshold == 0 || plc < threshold) {break;}
+    maxcount = count;
+  }
   return random(1, maxcount);
 }
 

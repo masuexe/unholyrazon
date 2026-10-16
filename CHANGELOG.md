@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261016
 
+- Added persistent host settings for automatic boss counts under **Boss Setup → Automatic Boss Count**: press Enter to type the minimum player counts for 2/3/4/5 bosses. Changes apply at the next boss selection; tiers unlock in order, and setting a tier to 0 disables it and higher tiers.
 - Completed the rare "Invalid LMS Event" reward.
 - Void Walker now announces elemental specials with a skill banner.
 - Fixed Berserker's falling slam crediting Dixieandoff in the Obituary.
