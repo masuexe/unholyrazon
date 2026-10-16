@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261016
 
+- Zero Boss now changes color to match the selected phase-two chip's energy bar; phase three uses cheat-form colors.
 - Corrected Zero Boss phase-two music timing: the transition is silent while Zero is invisible, and the music starts after he reappears.
 - Fixed Zero Boss entering phase two with only the default chip available in online.
 - Restored Shadow Tricks reveal selection rules, fixing AbePenny and other special bosses appearing far too rarely.
