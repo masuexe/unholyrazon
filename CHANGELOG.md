@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261016
 
+- Fixed Zero Boss entering phase two with only the default chip available in online.
 - Restored Shadow Tricks reveal selection rules, fixing AbePenny and other special bosses appearing far too rarely.
 - Slugger's M2 airdrop now damages survivor teammates.
 - Clownpiece's final spell now launches its moon attack immediately on phase entry, without requiring an M1 press.

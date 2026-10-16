@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261016
 
+- 修复 Zero Boss 联机进入第二阶段后只有默认芯片可用的问题
 - 恢复 Shadow Tricks 揭晓抽选规则，修复 AbePenny 等特殊 Boss 出场过于罕见的问题
 - Slugger 的 M2 空投现在可以伤害生还者队友
 - Clownpiece 最后一符现在进入阶段后立即发动月亮攻击，无需再按一次 M1
