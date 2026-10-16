@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261016
 
+- 修复伊甸蓝苍蝇命中后的伤害未归属伊甸、导致非致死伤害可能未计入玩家伤害统计的问题
 - 新增服主自动 Boss 数量设置，可在 **Boss Setup → Automatic Boss Count** 中按 Enter 直接输入允许 2／3／4／5 个 Boss 所需的最少人数，修改从下一次选 Boss 起持续生效；各档逐级解锁，设为 0 会停用本档及更高档
 - 补齐稀有 LMS 事件「Invalid LMS Event」的奖励效果
 - Void Walker 施放 M2 时现在会显示技能名横幅

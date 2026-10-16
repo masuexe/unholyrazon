@@ -192,3 +192,22 @@ script "rz_EdenBlueFlyCanHit" (void) {
   SetResultValue(owner >= 1000 && owner < 1064 && victim >= 1000 && victim < 1064 &&
     EdenFlyEnemy(owner - 1000, victim - 1000));
 }
+
+// A_Chase has already checked melee range and sight on this tic. Recheck the
+// Unholy relation, then deal the single-target hit as Eden. A_CustomMeleeAttack
+// uses the fly itself as source; FriendPlayer is only resolved on lethal hits,
+// so nonlethal damage events/statistics otherwise see a monster, not its owner.
+script "rz_EdenBlueFlyAttack" (void) {
+  int victim;
+  if (!ACS_NamedExecuteWithResult("rz_EdenBlueFlyCanHit")) {
+    SetResultValue(0);
+    terminate;
+  }
+  victim = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET);
+  if (!SetActivator(0, AAPTR_MASTER)) {
+    SetResultValue(0);
+    terminate;
+  }
+  Thing_Damage2(victim, CheckInventory("EdenDamageAttr") * 2, "Eden");
+  SetResultValue(1);
+}
