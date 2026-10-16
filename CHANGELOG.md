@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261016
 
+- Clownpiece's final spell now launches its moon attack immediately on phase entry, without requiring an M1 press.
 - Fixed Eden's Blue Fly hits being attributed to the fly instead of Eden, which could leave nonlethal hits out of player damage tracking.
 - Added persistent host settings for automatic boss counts under **Boss Setup → Automatic Boss Count**: press Enter to type the minimum player counts for 2/3/4/5 bosses. Changes apply at the next boss selection; tiers unlock in order, and setting a tier to 0 disables it and higher tiers.
 - Completed the rare "Invalid LMS Event" reward.
