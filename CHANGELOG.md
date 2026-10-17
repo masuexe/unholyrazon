@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261017
 
+- Fixed Iron Curtain and Half Press Hardman not refilling their ammo while M2 was held in online games.
 - Ordinary LMS results can switch to map boss music when later losses leave two players, or map victory music when one remains. The replacement music is no longer cut off by the previous jingle. Switching requires at least 3 or 2 seconds before the map change respectively and never extends results. Results starting with two players skip boss music; those starting with one keep only the Unholy jingle.
 - Fixed remaining icon color, size, and alignment issues for Awful Box Demoneye and Super Awful Box Demoneye in the UIX Item Wheel after the previous fix.
 - Fixed the arena staying dark when Zankokuna Hellbot's rage is interrupted during its build-up.
