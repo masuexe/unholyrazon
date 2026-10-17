@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261017
 
+- Fixed remaining icon color, size, and alignment issues for Awful Box Demoneye and Super Awful Box Demoneye in the UIX Item Wheel after the previous fix.
 - Fixed the arena staying dark when Zankokuna Hellbot's rage is interrupted during its build-up.
 - Fixed the same dark-arena problem for Sakiko Togawa's "Sora no Musica" finisher when it is cancelled while preparing (her death, a member dropping out, and so on).
 
