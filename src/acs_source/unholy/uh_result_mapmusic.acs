@@ -1,0 +1,58 @@
+// Ordinary LMS results only. Native MUSSYS remains disabled: its DEATH script
+// has neither the initial-population rules nor the result's exit deadline.
+function int UH_ResultLivingPlayers(void) {
+  int alive = 0;
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    if (PlayerInGame(p) && PlayerIsSpectator(p) == 0
+        && GetActorProperty(p + 1000, APROP_HEALTH) > 0)
+      alive++;
+  }
+  return alive;
+}
+
+// 0 = keep current music, 1 = map boss, 2 = map victory. Never go backwards
+// after a revival on the winning side, and skip boss music on a double death.
+function int UH_ResultMapMusicChoice(int initial, int previous, int alive,
+                                    int phase, int remaining) {
+  if (alive >= previous) return 0;
+  if (initial >= 2 && alive == 1 && phase < 2 && remaining >= 35 * 2)
+    return 2;
+  if (initial >= 3 && alive == 2 && phase < 1 && remaining >= 35 * 3)
+    return 1;
+  return 0;
+}
+
+function void UH_PlayResultMapMusic(int phase) {
+  // Revoke the jingle's timer BEFORE native SetMusic bypasses PlayMusic.
+  uh_musicstate[UH_MUSIC_GENERATION]++;
+  ACS_NamedTerminate("uh_StopResultMusic", 0);
+  UH_ClearPublishedMusic(0);
+  // Mode 2 selects the map's boss/victory music and runs map_bossoverride.
+  ACS_NamedExecuteWithResult("core_bossmusicstate", 2, phase);
+  // Keep native death handling disabled, including its delayed stage restore.
+  ACS_NamedExecuteWithResult("core_bossmusicstate", 1, 100);
+}
+
+function void UH_StartResultMapMusic(int delaytics) {
+  ACS_NamedTerminate("uh_WatchResultMapMusic", 0);
+  if (isbonuseventactive || versusfightevent) return;
+  int alive = UH_ResultLivingPlayers();
+  if (alive < 2) return;
+  ACS_NamedExecuteAlways("uh_WatchResultMapMusic", 0, Timer() + delaytics, alive);
+}
+
+script "uh_WatchResultMapMusic" (int deadline, int initial) {
+  SetActivator(0, AAPTR_NULL);
+  int previous = initial;
+  int phase = 0;
+  while (Timer() < deadline) {
+    Delay(1);
+    int alive = UH_ResultLivingPlayers();
+    int choice = UH_ResultMapMusicChoice(initial, previous, alive, phase, deadline - Timer());
+    if (choice != 0) {
+      UH_PlayResultMapMusic(choice);
+      phase = choice;
+    }
+    previous = alive;
+  }
+}

@@ -20,6 +20,8 @@ def main():
     result = source[source.index("function int UH_PlayResultMusic"):
                     source.index("function int PlayMusic_Winner")]
     result = result.replace('script "uh_StopResultMusic"', 'void StopResultMusic')
+    mapmusic = (ROOT / "src/acs_source/unholy/uh_result_mapmusic.acs").read_text()
+    mapmusic = mapmusic.replace('script "uh_WatchResultMapMusic"', 'void WatchResultMapMusic')
     lifecycle = (ROOT / "src/acs_source/unholy/uh_lifecycle.acs").read_text()
     startup = lifecycle.split('script "ub_StartUpSettings" OPEN {', 1)[1]
     startup = startup.split('script "ub_ValidateBossCombosDeferred"', 1)[0]
@@ -27,6 +29,7 @@ def main():
     claim = startup.split('ACS_NamedExecute("uh_BackgroundTimer", 0);', 1)[1]
     claim = claim[:claim.index("\n}")]
     code = (STUBS + play.replace("function ", "") + result.replace("function ", "")
+            + mapmusic.replace("function ", "")
             + "void FinishStartup(void) {" + claim + "\n}\n" + TESTS)
     with tempfile.TemporaryDirectory(prefix="uh-result-music-") as directory:
         path = Path(directory)
@@ -43,10 +46,21 @@ STUBS = r'''
 typedef const char *str;
 #define UH_MUSIC_GENERATION 1
 #define BMSF_SETVAL 1
+#define MAX_PLAYERS 4
+#define APROP_HEALTH 0
+#define AAPTR_NULL 0
 int uh_musicstate[2], duration, emulated, selections, stops, scheduled, waitticks;
 int scheduledticks, scheduledgeneration, replacement;
 int startup, native_state, native_pending, native_changes;
+int connected[4], spectator[4], health[4], tick;
+int isbonuseventactive, versusfightevent, watch_active, watch_deadline, watch_initial;
+int watch_running, death_tick1, death_tick2, boss_tick, victory_tick;
 str playing = "";
+int PlayerInGame(int p) { return connected[p]; }
+int PlayerIsSpectator(int p) { return spectator[p]; }
+int GetActorProperty(int tid, int prop) { assert(prop == APROP_HEALTH); return health[tid-1000]; }
+int Timer(void) { return tick; }
+void SetActivator(int tid, int pointer) { assert(tid == 0 && pointer == AAPTR_NULL); }
 void PlayMusic(str music);
 int StrLen(str s) { return strlen(s); }
 int FindSpace(str s, int n) { (void)s; (void)n; return -1; }
@@ -65,15 +79,29 @@ int GetBossMusicEmuFlagByRow(int row) { assert(row == 0); return emulated; }
 int Max(int a, int b) { return a > b ? a : b; }
 int RoundFixedToInt(int x) { return (x + 32768) >> 16; }
 void ACS_NamedExecuteAlways(str name, int map, int ticks, int generation) {
+    if (!strcmp(name, "uh_WatchResultMapMusic")) {
+        assert(map == 0);
+        watch_active = 1; watch_deadline = ticks; watch_initial = generation;
+        return;
+    }
     assert(!strcmp(name, "uh_StopResultMusic") && map == 0);
     scheduled++; scheduledticks = ticks; scheduledgeneration = generation;
 }
 void ACS_NamedTerminate(str name, int map) {
+    assert(map == 0);
+    if (!strcmp(name, "uh_WatchResultMapMusic")) { watch_active = 0; return; }
+    if (!strcmp(name, "uh_StopResultMusic")) return;
     assert(!strcmp(name, "core_musichandler") && map == 0);
     native_pending = 0;
 }
 void ACS_NamedExecuteWithResult(str name, int mode, int value) {
-    assert(!strcmp(name, "core_bossmusicstate") && mode == BMSF_SETVAL);
+    assert(!strcmp(name, "core_bossmusicstate"));
+    if (mode == 2) {
+        assert(value == 1 || value == 2);
+        if (value == 1) boss_tick = tick;
+        else victory_tick = tick;
+        SetMusic(value == 1 ? "MAPBOSS" : "MAPVICTORY");
+    } else assert(mode == BMSF_SETVAL);
     native_state = value;
 }
 /* v6b MUSSYS returns immediately above state 2; otherwise 2 living players
@@ -88,6 +116,12 @@ void NativeDeathMusic(int living) {
 }
 void Delay(int ticks) {
     waitticks = ticks;
+    if (watch_running) {
+        assert(ticks == 1);
+        tick++;
+        if (tick == death_tick1) health[2] = 0;
+        if (tick == death_tick2) health[1] = 0;
+    }
     /* MUSSYS/MAPCARDS reset this state during OPEN, after UH's first writes. */
     if (startup) { assert(ticks == 1); native_state = 0; }
     if (replacement == 1) PlayMusic("BATTLE");
@@ -141,6 +175,80 @@ int main(void) {
     StopResultMusic(scheduledticks, scheduledgeneration);
     assert(stops == previous_stops + 1 && !*playing);
 
+    /* Exact thresholds, late deaths, double deaths and starting populations. */
+    assert(UH_ResultMapMusicChoice(3, 3, 2, 0, 105) == 1);
+    assert(UH_ResultMapMusicChoice(3, 3, 2, 0, 104) == 0);
+    assert(UH_ResultMapMusicChoice(3, 2, 1, 1, 70) == 2);
+    assert(UH_ResultMapMusicChoice(3, 2, 1, 1, 69) == 0);
+    assert(UH_ResultMapMusicChoice(3, 3, 1, 0, 105) == 2);
+    assert(UH_ResultMapMusicChoice(3, 3, 0, 0, 105) == 0);
+    assert(UH_ResultMapMusicChoice(2, 3, 2, 0, 105) == 0);
+    assert(UH_ResultMapMusicChoice(2, 2, 1, 0, 70) == 2);
+    assert(UH_ResultMapMusicChoice(1, 2, 1, 0, 105) == 0);
+    assert(UH_ResultMapMusicChoice(3, 2, 3, 1, 105) == 0);
+    assert(UH_ResultMapMusicChoice(3, 3, 2, 1, 105) == 0);
+    assert(UH_ResultMapMusicChoice(3, 2, 1, 2, 105) == 0);
+
+    connected[0] = connected[1] = connected[2] = 1;
+    health[0] = health[1] = health[2] = 100;
+    /* Spectators, disconnected pawns and corpses do not count. */
+    spectator[2] = 1;
+    assert(UH_ResultLivingPlayers() == 2);
+    spectator[2] = 0; connected[3] = 0; health[3] = 100;
+    assert(UH_ResultLivingPlayers() == 3);
+    tick = 200;
+    UH_PlayResultMusic(0);
+    UH_StartResultMapMusic(315);
+    assert(watch_active && watch_deadline == 515 && watch_initial == 3);
+    /* Natural jingle completion must still permit a subsequent map request. */
+    StopResultMusic(scheduledticks, scheduledgeneration);
+    assert(watch_active);
+    UH_PlayResultMusic(0);
+    UH_StartResultMapMusic(315);
+    int old_generation = scheduledgeneration;
+    UH_PlayResultMapMusic(1);
+    previous_stops = stops;
+    StopResultMusic(scheduledticks, old_generation);
+    assert(stops == previous_stops && !strcmp(playing, "MAPBOSS"));
+    assert(native_state > 2); /* Native delayed stage restores remain disabled. */
+    UH_PlayResultMapMusic(2);
+    StopResultMusic(scheduledticks, old_generation);
+    assert(stops == previous_stops && !strcmp(playing, "MAPVICTORY"));
+    PlayMusic("BATTLE"); /* Revival/replacement cancels result population watch. */
+    assert(!watch_active && !strcmp(playing, "BATTLE"));
+    UH_StartResultMapMusic(315);
+    assert(watch_active);
+    isbonuseventactive = 1;
+    UH_StartResultMapMusic(315);
+    assert(!watch_active);
+    isbonuseventactive = 0;
+    /* Execute the real watcher: deaths at 20 and 50 tics cause one boss and
+       one victory selection; it keeps the original 350-tic exit deadline. */
+    health[0] = health[1] = health[2] = 100;
+    tick = 0; death_tick1 = 20; death_tick2 = 50;
+    boss_tick = victory_tick = -1;
+    UH_PlayResultMusic(0);
+    watch_running = 1;
+    WatchResultMapMusic(350, 3);
+    watch_running = 0;
+    assert(tick == 350 && boss_tick == 20 && victory_tick == 50);
+    assert(!strcmp(playing, "MAPVICTORY") && native_state > 2);
+    health[0] = health[1] = health[2] = 100;
+    tick = 0; death_tick1 = 300; death_tick2 = 310;
+    boss_tick = victory_tick = -1;
+    UH_PlayResultMusic(0);
+    watch_running = 1;
+    WatchResultMapMusic(350, 3);
+    watch_running = 0;
+    assert(tick == 350 && boss_tick == -1 && victory_tick == -1);
+    assert(!strcmp(playing, "RESULT"));
+    isbonuseventactive = 0; versusfightevent = 1;
+    UH_StartResultMapMusic(315);
+    assert(!watch_active);
+    versusfightevent = 0; health[1] = health[2] = 0;
+    UH_StartResultMapMusic(315);
+    assert(!watch_active);
+
     /* Even if UH initially disabled native music, OPEN resets used to undo it.
        The deferred production claim also cancels a pending native restore. */
     startup = 1; native_state = 100; native_pending = 1;
@@ -155,7 +263,7 @@ int main(void) {
     previous_stops = stops;
     StopResultMusic(scheduledticks, scheduledgeneration);
     assert(stops == previous_stops + 1 && !*playing);
-    puts("Result music: known/unknown duration, emulation allowance, stale timers and short/long screen holds passed.");
+    puts("Result music: one-pass stops, stale timers, map transitions, thresholds and fixed exit deadline passed.");
     return 0;
 }
 '''

@@ -32,6 +32,7 @@ function void PlayMusic(str music) {
   int len = StrLen(music);  // Also checks if music has a space and numbers after it
   int space = FindSpace(music, len);  // If it does, it plays the multi track
 
+  ACS_NamedTerminate("uh_WatchResultMapMusic", 0);
   uh_musicstate[UH_MUSIC_GENERATION]++;
   if (space == -1) {
     SetMusic(music);
@@ -316,8 +317,12 @@ function int UH_PlayResultMusic(int row) {
 script "uh_StopResultMusic" (int ticks, int generation) {
   Delay(ticks);
   // A replacement selection (even the same lump) invalidates this timer.
-  if (generation == uh_musicstate[UH_MUSIC_GENERATION])
-    PlayMusic("");
+  if (generation == uh_musicstate[UH_MUSIC_GENERATION]) {
+    // Natural completion leaves the result's population watcher alive.
+    uh_musicstate[UH_MUSIC_GENERATION]++;
+    SetMusic("");
+    UH_ClearPublishedMusic(0);
+  }
 }
 
 function int UH_CoverResultMusic(int screentics, int musicticks) {
