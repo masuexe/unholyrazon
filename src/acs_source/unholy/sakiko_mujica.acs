@@ -96,9 +96,20 @@ script "rz_SoraNoMusica" (void) {
   MusicSaveFunc();
   UH_PlayTrack("SORAMUS", "Sora no Musica", "Alea jacta est", "Ave Mujica", 0, 1);
 
-  FadeLightChange(10, 245);
+  // Darken the arena with the stepped UH_ARENA_* ramp instead of a Light_Fade:
+  // a running fade cannot be stopped for untagged sectors, so cancelling the
+  // masquerade would leave the map dark (see uh_lighting.acs).
+  int soralightstart = lightleveltrack;
+  int sorafadestep;
   for (int i = 0; i < 280; i++) {
     if (gameover) {terminate;}
+    if (i < UH_ARENA_FADE_STEPS * UH_ARENA_FADE_STEP_TICS) {
+      sorafadestep = i / UH_ARENA_FADE_STEP_TICS + 1;
+      if (i % UH_ARENA_FADE_STEP_TICS == 0) {
+        InstantLightChange(soralightstart +
+          ((UH_ARENA_DARK_LIGHT - soralightstart) * sorafadestep) / UH_ARENA_FADE_STEPS);
+      }
+    }
     Delay(1);
   }
 
@@ -125,7 +136,6 @@ script "rz_SoraNoMusica" (void) {
   PlayMusic_Loss(2);
 
   MakeAllPlayersInvun();
-  FadeLightChange(0, 210);
 
   SetFont("BIGFONT");
   SetHudSize(480, 360, 0);
@@ -137,7 +147,13 @@ script "rz_SoraNoMusica" (void) {
   // The masquerade runs with the Mujica member as activator; the round exit
   // must not be attributed to them.
   ACS_NamedExecute("ub_ExitFinishedRound", 0, 35 * 6);
-  Delay(35 * 6);
+  // Black the arena out while the exit delay runs (30 * 7 = 210 tics), replacing
+  // the former Delay(35 * 6) without changing when the round exits.
+  for (sorafadestep = 1; sorafadestep <= UH_ARENA_END_FADE_STEPS; sorafadestep++) {
+    InstantLightChange(UH_ARENA_DARK_LIGHT -
+      (UH_ARENA_DARK_LIGHT * sorafadestep) / UH_ARENA_END_FADE_STEPS);
+    Delay(UH_ARENA_FADE_STEP_TICS);
+  }
 }
 
 script "rz_SoraNoMusicaCancel" (int z) {
@@ -152,6 +168,8 @@ script "rz_SoraNoMusicaCancel" (int z) {
       if (StrCmp(currentmusiclump, "SORAMUS") == 0) {
         UH_RestoreMusic();
       }
+      // The masquerade ramps the light in Light_ChangeToValue steps, so nothing
+      // keeps fading afterwards and this reset is final.
       InstantLightChange(lightleveltrack);
       break;
   }

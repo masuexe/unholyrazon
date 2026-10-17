@@ -2,6 +2,10 @@
 // Higlur lighting, Zankokuna rage and the wishing star.  Fragment of
 // library unholy; unit state lives in uh_def.acs
 // (helltimer / zankoragecheck / wishingstarcheck).
+//
+// The rage darkens the arena with the stepped ramp constants from uh_lighting.acs
+// (UH_ARENA_*): a Light_Fade here would survive an interrupt and overwrite the
+// reset in uh_StopZankokunaRage.
 // HellBot Script
 script "ub_HellTimerMonitor" (void) {
   SetActivator(0, AAPTR_NULL);
@@ -82,9 +86,16 @@ script "uh_ZankokunaRage" (void) {
   MusicSaveFunc();
   UH_PlayTrack("HELLMUS", "The Place", "EarthBound", "Keiichi Suzuki, Hirokazu Tanaka", 0, 0);
 
-  FadeLightChange(10, 245);
-  Delay(245);
-
+  // Darken the arena over 245 tics without leaving an engine fade running.
+  int ragelightstart = lightleveltrack;
+  int ragefadestep;
+  for (ragefadestep = 1; ragefadestep <= UH_ARENA_FADE_STEPS; ragefadestep++) {
+    InstantLightChange(ragelightstart +
+      ((UH_ARENA_DARK_LIGHT - ragelightstart) * ragefadestep) / UH_ARENA_FADE_STEPS);
+    Delay(UH_ARENA_FADE_STEP_TICS);
+  }
+  // The former Light_Fade ran during this wait; the loop above already consumed
+  // those 245 tics, so only the extra 35 remain before the massacre.
   Delay(35);
   GiveActorInventory(ActivatorTID(), "InvulnerableOn_Pickup", 1);
   int deadtid = 1000;
@@ -108,7 +119,6 @@ script "uh_ZankokunaRage" (void) {
   PlayMusic_Loss(2);
 
   MakeAllPlayersInvun();
-  FadeLightChange(0, 210);
 
   SetHudSize(480, 360, 0);
   SetFont("BIGFONT");
@@ -119,7 +129,14 @@ script "uh_ZankokunaRage" (void) {
   // Rage runs with the raging player as activator; the round exit must not be
   // attributed to them.
   ACS_NamedExecute("ub_ExitFinishedRound", 0, 35 * 6);
-  Delay(35 * 6);
+  // Black the arena out while the exit delay runs.  Stepped for the same reason
+  // as the darkening above, and 30 * 7 = 210 tics long, so it replaces the
+  // former Delay(35 * 6) without changing when the round exits.
+  for (ragefadestep = 1; ragefadestep <= UH_ARENA_END_FADE_STEPS; ragefadestep++) {
+    InstantLightChange(UH_ARENA_DARK_LIGHT -
+      (UH_ARENA_DARK_LIGHT * ragefadestep) / UH_ARENA_END_FADE_STEPS);
+    Delay(UH_ARENA_FADE_STEP_TICS);
+  }
 }
 
 script "uh_StopZankokunaRage" (int z) {
@@ -132,6 +149,8 @@ script "uh_StopZankokunaRage" (int z) {
       zankoragecheck = false;
       ACS_NamedTerminate("uh_ZankokunaRage", 0);
       UH_RestoreMusic();
+      // The rage ramps the light in Light_ChangeToValue steps, so nothing keeps
+      // fading afterwards and this reset is final.
       InstantLightChange(lightleveltrack);
       break;
   }

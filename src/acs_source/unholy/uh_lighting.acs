@@ -1,6 +1,20 @@
 // Map-wide lighting and sector-color helpers for library unholy.
 // This fragment is textually included by uh_funclib.acs.
 
+// Stepped blackout ramp for the round-ending set pieces (Zankokuna rage, Sora no
+// Musica).  They must not darken with Light_Fade: Light_Stop addresses sectors by
+// tag, and tag 0 - the only way to reach the untagged sectors that make up most
+// of an arena - is never registered (p_setup.cpp -> FTagManager::AddSectorTag
+// returns early for tag 0), so a fade still running when the set piece is
+// cancelled keeps ticking and overwrites the InstantLightChange reset.  Ramping
+// with Light_ChangeToValue steps leaves no fade thinker behind, so a cancelled
+// set piece stays reset.  35 * 7 = 245 tics of darkening, 30 * 7 = 210 tics of
+// final blackout - the durations the former fades used.
+#define UH_ARENA_DARK_LIGHT 10
+#define UH_ARENA_FADE_STEPS 35
+#define UH_ARENA_END_FADE_STEPS 30
+#define UH_ARENA_FADE_STEP_TICS 7
+
 // Light functions, names are straight forward.
 function void InstantLightChange(int l) {
   for (int i = 0; i < 256; i++) {

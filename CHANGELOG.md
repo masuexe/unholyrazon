@@ -4,6 +4,11 @@
 
 ---
 
+## 4.0.0-beta.261017
+
+- Fixed the arena staying dark when Zankokuna Hellbot's rage is interrupted during its build-up.
+- Fixed the same dark-arena problem for Sakiko Togawa's "Sora no Musica" finisher when it is cancelled while preparing (her death, a member dropping out, and so on).
+
 ## 4.0.0-beta.261016
 
 - Zero Boss now changes color to match the selected phase-two chip's energy bar; phase three uses cheat-form colors.
