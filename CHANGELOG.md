@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261018
+
+- On MM4DIV, Moby now leaves a disguised MiniVile among the item pickups at a random spot after a short delay. (Ported from Unbound)
+
 ## 4.0.0-beta.261017
 
 - Fixed Iron Curtain and Half Press Hardman not refilling their ammo while M2 was held in online games.
