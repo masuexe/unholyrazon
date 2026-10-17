@@ -3,6 +3,7 @@
 
 Checks one-pass stops, stale timers and screen holds for short/long themes.
 Delay injects replacement playback, including selecting the same lump again.
+Startup stubs model v6b OPEN resets and its native two-player music trigger.
 This does not emulate network or audio-device timing.
 """
 from pathlib import Path
@@ -19,7 +20,14 @@ def main():
     result = source[source.index("function int UH_PlayResultMusic"):
                     source.index("function int PlayMusic_Winner")]
     result = result.replace('script "uh_StopResultMusic"', 'void StopResultMusic')
-    code = STUBS + play.replace("function ", "") + result.replace("function ", "") + TESTS
+    lifecycle = (ROOT / "src/acs_source/unholy/uh_lifecycle.acs").read_text()
+    startup = lifecycle.split('script "ub_StartUpSettings" OPEN {', 1)[1]
+    startup = startup.split('script "ub_ValidateBossCombosDeferred"', 1)[0]
+    # Execute the production startup tail after its last background-task launch.
+    claim = startup.split('ACS_NamedExecute("uh_BackgroundTimer", 0);', 1)[1]
+    claim = claim[:claim.index("\n}")]
+    code = (STUBS + play.replace("function ", "") + result.replace("function ", "")
+            + "void FinishStartup(void) {" + claim + "\n}\n" + TESTS)
     with tempfile.TemporaryDirectory(prefix="uh-result-music-") as directory:
         path = Path(directory)
         (path / "test.c").write_text(code)
@@ -34,8 +42,11 @@ STUBS = r'''
 #include <string.h>
 typedef const char *str;
 #define UH_MUSIC_GENERATION 1
+#define BMSF_SETVAL 1
 int uh_musicstate[2], duration, emulated, selections, stops, scheduled, waitticks;
 int scheduledticks, scheduledgeneration, replacement;
+int startup, native_state, native_pending, native_changes;
+str playing = "";
 void PlayMusic(str music);
 int StrLen(str s) { return strlen(s); }
 int FindSpace(str s, int n) { (void)s; (void)n; return -1; }
@@ -43,7 +54,7 @@ str StrLeft(str s, int n) { (void)n; return s; }
 str StrRight(str s, int n) { (void)n; return s; }
 int StringToInt(str s, int n) { (void)s; (void)n; return 0; }
 /* ACS SetMusic's optional order argument is irrelevant to timer ownership. */
-void SetMusic(str s, ...) { selections++; if (!*s) stops++; }
+void SetMusic(str s, ...) { playing = s; selections++; if (!*s) stops++; }
 int UH_MusicLumpPublishable(str s) { return *s && strcmp(s, "*"); }
 void UH_ClearPublishedMusic(int context) { (void)context; }
 void UH_PlayBossRow(int row, int context, int announce) {
@@ -57,8 +68,28 @@ void ACS_NamedExecuteAlways(str name, int map, int ticks, int generation) {
     assert(!strcmp(name, "uh_StopResultMusic") && map == 0);
     scheduled++; scheduledticks = ticks; scheduledgeneration = generation;
 }
+void ACS_NamedTerminate(str name, int map) {
+    assert(!strcmp(name, "core_musichandler") && map == 0);
+    native_pending = 0;
+}
+void ACS_NamedExecuteWithResult(str name, int mode, int value) {
+    assert(!strcmp(name, "core_bossmusicstate") && mode == BMSF_SETVAL);
+    native_state = value;
+}
+/* v6b MUSSYS returns immediately above state 2; otherwise 2 living players
+   in LMS trigger map boss music from state 0, bypassing UH's generation. */
+void NativeDeathMusic(int living) {
+    if (native_state > 2) return;
+    if (living <= 2 && native_state == 0) {
+        native_state = 1;
+        native_changes++;
+        SetMusic("MAPBOSS");
+    }
+}
 void Delay(int ticks) {
     waitticks = ticks;
+    /* MUSSYS/MAPCARDS reset this state during OPEN, after UH's first writes. */
+    if (startup) { assert(ticks == 1); native_state = 0; }
     if (replacement == 1) PlayMusic("BATTLE");
     if (replacement == 2) PlayMusic("RESULT");
     if (replacement == 3) PlayMusic("*");
@@ -97,6 +128,33 @@ int main(void) {
     assert(UH_CoverResultMusic(70, 82) == 94);
     duration = 1; emulated = 0;
     assert(UH_PlayResultMusic(0) == 1);
+
+    /* Reproduce the report before the startup claim: three living players,
+       defeat jingle, then another death starts native boss music. */
+    duration = 4 * 65536;
+    native_state = 0;
+    NativeDeathMusic(3);
+    UH_PlayResultMusic(0);
+    NativeDeathMusic(2);
+    assert(!strcmp(playing, "MAPBOSS"));
+    int previous_stops = stops;
+    StopResultMusic(scheduledticks, scheduledgeneration);
+    assert(stops == previous_stops + 1 && !*playing);
+
+    /* Even if UH initially disabled native music, OPEN resets used to undo it.
+       The deferred production claim also cancels a pending native restore. */
+    startup = 1; native_state = 100; native_pending = 1;
+    FinishStartup();
+    startup = 0;
+    assert(native_state > 2 && native_pending == 0);
+    int previous_changes = native_changes;
+    UH_PlayResultMusic(0);
+    NativeDeathMusic(2);
+    NativeDeathMusic(1);
+    assert(native_changes == previous_changes && !strcmp(playing, "RESULT"));
+    previous_stops = stops;
+    StopResultMusic(scheduledticks, scheduledgeneration);
+    assert(stops == previous_stops + 1 && !*playing);
     puts("Result music: known/unknown duration, emulation allowance, stale timers and short/long screen holds passed.");
     return 0;
 }

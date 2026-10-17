@@ -141,7 +141,6 @@ script "ub_StartUpSettings" OPEN {
     roundstatebuilt[rsi] = false;
   }
 
-  ACS_NamedExecuteWithResult("core_bossmusicstate", 1, 669);  // Disables boss music for maps, that is if they use this script
   MusicSaveFunc();
 
   u_maplevelname = StrParam(n:PRINTNAME_LEVELNAME);
@@ -187,6 +186,14 @@ script "ub_StartUpSettings" OPEN {
   }
   ACS_NamedExecute("ub_RefreshHudMessageLoop", 0);
   ACS_NamedExecute("uh_BackgroundTimer", 0);
+
+  // MUSSYS and MAPCARDS reset this state in their OPEN scripts. Claim music
+  // after those resets so later deaths/disconnects cannot replace a result
+  // theme with native two-player boss music outside our stop-timer generation.
+  Delay(1);
+  ACS_NamedTerminate("core_musichandler", 0);
+  // Mode 1 = set state only; v6b disables native music for state > 2.
+  ACS_NamedExecuteWithResult("core_bossmusicstate", 1, 100);
 }
 
 // Deferred D0 validation. Yield once so non-delaying OPEN registrations in
