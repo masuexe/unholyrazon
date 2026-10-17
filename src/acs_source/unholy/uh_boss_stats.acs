@@ -1,0 +1,274 @@
+// Boss win-rate statistics (server-session debug data).
+//
+// The final committed line-up is owned by the round core, and an ordinary
+// result is only final after the cancellable settlement window commits, so the
+// counters are written here rather than inferred from the scoreboard. Each
+// distinct Boss in uh_bosslastlineup records exactly one win or loss per round.
+// Bonus Events and versus duels are excluded: their win conditions are not
+// "Boss side vs Survivors" and mixing them would make the numbers meaningless.
+//
+// Storage is world scope, like the pick history: counters survive map changes
+// for the server session and reset when the server restarts. uh_bossstats_reset
+// clears only these counters, never the least-seen pick history.
+//
+// Read access is deliberately open to every player: uh_BossStats is a NET
+// script, so any client can run it from the console. Print() targets the
+// requesting player, so one player asking for data does not spam everyone.
+// The host console invocation has a world activator, which prints to everyone.
+
+#define UH_BS_MODE_ALL 0
+#define UH_BS_MODE_SUMMARY 1
+#define UH_BS_MODE_LINEUP 2
+#define UH_BS_MODE_BOSS 3
+
+function int UH_BS_Wins(int id) {
+  int idx;
+  if (id >= 0) {
+    if (id >= UH_MAX_VANILLA_BOSS)
+      return -1;
+    return uh_bossstatswins[id];
+  }
+  idx = UH_BossCustomIndex(id);
+  if (idx < 0 || idx >= UH_MAX_CUSTOM_BOSS)
+    return -1;
+  return uh_bossstatswinscustom[idx];
+}
+
+function int UH_BS_Losses(int id) {
+  int idx;
+  if (id >= 0) {
+    if (id >= UH_MAX_VANILLA_BOSS)
+      return -1;
+    return uh_bossstatslosses[id];
+  }
+  idx = UH_BossCustomIndex(id);
+  if (idx < 0 || idx >= UH_MAX_CUSTOM_BOSS)
+    return -1;
+  return uh_bossstatslossescustom[idx];
+}
+
+function void UH_BS_AddWin(int id) {
+  int idx;
+  if (id >= 0) {
+    if (id >= UH_MAX_VANILLA_BOSS || !IsBossDefined(id))
+      return;
+    uh_bossstatswins[id]++;
+    return;
+  }
+  idx = UH_BossCustomIndex(id);
+  if (idx < 0 || idx >= UH_MAX_CUSTOM_BOSS || !IsBossDefined(id))
+    return;
+  uh_bossstatswinscustom[idx]++;
+}
+
+function void UH_BS_AddLoss(int id) {
+  int idx;
+  if (id >= 0) {
+    if (id >= UH_MAX_VANILLA_BOSS || !IsBossDefined(id))
+      return;
+    uh_bossstatslosses[id]++;
+    return;
+  }
+  idx = UH_BossCustomIndex(id);
+  if (idx < 0 || idx >= UH_MAX_CUSTOM_BOSS || !IsBossDefined(id))
+    return;
+  uh_bossstatslossescustom[idx]++;
+}
+
+// One decimal place without floating point. ACS ints are 32-bit, and a Boss
+// cannot practically accumulate enough wins for wins * 1000 to overflow.
+function str UH_BS_RateText(int wins, int total) {
+  int permille;
+  if (total <= 0)
+    return "-";
+  permille = (wins * 1000) / total;
+  return StrParam(i:permille / 10, s:".", i:permille % 10, s:"%");
+}
+
+// Host-only clear entry. Pick history is deliberately untouched so resetting
+// debug data cannot change the least-seen selection distribution.
+function void UH_BossStatsReset(void) {
+  int i;
+  for (i = 0; i < UH_MAX_VANILLA_BOSS; i++) {
+    uh_bossstatswins[i] = 0;
+    uh_bossstatslosses[i] = 0;
+  }
+  for (i = 0; i < UH_MAX_CUSTOM_BOSS; i++) {
+    uh_bossstatswinscustom[i] = 0;
+    uh_bossstatslossescustom[i] = 0;
+  }
+  uh_bossstatsrounds = 0;
+  uh_bossstatsbosswins = 0;
+  uh_bossstatsrecorded = false;
+  uh_bossstatslastrequest = 0;
+}
+
+// Called only after the round result is final. survivorwin means the Boss side
+// lost. A multi-Boss line-up credits each distinct Boss once; a repeated member
+// id in one combo is not counted twice.
+function void UH_BossStatsRecordRound(bool survivorwin) {
+  int count;
+  int recorded;
+  int id;
+  int i;
+  int j;
+  bool duplicate;
+  str name;
+
+  // Different win conditions: do not pollute the ordinary balance numbers.
+  if (isbonuseventactive || bonuseventended || versusfightevent)
+    return;
+  if (uh_bossstatsrecorded)
+    return;
+
+  count = uh_bosslastlineup[0];
+  if (count < 1)
+    return;
+
+  uh_bossstatsrecorded = true;
+  recorded = 0;
+  for (i = 1; i <= count && i <= MAX_BOSSES; i++) {
+    id = uh_bosslastlineup[i];
+    if (!IsBossDefined(id))
+      continue;
+
+    duplicate = false;
+    for (j = 1; j < i; j++) {
+      if (uh_bosslastlineup[j] == id) {
+        duplicate = true;
+        break;
+      }
+    }
+    if (duplicate)
+      continue;
+
+    recorded++;
+    name = GetBossName(id);
+    if (survivorwin) {
+      UH_BS_AddLoss(id);
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"BossStats ", s:name, s:" id=", i:id,
+        s:" result=loss"));
+    }
+    else {
+      UH_BS_AddWin(id);
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"BossStats ", s:name, s:" id=", i:id,
+        s:" result=win"));
+    }
+  }
+
+  if (recorded <= 0)
+    return;
+  uh_bossstatsrounds++;
+  if (!survivorwin)
+    uh_bossstatsbosswins++;
+  UH_Log(UH_LOG_INFO, StrParam(s:"BossStats recorded: rounds=", i:uh_bossstatsrounds,
+    s:" boss wins=", i:uh_bossstatsbosswins));
+}
+
+// requirestats = true lists only Bosses with at least one completed round.
+// The current-line-up mode passes false so a never-recorded Boss still has a
+// visible 0W/0L row.
+function void UH_BS_PrintBoss(int id, bool requirestats) {
+  int wins = UH_BS_Wins(id);
+  int losses = UH_BS_Losses(id);
+  int total;
+  int picks;
+  str name;
+  str rate;
+  if (wins < 0 || losses < 0)
+    return;
+  total = wins + losses;
+  if (requirestats && total <= 0)
+    return;
+
+  name = GetBossName(id);
+  rate = UH_BS_RateText(wins, total);
+  picks = GetBossPickCount(id);
+  Print(s:"[BossStats] ", s:name, s:" (id ", i:id, s:"): ",
+    i:wins, s:"W/", i:losses, s:"L  ", s:rate, s:"  picks=", i:picks);
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"BossStats ", s:name, s:" (id ", i:id,
+    s:"): ", i:wins, s:"W/", i:losses, s:"L  ", s:rate, s:"  picks=", i:picks));
+}
+
+function void UH_BS_PrintSummary(void) {
+  str rate;
+  rate = UH_BS_RateText(uh_bossstatsbosswins, uh_bossstatsrounds);
+  Print(s:"[BossStats] completed rounds=", i:uh_bossstatsrounds,
+    s:"  boss wins=", i:uh_bossstatsbosswins, s:"  boss win rate=", s:rate);
+  UH_Log(UH_LOG_INFO, StrParam(s:"BossStats completed rounds=", i:uh_bossstatsrounds,
+    s:" boss wins=", i:uh_bossstatsbosswins, s:" boss win rate=", s:rate));
+}
+
+function void UH_BS_PrintAll(void) {
+  int i;
+  int id;
+  UH_BS_PrintSummary();
+  for (i = 0; i < UH_MAX_VANILLA_BOSS; i++) {
+    if (IsBossDefined(i))
+      UH_BS_PrintBoss(i, true);
+  }
+  // UH_MAX_CUSTOM_BOSS covers tombstones; IsBossDefined filters them. Do not
+  // read uhdt's uh_bosscustomcount here: it is a map variable of another
+  // library, and an undeclared use would silently consume a map slot in this
+  // 128-slot library.
+  for (i = 0; i < UH_MAX_CUSTOM_BOSS; i++) {
+    id = -1 - i;
+    if (IsBossDefined(id))
+      UH_BS_PrintBoss(id, true);
+  }
+  Print(s:"[BossStats] end. Host reset: uh_bossstats_reset in the server console.");
+}
+
+function void UH_BS_PrintLineup(void) {
+  int count;
+  int id;
+  int i;
+  count = uh_bosslastlineup[0];
+  if (count <= 0) {
+    Print(s:"[BossStats] no committed line-up for this round.");
+    return;
+  }
+  Print(s:"[BossStats] current committed line-up:");
+  for (i = 1; i <= count && i <= MAX_BOSSES; i++) {
+    id = uh_bosslastlineup[i];
+    if (IsBossDefined(id))
+      UH_BS_PrintBoss(id, false);
+  }
+}
+
+// Anyone may run this: pukename uh_BossStats [mode] [bossId]
+//   mode 0 (default) = summary + every Boss with completed rounds
+//   mode 1           = summary only
+//   mode 2           = current committed line-up
+//   mode 3           = one Boss by signed UHDT id (negative = custom)
+script "uh_BossStats" (int mode, int id) NET {
+  // The output loop scans the registry, so protect the server from a client
+  // spamming this NET script. 0 means "no previous request". Timer() restarts
+  // on a new map, so a stored value larger than Timer() is stale and must not
+  // block requests until it catches up.
+  if (uh_bossstatslastrequest > 0 && Timer() >= uh_bossstatslastrequest &&
+      Timer() - uh_bossstatslastrequest < 35) {
+    Print(s:"[BossStats] cooldown: try again in about a second.");
+    terminate;
+  }
+  uh_bossstatslastrequest = Timer();
+  if (uh_bossstatslastrequest <= 0)
+    uh_bossstatslastrequest = 1;
+
+  if (mode < UH_BS_MODE_ALL || mode > UH_BS_MODE_BOSS)
+    mode = UH_BS_MODE_ALL;
+
+  if (mode == UH_BS_MODE_SUMMARY) {
+    UH_BS_PrintSummary();
+    terminate;
+  }
+  if (mode == UH_BS_MODE_LINEUP) {
+    UH_BS_PrintLineup();
+    terminate;
+  }
+  if (mode == UH_BS_MODE_BOSS) {
+    UH_BS_PrintBoss(id, false);
+    terminate;
+  }
+  UH_BS_PrintAll();
+}

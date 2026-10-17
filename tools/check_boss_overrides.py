@@ -99,6 +99,8 @@ bool printed(str text) {
  for(int i=0;i<lines;i++) if(strstr(output[i],text)) return true;
  return false;
 }
+int stats_reset_calls;
+void UH_BossStatsReset(void) { stats_reset_calls++; }
 '''
 
 TESTS = r'''
@@ -172,6 +174,14 @@ int main(void) {
  UH_BC_Run("reset:KnownBoss:::");
  assert(UH_BR_Get("KnownBoss",UH_BR_WEIGHT)==-1);
  assert(printed("effective mode="));
+ // The host-only win-rate reset is part of the same command mailbox. It must
+ // clear debug counters without touching the stored Boss overrides.
+ snapshot_writes=writes; stats_reset_calls=0; lines=0;
+ UH_BC_Run("statsreset::::");
+ assert(stats_reset_calls==1 && writes==snapshot_writes);
+ assert(printed("statistics cleared"));
+ UH_BC_Run("statsreset:extra:::");
+ assert(stats_reset_calls==1);
  // Show/list/export/reload do not change stored data.
  snapshot_writes=writes;
  UH_BC_Run("show:AddonBoss:::");

@@ -28,6 +28,7 @@ Guides and CVAR references for dedicated server operators and host setups.
 |---|---|
 | [**Server Gameplay CVARs**](server-gameplay-cvars.md) | Centralized reference for round thresholds, copy weapon counts, SinfulBusterExpert unlocks, bonus stage death effects, and Zangief pull toggles. |
 | [**Boss Selection Settings**](boss-selection-settings.md) | Host commands (`uh_boss_set`, `uh_boss_show`, `uh_boss_export`), per-boss rule overrides (`uh_sv_bossrules`), selection strategies, and tier probabilities. |
+| [**Boss Win-Rate Statistics**](boss-stats.md) | Open-to-everyone debug counters (`uh_bossstats`), counting rules, session scope, and the host-only reset. |
 | [**Bonus Event Settings**](bonus-event-settings.md) | Host commands (`uh_event_set`, `uh_event_show`, `uh_event_export`), per-event rules (`uh_sv_eventrules`), player thresholds, and EX counters. |
 | [**Round Settlement**](round-settlement.md) | Server option `uh_sv_resumeonrevive`, cancellable exit windows, and mid-settlement revival rules. |
 | [**MegaMan Daily Weapons**](megaman-daily-weapons.md) | Server CVARs for MegaMan M2 weapon pool size and daily weapon synchronization. |

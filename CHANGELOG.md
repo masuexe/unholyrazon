@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261018
 
+- Added Boss win-rate statistics for balance checks. Every player can view the overall and per-Boss results with `uh_bossstats` in the console; the server host can clear the counters with `uh_bossstats_reset` without affecting Boss selection history.
 - On MM4DIV, Moby now leaves a disguised MiniVile among the item pickups at a random spot after a short delay. (Ported from Unbound)
 - Restored the MiniVile's missing sounds.
 - Fixed the win/loss theme being replaced by the old battle music near the end of a round that was force-ended by the timer (the full-screen kill, including the wish and EXE endings), and the longest themes being cut short: a delayed battle-music restore no longer replaces a result theme or any newer track, and no longer plays after the round has ended.

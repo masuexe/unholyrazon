@@ -169,6 +169,7 @@ header), `uh_funclib` (shared function drawer), `uh_lifecycle`,
 `uh_bossselect` and `uh_dickhead_revival` (round flow, split from the former
 monolithic aggregator), `uh_events` (round event system, ex-`uh_bonus`),
 `uh_bosscore` + `uh_arena_fx` (ex-`uh_bspecial`),
+`uh_boss_stats` (open-to-everyone Boss win-rate counters and query script),
 `clownpiece_spellcard.acs` (Clownpiece-only spell-card flow; sole caller
 `Clownpiece_W.dec`), `uh_display`/`uh_aspect` (boss/round HUD), `uh_music`
 (music runtime; registration lives in `systems/music/`), and `uh_access`

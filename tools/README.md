@@ -196,6 +196,11 @@ for the actual ACS logic under C stubs; recompile `unholy` and `rz_debug`.
 pending/final results for every round type, including Bonus Events. The same
 logic check covers immunity removal/restoration, option changes and body changes.
 
+Boss win-rate debug counters are documented in
+[Boss win-rate statistics](../docs/boss-stats.md). Run
+`python3 tools/check_boss_stats.py` for the accounting/reset logic and command
+wiring checks under C stubs.
+
 Bonus Event host overrides use the import-only `UHBESET` library
 (`src/acs/UHBESET.o`, absent from `LOADACS`). `tools/compile-acs.sh` compiles it
 before UHDT. The console commands and configuration format are documented in
