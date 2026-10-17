@@ -7,6 +7,7 @@
 ## 4.0.0-beta.261018
 
 - On MM4DIV, Moby now leaves a disguised MiniVile among the item pickups at a random spot after a short delay. (Ported from Unbound)
+- Restored the MiniVile's missing sounds.
 
 ## 4.0.0-beta.261017
 
