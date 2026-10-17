@@ -42,8 +42,18 @@ function void PlayMusic(str music) {
   }
   // Silence and map-default playback are not Unholy tracks. Drop the previous
   // snapshot so !music and Map Card do not keep showing it.
-  if (!UH_MusicLumpPublishable(music))
+  if (!UH_MusicLumpPublishable(music)) {
     UH_ClearPublishedMusic(0);
+    // Keep the selection code (legacy MusicCodeVar): "*" is the map's own music
+    // and must survive into a later restore, while "" is real silence.
+    if (StrCmp(music, "*") == 0)
+      currentmusiclump = "*";
+  }
+  else {
+    // UH_PlayTrack publishes the metadata right after this; this keeps a direct
+    // track selection restorable exactly like the legacy MusicCodeVar.
+    currentmusiclump = music;
+  }
 }
 
 function int UH_MusicLumpPublishable(str lump) {
@@ -105,6 +115,14 @@ function void UH_PlayTrack(str lump, str title, str album, str artist, int conte
 
 function void UH_RestoreMusic(void) {
   UH_PlayTrack(savedmusiclump, savedmusictitle, savedmusicalbum, savedmusicartist, savedmusiccontext, 0);
+}
+
+// A delayed restore may only touch playback it still owns: every newer server
+// selection (result jingle, map music, enrage) bumps the generation, and a
+// finished round keeps its result theme even when that theme already stopped.
+// Capture the generation right after the feature's own last PlayMusic call.
+function bool UH_MusicRestoreOwned(int generation) {
+  return !gameover && generation == uh_musicstate[UH_MUSIC_GENERATION];
 }
 
 function void UH_PlayBossRow(int row, int context, int announce) {
@@ -260,6 +278,9 @@ script "ub_PlayVariantMusic" (int thenum) {
     // No Unholy track for this boss. Stop the previous tune and drop its card.
     PlayMusic("*");
     UH_ClearPublishedMusic(1);
+    // Clearing the card in map-music context must not erase the map-default
+    // selection code: a later wish/rage restore has to return the map music.
+    currentmusiclump = "*";
     UH_PingRoundMusicMode(1);
   }
 }

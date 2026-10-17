@@ -148,7 +148,10 @@ script "uh_StopZankokunaRage" (int z) {
     case 1:
       zankoragecheck = false;
       ACS_NamedTerminate("uh_ZankokunaRage", 0);
-      UH_RestoreMusic();
+      // A rage interrupted after the round ended (post-round friendly fire)
+      // must not replace the result theme.
+      if (!gameover && !uh_settlementstate[UH_SETTLEMENT_PENDING])
+        UH_RestoreMusic();
       // The rage ramps the light in Light_ChangeToValue steps, so nothing keeps
       // fading afterwards and this reset is final.
       InstantLightChange(lightleveltrack);
@@ -194,9 +197,13 @@ script "uh_WishingStar" (int star, int extra) {
       Radius_Quake(9, 70, 0, 150, extra);
       AmbientSound("misc/hugequake", 127);
       PlayMusic("*");
+      int wishmusicgen = uh_musicstate[UH_MUSIC_GENERATION];
       Delay(35 * 10);
       wishingstarcheck = false;
-      UH_RestoreMusic();
+      // The round may have ended (timeout InstaKill) or a result/enrage/map
+      // track may own playback now; the old battle theme must not cut it.
+      if (UH_MusicRestoreOwned(wishmusicgen))
+        UH_RestoreMusic();
       break;
     case 6:  // Begin the entire EXE event.
       standardlmseventlocked = true;
@@ -222,6 +229,7 @@ script "uh_WishingStar" (int star, int extra) {
       AmbientSound(StrParam(s:"classes/SONICEXE", i:random(1, 4)), 127);
       Delay(35 * 4);
       PlayMusic("");
+      int exemusicgen = uh_musicstate[UH_MUSIC_GENERATION];
       AmbientSound("classes/SONICEXE0", 127);
       AmbientSound("sonicEXE/Kefka", 127);
       int exedeath = 1000;
@@ -237,7 +245,8 @@ script "uh_WishingStar" (int star, int extra) {
         Delay(1);
       }
       wishingstarcheck = false;
-      UH_RestoreMusic();
+      if (UH_MusicRestoreOwned(exemusicgen))
+        UH_RestoreMusic();
       break;
     case 7:  // Spec/Death
       LocalAmbientSound(StrParam(s:"classes/SONICEXE", i:random(1, 4)), 127);
@@ -247,7 +256,9 @@ script "uh_WishingStar" (int star, int extra) {
       wishingstarcheck = false;
       AmbientSound("S3_K/Wrong", 62);
       PrintBold(s:"Wish failed!");
-      UH_RestoreMusic();
+      // A cancel after the result started must keep the result theme.
+      if (!gameover && !uh_settlementstate[UH_SETTLEMENT_PENDING])
+        UH_RestoreMusic();
       break;
     case 77:
       AmbientSound("misc/TimeTravel", 127);

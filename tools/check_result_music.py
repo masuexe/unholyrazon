@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Exercise result-music ACS with C stubs; ACC checks language compatibility.
 
-Checks one-pass stops, stale timers and screen holds for short/long themes.
-Delay injects replacement playback, including selecting the same lump again.
-Startup stubs model v6b OPEN resets and its native two-player music trigger.
-This does not emulate network or audio-device timing.
+Checks one-pass stops, stale timers, screen holds for short/long themes and the
+ownership guard on delayed restores (a finished round or a newer selection must
+keep playback). Delay injects replacement playback, including selecting the same
+lump again. Startup stubs model v6b OPEN resets and its native two-player music
+trigger. This does not emulate network or audio-device timing.
 """
 from pathlib import Path
 import subprocess
@@ -13,13 +14,69 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _assert_guarded_restores(script_text, label, expected):
+    """A delayed restore must sit under an ownership/dead-round guard."""
+    restore_lines = script_text.splitlines()
+    guarded = 0
+    for index, line in enumerate(restore_lines):
+        if line.strip() != "UH_RestoreMusic();":
+            continue
+        previous = next((candidate.strip() for candidate in reversed(restore_lines[:index]) if candidate.strip()), "")
+        assert previous.startswith("if ("), f"{label}: unguarded restore after {previous!r}"
+        assert "UH_MusicRestoreOwned(" in previous or "!gameover" in previous, (
+            f"{label}: restore guard lacks ownership/gameover check: {previous!r}")
+        guarded += 1
+    assert guarded == expected, f"{label}: expected {expected} guarded restore(s), found {guarded}"
+
+
+def check_delayed_restores():
+    """The wish and rage cancels may only restore music they still own."""
+    arena = (ROOT / "src/acs_source/unholy/uh_arena_fx.acs").read_text()
+    wish = arena[arena.index('script "uh_WishingStar"'):]
+    wish = wish[:wish.index("\n}\n")]
+    _assert_guarded_restores(wish, "uh_WishingStar", 3)
+    # The generation must be captured after the wish's own last PlayMusic call,
+    # otherwise the guard could never match.
+    case1 = wish[wish.index("    case 1:"):wish.index("    case 6:")]
+    assert case1.index('PlayMusic("*");') < case1.index("int wishmusicgen = uh_musicstate[UH_MUSIC_GENERATION];")
+    assert case1.index("int wishmusicgen") < case1.index("Delay(35 * 10);")
+    case6 = wish[wish.index("    case 6:"):wish.index("    case 7:")]
+    assert case6.index('PlayMusic("");') < case6.index("int exemusicgen = uh_musicstate[UH_MUSIC_GENERATION];")
+    assert case6.index("int exemusicgen") < case6.index("UH_MusicRestoreOwned(exemusicgen)")
+    rage = arena[arena.index('script "uh_StopZankokunaRage"'):]
+    _assert_guarded_restores(rage[:rage.index("\n}\n")], "uh_StopZankokunaRage", 1)
+
+
+def check_restore_default():
+    """The MusicCodeVar-compatible selection code must survive to the restore."""
+    defs = (ROOT / "src/acs_source/unholy/uh_def.acs").read_text()
+    assert 'str currentmusiclump = "*";' in defs, (
+        "music selection code must start as the map's own music, not silence")
+    music = (ROOT / "src/acs_source/unholy/uh_music.acs").read_text()
+    variant = music[music.index('script "ub_PlayVariantMusic"'):
+                    music.index('script "ub_BossEnrageMusic"')]
+    clear = variant.index("UH_ClearPublishedMusic(1);")
+    assert 'currentmusiclump = "*"' in variant[clear:], (
+        "clearing the map-music card must keep the map-default selection code")
+
+
 def main():
     source = (ROOT / "src/acs_source/unholy/uh_music.acs").read_text()
     play = source[source.index("function void PlayMusic(str music)"):
                   source.index("function int UH_MusicLumpPublishable")]
+    savefunc = source[source.index("function void MusicSaveFunc(void)"):
+                      source.index("function void UH_ClearPublishedMusic")]
+    playtrack = source[source.index("function void UH_PlayTrack("):
+                       source.index("function void UH_RestoreMusic")]
+    restore = source[source.index("function void UH_RestoreMusic(void)"):
+                     source.index("function bool UH_MusicRestoreOwned")]
     result = source[source.index("function int UH_PlayResultMusic"):
                     source.index("function int PlayMusic_Winner")]
     result = result.replace('script "uh_StopResultMusic"', 'void StopResultMusic')
+    guard = source[source.index("function bool UH_MusicRestoreOwned"):
+                   source.index("function void UH_PlayBossRow")]
+    check_delayed_restores()
+    check_restore_default()
     mapmusic = (ROOT / "src/acs_source/unholy/uh_result_mapmusic.acs").read_text()
     mapmusic = mapmusic.replace('script "uh_WatchResultMapMusic"', 'void WatchResultMapMusic')
     lifecycle = (ROOT / "src/acs_source/unholy/uh_lifecycle.acs").read_text()
@@ -28,7 +85,11 @@ def main():
     # Execute the production startup tail after its last background-task launch.
     claim = startup.split('ACS_NamedExecute("uh_BackgroundTimer", 0);', 1)[1]
     claim = claim[:claim.index("\n}")]
-    code = (STUBS + play.replace("function ", "") + result.replace("function ", "")
+    code = (STUBS + play.replace("function ", "")
+            + savefunc.replace("function ", "") + playtrack.replace("function ", "")
+            + restore.replace("function ", "")
+            + result.replace("function ", "")
+            + guard.replace("function ", "")
             + mapmusic.replace("function ", "")
             + "void FinishStartup(void) {" + claim + "\n}\n" + TESTS)
     with tempfile.TemporaryDirectory(prefix="uh-result-music-") as directory:
@@ -44,18 +105,24 @@ STUBS = r'''
 #include <stdio.h>
 #include <string.h>
 typedef const char *str;
+typedef int bool;
+#define UH_MUSIC_CONTEXT 0
 #define UH_MUSIC_GENERATION 1
 #define BMSF_SETVAL 1
 #define MAX_PLAYERS 4
 #define APROP_HEALTH 0
 #define AAPTR_NULL 0
 int uh_musicstate[2], duration, emulated, selections, stops, scheduled, waitticks;
+int gameover;
 int scheduledticks, scheduledgeneration, replacement;
 int startup, native_state, native_pending, native_changes;
 int connected[4], spectator[4], health[4], tick;
 int isbonuseventactive, versusfightevent, watch_active, watch_deadline, watch_initial;
 int watch_running, death_tick1, death_tick2, boss_tick, victory_tick;
 str playing = "";
+str currentmusiclump = "", currentmusictitle = "", currentmusicalbum = "", currentmusicartist = "";
+str savedmusiclump = "", savedmusictitle = "", savedmusicalbum = "", savedmusicartist = "";
+int savedmusiccontext = 0;
 int PlayerInGame(int p) { return connected[p]; }
 int PlayerIsSpectator(int p) { return spectator[p]; }
 int GetActorProperty(int tid, int prop) { assert(prop == APROP_HEALTH); return health[tid-1000]; }
@@ -67,10 +134,20 @@ int FindSpace(str s, int n) { (void)s; (void)n; return -1; }
 str StrLeft(str s, int n) { (void)n; return s; }
 str StrRight(str s, int n) { (void)n; return s; }
 int StringToInt(str s, int n) { (void)s; (void)n; return 0; }
+int StrCmp(str a, str b) { return strcmp(a, b); }
 /* ACS SetMusic's optional order argument is irrelevant to timer ownership. */
 void SetMusic(str s, ...) { playing = s; selections++; if (!*s) stops++; }
 int UH_MusicLumpPublishable(str s) { return *s && strcmp(s, "*"); }
-void UH_ClearPublishedMusic(int context) { (void)context; }
+/* Mirrors the production card clear: the published snapshot becomes empty. */
+void UH_ClearPublishedMusic(int context) {
+    (void)context;
+    currentmusiclump = ""; currentmusictitle = ""; currentmusicalbum = ""; currentmusicartist = "";
+}
+void UH_PublishMusic(str lump, str title, str album, str artist, int context, int announce) {
+    (void)title; (void)album; (void)artist; (void)context; (void)announce;
+    if (UH_MusicLumpPublishable(lump)) currentmusiclump = lump;
+}
+void UH_PingRoundMusicMode(int context) { (void)context; }
 void UH_PlayBossRow(int row, int context, int announce) {
     assert(row == 0 && context == 0 && announce == 0); PlayMusic("RESULT");
 }
@@ -263,7 +340,45 @@ int main(void) {
     previous_stops = stops;
     StopResultMusic(scheduledticks, scheduledgeneration);
     assert(stops == previous_stops + 1 && !*playing);
-    puts("Result music: one-pass stops, stale timers, map transitions, thresholds and fixed exit deadline passed.");
+
+    /* Delayed restores only touch playback they still own: a newer selection
+       (result theme, enrage, map music) or a finished round wins, so a timeout
+       InstaKill's result theme can no longer be replaced by the old battle track. */
+    uh_musicstate[UH_MUSIC_GENERATION] = 7;
+    gameover = 0;
+    assert(UH_MusicRestoreOwned(7));
+    assert(!UH_MusicRestoreOwned(6));
+    gameover = 1;
+    assert(!UH_MusicRestoreOwned(7));
+    gameover = 0;
+
+    /* Delayed restore returns the recorded selection code (legacy MusicCodeVar).
+       A server still waiting for players has no Unholy track: the wish must
+       save and return the map's own music "*", so the map music that comes back
+       after the massacre is not cut off ten seconds later. Deliberate silence
+       still restores silence, and a published battle track still returns. */
+    currentmusiclump = "*"; currentmusictitle = ""; currentmusicalbum = ""; currentmusicartist = "";
+    PlayMusic("*");                     /* map-default playback is a selection, not a clear */
+    assert(!strcmp(currentmusiclump, "*"));
+    MusicSaveFunc();
+    assert(!strcmp(savedmusiclump, "*"));
+    PlayMusic("");                      /* wish start: silence */
+    PlayMusic("*");                     /* InstaKill massacre: map music back */
+    UH_RestoreMusic();                  /* +350 tics */
+    assert(!strcmp(playing, "*"));      /* map music stays, matching unbound */
+
+    currentmusiclump = "M_UB042"; currentmusictitle = "Boss"; currentmusicalbum = "Album"; currentmusicartist = "Artist";
+    MusicSaveFunc();
+    PlayMusic(""); PlayMusic("*");
+    UH_RestoreMusic();
+    assert(!strcmp(playing, "M_UB042")); /* battle track returns */
+
+    PlayMusic(""); MusicSaveFunc();      /* ability silenced the music before saving */
+    PlayMusic("*");
+    UH_RestoreMusic();
+    assert(!strcmp(playing, ""));        /* deliberate silence stays silence */
+
+    puts("Result music: one-pass stops, stale timers, map transitions, thresholds, fixed exit deadline, delayed-restore ownership and MusicCodeVar-compatible restore passed.");
     return 0;
 }
 '''
