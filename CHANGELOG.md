@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261019
+
+- The Malt Shop's hamburger can now play the extra voice.
+
 ## 4.0.0-beta.261018
 
 - Added automap icons for all 88 Unholy items and their pickup variants, including boxes, hats, food, and special pickups. Icons disappear when picked up and support dropped items and players joining mid-game; players and server hosts can disable the display.
