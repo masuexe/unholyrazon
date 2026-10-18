@@ -310,6 +310,9 @@ Three of these cost a debugging round each; check them before blaming the mod:
 
 ## Existing validators and generators
 
+- `gen_item_automap.py` — generate centered icons and marker actors for Unholy
+  pickups; `--check` also verifies every registered item and Spawn startup hook.
+  See [Unholy pickup automap](../docs/automap-items.md) for scope and addon usage.
 - `validate-build-pk3.sh` — read-only PK3 integrity and entry-point check.
 - `check_boss_defs.py` — verify `DefineBoss` actor names against `src/actors`.
 - `gen_team_presentation.py` — regenerate the built-in `DefineTeamPresentation`

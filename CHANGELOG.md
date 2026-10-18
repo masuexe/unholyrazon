@@ -6,6 +6,8 @@
 
 ## 4.0.0-beta.261018
 
+- Added automap icons for all 88 Unholy items and their pickup variants, including boxes, hats, food, and special pickups. Icons disappear when picked up and support dropped items and players joining mid-game; players and server hosts can disable the display.
+- True Power's automap icon now cycles through its colors as in Unbound.
 - Restored Eden's Damocles hazard from Razon 3: the falling sword deals contact damage and remains planted after landing, continuously damaging players who touch it.
 - Added Boss win-rate statistics for balance checks. Every player can view the overall and per-Boss results with `uh_bossstats` in the console; the server host can clear the counters with `uh_bossstats_reset` without affecting Boss selection history.
 - On MM4DIV, Moby now leaves a disguised MiniVile among the item pickups at a random spot after a short delay. (Ported from Unbound)

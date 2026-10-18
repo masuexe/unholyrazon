@@ -1,0 +1,78 @@
+// v6b backport of v6c MAUTOMAP pickup markers for Unholy world pickups.
+// WithResult is intentional: Zandronum's LS_ACS_ExecuteWithResult broadcasts
+// CLIENTSIDE calls with the pickup as activator; NamedExecuteAlways does not.
+// Resend once a second so late joiners receive existing world pickups.
+#include "item_automap_frames.generated.acs"
+
+script "uh_ItemAutomapStart" (void) {
+  if (CheckInventory("UH_ItemMapRunning_F")) {terminate;}
+  GiveInventory("UH_ItemMapRunning_F", 1);
+  int lastAvailable = -1;
+  int nextSync = 0;
+  while (!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+    int available = CheckFlag(0, "SPECIAL");
+    // SPECIAL's restoration after CreateTossable's 30-tic DropTime is not
+    // networked by AInventory::Tick. Send authoritative availability, including
+    // immediate transitions, instead of trusting the remote actor's flags.
+    if (available != lastAvailable || Timer() >= nextSync) {
+      ACS_NamedExecuteWithResult("uh_ItemAutomapClient", available);
+      lastAvailable = available;
+      nextSync = Timer() + 35;
+    }
+    Delay(1);
+  }
+  // BecomeItem sets NOBLOCKMAP. Allow the same inventory actor to be dropped
+  // again later; BecomePickup re-enters Spawn. Destroyed actors need no cleanup.
+  if (!(ClassifyActor(0) & ACTOR_WORLD)) {
+    TakeInventory("UH_ItemMapRunning_F", 1);
+  }
+}
+
+script "uh_ItemAutomapClient" (int available) CLIENTSIDE {
+  if (ConsolePlayerNumber() < 0) {terminate;}
+  if (ClassifyActor(0) & ACTOR_WORLD) {terminate;}
+  // Repeated startup deliveries also update the existing loop's snapshot.
+  if (available) {GiveInventory("UH_ItemMapAvailable_F", 1);}
+  else {TakeInventory("UH_ItemMapAvailable_F", 1);}
+  if (CheckInventory("UH_ItemMapClientRunning_F")) {terminate;}
+  GiveInventory("UH_ItemMapClientRunning_F", 1);
+  str marker = StrParam(s:GetActorClass(0), s:"_MapMarker");
+  bool truepower = StrICmp(GetActorClass(0), "TruePowerItem") == 0;
+  int animationStart = Timer();
+  while (!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+    // The server owns availability, including toss pickup delays and respawn
+    // waits. Held inventory and consumed pickups never leave a marker.
+    if (CheckAutomap() != AUTOMAP_OFF && CheckInventory("UH_ItemMapAvailable_F")
+        && GetCvar("uh_sv_automap_items")
+        && GetUserCvar(ConsolePlayerNumber(), "uh_cl_automap_items")) {
+      int tid = UniqueTID();
+      int x = GetActorX(0) - GetActorVelX(0);
+      int y = GetActorY(0) - GetActorVelY(0);
+      int z = GetActorZ(0);
+      int spawned = false;
+      if (tid != 0) {
+        spawned = SpawnForced(marker, x, y, z, tid, 0);
+        // Addon subclasses inheriting a hooked Spawn get a generic marker
+        // until they supply their own <class>_MapMarker actor.
+        if (!spawned) {spawned = SpawnForced("UnholyItem_MapMarker", x, y, z, tid, 0);}
+      }
+      if (spawned) {
+        // Markers last only two tics, so advance the color cycle using this
+        // pickup's loop clock instead of restarting an animation every tic.
+        if (truepower) {
+          int frame = ((Timer() - animationStart) / UH_ITEMMAP_TP_TICS)
+            % StrLen(UH_ITEMMAP_TP_FRAMES);
+          SetActorState(tid, StrParam(s:"Frame", c:GetChar(UH_ITEMMAP_TP_FRAMES, frame)));
+        }
+        SetActorVelocity(tid, GetActorVelX(0), GetActorVelY(0), 0, false, false);
+        Thing_SetTranslation(tid, -1);
+        Thing_ChangeTID(tid, 0);
+      }
+    }
+    Delay(1);
+  }
+  if (!(ClassifyActor(0) & ACTOR_WORLD)) {
+    TakeInventory("UH_ItemMapClientRunning_F", 1);
+    TakeInventory("UH_ItemMapAvailable_F", 1);
+  }
+}
