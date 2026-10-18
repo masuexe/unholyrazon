@@ -98,14 +98,37 @@ actor EdenDamocles : BasicShieldWarper {
     goto HangCheck
    Drop:
     DAMO A 0 A_PlaySoundEx("misc/catcherdrop", "Body")
+   Falling:
     DAMO A 0 ThrustThingZ(0, 10, 1, 1)
+    DAMO A 0 A_SpawnItemEx("EdenDamoclesDropDamager", 0, 0, 32)
     DAMO A 1 A_JumpIf(z - floorz <= 0, "Landed")
-    goto Drop
+    goto Falling
    Landed:
-    DAMO L 1
-    stop
+    // Keep the sword planted independently of its owner's death or respawn.
+    DAMO L 0 A_ChangeFlag("NOINTERACTION", 0)
+    DAMO L 0 A_ChangeFlag("FLOORHUGGER", 1)
+    DAMO L 0 A_Stop
+   GroundHazard:
+    DAMO L 1 A_SpawnItemEx("EdenDamoclesDropDamager", 0, 0, 32)
+    loop
    Cleanup:
     TNT1 A 0
+    stop
+  }
+}
+
+// Razon3's one-tic contact hitbox, renewed during the fall and while planted.
+// SpawnItemEx preserves the sword owner's kill credit through the missile chain.
+actor EdenDamoclesDropDamager : MagicCardDamager {
+  +RIPPER
+  DamageType "EdenDamocles"
+  Obituary "%k's Damocles killed %o by accident."
+  Radius 11
+  Height 19
+  Damage (500)
+  States {
+   Spawn:
+    TNT1 A 1
     stop
   }
 }

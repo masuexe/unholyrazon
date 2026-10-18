@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261018
 
+- Restored Eden's Damocles hazard from Razon 3: the falling sword deals contact damage and remains planted after landing, continuously damaging players who touch it.
 - Added Boss win-rate statistics for balance checks. Every player can view the overall and per-Boss results with `uh_bossstats` in the console; the server host can clear the counters with `uh_bossstats_reset` without affecting Boss selection history.
 - On MM4DIV, Moby now leaves a disguised MiniVile among the item pickups at a random spot after a short delay. (Ported from Unbound)
 - Restored the MiniVile's missing sounds.
