@@ -1,0 +1,60 @@
+// Small v6b backport of v6c MAUTOMAP pickup markers: Pandora/Mystic boxes only.
+// WithResult is intentional: Zandronum's LS_ACS_ExecuteWithResult broadcasts
+// CLIENTSIDE calls with the pickup as activator; NamedExecuteAlways does not.
+// Resend once a second so late joiners receive existing world pickups.
+script "uh_BoxAutomapStart" (int kind) {
+  if (CheckInventory("UH_BoxMapRunning_F")) {terminate;}
+  GiveInventory("UH_BoxMapRunning_F", 1);
+  int lastAvailable = -1;
+  int nextSync = 0;
+  while (!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+    int available = CheckFlag(0, "SPECIAL");
+    // SPECIAL's restoration after CreateTossable's 30-tic DropTime is not
+    // networked by AInventory::Tick. Send authoritative availability, including
+    // immediate transitions, instead of trusting the remote actor's flags.
+    if (available != lastAvailable || Timer() >= nextSync) {
+      ACS_NamedExecuteWithResult("uh_BoxAutomapClient", kind, available);
+      lastAvailable = available;
+      nextSync = Timer() + 35;
+    }
+    Delay(1);
+  }
+  // BecomeItem sets NOBLOCKMAP. Allow the same inventory actor to be dropped
+  // again later; BecomePickup re-enters Spawn. Destroyed actors need no cleanup.
+  if (!(ClassifyActor(0) & ACTOR_WORLD)) {
+    TakeInventory("UH_BoxMapRunning_F", 1);
+  }
+}
+
+script "uh_BoxAutomapClient" (int kind, int available) CLIENTSIDE {
+  if (ConsolePlayerNumber() < 0) {terminate;}
+  if (ClassifyActor(0) & ACTOR_WORLD) {terminate;}
+  // Repeated startup deliveries also update the existing loop's snapshot.
+  if (available) {GiveInventory("UH_BoxMapAvailable_F", 1);}
+  else {TakeInventory("UH_BoxMapAvailable_F", 1);}
+  if (CheckInventory("UH_BoxMapClientRunning_F")) {terminate;}
+  GiveInventory("UH_BoxMapClientRunning_F", 1);
+  str marker = "PandoraBoxItem_MapMarker";
+  if (kind == 1) {marker = "MysticBoxItem_MapMarker";}
+  while (!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+    // The server clears availability when picked up/hidden. During a respawn wait,
+    // but never leave a marker on an unavailable box or an item in a backpack.
+    if (CheckAutomap() != AUTOMAP_OFF && CheckInventory("UH_BoxMapAvailable_F")
+        && GetCvar("uh_sv_automap_boxes")
+        && GetUserCvar(ConsolePlayerNumber(), "uh_cl_automap_boxes")) {
+      int tid = UniqueTID();
+      if (tid != 0 && SpawnForced(marker,
+          GetActorX(0) - GetActorVelX(0),
+          GetActorY(0) - GetActorVelY(0), GetActorZ(0), tid, 0)) {
+        SetActorVelocity(tid, GetActorVelX(0), GetActorVelY(0), 0, false, false);
+        Thing_SetTranslation(tid, -1);
+        Thing_ChangeTID(tid, 0);
+      }
+    }
+    Delay(1);
+  }
+  if (!(ClassifyActor(0) & ACTOR_WORLD)) {
+    TakeInventory("UH_BoxMapClientRunning_F", 1);
+    TakeInventory("UH_BoxMapAvailable_F", 1);
+  }
+}
