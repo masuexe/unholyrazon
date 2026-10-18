@@ -12,9 +12,11 @@
 // clears only these counters, never the least-seen pick history.
 //
 // Read access is deliberately open to every player: uh_BossStats is a NET
-// script, so any client can run it from the console. Print() targets the
-// requesting player, so one player asking for data does not spam everyone.
-// The host console invocation has a world activator, which prints to everyone.
+// script, so any client can run it from the console. Output deliberately uses
+// Log(), never Print(): Zandronum's C_MidPrint adds the red bar decoration
+// around every Print() line. A remote requester also gets each line through a
+// CLIENTSIDE Log() receiver, because server Log() is not delivered to clients.
+// The host/server console sees the same lines locally; no player is spammed.
 
 #define UH_BS_MODE_ALL 0
 #define UH_BS_MODE_SUMMARY 1
@@ -165,6 +167,19 @@ function void UH_BossStatsRecordRound(bool survivorwin) {
     s:" boss wins=", i:uh_bossstatsbosswins));
 }
 
+// One clean output line: server console/log, plus the remote requester's
+// console through the CLIENTSIDE receiver below. Do not use Print() here --
+// its engine-drawn red bars are what made the log unreadable.
+function void UH_BS_Emit(str line) {
+  int receiver;
+  int consoleplayer;
+  Log(s:line);
+  receiver = PlayerNumber();
+  consoleplayer = ConsolePlayerNumber();
+  if (receiver >= 0 && receiver != consoleplayer)
+    NamedSendNetworkString("uh_BossStatsLine", line, receiver);
+}
+
 // requirestats = true lists only Bosses with at least one completed round.
 // The current-line-up mode passes false so a never-recorded Boss still has a
 // visible 0W/0L row.
@@ -184,24 +199,21 @@ function void UH_BS_PrintBoss(int id, bool requirestats) {
   name = GetBossName(id);
   rate = UH_BS_RateText(wins, total);
   picks = GetBossPickCount(id);
-  Print(s:"[BossStats] ", s:name, s:" (id ", i:id, s:"): ",
-    i:wins, s:"W/", i:losses, s:"L  ", s:rate, s:"  picks=", i:picks);
-  UH_Log(UH_LOG_DEBUG, StrParam(s:"BossStats ", s:name, s:" (id ", i:id,
-    s:"): ", i:wins, s:"W/", i:losses, s:"L  ", s:rate, s:"  picks=", i:picks));
+  UH_BS_Emit(StrParam(s:"[BossStats] ", s:name, s:" (id ", i:id, s:"): ",
+    i:wins, s:"W/", i:losses, s:"L  ", s:rate, s:"  picks=", i:picks));
 }
 
 function void UH_BS_PrintSummary(void) {
   str rate;
   rate = UH_BS_RateText(uh_bossstatsbosswins, uh_bossstatsrounds);
-  Print(s:"[BossStats] completed rounds=", i:uh_bossstatsrounds,
-    s:"  boss wins=", i:uh_bossstatsbosswins, s:"  boss win rate=", s:rate);
-  UH_Log(UH_LOG_INFO, StrParam(s:"BossStats completed rounds=", i:uh_bossstatsrounds,
-    s:" boss wins=", i:uh_bossstatsbosswins, s:" boss win rate=", s:rate));
+  UH_BS_Emit(StrParam(s:"[BossStats] completed rounds=", i:uh_bossstatsrounds,
+    s:"  boss wins=", i:uh_bossstatsbosswins, s:"  boss win rate=", s:rate));
 }
 
 function void UH_BS_PrintAll(void) {
   int i;
   int id;
+  UH_BS_Emit("[BossStats] ------------------------------");
   UH_BS_PrintSummary();
   for (i = 0; i < UH_MAX_VANILLA_BOSS; i++) {
     if (IsBossDefined(i))
@@ -216,7 +228,8 @@ function void UH_BS_PrintAll(void) {
     if (IsBossDefined(id))
       UH_BS_PrintBoss(id, true);
   }
-  Print(s:"[BossStats] end. Host reset: uh_bossstats_reset in the server console.");
+  UH_BS_Emit("[BossStats] ---------------- end ----------------");
+  UH_BS_Emit("[BossStats] host reset: uh_bossstats_reset in the server console.");
 }
 
 function void UH_BS_PrintLineup(void) {
@@ -225,10 +238,10 @@ function void UH_BS_PrintLineup(void) {
   int i;
   count = uh_bosslastlineup[0];
   if (count <= 0) {
-    Print(s:"[BossStats] no committed line-up for this round.");
+    UH_BS_Emit("[BossStats] no committed line-up for this round.");
     return;
   }
-  Print(s:"[BossStats] current committed line-up:");
+  UH_BS_Emit("[BossStats] current committed line-up:");
   for (i = 1; i <= count && i <= MAX_BOSSES; i++) {
     id = uh_bosslastlineup[i];
     if (IsBossDefined(id))
@@ -248,7 +261,7 @@ script "uh_BossStats" (int mode, int id) NET {
   // block requests until it catches up.
   if (uh_bossstatslastrequest > 0 && Timer() >= uh_bossstatslastrequest &&
       Timer() - uh_bossstatslastrequest < 35) {
-    Print(s:"[BossStats] cooldown: try again in about a second.");
+    UH_BS_Emit("[BossStats] cooldown: try again in about a second.");
     terminate;
   }
   uh_bossstatslastrequest = Timer();
@@ -271,4 +284,11 @@ script "uh_BossStats" (int mode, int id) NET {
     terminate;
   }
   UH_BS_PrintAll();
+}
+
+// CLIENTSIDE sink for UH_BS_Emit. Log() is plain console output and does not
+// draw the C_MidPrint bar decoration. Do not add HUDMSG_LOG here either: that
+// path draws its own orange bars around every message.
+script "uh_BossStatsLine" (int line) CLIENTSIDE {
+  Log(s:line);
 }

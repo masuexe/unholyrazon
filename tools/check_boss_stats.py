@@ -39,11 +39,16 @@ def static_checks():
     stats = (ROOT / "src/acs_source/unholy/uh_boss_stats.acs").read_text()
     require(stats, 'script "uh_BossStats" (int mode, int id) NET',
             "player-callable NET query script")
+    require(stats, 'script "uh_BossStatsLine" (int line) CLIENTSIDE',
+            "client-side Log receiver")
     require(stats, "UH_BossStatsRecordRound", "record entry")
     require(stats, "UH_BossStatsReset", "reset entry")
     code_only = "\n".join(line.split("//")[0] for line in stats.splitlines())
     assert "uh_bosscustomcount" not in code_only, (
         "do not read uhdt's map variable from unholy; it consumes a map slot")
+    assert "Print(" not in code_only, (
+        "stats output must use Log; Print adds C_MidPrint red bars to every line")
+    require(stats, "NamedSendNetworkString", "remote clean-output delivery")
 
     # Result accounting must happen only at committed endings.
     lifecycle = (ROOT / "src/acs_source/unholy/uh_lifecycle.acs").read_text()

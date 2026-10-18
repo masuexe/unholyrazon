@@ -68,10 +68,13 @@ uh_bossstats_boss 3
 uh_bossstats_boss -1
 ```
 
-Output is sent with `Print()`, so it appears only to the requesting player.
-The host console invocation has no player activator and therefore prints to
-everyone. A one-second server-wide cooldown prevents command spam; summaries
-are also written to the server log at INFO and individual rows at DEBUG.
+Output uses plain `Log()` lines, not `Print()`: Zandronum's
+`Print()` draws the red bar decoration around every line, which makes a
+multi-line report hard to read. The server console/log gets every line; a
+remote requester also receives each line through a CLIENTSIDE `Log()`
+receiver, because server `Log()` is not sent to clients. Plain `----` text
+lines mark the start and end of the report. A one-second server-wide cooldown
+prevents command spam.
 
 ---
 
