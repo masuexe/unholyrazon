@@ -180,6 +180,8 @@ int uh_morphpropstackfloor[UH_MORPH_PROPSTACK_COUNT] = {
 };
 int uh_morphsavedpropstack[MAX_PLAYERS][UH_MORPH_PROPSTACK_COUNT];
 
+#include "survivor_morph_cleanup.acs"
+
 // --- Boss-owned layer ledger -------------------------------------------------
 // tools/migrate-boss-stackers.py rewrote boss DECORATE onto the v6b-shaped
 // uh_*player wrappers below.  UH-owned stackers notify the same ledger from
@@ -514,6 +516,8 @@ function void UH_ClearZangiefItemLock(void) {
 script "uh_MorphPreReset" (void) {
   if (PlayerNumber() == -1)
     terminate;
+  // Release interrupted attacks before the survivor baseline is captured.
+  UH_ClearSurvivorMorphState();
   // Clear before taking the baseline so demorph cannot restore the stale lock.
   UH_ClearZangiefItemLock();
   // Dismount before saving movement-stack baselines for the new body.
@@ -569,6 +573,9 @@ script "uh_SetMorphInventory" (int item, int amount) {
 script "uh_MorphPostReset" (int force) {
   if (PlayerNumber() == -1)
     terminate;
+  // PowerMorph/MorphProjectile bypass PreReset. Run before the body claim so
+  // transferred receipts cannot be hidden by an earlier setup call.
+  UH_ClearSurvivorMorphState();
   // PowerMorph/MorphProjectile skip PreReset and transfer this inventory.
   UH_ClearZangiefItemLock();
   if (!force && GetUserVariable(0, "user_uh_morph_pipeline_done"))
@@ -588,6 +595,8 @@ script "uh_MorphPostReset" (int force) {
 script "uh_MorphDemorphReset" (int ownedfams) {
   if (PlayerNumber() == -1)
     terminate;
+  // Shiny attacks and shared weapon states can also be interrupted by unmorph.
+  UH_ClearSurvivorMorphState();
   ACS_NamedExecuteWithResult("uh_OilSliderReset");
   ACS_NamedExecuteWithResult("uh_AlphaFadeCancel");
   ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");

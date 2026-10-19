@@ -8,6 +8,11 @@
 
 - 修复 Mortis 额外生命无法正常触发的问题，并重做续命效果：受到致命伤害时消耗一条命，身体消散并无敌等待 1 秒，随后在随机出生点回血重现；重现后获得约 0.5 秒保护，按下开火即结束。直接吃下 Dickhead 现在也获得这种额外生命，不再触发保险卡车
 - 麦芽店汉堡吃下时，现在有几率播放“龙汉堡”语音
+- 修复生还者在技能施放期间因变身（如变成恶魔眼）或切换形态打断动作后，持续无法移动、完全冻结或残留状态效果的问题：
+  - **移动锁定与冻结**：修复 Miu（W1 M2）、Juggernaut（冲刺）、Archivist（蓄力）、DecoyBot（摔投）被打断后无法移动的问题，一并处理受影响的 Bot 动作及 Shiny 形态切换。
+  - **复制武器卡住**：修复 Astro Crush、Lightning Bolt、Tengu Blade、Break Dash、Super Arm、Hard Knuckle、Charge Kick、Leaf Blade 和 Rapid Spin 在变身打断后人物被锁定的问题。
+  - **滞空与状态残留**：修复变身打断技能后遗留悬浮、无重力、禁用空跳，以及 Lim（及 DecoyBot 复制体）普攻减速永久残留的问题（保留其他来源的正常限制）。
+  - **特例说明**：Nega Super Arm 抱持与 MegaMan Time Stopper 的变身后行为暂时维持现有设计。
 
 ## 4.0.0-beta.261018
 

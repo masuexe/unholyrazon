@@ -8,6 +8,11 @@
 
 - Fixed Mortis extra lives failing to activate and reworked their effect: lethal damage now consumes a life, dissolves the player's body for a 1-second invulnerable pause, then heals and returns them at a random spawn point. Protection lasts about 0.5 seconds after reappearing and ends on firing input. Eating a Dickhead now grants this extra life instead of triggering the insurance truck.
 - The Malt Shop's hamburger can now play the extra voice.
+- Fixed survivors remaining unable to move, frozen, or retaining lingering status effects when abilities are interrupted by a morph (such as into a Demoneye) or Shiny form transition:
+  - **Movement lock & freezing**: Fixed interrupted states on Miu (W1 M2), Juggernaut (dash), Archivist (charge), DecoyBot (suplex), and affected bot actions.
+  - **Copy weapons**: Fixed Astro Crush, Lightning Bolt, Tengu Blade, Break Dash, Super Arm, Hard Knuckle, Charge Kick, Leaf Blade, and Rapid Spin leaving the player stuck if interrupted.
+  - **Lingering flight & debuffs**: Fixed hovering, zero-gravity, air-jump restrictions, and lasting slowdown from Lim's primary fire (and DecoyBot's copy) persisting after interrupted casts, while preserving legitimate restrictions from other sources.
+  - **Notes**: Existing behavior for Nega Super Arm carrying and MegaMan Time Stopper after morphing remains unchanged for now.
 
 ## 4.0.0-beta.261018
 

@@ -1,0 +1,87 @@
+// Survivor weapon states can be replaced without Deselect/attack-end running.
+// Inventory receipts follow the pawn through PowerMorph/MorphProjectile too.
+// Family ids are the existing uh_morphpropstack* indices, not a public API.
+// Nega Super Arm's carry and Time Stopper's item lock deliberately do not use
+// these receipts: their behavior on an eye conversion is intentionally kept.
+str uh_survivorstackmarker[UH_MORPH_PROPSTACK_COUNT] = {
+  "UH_SurvivorFrozen_F", "UH_SurvivorStopped_F", "UH_SurvivorInvulnerable_F",
+  "UH_SurvivorFlightForced_F", "UH_SurvivorFlight_F", "",
+  "UH_SurvivorNoGravity_F", "", "", "", "", "", "", "", "",
+  "UH_SurvivorUnsolid_F", "", "", "", "", "", "",
+  "UH_SurvivorCantPushWalls_F", "", "", "", ""
+};
+
+function void UH_SetSurvivorProperty(int family, int toggle, int extra) {
+  if (PlayerNumber() < 0 || family < 0 || family >= UH_MORPH_PROPSTACK_COUNT)
+    return;
+  str marker = uh_survivorstackmarker[family];
+  if (!StrLen(marker))
+    return;
+  bool acquiring = toggle >= 1;
+  if (family == 15)
+    acquiring = toggle == USP_TOGGLEON;
+  if (!acquiring) {
+    // Repeated end/Ready cleanup must never spend somebody else's layer.
+    if (!CheckInventory(marker))
+      return;
+    TakeInventory(marker, 1);
+  }
+  int before = CheckInventory(uh_morphpropstackname[family]);
+  ACS_NamedExecuteWithResult(uh_morphpropstackscript[family], 0, toggle, extra);
+  if (acquiring) {
+    int added = CheckInventory(uh_morphpropstackname[family]) - before;
+    // Do not claim a layer if the underlying counter was already saturated.
+    if (added > 0)
+      GiveInventory(marker, added);
+  }
+}
+
+script "uh_SurvivorProperty" (int family, int toggle, int extra) {
+  UH_SetSurvivorProperty(family, toggle, extra);
+}
+
+function void UH_SetSurvivorAirLock(int toggle) {
+  if (PlayerNumber() < 0)
+    return;
+  if (toggle) {
+    int before = CheckInventory("DisabledAirJumps");
+    GiveInventory("DisabledAirJumps", 1);
+    if (CheckInventory("DisabledAirJumps") > before)
+      GiveInventory("UH_SurvivorAirLocks_F", 1);
+  }
+  else if (CheckInventory("UH_SurvivorAirLocks_F")) {
+    TakeInventory("UH_SurvivorAirLocks_F", 1);
+    TakeInventory("DisabledAirJumps", 1);
+  }
+}
+
+script "uh_SurvivorAirLock" (int toggle) {
+  UH_SetSurvivorAirLock(toggle);
+}
+
+function void UH_ClearSurvivorMorphState(void) {
+  for (int family = 0; family < UH_MORPH_PROPSTACK_COUNT; family++) {
+    str marker = uh_survivorstackmarker[family];
+    if (!StrLen(marker))
+      continue;
+    // Flight's OFF also returns its implicit no-gravity layer. Use the normal
+    // stacker so forced/base counters and derived flags remain consistent.
+    while (CheckInventory(marker))
+      UH_SetSurvivorProperty(family, uh_morphpropstackoff[family],
+                            uh_morphpropstackextra[family]);
+  }
+  while (CheckInventory("UH_SurvivorAirLocks_F"))
+    UH_SetSurvivorAirLock(0);
+  // This effectively permanent self-slow is shared by Lim and Decoy's copy.
+  // It is not an external debuff and has no independent expiry/cleanup actor.
+  TakeInventory("PowerLimFiringSlow", 1);
+  TakeInventory("Lim_M2Frozen_F", 1);
+  TakeInventory("MiuRavagerActive_F", 1);
+  TakeInventory("MiuRavagerStopped_F", 1);
+  TakeInventory("MiuDashFlag", 99999);
+}
+
+script "uh_ClearSurvivorMorphState" (void) {
+  if (PlayerNumber() >= 0)
+    UH_ClearSurvivorMorphState();
+}
