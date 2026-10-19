@@ -38,6 +38,8 @@ Guides and CVAR references for dedicated server operators and host setups.
 
 ## 3. Mechanics & Gameplay References
 
+Internal task terminology: [机体别名表 / Class Aliases](class-aliases.md) maps team nicknames to canonical actors and source paths.
+
 | Document | Description |
 |---|---|
 | [**Class Specific Mechanics**](class-mechanics.md) | In-depth combat mechanics and control references for specialized classes (Zangief charge pull, Star Force Mega Man Battle Cards, and Eden Isaac item artifacts). |

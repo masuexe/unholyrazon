@@ -6,6 +6,17 @@ This is a **Zandronum** mod for **MM8BDM (v6b)** — a `.pk3` mod based on Unhol
 
 Engine DECORATE/ACS traps live in the **zandronum-modding** skill. MM8BDM `core_*`, ClassBase, BARLIB/ASSTLIB/DTADD, and Rage timing live in the **mm8bdm-modding** skill. Do not copy those guides here.
 
+## Internal names and task interpretation
+
+Before interpreting Tencent Docs tasks or internal Chinese nicknames, consult
+[docs/class-aliases.md](docs/class-aliases.md) as the authoritative mapping glossary.
+Survivor nicknames refer to standard survivors by default and do not directly map to
+Shiny variants; Shiny versions are explicitly referred to as “<nickname>的shitpower版” or
+“<nickname>的truepower版”. Resolve whether collective nicknames target one current Actor
+or a group, and distinguish survivor, Shiny, boss, demoneye, and item actors. Check alias collisions
+before use; ask about unresolved ambiguity before changing behavior. If an alias is
+incorrect, missing, or updated, record the correction directly in that glossary.
+
 ## Mandatory source consultation
 
 For engine or mod behavior questions, consult the relevant source below rather
