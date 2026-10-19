@@ -1,0 +1,155 @@
+// Mortis and eaten Dickheads spend a life without entering engine Death/RESPAWN.
+// The lease is claimed synchronously before yielding or removing Buddha.
+#define UH_EXTRA_LIFE_DELAY 35
+#define UH_EXTRA_LIFE_GRACE 18
+#define UH_EXTRA_LIFE_ATTEMPTS 16
+
+int uh_extralifeserial[64];
+bool uh_extralifesolid[64];
+bool uh_extraliferawgravity[64];
+bool uh_extraliferawinvisible[64];
+bool uh_extraliferawinvulnerable[64];
+
+function bool UH_ExtraLifeOwner(int player, int lease) {
+  return PlayerInGame(player) && SetActivatorToPlayer(player)
+    && CheckInventory("UH_ExtraLifeLease_F") == lease;
+}
+
+function bool UH_ExtraLifeAlive(int player) {
+  return !PlayerIsSpectator(player) && GetActorProperty(0, APROP_Health) > 0
+    && !CheckInventory("IsDead")
+    && GetGameModeState() != GAMESTATE_INRESULTSEQUENCE;
+}
+
+function void UH_ExtraLifeRestoreBody(int player) {
+  if (!CheckInventory("UH_ExtraLifePhase_F")) return;
+  TakeInventory("UH_ExtraLifePhase_F", 1);
+  ChangeFlag("SOLID", uh_extralifesolid[player]);
+  ACS_NamedExecuteWithResult("core_invisibleplayer", 0, false);
+  ACS_NamedExecuteWithResult("core_nogravityplayer", 0, false, true);
+  ACS_NamedExecuteWithResult("core_nopushplayer", 0, false);
+  ACS_NamedExecuteWithResult("core_freezeplayer", 0, false);
+  // Class defaults can set these flags without owning a core property layer.
+  if (uh_extraliferawgravity[player] && !CheckInventory("PlayerPropertyNoGravity"))
+    ChangeFlag("NOGRAVITY", true);
+  if (uh_extraliferawinvisible[player] && !CheckInventory("PlayerPropertyInvisible"))
+    ChangeFlag("INVISIBLE", true);
+}
+
+function void UH_ExtraLifeReleaseGuard(int player) {
+  ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false);
+  if (uh_extraliferawinvulnerable[player] && !CheckInventory("PlayerPropertyInvulnerable"))
+    SetActorProperty(0, APROP_Invulnerable, true);
+  TakeInventory("UH_ExtraLifeLease_F", 0x7fffffff);
+}
+
+script "uh_ExtraLifeTransition" (void) {
+  int player = PlayerNumber();
+  if (player < 0 || player >= 64 || !UH_ExtraLifeAlive(player)
+      || CheckInventory("UH_ExtraLifeLease_F")
+      || !CheckInventory("PlayerPropertyExtraLifeMortis")
+      || GetActorProperty(0, APROP_Health) != 1) terminate;
+
+  int lease = uh_extralifeserial[player] % 999999998 + 1;
+  uh_extralifeserial[player] = lease;
+  GiveInventory("UH_ExtraLifeLease_F", lease);
+  GiveInventory("UH_ExtraLifePhase_F", 1);
+  uh_extralifesolid[player] = CheckFlag(0, "SOLID");
+  uh_extraliferawgravity[player] = CheckFlag(0, "NOGRAVITY")
+    && !CheckInventory("PlayerPropertyNoGravity");
+  uh_extraliferawinvisible[player] = CheckFlag(0, "INVISIBLE")
+    && !CheckInventory("PlayerPropertyInvisible");
+  uh_extraliferawinvulnerable[player] = GetActorProperty(0, APROP_Invulnerable)
+    && !CheckInventory("PlayerPropertyInvulnerable");
+  str body = GetActorClass(0);
+  bool morphed = CheckInventory("MorphedFlag") > 0;
+
+  // Own one layer of each property; cleanup must not release other skills.
+  ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true);
+  ACS_NamedExecuteWithResult("core_freezeplayer", 0, true);
+  ACS_NamedExecuteWithResult("core_nopushplayer", 0, true);
+  ACS_NamedExecuteWithResult("core_nogravityplayer", 0, true, true);
+  ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, false, ELP_MORTIS);
+
+  SpawnForced("FakeDeathFX", GetActorX(0), GetActorY(0), GetActorZ(0) + 32.0);
+  ActivatorSound("*death", 127);
+  ACS_NamedExecuteWithResult("core_invisibleplayer", 0, true);
+  ChangeFlag("SOLID", false);
+  SetActorVelocity(0, 0, 0, 0, false, false);
+
+  bool ready = true;
+  for (int tick = 0; tick < UH_EXTRA_LIFE_DELAY; tick++) {
+    Delay(1);
+    if (!UH_ExtraLifeOwner(player, lease)) terminate;
+    if (!UH_ExtraLifeAlive(player) || StrICmp(body, GetActorClass(0))
+        || morphed != (CheckInventory("MorphedFlag") > 0)) {
+      ready = false;
+      break;
+    }
+    SetActorVelocity(0, 0, 0, 0, false, false);
+  }
+
+  bool moved = false;
+  if (ready) {
+    int oldx = GetActorX(0);
+    int oldy = GetActorY(0);
+    int oldz = GetActorZ(0);
+    bool thruSpecies = CheckFlag(0, "THRUSPECIES");
+    bool thruActors = CheckFlag(0, "THRUACTORS");
+    bool noStomp = CheckFlag(0, "NOTELESTOMP");
+
+    for (int attempt = 0; attempt < UH_EXTRA_LIFE_ATTEMPTS; attempt++) {
+      // ArtiTeleport chooses actual map starts on the server. It returns true
+      // even when P_Teleport fails, so verify movement and room to resolidify.
+      // Disable overlap exemptions and stomping while checking a destination.
+      ChangeFlag("SOLID", true);
+      ChangeFlag("THRUSPECIES", false);
+      ChangeFlag("THRUACTORS", false);
+      ChangeFlag("NOTELESTOMP", true);
+      ChangeFlag("NOGRAVITY", false);
+      // Native APlayerPawn::UseInventory rejects auto-use while totally frozen.
+      // No yield/input processing occurs in this temporary unfreeze window.
+      SetPlayerProperty(0, false, PROP_TOTALLYFROZEN);
+      GiveInventory("UH_ArtiTeleport_P", 1);
+      SetPlayerProperty(0, CheckInventory("PlayerPropertyFrozen") > 0, PROP_TOTALLYFROZEN);
+      moved = (GetActorX(0) != oldx || GetActorY(0) != oldy || GetActorZ(0) != oldz)
+        && Warp(0, 0, 0, 0, 0, WARPF_TESTONLY);
+      ChangeFlag("THRUSPECIES", thruSpecies);
+      ChangeFlag("THRUACTORS", thruActors);
+      ChangeFlag("NOTELESTOMP", noStomp);
+      ChangeFlag("NOGRAVITY", true);
+      ChangeFlag("SOLID", false);
+      if (moved) break;
+      SetActorPosition(0, oldx, oldy, oldz, false);
+    }
+    SetActorVelocity(0, 0, 0, 0, false, false);
+    // Preserve Mortis's existing heal amount (capped by current maximum HP).
+    ACS_NamedExecuteWithResult("uh_Health", 6, 1000);
+    if (!moved) {
+      // Bounded failure: return the spent life and restore control, never
+      // strand a hidden, frozen player on a map with no usable destination.
+      ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, true, ELP_MORTIS);
+      Log(s:"Mortis extra life: no usable spawn found; life refunded.");
+    }
+  }
+
+  UH_ExtraLifeRestoreBody(player);
+  if (ready && moved) {
+    for (int grace = 0; grace < UH_EXTRA_LIFE_GRACE; grace++) {
+      if (!UH_ExtraLifeAlive(player)
+          || (GetPlayerInput(-1, INPUT_BUTTONS) & (BT_ATTACK | BT_ALTATTACK))) break;
+      Delay(1);
+      if (!UH_ExtraLifeOwner(player, lease)) terminate;
+    }
+  }
+  UH_ExtraLifeReleaseGuard(player);
+}
+
+// Telefrags/forced kills can bypass ordinary protection. Retire the transaction
+// in DEATH, before its inventory disappears; the sleeping worker then exits.
+script "uh_ExtraLifeDeath" DEATH {
+  int player = PlayerNumber();
+  if (player < 0 || player >= 64 || !CheckInventory("UH_ExtraLifeLease_F")) terminate;
+  UH_ExtraLifeRestoreBody(player);
+  UH_ExtraLifeReleaseGuard(player);
+}
