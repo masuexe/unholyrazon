@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261020
+
+- Fixed True BusterMistress's boxes missing from the UIX Item Wheel, preventing players from selecting and using them through the wheel.
+
 ## 4.0.0-beta.261019
 
 - True Power's inventory icon now cycles through its colors as in Unbound.
