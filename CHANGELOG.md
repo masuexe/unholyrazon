@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261019
 
+- True Power's inventory icon now cycles through its colors as in Unbound.
 - Fixed Mortis extra lives failing to activate and reworked their effect: lethal damage now consumes a life, dissolves the player's body for a 1-second invulnerable pause, then heals and returns them at a random spawn point. Protection lasts about 0.5 seconds after reappearing and ends on firing input. Eating a Dickhead now grants this extra life instead of triggering the insurance truck.
 - The Malt Shop's hamburger can now play the extra voice.
 - Fixed survivors remaining unable to move, frozen, or retaining lingering status effects when abilities are interrupted by a morph (such as into a Demoneye) or Shiny form transition:
