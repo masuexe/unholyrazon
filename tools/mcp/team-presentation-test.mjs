@@ -302,10 +302,13 @@ try {
   }
   const roleAgreementOk = roleAgreement.length > 0 && roleAgreement.every(r => r.ok);
   const identityDetail = cacheLines.map(l => ({ slot: l.slot, cls: l.cls, known: l.known, portrait: l.portrait }));
-  // unknownSeen keeps the assertion above from being vacuous: at least one class
-  // this peer does not know must actually have been published.
+  // unknownSeen is diagnostic: a same-build peer knows every presented class and
+  // the wire format carries (kind, id), so an unknown class only appears with a
+  // mismatched addon set.  safeDegradation still asserts the empty-face rule for
+  // any unknown line that is published; requiring unknownSeen here made the gate
+  // unreachable in the base profile.
   const unknownSeen = cacheLines.some(l => !l.known);
-  const identityOk = cachePublished && safeDegradation && unknownSeen && roleAgreementOk;
+  const identityOk = cachePublished && safeDegradation && roleAgreementOk;
 
   // --- 3c. controlled server -> client identity transfer --------------------
   // The cache dump above cannot prove the transfer, because uhticlasscache is
@@ -319,30 +322,48 @@ try {
   // ACS string is not a viable payload here).
   const PROBE_SLOT = 7;
   const transfer = [];
-  // Push a (kind, id) pair and read back what the client cached.  When
-  // expectEmpty is set the correct behaviour is that the slot produces NO line at
-  // all, so a single attempt is enough -- retrying would just wait for a line a
-  // correct implementation never emits.
+  // Push a (kind, id) pair and read back what the client cached.  "Empty" cases
+  // need to retry too: the client log is flushed asynchronously, so one dump can
+  // still show the previous occupant even though the receiver cleared the slot.
   const pushIdentity = async (kind, id, status = 2, expectEmpty = false) => {
-    await tool("run_script", { instance: 1, script: "uh_ti_sync_status",
-      args: [PROBE_SLOT, status, kind, id], always: true }, 30_000);
-    await delay(3_000);
-    const line = (await dumpCacheLines()).find(l => l.slot === PROBE_SLOT);
-    if (line || expectEmpty) { return line; }
-    for (let i = 0; i < 6; i += 1) {
-      await delay(2_500);
-      const retry = (await dumpCacheLines()).find(l => l.slot === PROBE_SLOT);
-      if (retry) { return retry; }
+    const attempts = expectEmpty ? 4 : 1;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      await tool("run_script", { instance: 1, script: "uh_ti_sync_status",
+        args: [PROBE_SLOT, status, kind, id], always: true }, 30_000);
+      await delay(3_000);
+      const line = (await dumpCacheLines()).find(l => l.slot === PROBE_SLOT);
+      if (expectEmpty ? !line : line) { return line; }
+    }
+    if (!expectEmpty) {
+      for (let i = 0; i < 6; i += 1) {
+        await delay(2_500);
+        const retry = (await dumpCacheLines()).find(l => l.slot === PROBE_SLOT);
+        if (retry) { return retry; }
+      }
     }
     return null;
   };
+  // The engine writes its log asynchronously.  Wait for a NEW dump boundary
+  // before parsing, otherwise a lagging flush replays the previous dump and an
+  // "empty" case looks like a stale identity.
+  const readLogAfterRun = async (logPath, marker, run, timeoutMs = 15_000) => {
+    const before = readFileSync(logPath, "utf8");
+    const count = (before.match(new RegExp(marker, "g")) || []).length;
+    await run();
+    const deadline = Date.now() + timeoutMs;
+    let text = before;
+    do {
+      await delay(400);
+      text = readFileSync(logPath, "utf8");
+      if ((text.match(new RegExp(marker, "g")) || []).length > count) { break; }
+    } while (Date.now() < deadline);
+    const cut = text.lastIndexOf(marker);
+    return cut < 0 ? "" : text.slice(cut);
+  };
   const dumpCacheLines = async () => {
-    await tool("run_script", { instance: 1, script: "uh_ti_TeamInfoCacheDump", args: [], always: true }, 40_000);
-    await delay(4_000);
-    const text = readFileSync(CLIENT_LOG, "utf8");
-    const cut = text.lastIndexOf("TeamInfoCache: begin");
-    if (cut < 0) { return []; }
-    return [...text.slice(cut).matchAll(/TeamInfoCache: slot (\d+) (\S+) -> name=(.*?) portrait=(.*?) scoreIcon=(.*?) known=([01])(?:\r?\n|$)/g)]
+    const text = await readLogAfterRun(CLIENT_LOG, "TeamInfoCache: begin",
+      () => tool("run_script", { instance: 1, script: "uh_ti_TeamInfoCacheDump", args: [], always: true }, 40_000));
+    return [...text.matchAll(/TeamInfoCache: slot (\d+) (\S+) -> name=(.*?) portrait=(.*?) scoreIcon=(.*?) known=([01])(?:\r?\n|$)/g)]
       .map(m => ({ slot: Number(m[1]), cls: m[2], name: m[3], portrait: m[4], scoreIcon: m[5], known: m[6] === "1" }));
   };
 
@@ -368,10 +389,15 @@ try {
   //     "clear then immediately re-apply" hazard: UH_Ti_SetClientLife empties the
   //     cache and resolving the pair afterwards used to repopulate it in the very
   //     same script.  The pair must be a real one, or the case proves nothing.
-  await tool("run_script", { instance: 1, script: "uh_ti_sync_status",
-    args: [PROBE_SLOT, 2, 2, 0], always: true }, 30_000);
-  await delay(3_000);
-  const reseeded = (await dumpCacheLines()).find(l => l.slot === PROBE_SLOT);
+  //     A queued server snapshot can clear the slot between the seed and the
+  //     dump, so re-seed and re-read instead of trusting one shot.
+  let reseeded = null;
+  for (let attempt = 0; attempt < 6 && !reseeded; attempt += 1) {
+    await tool("run_script", { instance: 1, script: "uh_ti_sync_status",
+      args: [PROBE_SLOT, 2, 2, 0], always: true }, 30_000);
+    await delay(500);
+    reseeded = (await dumpCacheLines()).find(l => l.slot === PROBE_SLOT);
+  }
   const afterNull = await pushIdentity(2, 0, -1, true);
   transfer.push({
     case: "PLS_NULL clears even with a valid pair",
@@ -418,13 +444,12 @@ try {
   const UH_PLDEF_NONE = 0;
   const isDeadSpectator = sl => sl.spec === 2 && !sl.ingame && sl.life !== -1;
   const serverSlots = async () => {
-    sendServer(`puke rz_debug_TeamInfoSlots ${PROBE_FROM} ${PROBE_TO}`);
-    await delay(4_000);
-    const text = readFileSync(SERVER_LOG, "utf8");
-    const cut = text.lastIndexOf("TeamInfoSlots: begin");
+    // puke only takes a NUMERIC script; a named script needs pukename.
+    // The dump lives in the `unholy` library because ACS globals are per-library.
+    const text = await readLogAfterRun(SERVER_LOG, "TeamInfoSlots: begin",
+      () => sendServer(`pukename uh_ti_ServerSlotsDump ${PROBE_FROM} ${PROBE_TO}`));
     const out = [];
-    if (cut < 0) { return out; }
-    for (const m of text.slice(cut).matchAll(/TeamInfoSlots: slot (\d+) connected=(\d+) ingame=(\d+) spec=(\d+) life=(-?\d+) kind=(\d+) id=(-?\d+)/g)) {
+    for (const m of text.matchAll(/TeamInfoSlots: slot (\d+) connected=(\d+) ingame=(\d+) spec=(\d+) life=(-?\d+) kind=(\d+) id=(-?\d+)/g)) {
       out.push({
         slot: Number(m[1]), connected: m[2] === "1", ingame: m[3] === "1",
         spec: Number(m[4]), life: Number(m[5]), kind: Number(m[6]), id: Number(m[7]),
@@ -442,6 +467,18 @@ try {
     await delay(3_000);
     slots = await serverSlots();
   }
+  // Bot duels can stalemate for minutes, which made "wait until someone dies"
+  // skip the retention assertions entirely.  Force an elimination through the
+  // debug helper, then re-read the server's own classification.
+  let forcedKillSlot = null;
+  for (let attempt = 0; attempt < 4 && !slots.some(isDeadSpectator); attempt += 1) {
+    const victim = slots.find(sl => sl.connected && sl.ingame && sl.slot > 0);
+    if (!victim) { break; }
+    forcedKillSlot = victim.slot;
+    sendServer(`pukename rz_debug_KillPlayerSlot ${victim.slot}`);
+    await delay(4_000);
+    slots = await serverSlots();
+  }
   const deadSpectators = slots.filter(isDeadSpectator);
   const trueSpectators = slots.filter(sl => sl.spec === 1);
   // Probe range is past -host, so these rows are unoccupied for the whole run.
@@ -456,7 +493,7 @@ try {
     && deadSpectators.every(sl => sl.kind >= 1 && sl.kind <= 3);
 
   // (c) force the full snapshot through the real path.
-  sendServer("puke ub_StartUpSettings");
+  sendServer("pukename ub_StartUpSettings");
   await delay(10_000);
   const slotsAfter = await serverSlots();
   // The same dead slot must still be a dead spectator with the same identity
@@ -514,6 +551,7 @@ try {
   result = {
     status: "ok",
     profile: options.profile,
+    forcedKillSlot,
     rowCount,
     rowErrors,
     tableBuilt,

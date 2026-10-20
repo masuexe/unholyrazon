@@ -397,10 +397,17 @@ script "rz_debug_TeamPresentationCheck" (void) CLIENTSIDE {
   int fails = 0;
   int i;
   int pn;
+  int count;
   str cls;
   str name;
 
-  for (i = 0; i < GetTeamPresentationCount(); i++) {
+  count = GetTeamPresentationCount();
+  for (i = 0; i < count; i++) {
+    // The per-row lookups scan the definition tables; yield every few rows so a
+    // large table cannot trip the ~2M-instruction runaway budget in one tic.
+    if (i > 0 && i % 8 == 0) {
+      Delay(1);
+    }
     cls = GetTeamPresentationActor(i);
     if (StrCmp(cls, "") == 0) {
       UH_Log(UH_LOG_ERROR, StrParam(s:"TeamPresentationCheck: empty actor at row ", i:i));
@@ -449,36 +456,22 @@ script "rz_debug_TeamPresentationCheck" (void) CLIENTSIDE {
   SetResultValue(fails);
 }
 
-// --- Server-side team-info identity cache -----------------------------------
-// Run on the SERVER:
-//   puke rz_debug_TeamInfoSlots [probeFrom] [probeTo]
-// probeTo is exclusive.  Slots in [probeFrom, probeTo) are always logged,
-// including a real unconnected PLS_NULL slot.  Outside that range those empty
-// slots are still skipped.  Passing 0 0 therefore logs only occupied rows.
-//
-// "TeamInfoSlots: begin" is the dump boundary.  The engine log is append-only,
-// so a reader must parse from the LAST begin.  Starting at the last "slot"
-// line keeps only that one row.
-//
-// A slot with PlayerIsSpectator == 2 is a dead spectator and must keep its
-// retained identity.  A slot nobody occupies must publish none.
-script "rz_debug_TeamInfoSlots" (int probeFrom, int probeTo) {
-  if (probeFrom < 0) {probeFrom = 0;}
-  if (probeTo > MAX_PLAYERS) {probeTo = MAX_PLAYERS;}
-  if (probeTo < probeFrom) {probeTo = probeFrom;}
-  UH_Log(UH_LOG_INFO, StrParam(s:"TeamInfoSlots: begin ", i:probeFrom, s:" ", i:probeTo));
-  for (int i = 0; i < MAX_PLAYERS; i++) {
-    bool connected = UH_Ti_IsConnectedPlayer(i);
-    bool inProbe = (i >= probeFrom && i < probeTo);
-    if (!inProbe && !connected && playerlifestatusarr[i] == PLS_NULL) {continue;}
-    UH_Log(UH_LOG_INFO, StrParam(s:"TeamInfoSlots: slot ", i:i,
-      s:" connected=", i:connected,
-      s:" ingame=", i:PlayerInGame(i),
-      s:" spec=", i:PlayerIsSpectator(i),
-      s:" life=", i:playerlifestatusarr[i],
-      s:" kind=", i:uhsrvkind[i],
-      s:" id=", i:uhsrvid[i]));
-  }
+// Server-side team-info identity dumps live in the `unholy` library
+// (`uh_ti_ServerSlotsDump` in uh_teaminfo.acs).  ACS globals are per-library,
+// so a copy here would read a different, never-written uhsrvkind[] and always
+// report kind=0.
+
+// Runtime-test helper: force a player into death so the dead-spectator path can
+// be exercised deterministically.  A bot duel can stalemate for minutes, which
+// makes a "wait until someone dies" test flaky.  Server side only:
+//   pukename rz_debug_KillPlayerSlot <slot>
+// Players are addressed by the engine's player pointers (AAPTR_PLAYER1 << slot),
+// not by TIDs, so this works on a dedicated server.
+script "rz_debug_KillPlayerSlot" (int slot) {
+  if (slot < 0 || slot >= MAX_PLAYERS) {terminate;}
+  if (!PlayerInGame(slot)) {terminate;}
+  SetActivator(0, AAPTR_PLAYER1 << slot);
+  Thing_Damage(0, 100000, 0);
 }
 
 // Focused stage portrait probe. Run on a client; verifies both local variant

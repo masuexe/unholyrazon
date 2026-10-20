@@ -565,6 +565,33 @@ script "uh_ti_TeamInfoCacheDump" (void) CLIENTSIDE {
   }
 }
 
+// --- Server slot dump (debug/test) ------------------------------------------
+// MUST live in the `unholy` library.  ACS globals are per-library, so the same
+// loop compiled into rz_debug.acs reads a different, never-written uhsrvkind[]
+// and always reports kind=0.  Run it on the SERVER:
+//   pukename uh_ti_ServerSlotsDump <probeFrom> <probeTo>
+// "TeamInfoSlots: begin" is the dump boundary; a reader parses from the LAST
+// begin.  PlayerIsSpectator == 2 is a dead spectator and must keep its retained
+// identity; an unoccupied slot must publish none.
+script "uh_ti_ServerSlotsDump" (int probeFrom, int probeTo) {
+  if (probeFrom < 0) {probeFrom = 0;}
+  if (probeTo > MAX_PLAYERS) {probeTo = MAX_PLAYERS;}
+  if (probeTo < probeFrom) {probeTo = probeFrom;}
+  UH_Log(UH_LOG_INFO, StrParam(s:"TeamInfoSlots: begin ", i:probeFrom, s:" ", i:probeTo));
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    bool connected = UH_Ti_IsConnectedPlayer(i);
+    bool inProbe = (i >= probeFrom && i < probeTo);
+    if (!inProbe && !connected && playerlifestatusarr[i] == PLS_NULL) {continue;}
+    UH_Log(UH_LOG_INFO, StrParam(s:"TeamInfoSlots: slot ", i:i,
+      s:" connected=", i:connected,
+      s:" ingame=", i:PlayerInGame(i),
+      s:" spec=", i:PlayerIsSpectator(i),
+      s:" life=", i:playerlifestatusarr[i],
+      s:" kind=", i:uhsrvkind[i],
+      s:" id=", i:uhsrvid[i]));
+  }
+}
+
 // --- Late join: full snapshot ------------------------------------------------
 script "uh_ti_enter" ENTER {
   Delay(35);

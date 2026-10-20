@@ -157,8 +157,8 @@ try {
   await sleep(1500);
   if (Number.isInteger(options.forced1)) { dedicated.stdin.write(`uh_sv_forcedboss1 ${options.forced1}\n`); await sleep(1000); }
   if (Number.isInteger(options.forced2)) { dedicated.stdin.write(`uh_sv_forcedboss2 ${options.forced2}\n`); await sleep(1000); }
-  dedicated.stdin.write("puke ub_SelectBossAndEvent\n");
-  console.error("[versus-207] server puke ub_SelectBossAndEvent");
+  dedicated.stdin.write("pukename ub_SelectBossAndEvent\n");
+  console.error("[versus-207] server pukename ub_SelectBossAndEvent");
 
   // Wait for the forced combo's selection to reach the authoritative server
   // log (its stdout is buffered), then read the two boss TIDs from it.  Anchor
