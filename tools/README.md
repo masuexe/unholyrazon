@@ -5,6 +5,69 @@ Keep stable, repeatable project automation here. One-off experiments belong in
 interface. `SKILL.md` and `AGENTS.md` should document how to call a tool, not
 embed its implementation.
 
+## Unified gate
+
+[`tools/gate.py`](gate.py) is the single deterministic entry point: every agent
+harness runs the same checks, in the same order, with the same exit codes, so
+"verified" means the same thing everywhere.
+
+```bash
+python3 tools/gate.py --fast        # repository-static checks, ~7s, no engine/WADs
+python3 tools/gate.py --smoke       # + environment, ACS compile, PK3 validation, MCP dry-run
+python3 tools/gate.py --full        # + real engine MCP tests (local machine, minutes)
+python3 tools/gate.py --list        # checker inventory (name, group, requirements, timeout)
+python3 tools/gate.py --fast --json --report tmp/gate.json
+```
+
+Exit codes: `0` pass, `1` failure, `2` usage error. A skipped check (missing
+`acc`, `cc`, engine, …) counts as a failure, so a pass never hides an
+unverified layer; pass `--allow-skip` on machines that cannot run that layer.
+`--strict` additionally fails on preflight environment warnings (for example a
+shell that still exports the old launcher profile). `--only`/`--skip` take
+comma-separated check names and `--timeout-scale N` stretches per-check
+timeouts.
+
+`--fast` is portable to any clone (no WADs, engine or build required);
+`--smoke` needs an `acc` binary and the local `../wads` tree; `--full` needs a
+local Zandronum engine and free ports. Building `out/build.pk3` stays manual —
+the gate validates the existing archive, it does not invent a build step.
+
+The engine checks go through the MCP launcher, which waits 42s for the engine to
+open its bridge port. On WSL, keeping the base WADs on `/mnt/d` (a 9p mount) can
+push engine startup past that limit and look like a bridge failure; point
+`ZANDRONUM_LAUNCH_PROFILES` at a profile whose `iwad`/`files` live on a local
+filesystem (or copy the WADs off the Windows drive) before blaming the gate.
+
+[`tools/check_agent_config.py`](check_agent_config.py) (part of `--fast`) fails
+when the machine-local harness configs diverge on the launcher profile, engine
+path or MCP server list (`.mcp.json`, `.agents/mcp_config.json`,
+`.dsh/cordis.patch.yml`, `~/.bashrc`, `~/.profile`). A running shell or harness
+keeps its old environment after a config fix, so the stale ambient
+`ZANDRONUM_LAUNCH_PROFILES` is reported as a warning until the process restarts;
+absent machine-local files are skipped, so a fresh clone passes.
+
+## Agent relay
+
+[`tools/relay.py`](relay.py) carries the task handoff between harnesses; the
+protocol is in [docs/agent-relay.md](../docs/agent-relay.md) and the bootstrap
+is in `AGENTS.md` (`CLAUDE.md` imports it for Claude Code).
+
+```bash
+python3 tools/relay.py resume                     # default command
+python3 tools/relay.py init --title "..." --acceptance "..." --scope "src/...,tools/..."
+python3 tools/relay.py verify --gate smoke
+python3 tools/relay.py checkpoint --phase CODE --summary "..." --next "..." [--gate fast|smoke|full|none]
+python3 tools/relay.py status
+python3 tools/relay.py clear                      # archive to .agents/relay/archive/
+```
+
+State lives in `.agents/relay/` (gitignored): `current_task.json`,
+`handoff.json`, generated `handoff.md`, the last `test_report.json` and an
+`archive/` directory. `checkpoint` runs the fast gate by default and returns
+non-zero if it fails, but still records the state so the next agent sees the
+failure; `--gate none` skips verification and is discouraged. `resume` warns
+when HEAD, the working-tree fingerprint or the recorded gate result is stale.
+
 ## MCP smoke test
 
 The Linux Zandronum MCP wrapper runs the smallest useful feedback loop:
