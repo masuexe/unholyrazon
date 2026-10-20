@@ -7,6 +7,7 @@
 ## 4.0.0-beta.261020
 
 - Fixed True BusterMistress's boxes missing from the UIX Item Wheel, preventing players from selecting and using them through the wheel.
+- Fixed Iron Curtain's charge bar staying on a single frame. It pulses again while charging.
 
 ## 4.0.0-beta.261019
 
