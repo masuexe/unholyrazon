@@ -183,7 +183,14 @@ script "core_jumpcancel" ENTER {
 
         if (CheckInventory("DisabledAirJumps") <= 0 && (CheckInventory("AirJumpLimit") > CheckInventory("AirJumpsUsed") || CheckInventory("InfiniteAirJumps") > 0) && !usedjump) {
           if (CheckInventory("JumpCancler") == 0) {
-            if (CheckInventory("PlayerPropertyFlight") <= 0) {
+            if (CheckInventory("PlayerPropertyFlight") <= 0
+                && (!CheckActorClass(0, "GENERICBOSS") || CheckInventory("UnholyBossAmmo100") >= 100)) {
+              // $UH: charge at the authoritative jump, not from a weapon Flash
+              // monitor which can be cleared by morphing/weapon changes.
+              // ACS TakeInventory also sends the real balance to the client.
+              if (CheckActorClass(0, "GENERICBOSS")) {
+                TakeInventory("UnholyBossAmmo100", 100);
+              }
               GiveInventory("AirJumpsUsed", 1);
               int airjumpz = ACS_NamedExecuteWithResult("core_GetCustomActorProperty", 0, CAPROP_AirJumpZ) * (1 + (CheckInventory("PowerHighJumpRune") || CheckInventory("RuneHighJump")));
               // CeilingFlag (self-flip or victim reverse): thrust world-down.

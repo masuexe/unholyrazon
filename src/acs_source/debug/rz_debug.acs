@@ -124,26 +124,25 @@ function bool MorphMeToBoss(int type, int bossnum) {
   return true;
 }
 
-// Server-side probe for the GENERICBOSS_W Flash air-jump gate
-// (GenericBossFlashStarter_P -> GENERICBOSS_W.Flash). Run while morphed:
-//   pukename rz_debug_GBAirTest
+// Observe authoritative air-jump energy while jumping on a remote client.
+// Run while morphed: pukename rz_debug_GBAirTest, then jump within 5 seconds.
 script "rz_debug_GBAirTest" (void) {
-  if (StrCmp(GetWeapon(), "GENERICBOSS_W") != 0) {
-    UH_Log(UH_LOG_DEBUG, StrParam(s:"[GBTest] not holding GENERICBOSS_W"));
+  if (!CheckActorClass(0, "GENERICBOSS")) {
+    UH_Log(UH_LOG_DEBUG, "[GBTest] not GENERICBOSS");
     terminate;
   }
-  UH_Log(UH_LOG_DEBUG, StrParam(s:"[GBTest] start ammo=", i:CheckInventory("UnholyBossAmmo100")));
-  UH_Log(UH_LOG_DEBUG, StrParam(s:"[GBTest] airjumpz=", i:ACS_NamedExecuteWithResult("core_GetCustomActorProperty", 0, 64), s:" (1966080 = 30.0)"));
-  TakeInventory("UnholyBossAmmo100", 99);
-  Delay(4);
-  UH_Log(UH_LOG_DEBUG, StrParam(s:"[GBTest] low: ammo=", i:CheckInventory("UnholyBossAmmo100"),
-      s:" DisabledAirJumps=", i:CheckInventory("DisabledAirJumps"),
-      s:" OurFlag=", i:CheckInventory("GenericBossAirDisable_F")));
-  GiveInventory("UnholyBossAmmo100", 100);
-  Delay(4);
-  UH_Log(UH_LOG_DEBUG, StrParam(s:"[GBTest] refilled: ammo=", i:CheckInventory("UnholyBossAmmo100"),
-      s:" DisabledAirJumps=", i:CheckInventory("DisabledAirJumps"),
-      s:" OurFlag=", i:CheckInventory("GenericBossAirDisable_F")));
+  int lastused = CheckInventory("AirJumpsUsed");
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"[GBTest] start ammo=", i:CheckInventory("UnholyBossAmmo100"),
+      s:" airjumpz=", i:ACS_NamedExecuteWithResult("core_GetCustomActorProperty", 0, 64)));
+  for (int i = 0; i < 175; i++) {
+    int used = CheckInventory("AirJumpsUsed");
+    if (used != lastused) {
+      UH_Log(UH_LOG_DEBUG, StrParam(s:"[GBTest] used=", i:used,
+          s:" ammo=", i:CheckInventory("UnholyBossAmmo100")));
+      lastused = used;
+    }
+    Delay(1);
+  }
 }
 
 // HUD bar residue probe: logs the LuckyLass selector state under the current

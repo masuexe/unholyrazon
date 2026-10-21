@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261020
 
+- Fixed THE GENERIC BOSS sometimes air-jumping without spending energy online.
 - Restored the missing sound when using the Infinite Rubber Band.
 - Fixed Captain Blitzkrieg's charge bar staying on a single frame. It pulses again in both horizontal and vertical HUD layouts.
 - Fixed True BusterMistress's boxes missing from the UIX Item Wheel, preventing players from selecting and using them through the wheel.

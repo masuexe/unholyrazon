@@ -492,17 +492,6 @@ function void UH_RestoreMorphPowerBaseline(void) {
   }
 }
 
-// GenericBoss owns at most one DisabledAirJumps stack while morphed, marked by
-// GenericBossAirDisable_F.  Its weapon's Deselect_ClearAir does not run on
-// UnMorphActor or on a direct re-morph, so the morph pipeline clears only that
-// owned stack; an external DisabledAirJumps without the flag is left untouched.
-function void UH_ClearGenericBossAirDisable(void) {
-  if (CheckInventory("GenericBossAirDisable_F") > 0) {
-    TakeInventory("DisabledAirJumps", 1);
-    TakeInventory("GenericBossAirDisable_F", 1);
-  }
-}
-
 // Morphing interrupts the ground hold before ZangiefResetFlags_P can run.
 // Release only its owned item lock, preserving restrictions from other sources.
 function void UH_ClearZangiefItemLock(void) {
@@ -524,10 +513,6 @@ script "uh_MorphPreReset" (void) {
   ACS_NamedExecuteWithResult("uh_OilSliderReset");
   ACS_NamedExecuteWithResult("uh_AlphaFadeCancel");
   ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
-  // Direct re-morph (no unmorph in between) also arrives here, and the
-  // GenericBoss air-disable marker is not a stacker the baselines cover, so it
-  // must keep being cleared before every morph.
-  UH_ClearGenericBossAirDisable();
   // Mark the baselines valid only when they are actually (re)taken.  A morph
   // that never runs this script (PowerMorph demoneye/clone, engine
   // death-unmorph) must not make the demorph reset write zeroes over the
@@ -600,7 +585,6 @@ script "uh_MorphDemorphReset" (int ownedfams) {
   ACS_NamedExecuteWithResult("uh_OilSliderReset");
   ACS_NamedExecuteWithResult("uh_AlphaFadeCancel");
   ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");
-  UH_ClearGenericBossAirDisable();
   UH_RestoreMorphJumpInventory();
   TakeInventory("AirJumpsUsed", 99999);
   TakeInventory("WallJumpsUsed", 99999);
