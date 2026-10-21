@@ -265,3 +265,12 @@ If you use VS Code, install the [zandronum-vscode](https://github.com/masuexe/za
 - hude: HUD preview tooling by [StardustMotion](https://github.com/StardustMotion).
 
 For detailed sprite, texture, and community asset attributions, see [CREDITS.md](CREDITS.md).
+
+---
+
+## License
+
+Unholy Razon is an open-source, non-commercial fan project:
+- **Original Code & Mechanics**: Tooling in `tools/`, original systems, and novel modifications/reworks to game actors are licensed under the [MIT License](LICENSE.md).
+- **Upstream & Third-Party Code**: Inherited code components and third-party libraries retain their original open-source or community non-commercial terms.
+- **Media Assets & Trademarks**: Game graphics, sounds, music, and Capcom intellectual property are **not** covered by the MIT License. See [LICENSE.md](LICENSE.md) and [CREDITS.md](CREDITS.md) for full terms and contributor attributions.
