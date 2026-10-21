@@ -17,6 +17,36 @@ script "uh_DecoyBotStart" (void) {
   GiveInventory("DecoyBotFlagCheck_P", 1);
 }
 
+// A map's inventory snapshot clears the client's weapon after restoring its
+// items. That can happen after the server's one-tic StartItem selection, so
+// spawning must also complete the local weapon-select handshake. Use actual
+// owned copies, never server-only held[] or registration-order slot IDs.
+script "uh_DecoyBotSpawnEquip" ENTER CLIENTSIDE {
+  if (PlayerNumber() < 0 || PlayerNumber() != ConsolePlayerNumber()) terminate;
+  // Let the rest of the spawn/snapshot packet finish before inspecting it.
+  Delay(1);
+  for (int i = 0; i < 175; i++) {
+    if (PlayerNumber() < 0 || PlayerIsSpectator(PlayerNumber()) ||
+        !CheckActorClass(0, "DecoyBot") ||
+        GetActorProperty(0, APROP_HEALTH) <= 0 || CheckInventory("IsDead")) terminate;
+    if (StrICmp(GetWeapon(), "None") == 0) {
+      str held = ACS_NamedExecuteWithResult("uh_DecoyBotHeldWeapon", 1);
+      if (StrLen(held) > 0) {
+        // SetWeapon only changes PendingWeapon on a client. Using a weapon
+        // also sends CLC_WEAPONSELECT, as a manual wheel selection does.
+        UseInventory(held);
+      }
+    }
+    // Keep the spawn window open for a later snapshot clear, without
+    // replacing a valid weapon or rolling the three moves a second time.
+    Delay(1);
+  }
+}
+
+script "uh_DecoyBotSpawnEquipRespawn" RESPAWN CLIENTSIDE {
+  ACS_NamedExecuteAlways("uh_DecoyBotSpawnEquip", 0);
+}
+
 // Dynamically held copies are absent from the generic survivor/copy weapon
 // registries. Sweep the Decoy registry as well, including addon entries.
 // A fresh Shiny morph keeps its new controller; eye/boss conversions keep none.

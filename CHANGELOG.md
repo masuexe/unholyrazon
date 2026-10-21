@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261020
 
+- Fixed DecoyBot sometimes spawning or respawning empty-handed online until manually switching to an owned weapon with the mouse wheel.
 - Fixed THE GENERIC BOSS sometimes air-jumping without spending energy online.
 - Restored the missing sound when using the Infinite Rubber Band.
 - Fixed Captain Blitzkrieg's charge bar staying on a single frame. It pulses again in both horizontal and vertical HUD layouts.
