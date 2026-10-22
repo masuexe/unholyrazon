@@ -87,6 +87,8 @@ CHECKS = [
           "Sakiko/Mujica class behaviour", ["python", "cc"]),
     check("survivor-morph-cleanup", "fast", "static", [PY, "tools/check_survivor_morph_cleanup.py"],
           "Survivor morph inventory cleanup", ["python", "cc"]),
+    check("state-loops", "fast", "static", [PY, "tools/check_state_loops.py"],
+          "No unconditional zero-duration DECORATE state loops (server freeze/OOM)"),
     check("team-presentation", "fast", "static", [PY, "tools/check_team_presentation.py"],
           "Generated team presentation rows match the old tables"),
     check("team-visibility", "fast", "static", [PY, "tools/check_team_visibility.py"],
