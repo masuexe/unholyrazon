@@ -3869,6 +3869,20 @@ function str UH_PlayerDisplayName(str actor) {
   return actor;
 }
 
+// Viewer-only presentation effect, applied after identity/phase resolution.
+// Normalize all three modes so an already-cached dead scoreboard portrait
+// responds immediately to setting changes. Never read the subject's userinfo:
+// this is a local CVAR, including on listen hosts and while spectating.
+function str UH_GemBankerPortrait(str image) {
+  bool raw = !StrICmp(image, "UFACE22") || !StrICmp(image, "GBF_SLOW") || !StrICmp(image, "GBF_FAST");
+  bool scaled = !StrICmp(image, "UB022MUG") || !StrICmp(image, "GBM_SLOW") || !StrICmp(image, "GBM_FAST");
+  if (!raw && !scaled) {return image;}
+  int mode = GetCVar("uh_cl_GemBankerPortrait");
+  if (mode == 1) {return raw ? "GBF_SLOW" : "GBM_SLOW";}
+  if (mode == 2) {return raw ? "GBF_FAST" : "GBM_FAST";}
+  return raw ? "UFACE22" : "UB022MUG";
+}
+
 // Teammate-bar / UIX mugshot.  Never guessed: an unregistered actor returns ""
 // so the row degrades to "no face" instead of showing a wrong portrait.
 function str UH_PlayerPortrait(str actor) {

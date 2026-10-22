@@ -181,6 +181,17 @@ def main() -> int:
     #    portraits (phase 2 keeps them as the fallback).
     mug_re = re.compile(r'script\s+"PBMug_([A-Za-z0-9_]+)"\s*\(int tid\)\s*\{SetResultValue\("([^"]+)"\);\}')
     mugs = dict(mug_re.findall(read(UIXMUGS)))
+    # Viewer effects retain the registered base portrait; verify that identity
+    # rather than treating their PBMug script as a missing static fallback.
+    effect_re = re.compile(
+        r'script\s+"PBMug_([A-Za-z0-9_]+)"\s*\(int tid\)\s*'
+        r'\{SetResultValue\(UH_GemBankerPortrait\("([^"]+)"\)\);\}'
+    )
+    effect_mugs = dict(effect_re.findall(read(UIXMUGS)))
+    if effect_mugs != {"GemBanker": "UB022MUG"}:
+        print(f"FAIL GemBanker UIX base portrait: {effect_mugs}")
+        fails += 1
+    mugs.update(effect_mugs)
     # MegaMan killfeed faces are dynamic: delegate to stock UIX PBSKINS so
     # visible skins and pbskins_maestromug retain their original behaviour.
     dynamic_re = re.compile(

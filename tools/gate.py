@@ -73,6 +73,8 @@ CHECKS = [
           "Boss win-rate counter contract", ["python", "cc"]),
     check("eden-stat-deltas", "fast", "static", [PY, "tools/check_eden_stat_deltas.py"],
           "Eden stat delta application", ["python", "cc"]),
+    check("gembanker-portrait", "fast", "static", [PY, "tools/check_gembanker_portrait.py"],
+          "GemBanker viewer-local portrait modes and animation timing", ["python", "cc"]),
     check("extra-life-transition", "fast", "static", [PY, "tools/check_extra_life_transition.py"],
           "Extra-life transition path", ["python", "cc"]),
     check("result-music", "fast", "static", [PY, "tools/check_result_music.py"],
