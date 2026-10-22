@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261022
 
+- Fixed Shiny Aero Unit repeatedly releasing its death burst after dying.
 - Fixed FFA opponents appearing in the native and UIX teammate displays and revealing their health, armor, weapons, and ammo.
 - Prevented older status updates from restoring outdated automap teams or visibility rules, and stopped stale death information from revealing opponents' positions after revival.
 - Restored Red Warrior's missing Reload HUD icon across all six weapon slots.
