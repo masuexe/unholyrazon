@@ -4,8 +4,9 @@
 
 ---
 
-## 4.0.0-beta.261020
+## 4.0.0-beta.261022
 
+- Restored Red Warrior's missing Reload HUD icon across all six weapon slots.
 - Fixed DecoyBot sometimes spawning or respawning empty-handed online until manually switching to an owned weapon with the mouse wheel.
 - Fixed THE GENERIC BOSS sometimes air-jumping without spending energy online.
 - Restored the missing sound when using the Infinite Rubber Band.
