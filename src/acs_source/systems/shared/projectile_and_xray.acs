@@ -65,12 +65,21 @@ script "ub_enemypain" (void) {
 script "UH_BeginXRayVision" (void) {
   if (PlayerNumber() < 0) terminate;
   SetInventory("UH_XRayVisionOn_F", 1);
+  NamedExecuteClientScript("UH_EnsureXRayRenderer", PlayerNumber());
 }
 
 // Keep the legacy entry point name; two-player X-Ray is now condition-gated.
 script "UH_BeginLimitedXRayVision" (void) {
   if (PlayerNumber() < 0) terminate;
   SetInventory("UH_TwoPlayerXRayOn_F", 1);
+  NamedExecuteClientScript("UH_EnsureXRayRenderer", PlayerNumber());
+}
+
+// OPEN CLIENTSIDE can be missed when joining/resetting a network map. The
+// server also requests this when enabling X-Ray. Do not use ExecuteAlways for
+// the renderer: repeated delivery must keep one loop owning the HUD ids.
+script "UH_EnsureXRayRenderer" (void) CLIENTSIDE {
+  ACS_NamedExecute("UH_XRayVisionManager", 0);
 }
 
 function void ClearXRayTarget(int tid) {

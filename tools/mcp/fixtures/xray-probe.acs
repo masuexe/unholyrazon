@@ -1,0 +1,31 @@
+// Diagnostic addon for xray-test.py. No X-Ray flag is granted by setup:
+// production server scripts must activate and start the client renderer.
+#library "XRPROBE"
+#include "zcommon.acs"
+
+script "XR_Setup" (int viewer, int target) {
+  for (int p = 0; p < 2; p++) {
+    if (SetActivatorToPlayer(p)) {
+      ACS_NamedExecuteWithResult("core_freezeplayer", 0, true);
+      ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true);
+    }
+  }
+  if (SetActivatorToPlayer(viewer)) SetActorAngle(0, 0);
+  if (SetActivatorToPlayer(target)) {
+    Warp(1000 + viewer, 1024.0, 0, 0, 0,
+         WARPF_NOCHECKPOSITION | WARPF_ABSOLUTEOFFSET);
+    // Keep the ordinary line-of-sight suppression from hiding the label.
+    SetActorProperty(0, APROP_Alpha, 0.5);
+    SetActorVelocity(0, 0, 0, 0, false, false);
+  }
+}
+
+script "XR_StopRenderer" (void) CLIENTSIDE {
+  ACS_NamedTerminate("UH_XRayVisionManager", 0);
+}
+
+script "XR_Event" (int enable) {
+  if (!SetActivatorToPlayer(0)) terminate;
+  if (enable) ACS_NamedExecuteWithResult("UH_BeginXRayVision");
+  else TakeInventory("UH_XRayVisionOn_F", 1);
+}

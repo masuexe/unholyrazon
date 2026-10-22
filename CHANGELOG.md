@@ -4,6 +4,13 @@
 
 ---
 
+## 4.0.0-beta.261023
+
+- Fixed two-player X-Ray sometimes failing to show names and distances in online matches, including after joining an ongoing map.
+- Fixed Unholy Insurance failing after Rogue's shield broke, causing the next lethal hit to kill him without calling the ambulance.
+- Fixed a possible game crash when Half Press Hardman was in the match: once his energy bar filled, the refill could get stuck and exhaust memory.
+- Fixed a possible game freeze or crash when Tropical MWS's coconut projectile exploded against a ceiling.
+
 ## 4.0.0-beta.261022
 
 - Survivors can use True Power again after their first use; each extra use adds 2000 maximum HP without healing or repeating the transformation or power bonuses, up to the existing 30000 HP cap.
@@ -19,12 +26,6 @@
 - Fixed Captain Blitzkrieg's and Iron Curtain's charge bars staying on a single frame.
 - Fixed True BusterMistress's boxes missing from the UIX Item Wheel, preventing players from selecting and using them through the wheel.
 - Restored Business Eye's coin-burst M2 from Razon 3: at a full energy bar it spends the entire bar to scatter a large burst of high-value coins. The bar now recharges on its own, and M2 stays locked until it is full.
-
-## 4.0.0-beta.261023
-
-- Fixed Unholy Insurance failing after Rogue's shield broke, causing the next lethal hit to kill him without calling the ambulance.
-- Fixed a possible game crash when Half Press Hardman was in the match: once his energy bar filled, the refill could get stuck and exhaust memory. The bar now refills normally.
-- Fixed a possible game freeze or crash when Tropical MWS's coconut projectile exploded against a ceiling.
 
 ## 4.0.0-beta.261019
 

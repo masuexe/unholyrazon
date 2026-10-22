@@ -584,6 +584,7 @@ function void UH_ClearTwoPlayerXRay(void) {
 script "rz_WatchTwoPlayerLeft" (void) {
   int i;
   int tid;
+  int nextRendererSync = 0;
   bool enabled;
   while (!gameover) {
     enabled = !uh_settlementstate[UH_SETTLEMENT_PENDING] && GetCVar("rz_sv_twoplayerxray") == 1
@@ -595,7 +596,13 @@ script "rz_WatchTwoPlayerLeft" (void) {
       tid = i + 1000;
       SetActorInventory(tid, "UH_TwoPlayerXRayOn_F",
         enabled && GetActorProperty(tid, APROP_Health) > 0);
+      // Inventory replication alone cannot start a missed client OPEN script.
+      // Retry while enabled, including late joins and clients changing pawns.
+      if (enabled && Timer() >= nextRendererSync
+          && GetActorProperty(tid, APROP_Health) > 0)
+        NamedExecuteClientScript("UH_EnsureXRayRenderer", i);
     }
+    if (enabled && Timer() >= nextRendererSync) nextRendererSync = Timer() + 35;
     Delay(2);
   }
   UH_ClearTwoPlayerXRay();

@@ -46,6 +46,22 @@ keeps its old environment after a config fix, so the stale ambient
 `ZANDRONUM_LAUNCH_PROFILES` is reported as a warning until the process restarts;
 absent machine-local files are skipped, so a fresh clone passes.
 
+## X-Ray network regression
+
+Focused online X-Ray regression:
+
+```bash
+python3 tools/mcp/xray-test.py
+```
+
+Uses the tracked smoke profile with one dedicated server and one remote client
+through the engine bridge. A temporary diagnostic addon freezes two players and
+places the target at a known distance. Checks actual projected name/distance
+messages, automatic renderer recovery, one renderer after repeated startup
+delivery, cvar and live-count conditions, the independent event source, and
+reconnecting to an ongoing map. Requires ACC, `ZANDRONUM_EXE`, and local sockets;
+logs and results go to `out/xray-test/`. It never starts the renderer directly.
+
 ## Agent relay
 
 [`tools/relay.py`](relay.py) carries the task handoff between harnesses; the
