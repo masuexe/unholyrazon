@@ -18,6 +18,7 @@
 - Restored the missing sound when using the Infinite Rubber Band.
 - Fixed Captain Blitzkrieg's and Iron Curtain's charge bars staying on a single frame.
 - Fixed True BusterMistress's boxes missing from the UIX Item Wheel, preventing players from selecting and using them through the wheel.
+- Restored Business Eye's coin-burst M2 from Razon 3: at a full energy bar it spends the entire bar to scatter a large burst of high-value coins. The bar now recharges on its own, and M2 stays locked until it is full.
 
 ## 4.0.0-beta.261019
 

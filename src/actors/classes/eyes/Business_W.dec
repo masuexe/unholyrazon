@@ -1,6 +1,11 @@
+actor BusinessDemoneye_W_NormalBar : NormalBar { args 93, 3 }
+
 actor BusinessDemoneye_W : BaseUnholyBossWep {
   Tag "$TAG_DEye08_W"
   Obituary "%o couldn't afford to buy %k the \cmBusiness Demoneye\c-'s \cfDLC\c-!"
+  Weapon.AmmoType "UnholyBossAmmo400"
+  Weapon.AmmoUse1 0
+  Weapon.AmmoUse2 0
   States {
    Spawn:
     _E08 [ 6
@@ -12,21 +17,48 @@ actor BusinessDemoneye_W : BaseUnholyBossWep {
     _E08 A 0  // Initial setup: uh_DemoneyeMorph.
     goto ReadyX
    ReadyX:
+    _E08 A 0 A_JumpIfInventory("UnholyBossAmmo400", 400, "ReadyX2")
+    _E08 A 0 A_JumpIfInventory("PlayerPropertyEndlessAmmo", 1, "ReadyXEndless")
+    _E08 A 2 A_WeaponReady(WRF_NOSECONDARY)
+    _E08 A 0 A_GiveInventory("UnholyBossAmmo400", 2)
+    loop
+   ReadyXEndless:  // endless-ammo rune: M2 unlocks at half bar (Razon3 rule)
+    _E08 A 0 A_JumpIfInventory("UnholyBossAmmo400", 200, "ReadyX2")
+    _E08 A 2 A_WeaponReady(WRF_NOSECONDARY)
+    _E08 A 0 A_GiveInventory("UnholyBossAmmo400", 2)
+    loop
+   ReadyX2:
     _E08 A 2 A_WeaponReady
-    goto ReadyX
+    _E08 A 0 A_GiveInventory("UnholyBossAmmo400", 2)
+    loop
    Fire:
     _E08 A 0 A_PlaySoundEx("items/MoneyUse", "Weapon")
     _E08 A 0  // A_GiveInventory("BusinessDemoneyeDelay",1)
     _E08 A 0 A_SpawnItemEx("BusinessEyeMoneySpawner", 40, 0, 0)
+    goto FireEnd
+   AltFire:
+    _E08 A 0 A_JumpIfInventory("UnholyBossAmmo400", 400, "MakeMoreMoney")
+    _E08 A 0 A_JumpIfInventory("PlayerPropertyEndlessAmmo", 1, "AltFireEndless")
+    goto ReadyX
+   AltFireEndless:
+    _E08 A 0 A_JumpIfInventory("UnholyBossAmmo400", 200, "MakeMoreMoney")
+    goto ReadyX
+   MakeMoreMoney:  // spend the whole bar on a rich coin burst (Razon3 M2)
+    _E08 A 0 A_TakeInventory("UnholyBossAmmo400", 200, 1)
+    _E08 A 0 A_TakeInventory("UnholyBossAmmo400", 200)
+    _E08 A 0 A_PlaySoundEx("items/MoneyUse", "Weapon")
+    _E08 A 0 A_SpawnItemEx("BusinessEyeMoneySpawner2", 40, 0, 0)
+    goto FireEnd
+   FireEnd:
     _E08 BC 3
     TNT1 A 65
-    _E08 A 1 Offset(0, 112)
+    _E08 A 1 Offset(0, 112) A_GiveInventory("UnholyBossAmmo400", 2)
     _E08 A 1 Offset(0, 102) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
-    _E08 A 1 Offset(0, 92)
+    _E08 A 1 Offset(0, 92) A_GiveInventory("UnholyBossAmmo400", 2)
     _E08 A 1 Offset(0, 82) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
-    _E08 A 1 Offset(0, 72)
+    _E08 A 1 Offset(0, 72) A_GiveInventory("UnholyBossAmmo400", 2)
     _E08 A 1 Offset(0, 62) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
-    _E08 A 1 Offset(0, 52)
+    _E08 A 1 Offset(0, 52) A_GiveInventory("UnholyBossAmmo400", 2)
     _E08 A 1 Offset(0, 42) A_JumpIfInventory("PlayerPropertyRage", 1, 1)
     _E08 A 0 Offset(0, 32)
     goto ReadyX
@@ -59,5 +91,9 @@ actor BusinessDemoneyeBot_H : BasicWatcher {
 }
 
 actor BusinessEyeMoneySpawner : DLC_CoinSpawner_H {
+  ReactionTime 7
+}
+
+actor BusinessEyeMoneySpawner2 : DLC_RichCoinSpawner_H {
   ReactionTime 7
 }
