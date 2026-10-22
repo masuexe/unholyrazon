@@ -22,6 +22,7 @@
 
 ## 4.0.0-beta.261023
 
+- Fixed Unholy Insurance failing after Rogue's shield broke, causing the next lethal hit to kill him without calling the ambulance.
 - Fixed a possible game crash when Half Press Hardman was in the match: once his energy bar filled, the refill could get stuck and exhaust memory. The bar now refills normally.
 - Fixed a possible game freeze or crash when Tropical MWS's coconut projectile exploded against a ceiling.
 
