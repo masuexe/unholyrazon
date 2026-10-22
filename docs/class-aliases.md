@@ -157,6 +157,7 @@
 | 手冲人 | Scroto's Stunt Double | `ScrotoStuntDouble` | boss | [Actor](../src/actors/classes/bosses/ScrotoStuntDouble.dec); ID 613 |  |
 | 踩踩背 | Blue Elephant | `BlueElephant` | boss | [Actor](../src/actors/classes/bosses/BlueElephant.dec); ID 616 |  |
 | 普通眼 | Plain Demoneye | `PlainDemoneye` | demoneye | [Actor](../src/actors/classes/eyes/Plain.dec); ID 0 |  |
+| 发育眼 | Business Eye | `BusinessDemoneye` | demoneye | [Actor](../src/actors/classes/eyes/Business.dec); ID 8 | 用户确认；不是 Rich Demoneye。 |
 
 ## 消歧与通用规则 / Disambiguation & Guidelines
 
