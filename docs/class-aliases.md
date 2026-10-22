@@ -2,6 +2,8 @@
 
 这份表只保留 Razon4 中存在的机体称呼，连接日常内部叫法、游戏名称和代码实体，是 Agent 解析需求的权威映射字典。新增、调整或纠正映射时直接在此表更新。
 
+项目需求、Bug 与企划案追踪均位于腾讯文档智能表格：[Unholy Razon 企划与任务看板](https://docs.qq.com/smartsheet/DY0VLQkZxeG5RSm9C) (`cEKBFqxnQJoB`)。
+
 ## 使用规则 / Usage rules
 
 1. **查表映射 / Lookup & Mapping**：收到机体相关任务时，优先在此表按字符串精确匹配内部绰号，映射为目标 Actor。支持中文日常绰号及常用英文缩写（如 `be` / `BE` ➔ `BusterExpert`）。
@@ -12,6 +14,7 @@
 
 ### English Guidelines
 
+- **Canonical Task Tracker**: Project backlog, bug reports, and community proposals are tracked in the Tencent Docs SmartSheet at https://docs.qq.com/smartsheet/DY0VLQkZxeG5RSm9C (`file_id`: `cEKBFqxnQJoB`).
 - **Primary dictionary**: Use this table as the authoritative mapping dictionary to resolve internal nicknames and community slang to canonical Razon4 Actors.
 - **Verbatim matching**: The `Alias` column contains nicknames verbatim (primarily Chinese, plus common English acronyms like `be`/`BE`). Match incoming task terms directly against this column without inventing translated names.
 - **Shiny convention**: Survivor nicknames do not map to Shiny variants by default. In community usage, Shiny variants are explicitly called `<nickname>的shitpower版` or `<nickname>的truepower版` (e.g. `飞弹荡妇的shitpower版` ➔ `BusterMistressShiny`).

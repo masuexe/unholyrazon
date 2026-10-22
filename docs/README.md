@@ -38,6 +38,7 @@ Guides and CVAR references for dedicated server operators and host setups.
 
 ## 3. Mechanics & Gameplay References
 
+Community proposals & backlog tracker: [Unholy Razon 企划与任务看板](https://docs.qq.com/smartsheet/DY0VLQkZxeG5RSm9C) (`cEKBFqxnQJoB`).
 Internal task terminology: [机体别名表 / Class Aliases](class-aliases.md) maps team nicknames to canonical actors and source paths.
 
 | Document | Description |

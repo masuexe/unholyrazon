@@ -25,6 +25,11 @@ Engine DECORATE/ACS traps live in the **zandronum-modding** skill. MM8BDM `core_
 
 ## Internal names and task interpretation
 
+The canonical project backlog and community proposal tracker is the **Tencent Docs SmartSheet**:
+- **URL**: `https://docs.qq.com/smartsheet/DY0VLQkZxeG5RSm9C`
+- **File ID**: `cEKBFqxnQJoB`
+- When the user mentions "腾讯文档", "在线表格", "智能表格", or "看板", target this document by default.
+
 Before interpreting Tencent Docs tasks or internal Chinese nicknames, consult
 [docs/class-aliases.md](docs/class-aliases.md) as the authoritative mapping glossary.
 Survivor nicknames refer to standard survivors by default and do not directly map to
