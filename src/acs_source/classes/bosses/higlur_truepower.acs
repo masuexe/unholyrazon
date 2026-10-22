@@ -1,0 +1,52 @@
+// Included only by unholy: this transition owns both the pawn and its round
+// slot. Use the normal cleanup/setup path rather than nesting player morphs.
+script "ub_TruePowerHiglur" (void) {
+  int player = PlayerNumber();
+  if (player < 0 || !CheckActorClass(0, "SPOOKYGHOSTHITLER")
+      || GetActorProperty(0, APROP_Health) <= 0 || CheckInventory("IsAFakeBoss"))
+    terminate;
+  int generation = GetPlayerMorphGen(player);
+
+  // Let CustomInventory finish consuming the item before replacing its owner.
+  Delay(1);
+  if (!SetActivatorToPlayer(player) || PlayerIsSpectator(player)
+      || !CheckActorClass(0, "SPOOKYGHOSTHITLER")
+      || GetActorProperty(0, APROP_Health) <= 0 || CheckInventory("IsAFakeBoss")
+      || GetPlayerMorphGen(player) != generation)
+    terminate;
+
+  int oldboss = FindBossByActor("SPOOKYGHOSTHITLER");
+  int nextboss = FindBossByActor("BalladeGB");
+  if (oldboss == UHBOSS_FAIL || nextboss == UHBOSS_FAIL)
+    terminate;
+  int tid = ActivatorTID();
+  bool temporarytid = tid == 0;
+  if (temporarytid) {
+    tid = UniqueTID();
+    Thing_ChangeTID(0, tid);
+  }
+  int health = GetActorProperty(0, APROP_Health);
+  int maximum = GetActorProperty(0, APROP_SpawnHealth);
+  ACS_NamedExecuteWithResult("ub_UnMorphThisTID", tid, oldboss);
+  if (!MorphActorToBoss(tid, nextboss, "ShinySparkleFlash")) {
+    // A blocked morph must not leave the player as an unarmed survivor.
+    if (MorphActorToBoss(tid, oldboss, "")) {
+      SetActorProperty(0, APROP_SpawnHealth, maximum);
+      SetActorProperty(0, APROP_Health, health);
+      SetInventory("BossSpawnHealthFlag", maximum);
+    }
+    GiveInventory("TruePowerItem", 1);
+  } else {
+    GiveInventory("TruePowerItemFlag", 1);
+    GiveInventory("ShinySparkleItem", 1);
+    for (int slot = 0; slot < multibosscheck; slot++) {
+      if (bossdataarr[slot][BOSSDATA_TID] == tid) {
+        bossdataarr[slot][BOSSDATA_NUM] = nextboss;
+        refreshhudmessage = true;
+      }
+    }
+    UH_TeamInfo_BroadcastStatus(player, playerlifestatusarr[player]);
+  }
+  if (temporarytid)
+    Thing_ChangeTID(0, 0);
+}

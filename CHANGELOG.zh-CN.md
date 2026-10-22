@@ -6,6 +6,8 @@
 
 ## 4.0.0-beta.261022
 
+- 生还者首次使用 True Power 后可以继续使用；后续每次只增加 2000 HP 上限，不回血、不重复变身或叠加强化效果，沿用 30000 HP 上限
+- 恢复 Higlur（元首）使用 True Power 后变成 Ballade GB 的效果
 - 恢复 Gem Banker 的头像变色；在 User Options → Round and Boss 新增本地“关闭／慢速／快速”选项，默认慢速，覆盖 HUD、Boss 信息、计分板和 UIX 头像，与原有武器彩虹选项分别控制
 - 修复 Shiny Aero Unit 死亡后反复释放亡语的问题
 - 修复 FFA 对手出现在原生及 UIX 队友栏中、泄露血量、护甲、武器和弹药信息的问题

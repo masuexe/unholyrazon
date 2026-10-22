@@ -75,6 +75,8 @@ CHECKS = [
           "Eden stat delta application", ["python", "cc"]),
     check("gembanker-portrait", "fast", "static", [PY, "tools/check_gembanker_portrait.py"],
           "GemBanker viewer-local portrait modes and animation timing", ["python", "cc"]),
+    check("true-power", "fast", "static", [PY, "tools/check_true_power.py"],
+          "True Power repeat HP bonus and Higlur morph lifecycle", ["python", "cc"]),
     check("extra-life-transition", "fast", "static", [PY, "tools/check_extra_life_transition.py"],
           "Extra-life transition path", ["python", "cc"]),
     check("result-music", "fast", "static", [PY, "tools/check_result_music.py"],
