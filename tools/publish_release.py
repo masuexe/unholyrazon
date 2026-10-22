@@ -101,29 +101,56 @@ def main():
         file_size = os.path.getsize(asset_path)
         print(f"Uploading asset '{asset_name}' ({file_size / (1024*1024):.2f} MB)...")
 
-        with open(asset_path, "rb") as af:
-            file_data = af.read()
+        # Use curl if available for reliable streaming of large binary assets
+        import shutil
+        import subprocess
 
-        upload_req = urllib.request.Request(
-            upload_url,
-            data=file_data,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28",
-                "Content-Type": "application/octet-stream",
-                "User-Agent": "UnholyRazon-Release-Tool"
-            },
-            method="POST"
-        )
-        try:
-            with urllib.request.urlopen(upload_req) as u_resp:
-                u_data = json.loads(u_resp.read().decode("utf-8"))
-                print(f"Uploaded: {u_data.get('browser_download_url', asset_name)}")
-        except urllib.error.HTTPError as ue:
-            u_err = ue.read().decode("utf-8")
-            print(f"ERROR uploading asset {asset_name}: HTTP {ue.code}: {u_err}", file=sys.stderr)
-            sys.exit(1)
+        if shutil.which("curl"):
+            cmd = [
+                "curl", "-s", "-S", "-X", "POST",
+                "-H", f"Authorization: Bearer {token}",
+                "-H", "Accept: application/vnd.github+json",
+                "-H", "X-GitHub-Api-Version: 2022-11-28",
+                "-H", "Content-Type: application/octet-stream",
+                "--data-binary", f"@{asset_path}",
+                upload_url
+            ]
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            if res.returncode != 0:
+                print(f"ERROR uploading asset {asset_name} via curl: {res.stderr}", file=sys.stderr)
+                sys.exit(1)
+            try:
+                u_data = json.loads(res.stdout)
+                if "browser_download_url" in u_data:
+                    print(f"Uploaded: {u_data['browser_download_url']}")
+                else:
+                    print(f"Uploaded: {asset_name} (response: {res.stdout[:100]}...)")
+            except Exception:
+                print(f"Uploaded: {asset_name}")
+        else:
+            with open(asset_path, "rb") as af:
+                file_data = af.read()
+
+            upload_req = urllib.request.Request(
+                upload_url,
+                data=file_data,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                    "Content-Type": "application/octet-stream",
+                    "User-Agent": "UnholyRazon-Release-Tool"
+                },
+                method="POST"
+            )
+            try:
+                with urllib.request.urlopen(upload_req) as u_resp:
+                    u_data = json.loads(u_resp.read().decode("utf-8"))
+                    print(f"Uploaded: {u_data.get('browser_download_url', asset_name)}")
+            except urllib.error.HTTPError as ue:
+                u_err = ue.read().decode("utf-8")
+                print(f"ERROR uploading asset {asset_name}: HTTP {ue.code}: {u_err}", file=sys.stderr)
+                sys.exit(1)
 
     print("\nRelease published successfully!")
     print(f"URL: {html_url}")
