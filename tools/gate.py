@@ -85,6 +85,8 @@ CHECKS = [
           "Survivor morph inventory cleanup", ["python", "cc"]),
     check("team-presentation", "fast", "static", [PY, "tools/check_team_presentation.py"],
           "Generated team presentation rows match the old tables"),
+    check("team-visibility", "fast", "static", [PY, "tools/check_team_visibility.py"],
+          "FFA teammate privacy and automap visibility rules", ["python", "cc"]),
     check("bars-generator", "fast", "generator", [PY, "tools/_gen_barpos.py", "--check"],
           "Generated HUD bar code is up to date"),
     check("bars-generator-tests", "fast", "generator", [PY, "tools/test_gen_barpos.py"],

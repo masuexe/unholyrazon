@@ -31,10 +31,14 @@
 //              slot can never inherit the previous player's class.
 // uhtiova*   : frozen 1-vs-all active flag and target player number (drives
 //              UH_AreDisplayTeammates, NOT scoreboard visibility).
-// uhtiscorepolicy: synchronized UH_SCOREPOLICY_* for the scoreboard icon matrix.
+// uhtiscorepolicy: synchronized UH_SCOREPOLICY_* for teammate permissions,
+//              automap visibility and the scoreboard icon matrix.
 //              Starts INVALID so only self is visible until the server snapshot.
 bool uhticlientinitialized;
-int uhtilife[MAX_PLAYERS];
+// First MAX_PLAYERS cells are life states; the next block holds per-subject
+// status revisions and the final cell holds the policy revision. Extending an
+// existing array avoids consuming another of ACC's 128 map-variable slots.
+int uhtilife[MAX_PLAYERS * 2 + 1];
 int uhtirole[MAX_PLAYERS];
 int uhtiova;
 int uhtiovatarget;
@@ -99,6 +103,7 @@ function void UH_Ti_ClearStats(int pn) {
 function void UH_Ti_ResetClient(void) {
   for (int i = 0; i < MAX_PLAYERS; i++) {
     uhtilife[i] = PLS_NULL;
+    uhtilife[MAX_PLAYERS + i] = 0;
     uhtiphase[i] = 0;
     uhtiphaseactor[i] = "";
     uhtirole[i] = PLS_NULL;
@@ -111,6 +116,7 @@ function void UH_Ti_ResetClient(void) {
   uhtiova = 0;
   uhtiovatarget = -1;
   uhtiscorepolicy = UH_SCOREPOLICY_INVALID;
+  uhtilife[UH_TI_POLICY_REV_SLOT] = 0;
   uhtilocalplayer = -1;
 }
 
@@ -145,6 +151,20 @@ function void UH_Ti_SetClientLife(int pn, int status) {
 }
 
 // --- CLIENTSIDE receivers (server broadcasts land here) ----------------------
+// Reject an older same-tic snapshot even when the ACS thinker executes it
+// after a newer update. Revision zero preserves direct local/debug calls.
+function bool UH_Ti_AcceptRevision(int slot, int revision) {
+  if (revision == 0) {return true;}
+  int old = uhtilife[slot];
+  int distance = (revision - old) & UH_TI_REV_MASK;
+  if (old != 0 && (distance == 0 || distance >= UH_TI_REV_HALF)) {return false;}
+  uhtilife[slot] = revision;
+  return true;
+}
+
+// The status receiver's player argument packs a revision above the low six
+// slot bits. Policy carries its revision in the second argument. These guard
+// against an old snapshot overwriting a newer event, death or morph update.
 // Plain integers only.  Never sync an ACS string here: NamedExecuteClientScript
 // copies raw ints and the ACS string pool is per-process and garbage-collected,
 // so a string index means nothing on the client.  Never sync a presentation row
@@ -158,6 +178,10 @@ function void UH_Ti_SetClientLife(int pn, int status) {
 // class is unaffected.
 script "uh_ti_sync_status" (int pn, int status, int kind, int id) CLIENTSIDE {
   UH_Ti_EnsureClientInitialized();
+  if (pn < 0) {terminate;}
+  int revision = pn >> 6;
+  pn &= 63;
+  if (!UH_Ti_AcceptRevision(MAX_PLAYERS + pn, revision)) {terminate;}
   UH_Ti_SetClientLife(pn, status);
   if (pn < 0 || pn >= MAX_PLAYERS) {terminate;}
   // PLS_NULL means the slot is finished.  UH_Ti_SetClientLife has already
@@ -237,10 +261,14 @@ script "uh_ti_sync_ova" (int active, int target) CLIENTSIDE {
 // range (including the -1 INVALID sentinel) collapses to INVALID so a corrupt
 // or missing broadcast can never widen visibility.  The refresh loop re-derives
 // every row from this value on the next tic while TAB is held.
-script "uh_ti_sync_policy" (int policy) CLIENTSIDE {
+script "uh_ti_sync_policy" (int policy, int revision) CLIENTSIDE {
   UH_Ti_EnsureClientInitialized();
+  if (!UH_Ti_AcceptRevision(UH_TI_POLICY_REV_SLOT, revision)) {terminate;}
   if (policy < UH_SCOREPOLICY_NORMAL || policy > UH_SCOREPOLICY_MULTITEAM) {
     policy = UH_SCOREPOLICY_INVALID;
+  }
+  if (uhtiscorepolicy != policy) {
+    for (int i = 0; i < MAX_PLAYERS; i++) {UH_Ti_ClearStats(i);}
   }
   uhtiscorepolicy = policy;
 }
@@ -295,6 +323,10 @@ function bool UH_AreDisplayTeammates(int viewer, int subject) {
   if (viewer < 0 || viewer >= MAX_PLAYERS) {return false;}
   if (subject < 0 || subject >= MAX_PLAYERS) {return false;}
   if (viewer == subject) {return false;}  // Never repeat yourself.
+  // Matching classes/roles do not form a team in free-for-all rounds.
+  // Until the authoritative policy arrives, expose no teammate rows.
+  if (uhtiscorepolicy == UH_SCOREPOLICY_FFA
+      || uhtiscorepolicy == UH_SCOREPOLICY_INVALID) {return false;}
   if (uhtirole[viewer] == PLS_NULL || uhtirole[subject] == PLS_NULL) {return false;}
 
   if (uhtiova) {
@@ -607,10 +639,11 @@ script "uh_ti_enter" ENTER {
 // --- Server-authoritative teammate stats -------------------------------------
 // Uses the per-batch event snapshot and retained server roles, so
 // the per-viewer snapshot authorizes exactly the rows the bar may draw.
-function bool UH_Ti_ServerTeammatesForSplit(int viewer, int subject, bool onevsall, int target) {
+function bool UH_Ti_ServerTeammatesForSplit(int viewer, int subject, bool onevsall, int target, int policy) {
   if (viewer < 0 || viewer >= MAX_PLAYERS) {return false;}
   if (subject < 0 || subject >= MAX_PLAYERS) {return false;}
   if (viewer == subject) {return false;}
+  if (policy == UH_SCOREPOLICY_FFA || policy == UH_SCOREPOLICY_INVALID) {return false;}
   if (uhsrvrole[viewer] == PLS_NULL || uhsrvrole[subject] == PLS_NULL) {return false;}
   if (onevsall) {
     if (target < 0) {return false;}
@@ -628,7 +661,8 @@ function bool UH_Ti_ServerTeammatesForSplit(int viewer, int subject, bool onevsa
 function bool UH_Ti_ServerAreDisplayTeammates(int viewer, int subject) {
   bool onevsall = UH_TeamInfo_IsOneVsAllActive();
   int target = onevsall ? UH_TeamInfo_OneVsAllTarget() : -1;
-  return UH_Ti_ServerTeammatesForSplit(viewer, subject, onevsall, target);
+  return UH_Ti_ServerTeammatesForSplit(viewer, subject, onevsall, target,
+    UH_TeamInfo_ScorePolicy());
 }
 
 // Gameplay callers must use server roles, never the client display cache.
@@ -689,6 +723,7 @@ function void UH_Ti_RefreshStats(int first, int end) {
   // change while the script yields between batches.
   bool onevsall = UH_TeamInfo_IsOneVsAllActive();
   int ovatarget = onevsall ? UH_TeamInfo_OneVsAllTarget() : -1;
+  int policy = UH_TeamInfo_ScorePolicy();
 
   // DF_INFINITE_AMMO = 1 << 11.
   bool infinite = (GetCVar("dmflags") & 2048) != 0;
@@ -787,7 +822,7 @@ function void UH_Ti_RefreshStats(int first, int end) {
       // own stats so that row is available without widening anyone else's
       // authorization set.
       if (!vspec[vw] && s != vw
-          && !UH_Ti_ServerTeammatesForSplit(vw, s, onevsall, ovatarget)) {continue;}
+          && !UH_Ti_ServerTeammatesForSplit(vw, s, onevsall, ovatarget, policy)) {continue;}
       NamedExecuteClientScript("uh_ti_stat", vw, packed_s, packed1, tag, packed2);
     }
   }

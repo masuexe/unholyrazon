@@ -87,7 +87,9 @@ bool uhsrvidentityvalid[MAX_PLAYERS];
 // Remaining rows in a per-client snapshot, drained by the server watch in
 // bounded subject batches. A request can start at any watch cursor: the next
 // MAX_PLAYERS subjects still cover every slot exactly once.
-int uhsrvSnapshotRows[MAX_PLAYERS];
+// The final cell holds the wire revision, shared by status and policy sends.
+// Keep it in this array: the round core has reached ACC's map-variable limit.
+int uhsrvSnapshotRows[MAX_PLAYERS + 1];
 int uhsrvphase[MAX_PLAYERS];
 str uhsrvphaseclass[MAX_PLAYERS];
 
@@ -217,7 +219,10 @@ function bool UH_Ti_IsConnectedClient(int pn) {
 
 function void UH_Ti_SendStatusTo(int client, int pn, int status) {
   if (!UH_Ti_IsConnectedClient(client)) {return;}
-  NamedExecuteClientScript("uh_ti_sync_status", client, pn, status,
+  int revision = (uhsrvSnapshotRows[MAX_PLAYERS] + 1) & UH_TI_REV_MASK;
+  if (!revision) {revision = 1;}
+  uhsrvSnapshotRows[MAX_PLAYERS] = revision;
+  NamedExecuteClientScript("uh_ti_sync_status", client, pn | (revision << 6), status,
     UH_Ti_CachedKind(pn), UH_Ti_CachedId(pn));
   NamedExecuteClientScript("uh_ti_sync_phase", client, pn,
     UH_Ti_CachedKind(pn), UH_Ti_CachedId(pn), uhsrvphase[pn]);
@@ -247,7 +252,10 @@ function void UH_Ti_SendOneVsAllTo(int client, int active, int target) {
 
 function void UH_Ti_SendScorePolicyTo(int client, int policy) {
   if (!UH_Ti_IsConnectedClient(client)) {return;}
-  NamedExecuteClientScript("uh_ti_sync_policy", client, policy);
+  int revision = (uhsrvSnapshotRows[MAX_PLAYERS] + 1) & UH_TI_REV_MASK;
+  if (!revision) {revision = 1;}
+  uhsrvSnapshotRows[MAX_PLAYERS] = revision;
+  NamedExecuteClientScript("uh_ti_sync_policy", client, policy, revision);
 }
 
 function void UH_TeamInfo_BroadcastStatus(int pn, int status) {
@@ -275,9 +283,9 @@ function int UH_TeamInfo_OneVsAllTarget(void) {
 }
 
 // Authoritative scoreboard portrait policy for the ACTIVE round.  This is a
-// separate synchronization from the frozen 1-vs-all split above: the teammate
-// bar still keys on uhtiova/uhtiovatarget, while the scoreboard needs to tell
-// FFA / normal / all-eye / multi-team apart and must fail closed.  The client
+// separate synchronization from the frozen 1-vs-all split above. Teammate
+// stats and the automap use it to exclude FFA opponents; the scoreboard also
+// distinguishes normal / all-eye / multi-team. The client
 // must never infer the policy from server-only globals.
 //
 // Classification is exact: no active event is NORMAL; an active event with

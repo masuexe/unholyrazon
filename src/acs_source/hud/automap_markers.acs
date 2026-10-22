@@ -21,7 +21,11 @@ function bool UH_AM_CanSee(int viewer, int subject) {
   if (subject < 0 || subject >= MAX_PLAYERS) {return false;}
   if (uhtirole[subject] == PLS_NULL) {return false;}
   if (viewer == subject) {return true;}
-  if (PlayerIsSpectator(viewer) == 1 || uhtilife[viewer] == PLS_DEAD) {return true;}
+  // A delayed death snapshot must not grant observer vision after revival.
+  // The local pawn's health is available without a server health snapshot.
+  if (PlayerIsSpectator(viewer) == 1) {return true;}
+  if (uhtilife[viewer] == PLS_DEAD
+      && GetActorProperty(UH_AM_PLAYER_TID + viewer, APROP_Health) <= 0) {return true;}
   // Razon3: special rounds show self only while alive. Unknown policy is
   // also self-only until the server snapshot arrives.
   if (uhtiscorepolicy != UH_SCOREPOLICY_NORMAL) {return false;}

@@ -6,13 +6,14 @@
 
 ## 4.0.0-beta.261022
 
+- Fixed FFA opponents appearing in the native and UIX teammate displays and revealing their health, armor, weapons, and ammo.
+- Prevented older status updates from restoring outdated automap teams or visibility rules, and stopped stale death information from revealing opponents' positions after revival.
 - Restored Red Warrior's missing Reload HUD icon across all six weapon slots.
 - Fixed DecoyBot sometimes spawning or respawning empty-handed online until manually switching to an owned weapon with the mouse wheel.
 - Fixed THE GENERIC BOSS sometimes air-jumping without spending energy online.
 - Restored the missing sound when using the Infinite Rubber Band.
-- Fixed Captain Blitzkrieg's charge bar staying on a single frame. It pulses again in both horizontal and vertical HUD layouts.
+- Fixed Captain Blitzkrieg's and Iron Curtain's charge bars staying on a single frame.
 - Fixed True BusterMistress's boxes missing from the UIX Item Wheel, preventing players from selecting and using them through the wheel.
-- Fixed Iron Curtain's charge bar staying on a single frame. It pulses again while charging.
 
 ## 4.0.0-beta.261019
 
