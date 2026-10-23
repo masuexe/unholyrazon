@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261023
 
+- Repeated True Power use by survivors now heals 2000 HP as well as adding 2000 maximum HP, healing up to the new maximum. Maximum HP still caps at 30000.
 - Strongman countdown warnings now recover if missed and appear when rejoining during the countdown.
 - Fixed unlit oil pools dealing damage when a server pit-damage override was enabled.
 - Restored Unholy Book's Razon 3 behavior: a 12.5% chance of a map-wide pull during charge-up; other books keep their normal suction range.

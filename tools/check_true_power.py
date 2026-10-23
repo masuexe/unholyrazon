@@ -44,13 +44,14 @@ STUBS = r'''
 #define APROP_Health 0
 #define APROP_SpawnHealth 1
 #define MAX_HEALTH 30000
+#define UHEALTH_HEAL 6
 #define UHBOSS_FAIL -9999
 #define BOSSDATA_TID 0
 #define BOSSDATA_NUM 1
 #define min(a,b) ((a)<(b)?(a):(b))
 int pn, hp, cap, baws, flag, fake, generation, tid, connected, spectator;
 int interrupted, blocked, missing, cleanups, morphs, refunded, sparkles, syncs;
-int result, spawnflag, activeboss, multibosscheck, bossdataarr[2][2];
+int result, spawnflag, activeboss, multibosscheck, bossdataarr[2][2], heals;
 int playerlifestatusarr[1];
 bool refreshhudmessage;
 const char *body;
@@ -85,6 +86,12 @@ int ActivatorTID(void) { return tid; }
 int UniqueTID(void) { return 2000; }
 void Thing_ChangeTID(int who, int value) { assert(!who); tid=value; }
 void ACS_NamedExecuteWithResult(const char *name, int who, int boss) {
+  if (!strcmp(name,"uh_Health")) {
+    assert(who==UHEALTH_HEAL && boss==2000);
+    heals++;
+    if (hp>0 && hp<cap) hp=min(hp+boss,cap);
+    return;
+  }
   assert(!strcmp(name,"ub_UnMorphThisTID") && who==tid && boss==403);
   cleanups++; body="Survivor"; baws=flag=0; generation++; activeboss=UHBOSS_FAIL;
 }
@@ -119,25 +126,30 @@ TESTS = r'''
 void Reset(void) {
   pn=0; hp=500; cap=1000; baws=flag=fake=0; generation=7; tid=1000;
   connected=1; spectator=interrupted=blocked=missing=0;
-  cleanups=morphs=refunded=sparkles=syncs=result=spawnflag=0;
+  cleanups=morphs=refunded=sparkles=syncs=result=spawnflag=heals=0;
   activeboss=403; multibosscheck=2; refreshhudmessage=false;
   body="SPOOKYGHOSTHITLER";
   bossdataarr[0][0]=1000; bossdataarr[0][1]=403;
   bossdataarr[1][0]=1001; bossdataarr[1][1]=403;
 }
 int main(void) {
-  Reset(); flag=1; Repeat(); assert(result==1 && hp==500 && cap==3000);
-  Repeat(); assert(result==1 && hp==500 && cap==5000);
-  cap=29999; Repeat(); assert(cap==30000 && hp==500);
-  Repeat(); assert(cap==30000 && hp==500 && result==1);
-  cap=31000; Repeat(); assert(cap==31000 && hp==500);
+  Reset(); flag=1; Repeat(); assert(result==1 && hp==2500 && cap==3000 && heals==1);
+  Repeat(); assert(result==1 && hp==4500 && cap==5000 && heals==2);
+  cap=29999; hp=500; Repeat(); assert(cap==30000 && hp==2500);
+  Repeat(); assert(cap==30000 && hp==4500 && result==1);
+  cap=31000; hp=500; Repeat(); assert(cap==31000 && hp==2500);
+  Reset(); flag=1; hp=cap=29999; Repeat(); assert(cap==30000 && hp==30000);
+  hp=29950; Repeat(); assert(cap==30000 && hp==30000);
+  Repeat(); assert(cap==30000 && hp==30000 && result==1);
+  hp=31000; Repeat(); assert(cap==30000 && hp==31000);
   for (int mode=0; mode<4; mode++) {
     Reset(); flag=1;
     if (mode==0) pn=-1;
     if (mode==1) hp=0;
     if (mode==2) flag=0;
     if (mode==3) baws=1;
-    Repeat(); assert(!result && cap==1000);
+    int before=hp;
+    Repeat(); assert(!result && cap==1000 && hp==before && !heals);
   }
   Reset(); Transform();
   assert(cleanups==1 && morphs==1 && activeboss==68 && baws && flag);
@@ -161,7 +173,7 @@ int main(void) {
   }
   Reset(); tid=0; Transform(); assert(!tid && activeboss==68 && syncs==1);
   assert(bossdataarr[0][1]==403 && bossdataarr[1][1]==403);
-  puts("True Power: repeat HP cap, guarded Higlur transaction and rollback PASS");
+  puts("True Power: repeat HP cap/heal, guarded Higlur transaction and rollback PASS");
 }
 '''
 
