@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261023
 
+- Fixed unlit oil pools dealing damage when a server pit-damage override was enabled.
 - Restored Unholy Book's Razon 3 behavior: a 12.5% chance of a map-wide pull during charge-up; other books keep their normal suction range.
 - Eating a Dickhead now plays the standard MM8BDM item pickup sound.
 - Fixed Shiny survivor portraits missing from the UIX killfeed.
