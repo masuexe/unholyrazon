@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261023
 
+- Fixed Shiny survivor portraits missing from the UIX killfeed.
 - Fixed two-player X-Ray sometimes failing to show names and distances in online matches, including after joining an ongoing map.
 - Fixed Unholy Insurance failing after Rogue's shield broke, causing the next lethal hit to kill him without calling the ambulance.
 - Fixed a possible game crash when Half Press Hardman was in the match: once his energy bar filled, the refill could get stuck and exhaust memory.

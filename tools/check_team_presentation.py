@@ -217,10 +217,33 @@ def main() -> int:
         elif rows[cls][1] != tex:
             print(f"FAIL {cls}: portrait {rows[cls][1]!r} != PBMug {tex!r}")
             fails += 1
+    # Shiny killfeed adapters must have both halves of stock UIX's contract.
+    # The script resolves UHDT rather than copying the portrait texture here.
+    shiny_acs = read(ROOT / "src/acs_source/compat/mods/uix/uh_uix_shiny_mugshots.generated.acs")
+    shared_mugs = dict(re.findall(
+        r'script\s+"PBMug_(\w+)"\s*\(int tid\)\s*'
+        r'\{SetResultValue\(UH_PlayerPortrait\("(\w+)"\)\);\}', shiny_acs))
+    expected_shiny = {cls for cls in rows if cls.endswith("Shiny")} - dynamic
+    if set(shared_mugs) != expected_shiny:
+        print(f"FAIL Shiny UIX adapters: missing={sorted(expected_shiny - set(shared_mugs))}, "
+              f"extra={sorted(set(shared_mugs) - expected_shiny)}")
+        fails += 1
+    shiny_markers = read(ROOT / "src/actors/compat/uix/UH_UIX_ShinyMugshots.generated.dec")
+    if '#include "uh_uix_shiny_mugshots.generated.acs"' not in read(UIXMUGS):
+        print("FAIL Shiny UIX scripts are not included")
+        fails += 1
+    if '#include "actors/compat/uix/UH_UIX_ShinyMugshots.generated.dec"' not in read(
+            ROOT / "src/actors/compat/uix/UH_UIX_SurvivorMugshots.dec"):
+        print("FAIL Shiny UIX actors are not included")
+        fails += 1
+    for cls, lookup in shared_mugs.items():
+        if cls != lookup or not re.search(rf'actor\s+PBMug_{cls}\s*\{{', shiny_markers):
+            print(f"FAIL Shiny UIX marker/resolver pair: {cls} -> {lookup}")
+            fails += 1
     # A row with a portrait but no PBMug_ script would silently lose its UIX
     # face; only the scoreboard-only morph may legitimately lack one.
     for cls in rows:
-        if cls in mugs or cls in dynamic:
+        if cls in mugs or cls in dynamic or cls in shared_mugs:
             continue
         if rows[cls][1] == "":
             continue
@@ -230,7 +253,7 @@ def main() -> int:
         print(f"team presentation check FAILED ({fails} problem(s))")
         return 1
     print(f"ok: {len(portraits)} historical presentation rows preserved; {len(morph_additions)} morph addition verified")
-    print(f"ok: {len(mugs)} UIX PBMug scripts agree")
+    print(f"ok: {len(mugs) + len(shared_mugs) + len(dynamic)} UIX PBMug scripts agree")
     return 0
 
 
