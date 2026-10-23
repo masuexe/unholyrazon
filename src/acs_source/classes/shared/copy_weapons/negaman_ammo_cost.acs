@@ -40,8 +40,20 @@
 // double-charge A_FireCustomMissile / A_FireBullets.
 // ===========================================================================
 
-#define UH_NEGA_AMMO_SALT 931
 #define UH_NEGA_AMMO_LOG_TICS 175  // ~5s at 35 tics/s: throttle diagnostic spam
+
+// Host-tunable daily cost constants. Defaults are the shipped values, so an
+// untouched server produces exactly the same daily costs. The generator keeps
+// the legacy even constants; 0 falls back to the default.
+function int UH_NegaAmmoRandom(int seed, int minval, int maxval) {
+  int a = UH_TuneLegacyMul("rz_sv_nega_rng_a", 1919810);
+  int b = UH_TuneLegacyAdd("rz_sv_nega_rng_b", 114514);
+  return UH_SeedRandomCore(seed, minval, maxval, a, b);
+}
+
+function int UH_NegaAmmoHashStr(str s) {
+  return UH_HashStrCore(s, UH_TuneHashBase("rz_sv_nega_hash_base", 31));
+}
 
 // Passed from DECORATE as numeric literals.
 #define UH_NEGA_AMMO_NORMAL 0
@@ -84,7 +96,8 @@ function int UH_NegaAmmoMultiplierForActor(str w) {
   int date = UH_DateToIntUTC();
   int lo = max(0, min(GetCVar("rz_sv_nega_ammo_mul_min"), 32767.0));
   int hi = max(0, min(GetCVar("rz_sv_nega_ammo_mul_max"), 32767.0));
-  return UH_SeedRandom(date + UH_HashStr(w) * UH_NEGA_AMMO_SALT, lo, hi);
+  int salt = UH_TuneSalt("rz_sv_nega_ammo_salt");
+  return UH_NegaAmmoRandom(date + UH_NegaAmmoHashStr(w) * salt, lo, hi);
 }
 
 // round(multiplier * baseCost).  -1 marks an invalid negative base cost.
@@ -332,7 +345,10 @@ script "uh_debug_ShowTodayNegaAmmo" (void) {
   UH_Log(UH_LOG_DEBUG, StrParam(s:"uh_debug_ShowTodayNegaAmmo date=", i:date,
     s:" rz_sv_randnegamancopywepammo=", i:GetCVar("rz_sv_randnegamancopywepammo"),
     s:" min=", f:GetCVar("rz_sv_nega_ammo_mul_min"),
-    s:" max=", f:GetCVar("rz_sv_nega_ammo_mul_max")));
+    s:" max=", f:GetCVar("rz_sv_nega_ammo_mul_max"),
+    s:" salt=", i:UH_TuneSalt("rz_sv_nega_ammo_salt"),
+    s:" rng=", i:UH_TuneLegacyMul("rz_sv_nega_rng_a", 1919810), s:"/", i:UH_TuneLegacyAdd("rz_sv_nega_rng_b", 114514),
+    s:" hash=", i:UH_TuneHashBase("rz_sv_nega_hash_base", 31)));
   for (int i = 0; i < n; i++) {
     int row = FindCopyWepRowByKindIndex(UHCOPY_NEGA, i);
     str actor = GetCopyWepActor(row);

@@ -1,29 +1,42 @@
 // --- Daily MegaMan copywep team-FF (leak weapons only; damage = uh_TodayDmgMul result) ---
 #define UH_TEAMFF_LEAK_MAX UH_MEGA_DAILY_MAX
-#define UH_TEAMFF_SALT 424242
 
 int uh_teamffleakids[UH_TEAMFF_LEAK_MAX];
 int uh_teamffleakdate;
 int uh_teamffleakofficial;
 int uh_teamffleakcount;
 int uh_teamffleakwant = -1;
+int uh_teamffleaksalt;
+int uh_teamffleakstride;
+int uh_teamffleakrnga;
+int uh_teamffleakrngb;
 
 function void UH_EnsureTodayTeamFFLeaks(void) {
   int date = UH_DateToInt();
   int official = UH_MegaDailyOfficialCount();
-  int want = UH_MegaDailyCount("rz_sv_mega_ff_count_min", "rz_sv_mega_ff_count_max", UH_TEAMFF_SALT);
+  int salt = UH_TuneSalt("rz_sv_mega_ff_count_salt");
+  int stride = UH_TuneStride("rz_sv_mega_ff_stride", 97);
+  int rnga = UH_TuneLcgMul("rz_sv_mega_rng_a", 1103515245);
+  int rngb = UH_TuneLcgAdd("rz_sv_mega_rng_b", 12345);
+  int want = UH_MegaDailyCount("rz_sv_mega_ff_count_min", "rz_sv_mega_ff_count_max", salt);
   int i;
   int j;
   int temp;
-  if (uh_teamffleakdate == date && uh_teamffleakofficial == official && uh_teamffleakwant == want)
+  if (uh_teamffleakdate == date && uh_teamffleakofficial == official && uh_teamffleakwant == want
+      && uh_teamffleaksalt == salt && uh_teamffleakstride == stride
+      && uh_teamffleakrnga == rnga && uh_teamffleakrngb == rngb)
     return;
   uh_teamffleakdate = date;
   uh_teamffleakofficial = official;
   uh_teamffleakwant = want;
+  uh_teamffleaksalt = salt;
+  uh_teamffleakstride = stride;
+  uh_teamffleakrnga = rnga;
+  uh_teamffleakrngb = rngb;
   for (i = 0; i < official; i++)
     uh_teamffleakids[i] = i + 1;
   for (i = 0; i < want; i++) {
-    j = UH_MegaDailyRandom(date + UH_TEAMFF_SALT + (i + 1) * 97, i, official - 1);
+    j = UH_MegaDailyRandom((date + salt + (i + 1) * stride) & 0x7FFFFFFF, i, official - 1);
     temp = uh_teamffleakids[i];
     uh_teamffleakids[i] = uh_teamffleakids[j];
     uh_teamffleakids[j] = temp;
@@ -123,6 +136,9 @@ script "uh_debug_ShowTodayTeamFF" (void) {
     s:" official=", i:official,
     s:" leakCount=", i:uh_teamffleakcount,
     s:" rz_sv_randmegamancopywepteamkill=", i:GetCVar("rz_sv_randmegamancopywepteamkill")));
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"uh_debug_ShowTodayTeamFF tune salt=",
+    i:UH_TuneSalt("rz_sv_mega_ff_count_salt"), s:" stride=", i:UH_TuneStride("rz_sv_mega_ff_stride", 97),
+    s:" rng=", i:UH_TuneLcgMul("rz_sv_mega_rng_a", 1103515245), s:"/", i:UH_TuneLcgAdd("rz_sv_mega_rng_b", 12345)));
   for (i = 0; i < uh_teamffleakcount; i++) {
     UH_Log(UH_LOG_DEBUG, StrParam(s:"  leak ", i:i + 1, s:": ",
       s:GetCopyWepDmgStemByMegaId(uh_teamffleakids[i]),

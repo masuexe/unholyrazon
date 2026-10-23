@@ -6,6 +6,8 @@
 
 ## 4.0.0-beta.261023
 
+- Added host-tunable MegaMan daily copy-weapon damage and friendly-fire randomization: 14 server CVars for the permutation/count salts, strides, RNG and hash constants under Unholy Server Options → Rules → MegaMan Weapons → Advanced Tuning. The local date remains the seed, defaults preserve the existing daily results, and changes apply immediately without a restart.
+- Added independent host-tunable NegaMan daily copy-weapon ammo-cost randomization: `rz_sv_nega_ammo_salt`, `rz_sv_nega_rng_a`, `rz_sv_nega_rng_b` and `rz_sv_nega_hash_base` under NegaMan Weapons → Advanced Tuning, defaulting to the existing costs.
 - Repeated True Power use by survivors now heals 2000 HP as well as adding 2000 maximum HP, healing up to the new maximum. Maximum HP still caps at 30000.
 - Strongman countdown warnings now recover if missed and appear when rejoining during the countdown.
 - Fixed unlit oil pools dealing damage when a server pit-damage override was enabled.

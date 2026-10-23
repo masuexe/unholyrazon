@@ -103,9 +103,64 @@ function int UH_DateToIntUTC(void) {
     + GetTimeProperty(time, TM_DAY, true);
 }
 
-function int UH_SeedRandom(int seed, int minval, int maxval) {
-  int a = 1919810;
-  int b = 114514;
+// --- Host-tunable daily randomization constants ---------------------------
+// The yyyymmdd date stays the seed; these server CVars shift the derived
+// seeds. Defaults are the shipped values, so an untouched server behaves
+// exactly as before. Salts accept any integer; strides must be nonzero (0
+// falls back) and are forced odd so per-weapon streams cannot lock to the
+// date's parity. The daily LCG multiplier/increment are forced odd for the
+// same reason; the legacy sign generator keeps its historical even constants
+// until overridden.
+function int UH_TuneSalt(str cvar) {
+  return GetCVar(cvar) & 0x7FFFFFFF;
+}
+
+function int UH_TuneStride(str cvar, int fallback) {
+  int v = GetCVar(cvar) & 0x7FFFFFFF;
+  if (v == 0)
+    v = fallback;
+  return v | 1;
+}
+
+function int UH_TuneLcgMul(str cvar, int fallback) {
+  int v = GetCVar(cvar) & 0x7FFFFFFF;
+  if (v < 3)
+    v = fallback;
+  return v | 1;
+}
+
+function int UH_TuneLcgAdd(str cvar, int fallback) {
+  int v = GetCVar(cvar) & 0x7FFFFFFF;
+  if (v == 0)
+    v = fallback;
+  return v | 1;
+}
+
+// Legacy-preserving constants: the historical sign/cost generators use even
+// multipliers, so these keep the value as configured instead of forcing odd.
+function int UH_TuneLegacyMul(str cvar, int fallback) {
+  int v = GetCVar(cvar) & 0x7FFFFFFF;
+  if (v == 0)
+    v = fallback;
+  return v;
+}
+
+function int UH_TuneLegacyAdd(str cvar, int fallback) {
+  int v = GetCVar(cvar) & 0x7FFFFFFF;
+  if (v == 0)
+    v = fallback;
+  return v;
+}
+
+function int UH_TuneHashBase(str cvar, int fallback) {
+  int v = GetCVar(cvar) & 0x7FFFFFFF;
+  if (v < 2)
+    v = fallback;
+  return v;
+}
+
+// Shared seed-mix core used by the Mega sign roll and the Nega daily ammo cost.
+function int UH_SeedRandomCore(int seed, int minval, int maxval, int a, int b) {
   int n = (a * seed + b) & 0x7FFFFFFF;
   if (maxval < minval) {
     int temp = maxval;
@@ -115,12 +170,22 @@ function int UH_SeedRandom(int seed, int minval, int maxval) {
   return n % (maxval - minval + 1) + minval;
 }
 
-function int UH_HashStr(str s) {
+function int UH_MegaSignRandom(int seed, int minval, int maxval) {
+  int a = UH_TuneLegacyMul("rz_sv_mega_sign_rng_a", 1919810);
+  int b = UH_TuneLegacyAdd("rz_sv_mega_sign_rng_b", 114514);
+  return UH_SeedRandomCore(seed, minval, maxval, a, b);
+}
+
+function int UH_HashStrCore(str s, int base) {
   int h = 0;
   int len = StrLen(s);
   for (int i = 0; i < len; i++)
-    h = (h * 31 + GetChar(s, i)) & 0x7FFFFFFF;
+    h = (h * base + GetChar(s, i)) & 0x7FFFFFFF;
   return h;
+}
+
+function int UH_MegaHashStr(str s) {
+  return UH_HashStrCore(s, UH_TuneHashBase("rz_sv_mega_hash_base", 31));
 }
 
 function int UH_CopywepIdFromAlias(str cls) {
@@ -156,14 +221,19 @@ int uh_megadailyrank[UH_MEGA_DAILY_MAX + 1];
 int uh_megadailyshuffle[UH_MEGA_DAILY_MAX];
 int uh_megadailydate;
 int uh_megadailyofficial;
+int uh_megadailyranksalt;
+int uh_megadailyrankstride;
+int uh_megadailyrnga;
+int uh_megadailyrngb;
 
-// Keep the legacy generator for Nega ammo/sign behavior. Its even multiplier
-// only produces even outputs, so a daily count range 0..1 would always be 0.
+// Shared daily generator for jackpot ranks, counts, multipliers and FF leaks.
 function int UH_MegaDailyRandom(int seed, int lo, int hi) {
-  int n = (seed * 1103515245 + 12345) & 0x7FFFFFFF;
+  int a = UH_TuneLcgMul("rz_sv_mega_rng_a", 1103515245);
+  int b = UH_TuneLcgAdd("rz_sv_mega_rng_b", 12345);
+  int n = (seed * a + b) & 0x7FFFFFFF;
   int temp;
   n = n ^ (n >> 16);
-  n = (n * 1103515245 + 12345) & 0x7FFFFFFF;
+  n = (n * a + b) & 0x7FFFFFFF;
   n = n ^ (n >> 16);
   if (hi < lo) {
     temp = hi;
@@ -185,17 +255,27 @@ function int UH_MegaDailyOfficialCount(void) {
 function void UH_EnsureMegaDailyRanks(void) {
   int date = UH_DateToInt();
   int official = UH_MegaDailyOfficialCount();
+  int salt = UH_TuneSalt("rz_sv_mega_rank_salt");
+  int stride = UH_TuneStride("rz_sv_mega_rank_stride", 97);
+  int rnga = UH_TuneLcgMul("rz_sv_mega_rng_a", 1103515245);
+  int rngb = UH_TuneLcgAdd("rz_sv_mega_rng_b", 12345);
   int i;
   int j;
   int temp;
-  if (uh_megadailydate == date && uh_megadailyofficial == official)
+  if (uh_megadailydate == date && uh_megadailyofficial == official
+      && uh_megadailyranksalt == salt && uh_megadailyrankstride == stride
+      && uh_megadailyrnga == rnga && uh_megadailyrngb == rngb)
     return;
   uh_megadailydate = date;
   uh_megadailyofficial = official;
+  uh_megadailyranksalt = salt;
+  uh_megadailyrankstride = stride;
+  uh_megadailyrnga = rnga;
+  uh_megadailyrngb = rngb;
   for (i = 0; i < official; i++)
     uh_megadailyshuffle[i] = i + 1;
   for (i = 0; i < official; i++) {
-    j = UH_MegaDailyRandom(date + 61700 + i * 97, i, official - 1);
+    j = UH_MegaDailyRandom((date + salt + i * stride) & 0x7FFFFFFF, i, official - 1);
     temp = uh_megadailyshuffle[i];
     uh_megadailyshuffle[i] = uh_megadailyshuffle[j];
     uh_megadailyshuffle[j] = temp;
@@ -207,7 +287,7 @@ function int UH_MegaDailyCount(str lowcvar, str highcvar, int salt) {
   int official = UH_MegaDailyOfficialCount();
   int lo = max(0, min(GetCVar(lowcvar), official));
   int hi = max(0, min(GetCVar(highcvar), official));
-  return UH_MegaDailyRandom(UH_DateToInt() + salt, lo, hi);
+  return UH_MegaDailyRandom((UH_DateToInt() + salt) & 0x7FFFFFFF, lo, hi);
 }
 
 function int UH_MegaDailyMultiplier(str lowcvar, str highcvar, int seed) {
@@ -224,22 +304,23 @@ function int UH_CopywepDmgMul(int wep) {
   int big = 0;
   int small = 0;
   int rank;
+  int stride = UH_TuneStride("rz_sv_mega_mul_stride", 893);
   int official = UH_MegaDailyOfficialCount();
   if (wep < 1 || wep > official)
-    seedkey = UH_HashStr(GetActorClass(0));
+    seedkey = UH_MegaHashStr(GetActorClass(0));
   else {
     UH_EnsureMegaDailyRanks();
     if (GetCVar("rz_sv_mega_big_enabled"))
-      big = UH_MegaDailyCount("rz_sv_mega_big_count_min", "rz_sv_mega_big_count_max", 123400);
+      big = UH_MegaDailyCount("rz_sv_mega_big_count_min", "rz_sv_mega_big_count_max", UH_TuneSalt("rz_sv_mega_big_count_salt"));
     if (GetCVar("rz_sv_mega_small_enabled"))
-      small = min(UH_MegaDailyCount("rz_sv_mega_small_count_min", "rz_sv_mega_small_count_max", 617000), official - big);
+      small = min(UH_MegaDailyCount("rz_sv_mega_small_count_min", "rz_sv_mega_small_count_max", UH_TuneSalt("rz_sv_mega_small_count_salt")), official - big);
     rank = uh_megadailyrank[wep];
     if (rank < big)
-      return UH_MegaDailyMultiplier("rz_sv_mega_big_mul_min", "rz_sv_mega_big_mul_max", date + wep * 893);
+      return UH_MegaDailyMultiplier("rz_sv_mega_big_mul_min", "rz_sv_mega_big_mul_max", (date + wep * stride) & 0x7FFFFFFF);
     if (rank < big + small)
-      return UH_MegaDailyMultiplier("rz_sv_mega_small_mul_min", "rz_sv_mega_small_mul_max", date + wep * 893);
+      return UH_MegaDailyMultiplier("rz_sv_mega_small_mul_min", "rz_sv_mega_small_mul_max", (date + wep * stride) & 0x7FFFFFFF);
   }
-  return UH_MegaDailyMultiplier("rz_sv_mega_normal_mul_min", "rz_sv_mega_normal_mul_max", date + seedkey * 893);
+  return UH_MegaDailyMultiplier("rz_sv_mega_normal_mul_min", "rz_sv_mega_normal_mul_max", (date + seedkey * stride) & 0x7FFFFFFF);
 }
 
 script "uh_TodayDmgMul" (int damage, int allowneg) {
@@ -252,9 +333,12 @@ script "uh_TodayDmgMul" (int damage, int allowneg) {
   if (allowneg) {
     int date = UH_DateToInt();
     int seedkey = wep;
+    int negseed;
     if (seedkey < 1)
-      seedkey = UH_HashStr(GetActorClass(0));
-    if (UH_SeedRandom(date + 309 + seedkey * 17, 0.0, 1.0) < 0.5)
+      seedkey = UH_MegaHashStr(GetActorClass(0));
+    negseed = (date + UH_TuneSalt("rz_sv_mega_neg_salt")
+      + seedkey * UH_TuneStride("rz_sv_mega_neg_stride", 17)) & 0x7FFFFFFF;
+    if (UH_MegaSignRandom(negseed, 0.0, 1.0) < 0.5)
       mul = -mul;
   }
   SetResultValue(FixedMul(mul, damage));
@@ -279,6 +363,14 @@ script "uh_debug_ShowTodayDmgMul" (void) {
   UH_Log(UH_LOG_DEBUG, StrParam(s:"uh_debug_ShowTodayDmgMul date=", i:date,
     s:" official=", i:official,
     s:" rz_sv_randmegamancopywepdmg=", i:GetCVar("rz_sv_randmegamancopywepdmg")));
+  UH_Log(UH_LOG_DEBUG, StrParam(s:"uh_debug_ShowTodayDmgMul tune rank=",
+    i:UH_TuneSalt("rz_sv_mega_rank_salt"), s:"/", i:UH_TuneStride("rz_sv_mega_rank_stride", 97),
+    s:" mul=", i:UH_TuneStride("rz_sv_mega_mul_stride", 893),
+    s:" rng=", i:UH_TuneLcgMul("rz_sv_mega_rng_a", 1103515245), s:"/", i:UH_TuneLcgAdd("rz_sv_mega_rng_b", 12345),
+    s:" count=", i:UH_TuneSalt("rz_sv_mega_big_count_salt"), s:"/", i:UH_TuneSalt("rz_sv_mega_small_count_salt"),
+    s:" hash=", i:UH_TuneHashBase("rz_sv_mega_hash_base", 31),
+    s:" sign=", i:UH_TuneSalt("rz_sv_mega_neg_salt"), s:"/", i:UH_TuneStride("rz_sv_mega_neg_stride", 17),
+    s:" signrng=", i:UH_TuneLegacyMul("rz_sv_mega_sign_rng_a", 1919810), s:"/", i:UH_TuneLegacyAdd("rz_sv_mega_sign_rng_b", 114514)));
   for (int i = 1; i <= official; i++) {
     UH_Log(UH_LOG_DEBUG, StrParam(s:GetCopyWepDmgStemByMegaId(i), s:" [", i:i, s:"] mul=", f:UH_CopywepDmgMul(i)));
   }

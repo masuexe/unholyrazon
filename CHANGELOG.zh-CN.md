@@ -6,6 +6,8 @@
 
 ## 4.0.0-beta.261023
 
+- 新增服主可实时调整的 MegaMan 复制武器每日伤害与队伤随机参数：Unholy Server Options → Rules → MegaMan Weapons → Advanced Tuning 下的 14 个 server CVar（洗牌/计数盐、步长、RNG 与哈希常数）；日期种子不变，默认值保持现有每日结果，修改后立即生效，无需重启
+- 新增独立的 NegaMan 复制武器每日耗蓝随机参数，可在 NegaMan Weapons → Advanced Tuning 下实时调整：`rz_sv_nega_ammo_salt`、`rz_sv_nega_rng_a`、`rz_sv_nega_rng_b`、`rz_sv_nega_hash_base`，默认值保持现有耗蓝
 - 生还者重复使用 TruePower 时，增加 2000 血上限并回复 2000 血，回复不超过新的血上限；最大血量仍封顶 30000
 - 修复 Strongman 倒计时强敌预告漏显示后不再恢复、倒计时中重新加入看不到预告的问题
 - 修复启用服务器坑伤害设置后，未点燃的油池也会造成伤害的问题

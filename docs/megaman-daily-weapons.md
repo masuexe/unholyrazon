@@ -82,3 +82,45 @@ fire still obeys the existing team, protection, armor and engine damage rules.
 
 The named diagnostics `uh_debug_ShowTodayDmgMul` and
 `uh_debug_ShowTodayTeamFF` log today's multipliers and friendly-fire list.
+
+## Randomization tuning
+
+The server's local `yyyymmdd` date stays the seed; the constants below shape
+how that seed maps to jackpot selection, counts and multipliers. They are
+server CVars, so a host can reroll the whole daily mapping at runtime without
+waiting for a new day or restarting the server. Defaults are the shipped
+values: an untouched server produces exactly the same results as before.
+Changing any of them changes the current day's results immediately.
+
+Open **Unholy Server Options → Rules → MegaMan Weapons → Advanced Tuning**.
+
+| CVar | Default | Meaning |
+| --- | ---: | --- |
+| `rz_sv_mega_rank_salt` | 61700 | Jackpot permutation seed salt |
+| `rz_sv_mega_rank_stride` | 97 | Jackpot permutation per-slot stride |
+| `rz_sv_mega_ff_stride` | 97 | Friendly-fire leak permutation stride |
+| `rz_sv_mega_mul_stride` | 893 | Per-weapon multiplier seed stride |
+| `rz_sv_mega_big_count_salt` | 123400 | Big jackpot daily count salt |
+| `rz_sv_mega_small_count_salt` | 617000 | Small jackpot daily count salt |
+| `rz_sv_mega_ff_count_salt` | 424242 | Friendly-fire leak count salt |
+| `rz_sv_mega_neg_salt` | 309 | PlantBarrier negative-damage sign salt |
+| `rz_sv_mega_neg_stride` | 17 | PlantBarrier negative-damage sign stride |
+| `rz_sv_mega_rng_a` | 1103515245 | Daily RNG multiplier |
+| `rz_sv_mega_rng_b` | 12345 | Daily RNG increment |
+| `rz_sv_mega_sign_rng_a` | 1919810 | Negative-damage sign RNG multiplier |
+| `rz_sv_mega_sign_rng_b` | 114514 | Negative-damage sign RNG increment |
+| `rz_sv_mega_hash_base` | 31 | Addon-weapon name hash base |
+
+Salts accept any integer. Strides are forced odd and 0 means "use the default":
+an even stride would make every derived seed share the date's parity, which
+correlates the per-weapon streams. The daily RNG multiplier and increment are
+also forced odd; the sign RNG keeps its historical even constants unless the
+host overrides them. Salts and seeds are reduced to ACS's nonnegative 31-bit range, so extreme
+values stay deterministic instead of overflowing unpredictably.
+
+These CVars tune the daily MegaMan damage and friendly-fire mapping only. The
+NegaMan daily ammo cost has its own independent tuning CVars
+(`rz_sv_nega_ammo_salt`, `rz_sv_nega_rng_a`, `rz_sv_nega_rng_b`,
+`rz_sv_nega_hash_base`); see the server CVar guide. The frozen official
+103-weapon pool size is not configurable; addon weapons remain outside jackpot
+and friendly-fire selection and use the normal multiplier range.

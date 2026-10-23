@@ -67,6 +67,10 @@ the multiplier fields to enter decimals.
 | `rz_sv_randnegamancopywepammo` | `true` | Enable daily random copy-weapon ammo costs |
 | `rz_sv_nega_ammo_mul_min` | `0.0` | Minimum ammo cost multiplier |
 | `rz_sv_nega_ammo_mul_max` | `2.0` | Maximum ammo cost multiplier |
+| `rz_sv_nega_ammo_salt` | `931` | Daily cost seed salt |
+| `rz_sv_nega_rng_a` | `1919810` | Daily cost RNG multiplier |
+| `rz_sv_nega_rng_b` | `114514` | Daily cost RNG increment |
+| `rz_sv_nega_hash_base` | `31` | Weapon-name hash base |
 
 Each registered NegaMan copy weapon, including addons, gets its own multiplier
 from the configured range, keyed by its actor name and the UTC date. The
@@ -80,6 +84,14 @@ swapped during calculation. Negative endpoints are treated as zero. Enter
 finite multipliers in the ACS nonnegative 16.16 range (0–32767). Runtime
 adjustments do not rewrite saved settings. Turning the switch off restores
 original ammo costs and grays out the multiplier fields without clearing them.
+
+The four advanced values tune how the UTC date maps to each weapon's cost.
+They are server CVars, read live on both the server and the client's
+weapon-ready prediction, so changing one rerolls the daily costs immediately.
+Defaults are the shipped constants and reproduce the existing costs exactly.
+The salt accepts any integer; the hash base must be at least 2; 0 in the RNG
+fields falls back to the default. These CVars are independent of the MegaMan
+daily damage tuning.
 
 For example, `rz_sv_nega_ammo_mul_min 0.5` and
 `rz_sv_nega_ammo_mul_max 1.5` give each weapon a daily cost multiplier between
