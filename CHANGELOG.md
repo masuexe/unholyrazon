@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261023
 
+- Eating a Dickhead now plays the standard MM8BDM item pickup sound.
 - Fixed Shiny survivor portraits missing from the UIX killfeed.
 - Fixed two-player X-Ray sometimes failing to show names and distances in online matches, including after joining an ongoing map.
 - Fixed Unholy Insurance failing after Rogue's shield broke, causing the next lethal hit to kill him without calling the ambulance.

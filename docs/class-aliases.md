@@ -161,6 +161,7 @@
 | 踩踩背 | Blue Elephant | `BlueElephant` | boss | [Actor](../src/actors/classes/bosses/BlueElephant.dec); ID 616 |  |
 | 普通眼 | Plain Demoneye | `PlainDemoneye` | demoneye | [Actor](../src/actors/classes/eyes/Plain.dec); ID 0 |  |
 | 发育眼 | Business Eye | `BusinessDemoneye` | demoneye | [Actor](../src/actors/classes/eyes/Business.dec); ID 8 | 用户确认；不是 Rich Demoneye。 |
+| 几把头 | Dickhead | `Dickhead` / `DickheadItem` | item | [Actor](../src/actors/items/tow/Dickhead.dec) | “吃了”指地上的 `Dickhead`，吃下获得额外生命；`DickheadItem` 是背包里可投掷的道具。 |
 
 ## 消歧与通用规则 / Disambiguation & Guidelines
 
