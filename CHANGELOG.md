@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261024
 
+- Fixed missing hazard kill credit when Zangief and other grab-and-throw users drop a teammate into a pit without dealing damage. The death message now names the thrower; credit stays active while carrying and follows the server's normal timeout after release.
 - Fixed the health bar staying at a Boss's starting health when spectating online, including after dying or reconnecting. It now follows the Boss's current health even with teammate displays disabled.
 - Purple Destron, Blue Destron, and Red Destron now take damage only from the small triangle on the head. Body hits show impact effects but cause no damage, and projectiles pass through the body. Head hits keep the normal damage type, armor, and kill credit.
 

@@ -8,6 +8,21 @@ str zangief_give_item[2] = {
   "AirSuplexGroundCheck"
 };
 
+// Friendly grabs deliberately cause no damage, so core_HazardTag's damage
+// event never records their owner. Use the base game's timed hazard credit
+// directly for successful grabs/moves, including the shared throw borrowers.
+// Refresh while carrying so a long hold does not expire before the release.
+function void UH_ZangiefRefreshHazardTag(int ownerTid, int victimTid) {
+  if (!GetCVar("mm8bdm_sv_enablehazardtag") || ownerTid == victimTid) {return;}
+  int owner = ownerTid - PLN_TID;
+  int victim = victimTid - PLN_TID;
+  if (owner < 0 || owner >= ServerMAX || victim < 0 || victim >= ServerMAX) {return;}
+  if (!PlayerInGame(owner) || !PlayerInGame(victim) ||
+      GetActorProperty(ownerTid, APROP_Health) <= 0 ||
+      GetActorProperty(victimTid, APROP_Health) <= 0) {return;}
+  ACS_NamedExecuteWithResult("core_HazardTag_manager", ownerTid, victimTid);
+}
+
 // Razon3 UB_PUSHPULLACS(25/50, 250, 2), scoped to Zangief's charge.
 // One pulse per charge tic; no delayed script survives release or morphing.
 script "uh_ZangiefChargePull" (int maxforce) {
@@ -51,6 +66,7 @@ script "uh_ZangiefBindGrab" (int owner, int victim) {
     GiveActorInventory(ownerTid, "ZangiefFriendlyGrab_F", 1);
   }
   GiveActorInventory(ownerTid, "SuplexID", victim + 1);
+  UH_ZangiefRefreshHazardTag(ownerTid, victimTid);
   SetResultValue(1);
 }
 
@@ -144,6 +160,7 @@ script "uh_ZangiefStartGrab" (int target, int grabdist, int grablimit) {
   int z_diff_i = z_diff >> 16;
 
   if (x_diff_i * x_diff_i + y_diff_i * y_diff_i + z_diff_i * z_diff_i < grablimit) {
+    UH_ZangiefRefreshHazardTag(ActivatorTID(), target);
     SetActorVelocity(target, x_diff, y_diff, z_diff, 0, 0);
     setResultValue(1);
   } else {
@@ -177,6 +194,7 @@ script "uh_ZangiefGrab" (int pitch, int angle, int grab_d, int grablimit) {
   int z_diff_i = z_diff >> 16;
 
   if (x_diff_i * x_diff_i + y_diff_i * y_diff_i + z_diff_i * z_diff_i < grablimit) {
+    UH_ZangiefRefreshHazardTag(ActivatorTID(), target);
     SetActorVelocity(target, x_diff, y_diff, z_diff, 0, 0);
     setResultValue(1);
   } else {
@@ -185,6 +203,7 @@ script "uh_ZangiefGrab" (int pitch, int angle, int grab_d, int grablimit) {
 }
 
 script "uh_ZangiefSetThrow" (int target, int force, int zforce) {
+  UH_ZangiefRefreshHazardTag(ActivatorTID(), target);
   Thing_Stop(target);
   ThrustThing(GetActorAngle(0) >> 8, force, 1, target);
   ThrustThingZ(target, zforce, 0, 0);
