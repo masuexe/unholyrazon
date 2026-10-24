@@ -1,0 +1,133 @@
+// Destron head weak point - experiment B (Purple, Blue and Red Destron).
+//
+// The engine gives every actor exactly one radius/height hitbox and no runtime
+// setter, so the boss body keeps its normal box and a small invisible proxy
+// actor is warped to the head triangle instead. Damage to the proxy is
+// cancelled and forwarded to the boss through Thing_Damage2 (source = the
+// original attacker), so armor, damage types and kill credit still run through
+// the normal P_DamageMobj path.
+//
+// Body: the three UH_*Destron_MorphSetup_P actors apply the
+// uh_nonshootableplayer stacker, so projectiles pass through the body.
+// Hitscan/melee still register on the body and are cancelled below. Forwarded
+// damage is marked with uh_destron_head_pass so the body PREMOD handler lets it
+// through.
+//
+// Geometry (PurpleDestron sprite 8A70A0: 80x80, grAb left 40 / top 72,
+// scale 1.5): the cyan head triangle sits at z + 64.5 .. z + 73.5 above the
+// actor origin. The proxy box covers z + 62 .. z + 76 (height 14) and has a
+// 9-unit radius - slightly wider than the 6-unit triangle half-width so
+// latency still overlaps it.
+
+int uh_destron_head_pass = 0;
+int uh_destron_head_proxytid[MAX_PLAYERS];
+
+// Blue/Red inherit PurpleDestron, so exact-class checks need all three names.
+function bool UH_DestronHeadIsBoss(void) {
+  return CheckActorClass(0, "PurpleDestron") || CheckActorClass(0, "BlueDestron") ||
+         CheckActorClass(0, "RedDestron");
+}
+
+// Spawn the head proxy and point its master at the boss. Called from the three
+// UH_*Destron_MorphSetup_P actors.
+script "uh_DestronHeadSetup" (void) {
+  if (!UH_DestronHeadIsBoss())
+    terminate;
+
+  int bosstid = ActivatorTID();
+  if (bosstid <= 0) {
+    // Robustness fallback (same idiom as ub_TruePowerHiglur): the normal boss
+    // morph pipeline transfers the player TID, but a cheat/debug morph does not.
+    bosstid = UniqueTID();
+    Thing_ChangeTID(0, bosstid);
+  }
+
+  int p = PlayerNumber();
+  if (p < 0 || p >= MAX_PLAYERS)
+    terminate;
+  // A remorph must not leave the previous proxy behind.
+  if (uh_destron_head_proxytid[p] > 0) {
+    Thing_Remove(uh_destron_head_proxytid[p]);
+    uh_destron_head_proxytid[p] = 0;
+  }
+
+  // Projectiles pass through the boss body; the head proxy is the only target.
+  ACS_NamedExecuteWithResult("uh_nonshootableplayer", 0, 1);
+
+  int ptid = UniqueTID();
+  if (SpawnForced("DestronHeadHitbox", GetActorX(0), GetActorY(0), GetActorZ(0) + 62.0, ptid, 0)) {
+    SetActivator(ptid);
+    SetPointer(AAPTR_MASTER, bosstid);
+    uh_destron_head_proxytid[p] = ptid;
+  }
+}
+
+// Called by uh_BossUnmorphCleanup_Destron (uh_bossdefs library) on demorph.
+script "uh_DestronHeadCleanup" (void) {
+  int p = PlayerNumber();
+  if (p < 0 || p >= MAX_PLAYERS)
+    terminate;
+  if (uh_destron_head_proxytid[p] > 0) {
+    Thing_Remove(uh_destron_head_proxytid[p]);
+    uh_destron_head_proxytid[p] = 0;
+  }
+}
+
+// Polled by the proxy every other tic; kills it when the boss is gone.
+script "uh_DestronHeadProxyAlive" (void) {
+  if (!SetActivator(0, AAPTR_MASTER)) { SetResultValue(0); terminate; }
+  if (PlayerNumber() < 0 || !PlayerInGame(PlayerNumber())) { SetResultValue(0); terminate; }
+  if (!UH_DestronHeadIsBoss()) { SetResultValue(0); terminate; }
+  if (CheckInventory("IsDead") || GetActorProperty(0, APROP_Health) <= 0) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(1);
+}
+
+// PREMOD runs before armor / pain / death in P_DamageMobj.
+script "uh_DestronHeadDamage" (int evt, int dmg, int dmgtype) EVENT {
+  if (evt != GAMEEVENT_ACTOR_DAMAGED_PREMOD || dmg <= 0)
+    terminate;
+  if (!SetActivator(0, AAPTR_DAMAGE_TARGET))
+    terminate;
+
+  // ---- head proxy: forward to the boss, cancel the proxy's own damage ----
+  if (CheckActorClass(0, "DestronHeadHitbox")) {
+    int amount = GetEventResult();
+    if (amount <= 0) { SetResultValue(0); terminate; }
+
+    if (!SetActivator(0, AAPTR_MASTER)) { SetResultValue(0); terminate; }
+    if (!UH_DestronHeadIsBoss()) { SetResultValue(0); terminate; }
+    int bosstid = ActivatorTID();
+    int bossplayer = PlayerNumber();
+    if (bosstid <= 0) { SetResultValue(0); terminate; }
+
+    if (!SetActivator(0, AAPTR_DAMAGE_SOURCE)) { SetResultValue(0); terminate; }
+    // The boss's own body must never hit its own head proxy.
+    if (PlayerNumber() >= 0 && PlayerNumber() == bossplayer) {
+      SetResultValue(0);
+      terminate;
+    }
+
+    uh_destron_head_pass = 1;
+    Thing_Damage2(bosstid, amount, dmgtype);
+    uh_destron_head_pass = 0;
+    SetResultValue(0);
+    terminate;
+  }
+
+  // ---- boss body: everything except forwarded head damage is cancelled ----
+  if (!UH_DestronHeadIsBoss())
+    terminate;
+  if (uh_destron_head_pass)
+    terminate;
+  // No inflictor = environmental damage (crush, sector, ACS damage) -> allow.
+  if (!SetActivator(0, AAPTR_DAMAGE_INFLICTOR))
+    terminate;
+  if (!StrICmp(dmgtype, "Telefrag") || !StrICmp(dmgtype, "SpawnTelefrag") ||
+      !StrICmp(dmgtype, "InstantDeath") || !StrICmp(dmgtype, "DeathPit"))
+    terminate;
+
+  SetResultValue(0);
+}

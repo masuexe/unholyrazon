@@ -69,3 +69,38 @@ actor DestronExplodeFX : BasicGraphicEffect {
     stop
   }
 }
+
+// Head weak-point proxy for the Destron bosses. Invisible, non-solid shootable
+// actor warped to the head every other tic. Its own damage is cancelled by
+// uh_DestronHeadDamage and forwarded to the master player, so the boss's native
+// damage pipeline (armor/damage type/credit) still applies. The boss body is
+// made NONSHOOTABLE in the three UH_*Destron_MorphSetup_P actors, so projectiles
+// pass through the body and only this box can be hit.
+actor DestronHeadHitbox {
+  Health 100000000
+  Radius 9
+  Height 14
+  PainChance 0
+  RenderStyle "None"
+  +SHOOTABLE
+  +USEDAMAGEEVENTSCRIPT
+  +NOGRAVITY
+  +NOTARGET
+  +NODAMAGETHRUST
+  +NOBLOOD
+  -SOLID
+  -COUNTKILL
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 1
+    goto Follow
+   Follow:
+    TNT1 A 1 A_Warp(AAPTR_MASTER, 0, 0, 62, 0, WARPF_NOCHECKPOSITION | WARPF_COPYINTERPOLATION)
+    TNT1 A 1 A_JumpIf(CallACS("uh_DestronHeadProxyAlive") == 0, "Death")
+    loop
+   Death:
+    TNT1 A 0
+    stop
+  }
+}

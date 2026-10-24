@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261024
+
+- Purple Destron, Blue Destron, and Red Destron now take damage only from the small triangle on the head. Body hits show impact effects but cause no damage, and projectiles pass through the body. Head hits keep the normal damage type, armor, and kill credit.
+
 ## 4.0.0-beta.261023
 
 - Added host-tunable MegaMan daily copy-weapon damage and friendly-fire randomization: 14 server CVars for the permutation/count salts, strides, RNG and hash constants under Unholy Server Options → Rules → MegaMan Weapons → Advanced Tuning. The local date remains the seed, defaults preserve the existing daily results, and changes apply immediately without a restart.
