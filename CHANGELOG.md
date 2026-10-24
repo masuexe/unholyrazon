@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261024
 
+- Fixed the health bar staying at a Boss's starting health when spectating online, including after dying or reconnecting. It now follows the Boss's current health even with teammate displays disabled.
 - Purple Destron, Blue Destron, and Red Destron now take damage only from the small triangle on the head. Body hits show impact effects but cause no damage, and projectiles pass through the body. Head hits keep the normal damage type, armor, and kill credit.
 
 ## 4.0.0-beta.261023

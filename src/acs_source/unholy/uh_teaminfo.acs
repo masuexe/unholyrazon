@@ -303,6 +303,21 @@ script "uh_ti_stat_clear" (int pn) CLIENTSIDE {
   UH_Ti_ClearStats(pn);
 }
 
+// LMS does not send enemy health through the engine's player-stat commands,
+// even to spectators. SBARINFO and custom health bars read the camera pawn,
+// so the teammate cache alone cannot update their display. Mirror authoritative
+// live health on the spectator's local pawn copy. Never run on a listen server
+// (ConsolePlayerNumber == -1), a playing client, or a dead pawn: setting zero
+// with APROP_Health would execute a second, client-only death sequence.
+script "uh_ti_spectator_health" (int pn, int hp) CLIENTSIDE {
+  int viewer = ConsolePlayerNumber();
+  if (viewer < 0 || PlayerIsSpectator(viewer) == 0) {terminate;}
+  if (pn < 0 || pn >= MAX_PLAYERS || hp <= 0) {terminate;}
+  if (!SetActivatorToPlayer(pn)) {terminate;}
+  if (GetActorProperty(0, APROP_Health) <= 0) {terminate;}
+  SetActorProperty(0, APROP_Health, hp);
+}
+
 script "uh_ti_client_disconnect" (int gone) DISCONNECT CLIENTSIDE {
   UH_Ti_EnsureClientInitialized();
   if (gone < 0 || gone >= MAX_PLAYERS) {terminate;}
@@ -731,10 +746,14 @@ function void UH_Ti_RefreshStats(int first, int end) {
   // Cache the per-viewer eligibility once per refresh: PlayerIsSpectator == 1
   // is a connected true spectator (PlayerInGame excludes spectators).
   bool vspec[MAX_PLAYERS];
+  bool vobserving[MAX_PLAYERS];
   bool velig[MAX_PLAYERS];
+  bool allowSpy = GetCVar("lms_spectatorview") != 0;
   bool uixOn = GetCVar("UIX_SV_TEAMINFO") != 0;
   for (int v = 0; v < MAX_PLAYERS; v++) {
-    vspec[v] = (PlayerIsSpectator(v) == 1);
+    int spectator = PlayerIsSpectator(v);
+    vspec[v] = (spectator == 1);
+    vobserving[v] = (spectator != 0 && allowSpy);
     velig[v] = false;
     if (!PlayerInGame(v) && !vspec[v]) {continue;}
     bool nativeOn = (GetUserCVar(v, "uh_cl_teaminfo") != 0);
@@ -769,6 +788,16 @@ function void UH_Ti_RefreshStats(int first, int end) {
     }
     uhsrvWasingame[s] = true;
     int hp = GetActorProperty(tid, APROP_Health);
+    // Native camera HUD health must work with both teammate displays disabled.
+    // Send the full integer before the teammate packet's 16-bit clamp: Boss
+    // scaling can exceed that packet's range. Both true and dead spectators
+    // may follow enemies when lms_spectatorview permits it; playing clients
+    // get none. Keep this separate from the teammate-row authorization.
+    for (int observer = 0; observer < MAX_PLAYERS; observer++) {
+      if (vobserving[observer]) {
+        NamedExecuteClientScript("uh_ti_spectator_health", observer, s, hp);
+      }
+    }
     if (hp < 0) {hp = 0;} if (hp > 65535) {hp = 65535;}
     int maxhp = GetActorProperty(tid, APROP_SpawnHealth);
     if (maxhp < 0) {maxhp = 0;} if (maxhp > 65535) {maxhp = 65535;}
