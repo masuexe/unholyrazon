@@ -33,7 +33,8 @@ A map that loads proves startup only; it does not prove gameplay compatibility.
    callers. UH overrides the old DTADDR and CORE8BDT, so updating only one side
    can break registration. Preserve UH capacities and custom registration data.
 2. **Class slots require an inheritance audit.** v6c connects ClassBase2 to
-   ClassBaseSlot100; UH currently connects to ClassBaseSlot50. Preserve the UH
+   ClassBaseSlot100; the initial UH implementation connected to ClassBaseSlot50.
+   The endpoint is now updated to ClassBaseSlot100. Preserve the UH
    damage, pain, movement, and death layers while checking all new slot labels
    and overrides. Changing the final number alone cannot establish correctness.
 3. **Jump handling uses hooks.** v6c JUMPCANC dispatches HF_JUMP_* hooks, while
@@ -138,7 +139,7 @@ Validation:
 - The rebuilt out/build.pk3 is now a v6c migration artifact. Do not test it with
   the unchanged v6b profile. Rebuild the recovery commit to obtain a v6b package.
 
-Still pending: ClassBase slots 51-100, jump hooks, bar APIs, built-in UI,
+Still pending: jump hooks, bar APIs, built-in UI,
 full-round behavior, new maps/items, and dedicated-client regression tests.
 These startup changes are included in the first migration checkpoint.
 
@@ -175,3 +176,32 @@ and an explicit lethal hit (health 0) on Linux. The 31-check smoke gate passed.
 The maintainer confirmed on Windows that death no longer crashes the game
 and approved pushing this migration checkpoint. This confirms the reported
 death crash fix; the remaining migration work listed above is still pending.
+
+
+## ClassBase extension slots (2026-10-28)
+
+The effective ClassBase2 parent is now ClassBaseSlot100. The chain still begins
+at ClassBaseSlot0 inheriting ClassBase_UH40_DeathEffects, so all UH pain, status,
+movement, and death layers remain below the base-game extension slots.
+
+Audited all 100 stock include entries and their corresponding package files.
+Every slot inherits its immediate predecessor and has an empty body. Slots
+51-100 extend the addon inheritance surface; they do not add playable classes
+or new stock behavior. The stock slot files remain in the v6c package and are
+not copied into this repository. Generic robot and shootable-actor slot chains
+are separate systems and retain their existing counts.
+
+A temporary diagnostic addon overrides only the base slot-100 include with
+unique pain/death markers. This tests whether actual survivor and boss bodies
+inherit an extension at the new endpoint while retaining UH death handling.
+The diagnostic addon is excluded from out/build.pk3.
+
+Validation passed for Igniter, Juggernaut, and a debug morph into Magic
+Specialist. A 10-point nonlethal hit left each body at 990 HP and set only the
+slot-100 pain marker. A subsequent lethal hit set the slot-100 death marker,
+left the body at 0 HP, and kept the engine responsive. This confirms both the
+new extension endpoint and continued survivor/boss death handling. All 100
+stock include paths and predecessor links also matched the actual v6c archive.
+The rebuilt package was checked byte-for-byte against the edited ClassBase2
+source; it contains neither copied slot definitions nor the diagnostic library.
+The existing smoke gate passed 31 checks. Changes remain uncommitted.

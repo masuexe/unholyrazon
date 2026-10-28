@@ -78,10 +78,10 @@ ACS_INCLUDE_DIRS = (
 )
 
 # DECORATE include targets that only the base game PK3 provides.  AGENTS.md
-# documents this one: the 50 classbase slot files are a v6b asset.
+# documents this one: the 100 classbase slot files are a v6c asset.
 EXTERNAL_INCLUDES = {
     "actors/player/classbase/customslots/_classbaseslot.txt": (
-        "base game v6b supplies the customslots/_classbaseslot.txt chain"
+        "base game v6c supplies the customslots/_classbaseslot.txt chain"
     ),
 }
 
