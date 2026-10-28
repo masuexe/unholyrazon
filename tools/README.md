@@ -575,3 +575,29 @@ See [REFERENCES.md](REFERENCES.md) for full catalog and download links.
 - **Local machine path overrides**:
   Copy `tools/paths.json.example` to `tools/paths.local.json` to customize paths without modifying git-tracked files.
 
+
+### CXAirMan remote ammo regression
+
+`node tools/mcp/boss-ammo-test.mjs --probe /tmp/ammoprobe.pk3 --json`
+starts one dedicated server and one remote client. It checks an ultimate cast
+with a deliberately one-point-stale client meter, an insufficient-energy
+attack, refill and normal casting, and teleport energy consumption/recovery.
+The probe is diagnostic only; never include it in the released mod.
+
+Build the probe with native ACC (adjust the compiler include directory to your
+reference configuration):
+
+```bash
+acc -i ../references/zandronum/acc-branch-zandronum tools/mcp/fixtures/boss-ammo-probe.acs /tmp/AMMOPROB.o
+python3 - <<'PY'
+import zipfile
+with zipfile.ZipFile('/tmp/ammoprobe.pk3', 'w') as archive:
+    archive.write('/tmp/AMMOPROB.o', 'acs/AMMOPROB.o')
+    archive.writestr('LOADACS', 'AMMOPROB\n')
+PY
+```
+
+The original weapon-state drain left the remote meter at 1499 while the server
+spent its 1500 energy. The fixed drain sends the server's remaining amount;
+both meters reach zero. This isolates a synchronization failure, rather than
+assuming a naturally occurring lag condition will reproduce on localhost.

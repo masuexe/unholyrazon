@@ -4,6 +4,10 @@
 
 ---
 
+## Unreleased
+
+- Fixed CXAirMan's energy bars staying filled online after spending energy on his ultimate or teleport.
+
 ## 4.0.0-beta.261024
 
 - Fixed Tidal Tito's laser trail and wave shield explosions damaging Boss teammates in multi-boss matches. Boss teammates are now properly immune to his splash damage.
