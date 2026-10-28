@@ -13,28 +13,13 @@ script "uh_IsUnderWaterGravity" (void) {
   }
 }
 
-// Rebuild DefaultProperties from current actor (Bearer copy of PUAPROP; avoids core_defineaproppowers spawn-invuln).
+// v6c stores defaults on the actor instead of in CORE8BDT's old per-player
+// array. Its initializer also covers the new custom properties and capacity.
+// The v6c implementation has no spawn-invulnerability side effect.
 function void DefineDefaultProperties(void) {
-  int p = PlayerNumber();
-  if (p < 0)
+  if (PlayerNumber() < 0)
     return;
-  for (int i = 0; i < MAX_PROPS; i++) {
-    int prop = getPropertyFromIndex(i);
-    if (prop == CAPROP_AirJumpZ) {
-      defaultproperties[p][i] = (CheckInventory("AirJumpZ") * 1.0) + FixedDiv(CheckInventory("AirJumpZDecimal") * 1.0, 10000.0);
-      if (defaultproperties[p][i] == 0.0)
-        defaultproperties[p][i] = GetActorProperty(0, APROP_JumpZ);
-      ACS_NamedExecuteWithResult("core_SetCustomActorProperty", 0, CAPROP_AirJumpZ, defaultproperties[p][i]);
-    }
-    else if (prop == CAPROP_WallJumpZ) {
-      defaultproperties[p][i] = (CheckInventory("WallJumpZ") * 1.0) + FixedDiv(CheckInventory("WallJumpZDecimal") * 1.0, 10000.0);
-      if (defaultproperties[p][i] == 0.0)
-        defaultproperties[p][i] = GetActorProperty(0, APROP_JumpZ);
-      ACS_NamedExecuteWithResult("core_SetCustomActorProperty", 0, CAPROP_WallJumpZ, defaultproperties[p][i]);
-    }
-    else
-      defaultproperties[p][i] = GetActorProperty(0, prop);
-  }
+  ACS_NamedExecuteWithResult("core_defineaproppowers");
 }
 
 // ============================================================================

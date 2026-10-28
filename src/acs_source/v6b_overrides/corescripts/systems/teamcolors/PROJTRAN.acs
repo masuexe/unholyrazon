@@ -2,56 +2,104 @@
 #include "zcommon.acs"
 
 #include "8BDMDEFS.acs"
+#include "8BDMVARS.acs"
 
-function bool ProjTeamColorCVar(void) {
-  return (ProjTeamColorCVarServer() && ProjTeamColorCVarClient());
+script "core_projtransgive" (void)
+{
+	if(!isTeamGame || isCooperative)
+		terminate;
+
+	int pln = ACS_NamedExecuteWithResult("core_gettarget", false, true);
+
+	int team = GetPlayerInfo(pln, PLAYERINFO_TEAM);
+	if(team < 0)
+		terminate;
+
+	if(CheckForVar("user_NoTranslation"))
+		terminate;
+
+	if(CheckActorInventory(pln + PLN_TID, "NoProjectileTeamTranslation"))
+		terminate;
+
+	if(!ProjTeamColorCvarServer())
+		terminate;
+
+	bool whites = CheckForVar("user_TranslateWhiteColors");
+	bool blacks = CheckForVar("user_TranslateBlackColors");
+
+	if(CheckForVar("user_translateLikePlayer")) {
+		int translation = GetActorProperty(0, APROP_Mass);
+		if(translation == 100)
+			translation = TCLR_DEFAULT;
+	} else {
+		translation = WhitesBlacksOffset(whites, blacks);
+	}
+
+	ACS_NamedExecuteWithResult("core_Set_Projectile_Translation", team, whites, blacks, translation);
 }
 
-function bool ProjTeamColorCVarClient(void) {
-  return (GetUserCVar(ConsolePlayerNumber(), "mm8bdm_projteamcolor") > 0);
+// This script is vestigial
+script "core_projtransgiveclient" (void)
+{
+    GiveInventory("ProjTeamColor1Client", 1);
 }
 
-function bool ProjTeamColorCVarServer(void) {
-  return (GetCVar("mm8bdm_sv_projteamcolor") > 0);
+function bool ProjTeamColorCvar(void) {
+	return (ProjTeamColorCvarServer()&&ProjTeamColorCvarClient());
 }
 
-script "core_Set_Projectile_Translation" (int i, int whites, int blacks) CLIENTSIDE {
-  if (ProjTeamColorCVarClient() || i > 6) {  // $UH Team translation check
-    Thing_SetTranslation(0, WhitesBlacksOffset(whites, blacks) + i);
-  }
+function bool ProjTeamColorCvarClient(void) {
+	return (GetUserCvar(ConsolePlayerNumber(),"mm8bdm_projteamcolor")>0);
+}
+
+function bool ProjTeamColorCvarServer(void) {
+	return (GetCvar("mm8bdm_sv_projteamcolor")>0);
+}
+
+script "core_Set_Projectile_Translation" (int i, int whites, int blacks, int translation) CLIENTSIDE
+{
+	if(ProjTeamColorCvarClient() || i > 6) { // UH class palettes ignore the team-color toggle.
+		if(translation == 0)
+			translation = WhitesBlacksOffset(whites, blacks);
+
+		Thing_SetTranslation(0, translation + i);
+	}
 }
 
 function int WhitesBlacksOffset(int whites, int blacks) {
-  if (whites && blacks) return PCLR_TEAMPROJ_ALL;
-  if (blacks) return PCLR_TEAMPROJ_BLACKS;
-  if (whites) return PCLR_TEAMPROJ_WHITES;
-  return PCLR_TEAMPROJ;
+	if(whites && blacks) return PCLR_TEAMPROJ_ALL;
+	if(blacks) return PCLR_TEAMPROJ_BLACKS;
+	if(whites) return PCLR_TEAMPROJ_WHITES;
+	return PCLR_TEAMPROJ;
 }
 
 script "core_Check_TranslateWhiteColors" (void) {
-  SetResultValue(CheckForVar("User_TranslateWhiteColors"));
+	SetResultValue(CheckForVar("User_TranslateWhiteColors"));
 }
 
 script "core_Check_TranslateBlackColors" (void) {
-  SetResultValue(CheckForVar("User_TranslateBlackColors"));
+	SetResultValue(CheckForVar("User_TranslateBlackColors"));
 }
 
 script "core_Check_NoTranslation" (void) {
-  SetResultValue(CheckForVar("User_NoTranslation"));
+	SetResultValue(CheckForVar("User_NoTranslation"));
 }
 
-// 1 = skip PickupClass / class-palette slots (i>6); team slots 0-3 still apply
-script "uh_Check_NoClassTranslation" (void) {
-  SetResultValue(CheckForVar("user_NoClassTranslation"));
+script "core_Check_TranslateLikePlayer" (void) {
+	SetResultValue(CheckForVar("User_TranslateLikePlayer"));
 }
 
-function bool CheckForVar(str thevar) {
-  SetUserVariable(0, thevar, 1);
-  return (GetUserVariable(0, thevar) == 1);
+function bool CheckForVar(str theVar) {
+	SetUserVariable(0,theVar,1);
+	return (GetUserVariable(0,theVar)==1);
 }
 
 script "core_Check_ProjectileColor_Server" (void) {
-  SetResultValue(ProjTeamColorCVarServer());
+	SetResultValue(ProjTeamColorCvarServer());
+}
+// UH class-palette opt-out; team slots remain available.
+script "uh_Check_NoClassTranslation" (void) {
+  SetResultValue(CheckForVar("user_NoClassTranslation"));
 }
 
 // Rail trail/puff CLIENTSIDEONLY FX often have null target, so ProjTeamColor2

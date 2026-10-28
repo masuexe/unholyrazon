@@ -6,6 +6,7 @@
 
 ## Unreleased
 
+- Added initial MM8BDM v6c support. Current migration builds require v6c; gameplay and multiplayer compatibility testing is ongoing.
 - Fixed CXAirMan's energy bars staying filled online after spending energy on his ultimate or teleport.
 
 ## 4.0.0-beta.261024

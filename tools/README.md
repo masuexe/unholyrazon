@@ -601,3 +601,27 @@ The original weapon-state drain left the remote meter at 1499 while the server
 spent its 1500 energy. The fixed drain sends the server's remaining amount;
 both meters reach zero. This isolates a synchronization failure, rather than
 assuming a naturally occurring lag condition will reproduce on localhost.
+
+
+### v6c weapon death regression
+
+Build the diagnostic addon from `tools/mcp/fixtures/weapon-death/`:
+
+```bash
+acc -i ../references/zandronum/acc-branch-zandronum tools/mcp/fixtures/weapon-death/probe.acs /tmp/WDTHPROB.o
+python3 - <<'PYPROBE'
+import zipfile
+with zipfile.ZipFile('/tmp/weapon-death-probe.pk3', 'w') as archive:
+    archive.write('tools/mcp/fixtures/weapon-death/LOADACS', 'LOADACS')
+    archive.write('/tmp/WDTHPROB.o', 'acs/WDTHPROB.o')
+PYPROBE
+ZANDRONUM_LAUNCH_PROFILES=tools/mm8bdm-v6c.launch.json node tools/mcp/weapon-death-test.mjs --probe /tmp/weapon-death-probe.pk3
+```
+
+Adjust the ACC include path for your local compiler sources. The test uses one
+isolated client on TRAINING. It exercises Igniter, Juggernaut, and Magic
+Specialist's separate cleanup override. A lethal JuggerShot hit must return, leave the player
+dead, and keep the engine responsive. This specifically catches inherited state
+offset changes that a source-only state-loop check cannot resolve. Keep the
+probe addon out of release packages. Dedicated-server behavior is a separate
+regression requirement.
