@@ -20,7 +20,7 @@ python3 tools/relay.py resume
 
 ## Documentation language
 
-Write Markdown documentation in English. Keep conversations with the maintainer in Chinese. Preserve original identifiers, quoted reports, and class aliases when their exact text is needed.
+Write Markdown documentation in English. Keep conversations with the maintainer in Chinese. Preserve original identifiers, quoted reports, and class aliases when their exact text is needed. Localized changelogs are an exception: keep `CHANGELOG.md` and `CHANGELOG.zh-CN.md` synchronized in English and Simplified Chinese.
 
 ## Project identity
 
