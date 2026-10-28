@@ -1,80 +1,115 @@
-// This is a copy of MM8BDM v6b "utilities/FOOTCHEC.acs"
-// Any area with the following line
-// $UH
-// Means that area is edited for UH
-
+// v6c collision APIs with UH inverted footing and a separate tolerance wrapper.
 #library "FOOTCHEC"
 #include "zcommon.acs"
 
-script "core_CheckFooting" (int tol) {  // $UH optional footing tolerance (0 = v6b behaviour)
-  SetResultValue(CheckFootingFunc(tol));
+script "core_CheckFooting" (int offs) {
+	SetResultValue(CheckFootingFunc("8bdmFootholdCheck", offs << 16));
 }
 
-script "core_CheckFooting_ThruPlayer" (void) {
-  SetResultValue(CheckFootingFunc_ThruPlayer());
+script "core_CheckFooting_ThruPlayer" (int offs) {
+	SetResultValue(CheckFootingFunc("8bdmFootholdCheck_ThruPlayer", offs << 16));
 }
 
-function bool CheckInvertedFooting(void) {  // $UH
-  return CheckInventory("CeilingFlag") || GetActorProperty(0, APROP_Gravity) < 0;
+script "core_CheckCeiling" (void) {
+	SetResultValue(CheckCeilingFunc("8bdmFootholdCheck"));
 }
 
-function bool CheckCeilingFootingFunc(str footingactor, int tol) {  // $UH tol widens the inverted-gravity band symmetrically
-  int z = GetActorZ(0);
-  if (CheckInventory("OnCeilingFlag")) return true;
-  if (GetActorCeilingZ(0) - z <= 58.0 + (tol << 16)) return true;
-  if (!SpawnFootingFunc(footingactor, GetActorX(0), GetActorY(0), z + GetActorProperty(0, APROP_Height))) return true;
-  return false;
+script "core_CheckCeiling_ThruPlayer" (void) {
+	SetResultValue(CheckCeilingFunc("8bdmFootholdCheck_ThruPlayer"));
 }
 
-// $UH tol>0 treats a small gap as grounded (stair steps)
-function bool CheckFootingFunc(int tol) {
-  if (CheckInvertedFooting()) return CheckCeilingFootingFunc("8bdmFootholdCheck", tol);  // $UH
-  int z = GetActorZ(0);
-  if (z - GetActorFloorZ(0) == 0.0) return true;
-  // PrintBold(i:SpawnFootingFunc("8bdmFootholdCheck",z));
-  if (tol > 0) return (z - GetActorFloorZ(0) <= (tol << 16));  // $UH compare against floorz, not a deep probe (wall clipping)
-  if (!SpawnFootingFunc("8bdmFootholdCheck", GetActorX(0), GetActorY(0), z - 1.0)) return true;
-  return false;
+script "core_CheckFooting_custom" (int footingActor, int offs) {
+	SetResultValue(CheckFootingFunc(footingActor, offs << 16));
 }
 
-function bool SpawnFootingFunc(str footingactor, int x, int y, int z) {
-  int u = UniqueTID();
-  bool spawned = Spawn(footingactor, x, y, z, u);
-  Thing_Remove(u);
-  return spawned;
+script "core_CheckCeiling_custom" (int footingActor) {
+	SetResultValue(CheckCeilingFunc(footingActor));
 }
 
-function bool CheckFootingFunc_ThruPlayer(void) {
-  if (CheckInvertedFooting()) return CheckCeilingFootingFunc("8bdmFootholdCheck_ThruPlayer", 0);  // $UH
-  int z = GetActorZ(0);
-  if (z - GetActorFloorZ(0) == 0.0) return true;
-  // PrintBold(i:SpawnFootingFunc("8bdmFootholdCheck_ThruPlayer",z));
-  if (!SpawnFootingFunc("8bdmFootholdCheck_ThruPlayer", GetActorX(0), GetActorY(0), z - 1.0)) return true;
-  return false;
+// The former UH positive tolerance is NOT the v6c signed probe offset.
+script "uh_CheckFootingTolerance" (int tolerance) {
+    if (CheckInvertedFooting()) {
+        SetResultValue(CheckInvertedSupport("8bdmFootholdCheck", tolerance << 16));
+    } else if (tolerance > 0) {
+        SetResultValue(GetActorZ(0) - GetActorFloorZ(0) <= (tolerance << 16));
+    } else { SetResultValue(CheckFootingFunc("8bdmFootholdCheck", 0)); }
+}
+
+function bool CheckInvertedFooting(void) {
+    return CheckInventory("CeilingFlag") || GetActorProperty(0, APROP_Gravity) < 0;
+}
+
+function bool CheckInvertedSupport(str footingActor, int tolerance) {
+    if (CheckInventory("OnCeilingFlag")) return true;
+    if (GetActorCeilingZ(0) - GetActorZ(0) <= 58.0 + tolerance) return true;
+    return CheckCeilingFunc(footingActor);
+}
+
+function bool CheckFootingFunc (str footingActor, int offs) {
+    // Keep UH support-surface semantics, with positive offsets moving away from it.
+    if (CheckInvertedFooting()) return CheckInvertedSupport(footingActor, -offs);
+	int z = GetActorZ(0);
+
+	if(z-GetActorFloorZ(0)+offs <= 0) return true;
+	if(!SpawnFootingFunc(footingActor,GetActorX(0),GetActorY(0),z-1.0+offs)) return true;
+
+	return false;
+}
+
+function bool CheckCeilingFunc (str footingActor) {
+	int z = GetActorZ(0) + GetActorProperty(0, APROP_Height);
+
+	if(z >= GetActorCeilingZ(0)) return true;
+	if(!SpawnFootingFunc(footingActor,GetActorX(0),GetActorY(0),z)) return true;
+
+	return false;
+}
+
+function bool SpawnFootingFunc(str footingActor, int x, int y, int z) {
+	int u = UniqueTID();
+	bool spawned = Spawn(footingActor,x,y,z,u);
+	Thing_Remove(u);
+	return spawned;
 }
 
 script "core_checkWall_north" (void) {
-  SetResultValue(CheckWallFunc(GetActorAngle(0), 23, 8.0));
+	SetResultValue(CheckWallFunc((GetActorAngle(0)>>8)+0));
 }
 
 script "core_checkWall_east" (void) {
-  SetResultValue(CheckWallFunc(GetActorAngle(0) + 0.75, 23, 8.0));
+	SetResultValue(CheckWallFunc((GetActorAngle(0)>>8)+192));
 }
 
 script "core_checkWall_south" (void) {
-  SetResultValue(CheckWallFunc(GetActorAngle(0) + 0.5, 23, 8.0));
+	SetResultValue(CheckWallFunc((GetActorAngle(0)>>8)+128));
 }
 
 script "core_checkWall_west" (void) {
-  SetResultValue(CheckWallFunc(GetActorAngle(0) + 0.25, 23, 8.0));
+	SetResultValue(CheckWallFunc((GetActorAngle(0)>>8)+64));
 }
 
-function bool CheckWallFunc(int angle, int dist, int height) {
-  if (!SpawnFootingFunc("8bdmWallCheck_ThruPlayer",
-                        GetActorX(0) + (dist * cos(angle)),
-                        GetActorY(0) + (dist * sin(angle)),
-                        GetActorZ(0) + height)) {
-    return true;
-  }
-  return false;
+script "core_checkwall" (int ang) {
+	SetResultValue(CheckWallFunc(ang >> 8));
+}
+
+script "core_checkwall_custom" (int ang, int proj1, int proj2) {
+	SetResultValue(CheckWallFuncCustom(ang >> 8, proj1, proj2));
+}
+
+function bool CheckWallFunc(int Ang) {
+	return CheckWallFuncCustom(Ang, "8BDM_WallJumpCheck", "8BDM_WallJumpCheck_ThruPlayer");
+}
+
+function bool CheckWallFuncCustom(int Ang, str proj1, str proj2) {
+	int u = UniqueTID();
+	SpawnProjectile(0,proj1,Ang,255,10,0,u);
+	bool spawned = CheckActorInventory(u, "Once") == 0;
+	if(spawned){
+		int v = UniqueTID();
+		SpawnProjectile(u,proj2,Ang,255,10,0,v);
+		spawned = CheckActorInventory(v, "Once") == 0;
+		Thing_Remove(v);
+	}
+	Thing_Remove(u);
+	return !spawned;
 }

@@ -139,7 +139,7 @@ Validation:
 - The rebuilt out/build.pk3 is now a v6c migration artifact. Do not test it with
   the unchanged v6b profile. Rebuild the recovery commit to obtain a v6b package.
 
-Still pending: jump hooks, bar APIs, built-in UI,
+Still pending after this startup checkpoint: jump hooks, bar APIs, built-in UI,
 full-round behavior, new maps/items, and dedicated-client regression tests.
 These startup changes are included in the first migration checkpoint.
 
@@ -204,4 +204,44 @@ new extension endpoint and continued survivor/boss death handling. All 100
 stock include paths and predecessor links also matched the actual v6c archive.
 The rebuilt package was checked byte-for-byte against the edited ClassBase2
 source; it contains neither copied slot definitions nor the diagnostic library.
-The existing smoke gate passed 31 checks. Changes remain uncommitted.
+The existing smoke gate passed 31 checks. This milestone was pushed as b870b636.
+
+
+## Jump and movement hooks (2026-10-28)
+
+JUMPCANC now uses the v6c dispatcher for nonspecific, pressed, held, released,
+and idle jump hooks. Rising and falling follow the active gravity orientation.
+The existing UH bot exclusion remains; this port does not change bot movement
+ownership. The old landing-velocity heuristic is replaced by footing checks,
+as in v6c.
+
+A COREJUMP shadow supplies the v6c callbacks, jet-adaptor behavior, dash-property
+helpers, and independent wall-thrust property. The base LOADACS already owns
+this library; no new mod LOADACS entry is needed. UH ceiling, Venus blast, and
+water-treading jumps register before stock wall and adaptor hooks. Consumed-jump
+results propagate through the remaining callbacks. The jet callback also honors
+that result.
+
+Preserved UH behavior includes the AirFraud landing reset, legacy high-jump-rune
+lookup, cancellation toward the supporting surface, and ceiling-flipped air/wall
+jump impulses without a second sign inversion. Generic Boss still requires and
+spends exactly 100 energy only when an air jump succeeds.
+
+FOOTCHEC now exposes the v6c ceiling, custom footing, signed-offset, and
+projectile-based wall-check interfaces. The existing UH ceiling support band
+and attachment flag remain. RNC Clash Man's 32-unit stair tolerance moved to
+uh_CheckFootingTolerance so it cannot redefine the v6c offset argument.
+
+The focused diagnostic addon and runner are tools/mcp/fixtures/movement/ and
+tools/mcp/movement-test.mjs. Build/run instructions are in tools/README.md.
+The addon is never packed into the shipped mod. Contract checks isolate
+individual callbacks; real input separately checks dispatcher delivery.
+
+Validation: all project ACS libraries compile. The focused native v6c run
+passed 29 movement/footing assertions and 7 Generic Boss energy assertions.
+Real input delivered all five hook types, propagated a consuming hook result,
+and performed an air jump with one use and a 12-unit vertical impulse.
+The existing smoke gate passed 31 checks; its v6b defaults are still a limitation.
+Map-specific wall detection, all assist-item combinations, full LMS rounds, and
+dedicated-client movement/ammo synchronization remain separate requirements.
+The next migration milestone is the HUD/bar APIs and built-in v6c UI.

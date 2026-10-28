@@ -1,0 +1,294 @@
+// v6c movement callbacks; UH additions preserve class abilities and resource costs.
+#library "COREJUMP"
+#include "zcommon.acs"
+
+#include "8BDMDEFS.acs"
+#include "8BDMEFCT.acs"
+#include "DTADD.acs"
+
+// Run UH special jumps before the stock wall/adaptor/assist hooks.
+script "uh_register_jump_hooks" OPEN {
+    DefineHookFunction(DTADD_HF_JUMP_PRESSED, "uh_jump_pressed_special", 30000.0);
+    DefineHookFunction(DTADD_HF_JUMP_HELD, "uh_jump_held_ceiling", 30000.0);
+}
+
+script "uh_jump_pressed_special" (int usedJump, int grounded, int falling, int rising) {
+    if (usedJump) { SetResultValue(false); terminate; }
+    if (CheckInventory("OnCeilingFlag")) {
+        GiveInventory("ReverseJump", 1);
+        TakeInventory("OnCeilingFlag", 1);
+        SetResultValue(true);
+    } else if (!CheckInventory("JumpCancler") && CheckInventory("VenusBlastJumpFlag")) {
+        GiveInventory("VenusExplosiveJump_P", 1);
+        SetResultValue(true);
+    } else if (!CheckInventory("JumpCancler") && CheckInventory("CanTreadWater") && !CheckInventory("IsTreadingWater")) {
+        GiveInventory("GiveIsTreadingWater_P", 1);
+        SetResultValue(true);
+    } else { SetResultValue(false); }
+}
+
+script "uh_jump_held_ceiling" (int usedJump, int grounded, int falling, int rising) {
+    if (!usedJump && CheckInventory("OnCeilingFlag")) {
+        GiveInventory("ReverseJump", 1);
+        TakeInventory("OnCeilingFlag", 1);
+        SetResultValue(true);
+    } else { SetResultValue(false); }
+}
+
+script "core_jump_nonspecific" (int grounded, int falling, int rising)
+{
+    if(falling)
+        TakeInventory("JumpCancler", 1);
+
+    if(grounded) {
+        if(!CheckInventory("JumpCancler"))
+            GiveInventory("JumpCancler", 1);
+
+        if(!CheckInventory("BoostFlag"))
+            GiveInventory("BoostFlag", 1);
+
+        if(CheckInventory("AirJumpsUsed") > 0)
+            TakeInventory("AirJumpsUsed", 9999);
+
+        if(CheckInventory("WallJumpsUsed") > 0)
+            TakeInventory("WallJumpsUsed", 9999);
+
+        TakeInventory("AirFraudAchieved", 99999);
+    }
+
+    // These stock markers are boolean inventories; the old shared header lacks SetInventory.
+    if (grounded) {
+        GiveInventory("IsGrounded", 1);
+        TakeInventory("IsAirborne", 1);
+    } else {
+        TakeInventory("IsGrounded", 1);
+        GiveInventory("IsAirborne", 1);
+    }
+
+    if(CheckInventory("JetAdaptorWep"))
+        if(CheckInventory("JetMeter") < GetAmmoCapacity("JetMeter"))
+            if(CheckInventory("BoostFlag"))
+                GiveInventory("JetAdaptor_Ammo_P", 1);
+}
+
+script "core_jump_released" (int grounded, int falling, int rising)
+{
+    if(CheckInventory("JumpCancler") > 0 && (!grounded || (grounded && rising))) {
+        TakeInventory("JumpCancler", 1);
+        if(CheckInventory("NoJumpCancel") == 0){
+            // Preserve UH jump cancellation toward the supporting surface.
+            bool inverted = CheckInventory("CeilingFlag") || GetActorProperty(0, APROP_Gravity) < 0;
+            ThrustThingZ(0, -1, inverted, 0);
+        }
+    }
+
+    if(CheckInventory("JetBoostPower")) {
+        TakeInventory("JetBoostPower", 1);
+        TakeInventory("JetAdaptorSpeed_P", 1);
+    }
+}
+
+script "core_jump_pressed_walljump" (int usedJump, int grounded, int falling, int rising)
+{
+    if(CheckInventory("DisabledWallJumps") <= 0 && (CheckInventory("WallJumpLimit") > CheckInventory("WallJumpsUsed") || CheckInventory("InfiniteWallJumps") > 0) && !usedJump) {
+        if(CheckInventory("JumpCancler") == 0) {
+            if (CheckInventory("PlayerPropertyFlight") <= 0) {
+                bool north = ACS_NamedExecuteWithResult("core_checkWall_north");
+                bool east = ACS_NamedExecuteWithResult("core_checkWall_east");
+                bool south = ACS_NamedExecuteWithResult("core_checkWall_south");
+                bool west = ACS_NamedExecuteWithResult("core_checkWall_west");
+                if(north || east || south || west) {
+                    GiveInventory("WallJumpsUsed", 1);
+                    ACS_NamedExecuteWithResult("core_walljump", north, east, south, west);
+                    PlaySound(0, "*walljump", CHAN_BODY);
+                    GiveInventory("JumpCancler", 1);
+
+                    SetResultValue(true);
+                    terminate;
+                }
+            }
+        }
+    }
+
+    SetResultValue(false);
+}
+
+script "core_jump_pressed_adaptor" (int usedJump, int grounded, int falling, int rising)
+{
+    if(CheckWeapon("SuperAdaptorWep") && !usedJump) {
+        if(CheckInventory("JumpCancler") == 0) {
+            if (CheckInventory("BoostFlag") == 1 && CheckInventory("PlayerPropertyFlight") <= 0 && CheckInventory("PlayerPropertyGrounded") <= 0) {
+                GiveInventory("Boosting", 1);
+                TakeInventory("BoostFlag", 1);
+
+                SetResultValue(true);
+                terminate;
+            }
+        }
+    }
+
+    SetResultValue(false);
+}
+
+script "core_jump_pressed_jet" (int usedJump, int grounded, int falling, int rising)
+{
+	if(!usedJump && CheckInventory("JumpCancler") == 0 && CheckWeapon("JetAdaptorWep")) {
+		if (CheckInventory("JetMeter") > 0 && CheckInventory("PlayerPropertyFlight") < 1 && CheckInventory("PlayerPropertyGrounded") < 1) {
+			GiveInventory("JetAdaptorBoosting_CI",1);
+
+			SetResultValue(true);
+			terminate;
+		}
+	}
+
+	SetResultValue(false);
+}
+
+script "core_jump_pressed_boost" (int usedJump, int grounded, int falling, int rising)
+{
+    if(CheckWeapon("TrebleBoost") && !usedJump) {
+        if(CheckInventory("JumpCancler") == 0) {
+            if (CheckInventory("TrebleBoostDelay") == 0 && CheckInventory("BoostFlag") == 1 && CheckInventory("PlayerPropertyFlight") <= 0 && CheckInventory("PlayerPropertyGrounded") <= 0) {
+                ACS_NamedExecuteWithResult("core_trebleboostdash");
+                GiveInventory("TrebleBoostDelay", 1);
+                GiveInventory("TrebleBoostJet", 1);
+                TakeInventory("BoostFlag", 1);
+
+                SetResultValue(true);
+                terminate;
+            }
+        }
+    }
+
+    SetResultValue(false);
+}
+
+script "core_jump_pressed_airjump" (int usedJump, int grounded, int falling, int rising)
+{
+    if(CheckInventory("DisabledAirJumps") <= 0 && (CheckInventory("AirJumpLimit") > CheckInventory("AirJumpsUsed") || CheckInventory("InfiniteAirJumps") > 0) && !usedJump) {
+        if(CheckInventory("JumpCancler") == 0) {
+            if (CheckInventory("PlayerPropertyFlight") <= 0
+                && (!CheckActorClass(0, "GENERICBOSS") || CheckInventory("UnholyBossAmmo100") >= 100)) {
+                // Charge only after the authoritative jump passes every gate.
+                if (CheckActorClass(0, "GENERICBOSS")) TakeInventory("UnholyBossAmmo100", 100);
+                GiveInventory("AirJumpsUsed", 1);
+                int height = ACS_NamedExecuteWithResult("core_GetCustomActorProperty", 0, DTADD_CAPROP_AirJumpZ) * (1 + (CheckInventory("PowerHighJumpRune") || CheckInventory("RuneHighJump")));
+                // FlipAirZ may already have inverted the property; never flip twice.
+                if (CheckInventory("CeilingFlag") && height > 0) height = -height;
+                SetActorVelocity(0, GetActorVelX(0), GetActorVelY(0), height, 0, 0);
+                PlaySound(0, "*airjump", CHAN_BODY);
+                GiveInventory("JumpCancler",1);
+
+                SetResultValue(true);
+                terminate;
+            }
+        }
+    }
+
+    SetResultValue(false);
+}
+
+script "core_trebleboostdash" (void)
+{
+    int forward = GetPlayerInput(-1, INPUT_FORWARDMOVE);
+    int sideways = GetPlayerInput(-1, INPUT_SIDEMOVE);
+    int boostAngle = -360.0;
+    int boostTime = 7;
+    int speed = 45.0;
+    int hspeed = 22.5;
+
+    ActivatorSound("weapons/busters/trebleboostdash", 128);
+
+    if(forward > 0) {
+        if(sideways > 0) {
+            boostAngle = GetActorAngle(0)-0.1074;
+        } else if(sideways < 0) {
+            boostAngle = GetActorAngle(0)+0.1074;
+        } else {
+            boostAngle = GetActorAngle(0);
+        }
+    } else if(forward < 0) {
+        if(sideways > 0) {
+            boostAngle = GetActorAngle(0)+0.5+0.1074;
+        } else if(sideways < 0) {
+            boostAngle = GetActorAngle(0)+0.5-0.1074;
+        } else {
+            boostAngle = GetActorAngle(0)+0.5;
+        }
+    } else if(sideways > 0) {
+        boostAngle = GetActorAngle(0)-0.25;
+    } else if(sideways < 0) {
+        boostAngle = GetActorAngle(0)+0.25;
+    }
+
+    if(boostAngle == -360.0) {
+        for(int i = 0; i < boostTime; i++) {
+            ACS_NamedExecuteWithResult("core_dashThrustThingZ", 0, 30, 0, 0);
+            Delay(1);
+        }
+    } else {
+        for(i = 0; i < boostTime; i++) {
+            ACS_NamedExecuteWithResult("core_dashChangeVelocity", fixedMul(cos(boostAngle), speed), fixedMul(sin(boostAngle), speed), 0.01, CVFS_FIXED|CVFS_REPLACE);
+            Delay(1);
+        }
+        ACS_NamedExecuteWithResult("core_dashChangeVelocity", fixedMul(cos(boostAngle), hspeed), fixedMul(sin(boostAngle), hspeed), 0.01, CVFS_FIXED|CVFS_REPLACE);
+    }
+}
+
+// Partially borrowed from CBM, adapted using core systems
+script "core_walljump" (int north, int east, int south, int west)
+{
+    int NorthSouth = -2 * Func_CompareCompass(north,south);
+    int EastWest = 64 * Func_CompareCompass(east,west);
+
+    int Ang = -1;
+    if(NorthSouth != 0 || EastWest != 0)
+        Ang = EastWest / (NorthSouth + (NorthSouth == 0)) + 128 * (NorthSouth == -2);
+
+	int height = ACS_NamedExecuteWithResult("core_GetCustomActorProperty", 0, DTADD_CAPROP_WallJumpZ) * (1 + (CheckInventory("PowerHighJumpRune") || CheckInventory("RuneHighJump")));
+	int thrust = ACS_NamedExecuteWithResult("core_GetCustomActorProperty", 0, DTADD_CAPROP_WallJumpThrust) >> 16;
+	if (CheckInventory("CeilingFlag")) {
+        if (height > 0) height = -height;
+        // A flipped default WallJumpZ can also give the default thrust a negative sign.
+        // Keep horizontal thrust away from the wall for either property sign.
+        thrust = abs(thrust);
+    } else if(height < 0)
+        thrust *= -1;
+
+	if(Ang != -1) {
+		int facingAngle = GetActorAngle(0) >> 8;
+		int awayAngle = facingAngle + Ang;
+
+		int diff = abs(facingAngle - awayAngle);
+		if(diff > 128)
+			diff = 256 - diff;
+
+		int intoWall = FixedDiv((diff - 64) << 16, 64.0);
+		if(intoWall < 0.0)
+			intoWall = 0.0;
+
+		int wallThrust = 0.8 + (0.2 * (intoWall > 0));
+		int facingThrust = 1.0 - (0.8 * (intoWall > 0));
+
+		ThrustThing(awayAngle, (thrust * wallThrust) >> 16, 1);
+		ThrustThing(facingAngle, (thrust * facingThrust) >> 16, 1);
+	}
+
+	SetActorVelocity(0, GetActorVelX(0), GetActorVelY(0), height, 0, 0);
+
+	GiveInventory("PowerWallJumpSpeed", 1);
+}
+
+function int Func_CompareCompass(int Dir1, int Dir2)
+{
+	if (Dir1 > Dir2)
+		return 1;
+	else if (Dir1 < Dir2)
+		return -1;
+	return 0;
+}
+
+function int abs(int a)
+{
+	return a > 0 ? a : -a;
+}

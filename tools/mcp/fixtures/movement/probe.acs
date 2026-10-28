@@ -1,0 +1,148 @@
+#library "MOVPROB"
+#include "zcommon.acs"
+#include "DTADD.acs"
+
+// Diagnostic addon only. Never include this library in the shipped game.
+int failures;
+int checks;
+int events[5];
+int consume;
+int observedUsed;
+int observedAirUsed;
+int observedVelZ;
+
+script "UHTest_RegisterMovement" OPEN {
+    DefineHookFunction(DTADD_HF_JUMP_NONSPECIFIC, "UHTest_JumpAny", -30000.0);
+    DefineHookFunction(DTADD_HF_JUMP_PRESSED, "UHTest_JumpConsume", 31000.0);
+    DefineHookFunction(DTADD_HF_JUMP_PRESSED, "UHTest_JumpPressed", -30000.0);
+    DefineHookFunction(DTADD_HF_JUMP_HELD, "UHTest_JumpHeld", -30000.0);
+    DefineHookFunction(DTADD_HF_JUMP_RELEASED, "UHTest_JumpReleased", -30000.0);
+    DefineHookFunction(DTADD_HF_JUMP_IDLE, "UHTest_JumpIdle", -30000.0);
+}
+script "UHTest_JumpAny" (int grounded, int falling, int rising) { events[0]++; }
+script "UHTest_JumpConsume" (int used, int grounded, int falling, int rising) { SetResultValue(consume); }
+script "UHTest_JumpPressed" (int used, int grounded, int falling, int rising) {
+    events[1]++; observedUsed = used;
+    observedAirUsed = CheckInventory("AirJumpsUsed"); observedVelZ = GetActorVelZ(0);
+    SetResultValue(false);
+}
+script "UHTest_JumpHeld" (int used, int grounded, int falling, int rising) { events[2]++; SetResultValue(false); }
+script "UHTest_JumpReleased" (int grounded, int falling, int rising) { events[3]++; }
+script "UHTest_JumpIdle" (int grounded, int falling, int rising) { events[4]++; }
+
+function void Expect(bool condition, str label) {
+    checks++;
+    if (!condition) { failures++; Log(s:"UH_MOVEMENT_FAIL ", s:label); }
+}
+function void ClearJump(void) {
+    TakeInventory("JumpCancler", 9999);
+    TakeInventory("AirJumpsUsed", 9999);
+    TakeInventory("WallJumpsUsed", 9999);
+    TakeInventory("DisabledAirJumps", 9999);
+    TakeInventory("DisabledWallJumps", 9999);
+    TakeInventory("CeilingFlag", 9999);
+    TakeInventory("OnCeilingFlag", 9999);
+    TakeInventory("NoJumpCancel", 9999);
+    TakeInventory("PlayerPropertyFlight", 9999);
+    TakeInventory("RuneHighJump", 9999);
+    TakeInventory("PowerHighJumpRune", 9999);
+    TakeInventory("AirJumpLimit", 9999);
+    GiveInventory("AirJumpLimit", 2);
+    ACS_NamedExecuteWithResult("core_SetCustomActorProperty", 0, DTADD_CAPROP_AirJumpZ, 12.0);
+    SetActorVelocity(0, 0, 0, 0, false, false);
+}
+
+script "UHTest_MovementContracts" (void) {
+    SetActivatorToPlayer(0);
+    failures = 0; checks = 0;
+    ClearJump();
+    SetActorProperty(0, APROP_Gravity, 1.0);
+    int x = GetActorX(0), y = GetActorY(0), floorZ = GetActorFloorZ(0);
+    Expect(SetActorPosition(0, x, y, floorZ + 16.0, false), "position for footing");
+    Expect(!ACS_NamedExecuteWithResult("core_CheckFooting"), "airborne footing");
+    Expect(ACS_NamedExecuteWithResult("core_CheckFooting", -16), "negative v6c footing offset");
+    Expect(!ACS_NamedExecuteWithResult("core_CheckFooting", 64), "positive offset is not UH tolerance");
+    Expect(ACS_NamedExecuteWithResult("uh_CheckFootingTolerance", 32), "UH stair tolerance");
+    Expect(ACS_NamedExecuteWithResult("core_CheckFooting_custom", "8bdmFootholdCheck", -16), "custom v6c footing");
+    Expect(ACS_NamedExecuteWithResult("core_CheckFooting_ThruPlayer", -16), "through-player offset");
+    int ceiling = GetActorCeilingZ(0), height = GetActorProperty(0, APROP_Height);
+    Expect(SetActorPosition(0, x, y, ceiling - height, false), "position at ceiling");
+    Expect(ACS_NamedExecuteWithResult("core_CheckCeiling"), "ceiling API");
+    Expect(ACS_NamedExecuteWithResult("core_CheckCeiling_ThruPlayer"), "through-player ceiling API");
+    Expect(ACS_NamedExecuteWithResult("core_CheckCeiling_custom", "8bdmFootholdCheck"), "custom ceiling API");
+    GiveInventory("CeilingFlag", 1);
+    Expect(ACS_NamedExecuteWithResult("core_CheckFooting"), "inverted support");
+    ClearJump();
+    SetActorPosition(0, x, y, floorZ + 32.0, false);
+    Expect(ACS_NamedExecuteWithResult("core_jump_pressed_airjump", 0, 0, 0, 1), "airjump accepted");
+    Expect(GetActorVelZ(0) == 12.0 && CheckInventory("AirJumpsUsed") == 1, "airjump impulse and count");
+    Expect(!ACS_NamedExecuteWithResult("core_jump_pressed_airjump", 0, 0, 0, 1), "held jump cannot repeat");
+    ClearJump();
+    Expect(!ACS_NamedExecuteWithResult("core_jump_pressed_airjump", 1, 0, 0, 1), "prior hook consumes jump");
+    Expect(CheckInventory("AirJumpsUsed") == 0, "consumed jump leaves count");
+    GiveInventory("DisabledAirJumps", 1);
+    Expect(!ACS_NamedExecuteWithResult("core_jump_pressed_airjump", 0, 0, 0, 1), "disabled jump");
+    ClearJump(); GiveInventory("PowerHighJumpRune", 1);
+    ACS_NamedExecuteWithResult("core_jump_pressed_airjump", 0, 0, 0, 1);
+    Expect(GetActorVelZ(0) == 24.0, "high-jump rune");
+    ClearJump(); GiveInventory("CeilingFlag", 1);
+    ACS_NamedExecuteWithResult("core_jump_pressed_airjump", 0, 0, 0, 1);
+    Expect(GetActorVelZ(0) == -12.0, "inverted airjump");
+    ClearJump(); GiveInventory("CeilingFlag", 1);
+    ACS_NamedExecuteWithResult("core_SetCustomActorProperty", 0, DTADD_CAPROP_AirJumpZ, -12.0);
+    ACS_NamedExecuteWithResult("core_jump_pressed_airjump", 0, 0, 0, 1);
+    Expect(GetActorVelZ(0) == -12.0, "already-inverted airjump");
+    GiveInventory("AirFraudAchieved", 1); GiveInventory("WallJumpsUsed", 1);
+    ACS_NamedExecuteWithResult("core_jump_nonspecific", 1, 0, 0);
+    Expect(!CheckInventory("AirJumpsUsed") && !CheckInventory("WallJumpsUsed") && !CheckInventory("AirFraudAchieved"), "landing resets usage");
+    Expect(CheckInventory("IsGrounded") && !CheckInventory("IsAirborne"), "v6c landing markers");
+    ClearJump(); GiveInventory("JumpCancler", 1);
+    ACS_NamedExecuteWithResult("core_jump_released", 0, 0, 1);
+    Expect(GetActorVelZ(0) == -0.25, "normal jump cancellation");
+    ClearJump(); GiveInventory("CeilingFlag", 1); GiveInventory("JumpCancler", 1);
+    ACS_NamedExecuteWithResult("core_jump_released", 0, 0, 1);
+    Expect(GetActorVelZ(0) == 0.25, "inverted jump cancellation");
+    ClearJump(); SetActorAngle(0, 0);
+    ACS_NamedExecuteWithResult("core_SetCustomActorProperty", 0, DTADD_CAPROP_WallJumpZ, 12.0);
+    ACS_NamedExecuteWithResult("core_SetCustomActorProperty", 0, DTADD_CAPROP_WallJumpThrust, 10.0);
+    ACS_NamedExecuteWithResult("core_walljump", 1, 0, 0, 0);
+    Expect(GetActorVelZ(0) == 12.0 && GetActorVelX(0) < 0, "v6c wall impulse away from front wall");
+    ClearJump(); GiveInventory("CeilingFlag", 1);
+    ACS_NamedExecuteWithResult("core_walljump", 1, 0, 0, 0);
+    Expect(GetActorVelZ(0) == -12.0 && GetActorVelX(0) < 0, "inverted wall impulse");
+    ClearJump(); GiveInventory("OnCeilingFlag", 1);
+    Expect(ACS_NamedExecuteWithResult("uh_jump_pressed_special", 0, 1, 0, 0), "ceiling special consumes jump");
+    Expect(!CheckInventory("OnCeilingFlag"), "ceiling special clears attachment");
+    ClearJump();
+    SetActorPosition(0, x, y, floorZ, false);
+    Log(s:"UH_MOVEMENT_CONTRACTS checks=", i:checks, s:" failures=", i:failures);
+}
+
+script "UHTest_MovementBoss" (void) {
+    SetActivatorToPlayer(0); failures = 0; checks = 0;
+    Expect(CheckActorClass(0, "GENERICBOSS"), "boss setup");
+    ClearJump(); TakeInventory("UnholyBossAmmo100", 9999); GiveInventory("UnholyBossAmmo100", 99);
+    Expect(!ACS_NamedExecuteWithResult("core_jump_pressed_airjump", 0, 0, 0, 1), "insufficient boss ammo blocks jump");
+    Expect(CheckInventory("UnholyBossAmmo100") == 99 && !CheckInventory("AirJumpsUsed"), "blocked jump costs nothing");
+    GiveInventory("UnholyBossAmmo100", 1);
+    Expect(!ACS_NamedExecuteWithResult("core_jump_pressed_airjump", 1, 0, 0, 1), "consumed boss jump");
+    Expect(CheckInventory("UnholyBossAmmo100") == 100, "consumed boss jump costs nothing");
+    Expect(ACS_NamedExecuteWithResult("core_jump_pressed_airjump", 0, 0, 0, 1), "funded boss jump");
+    Expect(CheckInventory("UnholyBossAmmo100") == 0 && CheckInventory("AirJumpsUsed") == 1, "boss jump charges exactly 100");
+    Log(s:"UH_MOVEMENT_BOSS checks=", i:checks, s:" failures=", i:failures);
+}
+
+script "UHTest_MovementConsume" (int value) { consume = value; }
+script "UHTest_MovementEvents" (void) {
+    Log(s:"UH_MOVEMENT_EVENTS any=", i:events[0], s:" pressed=", i:events[1], s:" held=", i:events[2], s:" released=", i:events[3], s:" idle=", i:events[4], s:" used=", i:observedUsed);
+}
+
+script "UHTest_MovementInputSetup" (void) {
+    SetActivatorToPlayer(0); consume = 0; ClearJump();
+    GiveInventory("DisabledWallJumps", 1);
+    SetActorPosition(0, GetActorX(0), GetActorY(0), GetActorFloorZ(0) + 48.0, false);
+    SetActorVelocity(0, 0, 0, -0.1, false, false);
+}
+script "UHTest_MovementInputResult" (void) {
+    Log(s:"UH_MOVEMENT_INPUT airused=", i:observedAirUsed, s:" velz=", f:observedVelZ);
+}

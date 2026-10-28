@@ -142,6 +142,9 @@ echo "== COLOTRNS =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/COLOTRNS.acs" "$OUT/COLOTRNS.o" || fail=1
 echo "== FOOTCHEC =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/utilities/FOOTCHEC.acs" "$OUT/FOOTCHEC.o" || fail=1
+echo "== COREJUMP =="
+# The v6c base LOADACS owns this callback library.
+"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/tables/COREJUMP.acs" "$OUT/COREJUMP.o" || fail=1
 echo "== JUMPCANC =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/JUMPCANC.acs" "$OUT/JUMPCANC.o" || fail=1
 echo "== PROJTRAN =="

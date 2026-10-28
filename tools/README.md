@@ -625,3 +625,28 @@ dead, and keep the engine responsive. This specifically catches inherited state
 offset changes that a source-only state-loop check cannot resolve. Keep the
 probe addon out of release packages. Dedicated-server behavior is a separate
 regression requirement.
+
+
+### v6c movement regression
+
+Compile the diagnostic addon, then run one isolated client on MM2DW1:
+
+```bash
+acc -i ../references/zandronum/acc-branch-zandronum -i src/acs_source/v6b_overrides/_includes/mod_api tools/mcp/fixtures/movement/probe.acs /tmp/MOVPROB.o
+python3 - <<'PYPROBE'
+import zipfile
+with zipfile.ZipFile('/tmp/uh-movement-probe.pk3', 'w') as archive:
+    archive.write('tools/mcp/fixtures/movement/LOADACS', 'LOADACS')
+    archive.write('/tmp/MOVPROB.o', 'acs/MOVPROB.o')
+PYPROBE
+ZANDRONUM_LAUNCH_PROFILES=tools/mm8bdm-v6c.launch.json node tools/mcp/movement-test.mjs --probe /tmp/uh-movement-probe.pk3
+```
+
+The probe checks footing offsets and custom collision APIs, normal and inverted
+jump impulses, high-jump runes, landing resets, jump cancellation, wall
+impulses, and Generic Boss's exact 100-point jump cost. Real jump input must
+deliver all five hook event types and propagate an earlier hook's consumed-jump
+result. A second input sequence must perform an actual air jump. The callback contract tests call the same runtime scripts synchronously
+to isolate each gate. They do not establish wall detection on every map, all
+assist-item interactions, or dedicated-client synchronization. Keep the probe
+out of release packages.
