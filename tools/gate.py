@@ -7,9 +7,10 @@ Python shell, dsh, Claude Code, Codex or Antigravity.
 
 Layers (cumulative):
 
-  --fast    repository-static checks only: no engine, no WADs, no build.   ~6s
-  --smoke   + environment, ACS compile, PK3 validation, MCP dry-run.       ~7s
+  --fast    repository-static checks only: no engine, no WADs, no build.  ~25s
+  --smoke   + environment, ACS compile, PK3 validation, MCP dry-run.       ~1s
   --full    + real engine MCP tests (slow, local machine only, minutes).
+  --meta    + fast, then prove every static check fails on a known defect. ~33s
 
 Builds stay manual (see AGENTS.md): out/build.pk3 is produced by hand, and
 --smoke validates the existing archive instead of inventing a build step.
@@ -38,8 +39,16 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 PY = sys.executable
 SCHEMA = 1
-GROUPS = ("fast", "smoke", "full")
-GROUP_ORDER = {"fast": ("fast",), "smoke": ("fast", "smoke"), "full": ("fast", "smoke", "full")}
+GROUPS = ("fast", "smoke", "full", "meta")
+# "meta" is cumulative with fast: it re-runs the static layer, then proves that
+# layer catches the defects it claims to guard.  It is separate from "fast" so
+# the iteration loop stays at ~25s instead of ~60s.
+GROUP_ORDER = {
+    "fast": ("fast",),
+    "smoke": ("fast", "smoke"),
+    "full": ("fast", "smoke", "full"),
+    "meta": ("fast", "meta"),
+}
 CANONICAL_PROFILE = REPO / "tools" / "mm8bdm-v6b.launch.json"
 
 
@@ -100,6 +109,31 @@ CHECKS = [
     check("team-presentation-generator", "fast", "generator",
           [PY, "tools/gen_team_presentation.py", "--check"],
           "Generated team presentation fragments are up to date"),
+    check("actor-contracts", "fast", "static", [PY, "tools/check_actor_contracts.py"],
+          "DECORATE actor references, weapon state labels, duplicate classes, orphan weapons"),
+    check("damage-types", "fast", "static", [PY, "tools/check_damage_types.py"],
+          "Boss/eye damage types covered by the friendly-fire protection tables"),
+    check("addon-api-contract", "fast", "static",
+          [PY, "tools/check_addon_api_contract.py"],
+          "Public addon API: docs, UHADD wrappers, handlers, CVARINFO mailboxes, examples"),
+    check("addon-examples", "fast", "static",
+          [PY, "tools/check_addon_examples.py"],
+          "Example addon packages: LOADACS/DECORATE/KEYCONF/ACS consistency and ACC compile",
+          ["python", "acc"]),
+    check("lump-integrity", "fast", "static",
+          [PY, "tools/check_lump_integrity.py"],
+          "DECORATE/ACS includes, LOADACS libraries, KEYCONF classes and TEXTURES patches resolve"),
+    check("asset-references", "fast", "static",
+          [PY, "tools/check_asset_references.py"],
+          "Sound, LANGUAGE and HUD texture references resolve"),
+
+    # -- meta: prove the static layer is not a no-op -----------------------
+    # Each case injects one known defect into a hardlink copy of the repo and
+    # requires the target checker to fail.  A checker that never fails is not a
+    # test, and nothing else in the gate would notice.
+    check("mutation-cases", "meta", "meta", [PY, "tools/mutation_test.py"],
+          "Every static check fails on an injected defect (tests the tests)",
+          timeout=300),
 
     # -- smoke: local environment / build-level verification ---------------
     check("environment", "smoke", "env", [PY, "tools/check_environment.py"],
@@ -260,6 +294,8 @@ def main() -> int:
     groups.add_argument("--fast", action="store_true", help="static checks only (default)")
     groups.add_argument("--smoke", action="store_true", help="static + environment/build checks")
     groups.add_argument("--full", action="store_true", help="static + build + engine MCP tests")
+    groups.add_argument("--meta", action="store_true",
+                        help="static checks + prove every static check catches a known defect")
     parser.add_argument("--list", action="store_true", help="print the check inventory and exit")
     parser.add_argument("--json", action="store_true", help="machine-readable report on stdout")
     parser.add_argument("--report", type=Path, metavar="PATH",
@@ -288,7 +324,14 @@ def main() -> int:
     if args.timeout_scale <= 0:
         parser.error("--timeout-scale must be positive")
 
-    group = "full" if args.full else ("smoke" if args.smoke else "fast")
+    if args.full:
+        group = "full"
+    elif args.meta:
+        group = "meta"
+    elif args.smoke:
+        group = "smoke"
+    else:
+        group = "fast"
     known = {item["name"] for item in CHECKS}
     only = [name.strip() for name in args.only.split(",") if name.strip()]
     skip = [name.strip() for name in args.skip.split(",") if name.strip()]

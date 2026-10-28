@@ -12,9 +12,10 @@ harness runs the same checks, in the same order, with the same exit codes, so
 "verified" means the same thing everywhere.
 
 ```bash
-python3 tools/gate.py --fast        # repository-static checks, ~7s, no engine/WADs
+python3 tools/gate.py --fast        # repository-static checks, ~25s, no engine/WADs
 python3 tools/gate.py --smoke       # + environment, ACS compile, PK3 validation, MCP dry-run
 python3 tools/gate.py --full        # + real engine MCP tests (local machine, minutes)
+python3 tools/gate.py --meta        # + fast, then prove the static checks catch defects
 python3 tools/gate.py --list        # checker inventory (name, group, requirements, timeout)
 python3 tools/gate.py --fast --json --report tmp/gate.json
 ```
@@ -32,11 +33,40 @@ timeouts.
 local Zandronum engine and free ports. Building `out/build.pk3` stays manual —
 the gate validates the existing archive, it does not invent a build step.
 
+## Mutation layer (test the tests)
+
+[`tools/mutation_test.py`](mutation_test.py) proves that the static checkers
+catch defects. A checker is a hand-written parser, and a regex that stops
+matching turns a guard into a no-op with no signal. For each case the harness
+makes a hardlink copy of the repository, confirms the checker passes on the
+clean copy, injects one known defect, and requires a non-zero exit.
+
+```bash
+python3 tools/mutation_test.py              # every case, ~33s
+python3 tools/mutation_test.py --list       # case inventory
+python3 tools/mutation_test.py --case NAME  # one case
+```
+
+Exit codes: `0` every case caught, `1` a case was missed, `2` usage error.
+The cases are data in one list at the bottom of the file. Add a case whenever
+a new checker lands: a checker without a mutation case is an unverified claim.
+The harness already found a real blind spot in `check_state_loops.py`: 52 state
+blocks written as `States` followed by a newline brace were invisible.
+
 The engine checks go through the MCP launcher, which waits 42s for the engine to
 open its bridge port. On WSL, keeping the base WADs on `/mnt/d` (a 9p mount) can
 push engine startup past that limit and look like a bridge failure; point
 `ZANDRONUM_LAUNCH_PROFILES` at a profile whose `iwad`/`files` live on a local
 filesystem (or copy the WADs off the Windows drive) before blaming the gate.
+
+A recorded run of `--full` on 2026-10-26 failed two engine checks back to back
+with `bridge port 127.0.0.1:7777 never opened` (`mcp-network`, then
+`mcp-team-info-sync`), while `mcp-smoke` and `mcp-team-presentation` passed in
+the same run. Both failed checks passed when run alone on the same tree
+(`--full --only mcp-network`: pass, 121s; `--full --only mcp-team-info-sync`:
+pass, 118s). Treat that as environment flakiness, not a regression: re-run the
+failing check alone before you report a failure, and check for a leftover
+`zandronum` or `server-runner` process first.
 
 [`tools/check_agent_config.py`](check_agent_config.py) (part of `--fast`) fails
 when the machine-local harness configs diverge on the launcher profile, engine

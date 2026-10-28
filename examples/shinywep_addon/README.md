@@ -74,7 +74,8 @@ the shiny copy classes through the Unholy mod API:
 
 ### Shiny MegaMan
 
-Inherit `ShinyMegaBase_P`, name `ShinyMega_<Stem>_P`, register with
+Inherit `CustomInventory` (like every built-in `ShinyMega_*_P` fire actor;
+there is no shared base class), name `ShinyMega_<Stem>_P`, register with
 `DefineShinyMegaCopyWep(..., UH_SHINYMEGA_M1/M2/TRUE, weight)`. Ordinary M1=5,
 M2=19. Pickup fires the attack (no weapon switch).
 

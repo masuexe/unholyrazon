@@ -43,7 +43,11 @@ CONTROL = re.compile(r"^(goto|loop|stop|wait|fail)\b", re.I)
 GOTO = re.compile(r"^goto\s+([A-Za-z0-9_.]+)\s*(?:([+-])\s*(\d+))?\s*$", re.I)
 LABEL = re.compile(r"^\s*([A-Za-z0-9_.]+):\s*$")
 ACTOR = re.compile(r"\s*actor\s+(\w+)", re.I)
-STATES = re.compile(r"\s*States\s*\{", re.I)
+# A state block starts with "States {" on one line, or "States" with the brace
+# on a later line. Both styles occur here (52 blocks in 31 files use the second
+# form). Requiring the brace on the same line made those blocks invisible, so a
+# zero-duration loop inside one of them passed verification.
+STATES = re.compile(r"\s*States\s*(?:\{|$)", re.I)
 STATE_LINE = re.compile(r"^(\S+)\s+(\S+)\s+(-?\d+)\s*(.*)$")
 TARGET_ACTION = re.compile(r"^(?:A_Jump\w*|A_CountDownArg|A_Goto)\b", re.I)
 ESCAPE_ACTION = re.compile(
@@ -196,7 +200,13 @@ def main(argv):
             for cycle in find_bad_cycles(actor, data["frames"], data["labels"]):
                 findings += 1
                 lines = [frame["line"] for frame in cycle]
-                print(f"{path.relative_to(REPO)}: {actor}: zero-duration loop at "
+                # Ad-hoc runs pass relative or outside-root paths; do not crash
+                # on the report line when the path is not under REPO.
+                try:
+                    shown = path.resolve().relative_to(REPO)
+                except ValueError:
+                    shown = path
+                print(f"{shown}: {actor}: zero-duration loop at "
                       f"lines {lines}")
                 for frame in cycle:
                     if frame["act"]:

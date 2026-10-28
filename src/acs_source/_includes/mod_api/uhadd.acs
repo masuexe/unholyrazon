@@ -907,6 +907,15 @@ function int RemoveBoss(int id) {
   return ACS_NamedExecuteWithResult("uh_RemoveBoss_S", id);
 }
 
+// Public API: actor-keyed read companion of SetBossEnabledByActor. The docs
+// promise this name; an unknown actor reads as 0 so the call is safe in a
+// condition (same contract as IsBossMusicEnabledByActor).
+function int IsBossEnabledByActor(str actor) {
+  int id = UH_FindBossByActor(actor);
+  if (id == UHBOSS_FAIL) return 0;
+  return IsBossEnabled(id);
+}
+
 function int SetBossEnabledByActor(str actor, int enabled) {
   int id = UH_FindBossByActor(actor);
   if (id == UHBOSS_FAIL) return UHDB_ERR_NOTFOUND;
@@ -1085,6 +1094,15 @@ function int UpdateSurvivorDisplay(int id, str name, str mugshot) {
 
 function int RemoveSurvivor(int id) {
   return ACS_NamedExecuteWithResult("uh_RemoveSurvivor_S", id);
+}
+
+// Public API: actor-keyed read companion of SetSurvivorEnabledByActor. The docs
+// promise this name; an unknown actor reads as 0 so the call is safe in a
+// condition (same contract as IsBossMusicEnabledByActor).
+function int IsSurvivorEnabledByActor(str actor) {
+  int id = FindSurvivorByActor(actor);
+  if (id == UHSURV_FAIL) return 0;
+  return IsSurvivorEnabled(id);
 }
 
 // Resolve custom ids on this local ACS VM; registration order need not match
@@ -2335,7 +2353,8 @@ function int UH_GetBonusEventTarget(int eventid) {
 //   DefineShinyMegaCopyWep("ShinyMega_YourStem_P", UH_SHINYMEGA_M2, 19);
 //   DefineShinyMegaCopyWep("ShinyMega_DawnBreaker_P", UH_SHINYMEGA_TRUE, 1);
 //       Shiny MegaMan: flat weighted pool (no game-generation buckets).
-//       Fire actor is CustomInventory : ShinyMegaBase_P; Pickup does the attack.
+//       Fire actor is CustomInventory; Pickup does the attack (there is no
+//       shared ShinyMegaBase_P class — inherit CustomInventory directly).
 //       M1 = Fire, M2 = AltFire, TRUE = both (same weight). Ordinary moves use
 //       weight 5 (M1) / 19 (M2); DawnBreaker stays weight 1.
 //
