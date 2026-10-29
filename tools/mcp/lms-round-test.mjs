@@ -89,6 +89,7 @@ function usage() {
     "  --game-port N      server UDP/TCP port (default: 10890)",
     "  --json             emit one machine-readable JSON object",
     "  --dry-run          validate paths and print the resolved configuration",
+    "  --items-probe PATH append the native-item diagnostic addon and run its 108 checks",
     "  --keep-logs        keep the isolated engine folder and print its path",
     "  --help             show this help",
     "",
@@ -104,13 +105,14 @@ function parsePositiveInt(value, flag) {
   return n;
 }
 
-const options = { profile: "mm8bdm-v6c-smoke", gamePort: 10890, json: false, dryRun: false, keepLogs: false };
+const options = { profile: "mm8bdm-v6c-smoke", gamePort: 10890, json: false, dryRun: false, keepLogs: false, itemsProbe: null };
 for (let i = 2; i < process.argv.length; i += 1) {
   const arg = process.argv[i];
   if (arg === "--help" || arg === "-h") { console.log(usage()); process.exit(0); }
   if (arg === "--json") { options.json = true; continue; }
   if (arg === "--dry-run") { options.dryRun = true; continue; }
   if (arg === "--keep-logs") { options.keepLogs = true; continue; }
+  if (arg === "--items-probe") { const probePath = process.argv[++i]; if (!probePath) throw Error("--items-probe expects a file"); options.itemsProbe = resolve(probePath); if (!existsSync(options.itemsProbe)) throw Error("Missing items probe"); continue; }
   if (arg === "--profile") { options.profile = process.argv[++i] || ""; continue; }
   if (arg === "--game-port") { options.gamePort = parsePositiveInt(process.argv[++i], "--game-port"); continue; }
   throw new Error("unknown option " + arg + " (use --help)");
@@ -136,6 +138,7 @@ const CLIENT_BRIDGE_PORT = options.gamePort + 200;
 
 if (options.dryRun) {
   const { profile, files } = loadResolvedProfile(ROOT, PROFILES, options.profile);
+  if (options.itemsProbe) profile.files.push(options.itemsProbe);
   console.log(JSON.stringify({
     status: "dry-run",
     profile: options.profile,
@@ -413,6 +416,7 @@ async function joinOngoingRound() {
 let result;
 try {
   const { profile: profileData } = loadResolvedProfile(ROOT, PROFILES, options.profile);
+  if (options.itemsProbe) profileData.files.push(options.itemsProbe);
   const map = profileData.map || "MM2DW1";
 
 
@@ -466,7 +470,7 @@ try {
   }, 180_000, 1_000);
   launched.push(CLIENT_INSTANCE);
   await tool("launch_instance", launchInstanceArgs(CLIENT_INSTANCE, profileData, [
-    ...common, "+set", "uh_cl_LogLevel", "4", "-port", String(options.gamePort + 1), "+name", "LMSClient",
+    ...common, "+playerclass", "MegaMan", "+set", "uh_cl_LogLevel", "4", "-port", String(options.gamePort + 1), "+name", "LMSClient",
   ]), 150_000);
   await waitFor("client engine live", async () => tryActorState(CLIENT_INSTANCE), 90_000, 500);
   // A launched single-player engine pauses when its window is not focused, and
@@ -524,6 +528,16 @@ try {
   }, 90_000, 1_000);
   check("client receives both roles over the network",
     clientRoleCache.includes(PLS_BOSS) && clientRoleCache.includes(PLS_SURVIVOR), { roles: clientRoleCache });
+
+  if (options.itemsProbe) {
+    await serverCommand("pukename core_freezeplayer " + (clientSlot + 1) + " 0 0", 100);
+    await clientTool("run_script", {script: "UHTest_ItemsV6c", always: true});
+    await waitFor("native item diagnostic", async () => await trySrvMapVar("item_done") === 1, 45000, 500);
+    check("native items pass on a remote LMS player",
+      await srvMapVar("item_checks") === 108 && await srvMapVar("item_failures") === 0,
+      {checks: await srvMapVar("item_checks"), failures: await srvMapVar("item_failures")});
+    await serverCommand("pukename core_freezeplayer " + (clientSlot + 1) + " 1 0", 100);
+  }
 
   // --- phase 2: boss morph --------------------------------------------------
   const bossStates = [];

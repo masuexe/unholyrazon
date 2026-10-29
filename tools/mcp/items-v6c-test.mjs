@@ -52,7 +52,7 @@ try {
   const result = { done: await value("item_done"), checks: await value("item_checks"), failures: await value("item_failures") };
   console.log(JSON.stringify(result));
   console.log(JSON.stringify(await call("read_engine_log", {filter: "ITEM_V6C", maxLines: 200})));
-  if (result.done !== 1 || result.checks !== 81 || result.failures !== 0) throw Error("Native item regression");
+  if (result.done !== 1 || result.checks !== 108 || result.failures !== 0) throw Error("Native item regression");
 } catch (error) {
   console.error(String(error)); process.exitCode = 1;
 } finally {

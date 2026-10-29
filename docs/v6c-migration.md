@@ -616,15 +616,49 @@ icon composites. Custom-weapon capability flags were explicitly opted in by the
 diagnostic; the test does not change the classes' default pickup policy.
 Dedicated LMS coverage and upgrade behavior remain separate work.
 
+### Native item effects and UH capsule integration (2026-10-29)
+
+The external item diagnostic now has 108 assertions and can run on the controlled
+remote player through `lms-round-test.mjs --items-probe`. A dedicated v6c run
+passed all 108 item assertions and the entire 31-assertion LMS scenario (134 s).
+The ordinary runner still has 30 assertions when no diagnostic addon is supplied.
+The launcher selects the registered display name MegaMan, which resolves to
+MegaManU; using the actor name as the playerclass value selected a random class.
+The Copy Vision runner now uses the display name too and passes its six checks
+on the current runtime package.
+
+Coverage includes all 19 physical assist pickups, four native custom-class
+capability restrictions, eight active-item uses, the native heal/reload/ammo
+capacity/hitstop/fling factors, Counter Attacker's damage-factor enable/reset,
+stationary Auto Recover, and UH icon composites. The diagnostic grants the four
+custom-weapon capability flags explicitly; the default class pickup policy is
+preserved. A Super Arrow may immediately become an impact platform when fired
+near a wall, so the diagnostic accepts either the projectile or its native
+impact actors.
+
+The expanded checks found a real integration gap: UH health capsules bypassed
+native heal and success hooks. Super Recover did not boost them and a full-health
+Exchanger pickup could be consumed without giving ammo. Those five targeted
+health assertions failed on the previous package. All capsule variants now use
+the native flat-point heal pipeline, keeping UH's 25/80/100/150/200/300/500/2000
+point amounts and AntiDamageHealth bookkeeping. Other UH heals and maximum-health
+growth keep their existing API. The diagnostic verifies all ten capsule actor
+variants with the 1.5 heal factor, native success notifications, full-health
+conversion and rejection without Exchanger.
+
+The current PK3 was rebuilt from runtime files with compiled ACS, excluding ACS
+sources, error logs and all diagnostic objects. The full ACS compile and smoke
+gate pass; no native-item diagnostic is added to the game's LOADACS.
+
 ## Remaining completion evidence
 
 The port is not complete while these items remain open:
 
-- Confirm native assist/buster behavior on the v6c base. The flagged Copy Vision
-  lifetime and teleport-wrapper reviews are resolved above.
-- Exercise native item pickup and spawn behaviour in the engine, plus changed
-  existing arenas. The six added maps now load and the actor-registration item
-  additions are recorded above; the item behaviour itself is not yet verified.
+- Confirm native buster-upgrade behavior and its existing UH class restrictions.
+  Native assist pickup/use and the flagged Copy Vision/teleport reviews are
+  resolved above.
+- Exercise changed existing arenas. The six added maps load; native assist
+  pickups and effects now have dedicated remote LMS coverage as recorded above.
 - Verify final LMS result commit and subsequent map progression. The cancellable
   lifecycle scenario now passes 30/30 and is in the full gate; CXAirMan remote
   ammo also passes.

@@ -1,3 +1,19 @@
+// HSF_FLAT from 8BDMDEFS; the full header conflicts with UHACSUtils'
+// exported MAX_PLAYERS in this library.
+#define UH_HEAL_FLAT 1
+
+// Capsule pickup amounts are UH health points, not native percentages. Keep
+// native heal/check/success hooks (Super Recover and Exchanger), then refresh
+// the same anti-damage cache as ordinary UH healing. Other UH healing and
+// maximum-health growth retain their existing contract below.
+script "uh_HealthPickup" (int amount) {
+  if (amount <= 0) {SetResultValue(false); terminate;}
+  int accepted = ACS_NamedExecuteWithResult("core_healPickup", amount, UH_HEAL_FLAT);
+  if (accepted && CheckInventory("AntiDamageTime") != 300)
+    SetInventory("AntiDamageHealth", PlayerHealth());
+  SetResultValue(accepted);
+}
+
 script "UH_AntiDamageHP" (int swap_var) {
   if (swap_var) {  // Adjust AntiDamageHealth to match current HP
     SetInventory("AntiDamageHealth", max(PlayerHealth(), 0));

@@ -44,7 +44,7 @@ let launched = false;
 try {
   await client.connect(transport);
   launched = true;
-  await call("launch_instance", launchInstanceArgs(1, profile, [...profile.extraArgs, "+playerclass", "MegaManU"]));
+  await call("launch_instance", launchInstanceArgs(1, profile, [...profile.extraArgs, "+playerclass", "MegaMan"]));
   await call("set_pause", {paused: false});
   await call("step", {tics: 35});
   await call("run_script", {script: "UHTest_CopyVisionLifetime", always: true});

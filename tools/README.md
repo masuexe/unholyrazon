@@ -802,3 +802,33 @@ scripts running while the player disconnects. Native LMS does not permit a fresh
 mid-round connection to gain another life. Participants are protected and frozen
 to keep combat out of the scheduling assertions. Final result commit and next-map
 progression need separate coverage.
+
+## Native v6c item behavior
+
+Build the diagnostic addon outside the runtime package:
+
+```bash
+acc -i ../references/zandronum/acc-branch-zandronum -i src/acs_source/v6b_overrides/_includes/common tools/mcp/fixtures/items-v6c/probe.acs /tmp/ITEMPROB.o
+python3 - <<'PYPROBE'
+import zipfile
+with zipfile.ZipFile('/tmp/items-v6c-probe.pk3', 'w') as archive:
+    archive.write('/tmp/ITEMPROB.o', 'acs/ITEMPROB.o')
+    archive.writestr('LOADACS', 'ITEMPROB\n')
+PYPROBE
+node tools/mcp/items-v6c-test.mjs --probe /tmp/items-v6c-probe.pk3
+node tools/mcp/lms-round-test.mjs --items-probe /tmp/items-v6c-probe.pk3 --json
+```
+
+The standalone runner checks 108 assertions on MegaManU. The optional LMS path
+runs the same server-side diagnostic on the remote player, then continues the
+normal morph, reconnect and settlement-cancellation scenario. Both select the
+registered player display name `MegaMan`; `playerclass` does not accept the
+DECORATE actor name `MegaManU` as a substitute.
+
+The diagnostic covers physical pickups for 19 new assists, their custom-class
+opt-in restrictions, active uses, native power factors, Counter Attacker
+transitions, Auto Recover healing and UH icon availability. It also checks all
+ten UH health-capsule variants with Super Recover, native success notifications,
+AntiDamageHealth bookkeeping, full-health Exchanger conversion and full-health
+rejection without Exchanger. It grants capability flags for the test only and
+does not enable those pickups for all UH classes.

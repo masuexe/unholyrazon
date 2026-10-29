@@ -1,5 +1,6 @@
 #library "ITEMPROB"
 #include "zcommon.acs"
+#include "8BDMDEFS.acs"
 int item_checks, item_failures, item_done;
 str items[19] = {
  "AutoRecoverItem", "BalloonAdaptorItem", "CapsuleCatcherItem", "CarryItem",
@@ -13,6 +14,8 @@ str held[19] = {
  "ExchangerActive_F", "MagnetBeamItem", "PowerGeneratorCapacity", "PowerShieldHitstop", "RushPogoItem",
  "ShockGuardPassive_F", "SpareBodyItem", "SuperArrowItem", "SuperGuardItem", "SuperRecoverHeal", "TransceiverItem"
 };
+str healthCapsules[10] = {"SmallHealthU","BigHealthU","BigHealthUR","BigHealthU_Buster","BigHealthU_Support","BigHealthU_SupportDeluxe","MegaHealthU","WeaponEnergyU","BigWeaponEnergyU","MegaWeaponEnergyU"};
+int healAmounts[10] = {100,200,200,150,150,300,2000,25,80,500};
 function void Expect(bool ok, str label) {
  item_checks++;
  if (!ok) {item_failures++; Log(s:"ITEM_V6C_FAIL ",s:label);}
@@ -21,6 +24,14 @@ script "UHTest_ItemsV6c" (void) {
  SetActivatorToPlayer(0);
  Expect(!StrICmp(GetActorClass(0), "MegaManU"), "player is MegaManU");
  int tid;
+ GiveInventory("ExchangerItem",1);
+ Expect(CheckInventory("ExchangerActive_F")==0,"custom class rejects Exchanger without opt-in");
+ GiveInventory("PowerGeneratorItem",1);
+ Expect(CheckInventory("PowerGeneratorCapacity")==0,"custom class rejects Power Generator without opt-in");
+ GiveInventory("DamageAbsorberItem",1);
+ Expect(CheckInventory("DamageAbsorberActive_F")==0,"custom class rejects Damage Absorber without opt-in");
+ GiveInventory("EnergyBalancerNeoItem",1);
+ Expect(CheckInventory("EnergyBalancerNeoActive_F")==0,"custom class rejects Energy Balancer Neo without opt-in");
  // Native custom-weapon capabilities are opt-in, not a universal balance change.
  GiveInventory("CustWepCanHoldEBal",1);
  GiveInventory("CustWepCanHoldExchanger",1);
@@ -37,6 +48,11 @@ script "UHTest_ItemsV6c" (void) {
   Expect(CheckInventory(held[i])>0, StrParam(s:items[i],s:" physical pickup"));
   Thing_Remove(tid);
  }
+ Expect(ACS_NamedExecuteWithResult("core_GetCustomActorProperty",0,CAPROP_HealFactor)==1.5,"Super Recover heal factor");
+ Expect(ACS_NamedExecuteWithResult("core_GetCustomActorProperty",0,CAPROP_ReloadFactor)==1.5,"Super Recover reload factor");
+ Expect(ACS_NamedExecuteWithResult("core_GetCustomActorProperty",0,CAPROP_AmmoCarryFactor)==2.0,"Power Generator ammo capacity factor");
+ Expect(ACS_NamedExecuteWithResult("core_GetCustomActorProperty",0,CAPROP_HitstopFactor)==0,"Power Shield hitstop factor");
+ Expect(ACS_NamedExecuteWithResult("core_GetCustomActorProperty",0,CAPROP_FlingFactor)==0,"Power Shield fling factor");
  Expect(UseInventory("SuperGuardItem"),"Super Guard use");
  Expect(CheckInventory("SuperGuardCounter")>0,"Super Guard timer");
  Expect(UseInventory("TransceiverItem"),"Transceiver use");
@@ -45,7 +61,7 @@ script "UHTest_ItemsV6c" (void) {
  Expect(CheckInventory("SpareBodyActive_F")>0,"Spare Body active");
  Expect(UseInventory("SuperArrowItem"),"Super Arrow use");
  Expect(CheckInventory("SuperArrowCooldown_P")>0,"Super Arrow cooldown");
- Expect(ThingCountName("SuperArrow",0)>0,"Super Arrow projectile");
+ Expect(ThingCountName("SuperArrow",0)+ThingCountName("SuperArrowPlatform",0)+ThingCountName("SuperArrowPlatformGround",0)+ThingCountName("SuperArrowPlatformCeiling",0)+ThingCountName("SuperArrowExplosionFX",0)>0,"Super Arrow projectile or impact platform");
  Expect(UseInventory("CarryItem"),"Carry use");
  Expect(ThingCountName("CarryPlatformStart",0)>0,"Carry platform");
  Expect(UseInventory("BalloonAdaptorItem"),"Balloon use");
@@ -54,13 +70,35 @@ script "UHTest_ItemsV6c" (void) {
  Expect(ThingCountName("RushPogoTeleport",0)>0,"Rush Pogo teleport");
  Expect(UseInventory("MagnetBeamItem"),"Magnet Beam use");
  Expect(ThingCountName("MagnetBeamSpawner",0)>0,"Magnet Beam projectile");
+ // UH health capsules must participate in the native v6c heal pipeline.
+ SetActorProperty(0,APROP_Health,500);
+ GiveInventory("SmallHealthU",1);
+ Expect(GetActorProperty(0,APROP_Health)==650,"Super Recover boosts the UH 100-point capsule to 150");
+ Expect(CheckInventory("AntiDamageHealth")==650,"UH anti-damage health cache follows the capsule");
+ Expect(CheckInventory("SuperRecoverActivated_P")>0,"capsule invokes native heal-success hooks");
+ SetActorProperty(0,APROP_SpawnHealth,10000);
+ for (int c=0;c<10;c++) {
+  SetActorProperty(0,APROP_Health,500);
+  GiveInventory(healthCapsules[c],1);
+  Expect(GetActorProperty(0,APROP_Health)==500+healAmounts[c]*3/2,StrParam(s:healthCapsules[c],s:" preserves flat amount with Super Recover"));
+ }
+ SetActorProperty(0,APROP_SpawnHealth,1000);
+ SetActorProperty(0,APROP_Health,1000);
+ TakeInventory("RockNRollAmmo",9999);
+ GiveInventory("SmallHealthU",1);
+ Expect(CheckInventory("RockNRollAmmo")>0,"Exchanger converts a full-health capsule into ammo");
+ Expect(CheckInventory("ExchangerActivated_P")>0,"Exchanger reports capsule conversion");
+ TakeInventory("ExchangerActive_F",1);
+ Expect(!ACS_NamedExecuteWithResult("uh_HealthPickup",100),"full health rejects a capsule without Exchanger");
  // Actual passive transitions, not just inventory registration.
  SetActorProperty(0,APROP_Health,100);
  Delay(4);
  Expect(CheckInventory("CounterAttackerActive_F")>0,"Counter Attacker low-health enable");
+ Expect(ACS_NamedExecuteWithResult("core_GetCustomActorProperty",0,CAPROP_StaticDamageFactor)==1.5,"Counter Attacker damage factor");
  SetActorProperty(0,APROP_Health,1000);
  Delay(4);
  Expect(CheckInventory("CounterAttackerActive_F")==0,"Counter Attacker high-health disable");
+ Expect(ACS_NamedExecuteWithResult("core_GetCustomActorProperty",0,CAPROP_StaticDamageFactor)==1.0,"Counter Attacker restores damage factor");
  SetActorProperty(0,APROP_Health,500);
  int before=GetActorProperty(0,APROP_Health);
  Delay(120);
