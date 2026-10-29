@@ -1,0 +1,29 @@
+#library "CVPROB"
+#include "zcommon.acs"
+
+int cv_checks;
+int cv_failures;
+int cv_done;
+
+function void Expect(bool ok, str label) {
+  cv_checks++;
+  if (!ok) { cv_failures++; Log(s:"COPYVISION_FAIL ", s:label); }
+}
+
+script "UHTest_CopyVisionLifetime" (void) {
+  int owner = ActivatorTID();
+  int clone = UniqueTID();
+  GiveInventory("CopyVisionFlag", 1);
+  Expect(SpawnForced("CopyVisionU", GetActorX(0) + 64.0, GetActorY(0), GetActorZ(0), clone), "clone spawns");
+  SetActivator(clone);
+  SetPointer(AAPTR_TARGET, owner);
+  Delay(24);
+  Expect(ThingCountName("CopyVisionU", clone) == 1, "clone survives the first firing cycle");
+  Expect(CheckActorInventory(owner, "CopyVisionFlag") == 1, "owner remains deployed");
+  Delay(280);
+  Expect(ThingCountName("CopyVisionU", clone) == 0, "clone expires after its UH countdown");
+  Expect(CheckActorInventory(owner, "CopyVisionFlag") == 0, "expiration clears the deployment flag");
+  Expect(CheckActorInventory(owner, "CopyVisionRedirect") == 0, "expiration clears redirect state");
+  cv_done = 1;
+  Log(s:"COPYVISION checks=", d:cv_checks, s:" failures=", d:cv_failures);
+}

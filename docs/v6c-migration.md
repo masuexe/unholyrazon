@@ -569,6 +569,33 @@ DECORATE replacement audit:
   profile; keep them for the historical miscfixes package and do not add them to
   LOADACS. Rush_UH_Fix remains a live behaviour fix.
 
+### Copy Vision lifetime review (2026-10-29)
+
+The active weapon/clone pair is `CopyVisionWepU` / `CopyVisionU`, included after
+`UH_CopyVision`; the later replacement is the one used by normal weapon spawns.
+UH deliberately retains its deployment flag and per-clone countdown. The native
+v6c actor changed from reaction time 40 to 1 because it now uses an owner timer.
+Inheriting 1 caused the UH clone to disappear after its first firing cycle.
+`CopyVisionU` now explicitly keeps 40; the UH weapon's balance and redirect
+sequence remain unchanged.
+
+The focused `copyvision-v6c-test.mjs` diagnostic reproduced two failed lifetime
+assertions against the previous package and passed all six assertions against
+the fix. It checks spawn, survival beyond the first firing cycle, owner deployment
+state, bounded expiration, and deployment/redirect cleanup. The diagnostic addon
+is not part of the shipped package.
+
+The other flagged core differences do not require a behavior change:
+- `UH_TeleportFogGiver` starts with a zero-tic dummy followed by its guarded
+  action chain. Native v6c uses a zero-tic `nodelay` action instead. In the target
+  engine's `AActor::Tick`, both execute that zero-tic chain on the first tick;
+  UH retains its sound stop and `NoTeleportFX_Flag` guard.
+- `RushTeleportCopy`, `RushMarineTeleportCopy`, `RushJetTeleportCopy` and
+  `EddieTeleportCopy` inherit their v6c parents, including
+  `user_noProjectileTrails`. The UH forwarding wrappers derive from the
+  noninteracting `BasicWatcher`, not `ProjSpawnFuncActor`; they do not run the
+  native projectile spawn callback and do not need a trail marker of their own.
+
 ## Remaining completion evidence
 
 The port is not complete while these items remain open:

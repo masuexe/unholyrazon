@@ -766,3 +766,24 @@ team-bar hook deduplication, angle/rounding/clamp helpers, multistate music,
 camera identity and replacement-aware inventory/setter APIs. The runner owns
 one isolated engine with a 120-second startup allowance. Keep both probe objects
 and their replacement inventory actors out of release packages.
+
+## Copy Vision lifetime on v6c
+
+The UH weapon uses a per-clone countdown and `CopyVisionFlag`, while the v6c
+base uses a shared owner timer. The UH clone must keep its explicit 40-cycle
+countdown instead of inheriting the native base's reaction time of 1.
+
+```bash
+acc -i ../references/zandronum/acc-branch-zandronum tools/mcp/fixtures/copyvision-v6c/probe.acs /tmp/CVPROB.o
+python3 - <<'PYPROBE'
+import zipfile
+with zipfile.ZipFile('/tmp/copyvision-v6c-probe.pk3', 'w') as archive:
+    archive.write('/tmp/CVPROB.o', 'acs/CVPROB.o')
+    archive.writestr('LOADACS', 'CVPROB\n')
+PYPROBE
+node tools/mcp/copyvision-v6c-test.mjs --probe /tmp/copyvision-v6c-probe.pk3
+```
+
+The six runtime assertions cover spawning, survival beyond the first firing
+cycle, owner deployment state, bounded expiration and flag/redirect cleanup.
+The probe stays outside the shipped PK3.
