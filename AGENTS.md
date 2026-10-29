@@ -311,6 +311,14 @@ player filter and the wrap-hide count to the Unholy side model via the
 `lastmanstanding` is active. UIX must load before this pk3 for the shadow to
 win. `compat/mods/uix/_uix_v3bh/UXTBNUM.acs` is vendored for that compile.
 
+On the v6c branch, `v6b_overrides/corescripts/systems/ui/UITEAMIT.acs`
+shadows the built-in team display and uses the same UH teammate policy and
+health snapshots. `MUGSHOTS.acs` resolves native team/killfeed portraits through
+UHDT before the stock skin fallback. The imported `UICOMMON.acs` source is a
+compile interface only; the base package supplies its object. The native
+`mm8bdm_*teaminfo*` options participate in server snapshot eligibility and
+suppress the UH fallback display while the native display is enabled.
+
 UH-owned shared includes live under `acs_source/_includes/mod_api/`. Modified
 v6b shared includes live under `acs_source/v6b_overrides/_includes/`
 (`common/` and `mod_api/`). When compiling, search the v6b override include

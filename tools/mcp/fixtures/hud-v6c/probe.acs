@@ -1,0 +1,81 @@
+#library "HUDPROB"
+#nocompact
+#include "zcommon.acs"
+#import "uh_acsutils.acs"
+#import "8BDT.acs"
+#include "BARLIB.acs"
+#include "ASSTLIB.acs"
+
+// Test-only addon; never ship with the game.
+int checks, failures, clearCalls;
+function void Expect(bool condition, str label) {
+    checks++;
+    if (!condition) { failures++; Log(s:"UH_HUD_FAIL ", s:label); }
+}
+script "UHTest_HudClear" (int cam) CLIENTSIDE { clearCalls++; }
+script "UHTest_HudV6c" (void) CLIENTSIDE {
+    Log(s:"UH_HUD_ENTER cpn=", i:ConsolePlayerNumber());
+    SetActivatorToPlayer(ConsolePlayerNumber());
+    int cam = ActivatorTID();
+    checks = 0; failures = 0; clearCalls = 0;
+    ACS_NamedExecuteWithResult("core_DrawBar_Clear", cam);
+    int row = ACS_NamedExecuteWithResult("core_DrawBar_RegisterClear", "UHTest_HudClear");
+    Expect(row >= 0, "clear callback registration");
+    Expect(ACS_NamedExecuteWithResult("core_DrawBar_RegisterClear", "UHTest_HudClear") == row, "clear callback deduplication");
+    Expect(ACS_NamedExecuteWithResult("core_DrawBar_RegisterClear", "UHTest_NoSuchHudScript") == -3, "missing clear callback rejected");
+    DrawCustomBar(999, 37, 100);
+    DrawVerticalCustomBar(999, 41, 100);
+    DrawHorizontalCustomBar(999, 43, 100);
+    DrawCustomBar(256, 51, 100);
+    DrawCustomBar(256, 52, 100); // repeated draw must not duplicate cleanup entries
+    Expect(CheckInventory("CustSbarSlotFlag999") == 1 && CheckInventory("CustSbarSlotAmmo999") == 37, "slot 999 normal bar");
+    Expect(CheckInventory("CustVSbarSlotFlag999") == 1 && CheckInventory("CustVSbarSlotAmmo999") == 41, "slot 999 vertical bar");
+    Expect(CheckInventory("CustHSbarSlotFlag999") == 1 && CheckInventory("CustHSbarSlotAmmo999") == 43, "slot 999 horizontal bar");
+    Expect(CheckInventory("CustSbarSlotAmmo256") == 52, "slot 256 replacement");
+    GiveInventory("CustSbarSlotFlag255", 1); // legacy caller did not register cleanup
+    DrawBar3Color(19, 28, 192, 198); SetFlashingBar3();
+    ACS_NamedExecuteWithResult("core_DrawBar_Clear", cam);
+    Expect(clearCalls == 1, "clear callback dispatched once");
+    Expect(!CheckInventory("CustSbarSlotFlag999"), "normal bar clears");
+    Expect(!CheckInventory("CustVSbarSlotFlag999"), "vertical bar clears");
+    Expect(!CheckInventory("CustHSbarSlotFlag999"), "horizontal bar clears");
+    Expect(!CheckInventory("CustSbarSlotFlag256") && !CheckInventory("CustSbarSlotFlag255"), "new and legacy slots clear");
+    Expect(!CheckInventory("SBARDrawBar3") && !CheckInventory("SBARFlash3"), "UH third bar clears");
+    DrawHorizontalCustomBar(999, 23, 100);
+    ACS_NamedExecuteWithResult("core_DrawBar_Clear", cam);
+    Expect(clearCalls == 2 && !CheckInventory("CustHSbarSlotFlag999"), "cleanup registry reusable next frame");
+    // Invalid registrations cannot corrupt the registry or terminate the HUD.
+    ACS_NamedExecuteWithResult("core_raisecleanupflags", -1, 0);
+    ACS_NamedExecuteWithResult("core_raisecleanupflags", 3, 0);
+    ACS_NamedExecuteWithResult("core_raisecleanupflags", 0, 1000);
+    DrawCustomBar(999, 1, 28);
+    ACS_NamedExecuteWithResult("core_DrawBar_Clear", cam);
+    Expect(!CheckInventory("CustSbarSlotFlag999"), "cleanup survives invalid registration");
+    SetAmmoNumberOffset(3); SetAmmoNumberOffset(1);
+    Expect(CheckInventory("SBARAmmoOffset") == 3, "v6c ammo number offset keeps highest slot");
+    int idx = GetAssistBarID();
+    SetAssistBarGraphic(idx, "SUPGUHU");
+    SetAssistBarBarAmount(idx, 7, 10);
+    SetAssistBarBarColor(idx, 192, 198);
+    Expect(GetAssistBarID() == idx + 1, "modern assist API allocates distinct rows");
+    bool hasItem = false, hasWeapon = false;
+    for (int i = 0; i < MAX_ITEMS_GLOBAL; i++) {
+        if (!StrICmp(GetAssistItemActor(i), "PandoraBoxItem")) hasItem = true;
+    }
+    for (i = 0; i < MAX_WEAPONS_GLOBAL; i++) {
+        if (!StrICmp(GetWeaponActor(i), "MegaManU_W")) hasWeapon = true;
+    }
+    Expect(hasItem, "UH item registered without standalone UIX");
+    Expect(hasWeapon, "UH copy weapon registered without standalone UIX");
+    str face = ACS_NamedExecuteWithResult("core_getmugshot", ConsolePlayerNumber() + 1);
+    Expect(!StrICmp(face, "UMUG_10"), "native mugshot resolves Igniter");
+    Expect(CheckScript("core_teaminfo", true), "native team display loaded");
+    Log(s:"UH_HUD_V6C checks=", i:checks, s:" failures=", i:failures);
+}
+
+script "UHTest_HudV6cMorph" (void) CLIENTSIDE {
+    SetActivatorToPlayer(ConsolePlayerNumber());
+    str face = ACS_NamedExecuteWithResult("core_getmugshot", ConsolePlayerNumber() + 1);
+    if (StrICmp(face, "UB024MUG")) Log(s:"UH_HUD_FAIL morph portrait: ", s:face);
+    else Log(s:"UH_HUD_MORPH pass");
+}

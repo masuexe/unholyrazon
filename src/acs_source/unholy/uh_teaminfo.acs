@@ -750,6 +750,7 @@ function void UH_Ti_RefreshStats(int first, int end) {
   bool velig[MAX_PLAYERS];
   bool allowSpy = GetCVar("lms_spectatorview") != 0;
   bool uixOn = GetCVar("UIX_SV_TEAMINFO") != 0;
+  bool v6cOn = GetCVar("mm8bdm_sv_teaminfo") != 0;
   for (int v = 0; v < MAX_PLAYERS; v++) {
     int spectator = PlayerIsSpectator(v);
     vspec[v] = (spectator == 1);
@@ -759,7 +760,8 @@ function void UH_Ti_RefreshStats(int first, int end) {
     bool nativeOn = (GetUserCVar(v, "uh_cl_teaminfo") != 0);
     bool uixClientOn = (uixOn && GetUserCVar(v, "UIX_CL_Enable") != 0
                         && GetUserCVar(v, "UIX_CL_TEAMINFO") != 0);
-    if (!nativeOn && !uixClientOn) {continue;}
+    bool v6cClientOn = v6cOn && GetUserCVar(v, "mm8bdm_teaminfo") != 0;
+    if (!nativeOn && !uixClientOn && !v6cClientOn) {continue;}
     velig[v] = true;
   }
 
@@ -901,6 +903,10 @@ script "uh_ti_serverwatch" (void) {
 #define UH_TI_ID_BASE -19740000
 
 function bool UH_TeamInfo_UIXTakesOver(int cpn) {
+  // v6c's built-in display is a second consumer of the same UH snapshot.
+  if (GetCVar("mm8bdm_sv_teaminfo") && GetUserCVar(cpn, "mm8bdm_teaminfo")
+      && GetUserCVar(cpn, "mm8bdm_teaminfoalpha") > 0
+      && GetCVar("screenblocks") <= 11) {return true;}
   // Unknown CVARs read as 0 when UIX is not loaded, so this is not a hard
   // dependency on the UIX libraries.
   if (GetCVar("UIX_SV_TEAMINFO") == 0) {return false;}

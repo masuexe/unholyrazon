@@ -245,3 +245,54 @@ The existing smoke gate passed 31 checks; its v6b defaults are still a limitatio
 Map-specific wall detection, all assist-item combinations, full LMS rounds, and
 dedicated-client movement/ammo synchronization remain separate requirements.
 The next migration milestone is the HUD/bar APIs and built-in v6c UI.
+
+
+## HUD bars and built-in UI (2026-10-28)
+
+The BARLIB shadow now provides v6c ammo-number offsets, vertical/horizontal
+custom bars, and arsenal-bar color/graphic setters. UH third-bar and explicit
+ammo-proxy helpers remain. The ASSTLIB shadow retains the legacy UH helpers and
+adds all modern v6c assist-bar setters; v6c still supplies the legacy runtime.
+
+BARCLEAR keeps the UH clear-callback registry and legacy 256-slot sweep, then
+clears the v6c sparse registry across all 1000 slots in each of the three bar
+families. Invalid mode/slot registrations are rejected. The stock ammo-cheat
+cleanup scripts are retained. BARHNDLE keeps UH held-weapon remapping and third
+bars, uses the stock script-name cache, and assigns a removable TID to the
+script-bar marker.
+
+Each UH core SBARINFO orientation now contains all 3000 stock v6c custom-bar
+entries, copied from the matching v6c orientation. The UH-generated namespaced
+bar fragments and their generator were not changed. This keeps existing UH HUD
+behavior while adding slots 256-999 and independent horizontal/vertical bars.
+
+UITEAMIT now has a v6c shadow. It retains native layout/options and switches LMS
+membership and health to the shared UH policy and snapshot. The server includes
+clients using native teaminfo in its snapshot audience. The native display
+suppresses the UH fallback to avoid drawing both. MUGSHOTS resolves UH portraits
+through the shared presentation API before falling back to stock skin behavior;
+this also serves the native killfeed and follows boss morphs without a stale
+player-class cache.
+
+The v6c UIXLIB/HUDLIB headers and UICOMMON import source are vendored from the
+base. UICOMMON is not compiled or replaced; the native object remains the owner
+of its state. UITEAMIT and MUGSHOTS use existing base LOADACS entries.
+
+UH items and MegaManU copy weapons register when the native inventory wheel is
+present, without requiring standalone UIX. The existing +weapwheel/-weapwheel
+bindings forward to the native wheel when standalone UIX is absent. Full native
+adapters for UH fixed-loadout, Qwant, Nega Man and Decoy custom wheel routes are
+a separate follow-up; this bridge does not claim those layouts are ported.
+
+A focused runtime probe lives in tools/mcp/fixtures/hud-v6c/ and runs through
+tools/mcp/hud-v6c-test.mjs. It covers new slot families and cleanup, existing UH
+third bars, callbacks, modern assist IDs, native registry entries and portraits.
+Keep it out of release packages. Dedicated-client team health/ammo, spectator
+privacy, reconnects and full-round regression still need separate verification.
+
+Validation: all project ACS libraries compile. The focused native v6c run passed
+21 HUD assertions, checked Igniter and morphed Generic Boss portraits, and opened
+and closed the native weapon wheel through the actual bindings. Both 3000-entry
+SBARINFO sequences match their base-game orientation. The bar generator checks
+and all 31 smoke checks passed. This does not establish rendered layout quality
+or dedicated-client synchronization; the general smoke defaults still target v6b.

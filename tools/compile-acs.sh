@@ -147,6 +147,10 @@ echo "== COREJUMP =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/tables/COREJUMP.acs" "$OUT/COREJUMP.o" || fail=1
 echo "== JUMPCANC =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/JUMPCANC.acs" "$OUT/JUMPCANC.o" || fail=1
+echo "== UITEAMIT =="
+"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/ui/UITEAMIT.acs" "$OUT/UITEAMIT.o" || fail=1
+echo "== MUGSHOTS =="
+"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/MUGSHOTS.acs" "$OUT/MUGSHOTS.o" || fail=1
 echo "== PROJTRAN =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/teamcolors/PROJTRAN.acs" "$OUT/PROJTRAN.o" || fail=1
 echo "== TEAMCOL =="

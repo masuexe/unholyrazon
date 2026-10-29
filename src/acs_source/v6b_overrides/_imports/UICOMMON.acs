@@ -1,0 +1,290 @@
+#library "UICOMMON.acs"
+
+#include "zcommon.acs"
+
+#include "UIXLIB.acs"
+
+#import "8BDT.acs"
+
+#define MAX_PLAYERS 64
+
+#libdefine WBAR_CACHED 0
+#libdefine WBAR_CYAN1 1
+#libdefine WBAR_BLUE1 2
+#libdefine WBAR_BLACK1 3
+#libdefine WBAR_CYAN2 4
+#libdefine WBAR_BLUE2 5
+#libdefine WBAR_BLACK2 6
+#libdefine _WBAR_BAR_TIMER 7
+#libdefine WBAR_BAR_V1 7
+#libdefine WBAR_BAR_H1 8
+#libdefine WBAR_BAR_V2 9
+#libdefine WBAR_BAR_H2 10
+#libdefine WBAR_BAR_V1S_TEAM 11
+#libdefine WBAR_BAR_H1S_TEAM 12
+#libdefine WBAR_BAR_V1D_TEAM 13
+#libdefine WBAR_BAR_H1D_TEAM 14
+#libdefine WBAR_BAR_V2S_TEAM 15
+#libdefine WBAR_BAR_H2S_TEAM 16
+#libdefine WBAR_BAR_V2D_TEAM 17
+#libdefine WBAR_BAR_H2D_TEAM 18
+#libdefine _WBAR_BAR_V1 0
+#libdefine _WBAR_BAR_H1 1
+#libdefine _WBAR_BAR_V2 2
+#libdefine _WBAR_BAR_H2 3
+#libdefine _WBAR_BAR_V1S_TEAM 4
+#libdefine _WBAR_BAR_H1S_TEAM 5
+#libdefine _WBAR_BAR_V1D_TEAM 6
+#libdefine _WBAR_BAR_H1D_TEAM 7
+#libdefine _WBAR_BAR_V2S_TEAM 8
+#libdefine _WBAR_BAR_H2S_TEAM 9
+#libdefine _WBAR_BAR_V2D_TEAM 10
+#libdefine _WBAR_BAR_H2D_TEAM 11
+
+#define CACHE_ROW 0
+
+// extra index for cached variants
+int wepBarProperties[MAX_WEAPONS_GLOBAL_LIMIT][MAX_PLAYERS+1][8];
+str wepBarPropertiesStr[MAX_WEAPONS_GLOBAL_LIMIT][MAX_PLAYERS+1][12];
+
+int readCacheable, readBlue1, readCyan1, readBlack1, readBlue2, readCyan2, readBlack2;
+str readBar1V, readBar1H, readBar2V, readBar2H;
+str readBar1VSTeam, readBar1HSTeam, readBar2VSTeam, readBar2HSTeam;
+str readBar1VDTeam, readBar1HDTeam, readBar2VDTeam, readBar2HDTeam;
+function void readWeaponBars(str weap) {
+	readCacheable = true;
+
+    readBar1V = "WBAMOVER";
+    readBar1H = "WBAMOHOR";
+    readBar2V = "WBAMOVER";
+    readBar2H = "WBAMOHOR";
+
+    readBar1VSTeam = "TBAM1VER";
+    readBar1HSTeam = "TBAM1HOR";
+    readBar2VSTeam = "TBAM1VER";
+    readBar2HSTeam = "TBAM1HOR";
+    readBar1VDTeam = "TBAM2VER";
+    readBar1HDTeam = "TBAM2HOR";
+    readBar2VDTeam = "TBAM2VER";
+    readBar2HDTeam = "TBAM2HOR";
+
+    readCyan1 = -1;
+    readBlue1 = -1;
+	readBlack1 = -1;
+    readCyan2 = -1;
+    readBlue2 = -1;
+	readBlack2 = -1;
+
+    int obj;
+    obj = new(StrParam(s:weap, s:"_NormalBar"));
+    if(!obj) {
+        obj = new(StrParam(s:weap, s:"_MugshotColor"));
+    }
+
+    if(!obj) {
+        obj = new(StrParam(s:weap, s:"_ArsenalBar"));
+    }
+
+    if(obj) {
+        readCyan1 = GetActorArg(obj, 0);
+        readBlue1 = GetActorArg(obj, 1);
+        readBlack1 = GetActorArg(obj, 2);
+        destroy(obj);
+    }
+
+    obj = new(StrParam(s:weap, s:"_SecondBar"));
+    if(!obj) {
+        obj = new(StrParam(s:weap, s:"_SecondArsenalBar"));
+    }
+
+    if(obj) {
+        readCyan2 = GetActorArg(obj, 0);
+        readBlue2 = GetActorArg(obj, 1);
+		readBlack2 = GetActorArg(obj, 2);
+        destroy(obj);
+    }
+
+	obj = new(StrParam(s:weap, s:"_ScriptArsenalBar"));
+	if(obj) {
+		readCacheable = !ACS_NamedExecuteWithResult(StrParam(s:"DrawArsenalBar_", s:weap));
+		destroy(obj);
+	}
+}
+
+function int getWeaponBarProperty(int idx, int col)
+{
+    int pln = PlayerNumber();
+
+    if(wepBarProperties[idx][CACHE_ROW][WBAR_CACHED]) {
+        return _getWeaponBarProperty(idx, col, CACHE_ROW);
+    }
+
+    int time = Timer();
+
+    if(time + 1 != wepBarProperties[idx][pln + 1][_WBAR_BAR_TIMER]) {
+        readWeaponBars(getWeaponActor(idx));
+
+        wepBarProperties[idx][CACHE_ROW][WBAR_CACHED] = readCacheable;
+
+        if(readCacheable)
+            int idxToUpdate = CACHE_ROW;
+        else
+            idxToUpdate = pln + 1;
+
+        // Bar colors
+        wepBarProperties[idx][idxToUpdate][WBAR_CYAN1] = readCyan1;
+        wepBarProperties[idx][idxToUpdate][WBAR_BLUE1] = readBlue1;
+        wepBarProperties[idx][idxToUpdate][WBAR_BLACK1] = readBlack1;
+        wepBarProperties[idx][idxToUpdate][WBAR_CYAN2] = readCyan2;
+        wepBarProperties[idx][idxToUpdate][WBAR_BLUE2] = readBlue2;
+        wepBarProperties[idx][idxToUpdate][WBAR_BLACK2] = readBlack2;
+
+        // Weapon bar graphics
+        wepBarPropertiesStr[idx][idxToUpdate][_WBAR_BAR_V1] = readBar1V;
+        wepBarPropertiesStr[idx][idxToUpdate][_WBAR_BAR_H1] = readBar1H;
+        wepBarPropertiesStr[idx][idxToUpdate][_WBAR_BAR_V2] = readBar2V;
+        wepBarPropertiesStr[idx][idxToUpdate][_WBAR_BAR_H2] = readBar2H;
+
+        // Team info bar graphics
+        wepBarPropertiesStr[idx][idxToUpdate][_WBAR_BAR_V1S_TEAM] = readBar1VSTeam;
+        wepBarPropertiesStr[idx][idxToUpdate][_WBAR_BAR_H1S_TEAM] = readBar1HSTeam;
+        wepBarPropertiesStr[idx][idxToUpdate][_WBAR_BAR_V2S_TEAM] = readBar2VSTeam;
+        wepBarPropertiesStr[idx][idxToUpdate][_WBAR_BAR_H2S_TEAM] = readBar2HSTeam;
+        wepBarPropertiesStr[idx][idxToUpdate][_WBAR_BAR_V1D_TEAM] = readBar1VDTeam;
+        wepBarPropertiesStr[idx][idxToUpdate][_WBAR_BAR_H1D_TEAM] = readBar1HDTeam;
+        wepBarPropertiesStr[idx][idxToUpdate][_WBAR_BAR_V2D_TEAM] = readBar2VDTeam;
+        wepBarPropertiesStr[idx][idxToUpdate][_WBAR_BAR_H2D_TEAM] = readBar2HDTeam;
+
+        wepBarProperties[idx][pln + 1][_WBAR_BAR_TIMER] = time + 1;
+    }
+
+    if(wepBarProperties[idx][CACHE_ROW][WBAR_CACHED]) {
+        return _getWeaponBarProperty(idx, col, CACHE_ROW);
+    }
+
+    return _getWeaponBarProperty(idx, col, pln + 1);
+}
+
+function int _getWeaponBarProperty(int idx, int col, int pln)
+{
+    if(col >= WBAR_BAR_V1) {
+        return wepBarPropertiesStr[idx][pln][col - WBAR_BAR_V1];
+    }
+
+    return wepBarProperties[idx][pln][col];
+}
+
+script "core_ui_setbar1graphics" (int bar1V, int bar1H, int bar1VTeam, int bar1HTeam)
+{
+    readBar1V = bar1V;
+    readBar1H = bar1H;
+    readBar1VSTeam = bar1VTeam;
+    readBar1VDTeam = bar1VTeam;
+    readBar1HSTeam = bar1HTeam;
+    readBar1HDTeam = bar1HTeam;
+}
+
+script "core_ui_setbar2graphics" (int bar2V, int bar2H, int bar2VTeam, int bar2HTeam)
+{
+    readBar2V = bar2V;
+    readBar2H = bar2H;
+    readBar2VSTeam = bar2VTeam;
+    readBar2VDTeam = bar2VTeam;
+    readBar2HSTeam = bar2HTeam;
+    readBar2HDTeam = bar2HTeam;
+}
+
+script "core_ui_setbar1colors" (int cyan, int blue, int black)
+{
+    readCyan1 = cyan;
+    readBlue1 = blue;
+    readBlack1 = black;
+}
+
+script "core_ui_setbar2colors" (int cyan, int blue, int black)
+{
+    readCyan2 = cyan;
+    readBlue2 = blue;
+    readBlack2 = black;
+}
+
+script "core_ui_setbar1darkened" (void)
+{
+    ACS_NamedExecuteWithResult("core_ui_setbar1colors", 88, 95, 0);
+}
+
+script "core_ui_setbar2darkened" (void)
+{
+    ACS_NamedExecuteWithResult("core_ui_setbar2colors", 88, 95, 0);
+}
+
+// Get player ammo and max ammo only once per tic
+int wepPlayerAmmos[MAX_WEAPONS_GLOBAL_LIMIT][MAX_PLAYERS][5];
+
+#libdefine _WAMMO_TIMER 0
+#libdefine WAMMO_AMMO1 1
+#libdefine WAMMO_AMMO1_MAX 2
+#libdefine WAMMO_AMMO2 3
+#libdefine WAMMO_AMMO2_MAX 4
+
+function int getWeaponAmmoInfo(int idx, int col)
+{
+    int pln = PlayerNumber();
+
+    int time = Timer();
+    if(time + 1 != wepPlayerAmmos[idx][pln][_WAMMO_TIMER]) {
+        str ammo1 = getWeaponAmmoType(idx);
+        str ammo2 = getWeaponAmmo2Type(idx);
+
+        if(strLen(ammo1) != 0) {
+            wepPlayerAmmos[idx][pln][WAMMO_AMMO1] = CheckInventory(ammo1);
+            wepPlayerAmmos[idx][pln][WAMMO_AMMO1_MAX] = GetAmmoCapacity(ammo1);
+        } else {
+            wepPlayerAmmos[idx][pln][WAMMO_AMMO1] = -1;
+            wepPlayerAmmos[idx][pln][WAMMO_AMMO1_MAX] = -1;
+        }
+
+        if(strLen(ammo2) != 0) {
+            wepPlayerAmmos[idx][pln][WAMMO_AMMO2] = CheckInventory(ammo2);
+            wepPlayerAmmos[idx][pln][WAMMO_AMMO2_MAX] = GetAmmoCapacity(ammo2);
+        } else {
+            wepPlayerAmmos[idx][pln][WAMMO_AMMO2] = -1;
+            wepPlayerAmmos[idx][pln][WAMMO_AMMO2_MAX] = -1;
+        }
+
+        wepPlayerAmmos[idx][pln][_WAMMO_TIMER] = time + 1;
+    }
+
+    return wepPlayerAmmos[idx][pln][col];
+}
+
+// Buster index to weapon index lookup
+int busterInit[MAX_BUSTER_LIMIT][2];
+int busterWeaponInit[MAX_WEAPONS_GLOBAL_LIMIT][2];
+
+function int busterMap(int idx)
+{
+    if(busterInit[idx][0])
+        return busterInit[idx][1];
+
+    int wep = findWeaponByActor(getBusterActor(idx));
+
+    busterInit[idx][0] = true;
+    busterInit[idx][1] = wep;
+
+    if(wep >= 0) {
+        busterWeaponInit[wep][0] = true;
+        busterWeaponInit[wep][1] = idx;
+    }
+
+    return wep;
+}
+
+// Busters always get iterated first, so this is always populated by the time it's called and relevant
+function int weaponToBusterMap(int idx)
+{
+    if(busterWeaponInit[idx][0])
+        return busterWeaponInit[idx][1];
+
+    return -1;
+}

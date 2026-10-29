@@ -89,8 +89,12 @@ script "uh_ww_open" (void) NET CLIENTSIDE {
 
   if (ConsolePlayerNumber() != PlayerNumber())
     terminate;
-  if (!UHFW_ActorExists("UIX_ItemSelected_PU"))
+  if (!UHFW_ActorExists("UIX_ItemSelected_PU")) {
+    // v6c owns the built-in wheel. The legacy UH/UIX adapter must not swallow its binding.
+    if (CheckScript("core_weap_wheel_start", true))
+      ACS_NamedExecuteWithResult("core_weap_wheel_start");
     terminate;
+  }
   if (!UHFW_PlayerOk())
     terminate;
   if (wheelName != -1)
@@ -173,6 +177,11 @@ script "uh_ww_open" (void) NET CLIENTSIDE {
 }
 
 script "uh_ww_close" (void) NET CLIENTSIDE {
+  if (ConsolePlayerNumber() == PlayerNumber() && !UHFW_ActorExists("UIX_ItemSelected_PU")
+      && CheckScript("core_weap_wheel_end", true)) {
+    ACS_NamedExecuteWithResult("core_weap_wheel_end");
+    terminate;
+  }
   if (ConsolePlayerNumber() != PlayerNumber())
     terminate;
   if (uhww_pn != -1 && uhww_pn != PlayerNumber())

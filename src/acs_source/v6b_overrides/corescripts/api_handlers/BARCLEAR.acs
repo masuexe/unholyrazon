@@ -54,6 +54,31 @@ script "core_DrawBar_Clear" (int cam) CLIENTSIDE {
   DispatchBarClearCallbacks(cam);
 }
 
+#define MAX_CUSTOM_BARS 1000
+#define MAX_BAR_TYPES 3
+
+int custBarCleanup[MAX_BAR_TYPES][MAX_CUSTOM_BARS];
+int custBarCleanupCount[MAX_BAR_TYPES];
+int custBarCleanupList[MAX_BAR_TYPES][MAX_CUSTOM_BARS];
+
+str custBarNames[MAX_BAR_TYPES][2] = {
+    {"CustSbarSlotFlag", "CustSbarSlotAmmo"},
+    {"CustVSbarSlotFlag", "CustVSbarSlotAmmo"},
+    {"CustHSbarSlotFlag", "CustHSbarSlotAmmo"}
+};
+
+script "core_raisecleanupflags" (int mode, int slot) {
+	if (mode < 0 || mode >= MAX_BAR_TYPES || slot < 0 || slot >= MAX_CUSTOM_BARS)
+        terminate;
+	if(custBarCleanup[mode][slot])
+		terminate;
+
+	int idx = custBarCleanupCount[mode]++;
+	custBarCleanupList[mode][idx] = slot;
+	custBarCleanup[mode][slot] = true;
+}
+
+
 function void ClearBarFlags(int cam) {
   // Mugshot flags
   SetActorInventory(cam, "MugshotTransFlag", 0);
@@ -108,6 +133,44 @@ function void ClearBarFlags(int cam) {
     SetActorInventory(cam, StrParam(s:"CustSbarSlotFlag", i:i), 0);
   }
 
+  // v6c sparse cleanup covers all 1000 slots in all three bar families.
+  // Keep the legacy 256-slot sweep above for already-compiled v6b addons.
+  for (int mode = 0; mode < MAX_BAR_TYPES; mode++) {
+    for (int idx = 0; idx < custBarCleanupCount[mode]; idx++) {
+      int slot = custBarCleanupList[mode][idx];
+      SetActorInventory(cam, StrParam(s:custBarNames[mode][0], i:slot), 0);
+      custBarCleanup[mode][slot] = false;
+    }
+    custBarCleanupCount[mode] = 0;
+  }
+
   // $UH — Qwant landscape wepicon align
   SetActorInventory(cam, "QwantAlignWepIcon", 0);
+}
+
+
+// these two scripts below help optimize the "give ammo" and "give all" cheats
+script "core_DrawBar_CheatScenario" ENTER
+{
+	int pln = PlayerNumber();
+	while(GetActorProperty(0, APROP_Health) > 0 && PlayerInGame(pln)) {
+		if(CheckInventory("GiveAmmoTrap") != 0) {
+			SetInventory("GiveAmmoTrap", 0);
+			for (int i = 0; i < MAX_CUSTOM_BARS; i++) {
+				SetInventory(StrParam(s:"CustSbarSlotFlag", i:i),0);
+				SetInventory(StrParam(s:"CustVSbarSlotFlag", i:i),0);
+				SetInventory(StrParam(s:"CustHSbarSlotFlag", i:i),0);
+				SetInventory(StrParam(s:"CustSbarSlotAmmo", i:i),0);
+				SetInventory(StrParam(s:"CustVSbarSlotAmmo", i:i),0);
+				SetInventory(StrParam(s:"CustHSbarSlotAmmo", i:i),0);
+			}
+		}
+
+		Delay(1);
+	}
+}
+
+script "core_DrawBar_CheatScenario_R" RESPAWN
+{
+	ACS_NamedExecuteWithResult("core_DrawBar_CheatScenario");
 }

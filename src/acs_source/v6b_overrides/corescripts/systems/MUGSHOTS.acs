@@ -1,0 +1,143 @@
+#library "MUGSHOTS"
+#include "zcommon.acs"
+
+#include "8BDMDEFS.acs"
+#include "8BDMVARS.acs"
+
+#define MCACHE_SKIN_CACHED 0
+#define MCACHE_SKIN_KEY 1
+#define MCACHE_CLASS_CACHED 2
+#define MCACHE_CLASS_KEY 3
+#define MCACHE_CLASS_SCRIPTED 4
+
+#define MCACHE_SKIN_RESULT 0
+#define MCACHE_CLASS_SCRIPT 1
+
+int mugshotCache[MAX_PLAYERS][5];
+str mugshotCacheStr[MAX_PLAYERS][2];
+
+script "core_getmugshot" (int pln)
+{
+    // Resolve before requiring a live body: UH keeps identity across death/morph.
+    int subject = pln - 1;
+    if (pln == 0) subject = PlayerNumber();
+    if (subject >= 0 && subject < MAX_PLAYERS) {
+        str uhFace = ACS_NamedExecuteWithResult("uh_GetTeamPortraitForTid", subject + PLN_TID);
+        if (StrLen(uhFace) > 0) { SetResultValue(uhFace); terminate; }
+    }
+    if(pln != 0)
+        SetActivatorToPlayer(pln - 1);
+
+    pln = PlayerNumber();
+    if(pln < 0) {
+        SetResultValue("NULLICON");
+        terminate;
+    }
+
+    int skin = GetPlayerSkin(pln, PLAYERSKIN_VISIBLE);
+
+    int classIdx = PlayerClass(pln);
+    if(!mugshotCache[pln][MCACHE_CLASS_CACHED] || classIdx != mugshotCache[pln][MCACHE_CLASS_KEY]) {
+        mugshotCache[pln][MCACHE_CLASS_CACHED] = true;
+        mugshotCache[pln][MCACHE_CLASS_KEY] = classIdx;
+
+        int u = UniqueTID();
+        str class = GetActorClass(0);
+        if(SpawnForced(StrParam(s:class, s:"_ScriptMugshot"), 0, 0, 0, u, 0)) {
+            Thing_Remove(u);
+
+            mugshotCache[pln][MCACHE_CLASS_SCRIPTED] = true;
+            mugshotCacheStr[pln][MCACHE_CLASS_SCRIPT] = StrParam(s:"DrawMugshot_", s:class);
+        }
+    }
+
+    if(mugshotCache[pln][MCACHE_CLASS_SCRIPTED]) {
+        SetResultValue(ACS_NamedExecuteWithResult(mugshotCacheStr[pln][MCACHE_CLASS_SCRIPT], skin));
+        terminate;
+    }
+
+    if(mugshotCache[pln][MCACHE_SKIN_CACHED] && mugshotCache[pln][MCACHE_SKIN_KEY] == skin) {
+        SetResultValue(mugshotCacheStr[pln][MCACHE_SKIN_RESULT]);
+        terminate;
+    }
+
+    mugshotCache[pln][MCACHE_SKIN_CACHED] = true;
+    mugshotCache[pln][MCACHE_SKIN_KEY] = skin;
+    mugshotCacheStr[pln][MCACHE_SKIN_RESULT] = "MAESTMUG";
+
+    if(GetSkinProperty(skin, "face", true) != SPROP_TYPE_STRING) {
+        SetResultValue(mugshotCacheStr[pln][MCACHE_SKIN_RESULT]);
+        terminate;
+    }
+
+    str face = GetSkinProperty(skin, "face");
+
+    if(stricmp("STF", face) == 0) {
+        SetResultValue(mugshotCacheStr[pln][MCACHE_SKIN_RESULT]);
+        terminate;
+    }
+
+    mugshotCacheStr[pln][MCACHE_SKIN_RESULT] = StrParam(s:face, s:"ST00");
+
+    SetResultValue(mugshotCacheStr[pln][MCACHE_SKIN_RESULT]);
+}
+
+script "core_scoreboard_mugshots" OPEN CLIENTSIDE
+{
+    int cpn = ConsolePlayerNumber();
+
+    int i = 0;
+    while(GetSkinProperty(i, "name", true) == SPROP_TYPE_STRING) {
+        if(strcmp(GetSkinProperty(i, "name"), "Base") != 0)
+            break;
+
+        i++;
+    }
+
+    int numClasses = i;
+
+    Delay(1); // wait for IsTeamGame and IsCooperative to populate
+
+    while(true) {
+        for(i = 0; i < MAX_PLAYERS; i++) {
+            // run for players who are alive or dead spectating
+            if(!PlayerInGame(i) && PlayerIsSpectator(i) != 2)
+                continue;
+
+            bool show = false;
+
+            if(numClasses <= 1) {
+                show = true;
+            }
+
+            if(!show && cpn == i) {
+                show = true;
+            }
+
+            if(!show && PlayerIsSpectator(cpn) == 1) {
+                show = true;
+            }
+
+            if(!show && isTeamGame) {
+                if(GetPlayerInfo(cpn, PLAYERINFO_TEAM) == GetPlayerInfo(i, PLAYERINFO_TEAM)) {
+                    show = true;
+                }
+            }
+
+            if(!show && isCooperative) {
+                show = true;
+            }
+
+            if(show) {
+                str face = ACS_NamedExecuteWithResult("core_getmugshot", i + 1);
+            } else {
+                face = "NULLICON";
+            }
+
+            if(stricmp(GetCustomPlayerValue("Mugshot", i), face) != 0)
+                SetCustomPlayerValue("Mugshot", i, face);
+        }
+
+        Delay(1);
+    }
+}

@@ -650,3 +650,26 @@ result. A second input sequence must perform an actual air jump. The callback co
 to isolate each gate. They do not establish wall detection on every map, all
 assist-item interactions, or dedicated-client synchronization. Keep the probe
 out of release packages.
+
+
+### v6c HUD regression
+
+Build the diagnostic addon with the project include order:
+
+```bash
+acc -i ../references/zandronum/acc-branch-zandronum -i src/acs_source/v6b_overrides/_includes/common -i src/acs_source/v6b_overrides/_includes/mod_api -i src/acs_source/_imports -i src/acs_source/v6b_overrides/_imports tools/mcp/fixtures/hud-v6c/probe.acs /tmp/HUDPROB.o
+python3 - <<'PYPROBE'
+import zipfile
+with zipfile.ZipFile('/tmp/uh-hud-v6c-probe.pk3', 'w') as archive:
+    archive.write('tools/mcp/fixtures/hud-v6c/LOADACS', 'LOADACS')
+    archive.write('/tmp/HUDPROB.o', 'acs/HUDPROB.o')
+PYPROBE
+ZANDRONUM_LAUNCH_PROFILES=tools/mm8bdm-v6c.launch.json node tools/mcp/hud-v6c-test.mjs --probe /tmp/uh-hud-v6c-probe.pk3
+```
+
+The runner owns one isolated engine and allows up to 120 seconds for startup
+before attaching the MCP bridge. This avoids the standard launcher's fixed
+42-second wait for larger v6c loads. It checks new and legacy bar cleanup,
+UH third bars, native item/weapon registration, modern assist-bar IDs, and
+Igniter/Generic Boss portraits, and real weapon-wheel open/close bindings. This is an offline contract test; it does not
+prove the rendered layout or dedicated-client synchronization.
