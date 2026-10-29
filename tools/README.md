@@ -567,7 +567,7 @@ See [REFERENCES.md](REFERENCES.md) for full catalog and download links.
   python3 tools/check_environment.py
   python3 tools/check_environment.py --json
   ```
-  Validates compiler (`acc`), test assets (`megagame.wad`, `mm8bdm-v6b.pk3`), and reference sources.
+  Validates compiler (`acc`), test assets (`megagame.wad`, `mm8bdm-v6c.pk3`), and reference sources.
 - **Unpack references from PK3 archives**:
   ```bash
   python3 tools/unpack_references.py

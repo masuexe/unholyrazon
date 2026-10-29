@@ -52,7 +52,8 @@ GROUP_ORDER = {
 CANONICAL_PROFILE = REPO / "tools" / "mm8bdm-v6c.launch.json"
 
 
-def check(name, group, kind, cmd, desc, requires=("python",), timeout=120.0):
+def check(name, group, kind, cmd, desc, requires=("python",), timeout=120.0,
+          pin_profile=False):
     return {
         "name": name,
         "group": group,
@@ -61,6 +62,10 @@ def check(name, group, kind, cmd, desc, requires=("python",), timeout=120.0):
         "desc": desc,
         "requires": list(requires),
         "timeout": float(timeout),
+        # Pin the tracked canonical launch profile for engine/config probes so a
+        # stale ambient ZANDRONUM_LAUNCH_PROFILES from an older shell cannot flip
+        # the gate to a historical profile. The preflight warning still reports it.
+        "pin_profile": bool(pin_profile),
     }
 
 
@@ -145,20 +150,21 @@ CHECKS = [
     check("validate-build-pk3", "smoke", "build", ["bash", "tools/validate-build-pk3.sh"],
           "Existing out/build.pk3 archive contents", ["bash", "unzip"], 300),
     check("mcp-dry-run", "smoke", "mcp", ["bash", "tools/mcp/smoke-test.sh", "--dry-run"],
-          "MCP launcher/server resolution without starting the engine", ["bash", "node"], 120),
+          "MCP launcher/server resolution without starting the engine", ["bash", "node"], 120,
+          pin_profile=True),
 
     # -- full: real engine verification (local machine only) ---------------
     check("mcp-smoke", "full", "engine",
           ["node", "tools/mcp/smoke-test.mjs", "--profile", "mm8bdm-v6c-smoke", "--json"],
-          "MCP-controlled engine startup and player_state", ["node", "zandronum"], 900),
+          "MCP-controlled engine startup and player_state", ["node", "zandronum"], 900, pin_profile=True),
     check("mcp-network", "full", "engine", ["node", "tools/mcp/network-test.mjs", "--json"],
-          "Dedicated server + two-client authentication/snapshot", ["node", "zandronum"], 900),
+          "Dedicated server + two-client authentication/snapshot", ["node", "zandronum"], 900, pin_profile=True),
     check("mcp-team-info-sync", "full", "engine",
           ["node", "tools/mcp/team-info-sync-test.mjs", "--json"],
-          "Per-client CLIENTSIDE team-info delivery", ["node", "zandronum"], 900),
+          "Per-client CLIENTSIDE team-info delivery", ["node", "zandronum"], 900, pin_profile=True),
     check("mcp-team-presentation", "full", "engine",
           ["node", "tools/mcp/team-presentation-test.mjs", "--json"],
-          "Team presentation resolver end to end", ["node", "zandronum"], 900),
+          "Team presentation resolver end to end", ["node", "zandronum"], 900, pin_profile=True),
 ]
 
 
@@ -219,10 +225,14 @@ def run_check(item, timeout_scale):
                     reason=f"missing tool: {reasons}", output_tail="")
         return base
 
+    child_env = os.environ.copy()
+    if item.get("pin_profile"):
+        child_env["ZANDRONUM_LAUNCH_PROFILES"] = str(CANONICAL_PROFILE)
+
     started = time.monotonic()
     try:
         proc = subprocess.run(
-            item["cmd"], cwd=REPO, env=os.environ.copy(),
+            item["cmd"], cwd=REPO, env=child_env,
             capture_output=True, text=True, timeout=timeout,
         )
         exit_code = proc.returncode

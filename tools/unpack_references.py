@@ -88,7 +88,7 @@ def main() -> int:
     parser.add_argument("--wads-dir", type=str, help="Path to directory containing .pk3 files")
     parser.add_argument("--out-dir", type=str, help="Destination references directory (default: ../references)")
     parser.add_argument("--all", action="store_true", help="Extract all files including sprites & audio (default: code-only)")
-    parser.add_argument("--target", choices=["all", "mm8bdm-v6b", "classes-v9gh", "unholy-legacy"], default="all",
+    parser.add_argument("--target", choices=["all", "mm8bdm-v6c", "mm8bdm-v6b", "classes-v9gh", "unholy-legacy"], default="all",
                         help="Specific package to unpack")
     parser.add_argument("--include-legacy", action="store_true",
                         help="Also unpack legacy Unholy packages (*unholy*.pk3 / *uh-*.pk3)")
@@ -99,7 +99,7 @@ def main() -> int:
     ref_cfg = config.get("references", {})
 
     wads_dir = Path(args.wads_dir) if args.wads_dir else Path(config.get("wads_dir", repo_root / "../wads")).resolve()
-    out_dir = Path(args.out_dir) if args.out_dir else Path(ref_cfg.get("root", repo_root / "../references")).resolve()
+    out_dir = Path(args.out_dir) if args.out_dir else Path(ref_cfg.get("root") or os.environ.get("MM8BDM_REFERENCES_DIR") or repo_root / "../references").resolve()
 
     if not wads_dir.is_dir():
         print(f"[ERROR] WADs directory not found: {wads_dir}", file=sys.stderr)
@@ -114,7 +114,13 @@ def main() -> int:
     print()
 
     targets_to_run = []
-    if args.target in ("all", "mm8bdm-v6b"):
+    if args.target in ("all", "mm8bdm-v6c"):
+        targets_to_run.append({
+            "name": "MM8BDM v6c",
+            "pattern": "mm8bdm-v6c*.pk3",
+            "dest": out_dir / "for_8bdm-v6c" / "mm8bdm-v6c",
+        })
+    if args.target == "mm8bdm-v6b":
         targets_to_run.append({
             "name": "MM8BDM v6b",
             "pattern": "mm8bdm-v6b*.pk3",

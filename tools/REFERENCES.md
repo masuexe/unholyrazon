@@ -8,7 +8,7 @@ This document describes how Unholy Razon manages external references, base game 
 
 | Tier | Role | Package / Target | Purpose | Source / How to Obtain |
 |---|---|---|---|---|
-| **Tier 1 (Core)** | Base Game Engine Assets | `megagame.wad`<br>`mm8bdm-v6b.pk3` | Required for launching/testing the game. Agent reads ClassBase and core DECORATE/ACS. | Download MM8BDM v6b from [Cutstuff](http://cutstuff.net/mm8bdm/) |
+| **Tier 1 (Core)** | Base Game Engine Assets | `megagame.wad`<br>`mm8bdm-v6c.pk3` | Required for launching/testing the game. Agent reads ClassBase and core DECORATE/ACS. | Download MM8BDM v6c from [Cutstuff](http://cutstuff.net/mm8bdm/) |
 | **Tier 2 (Recommended)** | Architectural Template | `classes-v9gh_.pk3` | Primary template for custom classes, weapon bars, inventory tokens, and assist items. | Download CBM v9gh from Cutstuff forums |
 | **Tier 3 (Engine)** | Engine & Compiler Source | `zandronum-stable`<br>`acc-branch-zandronum` | Reference for Zandronum actor logic, netplay sync, and ACC compiler builtins. | [Zandronum Git/Mercurial](https://github.com/Zandronum/zandronum) |
 | **Tier 4 (Optional)** | Legacy Mods & Addons | **Legacy Unholy archives & patches**<br>(`*unholy*.pk3` / `*uh-*.pk3`)<br><br>Test addons:<br>`8bdm-uix-v3bh`<br>`trill-damagedisplay` | Reference when porting legacy Unholy classes/bosses, verifying historical mechanics, or running full UIX test profiles. | [TSPG](https://allfearthesentinel.net/) / Community archives |
@@ -24,12 +24,12 @@ parent_directory/
 ├── unholyrazon/                    # (This repository)
 ├── wads/                           # Runtime .wad / .pk3 files for testing (can be a symlink)
 │   ├── megagame.wad
-│   ├── mm8bdm-v6b.pk3
-│   ├── 8bdm-v6b-miscfixes-v6h.pk3
+│   ├── mm8bdm-v6c.pk3
 │   └── ... (optional mods)
 └── references/                     # Extracted / unpacked sources for code consultation
+    ├── for_8bdm-v6c/
+    │   └── mm8bdm-v6c/             # Current base game code and actors
     ├── for_8bdm-v6b/
-    │   ├── mm8bdm-v6b/             # Unpacked MM8BDM v6b code and actors
     │   └── classes-v9gh_/          # Unpacked CBM v9gh code and actors
     └── zandronum/
         ├── zandronum-stable-branch-default/
@@ -44,7 +44,7 @@ parent_directory/
 ## 3. Setup Workflows for Modders & Agents
 
 ### Workflow A: Using Existing .pk3 Files (Quick Unpack)
-If you already have `mm8bdm-v6b.pk3` and `classes-v9gh.pk3` in your WAD directory:
+If you already have `mm8bdm-v6c.pk3` and `classes-v9gh.pk3` in your WAD directory:
 1. Place or symlink your WAD folder at `../wads`:
    ```bash
    ln -s /path/to/my/wads ../wads
@@ -68,3 +68,11 @@ Run the environment health check tool at any time:
 python3 tools/check_environment.py
 ```
 It will report which Tier 1/2/3/4 dependencies are detected and flag any missing elements.
+
+The environment checker uses `references.root` from `paths.local.json` before
+`MM8BDM_REFERENCES_DIR`, then the default sibling directory. Individual
+`mm8bdm_v6c`, `classes_v9gh`, `zandronum_src`, `acc_src` and `references_v6a`
+settings override their source locations. The historical v6b base can be
+unpacked explicitly with `--target mm8bdm-v6b`; the default extracts v6c and
+CBM. Agents must treat existing reference trees as read-only and must not run
+the unpacker over them during normal mod changes.

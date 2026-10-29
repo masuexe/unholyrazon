@@ -60,7 +60,7 @@ class Bridge:
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    profile = json.loads((ROOT / "tools/mm8bdm-v6b.launch.json").read_text())["mm8bdm-v6b-smoke"]
+    profile = json.loads((ROOT / "tools/mm8bdm-v6c.launch.json").read_text())["mm8bdm-v6c-smoke"]
     engine = os.environ["ZANDRONUM_EXE"]
     acc = shutil.which(os.environ.get("ACC", "acc"))
     if not acc:

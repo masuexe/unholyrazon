@@ -459,15 +459,32 @@ override until it restarts.
 Validation: strict agent-configuration checks passed, profile resolution selected
 only the IWAD, v6c base and current mod, and an actual default MCP smoke launch
 reported no compile/fatal errors, returned player state and quit cleanly.
-Frozen source/asset reference baselines and environment discovery are separate
-remaining work; this launcher change does not claim those checks cover v6c.
+
+### Default migration follow-up (2026-10-29)
+
+The remaining tracked runner defaults now select v6c:
+`direct-startup-test.mjs`, `xray-test.py` and `batch-d-acceptance.sh` use the
+v6c smoke/full profiles. `check_environment.py` and `unpack_references.py` read
+`references.root` and per-target overrides from `paths.local.json` before
+`MM8BDM_REFERENCES_DIR`; the default unpack target is v6c and v6b stays available
+through `--target mm8bdm-v6b`. The gate pins the canonical profile for its engine
+and dry-run probes, so a stale ambient `ZANDRONUM_LAUNCH_PROFILES` from an older
+shell cannot turn a default `--smoke` into a failure; the preflight warning still
+reports the mismatch.
+
+Validation: `python3 tools/gate.py --smoke` passes 32 of 32 checks with only the
+stale-ambient warning; the edited runners pass syntax checks and a
+`direct-startup-test.mjs --dry-run` resolves the v6c smoke profile and the v6c
+IWAD/base/mod file set. Frozen source and asset reference baselines remain
+separate work; this change does not claim those checks cover v6c.
 
 ## Remaining completion evidence
 
 The port is not complete while these items remain open:
 
-- Migrate environment/reference discovery and frozen asset baselines to v6c.
-  Frozen v6b baselines must not be mistaken for v6c coverage.
+- Migrate frozen source and asset reference baselines to v6c. Environment and
+  reference discovery now default to v6c. Frozen v6b baselines must not be
+  mistaken for v6c coverage.
 - Finish the DECORATE replacement audit, including new assist/buster behavior,
   and record which old miscfix overrides are still required.
 - Exercise genuine added/updated maps and native items. Filename additions

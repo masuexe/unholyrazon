@@ -42,7 +42,7 @@ if [[ "$mode" == "runtime" ]]; then
 fi
 
 if [[ "$mode" == "full" ]]; then
-  run_required "Direct full-profile startup" node "$repo_root/tools/direct-startup-test.mjs" --profile mm8bdm-v6b-full --duration-sec 30
+  run_required "Direct full-profile startup" node "$repo_root/tools/direct-startup-test.mjs" --profile mm8bdm-v6c-full --duration-sec 30
 fi
 
 printf '\nManual gate: server + 2 clients, forced events/combos, reconnect/disconnect, two-round cleanup, and HUD aspect checks.\n'

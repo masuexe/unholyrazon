@@ -22,7 +22,7 @@ As a fork, **Unholy Razon** expands this core gameplay with new content, a modul
 Unholy Razon requires the following base files:
 - **Engine**: [Zandronum](https://zandronum.com/) 3.3-alpha-251208-0355 or later.
 - **IWAD**: `megagame.wad`.
-- **Base Mod**: `mm8bdm-v6b.pk3`.
+- **Base Mod**: `mm8bdm-v6c.pk3`.
 
 ### Load Order
 
@@ -30,25 +30,23 @@ Load PK3 files in the exact order shown below:
 
 | Order | File | Required | Notes |
 |:---:|---|:---:|---|
-| 1 | `mm8bdm-v6b.pk3` | **Yes** | Base MM8BDM game data. |
-| 2 | `8bdm-v6b-miscfixes-v6h.pk3` | *Recommended* | Base-game bug fixes. |
-| 3 | `8bdm-uix-v3bh.pk3` | *Optional* | UIX teammate display. Load before Unholy Razon. |
-| 4 | `trill-pingbutton-v5h.pk3` | *Optional* | Ping button mod. Load before Unholy Razon. |
-| **5** | **`out/build.pk3`** | **Yes** | **Unholy Razon core mod.** |
-| 6+ | Custom Addons | *Optional* | Any third-party Unholy Razon addons. |
+| 1 | `mm8bdm-v6c.pk3` | **Yes** | Base MM8BDM game data, including the native UI. |
+| **2** | **`out/build.pk3`** | **Yes** | **Unholy Razon core mod.** |
+| 3+ | Custom Addons | *Optional* | Use addons compatible with v6c and Unholy Razon. |
 
-> [!IMPORTANT]
-> If you use **UIX** or **PingButton**, load them **before** Unholy Razon. Loading them after Unholy Razon overwrites the bundled compatibility scripts.
+The current build targets v6c. Use its native teammate display and item wheels.
+The v6b miscfixes package belongs to the historical v6b setup. Optional addon
+interoperability is tracked in [the migration status](docs/v6c-migration.md).
 
 ### Launching the Game
 
 Run Zandronum with the required files:
 
 ```bash
-zandronum -iwad megagame.wad -file mm8bdm-v6b.pk3 8bdm-v6b-miscfixes-v6h.pk3 out/build.pk3
+zandronum -iwad megagame.wad -file mm8bdm-v6c.pk3 out/build.pk3
 ```
 
-Ready-to-use launch profiles are available in `tools/mm8bdm-v6b.launch.json`.
+Ready-to-use launch profiles are available in `tools/mm8bdm-v6c.launch.json`.
 
 ---
 
@@ -86,7 +84,7 @@ Working addon templates are provided in the [`examples/`](examples/) directory. 
 
 ### Reserved TIDs
 
-Do not use the following TID ranges in custom actors or scripts. These ranges are reserved by MM8BDM v6b and Unholy Razon:
+Do not use the following TID ranges in custom actors or scripts. These ranges are reserved by MM8BDM v6c and Unholy Razon:
 
 | TID Range | Origin | Assigned Usage |
 |:---:|:---:|---|
@@ -176,7 +174,7 @@ parent/
 │   ├── docs/              # Documentation
 │   ├── examples/          # Example addon PK3 sources
 │   └── tools/             # Build and test scripts
-├── wads/                  # megagame.wad, mm8bdm-v6b.pk3, miscfixes (can be a symlink)
+├── wads/                  # megagame.wad, mm8bdm-v6c.pk3 (can be a symlink)
 ├── references/            # Extracted/unpacked base game & template sources (see tools/REFERENCES.md)
 └── unholyrazon_music/     # Optional: music packs for full launch profile
 ```
@@ -187,7 +185,7 @@ parent/
    ```bash
    python3 tools/check_environment.py
    ```
-   Checks for the `acc` compiler, test WADs (`megagame.wad`, `mm8bdm-v6b.pk3`), and external references.
+   Checks for the `acc` compiler, test WADs (`megagame.wad`, `mm8bdm-v6c.pk3`), and external references.
    See [tools/REFERENCES.md](tools/REFERENCES.md) for reference catalogs, download links, and local path overrides (`tools/paths.local.json`).
 
 2. **Unpack references for code consultation (Optional)**:
@@ -208,7 +206,7 @@ parent/
    ./tools/compile-acs.sh
    ```
    > [!NOTE]
-   > This compiles all libraries listed in `src/LOADACS`, v6b overrides (`PROJTRAN`), and the boss-combo database (`UHCOMBDB`).
+   > This compiles all libraries listed in `src/LOADACS`, ported core overrides (`PROJTRAN`), and the boss-combo database (`UHCOMBDB`).
 
 2. **Pack the PK3 archive.**
    Pack `src/` into `out/build.pk3`, excluding ACS source files, `.err` logs, and hidden files:
@@ -236,7 +234,7 @@ Use the headless MCP test wrapper to run automated regression checks:
 
 ```bash
 ./tools/mcp/smoke-test.sh
-./tools/mcp/smoke-test.sh --profile mm8bdm-v6b-full --json
+./tools/mcp/smoke-test.sh --profile mm8bdm-v6c-full --json
 ```
 
 The script requires Node.js, an MCP-enabled Zandronum build, and the `ZANDRONUM_EXE` and `ZANDRONUM_MCP_DIR` environment variables. Refer to [`tools/README.md`](tools/README.md) for complete details.

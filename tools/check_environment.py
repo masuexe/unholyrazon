@@ -74,20 +74,21 @@ def main() -> int:
 
     ref_cfg = config.get("references", {})
     wads_dir = resolve_path(repo_root, config.get("wads_dir"), "../wads")
-    ref_root = resolve_path(repo_root, ref_cfg.get("root"), "../references")
+    ref_root = resolve_path(repo_root, ref_cfg.get("root") or os.environ.get("MM8BDM_REFERENCES_DIR"), "../references")
 
     acc_path = os.environ.get("ACC") or shutil.which("acc")
     python_ver = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
 
     # Tier 1 reference resolution (hierarchical or flat or pk3)
     mm8bdm_ref_candidates = [
-        ref_root / "for_8bdm-v6b" / "mm8bdm-v6b",
-        ref_root / "mm8bdm-v6b",
-        ref_root / "mm8bdm",
+        ref_root / "for_8bdm-v6c" / "mm8bdm-v6c",
+        ref_root / "mm8bdm-v6c",
     ]
+    if ref_cfg.get("mm8bdm_v6c"):
+        mm8bdm_ref_candidates = [resolve_path(repo_root, ref_cfg["mm8bdm_v6c"], "")]
     mm8bdm_ref_found = find_first_existing(mm8bdm_ref_candidates)
-    mm8bdm_ref_ok = (mm8bdm_ref_found is not None) or (wads_dir / "mm8bdm-v6b.pk3").is_file()
-    mm8bdm_ref_display = str(mm8bdm_ref_found or (wads_dir / "mm8bdm-v6b.pk3") if (wads_dir / "mm8bdm-v6b.pk3").is_file() else mm8bdm_ref_candidates[0])
+    mm8bdm_ref_ok = (mm8bdm_ref_found is not None) or (wads_dir / "mm8bdm-v6c.pk3").is_file()
+    mm8bdm_ref_display = str(mm8bdm_ref_found or ((wads_dir / "mm8bdm-v6c.pk3") if (wads_dir / "mm8bdm-v6c.pk3").is_file() else mm8bdm_ref_candidates[0]))
 
     # Tier 2 CBM template resolution (hierarchical or flat or pk3)
     cbm_candidates = [
@@ -96,6 +97,8 @@ def main() -> int:
         ref_root / "classes-v9gh_",
         ref_root / "classes-v9gh",
     ]
+    if ref_cfg.get("classes_v9gh"):
+        cbm_candidates = [resolve_path(repo_root, ref_cfg["classes_v9gh"], "")]
     cbm_found = find_first_existing(cbm_candidates)
     cbm_pk3 = find_first_glob(wads_dir, "classes-v9gh*.pk3")
     cbm_ok = (cbm_found is not None) or (cbm_pk3 is not None)
@@ -107,10 +110,15 @@ def main() -> int:
         ref_root / "unholy_legacy",
         ref_root / "legacy",
     ]
+    if ref_cfg.get("references_v6a"):
+        legacy_candidates = [resolve_path(repo_root, ref_cfg["references_v6a"], "")]
     legacy_found = find_first_existing(legacy_candidates)
     legacy_pk3_ok = check_any_glob(wads_dir, ["*unholy*.pk3", "*uh-*.pk3", "*uh_*.pk3"])
     legacy_ok = (legacy_found is not None) or legacy_pk3_ok
     legacy_display = str(legacy_found or (wads_dir if legacy_pk3_ok else legacy_candidates[0]))
+
+    engine_src = resolve_path(repo_root, ref_cfg.get("zandronum_src"), str(ref_root / "zandronum" / "zandronum-stable-branch-default"))
+    acc_src = resolve_path(repo_root, ref_cfg.get("acc_src"), str(ref_root / "zandronum" / "acc-branch-zandronum"))
 
     # Item checklist
     results = {
@@ -124,15 +132,15 @@ def main() -> int:
                 "path": str(wads_dir / "megagame.wad"),
                 "desc": "MM8BDM base IWAD (runtime test dependency)",
             },
-            "mm8bdm_v6b_pk3": {
-                "ok": (wads_dir / "mm8bdm-v6b.pk3").is_file(),
-                "path": str(wads_dir / "mm8bdm-v6b.pk3"),
-                "desc": "MM8BDM v6b game package",
+            "mm8bdm_v6c_pk3": {
+                "ok": (wads_dir / "mm8bdm-v6c.pk3").is_file(),
+                "path": str(wads_dir / "mm8bdm-v6c.pk3"),
+                "desc": "MM8BDM v6c game package",
             },
-            "mm8bdm_v6b_reference": {
+            "mm8bdm_v6c_reference": {
                 "ok": mm8bdm_ref_ok,
                 "path": mm8bdm_ref_display,
-                "desc": "MM8BDM v6b source/actors (hierarchical/flat directory or pk3)",
+                "desc": "MM8BDM v6c source/actors (hierarchical/flat directory or pk3)",
             },
         },
         "tier2_template": {
@@ -144,13 +152,13 @@ def main() -> int:
         },
         "tier3_engine": {
             "zandronum_source": {
-                "ok": (ref_root / "zandronum" / "zandronum-stable-branch-default").is_dir(),
-                "path": str(ref_root / "zandronum" / "zandronum-stable-branch-default"),
+                "ok": engine_src.is_dir(),
+                "path": str(engine_src),
                 "desc": "Zandronum engine C++ source",
             },
             "acc_source": {
-                "ok": (ref_root / "zandronum" / "acc-branch-zandronum").is_dir(),
-                "path": str(ref_root / "zandronum" / "acc-branch-zandronum"),
+                "ok": acc_src.is_dir(),
+                "path": str(acc_src),
                 "desc": "ACC compiler source",
             },
         },
@@ -171,7 +179,8 @@ def main() -> int:
     if args.json:
         print(json.dumps(results, indent=2))
         tier1_ok = all(v["ok"] for v in results["tier1_core"].values())
-        return 0 if tier1_ok else 1
+        references_ok = all(v["ok"] for tier in ("tier2_template", "tier3_engine") for v in results[tier].values())
+        return 0 if tier1_ok and (not args.strict or references_ok) else 1
 
     # Human-readable output
     print("==================================================")
@@ -228,7 +237,7 @@ def main() -> int:
 
     if not t1_all_ok:
         print("[!] Tier 1 core dependencies are missing.")
-        print("    Please place megagame.wad and mm8bdm-v6b.pk3 in your WAD directory,")
+        print("    Please place megagame.wad and mm8bdm-v6c.pk3 in your WAD directory,")
         print("    or configure tools/paths.local.json. See tools/REFERENCES.md for details.")
         return 1
 

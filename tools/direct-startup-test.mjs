@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { loadResolvedProfile } from "./resolve-launch-profile.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const DEFAULT_PROFILES = join(ROOT, "tools/mm8bdm-v6b.launch.json");
+const DEFAULT_PROFILES = join(ROOT, "tools/mm8bdm-v6c.launch.json");
 
 function usage() {
   return `Usage: direct-startup-test.mjs [options]
@@ -16,7 +16,7 @@ Launch a profile without MCP, require it to stay alive for a short interval,
 scan its output for startup fatals, then terminate it cleanly.
 
 Options:
-  --profile NAME       profile name (default: mm8bdm-v6b-smoke)
+  --profile NAME       profile name (default: mm8bdm-v6c-smoke)
   --duration-sec N     healthy runtime before termination (default: 15)
   --json               emit JSON
   --dry-run            validate paths and print argv only
@@ -26,7 +26,7 @@ Environment: ZANDRONUM_EXE, ZANDRONUM_LAUNCH_PROFILES
 `;
 }
 
-const options = { profile: "mm8bdm-v6b-smoke", duration: 15, json: false, dryRun: false };
+const options = { profile: "mm8bdm-v6c-smoke", duration: 15, json: false, dryRun: false };
 for (let i = 2; i < process.argv.length; i += 1) {
   const arg = process.argv[i];
   if (arg === "--help" || arg === "-h") { console.log(usage()); process.exit(0); }
