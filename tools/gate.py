@@ -109,6 +109,8 @@ CHECKS = [
           "FFA teammate privacy and automap visibility rules", ["python", "cc"]),
     check("ammo-capacity-math", "fast", "static", [PY, "tools/check_ammo_capacity_math.py"],
           "Full-integer native ammo factor scaling against a big-integer oracle", ["python", "cc"]),
+    check("native-buster-policy", "fast", "static", [PY, "tools/check_native_buster_policy.py"],
+          "Native buster upgrades and weapons stay forbidden to UH classes"),
     check("v6c-color-contract", "fast", "static", [PY, "tools/check_v6c_color_contract.py"],
           "Native player-team-color option and UH dye bookkeeping", ["python", "cc"]),
     check("bars-generator", "fast", "generator", [PY, "tools/_gen_barpos.py", "--check"],

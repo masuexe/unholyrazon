@@ -51,6 +51,13 @@ COPIED = ("src", "tools", "examples", "docs")
 
 MUTATIONS = [
     {
+        "name": "native-buster-restriction-removed",
+        "checker": "tools/check_native_buster_policy.py",
+        "why": "native buster weapons become usable by every UH class",
+        "file": "src/actors/inventory/baseweaponedit.txt",
+        "replace": ("  +INVENTORY.RESTRICTABSOLUTELY\n", ""),
+    },
+    {
         "name": "ammo-saturation-lost",
         "checker": "tools/check_ammo_capacity_math.py",
         "why": "large ammo values wrap or disappear when the carry factor increases",

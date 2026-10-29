@@ -687,13 +687,34 @@ prevents mobility-assist movement or walking off a spawn ledge from changing
 that check. The updated standalone run passed 108/108; the earlier dedicated
 remote run passed 108/108 plus all 31 lifecycle assertions.
 
+### Native buster-upgrade policy (2026-10-29)
+
+v6c gives the native buster upgrades (`BaseMM8BDMBusterUpgrade`) and every
+`BaseMM8BDMWep` weapon `Inventory.ForbiddenTo "CustWepClassBase"`. Every UH player
+class descends from `CustWepClassBase`, so those items and weapons must stay
+unusable on UH bodies unless class balance changes on purpose.
+
+The project keeps that policy. The UH `BaseMM8BDMWep` override keeps the
+forbidden class and adds `+INVENTORY.RESTRICTABSOLUTELY`, so even a script-given
+native weapon fails. `BaseMM8BDMCustWep` remains `RestrictedTo CustWepClassBase`.
+No UH source overrides `BaseMM8BDMBusterUpgrade` or gives a native buster upgrade
+to a player. The only UH reference is COREJUMP's stock `JetAdaptorWep` jump
+check, which grants nothing.
+
+`tools/check_native_buster_policy.py` guards these invariants in the fast gate
+and in the `--meta` mutation suite. The five native adaptive upgrades named in
+the migration task (JetAdaptor, PowerAdaptor, RockKick, RollSwing and RushBike)
+stay on stock or otherwise eligible native bodies. A real-client native-body
+diagnostic remains useful before RC, but it must not change the UH roster.
+
 ## Remaining completion evidence
 
 The port is not complete while these items remain open:
 
-- Confirm native buster-upgrade behavior and its existing UH class restrictions.
-  Native assist pickup/use and the flagged Copy Vision/teleport reviews are
-  resolved above.
+- Optional: run a real-client native-body diagnostic for the five adaptive
+  buster upgrades without changing the UH roster. The restriction policy itself
+  is guarded statically. Native assist pickup/use and the flagged Copy
+  Vision/teleport reviews are resolved above.
 - Exercise changed existing arenas. The six added maps load; native assist
   pickups and effects now have dedicated remote LMS coverage as recorded above.
 - Verify final LMS result commit and subsequent map progression. The cancellable
