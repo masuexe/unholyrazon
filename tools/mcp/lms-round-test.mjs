@@ -3,16 +3,17 @@
 // lms-round-test.mjs - runtime scenario gate for one complete Unholy LMS round.
 //
 // STATUS: NOT A GATE CHECK YET - do not register it in tools/gate.py until it
-// exits 0.  Last recorded run: 12 of 14 assertions in phases 1-2 passed, then
-// the run failed before phases 3-5 with "client disconnect seen by server timed
-// out after 60000ms": the client's `disconnect` command was accepted but the
-// server kept playerlifestatusarr[0] = 1 and printed no departure line, so the
-// mid-round reconnect, settlement-window, revival-cancellation and teardown
-// assertions have never executed.  Two earlier failures were test bugs (a
-// CustomInventory is consumed, so it is never observable) and are fixed but not
-// re-verified.  Next session: diagnose the disconnect/role-clear step, get one
-// green run, then append the check to gate.py (group "full", kind "engine",
-// requires ["node","zandronum"], timeout 900).
+// exits 0.  Last recorded v6c run (2026-10-29): 13 of 16 assertions passed.  The
+// three failures are (1) morphed bosses and (2) rz_debug_MorphMe carry
+// MorphedFlag but actor_state reports no ready weapon, and (3) the client
+// `disconnect` is recorded in the log but playerlifestatusarr[clientSlot] stays
+// 1; the engine also kicks and bans the client for "Client command flood", so
+// the reconnect, settlement-window, revival-cancellation and teardown steps
+// never run.  Earlier test bugs (a consumed CustomInventory, and the fixed 45 s
+// client window) are fixed.  Next session: give the morph a tick to equip its
+// boss weapon, avoid the command-flood kick before the disconnect probe, then
+// get one green run and append the check to gate.py (group "full", kind
+// "engine", requires ["node","zandronum"], timeout 900).
 //
 // Why the static layer cannot prove this: every other check in tools/ either
 // reads source or runs ACS under C stubs.  None of them can show that the round

@@ -523,17 +523,61 @@ Engine regression under the v6c profile:
   90 s instead of a fixed sleep. The re-run passes (155 s): both remote clients
   authenticate and receive a snapshot.
 
+### Runtime scenario evidence (2026-10-29)
+
+CXAirMan remote-ammo regression: `tools/mcp/boss-ammo-test.mjs` passed with the
+v6c profile and the diagnostic probe. The client meter was one point stale, the
+insufficient-energy cast was rejected, refill and normal cast worked, and reload
+spent then recovered boss ammo.
+
+LMS round scenario: `tools/mcp/lms-round-test.mjs` under the v6c profile passed
+13 of 16 assertions. Confirmed: round start with the client pawn alive as a
+survivor, two forced bosses morphed to TimemanC and KFCDragon756 on both the
+server and the remote client, rz_debug_MorphMe class change, and an unmatched id
+restoring the survivor class. Three assertions still fail:
+- Boss morph state: the morphed bosses carry `MorphedFlag`, but `actor_state`
+  reports no ready weapon.
+- Debug morph state: the same missing ready weapon after rz_debug_MorphMe.
+- Disconnect role clear: after the client `disconnect`, the server log records
+  the departure but `playerlifestatusarr[clientSlot]` stays 1. The engine also
+  kicks and bans the client for "Client command flood", so the reconnect,
+  settlement-window and teardown steps never run. This reproduces the blocker in
+  the test header. The script stays out of the gate until it exits 0.
+
+DECORATE replacement audit:
+- 326 `actor ... replaces <base>` declarations; every replaced base actor exists
+  in v6c, and none were removed.
+- Each replacement inherits the v6c base actor's properties and overrides only
+  its listed states, so most v6b-to-v6c property changes carry over.
+- Core `unepic` replacements: SmallHealth, BigHealth and MegaHealth states are
+  byte-identical. WeaponEnergy, BigWeaponEnergy and MegaWeaponEnergy changed only
+  the base `core_AmmoScript` amount, which UH does not use because it replaces
+  the Pickup state with `uh_Health`. PartyBall already uses `PartyBallSpawnFunc`.
+- Review candidates where UH copies the v6b state while v6c changed that state:
+  `UH_CopyVision` (v6c adds `CopyVisionDeployedCount`, `CopyVisionTimer`,
+  `CopyVisionRedirect_P`; UH keeps the v6b counter path), `UH_TeleportFogGiver`
+  (v6c uses `nodelay`), and the teleport watchers that v6c extended with
+  `user_noProjectileTrails`. These are behaviour reviews; the build and engine
+  checks pass.
+- v6b miscfix carryovers: `compat/mods/miscfixes/{WEPHIDE,PICKRPLC}.acs` and
+  `FixCoreActors.dec:Rush_UH_Fix`. The v6c base has no banwep/WEPHIDE library and
+  no Unholy code calls banwep, so WEPHIDE and PICKRPLC are inert under the v6c
+  profile; keep them for the historical miscfixes package and do not add them to
+  LOADACS. Rush_UH_Fix remains a live behaviour fix.
+
 ## Remaining completion evidence
 
 The port is not complete while these items remain open:
 
-- Finish the DECORATE replacement audit, including new assist/buster behavior,
-  and record which old miscfix overrides are still required.
+- Review the DECORATE divergences flagged above (UH_CopyVision counters,
+  UH_TeleportFogGiver nodelay, teleport watcher vars) and confirm the new
+  assist/buster behaviour on the v6c base.
 - Exercise native item pickup and spawn behaviour in the engine, plus changed
   existing arenas. The six added maps now load and the actor-registration item
   additions are recorded above; the item behaviour itself is not yet verified.
-- Complete LMS selection/morph/weapon/death/revival/settlement/map-change
-  regression and rerun the CXAirMan remote-ammo case with the v6c profile.
+- Fix the three failing LMS assertions (ready weapon after boss morph, disconnect
+  role clear and the command-flood kick), then re-run to a green 16/16 and add
+  the scenario to the gate. The CXAirMan remote-ammo case now passes.
 - Verify map reload and high-slot/64-player load after the split numeric
   snapshot change. Two remote clients now authenticate under v6c. Audit optional
   addon profiles and clearly distinguish retained legacy paths from verified v6c
