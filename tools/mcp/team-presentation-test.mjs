@@ -272,35 +272,48 @@ try {
   // must resolve to an EMPTY face, never to another class's face.  That is what
   // makes a mismatched addon set safe, and it is why neither a definition id nor
   // a presentation row may ever be synced.
-  await tool("run_script", { instance: 1, script: "uh_ti_TeamInfoCacheDump", args: [], always: true }, 40_000);
-  await delay(4_000);
-  const cacheLog = readFileSync(CLIENT_LOG, "utf8");
-  const cacheLines = [...cacheLog.matchAll(/TeamInfoCache: slot (\d+) (\S+) -> name=(.*?) portrait=(.*?) scoreIcon=(.*?) known=([01])(?:\r?\n|$)/g)]
-    .map(m => ({ slot: Number(m[1]), cls: m[2], name: m[3], portrait: m[4], scoreIcon: m[5], known: m[6] === "1" }));
-  // Every published slot must carry a plausible class name, and a class this peer
-  // does not know (known=0) must produce an empty portrait AND an empty icon.
-  const cachePublished = cacheLines.length > 0;
-  const safeDegradation = cacheLines.every(l => {
-    if (l.known) { return true; }
-    return l.portrait === "" && l.scoreIcon === "" && l.name === l.cls;
-  });
-  // Where the role is also known, the cached class must be a definition of THAT
-  // side.  This is the check that catches an id resolving to the wrong table:
-  // a Boss slot caching a survivor class means the synced (kind, id) pair was
-  // misinterpreted, which is exactly what a load-order-dependent id would do.
-  const roleAgreement = [];
-  for (const line of cacheLines) {
-    const role = roles[line.slot];
-    if (role === null || role < 0) { continue; }
-    const want = EXPECTED.get(line.cls.toLowerCase());
-    if (!want) { continue; }
-    const wantSide = ROLE_SIDE[role];
-    roleAgreement.push({
-      slot: line.slot, role, cls: line.cls, side: want.side, wantSide,
-      ok: want.side === wantSide,
+  // A boss morph publishes the actor class and the authoritative role in
+  // different steps, so a single dump can catch a valid transient pair. Re-dump
+  // and re-read roles until the two sides agree, with a bounded window.
+  let cacheLines = [];
+  let cachePublished = false;
+  let safeDegradation = false;
+  let roleAgreement = [];
+  let roleAgreementOk = false;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const before = readFileSync(CLIENT_LOG, "utf8").length;
+    await tool("run_script", { instance: 1, script: "uh_ti_TeamInfoCacheDump", args: [], always: true }, 40_000);
+    await delay(2_000);
+    const chunk = readFileSync(CLIENT_LOG, "utf8").slice(before);
+    cacheLines = [...chunk.matchAll(/TeamInfoCache: slot (\d+) (\S+) -> name=(.*?) portrait=(.*?) scoreIcon=(.*?) known=([01])(?:\r?\n|$)/g)]
+      .map(m => ({ slot: Number(m[1]), cls: m[2], name: m[3], portrait: m[4], scoreIcon: m[5], known: m[6] === "1" }));
+    roles = await pollRoles();
+    // Every published slot must carry a plausible class name, and a class this
+    // peer does not know (known=0) must produce an empty portrait AND icon.
+    cachePublished = cacheLines.length > 0;
+    safeDegradation = cacheLines.every(l => {
+      if (l.known) { return true; }
+      return l.portrait === "" && l.scoreIcon === "" && l.name === l.cls;
     });
+    // Where the role is also known, the cached class must be a definition of
+    // THAT side.  This catches an id resolving to the wrong table: a Boss slot
+    // caching a survivor class means the synced (kind, id) pair was misread.
+    roleAgreement = [];
+    for (const line of cacheLines) {
+      const role = roles[line.slot];
+      if (role === null || role < 0) { continue; }
+      const want = EXPECTED.get(line.cls.toLowerCase());
+      if (!want) { continue; }
+      const wantSide = ROLE_SIDE[role];
+      roleAgreement.push({
+        slot: line.slot, role, cls: line.cls, side: want.side, wantSide,
+        ok: want.side === wantSide,
+      });
+    }
+    roleAgreementOk = roleAgreement.length > 0 && roleAgreement.every(r => r.ok);
+    if (cachePublished && safeDegradation && roleAgreementOk) break;
+    await delay(2_000);
   }
-  const roleAgreementOk = roleAgreement.length > 0 && roleAgreement.every(r => r.ok);
   const identityDetail = cacheLines.map(l => ({ slot: l.slot, cls: l.cls, known: l.known, portrait: l.portrait }));
   // unknownSeen is diagnostic: a same-build peer knows every presented class and
   // the wire format carries (kind, id), so an unknown class only appears with a

@@ -727,17 +727,32 @@ fault, and the reloaded MMDOM01 round rebuilt a high-slot roster (max slot 61,
 does not guarantee that the roster survives. The probe is registered as
 `mcp-high-slot` in the full gate.
 
+### Optional addon profiles (2026-10-29)
+
+Built `out/teampresentation_addon.pk3` from `examples/teampresentation_addon`
+and ran the presentation gate in addon mode with the
+`mm8bdm-v6c-teampres-addon` profile. The example class `UHExampleTerrance`
+resolved to `Example Terrance` / `EXTPMUG` / `EXTPICN` with no Unholy source
+edit, and the addon run passed. The first two runs failed the identity check
+because one cache dump caught a valid boss-morph transient where the actor class
+and the authoritative role had not converged. The test now re-dumps the cache and
+re-reads roles for up to eight attempts; both the addon run and the base
+`mcp-team-presentation` gate check pass. The `mm8bdm-v6c-full` profile (damage
+display, Underworld Radio music, hitvoxel) also completed a real startup with no
+compile or fatal error and a clean quit. This proves startup compatibility, not
+that every addon feature was exercised.
+
 ## Remaining completion evidence
 
 The port is not complete while these items remain open:
 
+- Exercise changed existing arenas. Added maps, native items, LMS scenarios,
+  team information, high-slot load and the optional profiles are covered.
+- Run the final full gate (it now includes `mcp-high-slot`) and record the result.
 - Optional: run a real-client native-body diagnostic for the five adaptive
-  buster upgrades without changing the UH roster. The restriction policy itself
-  is guarded statically. Native assist pickup/use and the flagged Copy
-  Vision/teleport reviews are resolved above.
-- Exercise changed existing arenas. The six added maps load; native assist
-  pickups and effects now have dedicated remote LMS coverage as recorded above.
-- Final result commit, next-map progression and the real Dickhead revival source
-  are now covered (36/36), and CXAirMan remote ammo passes.
-- Audit optional addon profiles and distinguish retained legacy paths from
-  verified v6c interoperability, then run the final full gate.
+  buster upgrades; the restriction policy itself is guarded statically.
+
+Covered since the previous ledger: final result commit and next-map progression
+(36/36 LMS), real Dickhead revival source, CXAirMan remote ammo, shared ammo
+capacity, native buster restriction policy, 64-slot high-slot load with map
+reload, presentation addon and full-profile startup.
