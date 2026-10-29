@@ -107,7 +107,14 @@ try {
   const directArgs = ["-stdout", "-iwad", profileData.iwad, "-file", ...(profileData.files || []), "-port", String(options.port + 2), ...common, "+name", "BatchDClient2", "+connect", `127.0.0.1:${options.port}`];
   directClient = spawn(directEngine, directArgs, { cwd: directDir, env: { ...process.env, SDL_VIDEODRIVER: "offscreen", ZANDRONUM_BRIDGE_PORT: String(options.port + 101) }, stdio: ["ignore", "pipe", "pipe"] });
   for (const stream of [directClient.stdout, directClient.stderr]) stream.on("data", chunk => { directClientLog = `${directClientLog}${chunk}`.slice(-400000); });
-  await new Promise(resolveDelay => setTimeout(resolveDelay, 45_000));
+  // The v6c base package is large; the third engine on one machine can need
+  // more than a fixed 45 s to finish loading and authenticate. Poll instead so
+  // a fast run still returns early and a slow host gets up to 90 s.
+  const directAuthRe = /Connected![\s\S]*Level authenticated![\s\S]*Snapshot received\./i;
+  for (let attempt = 0; attempt < 45; attempt += 1) {
+    if (directAuthRe.test(directClientLog) || directClient.exitCode !== null) break;
+    await new Promise(resolveDelay => setTimeout(resolveDelay, 2000));
+  }
   const log = dedicatedLog;
   const names = ["BatchDClient1", "BatchDClient2"];
   const missing = names.filter(name => !log.includes(name));

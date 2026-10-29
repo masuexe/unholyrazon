@@ -488,18 +488,53 @@ source reference resolves through a v6b-only name. A new smoke check,
 v6c package, so a future base rename cannot hide behind the frozen list. The
 static checkers still fall back to the frozen sets in a fresh clone without WADs.
 
+### Base delta and engine regression (2026-10-29)
+
+Compare the embedded map packages and DECORATE actor registration between the
+v6b and v6c bases, then exercise the additions in the engine.
+
+Base delta:
+- Map WADs: v6b has 181, v6c has 187. Added MMCTF26 and MMDOM01 through MMDOM05;
+  none were removed.
+- New native pickup items (from actor registration, not a directory listing):
+  AutoRecover, BalloonAdaptor, CapsuleCatcher, Carry, CounterAttacker,
+  DamageAbsorber, EnemyAnalyzer, EnergyBalancerNeo, Exchanger, MagnetBeam,
+  PowerGenerator, PowerShield, RushPogo, ShockGuard, SpareBody, SuperArrow,
+  SuperGuard, SuperRecover and Transceiver items, plus the ItemPresenter system.
+  New adaptive upgrades: JetAdaptor, PowerAdaptor, RockKick, RollSwing and
+  RushBike. v6c also adds the assist category actors (Attack, Buff, Dash, Escape,
+  Flight, FullRestore, Gift, Heal, Jump, Map, Passive, Reload).
+- v6c adds about 6832 DECORATE classes over v6b. Most are internal: 2000
+  CustVSBAR slot actors, 213 map markers and 262 respawn shadows. The item and
+  upgrade names above are the gameplay additions.
+
+Map load: `tools/map-load-test.mjs` launches a headless engine per map and waits
+for the map banner. All six new maps load with the v6c base and `out/build.pk3`
+with no startup fatal: MMCTF26, MMDOM01, MMDOM02, MMDOM03, MMDOM04 and MMDOM05
+(44, 43, 43, 43, 43 and 43 s).
+
+Engine regression under the v6c profile:
+- `mcp-smoke` pass (54 s): startup and player state.
+- `mcp-team-info-sync` pass (142 s): per-client CLIENTSIDE delivery.
+- `mcp-team-presentation` pass (252 s): portrait resolver end to end.
+- `mcp-network` first failed: the direct second client did not finish loading
+  the larger v6c package inside the fixed 45 s window, so BatchDClient2 never
+  connected. `network-test.mjs` now polls for client authentication for up to
+  90 s instead of a fixed sleep. The re-run passes (155 s): both remote clients
+  authenticate and receive a snapshot.
+
 ## Remaining completion evidence
 
 The port is not complete while these items remain open:
 
 - Finish the DECORATE replacement audit, including new assist/buster behavior,
   and record which old miscfix overrides are still required.
-- Exercise genuine added/updated maps and native items. Filename additions
-  alone are not an item list: several assist definitions moved directories.
-  New map filenames are MMCTF26 and MMDOM01-MMDOM05; changed existing arenas
-  also require coverage.
+- Exercise native item pickup and spawn behaviour in the engine, plus changed
+  existing arenas. The six added maps now load and the actor-registration item
+  additions are recorded above; the item behaviour itself is not yet verified.
 - Complete LMS selection/morph/weapon/death/revival/settlement/map-change
   regression and rerun the CXAirMan remote-ammo case with the v6c profile.
-- Verify two remote clients, map reload and high-slot/64-player load after the
-  split numeric snapshot change. Audit optional addon profiles and clearly
-  distinguish retained legacy paths from verified v6c interoperability.
+- Verify map reload and high-slot/64-player load after the split numeric
+  snapshot change. Two remote clients now authenticate under v6c. Audit optional
+  addon profiles and clearly distinguish retained legacy paths from verified v6c
+  interoperability.
