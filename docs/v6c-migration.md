@@ -406,3 +406,54 @@ and a 2000000001 capacity, then 2147483647 boundaries. Local probes covered two
 independent full-range ammo values, an absent resource, a present empty bar,
 cross-stream reorder, stale clears and revision wrap. The large-value native
 bars received a screenshot spot check. The general smoke gate passed 31 checks.
+
+## Team palettes and remaining shared-header APIs (2026-10-29)
+
+TEAMCOL now stores all four v6c palette columns for each of the 18 UH color
+slots: secondary, primary, lighter and darker. Native radar, domination and
+possession consumers can request the added columns without reading another
+team's data. UH source anchors and the class-only translation ranges remain.
+The legacy assist registration for core_runteambar was removed because the
+native UI hook already calls it. Color preset menus use the native OpenMenu
+entry point. COLOTRNS honors mm8bdm_sv_playerteamcolor while retaining UH mugshot
+and ready/charge dye bookkeeping.
+
+The remaining changed shared-header APIs now match v6c: normalize folds a full
+turn to zero, zanRound uses the new half-step rule, clampBySign is available,
+setIntenseMusicState preserves multiple states, and getCameraPln forwards the
+native camera query. 8BDMEFCT adds replacement-aware inventory checks/removal.
+SetInventory2 and SetActorInventory2 live beside the existing setters in the
+imported UH utilities library; BARLIB/8BDMEFCT deliberately avoid duplicate
+setter bodies. Existing ceilOld and UH distance-helper ownership remain.
+
+A source-level name audit found no missing v6c function/script entry points in
+uniquely matched overrides after resolving those shared utility functions. This
+proves interface presence only. uh_corereplace keeps the UH integer-force target
+wrapper and UH rune counters; the base still supplies its separate v6c native
+knockback/rune APIs. Do not replace the UH integer-force contract with the base's
+fixed-point force contract without changing its DECORATE callers.
+
+Validation: the actual translation function passed 320 server-option, team,
+startup and charge combinations under C stubs. Its mutation case caught removal
+of the server-option condition. The focused v6c runtime passed 96 palette,
+hook, helper, music-state, camera and inventory-replacement assertions, including
+all four palette columns for all 18 slots and one native team-bar hook. All ACS
+compile. The smoke gate now includes the color contract and passes 32 checks.
+
+## Remaining completion evidence
+
+The port is not complete while these items remain open:
+
+- Migrate launcher/checker defaults and canonical runtime gates to v6c. Frozen
+  v6b asset/reference baselines must not be mistaken for v6c coverage.
+- Finish the DECORATE replacement audit, including new assist/buster behavior,
+  and record which old miscfix overrides are still required.
+- Exercise genuine added/updated maps and native items. Filename additions
+  alone are not an item list: several assist definitions moved directories.
+  New map filenames are MMCTF26 and MMDOM01-MMDOM05; changed existing arenas
+  also require coverage.
+- Complete LMS selection/morph/weapon/death/revival/settlement/map-change
+  regression and rerun the CXAirMan remote-ammo case with the v6c profile.
+- Verify two remote clients, map reload and high-slot/64-player load after the
+  split numeric snapshot change. Audit optional addon profiles and clearly
+  distinguish retained legacy paths from verified v6c interoperability.

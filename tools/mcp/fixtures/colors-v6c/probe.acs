@@ -1,0 +1,65 @@
+#library "COLPROB"
+#nocompact
+#include "zcommon.acs"
+#import "8BDT.acs"
+#include "8BDMDEFS.acs"
+#include "MEGAPAL.acs"
+#include "8BDMEFCT.acs"
+#include "8BDMHELP.acs"
+#include "8BDMINFO.acs"
+#include "8BDMVARS.acs"
+
+int checks, failures;
+function void Expect(bool ok, str label) {
+  checks++;
+  if (!ok) {failures++; Log(s:"UH_COLOR_FAIL ", s:label);}
+}
+script "UHTest_ColorsV6c" (void) CLIENTSIDE {
+  SetActivatorToPlayer(ConsolePlayerNumber());
+  int oldSwap = GetUserCVar(ConsolePlayerNumber(), "mm8bdm_teamcolorswap");
+  SetUserCVar(ConsolePlayerNumber(), "mm8bdm_teamcolorswap", false);
+  ACS_NamedExecuteWithResult("core_callteamtranslations");
+  int types[4] = {COLOR_SECONDARY,COLOR_PRIMARY,COLOR_LIGHTER,COLOR_DARK};
+  for (int team = 0; team < 18; team++) {
+    for (int col = 0; col < 4; col++) {
+      int rgb = ACS_NamedExecuteWithResult("core_getteamRGB", team, types[col]);
+      int actual = ACS_NamedExecuteWithResult("core_getteampalette", team, col);
+      Expect(actual == PaletteMap(rgb), StrParam(s:"team=",i:team,s:" column=",i:col));
+    }
+    Delay(1);
+  }
+  Expect(ACS_NamedExecuteWithResult("core_getteampalette", -1, 0) == 0, "negative team guarded");
+  Expect(ACS_NamedExecuteWithResult("core_getteampalette", 18, 0) == 0, "out-of-range team guarded");
+  Expect(ACS_NamedExecuteWithResult("core_getteampalette", 0, 4) == 0, "out-of-range column guarded");
+  int hooks = 0;
+  for (int i = 0; i < HookFunctions_Max[HF_UI_TICK_PLAYER]; i++) {
+    if (StrICmp(getHookFunction(HF_UI_TICK_PLAYER, i), "core_runteambar") == 0) hooks++;
+  }
+  Expect(hooks == 1, "exactly one native team-bar hook");
+  Expect(!CheckScript("core_runteambar_define", true), "legacy duplicate registration removed");
+  Expect(normalize(1.0) == 0, "full turn folds to zero");
+  Expect(normalize(-0.25) == 0.75, "negative turn folds");
+  Expect(normalize(2.25) == 0.25, "multiple turns fold");
+  Expect(zanRound(0.5) == 1, "positive half round");
+  Expect(zanRound(-0.5) == 0, "negative half round");
+  Expect(zanRound(-0.75) == -1, "negative round");
+  Expect(clampBySign(8, 5, 1) == 5 && clampBySign(3, 5, 1) == 3, "positive signed clamp");
+  Expect(clampBySign(3, 5, -1) == 5 && clampBySign(8, 5, -1) == 8, "negative signed clamp");
+  Expect(GiveReplacedInventory("V6cColorOld", 5), "give replacement inventory");
+  Expect(CheckInventory("V6cColorOld") == 0, "original inventory stays absent");
+  Expect(CheckReplacedInventory("V6cColorOld") == 5, "check replacement inventory");
+  Expect(TakeReplacedInventory("V6cColorOld", 2), "take replacement inventory");
+  Expect(CheckActorReplacedInventory(ActivatorTID(), "V6cColorOld") == 3, "check actor replacement inventory");
+  Expect(TakeActorReplacedInventory(ActivatorTID(), "V6cColorOld", 1), "take actor replacement inventory");
+  Expect(CheckInventory("V6cColorNew") == 2, "replacement removal count");
+  Expect(CheckReplacedInventory("UH_NoSuchColorProbeActor") == -1, "missing replacement is explicit");
+  Expect(ACS_NamedExecuteWithResult("UHTest_CachedSetters"), "shared cached-count setter APIs");
+  int oldMusic = getIntenseMusicState();
+  setIntenseMusicState(2);
+  Expect(getIntenseMusicState() == 2, "intense music preserves multistate value");
+  setIntenseMusicState(oldMusic);
+  Expect(getCameraPln(ConsolePlayerNumber()) == ConsolePlayerNumber(), "native camera player query");
+  SetUserCVar(ConsolePlayerNumber(), "mm8bdm_teamcolorswap", oldSwap);
+  ACS_NamedExecuteWithResult("core_callteamtranslations");
+  Log(s:"UH_COLOR_V6C checks=",i:checks,s:" failures=",i:failures);
+}

@@ -1,4 +1,4 @@
-// Copy of v6b 'TEAMCOL.acs'
+// v6c team-color APIs with UH palette slots and source anchors.
 // Any area with the following line
 // $UH
 // Means that area is edited for UH
@@ -19,19 +19,12 @@
 #define TEAM_COUNT 18  // $UH
 #define TEAM_NATIVE_COUNT 4  // $UH
 #define COLORVALS_PER_TEAM 6
-#define TRANS_PER_TEAM 3
+#define TRANS_PER_TEAM 4
 #define TEAM_ALLY 4
 #define TEAM_ENEMY 5
 
 int team_color_input[TEAM_COUNT][COLORVALS_PER_TEAM];
-int team_color_palette[TEAM_COUNT][TRANS_PER_TEAM - 1] = {  // let's initalize these to be safe
-  {0, 0}, {0, 0}, {0, 0},
-  {0, 0}, {0, 0}, {0, 0},
-  {0, 0}, {0, 0}, {0, 0},
-  {0, 0}, {0, 0}, {0, 0},
-  {0, 0}, {0, 0}, {0, 0},
-  {0, 0}, {0, 0}, {0, 0},
-};
+int team_color_palette[TEAM_COUNT][TRANS_PER_TEAM];
 bool ally_enemy_mode = false;
 
 function void InitializeColorData(void) {
@@ -67,6 +60,7 @@ function void InitializeTeamColorData(void) {
     team_color_lighter[i][0] = (a + 255) / 2;
     team_color_lighter[i][1] = (b + 255) / 2;
     team_color_lighter[i][2] = (c + 255) / 2;
+    team_color_palette[i][2] = PaletteMap(PackBytes(team_color_lighter[i][0], team_color_lighter[i][1], team_color_lighter[i][2], 0));
 
     a = team_color_input[i][3];
     b = team_color_input[i][4];
@@ -81,6 +75,7 @@ function void InitializeTeamColorData(void) {
     team_color_darker[i][0] = a / 4;  // a/8;
     team_color_darker[i][1] = b / 4;  // b/8;
     team_color_darker[i][2] = c / 4;  // c/8;
+    team_color_palette[i][3] = PaletteMap(PackBytes(team_color_darker[i][0], team_color_darker[i][1], team_color_darker[i][2], 0));
   }
 
   // $UH Apply source anchors after the default luminances are initialized.
@@ -323,7 +318,7 @@ script "core_loadcolors" (int preset) NET CLIENTSIDE {
   ACS_NamedExecuteAlways("core_callteamtranslations_enter", 0);
 
   Delay(1);
-  ConsoleCommand("openmenu 8BDM_ColorOptions");
+  OpenMenu("8BDM_ColorOptions");
 }
 
 function bool IsHexValue(int ch) {
@@ -374,7 +369,7 @@ script "core_savecolors" (int preset) NET CLIENTSIDE {
   }
 
   Delay(1);
-  ConsoleCommand("openmenu 8BDM_ColorOptions");
+  OpenMenu("8BDM_ColorOptions");
 }
 
 script "core_resetcolors" (void) NET CLIENTSIDE {
@@ -397,10 +392,6 @@ script "core_resetcolors" (void) NET CLIENTSIDE {
 }
 
 // Team bar zone
-script "core_runteambar_define" OPEN CLIENTSIDE {
-  DefineAssistDisplay("core_runteambar");
-}
-
 script "core_runteambar" (int cam) CLIENTSIDE {
   int cpn = ConsolePlayerNumber();
   int team = GetPlayerInfo(cpn, PLAYERINFO_TEAM);
@@ -453,6 +444,9 @@ script "core_runteambar" (int cam) CLIENTSIDE {
 
 // Team color utility zone
 script "core_getteampalette" (int team, int col) CLIENTSIDE {
+  if (team < 0 || team >= TEAM_COUNT || col < 0 || col >= TRANS_PER_TEAM) {
+    SetResultValue(0); terminate;
+  }
   int cpn = ConsolePlayerNumber();
   if (GetPlayerInfo(cpn, PLAYERINFO_TEAM) < 4 && ally_enemy_mode && PlayerIsSpectator(cpn) != 1) {
     if (GetPlayerInfo(cpn, PLAYERINFO_TEAM) == team) {

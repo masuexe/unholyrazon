@@ -93,3 +93,56 @@ function int SpawnCopyTranslationAngle(str classname, int x, int y, int z, int a
   Thing_ChangeTID(u, 0);
   return ret;
 }
+
+// v6c replacement-aware inventory queries and removal.
+function int CheckActorReplacedInventory(int tid, str item)
+{
+	int tempTid = UniqueTID();
+	int ret = SpawnForced(item, GetActorX(tid), GetActorY(tid), GetActorZ(tid), tempTid, 0);
+	if(!ret)
+		return -1;
+
+	ret = CheckActorInventory(tid, GetActorClass(tempTid));
+	Thing_Remove(tempTid);
+
+	return ret;
+}
+
+function int CheckReplacedInventory(str item)
+{
+	int tempTid = UniqueTID();
+	int ret = SpawnForced(item, GetActorX(0), GetActorY(0), GetActorZ(0), tempTid, 0);
+	if(!ret)
+		return -1;
+
+	ret = CheckInventory(GetActorClass(tempTid));
+	Thing_Remove(tempTid);
+
+	return ret;
+}
+
+function int TakeActorReplacedInventory(int tid, str item, int amt)
+{
+	int tempTid = UniqueTID();
+	int ret = SpawnForced(item, GetActorX(tid), GetActorY(tid), GetActorZ(tid), tempTid, 0);
+	if(ret)
+	{
+		TakeActorInventory(tid, GetActorClass(tempTid), amt);
+		Thing_Remove(tempTid);
+	}
+
+	return ret;
+}
+
+function int TakeReplacedInventory(str item, int amt)
+{
+	int tempTid = UniqueTID();
+	int ret = SpawnForced(item, GetActorX(0), GetActorY(0), GetActorZ(0), tempTid, 0);
+	if(ret)
+	{
+		TakeInventory(GetActorClass(tempTid), amt);
+		Thing_Remove(tempTid);
+	}
+
+	return ret;
+}

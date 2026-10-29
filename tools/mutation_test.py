@@ -51,6 +51,13 @@ COPIED = ("src", "tools", "examples", "docs")
 
 MUTATIONS = [
     {
+        "name": "v6c-player-team-color-option-ignored",
+        "checker": "tools/check_v6c_color_contract.py",
+        "why": "the server cannot disable player team recoloring",
+        "file": "src/acs_source/v6b_overrides/corescripts/systems/COLOTRNS.acs",
+        "replace": (' && GetCVar("mm8bdm_sv_playerteamcolor")', ''),
+    },
+    {
         "name": "state-loop-same-line",
         "checker": "tools/check_state_loops.py",
         "why": "zero-duration loop in the 'States {' style (Half Press Hardman crash)",

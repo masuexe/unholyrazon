@@ -735,3 +735,31 @@ Failures retain isolated logs; successful runs remove their temporary files.
 The addon is never part of the release package. This focused test does not
 cover 64-player load or every event policy. With screenshots enabled, the large
 value phase also writes a .wide.png companion for a bar-proportion spot check.
+
+### v6c palette and shared-header regression
+
+The smoke gate includes tools/check_v6c_color_contract.py, which exercises the
+actual translation function under C stubs. Its known-defect case is
+v6c-player-team-color-option-ignored in tools/mutation_test.py.
+
+Build the runtime addon and launch it with the same engine/MCP settings:
+
+```bash
+acc -i ../references/zandronum/acc-branch-zandronum -i src/acs_source/v6b_overrides/_includes/common -i src/acs_source/v6b_overrides/_imports tools/mcp/fixtures/colors-v6c/probe.acs /tmp/COLPROB.o
+acc -i ../references/zandronum/acc-branch-zandronum -i src/acs_source/_imports tools/mcp/fixtures/colors-v6c/setters.acs /tmp/INVPROB.o
+python3 - <<'PYPROBE'
+import zipfile
+with zipfile.ZipFile('/tmp/uh-colors-v6c-probe.pk3', 'w') as archive:
+    for name in ('LOADACS', 'DECORATE'):
+        archive.write('tools/mcp/fixtures/colors-v6c/' + name, name)
+    for name in ('COLPROB', 'INVPROB'):
+        archive.write('/tmp/' + name + '.o', 'acs/' + name + '.o')
+PYPROBE
+ZANDRONUM_LAUNCH_PROFILES=tools/mm8bdm-v6c.launch.json node tools/mcp/colors-v6c-test.mjs --probe /tmp/uh-colors-v6c-probe.pk3
+```
+
+The 96 runtime assertions cover every palette column in the 18 UH slots, native
+team-bar hook deduplication, angle/rounding/clamp helpers, multistate music,
+camera identity and replacement-aware inventory/setter APIs. The runner owns
+one isolated engine with a 120-second startup allowance. Keep both probe objects
+and their replacement inventory actors out of release packages.

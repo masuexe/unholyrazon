@@ -102,6 +102,8 @@ CHECKS = [
           "Generated team presentation rows match the old tables"),
     check("team-visibility", "fast", "static", [PY, "tools/check_team_visibility.py"],
           "FFA teammate privacy and automap visibility rules", ["python", "cc"]),
+    check("v6c-color-contract", "fast", "static", [PY, "tools/check_v6c_color_contract.py"],
+          "Native player-team-color option and UH dye bookkeeping", ["python", "cc"]),
     check("bars-generator", "fast", "generator", [PY, "tools/_gen_barpos.py", "--check"],
           "Generated HUD bar code is up to date"),
     check("bars-generator-tests", "fast", "generator", [PY, "tools/test_gen_barpos.py"],
