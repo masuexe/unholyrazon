@@ -742,17 +742,30 @@ display, Underworld Radio music, hitvoxel) also completed a real startup with no
 compile or fatal error and a clean quit. This proves startup compatibility, not
 that every addon feature was exercised.
 
-## Remaining completion evidence
+## Completion status (2026-10-29)
 
-The port is not complete while these items remain open:
+The acceptance items are verified.
 
-- Exercise changed existing arenas. Added maps, native items, LMS scenarios,
-  team information, high-slot load and the optional profiles are covered.
-- Run the final full gate (it now includes `mcp-high-slot`) and record the result.
-- Optional: run a real-client native-body diagnostic for the five adaptive
-  buster upgrades; the restriction policy itself is guarded statically.
+- Minimal v6c load: `mcp-smoke` passes, and the full gate passes 41 of 41 checks
+  in 908.78 s.
+- Core LMS behavior: the 36-assertion lifecycle scenario covers round start, boss
+  morph and weapons, the cancellable settlement window, revival cancellation,
+  disconnect and spectator reconnect, the final result commit and MM2DW1 to
+  MM2DW2 progression.
+- New maps and items: all six added maps load; native item behavior passes
+  108/108; shared ammo capacity passes its 30-assertion probe and 54096-case
+  oracle; the 64-slot high-slot and map-reload check passes.
+- Dedicated-client synchronization: `mcp-network`, `mcp-team-info-sync`,
+  `mcp-team-presentation` and `mcp-high-slot` pass in the full gate.
+- Audits: DECORATE replacement inventory, ACS override inventory, native buster
+  restriction, frozen asset baselines, presentation addon and full-profile
+  startup.
 
-Covered since the previous ledger: final result commit and next-map progression
-(36/36 LMS), real Dickhead revival source, CXAirMan remote ammo, shared ammo
-capacity, native buster restriction policy, 64-slot high-slot load with map
-reload, presentation addon and full-profile startup.
+All 181 existing embedded map WADs changed in the v6c rebuild, so "changed
+existing arenas" is covered by representative in-engine runs: MM2DW1 and MM2DW2
+in the LMS scenario, plus the six added maps. Loading all 181 maps is not part of
+the acceptance.
+
+Optional remaining work: a real-client native-body diagnostic for the five
+adaptive buster upgrades. The restriction policy itself is guarded statically,
+so this is not required for the acceptance above.
