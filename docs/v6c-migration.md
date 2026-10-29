@@ -279,6 +279,12 @@ The v6c UIXLIB/HUDLIB headers and UICOMMON import source are vendored from the
 base. UICOMMON is not compiled or replaced; the native object remains the owner
 of its state. UITEAMIT and MUGSHOTS use existing base LOADACS entries.
 
+The repository tracks `.vscode/settings.json`, which excludes the vendored
+UICOMMON source from the extension build. ACC needs the file to resolve the
+`#import` directive. The v6c package supplies the object. Do not remove this
+exclusion. Without it, Run Project compiles the stub and the workspace PK3
+replaces the base object.
+
 UH items and MegaManU copy weapons register when the native inventory wheel is
 present, without requiring standalone UIX. The existing +weapwheel/-weapwheel
 bindings forward to the native wheel when standalone UIX is absent. The class

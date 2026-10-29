@@ -322,6 +322,13 @@ compile interface only; the base package supplies its object. The native
 `mm8bdm_*teaminfo*` options participate in server snapshot eligibility and
 suppress the UH fallback display while the native display is enabled.
 
+The compile interface must stay out of the pack. The repository tracks
+`.vscode/settings.json`, and this file excludes
+`v6b_overrides/_imports/UICOMMON.acs` through
+`zandronum-vscode.acsLibraryExcludes`. Keep this setting in the workspace.
+Without it, Run Project compiles the stub and the workspace PK3 replaces the
+base `UICOMMON.o`.
+
 The native teammate weapon/ammo display uses the same authorized snapshot as
 the UH fallback. Never use a remote player's local inventory as the authoritative
 source for that display.
