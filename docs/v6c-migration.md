@@ -440,12 +440,34 @@ hook, helper, music-state, camera and inventory-replacement assertions, includin
 all four palette columns for all 18 slots and one native team-bar hook. All ACS
 compile. The smoke gate now includes the color contract and passes 32 checks.
 
+## Canonical runtime profiles (2026-10-29)
+
+The MCP smoke, network, class, presentation and scenario runners now default to
+`tools/mm8bdm-v6c.launch.json`. The gate and agent-configuration checker use the
+same canonical profile. The v6b profile remains an explicit historical template.
+The v6c file includes a minimal profile, an optional addon stack without v6b
+miscfixes or standalone UIX, and the presentation example addon profile. Listing
+an optional profile does not establish interoperability; that audit remains open.
+
+The project MCP server wrapper extends the backend's exported startup I/O
+adapter to 120 seconds, preserving its registry ownership and cleanup. Launch
+requests allow 150 seconds. No external MCP backend files were modified.
+Machine-local references to this project's previous canonical profile were
+updated; a previously running shell may still need an explicit v6c environment
+override until it restarts.
+
+Validation: strict agent-configuration checks passed, profile resolution selected
+only the IWAD, v6c base and current mod, and an actual default MCP smoke launch
+reported no compile/fatal errors, returned player state and quit cleanly.
+Frozen source/asset reference baselines and environment discovery are separate
+remaining work; this launcher change does not claim those checks cover v6c.
+
 ## Remaining completion evidence
 
 The port is not complete while these items remain open:
 
-- Migrate launcher/checker defaults and canonical runtime gates to v6c. Frozen
-  v6b asset/reference baselines must not be mistaken for v6c coverage.
+- Migrate environment/reference discovery and frozen asset baselines to v6c.
+  Frozen v6b baselines must not be mistaken for v6c coverage.
 - Finish the DECORATE replacement audit, including new assist/buster behavior,
   and record which old miscfix overrides are still required.
 - Exercise genuine added/updated maps and native items. Filename additions

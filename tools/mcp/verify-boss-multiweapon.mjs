@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { launchInstanceArgs, loadResolvedProfile } from "../resolve-launch-profile.mjs";
 
 const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const DEFAULT_PROFILE = join(PROJECT_ROOT, "tools/mm8bdm-v6b.launch.json");
+const DEFAULT_PROFILE = join(PROJECT_ROOT, "tools/mm8bdm-v6c.launch.json");
 const SERVER_RUNNER = join(PROJECT_ROOT, "tools/mcp/server-runner.mjs");
 
 function textFromResult(result) {
@@ -72,7 +72,7 @@ async function main() {
   const server = process.env.ZANDRONUM_MCP_SERVER || join(mcpDir, "dist/server.js");
   const bridgePort = process.env.ZANDRONUM_BRIDGE_PORT || "7777";
 
-  const resolved = loadResolvedProfile(PROJECT_ROOT, profileFile, "mm8bdm-v6b-full");
+  const resolved = loadResolvedProfile(PROJECT_ROOT, profileFile, "mm8bdm-v6c-full");
   const sdkRoot = join(mcpDir, "node_modules/@modelcontextprotocol/sdk/dist/esm");
   const [{ Client }, { StdioClientTransport }] = await Promise.all([
     import(pathToFileURL(join(sdkRoot, "client/index.js"))),
@@ -95,12 +95,12 @@ async function main() {
   const client = new Client({ name: "verify-boss-multiweapon", version: "1.0.0" });
   await client.connect(transport);
 
-  console.log("Connected to MCP server. Launching mm8bdm-v6b-full...");
+  console.log("Connected to MCP server. Launching mm8bdm-v6c-full...");
   const launchResult = await callTool(
     client,
     "launch_instance",
     launchInstanceArgs(1, resolved.profile),
-    90000,
+    150000,
   );
   console.log("Launched:", textFromResult(launchResult).split("\n")[0]);
 

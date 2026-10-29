@@ -37,7 +37,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { launchInstanceArgs, loadResolvedProfile } from "../resolve-launch-profile.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const PROFILES = process.env.ZANDRONUM_LAUNCH_PROFILES || join(ROOT, "tools/mm8bdm-v6b.launch.json");
+const PROFILES = process.env.ZANDRONUM_LAUNCH_PROFILES || join(ROOT, "tools/mm8bdm-v6c.launch.json");
 const RUNNER = join(ROOT, "tools/mcp/server-runner.mjs");
 const SERVER_LOG = "/tmp/team-info-sync-server.log";
 const STAT_SLOTS = 8;
@@ -54,7 +54,7 @@ function usage() {
     "Requires local TCP/UDP ports and the bridge-patched engine.\n";
 }
 
-const options = { profile: "mm8bdm-v6b-smoke", gamePort: 10767, bridgePort: 7777, stress: false, json: false, dryRun: false };
+const options = { profile: "mm8bdm-v6c-smoke", gamePort: 10767, bridgePort: 7777, stress: false, json: false, dryRun: false };
 for (let i = 2; i < process.argv.length; i += 1) {
   const arg = process.argv[i];
   if (arg === "--help" || arg === "-h") { console.log(usage()); process.exit(0); }

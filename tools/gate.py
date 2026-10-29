@@ -49,7 +49,7 @@ GROUP_ORDER = {
     "full": ("fast", "smoke", "full"),
     "meta": ("fast", "meta"),
 }
-CANONICAL_PROFILE = REPO / "tools" / "mm8bdm-v6b.launch.json"
+CANONICAL_PROFILE = REPO / "tools" / "mm8bdm-v6c.launch.json"
 
 
 def check(name, group, kind, cmd, desc, requires=("python",), timeout=120.0):
@@ -149,7 +149,7 @@ CHECKS = [
 
     # -- full: real engine verification (local machine only) ---------------
     check("mcp-smoke", "full", "engine",
-          ["node", "tools/mcp/smoke-test.mjs", "--profile", "mm8bdm-v6b-smoke", "--json"],
+          ["node", "tools/mcp/smoke-test.mjs", "--profile", "mm8bdm-v6c-smoke", "--json"],
           "MCP-controlled engine startup and player_state", ["node", "zandronum"], 900),
     check("mcp-network", "full", "engine", ["node", "tools/mcp/network-test.mjs", "--json"],
           "Dedicated server + two-client authentication/snapshot", ["node", "zandronum"], 900),
@@ -190,11 +190,11 @@ def preflight_warnings():
         if not path.is_file():
             warnings.append(
                 f"ZANDRONUM_LAUNCH_PROFILES points at missing {raw}; "
-                f"new shells use tools/mm8bdm-v6b.launch.json (restart this shell/harness)")
+                f"new shells use tools/mm8bdm-v6c.launch.json (restart this shell/harness)")
         elif path.resolve() != CANONICAL_PROFILE.resolve():
             warnings.append(
                 f"ZANDRONUM_LAUNCH_PROFILES={raw} differs from "
-                f"tools/mm8bdm-v6b.launch.json")
+                f"tools/mm8bdm-v6c.launch.json")
     return warnings
 
 

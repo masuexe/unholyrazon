@@ -24,9 +24,9 @@ Write Markdown documentation in English. Keep conversations with the maintainer 
 
 ## Project identity
 
-On `migration/v6c`, the runtime target is MM8BDM v6c. Use `tools/mm8bdm-v6c.launch.json` and consult `docs/v6c-migration.md` for current port status. The historical `v6b_overrides` directory name and v6b test defaults have not yet been migrated; the current `out/build.pk3` must use the v6c profile.
+On `migration/v6c`, the runtime target is MM8BDM v6c. Use `tools/mm8bdm-v6c.launch.json` and consult `docs/v6c-migration.md` for current port status. The historical `v6b_overrides` directory name remains; the current `out/build.pk3` must use the v6c profile.
 
-This is a **Zandronum** mod for **MM8BDM (v6b)** — a `.pk3` mod based on Unholy (will switch to v6c when released). LMS (Last Man Standing) gamemode with new classes, bosses, items.
+This is a **Zandronum** mod for **MM8BDM v6c** — a `.pk3` mod based on Unholy. LMS (Last Man Standing) gamemode with new classes, bosses, items.
 
 Engine DECORATE/ACS traps live in the **zandronum-modding** skill. MM8BDM `core_*`, ClassBase, BARLIB/ASSTLIB/DTADD, and Rage timing live in the **mm8bdm-modding** skill. Do not copy those guides here.
 
@@ -98,7 +98,7 @@ skills. This project's mod entry is `out/build.pk3`.
 Launch profiles under `tools/*.launch.json` use paths **relative to the repo root**:
 `out/build.pk3` for this mod, and `../wads/…` for the shared IWAD/base packages
 (place or symlink the WAD directory as a sibling of this repo). Optional addons
-in the `mm8bdm-v6b-full` profile similarly live under `../wads/` and
+in the `mm8bdm-v6c-full` profile similarly live under `../wads/` and
 `../unholyrazon_music/`.
 
 Optional debugging mods, loaded in step 3 when relevant:
@@ -380,7 +380,7 @@ All override `DeselectDeath` to check `uh_IsItOnline` for net sync.
 
 ## Fast MCP debug loop
 
-Use `tools/mm8bdm-v6b.launch.json` for both Linux MCP and Windows clients.
+Use `tools/mm8bdm-v6c.launch.json` for both Linux MCP and Windows clients. The v6b profile is a historical recovery template, not a profile for the current build.
 Commands, profile choices,
 direct-call guidance, and build/runtime traps live in `tools/README.md`.
 

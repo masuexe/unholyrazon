@@ -53,11 +53,14 @@ a new checker lands: a checker without a mutation case is an unverified claim.
 The harness already found a real blind spot in `check_state_loops.py`: 52 state
 blocks written as `States` followed by a newline brace were invisible.
 
-The engine checks go through the MCP launcher, which waits 42s for the engine to
-open its bridge port. On WSL, keeping the base WADs on `/mnt/d` (a 9p mount) can
-push engine startup past that limit and look like a bridge failure; point
-`ZANDRONUM_LAUNCH_PROFILES` at a profile whose `iwad`/`files` live on a local
-filesystem (or copy the WADs off the Windows drive) before blaming the gate.
+The project MCP runner gives the backend 120 seconds to open its bridge port.
+It extends the exported startup I/O adapter before loading the server and keeps
+the backend's process ownership, log capture, failed-launch cleanup and PID
+handshake. `UH_ZANDRONUM_STARTUP_TIMEOUT_MS` accepts 42000 through 600000 ms;
+launch requests allow 150 seconds by default. The backend must expose
+`process/registry.js` and `process/launch.js`; unsupported layouts fail explicitly.
+Keep base WADs on a local filesystem when possible to reduce WSL startup time.
+The following older measurements predate this project adapter.
 
 A recorded run of `--full` on 2026-10-26 failed two engine checks back to back
 with `bridge port 127.0.0.1:7777 never opened` (`mcp-network`, then
@@ -120,13 +123,13 @@ The Linux Zandronum MCP wrapper runs the smallest useful feedback loop:
 
 ```bash
 ./tools/mcp/smoke-test.sh
-./tools/mcp/smoke-test.sh --profile mm8bdm-v6b-full --json
+./tools/mcp/smoke-test.sh --profile mm8bdm-v6c-full --json
 ./tools/mcp/smoke-test.sh --dry-run
 ```
 
 It validates the selected launch profile, starts one MCP instance, collects a
 compact startup summary and `player_state`, then asks MCP to quit the instance.
-The default profile is `mm8bdm-v6b-smoke`. Full engine output remains in the
+The default profile is `mm8bdm-v6c-smoke`. Full engine output remains in the
 MCP engine log; the wrapper deliberately keeps stdout short. Override the
 Linux paths with `ZANDRONUM_NODE`, `ZANDRONUM_MCP_DIR`, `ZANDRONUM_MCP_SERVER`,
 `ZANDRONUM_EXE`, `ZANDRONUM_LAUNCH_PROFILES`, or `ZANDRONUM_BRIDGE_PORT`.
@@ -195,7 +198,7 @@ For the team-presentation resolver migration:
 ```bash
 node tools/mcp/team-presentation-test.mjs --json
 node tools/mcp/team-presentation-test.mjs --dry-run
-node tools/mcp/team-presentation-test.mjs --profile mm8bdm-v6b-teampres-addon --addon --json
+node tools/mcp/team-presentation-test.mjs --profile mm8bdm-v6c-teampres-addon --addon --json
 ```
 
 It launches one dedicated `-lastmanstanding` server plus one MCP-controlled
@@ -229,7 +232,7 @@ HUD resolves from:
   the identity (that is the dead/body-less fallback), and clearing one slot
   leaves every other slot's identity untouched.
 
-`--addon` additionally requires the `mm8bdm-v6b-teampres-addon` profile and
+`--addon` additionally requires the `mm8bdm-v6c-teampres-addon` profile and
 asserts the example addon's own class resolves to its registered short name and
 textures — i.e. a new class needs no edit to any Unholy source file. Pack
 `examples/teampresentation_addon` into `out/teampresentation_addon.pk3` first.

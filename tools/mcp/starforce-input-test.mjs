@@ -6,8 +6,8 @@ import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadResolvedProfile, launchInstanceArgs } from "../resolve-launch-profile.mjs";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const profileFile = join(root, "tools/mm8bdm-v6b.launch.json");
-const { profile } = loadResolvedProfile(root, profileFile, "mm8bdm-v6b-smoke");
+const profileFile = join(root, "tools/mm8bdm-v6c.launch.json");
+const { profile } = loadResolvedProfile(root, profileFile, "mm8bdm-v6c-smoke");
 const args = process.argv.slice(2);
 if (args.length && (args.length !== 2 || args[0] !== "--pk3")) {
   throw Error("Usage: node tools/mcp/starforce-input-test.mjs [--pk3 PATH]");

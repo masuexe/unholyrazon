@@ -63,7 +63,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { launchInstanceArgs, loadResolvedProfile } from "../resolve-launch-profile.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const PROFILES = process.env.ZANDRONUM_LAUNCH_PROFILES || join(ROOT, "tools/mm8bdm-v6b.launch.json");
+const PROFILES = process.env.ZANDRONUM_LAUNCH_PROFILES || join(ROOT, "tools/mm8bdm-v6c.launch.json");
 const RUNNER = join(ROOT, "tools/mcp/server-runner.mjs");
 const CLIENT_INSTANCE = 1;
 const MAX_PLAYERS = 64;
@@ -98,7 +98,7 @@ function usage() {
     "cancellation, mid-round reconnect and clean teardown.",
     "",
     "Options:",
-    "  --profile NAME     launch profile (default: mm8bdm-v6b-smoke)",
+    "  --profile NAME     launch profile (default: mm8bdm-v6c-smoke)",
     "  --game-port N      server UDP/TCP port (default: 10890)",
     "  --json             emit one machine-readable JSON object",
     "  --dry-run          validate paths and print the resolved configuration",
@@ -117,7 +117,7 @@ function parsePositiveInt(value, flag) {
   return n;
 }
 
-const options = { profile: "mm8bdm-v6b-smoke", gamePort: 10890, json: false, dryRun: false, keepLogs: false };
+const options = { profile: "mm8bdm-v6c-smoke", gamePort: 10890, json: false, dryRun: false, keepLogs: false };
 for (let i = 2; i < process.argv.length; i += 1) {
   const arg = process.argv[i];
   if (arg === "--help" || arg === "-h") { console.log(usage()); process.exit(0); }

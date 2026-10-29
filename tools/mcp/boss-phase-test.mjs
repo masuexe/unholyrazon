@@ -13,7 +13,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { launchInstanceArgs, loadResolvedProfile } from "../resolve-launch-profile.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const PROFILES = process.env.ZANDRONUM_LAUNCH_PROFILES || join(ROOT, "tools/mm8bdm-v6b.launch.json");
+const PROFILES = process.env.ZANDRONUM_LAUNCH_PROFILES || join(ROOT, "tools/mm8bdm-v6c.launch.json");
 const MCP_DIR = process.env.ZANDRONUM_MCP_DIR;
 const ENGINE = process.env.ZANDRONUM_EXE;
 const SERVER = process.env.ZANDRONUM_MCP_SERVER || (MCP_DIR ? join(MCP_DIR, "dist/server.js") : "");
@@ -22,7 +22,7 @@ const SDK = join(MCP_DIR || "", "node_modules/@modelcontextprotocol/sdk/dist/esm
 const SERVER_LOG = "/tmp/boss-phase-server.log";
 const SLOTS = 8;
 
-const options = { profile: "mm8bdm-v6b-smoke", gamePort: 10767, bridgePort: Number(process.env.ZANDRONUM_BRIDGE_PORT || 7777), json: false };
+const options = { profile: "mm8bdm-v6c-smoke", gamePort: 10767, bridgePort: Number(process.env.ZANDRONUM_BRIDGE_PORT || 7777), json: false };
 for (let i = 2; i < process.argv.length; i += 1) {
   const arg = process.argv[i];
   if (arg === "--help" || arg === "-h") { process.stdout.write(usage()); process.exit(0); }

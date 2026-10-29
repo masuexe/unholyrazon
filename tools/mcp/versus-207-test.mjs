@@ -21,7 +21,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { launchInstanceArgs, loadResolvedProfile } from "../resolve-launch-profile.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const PROFILES = process.env.ZANDRONUM_LAUNCH_PROFILES || join(ROOT, "tools/mm8bdm-v6b.launch.json");
+const PROFILES = process.env.ZANDRONUM_LAUNCH_PROFILES || join(ROOT, "tools/mm8bdm-v6c.launch.json");
 const RUNNER = join(ROOT, "tools/mcp/server-runner.mjs");
 
 function usage() {
@@ -33,7 +33,7 @@ verify that its two bosses spawn without PowerProtectBoss.  Defaults to combo
 `;
 }
 
-const options = { profile: "mm8bdm-v6b-smoke", port: 10760, combo: 207, expect: ["RedBaronDuo", "BlueJayDuo"], forced1: null, forced2: null, resolveWait: 30000, json: false, dryRun: false };
+const options = { profile: "mm8bdm-v6c-smoke", port: 10760, combo: 207, expect: ["RedBaronDuo", "BlueJayDuo"], forced1: null, forced2: null, resolveWait: 30000, json: false, dryRun: false };
 for (let i = 2; i < process.argv.length; i += 1) {
   const arg = process.argv[i];
   if (arg === "--help" || arg === "-h") { console.log(usage()); process.exit(0); }

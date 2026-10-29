@@ -26,8 +26,8 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-CANONICAL = REPO / "tools" / "mm8bdm-v6b.launch.json"
-DEFAULT_SMOKE_PROFILE = "mm8bdm-v6b-smoke"
+CANONICAL = REPO / "tools" / "mm8bdm-v6c.launch.json"
+DEFAULT_SMOKE_PROFILE = "mm8bdm-v6c-smoke"
 
 PASS, FAIL, WARN, SKIP = "pass", "fail", "warn", "skip"
 

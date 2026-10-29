@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { launchInstanceArgs, loadResolvedProfile } from "../resolve-launch-profile.mjs";
 
 const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const DEFAULT_PROFILE = join(PROJECT_ROOT, "tools/mm8bdm-v6b.launch.json");
+const DEFAULT_PROFILE = join(PROJECT_ROOT, "tools/mm8bdm-v6c.launch.json");
 const SERVER_RUNNER = join(PROJECT_ROOT, "tools/mcp/server-runner.mjs");
 
 function usage() {
@@ -16,9 +16,9 @@ Launch one named Linux Zandronum MCP profile, collect a compact startup summary
 and player state, then quit the instance cleanly.
 
 Options:
-  --profile NAME       launch profile (default: mm8bdm-v6b-smoke)
+  --profile NAME       launch profile (default: mm8bdm-v6c-smoke)
   --instance N         MCP instance number (default: 1)
-  --timeout-sec N      per-request timeout (default: 90)
+  --timeout-sec N      per-request timeout (default: 150)
   --json               emit one machine-readable JSON object
   --dry-run            validate paths and print the resolved configuration only
   --help               show this help
@@ -37,9 +37,9 @@ function parsePositiveInt(value, flag) {
 
 function parseArgs(argv) {
   const options = {
-    profile: "mm8bdm-v6b-smoke",
+    profile: "mm8bdm-v6c-smoke",
     instance: 1,
-    timeoutSec: 90,
+    timeoutSec: 150,
     json: false,
     dryRun: false,
   };

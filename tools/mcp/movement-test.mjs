@@ -36,7 +36,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function call(name, args = {}) {
   const result = await client.callTool(
-    { name, arguments: { instance: 1, ...args } }, undefined, { timeout: 55000 },
+    { name, arguments: { instance: 1, ...args } }, undefined, { timeout: name === "launch_instance" ? 150000 : 55000 },
   );
   if (result.isError) throw Error(JSON.stringify(result));
   return result;
