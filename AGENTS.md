@@ -274,8 +274,10 @@ are forbidden here, and each one has already caused a bug:
 - **An ACS string.** `NamedExecuteClientScript` copies only raw int args, and the
   ACS string pool is per-process and garbage-collected, so a string index means
   something else entirely on the client. `NamedSendNetworkString` is the only
-  supported path and needs its own per-client mailbox. (The weapon `tag` in
-  `uh_ti_stat` still has this latent bug; nothing verifies its content.)
+  supported path and needs its own per-client mailbox. Weapon metadata now uses
+  `uh_ti_weapon`: a subject/token/revision/capacity prefix plus the actual actor
+  string, sent to authorized viewers only. `uh_ti_stat` carries the matching
+  integer token; each client resolves its own tag and native weapon-table row.
 - **A presentation table row.** Rows are handed out in registration order.
 - **A custom `Define*(-1, …)` id.** Also assigned in registration order, so a
   peer missing an earlier addon resolves the same number to a different class.
@@ -318,6 +320,16 @@ UHDT before the stock skin fallback. The imported `UICOMMON.acs` source is a
 compile interface only; the base package supplies its object. The native
 `mm8bdm_*teaminfo*` options participate in server snapshot eligibility and
 suppress the UH fallback display while the native display is enabled.
+
+The native teammate weapon/ammo display uses the same authorized snapshot as
+the UH fallback. Never use a remote player's local inventory as the authoritative
+source for that display.
+Use `uh_GetTeammateWeapon` / `uh_GetTeammateAmmo`; metadata and numeric updates
+can execute in either order, so the weapon is usable only when both tokens
+match. Stat/clear packets use a separate 15-bit revision; old packets must not
+restore a cleared row. Policy/hello resets invalidate display stats but retain
+metadata until the authoritative clear. Keep these fields in the existing
+expanded `uhtistattag` and `uhsrvwepmeta` arrays: `unholy` uses all 128 map slots.
 
 UH-owned shared includes live under `acs_source/_includes/mod_api/`. Modified
 v6b shared includes live under `acs_source/v6b_overrides/_includes/`

@@ -699,3 +699,34 @@ sets the default selection to an alternate weapon; mouse navigation is not
 automated. Set UH_WHEEL_SCREENSHOT to a PNG path to capture Arcanist's open wheel.
 Neither the addon nor its bytecode belongs in out/build.pk3. This test does not
 establish dedicated-client behavior or every fixed-loadout/disabled-entry state.
+
+### v6c native team-info network regression
+
+Use the explicit v6c profile and the bridge-patched Linux engine settings above.
+The runner owns an isolated dedicated server and a separate remote client; it
+does not use the MCP launcher's shorter startup wait.
+
+```bash
+acc -i ../references/zandronum/acc-branch-zandronum tools/mcp/fixtures/native-teaminfo/probe.acs /tmp/TIPROBE.o
+python3 - <<'PYPROBE'
+import zipfile
+with zipfile.ZipFile('/tmp/uh-native-teaminfo-probe.pk3', 'w') as archive:
+    archive.write('tools/mcp/fixtures/native-teaminfo/LOADACS', 'LOADACS')
+    archive.write('tools/mcp/fixtures/native-teaminfo/BOTINFO', 'BOTINFO')
+    archive.write('/tmp/TIPROBE.o', 'acs/TIPROBE.o')
+PYPROBE
+ZANDRONUM_LAUNCH_PROFILES=tools/mm8bdm-v6c.launch.json node tools/mcp/native-teaminfo-test.mjs --probe /tmp/uh-native-teaminfo-probe.pk3
+```
+
+The client enables only native teaminfo in HUD mode 11. Two real server bots use
+Mega Man so the test uses actual restricted UH copy weapons. Their fixture
+loadout has one weapon and its cooldown flag prevents automatic ammo recovery.
+It checks remote
+health, weapon-string/tag contents, ammo and capacity, including a deliberately
+wrong local inventory, weapon/capacity changes, enemy and display-option clears,
+spectator restrictions, reconnect and removal. Local receiver probes additionally
+test reordered metadata/stats, late packets after a clear, and revision wrap.
+Set UH_TEAMINFO_SCREENSHOT to a PNG path for a native teammate-bar spot check.
+Failures retain isolated logs; successful runs remove their temporary files.
+The addon is never part of the release package. This focused test does not
+cover 64-player load, every event policy or packet values beyond existing limits.

@@ -1,4 +1,4 @@
-// v6c native team display with UH membership, health snapshots and shared portraits.
+// v6c native team display with UH membership, stat snapshots and shared portraits.
 #library "UITEAMIT"
 
 #include "zcommon.acs"
@@ -15,6 +15,16 @@
 
 bool dbShowSelf = false;
 bool uhTeamMode;
+
+int playerWeapons[MAX_PLAYERS][7];
+#define WP_INIT 0
+#define WP_INDEX 1
+#define WP_ACTOR 2
+#define WP_RECORDS 3
+#define WP_UHCYAN 4
+#define WP_UHBLUE 5
+#define WP_UHBLACK 6
+
 
 #define MAX_OBJECTIVE_ITEMS 50
 int OBJECTIVE_ITEMS = 0;
@@ -306,7 +316,8 @@ script "core_teaminfo" (int cam, int pln)
         if((dead == STATUS_GHOST) != drawingDead)
             continue;
 
-        if((uhTeamMode && !ACS_NamedExecuteWithResult("uh_IsDisplayTeammate", pln, i))
+        if((uhTeamMode && (!ACS_NamedExecuteWithResult("uh_IsDisplayTeammate", pln, i)
+                || !ACS_NamedExecuteWithResult("uh_HasTeammateStats", i)))
             || (!uhTeamMode && getPlayerTeam(i) != team)) {
             playersDrawn[i] = true;
             continue;
@@ -885,7 +896,12 @@ function void drawWeapon(int pln, int x, int y, int dead)
     // various functions below rely on activator
     SetActivatorToPlayer(pln);
 
-    int wepIdx = getPlayerWeapon();
+    int wepIdx;
+    str actor = "";
+    if (uhTeamMode) {
+        actor = ACS_NamedExecuteWithResult("uh_GetTeammateWeapon", pln);
+        wepIdx = StrLen(actor) ? getSnapshotWeapon(pln, actor) : 0;
+    } else wepIdx = getPlayerWeapon();
 
     if(wepIdx == 0) {
         // make sure to reset for function caller
@@ -893,6 +909,8 @@ function void drawWeapon(int pln, int x, int y, int dead)
         return;
     }
 
+    int blue1 = -1; int black1 = -1;
+    int blue2 = -1; int black2 = -1;
     if(wepIdx < 0) {
         str icon = getBusterIcon(-wepIdx-1);
         int cyan1 = -1;
@@ -905,32 +923,53 @@ function void drawWeapon(int pln, int x, int y, int dead)
         icon = getWeaponIcon(wepIdx);
         cyan1 = getWeaponBarProperty(wepIdx, WBAR_CYAN1);
         cyan2 = getWeaponBarProperty(wepIdx, WBAR_CYAN2);
+        blue1 = getWeaponBarProperty(wepIdx, WBAR_BLUE1);
+        black1 = getWeaponBarProperty(wepIdx, WBAR_BLACK1);
+        blue2 = getWeaponBarProperty(wepIdx, WBAR_BLUE2);
+        black2 = getWeaponBarProperty(wepIdx, WBAR_BLACK2);
+        if (uhTeamMode && cyan1 < 0 && playerWeapons[pln][WP_UHCYAN] >= 0) {
+            cyan1 = playerWeapons[pln][WP_UHCYAN];
+            blue1 = playerWeapons[pln][WP_UHBLUE];
+            black1 = playerWeapons[pln][WP_UHBLACK];
+        }
         ammo1Max = getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1_MAX);
         ammo2Max = getWeaponAmmoInfo(wepIdx, WAMMO_AMMO2_MAX);
+    }
+
+    int ammo1 = 0;
+    int ammo2 = 0;
+    if (uhTeamMode) {
+        ammo1 = ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", pln, false, false);
+        ammo2 = ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", pln, true, false);
+        ammo1Max = ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", pln, false, true);
+        ammo2Max = ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", pln, true, true);
+    } else if (wepIdx >= 0) {
+        ammo1 = getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1);
+        ammo2 = getWeaponAmmoInfo(wepIdx, WAMMO_AMMO2);
     }
 
     if(ammo1Max > 0 && ammo2Max > 0 && cyan1 >= 0 && cyan2 >= 0) {
         drawLayeredBarColor(
             cvars[CV_LAYER],
             getWeaponBarProperty(wepIdx, WBAR_BAR_H1D_TEAM-cvars[CV_DIR]),
-            getFontPalette(getWeaponBarProperty(wepIdx, WBAR_CYAN1)),
-            getFontPalette(getWeaponBarProperty(wepIdx, WBAR_BLUE1)),
-            getFontPalette(getWeaponBarProperty(wepIdx, WBAR_BLACK1)),
+            getFontPalette(cyan1),
+            getFontPalette(blue1),
+            getFontPalette(black1),
             X+wv[W_BAR1X], Y+wv[W_BAR1Y], wv[W_BARWIDTH], wv[W_BARHEIGHT],
             wv[W_BARSCALE], wv[W_BARSCALE], cvars[CV_ALPHA],
-            getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1), getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1_MAX),
+            ammo1, ammo1Max,
             !cvars[CV_DIR]+1, false,
             wv[W_HALIGN], wv[W_VALIGN]
         );
         drawLayeredBarColor(
             cvars[CV_LAYER],
             getWeaponBarProperty(wepIdx, WBAR_BAR_H2D_TEAM-cvars[CV_DIR]),
-            getFontPalette(getWeaponBarProperty(wepIdx, WBAR_CYAN2)),
-            getFontPalette(getWeaponBarProperty(wepIdx, WBAR_BLUE2)),
-            getFontPalette(getWeaponBarProperty(wepIdx, WBAR_BLACK2)),
+            getFontPalette(cyan2),
+            getFontPalette(blue2),
+            getFontPalette(black2),
             X+wv[W_BAR2X], Y+wv[W_BAR2Y], wv[W_BARWIDTH], wv[W_BARHEIGHT],
             wv[W_BARSCALE], wv[W_BARSCALE], cvars[CV_ALPHA],
-            getWeaponAmmoInfo(wepIdx, WAMMO_AMMO2), getWeaponAmmoInfo(wepIdx, WAMMO_AMMO2_MAX),
+            ammo2, ammo2Max,
             !cvars[CV_DIR]+1, false,
             wv[W_HALIGN], wv[W_VALIGN]
         );
@@ -939,12 +978,12 @@ function void drawWeapon(int pln, int x, int y, int dead)
             drawLayeredBarColor(
                 cvars[CV_LAYER],
                 getWeaponBarProperty(wepIdx, WBAR_BAR_H1S_TEAM-cvars[CV_DIR]),
-                getFontPalette(getWeaponBarProperty(wepIdx, WBAR_CYAN1)),
-                getFontPalette(getWeaponBarProperty(wepIdx, WBAR_BLUE1)),
-                getFontPalette(getWeaponBarProperty(wepIdx, WBAR_BLACK1)),
+                getFontPalette(cyan1),
+                getFontPalette(blue1),
+                getFontPalette(black1),
                 X+wv[W_BARX], Y+wv[W_BARY], wv[W_BARSINGLEWIDTH], wv[W_BARSINGLEHEIGHT],
                 wv[W_BARSCALE], wv[W_BARSCALE], cvars[CV_ALPHA],
-                getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1), getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1_MAX),
+                ammo1, ammo1Max,
                 !cvars[CV_DIR]+1, false,
                 wv[W_HALIGN], wv[W_VALIGN]
             );
@@ -954,12 +993,12 @@ function void drawWeapon(int pln, int x, int y, int dead)
             drawLayeredBarColor(
                 cvars[CV_LAYER],
                 getWeaponBarProperty(wepIdx, WBAR_BAR_H2S_TEAM-cvars[CV_DIR]),
-                getFontPalette(getWeaponBarProperty(wepIdx, WBAR_CYAN1)),
-                getFontPalette(getWeaponBarProperty(wepIdx, WBAR_BLUE1)),
-                getFontPalette(getWeaponBarProperty(wepIdx, WBAR_BLACK1)),
+                getFontPalette(cyan2),
+                getFontPalette(blue2),
+                getFontPalette(black2),
                 X+wv[W_BARX], Y+wv[W_BARY], wv[W_BARSINGLEWIDTH], wv[W_BARSINGLEHEIGHT],
                 wv[W_BARSCALE], wv[W_BARSCALE], cvars[CV_ALPHA],
-                getWeaponAmmoInfo(wepIdx, WAMMO_AMMO2), getWeaponAmmoInfo(wepIdx, WAMMO_AMMO2_MAX),
+                ammo2, ammo2Max,
                 !cvars[CV_DIR]+1, false,
                 wv[W_HALIGN], wv[W_VALIGN]
             );
@@ -1317,10 +1356,31 @@ function int getCharWidth(int char) {
 // int:  index
 // str:  weaponActor
 //
-int playerWeapons[MAX_PLAYERS][3];
-#define WP_INIT 0
-#define WP_INDEX 1
-#define WP_ACTOR 2
+
+function int getSnapshotWeapon(int pln, str actor)
+{
+    int records = MAX_WEAPONS_GLOBAL + MAX_BUSTERUPGRADES;
+    // Cache misses too. A missing addon row must not scan every DTADD record
+    // every frame; retry when registration adds records or the actor changes.
+    if(playerWeapons[pln][WP_INIT] && playerWeapons[pln][WP_RECORDS] == records
+        && StrICmp(actor, playerWeapons[pln][WP_ACTOR]) == 0)
+        return playerWeapons[pln][WP_INDEX];
+    int idx = findWeaponInDTs(actor);
+    playerWeapons[pln][WP_INIT] = true;
+    playerWeapons[pln][WP_INDEX] = idx;
+    playerWeapons[pln][WP_ACTOR] = actor;
+    playerWeapons[pln][WP_RECORDS] = records;
+    playerWeapons[pln][WP_UHCYAN] = -1;
+    // UH copy weapons predate the native _ArsenalBar convention.
+    int obj = idx > 0 ? new(StrParam(s:actor, s:"_MegaManUBar")) : 0;
+    if (obj) {
+        playerWeapons[pln][WP_UHCYAN] = GetActorArg(obj, 0);
+        playerWeapons[pln][WP_UHBLUE] = GetActorArg(obj, 1);
+        playerWeapons[pln][WP_UHBLACK] = GetActorArg(obj, 2);
+        destroy(obj);
+    }
+    return idx;
+}
 
 function int getPlayerWeapon(void)
 {

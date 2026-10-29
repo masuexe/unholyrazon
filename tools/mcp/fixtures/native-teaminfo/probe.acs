@@ -1,0 +1,101 @@
+#library "TIPROBE"
+#nocompact
+#include "zcommon.acs"
+
+// Test-only addon. Server subjects are fixed so client values can be asserted.
+int tiProbeChecks, tiProbeFailures;
+function void Expect(bool value, str label) {
+  tiProbeChecks++;
+  if (!value) {tiProbeFailures++; Log(s:"UH_TI_FAIL ", s:label);}
+}
+script "UHTest_TI_Subject" (int pn, int variant) {
+  if (!SetActivatorToPlayer(pn)) {Log(s:"UH_TI_NO_SUBJECT ", i:pn); terminate;}
+  // Real UH copy weapons are restricted to MegaManU. Use the actual pawn,
+  // rather than weakening weapon restrictions for this diagnostic.
+  if (!CheckActorClass(0, "MegaManU")) {
+    if (!MorphActor(0, "MegaManU", "", 0x7ffffffd,
+        MRF_FULLHEALTH | MRF_WHENINVULNERABLE | MRF_LOSEACTUALWEAPON | MRF_NEWTIDBEHAVIOUR, "", "")) {
+      Log(s:"UH_TI_MORPH_FAILED ", i:pn); terminate;
+    }
+    SetActivatorToPlayer(pn);
+  }
+  str weapon = variant == 2 ? "TornadoHoldWepU" : "SparkShockWepU";
+  str ammo = variant == 2 ? "TornadoHoldAmmo" : "SparkShockAmmo";
+  SetPlayerProperty(0, 1, PROP_TOTALLYFROZEN);
+  SetPlayerProperty(0, 1, PROP_BUDDHA);
+  SetActorProperty(0, APROP_Health, variant == 0 ? 731 : (variant == 1 ? 391 : 619));
+  GiveInventory(weapon, 1);
+  // Bots must have one choice, otherwise their AI can change weapons mid-check.
+  TakeInventory("MegaManU_W", 0x7fffffff);
+  TakeInventory(variant == 2 ? "SparkShockWepU" : "TornadoHoldWepU", 0x7fffffff);
+  // These real cooldown flags suppress Ready regeneration without firing.
+  GiveInventory("SparkShockCooldownFlag", 1);
+  GiveInventory("TornadoHoldCooldownFlag", 1);
+  SetAmmoCapacity(ammo, variant == 0 ? 80 : (variant == 1 ? 96 : 120));
+  TakeInventory(ammo, 0x7fffffff);
+  GiveInventory(ammo, variant == 0 ? 17 : (variant == 1 ? 9 : 23));
+  SetWeapon(weapon);
+  ACS_NamedExecuteWithResult("uh_SetPlayerLifeStatus", pn, 1);
+  Log(s:"UH_TI_SUBJECT_READY ", i:pn, s:" ", i:variant);
+}
+script "UHTest_TI_Check" (int pn, int variant) CLIENTSIDE {
+  bool valid = ACS_NamedExecuteWithResult("uh_HasTeammateStats", pn);
+  str weapon = ACS_NamedExecuteWithResult("uh_GetTeammateWeapon", pn);
+  int ammo = ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", pn, false, false);
+  int capacity = ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", pn, false, true);
+  if (variant == 3) {
+    Expect(!valid, "unauthorized/removed subject cleared");
+    Expect(StrLen(weapon) == 0 && ammo == 0 && capacity == 0, "cleared weapon and ammo API");
+    Expect(ACS_NamedExecuteWithResult("uh_GetTeammateHealth", pn) == 0, "cleared health API");
+  } else {
+    Expect(valid, "native-only viewer received stats");
+    Expect(StrICmp(weapon, variant == 2 ? "TornadoHoldWepU" : "SparkShockWepU") == 0, "wire actor string resolved locally");
+    Expect(StrCmp(ACS_NamedExecuteWithResult("uh_GetTeammateWeaponTag", pn), variant == 2 ? "TAG_TORNADOHOLD" : "TAG_SPARKSHOCK") == 0, "local weapon tag has correct contents");
+    Expect(ammo == (variant == 0 ? 17 : (variant == 1 ? 9 : 23)), "authoritative ammo");
+    Expect(capacity == (variant == 0 ? 80 : (variant == 1 ? 96 : 120)), "authoritative capacity");
+    Expect(ACS_NamedExecuteWithResult("uh_GetTeammateHealth", pn) == (variant == 0 ? 731 : (variant == 1 ? 391 : 619)), "authoritative health");
+  }
+  Log(s:"UH_TI_CHECK pn=", i:pn, s:" variant=", i:variant, s:" checks=", i:tiProbeChecks, s:" failures=", i:tiProbeFailures,
+      s:" weapon=", s:weapon, s:" ammo=", i:ammo, s:" max=", i:capacity);
+}
+script "UHTest_TI_LocalInventory" (int pn) CLIENTSIDE {
+  if (!SetActivatorToPlayer(pn)) {terminate;}
+  // Deliberately wrong client-local inventory: native getters must ignore it.
+  SetAmmoCapacity("SparkShockAmmo", 999);
+  GiveInventory("SparkShockAmmo", 99);
+  Expect(GetAmmoCapacity("SparkShockAmmo") == 999, "local inventory perturbation applied");
+}
+script "UHTest_TI_Order" (void) CLIENTSIDE {
+  int s = 63;
+  int p2 = (17 << 10) | (1 << 30);
+  ACS_NamedExecuteWithResult("uh_ti_stat", s | (1 << 17), 731 | (1000 << 16), 7, p2);
+  ACS_NamedExecuteWithResult("uh_ti_weapon", "63:7:1:80:0:SparkShockWepU");
+  Expect(StrCmp(ACS_NamedExecuteWithResult("uh_GetTeammateWeapon", s), "SparkShockWepU") == 0, "stats before string commute");
+  ACS_NamedExecuteWithResult("uh_ti_stat_clear", s | (3 << 6));
+  ACS_NamedExecuteWithResult("uh_ti_stat", s | (2 << 17), 731, 7, p2);
+  ACS_NamedExecuteWithResult("uh_ti_weapon", "63:7:2:80:0:SparkShockWepU");
+  Expect(!ACS_NamedExecuteWithResult("uh_HasTeammateStats", s), "old stats cannot undo clear");
+  Expect(StrLen(ACS_NamedExecuteWithResult("uh_GetTeammateWeapon", s)) == 0, "old mailbox cannot undo clear");
+  ACS_NamedExecuteWithResult("uh_ti_weapon", "63:8:4:120:0:TornadoHoldWepU");
+  ACS_NamedExecuteWithResult("uh_ti_stat", s | (4 << 17), 619, 8, p2);
+  Expect(StrCmp(ACS_NamedExecuteWithResult("uh_GetTeammateWeapon", s), "TornadoHoldWepU") == 0, "string before stats commute");
+  ACS_NamedExecuteWithResult("uh_ti_weapon", "63:7:2:80:0:SparkShockWepU");
+  Expect(StrCmp(ACS_NamedExecuteWithResult("uh_GetTeammateWeapon", s), "TornadoHoldWepU") == 0, "old metadata cannot replace current weapon");
+  ACS_NamedExecuteWithResult("uh_ti_stat", 62 | (32766 << 17), 731, 7, p2);
+  ACS_NamedExecuteWithResult("uh_ti_stat_clear", 62 | (32767 << 6));
+  ACS_NamedExecuteWithResult("uh_ti_stat", 62 | (32766 << 17), 731, 7, p2);
+  Expect(!ACS_NamedExecuteWithResult("uh_HasTeammateStats", 62), "old stats near wrap rejected");
+  ACS_NamedExecuteWithResult("uh_ti_stat", 62 | (1 << 17), 731, 7, p2);
+  Expect(ACS_NamedExecuteWithResult("uh_HasTeammateStats", 62), "stat revision wraps");
+  Log(s:"UH_TI_ORDER checks=", i:tiProbeChecks, s:" failures=", i:tiProbeFailures);
+}
+
+script "UHTest_TI_ViewInfo" (void) CLIENTSIDE {
+  int cp = ConsolePlayerNumber();
+  SetActivatorToPlayer(cp);
+  SetActivator(0, AAPTR_PLAYER_GETCAMERA);
+  Log(s:"UH_TI_VIEW cp=", i:cp, s:" camera=", i:PlayerNumber(),
+      s:" blocks=", i:GetCVar("screenblocks"), s:" hud=", i:CheckInventory("NoHUD"),
+      s:" alpha=", f:GetUserCVar(cp, "mm8bdm_teaminfoalpha"),
+      s:" relation=", i:ACS_NamedExecuteWithResult("uh_IsDisplayTeammate", cp, 1));
+}

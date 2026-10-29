@@ -330,3 +330,50 @@ availability without standalone UIX, snapshot cleanup and Mega Man's default
 native fallback. Arcanist's open wheel also received a visual spot check. All
 31 smoke checks passed; their general defaults still target v6b. The rebuilt
 package contains matching wheel bytecode and no diagnostic addon.
+
+## Dedicated-client native team information (2026-10-29)
+
+The native UITEAMIT weapon display now reads the authorized UH server snapshot
+for weapon identity, ammo and capacity, alongside the existing health snapshot.
+Remote client-local inventory is not authoritative in ordinary LMS. Weapon
+icons and colors still resolve through the client's own DTADD records, with a
+per-actor lookup cache. Non-Unholy modes retain the stock inventory path.
+The teammate renderer also recognizes UH Mega Man copy-weapon palette markers;
+without this fallback the native weapon icon could appear without its ammo bar.
+Missing DTADD lookups are cached until the actor or registry size changes.
+
+The former integer weapon-tag argument was an unsafe cross-process ACS string
+index. It is now a weapon token, paired with a per-viewer NamedSendNetworkString
+mailbox containing the actor name and capacities. Each client resolves its own
+localized tag. The server registers UH Mega Man weapon metadata as well as the
+client, so authoritative ammo-type lookup can resolve those copies. This does
+not add DTADD records for every other UH-specific weapon.
+
+Metadata is sent on weapon/capacity changes and after authorization or connection
+changes. Numeric packets and strings may execute in either order; consumers wait
+for matching tokens. Stats and clears share a 15-bit sequence, including wrap
+handling, so an old packet cannot restore a cleared row. Display-only hello or
+policy resets retain metadata for the next numeric packet. Explicit server
+clears retire it. Expanded existing arrays preserve the round core's 128 map
+variable limit.
+
+The server clears previously authorized rows when their relation or display
+eligibility changes. True spectators receive live stats only while
+lms_spectatorview permits following players. A reconnect resets the viewer's
+metadata delivery cache. The focused addon and runner are
+tools/mcp/fixtures/native-teaminfo/ and tools/mcp/native-teaminfo-test.mjs.
+
+Existing packet limits remain: health/max health are 16-bit and armor/ammo
+amounts are 10-bit. The separate spectator-camera health path still carries a
+full integer. Wider teammate values, missing custom-weapon DTADD records,
+64-slot load, all event policies and full-round regression need further work.
+
+Validation: all project ACS libraries compile. The focused v6c dedicated-server
+run passed 20 remote snapshot checks and local packet-order/wrap probes (110
+assertions across the initial connection and reconnect). It verified a
+native-only viewer, correct weapon-tag contents, health/ammo/capacity changes,
+deliberately wrong local inventory, relation/display/spectator permission clears,
+restoration, reconnect and named bot removal. The actual native weapon renderer
+consumed the snapshot, and its visible ammo bar received a screenshot spot check.
+All 31 smoke checks passed. This does not establish the wider value ranges or
+64-player/full-round coverage listed above.
