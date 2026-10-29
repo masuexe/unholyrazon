@@ -9,13 +9,11 @@
 //   - a console map reload rebuilds the round state and keeps the server alive.
 // It does not run a full round; combat scheduling is not asserted.
 //
-// STATUS: NOT A GATE CHECK. v6c runs accepted 63 addbot commands and the server
-// stayed alive through the roster and the map reload, with no ACS VM fault. The
-// role snapshot did not reach 64 players because playerlifestatusarr rebuilds
-// only at a round setup: paced bots produced max slot 35 with 27 assigned sides,
-// and a burst produced no round snapshot inside the window. Add the bots before
-// the first round setup (or force a fresh round) before registering this script
-// in tools/gate.py.
+// STATUS: gate check (mcp-high-slot). A 60 s LMS countdown keeps side selection
+// open while the paced roster joins, and the bots are re-added after a console
+// map change. A v6c run reached max player slot 63 with 62 survivors and 1 boss
+// before the reload, stayed alive through the reload with no ACS VM fault, and
+// rebuilt a fresh high-slot round on MMDOM01 (max slot 61, gameover 0).
 //
 // Usage:
 //   node tools/mcp/high-slot-stress-test.mjs [--json] [--map NAME] [--port N]
@@ -116,12 +114,15 @@ const VM_ERROR = /out of bounds access|ACS VM|script error|invalid array|array i
 let result;
 let finalServerLog = "";
 let finalClientLog = "";
+let reloadLogText = "";
 try {
   const serverArgs = ["-stdout", "-iwad", profile.iwad, "-file", ...(profile.files || []),
     "-host", "-port", String(options.port), "-lastmanstanding",
     "+set", "sv_updatemaster", "0", "+set", "sv_noplayertimeout", "1",
     "+set", "sv_cheats", "1", "+set", "sv_limitcommands", "0",
     "+set", "sv_maxclients", "64", "+set", "sv_maxplayers", "64",
+    // A long LMS countdown keeps side selection open while the bot roster joins.
+    "+set", "sv_lmscountdowntime", "60",
     "+set", "uh_sv_gametimer", "0",
     "+map", options.map, ...common];
   dedicated = spawn(join(serverDir, "zandronum"), serverArgs, {
@@ -147,12 +148,14 @@ try {
   if (!/Snapshot received\./.test(clientLog)) throw new Error("client did not receive a snapshot");
   check("a real client connects to the server", true);
 
-  // Burst the addbot lines so the server console drains them during the
-  // pre-round window instead of after the round has already frozen its roster.
-  dedicated.stdin.write(Array.from({ length: options.bots }, () => "addbot").join("\n") + "\n");
-  await delay(12_000);
-  // Late bots may join as spectators until the next round setup assigns sides.
-  const slotsDeadline = Date.now() + 30_000;
+  // Add the bots one console line at a time during the long countdown; the
+  // dedicated console consumes one line per poll and drops extra buffered lines.
+  for (let bot = 0; bot < options.bots; bot += 1) {
+    sendServer("addbot");
+    await delay(120);
+  }
+  // Wait for the round setup to assign sides to the queued roster.
+  const slotsDeadline = Date.now() + 120_000;
   let maxSlot = await trySrvMapArray("playerlifestatusarr", 64);
   while (Date.now() < slotsDeadline && !(Number.isInteger(maxSlot) && maxSlot >= 55)) {
     await delay(500);
@@ -175,13 +178,20 @@ try {
   const reloadStart = readServerLog().length;
   sendServer("map MMDOM01");
   await waitForLog(new RegExp("\\*\\*\\* MMDOM01"), 120_000, "map reload");
-  const reloadDeadline = Date.now() + 60_000;
+  // Re-add the roster after the reload: bots may not survive a console map
+  // change, and the long countdown gives the new round time to include them.
+  for (let bot = 0; bot < options.bots; bot += 1) {
+    sendServer("addbot");
+    await delay(120);
+  }
+  const reloadDeadline = Date.now() + 150_000;
   let reloadMaxSlot = await trySrvMapArray("playerlifestatusarr", 64);
   while (Date.now() < reloadDeadline && !(Number.isInteger(reloadMaxSlot) && reloadMaxSlot >= 55)) {
     await delay(500);
     reloadMaxSlot = await trySrvMapArray("playerlifestatusarr", 64);
   }
   const reloadLog = readServerLog().slice(reloadStart);
+  reloadLogText = reloadLog;
   const reloadGameover = await trySrvMapVar("gameover");
   check("a console map reload keeps the server alive",
     dedicated.exitCode === null && !VM_ERROR.test(reloadLog),
@@ -190,7 +200,8 @@ try {
     reloadGameover === 0 && Number.isInteger(reloadMaxSlot) && reloadMaxSlot >= 55,
     { gameover: reloadGameover, maxSlot: reloadMaxSlot });
 } catch (error) {
-  result = { status: "error", ok: false, error: error instanceof Error ? error.message : String(error), assertions, serverLogTail: finalServerLog.split(/\r?\n/).slice(-40), clientLogTail: finalClientLog.split(/\r?\n/).slice(-30) };
+  result = { status: "error", ok: false, error: error instanceof Error ? error.message : String(error), assertions, serverLogTail: finalServerLog.split(/\r?\n/).slice(-120), clientLogTail: finalClientLog.split(/\r?\n/).slice(-30),
+    reloadLog: reloadLogText.split(/\r?\n/).filter((line) => !/^(map(array|var)|__HS_BLOCK)/.test(line)).slice(0, 120) };
 } finally {
   try {
     if (client && client.exitCode === null) {
@@ -216,7 +227,8 @@ try {
 const passed = assertions.filter((a) => a.pass).length;
 const failed = assertions.length - passed;
 if (!result) {
-  result = { status: failed === 0 ? "pass" : "fail", profile: "mm8bdm-v6c-smoke", map: options.map, bots: options.bots, passed, failed, assertions, serverLogTail: finalServerLog.split(/\r?\n/).slice(-40), clientLogTail: finalClientLog.split(/\r?\n/).slice(-30) };
+  result = { status: failed === 0 ? "pass" : "fail", profile: "mm8bdm-v6c-smoke", map: options.map, bots: options.bots, passed, failed, assertions, serverLogTail: finalServerLog.split(/\r?\n/).slice(-120), clientLogTail: finalClientLog.split(/\r?\n/).slice(-30),
+    reloadLog: reloadLogText.split(/\r?\n/).filter((line) => !/^(map(array|var)|__HS_BLOCK)/.test(line)).slice(0, 120) };
 } else {
   result.passed = passed;
   result.failed = failed;

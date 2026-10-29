@@ -714,17 +714,18 @@ the migration task (JetAdaptor, PowerAdaptor, RockKick, RollSwing and RushBike)
 stay on stock or otherwise eligible native bodies. A real-client native-body
 diagnostic remains useful before RC, but it must not change the UH roster.
 
-### High-slot stress probe (2026-10-29)
+### High-slot stress (2026-10-29)
 
-A new probe, `tools/mcp/high-slot-stress-test.mjs`, starts a 64-slot dedicated LMS
-server, connects one real client, adds 63 bots and reloads the map. The server
-stayed alive and reported no ACS VM fault for the whole roster and after the
-reload. The round-role snapshot did not reach 64 players:
-`playerlifestatusarr` is rebuilt only at a round setup, so paced bots produced
-max slot 35 with 27 assigned sides, while a single burst produced no round
-snapshot in the window. The probe is not registered in the gate. A later revision
-must join the bots before the first round setup, or force a fresh round, then
-assert the 64-slot roster and the reloaded round.
+`tools/mcp/high-slot-stress-test.mjs` starts a 64-slot dedicated LMS server with
+`sv_maxclients` and `sv_maxplayers` 64, connects one real client, queues 63 bots
+during a 60 s LMS countdown, then reloads the map with a console `map` command.
+
+A v6c run reached max player slot 63 with 62 survivors and 1 boss before the
+reload. The server stayed alive through the roster and the reload with no ACS VM
+fault, and the reloaded MMDOM01 round rebuilt a high-slot roster (max slot 61,
+`gameover` 0). Bots are re-added after the reload because a console map change
+does not guarantee that the roster survives. The probe is registered as
+`mcp-high-slot` in the full gate.
 
 ## Remaining completion evidence
 
@@ -738,8 +739,5 @@ The port is not complete while these items remain open:
   pickups and effects now have dedicated remote LMS coverage as recorded above.
 - Final result commit, next-map progression and the real Dickhead revival source
   are now covered (36/36), and CXAirMan remote ammo passes.
-- Reach a real 64-player role snapshot (join the bots before the first round
-  setup or force a fresh round). The map reload already keeps the server alive
-  and resets the round; two remote clients authenticate. Audit optional addon
-  profiles and distinguish retained legacy paths from verified v6c
-  interoperability.
+- Audit optional addon profiles and distinguish retained legacy paths from
+  verified v6c interoperability, then run the final full gate.
