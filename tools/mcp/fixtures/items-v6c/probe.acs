@@ -24,6 +24,8 @@ script "UHTest_ItemsV6c" (void) {
  SetActivatorToPlayer(0);
  Expect(!StrICmp(GetActorClass(0), "MegaManU"), "player is MegaManU");
  int tid;
+ int originX=GetActorX(0), originY=GetActorY(0), originZ=GetActorZ(0);
+ int gravity=GetActorProperty(0,APROP_Gravity);
  GiveInventory("ExchangerItem",1);
  Expect(CheckInventory("ExchangerActive_F")==0,"custom class rejects Exchanger without opt-in");
  GiveInventory("PowerGeneratorItem",1);
@@ -47,6 +49,8 @@ script "UHTest_ItemsV6c" (void) {
   SetActorVelocity(0,0,0,0,false,false);
   Expect(CheckInventory(held[i])>0, StrParam(s:items[i],s:" physical pickup"));
   Thing_Remove(tid);
+  SetActorPosition(0,originX,originY,originZ,false);
+  SetActorVelocity(0,0,0,0,false,false);
  }
  Expect(ACS_NamedExecuteWithResult("core_GetCustomActorProperty",0,CAPROP_HealFactor)==1.5,"Super Recover heal factor");
  Expect(ACS_NamedExecuteWithResult("core_GetCustomActorProperty",0,CAPROP_ReloadFactor)==1.5,"Super Recover reload factor");
@@ -100,9 +104,14 @@ script "UHTest_ItemsV6c" (void) {
  Expect(CheckInventory("CounterAttackerActive_F")==0,"Counter Attacker high-health disable");
  Expect(ACS_NamedExecuteWithResult("core_GetCustomActorProperty",0,CAPROP_StaticDamageFactor)==1.0,"Counter Attacker restores damage factor");
  SetActorProperty(0,APROP_Health,500);
+ // Restore the safe spawn after mobility assists, then hold position.
+ SetActorPosition(0,originX,originY,originZ,false);
+ SetActorProperty(0,APROP_Gravity,0);
+ SetActorVelocity(0,0,0,0,false,false);
  int before=GetActorProperty(0,APROP_Health);
  Delay(120);
  Expect(GetActorProperty(0,APROP_Health)>before,"Auto Recover heals stationary player");
+ SetActorProperty(0,APROP_Gravity,gravity);
  Expect(CheckFont("PANBOX00"),"refreshed Pandora icon");
  Expect(CheckFont("RZTI_00"),"refreshed TOW icon");
  Expect(CheckFont("RZMI_00"),"refreshed Mystic icon");

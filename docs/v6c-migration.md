@@ -650,10 +650,30 @@ The current PK3 was rebuilt from runtime files with compiled ACS, excluding ACS
 sources, error logs and all diagnostic objects. The full ACS compile and smoke
 gate pass; no native-item diagnostic is added to the game's LOADACS.
 
+### Remaining native ammo-capacity integration issue (2026-10-29)
+
+An additional capacity diagnostic found that opting MegaManU into Power Generator
+sets the expected native factor to 2.0, but SparkShockAmmo capacity becomes 112
+instead of 56; the unique RockNRollAmmo capacity correctly becomes 56. The native
+`WEPACS` capacity updater visits every weapon row. The stock weapon and its UH
+replacement have separate DTADD rows sharing one ammo type, so that type is
+scaled repeatedly. This is not covered by the 108 basic item assertions, which
+check the factor rather than the resulting capacity. Fixing this and adding a
+real capacity regression is the next migration task. No default UH class pickup
+permissions have been changed.
+
+The standalone item fixture now restores the original safe position between
+physical pickups and holds position during the stationary-healing check. This
+prevents mobility-assist movement or walking off a spawn ledge from changing
+that check. The updated standalone run passed 108/108; the earlier dedicated
+remote run passed 108/108 plus all 31 lifecycle assertions.
+
 ## Remaining completion evidence
 
 The port is not complete while these items remain open:
 
+- Fix repeated native ammo-capacity scaling for shared stock/UH ammo types and
+  add capacity/amount round-trip tests.
 - Confirm native buster-upgrade behavior and its existing UH class restrictions.
   Native assist pickup/use and the flagged Copy Vision/teleport reviews are
   resolved above.
