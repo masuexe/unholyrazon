@@ -714,6 +714,18 @@ the migration task (JetAdaptor, PowerAdaptor, RockKick, RollSwing and RushBike)
 stay on stock or otherwise eligible native bodies. A real-client native-body
 diagnostic remains useful before RC, but it must not change the UH roster.
 
+### High-slot stress probe (2026-10-29)
+
+A new probe, `tools/mcp/high-slot-stress-test.mjs`, starts a 64-slot dedicated LMS
+server, connects one real client, adds 63 bots and reloads the map. The server
+stayed alive and reported no ACS VM fault for the whole roster and after the
+reload. The round-role snapshot did not reach 64 players:
+`playerlifestatusarr` is rebuilt only at a round setup, so paced bots produced
+max slot 35 with 27 assigned sides, while a single burst produced no round
+snapshot in the window. The probe is not registered in the gate. A later revision
+must join the bots before the first round setup, or force a fresh round, then
+assert the 64-slot roster and the reloaded round.
+
 ## Remaining completion evidence
 
 The port is not complete while these items remain open:
@@ -726,7 +738,8 @@ The port is not complete while these items remain open:
   pickups and effects now have dedicated remote LMS coverage as recorded above.
 - Final result commit, next-map progression and the real Dickhead revival source
   are now covered (36/36), and CXAirMan remote ammo passes.
-- Verify map reload and high-slot/64-player load after the split numeric
-  snapshot change. Two remote clients now authenticate under v6c. Audit optional
-  addon profiles and clearly distinguish retained legacy paths from verified v6c
+- Reach a real 64-player role snapshot (join the bots before the first round
+  setup or force a fresh round). The map reload already keeps the server alive
+  and resets the round; two remote clients authenticate. Audit optional addon
+  profiles and distinguish retained legacy paths from verified v6c
   interoperability.
