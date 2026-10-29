@@ -800,8 +800,9 @@ It checks morph weapons, roles, offline cleanup, spectator reconnect, pending
 result HUDs, revival cancellation and cleanup. The spectator keeps server map
 scripts running while the player disconnects. Native LMS does not permit a fresh
 mid-round connection to gain another life. Participants are protected and frozen
-to keep combat out of the scheduling assertions. Final result commit and next-map
-progression need separate coverage.
+to keep combat out of the scheduling assertions. A second settlement window
+expires without a revival, so the gate also covers the final result commit and
+the real next-map transition.
 
 ## Native v6c item behavior
 

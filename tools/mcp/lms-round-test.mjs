@@ -9,7 +9,8 @@
 // A second remote spectator keeps P_Ticker running during the player's leave.
 // Native LMS reconnects remain spectators until the next round; this scenario
 // verifies their current round snapshot without granting an extra life.
-// Final result commit and next-map progression need separate coverage.
+// A second window expires without a revival, so phase 3b proves the final result
+// commit and the normal next-map transition.
 //
 // Why two bosses: the engine ends a native LMS round as soon as only one
 // living/respawnable player remains (lastmanstanding.cpp).  A single-boss round
@@ -29,6 +30,9 @@
 //                      (gameover stays false, deadline in the future) and a
 //                      real Dickhead revival cancels it (pending cleared,
 //                      living survivor again, round still in progress).
+//  3b. commit        - a second window is not cancelled: it expires, gameover
+//                      commits the boss win and the engine advances to the
+//                      next map with fresh round state.
 //   4. reconnect     - the client leaves mid-round and rejoins the ongoing map
 //                      as a spectator with the authoritative round snapshot intact.
 //   5. teardown      - the client instance quits cleanly, the server exits on
@@ -737,6 +741,47 @@ try {
   check("the pending result HUD is cleared after the cancellation",
     !clearedHud.some((message) => /have been defeated/i.test(message.text)),
     { messages: clearedHud.map((message) => message.text) });
+
+  // --- phase 3b: expire a fresh window and commit the final result ----------
+  // The revived survivors die again, but no second revival happens. The window
+  // must expire into gameover, and the unified exit then advances the map.
+  const commitStart = readServerLog().length;
+  const revivedSlots = [];
+  for (let slot = 0; slot < MAX_PLAYERS; slot += 1) {
+    if (await trySrvMapArray("playerlifestatusarr", slot) === PLS_SURVIVOR) revivedSlots.push(slot);
+  }
+  check("revived survivor slots discovered", revivedSlots.length >= 1, { revivedSlots });
+  for (const slot of revivedSlots) {
+    await serverCommand("pukename core_invulnerableplayer " + (slot + 1) + " 0", 100);
+    await serverCommand("pukename rz_debug_KillPlayerSlot " + slot, 600);
+  }
+  const reSettled = await waitFor("second settlement window", async () => {
+    const pending = await trySrvMapArray("uh_settlementstate", SETTLE_PENDING);
+    const survivors = await trySrvMapArray("totalplayersarr", PLS_SURVIVOR);
+    return pending === 1 && survivors === 0 ? { pending, survivors } : null;
+  }, 60_000, 250);
+  check("a second settlement window opens after the revival ends",
+    reSettled.pending === 1 && reSettled.survivors === 0, reSettled);
+
+  const committed = await waitFor("settlement commit", async () => {
+    const over = await trySrvMapVar("gameover");
+    const pending = await trySrvMapArray("uh_settlementstate", SETTLE_PENDING);
+    return over === 1 && pending === 0 ? { over, pending } : null;
+  }, 60_000, 500);
+  check("the settlement window expires into a committed result",
+    committed.over === 1 && committed.pending === 0, committed);
+
+  const advanced = await waitFor("next-map progression", async () => {
+    const tail = readServerLog().slice(commitStart);
+    const banners = [...tail.matchAll(/\*\*\* ([A-Za-z0-9_]+):/g)].map((match) => match[1]);
+    const next = banners.find((name) => name !== map);
+    if (!next) return null;
+    const over = await trySrvMapVar("gameover");
+    return { next, over };
+  }, 120_000, 500);
+  check("the committed result advances to the next map",
+    advanced.next !== map, { from: map, to: advanced.next });
+  check("the next map starts a fresh round state", advanced.over === 0, { gameover: advanced.over });
 
   // --- phase 5: teardown ----------------------------------------------------
   await teardownEngines();

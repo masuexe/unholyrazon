@@ -164,7 +164,7 @@ CHECKS = [
           ["node", "tools/mcp/smoke-test.mjs", "--profile", "mm8bdm-v6c-smoke", "--json"],
           "MCP-controlled engine startup and player_state", ["node", "zandronum"], 900, pin_profile=True),
     check("mcp-lms-round", "full", "engine", ["node", "tools/mcp/lms-round-test.mjs", "--json"],
-          "LMS morph, spectator reconnect and revival-cancelled settlement", ["node", "zandronum"], 900, pin_profile=True),
+          "LMS morph, spectator reconnect, revival-cancelled and committed settlement, next map", ["node", "zandronum"], 900, pin_profile=True),
     check("mcp-network", "full", "engine", ["node", "tools/mcp/network-test.mjs", "--json"],
           "Dedicated server + two-client authentication/snapshot", ["node", "zandronum"], 900, pin_profile=True),
     check("mcp-team-info-sync", "full", "engine",
