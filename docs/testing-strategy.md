@@ -187,20 +187,15 @@ Register the 6 orphan probes in the gate. Add the missing scenario coverage:
 - Boss roster sweep: spawn every boss, run it for a bounded time, assert no
   engine error, no state loop, and a clean exit.
 
-Progress: `tools/mcp/lms-round-test.mjs` exists and drives a real dedicated
-server plus one MCP client. Harness bring-up is solved: dedicated server on a
-local port, offscreen SDL video, `set_pause(false)` after launch, and server
-values read from the engine log because a dedicated server does not answer
-bridge commands. The last recorded run passed 12 of 14 assertions (round
-start, authoritative survivor role, two forced bosses, the boss actor morph,
-and the remote client seeing both roles). The run then failed before the
-settlement phases: the client's disconnect was accepted but the server kept
-the player connected for 60 s and printed no departure line.
-
-The test is deliberately NOT registered in `tools/gate.py`, because a gate
-check that cannot exit 0 would make `--full` red. The file header records the
-exact state and the next steps. This phase stays open until the disconnect
-step is understood and one full run exits 0.
+Progress: `tools/mcp/lms-round-test.mjs` passed 30 runtime assertions on v6c
+and is registered as `mcp-lms-round` in the full gate. It covers authoritative
+survivor/boss roles, real morph weapons, remote visibility, disconnect cleanup,
+spectator reconnect, result-window HUD delivery, revival cancellation and process
+cleanup. The server is driven through stdin; an additional true spectator keeps
+its map scripts ticking during the player's disconnect. Participants are frozen
+and protected so combat cannot decide a lifecycle scenario. A native LMS
+reconnect cannot gain another life mid-round and is verified as a spectator.
+Final result commit and next-map progression remain separate coverage work.
 
 Exit criterion: `gate.py --full` runs every runtime probe. No probe is orphaned.
 

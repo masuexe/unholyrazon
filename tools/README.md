@@ -787,3 +787,18 @@ node tools/mcp/copyvision-v6c-test.mjs --probe /tmp/copyvision-v6c-probe.pk3
 The six runtime assertions cover spawning, survival beyond the first firing
 cycle, owner deployment state, bounded expiration and flag/redirect cleanup.
 The probe stays outside the shipped PK3.
+
+## Cancellable LMS lifecycle
+
+```bash
+node tools/mcp/lms-round-test.mjs --json
+python3 tools/gate.py --full --only mcp-lms-round
+```
+
+This gate runs a dedicated server, one controlled player and a remote spectator.
+It checks morph weapons, roles, offline cleanup, spectator reconnect, pending
+result HUDs, revival cancellation and cleanup. The spectator keeps server map
+scripts running while the player disconnects. Native LMS does not permit a fresh
+mid-round connection to gain another life. Participants are protected and frozen
+to keep combat out of the scheduling assertions. Final result commit and next-map
+progression need separate coverage.

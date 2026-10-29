@@ -530,29 +530,32 @@ v6c profile and the diagnostic probe. The client meter was one point stale, the
 insufficient-energy cast was rejected, refill and normal cast worked, and reload
 spent then recovered boss ammo.
 
-LMS round scenario: `tools/mcp/lms-round-test.mjs` under the v6c profile passed
-12 of 16 assertions after two harness changes: the ready weapon now has a
-bounded 15 s wait instead of a single morph-frame sample, and the server runs
-with `sv_limitcommands 0` so bridge commands do not trigger the flood ban.
-Confirmed: round start with the client pawn alive as a survivor, two forced
-bosses morphed to TimemanC and KFCDragon756 on both the server and the remote
-client, rz_debug_MorphMe class change, and an unmatched id restoring the
-survivor class. Three stable failures remain:
-- Boss morph state and debug morph state: the morphed actors carry
-  `MorphedFlag`, but `actor_state` reports no ready weapon even after 15 s. It is
-  not yet proven whether a bot boss is expected to hold a ReadyWeapon.
-- Disconnect role clear: the clean leave logs "0 has disconnected!!", yet
-  `playerlifestatusarr[clientSlot]` stays 1. After that leave the server shows
-  `uh_settlementstate[1] = 1` and `totalplayersarr[PLS_BOSS] = 0`, so the
-  "round survives the disconnect" wait times out; the survivor bots may simply
-  lose the 2v2 during the 60 s window. The command-flood ban is gone.
-The script stays out of the gate until it exits 0.
+LMS lifecycle scenario: `tools/mcp/lms-round-test.mjs` now passes 30 assertions
+on the current v6c package (131 s) and is registered as `mcp-lms-round` in the
+full gate. Both bosses and the debug morph equip their expected weapons.
+The earlier missing-weapon failures were a parser bug: the server reader dropped
+the `weapon` line from `dumpactor` output.
+
+Disconnect cleanup was correct. The engine's `g_game.cpp` skips `P_Ticker` when
+no real clients remain, even with bots, so pending DISCONNECT scripts cannot run
+until another client connects. The scenario now keeps a second remote spectator
+connected and waits for the role clear. Frozen/protected participants prevent
+combat from changing the result while a third engine loads. Native
+`GAMEMODE_PreventPlayersFromJoining` also forbids a fresh mid-round LMS life:
+the reconnect is checked as a true spectator with the current boss snapshot,
+not as a new survivor. No gameplay disconnect or morph change was necessary.
+
+The run also verifies the pending-result HUD, a survivor's revival through the
+production delayed Dickhead path, cancellation of settlement, removal of the
+pending-result HUD, and shutdown of both clients and the dedicated server.
+Final result commit and subsequent map progression still need runtime coverage.
 
 DECORATE replacement audit:
 - 326 `actor ... replaces <base>` declarations; every replaced base actor exists
   in v6c, and none were removed.
-- Each replacement inherits the v6c base actor's properties and overrides only
-  its listed states, so most v6b-to-v6c property changes carry over.
+- Most replacements inherit their v6c base actor properties and override only
+  selected states. Forwarding wrappers based on `BasicWatcher` are exceptions;
+  their native child actors inherit the updated base definitions.
 - Core `unepic` replacements: SmallHealth, BigHealth and MegaHealth states are
   byte-identical. WeaponEnergy, BigWeaponEnergy and MegaWeaponEnergy changed only
   the base `core_AmmoScript` amount, which UH does not use because it replaces
@@ -600,17 +603,14 @@ The other flagged core differences do not require a behavior change:
 
 The port is not complete while these items remain open:
 
-- Review the DECORATE divergences flagged above (UH_CopyVision counters,
-  UH_TeleportFogGiver nodelay, teleport watcher vars) and confirm the new
-  assist/buster behaviour on the v6c base.
+- Confirm native assist/buster behavior on the v6c base. The flagged Copy Vision
+  lifetime and teleport-wrapper reviews are resolved above.
 - Exercise native item pickup and spawn behaviour in the engine, plus changed
   existing arenas. The six added maps now load and the actor-registration item
   additions are recorded above; the item behaviour itself is not yet verified.
-- Resolve the three LMS scenario failures: confirm the expected ready weapon for
-  a bot boss, reconcile the DISCONNECT handler with the stale role, and sample
-  the disconnect markers before the survivor bots lose the round. Then re-run to
-  a green 16/16 and add the scenario to the gate. The CXAirMan remote-ammo case
-  now passes.
+- Verify final LMS result commit and subsequent map progression. The cancellable
+  lifecycle scenario now passes 30/30 and is in the full gate; CXAirMan remote
+  ammo also passes.
 - Verify map reload and high-slot/64-player load after the split numeric
   snapshot change. Two remote clients now authenticate under v6c. Audit optional
   addon profiles and clearly distinguish retained legacy paths from verified v6c

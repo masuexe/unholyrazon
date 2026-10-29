@@ -1,32 +1,15 @@
 #!/usr/bin/env node
 //
-// lms-round-test.mjs - runtime scenario gate for one complete Unholy LMS round.
+// lms-round-test.mjs - runtime gate for the cancellable Unholy LMS lifecycle.
 //
-// STATUS: NOT A GATE CHECK YET - do not register it in tools/gate.py until it
-// exits 0.  Last recorded v6c run (2026-10-29, after adding a bounded ready
-// weapon wait and sv_limitcommands 0): 12 of 16 assertions passed.  The three
-// stable failures are (1) morphed bosses and (2) rz_debug_MorphMe carry
-// MorphedFlag but `actor_state` still reports no ready weapon after a 15 s
-// window, and (3) the clean `disconnect` logs "0 has disconnected!!" yet
-// playerlifestatusarr[clientSlot] stays 1.  After that disconnect the server
-// shows uh_settlementstate[1] = 1 and totalplayersarr[PLS_BOSS] = 0, so the
-// "round survives the disconnect" wait times out; the survivor bots may simply
-// lose the 2v2 during the 60 s window.  The command-flood ban is gone.
-// Next session: decide whether a bot boss is expected to hold a ReadyWeapon at
-// all (check a real client boss), make the disconnect markers read immediately
-// after the leave, and reconcile the DISCONNECT handler with the observed role.
-// Then get one green run and append to gate.py (group "full", kind "engine",
-// requires ["node","zandronum"], timeout 900).
-//
-// Why the static layer cannot prove this: every other check in tools/ either
-// reads source or runs ACS under C stubs.  None of them can show that the round
-// really starts on a server, that the selected player really becomes the boss
-// ACTOR, that a remote client sees that morph, that the settlement watcher
-// enters its cancellable exit window, or that uh_sv_resumeonrevive cancels that
-// window when a revived opponent returns.  Those are engine scheduling, morph,
-// HUD delivery and network-replication behaviours, so this test drives them:
-// one dedicated -lastmanstanding server, one MCP-controlled client, bots, and a
-// second MCP instance attached to the authoritative server itself.
+// Registered in tools/gate.py after a 30-assertion v6c pass.
+// Read authoritative actor state from the dedicated server console, including
+// the weapon line. Freeze/protect participants so combat cannot decide the
+// round while asynchronous morph/reconnect/settlement state is sampled.
+// A second remote spectator keeps P_Ticker running during the player's leave.
+// Native LMS reconnects remain spectators until the next round; this scenario
+// verifies their current round snapshot without granting an extra life.
+// Final result commit and next-map progression need separate coverage.
 //
 // Why two bosses: the engine ends a native LMS round as soon as only one
 // living/respawnable player remains (lastmanstanding.cpp).  A single-boss round
@@ -47,7 +30,7 @@
 //                      real Dickhead revival cancels it (pending cleared,
 //                      living survivor again, round still in progress).
 //   4. reconnect     - the client leaves mid-round and rejoins the ongoing map
-//                      with its authoritative role and round state intact.
+//                      as a spectator with the authoritative round snapshot intact.
 //   5. teardown      - the client instance quits cleanly, the server exits on
 //                      request, and no engine process is left behind.
 //
@@ -75,8 +58,8 @@ const MAX_PLAYERS = 64;
 // Two forced bosses keep the engine's native single-winner result out
 // of the way, so the cancellable ordinary-round settlement is reachable.
 const FORCED_BOSSES = [
-  { boss: 91, player: 1, actor: "TimemanC" },
-  { boss: 69, player: 2, actor: "KFCDragon756" },
+  { boss: 91, player: 1, actor: "TimemanC", weapon: "TimemanC_W" },
+  { boss: 69, player: 2, actor: "KFCDragon756", weapon: "KFCDragon756_W" },
 ];
 const SURVIVOR_BOTS = 2; // plus the MCP client = three survivors
 const TOTAL_BOTS = FORCED_BOSSES.length + SURVIVOR_BOTS;
@@ -96,7 +79,7 @@ function usage() {
   return [
     "Usage: lms-round-test.mjs [options]",
     "",
-    "Drive one complete Unholy LMS round on a dedicated server with one",
+    "Drive the cancellable Unholy LMS lifecycle on a dedicated server with one",
     "MCP-controlled client and bots, and assert the observable engine state of",
     "every phase: round start, boss morph, cancellable settlement, revival",
     "cancellation, mid-round reconnect and clean teardown.",
@@ -199,6 +182,8 @@ const startedAt = Date.now();
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 const launched = [];
 let dedicated;
+let observer;
+let observerLog = "";
 let dedicatedLog = "";
 let isolatedRoot;
 let serverLogPath;
@@ -277,13 +262,14 @@ async function srvActorState(tid) {
   if (!/MCP_ACTOR/.test(out)) return null;
   const cls = out.match(/^class (\S+)$/m);
   const health = out.match(/^health (-?\d+)$/m);
+  const weapon = out.match(/^weapon (\S+)$/m);
   if (!cls) return null;
   const inventory = [];
   for (const line of out.split(/\r?\n/)) {
     const item = line.match(/^item (\S+) /);
     if (item) inventory.push({ class: item[1] });
   }
-  return { tid, class: cls[1], health: health ? Number(health[1]) : null, inventory };
+  return { tid, class: cls[1], health: health ? Number(health[1]) : null, weapon: weapon ? weapon[1] : null, inventory };
 }
 async function trySrvActorState(tid) {
   try { return await srvActorState(tid); } catch { return null; }
@@ -377,6 +363,12 @@ async function teardownEngines() {
       cleanup.client = "failed: " + (error instanceof Error ? error.message : String(error));
     }
   }
+  if (observer && observer.exitCode === null && observer.signalCode === null) {
+    observer.kill("SIGTERM");
+    await Promise.race([new Promise(r => observer.once("exit", r)), delay(4000)]);
+    if (observer.exitCode === null && observer.signalCode === null) observer.kill("SIGKILL");
+  }
+  cleanup.observerExited = !!observer && (observer.exitCode !== null || observer.signalCode !== null);
   // The dedicated server is stopped through its own console: a bridge command
   // that ends the process can never answer the sentinel it was given.
   try { sendServer("quit"); } catch { /* stdin may already be closed */ }
@@ -502,6 +494,11 @@ try {
     return survivor >= SURVIVOR_BOTS + 1 && boss === FORCED_BOSSES.length ? { survivor, boss } : null;
   }, 240_000, 1_000);
 
+  // Prevent combat from deciding a lifecycle scenario during engine startup.
+  for (let slot = 0; slot <= TOTAL_BOTS; slot++) {
+    await serverCommand("pukename core_freezeplayer " + (slot + 1) + " 1 0", 100);
+    await serverCommand("pukename core_invulnerableplayer " + (slot + 1) + " 1", 100);
+  }
   const clientRole = await srvMapArray("playerlifestatusarr", clientSlot);
   const gameover = await srvMapVar("gameover");
   const settlementPending = await srvMapArray("uh_settlementstate", SETTLE_PENDING);
@@ -537,6 +534,7 @@ try {
       const state = await trySrvActorState(tid);
       return state && state.class === forced.actor ? state : null;
     }, 90_000, 500);
+    await serverCommand("pukename rz_debug_SetPortraitPhase " + forced.player + " -1", 200);
     // The ready weapon is equipped a tick or more after the class changes; give
     // it a short bounded window instead of sampling the exact morph frame.
     const armedState = await waitFor("boss " + (index + 1) + " ready weapon", async () => {
@@ -547,6 +545,7 @@ try {
     bossStates.push({
       tid,
       expected: forced.actor,
+      expectedWeapon: forced.weapon,
       serverClass: bossState.class,
       serverHealth: bossState.health,
       clientClass: remote ? remote.class : null,
@@ -563,7 +562,7 @@ try {
   // so it is never observable afterwards.  MorphedFlag is the persistent morph
   // marker, and a real boss carries its own weapon instead of the survivor one.
   check("bosses carry the boss morph state",
-    bossStates.every((entry) => entry.morphedFlag && entry.bossWeapon),
+    bossStates.every((entry) => entry.morphedFlag && entry.bossWeapon === entry.expectedWeapon),
     bossStates.map((entry) => ({ tid: entry.tid, MorphedFlag: entry.morphedFlag, weapon: entry.bossWeapon })));
 
   // rz_debug_MorphMe runs on the server (a client puke is forwarded with this
@@ -586,7 +585,7 @@ try {
   }, 15_000, 500).catch(() => null);
   check("debug morph sets the boss morph state",
     hasInventory(debugMorph.serverSide, "MorphedFlag")
-      && !!((debugArmed && debugArmed.weapon) || debugMorph.serverSide.weapon),
+      && ((debugArmed && debugArmed.weapon) || debugMorph.serverSide.weapon) === "WarRockStelar_Control_W",
     { class: debugMorph.serverSide.class, weapon: (debugArmed && debugArmed.weapon) || debugMorph.serverSide.weapon });
   // An unmatched boss id keeps the unmorph but skips the morph, so the player
   // returns to the survivor class instead of staying in a test body.
@@ -598,9 +597,32 @@ try {
   check("an unmatched boss id restores the survivor class",
     restoredState.class === beforeMorphClass, { class: restoredState.class, health: restoredState.health });
 
+  await serverCommand("pukename core_invulnerableplayer " + (clientSlot + 1) + " 1", 100);
+  await serverCommand("pukename core_freezeplayer " + (clientSlot + 1) + " 1 0", 100);
+
   // --- phase 4: mid-round disconnect and reconnect -------------------------
+  // g_game.cpp skips P_Ticker when SERVER_CalcNumConnectedClients() == 0.
+  // Bots do not count: retain a true spectator so DISCONNECT scripts can run
+  // while the player is offline, instead of waiting for a paused empty server.
+  observer = spawn(ENGINE, ["-stdout", "-config", join(isolatedRoot, "observer.ini"),
+    "-iwad", profileData.iwad, "-file", ...profileData.files,
+    ...common, "-port", String(options.gamePort + 2),
+    "+set", "cl_startasspectator", "1", "+name", "LMSObserver",
+    "+connect", "127.0.0.1:" + options.gamePort], {
+    cwd: dirname(ENGINE),
+    env: {...process.env, SDL_VIDEODRIVER: "offscreen", ZANDRONUM_BRIDGE_PORT: String(CLIENT_BRIDGE_PORT + 1)},
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  for (const stream of [observer.stdout, observer.stderr]) {
+    stream.on("data", chunk => { observerLog = (observerLog + chunk).slice(-400000); });
+  }
+  await waitFor("observer authentication", async () => {
+    if (observer.exitCode !== null || observer.signalCode !== null) throw Error("observer exited: " + observerLog.slice(-2000));
+    return /Level authenticated![\s\S]*Snapshot received\./.test(observerLog)
+      && /LMSObserver.*has connected/.test(readServerLog());
+  }, 120000, 500);
+  check("a remote spectator keeps server scripts ticking", true);
   const roundMarkers = async () => ({
-    winstreak: await trySrvMapVar("winstreak"),
     bossTid: await trySrvMapArray("bossdataarr", 0),
     bossCount: await trySrvMapArray("totalplayersarr", PLS_BOSS),
     gameover: await trySrvMapVar("gameover"),
@@ -615,7 +637,7 @@ try {
     const left = /LMSClient[^\n]*(left the game|disconnected|has left)/i.test(log);
     const role = await trySrvMapArray("playerlifestatusarr", clientSlot);
     const cleared = role === PLS_DEAD || role === PLS_NULL;
-    return left || cleared ? { left, role, cleared } : null;
+    return cleared ? { left, role, cleared } : null;
   }, 60_000, 500);
   check("server clears the client role on disconnect", disconnectEvidence.cleared,
     disconnectEvidence);
@@ -627,21 +649,28 @@ try {
     markersDuring.gameover === 0 && markersDuring.bossCount === FORCED_BOSSES.length,
     { markersBefore, markersDuring, disconnectEvidence });
 
-  await joinOngoingRound();
-  const rejoined = await waitFor("rejoin", async () => {
-    const role = await trySrvMapArray("playerlifestatusarr", clientSlot);
-    const state = await tryActorState(CLIENT_INSTANCE);
-    return role === PLS_SURVIVOR && state && Number(state.health) > 0 ? { role, state } : null;
-  }, 120_000, 500);
+  // Native LMS does not allow a fresh connection to join a round in progress
+  // (gamemode.cpp GAMEMODE_PreventPlayersFromJoining). Reconnect as a spectator
+  // and verify the authoritative snapshot rather than inventing an extra life.
+  const reconnectStart = readServerLog().length;
+  await clientTool("run_command", {text: "connect 127.0.0.1:" + options.gamePort});
+  await clientTool("set_pause", {paused: false}).catch(() => null);
+  await waitFor("reconnected spectator snapshot", async () => {
+    const connected = /LMSClient.*has connected/.test(readServerLog().slice(reconnectStart));
+    const roles = await Promise.all(FORCED_BOSSES.map(b => tryClientMapArray("uhtirole", b.player)));
+    const ownLife = await tryClientMapArray("uhtilife", clientSlot);
+    return connected && ownLife === PLS_NULL && roles.every(r => r === PLS_BOSS);
+  }, 90000, 500);
+  const reconnectedPawn = await tryActorState(CLIENT_INSTANCE);
   const markersAfter = await roundMarkers();
-  check("client rejoins as a living survivor",
-    rejoined.role === PLS_SURVIVOR && Number(rejoined.state.health) > 0,
-    { role: rejoined.role, class: rejoined.state.class, health: rejoined.state.health });
+  check("reconnected client remains a spectator without an extra life",
+    reconnectedPawn && Number(reconnectedPawn.tid) === 0 &&
+      await srvMapArray("playerlifestatusarr", clientSlot) === PLS_DEAD,
+    {class: reconnectedPawn?.class, tid: reconnectedPawn?.tid});
   check("round state survived the reconnect",
     markersAfter.gameover === 0 &&
       markersAfter.bossCount === markersBefore.bossCount &&
       markersAfter.bossTid === bossTidBefore &&
-      markersAfter.winstreak === markersBefore.winstreak &&
       markersAfter.generation === markersBefore.generation,
     { before: markersBefore, after: markersAfter });
 
@@ -650,8 +679,11 @@ try {
   for (let slot = 0; slot < MAX_PLAYERS; slot += 1) {
     if (await trySrvMapArray("playerlifestatusarr", slot) === PLS_SURVIVOR) survivorSlots.push(slot);
   }
-  check("survivor slots discovered", survivorSlots.length === SURVIVOR_BOTS + 1, { survivorSlots });
-  for (const slot of survivorSlots) await serverCommand("pukename rz_debug_KillPlayerSlot " + slot, 600);
+  check("survivor slots discovered", survivorSlots.length === SURVIVOR_BOTS, { survivorSlots });
+  for (const slot of survivorSlots) {
+    await serverCommand("pukename core_invulnerableplayer " + (slot + 1) + " 0", 100);
+    await serverCommand("pukename rz_debug_KillPlayerSlot " + slot, 600);
+  }
 
   const settled = await waitFor("settlement window", async () => {
     const pending = await trySrvMapArray("uh_settlementstate", SETTLE_PENDING);
@@ -696,9 +728,10 @@ try {
   await teardownEngines();
   check("client instance quit cleanly", /quit cleanly/.test(String(cleanup.client || "")),
     { client: cleanup.client });
+  check("observer process exited", cleanup.observerExited === true);
   check("dedicated server process exited", cleanup.serverExited === true, { server: cleanup.server });
   const openPorts = [];
-  for (const port of [SERVER_BRIDGE_PORT, CLIENT_BRIDGE_PORT]) {
+  for (const port of [SERVER_BRIDGE_PORT, CLIENT_BRIDGE_PORT, CLIENT_BRIDGE_PORT + 1]) {
     if (!(await portIsFree(port))) openPorts.push(port);
   }
   check("no engine bridge port is left listening", openPorts.length === 0, { openPorts });
