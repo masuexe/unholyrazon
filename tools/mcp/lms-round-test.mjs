@@ -3,17 +3,20 @@
 // lms-round-test.mjs - runtime scenario gate for one complete Unholy LMS round.
 //
 // STATUS: NOT A GATE CHECK YET - do not register it in tools/gate.py until it
-// exits 0.  Last recorded v6c run (2026-10-29): 13 of 16 assertions passed.  The
-// three failures are (1) morphed bosses and (2) rz_debug_MorphMe carry
-// MorphedFlag but actor_state reports no ready weapon, and (3) the client
-// `disconnect` is recorded in the log but playerlifestatusarr[clientSlot] stays
-// 1; the engine also kicks and bans the client for "Client command flood", so
-// the reconnect, settlement-window, revival-cancellation and teardown steps
-// never run.  Earlier test bugs (a consumed CustomInventory, and the fixed 45 s
-// client window) are fixed.  Next session: give the morph a tick to equip its
-// boss weapon, avoid the command-flood kick before the disconnect probe, then
-// get one green run and append the check to gate.py (group "full", kind
-// "engine", requires ["node","zandronum"], timeout 900).
+// exits 0.  Last recorded v6c run (2026-10-29, after adding a bounded ready
+// weapon wait and sv_limitcommands 0): 12 of 16 assertions passed.  The three
+// stable failures are (1) morphed bosses and (2) rz_debug_MorphMe carry
+// MorphedFlag but `actor_state` still reports no ready weapon after a 15 s
+// window, and (3) the clean `disconnect` logs "0 has disconnected!!" yet
+// playerlifestatusarr[clientSlot] stays 1.  After that disconnect the server
+// shows uh_settlementstate[1] = 1 and totalplayersarr[PLS_BOSS] = 0, so the
+// "round survives the disconnect" wait times out; the survivor bots may simply
+// lose the 2v2 during the 60 s window.  The command-flood ban is gone.
+// Next session: decide whether a bot boss is expected to hold a ReadyWeapon at
+// all (check a real client boss), make the disconnect markers read immediately
+// after the leave, and reconcile the DISCONNECT handler with the observed role.
+// Then get one green run and append to gate.py (group "full", kind "engine",
+// requires ["node","zandronum"], timeout 900).
 //
 // Why the static layer cannot prove this: every other check in tools/ either
 // reads source or runs ACS under C stubs.  None of them can show that the round
@@ -433,6 +436,9 @@ try {
     "-host", "8", "-port", String(options.gamePort), "-lastmanstanding",
     "+set", "sv_updatemaster", "0",
     "+set", "sv_noplayertimeout", "1",
+    // The scenario injects many bridge commands; disable the client command
+    // flood ban so the disconnect/reconnect probe is not kicked mid-run.
+    "+set", "sv_limitcommands", "0",
     "+set", "sv_cheats", "1",
     "+set", "uh_sv_loglevel", "4",
     // A round timer would force an ending mid-scenario; the watchers own the
@@ -531,6 +537,12 @@ try {
       const state = await trySrvActorState(tid);
       return state && state.class === forced.actor ? state : null;
     }, 90_000, 500);
+    // The ready weapon is equipped a tick or more after the class changes; give
+    // it a short bounded window instead of sampling the exact morph frame.
+    const armedState = await waitFor("boss " + (index + 1) + " ready weapon", async () => {
+      const state = await trySrvActorState(tid);
+      return state && state.weapon ? state : null;
+    }, 15_000, 500).catch(() => null);
     const remote = await tryActorState(CLIENT_INSTANCE, tid);
     bossStates.push({
       tid,
@@ -539,7 +551,7 @@ try {
       serverHealth: bossState.health,
       clientClass: remote ? remote.class : null,
       morphedFlag: hasInventory(bossState, "MorphedFlag"),
-      bossWeapon: bossState.weapon || null,
+      bossWeapon: (armedState && armedState.weapon) || bossState.weapon || null,
     });
   }
   check("forced bosses morphed into their actor class",
@@ -568,9 +580,14 @@ try {
   check("rz_debug_MorphMe changes a live player class on both sides",
     debugMorph.live.class !== beforeMorphClass && debugMorph.serverSide.class === debugMorph.live.class,
     { before: beforeMorphClass, client: debugMorph.live.class, server: debugMorph.serverSide.class });
+  const debugArmed = await waitFor("debug morph ready weapon", async () => {
+    const state = await trySrvActorState(clientTid);
+    return state && state.weapon ? state : null;
+  }, 15_000, 500).catch(() => null);
   check("debug morph sets the boss morph state",
-    hasInventory(debugMorph.serverSide, "MorphedFlag") && !!debugMorph.serverSide.weapon,
-    { class: debugMorph.serverSide.class, weapon: debugMorph.serverSide.weapon });
+    hasInventory(debugMorph.serverSide, "MorphedFlag")
+      && !!((debugArmed && debugArmed.weapon) || debugMorph.serverSide.weapon),
+    { class: debugMorph.serverSide.class, weapon: (debugArmed && debugArmed.weapon) || debugMorph.serverSide.weapon });
   // An unmatched boss id keeps the unmorph but skips the morph, so the player
   // returns to the survivor class instead of staying in a test body.
   await clientTool("run_script", { script: "rz_debug_MorphMe", args: [0, 30000], always: true }, 30_000);

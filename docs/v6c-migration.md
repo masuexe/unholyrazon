@@ -531,18 +531,22 @@ insufficient-energy cast was rejected, refill and normal cast worked, and reload
 spent then recovered boss ammo.
 
 LMS round scenario: `tools/mcp/lms-round-test.mjs` under the v6c profile passed
-13 of 16 assertions. Confirmed: round start with the client pawn alive as a
-survivor, two forced bosses morphed to TimemanC and KFCDragon756 on both the
-server and the remote client, rz_debug_MorphMe class change, and an unmatched id
-restoring the survivor class. Three assertions still fail:
-- Boss morph state: the morphed bosses carry `MorphedFlag`, but `actor_state`
-  reports no ready weapon.
-- Debug morph state: the same missing ready weapon after rz_debug_MorphMe.
-- Disconnect role clear: after the client `disconnect`, the server log records
-  the departure but `playerlifestatusarr[clientSlot]` stays 1. The engine also
-  kicks and bans the client for "Client command flood", so the reconnect,
-  settlement-window and teardown steps never run. This reproduces the blocker in
-  the test header. The script stays out of the gate until it exits 0.
+12 of 16 assertions after two harness changes: the ready weapon now has a
+bounded 15 s wait instead of a single morph-frame sample, and the server runs
+with `sv_limitcommands 0` so bridge commands do not trigger the flood ban.
+Confirmed: round start with the client pawn alive as a survivor, two forced
+bosses morphed to TimemanC and KFCDragon756 on both the server and the remote
+client, rz_debug_MorphMe class change, and an unmatched id restoring the
+survivor class. Three stable failures remain:
+- Boss morph state and debug morph state: the morphed actors carry
+  `MorphedFlag`, but `actor_state` reports no ready weapon even after 15 s. It is
+  not yet proven whether a bot boss is expected to hold a ReadyWeapon.
+- Disconnect role clear: the clean leave logs "0 has disconnected!!", yet
+  `playerlifestatusarr[clientSlot]` stays 1. After that leave the server shows
+  `uh_settlementstate[1] = 1` and `totalplayersarr[PLS_BOSS] = 0`, so the
+  "round survives the disconnect" wait times out; the survivor bots may simply
+  lose the 2v2 during the 60 s window. The command-flood ban is gone.
+The script stays out of the gate until it exits 0.
 
 DECORATE replacement audit:
 - 326 `actor ... replaces <base>` declarations; every replaced base actor exists
@@ -575,9 +579,11 @@ The port is not complete while these items remain open:
 - Exercise native item pickup and spawn behaviour in the engine, plus changed
   existing arenas. The six added maps now load and the actor-registration item
   additions are recorded above; the item behaviour itself is not yet verified.
-- Fix the three failing LMS assertions (ready weapon after boss morph, disconnect
-  role clear and the command-flood kick), then re-run to a green 16/16 and add
-  the scenario to the gate. The CXAirMan remote-ammo case now passes.
+- Resolve the three LMS scenario failures: confirm the expected ready weapon for
+  a bot boss, reconcile the DISCONNECT handler with the stale role, and sample
+  the disconnect markers before the survivor bots lose the round. Then re-run to
+  a green 16/16 and add the scenario to the gate. The CXAirMan remote-ammo case
+  now passes.
 - Verify map reload and high-slot/64-player load after the split numeric
   snapshot change. Two remote clients now authenticate under v6c. Audit optional
   addon profiles and clearly distinguish retained legacy paths from verified v6c
