@@ -136,6 +136,8 @@ echo "== CORE8BDT =="
 "$ACC" $INC "src/acs_source/v6b_overrides/_imports/8BDT.acs" "$OUT/CORE8BDT.o" || fail=1
 echo "== DTADDR =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/api_handlers/DTADDR.acs" "$OUT/DTADDR.o" || fail=1
+echo "== WEPACS =="
+"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/WEPACS.acs" "$OUT/WEPACS.o" || fail=1
 echo "== BARCLEAR =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/api_handlers/BARCLEAR.acs" "$OUT/BARCLEAR.o" || fail=1
 echo "== BARHNDLE =="

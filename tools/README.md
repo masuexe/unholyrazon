@@ -832,3 +832,34 @@ ten UH health-capsule variants with Super Recover, native success notifications,
 AntiDamageHealth bookkeeping, full-health Exchanger conversion and full-health
 rejection without Exchanger. It grants capability flags for the test only and
 does not enable those pickups for all UH classes.
+
+## Shared ammo capacity
+
+Native Power Generator scaling runs `core_updateammocapacity` in WEPACS. When a
+native row and a UH alias row name one ammo type, the native loop scales that type
+twice. The project shadows WEPACS and scales each type once. Build the diagnostic
+addon:
+
+```bash
+acc -i ../references/zandronum/acc-branch-zandronum -i src/acs_source/v6b_overrides/_includes/common -i src/acs_source/v6b_overrides/_includes/mod_api -i src/acs_source/_includes/mod_api -i src/acs_source/_imports -i src/acs_source/v6b_overrides/_imports -i src/acs_source/unholy tools/mcp/fixtures/ammo-capacity-v6c/probe.acs /tmp/CAPPROB.o
+python3 - <<'PYPROBE'
+import zipfile
+with zipfile.ZipFile('/tmp/ammo-capacity-v6c-probe.pk3', 'w') as archive:
+    archive.write('/tmp/CAPPROB.o', 'acs/CAPPROB.o')
+    archive.write('tools/mcp/fixtures/ammo-capacity-v6c/DECORATE', 'DECORATE')
+    archive.writestr('LOADACS', 'CAPPROB\n')
+PYPROBE
+ZANDRONUM_LAUNCH_PROFILES=tools/mm8bdm-v6c.launch.json node tools/mcp/ammo-capacity-v6c-test.mjs --probe /tmp/ammo-capacity-v6c-probe.pk3
+```
+
+The runner checks 30 assertions. It covers the shared `RockNRollAmmo` and
+`SparkShockAmmo` type (both stay 56), case and channel aliases, an owned alias
+after an unowned row, a secondary-only type, fractional and same-factor round
+trips, saturation near 2147483647 and the full 5000-row registration.
+[`check_ammo_capacity_math.py`](check_ammo_capacity_math.py) compares the ACS
+integer scaler with a big-integer oracle under UBSan.
+
+Do not declare local arrays whose combined size exceeds the ACS script frame.
+The frame size is a 16-bit WORD. A pair of 32768-entry local arrays compiles, but
+the VM then reports "out of bounds access to local variables" at runtime. Keep
+the combined local and array count below 65535.

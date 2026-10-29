@@ -1,0 +1,47 @@
+// Positive integer amounts and 16.16 factors. Do not shift an ammo count into
+// fixed point: capacities and amounts can exceed 32767. Round ties upward and
+// saturate at the engine's positive integer limit.
+#define UH_AMMO_MAX 2147483647
+
+function int UH_AmmoGCD(int a, int b) {
+  while (b) {int r = a % b; a = b; b = r;}
+  return a;
+}
+
+function int updateFactor(int value, int old, int factor) {
+  if (value <= 0 || factor <= 0) return 0;
+  // A zero prior factor has no inverse. Preserve the stored count instead of
+  // dividing by zero; normal player spawn resets the tracker to 1.0.
+  if (old <= 0) return value;
+  int gcd = UH_AmmoGCD(old, factor);
+  int num = factor / gcd;
+  int den = old / gcd;
+  int whole = value / den;
+  int residue = value % den;
+  if (whole > UH_AMMO_MAX / num) return UH_AMMO_MAX;
+  whole *= num;
+  if (!residue) return whole;
+
+  int part = 0;
+  int rem = 0;
+  if (residue <= UH_AMMO_MAX / num) {
+    int product = residue * num;
+    part = product / den;
+    rem = product % den;
+  } else {
+    // Exact (residue * num) / den without constructing the 62-bit product.
+    // Each remainder addition is reduced before it could overflow.
+    for (int bit = 30; bit >= 0; bit--) {
+      part *= 2;
+      if (rem >= den - rem) {rem -= den - rem; part++;}
+      else rem += rem;
+      if (num & (1 << bit)) {
+        if (rem >= den - residue) {rem -= den - residue; part++;}
+        else rem += residue;
+      }
+    }
+  }
+  if (rem >= den / 2 + (den & 1)) part++;
+  if (whole > UH_AMMO_MAX - part) return UH_AMMO_MAX;
+  return whole + part;
+}

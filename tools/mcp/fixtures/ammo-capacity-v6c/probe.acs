@@ -1,0 +1,74 @@
+#library "CAPPROB"
+#include "zcommon.acs"
+#include "DTADD.acs"
+int cap_done, cap_checks, cap_failures;
+function void Expect(bool ok, str label) {
+ cap_checks++;
+ if(!ok) {cap_failures++; Log(s:"CAP_V6C_FAIL ",s:label);}
+}
+script "UHTest_AmmoCapacityV6c" (void) {
+ SetActivatorToPlayer(0);
+ Expect(!StrICmp(GetActorClass(0),"MegaManU"),"eligible custom player");
+ // The owned alias appears AFTER an unowned entry. One type repeats across
+ // channels and case; another appears only in the secondary channel.
+ DefineWeapon("unowned","CAPUnowned","NULLICON","CAPAmmoA",1.0,1,false,false,false);
+ DefineDoubleAmmoWeapon("owned","CAPDual","NULLICON","capammoa",1.0,"CAPAmmoB",1.0,1,false,false,false);
+ DefineDoubleAmmoWeapon("secondary only","CAPSecondaryOnly","NULLICON","",1.0,"CAPAmmoD",1.0,1,false,false,false);
+ DefineDoubleAmmoWeapon("same both","CAPDual","NULLICON","CAPAmmoA",1.0,"capammoa",1.0,1,false,false,false);
+ DefineWeapon("unowned ammo","CAPUnowned","NULLICON","CAPAmmoC",1.0,1,false,false,false);
+ GiveInventory("CAPDual",1); GiveInventory("CAPSecondaryOnly",1);
+ SetAmmoCapacity("CAPAmmoD",100); GiveInventory("CAPAmmoD",11);
+ SetAmmoCapacity("CAPAmmoA",100); SetAmmoCapacity("CAPAmmoB",100); SetAmmoCapacity("CAPAmmoC",100);
+ GiveInventory("CAPAmmoA",17); GiveInventory("CAPAmmoB",9); GiveInventory("CAPAmmoC",7);
+ GiveInventory("CustWepCanHoldPowerGenerator",1);
+ GiveInventory("PowerGeneratorItem",1);
+ Delay(4);
+ Expect(GetAmmoCapacity("RockNRollAmmo")==56,"unique stock capacity doubles");
+ Expect(GetAmmoCapacity("SparkShockAmmo")==56,"shared stock/UH capacity doubles once");
+ Expect(GetAmmoCapacity("CAPAmmoA")==200,"case and channel aliases scale once");
+ Expect(GetAmmoCapacity("CAPAmmoB")==200,"secondary capacity");
+ Expect(GetAmmoCapacity("CAPAmmoD")==200,"empty primary does not skip secondary");
+ Expect(CheckInventory("CAPAmmoD")==22,"secondary-only owned amount");
+ Expect(GetAmmoCapacity("CAPAmmoC")==200,"unowned type capacity scales");
+ Expect(CheckInventory("CAPAmmoA")==34,"later owned alias scales amount once");
+ Expect(CheckInventory("CAPAmmoB")==18,"secondary amount scales once");
+ Expect(CheckInventory("CAPAmmoC")==7,"unowned amount unchanged");
+ ACS_NamedExecuteWithResult("core_updateammocapacity",2.0);
+ Expect(GetAmmoCapacity("CAPAmmoA")==200 && CheckInventory("CAPAmmoA")==34,"same factor is idempotent");
+ TakeInventory("PowerGeneratorCapacity",1);
+ Delay(4);
+ Expect(GetAmmoCapacity("SparkShockAmmo")==28,"shared capacity returns to normal");
+ Expect(GetAmmoCapacity("CAPAmmoA")==100,"primary capacity round trip");
+ Expect(GetAmmoCapacity("CAPAmmoB")==100,"secondary capacity round trip");
+ Expect(CheckInventory("CAPAmmoA")==17,"primary amount round trip");
+ Expect(CheckInventory("CAPAmmoB")==9,"secondary amount round trip");
+ Expect(GetAmmoCapacity("CAPAmmoD")==100,"secondary-only capacity round trip");
+ Expect(CheckInventory("CAPAmmoD")==11,"secondary-only amount round trip");
+ ACS_NamedExecuteWithResult("core_updateammocapacity",1.5);
+ Expect(GetAmmoCapacity("CAPAmmoA")==150,"fractional capacity");
+ Expect(CheckInventory("CAPAmmoA")==26,"positive half rounds up");
+ ACS_NamedExecuteWithResult("core_updateammocapacity",1.0);
+ Expect(GetAmmoCapacity("CAPAmmoA")==100,"fractional capacity return");
+ Expect(CheckInventory("CAPAmmoA")==17,"fractional amount return");
+ SetAmmoCapacity("CAPAmmoA",1500000000);
+ TakeInventory("CAPAmmoA",2147483647); GiveInventory("CAPAmmoA",1073741824);
+ ACS_NamedExecuteWithResult("core_updateammocapacity",2.0);
+ Expect(GetAmmoCapacity("CAPAmmoA")==2147483647,"large capacity saturates");
+ Expect(CheckInventory("CAPAmmoA")==2147483647,"large amount saturates");
+ ACS_NamedExecuteWithResult("core_updateammocapacity",1.0);
+ Expect(GetAmmoCapacity("CAPAmmoA")==1073741824,"large capacity halves with rounding");
+ Expect(CheckInventory("CAPAmmoA")==1073741824,"large amount halves with rounding");
+ // Fill the supported table, not a reduced test limit. The aliases are unowned
+ // but must not hide an earlier owned entry or scale it thousands of times.
+ int last = DefineWeapon("fill","CAPUnowned","NULLICON","CAPAmmoA",1.0,1,false,false,false);
+ while (last >= 0 && last < 4999)
+  last = DefineWeapon("fill","CAPUnowned","NULLICON","CAPAmmoA",1.0,1,false,false,false);
+ Expect(last==4999,"full 5000-row registration");
+ SetAmmoCapacity("CAPAmmoA",100);
+ TakeInventory("CAPAmmoA",2147483647); GiveInventory("CAPAmmoA",17);
+ ACS_NamedExecuteWithResult("core_updateammocapacity",2.0);
+ Expect(GetAmmoCapacity("CAPAmmoA")==200,"full-table alias capacity");
+ Expect(CheckInventory("CAPAmmoA")==34,"full-table alias owned amount");
+ cap_done=1;
+ Log(s:"CAP_V6C checks=",d:cap_checks,s:" failures=",d:cap_failures);
+}

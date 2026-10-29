@@ -1,0 +1,76 @@
+// Fragment of the native v6c WEPACS shadow. Storage belongs to each script
+// invocation, so nested updates cannot overwrite another player's collection.
+//
+// ACS stores function-local arrays inside the script frame, and the frame size
+// is a 16-bit WORD. Keep locals + every array below 65535 entries: a pair of
+// 32768-entry buckets is 65536 and makes the VM report "out of bounds access to
+// local variables" at runtime even though ACC compiles it. Two 16384-entry
+// arrays hold the 10000 row/channel entries at under two thirds occupancy.
+#include "weapon_ammo_capacity_math.acs"
+#define UH_AMMO_BUCKETS 16384
+#define UH_AMMO_MASK 16383
+#define UH_AMMO_EXISTS 1
+#define UH_AMMO_OWNED 2
+#define UH_AMMO_DONE 4
+
+function int UH_AmmoTypeHash(str type) {
+  int h = 5381;
+  for (int i = 0; i < StrLen(type); i++)
+    h = (h * 33 + (GetChar(type, i) | 32)) & UH_AMMO_MASK;
+  return h;
+}
+
+script "core_updateammocapacity" (int factor) {
+  while (MAX_WEAPONS_GLOBAL == 0) {Delay(1);}
+  if (PlayerNumber() < 0 || factor < 0) terminate;
+  int oldFactor = CheckInventory("AmmoCapacityTracker");
+  if (oldFactor == factor) terminate;
+
+  // Pass 1: discover every ammo type across both channels and both channels'
+  // rows, and remember whether any alias row for that type is owned.
+  str types[UH_AMMO_BUCKETS];
+  int status[UH_AMMO_BUCKETS];
+  int i, channel, slot;
+  for (i = 0; i < MAX_WEAPONS_GLOBAL; i++) {
+    bool owned = CheckInventory(GetWeaponActor(i)) > 0;
+    for (channel = 0; channel < 2; channel++) {
+      str type = channel ? GetWeaponAmmo2Type(i) : GetWeaponAmmoType(i);
+      if (StrLen(type) == 0) continue;
+      slot = UH_AmmoTypeHash(type);
+      while (status[slot] && StrICmp(types[slot], type))
+        slot = (slot + 1) & UH_AMMO_MASK;
+      if (!status[slot]) {
+        types[slot] = type;
+        status[slot] = UH_AMMO_EXISTS;
+      }
+      if (owned) status[slot] = status[slot] | UH_AMMO_OWNED;
+    }
+  }
+
+  int trackerDelta = factor - oldFactor;
+  if (trackerDelta > 0) GiveInventory("AmmoCapacityTracker", trackerDelta);
+  else TakeInventory("AmmoCapacityTracker", -trackerDelta);
+
+  // Pass 2: scale every discovered type exactly once. Capacity always scales;
+  // the current amount scales only when an alias row for that type is owned.
+  // A processed bit prevents the native row and a UH alias row from scaling the
+  // same shared ammo type twice.
+  for (i = 0; i < MAX_WEAPONS_GLOBAL; i++) {
+    for (channel = 0; channel < 2; channel++) {
+      type = channel ? GetWeaponAmmo2Type(i) : GetWeaponAmmoType(i);
+      if (StrLen(type) == 0) continue;
+      slot = UH_AmmoTypeHash(type);
+      while (status[slot] && StrICmp(types[slot], type))
+        slot = (slot + 1) & UH_AMMO_MASK;
+      if (!status[slot] || (status[slot] & UH_AMMO_DONE)) continue;
+      int amount = CheckInventory(type);
+      SetAmmoCapacity(type, updateFactor(GetAmmoCapacity(type), oldFactor, factor));
+      if (status[slot] & UH_AMMO_OWNED) {
+        int delta = updateFactor(amount, oldFactor, factor) - CheckInventory(type);
+        if (delta > 0) GiveInventory(type, delta);
+        else if (delta < 0) TakeInventory(type, -delta);
+      }
+      status[slot] = status[slot] | UH_AMMO_DONE;
+    }
+  }
+}

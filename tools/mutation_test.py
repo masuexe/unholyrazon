@@ -51,6 +51,13 @@ COPIED = ("src", "tools", "examples", "docs")
 
 MUTATIONS = [
     {
+        "name": "ammo-saturation-lost",
+        "checker": "tools/check_ammo_capacity_math.py",
+        "why": "large ammo values wrap or disappear when the carry factor increases",
+        "file": "src/acs_source/v6b_overrides/corescripts/systems/weapon_ammo_capacity_math.acs",
+        "replace": ("if (whole > UH_AMMO_MAX / num) return UH_AMMO_MAX;", "if (whole > UH_AMMO_MAX / num) return 0;"),
+    },
+    {
         "name": "v6c-player-team-color-option-ignored",
         "checker": "tools/check_v6c_color_contract.py",
         "why": "the server cannot disable player team recoloring",

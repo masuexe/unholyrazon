@@ -107,6 +107,8 @@ CHECKS = [
           "Generated team presentation rows match the old tables"),
     check("team-visibility", "fast", "static", [PY, "tools/check_team_visibility.py"],
           "FFA teammate privacy and automap visibility rules", ["python", "cc"]),
+    check("ammo-capacity-math", "fast", "static", [PY, "tools/check_ammo_capacity_math.py"],
+          "Full-integer native ammo factor scaling against a big-integer oracle", ["python", "cc"]),
     check("v6c-color-contract", "fast", "static", [PY, "tools/check_v6c_color_contract.py"],
           "Native player-team-color option and UH dye bookkeeping", ["python", "cc"]),
     check("bars-generator", "fast", "generator", [PY, "tools/_gen_barpos.py", "--check"],

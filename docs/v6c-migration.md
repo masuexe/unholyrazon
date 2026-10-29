@@ -650,17 +650,36 @@ The current PK3 was rebuilt from runtime files with compiled ACS, excluding ACS
 sources, error logs and all diagnostic objects. The full ACS compile and smoke
 gate pass; no native-item diagnostic is added to the game's LOADACS.
 
-### Remaining native ammo-capacity integration issue (2026-10-29)
+### Shared ammo capacity (2026-10-29)
 
-An additional capacity diagnostic found that opting MegaManU into Power Generator
-sets the expected native factor to 2.0, but SparkShockAmmo capacity becomes 112
-instead of 56; the unique RockNRollAmmo capacity correctly becomes 56. The native
-`WEPACS` capacity updater visits every weapon row. The stock weapon and its UH
-replacement have separate DTADD rows sharing one ammo type, so that type is
-scaled repeatedly. This is not covered by the 108 basic item assertions, which
-check the factor rather than the resulting capacity. Fixing this and adding a
-real capacity regression is the next migration task. No default UH class pickup
-permissions have been changed.
+The earlier capacity diagnostic found that Power Generator factor 2.0 gave the
+unique RockNRollAmmo the correct capacity 56, but the shared SparkShockAmmo
+capacity 112 instead of 56. The native WEPACS updater visits every weapon row.
+The stock weapon and its UH replacement have separate DTADD rows that share one
+ammo type, so the type scaled twice.
+
+The project now shadows WEPACS. `weapon_ammo_capacity.acs` reimplements only
+`core_ResetAmmoCapacity` and `core_updateammocapacity`; every other native script
+stays identical. Two passes deduplicate the ammo types. The first pass records
+each type across both channels and whether any alias row is owned. The second
+pass scales each type once. A processed bit stops the native row and the UH alias
+row from scaling the same type twice. `weapon_ammo_capacity_math.acs` replaces
+the native 16.16 fixed-point shift, which overflowed above 32767, with exact
+integer scaling that rounds ties upward and saturates at 2147483647.
+
+The first implementation declared two 32768-entry local arrays plus a 10000-entry
+order array. ACC compiles that, but the ACS script frame is a 16-bit WORD. The
+combined frame exceeded 65535 and the VM reported "out of bounds access to local
+variables" at runtime. The final version uses two 16384-entry buckets and no
+order array, with a two-pass processed bit.
+
+Validation: `tools/check_ammo_capacity_math.py` compares the scaler with a
+big-integer oracle over 54096 boundary and random cases under UBSan. The runtime
+probe passes 30 of 30 assertions: RockNRollAmmo and SparkShockAmmo both become
+56, case and channel aliases scale once, an owned alias after an unowned row
+scales the amount, a secondary-only type is not skipped, fractional and
+same-factor round trips hold, values near 2147483647 saturate, and the full
+5000-row table scales once. No default UH class pickup permissions changed.
 
 The standalone item fixture now restores the original safe position between
 physical pickups and holds position during the stationary-healing check. This
@@ -672,8 +691,6 @@ remote run passed 108/108 plus all 31 lifecycle assertions.
 
 The port is not complete while these items remain open:
 
-- Fix repeated native ammo-capacity scaling for shared stock/UH ammo types and
-  add capacity/amount round-trip tests.
 - Confirm native buster-upgrade behavior and its existing UH class restrictions.
   Native assist pickup/use and the flagged Copy Vision/teleport reviews are
   resolved above.

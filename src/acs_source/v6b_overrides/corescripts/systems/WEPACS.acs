@@ -1,0 +1,791 @@
+#library "wepacs"
+
+// [Mike] Scripts file for changing colors based on your weapon
+#include "zcommon.acs"// [Russ] Always include this before 8bdmlib
+#include "8BDMLIB.acs"// included with MM8BDM under acs_source.
+					  // See 8bdmlib.acs for details.
+
+#import "8BDT.acs"
+
+#include "HOOKUTIL.acs"
+
+// Which weapon is the player currently using.
+function int WhichWeapon(void)
+{
+	for(int i = 0; i < MAX_WEAPONS_GLOBAL; i++)
+	{
+		if(CheckWeapon(getWeaponActor(i)))
+			return i;
+	}
+
+	return -1;
+}
+
+script "core_getweaponammo" (void)
+{
+	int ThisWeapon = WhichWeapon();
+	if(ThisWeapon >= 0 && StrLen(getWeaponAmmoType(ThisWeapon)) != 0)
+		SetResultValue(CheckInventory(getWeaponAmmoType(ThisWeapon)));
+	else
+		SetResultValue(0);
+}
+
+script "core_getweaponammocapacity" (void)
+{
+	int ThisWeapon = WhichWeapon();
+	if(ThisWeapon >= 0 && StrLen(getWeaponAmmoType(ThisWeapon)) != 0)
+		SetResultValue(GetAmmoCapacity(getWeaponAmmoType(ThisWeapon)));
+	else
+		SetResultValue(0);
+}
+
+script "core_getweaponammo2" (void)
+{
+	int ThisWeapon = WhichWeapon();
+	if(ThisWeapon >= 0 && StrLen(getWeaponAmmo2Type(ThisWeapon)) != 0)
+		SetResultValue(CheckInventory(getWeaponAmmo2Type(ThisWeapon)));
+	else
+		SetResultValue(0);
+}
+
+script "core_getweaponammo2capacity" (void)
+{
+	int ThisWeapon = WhichWeapon();
+	if(ThisWeapon >= 0 && StrLen(getWeaponAmmo2Type(ThisWeapon)) != 0)
+		SetResultValue(GetAmmoCapacity(getWeaponAmmo2Type(ThisWeapon)));
+	else
+		SetResultValue(0);
+}
+
+// Return a player's current weapon
+Script "core_getplayerweapon" (int playerno)
+{
+	SetActivatorToPlayer(playerno);
+	SetResultValue(GetWeapon());
+}
+
+// Ammo pickup zone
+//
+script "core_ammoPickupChoose" (int idx, int ammo1, int ammo2)
+{
+	int weapon = WhichWeapon();
+	if(weapon < 0)
+		terminate;
+
+	// validate that the weapon can actually gain ammo before trying to choose it
+	if(ACS_NamedExecuteWithResult("core_ammopickup_hooks", weapon, ammo1, ammo2, APF_TESTONLY))
+		AmmoChooseHook_SetResultValue(weapon);
+}
+
+script "core_handleEnergyBalancer" (int idx, int ammo1, int ammo2)
+{
+	idx = AmmoChooseHook_GetEventResult();
+
+	if(idx >= 0)
+		terminate;
+
+	// Energy Balancer Neo starts with the same "base logic" as normal, so it needs the standard script first.
+	// See "core_handleEnergyBalancerNeo".
+	if(!CheckInventory("EnergyBalancerActive") && !CheckInventory("EnergyBalancerNeoActive_F"))
+		terminate;
+
+	if(CheckInventory("EnergyBalancerFullDelay"))
+		terminate;
+
+	int minRatio = 2.0;
+	int minIdx = -1;
+
+	for(int i = 0; i < MAX_WEAPONS_GLOBAL; i++)
+	{
+		if(!CheckInventory(GetWeaponActor(i)) > 0)
+			continue;
+
+		int currRatio = 0;
+
+		str ammoType = GetWeaponAmmoType(i);
+		str ammoCapacity = GetAmmoCapacity(ammoType);
+		currRatio += StrLen(ammoType) != 0 ? FixedDiv(CheckInventory(ammoType), GetAmmoCapacity(ammoType)) : 1.0;
+
+		ammoType = GetWeaponAmmo2Type(i);
+		ammoCapacity = GetAmmoCapacity(ammoType);
+		currRatio += StrLen(ammoType) != 0 ? FixedDiv(CheckInventory(ammoType), GetAmmoCapacity(ammoType)) : 1.0;
+
+		if(currRatio < minRatio) {
+			// validate that the weapon can actually gain ammo before trying to choose it
+			if(ACS_NamedExecuteWithResult("core_ammopickup_hooks", i, ammo1, ammo2, APF_TESTONLY)) {
+				minRatio = currRatio;
+				minIdx = i;
+			}
+		}
+	}
+
+	if(minIdx < 0)
+		GiveInventory("EnergyBalancerFullDelay", 1);
+	else
+		AmmoChooseHook_SetResultValue(minIdx);
+}
+
+script "core_handleEnergyBalancerNeo" (int amount1, int amount2, int weapIdx)
+{
+	if(!CheckInventory("EnergyBalancerNeoActive_F"))
+		terminate;
+
+	if(CheckInventory("EnergyBalancerNeoInProgress_F"))
+		terminate;
+
+	GiveInventory("EnergyBalancerNeoInProgress_F", 1);
+
+	bool activated = false;
+	for(int i = 0; i < MAX_WEAPONS_GLOBAL; i++)
+	{
+		if(i == weapIdx)
+			continue;
+
+		str weap = GetWeaponActor(i);
+		if(!CheckInventory(weap))
+			continue;
+
+		if(ACS_NamedExecuteWithResult("core_ammopickup_hooks", i, amount1 / 2, amount2 / 2))
+			activated = true;
+	}
+
+	if(activated)
+		GiveInventory("EnergyBalancerNeoActivated_P", 1);
+
+	TakeInventory("EnergyBalancerNeoInProgress_F", 1);
+}
+
+script "core_ammoPickupMaxAmmoCheck" (int ammo1, int ammo2, int idx)
+{
+	int hasAmmo1 = StrLen(GetWeaponAmmoType(idx)) != 0;
+	int hasAmmo2 = StrLen(GetWeaponAmmo2Type(idx)) != 0;
+    if(
+		(!hasAmmo1 || CheckInventory(GetWeaponAmmoType(idx)) >= GetAmmoCapacity(GetWeaponAmmoType(idx)))
+		&& (!hasAmmo2 || CheckInventory(GetWeaponAmmo2Type(idx)) >= GetAmmoCapacity(GetWeaponAmmo2Type(idx)))
+	)
+        AmmoCheckHook_SetResultValue(false);
+}
+
+script "core_ammocheck" (int any, int amount)
+{
+	if(amount <= 0)
+		amount = 100;
+
+	int flags = APF_TESTONLY | any;
+
+	SetResultValue(ACS_NamedExecuteWithResult("core_ammopickup", amount, flags));
+}
+
+Script "core_ammopickup" (int amount, int flags)
+{
+	amount <<= 16;
+
+	bool mtank = flags & APF_ALL;
+	// int energySaver = flags & APF_DOUBLEAMMO; // handled by updating ammocarryfactor
+	bool testOnly = flags & APF_TESTONLY;
+
+	// M-Tank
+	if(flags & APF_ALL) {
+		if(amount == 0)
+			amount = 100.0;
+
+		int successes = 0;
+		for(int i = 0; i < MAX_WEAPONS_GLOBAL; i++)
+		{
+			if(CheckInventory(GetWeaponActor(i)) > 0)
+				successes += ACS_NamedExecuteWithResult("core_ammopickup_hooks", i, amount, amount, flags);
+		}
+
+		SetResultValue(successes > 0);
+		terminate;
+	}
+
+	int idx = ACS_NamedExecuteWithResult("core_run_ammo_choose_hook", amount, amount);
+	if(idx < 0) {
+		SetResultValue(false);
+		terminate;
+	}
+
+	SetResultValue(ACS_NamedExecuteWithResult("core_ammopickup_hooks", idx, amount, amount, flags));
+}
+
+script "core_ammopickup_hooks" (int idx, int ammo1, int ammo2, int flags)
+{
+	int hasAmmo1 = StrLen(GetWeaponAmmoType(idx)) != 0;
+	int hasAmmo2 = StrLen(GetWeaponAmmo2Type(idx)) != 0;
+	if(!hasAmmo1 && !hasAmmo2) {
+		SetResultValue(false);
+		terminate;
+	}
+
+    if(!ACS_NamedExecuteWithResult("core_run_ammo_check_hook", ammo1, ammo2, idx)) {
+        SetResultValue(false);
+        terminate;
+    }
+
+    int originalAmmo1 = ammo1;
+	int originalAmmo2 = ammo2;
+
+	ACS_NamedExecuteWithResult("core_run_ammo_hooks", HF_AMMO_PREMOD, ammo1, ammo2, idx);
+	ammo1 = ACS_NamedExecuteWithResult("core_ammo_hook_ammo1_result");
+	ammo2 = ACS_NamedExecuteWithResult("core_ammo_hook_ammo2_result");
+
+	ammo1 = FixedMul(ammo1, ACS_NamedExecuteWithResult("core_caprop", 0, CAProp_ReloadFactor));
+	ammo2 = FixedMul(ammo2, ACS_NamedExecuteWithResult("core_caprop", 0, CAProp_ReloadFactor));
+	ammo1 = FixedMul(ammo1, GetWeaponAmmoFactor(idx));
+	ammo2 = FixedMul(ammo2, GetWeaponAmmo2Factor(idx));
+
+	ACS_NamedExecuteWithResult("core_run_ammo_hooks", HF_AMMO, ammo1, ammo2, idx);
+	ammo1 = ACS_NamedExecuteWithResult("core_ammo_hook_ammo1_result");
+	ammo2 = ACS_NamedExecuteWithResult("core_ammo_hook_ammo2_result");
+
+	if(ammo1 > 0.0) {
+		int finalAmmo1 = FixedDiv(ammo1, 100.0);
+		finalAmmo1 = FixedMul(finalAmmo1, GetAmmoCapacity(GetWeaponAmmoType(idx)) << 16);
+		finalAmmo1 = zanRound(finalAmmo1);
+	} else {
+		finalAmmo1 = 0;
+	}
+
+	if(ammo2 > 0.0) {
+		int finalAmmo2 = FixedDiv(ammo2, 100.0);
+		finalAmmo2 = FixedMul(finalAmmo2, GetAmmoCapacity(GetWeaponAmmo2Type(idx)) << 16);
+		finalAmmo2 = zanRound(finalAmmo2);
+	} else {
+		finalAmmo2 = 0;
+	}
+
+    if(finalAmmo1 <= 0 && finalAmmo2 <= 0) {
+        SetResultValue(false);
+        terminate;
+    }
+
+    SetResultValue(true);
+
+    if(flags & APF_TESTONLY)
+        terminate;
+
+	if(finalAmmo1 > 0) {
+		GiveInventory(GetWeaponAmmoType(idx), finalAmmo1);
+	}
+
+	if(finalAmmo2 > 0) {
+		GiveInventory(GetWeaponAmmo2Type(idx), finalAmmo2);
+	}
+
+	ACS_NamedExecuteWithResult("core_run_ammo_success_hook_stage_idx", idx);
+    ACS_NamedExecuteWithResult("core_run_ammo_success_hook", originalAmmo1, originalAmmo2, ammo1, ammo2);
+}
+
+script "core_ResetAmmoCapacity" (void)
+{
+	int delta = 1.0 - CheckInventory("AmmoCapacityTracker");
+	if (delta > 0) GiveInventory("AmmoCapacityTracker", delta);
+	else if (delta < 0) TakeInventory("AmmoCapacityTracker", -delta);
+}
+
+// UH: shared ammo types must be updated once across both channels.
+#include "weapon_ammo_capacity.acs"
+
+// Eddie Random Weapon script
+// ttid: the target's thing id
+// threshold: divisor for max weapons + busters when checking for dupes (default 4)
+script "core_eddieroller" (int ttid)
+{
+	int valid_items = 0;
+
+	// count valid weapons
+	for(int i = 0; i < MAX_WEAPONS_GLOBAL; i++) {
+		if(isWeaponEddieValid(i) && ThingCountName(getWeaponActor(i), T_NONE) <= 0) {
+			if(ttid == 0 || CheckActorInventory(ttid, getWeaponActor(i)) <= 0) {
+				valid_items++;
+			}
+		}
+	}
+
+	// count valid busters
+	if(CheckActorInventory(ttid, "NoBusterUpgrades") == 0) {
+		for(i = 0; i < MAX_BUSTERUPGRADES; i++) {
+			if(isBusterEddieValid(i) && ThingCountName(getBusterUpgrade(i), T_NONE) <= 0) {
+				if(ttid == 0 || (CheckActorInventory(ttid, getBusterActor(i)) <= 0 && CheckActorInventory(ttid, getBusterUpgrade(i)) <= 0)) {
+					valid_items++;
+				}
+			}
+		}
+	}
+
+	// oops nothing!
+	str default_item = "Item1";
+	if(valid_items == 0) {
+		SetResultValue(default_item);
+		terminate;
+	}
+
+	int roll = random(1, valid_items);
+
+	// iterate weapons
+	for(i = 0; i < MAX_WEAPONS_GLOBAL; i++) {
+		if(isWeaponEddieValid(i) && ThingCountName(getWeaponActor(i), T_NONE) <= 0) {
+			if(ttid == 0 || CheckActorInventory(ttid, getWeaponActor(i)) <= 0) {
+				roll--;
+				if(roll <= 0) {
+					SetResultValue(getWeaponActor(i));
+					terminate;
+				}
+			}
+		}
+	}
+
+	// iterate busters
+	if(CheckActorInventory(ttid, "NoBusterUpgrades") == 0) {
+		for(i = 0; i < MAX_BUSTERUPGRADES; i++) {
+			if(isBusterEddieValid(i) && ThingCountName(getBusterUpgrade(i), T_NONE) <= 0) {
+				if(ttid == 0 || (CheckActorInventory(ttid, getBusterActor(i)) <= 0 && CheckActorInventory(ttid, getBusterUpgrade(i)) <= 0)) {
+					roll--;
+					if(roll <= 0) {
+						SetResultValue(getBusterUpgrade(i));
+						terminate;
+					}
+				}
+			}
+		}
+	}
+
+	// mathematically this seems impossible,
+	// but sure I guess
+	SetResultValue(default_item);
+}
+
+Script "core_eddiedropper" (void)
+{
+	int ThePlayer = ACS_NamedExecuteWithResult("core_gettarget");
+	str weap = ACS_NamedExecuteWithResult("core_eddieroller", thePlayer);
+
+	// [Russ] This would cause the weapon to not spawn under certain circumstances.
+	//SpawnProjectile(0, WeaponName, GetActorAngle(0)>>8, 75, 40, 1.0, 0);
+	int tempTID = UniqueTID();
+	SpawnForced(weap, GetActorX(0), GetActorY(0), GetActorZ(0), tempTID);
+	ThrustThing(GetActorAngle(0)>>8, 9, false, tempTID);
+	ThrustThingZ(tempTID, 10, 0, 0);
+	Thing_ChangeTID(tempTID, 0);
+}
+
+script "core_qbox_dropper" (int cooldown)
+{
+	int ThePlayer = ACS_NamedExecuteWithResult("core_gettracer");
+	str weap = ACS_NamedExecuteWithResult("core_eddieroller", thePlayer);
+	int gravity = GetUserVariable(0, "user_originalGravity");
+
+	int tempTID = UniqueTID();
+	SpawnForced(weap, GetActorX(0), GetActorY(0), GetActorZ(0), tempTID);
+	SetActorProperty(tempTID, APROP_Gravity, gravity);
+	SetActivator(tempTID);
+	Thing_ChangeTID(0, 0);
+
+	if(cooldown == 0)
+		terminate;
+
+	Delay(cooldown);
+
+	if(ClassifyActor(0) & ACTOR_WORLD || CheckFlag(0, "NOBLOCKMAP"))
+		terminate;
+
+	Thing_Remove(0);
+}
+
+script "core_qbox_check" (void)
+{
+	SetResultValue(GetCvar("mm8bdm_sv_qbox_mode"));
+}
+
+script "core_qbox_new" (void)
+{
+	int gravity = GetUserVariable(0, "user_originalGravity");
+	int tid = GetUserVariable(0, "user_originalTID");
+
+	int tempTID = UniqueTID();
+	SpawnForced("QuestionBox", GetActorX(0), GetActorY(0), GetActorZ(0), tempTID);
+	SetActorProperty(tempTID, APROP_Gravity, gravity);
+	Thing_ChangeTID(tempTID, tid);
+}
+
+// Misc weapon handling
+script "core_giveinstagib" (void)
+{
+	// If instagib is enabled, give Instagib Blades
+	if(GetCvar("instagib")==1 && !GetCVar("mm8bdm_sv_noigbehavior")){
+        TakeInventory("MegaBuster",1);
+        GiveInventory("IGMetalBladeWep",1);
+        GiveInventory("IGMovement",1);
+	}
+}
+
+script "core_TakeOtherBusters" (void)
+{
+	for(int i = 0; i < MAX_BUSTERTAKES; i++) {
+		str theBuster = getBusterTake(i);
+		if(!CheckWeapon(theBuster))
+			TakeInventory(theBuster,1);
+	}
+}
+
+// LMS Weapon Randomization
+//
+script "core_lmsgive" (void)
+{
+	int pln = PlayerNumber();
+
+	while(MAX_WEAPONS_GLOBAL == 0) delay(1);
+
+	// Check server CVAR to see if random start weapon is enabled
+	if(GetCvar("mm8bdm_sv_randomstartweapon")== true) {
+		str rweapon = ACS_NamedExecuteWithResult("core_getPickupServerReplacement", getWeaponActor(randomWeaponEx(-1, -1, true, -1)));
+		GiveInventory(rweapon,1);
+		SetWeapon(rweapon);
+	}
+
+	// Check server CVAR to see if weapons are enabled (default true)
+	if(GetCvar("mm8bdm_sv_nolmsweapons")==true)
+		terminate;
+
+	// Check if the game is actually LMS
+	if(GetCvar("lastmanstanding")==1||GetCvar("teamlms")==1) {
+		// Ignore if game is set to instagib
+		if(GetCvar("instagib")==1){terminate;}
+
+		while(GetGameModeState()!=GAMESTATE_COUNTDOWN && GetGameModeState()!=GAMESTATE_INPROGRESS && !GetCvar("mm8bdm_lms_rolled"))
+		{
+			Delay(5);
+		}
+
+		Delay(35);
+
+		// Take bots Mega Buster so they actually use a different weapon (limited to ranged weapon at present)
+		if(PlayerIsBot(pln)){
+			TakeInventory("MegaBuster",1);
+		}
+
+		// Give players one of each weapon type at random
+		if(ShieldWepRandom != -1 && (GetCvar("mm8bdm_sv_lmsshieldwep") || CheckInventory("AlwaysReceiveLMSShield")) && !CheckInventory("NeverReceiveLMSShield"))
+		{
+			GiveInventory(getWeaponActor(ShieldWepRandom),1);
+		}
+		if(AoEWepRandom != -1 && (GetCvar("mm8bdm_sv_lmsaoewep") || CheckInventory("AlwaysReceiveLMSAoE")) && !CheckInventory("NeverReceiveLMSAoE"))
+		{
+			GiveInventory(getWeaponActor(AoEWepRandom),1);
+		}
+		if(PowerWepRandom != -1 && (GetCvar("mm8bdm_sv_lmspowerwep") || CheckInventory("AlwaysReceiveLMSPower")) && !CheckInventory("NeverReceiveLMSPower"))
+		{
+			GiveInventory(getWeaponActor(PowerWepRandom),1);
+		}
+		if(CloseWepRandom != -1 && (GetCvar("mm8bdm_sv_lmsclosewep") || CheckInventory("AlwaysReceiveLMSClose")) && !CheckInventory("NeverReceiveLMSClose"))
+		{
+			GiveInventory(getWeaponActor(CloseWepRandom),1);
+		}
+		if(RapidWepRandom != -1 && (GetCvar("mm8bdm_sv_lmsrapidwep") || CheckInventory("AlwaysReceiveLMSRapid")) && !CheckInventory("NeverReceiveLMSRapid"))
+		{
+			GiveInventory(getWeaponActor(RapidWepRandom),1);
+			}
+		if(RangedWepRandom != -1 && (GetCvar("mm8bdm_sv_lmsrangedwep") || CheckInventory("AlwaysReceiveLMSRanged")) && !CheckInventory("NeverReceiveLMSRanged"))
+		{
+			GiveInventory(getWeaponActor(RangedWepRandom),1);
+		}
+		if(BusterWepRandom != -1 && (GetCvar("mm8bdm_sv_lmsbusterwep") || CheckInventory("AlwaysReceiveLMSBuster")) && !CheckInventory("NeverReceiveLMSBuster"))
+		{
+			GiveInventory(getBusterUpgrade(BusterWepRandom),1);
+		}
+
+		Delay(1);
+
+		// Give the bot the Mega Buster back
+		if(PlayerIsBot(pln)) {
+			GiveInventory("MegaBuster",1);
+		}
+	}
+}
+
+// A script to generate random numbers for LMS weapons
+//
+script "core_lmsrandomize" OPEN
+{
+	If(ACS_NamedExecuteWithResult("core_checkmode") != 2){terminate;}
+
+	// This will reset the cvars on first OPEN only
+	if (GetGameModeState() != GAMESTATE_INPROGRESS) {
+		SetCvarString("mm8bdm_lms_buster", "");
+		SetCvarString("mm8bdm_lms_ranged", "");
+		SetCvarString("mm8bdm_lms_rapid", "");
+		SetCvarString("mm8bdm_lms_close", "");
+		SetCvarString("mm8bdm_lms_power", "");
+		SetCvarString("mm8bdm_lms_aoe", "");
+		SetCvarString("mm8bdm_lms_shield", "");
+		SetCvar("mm8bdm_lms_rolled", false);
+	}
+
+	// Wait until the countdown / waiting for players
+	do {
+		Delay(1);
+	} while (GetGameModeState() == GAMESTATE_INPROGRESS);
+
+	// Don't want the drawing script to execute during result sequence
+	SetCvar("mm8bdm_lms_rolled", false);
+	while (GetGameModeState() == GAMESTATE_INRESULTSEQUENCE) {
+		Delay(1);
+	}
+
+	// LMS Randomization
+	RangedWepRandom = randomWeaponEx(SLOT_RANGED, -1, true, -1);
+	if (RangedWepRandom != -1)
+		RangedWepRandom = findWeaponByActor(ACS_NamedExecuteWithResult("core_getPickupServerReplacement", GetWeaponActor(RangedWepRandom)));
+	if (RangedWepRandom != -1) {
+		SetCvarString("mm8bdm_lms_ranged", StrParam(s:GetWeaponIcon(RangedWepRandom), s:"|", s:GetWeaponTag(RangedWepRandom)));
+	}
+	RapidWepRandom = randomWeaponEx(SLOT_RAPID, -1, true, -1);
+	if (RapidWepRandom != -1)
+		RapidWepRandom = findWeaponByActor(ACS_NamedExecuteWithResult("core_getPickupServerReplacement", GetWeaponActor(RapidWepRandom)));
+	if (RapidWepRandom != -1) {
+		SetCvarString("mm8bdm_lms_rapid", StrParam(s:GetWeaponIcon(RapidWepRandom), s:"|", s:GetWeaponTag(RapidWepRandom)));
+	}
+	CloseWepRandom = randomWeaponEx(SLOT_CLOSE, -1, true, -1);
+	if (CloseWepRandom != -1)
+		CloseWepRandom = findWeaponByActor(ACS_NamedExecuteWithResult("core_getPickupServerReplacement", GetWeaponActor(CloseWepRandom)));
+	if (CloseWepRandom != -1) {
+		SetCvarString("mm8bdm_lms_close", StrParam(s:GetWeaponIcon(CloseWepRandom), s:"|", s:GetWeaponTag(CloseWepRandom)));
+	}
+	PowerWepRandom = randomWeaponEx(SLOT_POWER, -1, true, -1);
+	if (PowerWepRandom != -1)
+		PowerWepRandom = findWeaponByActor(ACS_NamedExecuteWithResult("core_getPickupServerReplacement", GetWeaponActor(PowerWepRandom)));
+	if (PowerWepRandom != -1) {
+		SetCvarString("mm8bdm_lms_power", StrParam(s:GetWeaponIcon(PowerWepRandom), s:"|", s:GetWeaponTag(PowerWepRandom)));
+	}
+	ShieldWepRandom = randomWeaponEx(SLOT_SHIELD, -1, true, -1);
+	if (ShieldWepRandom != -1)
+		ShieldWepRandom = findWeaponByActor(ACS_NamedExecuteWithResult("core_getPickupServerReplacement", GetWeaponActor(ShieldWepRandom)));
+	if (ShieldWepRandom != -1) {
+		SetCvarString("mm8bdm_lms_shield", StrParam(s:GetWeaponIcon(ShieldWepRandom), s:"|", s:GetWeaponTag(ShieldWepRandom)));
+	}
+	AoEWepRandom = randomWeaponEx(SLOT_AOE, -1, true, -1);
+	if (AoEWepRandom != -1)
+		AoEWepRandom = findWeaponByActor(ACS_NamedExecuteWithResult("core_getPickupServerReplacement", GetWeaponActor(AoEWepRandom)));
+	if (AoEWepRandom != -1) {
+		SetCvarString("mm8bdm_lms_aoe", StrParam(s:GetWeaponIcon(AoEWepRandom), s:"|", s:GetWeaponTag(AoEWepRandom)));
+	}
+	BusterWepRandom = randomBusterUpgradeEx(-1, true, -1);
+	if (BusterWepRandom != -1)
+		BusterWepRandom = findBusterUpgradeByUpgrade(ACS_NamedExecuteWithResult("core_getPickupServerReplacement", GetBusterUpgrade(BusterWepRandom)));
+	if (BusterWepRandom != -1) {
+		SetCvarString("mm8bdm_lms_buster", StrParam(s:GetBusterIcon(BusterWepRandom), s:"|", s:GetBusterTag(BusterWepRandom)));
+	}
+
+	// Call the draw for countdown
+	SetCvar("mm8bdm_lms_rolled", true);
+	ACS_NamedExecuteWithResult("core_drawlmsloadout");
+
+	// Give weapons to everyone who is alive
+	GiveInventory("LMSWepsGive", 1);
+}
+
+script "core_lmsrandomize_unload" UNLOADING
+{
+	SetCvarString("mm8bdm_lms_buster", "");
+	SetCvarString("mm8bdm_lms_ranged", "");
+	SetCvarString("mm8bdm_lms_rapid", "");
+	SetCvarString("mm8bdm_lms_close", "");
+	SetCvarString("mm8bdm_lms_power", "");
+	SetCvarString("mm8bdm_lms_aoe", "");
+	SetCvarString("mm8bdm_lms_shield", "");
+	SetCvar("mm8bdm_lms_rolled", false);
+}
+
+int timerCheck = -1;
+script "core_drawlmsloadout" OPEN CLIENTSIDE
+{
+	if(timerCheck == Timer())
+		terminate;
+
+	timerCheck = Timer();
+
+	if(GetGameModeState() != GAMESTATE_INPROGRESS)
+		Delay(1);
+
+	if (ACS_NamedExecuteWithResult("core_checkmode") != 2 || GetCvar("mm8bdm_sv_nolmsweapons")) { terminate; }
+	if (!GetCvar("mm8bdm_lms_rolled")) { terminate; }
+
+	int cpn = ConsolePlayerNumber();
+	clearLMSHudMessages(cpn);
+	// SetActivatorToPlayer(cpn);
+
+	if(!GetCvar("mm8bdm_sv_drawlmsweapons"))
+		terminate;
+
+	if(!GetUserCVar(cpn, "mm8bdm_drawlmsweapons"))
+		terminate;
+
+	// Shield show
+	if(StrICmp(GetCvarString("mm8bdm_lms_shield"),"") != 0) {
+		ACS_NamedExecuteWithResult("core_lmsdrawqueue", cpn, GetCvarString("mm8bdm_lms_shield"), "AlwaysReceiveLMSShield", "mm8bdm_sv_lmsshieldwep");
+	}
+
+	// AoE show
+	if(StrICmp(GetCvarString("mm8bdm_lms_aoe"),"") != 0) {
+		ACS_NamedExecuteWithResult("core_lmsdrawqueue", cpn, GetCvarString("mm8bdm_lms_aoe"), "AlwaysReceiveLMSAoE", "mm8bdm_sv_lmsaoewep");
+	}
+
+	// Power show
+	if(StrICmp(GetCvarString("mm8bdm_lms_power"),"") != 0) {
+		ACS_NamedExecuteWithResult("core_lmsdrawqueue", cpn, GetCvarString("mm8bdm_lms_power"), "AlwaysReceiveLMSPower", "mm8bdm_sv_lmspowerwep");
+	}
+
+	// Close show
+	if(StrICmp(GetCvarString("mm8bdm_lms_close"),"") != 0) {
+		ACS_NamedExecuteWithResult("core_lmsdrawqueue", cpn, GetCvarString("mm8bdm_lms_close"), "AlwaysReceiveLMSClose", "mm8bdm_sv_lmsclosewep");
+	}
+
+	// Rapid show
+	if(StrICmp(GetCvarString("mm8bdm_lms_rapid"),"") != 0) {
+		ACS_NamedExecuteWithResult("core_lmsdrawqueue", cpn, GetCvarString("mm8bdm_lms_rapid"), "AlwaysReceiveLMSRapid", "mm8bdm_sv_lmsrapidwep");
+	}
+
+	// Ranged show
+	if(StrICmp(GetCvarString("mm8bdm_lms_ranged"),"") != 0) {
+		ACS_NamedExecuteWithResult("core_lmsdrawqueue", cpn, GetCvarString("mm8bdm_lms_ranged"), "AlwaysReceiveLMSRanged", "mm8bdm_sv_lmsrangedwep");
+	}
+
+	// Buster show
+	if(StrICmp(GetCvarString("mm8bdm_lms_buster"),"") != 0) {
+		ACS_NamedExecuteWithResult("core_lmsdrawqueue", cpn, GetCvarString("mm8bdm_lms_buster"), "AlwaysReceiveLMSBuster", "mm8bdm_sv_lmsbusterwep");
+	}
+
+	Delay(5);
+	timerCheck = -1;
+}
+
+// Hudmessage stuff
+#define HDM_WEAP_START_ICON 400
+#define HDM_WEAP_START_NAME 500
+
+#define HDM_WEAP_XOFFS_ICON 32.0
+#define HDM_WEAP_XOFFS_NAME 34.1
+#define HDM_WEAP_YOFFS_ICON 222.0
+#define HDM_WEAP_YOFFS_NAME HDM_WEAP_YOFFS_ICON-16.0
+#define HDM_WEAP_YOFFS_DIFF 20.0
+
+#define HDM_WEAP_TIME_ICON 0.4
+#define HDM_WEAP_TIME_NAME 0.05
+
+#define HDM_WEAP_START_DELAY 35
+#define HDM_WEAP_BETWEEN_DELAY 8
+
+int weapCount = 0;
+int weapHudMaxLength = 0;
+
+script "core_lmsdrawqueue" (int who, int icontag, int flag, int cvar) CLIENTSIDE
+{
+	if(who != ConsolePlayerNumber())
+		terminate;
+
+	if(!GetCvar("mm8bdm_sv_drawlmsweapons"))
+		terminate;
+
+	if(!GetUserCVar(ConsolePlayerNumber(), "mm8bdm_drawlmsweapons"))
+		terminate;
+
+	if(GetChar(icontag, 6) == '|' || GetChar(icontag, 8) == '|') {
+		str icon;
+		str tag;
+		if(GetChar(icontag, 8) == '|') {
+			icon = StrLeft(icontag, 8);
+		} else {
+			icon = StrLeft(icontag, 6);
+		}
+
+		tag = StrParam(l:StrRight(icontag, StrLen(icontag)-StrLen(icon)-1));
+
+		do {
+			Delay(1);
+		}
+		while(GetGamemodeState() == GAMESTATE_WAITFORPLAYERS);
+
+		if (!(PlayerInGame(who) && CheckActorInventory(who+PLN_TID, flag)) && !GetCvar(cvar)) { terminate; }
+
+		weapHudMaxLength = max(weapHudMaxLength, strLen(tag));
+		int msgIndex = weapCount;
+		weapCount++;
+
+		Delay(1);
+
+		if(!GetCvar("mm8bdm_sv_drawlmsweapons"))
+			terminate;
+
+		if(!GetUserCVar(ConsolePlayerNumber(), "mm8bdm_drawlmsweapons"))
+			terminate;
+
+		int yDiffs = msgIndex * HDM_WEAP_YOFFS_DIFF - weapCount / 2 * HDM_WEAP_YOFFS_DIFF;
+
+		if(weapCount % 2 == 0) // If it's even, offset down slightly.
+			yDiffs += HDM_WEAP_YOFFS_DIFF / 2;
+
+		if(GetGameModeState() == GAMESTATE_COUNTDOWN)
+		{
+			Delay(HDM_WEAP_START_DELAY);
+			Delay(msgIndex * HDM_WEAP_BETWEEN_DELAY);
+		}
+
+		int yOffsIcon = HDM_WEAP_YOFFS_ICON + yDiffs;
+		int yOffsName = HDM_WEAP_YOFFS_NAME + yDiffs;
+
+		if(GetGameModeState() == GAMESTATE_COUNTDOWN || GetGameModeState() == GAMESTATE_WAITFORPLAYERS) {
+			int countdownTime = GetCVar("sv_lmscountdowntime");
+			if(countdownTime <= 0)
+				countdownTime = 10;
+			countdownTime <<= 16;
+
+			int baseTime = FixedMul(weapHudMaxLength<<16, HDM_WEAP_TIME_NAME) + countdownTime + 2.0;
+			int iconTime = baseTime-HDM_WEAP_TIME_ICON;
+			int nameTime = baseTime-(StrLen(tag)*HDM_WEAP_TIME_NAME);
+
+			SetHudSize(600,380,0);
+
+			SetFont(icon);
+			HudMessageBold(s:"A"; HUDMSG_FADEINOUT, HDM_WEAP_START_ICON+msgIndex,
+							CR_GREEN, HDM_WEAP_XOFFS_ICON, yOffsIcon, iconTime, HDM_WEAP_TIME_ICON, 1.0);
+			SetFont("smallfont");
+			HudMessageBold(s:"\c*", s:tag; HUDMSG_TYPEON, HDM_WEAP_START_NAME+msgIndex,
+							CR_GREEN, HDM_WEAP_XOFFS_NAME, yOffsName, nameTime, HDM_WEAP_TIME_NAME, 1.0);
+		} else {
+			int holdTime = 5.0;
+			int fadeTime = 0.5;
+
+			SetHudSize(600,380,0);
+
+			SetFont(icon);
+			HudMessageBold(s:"A"; HUDMSG_FADEOUT, HDM_WEAP_START_ICON+msgIndex,
+							CR_GREEN, HDM_WEAP_XOFFS_ICON, yOffsIcon, holdTime, 1.0);
+			SetFont("smallfont");
+			HudMessageBold(s:"\c*", s:tag; HUDMSG_FADEOUT, HDM_WEAP_START_NAME+msgIndex,
+							CR_GREEN, HDM_WEAP_XOFFS_NAME, yOffsName, holdTime, 1.0);
+		}
+
+		Delay(35 * weapCount);
+
+		if(msgIndex == 0)
+		{
+			weapCount = 0;
+			weapHudMaxLength = 0;
+		}
+	}
+}
+
+function void clearLMSHudMessages(int who)
+{
+	if(who != ConsolePlayerNumber())
+		return;
+
+	for(int i = 0; i <= weapCount; i++) {
+		HudMessageBold(s:""; HUDMSG_FADEOUT, HDM_WEAP_START_ICON+i, 0, 0, 0, 0);
+		HudMessageBold(s:""; HUDMSG_FADEOUT, HDM_WEAP_START_NAME+i, 0, 0, 0, 0);
+	}
+
+	weapCount = 0;
+	weapHudMaxLength = 0;
+}
