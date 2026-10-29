@@ -8,6 +8,31 @@ function void Expect(bool value, str label) {
   tiProbeChecks++;
   if (!value) {tiProbeFailures++; Log(s:"UH_TI_FAIL ", s:label);}
 }
+function int TestHP(int v) {
+  if (v == 4) return 1000000007;
+  if (v == 5) return 2147483647;
+  return v == 0 ? 731 : (v == 1 ? 391 : 619);
+}
+function int TestMaxHP(int v) {
+  if (v == 4) return 2000000003;
+  if (v == 5) return 2147483647;
+  return 1000;
+}
+function int TestAmmo(int v) {
+  if (v == 4) return 1073741947;
+  if (v == 5) return 2147483647;
+  return v == 0 ? 17 : (v == 1 ? 9 : 23);
+}
+function int TestCapacity(int v) {
+  if (v == 4) return 2000000001;
+  if (v == 5) return 2147483647;
+  return v == 0 ? 80 : (v == 1 ? 96 : 120);
+}
+function int TestArmor(int v) {
+  if (v == 4) return 1500000123;
+  if (v == 5) return 2147483647;
+  return 0;
+}
 script "UHTest_TI_Subject" (int pn, int variant) {
   if (!SetActivatorToPlayer(pn)) {Log(s:"UH_TI_NO_SUBJECT ", i:pn); terminate;}
   // Real UH copy weapons are restricted to MegaManU. Use the actual pawn,
@@ -23,7 +48,11 @@ script "UHTest_TI_Subject" (int pn, int variant) {
   str ammo = variant == 2 ? "TornadoHoldAmmo" : "SparkShockAmmo";
   SetPlayerProperty(0, 1, PROP_TOTALLYFROZEN);
   SetPlayerProperty(0, 1, PROP_BUDDHA);
-  SetActorProperty(0, APROP_Health, variant == 0 ? 731 : (variant == 1 ? 391 : 619));
+  SetActorProperty(0, APROP_SpawnHealth, TestMaxHP(variant));
+  SetActorProperty(0, APROP_Health, TestHP(variant));
+  TakeInventory("BasicArmor", 0x7fffffff);
+  if (variant == 4) GiveInventory("TIWideArmor", 1);
+  if (variant == 5) GiveInventory("TIIntArmor", 1);
   GiveInventory(weapon, 1);
   // Bots must have one choice, otherwise their AI can change weapons mid-check.
   TakeInventory("MegaManU_W", 0x7fffffff);
@@ -31,9 +60,9 @@ script "UHTest_TI_Subject" (int pn, int variant) {
   // These real cooldown flags suppress Ready regeneration without firing.
   GiveInventory("SparkShockCooldownFlag", 1);
   GiveInventory("TornadoHoldCooldownFlag", 1);
-  SetAmmoCapacity(ammo, variant == 0 ? 80 : (variant == 1 ? 96 : 120));
+  SetAmmoCapacity(ammo, TestCapacity(variant));
   TakeInventory(ammo, 0x7fffffff);
-  GiveInventory(ammo, variant == 0 ? 17 : (variant == 1 ? 9 : 23));
+  GiveInventory(ammo, TestAmmo(variant));
   SetWeapon(weapon);
   ACS_NamedExecuteWithResult("uh_SetPlayerLifeStatus", pn, 1);
   Log(s:"UH_TI_SUBJECT_READY ", i:pn, s:" ", i:variant);
@@ -49,11 +78,13 @@ script "UHTest_TI_Check" (int pn, int variant) CLIENTSIDE {
     Expect(ACS_NamedExecuteWithResult("uh_GetTeammateHealth", pn) == 0, "cleared health API");
   } else {
     Expect(valid, "native-only viewer received stats");
+    Expect(ACS_NamedExecuteWithResult("uh_GetTeammateMaxHealth", pn) == TestMaxHP(variant), "full max health");
+    Expect(ACS_NamedExecuteWithResult("uh_GetTeammateArmor", pn) == TestArmor(variant), "full armor");
     Expect(StrICmp(weapon, variant == 2 ? "TornadoHoldWepU" : "SparkShockWepU") == 0, "wire actor string resolved locally");
     Expect(StrCmp(ACS_NamedExecuteWithResult("uh_GetTeammateWeaponTag", pn), variant == 2 ? "TAG_TORNADOHOLD" : "TAG_SPARKSHOCK") == 0, "local weapon tag has correct contents");
-    Expect(ammo == (variant == 0 ? 17 : (variant == 1 ? 9 : 23)), "authoritative ammo");
-    Expect(capacity == (variant == 0 ? 80 : (variant == 1 ? 96 : 120)), "authoritative capacity");
-    Expect(ACS_NamedExecuteWithResult("uh_GetTeammateHealth", pn) == (variant == 0 ? 731 : (variant == 1 ? 391 : 619)), "authoritative health");
+    Expect(ammo == TestAmmo(variant), "authoritative ammo");
+    Expect(capacity == TestCapacity(variant), "authoritative capacity");
+    Expect(ACS_NamedExecuteWithResult("uh_GetTeammateHealth", pn) == TestHP(variant), "authoritative health");
   }
   Log(s:"UH_TI_CHECK pn=", i:pn, s:" variant=", i:variant, s:" checks=", i:tiProbeChecks, s:" failures=", i:tiProbeFailures,
       s:" weapon=", s:weapon, s:" ammo=", i:ammo, s:" max=", i:capacity);
@@ -65,28 +96,51 @@ script "UHTest_TI_LocalInventory" (int pn) CLIENTSIDE {
   GiveInventory("SparkShockAmmo", 99);
   Expect(GetAmmoCapacity("SparkShockAmmo") == 999, "local inventory perturbation applied");
 }
+function void SendSnapshot(int pn, int rev, int token, int hp, int maxhp, int armor, int a1, int a2) {
+  int packed = pn | (rev << 17);
+  ACS_NamedExecuteWithResult("uh_ti_stat", packed, hp, maxhp, armor);
+  ACS_NamedExecuteWithResult("uh_ti_ammo", packed, token, a1, a2);
+}
 script "UHTest_TI_Order" (void) CLIENTSIDE {
   int s = 63;
-  int p2 = (17 << 10) | (1 << 30);
-  ACS_NamedExecuteWithResult("uh_ti_stat", s | (1 << 17), 731 | (1000 << 16), 7, p2);
+  SendSnapshot(s, 1, 7, 731, 1000, 0, 17, -1);
   ACS_NamedExecuteWithResult("uh_ti_weapon", "63:7:1:80:0:SparkShockWepU");
   Expect(StrCmp(ACS_NamedExecuteWithResult("uh_GetTeammateWeapon", s), "SparkShockWepU") == 0, "stats before string commute");
   ACS_NamedExecuteWithResult("uh_ti_stat_clear", s | (3 << 6));
-  ACS_NamedExecuteWithResult("uh_ti_stat", s | (2 << 17), 731, 7, p2);
+  SendSnapshot(s, 2, 7, 731, 1000, 0, 17, -1);
   ACS_NamedExecuteWithResult("uh_ti_weapon", "63:7:2:80:0:SparkShockWepU");
   Expect(!ACS_NamedExecuteWithResult("uh_HasTeammateStats", s), "old stats cannot undo clear");
   Expect(StrLen(ACS_NamedExecuteWithResult("uh_GetTeammateWeapon", s)) == 0, "old mailbox cannot undo clear");
   ACS_NamedExecuteWithResult("uh_ti_weapon", "63:8:4:120:0:TornadoHoldWepU");
-  ACS_NamedExecuteWithResult("uh_ti_stat", s | (4 << 17), 619, 8, p2);
-  Expect(StrCmp(ACS_NamedExecuteWithResult("uh_GetTeammateWeapon", s), "TornadoHoldWepU") == 0, "string before stats commute");
+  // Ammo may arrive before health; only health can authorize the display row.
+  ACS_NamedExecuteWithResult("uh_ti_ammo", s | (4 << 17), 8, 23, -1);
+  Expect(!ACS_NamedExecuteWithResult("uh_HasTeammateStats", s), "ammo cannot authorize a row");
+  ACS_NamedExecuteWithResult("uh_ti_stat", s | (4 << 17), 619, 1000, 0);
+  Expect(StrCmp(ACS_NamedExecuteWithResult("uh_GetTeammateWeapon", s), "TornadoHoldWepU") == 0, "ammo/string before health commute");
   ACS_NamedExecuteWithResult("uh_ti_weapon", "63:7:2:80:0:SparkShockWepU");
   Expect(StrCmp(ACS_NamedExecuteWithResult("uh_GetTeammateWeapon", s), "TornadoHoldWepU") == 0, "old metadata cannot replace current weapon");
-  ACS_NamedExecuteWithResult("uh_ti_stat", 62 | (32766 << 17), 731, 7, p2);
+  ACS_NamedExecuteWithResult("uh_ti_ammo", s | (6 << 17), 8, 19, -1);
+  ACS_NamedExecuteWithResult("uh_ti_stat_clear", s | (5 << 6));
+  Expect(ACS_NamedExecuteWithResult("uh_HasTeammateStats", s), "old clear cannot retire newer ammo");
+  ACS_NamedExecuteWithResult("uh_ti_stat", s | (6 << 17), 600, 1000, 0);
+  ACS_NamedExecuteWithResult("uh_ti_stat_clear", s | (7 << 6));
+  SendSnapshot(s, 6, 8, 600, 1000, 0, 19, -1);
+  Expect(!ACS_NamedExecuteWithResult("uh_HasTeammateStats", s), "clear rejects both older numeric streams");
+  SendSnapshot(62, 32766, 7, 731, 1000, 0, 17, -1);
   ACS_NamedExecuteWithResult("uh_ti_stat_clear", 62 | (32767 << 6));
-  ACS_NamedExecuteWithResult("uh_ti_stat", 62 | (32766 << 17), 731, 7, p2);
+  SendSnapshot(62, 32766, 7, 731, 1000, 0, 17, -1);
   Expect(!ACS_NamedExecuteWithResult("uh_HasTeammateStats", 62), "old stats near wrap rejected");
-  ACS_NamedExecuteWithResult("uh_ti_stat", 62 | (1 << 17), 731, 7, p2);
-  Expect(ACS_NamedExecuteWithResult("uh_HasTeammateStats", 62), "stat revision wraps");
+  SendSnapshot(62, 1, 7, 731, 1000, 0, 17, -1);
+  Expect(ACS_NamedExecuteWithResult("uh_HasTeammateStats", 62), "both streams wrap");
+  // Two independent ammo values must retain all bits, including bit 30.
+  ACS_NamedExecuteWithResult("uh_ti_weapon", "61:9:1:2147483647:2147483647:SparkShockWepU");
+  SendSnapshot(61, 1, 9, 2147483647, 2147483647, 2147483647, 1073741947, 2147483647);
+  Expect(ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", 61, true, false) == 2147483647, "full second ammo");
+  Expect(ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", 61, false, false) == 1073741947, "full first ammo");
+  Expect(ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", 61, true, true) == 2147483647, "ten-digit capacity mailbox");
+  ACS_NamedExecuteWithResult("uh_ti_ammo", 61 | (2 << 17), 9, 0, -1);
+  Expect(ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", 61, false, true) == 2147483647, "empty ammo keeps present bar");
+  Expect(ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", 61, true, true) == 0, "absent second ammo hides bar");
   Log(s:"UH_TI_ORDER checks=", i:tiProbeChecks, s:" failures=", i:tiProbeFailures);
 }
 

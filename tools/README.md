@@ -713,6 +713,7 @@ import zipfile
 with zipfile.ZipFile('/tmp/uh-native-teaminfo-probe.pk3', 'w') as archive:
     archive.write('tools/mcp/fixtures/native-teaminfo/LOADACS', 'LOADACS')
     archive.write('tools/mcp/fixtures/native-teaminfo/BOTINFO', 'BOTINFO')
+    archive.write('tools/mcp/fixtures/native-teaminfo/DECORATE', 'DECORATE')
     archive.write('/tmp/TIPROBE.o', 'acs/TIPROBE.o')
 PYPROBE
 ZANDRONUM_LAUNCH_PROFILES=tools/mm8bdm-v6c.launch.json node tools/mcp/native-teaminfo-test.mjs --probe /tmp/uh-native-teaminfo-probe.pk3
@@ -724,9 +725,13 @@ loadout has one weapon and its cooldown flag prevents automatic ammo recovery.
 It checks remote
 health, weapon-string/tag contents, ammo and capacity, including a deliberately
 wrong local inventory, weapon/capacity changes, enemy and display-option clears,
-spectator restrictions, reconnect and removal. Local receiver probes additionally
-test reordered metadata/stats, late packets after a clear, and revision wrap.
+spectator restrictions, reconnect and removal. Large-value phases exercise the
+full positive integer boundary for health, armor, ammo and capacity. Local
+receiver probes additionally test reordered metadata/numeric streams, late
+packets after a clear, two independent ammo values, absence/empty sentinels and
+revision wrap.
 Set UH_TEAMINFO_SCREENSHOT to a PNG path for a native teammate-bar spot check.
 Failures retain isolated logs; successful runs remove their temporary files.
 The addon is never part of the release package. This focused test does not
-cover 64-player load, every event policy or packet values beyond existing limits.
+cover 64-player load or every event policy. With screenshots enabled, the large
+value phase also writes a .wide.png companion for a bar-proportion spot check.

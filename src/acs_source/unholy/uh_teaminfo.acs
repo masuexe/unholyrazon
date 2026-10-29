@@ -83,9 +83,10 @@ int uhtistatlives[MAX_PLAYERS];
 #define UH_TI_WMAX2 (MAX_PLAYERS * 5)
 #define UH_TI_WCLEAR (MAX_PLAYERS * 6)
 #define UH_TI_WSTATREV (MAX_PLAYERS * 7)
+#define UH_TI_WAMMOREV (MAX_PLAYERS * 8)
 #define UH_TI_STAT_MASK 32767
 #define UH_TI_STAT_HALF 16384
-str uhtistattag[MAX_PLAYERS * 8];
+str uhtistattag[MAX_PLAYERS * 9];
 int uhtistatammo1[MAX_PLAYERS];
 int uhtistatammo2[MAX_PLAYERS];
 bool uhtistathasammo1[MAX_PLAYERS];
@@ -115,7 +116,7 @@ function void UH_Ti_ClearStats(int pn) {
 
 function void UH_Ti_ResetClient(void) {
   for (int i = 0; i < MAX_PLAYERS; i++) {
-    for (int field = 1; field < 8; field++) {
+    for (int field = 1; field < 9; field++) {
       uhtistattag[field * MAX_PLAYERS + i] = 0;
     }
     uhtistattag[UH_TI_WACTOR + i] = "";
@@ -292,12 +293,32 @@ script "uh_ti_sync_policy" (int policy, int revision) CLIENTSIDE {
 
 // Stats and clears share a 15-bit revision so delayed same-tic scripts cannot
 // restore a row after authorization was revoked. Zero permits local diagnostics.
-function bool UH_Ti_AcceptStatRevision(int pn, int revision) {
+function bool UH_Ti_AcceptStatRevision(int pn, int revision, bool ammo) {
   if (!revision) {return true;}
-  int old = uhtistattag[UH_TI_WSTATREV + pn];
-  int distance = (revision - old) & UH_TI_STAT_MASK;
+  int cleared = uhtistattag[UH_TI_WCLEAR + pn];
+  int distance = (revision - cleared) & UH_TI_STAT_MASK;
+  if (cleared && (!distance || distance >= UH_TI_STAT_HALF)) {return false;}
+  int offset = ammo ? UH_TI_WAMMOREV : UH_TI_WSTATREV;
+  int old = uhtistattag[offset + pn];
+  distance = (revision - old) & UH_TI_STAT_MASK;
   if (old && (!distance || distance >= UH_TI_STAT_HALF)) {return false;}
+  uhtistattag[offset + pn] = revision;
+  return true;
+}
+
+function bool UH_Ti_AcceptClearRevision(int pn, int revision) {
+  if (!revision) {return true;}
+  int cleared = uhtistattag[UH_TI_WCLEAR + pn];
+  int distance = (revision - cleared) & UH_TI_STAT_MASK;
+  if (cleared && (!distance || distance >= UH_TI_STAT_HALF)) {return false;}
+  // A clear cannot retire either half of a newer authorized snapshot.
+  int stats = uhtistattag[UH_TI_WSTATREV + pn];
+  int ammo = uhtistattag[UH_TI_WAMMOREV + pn];
+  if (stats && ((revision - stats) & UH_TI_STAT_MASK) >= UH_TI_STAT_HALF) {return false;}
+  if (ammo && ((revision - ammo) & UH_TI_STAT_MASK) >= UH_TI_STAT_HALF) {return false;}
   uhtistattag[UH_TI_WSTATREV + pn] = revision;
+  uhtistattag[UH_TI_WAMMOREV + pn] = revision;
+  uhtistattag[UH_TI_WCLEAR + pn] = revision;
   return true;
 }
 
@@ -312,7 +333,8 @@ script "uh_ti_weapon" (int payload) CLIENTSIDE {
     int digits = 0;
     while (at < StrLen(payload) && GetChar(payload, at) != 58) {
       int ch = GetChar(payload, at++);
-      if (ch < 48 || ch > 57 || ++digits > 9) {terminate;}
+      if (ch < 48 || ch > 57 || ++digits > 10) {terminate;}
+      if (values[field] > 214748364 || (values[field] == 214748364 && ch > 55)) {terminate;}
       values[field] = values[field] * 10 + ch - 48;
     }
     if (!digits || at >= StrLen(payload)) {terminate;}
@@ -336,29 +358,36 @@ script "uh_ti_weapon" (int payload) CLIENTSIDE {
   uhtistattag[pn] = ACS_NamedExecuteWithResult("uh_WeaponTagForActor_S", actor);
 }
 
-// Per-subject live stats addressed to THIS client only.  NamedExecuteClient-
-// Script passes (packed_s, packed1, weaponToken, packed2); the server packs
-// subject+absorb+lives, hp/maxhp, and armor/ammo so the four-int limit is never
-// exceeded.
-script "uh_ti_stat" (int packed_s, int packed1, int weaponToken, int packed2) CLIENTSIDE {
+// Two four-int numeric messages preserve full positive ACS integers. Only
+// subject/absorb/lives/revision share bits; health, armor and ammo never do.
+// Independent stream revisions let either packet arrive first. Neither stream
+// can undo a newer clear, and ammo alone cannot authorize a health row.
+script "uh_ti_stat" (int packed_s, int hp, int maxhp, int armor) CLIENTSIDE {
   UH_Ti_EnsureClientInitialized();
   int pn = packed_s & 63;
-  if (pn < 0 || pn >= MAX_PLAYERS) {terminate;}
-  if (!UH_Ti_AcceptStatRevision(pn, (packed_s >> 17) & UH_TI_STAT_MASK)) {terminate;}
+  if (!UH_Ti_AcceptStatRevision(pn, (packed_s >> 17) & UH_TI_STAT_MASK, false)) {terminate;}
   uhtistatabsorb[pn] = (packed_s >> 6) & 127;
   uhtistatlives[pn] = (packed_s >> 13) & UH_TI_MAX_LIVES;
-  uhtistathp[pn] = packed1 & 65535;              // unsigned 16-bit
-  uhtistatmaxhp[pn] = (packed1 >> 16) & 65535;   // unsigned 16-bit
-  uhtistatarmor[pn] = packed2 & 1023;
-  uhtistatammo1[pn] = (packed2 >> 10) & 1023;
-  uhtistatammo2[pn] = (packed2 >> 20) & 1023;
-  uhtistathasammo1[pn] = ((packed2 >> 30) & 1) != 0;
-  uhtistathasammo2[pn] = ((packed2 >> 31) & 1) != 0;
+  uhtistathp[pn] = hp > 0 ? hp : 0;
+  uhtistatmaxhp[pn] = maxhp > 0 ? maxhp : 0;
+  uhtistatarmor[pn] = armor > 0 ? armor : 0;
+  uhtistatvalid[pn] = true;
+}
+
+script "uh_ti_ammo" (int packed_s, int weaponToken, int ammo1, int ammo2) CLIENTSIDE {
+  UH_Ti_EnsureClientInitialized();
+  int pn = packed_s & 63;
+  if (!UH_Ti_AcceptStatRevision(pn, (packed_s >> 17) & UH_TI_STAT_MASK, true)) {terminate;}
+  // -1 means this resource is absent (including infinite-ammo policy). Zero is
+  // a present, empty bar, so it must not be conflated with that sentinel.
+  uhtistatammo1[pn] = ammo1 >= 0 ? ammo1 : 0;
+  uhtistatammo2[pn] = ammo2 >= 0 ? ammo2 : 0;
+  uhtistathasammo1[pn] = ammo1 >= 0;
+  uhtistathasammo2[pn] = ammo2 >= 0;
   uhtistattag[UH_TI_WEXPECTED + pn] = weaponToken;
   if (weaponToken == uhtistattag[UH_TI_WTOKEN + pn]) {
     uhtistattag[pn] = ACS_NamedExecuteWithResult("uh_WeaponTagForActor_S", uhtistattag[UH_TI_WACTOR + pn]);
   }
-  uhtistatvalid[pn] = true;
 }
 
 // Drop a subject once its body is gone (corpse removed / dead spectator).  The
@@ -369,7 +398,7 @@ script "uh_ti_stat_clear" (int packed) CLIENTSIDE {
   UH_Ti_EnsureClientInitialized();
   int pn = packed & 63;
   if (packed < 0 || pn >= MAX_PLAYERS) {terminate;}
-  if (!UH_Ti_AcceptStatRevision(pn, packed >> 6)) {terminate;}
+  if (!UH_Ti_AcceptClearRevision(pn, packed >> 6)) {terminate;}
   UH_Ti_ClearStats(pn);
   for (int field = 1; field <= 5; field++) {
     uhtistattag[field * MAX_PLAYERS + pn] = 0;
@@ -906,8 +935,7 @@ function void UH_Ti_RefreshStats(int first, int end) {
     uhsrvWasingame[s] = true;
     int hp = GetActorProperty(tid, APROP_Health);
     // Native camera HUD health must work with both teammate displays disabled.
-    // Send the full integer before the teammate packet's 16-bit clamp: Boss
-    // scaling can exceed that packet's range. Both true and dead spectators
+    // Both true and dead spectators
     // may follow enemies when lms_spectatorview permits it; playing clients
     // get none. Keep this separate from the teammate-row authorization.
     for (int observer = 0; observer < MAX_PLAYERS; observer++) {
@@ -915,11 +943,11 @@ function void UH_Ti_RefreshStats(int first, int end) {
         NamedExecuteClientScript("uh_ti_spectator_health", observer, s, hp);
       }
     }
-    if (hp < 0) {hp = 0;} if (hp > 65535) {hp = 65535;}
+    if (hp < 0) {hp = 0;}
     int maxhp = GetActorProperty(tid, APROP_SpawnHealth);
-    if (maxhp < 0) {maxhp = 0;} if (maxhp > 65535) {maxhp = 65535;}
+    if (maxhp < 0) {maxhp = 0;}
     int armor = CheckActorInventory(tid, "BasicArmor");
-    if (armor < 0) {armor = 0;} if (armor > 1023) {armor = 1023;}
+    if (armor < 0) {armor = 0;}
 
     int lives = CheckActorInventory(tid, "PlayerPropertyExtraLife");
     if (lives < 0) {lives = 0;} if (lives > UH_TI_MAX_LIVES) {lives = UH_TI_MAX_LIVES;}
@@ -945,15 +973,17 @@ function void UH_Ti_RefreshStats(int first, int end) {
       if (StrLen(uhsrvammo1name[s])) {max1 = GetAmmoCapacity(uhsrvammo1name[s]);}
       if (StrLen(uhsrvammo2name[s])) {max2 = GetAmmoCapacity(uhsrvammo2name[s]);}
       SetActivator(0, AAPTR_NULL);
+      if (max1 < 0) {max1 = 0;}
+      if (max2 < 0) {max2 = 0;}
       if (StrLen(uhsrvammo1name[s]) != 0 && !infinite) {
         has1 = 1;
         a1 = CheckActorInventory(tid, uhsrvammo1name[s]);
-        if (a1 < 0) {a1 = 0;} if (a1 > 1023) {a1 = 1023;}
+        if (a1 < 0) {a1 = 0;}
       }
       if (StrLen(uhsrvammo2name[s]) != 0 && !infinite) {
         has2 = 1;
         a2 = CheckActorInventory(tid, uhsrvammo2name[s]);
-        if (a2 < 0) {a2 = 0;} if (a2 > 1023) {a2 = 1023;}
+        if (a2 < 0) {a2 = 0;}
       }
     }
 
@@ -965,8 +995,6 @@ function void UH_Ti_RefreshStats(int first, int end) {
       uhsrvwepmeta[s] = (uhsrvwepmeta[s] + 1) & UH_TI_REV_MASK;
       if (!uhsrvwepmeta[s]) {uhsrvwepmeta[s] = 1;}
     }
-    int packed1 = (hp & 65535) | ((maxhp & 65535) << 16);
-    int packed2 = armor | (a1 << 10) | (a2 << 20) | (has1 << 30) | (has2 << 31);
     int packed_s = (s & 63) | ((absorbPct & 127) << 6) | ((lives & UH_TI_MAX_LIVES) << 13) | (statRevision << 17);
 
     for (int vw = 0; vw < MAX_PLAYERS; vw++) {
@@ -994,7 +1022,8 @@ function void UH_Ti_RefreshStats(int first, int end) {
         NamedSendNetworkString("uh_ti_weapon", payload, vw);
         uhsrvwepmeta[mailbox] = uhsrvwepmeta[s];
       }
-      NamedExecuteClientScript("uh_ti_stat", vw, packed_s, packed1, uhsrvwepmeta[s], packed2);
+      NamedExecuteClientScript("uh_ti_stat", vw, packed_s, hp, maxhp, armor);
+      NamedExecuteClientScript("uh_ti_ammo", vw, packed_s, uhsrvwepmeta[s], has1 ? a1 : -1, has2 ? a2 : -1);
     }
   }
 }
@@ -1177,7 +1206,7 @@ function void UH_Ti_Draw(int viewer, int cpn) {
         int maxhp = uhtistatmaxhp[i];
         if (maxhp <= 0) {maxhp = hp;}
         if (maxhp <= 0) {maxhp = 1;}
-        int pct = (100 * hp) / maxhp;
+        int pct = hp <= 21474836 ? (100 * hp) / maxhp : FixedMul(FixedDiv(hp, maxhp), 100);
         int hcol = CR_RED;
         if (pct > 75) {hcol = CR_GREEN;}
         else if (pct > 50) {hcol = CR_GOLD;}

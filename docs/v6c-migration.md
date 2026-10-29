@@ -1,7 +1,8 @@
 # MM8BDM v6c migration
 
-Started on 2026-10-28. Minimal v6c startup now passes. Gameplay and multiplayer compatibility have
-not been established.
+Started on 2026-10-28. Startup, class-slot inheritance, movement and native HUD
+paths have focused v6c verification. Full-round, new map/item and 64-slot
+coverage remain pending; these focused checks do not establish the whole port.
 
 ## Baseline and scope
 
@@ -363,10 +364,10 @@ lms_spectatorview permits following players. A reconnect resets the viewer's
 metadata delivery cache. The focused addon and runner are
 tools/mcp/fixtures/native-teaminfo/ and tools/mcp/native-teaminfo-test.mjs.
 
-Existing packet limits remain: health/max health are 16-bit and armor/ammo
-amounts are 10-bit. The separate spectator-camera health path still carries a
-full integer. Wider teammate values, missing custom-weapon DTADD records,
-64-slot load, all event policies and full-round regression need further work.
+At this checkpoint, health/max health were still 16-bit and armor/ammo amounts
+were 10-bit. The following milestone removes those legacy wire limits. Missing
+custom-weapon DTADD records, 64-slot load, all event policies and full-round
+regression still need further work.
 
 Validation: all project ACS libraries compile. The focused v6c dedicated-server
 run passed 20 remote snapshot checks and local packet-order/wrap probes (110
@@ -377,3 +378,31 @@ restoration, reconnect and named bot removal. The actual native weapon renderer
 consumed the snapshot, and its visible ammo bar received a screenshot spot check.
 All 31 smoke checks passed. This does not establish the wider value ranges or
 64-player/full-round coverage listed above.
+
+## Full-range teammate values (2026-10-29)
+
+The numeric snapshot now uses two four-integer messages: uh_ti_stat carries the
+subject/flags/revision header, health, maximum health and armor; uh_ti_ammo
+carries the same header, weapon token and two ammo amounts. Values retain the
+full nonnegative ACS integer range through 2147483647. An ammo value of -1 means
+absent or infinite; zero means present but empty. Metadata decimal parsing also
+accepts ten-digit capacities with an overflow guard.
+
+Each numeric stream has an independent 15-bit revision. Either packet can
+arrive first; ammo alone never authorizes a display row. Both streams reject
+updates older than a clear, and a clear cannot retire either half of a newer snapshot. String
+mailbox token matching remains unchanged. The extra stream state extends the
+existing client array, preserving the round core's 128 map-variable ceiling.
+
+The native teammate renderer normalizes health/ammo fractions before calling
+UIXLIB, whose pixel-extent multiplication otherwise overflows with large raw
+values. The fallback's health percentage avoids its former multiply overflow.
+
+Validation: all ACS compile, and the extended dedicated-client diagnostic passed
+23 remote snapshot checks plus ordering/wrap/sentinel probes (170 assertions
+across the initial connection and reconnect). Real server pawns exercised
+1000000007 health, 2000000003 maximum health, 1500000123 armor, 1073741947 ammo
+and a 2000000001 capacity, then 2147483647 boundaries. Local probes covered two
+independent full-range ammo values, an absent resource, a present empty bar,
+cross-stream reorder, stale clears and revision wrap. The large-value native
+bars received a screenshot spot check. The general smoke gate passed 31 checks.

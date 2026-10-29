@@ -276,7 +276,7 @@ are forbidden here, and each one has already caused a bug:
   something else entirely on the client. `NamedSendNetworkString` is the only
   supported path and needs its own per-client mailbox. Weapon metadata now uses
   `uh_ti_weapon`: a subject/token/revision/capacity prefix plus the actual actor
-  string, sent to authorized viewers only. `uh_ti_stat` carries the matching
+  string, sent to authorized viewers only. `uh_ti_ammo` carries the matching
   integer token; each client resolves its own tag and native weapon-table row.
 - **A presentation table row.** Rows are handed out in registration order.
 - **A custom `Define*(-1, …)` id.** Also assigned in registration order, so a
@@ -326,8 +326,10 @@ the UH fallback. Never use a remote player's local inventory as the authoritativ
 source for that display.
 Use `uh_GetTeammateWeapon` / `uh_GetTeammateAmmo`; metadata and numeric updates
 can execute in either order, so the weapon is usable only when both tokens
-match. Stat/clear packets use a separate 15-bit revision; old packets must not
-restore a cleared row. Policy/hello resets invalidate display stats but retain
+match. Health/armor and ammo travel as separate four-int messages with full
+positive integer values. Each numeric stream has its own 15-bit revision;
+neither may undo a newer clear, and a clear cannot retire either newer stream.
+Only health/armor authorizes a row. Policy/hello resets invalidate display stats but retain
 metadata until the authoritative clear. Keep these fields in the existing
 expanded `uhtistattag` and `uhsrvwepmeta` arrays: `unholy` uses all 128 map slots.
 

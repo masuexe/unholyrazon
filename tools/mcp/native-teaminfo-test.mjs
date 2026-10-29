@@ -185,6 +185,16 @@ try {
  await probe(1,1);
  await serverCommand("pukename UHTest_TI_Subject 1 2", /UH_TI_SUBJECT_READY 1 2/);
  await probe(1,2);
+ await serverCommand("pukename UHTest_TI_Subject 1 4", /UH_TI_SUBJECT_READY 1 4/);
+ await probe(1,4);
+ if (process.env.UH_TEAMINFO_SCREENSHOT) {
+   const shot = await call("screenshot");
+   writeFileSync(resolve(process.env.UH_TEAMINFO_SCREENSHOT.replace(/\.png$/i,".wide.png")), Buffer.from(shot.content.find(c=>c.type==="image").data,"base64"));
+ }
+ await serverCommand("pukename UHTest_TI_Subject 1 5", /UH_TI_SUBJECT_READY 1 5/);
+ await probe(1,5);
+ await serverCommand("pukename UHTest_TI_Subject 1 2", /UH_TI_SUBJECT_READY 1 2/);
+ await probe(1,2);
  sendServer("pukename uh_SetPlayerLifeStatus 1 2"); await probe(1,3);
  sendServer("pukename uh_SetPlayerLifeStatus 1 1"); await probe(1,2);
  sendServer("mm8bdm_sv_teaminfo 0"); await probe(1,3);

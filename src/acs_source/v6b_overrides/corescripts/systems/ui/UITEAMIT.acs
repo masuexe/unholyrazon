@@ -697,6 +697,14 @@ int hv[7]; // health variables
 
 int healthBarDimensions[2] = {HP_L_CONST, HP_W_CONST};
 
+// Normalize before UIXLIB multiplies the value by a pixel extent. Full
+// integer health/ammo can otherwise overflow a 32-bit product in that code.
+function int UHNative_Fill(int amount, int maximum) {
+    if (amount <= 0 || maximum <= 0) return 0;
+    if (amount >= maximum) return 1.0;
+    return FixedDiv(amount, maximum);
+}
+
 function void drawHealth(int pln, int x, int y, int dead)
 {
     if(!cvars[CV_SHOWHEALTH])
@@ -746,6 +754,10 @@ function void drawHealth(int pln, int x, int y, int dead)
         barFull = "UXTEMHH1";
     }
 
+    if (uhTeamMode) {
+        chp = UHNative_Fill(chp, mhp);
+        mhp = 1.0;
+    }
     drawBar(
         cvars[CV_LAYER],
         barFull,
@@ -943,6 +955,8 @@ function void drawWeapon(int pln, int x, int y, int dead)
         ammo2 = ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", pln, true, false);
         ammo1Max = ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", pln, false, true);
         ammo2Max = ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", pln, true, true);
+        if (ammo1Max > 0) {ammo1 = UHNative_Fill(ammo1, ammo1Max); ammo1Max = 1.0;}
+        if (ammo2Max > 0) {ammo2 = UHNative_Fill(ammo2, ammo2Max); ammo2Max = 1.0;}
     } else if (wepIdx >= 0) {
         ammo1 = getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1);
         ammo2 = getWeaponAmmoInfo(wepIdx, WAMMO_AMMO2);
