@@ -107,6 +107,8 @@ echo "== uh_uix =="
 "$ACC" $INC -i src/acs_source/compat/mods/uix "src/acs_source/compat/mods/uix/uh_uix.acs" "$OUT/uh_uix.o" || fail=1
 echo "== uh_uixfw =="
 "$ACC" $INC -i src/acs_source/compat/mods/uix -i src/acs_source/compat/mods/uix/_uix_v3bh "src/acs_source/compat/mods/uix/uh_uixfw.acs" "$OUT/uh_uixfw.o" || fail=1
+echo "== UHWWV6C =="
+"$ACC" $INC -i src/acs_source/compat/mods/uix/_uix_v3bh "src/acs_source/compat/mods/uix/uh_wwv6c.acs" "$OUT/UHWWV6C.o" || fail=1
 echo "== WHEELDT =="
 # uh_uixfw/uixitems/uixweap #import this shared wheel table, so the lump must
 # ship: without it those three libraries fail to load ("Could not find ACS

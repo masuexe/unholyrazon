@@ -673,3 +673,29 @@ before attaching the MCP bridge. This avoids the standard launcher's fixed
 UH third bars, native item/weapon registration, modern assist-bar IDs, and
 Igniter/Generic Boss portraits, and real weapon-wheel open/close bindings. This is an offline contract test; it does not
 prove the rendered layout or dedicated-client synchronization.
+
+### v6c class weapon-wheel regression
+
+Compile and package the test-only addon, then run against the explicit v6c
+profile. Use the same ZANDRONUM_EXE and ZANDRONUM_MCP_DIR settings as above.
+
+```bash
+acc -i ../references/zandronum/acc-branch-zandronum -i src/acs_source/compat/mods/uix/_uix_v3bh tools/mcp/fixtures/wheel-v6c/probe.acs /tmp/WHLPROB.o
+python3 - <<'PYPROBE'
+import zipfile
+with zipfile.ZipFile('/tmp/uh-wheel-v6c-probe.pk3', 'w') as archive:
+    archive.write('tools/mcp/fixtures/wheel-v6c/LOADACS', 'LOADACS')
+    archive.write('/tmp/WHLPROB.o', 'acs/WHLPROB.o')
+PYPROBE
+ZANDRONUM_LAUNCH_PROFILES=tools/mm8bdm-v6c.launch.json node tools/mcp/wheel-v6c-test.mjs --probe /tmp/uh-wheel-v6c-probe.pk3
+```
+
+The isolated engine allows 120 seconds for startup. The runner tests Arcanist,
+Qwant, Nega Man and Decoy Bot through real open/close bindings, verifies weapon
+ownership, grouping and element fonts, and checks alternate selection after
+release. It also removes an unselected held Arcanist weapon while the wheel is open to
+verify cancellation, and checks Mega Man's stock native fallback. The probe
+sets the default selection to an alternate weapon; mouse navigation is not
+automated. Set UH_WHEEL_SCREENSHOT to a PNG path to capture Arcanist's open wheel.
+Neither the addon nor its bytecode belongs in out/build.pk3. This test does not
+establish dedicated-client behavior or every fixed-loadout/disabled-entry state.

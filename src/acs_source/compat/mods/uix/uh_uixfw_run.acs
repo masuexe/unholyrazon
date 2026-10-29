@@ -64,6 +64,16 @@ function void UHFW_ResetOwner(void) {
   uhww_pn = -1;
 }
 
+// Keep the same class snapshots and server validation for both wheel engines.
+function void UHFW_StartWheel(void) {
+  uhww_own = UHFW_OWN_UH;
+  uhww_pn = PlayerNumber();
+  if (!UHFW_ActorExists("UIX_ItemSelected_PU") && CheckScript("core_wheel_openWheel", true))
+    ACS_NamedExecuteWithResult("uh_ww_native_start");
+  else
+    startWheel("uh_ww_tick", "uh_ww_select");
+}
+
 function int UHFW_SubmitSelect(str wep, str serverScript) {
   if (!UHFW_PlayerOk())
     return 0;
@@ -73,7 +83,8 @@ function int UHFW_SubmitSelect(str wep, str serverScript) {
     return 0;
 
   UH_Log(UH_LOG_DEBUG, StrParam(s:"uh_uixfw: SubmitSelect wep=", s:wep, s:" sv=", s:serverScript));
-  GiveInventory("UIX_WeaponSelected_PU", 1);
+  if (UHFW_ActorExists("UIX_ItemSelected_PU"))
+    GiveInventory("UIX_WeaponSelected_PU", 1);
   NamedSendNetworkString(serverScript, wep);
   return 1;
 }

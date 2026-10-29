@@ -1,0 +1,63 @@
+#library "WHLPROB"
+#nocompact
+#include "zcommon.acs"
+#import "WHEELDT.acs"
+
+// Test-only addon. Native wheel item IDs must remain WHEELDT item indices.
+str expectedWeapon = "";
+str initialWeapon = "";
+int probeWheelItemCount = 0;
+int checks = 0, failures = 0;
+function void Expect(bool condition, str label) {
+  checks++;
+  if (!condition) { failures++; Log(s:"UH_WHEEL_FAIL ", s:label); }
+}
+script "UHTest_WheelCopies" (int kind) {
+  SetActivatorToPlayer(ConsolePlayerNumber());
+  for (int i = 0; i < 4; i++) {
+    str actor = ACS_NamedExecuteWithResult("uh_copykind_actor", kind, i);
+    if (StrLen(actor) > 0) GiveInventory(actor, 1);
+  }
+  if (kind == 2) SetWeapon("Qwant_W");
+  if (kind == 3) SetWeapon("NegaMan_W");
+}
+script "UHTest_WheelInspect" (int mode) CLIENTSIDE {
+  SetActivatorToPlayer(ConsolePlayerNumber());
+  if (mode == 0) {
+    checks = 0; failures = 0;
+    probeWheelItemCount = WHEEL_ITEMS;
+    Expect(WHEEL_ITEMS >= 3, "class-specific items populated");
+    Expect(WHEEL_GROUPS > 0 && WHEEL_GROUPS <= 12, "valid native group count");
+    Expect(StrCmp(wheelName, "uhweaponwheel") == 0, "UH snapshot owns wheel");
+    expectedWeapon = "";
+    initialWeapon = GetWeapon();
+    for (int item = 0; item < WHEEL_ITEMS; item++) {
+      Expect(CheckInventory(getWheelItemName(item)) > 0, "wheel contains held weapon");
+      Expect(getWheelItemGroup(item) >= 0 && getWheelItemGroup(item) < WHEEL_GROUPS, "valid item group");
+      for (int el = 0; el < getWheelItemElementCount(item); el++) {
+        str font = getWheelElementFont(item, el);
+        if (StrICmp(font, "UXICB0") == 0) font = "UIWGA0";
+        if (StrICmp(font, "SMALLFNT") == 0) font = "SMALLFONT";
+        if (!CheckFont(font)) Log(s:"UH_WHEEL_MISSING_FONT ", s:font);
+        Expect(CheckFont(font), "wheel element font available without UIX");
+      }
+      if (!CheckWeapon(getWheelItemName(item)) && StrLen(expectedWeapon) == 0) {
+        wheelSelection = item;
+        expectedWeapon = getWheelItemName(item);
+      }
+    }
+    Expect(StrLen(expectedWeapon) > 0, "alternate selection available");
+    Log(s:"UH_WHEEL_CONTENT actor=", s:GetActorClass(0), s:" items=", i:WHEEL_ITEMS, s:" groups=", i:WHEEL_GROUPS);
+  } else {
+    Expect(WHEEL_ITEMS == 0 && wheelName == -1, "snapshot released");
+    if (mode == 1) Expect(CheckWeapon(expectedWeapon), "native release selected validated alternate weapon");
+    if (mode == 2) Expect(CheckWeapon(initialWeapon), "cancel retained current weapon");
+    Log(s:"UH_WHEEL_RESULT actor=", s:GetActorClass(0), s:" checks=", i:checks, s:" failures=", i:failures);
+  }
+}
+script "UHTest_WheelRemove" (void) {
+  SetActivatorToPlayer(ConsolePlayerNumber());
+  // Remove an unselected weapon so automatic fallback cannot mask cancellation.
+  if (CheckWeapon("Arcanist_W2")) TakeInventory("Arcanist_W3", 0x7fffffff);
+  else TakeInventory("Arcanist_W2", 0x7fffffff);
+}

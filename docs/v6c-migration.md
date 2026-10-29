@@ -280,9 +280,8 @@ of its state. UITEAMIT and MUGSHOTS use existing base LOADACS entries.
 
 UH items and MegaManU copy weapons register when the native inventory wheel is
 present, without requiring standalone UIX. The existing +weapwheel/-weapwheel
-bindings forward to the native wheel when standalone UIX is absent. Full native
-adapters for UH fixed-loadout, Qwant, Nega Man and Decoy custom wheel routes are
-a separate follow-up; this bridge does not claim those layouts are ported.
+bindings forward to the native wheel when standalone UIX is absent. The class
+wheel adapter described below adds UH-specific routes to this initial bridge.
 
 A focused runtime probe lives in tools/mcp/fixtures/hud-v6c/ and runs through
 tools/mcp/hud-v6c-test.mjs. It covers new slot families and cleanup, existing UH
@@ -296,3 +295,38 @@ and closed the native weapon wheel through the actual bindings. Both 3000-entry
 SBARINFO sequences match their base-game orientation. The bar generator checks
 and all 31 smoke checks passed. This does not establish rendered layout quality
 or dedicated-client synchronization; the general smoke defaults still target v6b.
+
+## Class weapon wheels (2026-10-29)
+
+UH fixed-loadout classes, Qwant, Nega Man and Decoy Bot now use the native v6c
+wheel framework when standalone UIX is absent. Existing class snapshots supply
+the weapon groups, icons, labels, disabled entries and live ammo bars. The native
+framework supplies mouse selection, layout, scale, dimming and fade. Standalone
+UIX retains its existing route. Mega Man keeps the stock native wheel.
+
+The UHWWV6C adapter reads the import-only WHEELDT table and uses named WHEELLIB
+entry points; it does not shadow UIXWHEEL or copy native wheel state. Native and
+legacy AddWheelItem wrappers have different contracts and collide in ACS's
+case-insensitive namespace, so this unit cannot include both APIs directly.
+Legacy label and overlay fonts resolve to the corresponding native resources.
+Empty ammo fills skip drawing.
+
+The native info callback runs the existing per-class validity/ammo refresh each
+tic. It retains the last list for native fade-out after a cancellation. Release
+revalidates the snapshot, clears the shared wheel table, and invokes the existing
+class-specific selection path with a WHEELDT item index. Selection still uses
+NamedSendNetworkString and the server's class/membership/ownership checks. A busy
+native wheel rejects the new route without retaining UH snapshot ownership.
+
+The focused addon is tools/mcp/fixtures/wheel-v6c/, driven by
+tools/mcp/wheel-v6c-test.mjs. This is an offline diagnostic; dedicated-client
+selection, all fixed-loadout classes, all disabled-entry transitions and full
+rounds remain separate regression requirements.
+
+Validation: all project ACS libraries compile. Native v6c runs passed the four
+class routes (Arcanist, Qwant, Nega Man and Decoy Bot), alternate selection on
+release, Arcanist cancellation after removing an unselected held weapon, font
+availability without standalone UIX, snapshot cleanup and Mega Man's default
+native fallback. Arcanist's open wheel also received a visual spot check. All
+31 smoke checks passed; their general defaults still target v6b. The rebuilt
+package contains matching wheel bytecode and no diagnostic addon.

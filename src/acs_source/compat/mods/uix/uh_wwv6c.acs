@@ -1,0 +1,109 @@
+#library "UHWWV6C"
+#include "zcommon.acs"
+#include "UIXLIB.acs"
+// Use the named WHEELLIB entry points: native AddWheelItem collides with
+// WHEELDT's case-insensitive addWheelItem, which has a different contract.
+#import "WHEELDT.acs"
+
+// WHEELDT owns UH's class-specific content. The v6c framework owns input,
+// selection, layout, scale, dimming and fade. Never replace native UIXWHEEL.
+bool uhNativeWheel = false;
+
+script "uh_ww_native_start" (void) CLIENTSIDE {
+  if (uhNativeWheel || ConsolePlayerNumber() != PlayerNumber())
+    terminate;
+  ACS_NamedExecuteWithResult("core_wheel_openWheel", "uhNativeWeaponWheel", "uh_ww_native_info", "uh_ww_native_draw");
+  // A busy native inventory/weapon wheel refuses OpenWheel without an info call.
+  if (!uhNativeWheel) {
+    destroyWheel();
+    ACS_NamedExecuteWithResult("uh_ww_native_abort");
+  }
+}
+
+script "uh_ww_native_close" (void) CLIENTSIDE {
+  if (uhNativeWheel && ConsolePlayerNumber() == PlayerNumber()) {
+    ACS_NamedExecuteWithResult("core_wheel_closeWheel", "uhNativeWeaponWheel", "uh_ww_native_select");
+  }
+}
+
+script "uh_ww_native_info" (void) CLIENTSIDE {
+  uhNativeWheel = true;
+  // Keep the last valid list during fade-out: native layout requires a slot.
+  // The class callback marks invalid snapshots as cancelled before selection.
+  if (!ACS_NamedExecuteWithResult("uh_ww_tick", -1)) {
+    ACS_NamedExecuteWithResult("core_wheel_closeWheel", "uhNativeWeaponWheel", "uh_ww_native_select");
+  }
+  ACS_NamedExecuteWithResult("core_wheel_resetWheel");
+  for (int group = 0; group < WHEEL_GROUPS; group++) {
+    int slot = ACS_NamedExecuteWithResult("core_wheel_addWheelSlot");
+    for (int item = 0; item < WHEEL_ITEMS; item++) {
+      if (getWheelItemGroup(item) == group)
+        ACS_NamedExecuteWithResult("core_wheel_addWheelItem", slot, item);
+    }
+  }
+  ACS_NamedExecuteWithResult("core_wheel_setWheelDefaultItem", wheelSelection);
+}
+
+script "uh_ww_native_select" (int item) CLIENTSIDE {
+  // Revalidate at release, including a reroll or morph since the previous tic.
+  ACS_NamedExecuteWithResult("uh_ww_tick", item);
+  destroyWheel();
+  ACS_NamedExecuteWithResult("uh_ww_select", item);
+  uhNativeWheel = false;
+}
+
+// All UH wheel elements use integer additive offsets. Scale the offsets with
+// their own element, as in UIX v3bh's renderer, then use native HUD coordinates.
+function void UHNative_DrawElement(int item, int el, int x, int y,
+                                 int scale, int alpha, int fade) {
+  scale = FixedMul(scale, getWheelElementScale(item, el));
+  alpha = FixedMul(alpha, getWheelElementAlpha(item, el));
+  if (scale <= 0 || alpha <= 0)
+    return;
+  x += (scale * getWheelElementOffsX(item, el) + 0.5) >> 16;
+  y += (scale * getWheelElementOffsY(item, el) + 0.5) >> 16;
+  int alignX = getWheelElementHAlign(item, el);
+  int alignY = getWheelElementVAlign(item, el);
+  int width = getWheelElementBarWidth(item, el);
+  int maxAmmo = getWheelElementBarMax(item, el);
+  if (maxAmmo > 0) {
+    int amount = getWheelElementBarAmt(item, el);
+    if (amount < 0) amount = 0;
+    if (amount > maxAmmo) amount = maxAmmo;
+    int clip = amount * width / maxAmmo;
+    // Empty fills need no HUD message.
+    if (clip <= 0)
+      return;
+    calcMessageDisplayOffsets(x, y, scale, scale, alignX, alignY);
+    int height = UIXLIB_MAX_INT >> 2;
+    SetHudClipRect((calcX >> 16) - width / 2,
+                   (calcY >> 16) - height / 2, clip, height);
+  }
+  str font = getWheelElementFont(item, el);
+  if (StrICmp(font, "UXICB0") == 0)
+    font = "UIWGA0";
+  if (StrICmp(font, "SMALLFNT") == 0)
+    font = "SMALLFONT";
+  SetFont(font);
+  displayMessageColorFade(HUDMSG_LAYER_OVERHUD, getWheelElementContent(item, el),
+    x, y, scale, scale, alpha, alignX, alignY, getWheelElementColor(item, el), fade);
+  if (maxAmmo > 0)
+    SetHudClipRect(0, 0, 0, 0, 0);
+}
+
+script "uh_ww_native_draw" (void) CLIENTSIDE {
+  int item = ACS_NamedExecuteWithResult("core_wheel_getItemID");
+  if (item < 0 || item >= WHEEL_ITEMS)
+    terminate;
+  // The legacy modes are 1..3; native modes are 0..2 in the same order.
+  int mode = ACS_NamedExecuteWithResult("core_wheel_getItemMode") + 1;
+  int scale = ACS_NamedExecuteWithResult("core_wheel_getScale");
+  int alpha = ACS_NamedExecuteWithResult("core_wheel_getAlpha");
+  int fade = ACS_NamedExecuteWithResult("core_wheel_getFadeTime");
+  int x = ACS_NamedExecuteWithResult("core_wheel_getItemX");
+  int y = ACS_NamedExecuteWithResult("core_wheel_getItemY");
+  for (int el = 0; el < getWheelItemElementCount(item); el++) {
+    if (getWheelElementMode(item, el) == mode)
+      UHNative_DrawElement(item, el, x, y, scale, alpha, fade);
+  }
+}

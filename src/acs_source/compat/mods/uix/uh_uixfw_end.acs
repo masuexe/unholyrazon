@@ -63,13 +63,16 @@ function int UHFW_OpenUnified(void) {
   WHEEL_GROUPS = uhfw_snapn;
   for (i = 0; i < uhfw_snapn; i++)
     UHFW_AddSnapItem(i);
-  startWheel("uh_ww_tick", "uh_ww_select");
-  uhww_own = UHFW_OWN_UH;
-  uhww_pn = PlayerNumber();
+  UHFW_StartWheel();
   return 1;
 }
 
 function void UHFW_OpenUixFallback(void) {
+  if (!UHFW_ActorExists("UIX_ItemSelected_PU")) {
+    if (CheckScript("core_weap_wheel_start", true))
+      ACS_NamedExecuteWithResult("core_weap_wheel_start");
+    return;
+  }
   uhww_own = UHFW_OWN_UIX;
   uhww_pn = PlayerNumber();
   uhww_uix_cancel = 0;
@@ -89,12 +92,6 @@ script "uh_ww_open" (void) NET CLIENTSIDE {
 
   if (ConsolePlayerNumber() != PlayerNumber())
     terminate;
-  if (!UHFW_ActorExists("UIX_ItemSelected_PU")) {
-    // v6c owns the built-in wheel. The legacy UH/UIX adapter must not swallow its binding.
-    if (CheckScript("core_weap_wheel_start", true))
-      ACS_NamedExecuteWithResult("core_weap_wheel_start");
-    terminate;
-  }
   if (!UHFW_PlayerOk())
     terminate;
   if (wheelName != -1)
@@ -179,7 +176,14 @@ script "uh_ww_open" (void) NET CLIENTSIDE {
 script "uh_ww_close" (void) NET CLIENTSIDE {
   if (ConsolePlayerNumber() == PlayerNumber() && !UHFW_ActorExists("UIX_ItemSelected_PU")
       && CheckScript("core_weap_wheel_end", true)) {
-    ACS_NamedExecuteWithResult("core_weap_wheel_end");
+    if (uhww_own == UHFW_OWN_UH) {
+      if (wheelName == -1) {
+        uhfw_cancel = 1;
+        UHFW_ResetOwner();
+      } else
+        ACS_NamedExecuteWithResult("uh_ww_native_close");
+    } else
+      ACS_NamedExecuteWithResult("core_weap_wheel_end");
     terminate;
   }
   if (ConsolePlayerNumber() != PlayerNumber())
@@ -297,4 +301,9 @@ script "uh_ww_sel_sv" (int wep) NET {
       terminate;
   }
   SetWeapon(wep);
+}
+
+// Native wheel refusal (another wheel owns the input) must release our snapshot.
+script "uh_ww_native_abort" (void) CLIENTSIDE {
+  UHFW_EndWheelCleanup();
 }
