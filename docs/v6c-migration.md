@@ -530,8 +530,8 @@ v6c profile and the diagnostic probe. The client meter was one point stale, the
 insufficient-energy cast was rejected, refill and normal cast worked, and reload
 spent then recovered boss ammo.
 
-LMS lifecycle scenario: `tools/mcp/lms-round-test.mjs` now passes 35 assertions
-on the current v6c package (179 s) and is registered as `mcp-lms-round` in the
+LMS lifecycle scenario: `tools/mcp/lms-round-test.mjs` now passes 36 assertions
+on the current v6c package (205 s) and is registered as `mcp-lms-round` in the
 full gate. Both bosses and the debug morph equip their expected weapons.
 The earlier missing-weapon failures were a parser bug: the server reader dropped
 the `weapon` line from `dumpactor` output.
@@ -546,8 +546,9 @@ the reconnect is checked as a true spectator with the current boss snapshot,
 not as a new survivor. No gameplay disconnect or morph change was necessary.
 
 The run also verifies the pending-result HUD, a survivor's revival through the
-production delayed Dickhead path, cancellation of settlement, removal of the
-pending-result HUD, and shutdown of both clients and the dedicated server.
+production delayed Dickhead path with a real spawned Dickhead pickup as the
+source actor, cancellation of settlement, removal of the pending-result HUD, and
+shutdown of both clients and the dedicated server.
 Phase 3b then kills the revived survivors again and lets the second window
 expire without a revival. `gameover` commits, and the unified exit advances
 MM2DW1 to MM2DW2 with fresh round state. The scenario now covers the final
@@ -624,7 +625,7 @@ Dedicated LMS coverage and upgrade behavior remain separate work.
 The external item diagnostic now has 108 assertions and can run on the controlled
 remote player through `lms-round-test.mjs --items-probe`. A dedicated v6c run
 passed all 108 item assertions and the entire 31-assertion LMS scenario (134 s).
-The ordinary runner now has 35 assertions when no diagnostic addon is supplied.
+The ordinary runner now has 36 assertions when no diagnostic addon is supplied.
 The launcher selects the registered display name MegaMan, which resolves to
 MegaManU; using the actor name as the playerclass value selected a random class.
 The Copy Vision runner now uses the display name too and passes its six checks
@@ -723,10 +724,8 @@ The port is not complete while these items remain open:
   Vision/teleport reviews are resolved above.
 - Exercise changed existing arenas. The six added maps load; native assist
   pickups and effects now have dedicated remote LMS coverage as recorded above.
-- Improve the delayed Dickhead source actor to a real spawned Dickhead pickup in
-  the LMS scenario; the current call uses a boss actor as the source. Final result
-  commit and next-map progression are now covered (35/35), and CXAirMan remote
-  ammo also passes.
+- Final result commit, next-map progression and the real Dickhead revival source
+  are now covered (36/36), and CXAirMan remote ammo passes.
 - Verify map reload and high-slot/64-player load after the split numeric
   snapshot change. Two remote clients now authenticate under v6c. Audit optional
   addon profiles and clearly distinguish retained legacy paths from verified v6c

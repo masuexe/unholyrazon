@@ -797,8 +797,9 @@ python3 tools/gate.py --full --only mcp-lms-round
 
 This gate runs a dedicated server, one controlled player and a remote spectator.
 It checks morph weapons, roles, offline cleanup, spectator reconnect, pending
-result HUDs, revival cancellation and cleanup. The spectator keeps server map
-scripts running while the player disconnects. Native LMS does not permit a fresh
+result HUDs, revival cancellation and cleanup. The revival source is a spawned
+Dickhead pickup, as in production. The spectator keeps server map scripts
+running while the player disconnects. Native LMS does not permit a fresh
 mid-round connection to gain another life. Participants are protected and frozen
 to keep combat out of the scheduling assertions. A second settlement window
 expires without a revival, so the gate also covers the final result commit and

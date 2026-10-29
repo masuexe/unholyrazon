@@ -515,3 +515,24 @@ script "rz_debug_SetPortraitPhase" (int pn, int phase) {
   UH_Log(UH_LOG_INFO, StrParam(s:"BossPhaseSet: slot=", i:pn, s:" actor=", s:actor,
     s:" phase=", i:UH_PlayerPresentationPhase(tid), s:" hp=", i:GetActorProperty(tid, APROP_Health)));
 }
+
+// Server diagnostic for the LMS revival test: spawn a real Dickhead pickup at a
+// player's position and log its TID. The production path reaches
+// rz_DickheadRevivalDelayed with such an actor as the source, not a boss pawn.
+script "rz_debug_SpawnDickhead" (int pn, int atTid) {
+  if (pn < 0 || pn >= MAX_PLAYERS || !GetCVar("sv_cheats")) {terminate;}
+  // The revived slot is already a dead spectator and may have no pawn, so use a
+  // living actor as the spawn anchor. Spawn high above it so no player picks the
+  // Dickhead up before the delayed revival consumes it.
+  if (!SetActivator(atTid)) {
+    UH_Log(UH_LOG_INFO, StrParam(s:"DickheadProbe: no spawn anchor tid=", i:atTid));
+    terminate;
+  }
+  int newtid = UniqueTID();
+  int spawned = SpawnForced("Dickhead", GetActorX(0), GetActorY(0), GetActorZ(0) + 4096.0, newtid, 0);
+  if (!spawned) {
+    UH_Log(UH_LOG_INFO, StrParam(s:"DickheadProbe: spawn failed slot=", i:pn));
+    terminate;
+  }
+  UH_Log(UH_LOG_INFO, StrParam(s:"DickheadProbe: tid=", i:newtid, s:" slot=", i:pn));
+}

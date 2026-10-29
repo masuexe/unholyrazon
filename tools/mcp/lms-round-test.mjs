@@ -721,9 +721,18 @@ try {
     { messages: pendingHud.map((message) => message.text) });
 
   // A real Dickhead revival (the production rescue path, not a state write)
-  // puts one survivor back inside the window.
+  // puts one survivor back inside the window. The source actor is a spawned
+  // Dickhead pickup, as in production, not a boss pawn.
   const revivalVictim = survivorSlots[survivorSlots.length - 1];
-  const revivalSourceTid = Number(bossStates[0].tid);
+  const dickheadLogStart = readServerLog().length;
+  await serverCommand("pukename rz_debug_SpawnDickhead " + revivalVictim + " " + Number(bossStates[0].tid), 500);
+  const revivalSourceTid = await waitFor("real Dickhead source actor", async () => {
+    const match = readServerLog().slice(dickheadLogStart).match(/DickheadProbe: tid=(\d+)/);
+    return match ? Number(match[1]) : null;
+  }, 20_000, 250);
+  check("the revival source is a real Dickhead pickup",
+    revivalSourceTid > 0 && revivalSourceTid !== Number(bossStates[0].tid),
+    { sourceTid: revivalSourceTid, bossTid: Number(bossStates[0].tid) });
   await serverCommand("pukename rz_DickheadRevivalDelayed always " + revivalVictim + " " + revivalSourceTid, 500);
   const cancelled = await waitFor("settlement cancellation", async () => {
     const pending = await trySrvMapArray("uh_settlementstate", SETTLE_PENDING);
