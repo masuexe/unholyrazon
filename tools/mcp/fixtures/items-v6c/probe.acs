@@ -1,0 +1,73 @@
+#library "ITEMPROB"
+#include "zcommon.acs"
+int item_checks, item_failures, item_done;
+str items[19] = {
+ "AutoRecoverItem", "BalloonAdaptorItem", "CapsuleCatcherItem", "CarryItem",
+ "CounterAttackerItem", "DamageAbsorberItem", "EnemyAnalyzerItem", "EnergyBalancerNeoItem",
+ "ExchangerItem", "MagnetBeamItem", "PowerGeneratorItem", "PowerShieldItem", "RushPogoItem",
+ "ShockGuardItem", "SpareBodyItem", "SuperArrowItem", "SuperGuardItem", "SuperRecoverItem", "TransceiverItem"
+};
+str held[19] = {
+ "AutoRecoverActive_F", "BalloonAdaptorItem", "CapsuleCatcherPassive_F", "CarryItem",
+ "CounterAttackerPassive_F", "DamageAbsorberActive_F", "EnemyAnalyzerActive_F", "EnergyBalancerNeoActive_F",
+ "ExchangerActive_F", "MagnetBeamItem", "PowerGeneratorCapacity", "PowerShieldHitstop", "RushPogoItem",
+ "ShockGuardPassive_F", "SpareBodyItem", "SuperArrowItem", "SuperGuardItem", "SuperRecoverHeal", "TransceiverItem"
+};
+function void Expect(bool ok, str label) {
+ item_checks++;
+ if (!ok) {item_failures++; Log(s:"ITEM_V6C_FAIL ",s:label);}
+}
+script "UHTest_ItemsV6c" (void) {
+ SetActivatorToPlayer(0);
+ Expect(!StrICmp(GetActorClass(0), "MegaManU"), "player is MegaManU");
+ int tid;
+ // Native custom-weapon capabilities are opt-in, not a universal balance change.
+ GiveInventory("CustWepCanHoldEBal",1);
+ GiveInventory("CustWepCanHoldExchanger",1);
+ GiveInventory("CustWepCanHoldPowerGenerator",1);
+ GiveInventory("CustWepCanHoldDamageAbsorber",1);
+ for (int i=0;i<19;i++) {
+  tid=UniqueTID();
+  Expect(SpawnForced(items[i],GetActorX(0),GetActorY(0),GetActorFloorZ(0),tid), StrParam(s:items[i],s:" world spawn"));
+  Delay(4);
+  Expect(ThingCountName(items[i],tid)==1 || CheckInventory(held[i])>0, StrParam(s:items[i],s:" spawn hooks leave a pickup or grant it"));
+  SetActorVelocity(0,1.0,0,0,false,false);
+  Delay(4);
+  SetActorVelocity(0,0,0,0,false,false);
+  Expect(CheckInventory(held[i])>0, StrParam(s:items[i],s:" physical pickup"));
+  Thing_Remove(tid);
+ }
+ Expect(UseInventory("SuperGuardItem"),"Super Guard use");
+ Expect(CheckInventory("SuperGuardCounter")>0,"Super Guard timer");
+ Expect(UseInventory("TransceiverItem"),"Transceiver use");
+ Expect(CheckInventory("TransceiverActive_F")>0,"Transceiver timer");
+ Expect(UseInventory("SpareBodyItem"),"Spare Body use");
+ Expect(CheckInventory("SpareBodyActive_F")>0,"Spare Body active");
+ Expect(UseInventory("SuperArrowItem"),"Super Arrow use");
+ Expect(CheckInventory("SuperArrowCooldown_P")>0,"Super Arrow cooldown");
+ Expect(ThingCountName("SuperArrow",0)>0,"Super Arrow projectile");
+ Expect(UseInventory("CarryItem"),"Carry use");
+ Expect(ThingCountName("CarryPlatformStart",0)>0,"Carry platform");
+ Expect(UseInventory("BalloonAdaptorItem"),"Balloon use");
+ Expect(ThingCountName("BalloonPlatformStart",0)>0,"Balloon platform");
+ Expect(UseInventory("RushPogoItem"),"Rush Pogo use");
+ Expect(ThingCountName("RushPogoTeleport",0)>0,"Rush Pogo teleport");
+ Expect(UseInventory("MagnetBeamItem"),"Magnet Beam use");
+ Expect(ThingCountName("MagnetBeamSpawner",0)>0,"Magnet Beam projectile");
+ // Actual passive transitions, not just inventory registration.
+ SetActorProperty(0,APROP_Health,100);
+ Delay(4);
+ Expect(CheckInventory("CounterAttackerActive_F")>0,"Counter Attacker low-health enable");
+ SetActorProperty(0,APROP_Health,1000);
+ Delay(4);
+ Expect(CheckInventory("CounterAttackerActive_F")==0,"Counter Attacker high-health disable");
+ SetActorProperty(0,APROP_Health,500);
+ int before=GetActorProperty(0,APROP_Health);
+ Delay(120);
+ Expect(GetActorProperty(0,APROP_Health)>before,"Auto Recover heals stationary player");
+ Expect(CheckFont("PANBOX00"),"refreshed Pandora icon");
+ Expect(CheckFont("RZTI_00"),"refreshed TOW icon");
+ Expect(CheckFont("RZMI_00"),"refreshed Mystic icon");
+ item_done=1;
+ Log(s:"ITEM_V6C checks=",d:item_checks,s:" failures=",d:item_failures);
+}

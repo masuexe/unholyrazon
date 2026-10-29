@@ -599,6 +599,23 @@ The other flagged core differences do not require a behavior change:
   noninteracting `BasicWatcher`, not `ProjSpawnFuncActor`; they do not run the
   native projectile spawn callback and do not need a trail marker of their own.
 
+### Maintainer-provided item icons (2026-10-29)
+
+Replaced 81 matching item PNGs from the maintainer's `../resources/items`
+collection. All matched images are 16 by 16 and have valid PNG chunk checksums;
+one additional matched image was already identical. Five unreferenced template
+images and Windows Zone.Identifier streams were not added to the runtime.
+The refreshed Pandora Box PNG omits its old grAb chunk, so TEXTURES preserves
+its world sprite origin at (8, 16). Existing HUD composites keep their names
+and dimensions.
+
+A focused runtime using the refreshed assets passed 81 assertions covering all
+19 new native assist pickups, their native spawn hooks, eight active-item uses,
+Counter Attacker enable/disable, stationary Auto Recover healing and three UH
+icon composites. Custom-weapon capability flags were explicitly opted in by the
+diagnostic; the test does not change the classes' default pickup policy.
+Dedicated LMS coverage and upgrade behavior remain separate work.
+
 ## Remaining completion evidence
 
 The port is not complete while these items remain open:
