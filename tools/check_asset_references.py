@@ -24,10 +24,11 @@ the engine without case.  A reference that matches only when case is ignored
 is reported as a warning, not a failure.
 
 External rule: gate.py --fast must run in a fresh clone with no WADs, so the
-names supplied by the base game (mm8bdm-v6b) are frozen constants below.
-They were extracted from ../wads/mm8bdm-v6b.pk3 and
-../wads/8bdm-v6b-miscfixes-v6.pk3 on 2026-10-26.  A new external name must be
-added here on purpose.
+names supplied by the base game are frozen constants below. They were first
+extracted from the v6b packages on 2026-10-26 and re-verified against
+../wads/mm8bdm-v6c.pk3 on 2026-10-29: every frozen name is present in v6c, so
+the v6b allowlist is a subset of v6c coverage. tools/check_base_baselines.py
+keeps that true.  A new external name must be added here on purpose.
 
 KNOWN_UNRESOLVED_* lists references that are genuinely undefined in the whole
 load order (src/ + base game + miscfixes).  They are real latent defects, not

@@ -145,6 +145,8 @@ CHECKS = [
     # -- smoke: local environment / build-level verification ---------------
     check("environment", "smoke", "env", [PY, "tools/check_environment.py"],
           "ACC, WADs and reference trees", timeout=120),
+    check("base-baselines", "smoke", "env", [PY, "tools/check_base_baselines.py"],
+          "Frozen external-name baselines exist in the v6c base game", timeout=120),
     check("compile-acs", "smoke", "build", ["bash", "tools/compile-acs.sh"],
           "Full ACS compile in LOADACS order", ["bash", "acc"], 300),
     check("validate-build-pk3", "smoke", "build", ["bash", "tools/validate-build-pk3.sh"],

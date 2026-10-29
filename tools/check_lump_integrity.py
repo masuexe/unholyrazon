@@ -21,10 +21,11 @@ checkout and a ZIP entry list are case sensitive.  A reference that resolves
 only when case is ignored is therefore reported as a warning, not as a
 failure: it works in the engine and it is still a defect in the repository.
 
-External rule: some names are supplied by the base game PK3 (mm8bdm-v6b) or by
-the engine (TNT1A0).  gate.py --fast must run in a fresh clone with no WADs,
-so those names are frozen constants below.  They were extracted from
-../wads/mm8bdm-v6b.pk3 and ../wads/8bdm-v6b-miscfixes-v6.pk3 on 2026-10-26.
+External rule: some names are supplied by the base game PK3 or by the engine
+(TNT1A0).  gate.py --fast must run in a fresh clone with no WADs, so those names
+are frozen constants below.  They were first extracted from the v6b packages on
+2026-10-26 and re-verified against ../wads/mm8bdm-v6c.pk3 on 2026-10-29: every
+frozen name is present in v6c. tools/check_base_baselines.py keeps that true.
 A new external name must be added here on purpose, which keeps the dependency
 visible.
 

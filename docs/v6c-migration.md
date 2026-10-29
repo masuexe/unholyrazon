@@ -472,19 +472,26 @@ and dry-run probes, so a stale ambient `ZANDRONUM_LAUNCH_PROFILES` from an older
 shell cannot turn a default `--smoke` into a failure; the preflight warning still
 reports the mismatch.
 
-Validation: `python3 tools/gate.py --smoke` passes 32 of 32 checks with only the
+Validation: `python3 tools/gate.py --smoke` passes 33 of 33 checks with only the
 stale-ambient warning; the edited runners pass syntax checks and a
 `direct-startup-test.mjs --dry-run` resolves the v6c smoke profile and the v6c
-IWAD/base/mod file set. Frozen source and asset reference baselines remain
-separate work; this change does not claim those checks cover v6c.
+IWAD/base/mod file set.
+
+### Frozen asset baselines (2026-10-29)
+
+The frozen external-name constants in `check_asset_references.py` (sounds,
+LANGUAGE keys, HUD graphics) and `check_lump_integrity.py` (base graphics) were
+re-verified against `../wads/mm8bdm-v6c.pk3`. Every frozen v6b name is present
+in the v6c base game, so the allowlists are a strict subset of v6c coverage; no
+source reference resolves through a v6b-only name. A new smoke check,
+`tools/check_base_baselines.py`, fails when any frozen name is absent from the
+v6c package, so a future base rename cannot hide behind the frozen list. The
+static checkers still fall back to the frozen sets in a fresh clone without WADs.
 
 ## Remaining completion evidence
 
 The port is not complete while these items remain open:
 
-- Migrate frozen source and asset reference baselines to v6c. Environment and
-  reference discovery now default to v6c. Frozen v6b baselines must not be
-  mistaken for v6c coverage.
 - Finish the DECORATE replacement audit, including new assist/buster behavior,
   and record which old miscfix overrides are still required.
 - Exercise genuine added/updated maps and native items. Filename additions
