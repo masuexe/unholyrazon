@@ -680,6 +680,9 @@ probe passes 30 of 30 assertions: RockNRollAmmo and SparkShockAmmo both become
 scales the amount, a secondary-only type is not skipped, fractional and
 same-factor round trips hold, values near 2147483647 saturate, and the full
 5000-row table scales once. No default UH class pickup permissions changed.
+The full gate then passed 40 of 40 checks on this tree, including mcp-smoke,
+mcp-lms-round (30 assertions), mcp-network, mcp-team-info-sync and
+mcp-team-presentation.
 
 The standalone item fixture now restores the original safe position between
 physical pickups and holds position during the stationary-healing check. This
