@@ -1,0 +1,784 @@
+#library "UIWEPBAR"
+
+#include "zcommon.acs"
+
+#import "8BDT.acs"
+#import "UICOMMON.acs"
+
+#include "8BDMMATH.acs"
+
+#include "UIXLIB.acs"
+
+#include "WHEELLIB.acs"
+#include "HUDLIB.acs"
+
+int cvAlpha;
+int cvShowSlots;
+int cvMirror;
+int cvDir;
+int cvScale;
+int cvOffsX;
+int cvOffsY;
+int cvMaxRow;
+
+int cacheCvMirror;
+int cacheCvDir;
+int cacheCvScale;
+int cacheCvOffsX;
+int cacheCvOffsY;
+int cacheCvMaxRow;
+
+int weightOffsX;
+int weightOffsY;
+
+int slotOffsX;
+int slotOffsY;
+
+int barX;
+int barY;
+
+int barX1;
+int barY1;
+
+int barX2;
+int barY2;
+
+int barHeight;
+int barWidth;
+int barScale;
+
+int slotX;
+int slotY;
+
+int selectedX;
+int selectedY;
+
+int overflowX;
+int overflowY;
+int overflowScale;
+
+int HAlign;
+int OverflowHAlign;
+
+int layer;
+
+// Columns
+#define WEIGHTOFFS_X_00 0
+#define WEIGHTOFFS_Y_00 -12
+
+#define WEIGHTOFFS_X_01 0
+#define WEIGHTOFFS_Y_01 12
+
+#define WEIGHTOFFS_X_10 12
+#define WEIGHTOFFS_Y_10 0
+
+#define WEIGHTOFFS_X_11 -12
+#define WEIGHTOFFS_Y_11 0
+
+// Rows
+#define SLOTOFFS_X_00 20
+#define SLOTOFFS_Y_00 0
+
+#define SLOTOFFS_X_01 20
+#define SLOTOFFS_Y_01 0
+
+#define SLOTOFFS_X_10 0
+#define SLOTOFFS_Y_10 20
+
+#define SLOTOFFS_X_11 0
+#define SLOTOFFS_Y_11 20
+
+// Single bar
+#define BAR_X_00 -16
+#define BAR_Y_00 -28
+
+#define BAR_X_01 -16
+#define BAR_Y_01 -9
+
+#define BAR_X_10 -1
+#define BAR_Y_10 -24
+
+#define BAR_X_11 -19
+#define BAR_Y_11 -24
+
+// Bar 1
+#define BAR1_X_00 -16
+#define BAR1_Y_00 -28
+
+#define BAR1_X_01 -16
+#define BAR1_Y_01 -5
+
+#define BAR1_X_10 3
+#define BAR1_Y_10 -24
+
+#define BAR1_X_11 -19
+#define BAR1_Y_11 -24
+
+// Bar 2
+#define BAR2_X_00 -16
+#define BAR2_Y_00 -32
+
+#define BAR2_X_01 -16
+#define BAR2_Y_01 -9
+
+#define BAR2_X_10 -1
+#define BAR2_Y_10 -24
+
+#define BAR2_X_11 -23
+#define BAR2_Y_11 -24
+
+// Slot number
+#define SLOT_X_00 -3
+#define SLOT_Y_00 23
+
+#define SLOT_X_01 -12
+#define SLOT_Y_01 -54
+
+#define SLOT_X_10 -40
+#define SLOT_Y_10 -16
+
+#define SLOT_X_11 26
+#define SLOT_Y_11 -16
+
+// Selected icon
+#define SELECT_X_00 0
+#define SELECT_Y_00 22
+
+#define SELECT_X_01 0
+#define SELECT_Y_01 -20
+
+#define SELECT_X_10 -20
+#define SELECT_Y_10 0
+
+#define SELECT_X_11 22
+#define SELECT_Y_11 0
+
+// Overflow count
+#define OVERFLOW_X_00 -16
+#define OVERFLOW_Y_00 -23
+
+#define OVERFLOW_X_01 0
+#define OVERFLOW_Y_01 -7
+
+#define OVERFLOW_X_10 0
+#define OVERFLOW_Y_10 -16
+
+#define OVERFLOW_X_11 -10
+#define OVERFLOW_Y_11 -16
+
+#define MAX_SLOTS 10
+
+#define SLOT_BUSTER 1
+
+#define BAR_HEIGHT 160
+#define BAR_WIDTH 40
+#define BAR_SCALE 0.1
+
+int slotVals[MAX_SLOTS][MAX_BUSTER_LIMIT+MAX_WEAPONS_GLOBAL_LIMIT];
+int slotCounts[MAX_SLOTS];
+int selectedWep = -1;
+int selectedSlot = -1;
+int selectedIdx = 0;
+int lastUpdated = -1;
+int heldCount = 0;
+
+function void updateSlotData(void)
+{
+    if(lastUpdated == Timer())
+        return;
+
+    lastUpdated = Timer();
+
+    selectedWep = -1;
+    heldCount = 0;
+
+    for(int i = 0; i < MAX_SLOTS; i++)
+        slotCounts[i] = 0;
+
+    for(i = MAX_BUSTERUPGRADES - 1; i >= 0; i--)
+    {
+        str check = getBusterActor(i);
+        bool cry = !!CheckInventory(check);
+
+        // Don't have it, don't care.
+        if(!cry)
+            continue;
+
+        // Busters are strange and can potentially be in the weapon table.
+        // If they are, that should take precedence, but we should use order from buster table.
+        int wepIdx = busterMap(i);
+        if(wepIdx >= 0) {
+            wepIdx += 1;
+        } else {
+            wepIdx = -(i+1);
+        }
+
+        if(selectedWep == -1) {
+            if(CheckWeapon(check)) {
+                selectedIdx = wepIdx;
+                selectedSlot = SLOT_BUSTER;
+                selectedWep = slotCounts[SLOT_BUSTER];
+            }
+        }
+
+        slotVals[SLOT_BUSTER][slotCounts[SLOT_BUSTER]] = wepIdx;
+        slotCounts[SLOT_BUSTER]++;
+        heldCount++;
+    }
+
+    for(i = MAX_WEAPONS_GLOBAL - 1; i >= 0; i--)
+    {
+        check = getWeaponActor(i);
+        cry = !!CheckInventory(check);
+
+        // Don't have it, don't care.
+        if(!cry)
+            continue;
+
+        int slot = getWeaponSlot(i);
+
+        // If this weapon was also a buster, skip it here.
+        if(weaponToBusterMap(i) >= 0)
+            continue;
+
+        if(selectedWep == -1) {
+            if(CheckWeapon(check)) {
+                selectedIdx = i+1;
+                selectedSlot = slot;
+                selectedWep = slotCounts[slot];
+            }
+        }
+
+        slotVals[slot][slotCounts[slot]] = i+1;
+        slotCounts[slot]++;
+        heldCount++;
+    }
+}
+
+#include "uh_uiwepbar_fixedbar.acs"
+
+script "core_ui_weapbar" (int cam)
+{
+    if(!GetCvar("mm8bdm_sv_weapbar"))
+        terminate;
+
+    int cpn = ConsolePlayerNumber();
+
+    if(!GetUserCvar(cpn, "mm8bdm_weapbar"))
+        terminate;
+
+    cvAlpha = GetUserCvar(cpn, "mm8bdm_weapbaralpha");
+
+    if(cvAlpha == 0.0)
+        terminate;
+
+    SetActivator(cam);
+
+    int pln = PlayerNumber();
+    if(pln == -1)
+        terminate;
+
+    if(GetHudMode() == HUDLIB_NONE)
+        terminate;
+
+    if(CheckInventory("NoHud") > 0)
+        terminate;
+
+    cvAlpha = GetUserCvar(cpn, "mm8bdm_weapbaralpha");
+    cvShowSlots = GetUserCvar(cpn, "mm8bdm_weapbarshowslots");
+    cvMirror = GetUserCvar(cpn, "mm8bdm_weapbarmirror");
+    cvDir = GetUserCvar(cpn, "mm8bdm_weapbardir");
+    cvScale = GetUserCvar(cpn, "mm8bdm_weapbarscale");
+    cvOffsX = GetUserCvar(cpn, "mm8bdm_weapbaroffsx");
+    cvOffsY = GetUserCvar(cpn, "mm8bdm_weapbaroffsy");
+    cvMaxRow = GetUserCvar(cpn, "mm8bdm_weapbarrowmax");
+    layer = HUDMSG_LAYER_OVERHUD;
+
+    if(
+        cacheCvMirror != cvMirror ||
+        cacheCvDir != cvDir ||
+        cacheCvScale != cvScale ||
+        cacheCvMaxRow != cvMaxRow
+    ) {
+        cacheCvMirror = cvMirror;
+        cacheCvDir = cvDir;
+        cacheCvScale = cvScale;
+        cacheCvMaxRow = cvMaxRow;
+
+        weightOffsX = FixedMul(cvScale, (!cvDir ? (!cvMirror ? WEIGHTOFFS_X_00 : WEIGHTOFFS_X_01) : (!cvMirror ? WEIGHTOFFS_X_10 : WEIGHTOFFS_X_11)));
+        weightOffsY = FixedMul(cvScale, (!cvDir ? (!cvMirror ? WEIGHTOFFS_Y_00 : WEIGHTOFFS_Y_01) : (!cvMirror ? WEIGHTOFFS_Y_10 : WEIGHTOFFS_Y_11)));
+
+        slotOffsX = FixedMul(cvScale, (!cvDir ? (!cvMirror ? SLOTOFFS_X_00 : SLOTOFFS_X_01) : (!cvMirror ? SLOTOFFS_X_10 : SLOTOFFS_X_11)));
+        slotOffsY = FixedMul(cvScale, (!cvDir ? (!cvMirror ? SLOTOFFS_Y_00 : SLOTOFFS_Y_01) : (!cvMirror ? SLOTOFFS_Y_10 : SLOTOFFS_Y_11)));
+
+        barWidth = (cvDir ? BAR_WIDTH : BAR_HEIGHT);
+        barHeight = (cvDir ? BAR_HEIGHT : BAR_WIDTH);
+        barScale = FixedMul(cvScale, BAR_SCALE);
+
+        barX = FixedMul(cvScale, (!cvDir ? (!cvMirror ? BAR_X_00 : BAR_X_01) : (!cvMirror ? BAR_X_10 : BAR_X_11)));
+        barY = FixedMul(cvScale, (!cvDir ? (!cvMirror ? BAR_Y_00 : BAR_Y_01) : (!cvMirror ? BAR_Y_10 : BAR_Y_11)));
+
+        barX1 = FixedMul(cvScale, (!cvDir ? (!cvMirror ? BAR1_X_00 : BAR1_X_01) : (!cvMirror ? BAR1_X_10 : BAR1_X_11)));
+        barY1 = FixedMul(cvScale, (!cvDir ? (!cvMirror ? BAR1_Y_00 : BAR1_Y_01) : (!cvMirror ? BAR1_Y_10 : BAR1_Y_11)));
+
+        barX2 = FixedMul(cvScale, (!cvDir ? (!cvMirror ? BAR2_X_00 : BAR2_X_01) : (!cvMirror ? BAR2_X_10 : BAR2_X_11)));
+        barY2 = FixedMul(cvScale, (!cvDir ? (!cvMirror ? BAR2_Y_00 : BAR2_Y_01) : (!cvMirror ? BAR2_Y_10 : BAR2_Y_11)));
+
+        slotX = FixedMul(cvScale, (!cvDir ? (!cvMirror ? SLOT_X_00 : SLOT_X_01) : (!cvMirror ? SLOT_X_10 : SLOT_X_11)));
+        slotY = FixedMul(cvScale, (!cvDir ? (!cvMirror ? SLOT_Y_00 : SLOT_Y_01) : (!cvMirror ? SLOT_Y_10 : SLOT_Y_11)));
+        HAlign = (cvMirror ? UIXLIB_ALIGN_LEFT : UIXLIB_ALIGN_RIGHT);
+        OverflowHAlign = (!cvMirror ? UIXLIB_ALIGN_LEFT : UIXLIB_ALIGN_RIGHT);
+
+        selectedX = FixedMul(cvScale, (!cvDir ? (!cvMirror ? SELECT_X_00 : SELECT_X_01) : (!cvMirror ? SELECT_X_10 : SELECT_X_11)));
+        selectedY = FixedMul(cvScale, (!cvDir ? (!cvMirror ? SELECT_Y_00 : SELECT_Y_01) : (!cvMirror ? SELECT_Y_10 : SELECT_Y_11)));
+
+        overflowX = cvMaxRow * weightOffsX + FixedMul(cvScale, (!cvDir ? (!cvMirror ? OVERFLOW_X_00 : OVERFLOW_X_01) : (!cvMirror ? OVERFLOW_X_10 : OVERFLOW_X_11)));
+        overflowY = cvMaxRow * weightOffsY + FixedMul(cvScale, (!cvDir ? (!cvMirror ? OVERFLOW_Y_00 : OVERFLOW_Y_01) : (!cvMirror ? OVERFLOW_Y_10 : OVERFLOW_Y_11)));
+        overflowScale = cvDir ? cvScale : FixedMul(cvScale, 0.7);
+    }
+
+    // UH class-specific bars (fixed loadout, MakeAGoodZero, Qwant, Nega Man).
+    // When a UH class bar drew, the stock slot path must not run.
+    if (UHWeaponBarDispatch())
+        terminate;
+
+    updateSlotData();
+
+    // Don't draw unless holding two or more weapons
+    if(heldCount <= 1)
+        terminate;
+
+    for(int sidx = 0; sidx < MAX_SLOTS; sidx++)
+    {
+        int slot = (sidx + 1) % MAX_SLOTS;
+        int baseX = cvOffsX + slotOffsX * slot;
+        int baseY = cvOffsY + slotOffsY * slot;
+
+        int idx, col;
+        if(slot == selectedSlot) {
+            idx = selectedWep;
+            col = "\c[gold]";
+        } else {
+            idx = -1;
+            col = "\c[darkgray]";
+        }
+
+        for(int i = 0; i < min(slotCounts[slot], cvMaxRow + (slot == selectedSlot)); i++)
+        {
+            int weap;
+
+            int iconX, iconY;
+
+            if(idx > -1) {
+                weap = (i + idx) % slotCounts[slot];
+
+                if(weap == selectedWep) {
+                    iconX = baseX + selectedX;
+                    iconY = baseY + selectedY;
+                } else {
+                    iconX = baseX + weightOffsX * (i-1);
+                    iconY = baseY + weightOffsY * (i-1);
+                    displayIcon(layer, "UIWGA0", iconX, iconY, cvScale, cvScale, FixedMul(cvAlpha, 0.5), UIXLIB_ALIGN_CENTER, UIXLIB_ALIGN_CENTER);
+                }
+            } else {
+                weap = i;
+
+                iconX = baseX + weightOffsX * i;
+                iconY = baseY + weightOffsY * i;
+                displayIcon(layer, "UIWGA0", iconX, iconY, cvScale, cvScale, FixedMul(cvAlpha, 0.5), UIXLIB_ALIGN_CENTER, UIXLIB_ALIGN_CENTER);
+            }
+
+            if(slotVals[slot][weap] < 0) {
+                str icon = getBusterIcon(-slotVals[slot][weap]-1);
+            } else {
+                slotVals[slot][weap]--;
+
+                icon = getWeaponIcon(slotVals[slot][weap]);
+
+                if(getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO2_MAX) > 0 && getWeaponBarProperty(slotVals[slot][weap], WBAR_CYAN2) >= 0) {
+                    drawLayeredBarColor(
+                        layer,
+                        getWeaponBarProperty(slotVals[slot][weap], WBAR_BAR_H2-cvDir),
+                        getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_CYAN2)),
+                        getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_BLUE2)),
+                        getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_BLACK2)),
+                        iconX + barX2,
+                        iconY + barY2,
+                        barWidth, barHeight,
+                        barScale, barScale, cvAlpha,
+                        getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO2),
+                        getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO2_MAX),
+                        !cvDir+1, false, UIXLIB_ALIGN_LEFT, UIXLIB_ALIGN_TOP
+                    );
+
+                    // Draw the bar1 based on whether the bar2 will be drawn.
+                    // Bar2 draws on top of bar1, or to the left of bar1, in all circumstances.
+                    if(getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO1_MAX) > 0 && getWeaponBarProperty(slotVals[slot][weap], WBAR_CYAN1) >= 0) {
+                        drawLayeredBarColor(
+                            layer,
+                            getWeaponBarProperty(slotVals[slot][weap], WBAR_BAR_H1-cvDir),
+                            getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_CYAN1)),
+                            getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_BLUE1)),
+                            getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_BLACK1)),
+                            iconX + barX1,
+                            iconY + barY1,
+                            barWidth, barHeight,
+                            barScale, barScale, cvAlpha,
+                            getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO1),
+                            getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO1_MAX),
+                            !cvDir+1, false, UIXLIB_ALIGN_LEFT, UIXLIB_ALIGN_TOP
+                        );
+                    }
+                } else {
+                    if(getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO1_MAX) > 0 && getWeaponBarProperty(slotVals[slot][weap], WBAR_CYAN1) >= 0) {
+                        drawLayeredBarColor(
+                            layer,
+                            getWeaponBarProperty(slotVals[slot][weap], WBAR_BAR_H1-cvDir),
+                            getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_CYAN1)),
+                            getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_BLUE1)),
+                            getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_BLACK1)),
+                            iconX + barX,
+                            iconY + barY,
+                            barWidth, barHeight,
+                            barScale, barScale, cvAlpha,
+                            getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO1),
+                            getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO1_MAX),
+                            !cvDir+1, false, UIXLIB_ALIGN_LEFT, UIXLIB_ALIGN_TOP
+                        );
+                    }
+                }
+            }
+
+            displayIcon(layer, icon, iconX, iconY, cvScale, cvScale, cvAlpha, UIXLIB_ALIGN_CENTER, UIXLIB_ALIGN_CENTER);
+        }
+
+        if(slotCounts[slot]) {
+            SetFont("SMALLFONT");
+
+            if(cvShowSlots) {
+                str slotBinds[MAX_SLOTS] = {
+                    "slot 0","slot 1","slot 2","slot 3","slot 4",
+                    "slot 5","slot 6","slot 7","slot 8","slot 9",
+                };
+
+                // This is not an intended usage of this API, it's just for some minor string table optimization
+                calcMessageDisplayOffsets(baseX + slotX, baseY + slotY, cvScale, cvScale, HAlign, 0);
+                HudMessageBold(s:col, k:slotBinds[slot]; HUDMSG_PLAIN|HUDMSG_ALPHA|HUDMSG_NOWRAP|layer, 0, CR_UNTRANSLATED, calcX, calcY, UIXLIB_MSG_TIME, cvAlpha);
+            }
+            if(slotCounts[slot] > cvMaxRow && slotCounts[slot]-i > 0) {
+                // This is not an intended usage of this API, it's just for some minor string table optimization
+                calcMessageDisplayOffsets(baseX + overflowX, baseY + overflowY, overflowScale, overflowScale, OverflowHAlign, 0);
+                HudMessageBold(s:"\c[darkgrey]+", i:slotCounts[slot]-i; HUDMSG_PLAIN|HUDMSG_ALPHA|HUDMSG_NOWRAP|layer, 0, CR_UNTRANSLATED, calcX, calcY, UIXLIB_MSG_TIME, cvAlpha);
+            }
+        }
+    }
+}
+
+// Weapon Wheel =====================================================================================================================================
+script "core_weap_wheel_start" (void) NET CLIENTSIDE
+{
+    int cpn = ConsolePlayerNumber();
+    if(cpn != PlayerNumber())
+        terminate;
+
+    if(!PlayerInGame(cpn))
+        terminate;
+
+    OpenWheel("coreWeaponWheel", "core_weap_wheel_info", "core_weap_wheel_draw");
+}
+
+script "core_weap_wheel_end" (void) NET CLIENTSIDE
+{
+    int cpn = ConsolePlayerNumber();
+    if(cpn != PlayerNumber())
+        terminate;
+
+    if(!PlayerInGame(cpn))
+        terminate;
+
+    CloseWheel("coreWeaponWheel", "core_weap_wheel_select");
+}
+
+script "core_weap_wheel_select" (int id) CLIENTSIDE
+{
+    if(id == 0)
+        terminate;
+
+    if(id > 0)
+        str actor = GetWeaponActor(id-1);
+    else
+        actor = GetBusterActor(-id-1);
+
+    NamedSendNetworkString("core_weap_wheel_select_server", actor);
+}
+
+script "core_weap_wheel_select_server" (int weap) NET
+{
+    SetWeapon(weap);
+}
+
+script "core_weap_wheel_info" (void)
+{
+    // this info potentially changes per tic,
+    // so it's easier to wipe always
+    ResetWheel();
+
+    updateSlotData();
+
+    for(int i = 0; i < MAX_SLOTS; i++) {
+        bool shouldDraw = true;
+
+        // Only draw these slots if something is owned
+        // These weapons existing generally indicates a class / special weapon
+        switch(i) {
+            case 0:
+            case 8:
+            case 9:
+                if(slotCounts[i] <= 0)
+                    shouldDraw = false;
+                break;
+        }
+
+        if(!shouldDraw)
+            continue;
+
+        int slotIdx = AddWheelSlot();
+
+        for(int idx = slotCounts[i] - 1; idx >= 0; idx--) {
+            AddWheelItem(slotIdx, slotVals[i][idx]);
+        }
+    }
+
+    SetWheelDefaultItem(selectedIdx);
+}
+
+int lastCapture;
+int wheelScale;
+int wheelAlpha;
+int wheelFadeTime;
+
+int lastWheelAlpha;
+int halfAlpha;
+
+int lastWheelScale;
+int wheelBarScale;
+int wheelBarX;
+int wheelBarY;
+int wheelBar1X;
+int wheelBar1Y;
+int wheelBar2X;
+int wheelBar2Y;
+int wheelIconX;
+int wheelIconY;
+int selectedWheelScale;
+int selectedWheelBarScale;
+int selectedWheelBarX;
+int selectedWheelBarY;
+int selectedWheelBar1X;
+int selectedWheelBar1Y;
+int selectedWheelBar2X;
+int selectedWheelBar2Y;
+int selectedWheelIconX;
+int selectedWheelIconY;
+int middleWheelYOffset;
+int middleWheelLabelOffset;
+
+script "core_weap_wheel_draw" (void)
+{
+    int time = Timer();
+    if(time + 1 != lastCapture) {
+        lastCapture = time + 1;
+
+        wheelScale = GetWheelScale();
+        if(lastWheelScale == 0 || lastWheelScale != wheelScale) {
+            lastWheelScale = wheelScale;
+
+            wheelBarScale = FixedMul(BAR_SCALE, wheelScale);
+            wheelBarX = -FixedMul(BAR_HEIGHT / 10 / 2, wheelScale);
+            wheelBarY = FixedMul(8, wheelScale);
+            wheelBar2X = wheelBarX;
+            wheelBar2Y = wheelBarY;
+            wheelBar1X = wheelBarX;
+            wheelBar1Y = wheelBar2Y + FixedMul(BAR_WIDTH / 10, wheelScale);
+            wheelIconX = FixedMul(8, wheelScale);
+            wheelIconY = FixedMul(16, wheelScale);
+
+            selectedWheelScale = FixedMul(1.5, wheelScale);
+            selectedWheelBarScale = FixedMul(1.5, wheelBarScale);
+            selectedWheelBarX = FixedMul(1.5, wheelBarX);
+            selectedWheelBarY = FixedMul(1.5, wheelBarY);
+            selectedWheelBar2X = FixedMul(1.5, wheelBar2X);
+            selectedWheelBar2Y = FixedMul(1.5, wheelBar2Y);
+            selectedWheelBar1X = FixedMul(1.5, wheelBar1X);
+            selectedWheelBar1Y = FixedMul(1.5, wheelBar1Y);
+            selectedWheelIconX = FixedMul(1.5, wheelIconX);
+            selectedWheelIconY = FixedMul(1.5, wheelIconY);
+
+            middleWheelYOffset = FixedMul(-9, selectedWheelScale);
+            middleWheelLabelOffset = -2 * FixedMul(-9, wheelScale);
+        }
+
+        wheelAlpha = GetWheelAlpha();
+        if(lastWheelAlpha == 0 || lastWheelAlpha != wheelAlpha) {
+            halfAlpha = FixedMul(0.5, wheelAlpha);
+        }
+
+        wheelFadeTime = GetWheelFadeTime();
+    }
+
+    int id = GetWheelItemID();
+    int x = GetWheelItemX();
+    int y = GetWheelItemY();
+    int angle = GetWheelItemAngle();
+
+    int mode = GetWheelItemMode();
+
+    if(mode == WHEELLIB_ITEM_MODE_IDLE) {
+        int currentWheelScale = wheelScale;
+        int currentWheelBarScale = wheelBarScale;
+        int currentWheelBar2X = wheelBar2X;
+        int currentWheelBar2Y = wheelBar2Y;
+        int currentWheelBar1X = wheelBar1X;
+        int currentWheelBar1Y = wheelBar1Y;
+        int currentWheelBarX = wheelBarX;
+        int currentWheelBarY = wheelBarY;
+        int currentWheelIconX = wheelIconX;
+        int currentWheelIconY = wheelIconY;
+    } else {
+        currentWheelScale = selectedWheelScale;
+        currentWheelBarScale = selectedWheelBarScale;
+        currentWheelBar2X = selectedWheelBar2X;
+        currentWheelBar2Y = selectedWheelBar2Y;
+        currentWheelBar1X = selectedWheelBar1X;
+        currentWheelBar1Y = selectedWheelBar1Y;
+        currentWheelBarX = selectedWheelBarX;
+        currentWheelBarY = selectedWheelBarY;
+        currentWheelIconX = selectedWheelIconX;
+        currentWheelIconY = selectedWheelIconY;
+    }
+
+    if(mode == WHEELLIB_ITEM_MODE_MIDDLE) {
+        int currentMiddleWheelYOffset = middleWheelYOffset;
+    } else {
+        currentMiddleWheelYOffset = 0;
+    }
+
+    if(id > 0) {
+        id--;
+
+        str icon = getWeaponIcon(id);
+
+        if(getWeaponAmmoInfo(id, WAMMO_AMMO2_MAX) > 0 && getWeaponBarProperty(id, WBAR_CYAN2) >= 0) {
+            if(mode == WHEELLIB_ITEM_MODE_IDLE) {
+                SetFont("WBAMOHOR");
+                displayMessageColorFade(
+                    HUDMSG_LAYER_OVERHUD,
+                    "C",
+                    x + currentWheelBar2X,
+                    y + currentWheelBar2Y,
+                    currentWheelBarScale, currentWheelBarScale, halfAlpha,
+                    UIXLIB_ALIGN_LEFT, UIXLIB_ALIGN_TOP,
+                    getFontPalette(0), wheelFadeTime
+                );
+            }
+
+            drawLayeredBarColorFade(
+                HUDMSG_LAYER_OVERHUD,
+                getWeaponBarProperty(id, WBAR_BAR_H2),
+                getFontPalette(getWeaponBarProperty(id, WBAR_CYAN2)),
+                getFontPalette(getWeaponBarProperty(id, WBAR_BLUE2)),
+                getFontPalette(getWeaponBarProperty(id, WBAR_BLACK2)),
+                x + currentWheelBar2X,
+                y + currentWheelBar2Y + currentMiddleWheelYOffset,
+                BAR_HEIGHT, BAR_WIDTH,
+                currentWheelBarScale, currentWheelBarScale, wheelAlpha,
+                getWeaponAmmoInfo(id, WAMMO_AMMO2),
+                getWeaponAmmoInfo(id, WAMMO_AMMO2_MAX),
+                UIXLIB_BAR_DISPLAY_HORI, false, UIXLIB_ALIGN_LEFT, UIXLIB_ALIGN_TOP,
+                wheelFadeTime
+            );
+
+            // Draw the bar1 based on whether the bar2 will be drawn.
+            // Bar2 draws on top of bar1, or to the left of bar1, in all circumstances.
+            if(mode == WHEELLIB_ITEM_MODE_IDLE) {
+                SetFont("WBAMOHOR");
+                displayMessageColorFade(
+                    HUDMSG_LAYER_OVERHUD,
+                    "C",
+                    x + currentWheelBar1X,
+                    y + currentWheelBar1Y,
+                    currentWheelBarScale, currentWheelBarScale, halfAlpha,
+                    UIXLIB_ALIGN_LEFT, UIXLIB_ALIGN_TOP,
+                    getFontPalette(0), wheelFadeTime
+                );
+            }
+
+            if(getWeaponAmmoInfo(id, WAMMO_AMMO1_MAX) > 0 && getWeaponBarProperty(id, WBAR_CYAN1) >= 0) {
+                drawLayeredBarColorFade(
+                    HUDMSG_LAYER_OVERHUD,
+                    getWeaponBarProperty(id, WBAR_BAR_H1),
+                    getFontPalette(getWeaponBarProperty(id, WBAR_CYAN1)),
+                    getFontPalette(getWeaponBarProperty(id, WBAR_BLUE1)),
+                    getFontPalette(getWeaponBarProperty(id, WBAR_BLACK1)),
+                    x + currentWheelBar1X,
+                    y + currentWheelBar1Y + currentMiddleWheelYOffset,
+                    BAR_HEIGHT, BAR_WIDTH,
+                    currentWheelBarScale, currentWheelBarScale, wheelAlpha,
+                    getWeaponAmmoInfo(id, WAMMO_AMMO1),
+                    getWeaponAmmoInfo(id, WAMMO_AMMO1_MAX),
+                    UIXLIB_BAR_DISPLAY_HORI, false, UIXLIB_ALIGN_LEFT, UIXLIB_ALIGN_TOP,
+                    wheelFadeTime
+                );
+            }
+        } else {
+            if(getWeaponAmmoInfo(id, WAMMO_AMMO1_MAX) > 0 && getWeaponBarProperty(id, WBAR_CYAN1) >= 0) {
+                if(mode == WHEELLIB_ITEM_MODE_IDLE) {
+                    SetFont("WBAMOHOR");
+                    displayMessageColorFade(
+                        HUDMSG_LAYER_OVERHUD,
+                        "C",
+                        x + currentWheelBarX,
+                        y + currentWheelBarY,
+                        currentWheelBarScale, currentWheelBarScale, halfAlpha,
+                        UIXLIB_ALIGN_LEFT, UIXLIB_ALIGN_TOP,
+                        getFontPalette(0), wheelFadeTime
+                    );
+                }
+
+                drawLayeredBarColorFade(
+                    HUDMSG_LAYER_OVERHUD,
+                    getWeaponBarProperty(id, WBAR_BAR_H1),
+                    getFontPalette(getWeaponBarProperty(id, WBAR_CYAN1)),
+                    getFontPalette(getWeaponBarProperty(id, WBAR_BLUE1)),
+                    getFontPalette(getWeaponBarProperty(id, WBAR_BLACK1)),
+                    x + currentWheelBarX,
+                    y + currentWheelBarY + currentMiddleWheelYOffset,
+                    BAR_HEIGHT, BAR_WIDTH,
+                    currentWheelBarScale, currentWheelBarScale, wheelAlpha,
+                    getWeaponAmmoInfo(id, WAMMO_AMMO1),
+                    getWeaponAmmoInfo(id, WAMMO_AMMO1_MAX),
+                    UIXLIB_BAR_DISPLAY_HORI, false, UIXLIB_ALIGN_LEFT, UIXLIB_ALIGN_TOP,
+                    wheelFadeTime
+                );
+            }
+        }
+    } else {
+        icon = getBusterIcon(-id-1);
+    }
+
+    if(mode == WHEELLIB_ITEM_MODE_MIDDLE) {
+        if(id >= 0) {
+            str tag = GetWeaponTag(id);
+        } else {
+            tag = GetBusterTag(-id-1);
+        }
+
+        SetFont("SMALLFONT");
+        displayLanguageColorFade(HUDMSG_LAYER_OVERHUD, tag, x, y + middleWheelLabelOffset, wheelScale, wheelScale, wheelAlpha, UIXLIB_ALIGN_CENTER, UIXLIB_ALIGN_CENTER, "Gold", wheelFadeTime);
+    }
+
+    if(mode == WHEELLIB_ITEM_MODE_IDLE)
+        displayIconFade(HUDMSG_LAYER_OVERHUD, "UIWGA0", x + currentWheelIconX, y + currentWheelIconY + currentMiddleWheelYOffset, currentWheelScale, currentWheelScale, halfAlpha, UIXLIB_ALIGN_CENTER, UIXLIB_ALIGN_CENTER, wheelFadeTime);
+
+    displayIconFade(HUDMSG_LAYER_OVERHUD, icon, x + currentWheelIconX, y + currentWheelIconY + currentMiddleWheelYOffset, currentWheelScale, currentWheelScale, wheelAlpha, UIXLIB_ALIGN_CENTER, UIXLIB_ALIGN_CENTER, wheelFadeTime);
+}

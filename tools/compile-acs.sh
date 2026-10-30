@@ -153,6 +153,9 @@ echo "== JUMPCANC =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/JUMPCANC.acs" "$OUT/JUMPCANC.o" || fail=1
 echo "== UITEAMIT =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/ui/UITEAMIT.acs" "$OUT/UITEAMIT.o" || fail=1
+echo "== UIWEPBAR =="
+# v6c native weapon bar. Shadows the base UIWEPBAR lump and adds the UH class bars.
+"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/ui/UIWEPBAR.acs" "$OUT/UIWEPBAR.o" || fail=1
 echo "== MUGSHOTS =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/MUGSHOTS.acs" "$OUT/MUGSHOTS.o" || fail=1
 echo "== PROJTRAN =="

@@ -1,0 +1,483 @@
+// UH class weapon bars for the v6c native UIWEPBAR shadow.
+// These read data through the uh_uixfw named-script protocol (uh_fb_*, uh_qb_*,
+// uh_nb_*, uh_zb_*) and draw with the v6c UIXLIB primitives. The stock slot
+// path stays in the shadowed UIWEPBAR.acs core_ui_weapbar script.
+//
+// Field constants mirror uh_uixbar_api.acs so this file needs no extra include
+// path. Keep them in sync with that protocol.
+#define UHFB_UNSUPPORTED -1
+#define UHFB_NOT_READY -2
+#define UHFB_MAX_WEAPONS 8
+#define UHFB_ACTOR 0
+#define UHFB_ICON 1
+#define UHFB_AMMO1 2
+#define UHFB_CYAN1 0
+#define UHFB_BLUE1 1
+#define UHFB_DEFMAX1 2
+
+#define UHQB_UNSUPPORTED -1
+#define UHQB_NOT_READY -2
+#define UHQB_MAX_WEAPONS 5
+#define UHQB_MAX_HELD 256
+#define UHQB_ACTOR 0
+#define UHQB_ICON 1
+#define UHQB_AMMO1 2
+#define UHQB_AMMO2 3
+#define UHQB_CYAN1 0
+#define UHQB_BLUE1 1
+#define UHQB_CYAN2 2
+#define UHQB_BLUE2 3
+#define UHQB_DEFMAX1 4
+#define UHQB_DEFMAX2 5
+#define UHQB_SLOT 6
+
+#define UHNB_UNSUPPORTED -1
+#define UHNB_NOT_READY -2
+#define UHNB_MAX_SLOTS 8
+#define UHNB_MAX_SLOT_WEAPS 10
+#define UHNB_ACTOR 0
+#define UHNB_ICON 1
+#define UHNB_AMMO 2
+#define UHNB_CYAN 0
+#define UHNB_BLUE 1
+#define UHNB_DEFMAX 2
+
+str uhFixedBarIcons[UHFB_MAX_WEAPONS];
+int uhFixedBarSelected[UHFB_MAX_WEAPONS];
+int uhFixedBarSlots[UHFB_MAX_WEAPONS];
+int uhFixedBarAmt1[UHFB_MAX_WEAPONS];
+int uhFixedBarMax1[UHFB_MAX_WEAPONS];
+int uhFixedBarCyan1[UHFB_MAX_WEAPONS];
+int uhFixedBarBlue1[UHFB_MAX_WEAPONS];
+
+str uhQwantSlot2Icon[UHQB_MAX_HELD];
+int uhQwantSlot2Amt[UHQB_MAX_HELD];
+int uhQwantSlot2Max[UHQB_MAX_HELD];
+int uhQwantSlot2Cyan[UHQB_MAX_HELD];
+int uhQwantSlot2Blue[UHQB_MAX_HELD];
+int uhQwantMoveSlot[UHQB_MAX_HELD];
+int uhQwantSlotCount[8];
+int uhQwantSlotSelected[8];
+int uhQwantSlotMoves[8][UHQB_MAX_HELD];
+
+int uhNegaSlotCount[UHNB_MAX_SLOTS];
+int uhNegaSlotSelected[UHNB_MAX_SLOTS];
+str uhNegaWepIcon[UHNB_MAX_SLOTS][UHNB_MAX_SLOT_WEAPS];
+int uhNegaWepAmt[UHNB_MAX_SLOTS][UHNB_MAX_SLOT_WEAPS];
+int uhNegaWepMax[UHNB_MAX_SLOTS][UHNB_MAX_SLOT_WEAPS];
+int uhNegaWepCyan[UHNB_MAX_SLOTS][UHNB_MAX_SLOT_WEAPS];
+int uhNegaWepBlue[UHNB_MAX_SLOTS][UHNB_MAX_SLOT_WEAPS];
+
+#define UHZB_MAX_HELD 6
+str uhZeroHeldIcon[UHZB_MAX_HELD];
+int uhZeroHeldSelected[UHZB_MAX_HELD];
+int uhZeroHeldAmt1[UHZB_MAX_HELD];
+int uhZeroHeldMax1[UHZB_MAX_HELD];
+int uhZeroHeldCyan1[UHZB_MAX_HELD];
+int uhZeroHeldBlue1[UHZB_MAX_HELD];
+
+str uhBarSlotBinds[MAX_SLOTS] = {
+    "slot 0","slot 1","slot 2","slot 3","slot 4",
+    "slot 5","slot 6","slot 7","slot 8","slot 9",
+};
+
+function str UHBarFontPal(int idx) {
+    if (idx <= 0 || idx >= 256)
+        return getFontPalette(0);
+    return getFontPalette(idx);
+}
+
+function int UHBarIconX(int slot, int weight, int selected) {
+    return cvOffsX + slotOffsX * slot + (selected ? selectedX : weightOffsX * weight);
+}
+
+function int UHBarIconY(int slot, int weight, int selected) {
+    return cvOffsY + slotOffsY * slot + (selected ? selectedY : weightOffsY * weight);
+}
+
+function void UHBarBackground(int x, int y) {
+    displayIcon(layer, "UIWGA0", x, y, cvScale, cvScale, FixedMul(cvAlpha, 0.5), UIXLIB_ALIGN_CENTER, UIXLIB_ALIGN_CENTER);
+}
+
+function void UHBarIcon(str icon, int x, int y) {
+    displayIcon(layer, icon, x, y, cvScale, cvScale, cvAlpha, UIXLIB_ALIGN_CENTER, UIXLIB_ALIGN_CENTER);
+}
+
+function void UHBarSlotHint(int bindSlot, int baseX, int baseY, str col) {
+    if (!cvShowSlots || bindSlot < 0 || bindSlot >= MAX_SLOTS)
+        return;
+    SetFont("SMALLFONT");
+    displayMessage(layer, StrParam(s:col, k:uhBarSlotBinds[bindSlot]), baseX + slotX, baseY + slotY, cvScale, cvScale, cvAlpha, HAlign, 0);
+}
+
+function void UHBarDrawItem(int slot, int weight, int isSelected, str icon, int slotHint,
+    int amt1, int max1, int cyan1, int blue1,
+    int amt2, int max2, int cyan2, int blue2)
+{
+    int iconX = UHBarIconX(slot, weight, isSelected);
+    int iconY = UHBarIconY(slot, weight, isSelected);
+    str barFont = cvDir ? "WBAMOVER" : "WBAMOHOR";
+
+    if (!isSelected)
+        UHBarBackground(iconX, iconY);
+
+    UHBarIcon(icon, iconX, iconY);
+
+    UHBarSlotHint(slotHint,
+        UHBarIconX(slot, weight, false),
+        UHBarIconY(slot, weight, false),
+        isSelected ? "\c[gold]" : "\c[darkgray]");
+
+    if (max2 > 0) {
+        drawLayeredBarColor(layer, barFont,
+            UHBarFontPal(cyan2), UHBarFontPal(blue2), getFontPalette(0),
+            iconX + barX2, iconY + barY2, barWidth, barHeight,
+            barScale, barScale, cvAlpha, amt2, max2,
+            !cvDir+1, false, UIXLIB_ALIGN_LEFT, UIXLIB_ALIGN_TOP);
+        if (max1 > 0) {
+            drawLayeredBarColor(layer, barFont,
+                UHBarFontPal(cyan1), UHBarFontPal(blue1), getFontPalette(0),
+                iconX + barX1, iconY + barY1, barWidth, barHeight,
+                barScale, barScale, cvAlpha, amt1, max1,
+                !cvDir+1, false, UIXLIB_ALIGN_LEFT, UIXLIB_ALIGN_TOP);
+        }
+    } else if (max1 > 0) {
+        drawLayeredBarColor(layer, barFont,
+            UHBarFontPal(cyan1), UHBarFontPal(blue1), getFontPalette(0),
+            iconX + barX, iconY + barY, barWidth, barHeight,
+            barScale, barScale, cvAlpha, amt1, max1,
+            !cvDir+1, false, UIXLIB_ALIGN_LEFT, UIXLIB_ALIGN_TOP);
+    }
+}
+
+// Fixed-loadout classes and DecoyBot. Rows keep definition order.
+function void UHWeaponBarFixed(int count) {
+    int i;
+    str actor;
+    str ammo1;
+    for (i = 0; i < count; i++) {
+        uhFixedBarIcons[i] = "";
+        uhFixedBarSelected[i] = false;
+        uhFixedBarSlots[i] = -1;
+        uhFixedBarAmt1[i] = 0;
+        uhFixedBarMax1[i] = 0;
+        uhFixedBarCyan1[i] = 0;
+        uhFixedBarBlue1[i] = 0;
+        actor = ACS_NamedExecuteWithResult("uh_fb_string", i, UHFB_ACTOR);
+        if (StrLen(actor) == 0)
+            continue;
+        if (CheckInventory(actor) <= 0)
+            continue;
+        uhFixedBarIcons[i] = ACS_NamedExecuteWithResult("uh_fb_string", i, UHFB_ICON);
+        uhFixedBarSelected[i] = CheckWeapon(actor);
+        if (cvShowSlots)
+            uhFixedBarSlots[i] = ACS_NamedExecuteWithResult("uh_fb_slot", i);
+        ammo1 = ACS_NamedExecuteWithResult("uh_fb_string", i, UHFB_AMMO1);
+        if (StrLen(ammo1) > 0) {
+            uhFixedBarAmt1[i] = CheckInventory(ammo1);
+            uhFixedBarMax1[i] = GetAmmoCapacity(ammo1);
+            if (uhFixedBarMax1[i] <= 0)
+                uhFixedBarMax1[i] = ACS_NamedExecuteWithResult("uh_fb_int", i, UHFB_DEFMAX1);
+            uhFixedBarCyan1[i] = ACS_NamedExecuteWithResult("uh_fb_int", i, UHFB_CYAN1);
+            uhFixedBarBlue1[i] = ACS_NamedExecuteWithResult("uh_fb_int", i, UHFB_BLUE1);
+        }
+    }
+    for (i = 0; i < count; i++) {
+        if (StrLen(uhFixedBarIcons[i]) == 0)
+            continue;
+        UHBarDrawItem(i + 1, 0, uhFixedBarSelected[i], uhFixedBarIcons[i], uhFixedBarSlots[i],
+            uhFixedBarAmt1[i], uhFixedBarMax1[i], uhFixedBarCyan1[i], uhFixedBarBlue1[i],
+            0, 0, 0, 0);
+    }
+}
+
+function void UHWeaponBarQwant(void) {
+    int i;
+
+    int isSlot1Held = (CheckInventory("Qwant_W") > 0);
+    int isSlot1Selected = CheckWeapon("Qwant_W");
+
+    str s1Ammo1 = ACS_NamedExecuteWithResult("uh_qb_slot1_string", UHQB_AMMO1);
+    str s1Ammo2 = ACS_NamedExecuteWithResult("uh_qb_slot1_string", UHQB_AMMO2);
+    int s1Amt1 = (StrLen(s1Ammo1) > 0 ? CheckInventory(s1Ammo1) : 0);
+    int s1Max1 = (StrLen(s1Ammo1) > 0 ? GetAmmoCapacity(s1Ammo1) : 0);
+    if (s1Max1 <= 0 && StrLen(s1Ammo1) > 0)
+        s1Max1 = ACS_NamedExecuteWithResult("uh_qb_slot1_int", UHQB_DEFMAX1);
+    int s1Cyan1 = ACS_NamedExecuteWithResult("uh_qb_slot1_int", UHQB_CYAN1);
+    int s1Blue1 = ACS_NamedExecuteWithResult("uh_qb_slot1_int", UHQB_BLUE1);
+    int s1Amt2 = (StrLen(s1Ammo2) > 0 ? CheckInventory(s1Ammo2) : 0);
+    int s1Max2 = (StrLen(s1Ammo2) > 0 ? GetAmmoCapacity(s1Ammo2) : 0);
+    if (s1Max2 <= 0 && StrLen(s1Ammo2) > 0)
+        s1Max2 = ACS_NamedExecuteWithResult("uh_qb_slot1_int", UHQB_DEFMAX2);
+    int s1Cyan2 = ACS_NamedExecuteWithResult("uh_qb_slot1_int", UHQB_CYAN2);
+    int s1Blue2 = ACS_NamedExecuteWithResult("uh_qb_slot1_int", UHQB_BLUE2);
+
+    for (i = 2; i <= 7; i++) {
+        uhQwantSlotCount[i] = 0;
+        uhQwantSlotSelected[i] = -1;
+    }
+    int slot2Count = ACS_NamedExecuteWithResult("uh_qb_scan_moves");
+    int slot2SelectedWep = ACS_NamedExecuteWithResult("uh_qb_slot2_selected");
+    for (i = 0; i < slot2Count && i < UHQB_MAX_HELD; i++) {
+        int moveSlot = ACS_NamedExecuteWithResult("uh_qb_slot2_int", i, UHQB_SLOT);
+        if (moveSlot < 2 || moveSlot > 7) moveSlot = 2;
+        uhQwantMoveSlot[i] = moveSlot;
+        int row = uhQwantSlotCount[moveSlot]++;
+        uhQwantSlotMoves[moveSlot][row] = i;
+        if (i == slot2SelectedWep) uhQwantSlotSelected[moveSlot] = row;
+        uhQwantSlot2Icon[i] = ACS_NamedExecuteWithResult("uh_qb_slot2_string", i, UHQB_ICON);
+        str ammo = ACS_NamedExecuteWithResult("uh_qb_slot2_string", i, UHQB_AMMO1);
+        int cap = 0;
+        int amt = 0;
+        if (StrLen(ammo) > 0) {
+            amt = CheckInventory(ammo);
+            cap = GetAmmoCapacity(ammo);
+        }
+        if (cap <= 0)
+            cap = ACS_NamedExecuteWithResult("uh_qb_slot2_int", i, UHQB_DEFMAX1);
+        uhQwantSlot2Amt[i] = amt;
+        uhQwantSlot2Max[i] = cap;
+        uhQwantSlot2Cyan[i] = ACS_NamedExecuteWithResult("uh_qb_slot2_int", i, UHQB_CYAN1);
+        uhQwantSlot2Blue[i] = ACS_NamedExecuteWithResult("uh_qb_slot2_int", i, UHQB_BLUE1);
+    }
+
+    int activeSlot = -1;
+    if (isSlot1Selected)
+        activeSlot = 1;
+    else if (slot2SelectedWep >= 0)
+        activeSlot = uhQwantMoveSlot[slot2SelectedWep];
+
+    int baseX1 = cvOffsX + slotOffsX * 1;
+    int baseY1 = cvOffsY + slotOffsY * 1;
+    if (isSlot1Held) {
+        int weight1 = (activeSlot == 1 ? -1 : 0);
+        UHBarDrawItem(1, weight1, (activeSlot == 1), "6N01S0", -1,
+            s1Amt1, s1Max1, s1Cyan1, s1Blue1,
+            s1Amt2, s1Max2, s1Cyan2, s1Blue2);
+        SetFont("SMALLFONT");
+        UHBarSlotHint(1, baseX1, baseY1, (activeSlot == 1 ? "\c[gold]" : "\c[darkgray]"));
+    }
+
+    for (int slot = 2; slot <= 7; slot++) {
+        int count = uhQwantSlotCount[slot];
+        if (count <= 0) continue;
+        int baseX = cvOffsX + slotOffsX * slot;
+        int baseY = cvOffsY + slotOffsY * slot;
+        int idx = uhQwantSlotSelected[slot];
+        int maxVisible = min(count, cvMaxRow + (activeSlot == slot));
+        for (i = 0; i < maxVisible; i++) {
+            int rowIdx = (idx >= 0 ? (i + idx) % count : i);
+            int weap = uhQwantSlotMoves[slot][rowIdx];
+            int isSelected = (idx >= 0 && rowIdx == idx);
+            int weight = (idx >= 0 ? i - 1 : i);
+            UHBarDrawItem(slot, weight, isSelected, uhQwantSlot2Icon[weap], -1,
+                uhQwantSlot2Amt[weap], uhQwantSlot2Max[weap], uhQwantSlot2Cyan[weap], uhQwantSlot2Blue[weap],
+                0, 0, 0, 0);
+        }
+        SetFont("SMALLFONT");
+        UHBarSlotHint(slot, baseX, baseY, (activeSlot == slot ? "\c[gold]" : "\c[darkgray]"));
+        if (count > cvMaxRow) {
+            displayMessage(layer, StrParam(s:"\c[darkgrey]+", i:count - i),
+                baseX + overflowX, baseY + overflowY,
+                overflowScale, overflowScale, cvAlpha, OverflowHAlign, 0);
+        }
+    }
+}
+
+function void UHWeaponBarNegaMan(void) {
+    int activeSlot = ACS_NamedExecuteWithResult("uh_nb_scan");
+    int s, h, i;
+
+    for (s = 1; s <= 7; s++) {
+        uhNegaSlotCount[s] = ACS_NamedExecuteWithResult("uh_nb_slot_count", s);
+        if (uhNegaSlotCount[s] == 0)
+            continue;
+        uhNegaSlotSelected[s] = ACS_NamedExecuteWithResult("uh_nb_slot_selected", s);
+        for (h = 0; h < uhNegaSlotCount[s]; h++) {
+            uhNegaWepIcon[s][h] = ACS_NamedExecuteWithResult("uh_nb_item_string", s, h, UHNB_ICON);
+            str ammo = ACS_NamedExecuteWithResult("uh_nb_item_string", s, h, UHNB_AMMO);
+            int amt = 0;
+            int cap = 0;
+            if (StrLen(ammo) > 0) {
+                amt = CheckInventory(ammo);
+                cap = GetAmmoCapacity(ammo);
+            }
+            if (cap <= 0)
+                cap = ACS_NamedExecuteWithResult("uh_nb_item_int", s, h, UHNB_DEFMAX);
+            uhNegaWepAmt[s][h] = amt;
+            uhNegaWepMax[s][h] = cap;
+            uhNegaWepCyan[s][h] = ACS_NamedExecuteWithResult("uh_nb_item_int", s, h, UHNB_CYAN);
+            uhNegaWepBlue[s][h] = ACS_NamedExecuteWithResult("uh_nb_item_int", s, h, UHNB_BLUE);
+        }
+    }
+
+    for (s = 1; s <= 7; s++) {
+        if (uhNegaSlotCount[s] == 0)
+            continue;
+        int baseX = cvOffsX + slotOffsX * s;
+        int baseY = cvOffsY + slotOffsY * s;
+        int idx = (activeSlot == s ? uhNegaSlotSelected[s] : -1);
+        int maxVisible = min(uhNegaSlotCount[s], cvMaxRow + (activeSlot == s));
+        for (i = 0; i < maxVisible; i++) {
+            int weap = (idx > -1 ? (i + idx) % uhNegaSlotCount[s] : i);
+            int isSelected = (idx > -1 && weap == uhNegaSlotSelected[s]);
+            int weight = (idx > -1 ? i - 1 : i);
+            UHBarDrawItem(s, weight, isSelected, uhNegaWepIcon[s][weap], -1,
+                uhNegaWepAmt[s][weap], uhNegaWepMax[s][weap], uhNegaWepCyan[s][weap], uhNegaWepBlue[s][weap],
+                0, 0, 0, 0);
+        }
+        SetFont("SMALLFONT");
+        UHBarSlotHint(s, baseX, baseY, (activeSlot == s ? "\c[gold]" : "\c[darkgray]"));
+        if (uhNegaSlotCount[s] > cvMaxRow) {
+            displayMessage(layer, StrParam(s:"\c[darkgrey]+", i:uhNegaSlotCount[s] - i),
+                baseX + overflowX, baseY + overflowY,
+                overflowScale, overflowScale, cvAlpha, OverflowHAlign, 0);
+        }
+    }
+}
+
+function void UHWeaponBarMakeAGoodZero(void) {
+    int phase = ACS_NamedExecuteWithResult("uh_zb_phase");
+    int count = 0;
+    int uhZeroSel = -1;
+    int i;
+
+    if (phase == 1) {
+        if (CheckInventory("MakeAGoodZero_W") > 0) {
+            uhZeroHeldIcon[0] = "B_I_306A";
+            uhZeroHeldSelected[0] = CheckWeapon("MakeAGoodZero_W");
+            uhZeroHeldAmt1[0] = 0;
+            uhZeroHeldMax1[0] = 0;
+            uhZeroHeldCyan1[0] = 0;
+            uhZeroHeldBlue1[0] = 0;
+            if (uhZeroHeldSelected[0]) uhZeroSel = 0;
+            count = 1;
+        }
+    } else if (phase == 3) {
+        if (CheckInventory("MakeAGoodZero_W8") > 0) {
+            uhZeroHeldIcon[0] = "B_I_306A";
+            uhZeroHeldSelected[0] = CheckWeapon("MakeAGoodZero_W8");
+            uhZeroHeldAmt1[0] = 0;
+            uhZeroHeldMax1[0] = 0;
+            uhZeroHeldCyan1[0] = 0;
+            uhZeroHeldBlue1[0] = 0;
+            if (uhZeroHeldSelected[0]) uhZeroSel = 0;
+            count = 1;
+        }
+    } else if (phase == 2) {
+        if (CheckInventory("MakeAGoodZero_W7") > 0) {
+            uhZeroHeldIcon[count] = "B_I_306F";
+            uhZeroHeldSelected[count] = CheckWeapon("MakeAGoodZero_W7");
+            uhZeroHeldAmt1[count] = CheckInventory("MGZeroChipAmmoPsycho");
+            uhZeroHeldMax1[count] = GetAmmoCapacity("MGZeroChipAmmoPsycho");
+            if (uhZeroHeldMax1[count] <= 0) uhZeroHeldMax1[count] = 1200;
+            uhZeroHeldCyan1[count] = 108;
+            uhZeroHeldBlue1[count] = 239;
+            if (uhZeroHeldSelected[count]) uhZeroSel = count;
+            count++;
+        }
+        if (CheckInventory("MakeAGoodZero_W6") > 0) {
+            uhZeroHeldIcon[count] = "B_I_306E";
+            uhZeroHeldSelected[count] = CheckWeapon("MakeAGoodZero_W6");
+            uhZeroHeldAmt1[count] = CheckInventory("MGZeroChipAmmoZap");
+            uhZeroHeldMax1[count] = GetAmmoCapacity("MGZeroChipAmmoZap");
+            if (uhZeroHeldMax1[count] <= 0) uhZeroHeldMax1[count] = 1200;
+            uhZeroHeldCyan1[count] = 32;
+            uhZeroHeldBlue1[count] = 229;
+            if (uhZeroHeldSelected[count]) uhZeroSel = count;
+            count++;
+        }
+        if (CheckInventory("MakeAGoodZero_W5") > 0) {
+            uhZeroHeldIcon[count] = "B_I_306D";
+            uhZeroHeldSelected[count] = CheckWeapon("MakeAGoodZero_W5");
+            uhZeroHeldAmt1[count] = CheckInventory("MGZeroChipAmmoIcicle");
+            uhZeroHeldMax1[count] = GetAmmoCapacity("MGZeroChipAmmoIcicle");
+            if (uhZeroHeldMax1[count] <= 0) uhZeroHeldMax1[count] = 1200;
+            uhZeroHeldCyan1[count] = 215;
+            uhZeroHeldBlue1[count] = 205;
+            if (uhZeroHeldSelected[count]) uhZeroSel = count;
+            count++;
+        }
+        if (CheckInventory("MakeAGoodZero_W4") > 0) {
+            uhZeroHeldIcon[count] = "B_I_306C";
+            uhZeroHeldSelected[count] = CheckWeapon("MakeAGoodZero_W4");
+            uhZeroHeldAmt1[count] = CheckInventory("MGZeroChipAmmoFlame");
+            uhZeroHeldMax1[count] = GetAmmoCapacity("MGZeroChipAmmoFlame");
+            if (uhZeroHeldMax1[count] <= 0) uhZeroHeldMax1[count] = 1200;
+            uhZeroHeldCyan1[count] = 201;
+            uhZeroHeldBlue1[count] = 219;
+            if (uhZeroHeldSelected[count]) uhZeroSel = count;
+            count++;
+        }
+        if (CheckInventory("MakeAGoodZero_W3") > 0) {
+            uhZeroHeldIcon[count] = "B_I_306B";
+            uhZeroHeldSelected[count] = CheckWeapon("MakeAGoodZero_W3");
+            uhZeroHeldAmt1[count] = CheckInventory("MGZeroChipAmmoCutter");
+            uhZeroHeldMax1[count] = GetAmmoCapacity("MGZeroChipAmmoCutter");
+            if (uhZeroHeldMax1[count] <= 0) uhZeroHeldMax1[count] = 1200;
+            uhZeroHeldCyan1[count] = 87;
+            uhZeroHeldBlue1[count] = 93;
+            if (uhZeroHeldSelected[count]) uhZeroSel = count;
+            count++;
+        }
+        if (CheckInventory("MakeAGoodZero_W2") > 0) {
+            uhZeroHeldIcon[count] = "B_I_306A";
+            uhZeroHeldSelected[count] = CheckWeapon("MakeAGoodZero_W2");
+            uhZeroHeldAmt1[count] = CheckInventory("UnholyPower3000");
+            uhZeroHeldMax1[count] = GetAmmoCapacity("UnholyPower3000");
+            if (uhZeroHeldMax1[count] <= 0) uhZeroHeldMax1[count] = 3000;
+            uhZeroHeldCyan1[count] = 228;
+            uhZeroHeldBlue1[count] = 227;
+            if (uhZeroHeldSelected[count]) uhZeroSel = count;
+            count++;
+        }
+    }
+
+    if (count <= 0)
+        return;
+
+    int baseX = cvOffsX + slotOffsX * 1;
+    int baseY = cvOffsY + slotOffsY * 1;
+    int maxVisible = min(count, cvMaxRow + (uhZeroSel >= 0));
+    for (i = 0; i < maxVisible; i++) {
+        int weap = (uhZeroSel > -1 ? (i + uhZeroSel) % count : i);
+        int isSelected = (uhZeroSel > -1 && weap == uhZeroSel);
+        int weight = (uhZeroSel > -1 ? i - 1 : i);
+        UHBarDrawItem(1, weight, isSelected, uhZeroHeldIcon[weap], -1,
+            uhZeroHeldAmt1[weap], uhZeroHeldMax1[weap], uhZeroHeldCyan1[weap], uhZeroHeldBlue1[weap],
+            0, 0, 0, 0);
+    }
+    if (count > cvMaxRow) {
+        displayMessage(layer, StrParam(s:"\c[darkgrey]+", i:count - i),
+            baseX + overflowX, baseY + overflowY,
+            overflowScale, overflowScale, cvAlpha, OverflowHAlign, 0);
+    }
+}
+
+// Dispatch used by the shadowed core_ui_weapbar. Returns true when a UH class
+// bar handled drawing, so the stock slot path must stop.
+function bool UHWeaponBarDispatch(void) {
+    int uhFixed = ACS_NamedExecuteWithResult("uh_fb_count");
+    if (uhFixed != UHFB_UNSUPPORTED) {
+        if (uhFixed > 0 && uhFixed <= UHFB_MAX_WEAPONS)
+            UHWeaponBarFixed(uhFixed);
+        return true;
+    }
+    if (ACS_NamedExecuteWithResult("uh_zb_check")) {
+        UHWeaponBarMakeAGoodZero();
+        return true;
+    }
+    int uhQwant = ACS_NamedExecuteWithResult("uh_qb_count");
+    if (uhQwant != UHQB_UNSUPPORTED) {
+        if (uhQwant > 0)
+            UHWeaponBarQwant();
+        return true;
+    }
+    int uhNega = ACS_NamedExecuteWithResult("uh_nb_count");
+    if (uhNega != UHNB_UNSUPPORTED) {
+        if (uhNega > 0)
+            UHWeaponBarNegaMan();
+        return true;
+    }
+    return false;
+}
