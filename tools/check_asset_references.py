@@ -116,15 +116,15 @@ BASE_GAME_SOUNDS = frozenset("""
     weapons/mm4/divemissilefire weapons/mm4/drillbombexplode weapons/mm4/drillbombfire weapons/mm4/dustcrusherfire weapons/mm4/dustcrushersplit weapons/mm4/flashstopperexplode
     weapons/mm4/flashstopperfire weapons/mm4/pharaohshotfire weapons/mm4/pharaohshotfire2 weapons/mm4/rainflushexplode weapons/mm4/rainflushfire weapons/mm4/ringboomberangfire
     weapons/mm4/skullbarrieractivate weapons/mm4/skullbarriercounter weapons/mm5/chargekickfire weapons/mm5/crystaleyefire weapons/mm5/crystaleyehit weapons/mm5/crystaleyesplit
-    weapons/mm5/gravityholdfire weapons/mm5/gyroattackfly weapons/mm5/napalmbombexplode weapons/mm5/napalmbombfire weapons/mm5/powerstonefire weapons/mm5/starcrashactivate
+    weapons/mm5/gravityholdfire weapons/mm5/gravityholdslam weapons/mm5/gyroattackfly weapons/mm5/napalmbombexplode weapons/mm5/napalmbombfire weapons/mm5/powerstonefire weapons/mm5/starcrashactivate
     weapons/mm5/starcrashfire weapons/mm5/waterwavefire weapons/mm6/blizzardattackfire weapons/mm6/centaurflashexplode weapons/mm6/centaurflashfire weapons/mm6/flameblastfire
     weapons/mm6/knightcrushfire weapons/mm6/plantbarrieractivate weapons/mm6/plantberrierfire weapons/mm6/silvertomahawkfire weapons/mm6/windstormfire weapons/mm6/yamatospearfire
     weapons/mm7/dangerwrapexplode weapons/mm7/dangerwrapfire weapons/mm7/freezecrackerfire weapons/mm7/freezecrackersplit weapons/mm7/junkshieldbreak weapons/mm7/junkshieldcharge
     weapons/mm7/junkshieldfire weapons/mm7/noisecrushchargefire weapons/mm7/noisecrushfire weapons/mm7/scorchwheelactivate weapons/mm7/scorchwheelfire weapons/mm7/slashclawfire
     weapons/mm7/slashclawhit weapons/mm7/thunderboltfire weapons/mm7/wildcoilcharge weapons/mm7/wildcoilfire weapons/mm7/wildcoilfire2 weapons/mm8/astrocrushexplode
-    weapons/mm8/flameswordfire weapons/mm8/flameswordhit weapons/mm8/flashbombexplode weapons/mm8/flashbombfire weapons/mm8/homingsnipercharge weapons/mm8/homingsniperchargeloop
+    weapons/mm8/flameswordfire weapons/mm8/flameswordhit weapons/mm8/flameswordcharge weapons/mm8/flameswordcharge2 weapons/mm8/flameswordslash weapons/mm8/flashbombexplode weapons/mm8/flashbombfire weapons/mm8/homingsnipercharge weapons/mm8/homingsniperchargeloop
     weapons/mm8/homingsniperload weapons/mm8/homingsnipershot weapons/mm8/icewavefire weapons/mm8/megaballfire weapons/mm8/megaballkick weapons/mm8/thunderclawfire
-    weapons/mm8/tornadoholdblow weapons/mm8/tornadoholdfire weapons/mm8/waterballoonfire weapons/mm9/blackholebombexplode weapons/mm9/concreteshotfire weapons/mm9/hornetchaserfire
+    weapons/mm8/tornadoholdblow weapons/mm8/tornadoholdfire weapons/mm8/waterballoonfire weapons/mm8/waterballoonsplash weapons/mm9/blackholebombexplode weapons/mm9/concreteshotfire weapons/mm9/hornetchaserfire
     weapons/mm9/jewelsatelliteactivate weapons/mm9/jewelsatellitefire weapons/mm9/lasertridentfire weapons/mm9/magmabazookacharge weapons/mm9/magmabazookacharge2 weapons/mm9/magmabazookafire
     weapons/mm9/plugballfire weapons/mm9/tornadoblowfire weapons/mmb/copyvisionactivate weapons/mmb/copyvisionbuster weapons/mmb/copyvisionshoot weapons/mmb/icewallfire
     weapons/mmb/lightningboltexplode weapons/mmb/lightningboltfire weapons/mmb/magiccardfire weapons/mmb/remotemineexplode weapons/mmb/remoteminefire weapons/mmb/remoteminestick

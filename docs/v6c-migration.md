@@ -748,6 +748,66 @@ display, Underworld Radio music, hitvoxel) also completed a real startup with no
 compile or fatal error and a clean quit. This proves startup compatibility, not
 that every addon feature was exercised.
 
+### Copy-weapon v6c parity (2026-10-29)
+
+The Unholy MegaMan copy weapons were copied from the v6b base game and then
+edited for Unholy. They now follow the v6c base game behavior and base values.
+The port keeps every Unholy-specific mechanic.
+
+Scope: all files under `src/actors/classes/survivors/megaman_copyweps/`.
+Staged `mm4/pharaohshot.dec` and `mm8/waterballoon.dec` changes were the
+reference example. The remaining files were ported the same way.
+
+Method:
+
+- For each file, compare the matching v6b and v6c reference file under
+  `actors/inventory/mm*/`. Apply every v6c change that the Unholy file owns.
+- A `replaces` actor owns all of its properties and states, so it takes every
+  v6c change. An inheriting actor takes only changes to the properties and state
+  labels it declares.
+- Damage stays on the Unholy x10 convention: a base damage N becomes
+  `CallACS("uh_TodayDmgMul", 10 * N)`. A value that already differs from the
+  base is Unholy-tuned and stays.
+- Plain values (speed, radius, height, reaction time, durations, ammo counts)
+  follow the base only when the Unholy value still matched v6b.
+- Base-only actors (`*_Respawn`, `*_Marker`, native ammo, arsenal bars) are
+  never copied into the Unholy files. New v6c base actors that the port needs are
+  added to the frozen baselines in `tools/check_actor_contracts.py` and
+  `tools/check_asset_references.py`.
+- Large redesigns were rebuilt in the Unholy files: `mmv/breakdash.dec` (v6c
+  charge/attack flow; the base attack custom inventories spawn Unholy
+  replacements of `BreakDashCheck1` to `BreakDashCheck3`), `mm2/crashbomb.dec`
+  (v6c latch projectile), `mm8/flamesword.dec` (v6c slash flow with scaled
+  hitbox and afterburn damage), `mm10/watershield.dec` (v6c orbiting spawner and
+  damage-scaled blobs), `mm5/gravityhold.dec` (v6c spawner chain with scaled
+  explosions) and `mm3/searchsnake.dec` (v6c spawner/crawler chain).
+- `mm1/rollingcutter.dec` takes the v6c pierce limit, merged spawn frames and
+  TID teardown.
+
+Intentional deviation kept (Unholy mechanic):
+
+- `mm1/oilslider.dec` keeps the Unholy ride system instead of the v6c slide
+  states. Only its assist icon follows the v6c original (`OILBRD` and
+  `OILBROUT`).
+- `mmv/breakdash.dec` restores the v6b Break Dash mechanic that v6c
+  removed: a fully charged dash that strikes a player keeps the charge. The
+  `BreakDashCheck3U` hit returns `BreakDashHit` to the shooter, and the Recoil
+  state then restores the charge instead of clearing it. The retained state
+  keeps the charged hand sprites and colour cycle running without M1, and it
+  clears the charge when the ammo left is below the full-dash cost. The Fire
+  state checks the carried charge first, so the next shot starts at the
+  matching charge tier instead of the uncharged one.
+- Per-weapon Unholy damage tuning, ready regeneration
+  (`uh_CopyWepReadyRegen`), the `uh_SurvivorProperty` movement wrappers and the
+  ammo-spend proxies stay.
+
+Verification: `python3 tools/gate.py --smoke` passes 35 of 35 checks, including
+the DECORATE actor/label contract and the ACS compile. `python3 tools/gate.py
+--meta` passes. `out/build.pk3` was rebuilt and validates.
+`tools/mcp/smoke-test.mjs` starts the v6c profile with no compile or fatal error
+and reports a valid player state. The changed weapons were reviewed file by file
+against the reference diff.
+
 ## Completion status (2026-10-29)
 
 The acceptance items are verified.

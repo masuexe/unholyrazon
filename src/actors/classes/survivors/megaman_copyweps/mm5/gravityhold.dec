@@ -1,6 +1,6 @@
 actor GravityHoldWepU_MegaManUBar : MegaManUBar {Args 4, 239}
 actor GravityHoldWepU : BaseMegaManUWep replaces GravityHoldWep {
-  Weapon.AmmoUse 7
+  Weapon.AmmoUse 14
   Weapon.AmmoGive 28
   Weapon.SlotNumber 6
   Inventory.Pickupmessage "$PU_GRAVITYHOLD"
@@ -13,49 +13,66 @@ actor GravityHoldWepU : BaseMegaManUWep replaces GravityHoldWep {
     WEA3 F -1
     loop
    Ready:
-    FSTO A 0 ACS_NamedExecuteWithResult("core_weaponcolor", CLR_GRAVITYHOLD)
+    GHOL B 0 ACS_NamedExecuteWithResult("core_weaponcolor", CLR_GRAVITYHOLD)
+    GHOL B 0 A_JumpIfInventory("GravityHoldCooldown", 1, "ReadyCooldown")
     goto ReadyX
    ReadyX:
-    FSTO A 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen")
-    FSTO A 1 A_WeaponReady
+    GHOL B 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen")
+    GHOL B 1 A_WeaponReady
     loop
+   ReadyCooldown:
+    GHOL B 0 ACS_NamedExecuteWithResult("uh_CopyWepReadyRegen")
+    GHOL B 1 A_WeaponReady(WRF_NOFIRE)
+    goto Ready+1
+
    Deselect:
-    FSTO A 0
+    GHOL B 0
     goto DeselectSwap
    Select:
-    FSTO A 0
+    GHOL B 0
     goto SelectSwap
    Fire:
-    FSTO A 0 A_JumpIfNoAmmo("NoAmmo")
-    FSTO A 0 A_FireCustomMissile("GravityHoldU", 0, 1, 8, 0)
-    FSTO BC 1 A_SpawnItemEx("GravityHold2U", 0, 0, 28)
-    FSTO A 0 A_PlaySoundEx("weapons/mm5/gravityholdfire", "Weapon")
-    FSTO CDD 2 A_SpawnItemEx("GravityHold2U", 0, 0, 28)
-    FSTO D 39
-    FSTO C 2
-    FSTO A 0 A_ReFire
-    goto ReadyX
+    GHOL B 0 A_JumpIfNoAmmo("NoAmmo")
+    GHOL B 0 A_GiveInventory("GravityHold_Fire_P", 1)
+    GHOL FFGGHHHHHHHHHH 1 ACS_NamedExecuteWithResult("core_missilestate")
+    GHOL HIIJKL 1
+    GHOL E 0 A_GiveInventory("GravityHoldCooldown", 1)
+    GHOL E 0 A_SpawnItemEx("GravityHoldCooldowner")
+    GHOL E 46 A_WeaponReady(WRF_NOFIRE)
+    GHOL D 2 A_WeaponReady(WRF_NOFIRE)
+    goto Ready+1
+
    Death:
     WEA3 F 0
     stop
   }
 }
 
-actor GravityHoldU : GravityHold {
-  +OLDRADIUSDMG
+actor GravityHoldU : GravityHold replaces GravityHold {
   States {
    Spawn:
     TNT1 A 0
-    TNT1 A 0 A_SpawnItemEx("GravityHoldFXU", 0, 0, 0, 0, 0, 0, 0, 1)
-    TNT1 A 1 A_Explode(CallACS("uh_TodayDmgMul", 30), 1024, 0, 0, 16)
-    TNT1 A 0 A_SpawnItemEx("GravityHoldFX2U", 0, 0, 0, 0, 0, 0, 0, 1)
-    TNT1 A 1 A_Explode(CallACS("uh_TodayDmgMul", 30), 896, 0, 0, 14)
-    TNT1 A 0 A_SpawnItemEx("GravityHoldFX3U", 0, 0, 0, 0, 0, 0, 0, 1)
-    TNT1 A 1 A_Explode(CallACS("uh_TodayDmgMul", 30), 768, 0, 0, 12)
-    TNT1 A 0 A_SpawnItemEx("GravityHoldFX4U", 0, 0, 0, 0, 0, 0, 0, 1)
-    TNT1 A 1 A_Explode(CallACS("uh_TodayDmgMul", 30), 640, 0, 0, 10)
-    TNT1 A 0 A_SpawnItemEx("GravityHoldFX5U", 0, 0, 0, 0, 0, 0, 0, 1)
-    TNT1 A 1 A_Explode(CallACS("uh_TodayDmgMul", 30), 512, 0, 0, 8)
+    TNT1 A 0 A_JumpIf(!CallACS("core_targetexists"), "Death")
+    TNT1 A 0 // A_SpawnItemEx("GravityHoldFX", 0, 0, 0, 0, 0, 0, 0, SXF_WEPFXCOLOR)
+    TNT1 A 1 A_Explode(CallACS("uh_TodayDmgMul", 20), 325, 0, 0, 325)
+    TNT1 A 0 A_JumpIf(!CallACS("core_targetexists"), "Death")
+    TNT1 A 0 // _SpawnItemEx("GravityHoldFX", 0, 0, 0, 0, 0, 0, 0, SXF_WEPFXCOLOR)
+    TNT1 A 1 A_Explode(CallACS("uh_TodayDmgMul", 20), 325, 0, 0, 325)
+    TNT1 A 0 A_JumpIf(!CallACS("core_targetexists"), "Death")
+    TNT1 A 0 // A_SpawnItemEx("GravityHoldFX2", 0, 0, 0, 0, 0, 0, 0, SXF_WEPFXCOLOR)
+    TNT1 A 1 A_Explode(CallACS("uh_TodayDmgMul", 20), 243, 0, 0, 243)
+    TNT1 A 0 A_JumpIf(!CallACS("core_targetexists"), "Death")
+    TNT1 A 0 // A_SpawnItemEx("GravityHoldFX2", 0, 0, 0, 0, 0, 0, 0, SXF_WEPFXCOLOR)
+    TNT1 A 1 A_Explode(CallACS("uh_TodayDmgMul", 20), 243, 0, 0, 243)
+    TNT1 A 0 A_JumpIf(!CallACS("core_targetexists"), "Death")
+    TNT1 A 0 // A_SpawnItemEx("GravityHoldFX3", 0, 0, 0, 0, 0, 0, 0, SXF_WEPFXCOLOR)
+    TNT1 A 1 A_Explode(CallACS("uh_TodayDmgMul", 20), 162, 0, 0, 162)
+    TNT1 A 0 A_JumpIf(!CallACS("core_targetexists"), "Death")
+    TNT1 A 0 // A_SpawnItemEx("GravityHoldFX3", 0, 0, 0, 0, 0, 0, 0, SXF_WEPFXCOLOR)
+    TNT1 A 1 A_Explode(CallACS("uh_TodayDmgMul", 20), 162, 0, 0, 162)
+    stop
+   Death:
+    TNT1 A 0
     stop
   }
 }
@@ -136,5 +153,27 @@ actor GravityHoldParticle2U : BasicGraphicEffect {
    Spawn:
     GHOL A 1 A_FadeOut(0.15)
     wait
+  }
+}
+
+actor GravityHoldExplosionU : GravityHoldExplosion replaces GravityHoldExplosion {
+  States {
+   Spawn:
+    TNT1 A 0 nodelay A_SpawnItemEx("GravityHoldExplosionFX")
+    goto Explode
+   Explode:
+    TNT1 A 0 Radius_Quake(6, 7, 0, 3, 0)
+    TNT1 A 0 A_PlaySoundEx("weapons/mm5/gravityholdslam", "weapon")
+    TNT1 A 0 A_Explode(CallACS("uh_TodayDmgMul", 300), 96, 0, 0, 96)
+    TNT1 A 35
+    stop
+  }
+}
+
+actor GravityHoldExplosionCeilingU : GravityHoldExplosionU replaces GravityHoldExplosionCeiling {
+  States {
+   Spawn:
+    TNT1 A 0 nodelay A_SpawnItemEx("GravityHoldExplosionFXCeiling")
+    goto Super::Explode
   }
 }
