@@ -269,7 +269,8 @@ async function main() {
     const batchABosses = [
       { id: 5, name: "KakusaretaSutoka", expectedCount: 3, selectIdx: 1, expectedWep: "KakusaretaSutoka_W2" },
       { id: 18, name: "ArchArcanist", expectedCount: 3, selectIdx: 1, expectedWep: "ArchArcanist_W2" },
-      { id: 54, name: "VoidWalker", expectedCount: 4, selectIdx: 2, expectedWep: "VoidWalker_W3" },
+      // Four elemental rows plus the conditional all-orbs-destroyed fallback.
+      { id: 54, name: "VoidWalker", expectedCount: 5, selectIdx: 2, expectedWep: "VoidWalker_W3" },
       { id: 109, name: "FBeast", expectedCount: 6, selectIdx: 4, expectedWep: "FBeast_W5" },
       { id: 402, name: "FinalSampi", expectedCount: 7, selectIdx: 3, expectedWep: "FinalSampi_W4" },
     ];

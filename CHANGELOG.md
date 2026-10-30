@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261031
 
+- Void Walker's four elemental orbs can now be destroyed independently, with 1000 base HP plus a population bonus of 150 per additional participant, shared across the round’s Boss count. Orb HP is fixed at spawn. Losing an orb removes its elemental weapon until the next transformation; losing all four leaves a basic Void Shot. Orbs are immune while hidden and cannot be damaged by allies.
 - Fixed Void Walker’s secondary-attack skill banners and notification sounds being hidden from other players and spectators online.
 - Fixed Decoy Bot, Nega Man and related Shiny classes losing their projectile colors after upgrading to MM8BDM v6c, including when projectile team colors are disabled.
 

@@ -1,0 +1,210 @@
+#library "VWOPROBE"
+#include "zcommon.acs"
+
+// Test-only addon: drive real morph setup and damage on a dedicated server.
+int boxes[4];
+int checks, failures, shots;
+str weapons[4] = {"VoidWalker_W", "VoidWalker_W2", "VoidWalker_W3", "VoidWalker_W4"};
+// Population probes add bots mid-test. Freeze them before their first attack.
+script "VWO_FreezeOnEnter" ENTER {
+  SetPlayerProperty(0, true, PROP_TOTALLYFROZEN);
+  SetPlayerProperty(0, true, PROP_BUDDHA);
+}
+function void Expect(bool ok, str label) {
+  checks++;
+  if (!ok) { failures++; Log(s:"VWO_FAIL ", s:label); }
+}
+function void Hit(int index, int source, int amount) {
+  SetActivatorToPlayer(source);
+  int before=GetActorProperty(boxes[index],APROP_Health);
+  Thing_Damage2(boxes[index], amount, "VWOTest");
+  Log(s:"VWO_HIT source=",i:source,s:" amount=",i:amount,s:" before=",i:before,s:" after=",i:GetActorProperty(boxes[index],APROP_Health));
+}
+function int Orb(int index) {
+  SetActivator(boxes[index]);
+  return ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TRACER);
+}
+function void FreezePlayers(void) {
+  for (int p=0; p<64; p++) {
+    if (SetActivatorToPlayer(p)) {
+      SetPlayerProperty(0, true, PROP_TOTALLYFROZEN);
+      SetPlayerProperty(0, true, PROP_BUDDHA);
+      SetActorProperty(0, APROP_Health, 10000);
+    }
+  }
+}
+script "VWO_Setup" (void) {
+  FreezePlayers();
+  SetActivatorToPlayer(0);
+  ACS_NamedExecuteWithResult("rz_debug_MorphMe", 0, 54);
+  FreezePlayers();
+  ACS_NamedExecuteWithResult("uh_SetPlayerLifeStatus", 0, 2);
+  ACS_NamedExecuteWithResult("uh_SetPlayerLifeStatus", 1, 1);
+  ACS_NamedExecuteWithResult("uh_SetPlayerLifeStatus", 2, 2);
+  Log(s:"VWO_SETUP class=",s:GetActorClass(1000));
+}
+script "VWO_Record" (int tid) {
+  int index=GetUserVariable(tid,"user_vwIndex");
+  if (index<0 || index>3) terminate;
+  boxes[index]=tid;
+  Log(s:"VWO_BOX index=",i:index,s:" tid=",i:tid);
+}
+script "VWO_DamageChecks" (void) {
+  Expect(ThingCountName("VWOrbHitbox",0)==4,"four independent hitboxes");
+  for(int i=0;i<4;i++) {
+    Expect(GetActorProperty(boxes[i],APROP_Health)==1300,"three-player single-Boss orb starts at 1300 HP");
+    Expect(GetUserVariable(boxes[i],"user_vwMaxHealth")==1300,"scaled maximum HP matches initial HP");
+    Expect(CheckFlag(boxes[i],"SHOOTABLE"),"visible orb is shootable");
+    Expect(Orb(i)>0,"hitbox retains visual controller");
+  }
+  int hp=GetActorProperty(boxes[0],APROP_Health);
+  Hit(0,0,60);
+  Expect(GetActorProperty(boxes[0],APROP_Health)==hp,"owner cannot damage its orb");
+  Hit(0,2,60);
+  Expect(GetActorProperty(boxes[0],APROP_Health)==hp,"UH Boss teammate cannot damage orb");
+  Hit(0,1,50);
+  Expect(GetActorProperty(boxes[0],APROP_Health)==hp-50,"enemy damages orb");
+  int visual=Orb(0);
+  SetActorProperty(visual,APROP_Alpha,0.1);
+  Delay(2);
+  Expect(!CheckFlag(boxes[0],"SHOOTABLE"),"hidden orb disables collision");
+  Hit(0,1,60);
+  Expect(GetActorProperty(boxes[0],APROP_Health)==hp-50,"hidden orb takes no damage");
+  SetActorProperty(visual,APROP_Alpha,0.8);
+  Delay(2);
+  Expect(CheckFlag(boxes[0],"SHOOTABLE"),"visible orb restores collision");
+  int missile=UniqueTID();
+  SpawnForced("VWOTestMissile",GetActorX(boxes[0]),GetActorY(boxes[0])+64.0,
+    GetActorZ(boxes[0])+16.0,missile);
+  SetActivator(missile);
+  SetPointer(AAPTR_TARGET,1001);
+  SetActorVelocity(0,0,-64.0,0,false,false);
+  Delay(4);
+  Expect(GetActorProperty(boxes[0],APROP_Health)==hp-110,"real projectile collision damages hitbox");
+  SetActivatorToPlayer(1);
+  int oldx=GetActorX(0), oldy=GetActorY(0), oldz=GetActorZ(0);
+  SetActorPosition(0,GetActorX(boxes[0]),GetActorY(boxes[0])+64.0,
+    GetActorZ(boxes[0])+16.0-GetActorProperty(0,APROP_Height)/2-8.0,false);
+  LineAttack(0,0.75,0,60,"BulletPuff","VWOTest",128.0);
+  SetActorPosition(0,oldx,oldy,oldz,false);
+  Expect(GetActorProperty(boxes[0],APROP_Health)==hp-170,"hitscan damages hitbox");
+  Log(s:"VWO_DAMAGE_DONE checks=",i:checks,s:" failures=",i:failures);
+}
+script "VWO_DestroyChecks" (void) {
+  SetActivatorToPlayer(0);
+  SetWeapon(weapons[0]);
+  Delay(30);
+  int visual=Orb(0);
+  SetActivatorToPlayer(0);
+  GiveInventory("WindOrbCommandM1",1);
+  Hit(0,1,GetActorProperty(boxes[0],APROP_Health)+1);
+  Delay(30);
+  SetActivatorToPlayer(0);
+  Expect(CheckInventory(weapons[0])==0,"wind destruction revokes wind weapon");
+  Expect(CheckInventory(weapons[1])>0 && CheckInventory(weapons[2])>0 && CheckInventory(weapons[3])>0,"other elements remain owned");
+  Expect(CheckInventory("WindOrbCommandM1")==0,"destroyed attack command cleared");
+  Expect(ThingCountName("VeryFunOrb",visual)==0,"destroyed visual removed");
+  Expect(StrICmp(GetWeapon(),weapons[1])==0,"current weapon switches to a surviving element");
+  Hit(2,1,GetActorProperty(boxes[2],APROP_Health)+1);
+  Delay(3);
+  SetActivatorToPlayer(0);
+  Expect(CheckInventory(weapons[2])==0,"water destruction revokes water weapon");
+  Expect(StrICmp(GetWeapon(),weapons[1])==0,"destroying inactive element preserves selection");
+  SetWeapon(weapons[3]);
+  Delay(30);
+  SetActivatorToPlayer(0);
+  GiveInventory("WeaponCharge",56);
+  Hit(3,1,GetActorProperty(boxes[3],APROP_Health)+1);
+  Delay(30);
+  SetActivatorToPlayer(0);
+  Expect(CheckInventory(weapons[3])==0,"fire destruction revokes fire weapon");
+  Expect(CheckInventory("WeaponCharge")==0,"fire charge cleared");
+  Expect(CheckInventory("VivifyFlag1")==0,"attack item lock cleared");
+  Hit(1,1,GetActorProperty(boxes[1],APROP_Health)+1);
+  Delay(30);
+  SetActivatorToPlayer(0);
+  for(int i=0;i<4;i++) Expect(CheckInventory(weapons[i])==0,"destroyed element stays revoked");
+  Expect(CheckInventory("VoidWalker_W5")>0,"all four destroyed grants fallback");
+  Expect(StrICmp(GetWeapon(),"VoidWalker_W5")==0,"fallback becomes usable current weapon");
+  Expect(ThingCountName("VWOrbHitbox",0)==0,"all hitboxes removed");
+  Expect(ThingCountName("VeryFunOrb",0)+ThingCountName("VeryFunOrb2",0)+ThingCountName("VeryFunOrb3",0)+ThingCountName("VeryFunOrb4",0)==0,"all orb controllers removed");
+  SetPlayerProperty(0,false,PROP_TOTALLYFROZEN);
+  Log(s:"VWO_DESTROY_DONE checks=",i:checks,s:" failures=",i:failures);
+}
+script "VWO_SpawnEvent" (int evt, int a, int b) EVENT {
+  if(evt==GAMEEVENT_ACTOR_SPAWNED && CheckActorClass(0,"VWVoidShot")) shots++;
+}
+script "VWO_Shots" (void) {
+  Expect(shots>0,"fallback actually fires projectiles");
+  SetActivatorToPlayer(0);
+  SetPlayerProperty(0,true,PROP_TOTALLYFROZEN);
+  Log(s:"VWO_SHOTS_DONE shots=",i:shots,s:" failures=",i:failures);
+}
+script "VWO_Remorph" (int stale) {
+  SetActivatorToPlayer(0);
+  ACS_NamedExecuteWithResult("rz_debug_MorphMe",0,54);
+  FreezePlayers();
+  // Kill the previous generation synchronously, before its normal cleanup tick.
+  if(stale>0) SetActorState(stale,"Death");
+  SetActivatorToPlayer(0);
+  for(int i=0;i<4;i++) Expect(CheckInventory(weapons[i])>0,"new morph restores all four weapons");
+  Expect(CheckInventory("VoidWalker_W5")==0,"new morph removes fallback");
+  Log(s:"VWO_REMORPH_DONE checks=",i:checks,s:" failures=",i:failures);
+}
+script "VWO_Cleanup" (void) {
+  SetActivatorToPlayer(0);
+  TakeInventory("MorphedFlag",1);
+  Delay(3);
+  Expect(ThingCountName("VWOrbHitbox",0)==0,"owner invalidation cleans up hitboxes");
+  Expect(ThingCountName("VeryFunOrb",0)+ThingCountName("VeryFunOrb2",0)+ThingCountName("VeryFunOrb3",0)+ThingCountName("VeryFunOrb4",0)==0,"owner invalidation cleans up visuals");
+  SetActivatorToPlayer(0);
+  for(int i=0;i<4;i++) Expect(CheckInventory(weapons[i])>0,"normal cleanup does not revoke weapons");
+  ACS_NamedExecuteWithResult("ub_UnMorphThisTID",1000,54);
+  Delay(3);
+  SetActivatorToPlayer(0);
+  Expect(!CheckActorClass(0,"VoidWalker"),"native unmorph completes");
+  for(int j=0;j<4;j++) Expect(CheckInventory(weapons[j])==0,"native unmorph strips Boss weapons");
+  Expect(CheckInventory("VoidWalker_W5")==0,"fallback does not leak into survivor");
+  Log(s:"VWO_FINAL checks=",i:checks,s:" failures=",i:failures);
+}
+script "VWO_ClientCheck" (int phase) CLIENTSIDE {
+  SetActivatorToPlayer(ConsolePlayerNumber());
+  int mask=0;
+  for(int i=0;i<4;i++) if(CheckInventory(weapons[i])) mask|=1<<i;
+  bool ok=phase==0 ? (mask==15 && CheckInventory("VoidWalker_W5")==0)
+    : (mask==0 && CheckInventory("VoidWalker_W5")>0 && CheckWeapon("VoidWalker_W5"));
+  Log(s:"VWO_CLIENT phase=",i:phase,s:" mask=",i:mask,s:" ok=",i:ok);
+}
+
+// The harness changes the round divisor through the engine debug bridge.
+// Fixed expected values catch population, division and zero-divisor mistakes.
+script "VWO_HealthQuery" (int expected, int players, int addhp) {
+  if(addhp==0) addhp=150;
+  Expect(PlayerCount()==players,"expected population reached");
+  Expect(ACS_NamedExecuteWithResult("uh_GetScaledBossHealth",1000,addhp)==expected,
+    "orb health query follows round population and Boss count");
+  if(expected>1000)
+    Expect(ACS_NamedExecuteWithResult("uh_GetScaledBossHealth",30000,150)==30000,
+      "shared health formula retains the Boss health cap");
+  Log(s:"VWO_HEALTH_QUERY_DONE checks=",i:checks,s:" failures=",i:failures);
+}
+script "VWO_SnapshotCheck" (void) {
+  FreezePlayers();
+  Expect(PlayerCount()==5,"population increased to five");
+  Expect(ACS_NamedExecuteWithResult("uh_GetScaledBossHealth",1000,150)==1600,
+    "new population would grant a higher starting HP");
+  for(int i=0;i<4;i++) {
+    Expect(GetUserVariable(boxes[i],"user_vwMaxHealth")==1300,
+      "population change does not resize existing maximum HP");
+    Expect(GetActorProperty(boxes[i],APROP_Health)==(i==0 ? 1130 : 1300),
+      "population change does not heal or damage existing orb");
+  }
+  Log(s:"VWO_SNAPSHOT_DONE checks=",i:checks,s:" failures=",i:failures);
+}
+script "VWO_SpawnHealthCheck" (int expected) {
+  for(int i=0;i<4;i++) {
+    Expect(GetActorProperty(boxes[i],APROP_Health)==expected,"new morph applies new scaled HP");
+    Expect(GetUserVariable(boxes[i],"user_vwMaxHealth")==expected,"new morph applies new scaled maximum HP");
+  }
+  Log(s:"VWO_SPAWN_HEALTH_DONE checks=",i:checks,s:" failures=",i:failures);
+}

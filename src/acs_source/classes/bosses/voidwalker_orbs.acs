@@ -1,0 +1,176 @@
+// Server-owned orb hitboxes. The existing VeryFunOrb actors remain visual /
+// attack controllers; master is the exact boss pawn and tracer is its orb.
+// Damage may replace a dying actor's target, so ownership never uses target.
+#define UH_VW_BOSS_ID 54
+#define UH_VW_ORB_COUNT 4
+#define UH_VW_ORB_HP_ADD 150
+
+str uh_vworbdata[UH_VW_ORB_COUNT][3] = {
+  {"VoidWalker_W",  "WindOrbCommandM1",  "WindOrbCommandM2"},
+  {"VoidWalker_W2", "EarthOrbCommandM1", "EarthOrbCommandM2"},
+  {"VoidWalker_W3", "WaterOrbCommandM1", "WaterOrbCommandM2"},
+  {"VoidWalker_W4", "FireOrbCommandM1",  "FireOrbCommandM2"}
+};
+
+function bool UH_VWIsOwner(void) {
+  int p = PlayerNumber();
+  return p >= 0 && PlayerInGame(p) && !PlayerIsSpectator(p)
+    && CheckActorClass(0, "VoidWalker") && CheckInventory("MorphedFlag")
+    && !CheckInventory("IsDead") && !CheckInventory("IsAFakeBoss")
+    && GetActorProperty(0, APROP_Health) > 0
+    && GetPlayerActiveBossId(p) == UH_VW_BOSS_ID;
+}
+
+// Caller is the hitbox. This function leaves the owner as activator.
+function bool UH_VWOrbOwner(void) {
+  int index = GetUserVariable(0, "user_vwIndex");
+  int generation = GetUserVariable(0, "user_vwGeneration");
+  if (index < 0 || index >= UH_VW_ORB_COUNT || !SetActivator(0, AAPTR_MASTER))
+    return false;
+  return UH_VWIsOwner() && GetPlayerMorphGen(PlayerNumber()) == generation
+    && CheckInventory(uh_vworbdata[index][0]);
+}
+
+// Called once from the shared VeryFunOrb Spawn state, after its dummy frame.
+script "uh_VWOrbInit" (void) {
+  int index = -1;
+  if (CheckActorClass(0, "VeryFunOrb")) index = 0;
+  else if (CheckActorClass(0, "VeryFunOrb2")) index = 1;
+  else if (CheckActorClass(0, "VeryFunOrb3")) index = 2;
+  else if (CheckActorClass(0, "VeryFunOrb4")) index = 3;
+  if (index < 0) terminate;
+
+  int orb = ActivatorTID();
+  if (orb == 0) {
+    orb = UniqueTID();
+    Thing_ChangeTID(0, orb);
+  }
+  // Morph setup spawns the orbs before uh_BossMorph grants MorphedFlag.
+  // The hitbox's next tick applies the full live-owner check.
+  if (!SetActivator(0, AAPTR_TARGET) || PlayerNumber() < 0
+      || !CheckActorClass(0, "VoidWalker")
+      || GetPlayerActiveBossId(PlayerNumber()) != UH_VW_BOSS_ID) terminate;
+  int generation = GetPlayerMorphGen(PlayerNumber());
+  if (!CheckInventory(uh_vworbdata[index][0])) terminate;
+
+  int hitbox = UniqueTID();
+  if (!SpawnForced("VWOrbHitbox", GetActorX(orb), GetActorY(orb),
+      GetActorZ(orb) - 16.0, hitbox)) terminate;
+  SetActivator(hitbox);
+  // Snapshot population and the round's multi-Boss divisor exactly once.
+  // The actor's default SpawnHealth supplies the 1000-HP base.
+  int hp = ACS_NamedExecuteWithResult("uh_GetScaledBossHealth",
+    GetActorProperty(0, APROP_SpawnHealth), UH_VW_ORB_HP_ADD);
+  // APROP_SpawnHealth is writable only on player pawns in Zandronum.
+  SetUserVariable(0, "user_vwMaxHealth", hp);
+  SetActorProperty(0, APROP_Health, hp);
+  SetPointer(AAPTR_MASTER, orb, AAPTR_TARGET);
+  SetPointer(AAPTR_TRACER, orb);
+  SetUserVariable(0, "user_vwIndex", index);
+  SetUserVariable(0, "user_vwGeneration", generation);
+}
+
+script "uh_VWOrbValid" (void) {
+  // An expired controller must retire its hitbox without revoking a weapon.
+  if (!ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TRACER)) {
+    SetResultValue(false);
+    terminate;
+  }
+  SetResultValue(UH_VWOrbOwner());
+}
+
+function bool UH_VWVisibleController(void) {
+  if (!SetActivator(0, AAPTR_TRACER)) return false;
+  // The original M2 transitions shrink/fade the controller before hiding it.
+  return GetActorProperty(0, APROP_Alpha) >= 0.5;
+}
+
+script "uh_VWOrbVisible" (void) {
+  SetResultValue(UH_VWVisibleController());
+}
+
+script "uh_VWOrbCleanup" (void) {
+  int orb = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TRACER);
+  if (orb > 0) Thing_Remove(orb);
+}
+
+// A killed hitbox revokes only its own element, once and on the server.
+script "uh_VWOrbDestroyed" (void) {
+  if (GetUserVariable(0, "user_vwRetired")) terminate;
+  SetUserVariable(0, "user_vwRetired", 1);
+  int index = GetUserVariable(0, "user_vwIndex");
+  int orb = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TRACER);
+  if (!UH_VWOrbOwner()) {
+    // A stale death must still retire its own visual, while leaving the new
+    // generation's weapons alone. Morphing may retarget the old controller.
+    if (orb > 0) Thing_Remove(orb);
+    terminate;
+  }
+
+  bool selected = CheckWeapon(uh_vworbdata[index][0]);
+  // Match Frigid Freezer's normal armor cleanup if its visible orb is broken.
+  if (index == 2 && CheckInventory(uh_vworbdata[index][2]))
+    TakeInventory("BasicArmor", 0x7fffffff);
+  TakeInventory(uh_vworbdata[index][1], 0x7fffffff);
+  TakeInventory(uh_vworbdata[index][2], 0x7fffffff);
+  if (index == 3) TakeInventory("WeaponCharge", 0x7fffffff);
+  if (selected) {
+    TakeInventory("VivifyFlag1", 0x7fffffff);
+    StopSound(0, 1); // CHAN_WEAPON
+  }
+  TakeInventory(uh_vworbdata[index][0], 0x7fffffff);
+
+  str next = "";
+  for (int i = 0; i < UH_VW_ORB_COUNT; i++) {
+    if (CheckInventory(uh_vworbdata[i][0])) {
+      next = uh_vworbdata[i][0];
+      break;
+    }
+  }
+  if (StrLen(next) == 0) {
+    GiveInventory("VoidWalker_W5", 1);
+    next = "VoidWalker_W5";
+    selected = true;
+  }
+  if (selected) SetWeapon(next);
+  if (orb > 0) Thing_Remove(orb);
+}
+
+// Called on each new morph; the normal boss family cleanup strips _W5 too.
+script "uh_VWOrbsReset" (void) {
+  TakeInventory("VoidWalker_W5", 0x7fffffff);
+  for (int i = 0; i < UH_VW_ORB_COUNT; i++) {
+    TakeInventory(uh_vworbdata[i][1], 0x7fffffff);
+    TakeInventory(uh_vworbdata[i][2], 0x7fffffff);
+  }
+}
+
+// Prevent self / teammate damage in UH LMS, where the native engine teams do
+// not represent the logical Boss side. Check visibility at damage time too,
+// closing the one-tic gap between an M2 fade and the hitbox's next state tick.
+script "uh_VWOrbDamage" (int evt, int damage, int damageType) EVENT {
+  if (evt != GAMEEVENT_ACTOR_DAMAGED_PREMOD) terminate;
+  // Capture EVENT-only pointers before calling any other named script:
+  // nested RunScript calls do not retain the engine's current-script context.
+  int source = -1;
+  if (SetActivator(0, AAPTR_DAMAGE_SOURCE)) source = PlayerNumber();
+  if (!SetActivator(0, AAPTR_DAMAGE_TARGET) || !CheckActorClass(0, "VWOrbHitbox"))
+    terminate;
+  int hitbox = ActivatorTID();
+  bool visible = UH_VWVisibleController();
+  SetActivator(hitbox);
+  if (!visible || !UH_VWOrbOwner()) {
+    SetResultValue(0);
+    terminate;
+  }
+  int owner = PlayerNumber();
+  if (source < 0) terminate;
+  bool friendly = owner == source;
+  if (GetCVar("lastmanstanding") == 1)
+    friendly |= ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", owner, source);
+  else if (IsTeamGame)
+    friendly |= GetPlayerInfo(owner, PLAYERINFO_TEAM) == GetPlayerInfo(source, PLAYERINFO_TEAM);
+  else if (GameType() == GAME_NET_COOPERATIVE)
+    friendly = true;
+  if (friendly) SetResultValue(0);
+}

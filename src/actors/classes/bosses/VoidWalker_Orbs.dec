@@ -1,0 +1,101 @@
+// One server-owned hitbox per visual orb. Health is independent of the Boss.
+// The 16x16 orb sprite is centered on its origin and displayed at scale 2.
+actor VWOrbHitbox : UH_ShootableActor {
+  Health 1000 // Base HP; initialization applies the Boss population formula.
+  Radius 16
+  Height 32
+  PainChance 0
+  RenderStyle "None"
+  +USEDAMAGEEVENTSCRIPT
+  +NOGRAVITY
+  +NOBLOOD
+  +NODAMAGETHRUST
+  +DONTBLAST
+  +NOTARGET
+  -SOLID
+  -COUNTKILL
+  var int user_NoTranslation;
+  var int user_vwIndex;
+  var int user_vwGeneration;
+  var int user_vwMaxHealth;
+  var int user_vwRetired;
+  States {
+   Spawn:
+    TNT1 A 1
+   Hidden:
+    TNT1 A 0 A_ChangeFlag("SHOOTABLE", 0)
+   HiddenTick:
+    TNT1 A 0 A_JumpIf(!CallACS("uh_VWOrbValid"), "Cleanup")
+    TNT1 A 0 A_JumpIf(CallACS("uh_VWOrbVisible"), "Exposed")
+    TNT1 A 1 A_Warp(AAPTR_TRACER, 0, 0, -16, 0, WARPF_NOCHECKPOSITION | WARPF_COPYINTERPOLATION)
+    goto HiddenTick
+   Exposed:
+    TNT1 A 0 A_ChangeFlag("SHOOTABLE", 1)
+   ExposedTick:
+    TNT1 A 0 A_JumpIf(!CallACS("uh_VWOrbValid"), "Cleanup")
+    TNT1 A 0 A_JumpIf(!CallACS("uh_VWOrbVisible"), "Hidden")
+    TNT1 A 1 A_Warp(AAPTR_TRACER, 0, 0, -16, 0, WARPF_NOCHECKPOSITION | WARPF_COPYINTERPOLATION)
+    goto ExposedTick
+   XDeath:
+   Death:
+    TNT1 A 0 A_ChangeFlag("SHOOTABLE", 0)
+    TNT1 A 0 A_SpawnItemEx("ExplosionEffect1", 0, 0, 16)
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_VWOrbDestroyed")
+    stop
+   Cleanup:
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_VWOrbCleanup")
+    stop
+  }
+}
+
+actor VWVoidShot : BasicProjectile {
+  Translation "192:192=202:202", "198:198=61:61"
+  DamageType "VoidShot"
+  Obituary "%o was struck by %k's Void Shot."
+  Damage (60)
+  Speed 36
+  +BRIGHT
+  States {
+   Spawn:
+    BUST A 1
+    loop
+   Death:
+    TNT1 A 0
+    stop
+  }
+}
+
+// Granted only when all four elements are gone. _W5 participates in the
+// existing Boss weapon-family cleanup after unmorphing.
+actor VoidWalker_W5 : BaseUnholyBossWep {
+  Tag "$TAG_VoidWalker_W5"
+  Weapon.SlotNumber 5
+  Weapon.AmmoUse 0
+  Inventory.Icon "UB054MUG"
+  States {
+   Spawn:
+    6N02 I 6
+    loop
+   Select:
+    8H54 A 0
+    goto SelectSwap
+   Deselect:
+    8H54 A 0
+    goto DeselectSwap
+   Ready:
+    8H54 A 0 ACS_NamedExecuteWithResult("core_weaponcolor", VOIDWALKER_DYE)
+   ReadyTick:
+    8H54 A 1 A_WeaponReady
+    loop
+   AltFire:
+    8H54 A 1
+    goto ReadyTick
+   Fire:
+    8H54 I 0 A_PlaySoundEx("weapon/mbuster", "Weapon")
+    8H54 I 0 A_FireCustomMissile("VWVoidShot", 0, 0, 0, 0)
+    8H54 I 4
+    8H54 A 10
+    8H54 A 0 A_ReFire
+    goto ReadyTick
+  }
+}
