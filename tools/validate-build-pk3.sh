@@ -50,7 +50,9 @@ fi
 # CORE8BDT must shadow the base-game lump. Naming it 8BDT.o leaves imports
 # using the stock library, which lacks UH's getPitCount and crashes in ACS.
 # UHCOMBDB is loaded through ACS imports, so LOADACS does not list it.
-required=(DECORATE KEYCONF LOADACS acs/CORE8BDT.o acs/UHCOMBDB.o)
+# UIWEPBAR draws the per-class native v6c weapon bar. It is a shadow object, so
+# LOADACS does not list it. Without it only the stock slot bar appears.
+required=(DECORATE KEYCONF LOADACS acs/CORE8BDT.o acs/UHCOMBDB.o acs/UIWEPBAR.o)
 missing=()
 for lump in "${required[@]}"; do
   if [[ ! -v 'seen[${lump,,}]' ]]; then
@@ -79,6 +81,6 @@ if (( json )); then
   printf '{"status":"ok","path":"%s","entries":%d,"size_bytes":%d}\n' \
     "$json_path" "${#entries[@]}" "$size_bytes"
 else
-  printf 'status=ok path=%s entries=%d size_bytes=%d required=DECORATE,KEYCONF,LOADACS,acs/CORE8BDT.o,acs/UHCOMBDB.o\n' \
+  printf 'status=ok path=%s entries=%d size_bytes=%d required=DECORATE,KEYCONF,LOADACS,acs/CORE8BDT.o,acs/UHCOMBDB.o,acs/UIWEPBAR.o\n' \
     "$pk3_path" "${#entries[@]}" "$size_bytes"
 fi

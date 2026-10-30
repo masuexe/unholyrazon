@@ -108,6 +108,7 @@ NOT_IN_LOADACS = {
     "uicommon.acs": "base v6c import declarations; UICOMMON.o is supplied by the base package",
     "uiteamit": "v6c team-display shadow; loaded by the base LOADACS",
     "mugshots": "v6c mugshot resolver shadow; loaded by the base LOADACS",
+    "uiwepbar": "v6c weapon-bar shadow; loaded by the base LOADACS",
     "corejump": "v6c override; the base game LOADACS loads COREJUMP",
     "projtran": "v6b override; the base game LOADACS loads PROJTRAN",
     "teamcol": "v6b override; the base game LOADACS loads TEAMCOL",

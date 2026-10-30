@@ -338,6 +338,22 @@ native fallback. Arcanist's open wheel also received a visual spot check. All
 31 smoke checks passed; their general defaults still target v6b. The rebuilt
 package contains matching wheel bytecode and no diagnostic addon.
 
+### Class weapon bars (2026-10-30)
+
+v6c includes the UIX functionality in the base game. The always-on weapon bar
+is the base `UIWEPBAR` library. Do not load the v6b `8bdm-uix-v3bh` package on
+v6c. Its DECORATE root includes a v6b actor tree and cannot load.
+
+The mod now shadows `UIWEPBAR` with `src/acs_source/v6b_overrides/corescripts/systems/ui/UIWEPBAR.acs`.
+The shadow keeps the base slot bar and adds the Unholy fixed-loadout, Qwant,
+Nega Man and MakeAGoodZero bars. The bars read the same `uh_uixfw` named-script
+data as the native wheel. The v6c `WHEELLIB.acs` header is vendored under
+`v6b_overrides/_includes/mod_api/`. `compile-acs.sh` compiles the shadow, and
+`validate-build-pk3.sh` fails when `acs/UIWEPBAR.o` is absent.
+
+The former `UIXWEAP` shadow stays as v6b compatibility source. v6c does not
+load it, so it is not packed.
+
 ## Dedicated-client native team information (2026-10-29)
 
 The native UITEAMIT weapon display now reads the authorized UH server snapshot
