@@ -10,6 +10,7 @@
 - Restored native v6c weapon mechanics and hit properties (Skull Barrier counter knockback, Roll Swing sweep knockback and hit sounds, Rush Bike hit slowdown).
 - Synchronized Mega Man's copy weapons with v6c behaviors and baseline damage values. Established a decoupled architecture: added CoreDamageReplace for static 10x MM8BDM damage scaling (for map hazards/generic entities) and isolated copy weapons into pure _U chains to preserve daily damage multiplier scaling.
 - Break Dash retains full charge state and visual FX after hitting a player, allowing an immediate follow-up dash.
+- Unholy assist timers now share the native v6c assist bar stack and use the small icons. Long status lists such as multi-jump no longer overlap Deadly Firearms or other Unholy timers.
 - Fixed CXAirMan's energy bars staying filled online after spending energy on his ultimate or teleport.
 
 ## 4.0.0-beta.261024

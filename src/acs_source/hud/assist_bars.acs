@@ -1,38 +1,19 @@
-function void DrawAssistTimerBar(
-  int cam,
-  str flag_name,
-  str icon,
-  str bar_v_full,
-  str bar_v_empty,
-  str bar_h_full,
-  str bar_h_empty,
-  int max_ticks,
-  bool show_seconds
-) {
-  SetHudSize(320, 200, 0);
-  SetActivator(0, AAPTR_NULL);
+// Custom Unholy assist bars now feed the v6c modern assist-bar queue through
+// the ASSTLIB SetAssistBar* API. This keeps them in the same stack, size and
+// icon scale as native v6c entries (for example multi-jump), so icons no
+// longer overlap. Icons therefore use the small 16x16 graphics.
 
+function void AssistTimerEntry(int cam, str flag_name, str icon, int max_ticks, bool show_seconds, int cyan, int blue) {
   int flag = CheckActorInventory(cam, flag_name);
-  if (flag > 0) {
-    int pos = Get_And_Inc_AssistBarCount();
-    int x = Get_AssistDisplayBar_X(pos);
-    int y = Get_AssistDisplayBar_Y(pos);
-
-    BasicImageDisplay(icon, Get_And_Inc_AssistDisplayID(), x, y);
-    int number = flag;
-    if (show_seconds) {
-      number = flag / 35 + (flag % 35 > 0);
-    }
-    DrawBasicBarAndNumber(
-      bar_v_full, bar_v_empty,
-      bar_h_full, bar_h_empty,
-      x, y,
-      Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(),
-      ((flag * 8.0 / max_ticks) + 0.5) >> 16,
-      CheckActorInventory(cam, "AssistNumberFlag") > 0,
-      number
-    );
+  if (flag <= 0) { return; }
+  int idx = GetAssistBarID();
+  if (idx < 0) { return; }
+  SetAssistBarGraphic(idx, icon);
+  SetAssistBarBarAmount(idx, flag, max_ticks);
+  if (show_seconds) {
+    SetAssistBarBarNumber(idx, flag / 35 + (flag % 35 > 0));
   }
+  SetAssistBarBarColor(idx, cyan, blue);
 }
 
 script "uh_assist_OilSlider" (int cam) CLIENTSIDE {
@@ -41,38 +22,13 @@ script "uh_assist_OilSlider" (int cam) CLIENTSIDE {
     str icon = "OILBRD";
     if (CheckActorInventory(cam, "OilSliderFlag") <= 7)
       icon = "OILBROUT";
-    DrawAssistTimerBar(cam, "OilSliderFlag", icon,
-                       "AS_TV_OI", "AS_VR_16",
-                       "AS_TH_OI", "AS_HR_16",
-                       30, 0);
+    AssistTimerEntry(cam, "OilSliderFlag", icon, 30, false, 68, 47);
   }
 }
 
 script "uh_assist_SuperGUHUItem" (int cam) CLIENTSIDE {
   if (AssistDisplayBar_On()) {
-    SetHudSize(320, 200, 0);
-    int pos;
-    int x; int y;
-    SetActivator(0, AAPTR_NULL);
-
-    if (CheckActorInventory(cam, "SuperGuhuDoomFlag") > 0) {
-      int maxtimer = CheckGuhuMaxTimer(cam);
-      pos = Get_And_Inc_AssistBarCount();
-      x = Get_AssistDisplayBar_X(pos);
-      y = Get_AssistDisplayBar_Y(pos);
-
-      BasicImageDisplay("SUPGUHU", Get_And_Inc_AssistDisplayID(), x, y);
-      int timesec = CheckActorInventory(cam, "SuperGuhuTimer");
-      DrawBasicBarAndNumber(
-        "AS_TV_MA", "AS_VR_16",
-        "AS_TH_MA", "AS_HR_16",
-        x, y,
-        Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(),
-        ((CheckActorInventory(cam, "SuperGuhuTimer") * 8.0 / maxtimer) + 0.5) >> 16,
-        CheckActorInventory(cam, "AssistNumberFlag") > 0,
-        timesec
-      );
-    }
+    AssistTimerEntry(cam, "SuperGuhuDoomFlag", "MYSBOX03", CheckGuhuMaxTimer(cam), false, 176, 186);
   }
 }
 function int CheckGuhuMaxTimer(int cam) {
@@ -88,98 +44,58 @@ function int CheckGuhuMaxTimer(int cam) {
 
 script "uh_assist_GoldenWaspBomb" (int cam) CLIENTSIDE {
   if (AssistDisplayBar_On()) {
-    DrawAssistTimerBar(cam, "GoldenWaspTimer", "GOLDWASP",
-                       "AS_TV_TB", "AS_VR_16",
-                       "AS_TH_TB", "AS_HR_16",
-                       176, 0);
+    AssistTimerEntry(cam, "GoldenWaspTimer", "TANKOW01", 176, false, 228, 163);
   }
 }
 
 script "uh_assist_DeadlyFireArms" (int cam) CLIENTSIDE {
   if (AssistDisplayBar_On()) {
-    SetHudSize(320, 200, 0);
-    SetActivator(0, AAPTR_NULL);
-
     int flag = CheckActorInventory(cam, "DeadlyFireArmsFlag");
     if (flag > 0) {
-      int pos = Get_And_Inc_AssistBarCount();
-      int x = Get_AssistDisplayBar_X(pos);
-      int y = Get_AssistDisplayBar_Y(pos);
-
-      BasicImageDisplay("ICONI_TF", Get_And_Inc_AssistDisplayID(), x, y);
-      int timesec = flag;
-      timesec = timesec / 35 + (timesec % 35 > 0);
-      DrawBasicBarAndNumber("AS_TV_TF", "AS_VR_16",
-                            "AS_TH_TF", "AS_HR_16",
-                            x, y,
-                            Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(), Get_And_Inc_AssistDisplayID(),
-                            ((flag * 8.0 / max(flag, 840)) + 0.5) >> 16,
-                            CheckActorInventory(cam, "AssistNumberFlag") > 0,
-                            timesec);
+      AssistTimerEntry(cam, "DeadlyFireArmsFlag", "TANKOW05", max(flag, 840), true, 172, 223);
     }
   }
 }
 
 script "uh_assist_CalmMind" (int cam) CLIENTSIDE {
   if (AssistDisplayBar_On()) {
-    DrawAssistTimerBar(cam, "CalmMindFlag", "C_A_01A",
-                       "ASVS001A", "AS_VR_16",
-                       "ASHS001A", "AS_HR_16",
-                       350, 1);
+    AssistTimerEntry(cam, "CalmMindFlag", "C_A_01A", 350, true, 4, 39);
   }
 }
 
 script "uh_assist_GhostEyeShadowInvis" (int cam) CLIENTSIDE {
   if (AssistDisplayBar_On()) {
-    DrawAssistTimerBar(cam, "GhostShadowInvisFlag", "GHOSTESI",
-                       "AS_TV_GI", "AS_VR_16",
-                       "AS_TH_GI", "AS_HR_16",
-                       1050, 1);
+    AssistTimerEntry(cam, "GhostShadowInvisFlag", "GHOSTESI", 1050, true, 4, 193);
   }
 }
 
 script "uh_assist_YellowWizardReflect" (int cam) CLIENTSIDE {
   if (AssistDisplayBar_On()) {
-    DrawAssistTimerBar(cam, "YellowWizardReflectFlag", "C_A_46B",
-                       "ASVS046B", "AS_VR_16",
-                       "ASHS046B", "AS_HR_16",
-                       232, 1);
+    AssistTimerEntry(cam, "YellowWizardReflectFlag", "C_A_46B", 232, true, 218, 220);
   }
 }
 
 script "uh_assist_YellowWizardInvun" (int cam) CLIENTSIDE {
   if (AssistDisplayBar_On()) {
-    DrawAssistTimerBar(cam, "YellowWizardInvunFlag", "C_A_46C",
-                       "ASVS046C", "AS_VR_16",
-                       "ASHS046C", "AS_HR_16",
-                       232, 1);
+    AssistTimerEntry(cam, "YellowWizardInvunFlag", "C_A_46C", 232, true, 228, 163);
   }
 }
 
 script "uh_assist_YellowWizardSpread" (int cam) CLIENTSIDE {
   if (AssistDisplayBar_On()) {
-    DrawAssistTimerBar(cam, "YellowWizardSpreadFlag", "C_A_46D",
-                       "ASVS046D", "AS_VR_16",
-                       "ASHS046D", "AS_HR_16",
-                       232, 1);
+    AssistTimerEntry(cam, "YellowWizardSpreadFlag", "C_A_46D", 232, true, 109, 131);
   }
 }
 
 script "uh_assist_YellowWizardInvis" (int cam) CLIENTSIDE {
   if (AssistDisplayBar_On()) {
-    DrawAssistTimerBar(cam, "YellowWizardInvisFlag", "C_A_46F",
-                       "ASVS046F", "AS_VR_16",
-                       "ASHS046F", "AS_HR_16",
-                       232, 1);
+    AssistTimerEntry(cam, "YellowWizardInvisFlag", "C_A_46F", 232, true, 59, 246);
   }
 }
 
 // The Bible is a timed status, independent of Eden's active-item charge bar.
 script "uh_assist_EdenBibleFlight" (int cam) CLIENTSIDE {
   if (AssistDisplayBar_On()) {
-    DrawAssistTimerBar(cam, "TheBibleFlightFlag", "CI59C033",
-                       "ASVS033A", "AS_VR_16",
-                       "ASHS033A", "AS_HR_16",
-                       180, true);
+    AssistTimerEntry(cam, "TheBibleFlightFlag", "CI59C033", 180, true, 192, 198);
   }
 }
