@@ -107,7 +107,7 @@ BASE_GAME_SOUNDS = frozenset("""
     weapon/wheelstart weapon/wrapexplode weapon/wrapfire weapons/busters/laserbusterfire3 weapons/busters/megabusterfire weapons/mm1/firestormfire
     weapons/mm1/hyperbombexplode weapons/mm1/hyperbombfire weapons/mm1/hyperbombsmallexplode weapons/mm1/iceslasherfire weapons/mm1/oilsliderfire weapons/mm1/oilsliderslide
     weapons/mm1/rollingcutterfly weapons/mm1/superarmload weapons/mm1/superarmsplit weapons/mm1/thunderbeamfire weapons/mm1/timeslowfire weapons/mm10/chillspikebreak
-    weapons/mm10/chillspikefire weapons/mm10/chillspikeland weapons/mm10/commandobombfire weapons/mm10/reboundstrikerfire weapons/mm10/solarblazefire weapons/mm10/solarblazesplit
+    weapons/mm10/chillspikefire weapons/mm10/chillspikeland weapons/mm10/commandobombexplosion weapons/mm10/commandobombfire weapons/mm10/reboundstrikerfire weapons/mm10/solarblazefire weapons/mm10/solarblazesplit
     weapons/mm10/thunderwoolexplode weapons/mm10/thunderwoolfire weapons/mm10/triplebladefire weapons/mm10/watershieldactivate weapons/mm10/watershieldfire weapons/mm10/wheelcutteractivate
     weapons/mm10/wheelcutterfire weapons/mm2/airshooterfire weapons/mm2/atomicfirecharge1 weapons/mm2/atomicfirecharge2 weapons/mm2/atomicfirecharge3 weapons/mm2/atomicfirefire
     weapons/mm2/bubbleleadfire weapons/mm2/crasbombexplode weapons/mm2/crashbombfire weapons/mm2/crashbombland weapons/mm2/leafshieldactive weapons/mm2/leafshieldcounter

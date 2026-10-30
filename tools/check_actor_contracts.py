@@ -143,6 +143,7 @@ BASE_GAME_ACTORS = frozenset(
     CentaurFlashQuarterAlphaGiver CentaurFlashTime CentaurFlashTimeShort ChillDebris ChillFreeze ChillFreezeGravity
     ChillFreezeJump ChillFreezeTimer ChillSpikeCeilingFX1 ChillSpikeCeilingFX2 ChillSpikeFloorFX1 ChillSpikeFloorFX2
     ChillSpikeWallFX1 ChillSpikeWallFX2 Clip CommandoBombSecondary CommandoCooldown CommandoSwitch
+    CommandoTrailFX
     ConcreteFX ConcreteTime ConcreteVision ConfettiSpawner CopyShot CopyVisionAmmo
     CopyVisionFlag CopyVisionRedirect CopyVisionSpawner CossackTeamFlag CountBomb CountbombExplodeFX
     CrashBombExplode CriticalDeath CriticalDeathGiver CriticalDeathSpawner CrystalEyeHit CutterFlag

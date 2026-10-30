@@ -14,6 +14,7 @@
 - Gravity Hold now has its v6c attack cooldown and launches the players it hits.
 - Gravity Hold's HUD bar darkens while its attack cooldown is active.
 - Break Dash keeps a fully charged dash after it hits a player. The kept charge shows on the hand, clears when there is not enough ammo, and the next fire uses the kept charge level.
+- Decoupled Mega Man copy-weapon projectiles from global MM8BDM replacements: created CoreDamageReplace for static 10x core damage scaling (map hazards/generic entities) and isolated Commando Bomb into an independent _U projectile chain with daily damage multiplier scaling.
 
 ## 4.0.0-beta.261024
 
