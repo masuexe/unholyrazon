@@ -11,7 +11,7 @@ script "core_jumpcancel" ENTER
 {
 	int pln = PlayerNumber();
 
-	if (PlayerIsBot(pln)) { terminate; } // Preserve UH bot movement ownership.
+	bool isBot = PlayerIsBot(pln);
 
 	int lastVelZ;
 	int InputButtons;
@@ -46,6 +46,14 @@ script "core_jumpcancel" ENTER
 
 		for(int i = 0; i < HookFunctions_Max[HF_JUMP_NONSPECIFIC]; i++) {
 			ACS_NamedExecuteWithResult(GetHookFunction(HF_JUMP_NONSPECIFIC, i), grounded, falling, rising);
+		}
+
+		// Bots still need v6c IsGrounded/IsAirborne updates for Gravity Hold
+		// and slam checks. Only their jump input remains owned by UH bot AI.
+		if (isBot) {
+			lastVelZ = velZ;
+			Delay(1);
+			continue;
 		}
 
 		switch(JumpStatus(InputButtons, InputOldButtons)) {

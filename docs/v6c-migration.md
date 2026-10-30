@@ -786,6 +786,10 @@ Method:
 - The player pain path `Pain.GravityHold` in
   `src/actors/player/classbase/root/ClassBase_UH10_BaseDamageTypes.dec` uses the
   v6c `GravityHoldHit` chain again, so Gravity Hold flings the victim.
+- `JUMPCANC` must run the nonspecific movement hooks for bots too. Skipping
+  their entire movement loop leaves `IsGrounded` unset, so Gravity Hold takes
+  its airborne branch and pushes grounded bots into the floor. Bots now run
+  the passive hooks every tic; UH bot AI still owns their jump input.
 
 Intentional deviation kept (Unholy mechanic):
 
