@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261031
 
+- Fixed Void Walker’s secondary-attack skill banners and notification sounds being hidden from other players and spectators online.
 - Fixed Decoy Bot, Nega Man and related Shiny classes losing their projectile colors after upgrading to MM8BDM v6c, including when projectile team colors are disabled.
 
 ## 4.0.0-beta.261030
