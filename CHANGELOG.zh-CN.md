@@ -10,6 +10,7 @@
 - 恢复 v6c 原生武器判定与命中特性（包括 Skull Barrier 反击与 Roll Swing 扫击击退、Rock Kick 与 Roll Swing 命中音效、Rush Bike 命中减速等）。
 - 洛克人（Mega Man）复制武器全面对齐 v6c 机制与基础数值。建立解耦分层架构：新建 CoreDamageReplace 承载原版 10 倍静态核心伤害放大（供地图机关与通用环境使用），并将复制武器转为纯 _U 独立链以稳定保留每日伤害随机倍率。
 - Break Dash 在满蓄力冲刺命中玩家后保留蓄力等级，可直接衔接下一次冲刺。
+- 恢复 LMS 模式下的局内奖牌奖励（依托 MM8BDM v6c 底层对高频 Accuracy/Precision 奖牌的自动拦截以及专属 8-bit 像素表现风格）。
 - Unholy 的辅助计时条现在与 v6c 原生辅助条共用同一队列并使用小图标；多段跳等状态与 Deadly Firearms 等 Unholy 计时条不再相互覆盖。
 - 修复空气男（CXAirMan）联机对局中释放大招或瞬移后能量条偶现未同步扣除的问题。
 
