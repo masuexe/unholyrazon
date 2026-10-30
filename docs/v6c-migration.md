@@ -783,9 +783,13 @@ Method:
   explosions) and `mm3/searchsnake.dec` (v6c spawner/crawler chain).
 - `mm1/rollingcutter.dec` takes the v6c pierce limit, merged spawn frames and
   TID teardown.
-- The player pain path `Pain.GravityHold` in
-  `src/actors/player/classbase/root/ClassBase_UH10_BaseDamageTypes.dec` uses the
-  v6c `GravityHoldHit` chain again, so Gravity Hold flings the victim.
+- `ClassBaseUH00` now inherits native `ClassBase1`; UH layers still precede
+  the stock custom slots. Native `goto` destinations remain bound to native
+  states, so UH10 keeps adapters for Gravity Hold and adds the missing Skull
+  Barrier, Rock Kick, Roll Swing, Rush Bike and campaign copy-Flame Sword pain
+  paths. These run native effects and then UH pain bookkeeping. Native-only
+  death paths also get adapters so they retain UH death cleanup. The redundant
+  early `Pain.GravityHold` alias is removed; its effect-to-UH adapter remains.
 - `JUMPCANC` must run the nonspecific movement hooks for bots too. Skipping
   their entire movement loop leaves `IsGrounded` unset, so Gravity Hold takes
   its airborne branch and pushes grounded bots into the floor. Bots now run

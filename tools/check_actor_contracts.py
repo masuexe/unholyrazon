@@ -206,8 +206,8 @@ BASE_GAME_ACTORS = frozenset(
     WeaponChargeLevel WeaponEnergy WheelCount WheelCutterAmmo WheelCutterCheck WheelCutterDestroy
     WheelCutterLaunchPlacer WheelCutterWallCheck WildCoilAmmo WildCoilFlag WilyIcePainPower WilyTeamFlag
     WireHookShotDelay
-    // Added in MM8BDM v6c. The copy-weapon port references these base actors;
-    // each one is defined in for_8bdm-v6c/mm8bdm-v6c/actors/inventory.
+    // Added in MM8BDM v6c. Copy weapons and shared pain adapters reference
+    // these base actors under actors/inventory and actors/boss.
     BreakDashAttack1_CI BreakDashAttack2_CI BreakDashAttack3_CI
     CentaurFlashCooldownFlag CentaurFlashCooldowner IceWallIcePitFreeze
     PharaohFX PhotonMissileCooldown_P PhotonMissileDelay_W
@@ -215,6 +215,8 @@ BASE_GAME_ACTORS = frozenset(
     FlameSwordSlash_CI FlameSwordOilPitIgnite FlameSwordFlameFX4G FlameSwordFlameFX5 FlameSwordDunk_CI FlameSwordQuake_CI
     SearchSnakeSpawner SearchSnakeCrawler
     GravityHold_Fire_P GravityHoldCooldown GravityHoldCooldowner GravityHoldExplosionFX GravityHoldExplosionFXCeiling GravityHoldHit
+    RockKickHit RollSwingHit RollSwingSweepHit SkullBarrierHit SkullBarrierHitBig
+    FlameSwordHit_CI? FlameSwordStun_CI
 """.split()
 )
 

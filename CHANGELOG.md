@@ -9,6 +9,7 @@
 - Added initial MM8BDM v6c support. Current migration builds require v6c; gameplay and multiplayer compatibility testing is ongoing.
 - Fixed CXAirMan's energy bars staying filled online after spending energy on his ultimate or teleport.
 - Fixed Gravity Hold failing to launch grounded bots in v6c migration builds. Grounded bots are now flung upward, while airborne bots are slammed downward.
+- Restored v6c Skull Barrier counter knockback, Roll Swing sweep knockback, Rock Kick and Roll Swing hit sounds, and Rush Bike hit slowdown. These hits keep Unholy's immunity and extra-life handling, and v6c special deaths keep their normal Unholy cleanup.
 
 ## 4.0.0-beta.261024
 

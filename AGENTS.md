@@ -141,17 +141,23 @@ Files earlier in the chain cannot reference actors defined later.
 
 ```
 ClassBase0 (MM8BDM core)
+ → ClassBase1 (MM8BDM weapon Pain/Death)
  → ClassBaseUH00  (basic actor + shared pain helpers)
   → ClassBase_UH10_BaseDamageTypes  (MM8BDM Pain/Death aliases)
    → ClassBase_UH20_HitEffects  (Unholy hit, protection, and status effects)
     → ClassBase_UH30_MovementEffects  (Unholy push, fling, and lift effects)
      → ClassBase_UH40_DeathEffects  (Unholy Death effects grouped by outcome)
       → ClassBaseSlot0 … ClassBaseSlot100 → ClassBase2
-       → CustWepClassBase (MM8BDM custom-weapon base)
+       → ClassBase → CustWepClassBase (MM8BDM custom-weapon base)
         → MegaManU / BusterExpert
 ```
 
 The `actors/player/classbase/customslots/` directory (referenced by `classbase2_custompain.txt`) does not exist in this mod — the `_classbaseslot.txt` and its 100 slot files resolve from the base game v6c PK3. These are extension slots, not playable classes; the stock slots are empty. The mod only needs to provide `classbase2_custompain.txt` (which overrides the base game's version) and the `ClassBase_UH*.dec` files it includes. UH20/UH30/UH40 preserve the existing state labels and actions; they only reorganize the former U2-U4 definitions into dependency-safe functional layers.
+
+Inherited DECORATE `goto` destinations stay bound to the class that declared
+the states. Keep UH10 adapters where native Pain/Death paths must run UH
+immunity, extra-life, or death cleanup. The Gravity Hold pain adapter and the
+bot grounding updates are still required after inheriting `ClassBase1`.
 
 ## ACS
 
