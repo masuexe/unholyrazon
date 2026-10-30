@@ -10,6 +10,9 @@
 - Fixed CXAirMan's energy bars staying filled online after spending energy on his ultimate or teleport.
 - Fixed Gravity Hold failing to launch grounded bots in v6c migration builds. Grounded bots are now flung upward, while airborne bots are slammed downward.
 - Restored v6c Skull Barrier counter knockback, Roll Swing sweep knockback, Rock Kick and Roll Swing hit sounds, and Rush Bike hit slowdown. These hits keep Unholy's immunity and extra-life handling, and v6c special deaths keep their normal Unholy cleanup.
+- Mega Man's copy weapons now follow the v6c base game's behavior and damage values while keeping Unholy's own mechanics.
+- Gravity Hold now has its v6c attack cooldown and launches the players it hits.
+- Break Dash keeps a fully charged dash after it hits a player. The kept charge shows on the hand, clears when there is not enough ammo, and the next fire uses the kept charge level.
 
 ## 4.0.0-beta.261024
 
