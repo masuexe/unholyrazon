@@ -862,3 +862,33 @@ the acceptance.
 Optional remaining work: a real-client native-body diagnostic for the five
 adaptive buster upgrades. The restriction policy itself is guarded statically,
 so this is not required for the acceptance above.
+
+
+## Projectile class colors (2026-10-30)
+
+The v6c projectile hooks call `core_projtransgive` directly. The previous UH
+class-color branches lived only in `ProjTeamColor2`, so ordinary projectile
+spawns bypassed them and the native team-mode guard terminated coloring in LMS.
+The v6c entry point now selects the UH class palette when native team coloring
+is inactive. Legacy inventory callers delegate to the same entry point.
+Native team coloring retains priority, including the v6c `user_translateLikePlayer`
+translation argument. `user_NoTranslation`, the owner's
+`NoProjectileTeamTranslation`, and the class-only `user_NoClassTranslation`
+opt-out remain effective. The first Shiny Mega Man palette (slot 6) now also
+ignores the client team-color toggle, as the other class palettes already did.
+The existing Decoy rail helper remains in place for effects without an owner.
+
+The entry point separates eligibility (`CanTranslateProjectile`), palette
+selection (`TeamProjectileSlot` and `uh_ProjectileClassSlot`), and translation
+base selection (`ProjectileTranslationBase`). `paletteSlot` denotes a palette
+index rather than a team identity. Named UH class-slot constants cover lookup,
+client-toggle policy and the Decoy rail helper; `IsClassProjectileSlot` keeps
+the legacy four-argument setter's slot classification explicit.
+
+Validation: the smoke gate passed all 35 checks. A temporary instrumented
+PROJTRAN addon on the v6c smoke profile passed 288 offline engine assertions:
+six class flags, four white/black combinations and two opt-out markers, both
+server/client toggle values, and both direct-script and legacy-inventory entry
+points. The probe observed the actual translation id applied by the client
+setter. It did not test remote-client delivery or native team-mode precedence.
+The release PK3 contains the uninstrumented library.

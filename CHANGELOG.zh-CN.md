@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261031
+
+- 修复升级到 MM8BDM v6c 后 Decoy Bot、Nega Man 及相关 Shiny 职业的投射物专属配色失效的问题，关闭投射物团队着色时也能正常显示。
+
 ## 4.0.0-beta.261030
 
 - 核心运行环境正式迁移至 MM8BDM v6c。重构底层 ClassBase 继承链以对接原生 ClassBase1，并补齐 Unholy 专属受击与死亡适配器，确保免伤与续命机制稳定。

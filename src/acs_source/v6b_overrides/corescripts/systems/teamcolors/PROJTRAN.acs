@@ -4,38 +4,79 @@
 #include "8BDMDEFS.acs"
 #include "8BDMVARS.acs"
 
+// Class palette slots share the projectile tables built by TEAMCOL.
+#define UH_PROJ_SLOT_NONE -1
+#define UH_PROJ_SLOT_MEGAMAN_SHINY 6 // First of seven consecutive color slots.
+#define UH_PROJ_SLOT_QWANT_SHINY 13
+#define UH_PROJ_SLOT_NEGAMAN 14
+#define UH_PROJ_SLOT_NEGAMAN_SHINY 15
+#define UH_PROJ_SLOT_DECOYBOT 16
+#define UH_PROJ_SLOT_DECOYBOT_SHINY 17
+
 script "core_projtransgive" (void)
 {
-	if(!isTeamGame || isCooperative)
+	int owner = ACS_NamedExecuteWithResult("core_gettarget", false, true);
+	if(!CanTranslateProjectile(owner))
 		terminate;
 
-	int pln = ACS_NamedExecuteWithResult("core_gettarget", false, true);
-
-	int team = GetPlayerInfo(pln, PLAYERINFO_TEAM);
-	if(team < 0)
-		terminate;
-
-	if(CheckForVar("user_NoTranslation"))
-		terminate;
-
-	if(CheckActorInventory(pln + PLN_TID, "NoProjectileTeamTranslation"))
-		terminate;
-
-	if(!ProjTeamColorCvarServer())
+	// Select one palette: native team colors take priority over UH class colors.
+	int paletteSlot = TeamProjectileSlot(owner);
+	bool classPalette = paletteSlot < 0;
+	if(classPalette)
+		paletteSlot = ACS_NamedExecuteWithResult("uh_ProjectileClassSlot");
+	if(paletteSlot < 0)
 		terminate;
 
 	bool whites = CheckForVar("user_TranslateWhiteColors");
 	bool blacks = CheckForVar("user_TranslateBlackColors");
+	int translation = ProjectileTranslationBase(classPalette, whites, blacks);
+	ACS_NamedExecuteWithResult("core_Set_Projectile_Translation", paletteSlot, whites, blacks, translation);
+}
 
-	if(CheckForVar("user_translateLikePlayer")) {
+function bool CanTranslateProjectile(int owner) {
+	if(CheckForVar("user_NoTranslation") || owner < 0)
+		return false;
+	return !CheckActorInventory(owner + PLN_TID, "NoProjectileTeamTranslation");
+}
+
+function int TeamProjectileSlot(int owner) {
+	if(!isTeamGame || isCooperative || !ProjTeamColorCvarServer())
+		return UH_PROJ_SLOT_NONE;
+	return GetPlayerInfo(owner, PLAYERINFO_TEAM);
+}
+
+function int ProjectileTranslationBase(bool classPalette, bool whites, bool blacks) {
+	// v6c's player-like translation base applies only to native team colors.
+	if(!classPalette && CheckForVar("user_translateLikePlayer")) {
 		int translation = GetActorProperty(0, APROP_Mass);
 		if(translation == 100)
-			translation = TCLR_DEFAULT;
-	} else {
-		translation = WhitesBlacksOffset(whites, blacks);
+			return TCLR_DEFAULT;
+		return translation;
 	}
+	return WhitesBlacksOffset(whites, blacks);
+}
 
-	ACS_NamedExecuteWithResult("core_Set_Projectile_Translation", team, whites, blacks, translation);
+function bool IsClassProjectileSlot(int paletteSlot) {
+	return paletteSlot >= UH_PROJ_SLOT_MEGAMAN_SHINY
+		&& paletteSlot <= UH_PROJ_SLOT_DECOYBOT_SHINY;
+}
+
+// Separate script keeps the caller's projectile activator intact.
+script "uh_ProjectileClassSlot" (void)
+{
+	SetResultValue(UH_PROJ_SLOT_NONE);
+	if(CheckForVar("user_NoClassTranslation"))
+		terminate;
+	if(!SetActivator(0, AAPTR_TARGET))
+		terminate;
+
+	int color = CheckInventory("MegaManSColor_F");
+	if(color > 0) SetResultValue(UH_PROJ_SLOT_MEGAMAN_SHINY + color - 1);
+	else if(CheckInventory("IsQwantSFlag")) SetResultValue(UH_PROJ_SLOT_QWANT_SHINY);
+	else if(CheckInventory("IsNegaManSFlag")) SetResultValue(UH_PROJ_SLOT_NEGAMAN_SHINY);
+	else if(CheckInventory("IsNegaManFlag")) SetResultValue(UH_PROJ_SLOT_NEGAMAN);
+	else if(CheckInventory("IsDecoyBotSFlag")) SetResultValue(UH_PROJ_SLOT_DECOYBOT_SHINY);
+	else if(CheckInventory("IsDecoyBotFlag")) SetResultValue(UH_PROJ_SLOT_DECOYBOT);
 }
 
 // This script is vestigial
@@ -56,13 +97,15 @@ function bool ProjTeamColorCvarServer(void) {
 	return (GetCvar("mm8bdm_sv_projteamcolor")>0);
 }
 
-script "core_Set_Projectile_Translation" (int i, int whites, int blacks, int translation) CLIENTSIDE
+script "core_Set_Projectile_Translation" (int paletteSlot, int whites, int blacks, int translation) CLIENTSIDE
 {
-	if(ProjTeamColorCvarClient() || i > 6) { // UH class palettes ignore the team-color toggle.
+	// Keep the native four-argument interface; its slot identifies class palettes.
+	// The client team-color toggle does not disable class palettes.
+	if(ProjTeamColorCvarClient() || IsClassProjectileSlot(paletteSlot)) {
 		if(translation == 0)
 			translation = WhitesBlacksOffset(whites, blacks);
 
-		Thing_SetTranslation(0, translation + i);
+		Thing_SetTranslation(0, translation + paletteSlot);
 	}
 }
 
@@ -102,13 +145,13 @@ script "uh_Check_NoClassTranslation" (void) {
   SetResultValue(CheckForVar("user_NoClassTranslation"));
 }
 
-// Rail trail/puff CLIENTSIDEONLY FX often have null target, so ProjTeamColor2
-// cannot see IsDecoyBotFlag and falls through — leaving StealthS green Translation.
-// Force Decoy team slot after spawnfunc on Decoy_F_23* actors.
+// Rail trail/puff CLIENTSIDEONLY FX often have null target, so class lookup
+// cannot see IsDecoyBotFlag and falls through, leaving the StealthS translation.
+// Force the Decoy class slot after spawnfunc on Decoy_F_23* actors.
 script "uh_ForceDecoyRailProjColor" (void) CLIENTSIDE {
-  int slot = 16;
+  int slot = UH_PROJ_SLOT_DECOYBOT;
   int cpn = ConsolePlayerNumber();
   if (cpn >= 0 && CheckActorInventory(PLN_TID + cpn, "IsDecoyBotSFlag"))
-    slot = 17;
+    slot = UH_PROJ_SLOT_DECOYBOT_SHINY;
   ACS_NamedExecuteWithResult("core_Set_Projectile_Translation", slot, 0, 0);
 }

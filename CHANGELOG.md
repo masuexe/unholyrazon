@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261031
+
+- Fixed Decoy Bot, Nega Man and related Shiny classes losing their projectile colors after upgrading to MM8BDM v6c, including when projectile team colors are disabled.
+
 ## 4.0.0-beta.261030
 
 - Migrated core runtime to MM8BDM v6c. Adapted the class hierarchy to inherit native v6c ClassBase1 with dedicated pain and death adapters to ensure Unholy immunity and proper cleanups.
