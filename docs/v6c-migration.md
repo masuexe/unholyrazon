@@ -783,6 +783,9 @@ Method:
   explosions) and `mm3/searchsnake.dec` (v6c spawner/crawler chain).
 - `mm1/rollingcutter.dec` takes the v6c pierce limit, merged spawn frames and
   TID teardown.
+- The player pain path `Pain.GravityHold` in
+  `src/actors/player/classbase/root/ClassBase_UH10_BaseDamageTypes.dec` uses the
+  v6c `GravityHoldHit` chain again, so Gravity Hold flings the victim.
 
 Intentional deviation kept (Unholy mechanic):
 
