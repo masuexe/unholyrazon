@@ -12,6 +12,7 @@
 - 恢复 v6c Skull Barrier 反击与 Roll Swing 扫击的击退、Rock Kick 与 Roll Swing 的命中音效，以及 Rush Bike 的命中减速；这些命中仍保留 Unholy 的免伤与续命处理，v6c 特殊死亡也会正常清理 Unholy 状态。
 - 洛克人的复制武器现在与 v6c 原版行为及基础数值一致，同时保留 Unholy 自身机制。
 - Gravity Hold 现在拥有与 v6c 一致的使用冷却，并会将命中的玩家击飞。
+- Gravity Hold 在攻击冷却期间，HUD 能量条会变暗显示。
 - Break Dash 在满蓄力冲刺命中玩家后会保留蓄力：手部保持蓄力闪烁，弹药不足时自动清除，再次开火会直接使用保留的蓄力等级。
 
 ## 4.0.0-beta.261024
