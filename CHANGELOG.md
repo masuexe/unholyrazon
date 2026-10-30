@@ -9,7 +9,6 @@
 - Migrated core runtime to MM8BDM v6c. Adapted the class hierarchy to inherit native v6c ClassBase1 with dedicated pain and death adapters to ensure Unholy immunity and proper cleanups.
 - Restored native v6c weapon mechanics and hit properties (Skull Barrier counter knockback, Roll Swing sweep knockback and hit sounds, Rush Bike hit slowdown).
 - Synchronized Mega Man's copy weapons with v6c behaviors and baseline damage values. Established a decoupled architecture: added CoreDamageReplace for static 10x MM8BDM damage scaling (for map hazards/generic entities) and isolated copy weapons into pure _U chains to preserve daily damage multiplier scaling.
-- Synchronized Gravity Hold with v6c attack cooldown and HUD bar dimming, and fixed launch/slam physics on grounded and airborne bots.
 - Break Dash retains full charge state and visual FX after hitting a player, allowing an immediate follow-up dash.
 - Fixed CXAirMan's energy bars staying filled online after spending energy on his ultimate or teleport.
 
