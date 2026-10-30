@@ -4,17 +4,14 @@
 
 ---
 
-## Unreleased
+## 4.0.0-beta.261030
 
-- Added initial MM8BDM v6c support. Current migration builds require v6c; gameplay and multiplayer compatibility testing is ongoing.
+- Migrated core runtime to MM8BDM v6c. Adapted the class hierarchy to inherit native v6c ClassBase1 with dedicated pain and death adapters to ensure Unholy immunity and proper cleanups.
+- Restored native v6c weapon mechanics and hit properties (Skull Barrier counter knockback, Roll Swing sweep knockback and hit sounds, Rush Bike hit slowdown).
+- Synchronized Mega Man's copy weapons with v6c behaviors and baseline damage values. Established a decoupled architecture: added CoreDamageReplace for static 10x MM8BDM damage scaling (for map hazards/generic entities) and isolated copy weapons into pure _U chains to preserve daily damage multiplier scaling.
+- Synchronized Gravity Hold with v6c attack cooldown and HUD bar dimming, and fixed launch/slam physics on grounded and airborne bots.
+- Break Dash retains full charge state and visual FX after hitting a player, allowing an immediate follow-up dash.
 - Fixed CXAirMan's energy bars staying filled online after spending energy on his ultimate or teleport.
-- Fixed Gravity Hold failing to launch grounded bots in v6c migration builds. Grounded bots are now flung upward, while airborne bots are slammed downward.
-- Restored v6c Skull Barrier counter knockback, Roll Swing sweep knockback, Rock Kick and Roll Swing hit sounds, and Rush Bike hit slowdown. These hits keep Unholy's immunity and extra-life handling, and v6c special deaths keep their normal Unholy cleanup.
-- Mega Man's copy weapons now follow the v6c base game's behavior and damage values while keeping Unholy's own mechanics.
-- Gravity Hold now has its v6c attack cooldown and launches the players it hits.
-- Gravity Hold's HUD bar darkens while its attack cooldown is active.
-- Break Dash keeps a fully charged dash after it hits a player. The kept charge shows on the hand, clears when there is not enough ammo, and the next fire uses the kept charge level.
-- Decoupled Mega Man copy-weapon projectiles from global MM8BDM replacements: created CoreDamageReplace for static 10x core damage scaling (map hazards/generic entities) and isolated Commando Bomb into an independent _U projectile chain with daily damage multiplier scaling.
 
 ## 4.0.0-beta.261024
 
