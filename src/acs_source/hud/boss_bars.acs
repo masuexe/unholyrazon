@@ -175,6 +175,17 @@ script "DrawBar_TidalTito_W" (void) {
   TidalTito_DrawBar(UHBAR_TIDALTITO_BOSSAMMO);
 }
 
+function str UH_VWFormatPct(bool alive, int pct, bool equipped, str elemCol, str tag) {
+  if (!alive) {
+    return StrParam(s:" \cu", s:tag, s:":--% ");
+  }
+  str col = (pct <= 25) ? "\cr" : elemCol;
+  if (equipped) {
+    return StrParam(s:"\c-[", s:col, s:tag, s:":", i:pct, s:"%\c-]");
+  }
+  return StrParam(s:" ", s:col, s:tag, s:":", i:pct, s:"% ");
+}
+
 script "DrawBar_VoidWalker_W" (int type) {
   DrawBarColor(202, 61);
   str icon;
@@ -202,9 +213,64 @@ script "DrawBar_VoidWalker_W" (int type) {
         else {icon = "FRORBANM";}
       }
       break;
+    case 5:
+      icon = "UB054MUG";
+      break;
   }
   SetHudSize(320, 200, 0);
   AdjustedImageDisplayFlag(icon, icon, UH_IMAGE_ID_BASE - 130, UH_IMAGE_ID_BASE - 131, 16.1, 64.1, 50.1, 184.1, HUDMSG_LAYER_UNDERHUD);
+
+  int maxHp = CheckInventory("VWOrbMaxHP");
+  if (maxHp <= 0) maxHp = 1000;
+
+  int hp0 = CheckInventory("VWOrbHP0");
+  int hp1 = CheckInventory("VWOrbHP1");
+  int hp2 = CheckInventory("VWOrbHP2");
+  int hp3 = CheckInventory("VWOrbHP3");
+
+  bool a0 = CheckInventory("VoidWalker_W") > 0 && hp0 > 0;
+  bool a1 = CheckInventory("VoidWalker_W2") > 0 && hp1 > 0;
+  bool a2 = CheckInventory("VoidWalker_W3") > 0 && hp2 > 0;
+  bool a3 = CheckInventory("VoidWalker_W4") > 0 && hp3 > 0;
+
+  int p0 = a0 ? (hp0 * 100 / maxHp) : 0;
+  int p1 = a1 ? (hp1 * 100 / maxHp) : 0;
+  int p2 = a2 ? (hp2 * 100 / maxHp) : 0;
+  int p3 = a3 ? (hp3 * 100 / maxHp) : 0;
+  if (p0 > 100) p0 = 100;
+  if (p1 > 100) p1 = 100;
+  if (p2 > 100) p2 = 100;
+  if (p3 > 100) p3 = 100;
+
+  int eq = -1;
+  if (type == 0) eq = 0;
+  else if (type == 2) eq = 1;
+  else if (type == 3) eq = 2;
+  else if (type == 4) eq = 3;
+
+  str horiText = StrParam(
+    s:UH_VWFormatPct(a0, p0, eq == 0, "\cd", "W"), s:" ",
+    s:UH_VWFormatPct(a1, p1, eq == 1, "\ck", "E"), s:"\n",
+    s:UH_VWFormatPct(a2, p2, eq == 2, "\cv", "A"), s:" ",
+    s:UH_VWFormatPct(a3, p3, eq == 3, "\cg", "F")
+  );
+
+  str vertText = StrParam(
+    s:UH_VWFormatPct(a0, p0, eq == 0, "\cd", "W"), s:"\n",
+    s:UH_VWFormatPct(a1, p1, eq == 1, "\ck", "E"), s:"\n",
+    s:UH_VWFormatPct(a2, p2, eq == 2, "\cv", "A"), s:"\n",
+    s:UH_VWFormatPct(a3, p3, eq == 3, "\cg", "F")
+  );
+
+  SetFont("SMALLFONT");
+  if (AssistDisplayBar_HUDMode() == BAR_DISPLAY_HORI) {
+    HudMessage(s:horiText; HUDMSG_PLAIN, UH_IMAGE_ID_BASE - 132, CR_UNTRANSLATED, 50.1, 166.1, 0.1);
+  } else {
+    HudMessage(s:horiText; HUDMSG_PLAIN | HUDMSG_NOTWITHOVERLAYMAP | HUDMSG_NOTWITH3DVIEW, UH_IMAGE_ID_BASE - 133, CR_UNTRANSLATED, 50.1, 166.1, 0.1);
+    if (AssistDisplayBar_HUDMode() == BAR_DISPLAY_VERT) {
+      HudMessage(s:vertText; HUDMSG_PLAIN | HUDMSG_NOTWITHFULLMAP, UH_IMAGE_ID_BASE - 132, CR_UNTRANSLATED, 34.1, 14.1, 0.1);
+    }
+  }
 }
 script "DrawBar_VoidWalker_W2" (void) {
   ACS_NamedExecuteWithResult("DrawBar_VoidWalker_W", 2);
@@ -214,6 +280,9 @@ script "DrawBar_VoidWalker_W3" (void) {
 }
 script "DrawBar_VoidWalker_W4" (void) {
   ACS_NamedExecuteWithResult("DrawBar_VoidWalker_W", 4);
+}
+script "DrawBar_VoidWalker_W5" (void) {
+  ACS_NamedExecuteWithResult("DrawBar_VoidWalker_W", 5);
 }
 
 script "DrawBar_CrazedGrenademan_W" (void) {

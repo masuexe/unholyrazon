@@ -1,3 +1,9 @@
+actor VWOrbMaxHP : Inventory { Inventory.MaxAmount 99999 }
+actor VWOrbHP0 : Ammo { Inventory.Amount 1 Inventory.MaxAmount 99999 +INVENTORY.IGNORESKILL }
+actor VWOrbHP1 : Ammo { Inventory.Amount 1 Inventory.MaxAmount 99999 +INVENTORY.IGNORESKILL }
+actor VWOrbHP2 : Ammo { Inventory.Amount 1 Inventory.MaxAmount 99999 +INVENTORY.IGNORESKILL }
+actor VWOrbHP3 : Ammo { Inventory.Amount 1 Inventory.MaxAmount 99999 +INVENTORY.IGNORESKILL }
+
 // One server-owned hitbox per visual orb. Health is independent of the Boss.
 // The 16x16 orb sprite is centered on its origin and displayed at scale 2.
 actor VWOrbHitbox : UH_ShootableActor {
@@ -6,6 +12,7 @@ actor VWOrbHitbox : UH_ShootableActor {
   Height 32
   PainChance 0
   RenderStyle "None"
+  Species "Culex"
   +USEDAMAGEEVENTSCRIPT
   +NOGRAVITY
   +NOBLOOD
@@ -19,6 +26,7 @@ actor VWOrbHitbox : UH_ShootableActor {
   var int user_vwGeneration;
   var int user_vwMaxHealth;
   var int user_vwRetired;
+  var int user_vwLastSyncedHP;
   States {
    Spawn:
     TNT1 A 1
@@ -48,7 +56,28 @@ actor VWOrbHitbox : UH_ShootableActor {
   }
 }
 
-actor VWVoidShot : BasicProjectile {
+// Shared species preserves the existing Terra Mine/projectile collision rules.
+// Boss attacks pass through orb hitboxes but still collide with other targets.
+actor VWProjectile : BasicProjectile {
+  Species "Culex"
+  +THRUSPECIES
+}
+
+// The positioning probe uses the same collision group with its fast tracer base.
+actor VWTargetTracer : UH_TargetTracer {
+  Species "Culex"
+  +THRUSPECIES
+}
+
+actor VWTargetMarker : UH_TargetMarker {
+  States {
+   Pickup:
+    TNT1 A 0 A_SpawnItemEx("VWTargetTracer", 0, 0, 32, cos(pitch), 0, sin(-pitch), 0, SXF_MULTIPLYSPEED)
+    goto Super::SetupAimPoint
+  }
+}
+
+actor VWVoidShot : VWProjectile {
   Translation "192:192=202:202", "198:198=61:61"
   DamageType "VoidShot"
   Obituary "%o was struck by %k's Void Shot."

@@ -1,9 +1,12 @@
 #library "VWOPROBE"
 #include "zcommon.acs"
+#include "8BDMDEFS.acs"
 
 // Test-only addon: drive real morph setup and damage on a dedicated server.
 int boxes[4];
 int checks, failures, shots;
+str passShots[5] = {"MistRingProjectile", "MagmaCannonProjectile",
+  "MagmaCannonProjectile2", "MagmaCannonProjectile3", "VWVoidShot"};
 str weapons[4] = {"VoidWalker_W", "VoidWalker_W2", "VoidWalker_W3", "VoidWalker_W4"};
 // Population probes add bots mid-test. Freeze them before their first attack.
 script "VWO_FreezeOnEnter" ENTER {
@@ -19,6 +22,77 @@ function void Hit(int index, int source, int amount) {
   int before=GetActorProperty(boxes[index],APROP_Health);
   Thing_Damage2(boxes[index], amount, "VWOTest");
   Log(s:"VWO_HIT source=",i:source,s:" amount=",i:amount,s:" before=",i:before,s:" after=",i:GetActorProperty(boxes[index],APROP_Health));
+}
+
+// Static replicas isolate the marker's collision path from orbital movement.
+// VWOAimOrb inherits the production hitbox's radius, height and species.
+script "VWO_MarkerCheck" (void) {
+  SetActivatorToPlayer(0);
+  int oldpitch = GetActorPitch(0);
+  SetActorPitch(0, 0);
+  GiveInventory("VWTargetMarker", 1);
+  Delay(4);
+  int aim = PLN_TARGETPOINT;
+  int baseline = VectorLength(GetActorX(aim)-GetActorX(PLN_TID),
+    GetActorY(aim)-GetActorY(PLN_TID));
+  Expect(ThingCountName("UH_TargetAimPoint",aim)==1,"marker creates an aim point");
+  Expect(baseline>160.0,"wall aim point is beyond the near orb");
+
+  int orb = UniqueTID();
+  int angle = GetActorAngle(PLN_TID);
+  SpawnForced("VWOAimOrb",GetActorX(PLN_TID)+FixedMul(96.0,cos(angle)),
+    GetActorY(PLN_TID)+FixedMul(96.0,sin(angle)),GetActorZ(PLN_TID)+16.0,orb);
+  SetActivatorToPlayer(0);
+  GiveInventory("UH_TargetMarker",1);
+  Delay(4);
+  int blocked = VectorLength(GetActorX(aim)-GetActorX(PLN_TID),
+    GetActorY(aim)-GetActorY(PLN_TID));
+  Expect(blocked<128.0,"ordinary marker reproduces collision with shootable orb");
+
+  SetActivatorToPlayer(0);
+  GiveInventory("VWTargetMarker",1);
+  Delay(4);
+  int bypass = VectorLength(GetActorX(aim)-GetActorX(PLN_TID),
+    GetActorY(aim)-GetActorY(PLN_TID));
+  Expect(bypass>=baseline-8.0 && bypass<=baseline+8.0,
+    "Void Walker marker reaches the original wall through orb");
+  Expect(CheckFlag(orb,"SHOOTABLE"),"marker bypass keeps orb shootable");
+
+  int blocker = UniqueTID();
+  int distance = baseline/2;
+  if(distance>192.0) distance=192.0;
+  SpawnForced("VWOAimBlocker",GetActorX(PLN_TID)+FixedMul(distance,cos(angle)),
+    GetActorY(PLN_TID)+FixedMul(distance,sin(angle)),GetActorZ(PLN_TID),blocker);
+  SetActivatorToPlayer(0);
+  GiveInventory("VWTargetMarker",1);
+  Delay(4);
+  int other = VectorLength(GetActorX(aim)-GetActorX(PLN_TID),
+    GetActorY(aim)-GetActorY(PLN_TID));
+  Expect(other>=distance-24.0 && other<=distance+4.0 && other<baseline-16.0,
+    "marker still stops on other shootable targets");
+  // Actual production projectiles must cross a shootable orb and hit the
+  // ordinary target behind it. Keep the geometry inside the measured wall.
+  SetActorPosition(orb,GetActorX(PLN_TID)+FixedMul(distance/2,cos(angle)),
+    GetActorY(PLN_TID)+FixedMul(distance/2,sin(angle)),GetActorZ(PLN_TID)+16.0,false);
+  for(int i=0;i<5;i++) {
+    SetActorProperty(blocker,APROP_Health,100000);
+    int shot=UniqueTID();
+    SpawnForced(passShots[i],GetActorX(PLN_TID),GetActorY(PLN_TID),
+      GetActorZ(PLN_TID)+32.0,shot);
+    SetActivator(shot);
+    SetPointer(AAPTR_TARGET,PLN_TID);
+    SetActorVelocity(shot,FixedMul(28.0,cos(angle)),FixedMul(28.0,sin(angle)),0,false,false);
+    Expect(CheckFlag(shot,"THRUSPECIES"),"production shot inherits species bypass");
+    Delay(8);
+    Expect(GetActorProperty(blocker,APROP_Health)<100000,passShots[i]);
+    Thing_Remove(shot);
+  }
+  Thing_Remove(blocker);
+  Thing_Remove(orb);
+  SetActivatorToPlayer(0);
+  SetActorPitch(0,oldpitch);
+  Log(s:"VWO_MARKER_DONE baseline=",f:baseline,s:" blocked=",f:blocked,
+    s:" bypass=",f:bypass,s:" other=",f:other,s:" checks=",i:checks,s:" failures=",i:failures);
 }
 function int Orb(int index) {
   SetActivator(boxes[index]);
@@ -73,19 +147,25 @@ script "VWO_DamageChecks" (void) {
   SetActorProperty(visual,APROP_Alpha,0.8);
   Delay(2);
   Expect(CheckFlag(boxes[0],"SHOOTABLE"),"visible orb restores collision");
+  // MM2DW1 spawns can face either side of the map. Fire from the
+  // center-facing side so the probe is not created beyond the room wall.
+  int side=1;
+  if(GetActorY(boxes[0])>0) side=-1;
   int missile=UniqueTID();
-  SpawnForced("VWOTestMissile",GetActorX(boxes[0]),GetActorY(boxes[0])+64.0,
+  SpawnForced("VWOTestMissile",GetActorX(boxes[0]),GetActorY(boxes[0])+side*64.0,
     GetActorZ(boxes[0])+16.0,missile);
   SetActivator(missile);
   SetPointer(AAPTR_TARGET,1001);
-  SetActorVelocity(0,0,-64.0,0,false,false);
+  SetActorVelocity(0,0,-side*64.0,0,false,false);
   Delay(4);
   Expect(GetActorProperty(boxes[0],APROP_Health)==hp-110,"real projectile collision damages hitbox");
   SetActivatorToPlayer(1);
   int oldx=GetActorX(0), oldy=GetActorY(0), oldz=GetActorZ(0);
-  SetActorPosition(0,GetActorX(boxes[0]),GetActorY(boxes[0])+64.0,
+  SetActorPosition(0,GetActorX(boxes[0]),GetActorY(boxes[0])+side*64.0,
     GetActorZ(boxes[0])+16.0-GetActorProperty(0,APROP_Height)/2-8.0,false);
-  LineAttack(0,0.75,0,60,"BulletPuff","VWOTest",128.0);
+  int shotangle=0.75;
+  if(side<0) shotangle=0.25;
+  LineAttack(0,shotangle,0,60,"BulletPuff","VWOTest",128.0);
   SetActorPosition(0,oldx,oldy,oldz,false);
   Expect(GetActorProperty(boxes[0],APROP_Health)==hp-170,"hitscan damages hitbox");
   Log(s:"VWO_DAMAGE_DONE checks=",i:checks,s:" failures=",i:failures);

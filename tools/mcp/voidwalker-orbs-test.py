@@ -61,7 +61,9 @@ def main():
         raise RuntimeError("ACC not found")
     obj = OUT / "VWOPROBE.o"
     with (OUT / "compile.log").open("w") as log:
-        subprocess.run([acc, "-i", str(Path(acc).resolve().parent), str(fixture / "probe.acs"), str(obj)],
+        subprocess.run([acc, "-i", str(Path(acc).resolve().parent),
+                        "-i", str(ROOT / "src/acs_source/v6b_overrides/_includes/common"),
+                        str(fixture / "probe.acs"), str(obj)],
                        check=True, stdout=log, stderr=subprocess.STDOUT)
     addon = OUT / "probe.pk3"
     with ZipFile(addon, "w") as archive:
@@ -159,6 +161,7 @@ def main():
             run("VWO_Record", str(tid), "VWO_BOX")
         client_check(0)
         run("VWO_DamageChecks", "", "VWO_DAMAGE_DONE")
+        run("VWO_MarkerCheck", "", "VWO_MARKER_DONE")
         server_command("addbot Elecman")
         server_command("addbot Fireman")
         time.sleep(1)

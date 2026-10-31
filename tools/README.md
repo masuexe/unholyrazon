@@ -878,7 +878,9 @@ remote player and frozen bot damage sources; two more bots join to verify HP
 snapshots after a population change. The temporary diagnostic addon
 exercises native Boss morph setup, population-scaled orb HP, zero/single/multi-Boss
 divisors, snapshot stability, UH friendly-fire policy,
-projectile and hitscan collision, hidden-orb protection, active/inactive weapon
+projectile and hitscan collision, orb-specific marker bypass with other targets
+still blocking the probe, production water/fire/Void Shot projectiles passing
+through orbs and hitting targets behind them, hidden-orb protection, active/inactive weapon
 revocation, fallback firing, remote weapon ownership, fresh morphs, stale orb
 death and normal cleanup/unmorphing. Logs remain in
 `out/voidwalker-orbs-test/`; the addon is never packed into the release PK3.

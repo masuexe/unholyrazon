@@ -42,9 +42,40 @@ Freezer also performs its normal armor cleanup. If all four weapons are gone,
 `VoidWalker_W5` provides the ammo-free Void Shot (60 damage, 14-tic fire cycle).
 The fallback is registered with the native multiweapon list and UIX fixed wheel.
 
+Void Walker uses `VWTargetMarker` / `VWTargetTracer` for cursor positioning.
+The tracer and hitboxes share the `Culex` species. The tracer uses
+`THRUSPECIES` to cross orb hitboxes. Void Walker attacks share this filter
+through `VWProjectile`. Walls and other shootable actors retain their original marker
+behavior. `UH_TargetMarker.SetupAimPoint` is the shared watcher setup state,
+allowing this tracer choice without duplicating the marker lifecycle.
+
 Normal owner/controller retirement uses a separate `Cleanup` state without
 weapon revocation. A new morph restores the four elemental weapons and clears
 old commands and the fallback. The `_W5` name also lets the existing Boss weapon
 family cleanup strip the fallback when the player unmorphs.
 
+## HUD health monitoring
+
+Orb health snapshots synchronize from the server hitbox to the owner's inventory
+tokens (`VWOrbHP0`..`VWOrbHP3` and `VWOrbMaxHP`) only when current HP changes.
+The HUD in `boss_bars.acs` computes each orb's remaining percentage (`0%..100%`)
+and displays an element-colored 4-orb matrix on both horizontal and vertical HUDs:
+- **Horizontal HUD**: Sits above the ammo bar and icon (`x = 50.1, y = 166.1`),
+  arranged in two compact lines (`W`/`E` on top, `A`/`F` on bottom).
+- **Vertical HUD**: Positioned beside the health bar (`x = 34.1, y = 14.1`) as
+  a clean 4-line list.
+- **Dynamic highlighting**: The currently equipped orb is highlighted with white
+  brackets `[ ]`; low-health orbs `<= 25%` turn red (`\cr`); destroyed orbs display
+  as dimmed `\cu--%`.
+- **UIX / v6c Weapon Wheel integration**: `VWOrbHP0`..`VWOrbHP3` are bound as `ammo2`
+  in `uh_uixfw_boss_defs.acs`, giving the weapon wheel and weapon bar built-in secondary
+  meter support for each slot.
+
 Runtime regression: `python3 tools/mcp/voidwalker-orbs-test.py`.
+
+Void Walker projectiles inherit `VWProjectile`, which centralizes `Species "Culex"`
+and `THRUSPECIES`. Orb hitboxes and the positioning tracer share that species.
+This preserves the existing Terra Mine collision group while allowing elemental
+shots, fire fragments, and Void Shot to pass through orbs. Terra Mine retains
+its shootable base and explicit species settings. Other shootable targets and
+walls keep their existing collision behavior.

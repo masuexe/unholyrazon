@@ -63,20 +63,49 @@ script "uh_VWOrbInit" (void) {
     GetActorProperty(0, APROP_SpawnHealth), UH_VW_ORB_HP_ADD);
   // APROP_SpawnHealth is writable only on player pawns in Zandronum.
   SetUserVariable(0, "user_vwMaxHealth", hp);
+  SetUserVariable(0, "user_vwLastSyncedHP", hp);
   SetActorProperty(0, APROP_Health, hp);
   SetPointer(AAPTR_MASTER, orb, AAPTR_TARGET);
   SetPointer(AAPTR_TRACER, orb);
   SetUserVariable(0, "user_vwIndex", index);
   SetUserVariable(0, "user_vwGeneration", generation);
+
+  int owner = ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_MASTER);
+  if (owner > 0) {
+    SetActorInventory(owner, "VWOrbMaxHP", hp);
+    SetActorInventory(owner, StrParam(s:"VWOrbHP", i:index), hp);
+  }
 }
 
 script "uh_VWOrbValid" (void) {
+  int hitbox = ActivatorTID();
   // An expired controller must retire its hitbox without revoking a weapon.
   if (!ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TRACER)) {
     SetResultValue(false);
     terminate;
   }
-  SetResultValue(UH_VWOrbOwner());
+  int index = GetUserVariable(0, "user_vwIndex");
+  int generation = GetUserVariable(0, "user_vwGeneration");
+  int hp = GetActorProperty(0, APROP_Health);
+  if (hp < 0) hp = 0;
+
+  if (index < 0 || index >= UH_VW_ORB_COUNT || !SetActivator(0, AAPTR_MASTER)) {
+    SetResultValue(false);
+    terminate;
+  }
+  if (!UH_VWIsOwner() || GetPlayerMorphGen(PlayerNumber()) != generation
+      || !CheckInventory(uh_vworbdata[index][0])) {
+    SetResultValue(false);
+    terminate;
+  }
+
+  if (hp != GetUserVariable(hitbox, "user_vwLastSyncedHP")) {
+    SetUserVariable(hitbox, "user_vwLastSyncedHP", hp);
+    SetInventory(StrParam(s:"VWOrbHP", i:index), hp);
+    SetInventory("VWOrbMaxHP", GetUserVariable(hitbox, "user_vwMaxHealth"));
+  }
+
+  SetResultValue(true);
 }
 
 function bool UH_VWVisibleController(void) {
@@ -106,6 +135,7 @@ script "uh_VWOrbDestroyed" (void) {
     if (orb > 0) Thing_Remove(orb);
     terminate;
   }
+  SetInventory(StrParam(s:"VWOrbHP", i:index), 0);
 
   bool selected = CheckWeapon(uh_vworbdata[index][0]);
   // Match Frigid Freezer's normal armor cleanup if its visible orb is broken.
@@ -139,9 +169,11 @@ script "uh_VWOrbDestroyed" (void) {
 // Called on each new morph; the normal boss family cleanup strips _W5 too.
 script "uh_VWOrbsReset" (void) {
   TakeInventory("VoidWalker_W5", 0x7fffffff);
+  TakeInventory("VWOrbMaxHP", 0x7fffffff);
   for (int i = 0; i < UH_VW_ORB_COUNT; i++) {
     TakeInventory(uh_vworbdata[i][1], 0x7fffffff);
     TakeInventory(uh_vworbdata[i][2], 0x7fffffff);
+    TakeInventory(StrParam(s:"VWOrbHP", i:i), 0x7fffffff);
   }
 }
 
