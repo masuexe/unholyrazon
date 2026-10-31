@@ -1,5 +1,6 @@
 // UH_TOOLS is the sole UH consumer of 8BDT. Keep map water metadata here.
-// Registered tags share temperature; GLOBAL_WATER_TID uses local heat only.
+// Registered tags share temperature; global water tracks each live heat source.
+// Scalding reaches the entire matching water tag, regardless of distance/sight.
 // Heights are 16.16 fixed. Heat is measured in tics: 18 to boil (~0.5 s),
 // capped at 35; without a source it loses one unit every three tics.
 #define UH_WATER_SLOTS 128
@@ -8,7 +9,6 @@
 #define UH_WATER_BOIL 18
 #define UH_WATER_HEAT_MAX 35
 #define UH_WATER_PULSE 18
-#define UH_WATER_RADIUS 128
 // Raw HP damage per pulse/layer; standard UH players have 1000 HP.
 #define UH_WATER_DAMAGE 80
 
@@ -162,9 +162,7 @@ script "uh_BoilingWater" OPEN {
           if (uhwatersourcewater[source] != tag ||
               !UH_WaterPlayerAlive(source)) {continue;}
           if (tag == GLOBAL_WATER_TID) {
-            if (uhwaterlocalheat[source] < UH_WATER_BOIL ||
-                XYZDistance(source + 1000, victim + 1000) > UH_WATER_RADIUS ||
-                !CheckSight(source + 1000, victim + 1000, 0)) {continue;}
+            if (uhwaterlocalheat[source] < UH_WATER_BOIL) {continue;}
             hot = true;
           }
           damage = UH_WATER_DAMAGE * uhwatersourcestrength[source] *

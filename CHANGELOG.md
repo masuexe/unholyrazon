@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261031
 
+- Strengthened Keep on Fire's boiling water effect: scalding now reaches all players in the same water area, regardless of distance or walls. Both the heat source and targets must still be at least half submerged; damage and the half-damage rule for teammates are unchanged.
 - Fixed Void Walker's projectiles being blocked by his elemental orbs.
 - Added real-time elemental orb health percentage monitoring to Void Walker's HUD: displays a compact 4-orb health percentage matrix with element colors, equipped-orb bracket highlighting, <=25% critical red alert, and dead orb dimming. Orb health also appears in the UIX/v6c weapon wheel secondary meters.
 - Fixed Void Walker's aiming marker stopping on his destructible orbs instead of reaching the intended target or wall.
