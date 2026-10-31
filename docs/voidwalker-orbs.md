@@ -3,12 +3,13 @@
 Each elemental orb has an independent, server-owned `VWOrbHitbox` with a radius
 of 16 and a height of 32.
 
-Its default `Health 1000` supplies the base HP;
-`UH_VW_ORB_HP_ADD` supplies the 150-HP population increment. Initialization asks
+Its default `Health 4750` supplies the base HP;
+`UH_VW_ORB_HP_ADD` supplies the 385-HP population increment (matching the
+Void Walker body's base health and population scaling). Initialization asks
 the round-owned `uh_GetScaledBossHealth` query to apply the same formula and
 health cap as Boss morphs and later phases. For a positive round Boss count B
 and current participant count P, HP is
-`min(1000 + P * 150 / B - 150 / B, MAX_HEALTH)`, with integer division in that
+`min(4750 + P * 385 / B - 385 / B, MAX_HEALTH)`, with integer division in that
 order. A zero Boss count uses the base HP, matching debug/forced morph fallback
 behavior. Current HP and the `user_vwMaxHealth` starting-pool snapshot are set
 once at spawn. Zandronum only allows `APROP_SpawnHealth` writes on player pawns, so

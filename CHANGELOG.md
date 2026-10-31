@@ -10,7 +10,7 @@
 - Fixed Void Walker's projectiles being blocked by his elemental orbs.
 - Added real-time elemental orb health percentage monitoring to Void Walker's HUD: displays a compact 4-orb health percentage matrix with element colors, equipped-orb bracket highlighting, <=25% critical red alert, and dead orb dimming. Orb health also appears in the UIX/v6c weapon wheel secondary meters.
 - Fixed Void Walker's aiming marker stopping on his destructible orbs instead of reaching the intended target or wall.
-- Void Walker's four elemental orbs can now be destroyed independently, with 1000 base HP plus a population bonus of 150 per additional participant, shared across the round’s Boss count. Orb HP is fixed at spawn. Losing an orb removes its elemental weapon until the next transformation; losing all four leaves a basic Void Shot. Orbs are immune while hidden and cannot be damaged by allies.
+- Void Walker's four elemental orbs can now be destroyed independently, with 4750 base HP plus a population bonus of 385 per additional participant (matching Void Walker's body HP and scaling), shared across the round’s Boss count. Orb HP is fixed at spawn. Losing an orb removes its elemental weapon until the next transformation; losing all four leaves a basic Void Shot. Orbs are immune while hidden and cannot be damaged by allies.
 - Fixed Void Walker’s secondary-attack skill banners and notification sounds being hidden from other players and spectators online.
 - Fixed Decoy Bot, Nega Man and related Shiny classes losing their projectile colors after upgrading to MM8BDM v6c, including when projectile team colors are disabled.
 

@@ -126,8 +126,8 @@ script "VWO_Record" (int tid) {
 script "VWO_DamageChecks" (void) {
   Expect(ThingCountName("VWOrbHitbox",0)==4,"four independent hitboxes");
   for(int i=0;i<4;i++) {
-    Expect(GetActorProperty(boxes[i],APROP_Health)==1300,"three-player single-Boss orb starts at 1300 HP");
-    Expect(GetUserVariable(boxes[i],"user_vwMaxHealth")==1300,"scaled maximum HP matches initial HP");
+    Expect(GetActorProperty(boxes[i],APROP_Health)==5520,"three-player single-Boss orb starts at 5520 HP");
+    Expect(GetUserVariable(boxes[i],"user_vwMaxHealth")==5520,"scaled maximum HP matches initial HP");
     Expect(CheckFlag(boxes[i],"SHOOTABLE"),"visible orb is shootable");
     Expect(Orb(i)>0,"hitbox retains visual controller");
   }
@@ -259,24 +259,24 @@ script "VWO_ClientCheck" (int phase) CLIENTSIDE {
 // The harness changes the round divisor through the engine debug bridge.
 // Fixed expected values catch population, division and zero-divisor mistakes.
 script "VWO_HealthQuery" (int expected, int players, int addhp) {
-  if(addhp==0) addhp=150;
+  if(addhp==0) addhp=385;
   Expect(PlayerCount()==players,"expected population reached");
-  Expect(ACS_NamedExecuteWithResult("uh_GetScaledBossHealth",1000,addhp)==expected,
+  Expect(ACS_NamedExecuteWithResult("uh_GetScaledBossHealth",4750,addhp)==expected,
     "orb health query follows round population and Boss count");
-  if(expected>1000)
-    Expect(ACS_NamedExecuteWithResult("uh_GetScaledBossHealth",30000,150)==30000,
+  if(expected>4750)
+    Expect(ACS_NamedExecuteWithResult("uh_GetScaledBossHealth",30000,385)==30000,
       "shared health formula retains the Boss health cap");
   Log(s:"VWO_HEALTH_QUERY_DONE checks=",i:checks,s:" failures=",i:failures);
 }
 script "VWO_SnapshotCheck" (void) {
   FreezePlayers();
   Expect(PlayerCount()==5,"population increased to five");
-  Expect(ACS_NamedExecuteWithResult("uh_GetScaledBossHealth",1000,150)==1600,
+  Expect(ACS_NamedExecuteWithResult("uh_GetScaledBossHealth",4750,385)==6290,
     "new population would grant a higher starting HP");
   for(int i=0;i<4;i++) {
-    Expect(GetUserVariable(boxes[i],"user_vwMaxHealth")==1300,
+    Expect(GetUserVariable(boxes[i],"user_vwMaxHealth")==5520,
       "population change does not resize existing maximum HP");
-    Expect(GetActorProperty(boxes[i],APROP_Health)==(i==0 ? 1130 : 1300),
+    Expect(GetActorProperty(boxes[i],APROP_Health)==(i==0 ? 5350 : 5520),
       "population change does not heal or damage existing orb");
   }
   Log(s:"VWO_SNAPSHOT_DONE checks=",i:checks,s:" failures=",i:failures);
