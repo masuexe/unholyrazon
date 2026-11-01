@@ -4,6 +4,15 @@
 
 ---
 
+## 4.0.0-beta.261101
+
+- Added Phase 2 (Culex 3D from *Super Mario RPG Remake*) for Void Walker:
+  - When reaching lethal damage in Phase 1, Void Walker triggers an extra-life Buddha transition into Phase 2, resurrecting all four elemental orbs with fresh health and unlocking weapon Slot 5 (Culex 3D Core).
+  - Slot 5 attacks: Primary fires Dark Star (high-speed piercing star with large explosion). Secondary casts Shredder while any elemental orbs survive (stripping survivor defense buffs and powerups) or Final Claw when all four orbs are destroyed (an invulnerable high-velocity forward dash slash).
+  - Upgraded elemental orb weapons to classic Super Mario RPG spells: Slot 1 Wind (M1 triple Lightning Orb / M2 Petal Blast, morphing hit survivors into a helpless mushroom for 3 seconds), Slot 2 Earth (M1 bouncing Boulder Slam / M2 Sand Storm knockback waves), Slot 3 Water (M1 Diamond Saw bouncing sawblades / M2 Blizzard freeze wave), Slot 4 Fire (M1 Corona ground fire pillars / M2 Flame Wall advancing flame storm).
+  - Remake Meteor countdown mechanic: During Phase 2, triggers periodic 5-second countdown banners culminating in a barrage of destructive ceiling meteor strikes.
+  - Integrated authentic Super Mario RPG sound effects for all attacks, morphs, skills, and announcements (`DarkStar`, `Meteor`, `PetalBlast`, `Mushroom`, `DiamondSaw`, `CrystalCrusher`, `StaticE`, `Snowy`, `SandStorm`, `DeathSickle`, `Shredder`, `CoronaBeam`).
+
 ## 4.0.0-beta.261031
 
 - Strengthened Keep on Fire's boiling water effect: scalding now reaches all players in the same water area, regardless of distance or walls. Both the heat source and targets must still be at least half submerged; damage and the half-damage rule for teammates are unchanged.

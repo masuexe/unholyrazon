@@ -4,6 +4,15 @@
 
 ---
 
+## 4.0.0-beta.261101
+
+- 为 Void Walker 实装二阶段（源自《超级马力欧RPG 重制版》Culex 3D 隐藏Boss战）：
+  - 一阶段濒死触发不死护佑（Buddha）复活并过渡至二阶段，重置并复活全部 4 颗元素球，同时解锁 5 号槽位武器（Culex 3D Core）。
+  - 5 号位招式：主射击释放 Dark Star（极速贯穿黑星与高额范围爆炸）；副射击在元素球存活时施放 Shredder（抹消全场幸存者的增益与防御状态），四球全灭后转为 Final Claw（无敌极速突刺撕裂攻击）。
+  - 4 颗元素球在二阶段同步升级为经典 SMRPG 原作法术：1 号风（M1 三发 Lightning Orb / M2 Petal Blast，命中幸存者将其变形为无助的蘑菇持续 3 秒），2 号地（M1 弹跳碎裂 Boulder Slam / M2 击退 Sand Storm 沙尘波），3 号水（M1 反弹 Diamond Saw 飞锯 / M2 冰冻减速 Blizzard），4 号火（M1 地面火柱 Corona / M2 三道推进火柱 Flame Wall）。
+  - 重制版 Meteor 倒计时机制：二阶段周期性触发 5 秒全屏倒计时报幕，归零时引来全场天降陨石轰炸。
+  - 集成原汁原味的 Super Mario RPG 原版音效，全面覆盖二阶段攻击、受击变形、招式报幕与倒计时（`DarkStar`、`Meteor`、`PetalBlast`、`Mushroom`、`DiamondSaw`、`CrystalCrusher`、`StaticE`、`Snowy`、`SandStorm`、`DeathSickle`、`Shredder`、`CoronaBeam` 等）。
+
 ## 4.0.0-beta.261031
 
 - 加强 Keep on Fire 的沸水效果：烫伤覆盖同一水域内的所有玩家，不再受距离和墙体遮挡限制；热源与目标仍需身体至少一半浸水，伤害数值和队友半伤规则保持不变。

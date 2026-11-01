@@ -5,6 +5,9 @@
 #define UH_VW_ORB_COUNT 4
 #define UH_VW_ORB_HP_ADD 385
 
+int uh_vw_hitboxes[MAX_PLAYERS][UH_VW_ORB_COUNT];
+int uh_vw_orbs[MAX_PLAYERS][UH_VW_ORB_COUNT];
+
 str uh_vworbdata[UH_VW_ORB_COUNT][3] = {
   {"VoidWalker_W",  "WindOrbCommandM1",  "WindOrbCommandM2"},
   {"VoidWalker_W2", "EarthOrbCommandM1", "EarthOrbCommandM2"},
@@ -74,6 +77,11 @@ script "uh_VWOrbInit" (void) {
   if (owner > 0) {
     SetActorInventory(owner, "VWOrbMaxHP", hp);
     SetActorInventory(owner, StrParam(s:"VWOrbHP", i:index), hp);
+    int p = owner - 1000;
+    if (p >= 0 && p < MAX_PLAYERS) {
+      uh_vw_hitboxes[p][index] = hitbox;
+      uh_vw_orbs[p][index] = orb;
+    }
   }
 }
 
@@ -168,12 +176,135 @@ script "uh_VWOrbDestroyed" (void) {
 
 // Called on each new morph; the normal boss family cleanup strips _W5 too.
 script "uh_VWOrbsReset" (void) {
+  int p = PlayerNumber();
+  if (p >= 0 && p < MAX_PLAYERS) {
+    for (int j = 0; j < UH_VW_ORB_COUNT; j++) {
+      if (uh_vw_hitboxes[p][j] > 0) {
+        Thing_Remove(uh_vw_hitboxes[p][j]);
+        uh_vw_hitboxes[p][j] = 0;
+      }
+      if (uh_vw_orbs[p][j] > 0) {
+        Thing_Remove(uh_vw_orbs[p][j]);
+        uh_vw_orbs[p][j] = 0;
+      }
+    }
+  }
+  TakeInventory("VoidWalkerPhase2_F", 0x7fffffff);
+  TakeInventory("VWPhase2TransitionFlag", 0x7fffffff);
   TakeInventory("VoidWalker_W5", 0x7fffffff);
   TakeInventory("VWOrbMaxHP", 0x7fffffff);
   for (int i = 0; i < UH_VW_ORB_COUNT; i++) {
     TakeInventory(uh_vworbdata[i][1], 0x7fffffff);
     TakeInventory(uh_vworbdata[i][2], 0x7fffffff);
     TakeInventory(StrParam(s:"VWOrbHP", i:i), 0x7fffffff);
+  }
+}
+
+script "uh_VWOrbsPhase2Reset" (void) {
+  int p = PlayerNumber();
+  if (p < 0 || !UH_VWIsOwner()) terminate;
+
+  for (int j = 0; j < UH_VW_ORB_COUNT; j++) {
+    if (uh_vw_hitboxes[p][j] > 0) {
+      Thing_Remove(uh_vw_hitboxes[p][j]);
+      uh_vw_hitboxes[p][j] = 0;
+    }
+    if (uh_vw_orbs[p][j] > 0) {
+      Thing_Remove(uh_vw_orbs[p][j]);
+      uh_vw_orbs[p][j] = 0;
+    }
+  }
+
+  GiveInventory("VoidWalker_W", 1);
+  GiveInventory("VoidWalker_W2", 1);
+  GiveInventory("VoidWalker_W3", 1);
+  GiveInventory("VoidWalker_W4", 1);
+  GiveInventory("VoidWalker_W5", 1);
+  GiveInventory("VoidWalkerPhase2_F", 1);
+  GiveInventory("IsPissedFlag", 1);
+  GiveInventory("VeryFunOrbSpawner", 1);
+  ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5400); // UH_SKILL_VW_AWAKEN
+  ACS_NamedExecute("uh_VWMeteorLoop", 0);
+}
+
+script "uh_VWMeteorLoop" (void) {
+  int boss = ActivatorTID();
+  if (boss == 0) boss = PlayerNumber() + 1000;
+
+  while (GetActorProperty(boss, APROP_Health) > 0 && CheckActorInventory(boss, "VoidWalkerPhase2_F") > 0) {
+    for (int t = 0; t < 25; t++) {
+      Delay(35);
+      if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0) terminate;
+    }
+
+    ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5414);
+    Delay(70);
+    if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0) terminate;
+
+    ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5415);
+    Delay(70);
+    if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0) terminate;
+
+    ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5416);
+    Delay(70);
+    if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0) terminate;
+
+    ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5417);
+    Delay(70);
+    if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0) terminate;
+
+    ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5418);
+    Delay(70);
+    if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0) terminate;
+
+    ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5405);
+    for (int m = 0; m < 12; m++) {
+      if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0) terminate;
+      GiveActorInventory(boss, "VWMeteorStrikeSpawner_P", 1);
+      Delay(10);
+    }
+  }
+}
+
+script "uh_VWShredderCast" (void) {
+  int owner = PlayerNumber();
+  if (owner < 0) terminate;
+  int ownertid = ActivatorTID();
+  if (ownertid == 0) ownertid = owner + 1000;
+
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    if (p == owner || !PlayerInGame(p) || PlayerIsSpectator(p)) continue;
+    int targettid = p + 1000;
+    if (GetActorProperty(targettid, APROP_Health) <= 0) continue;
+
+    if (ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", owner, p)) continue;
+
+    int dist = XYZDistance(ownertid, targettid);
+    if (dist > 768.0) continue;
+
+    TakeActorInventory(targettid, "PowerProtectSurvivor", 1);
+    TakeActorInventory(targettid, "PowerProtectMegaCopywep", 1);
+    TakeActorInventory(targettid, "PowerProtectUnholyItem", 1);
+    TakeActorInventory(targettid, "MultiJumpItem", 10);
+    TakeActorInventory(targettid, "AirJumpLimit", 10);
+    TakeActorInventory(targettid, "RushBoots", 1);
+    TakeActorInventory(targettid, "EddieCall", 1);
+    TakeActorInventory(targettid, "BeatSupport", 1);
+    TakeActorInventory(targettid, "SkullBarrierAmmo", 100);
+    TakeActorInventory(targettid, "LeafShieldAmmo", 100);
+    TakeActorInventory(targettid, "PlantBarrierAmmo", 100);
+    TakeActorInventory(targettid, "JunkShieldAmmo", 100);
+    TakeActorInventory(targettid, "JewelSatelliteAmmo", 100);
+    TakeActorInventory(targettid, "WaterShieldAmmo", 100);
+    TakeActorInventory(targettid, "MirrorBusterReflector", 1);
+
+    Thing_Damage2(targettid, 35, "Shredder");
+
+    int angle = VectorAngle(GetActorX(targettid) - GetActorX(ownertid),
+                            GetActorY(targettid) - GetActorY(ownertid)) >> 8;
+    SetActivator(targettid);
+    ThrustThing(angle, 15, 0, 0);
+    SetActivator(ownertid);
   }
 }
 

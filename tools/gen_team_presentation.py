@@ -191,6 +191,7 @@ def build() -> dict[Path, str]:
         ("PlainDevilDemoneye", "PlainDevilDemoneye", "I_MUG00", "", 0),
         ("ProtoManBadGuy", "ProtoManBadGuy", "UL113MUG", "", 0),
         ("WeakHorse", "WeakHorse", "UL066MUG", "", 0),
+        ("PetalMushroomPlayer", "Mushroom", "MUSHMUG", "", 0),
     ])
     rows["eye"].append(("RichDevilDemoneye", "RichDevilDemoneye", "I_MUG06", "", 0))
 

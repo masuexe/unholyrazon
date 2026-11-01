@@ -644,6 +644,9 @@ TAG_VoidWalker_W2 = "Very Fun Earth Orb";
 TAG_VoidWalker_W3 = "Very Fun Water Orb";
 TAG_VoidWalker_W4 = "Very Fun Fire Orb";
 TAG_VoidWalker_W5 = "Void Shot";
+TAG_VoidWalker_W5_P2 = "Culex 3D Core";
+TAG_PetalMushroom_W = "Mushroom";
+TAG_PetalMushroomPlayer = "Mushroom";
 // 055 CrazedGrenademan
 TAG_CrazedGrenademan_W = "CRUSH EVERYONE UHUHUHUHUHUHU";  // "Cranked Flash Bomb"
 // 056 Morshu

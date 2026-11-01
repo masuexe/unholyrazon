@@ -141,6 +141,7 @@ def main() -> int:
         "RichDevilDemoneye": ("RichDevilDemoneye", "I_MUG06", "", 0),
         "ProtoManBadGuy": ("ProtoManBadGuy", "UL113MUG", "", 0),
         "WeakHorse": ("WeakHorse", "UL066MUG", "", 0),
+        "PetalMushroomPlayer": ("Mushroom", "MUSHMUG", "", 0),
     }
     # Check every shiny actor independently against its DECORATE face, including
     # inherited Eden and the separate MegaMan skin fallback above.
