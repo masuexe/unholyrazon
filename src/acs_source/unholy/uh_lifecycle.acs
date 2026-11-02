@@ -14,6 +14,8 @@ function void BasicTLMSEnterState(void) {
 }
 
 script "ub_BasicTLMSEnter" ENTER {
+  // A new body, a slot reuse, or a map transition must not inherit Bubble.
+  ACS_NamedExecuteWithResult("uh_BubbleClearLifecycle");
   UH_AFKResetPlayer(PlayerNumber());
   if (PlayerNumber() >= 0)
     uh_settlementstate[UH_POSTFF_BASE + PlayerNumber() * UH_POSTFF_ROW_SIZE] = false;
@@ -21,6 +23,8 @@ script "ub_BasicTLMSEnter" ENTER {
 }
 
 script "ub_BasicTLMSRespawn" RESPAWN {
+  // Revival and ordinary respawn both pass here.
+  ACS_NamedExecuteWithResult("uh_BubbleClearLifecycle");
   UH_AFKResetPlayer(PlayerNumber());
   if (PlayerNumber() >= 0)
     uh_settlementstate[UH_POSTFF_BASE + PlayerNumber() * UH_POSTFF_ROW_SIZE] = false;
@@ -32,6 +36,9 @@ script "ub_BasicTLMSRespawn" RESPAWN {
 }
 
 script "ub_Death_ChangeIsAlive" DEATH {
+  // Release the owned lock before the corpse or the player slot can carry it
+  // into a respawn or a spectator transition.
+  ACS_NamedExecuteWithResult("uh_BubbleClearLifecycle");
   UH_AFKResetPlayer(PlayerNumber());
   int pn;
   int oldstatus;

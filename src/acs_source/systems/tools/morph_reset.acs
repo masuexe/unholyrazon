@@ -492,6 +492,9 @@ script "uh_MorphPreReset" (void) {
     terminate;
   // Release interrupted attacks before the survivor baseline is captured.
   UH_ClearSurvivorMorphState();
+  // Bubble owns one freeze layer. Return it before the baseline snapshot so
+  // demorph cannot restore it as survivor state.
+  ACS_NamedExecuteWithResult("uh_BubbleClearLifecycle");
   // Clear before taking the baseline so demorph cannot restore the stale lock.
   UH_ClearZangiefItemLock();
   // Dismount before saving movement-stack baselines for the new body.
@@ -546,6 +549,9 @@ script "uh_MorphPostReset" (int force) {
   // PowerMorph/MorphProjectile bypass PreReset. Run before the body claim so
   // transferred receipts cannot be hidden by an earlier setup call.
   UH_ClearSurvivorMorphState();
+  // PowerMorph transfers the Bubble markers and its freeze layer to the new
+  // body; return the layer before any later baseline can treat it as native.
+  ACS_NamedExecuteWithResult("uh_BubbleClearLifecycle");
   // PowerMorph/MorphProjectile skip PreReset and transfer this inventory.
   UH_ClearZangiefItemLock();
   if (!force && GetUserVariable(0, "user_uh_morph_pipeline_done"))
@@ -567,6 +573,8 @@ script "uh_MorphDemorphReset" (int ownedfams) {
     terminate;
   // Shiny attacks and shared weapon states can also be interrupted by unmorph.
   UH_ClearSurvivorMorphState();
+  // A Bubble that survived the morph must not keep the survivor body frozen.
+  ACS_NamedExecuteWithResult("uh_BubbleClearLifecycle");
   ACS_NamedExecuteWithResult("uh_OilSliderReset");
   ACS_NamedExecuteWithResult("uh_AlphaFadeCancel");
   ACS_NamedExecuteWithResult("rz_ClearForcedPlayerSkin");

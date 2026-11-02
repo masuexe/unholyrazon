@@ -29,9 +29,18 @@ comma-separated check names and `--timeout-scale N` stretches per-check
 timeouts.
 
 `--fast` is portable to any clone (no WADs, engine or build required);
-`--smoke` needs an `acc` binary and the local `../wads` tree; `--full` needs a
+`--smoke` needs an `acc` binary and the WAD paths in
+`tools/mm8bdm-v6c.launch.json`; `--full` needs a
 local Zandronum engine and free ports. Building `out/build.pk3` stays manual —
 the gate validates the existing archive, it does not invent a build step.
+
+The v6c launch profiles resolve WADs from `../../../wads` relative to the repo
+root, matching the `/home/harp/wads` location in the VS Code `Single Player`
+configuration. `mm8bdm-v6c-single-player` reproduces that configuration's
+TRAINING map, package order, and console settings, including the damage-display
+addon and Rebellion patch. It uses the MCP-configured native engine; the
+Windows executable remains configured in `.vscode/zandronum.json`. The
+`mm8bdm-v6c-smoke` profile retains the minimal base-game and mod stack.
 
 ## Mutation layer (test the tests)
 

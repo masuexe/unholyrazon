@@ -1,0 +1,197 @@
+// Bubble status: one body-owned marker, one authoritative server controller,
+// and exactly one layer of the base game's PlayerPropertyFrozen stacker.
+//
+// A hit opts in by carrying the damage type "UH_Bubble".  The engine dispatches
+// GAMEEVENT_ACTOR_DAMAGED after armor absorption and before health subtraction.
+// The engine does not dispatch that event when armor absorbs the whole hit,
+// when the target is invulnerable, or when a damage factor reduces the hit to
+// zero, so a completely immune hit cannot change Bubble state.
+//
+// The event script runs from the rz_shared module, which loads after every
+// gameplay library that modifies or cancels damage.  The value returned by
+// GetEventResult() at that point is the damage that P_DamageMobj will apply.
+
+#define UH_BUBBLE_TICS 88
+#define UH_BUBBLE_DAMAGETYPE "UH_Bubble"
+
+// Future immunity whitelist hook.  No actor grants UH_BubbleImmune_F in this
+// version; a future approved whitelist adds that marker instead of editing the
+// damage event.  Do not reuse PlayerPropertyNoParalyze or GENERICBOSS checks
+// here: bosses must stay susceptible.
+function bool UH_BubbleIsImmune(void) {
+  return CheckInventory("UH_BubbleImmune_F") > 0;
+}
+
+// Single centralized eligibility gate.  The active marker makes Bubble a
+// single state; a repeated hit breaks it instead of refreshing it.
+function bool UH_BubbleCanApply(void) {
+  int p = PlayerNumber();
+  if (p < 0 || p >= MAX_PLAYERS)
+    return false;
+  if (!PlayerInGame(p))
+    return false;
+  if (CheckInventory("UH_Bubble_F") > 0)
+    return false;
+  if (CheckInventory("IsDead") > 0)
+    return false;
+  if (GetActorProperty(0, APROP_Health) <= 0)
+    return false;
+  if (UH_BubbleIsImmune())
+    return false;
+  return true;
+}
+
+function bool UH_BubbleDamageCarriesStatus(str dmgtype) {
+  return StrICmp(dmgtype, UH_BUBBLE_DAMAGETYPE) == 0;
+}
+
+// Release only the layer this status recorded.  The lock marker is the proof
+// of ownership, so a repeated cleanup cannot spend another source's freeze
+// layer.  Set releaseLock to false when the shared freeze counter was already
+// wiped by somebody else (the layer is gone and another layer may have arrived
+// since).
+function void UH_BubbleClearOwned(int releaseLock) {
+  int p = PlayerNumber();
+  if (p < 0)
+    return;
+
+  if (CheckInventory("UH_BubbleLock_F") > 0) {
+    TakeInventory("UH_BubbleLock_F", 1);
+    if (releaseLock && CheckInventory("PlayerPropertyFrozen") > 0)
+      ACS_NamedExecuteWithResult("core_freezeplayer", 0, 0, 0);
+  }
+
+  TakeInventory("UH_Bubble_F", 9999);
+  SetUserVariable(0, "user_uh_bubble_token", 0);
+}
+
+// Start one Bubble instance on the current body.  The unique token is the body
+// and instance identity: a morph, a slot reuse, a break, or a later Bubble
+// cannot match an older controller's token.
+function void UH_BubbleApply(void) {
+  int p = PlayerNumber();
+  if (p < 0 || p >= MAX_PLAYERS)
+    return;
+  if (!UH_BubbleCanApply())
+    return;
+
+  // An interrupted instance can leave only the lock marker behind.  Reclaim it
+  // before installing the new state so the new instance owns exactly one layer.
+  if (CheckInventory("UH_BubbleLock_F") > 0 && CheckInventory("UH_Bubble_F") <= 0)
+    UH_BubbleClearOwned(1);
+
+  int token = UniqueTID();
+  SetUserVariable(0, "user_uh_bubble_token", token);
+  GiveInventory("UH_Bubble_F", 1);
+
+  int before = CheckInventory("PlayerPropertyFrozen");
+  ACS_NamedExecuteWithResult("core_freezeplayer", 0, 1, 0);
+  int added = CheckInventory("PlayerPropertyFrozen") - before;
+  if (added <= 0) {
+    // The stacker refused the layer (counter at its limit).  Do not leave an
+    // active marker that blocks input without an owned lock.
+    TakeInventory("UH_Bubble_F", 9999);
+    SetUserVariable(0, "user_uh_bubble_token", 0);
+    return;
+  }
+
+  GiveInventory("UH_BubbleLock_F", 1);
+  ACS_NamedExecuteAlways("uh_BubbleController", 0, p, token);
+}
+
+// One controller per instance.  It wakes every tic so an early break, death,
+// morph, or an external wipe ends it before a stale timer can clear a newer
+// Bubble.  A token mismatch means another body or instance owns the state, so
+// this controller exits without touching anything.
+script "uh_BubbleController" (int p, int token) {
+  if (p < 0 || p >= MAX_PLAYERS)
+    terminate;
+  if (!SetActivatorToPlayer(p))
+    terminate;
+  if (GetUserVariable(0, "user_uh_bubble_token") != token)
+    terminate;
+
+  int elapsed = 0;
+  while (elapsed < UH_BUBBLE_TICS) {
+    if (!PlayerInGame(p))
+      terminate;
+    if (!SetActivatorToPlayer(p))
+      terminate;
+    if (GetUserVariable(0, "user_uh_bubble_token") != token)
+      terminate;
+
+    if (CheckInventory("UH_Bubble_F") <= 0) {
+      // The marker was removed by a lifecycle clear while this controller was
+      // asleep.  The same cleanup already returned the layer; return only a
+      // layer that is still visibly owned here.
+      if (CheckInventory("UH_BubbleLock_F") > 0)
+        UH_BubbleClearOwned(1);
+      terminate;
+    }
+    if (CheckInventory("UH_BubbleLock_F") <= 0) {
+      // The owned layer disappeared (bulk freeze wipe).  Do not touch the
+      // shared counter again: a different source may own what is there now.
+      UH_BubbleClearOwned(0);
+      terminate;
+    }
+    if (CheckInventory("PlayerPropertyFrozen") <= 0) {
+      UH_BubbleClearOwned(0);
+      terminate;
+    }
+    if (GetActorProperty(0, APROP_Health) <= 0) {
+      UH_BubbleClearOwned(1);
+      terminate;
+    }
+
+    Delay(1);
+    elapsed++;
+  }
+
+  if (GetUserVariable(0, "user_uh_bubble_token") == token)
+    UH_BubbleClearOwned(1);
+}
+
+// Lifecycle entry point for ENTER, RESPAWN, DEATH, morph and revival paths.
+// It is idempotent and safe on a body that never had Bubble.
+script "uh_BubbleClearLifecycle" (void) {
+  if (PlayerNumber() < 0)
+    terminate;
+  UH_BubbleClearOwned(1);
+}
+
+// Post-armor damage event.  GAMEEVENT_ACTOR_DAMAGED is dispatched only after
+// armor and only when the remaining damage is positive, so this event is the
+// effective-damage gate.  The type argument is the engine damage type name.
+script "uh_BubbleDamageEvent" (int evt, int dmg, int dmgtype) EVENT {
+  if (evt != GAMEEVENT_ACTOR_DAMAGED)
+    terminate;
+  if (GetEventResult() <= 0)
+    terminate;
+  if (!SetActivator(0, AAPTR_DAMAGE_TARGET))
+    terminate;
+  if (PlayerNumber() < 0)
+    terminate;
+  if (GetActorProperty(0, APROP_Health) <= 0)
+    terminate;
+
+  // Snapshot at the start of this event.  A target that was already bubbled
+  // breaks and never reapplies in the same event, even when the hit carries
+  // the Bubble damage type.
+  if (CheckInventory("UH_Bubble_F") > 0) {
+    UH_BubbleClearOwned(1);
+    terminate;
+  }
+
+  if (!UH_BubbleDamageCarriesStatus(dmgtype))
+    terminate;
+  if (!UH_BubbleCanApply())
+    terminate;
+
+  // A lethal hit leaves no living player to bubble.  Buddha and extra-life
+  // rescues are intentionally not consulted here; they can keep the player
+  // alive without the status.
+  if (GetEventResult() >= GetActorProperty(0, APROP_Health))
+    terminate;
+
+  UH_BubbleApply();
+}

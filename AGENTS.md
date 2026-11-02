@@ -97,9 +97,10 @@ Engine eligibility and MM8BDM package order are defined by the two modding
 skills. This project's mod entry is `out/build.pk3`.
 
 Launch profiles under `tools/*.launch.json` use paths **relative to the repo root**:
-`out/build.pk3` for this mod, and `../wads/…` for the shared IWAD/base packages
-(place or symlink the WAD directory as a sibling of this repo). Optional addons
-in the `mm8bdm-v6c-full` profile similarly live under `../wads/` and
+`out/build.pk3` for this mod, and `../../../wads/…` for the shared IWAD/base packages
+(matching `/home/harp/wads` in `.vscode/zandronum.json` Single Player). The
+`mm8bdm-v6c-single-player` profile reproduces its package stack and TRAINING map.
+Optional addons in the `mm8bdm-v6c-full` profile similarly live under `../../../wads/` and
 `../unholyrazon_music/`.
 
 Optional debugging mods, loaded in step 3 when relevant:

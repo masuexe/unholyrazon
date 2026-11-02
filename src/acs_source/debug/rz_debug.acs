@@ -536,3 +536,361 @@ script "rz_debug_SpawnDickhead" (int pn, int atTid) {
   }
   UH_Log(UH_LOG_INFO, StrParam(s:"DickheadProbe: tid=", i:newtid, s:" slot=", i:pn));
 }
+
+// ---------------------------------------------------------------------------
+// Bubble diagnostics
+//
+// These probes explain their own result. Every rejection prints one line that
+// starts with [BubbleProbe]. The line uses PrintBold, which is the engine path
+// to the local console and to the invoking client console on a server. A
+// dedicated server has no local status bar, so the same line also goes to the
+// server log there. The output does not use UH_Log, so uh_cl_LogLevel and
+// uh_sv_loglevel cannot hide it.
+//
+// Bubble probes do not add a separate sv_cheats gate. This also permits
+// training-map diagnostics when the engine allows cheats with sv_cheats off.
+// ---------------------------------------------------------------------------
+#define RZ_BUBBLE_PROBE_VERSION 2
+
+function void RZ_BubbleDiag(str msg) {
+  PrintBold(s:"\c[Green][BubbleProbe] \c-", s:msg);
+  // PrintBold reaches a local console and every client, but a dedicated
+  // server has no local status bar. Keep the server console/logfile line.
+  if (ConsolePlayerNumber() < 0)
+    Log(s:"[BubbleProbe] ", s:msg);
+}
+
+// 0 = no player body, 1 = live player body, 2 = dead player body.
+function int RZ_BubbleBodyKind(void) {
+  int cls = ClassifyActor(0);
+  if (!(cls & ACTOR_PLAYER))
+    return 0;
+  if (cls & ACTOR_DEAD)
+    return 2;
+  return 1;
+}
+
+function str RZ_BubbleBodyName(int kind) {
+  if (kind == 1)
+    return "live";
+  if (kind == 2)
+    return "dead";
+  return "none";
+}
+
+// Compact immunity snapshot for the selected body.
+function str RZ_BubbleImmunity(void) {
+  return StrParam(s:"invuln=", i:GetActorProperty(0, APROP_Invulnerable),
+    s:" powerinv=", i:CheckInventory("PlayerPropertyInvulnerable"),
+    s:" protect=", i:CheckInventory("PowerProtection"),
+    s:" bubimm=", i:CheckInventory("UH_BubbleImmune_F"),
+    s:" dmgfac=", f:GetActorProperty(0, APROP_DamageFactor));
+}
+
+// Select the actual current body for pn. On success the activator is that
+// body and the return value is its body kind. A rejected slot prints one
+// reason and returns -1. A dead body returns 2 so the caller can decide.
+function int RZ_BubbleSelectBody(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) {
+    RZ_BubbleDiag(StrParam(s:"ver=", i:RZ_BUBBLE_PROBE_VERSION,
+      s:" rejected: invalid slot ", i:pn));
+    return -1;
+  }
+  int spec = PlayerIsSpectator(pn);
+  if (spec > 0) {
+    int deadspec = (spec == 2);
+    RZ_BubbleDiag(StrParam(s:"ver=", i:RZ_BUBBLE_PROBE_VERSION,
+      s:" rejected: slot ", i:pn, s:" is spectating (spectator=",
+      i:spec, s:", deadspectator=", i:deadspec, s:")"));
+    return -1;
+  }
+  if (!PlayerInGame(pn)) {
+    RZ_BubbleDiag(StrParam(s:"ver=", i:RZ_BUBBLE_PROBE_VERSION,
+      s:" rejected: slot ", i:pn, s:" is not in the game"));
+    return -1;
+  }
+  if (!SetActivatorToPlayer(pn)) {
+    RZ_BubbleDiag(StrParam(s:"ver=", i:RZ_BUBBLE_PROBE_VERSION,
+      s:" rejected: cannot select the body for slot ", i:pn));
+    return -1;
+  }
+  int kind = RZ_BubbleBodyKind();
+  if (kind == 0) {
+    RZ_BubbleDiag(StrParam(s:"ver=", i:RZ_BUBBLE_PROBE_VERSION,
+      s:" rejected: slot ", i:pn, s:" has no player body (spectator=0)"));
+    return -1;
+  }
+  return kind;
+}
+
+// Focused Bubble probe. It applies a real P_DamageMobj hit through
+// Thing_Damage2, so armor, damage factors, the post-armor damage event and the
+// Bubble state machine all run. bubble != 0 marks the hit with the
+// "UH_Bubble" damage type; bubble == 0 is ordinary effective damage.
+// pn < 0 means the console player. No additional sv_cheats gate is applied.
+script "rz_debug_BubbleHit" (int pn, int amount, int bubble) {
+  if (pn < 0)
+    pn = ConsolePlayerNumber();
+  int kind = RZ_BubbleSelectBody(pn);
+  if (kind < 0)
+    terminate;
+  if (kind == 2) {
+    RZ_BubbleDiag(StrParam(s:"ver=", i:RZ_BUBBLE_PROBE_VERSION,
+      s:" rejected: slot ", i:pn, s:" body is dead"));
+    terminate;
+  }
+  if (amount <= 0)
+    amount = 1;
+
+  str dtype = bubble ? "UH_Bubble" : "Crush";
+  int tid = ActivatorTID();
+  int hp0 = GetActorProperty(0, APROP_Health);
+  int armor0 = CheckInventory("BasicArmor");
+  int active0 = CheckInventory("UH_Bubble_F");
+  int lock0 = CheckInventory("UH_BubbleLock_F");
+  int frozen0 = CheckInventory("PlayerPropertyFrozen");
+  str imm0 = RZ_BubbleImmunity();
+
+  // TID 0 damages the activator, so this hit can only reach the body that
+  // SetActivatorToPlayer selected. It never fans out to another actor that
+  // shares the pn+1000 convention TID.
+  int hits = Thing_Damage2(0, amount, dtype);
+
+  int hp1 = GetActorProperty(0, APROP_Health);
+  int armor1 = CheckInventory("BasicArmor");
+  int active1 = CheckInventory("UH_Bubble_F");
+  int lock1 = CheckInventory("UH_BubbleLock_F");
+  int frozen1 = CheckInventory("PlayerPropertyFrozen");
+
+  str result;
+  if (hits <= 0)
+    result = "NO SHOOTABLE BODY";
+  else if (hp1 <= 0) {
+    if (active0 > 0)
+      result = active1 > 0 ? "LETHAL; BUBBLE STILL ACTIVE" : "LETHAL; BUBBLE CLEARED";
+    else
+      result = active1 > 0 ? "LETHAL; BUBBLE APPLIED (unexpected)" : "LETHAL; BUBBLE NOT APPLIED";
+  }
+  else if (hp1 < hp0) {
+    if (active0 > 0 && active1 <= 0)
+      result = "BROKE";
+    else if (active0 <= 0 && active1 > 0)
+      result = "APPLIED";
+    else if (active0 > 0)
+      result = "DAMAGE LANDED BUT STILL BUBBLED (damage event missing?)";
+    else
+      result = "DAMAGE LANDED BUT NO BUBBLE (damage event missing or refused)";
+  }
+  else if (armor1 < armor0)
+    result = "ARMOR-ONLY (no effective health damage)";
+  else
+    result = "NO EFFECTIVE DAMAGE (immune or damage factor)";
+
+  RZ_BubbleDiag(StrParam(s:"ver=", i:RZ_BUBBLE_PROBE_VERSION,
+    s:" slot=", i:pn, s:" body=", s:RZ_BubbleBodyName(kind), s:" tid=", i:tid,
+    s:" amount=", i:amount, s:" type=", s:dtype,
+    s:" hp=", i:hp0, s:"->", i:hp1,
+    s:" armor=", i:armor0, s:"->", i:armor1,
+    s:" active=", i:active0, s:"->", i:active1,
+    s:" lock=", i:lock0, s:"->", i:lock1,
+    s:" frozen=", i:frozen0, s:"->", i:frozen1,
+    s:" hits=", i:hits, s:" ", s:imm0,
+    s:" result=", s:result));
+}
+
+// Same-tic apply/break/apply probe. Every iteration is a separate
+// P_DamageMobj call, so the damage event runs once per hit in one tic.
+script "rz_debug_BubbleBurst" (int pn, int hits, int amount, int bubble) {
+  if (pn < 0)
+    pn = ConsolePlayerNumber();
+  int kind = RZ_BubbleSelectBody(pn);
+  if (kind < 0)
+    terminate;
+  if (kind == 2) {
+    RZ_BubbleDiag(StrParam(s:"ver=", i:RZ_BUBBLE_PROBE_VERSION,
+      s:" rejected: slot ", i:pn, s:" body is dead"));
+    terminate;
+  }
+  if (hits <= 0)
+    hits = 1;
+  if (amount <= 0)
+    amount = 1;
+
+  str dtype = bubble ? "UH_Bubble" : "Crush";
+  int tid = ActivatorTID();
+  int hp0 = GetActorProperty(0, APROP_Health);
+  int armor0 = CheckInventory("BasicArmor");
+  int active0 = CheckInventory("UH_Bubble_F");
+  int lock0 = CheckInventory("UH_BubbleLock_F");
+  int frozen0 = CheckInventory("PlayerPropertyFrozen");
+  str imm0 = RZ_BubbleImmunity();
+  int landed = 0;
+  int changes = 0;
+  for (int i = 0; i < hits; i++) {
+    int before = CheckInventory("UH_Bubble_F");
+    if (Thing_Damage2(0, amount, dtype) > 0)
+      landed++;
+    if (CheckInventory("UH_Bubble_F") != before)
+      changes++;
+  }
+
+  int hp1 = GetActorProperty(0, APROP_Health);
+  int armor1 = CheckInventory("BasicArmor");
+  int active1 = CheckInventory("UH_Bubble_F");
+  int lock1 = CheckInventory("UH_BubbleLock_F");
+  int frozen1 = CheckInventory("PlayerPropertyFrozen");
+
+  str result;
+  if (landed <= 0)
+    result = "NO SHOOTABLE BODY";
+  else if (hp1 <= 0)
+    result = "LETHAL";
+  else if (changes <= 0)
+    result = "NO STATE CHANGE (no effective damage or event missing)";
+  else
+    result = "STATE CHANGED";
+
+  RZ_BubbleDiag(StrParam(s:"ver=", i:RZ_BUBBLE_PROBE_VERSION,
+    s:" slot=", i:pn, s:" body=", s:RZ_BubbleBodyName(kind), s:" tid=", i:tid,
+    s:" hits=", i:hits, s:" amount=", i:amount, s:" type=", s:dtype,
+    s:" hp=", i:hp0, s:"->", i:hp1,
+    s:" armor=", i:armor0, s:"->", i:armor1,
+    s:" active=", i:active0, s:"->", i:active1,
+    s:" lock=", i:lock0, s:"->", i:lock1,
+    s:" frozen=", i:frozen0, s:"->", i:frozen1,
+    s:" landed=", i:landed, s:" changes=", i:changes,
+    s:" ", s:imm0, s:" result=", s:result));
+}
+
+script "rz_debug_BubbleState" (int pn) {
+  if (pn < 0)
+    pn = ConsolePlayerNumber();
+  int kind = RZ_BubbleSelectBody(pn);
+  if (kind < 0)
+    terminate;
+  RZ_BubbleDiag(StrParam(s:"ver=", i:RZ_BUBBLE_PROBE_VERSION,
+    s:" slot=", i:pn, s:" body=", s:RZ_BubbleBodyName(kind),
+    s:" tid=", i:ActivatorTID(),
+    s:" hp=", i:GetActorProperty(0, APROP_Health),
+    s:" armor=", i:CheckInventory("BasicArmor"),
+    s:" active=", i:CheckInventory("UH_Bubble_F"),
+    s:" lock=", i:CheckInventory("UH_BubbleLock_F"),
+    s:" frozen=", i:CheckInventory("PlayerPropertyFrozen"),
+    s:" look=", i:CheckInventory("PlayerPropertyFrozenLook"),
+    s:" token=", i:GetUserVariable(0, "user_uh_bubble_token"),
+    s:" ", s:RZ_BubbleImmunity()));
+}
+
+// One real damage event while the test body is otherwise invulnerable. The
+// temporary immunity window keeps map hazards and bots from breaking the test
+// Bubble, while the hit itself still passes through P_DamageMobj.
+function void RZ_BubbleSelfHit(int amount, int bubble) {
+  SetActorProperty(0, APROP_Invulnerable, false);
+  str dtype = "Crush";
+  if (bubble)
+    dtype = "UH_Bubble";
+  // TID 0 damages the activator: the current test body, never a magic TID.
+  Thing_Damage2(0, amount, dtype);
+  SetActorProperty(0, APROP_Invulnerable, true);
+  SetActorProperty(0, APROP_Health, 1000);
+}
+
+function void RZ_BubbleSelfLog(str label) {
+  RZ_BubbleDiag(StrParam(s:"ver=", i:RZ_BUBBLE_PROBE_VERSION,
+    s:" self-test ", s:label,
+    s:" active=", i:CheckInventory("UH_Bubble_F"),
+    s:" lock=", i:CheckInventory("UH_BubbleLock_F"),
+    s:" frozen=", i:CheckInventory("PlayerPropertyFrozen"),
+    s:" token=", i:GetUserVariable(0, "user_uh_bubble_token"),
+    s:" hp=", i:GetActorProperty(0, APROP_Health)));
+}
+
+// Focused server self-test for the acceptance sequence. It runs on one
+// invulnerable player body and prints a [BubbleProbe] self-test line per step.
+script "rz_debug_BubbleSelfTest" (int pn) {
+  if (pn < 0)
+    pn = ConsolePlayerNumber();
+  int kind = RZ_BubbleSelectBody(pn);
+  if (kind < 0)
+    terminate;
+  if (kind != 1) {
+    RZ_BubbleDiag(StrParam(s:"ver=", i:RZ_BUBBLE_PROBE_VERSION,
+      s:" rejected: self-test needs a live body (slot ", i:pn, s:" is ",
+      s:RZ_BubbleBodyName(kind), s:")"));
+    terminate;
+  }
+
+  SetActorProperty(0, APROP_Invulnerable, true);
+  SetActorProperty(0, APROP_Health, 1000);
+  RZ_BubbleDiag(StrParam(s:"ver=", i:RZ_BUBBLE_PROBE_VERSION,
+    s:" self-test start slot=", i:pn, s:" tid=", i:ActivatorTID(),
+    s:" hp=", i:GetActorProperty(0, APROP_Health),
+    s:" armor=", i:CheckInventory("BasicArmor"),
+    s:" ", s:RZ_BubbleImmunity()));
+
+  RZ_BubbleSelfHit(1, 1);
+  RZ_BubbleSelfLog("apply");
+
+  Delay(87);
+  RZ_BubbleSelfLog("t87");
+
+  Delay(2);
+  RZ_BubbleSelfLog("t89");
+
+  RZ_BubbleSelfHit(1, 1);
+  RZ_BubbleSelfHit(1, 0);
+  RZ_BubbleSelfLog("ordinary_break");
+
+  RZ_BubbleSelfHit(1, 1);
+  RZ_BubbleSelfHit(1, 1);
+  RZ_BubbleSelfHit(1, 1);
+  RZ_BubbleSelfLog("burst3");
+
+  // Invulnerable hits must not break or apply Bubble.
+  Thing_Damage2(0, 1, "UH_Bubble");
+  RZ_BubbleSelfLog("immune_active");
+
+  ACS_NamedExecuteWithResult("uh_BubbleClearLifecycle");
+  Thing_Damage2(0, 1, "UH_Bubble");
+  RZ_BubbleSelfLog("immune_apply");
+
+  // An external freeze layer survives Bubble, and Bubble survives its removal.
+  ACS_NamedExecuteWithResult("core_freezeplayer", 0, 1, 0);
+  RZ_BubbleSelfHit(1, 1);
+  RZ_BubbleSelfLog("overlap");
+  ACS_NamedExecuteWithResult("core_freezeplayer", 0, 0, 0);
+  RZ_BubbleSelfLog("external_clear");
+  RZ_BubbleSelfHit(1, 0);
+  RZ_BubbleSelfLog("bubble_break");
+
+  // The DEATH lifecycle must release the owned layer.
+  RZ_BubbleSelfHit(1, 1);
+  RZ_BubbleSelfLog("death_before");
+  SetActorProperty(0, APROP_Health, 0);
+  // The DEATH special starts on the next tic, so log after it has run.
+  Delay(2);
+  RZ_BubbleSelfLog("death_after");
+  RZ_BubbleDiag(StrParam(s:"ver=", i:RZ_BUBBLE_PROBE_VERSION,
+    s:" self-test done"));
+}
+
+// Post-P_PlayerThink input view. Send +forward/+attack/+left/+lookup before a
+// step to prove that PROP_TOTALLYFROZEN zeroes the modified command.
+script "rz_debug_BubbleInputProbe" (int pn) {
+  if (pn < 0)
+    pn = ConsolePlayerNumber();
+  int kind = RZ_BubbleSelectBody(pn);
+  if (kind < 0)
+    terminate;
+  int buttons = GetPlayerInput(-1, MODINPUT_BUTTONS);
+  RZ_BubbleDiag(StrParam(s:"ver=", i:RZ_BUBBLE_PROBE_VERSION,
+    s:" input slot=", i:pn, s:" body=", s:RZ_BubbleBodyName(kind),
+    s:" active=", i:CheckInventory("UH_Bubble_F"),
+    s:" forward=", i:GetPlayerInput(-1, MODINPUT_FORWARDMOVE),
+    s:" side=", i:GetPlayerInput(-1, MODINPUT_SIDEMOVE),
+    s:" up=", i:GetPlayerInput(-1, MODINPUT_UPMOVE),
+    s:" yaw=", i:GetPlayerInput(-1, MODINPUT_YAW),
+    s:" pitch=", i:GetPlayerInput(-1, MODINPUT_PITCH),
+    s:" attack=", i:buttons & BT_ATTACK,
+    s:" use=", i:buttons & BT_USE));
+}

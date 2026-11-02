@@ -11,7 +11,7 @@ coverage remain pending; these focused checks do not establish the whole port.
 - Working branch: `migration/v6c`. Target a v6c migration beta, followed by a
   4.0.0 RC after multiplayer regression tests pass.
 - Read-only reference: `../references/for_8bdm-v6c/mm8bdm-v6c/`.
-- Base package: `../wads/mm8bdm-v6c.pk3`.
+- Base package: `../../../wads/mm8bdm-v6c.pk3` in the current launch profiles.
 - CBM v9gh_ remains a reference for inherited code. A newer CBM release is
   not a prerequisite. Full class rewrites are outside this migration.
 
