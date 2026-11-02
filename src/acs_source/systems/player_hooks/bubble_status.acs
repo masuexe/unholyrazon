@@ -13,6 +13,8 @@
 
 #define UH_BUBBLE_TICS 88
 #define UH_BUBBLE_DAMAGETYPE "UH_Bubble"
+#define UH_BUBBLE_SND_ENTER "MMBN6/BubbleEnter"
+#define UH_BUBBLE_SND_RELEASE "MMBN6/BubbleRelease"
 
 // Future immunity whitelist hook.  No actor grants UH_BubbleImmune_F in this
 // version; a future approved whitelist adds that marker instead of editing the
@@ -50,10 +52,17 @@ function bool UH_BubbleDamageCarriesStatus(str dmgtype) {
 // layer.  Set releaseLock to false when the shared freeze counter was already
 // wiped by somebody else (the layer is gone and another layer may have arrived
 // since).
-function void UH_BubbleClearOwned(int releaseLock) {
+//
+// playRelease plays the release sound only when this call actually ends an
+// active instance.  Lifecycle, death, morph and interrupted-instance cleanup
+// pass 0, so they never make a sound when no Bubble existed.
+function void UH_BubbleClearOwned(int releaseLock, int playRelease) {
   int p = PlayerNumber();
   if (p < 0)
     return;
+
+  int hadBubble = CheckInventory("UH_Bubble_F") > 0
+    || CheckInventory("UH_BubbleLock_F") > 0;
 
   if (CheckInventory("UH_BubbleLock_F") > 0) {
     TakeInventory("UH_BubbleLock_F", 1);
@@ -63,6 +72,9 @@ function void UH_BubbleClearOwned(int releaseLock) {
 
   TakeInventory("UH_Bubble_F", 9999);
   SetUserVariable(0, "user_uh_bubble_token", 0);
+  SetUserVariable(0, "user_uh_bubble_hold_pending", 0);
+  if (hadBubble && playRelease)
+    PlaySound(0, UH_BUBBLE_SND_RELEASE, CHAN_BODY);
 }
 
 // Start one Bubble instance on the current body.  The unique token is the body
@@ -78,10 +90,11 @@ function void UH_BubbleApply(void) {
   // An interrupted instance can leave only the lock marker behind.  Reclaim it
   // before installing the new state so the new instance owns exactly one layer.
   if (CheckInventory("UH_BubbleLock_F") > 0 && CheckInventory("UH_Bubble_F") <= 0)
-    UH_BubbleClearOwned(1);
+    UH_BubbleClearOwned(1, 0);
 
   int token = UniqueTID();
   SetUserVariable(0, "user_uh_bubble_token", token);
+  SetUserVariable(0, "user_uh_bubble_hold_pending", 1);
   GiveInventory("UH_Bubble_F", 1);
 
   int before = CheckInventory("PlayerPropertyFrozen");
@@ -92,10 +105,14 @@ function void UH_BubbleApply(void) {
     // active marker that blocks input without an owned lock.
     TakeInventory("UH_Bubble_F", 9999);
     SetUserVariable(0, "user_uh_bubble_token", 0);
+    SetUserVariable(0, "user_uh_bubble_hold_pending", 0);
     return;
   }
 
   GiveInventory("UH_BubbleLock_F", 1);
+  // One entry sound per accepted instance.  The per-tic controller and the
+  // cleanup paths never replay it.
+  PlaySound(0, UH_BUBBLE_SND_ENTER, CHAN_BODY);
   ACS_NamedExecuteAlways("uh_BubbleController", 0, p, token);
 }
 
@@ -112,6 +129,7 @@ script "uh_BubbleController" (int p, int token) {
     terminate;
 
   int elapsed = 0;
+  int holdChecked = 0;
   while (elapsed < UH_BUBBLE_TICS) {
     if (!PlayerInGame(p))
       terminate;
@@ -125,30 +143,56 @@ script "uh_BubbleController" (int p, int token) {
       // asleep.  The same cleanup already returned the layer; return only a
       // layer that is still visibly owned here.
       if (CheckInventory("UH_BubbleLock_F") > 0)
-        UH_BubbleClearOwned(1);
+        UH_BubbleClearOwned(1, 0);
       terminate;
     }
     if (CheckInventory("UH_BubbleLock_F") <= 0) {
       // The owned layer disappeared (bulk freeze wipe).  Do not touch the
       // shared counter again: a different source may own what is there now.
-      UH_BubbleClearOwned(0);
+      UH_BubbleClearOwned(0, 0);
       terminate;
     }
     if (CheckInventory("PlayerPropertyFrozen") <= 0) {
-      UH_BubbleClearOwned(0);
+      UH_BubbleClearOwned(0, 0);
       terminate;
     }
     if (GetActorProperty(0, APROP_Health) <= 0) {
-      UH_BubbleClearOwned(1);
+      UH_BubbleClearOwned(1, 0);
       terminate;
     }
 
     Delay(1);
     elapsed++;
+
+    if (!holdChecked) {
+      // The engine installs the damage Pain state after this event.  The
+      // shared Pain state clears the pending flag and enters BubbleHold itself,
+      // so a class with a normal Pain response keeps its full chain.  A class
+      // whose PainChance rejects the hit leaves the flag set; hold H here.
+      if (!SetActivatorToPlayer(p))
+        terminate;
+      if (GetUserVariable(0, "user_uh_bubble_token") != token)
+        terminate;
+      if (GetUserVariable(0, "user_uh_bubble_hold_pending") == 1
+          && CheckInventory("UH_Bubble_F") > 0
+          && GetActorProperty(0, APROP_Health) > 0) {
+        SetActorState(0, "BubbleHold", 1);
+        SetUserVariable(0, "user_uh_bubble_hold_pending", 0);
+      }
+      holdChecked = 1;
+    }
   }
 
-  if (GetUserVariable(0, "user_uh_bubble_token") == token)
-    UH_BubbleClearOwned(1);
+  if (!SetActivatorToPlayer(p))
+    terminate;
+  if (GetUserVariable(0, "user_uh_bubble_token") != token)
+    terminate;
+  // A timeout releases normally.  A body that died during the final tic keeps
+  // the conservative death path and does not play the release sound.
+  if (GetActorProperty(0, APROP_Health) > 0)
+    UH_BubbleClearOwned(1, 1);
+  else
+    UH_BubbleClearOwned(1, 0);
 }
 
 // Lifecycle entry point for ENTER, RESPAWN, DEATH, morph and revival paths.
@@ -156,7 +200,9 @@ script "uh_BubbleController" (int p, int token) {
 script "uh_BubbleClearLifecycle" (void) {
   if (PlayerNumber() < 0)
     terminate;
-  UH_BubbleClearOwned(1);
+  // Lifecycle cleanup is silent. It must not play a release sound on map
+  // entry, respawn, morph or death when no active instance is ending.
+  UH_BubbleClearOwned(1, 0);
 }
 
 // Post-armor damage event.  GAMEEVENT_ACTOR_DAMAGED is dispatched only after
@@ -178,7 +224,9 @@ script "uh_BubbleDamageEvent" (int evt, int dmg, int dmgtype) EVENT {
   // breaks and never reapplies in the same event, even when the hit carries
   // the Bubble damage type.
   if (CheckInventory("UH_Bubble_F") > 0) {
-    UH_BubbleClearOwned(1);
+    // A lethal break clears the status, but the death lifecycle owns the end of
+    // this life.  Keep the release sound for a surviving break only.
+    UH_BubbleClearOwned(1, GetEventResult() < GetActorProperty(0, APROP_Health));
     terminate;
   }
 

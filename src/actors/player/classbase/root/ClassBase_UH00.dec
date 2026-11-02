@@ -21,6 +21,9 @@ actor ClassBaseUH00 : ClassBase1 {
   var int user_uh_eye_setup_identity;
   // Bubble controller identity; a new body starts at zero.
   var int user_uh_bubble_token;
+  // Set on apply and cleared by every Pain entry point. The controller uses
+  // it to hold H only when the damage produced no Pain state.
+  var int user_uh_bubble_hold_pending;
 
   var int user_wepangle;
   var int user_weppitch;
@@ -48,18 +51,34 @@ actor ClassBaseUH00 : ClassBase1 {
     "----" H 0  // A_GiveInventory("PainHitstun_75_P")
     "----" H 0  // A_GiveInventory("PainRecoil_P")
     "----" H 0
+    // Every Pain entry point reaches this line (Pain+1/2/3), so the
+    // controller knows the engine installed a Pain state for this hit.
+    "----" H 0 A_SetUserVar("user_uh_bubble_hold_pending", 0)
     "----" H 0 A_TakeInventory("SuperEffective", 1)
     "----" H 0 A_GiveInventory("EternalPainFlag")
     "----" H 0 A_GiveInventory("UHPainSound_P")  // A_Pain
     "----" H 0
     "----" H 0 A_JumpIfInventory("AntiDamageTime", 1, "Pain_AntiDamage")
     "----" H 0 A_JumpIfInventory("PlayerPropertyBuddha", 1, "Pain_Buddha")
+    // Hold the skin's H frame after protection ran. The class pain chain
+    // resumes when Bubble ends.
+    "----" H 0 A_JumpIfInventory("UH_Bubble_F", 1, "BubbleHold")
+    goto SuperClassPain
+
+   // Bubble presentation. "####" keeps the current class sprite or player
+   // skin and changes only the frame to H. The 1-tic frame makes the loop
+   // safe; a zero-tic loop would freeze the server.
+   BubbleHold:
+    "####" H 1
+    "####" H 0 A_JumpIfHealthLower(1, "Death")
+    "####" H 0 A_JumpIfInventory("UH_Bubble_F", 1, "BubbleHold")
     goto SuperClassPain
 
    Pain_AntiDamage:
     "----" H 0 ACS_NamedExecuteWithResult("UH_AntiDamageHP", 0)
     "----" H 0 A_TakeInventory("AntiDamageTime")
     "----" H 0 ACS_NamedExecuteWithResult("core_buddhaplayer", 0, false)
+    "----" H 0 A_JumpIfInventory("UH_Bubble_F", 1, "BubbleHold")
     goto SuperClassPain
 
    Pain_Buddha:
@@ -110,6 +129,7 @@ actor ClassBaseUH00 : ClassBase1 {
     goto Pain_BuddhaEnd
 
    Pain_BuddhaEnd:
+    "----" H 0 A_JumpIfInventory("UH_Bubble_F", 1, "BubbleHold")
     "----" H 0 A_Jump(256, "SuperClassPain")
     goto SuperClassPain
 

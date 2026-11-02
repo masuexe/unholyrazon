@@ -6,9 +6,9 @@ This document describes the reusable Bubble status for Unholy Razon 4.0. The
 status targets Zandronum and MM8BDM v6c. It uses DECORATE and ACS only.
 
 No existing weapon or class gains Bubble in this change. A weapon opts in with
-one damage type, as described below. No new art is added. The status uses only
-the engine input freeze and the two inventory markers; no cosmetic actor
-controls gameplay.
+one damage type, as described below. No new body art is added. The status adds
+two supplied sound assets. The status uses only the engine input freeze and the
+two inventory markers; no cosmetic actor controls gameplay.
 
 ## Behavior
 
@@ -27,6 +27,9 @@ Bubble is a single active state. It has no stack count and no refresh rule.
 - Bosses are susceptible. The eligibility gate does not read paralysis
   immunity or boss-only flags.
 - This version has no electric damage multiplier and no electric interaction.
+- While Bubble is active, the body holds frame H of its current sprite.
+- A new instance plays the entry sound. A surviving damage break or a timeout
+  plays the release sound.
 
 ## Engine hook and ordering
 
@@ -54,6 +57,45 @@ rules.
 
 A lethal hit does not apply Bubble. The event compares the final damage with
 the current health. Buddha and extra-life rescues are not special-cased.
+
+## Presentation and release sounds
+
+The shared `BubbleHold` state keeps frame H on the body. The state line
+`"####" H` keeps the current class sprite or player skin and changes only the
+frame. `"####"` is the Zandronum no-change sprite marker. It does not replace
+the sprite with a fixed texture.
+
+The engine installs the damage Pain state after the damage event. The shared
+`Pain` state runs the normal bookkeeping and protection checks first. Then it
+jumps to `BubbleHold` when `UH_Bubble_F` is active. The class pain chain
+continues when Bubble ends, so its reactions still run. If a class has no Pain
+state because its `PainChance` rejects the hit, `uh_BubbleController` sets
+`BubbleHold` after one tic.
+
+`BubbleHold` checks health on every frame. A dead body jumps to the class
+`Death` state. A living body returns to `SuperClassPain` when the marker is
+gone. The status never forces H onto a corpse.
+
+The two supplied EXE6 files are copied without conversion:
+
+| Alias | Asset |
+|-------|-------|
+| `MMBN6/BubbleEnter` | `sounds/gamesounds/mmbn/bubble_enter.wav` |
+| `MMBN6/BubbleRelease` | `sounds/gamesounds/mmbn/bubble_release.wav` |
+
+`UH_BubbleApply` plays the entry sound once after the marker and freeze layer
+are owned. `uh_BubbleClearOwned` plays the release sound once for a surviving
+damage break or a timeout. Repeated cleanup cannot replay it.
+
+These paths are silent:
+
+- `ENTER`, `RESPAWN`, and `DEATH` lifecycle cleanup.
+- Morph pre-reset, post-reset, and demorph cleanup.
+- Interrupted-instance and external-freeze cleanup.
+- A lethal break. The death lifecycle owns the end of the life, so it adds no
+  release sound.
+
+A map entry or respawn with no Bubble makes no sound.
 
 ## Weapon opt-in
 
@@ -168,8 +210,8 @@ pukename rz_debug_BubbleInputProbe <slot>
 Every diagnostic prints one line that starts with `[BubbleProbe]`. The line
 uses `PrintBold`, so it reaches the local console and every client console on a
 server. It does not use `UH_Log`, so `uh_cl_LogLevel` and `uh_sv_loglevel`
-cannot hide it. A dedicated server has no local status bar, so the same line
-also goes to the server log there.
+cannot hide it. The same line also goes to the engine logfile, so a headless
+run can read it.
 
 The first field is the probe version, for example `ver=2`. A different version
 means the running package is stale.
@@ -221,10 +263,13 @@ relaunch before running it again.
 
 | File | Purpose |
 |------|---------|
-| `src/acs_source/systems/player_hooks/bubble_status.acs` | Status, event, controller, and cleanup |
+| `src/acs_source/systems/player_hooks/bubble_status.acs` | Status, event, controller, cleanup, and sounds |
 | `src/acs_source/systems/player_hooks/rz_shared.acs` | Late-loading library include |
 | `src/actors/player/uh-flags.dec` | Marker and immunity inventory actors |
-| `src/actors/player/classbase/root/ClassBase_UH00.dec` | Body token user variable |
+| `src/actors/player/classbase/root/ClassBase_UH00.dec` | Body token, pending flag, and `BubbleHold` state |
 | `src/acs_source/unholy/uh_lifecycle.acs` | Enter, respawn, and death cleanup |
 | `src/acs_source/systems/tools/morph_reset.acs` | Morph and demorph cleanup |
 | `src/acs_source/debug/rz_debug.acs` | Server diagnostics |
+| `src/SNDINFO` | Entry and release sound aliases |
+| `src/sounds/gamesounds/mmbn/bubble_enter.wav` | Supplied EXE6 entry sound |
+| `src/sounds/gamesounds/mmbn/bubble_release.wav` | Supplied EXE6 release sound |
