@@ -7,6 +7,7 @@
 ## 4.0.0-beta.261101
 
 - Void Walker survives its first lethal hit to enter phase two, restoring all four elemental orbs and unlocking the core weapon in Slot 5.
+- Void Walker's Wind Orb Lightning Orb now fires a single high-speed projectile using Spark Shock visuals. On hitting a target, it envelops them in a persistent electric cage that warps with their movement for ~1.5 seconds, dealing periodic shock damage ticks.
 - Added Void Walker's complete second-phase spell selection. Primary attacks are free, secondary spells use boss ammo, and Reload uses rage:
   - Wind: Lightning Orb / charged Electroshock; Bolt / Light Beam / Static E! secondary charge stages costing 30 / 60 / 90 ammo; Petal Blast ultimate turns hit survivors into mushrooms for three seconds.
   - Earth: Blast / charged Boulder; Storm / charged Water Blast; Sand Storm ultimate.

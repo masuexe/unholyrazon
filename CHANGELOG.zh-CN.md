@@ -7,6 +7,7 @@
 ## 4.0.0-beta.261101
 
 - Void Walker 首次受到致命伤害后进入二阶段，恢复四个元素球并解锁第五槽位的本体武器。
+- Void Walker 风元素球（绿色）的 Lightning Orb 改为发射单发高速电球（使用 Spark Shock 动画），命中目标后在其身上生成跟随位移的电网囚笼（持续约 1.5 秒），电网随目标移动并周期性造成电击伤害。
 - 补齐 Void Walker 二阶段完整招式：主攻击不耗蓝，副攻击消耗 Boss 蓝量，Reload 消耗怒气：
   - 绿色：Lightning Orb／蓄力 Electroshock；副攻击按蓄力等级依次释放 Bolt／Light Beam／Static E!，消耗 30／60／90 蓝量；大招 Petal Blast 将命中的生还者变成蘑菇三秒。
   - 黄色：Blast／蓄力 Boulder；Storm／蓄力 Water Blast；大招 Sand Storm。
