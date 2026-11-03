@@ -9,7 +9,13 @@
 - Added Phase 2 (Culex 3D from *Super Mario RPG Remake*) for Void Walker:
   - When reaching lethal damage in Phase 1, Void Walker triggers an extra-life Buddha transition into Phase 2, resurrecting all four elemental orbs with fresh health and unlocking weapon Slot 5 (Culex 3D Core).
   - Slot 5 attacks: Primary fires Dark Star (high-speed piercing star with large explosion). Secondary casts Shredder while any elemental orbs survive (stripping survivor defense buffs and powerups) or Final Claw when all four orbs are destroyed (an invulnerable high-velocity forward dash slash).
-  - Upgraded elemental orb weapons to classic Super Mario RPG spells: Slot 1 Wind (M1 triple Lightning Orb / M2 Petal Blast, morphing hit survivors into a helpless mushroom for 3 seconds), Slot 2 Earth (M1 bouncing Boulder Slam / M2 Sand Storm knockback waves), Slot 3 Water (M1 Diamond Saw bouncing sawblades / M2 Blizzard freeze wave), Slot 4 Fire (M1 Corona ground fire pillars / M2 Flame Wall advancing flame storm).
+  - Upgraded elemental orb weapons to classic Super Mario RPG spells: Slot 1 Wind (M1 2-stage Lightning Orb / Electroshock; M2 3-stage Bolt / Light Beam / Static E!; Reload Petal Blast mushroom storm), Slot 2 Earth (M1 bouncing Boulder Slam / M2 Sand Storm knockback waves), Slot 3 Water (M1 Diamond Saw bouncing sawblades / M2 Blizzard freeze wave), Slot 4 Fire (M1 Corona ground fire pillars / M2 Flame Wall advancing flame storm).
+  - Full authentic moveset for Slot 1 Wind Orb (`VoidWalker_W`):
+    - Primary fire (0 ammo): Tap fires 3 fast `Lightning Orb`s; hold/charge unleashes 5-way piercing electric web `Electroshock`.
+    - Secondary fire (consumes boss ammo, 3-stage charge): Stage 1 (tap, 30 ammo) calls down vertical sky-strike `Bolt`; Stage 2 (mid charge, 60 ammo) fires penetrating laser `Light Beam`; Stage 3 (full charge, 90 ammo) triggers full-screen announcement and 360-degree EMP burst `Static E!`.
+    - Reload key (Ultimate, partial rage): Consumes 500 of 1000 `UnholyPower1000` to unleash full-screen announcement and cascading petal storm `Petal Blast`, turning hit survivors into helpless mushrooms for 3 seconds while retaining remaining rage for tactical reuse.
+    - Dedicated secondary ammo bar (`SecondBar` colors 228, 111) for all Void Walker weapons to display rage energy (`UnholyPower1000`).
+    - Full skill announcement banners (`uh_AnnounceBossSkill`) and authentic sound effects for all Phase 2 abilities: `Lightning Orb`, `Electroshock`, `Bolt`, `Light Beam`, `Static E!`, and `Petal Blast`.
   - Remake Meteor countdown mechanic: During Phase 2, triggers periodic 5-second countdown banners culminating in a barrage of destructive ceiling meteor strikes.
   - Integrated authentic Super Mario RPG sound effects for all attacks, morphs, skills, and announcements (`DarkStar`, `Meteor`, `PetalBlast`, `Mushroom`, `DiamondSaw`, `CrystalCrusher`, `StaticE`, `Snowy`, `SandStorm`, `DeathSickle`, `Shredder`, `CoronaBeam`).
 
