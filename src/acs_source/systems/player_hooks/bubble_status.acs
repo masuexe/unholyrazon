@@ -127,6 +127,7 @@ function void UH_BubbleVisualSpawn(int p, int token) {
     SetPointer(AAPTR_TARGET, temp);
   SetActivatorToPlayer(p);
   Thing_ChangeTID(temp, bodyTid);
+  SetUserVariable(vis, "user_uh_bubble_height", GetActorProperty(0, APROP_Height) >> 16);
   SetUserVariable(vis, "user_uh_bubble_owner", token);
   SetUserVariable(0, "user_uh_bubble_visual", vis);
   SetActorState(vis, "Shield", 0);
@@ -191,6 +192,17 @@ function void UH_BubbleClearOwned(int releaseLock, int playRelease) {
   else
     UH_BubbleVisualDrop();
 
+  if (CheckInventory("UH_BubbleGravity_F") > 0) {
+    TakeInventory("UH_BubbleGravity_F", 1);
+    if (CheckInventory("PlayerPropertyNoGravity") > 0
+        && CheckInventory("PlayerPropertyNoGravityForced") > 0)
+      ACS_NamedExecuteWithResult("core_nogravityplayer", 0, 0, 1);
+    if (CheckInventory("UH_BubbleRawGravity_F") > 0
+        && CheckInventory("PlayerPropertyNoGravity") <= 0)
+      GiveInventory("PlayerPropertyNoGravityOn", 1);
+  }
+  TakeInventory("UH_BubbleRawGravity_F", 9999);
+
   if (CheckInventory("UH_BubbleLock_F") > 0) {
     TakeInventory("UH_BubbleLock_F", 1);
     if (releaseLock && CheckInventory("PlayerPropertyFrozen") > 0)
@@ -237,6 +249,16 @@ function void UH_BubbleApply(void) {
   }
 
   GiveInventory("UH_BubbleLock_F", 1);
+  // A forced core layer also works while grounded. Remember a native class
+  // flag so the last core layer cannot turn off its pre-existing NOGRAVITY.
+  if (CheckInventory("PlayerPropertyNoGravity") < 99999
+      && CheckInventory("PlayerPropertyNoGravityForced") < 99999) {
+    if (CheckFlag(0, "NOGRAVITY")
+        && CheckInventory("PlayerPropertyNoGravity") <= 0)
+      GiveInventory("UH_BubbleRawGravity_F", 1);
+    ACS_NamedExecuteWithResult("core_nogravityplayer", 0, 1, 1);
+    GiveInventory("UH_BubbleGravity_F", 1);
+  }
   // One attached visual per accepted instance.  A refused freeze layer returned
   // above, so an immune hit cannot spawn a visual.
   UH_BubbleVisualSpawn(p, token);

@@ -29,6 +29,9 @@ Bubble is a single active state. It has no stack count and no refresh rule.
   immunity or boss-only flags.
 - This version has no electric damage multiplier and no electric interaction.
 - While Bubble is active, the body holds frame H of its current sprite.
+- Bubble owns one forced NoGravity layer. Release and lifecycle cleanup remove
+  that layer; other sources and a native NoGravity flag remain intact.
+  The core NoGravity entry stops current momentum.
 - A new instance plays the entry sound. A surviving damage break or a timeout
   plays the release sound.
 - One bubble effect follows the affected body. A surviving damage break or a
@@ -111,7 +114,8 @@ It has no collision, gravity, or damage behavior.
 
 The supplied `tmp/Sprite-0001.png` is the artwork source. Fourteen 64 by 64
 transparent crops preserve the original pixels and colors. All use the same
-sprite offset `(32, 56)` and scale 2.5. The first eleven frames (`UBBLA0` through `UBBLK0`) play in row
+sprite offset `(32, 56)` and scale 2.5. Both animations compensate for the
+sprite pivot and center on half the owning body height, sampled on entry. The first eleven frames (`UBBLA0` through `UBBLK0`) play in row
 order at eight tics each, repeating while active. The final three frames
 (`UBBLL0` through `UBBLN0`) play at four tics each, then disappear after twelve
 tics. The effect follows the same body during both animations.

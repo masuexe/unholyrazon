@@ -1,7 +1,8 @@
 // Server-owned variant of ShieldWarper_UH. Override Spawn to skip the base
 // client-only spawn functions and ShieldCheck lifetime. Server A_Warp movement
 // and ACS SetActorState transitions are replicated by Zandronum.
-// The 64x64 source crops use grAb (32,56), centering the bubble above the feet.
+// grAb (32,56) at Scale 2.5 places the image center 61.25 units up.
+// Subtract that offset and add half the owning body height to center on it.
 // Intact frames: 8 tics each (88 per cycle). Pop: 4 tics each (12 total).
 actor UHBubbleWarper : ShieldWarper_UH {
   -CLIENTSIDEONLY
@@ -10,6 +11,7 @@ actor UHBubbleWarper : ShieldWarper_UH {
   +NOTIMEFREEZE
   Scale 2.5
 
+  var int user_uh_bubble_height;
   var int user_uh_bubble_owner;
   var int user_uh_bubble_released;
 
@@ -19,10 +21,10 @@ actor UHBubbleWarper : ShieldWarper_UH {
     TNT1 A -1
     stop
    Shield:
-    UBBL AAAAAAAABBBBBBBBCCCCCCCCDDDDDDDDEEEEEEEEFFFFFFFFGGGGGGGGHHHHHHHHIIIIIIIIJJJJJJJJKKKKKKKK 1 A_Warp(AAPTR_TARGET, 0, 0, 0, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)
+    UBBL AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJ 1 A_Warp(AAPTR_TARGET, 0, 0, user_uh_bubble_height / 2.0 - 61.25, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)
     loop
    Pop:
-    UBBL LLLLMMMMNNNN 1 A_Warp(AAPTR_TARGET, 0, 0, 0, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)
+    UBBL LMN 1 A_Warp(AAPTR_TARGET, 0, 0, user_uh_bubble_height / 2.0 - 61.25, 0, WARPF_INTERPOLATE|WARPF_NOCHECKPOSITION)
     stop
   }
 }
