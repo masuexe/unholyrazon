@@ -1,0 +1,206 @@
+// Additional phase-two regression, enabled by --phase2 on the orb harness.
+// --hud exercises the same HUD data on the remote owning client.
+script "VWO_HudDamage" (void) {
+  Hit(0, 1, 2760);
+  Hit(1, 1, 4500);
+  Hit(2, 1, 99999);
+  Delay(3);
+  Log(s:"VWO_HUD_DAMAGE failures=", i:failures);
+}
+script "VWO_HudCore" (void) {
+  SetActivatorToPlayer(0);
+  SetWeapon("VoidWalker_W5");
+  Delay(35);
+  Expect(CheckWeapon("VoidWalker_W5"), "HUD probe selects core weapon");
+  Log(s:"VWO_HUD_CORE failures=", i:failures);
+}
+script "VWO_ClientHudCheck" (int damaged, int core) CLIENTSIDE {
+  SetActivatorToPlayer(ConsolePlayerNumber());
+  bool ok = CheckInventory("VWOrbMaxHP") == 5520
+    && CheckInventory("VWOrbHP0") == (damaged ? 2760 : 5520)
+    && CheckInventory("VWOrbHP1") == (damaged ? 1020 : 5520)
+    && CheckInventory("VWOrbHP2") == (damaged ? 0 : 5520)
+    && CheckInventory("VWOrbHP3") == 5520;
+  if (damaged) ok &= !CheckInventory("VoidWalker_W3");
+  if (core) ok &= CheckWeapon("VoidWalker_W5");
+  // BARHNDLE uses this marker to enable DrawBar_<weapon> on each client.
+  int marker = UniqueTID();
+  bool scriptbar = SpawnForced(StrParam(s:GetWeapon(), s:"_ScriptBar"), 0, 0, 0, marker);
+  if (scriptbar) Thing_Remove(marker);
+  ok &= scriptbar;
+  Log(s:"VWO_CLIENT_HUD damaged=",i:damaged,s:" core=",i:core,
+    s:" hp=",i:CheckInventory("VWOrbHP0"),s:",",i:CheckInventory("VWOrbHP1"),
+    s:",",i:CheckInventory("VWOrbHP2"),s:",",i:CheckInventory("VWOrbHP3"),
+    s:" max=",i:CheckInventory("VWOrbMaxHP"),s:" scriptbar=",i:scriptbar,s:" ok=",i:ok);
+}
+str p2types[19] = {"VWBlast", "VWBoulderSlam", "VWStormMissile", "VWWaterBlast",
+  "VWSandStormHit", "VWCrystal", "VWIceRock", "VWSolidify", "VWDiamondSaw",
+  "VWBlizzardHit", "VWDrain", "VWMegaDrainBeam", "VWFlame", "VWFlameWallPillar",
+  "VWCoronaFirePillar", "VWFlameStone", "VWDarkStar", "VWMeteorBlast", "VWFinalClawSlash"};
+int p2spawned[19];
+int p2minimum;
+int p2minpower;
+int p2monitor;
+script "VWO_P2Spawn" (int evt, int a, int b) EVENT {
+  if (evt != GAMEEVENT_ACTOR_SPAWNED) terminate;
+  for (int i = 0; i < 19; i++)
+    if (CheckActorClass(0, p2types[i])) p2spawned[i]++;
+}
+script "VWO_P2Begin" (void) {
+  SetActivatorToPlayer(0);
+  SetWeapon("VoidWalker_W2");
+  Delay(35);
+  GiveInventory("VWPhase2TransitionFlag", 1);
+  Delay(70);
+  Expect(CheckInventory("VoidWalkerPhase2_F") > 0, "native weapon transition enters phase two");
+  Expect(CheckWeapon("VoidWalker_W2"), "transition preserves the selected Earth weapon");
+  ACS_NamedTerminate("uh_VWMeteorLoop", 0);
+  SetPlayerProperty(0, false, PROP_TOTALLYFROZEN);
+  Expect(CheckInventory("VoidWalker_W5") > 0, "phase two grants core weapon");
+  // Place a stationary survivor in front of the boss for targeted spells.
+  int yaw = 0.25;
+  if (GetActorY(1000) > 0) yaw = 0.75;
+  SetActorAngle(1000, yaw);
+  SetActorPosition(1001, GetActorX(1000) + FixedMul(96.0, cos(yaw)),
+    GetActorY(1000) + FixedMul(96.0, sin(yaw)), GetActorZ(1000), false);
+  Log(s:"VWO_P2_BEGIN failures=", i:failures);
+}
+script "VWO_P2Prepare" (int slot, int power) {
+  SetActivatorToPlayer(0);
+  SetPlayerProperty(0, false, PROP_TOTALLYFROZEN);
+  int yaw = 0.25;
+  if (GetActorY(1000) > 0) yaw = 0.75;
+  SetActorAngle(1000, yaw);
+  SetActorPosition(1001, GetActorX(1000) + FixedMul(96.0, cos(yaw)),
+    GetActorY(1000) + FixedMul(96.0, sin(yaw)), GetActorZ(1000), false);
+  SetActorVelocity(1001, 0, 0, 0, false, false);
+  SetActorProperty(1001, APROP_Health, 10000);
+  TakeInventory("UnholyBossAmmo200", 99999);
+  GiveInventory("UnholyBossAmmo200", 200);
+  TakeInventory("UnholyPower1000", 99999);
+  GiveInventory("UnholyPower1000", power);
+  TakeInventory("VivifyFlag1", 99999);
+  TakeInventory("WeaponCharge", 99999);
+  str weapon = "VoidWalker_W5";
+  if (slot < 5) weapon = weapons[slot - 1];
+  SetWeapon(weapon);
+  Delay(35);
+  for (int i = 0; i < 19; i++) p2spawned[i] = 0;
+  p2minimum = 200;
+  p2minpower = power;
+  p2monitor++;
+  ACS_NamedExecuteAlways("VWO_P2Monitor", 0, p2monitor);
+  Log(s:"VWO_P2_READY failures=", i:failures);
+}
+script "VWO_P2Monitor" (int token) {
+  for (int i = 0; i < 175 && p2monitor == token; i++) {
+    int ammo = CheckActorInventory(1000, "UnholyBossAmmo200");
+    if (ammo < p2minimum) p2minimum = ammo;
+    int rage = CheckActorInventory(1000, "UnholyPower1000");
+    if (rage < p2minpower) p2minpower = rage;
+    Delay(1);
+  }
+}
+script "VWO_P2Check" (int type, int cost, int power) {
+  // Wait in engine tics, rather than assuming the host advances 35 tics per
+  // wall-clock second during a loaded two-process test.
+  for (int n = 0; n < 70 && CheckActorInventory(1000, "VivifyFlag1"); n++) Delay(1);
+  p2monitor++;
+  SetActivatorToPlayer(0);
+  // A fast wide projectile can hit during P_CheckMissileSpawn and disappear
+  // before GAMEEVENT_ACTOR_SPAWNED. Accept its real point-blank damage too.
+  bool cast = p2spawned[type] > 0;
+  if (type == 18 && GetActorProperty(1001, APROP_Health) < 10000) cast = true;
+  Expect(cast, StrParam(s:"native input casts ", s:p2types[type]));
+  Expect(p2minimum >= 200 - cost, "cast never consumes more boss ammo than specified");
+  if (cost == 0) Expect(p2minimum == 200, "M1 / Reload preserves boss ammo");
+  else Expect(p2minimum < 200, "M2 consumes boss ammo");
+  Expect(p2minpower == power, "spell deducts only its specified rage cost");
+  Expect(CheckInventory("VivifyFlag1") == 0, "cast releases item lock");
+  Expect(CheckInventory("WeaponCharge") == 0, "cast clears charge");
+  Log(s:"VWO_P2_CHECK type=",i:type,s:" shots=",i:p2spawned[type],s:" minrage=",i:p2minpower,s:" rage=",i:CheckInventory("UnholyPower1000"),s:" minammo=",i:p2minimum,s:" failures=",i:failures);
+}
+script "VWO_P2Damage" (void) {
+  // No Buddha fallback: this must be the production post-armor damage cap.
+  SetActivatorToPlayer(1);
+  SetPlayerProperty(0, false, PROP_BUDDHA);
+  TakeInventory("BasicArmor", 99999);
+  SetActorProperty(0, APROP_Health, 40);
+  GiveInventory("SMRPG_Fear", 1);
+  SetActivatorToPlayer(0);
+  Thing_Damage2(1001, 110, "VWMeteor");
+  Log(s:"VWO_METEOR hp=",i:GetActorProperty(1001, APROP_Health),s:" invulnerable=",i:CheckFlag(1001, "INVULNERABLE"));
+  Expect(GetActorProperty(1001, APROP_Health) == 1, "Meteor cannot kill a feared low-health player");
+  Thing_Damage2(1001, 110, "VWMeteor");
+  Expect(GetActorProperty(1001, APROP_Health) == 1, "repeated Meteor preserves one HP");
+  SetActivatorToPlayer(1);
+  TakeInventory("SMRPG_Fear", 99999);
+  GiveInventory("SMRPG_Fear", 1);
+  SetActorProperty(0, APROP_Health, 1000);
+  SetActivatorToPlayer(0);
+  Thing_Damage2(1001, 20, "VWOTest");
+  Expect(GetActorProperty(1001, APROP_Health) == 970, "SMRPG fear multiplies received damage by 1.5");
+  SetActivatorToPlayer(0);
+  SetActorProperty(0, APROP_Health, 1000);
+  SetActivatorToPlayer(1);
+  Thing_Damage2(1000, 20, "VWOTest");
+  Expect(GetActorProperty(1000, APROP_Health) == 990, "SMRPG fear halves damage dealt");
+  int prop = UniqueTID();
+  SpawnForced("VWOAimBlocker", GetActorX(1000), GetActorY(1000), GetActorZ(1000), prop);
+  SetActorProperty(prop, APROP_Health, 1000);
+  Thing_Damage2(prop, 20, "VWOTest");
+  Expect(GetActorProperty(prop, APROP_Health) == 990, "fear also halves damage to nonplayer hitboxes");
+  Thing_Remove(prop);
+  TakeInventory("SMRPG_Fear", 99999);
+  GiveInventory("LeafShieldAmmo", 10);
+  GiveInventory("PowerProtectSurvivor", 1);
+  SetActorProperty(0, APROP_Health, 1000);
+  SetActivatorToPlayer(0);
+  SetActorAngle(1000, VectorAngle(GetActorX(1001) - GetActorX(1000), GetActorY(1001) - GetActorY(1000)));
+  ACS_NamedExecuteWithResult("uh_VWShredderCast");
+  Expect(GetActorProperty(1001, APROP_Health) == 1000, "Shredder deals no direct damage");
+  Expect(CheckActorInventory(1001, "LeafShieldAmmo") == 0, "Shredder removes the active shield");
+  Expect(CheckActorInventory(1001, "PowerProtectSurvivor") > 0, "Shredder preserves survivor team protection");
+  // A stationary saw provides native repeated A_Explode cuts without collision.
+  int saw = UniqueTID();
+  SpawnForced("VWDiamondSaw", GetActorX(1001), GetActorY(1001), GetActorZ(1001) + 24.0, saw);
+  SetActivator(saw);
+  SetPointer(AAPTR_TARGET, 1000);
+  Delay(5);
+  Expect(GetActorProperty(1001, APROP_Health) < 988, "NOINTERACTION saw deals repeated native radius damage");
+  Delay(30);
+  Expect(ThingCountName("VWDiamondSaw", saw) == 0, "saw has bounded lifetime");
+  // Independent status controllers must run concurrently for different peers.
+  SetActivatorToPlayer(1);
+  SetActorProperty(0, APROP_Health, 1000);
+  TakeInventory("BasicArmor", 99999);
+  SetActorProperty(1002, APROP_Health, 1000);
+  TakeActorInventory(1002, "BasicArmor", 99999);
+  int speed1 = GetActorProperty(1001, APROP_Speed);
+  int speed2 = GetActorProperty(1002, APROP_Speed);
+  SetActivatorToPlayer(0);
+  Thing_Damage2(1001, 1, "Blizzard");
+  Thing_Damage2(1002, 1, "Blizzard");
+  // Player 2 has Boss-side protection, so use the actual status entry point
+  // there to isolate concurrent controller ownership from team immunity.
+  SetActivatorToPlayer(2);
+  ACS_NamedExecuteAlways("uh_VWChill", 0);
+  Delay(5);
+  Expect(GetActorProperty(1001, APROP_Speed) < speed1, "first chilled player slows");
+  Expect(GetActorProperty(1002, APROP_Speed) < speed2, "second chilled player slows concurrently");
+  Delay(75);
+  Expect(GetActorProperty(1001, APROP_Speed) == speed1, "first chill restores native speed");
+  Expect(GetActorProperty(1002, APROP_Speed) == speed2, "second chill restores native speed");
+  SetActivatorToPlayer(1);
+  ACS_NamedExecuteWithResult("core_freezeplayer", 0, 1, 0);
+  int layers = CheckInventory("PlayerPropertyFrozen");
+  ACS_NamedExecuteAlways("uh_VWSolidify", 0);
+  Delay(3);
+  Expect(CheckInventory("PlayerPropertyFrozen") == layers + 1, "Solidify adds exactly one freeze layer");
+  Delay(38);
+  Expect(CheckInventory("PlayerPropertyFrozen") == layers, "Solidify preserves another freeze layer on expiry");
+  ACS_NamedExecuteWithResult("core_freezeplayer", 0, 0, 0);
+  FreezePlayers();
+  SetActivatorToPlayer(0);
+  Log(s:"VWO_P2_DAMAGE failures=", i:failures);
+}

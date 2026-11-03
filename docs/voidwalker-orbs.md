@@ -80,3 +80,60 @@ This preserves the existing Terra Mine collision group while allowing elemental
 shots, fire fragments, and Void Shot to pass through orbs. Terra Mine retains
 its shootable base and explicit species settings. Other shootable targets and
 walls keep their existing collision behavior.
+
+## Phase two controls
+
+Phase two restores all four elemental weapons and adds the core in Slot 5.
+All five slots share 200 boss ammo and 1000 rage. Primary attacks cost no ammo;
+secondary attacks deduct the listed amount on release. Reload consumes rage,
+leaving any remainder available for another elemental ultimate. Every spell
+has a networked announcement. The green orb retains its existing controls.
+
+| Slot | Primary: tap / charge | Secondary: tap / charge | Reload |
+| --- | --- | --- | --- |
+| 1, Wind | Lightning Orb / Electroshock | Bolt (30) / Light Beam (60) / Static E! (90) | Petal Blast (500 rage) |
+| 2, Earth | Blast / Boulder (70 tics) | Storm (30) / Water Blast (60) | Sand Storm (500 rage) |
+| 3, Water | Crystal / Ice Rock (18 tics) / Solidify (42 tics) | Diamond Saw (30) | Blizzard (500 rage) |
+| 4, Fire | Drain / Mega Drain (35 tics) | Flame (30) / Flame Wall (60) | Corona (500 rage) |
+| 5, Core | Flame Stone / Dark Star (35 tics) | Shredder (30) / Meteor Blast (60) | Final Claw (1000 rage) |
+
+Two-stage secondary attacks charge for 24 tics. If less than 60 ammo remains,
+release falls back to the 30-ammo spell. Rage Rune accelerates the new charge
+counters. Weapon destruction and deselection clear the shared charge counter.
+
+`voidwalker_phase2.acs` remains part of `uh_classes`. Delayed spells capture the
+owner's morph generation and stop when that body is no longer valid. Targeted
+casts select enemies within 2048 map units and line of sight; Diamond Saw uses
+a forward 90-degree cone and an 1800-unit range. Its first pair travels at
+32 units per tic along the boss's forward +/-45-degree directions. After
+18 tics, its second pair spawns 448 units diagonally back from the captured
+target point and converges on it. Without a valid target the anchor lies
+800 units along the crosshair. Each blade lasts 28 tics. `NOINTERACTION`
+provides movement through geometry; repeated native `A_Explode` calls supply
+cutting damage with the engine's normal radius-damage visibility rules.
+
+The fire orb's Drain and Mega Drain implement Hot Shot and Flame Saber;
+neither heals. Shredder deals no direct damage and removes only the listed
+temporary shield/combat effects. It preserves team protection and permanent
+class movement abilities.
+
+`voidwalker_status.acs` is included by the late-loaded `rz_shared` library.
+SMRPG Fear has its own `SMRPG_Fear` powerup, lasting 175 tics. The damage event
+halves outgoing damage and multiplies incoming damage by 1.5 before armor.
+Chill owns a separate property-power speed modifier; Solidify owns one native
+freeze-stack layer. Both expire without clearing another effect's layer.
+Countdown Meteor uses the distinct `VWMeteor` damage type: its post-armor event
+caps health loss at current HP minus one, before death processing. The lethal
+`VWMeteorBlast` attack uses a separate damage type. Countdown steps are one
+second apart, and the countdown checks the morph generation after each delay.
+
+Run `python3 tools/mcp/voidwalker-orbs-test.py --phase2` for focused dedicated
+server / remote-client tests of native controls, damage and status behavior.
+The default invocation retains the original orb lifecycle regression.
+
+Run `python3 tools/mcp/voidwalker-orbs-test.py --hud` to check the owning remote
+client's full-health, damaged and destroyed-orb inventory snapshots before and
+after the native phase transition. The core weapon declares the same
+`_ScriptBar` marker as the four elemental weapons, enabling the existing
+`DrawBar_VoidWalker_W5` callback through native BARHNDLE dispatch. The probe
+checks that marker on the client and saves `phase2-core-hud.png` beside its logs.

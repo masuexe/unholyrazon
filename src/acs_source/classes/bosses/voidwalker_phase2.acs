@@ -1,0 +1,193 @@
+// Phase-two spell geometry and delayed casts. Included in uh_classes after
+// voidwalker_orbs; no extra library or map arrays.
+function bool UH_VWPhaseAlive(int boss, int generation) {
+  return SetActivator(boss) && UH_VWIsOwner()
+    && GetPlayerMorphGen(PlayerNumber()) == generation
+    && CheckInventory("VoidWalkerPhase2_F");
+}
+
+function bool UH_VWEnemy(int boss, int p, int range, bool sight) {
+  if (!PlayerInGame(p) || PlayerIsSpectator(p)) return false;
+  int tid = p + 1000;
+  if (tid == boss || GetActorProperty(tid, APROP_Health) <= 0) return false;
+  if (ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", boss - 1000, p)) return false;
+  if (XYZDistance(boss, tid) > range) return false;
+  return !sight || CheckSight(boss, tid, CSF_NOBLOCKALL);
+}
+
+// Aim cone is +/-45 degrees. Reservoir selection gives every eligible player
+// equal probability. A target behind the boss is never eligible.
+function int UH_VWFrontTarget(int boss) {
+  int result = 0;
+  int count = 0;
+  int yaw = GetActorAngle(boss);
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    // PLS_SURVIVOR is the round-core role; Demoneyes are not saw anchors.
+    if (ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", p) != 1) continue;
+    if (!UH_VWEnemy(boss, p, 1800.0, true)) continue;
+    int tid = p + 1000;
+    int angle = VectorAngle(GetActorX(tid) - GetActorX(boss), GetActorY(tid) - GetActorY(boss));
+    int delta = WrapAround(angle - yaw, -0.5, 0.5);
+    if (abs(delta) > 0.125) continue;
+    count++;
+    if (Random(1, count) == 1) result = tid;
+  }
+  return result;
+}
+
+// Spawn with exact shooter pointer, so native missiles / A_Explode preserve
+// damage attribution and self protection. Call only with a live owner.
+function int UH_VWSpawn(str type, int boss, int x, int y, int z, int yaw) {
+  int tid = UniqueTID();
+  if (!SpawnForced(type, x, y, z, tid, yaw >> 8)) return 0;
+  SetActorAngle(tid, yaw);
+  SetActivator(tid);
+  SetPointer(AAPTR_TARGET, boss);
+  SetActivator(boss);
+  return tid;
+}
+
+// Flame Saber is a sweep, never a life-steal effect. Both waves snapshot their
+// anchor at cast time; later target movement can dodge the returning blades.
+script "uh_VWCast" (int spell) {
+  if (!UH_VWIsOwner() || !CheckInventory("VoidWalkerPhase2_F")) terminate;
+  int boss = ActivatorTID();
+  int generation = GetPlayerMorphGen(PlayerNumber());
+  int bx = GetActorX(boss);
+  int by = GetActorY(boss);
+  int bz = GetActorZ(boss) + 32.0;
+  int yaw = GetActorAngle(boss);
+  int pitch = GetActorPitch(boss);
+  int target = UH_VWFrontTarget(boss);
+  int px = bx + FixedMul(800.0, FixedMul(cos(yaw), cos(pitch)));
+  int py = by + FixedMul(800.0, FixedMul(sin(yaw), cos(pitch)));
+  int pz = bz - FixedMul(800.0, sin(pitch));
+  if (target) {
+    px = GetActorX(target);
+    py = GetActorY(target);
+    pz = GetActorZ(target) + GetActorProperty(target, APROP_Height) / 2;
+  }
+  int tid;
+  int angle;
+  int z;
+  int p;
+  int i;
+
+  if (spell == 4) { // Diamond Saw: two outward, then two converging blades.
+    int axis = VectorAngle(px - bx, py - by);
+    for (i = -1; i <= 1; i += 2) {
+      angle = axis + i * 0.125;
+      tid = UH_VWSpawn("VWDiamondSaw", boss, bx, by, bz, angle);
+      if (tid) SetActorVelocity(tid, FixedMul(32.0, cos(angle)), FixedMul(32.0, sin(angle)), 0, false, false);
+    }
+    angle = VectorAngle(px - bx, py - by);
+    Delay(18);
+    if (!UH_VWPhaseAlive(boss, generation)) terminate;
+    for (i = -1; i <= 1; i += 2) {
+      int back = angle + 0.5 + i * 0.125;
+      int sx = px + FixedMul(448.0, cos(back));
+      int sy = py + FixedMul(448.0, sin(back));
+      tid = UH_VWSpawn("VWDiamondSaw", boss, sx, sy, pz, back + 0.5);
+      if (tid) SetActorVelocity(tid, FixedMul(-32.0, cos(back)), FixedMul(-32.0, sin(back)), 0, false, false);
+    }
+    terminate;
+  }
+
+  if (spell == 0 || spell == 8) { // Boulder rain / lethal Meteor Blast.
+    str rain = "VWBoulderSlam";
+    if (spell == 8) rain = "VWMeteorBlast";
+    for (i = 0; i < 3; i++) {
+      if (!UH_VWPhaseAlive(boss, generation)) terminate;
+      int victims = 0;
+      for (p = 0; p < MAX_PLAYERS; p++) {
+        if (!UH_VWEnemy(boss, p, 2048.0, true)) continue;
+        victims++;
+        int victim = p + 1000;
+        z = min(GetActorZ(victim) + 384.0, GetActorCeilingZ(victim) - 48.0);
+        tid = UH_VWSpawn(rain, boss, GetActorX(victim) + Random(-64, 64) * 1.0,
+          GetActorY(victim) + Random(-64, 64) * 1.0, z, yaw);
+        if (tid) SetActorVelocity(tid, 0, 0, -24.0, false, false);
+      }
+      if (!victims) {
+        tid = UH_VWSpawn(rain, boss, bx + FixedMul(160.0, cos(yaw)),
+          by + FixedMul(160.0, sin(yaw)), min(GetActorCeilingZ(boss) - 48.0, bz + 256.0), yaw);
+        if (tid) SetActorVelocity(tid, 0, 0, -24.0, false, false);
+      }
+      Delay(10);
+    }
+    terminate;
+  }
+
+  if (spell == 2 || spell == 10) { // Forward water surge / advancing fire wall.
+    for (i = -2; i <= 2; i++) {
+      str type = "VWWaterBlast";
+      if (spell == 10) type = "VWFlameWallPillar";
+      int sx2 = bx + FixedMul(i * 32.0, cos(yaw + 0.25));
+      int sy2 = by + FixedMul(i * 32.0, sin(yaw + 0.25));
+      tid = UH_VWSpawn(type, boss, sx2, sy2, bz - 24.0, yaw);
+      if (tid) SetActorVelocity(tid, FixedMul(24.0, cos(yaw)), FixedMul(24.0, sin(yaw)), 0, false, false);
+    }
+    terminate;
+  }
+
+  if (spell == 6) { // Flame Saber sweeps the forward field over 18 tics.
+    for (i = -3; i <= 3; i++) {
+      if (!UH_VWPhaseAlive(boss, generation)) terminate;
+      angle = yaw + i * 0.04;
+      for (int d = 1; d <= 8; d++)
+        UH_VWSpawn("VWMegaDrainBeam", boss, bx + FixedMul(d * 96.0, cos(angle)),
+          by + FixedMul(d * 96.0, sin(angle)), bz, angle);
+      for (p = 0; p < MAX_PLAYERS; p++) {
+        if (!UH_VWEnemy(boss, p, 900.0, true)) continue;
+        int va = VectorAngle(GetActorX(p + 1000) - bx, GetActorY(p + 1000) - by);
+        if (abs(WrapAround(va - angle, -0.5, 0.5)) <= 0.025) {
+          SetActivator(boss);
+          Thing_Damage2(p + 1000, 55, "VWMegaDrain");
+        }
+      }
+      Delay(3);
+    }
+    terminate;
+  }
+
+  // Rage casts use bounded pulses, checking the exact morph before
+  // each pulse. Gameplay effects are only applied to eligible enemies.
+  int pulses = 1;
+  if (spell == 3 || spell == 5 || spell == 7) pulses = 4;
+  for (i = 0; i < pulses; i++) {
+    if (!UH_VWPhaseAlive(boss, generation)) terminate;
+    for (p = 0; p < MAX_PLAYERS; p++) {
+      if (!UH_VWEnemy(boss, p, 2048.0, true)) continue;
+      int vt = p + 1000;
+      SetActivator(boss);
+      if (spell == 3) {
+        UH_VWSpawn("VWSandStormFX", boss, GetActorX(vt), GetActorY(vt), GetActorZ(vt) + 24.0, yaw);
+        UH_VWSpawn("VWSandStormHit", boss, GetActorX(vt), GetActorY(vt), GetActorZ(vt) + 24.0, yaw);
+      } else if (spell == 5) {
+        UH_VWSpawn("VWBlizzardFX", boss, GetActorX(vt), GetActorY(vt), GetActorZ(vt) + 24.0, yaw);
+        UH_VWSpawn("VWBlizzardHit", boss, GetActorX(vt), GetActorY(vt), GetActorZ(vt) + 24.0, yaw);
+      } else if (spell == 7) {
+        UH_VWSpawn("VWCoronaFirePillar", boss, GetActorX(vt), GetActorY(vt), GetActorZ(vt), yaw);
+      }
+    }
+    if (pulses > 1) Delay(8);
+  }
+}
+
+// The projectile's target is the shooter. Use ordinary radius damage with a
+// modest value; the late damage event caps health loss after every modifier.
+script "uh_VWMeteorImpact" (void) {
+  int x = GetActorX(0);
+  int y = GetActorY(0);
+  int z = GetActorZ(0);
+  if (!SetActivator(0, AAPTR_TARGET) || !UH_VWIsOwner()) terminate;
+  int boss = ActivatorTID();
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    if (!UH_VWEnemy(boss, p, 4096.0, false)) continue;
+    int vt = p + 1000;
+    if (VectorLength(GetActorX(vt) - x, GetActorY(vt) - y) > 192.0) continue;
+    if (abs(GetActorZ(vt) + GetActorProperty(vt, APROP_Height) / 2 - z) > 192.0) continue;
+    SetActivator(boss);
+    Thing_Damage2(vt, 110, "VWMeteor");
+  }
+}

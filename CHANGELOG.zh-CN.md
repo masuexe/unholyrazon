@@ -6,18 +6,18 @@
 
 ## 4.0.0-beta.261101
 
-- 为 Void Walker 实装二阶段（源自《超级马力欧RPG 重制版》Culex 3D 隐藏Boss战）：
-  - 一阶段濒死触发不死护佑（Buddha）复活并过渡至二阶段，重置并复活全部 4 颗元素球，同时解锁 5 号槽位武器（Culex 3D Core）。
-  - 5 号位招式：主射击释放 Dark Star（极速贯穿黑星与高额范围爆炸）；副射击在元素球存活时施放 Shredder（抹消全场幸存者的增益与防御状态），四球全灭后转为 Final Claw（无敌极速突刺撕裂攻击）。
-  - 4 颗元素球在二阶段同步升级为经典 SMRPG 原作法术：1 号风（M1 二阶蓄力 Lightning Orb / Electroshock；M2 三阶蓄力 Bolt / Light Beam / Static E!；Reload 大招 Petal Blast 变蘑菇风暴），2 号地（M1 弹跳碎裂 Boulder Slam / M2 击退 Sand Storm 沙尘波），3 号水（M1 反弹 Diamond Saw 飞锯 / M2 冰冻减速 Blizzard），4 号火（M1 地面火柱 Corona / M2 三道推进火柱 Flame Wall）。
-  - 全面实装 1 号风之水晶（绿球，`VoidWalker_W`）完整招式体系与怒气机制：
-    - 主射击 M1（0 耗蓝）：轻按为快速 3 连发雷球 `Lightning Orb`；蓄力释放 5 向扇面扩散穿透雷电网 `Electroshock`。
-    - 副射击 M2（消耗 Boss 弹药，3 阶蓄力）：1 阶（轻按，30 ammo）召唤落雷天击 `Bolt`；2 阶（中蓄力，60 ammo）发射极速穿透激光 `Light Beam`；3 阶（满蓄力，90 ammo）触发全屏报幕并释放 360° 全方位电磁 EMP 冲击波与击退 `Static E!`。
-    - 装填键 Reload（大招，部分消耗怒气）：消耗 500/1000 怒气（`UnholyPower1000`）触发全屏招式报幕并卷起漫天花瓣风暴 `Petal Blast`，命中幸存者将其变为无法攻击的蘑菇持续 3 秒，保留剩余怒气供后续战术使用。
-    - 为 Void Walker 全部武器配备专属副弹药能量条（`SecondBar` 配色 228, 111），直观显示怒气值（`UnholyPower1000`）。
-    - 为二阶段全部招式配备专属招式报幕（`uh_AnnounceBossSkill`）与原版音效：`Lightning Orb`、`Electroshock`、`Bolt`、`Light Beam`、`Static E!`、`Petal Blast`。
-  - 重制版 Meteor 倒计时机制：二阶段周期性触发 5 秒全屏倒计时报幕，归零时引来全场天降陨石轰炸。
-  - 集成原汁原味的 Super Mario RPG 原版音效，全面覆盖二阶段攻击、受击变形、招式报幕与倒计时（`DarkStar`、`Meteor`、`PetalBlast`、`Mushroom`、`DiamondSaw`、`CrystalCrusher`、`StaticE`、`Snowy`、`SandStorm`、`DeathSickle`、`Shredder`、`CoronaBeam` 等）。
+- Void Walker 首次受到致命伤害后进入二阶段，恢复四个元素球并解锁第五槽位的本体武器。
+- 补齐 Void Walker 二阶段完整招式：主攻击不耗蓝，副攻击消耗 Boss 蓝量，Reload 消耗怒气：
+  - 绿色：Lightning Orb／蓄力 Electroshock；副攻击按蓄力等级依次释放 Bolt／Light Beam／Static E!，消耗 30／60／90 蓝量；大招 Petal Blast 将命中的生还者变成蘑菇三秒。
+  - 黄色：Blast／蓄力 Boulder；Storm／蓄力 Water Blast；大招 Sand Storm。
+  - 蓝色：主攻击按蓄力等级依次释放 Crystal／Ice Rock／Solidify；副攻击 Diamond Saw；大招 Blizzard。
+  - 红色：Drain／蓄力 Mega Drain；Flame／蓄力 Flame Wall；大招 Corona。Drain 和 Mega Drain 只造成伤害，不给 Boss 吸血。
+  - 本体：Flame Stone／蓄力 Dark Star；Shredder／蓄力 Meteor Blast；大招 Final Claw，消耗全部 1000 怒气。元素球大招消耗 500 怒气。
+- Diamond Saw 先向左右前方 45 度射出两片飞锯，再从 Boss 前方视野内随机选中的生还者两侧生成两片汇聚飞锯；没有可见目标时使用准星方向的定点。飞锯可穿墙移动，持续切割附近目标后消失。
+- Sand Storm 附加持续五秒的 SMRPG 恐惧：造成伤害减半，受到伤害增加 50%。冰系攻击可减速目标，Solidify 会短暂冻结目标。
+- Shredder 驱散临时护盾与战斗增益，不造成直接伤害，也不移除阵营保护。倒计时 Meteor 最多将玩家打到一血，不会致死；Meteor Blast 仍可击杀。
+- 二阶段全部招式施放时都有技能名称报幕，五个武器槽位均可查看怒气条。
+- 修复 Void Walker 手持第五槽位武器时缺少元素球血量监测的问题，二阶段也能正常查看。
 
 ## 4.0.0-beta.261031
 

@@ -151,7 +151,7 @@ script "uh_VWOrbDestroyed" (void) {
     TakeInventory("BasicArmor", 0x7fffffff);
   TakeInventory(uh_vworbdata[index][1], 0x7fffffff);
   TakeInventory(uh_vworbdata[index][2], 0x7fffffff);
-  if (index == 3) TakeInventory("WeaponCharge", 0x7fffffff);
+  if (selected) TakeInventory("WeaponCharge", 0x7fffffff);
   if (selected) {
     TakeInventory("VivifyFlag1", 0x7fffffff);
     StopSound(0, 1); // CHAN_WEAPON
@@ -224,42 +224,43 @@ script "uh_VWOrbsPhase2Reset" (void) {
   GiveInventory("IsPissedFlag", 1);
   GiveInventory("VeryFunOrbSpawner", 1);
   ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5400); // UH_SKILL_VW_AWAKEN
-  ACS_NamedExecute("uh_VWMeteorLoop", 0);
+  ACS_NamedExecuteAlways("uh_VWMeteorLoop", 0);
 }
 
 script "uh_VWMeteorLoop" (void) {
   int boss = ActivatorTID();
   if (boss == 0) boss = PlayerNumber() + 1000;
 
+  int generation = GetPlayerMorphGen(PlayerNumber());
   while (GetActorProperty(boss, APROP_Health) > 0 && CheckActorInventory(boss, "VoidWalkerPhase2_F") > 0) {
     for (int t = 0; t < 25; t++) {
       Delay(35);
-      if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0) terminate;
+      if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0 || GetPlayerMorphGen(boss - 1000) != generation) terminate;
     }
 
     ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5414);
-    Delay(70);
-    if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0) terminate;
+    Delay(35);
+    if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0 || GetPlayerMorphGen(boss - 1000) != generation) terminate;
 
     ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5415);
-    Delay(70);
-    if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0) terminate;
+    Delay(35);
+    if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0 || GetPlayerMorphGen(boss - 1000) != generation) terminate;
 
     ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5416);
-    Delay(70);
-    if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0) terminate;
+    Delay(35);
+    if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0 || GetPlayerMorphGen(boss - 1000) != generation) terminate;
 
     ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5417);
-    Delay(70);
-    if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0) terminate;
+    Delay(35);
+    if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0 || GetPlayerMorphGen(boss - 1000) != generation) terminate;
 
     ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5418);
-    Delay(70);
-    if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0) terminate;
+    Delay(35);
+    if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0 || GetPlayerMorphGen(boss - 1000) != generation) terminate;
 
     ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5405);
     for (int m = 0; m < 12; m++) {
-      if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0) terminate;
+      if (GetActorProperty(boss, APROP_Health) <= 0 || CheckActorInventory(boss, "VoidWalkerPhase2_F") == 0 || GetPlayerMorphGen(boss - 1000) != generation) terminate;
       GiveActorInventory(boss, "VWMeteorStrikeSpawner_P", 1);
       Delay(10);
     }
@@ -280,16 +281,14 @@ script "uh_VWShredderCast" (void) {
     if (ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", owner, p)) continue;
 
     int dist = XYZDistance(ownertid, targettid);
-    if (dist > 768.0) continue;
+    if (dist > 768.0 || !CheckSight(ownertid, targettid, CSF_NOBLOCKALL)) continue;
+    int aim = VectorAngle(GetActorX(targettid) - GetActorX(ownertid),
+                          GetActorY(targettid) - GetActorY(ownertid));
+    if (abs(WrapAround(aim - GetActorAngle(ownertid), -0.5, 0.5)) > 0.125) continue;
 
-    TakeActorInventory(targettid, "PowerProtectSurvivor", 1);
-    TakeActorInventory(targettid, "PowerProtectMegaCopywep", 1);
-    TakeActorInventory(targettid, "PowerProtectUnholyItem", 1);
-    TakeActorInventory(targettid, "MultiJumpItem", 10);
-    TakeActorInventory(targettid, "AirJumpLimit", 10);
-    TakeActorInventory(targettid, "RushBoots", 1);
-    TakeActorInventory(targettid, "EddieCall", 1);
-    TakeActorInventory(targettid, "BeatSupport", 1);
+    TakeActorInventory(targettid, "PowerInvulnerable", 1);
+    TakeActorInventory(targettid, "PowerDoubleFiringSpeedRune", 1);
+    TakeActorInventory(targettid, "PowerDoubleDamageRune", 1);
     TakeActorInventory(targettid, "SkullBarrierAmmo", 100);
     TakeActorInventory(targettid, "LeafShieldAmmo", 100);
     TakeActorInventory(targettid, "PlantBarrierAmmo", 100);
@@ -298,13 +297,9 @@ script "uh_VWShredderCast" (void) {
     TakeActorInventory(targettid, "WaterShieldAmmo", 100);
     TakeActorInventory(targettid, "MirrorBusterReflector", 1);
 
-    Thing_Damage2(targettid, 35, "Shredder");
+    // Shredder dispels buffs; it never deals direct damage.
 
-    int angle = VectorAngle(GetActorX(targettid) - GetActorX(ownertid),
-                            GetActorY(targettid) - GetActorY(ownertid)) >> 8;
-    SetActivator(targettid);
-    ThrustThing(angle, 15, 0, 0);
-    SetActivator(ownertid);
+
   }
 }
 

@@ -1,0 +1,81 @@
+// Runs in rz_shared, after libraries which modify gameplay damage. Read both
+// damage pointers before any nested named-script call replaces EVENT context.
+script "uh_VWStatusDamage" (int evt, int amount, int dtype) EVENT {
+  if (evt != GAMEEVENT_ACTOR_DAMAGED_PREMOD && evt != GAMEEVENT_ACTOR_DAMAGED) terminate;
+  int damage = GetEventResult();
+  if (damage <= 0) terminate;
+  int source = -1;
+  bool fearSource = false;
+  if (SetActivator(0, AAPTR_DAMAGE_SOURCE)) {
+    source = PlayerNumber();
+    fearSource = CheckInventory("SMRPG_Fear") > 0;
+  }
+  if (!SetActivator(0, AAPTR_DAMAGE_TARGET)) terminate;
+  int victim = PlayerNumber();
+  if (GetActorProperty(0, APROP_Health) <= 0) terminate;
+  if (evt == GAMEEVENT_ACTOR_DAMAGED_PREMOD) {
+    if (fearSource) { damage /= 2; if (damage < 1) damage = 1; }
+    if (victim >= 0 && CheckInventory("SMRPG_Fear")) damage = damage + damage / 2;
+    SetResultValue(damage);
+    terminate;
+  }
+
+  if (victim < 0) terminate;
+  if (!StrICmp(dtype, "VWMeteor")) {
+    // Post-armor, before P_DamageMobj subtracts health or runs death handling.
+    // Never repair a dead player with SetActorProperty after lethal damage.
+    int cap = GetActorProperty(0, APROP_Health) - 1;
+    if (cap < 0) cap = 0;
+    if (damage > cap) damage = cap;
+    SetResultValue(damage);
+    terminate;
+  }
+  if (source < 0 || source == victim) terminate;
+  if (ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", source, victim)) terminate;
+  if (!StrICmp(dtype, "SandStorm")) GiveInventory("SMRPG_Fear", 1);
+  if (!StrICmp(dtype, "VWStorm") || !StrICmp(dtype, "Blizzard") || !StrICmp(dtype, "VWIceRock"))
+    ACS_NamedExecuteAlways("uh_VWChill", 0);
+  if (!StrICmp(dtype, "VWSolidify")) ACS_NamedExecuteAlways("uh_VWSolidify", 0);
+  if (!StrICmp(dtype, "VWWaterBlast")) {
+    SetActorVelocity(0, 0, 0, 5.0, true, false);
+  }
+}
+
+// Each controller owns one native stack layer. It never writes base speed or
+// clears another status's freeze layer, and exits on death / a replaced body.
+script "uh_VWChill" (void) {
+  if (CheckInventory("VWChilled_F")) {
+    GiveInventory("VWChilled_F", 1);
+    terminate;
+  }
+  GiveInventory("VWChilled_F", 1);
+  GiveInventory("VWChillSpeedGiver", 1);
+  while (CheckInventory("VWChilled_F") && GetActorProperty(0, APROP_Health) > 0)
+    Delay(1);
+  TakeInventory("VWChillSpeed", 0x7fffffff);
+}
+
+int uh_vwFreezeSerial;
+
+script "uh_VWSolidify" (void) {
+  if (CheckInventory("VWSolidified_F")) terminate;
+  GiveInventory("VWSolidified_F", 1);
+  uh_vwFreezeSerial = (uh_vwFreezeSerial + 1) & 0x7fffffff;
+  if (uh_vwFreezeSerial == 0) uh_vwFreezeSerial = 1;
+  int token = uh_vwFreezeSerial;
+  TakeInventory("VWFreezeLock_F", 0x7fffffff);
+  GiveInventory("VWFreezeLock_F", token);
+  int player = PlayerNumber();
+  int before = CheckInventory("PlayerPropertyFrozen");
+  ACS_NamedExecuteWithResult("core_freezeplayer", 0, 1, 0);
+  bool added = CheckInventory("PlayerPropertyFrozen") > before;
+  while (CheckInventory("VWSolidified_F") && GetActorProperty(0, APROP_Health) > 0)
+    Delay(1);
+  // core_freezeplayer resolves the current player pawn. Never release a
+  // replaced body's layer on a respawned or morphed pawn without our marker.
+  if (!SetActivatorToPlayer(player) || CheckInventory("VWFreezeLock_F") != token) terminate;
+  if (added && CheckInventory("PlayerPropertyFrozen"))
+    ACS_NamedExecuteWithResult("core_freezeplayer", 0, 0, 0);
+  TakeInventory("VWFreezeLock_F", 0x7fffffff);
+  TakeInventory("VWSolidified_F", 0x7fffffff);
+}

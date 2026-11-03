@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Destructible orb regression: real damage, morph lifecycle and remote inventory."""
+"""Orb lifecycle; --phase2 tests spells, --hud tests remote orb health display."""
 import json
 import os
 from pathlib import Path
 import re
 import shutil
 import socket
+import sys
 import subprocess
 import time
 from zipfile import ZipFile
@@ -153,50 +154,108 @@ def main():
         server_command("setmapvar multibosscheck 1")
         run("VWO_HealthQuery", "5520 3", "VWO_HEALTH_QUERY_DONE")
         run("VWO_Setup", "", "VWO_SETUP class=VoidWalker")
-        time.sleep(4)
-        ids = box_ids()
-        if len(ids) != 4:
-            raise RuntimeError(f"expected four replicated hitboxes, got {ids}: " + bridge.command("actorsnear 2048"))
-        for tid in ids:
-            run("VWO_Record", str(tid), "VWO_BOX")
-        client_check(0)
-        run("VWO_DamageChecks", "", "VWO_DAMAGE_DONE")
-        run("VWO_MarkerCheck", "", "VWO_MARKER_DONE")
-        server_command("addbot Elecman")
-        server_command("addbot Fireman")
-        time.sleep(1)
-        run("VWO_SnapshotCheck", "", "VWO_SNAPSHOT_DONE")
-        run("VWO_DestroyChecks", "", "VWO_DESTROY_DONE")
-        client_check(1)
-        bridge.command("+attack")
-        time.sleep(.8)
-        bridge.command("-attack")
-        run("VWO_Shots", "", "VWO_SHOTS_DONE")
-        server_command("setmapvar multibosscheck 3")
-        run("VWO_HealthQuery", "5263 5 385", "VWO_HEALTH_QUERY_DONE")
-        server_command("setmapvar multibosscheck 0")
-        run("VWO_HealthQuery", "4750 5", "VWO_HEALTH_QUERY_DONE")
-        server_command("setmapvar multibosscheck 1")
-        run("VWO_HealthQuery", "6290 5", "VWO_HEALTH_QUERY_DONE")
-        run("VWO_Remorph", "0", "VWO_REMORPH_DONE")
-        time.sleep(4)
-        restored = box_ids()
-        if len(restored) != 4:
-            raise RuntimeError(f"remorph expected four replicated hitboxes, got {restored}")
-        for tid in restored:
-            run("VWO_Record", str(tid), "VWO_BOX")
-        run("VWO_SpawnHealthCheck", "6290", "VWO_SPAWN_HEALTH_DONE")
-        server_command("setmapvar multibosscheck 2")
-        run("VWO_HealthQuery", "5520 5", "VWO_HEALTH_QUERY_DONE")
-        run("VWO_Remorph", str(restored[0]), "VWO_REMORPH_DONE")
-        time.sleep(4)
-        restored = box_ids()
-        if len(restored) != 4:
-            raise RuntimeError("stale death revoked a newly restored element")
-        for tid in restored:
-            run("VWO_Record", str(tid), "VWO_BOX")
-        run("VWO_SpawnHealthCheck", "5520", "VWO_SPAWN_HEALTH_DONE")
-        client_check(0)
+        if "--hud" in sys.argv:
+            def record_boxes():
+                time.sleep(4)
+                ids = box_ids()
+                if len(ids) != 4:
+                    raise RuntimeError(f"expected four HUD orb hitboxes, got {ids}")
+                for tid in ids:
+                    run("VWO_Record", str(tid), "VWO_BOX")
+
+            def hud_check(damaged, core):
+                start = len(log("client"))
+                bridge.command(f"pukename VWO_ClientHudCheck {damaged} {core}")
+                wait_until(lambda: "VWO_CLIENT_HUD" in log("client")[start:], 5)
+                chunk = log("client")[start:]
+                if "ok=1" not in chunk:
+                    raise RuntimeError("remote HUD check failed: " + chunk)
+                phases.append(f"remote HUD damaged={damaged} core={core}")
+                print("PASS " + phases[-1] + " " + chunk.strip(), flush=True)
+
+            record_boxes()
+            hud_check(0, 0)
+            run("VWO_HudDamage", "", "VWO_HUD_DAMAGE")
+            hud_check(1, 0)
+            run("VWO_P2Begin", "", "VWO_P2_BEGIN")
+            record_boxes()
+            run("VWO_HudCore", "", "VWO_HUD_CORE")
+            hud_check(0, 1)
+            run("VWO_HudDamage", "", "VWO_HUD_DAMAGE")
+            hud_check(1, 1)
+            bridge.command("screenshot " + str(OUT / "phase2-core-hud.png"))
+            # Restore all elements for the common cleanup contract.
+            run("VWO_Remorph", "0", "VWO_REMORPH_DONE")
+        elif "--phase2" in sys.argv:
+            run("VWO_P2Begin", "", "VWO_P2_BEGIN")
+            run("VWO_P2Damage", "", "VWO_P2_DAMAGE")
+            # slot, input, hold seconds, spawned actor row, boss-ammo cost
+            cases = [(2, "attack", .12, 0, 0), (2, "attack", 2.2, 1, 0),
+                     (2, "altattack", .12, 2, 30), (2, "altattack", .85, 3, 60),
+                     (2, "reload", .12, 4, 0),
+                     (3, "attack", .12, 5, 0), (3, "attack", .65, 6, 0),
+                     (3, "attack", 1.4, 7, 0), (3, "altattack", .12, 8, 30),
+                     (3, "reload", .12, 9, 0),
+                     (4, "attack", .12, 10, 0), (4, "attack", 1.2, 11, 0),
+                     (4, "altattack", .12, 12, 30), (4, "altattack", .85, 13, 60),
+                     (4, "reload", .12, 14, 0),
+                     (5, "attack", .12, 15, 0), (5, "attack", 1.2, 16, 0),
+                     (5, "altattack", .85, 17, 60), (5, "reload", .12, 18, 0)]
+            for slot, button, hold, actor, cost in cases:
+                run("VWO_P2Prepare", f"{slot} 1000", "VWO_P2_READY")
+                bridge.command("+" + button)
+                time.sleep(hold)
+                bridge.command("-" + button)
+                time.sleep(1.0)
+                remaining_rage = 1000
+                if button == "reload":
+                    remaining_rage = 0 if slot == 5 else 500
+                run("VWO_P2Check", f"{actor} {cost} {remaining_rage}", "VWO_P2_CHECK")
+        else:
+            time.sleep(4)
+            ids = box_ids()
+            if len(ids) != 4:
+                raise RuntimeError(f"expected four replicated hitboxes, got {ids}: " + bridge.command("actorsnear 2048"))
+            for tid in ids:
+                run("VWO_Record", str(tid), "VWO_BOX")
+            client_check(0)
+            run("VWO_DamageChecks", "", "VWO_DAMAGE_DONE")
+            run("VWO_MarkerCheck", "", "VWO_MARKER_DONE")
+            server_command("addbot Elecman")
+            server_command("addbot Fireman")
+            time.sleep(1)
+            run("VWO_SnapshotCheck", "", "VWO_SNAPSHOT_DONE")
+            run("VWO_DestroyChecks", "", "VWO_DESTROY_DONE")
+            client_check(1)
+            bridge.command("+attack")
+            time.sleep(.8)
+            bridge.command("-attack")
+            run("VWO_Shots", "", "VWO_SHOTS_DONE")
+            server_command("setmapvar multibosscheck 3")
+            run("VWO_HealthQuery", "5263 5 385", "VWO_HEALTH_QUERY_DONE")
+            server_command("setmapvar multibosscheck 0")
+            run("VWO_HealthQuery", "4750 5", "VWO_HEALTH_QUERY_DONE")
+            server_command("setmapvar multibosscheck 1")
+            run("VWO_HealthQuery", "6290 5", "VWO_HEALTH_QUERY_DONE")
+            run("VWO_Remorph", "0", "VWO_REMORPH_DONE")
+            time.sleep(4)
+            restored = box_ids()
+            if len(restored) != 4:
+                raise RuntimeError(f"remorph expected four replicated hitboxes, got {restored}")
+            for tid in restored:
+                run("VWO_Record", str(tid), "VWO_BOX")
+            run("VWO_SpawnHealthCheck", "6290", "VWO_SPAWN_HEALTH_DONE")
+            server_command("setmapvar multibosscheck 2")
+            run("VWO_HealthQuery", "5520 5", "VWO_HEALTH_QUERY_DONE")
+            run("VWO_Remorph", str(restored[0]), "VWO_REMORPH_DONE")
+            time.sleep(4)
+            restored = box_ids()
+            if len(restored) != 4:
+                raise RuntimeError("stale death revoked a newly restored element")
+            for tid in restored:
+                run("VWO_Record", str(tid), "VWO_BOX")
+            run("VWO_SpawnHealthCheck", "5520", "VWO_SPAWN_HEALTH_DONE")
+            client_check(0)
         result = run("VWO_Cleanup", "", "VWO_FINAL")
         wait_until(lambda: not box_ids(), 5)
         if any(error in log("server") + log("client") for error in ("Runaway script", "VM execution aborted")):
