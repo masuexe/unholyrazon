@@ -16,6 +16,19 @@
 #define UH_BUBBLE_SND_ENTER "MMBN6/BubbleEnter"
 #define UH_BUBBLE_SND_RELEASE "MMBN6/BubbleRelease"
 
+// Attached cosmetic Bubble visual.  The class is a server-owned shieldwarper,
+// so it is replicated to every client.  It is not spawned from a clientside
+// actor and it is not clientside-only.
+//
+// The unique visual TID is the handle.  It is allocated above the MM8BDM player
+// TID range (PLN_TID = 1000) so it cannot take the TID of a later player join.
+// The body stores the TID in user_uh_bubble_visual.
+#define UH_BUBBLE_VISUAL_TID_START 100000
+#define UH_BUBBLE_VISUAL_LINK_TID_START 200000
+// Released effects coexist with new holds, including same-tic multi-hit bursts.
+// Do not restrict this search to MAX_PLAYERS slots.
+#define UH_BUBBLE_VISUAL_TID_SPAN 100000
+
 // Future immunity whitelist hook.  No actor grants UH_BubbleImmune_F in this
 // version; a future approved whitelist adds that marker instead of editing the
 // damage event.  Do not reuse PlayerPropertyNoParalyze or GENERICBOSS checks
@@ -47,15 +60,121 @@ function bool UH_BubbleDamageCarriesStatus(str dmgtype) {
   return StrICmp(dmgtype, UH_BUBBLE_DAMAGETYPE) == 0;
 }
 
+// Remove the recorded visual without a release animation.  This path is for
+// death, morph, respawn, map and slot-reuse cleanup, and for an interrupted
+// instance.  A visual whose TID was recycled by an unrelated actor has no
+// owner token, so it is never touched.
+function void UH_BubbleVisualDrop(void) {
+  int p = PlayerNumber();
+  if (p < 0)
+    return;
+  int vis = GetUserVariable(0, "user_uh_bubble_visual");
+  if (vis == 0)
+    return;
+  SetUserVariable(0, "user_uh_bubble_visual", 0);
+  if (StrICmp(GetActorClass(vis), "UHBubbleWarper") == 0
+      && GetUserVariable(vis, "user_uh_bubble_owner")
+         == GetUserVariable(0, "user_uh_bubble_token"))
+    Thing_Remove(vis);
+}
+
+// Send the recorded visual to its three-frame release animation.  The token
+// check makes a stale TID harmless and stops an old effect from answering a
+// newer Bubble instance.
+function void UH_BubbleVisualPop(int token) {
+  int p = PlayerNumber();
+  if (p < 0)
+    return;
+  int vis = GetUserVariable(0, "user_uh_bubble_visual");
+  if (vis == 0)
+    return;
+  SetUserVariable(0, "user_uh_bubble_visual", 0);
+  if (StrICmp(GetActorClass(vis), "UHBubbleWarper") != 0
+      || GetUserVariable(vis, "user_uh_bubble_owner") != token)
+    return;
+  SetUserVariable(vis, "user_uh_bubble_released", 1);
+  SetActorState(vis, "Pop", 0);
+}
+
+// Spawn exactly one attached visual for this instance.  Call this only after
+// the status owns its freeze layer.  The body gets a temporary unique TID for
+// the pointer assignment, so the target lookup cannot match another actor that
+// shares the MM8BDM player TID.  The original body TID is restored before the
+// function returns.
+function void UH_BubbleVisualSpawn(int p, int token) {
+  if (p < 0 || p >= MAX_PLAYERS)
+    return;
+  // No active status exists here, so a recorded visual is stale.  Remove it
+  // before the new instance starts; this also covers an interrupted instance.
+  UH_BubbleVisualDrop();
+  int bodyTid = ActivatorTID();
+  int temp = UniqueTID(UH_BUBBLE_VISUAL_LINK_TID_START,
+                       UH_BUBBLE_VISUAL_TID_SPAN);
+  if (temp == 0)
+    return;
+  int vis = UniqueTID(UH_BUBBLE_VISUAL_TID_START, UH_BUBBLE_VISUAL_TID_SPAN);
+  if (vis == 0)
+    return;
+  Thing_ChangeTID(0, temp);  // the activator is the body
+  if (SpawnForced("UHBubbleWarper", GetActorX(0), GetActorY(0),
+                  GetActorZ(0), vis, 0) <= 0) {
+    Thing_ChangeTID(temp, bodyTid);
+    return;
+  }
+  // SetActivator can leave no activator when the TID is missing, so restore
+  // the body unconditionally.
+  if (SetActivator(vis))
+    SetPointer(AAPTR_TARGET, temp);
+  SetActivatorToPlayer(p);
+  Thing_ChangeTID(temp, bodyTid);
+  SetUserVariable(vis, "user_uh_bubble_owner", token);
+  SetUserVariable(0, "user_uh_bubble_visual", vis);
+  SetActorState(vis, "Shield", 0);
+  ACS_NamedExecuteAlways("uh_BubbleVisualWatch", 0, vis, token);
+}
+
+// This cosmetic watchdog never changes the gameplay markers or freeze stack.
+// Keep the actual target pointer: a respawn at the same player TID is a new
+// body. An abandoned visual is removed within a tic; Pop owns its final 12
+// tics after release. The hard bound also covers a lost gameplay controller.
+script "uh_BubbleVisualWatch" (int vis, int token) {
+  for (int age = 0; age < UH_BUBBLE_TICS + 2; age++) {
+    if (!SetActivator(vis))
+      terminate;
+    if (StrICmp(GetActorClass(0), "UHBubbleWarper") != 0
+        || GetUserVariable(0, "user_uh_bubble_owner") != token)
+      terminate;
+    if (GetUserVariable(0, "user_uh_bubble_released"))
+      terminate;
+    if (!SetActivator(0, AAPTR_TARGET))
+      break;
+    int p = PlayerNumber();
+    if (p < 0 || !PlayerInGame(p)
+        || GetActorProperty(0, APROP_Health) <= 0
+        || CheckInventory("UH_Bubble_F") <= 0
+        || GetUserVariable(0, "user_uh_bubble_token") != token
+        || GetUserVariable(0, "user_uh_bubble_visual") != vis)
+      break;
+    Delay(1);
+  }
+  // Recheck after the final Delay: that TID may already belong to a new
+  // instance, or the controller may have started Pop on the last tic.
+  if (StrICmp(GetActorClass(vis), "UHBubbleWarper") == 0
+      && GetUserVariable(vis, "user_uh_bubble_owner") == token
+      && !GetUserVariable(vis, "user_uh_bubble_released"))
+    Thing_Remove(vis);
+}
+
 // Release only the layer this status recorded.  The lock marker is the proof
 // of ownership, so a repeated cleanup cannot spend another source's freeze
 // layer.  Set releaseLock to false when the shared freeze counter was already
 // wiped by somebody else (the layer is gone and another layer may have arrived
 // since).
 //
-// playRelease plays the release sound only when this call actually ends an
-// active instance.  Lifecycle, death, morph and interrupted-instance cleanup
-// pass 0, so they never make a sound when no Bubble existed.
+// playRelease plays the release sound and the three-frame release animation
+// only when this call actually ends an active instance.  Lifecycle, death,
+// morph and interrupted-instance cleanup pass 0, so they never make a sound
+// and never leave a pop effect when no Bubble existed.
 function void UH_BubbleClearOwned(int releaseLock, int playRelease) {
   int p = PlayerNumber();
   if (p < 0)
@@ -63,6 +182,14 @@ function void UH_BubbleClearOwned(int releaseLock, int playRelease) {
 
   int hadBubble = CheckInventory("UH_Bubble_F") > 0
     || CheckInventory("UH_BubbleLock_F") > 0;
+  int token = GetUserVariable(0, "user_uh_bubble_token");
+
+  // The cosmetic visual is released or dropped before the markers go away, so
+  // no path can leave an attached effect behind.
+  if (hadBubble && playRelease && token != 0)
+    UH_BubbleVisualPop(token);
+  else
+    UH_BubbleVisualDrop();
 
   if (CheckInventory("UH_BubbleLock_F") > 0) {
     TakeInventory("UH_BubbleLock_F", 1);
@@ -110,6 +237,9 @@ function void UH_BubbleApply(void) {
   }
 
   GiveInventory("UH_BubbleLock_F", 1);
+  // One attached visual per accepted instance.  A refused freeze layer returned
+  // above, so an immune hit cannot spawn a visual.
+  UH_BubbleVisualSpawn(p, token);
   // One entry sound per accepted instance.  The per-tic controller and the
   // cleanup paths never replay it.
   PlaySound(0, UH_BUBBLE_SND_ENTER, CHAN_BODY);

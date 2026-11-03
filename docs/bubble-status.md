@@ -7,8 +7,9 @@ status targets Zandronum and MM8BDM v6c. It uses DECORATE and ACS only.
 
 No existing weapon or class gains Bubble in this change. A weapon opts in with
 one damage type, as described below. No new body art is added. The status adds
-two supplied sound assets. The status uses only the engine input freeze and the
-two inventory markers; no cosmetic actor controls gameplay.
+two supplied sound assets and an attached bubble effect. The status uses the
+engine input freeze and two inventory markers; the cosmetic actor never
+controls gameplay.
 
 ## Behavior
 
@@ -30,6 +31,8 @@ Bubble is a single active state. It has no stack count and no refresh rule.
 - While Bubble is active, the body holds frame H of its current sprite.
 - A new instance plays the entry sound. A surviving damage break or a timeout
   plays the release sound.
+- One bubble effect follows the affected body. A surviving damage break or a
+  timeout plays its three release frames once.
 
 ## Engine hook and ordering
 
@@ -96,6 +99,31 @@ These paths are silent:
   release sound.
 
 A map entry or respawn with no Bubble makes no sound.
+
+## Attached bubble effect
+
+`UHBubbleWarper` inherits from `ShieldWarper_UH`. Its overridden Spawn state
+skips the base client-only spawn hooks and the unrelated `ShieldCheck` timer.
+This variant is server-owned: Zandronum replicates its spawn, `A_Warp`
+movement, ACS state changes, and removal to clients. Clients do not need the
+server-only owner variables or target pointer to animate the replicated actor.
+It has no collision, gravity, or damage behavior.
+
+The supplied `tmp/Sprite-0001.png` is the artwork source. Fourteen 64 by 64
+transparent crops preserve the original pixels and colors. All use the same
+sprite offset `(32, 56)` and scale 2.5. The first eleven frames (`UBBLA0` through `UBBLK0`) play in row
+order at eight tics each, repeating while active. The final three frames
+(`UBBLL0` through `UBBLN0`) play at four tics each, then disappear after twelve
+tics. The effect follows the same body during both animations.
+
+Each successful Bubble stores one visual TID on its body. An ordinary release
+clears this handle before starting Pop, so a later Bubble gets its own effect;
+the older Pop cannot clear or attach to the new instance. Lifecycle cleanup
+removes the owned visual immediately without Pop. A server watchdog checks
+the actual target body, status marker, owner token, and visual handle every
+tic, and removes abandoned effects. It has a ninety-tic upper bound for an
+unreleased visual. Released effects finish their twelve-tic Pop independently.
+None of these checks writes the gameplay status or freeze stack.
 
 ## Weapon opt-in
 
@@ -197,7 +225,7 @@ pukename rz_debug_BubbleInputProbe <slot>
 - `rz_debug_BubbleHit` runs one real `P_DamageMobj` hit.
 - `rz_debug_BubbleBurst` runs several hits in one tic.
 - `rz_debug_BubbleState` prints the marker, lock, freeze count, look count, body
-  token, health, armor, and immunity fields.
+  token, visual TID, health, armor, and immunity fields.
 - `rz_debug_BubbleSelfTest` runs the apply, 88-tic timeout, ordinary break,
   same-tic burst, immune, overlapping-freeze, and death checks on one
   invulnerable test body.
@@ -267,6 +295,8 @@ relaunch before running it again.
 | `src/acs_source/systems/player_hooks/rz_shared.acs` | Late-loading library include |
 | `src/actors/player/uh-flags.dec` | Marker and immunity inventory actors |
 | `src/actors/player/classbase/root/ClassBase_UH00.dec` | Body token, pending flag, and `BubbleHold` state |
+| `src/actors/player/uh-bubble-visual.dec` | Attached ShieldWarper loop and release animation |
+| `src/sprites/effects/bubble/UBBL*.png` | Eleven intact frames and three release frames |
 | `src/acs_source/unholy/uh_lifecycle.acs` | Enter, respawn, and death cleanup |
 | `src/acs_source/systems/tools/morph_reset.acs` | Morph and demorph cleanup |
 | `src/acs_source/debug/rz_debug.acs` | Server diagnostics |
