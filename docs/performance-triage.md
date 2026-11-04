@@ -6,7 +6,99 @@ Player report: frame rate is low throughout play, but normal while playing a
 Demoneye. The affected package, engine, renderer, player count, exact classes,
 and measured FPS have not been supplied. This is a source audit of the current
 workspace, not a reproduction or a measured root cause. Existing uncommitted
-Void Walker changes were left untouched.
+Void Walker changes were left untouched during the initial audit.
+
+Follow-up reported on 2026-11-04: disabling both `mm8bdm_teaminfo` and
+`uh_cl_teaminfo` restores about 200 FPS; enabling teaminfo yields about
+160–170 FPS. This supports a teaminfo-related performance cost in the tested
+setup, assuming comparable scenes. At those rates, nominal frame duration
+changes from 5 ms to 5.88–6.25 ms. It does not identify a specific component,
+and 200 FPS may itself be a frame-rate cap. These are player-reported readings,
+not measurements reproduced by this audit.
+
+Second follow-up: enabling "legacy teaminfo" also reaches 200 FPS. If this
+actually draws comparable teammate rows, it strengthens attribution to the
+new native display path rather than generic team-info functionality. Confirm
+that rows are visible, not merely that a menu switch is enabled:
+
+- v6c's `MENUDEF.txt` labels `cl_drawcoopinfo` as "Legacy Coop Info".
+- Engine `HUD_DrawCoopInfo` (`g_shared/st_hud.cpp`) requires a cooperative or
+  native team mode and does not itself draw ordinary LMS logical UH teams.
+- UH's `uh_assist_teaminfo` also checks `cl_drawcoopinfo`, but additionally
+  requires `uh_cl_teaminfo`. With native display off, this UH text fallback
+  reads the same authorized health/ammo snapshot arrays as the adapted native
+  display, without the native portrait and layered bar rendering.
+
+If the UH text fallback is visibly working at 200 FPS with comparable subjects,
+snapshot delivery alone is unlikely to explain the entire 160–170 FPS result.
+Prioritize the native row drawing, its portrait resolution and query bridges.
+If both `mm8bdm_teaminfo` and `uh_cl_teaminfo` remain zero and only
+`cl_drawcoopinfo` is enabled in ordinary LMS, there may be no displayed rows or
+teaminfo snapshot consumer at all; that is still effectively the off baseline.
+Neither interpretation yet distinguishes upstream v6c row rendering from UH's
+changes to that renderer.
+
+Further player clarification: enabling the menu's Legacy Coop Info really
+does display simple teammate information at 200 FPS. The exact active consumer
+and remaining switch values were not captured, so shared snapshot eligibility
+must not be assumed from the menu label alone.
+
+The player also reports that the new display, with both portraits and weapons
+enabled, reaches 200 FPS when there are only three teammates. This suggests a
+cost that grows with displayed rows or total players. It does not establish a
+three-row threshold, and a 200 FPS ceiling can hide smaller costs.
+
+Next controlled test: in the same crowded match and view, record the original
+`mm8bdm_teaminfomaxamount`, then set it to `3`. Restore the original value
+after sampling. If FPS recovers, prioritize per-row drawing and queries. If
+not, investigate work tied to total player count, including scans and snapshot
+handling. This display limit is a diagnostic comparison, not a confirmed fix.
+No upstream v6c versus UH attribution has yet been established.
+
+## Attribution after the switch comparison
+
+The two switches do not provide independent attribution to upstream v6c and
+Unholy. The loaded `UITEAMIT` library is an Unholy override of v6c's native
+team display. A normalized source comparison (ignoring CRLF differences)
+shows that most row layout/drawing remains upstream code, but UH adds:
+
+- Script bridges for teammate permission, snapshot validity, health and ammo.
+- Snapshot weapon resolution, including cached weapon-table lookup misses.
+- A `MUGSHOTS` override which resolves UH portraits before the upstream cache.
+  Its UH presentation lookup scans registered rows by actor name.
+- Server-owned health/weapon/ammo snapshot deliveries, separate from drawing.
+
+The native display suppresses the UH fallback while active. Thus turning both
+switches off can stop drawing and, if no other consumer is eligible, stop the
+client's numeric teammate snapshots too. The observed gain alone cannot assign
+the cost to upstream drawing, UH adaptation, or snapshot handling. Automap
+player markers and common bar clearing do not consult either switch, so their
+independent background work is now a lower-priority explanation of this toggle
+difference.
+
+To isolate the layers, compare these settings in one unchanged scene, with
+UIX teaminfo disabled if installed and the same displayed player count:
+
+| Sample | `mm8bdm_teaminfo` | `uh_cl_teaminfo` | `mm8bdm_teaminfoalpha` | Intended comparison |
+| --- | --- | --- | --- | --- |
+| A | 0 | 0 | original | Neither consumer; baseline |
+| B | 0 | 1 | original | UH fallback plus snapshots |
+| C | 1 | 0 | original, nonzero | Adapted v6c display plus snapshots |
+| D | 1 | 0 | 0 | Snapshots remain eligible; native drawing exits early |
+
+The server must enable `mm8bdm_sv_teaminfo` for C/D. For B, `cl_drawcoopinfo`
+must be on and `sv_nocoopinfo` off. Verify the intended display actually
+appears in B/C. Preserve and restore all original values. Wait for settings
+to reach the server before sampling. D also retains any native work outside
+the drawing entry point; it is not a claim of zero teaminfo computation.
+
+If D is close to A but C is slower, prioritize the native display path and
+its UH queries over snapshot traffic. Compare B/C to establish which renderer
+is more expensive under the same authorization policy. If D is also slower
+than A, snapshot receipt or other enabled-path work contributes. None of these
+comparisons alone proves an upstream v6c defect: that requires an upstream-only
+comparison with comparable rows, renderer, options, and scene. Plain stock LMS
+without UH team adaptation may draw no rows at all and is not a fair baseline.
 
 Compare roles in the same match, position, view direction, resolution, and
 addon stack. A role change late in a round also changes the number of living
