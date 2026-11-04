@@ -10,6 +10,7 @@
 - Urine Bottle now deals half damage to Survivor teammates and applies its damage vulnerability effect. Bottles thrown by Bosses deal full damage to Survivors.
 - Bosses now receive the same six-second speed boost as Survivors when using Unholy Water, including its automatic-use pickups.
 - Bosses now also receive Mountain Dew's six-second reverse movement boost, including its automatic-use pickups.
+- Restored Deadly Firearms' v7a machine-gun icon in the assist HUD.
 - Void Walker survives its first lethal hit to enter phase two, restoring all four elemental orbs and unlocking the core weapon in Slot 5.
 - Void Walker's Wind Orb Lightning Orb now fires a single high-speed projectile using Spark Shock visuals. On hitting a target, it envelops them in a persistent electric cage that warps with their movement for ~1.5 seconds, dealing periodic shock damage ticks.
 - Void Walker's Wind Orb Light Beam is now a large translucent bubble that floats forward a short distance and bursts. Every enemy survivor caught in the burst takes 30 damage and is sealed inside a Bubble for 2.5 seconds: the player cannot move, attack, or turn the camera until the bubble breaks or expires.
