@@ -35,6 +35,23 @@ function int UH_VWFrontTarget(int boss) {
   return result;
 }
 
+// Find closest visible enemy survivor within given range.
+function int UH_VWClosestTarget(int boss, int range) {
+  int bestTid = 0;
+  int bestDist = range + 1.0;
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    if (ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", p) != 1) continue;
+    if (!UH_VWEnemy(boss, p, range, true)) continue;
+    int tid = p + 1000;
+    int d = XYZDistance(boss, tid);
+    if (d < bestDist) {
+      bestDist = d;
+      bestTid = tid;
+    }
+  }
+  return bestTid;
+}
+
 // Spawn with exact shooter pointer, so native missiles / A_Explode preserve
 // damage attribution and self protection. Call only with a live owner.
 function int UH_VWSpawn(str type, int boss, int x, int y, int z, int yaw) {
@@ -72,6 +89,43 @@ script "uh_VWCast" (int spell) {
   int z;
   int p;
   int i;
+
+  if (spell == 1) { // Electroshock: closest enemy within 1024 gets sparks, then lightning strike & electrical ball.
+    int shockTarget = UH_VWClosestTarget(boss, 1024.0);
+    int tx, ty, tz;
+    if (shockTarget) {
+      tx = GetActorX(shockTarget);
+      ty = GetActorY(shockTarget);
+      tz = GetActorZ(shockTarget);
+    } else {
+      // Fallback: point 400 units in front of boss along aim line
+      tx = bx + FixedMul(400.0, cos(yaw));
+      ty = by + FixedMul(400.0, sin(yaw));
+      tz = bz;
+    }
+    // Phase 1: Sparks warning falling onto target
+    tid = UH_VWSpawn("VWElectroshockSparksFX", boss, tx, ty, tz + 48.0, yaw);
+    if (shockTarget && tid) {
+      SetActivator(tid);
+      SetPointer(AAPTR_TRACER, shockTarget);
+      SetActivator(boss);
+    }
+    Delay(14);
+    if (!UH_VWPhaseAlive(boss, generation)) terminate;
+    if (shockTarget && GetActorProperty(shockTarget, APROP_Health) > 0) {
+      tx = GetActorX(shockTarget);
+      ty = GetActorY(shockTarget);
+      tz = GetActorZ(shockTarget);
+    }
+    // Phase 2 & 3: Strike column + damaging ball cage on target
+    int strikeTid = UH_VWSpawn("VWElectroshockStrike", boss, tx, ty, tz, yaw);
+    if (shockTarget && strikeTid) {
+      SetActivator(strikeTid);
+      SetPointer(AAPTR_TRACER, shockTarget);
+      SetActivator(boss);
+    }
+    terminate;
+  }
 
   if (spell == 4) { // Diamond Saw: two outward, then two converging blades.
     int axis = VectorAngle(px - bx, py - by);

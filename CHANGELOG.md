@@ -8,6 +8,7 @@
 
 - Void Walker survives its first lethal hit to enter phase two, restoring all four elemental orbs and unlocking the core weapon in Slot 5.
 - Void Walker's Wind Orb Lightning Orb now fires a single high-speed projectile using Spark Shock visuals. On hitting a target, it envelops them in a persistent electric cage that warps with their movement for ~1.5 seconds, dealing periodic shock damage ticks.
+- Void Walker's Wind Orb Electroshock now locks onto the closest visible enemy within 1024 units. Sparks rain onto the target as a brief warning, followed by a vertical lightning bolt strike (70 damage) and an enclosed electric ball that tracks their movement for ~1.1 seconds, delivering four 15-damage shock pulses (total 130 damage). If no enemies are in range and sight, the strike descends 400 units in front.
 - Added Void Walker's complete second-phase spell selection. Primary attacks are free, secondary spells use boss ammo, and Reload uses rage:
   - Wind: Lightning Orb / charged Electroshock; Bolt / Light Beam / Static E! secondary charge stages costing 30 / 60 / 90 ammo; Petal Blast ultimate turns hit survivors into mushrooms for three seconds.
   - Earth: Blast / charged Boulder; Storm / charged Water Blast; Sand Storm ultimate.
