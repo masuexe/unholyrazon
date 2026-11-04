@@ -117,6 +117,7 @@
 | 宇宙机器人 | Void Walker | `VoidWalker` | boss | [Actor](../src/actors/classes/bosses/VoidWalker.dec); ID 54 |  |
 | 绿Joe | Joe | `JoeOfDuty` | boss | [Actor](../src/actors/classes/bosses/JoeOfDuty.dec); ID 58 |  |
 | 电视机 | Balrog | `Balrog` | boss | [Actor](../src/actors/classes/bosses/Balrog.dec); ID 59 |  |
+| 南蛮大布、morshu | Morshu | `MorshuBoss` | boss | [Actor](../src/actors/classes/bosses/Morshu.dec); ID 56 | Maintainer-confirmed alias. |
 | 巫女 | Misery | `Misery` | boss | [Actor](../src/actors/classes/bosses/Misery.dec); ID 60 |  |
 | spy、隐身女特务 | Agent TorCal | `TorontoCalifornia` | boss | [Actor](../src/actors/classes/bosses/TorontoCalifornia.dec); ID 62 |  |
 | 绿南瓜 | Plasma Spark | `PlasmaSpark` | boss | [Actor](../src/actors/classes/bosses/PlasmaSpark.dec); ID 63 |  |
