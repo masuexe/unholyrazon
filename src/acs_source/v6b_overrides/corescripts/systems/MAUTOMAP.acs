@@ -1,0 +1,792 @@
+// MM8BDM v6c shadow: native markers/arrows with UH visibility and S/B/E icons.
+#library "MAUTOMAP"
+#include "zcommon.acs"
+
+#include "8BDMDEFS.acs"
+
+#include "DTADD.acs"
+
+script "core_automap_reveal" OPEN CLIENTSIDE
+{
+    if(!GetCvar("mm8bdm_sv_revealmap"))
+        terminate;
+
+    if(SetActivatorToPlayer(ConsolePlayerNumber()))
+        GiveInventory("MapRevealer", 1);
+}
+
+script "core_automap_allow_animation" (void)
+{
+    SetResultValue(GetUserCvar(ConsolePlayerNumber(), "mm8bdm_automap_animations"));
+}
+
+#define ARROW_DIST 80.0
+script "core_automap_player_markers" OPEN CLIENTSIDE
+{
+    bool cooperative = GetCvar("cooperative");
+    bool teamGame = ACS_NamedExecuteWithResult("core_checkmode", 1) && !cooperative;
+    bool ctf = GetCvar("ctf");
+    bool oneflagctf = GetCvar("oneflagctf");
+    bool skulltag = GetCvar("skulltag");
+    bool possession = GetCvar("possession") || GetCvar("teampossession");
+    bool terminator = GetCvar("terminator");
+
+    int cpn = ConsolePlayerNumber();
+
+    while(true) {
+        int autoMapStatus = CheckAutomap();
+        if(autoMapStatus == AUTOMAP_OFF) {
+            Delay(1);
+            continue;
+        }
+
+        if(!GetUserCvar(cpn, "mm8bdm_automap_players") || GetCvar("sv_noautomapallies")) {
+            Delay(1);
+            continue;
+        }
+
+        int rotate = GetCvar("am_rotate");
+        if(rotate == 1 || (rotate == 2 && autoMapStatus == AUTOMAP_OVERLAYMAP)) {
+            SetActivatorToPlayer(ConsolePlayerNumber());
+            SetActivator(0, AAPTR_PLAYER_GETCAMERA);
+            int angle = GetActorAngle(0);
+            SetActivator(0, AAPTR_NULL);
+        } else {
+            angle = 0.25;
+        }
+
+        for(int pln = 0; pln < MAX_PLAYERS; pln++) {
+            if(!PlayerInGame(pln))
+                continue;
+
+            SetActivatorToPlayer(pln);
+
+            if(GetActorProperty(0, APROP_Health) <= 0)
+                continue;
+
+            bool should_reveal = false;
+            str objective_item = "";
+
+            if(GetCvar("mm8bdm_sv_automap_objectives") && GetUserCvar(cpn, "mm8bdm_automap_objectives") && !GetCvar("mm8bdm_sv_noobjectiveradar")) {
+                if(ctf) {
+                    if(StrICmp(objective_item, "") == 0) {
+                        if(ACS_NamedExecuteWithResult("core_checkReplacedInventory", "MegaBlueFlag") > 0)
+                            objective_item = "MegaBlueFlag_Held_MapMarker";
+                    }
+                    if(StrICmp(objective_item, "") == 0) {
+                        if(ACS_NamedExecuteWithResult("core_checkReplacedInventory", "MegaRedFlag") > 0)
+                            objective_item = "MegaRedFlag_Held_MapMarker";
+                    }
+                    if(StrICmp(objective_item, "") == 0) {
+                        if(ACS_NamedExecuteWithResult("core_checkReplacedInventory", "MegaGreenFlag") > 0)
+                            objective_item = "MegaGreenFlag_Held_MapMarker";
+                    }
+                    if(StrICmp(objective_item, "") == 0) {
+                        if(ACS_NamedExecuteWithResult("core_checkReplacedInventory", "MegaYellowFlag") > 0)
+                            objective_item = "MegaYellowFlag_Held_MapMarker";
+                    }
+                }
+
+                if(oneflagctf) {
+                    if(StrICmp(objective_item, "") == 0) {
+                        if(ACS_NamedExecuteWithResult("core_checkReplacedInventory", "MegaWhiteFlag") > 0)
+                            objective_item = "MegaWhiteFlag_Held_MapMarker";
+                    }
+                }
+
+                if(skulltag) {
+                    if(StrICmp(objective_item, "") == 0) {
+                        if(ACS_NamedExecuteWithResult("core_checkReplacedInventory", "MegaBlueHat") > 0)
+                            objective_item = "MegaBlueHat_Held_MapMarker";
+                    }
+                    if(StrICmp(objective_item, "") == 0) {
+                        if(ACS_NamedExecuteWithResult("core_checkReplacedInventory", "MegaRedHat") > 0)
+                            objective_item = "MegaRedHat_Held_MapMarker";
+                    }
+                    if(StrICmp(objective_item, "") == 0) {
+                        if(ACS_NamedExecuteWithResult("core_checkReplacedInventory", "MegaGreenHat") > 0)
+                            objective_item = "MegaGreenHat_Held_MapMarker";
+                    }
+                    if(StrICmp(objective_item, "") == 0) {
+                        if(ACS_NamedExecuteWithResult("core_checkReplacedInventory", "MegaYellowHat") > 0)
+                            objective_item = "MegaYellowHat_Held_MapMarker";
+                    }
+                }
+
+                // Flags and Skulltag helmets are allowed to reveal players
+                if(StrICmp(objective_item, "") != 0)
+                    should_reveal = true;
+
+                if(possession) {
+                    if(CheckInventory("PowerPossessionArtifact") > 0) {
+                        objective_item = "MegaPossessionStone_Held_MapMarker";
+
+                        if(GetCvar("mm8bdm_sv_exactartifactposition") & RADAR_EXACT_MODE_PLAYERS)
+                            should_reveal = true;
+                    }
+                }
+
+                if(terminator) {
+                    if(CheckInventory("PowerTerminatorArtifact") > 0) {
+                        objective_item = "MegaTerminator_Held_MapMarker";
+
+                        if(GetCvar("mm8bdm_sv_exactartifactposition") & RADAR_EXACT_MODE_PLAYERS)
+                            should_reveal = true;
+                    }
+                }
+            }
+
+            bool revealed = false;
+
+            if (ACS_NamedExecuteWithResult("uh_IsUnholyTeamMode")) {
+                if (!ACS_NamedExecuteWithResult("uh_AM_CanSee", cpn, pln))
+                    continue;
+            } else {
+                if(
+                    teamGame
+                    && GetPlayerInfo(cpn, PLAYERINFO_TEAM) != GetPlayerInfo(pln, PLAYERINFO_TEAM)
+                    && PlayerIsSpectator(cpn) != 1
+                ) {
+                    if(!should_reveal)
+                        continue;
+                    else
+                        revealed = true;
+                }
+
+                if(!teamgame && !cooperative && cpn != pln && PlayerIsSpectator(cpn) != 1) {
+                    if(!should_reveal)
+                        continue;
+                    else
+                        revealed = true;
+                }
+
+            }
+
+            int velx = GetActorVelX(0);
+            int vely = GetActorVelY(0);
+            int player_angle = GetActorAngle(0);
+
+            int u = UniqueTID();
+
+            // Player Marker
+            if(revealed) {
+                SpawnForced("PlayerPawn_Revealed_MapMarker", GetActorX(0) - velx, GetActorY(0) - vely, GetActorZ(0), u, GetActorAngle(0));
+            } else {
+                if (ACS_NamedExecuteWithResult("uh_IsUnholyTeamMode")) {
+                    str uhmarker = ACS_NamedExecuteWithResult("uh_AM_PlayerMarker", pln);
+                    SpawnForced(uhmarker, GetActorX(0) - velx, GetActorY(0) - vely, GetActorZ(0), u, GetActorAngle(0));
+                } else {
+                    if(!SpawnForced(StrParam(s:GetActorClass(0), s:"_MapMarker"), GetActorX(0) - velx, GetActorY(0) - vely, GetActorZ(0), u, GetActorAngle(0)))
+                        SpawnForced("PlayerPawn_MapMarker", GetActorX(0) - velx, GetActorY(0) - vely, GetActorZ(0), u, GetActorAngle(0));
+                }
+
+                ACS_NamedExecuteWithResult("core_setTIDsPointerToThis", u, AAPTR_TARGET);
+
+                Thing_SetTranslation(u, -1);
+            }
+            SetActorVelocity(u, velx, vely, 0.0, false, false);
+            Thing_ChangeTID(u, 0);
+
+            // Objective Marker
+            if(StrICmp("", objective_item) != 0) {
+                SpawnForced(objective_item, GetActorX(0) - velx, GetActorY(0) - vely, GetActorZ(0), u, GetActorAngle(0));
+                SetActorVelocity(u, velx, vely, 0.0, false, false);
+                Thing_ChangeTID(u, 0);
+            }
+
+            // Revealed players shouldn't get their angle exposed
+            if(revealed)
+                continue;
+
+            // Directional Marker
+            int arrow_angle = (player_angle - angle + 1.0) % 1.0;
+            str graphic = StrParam(s:"ArrowMapMarker", i:((FixedDiv((arrow_angle + 0.0625), 0.125) >> 16) % 8));
+            SpawnForced(graphic, GetActorX(0) + FixedMul(cos(player_angle), ARROW_DIST) - velx, GetActorY(0) + FixedMul(sin(player_angle), ARROW_DIST) - vely, GetActorZ(0), u, 0);
+            SetActorVelocity(u, velx, vely, 0.0, false, false);
+            Thing_ChangeTID(u, 0);
+        }
+
+        SetActivator(0, AAPTR_NULL);
+
+        Delay(1);
+    }
+}
+
+script "core_automap_player_death" DEATH CLIENTSIDE
+{
+    int cooperative = GetCvar("cooperative");
+    int teamGame = ACS_NamedExecuteWithResult("core_checkmode", 1) && !cooperative;
+    int cpn = ConsolePlayerNumber();
+    int pln = PlayerNumber();
+
+    if(!GetUserCvar(cpn, "mm8bdm_automap_players") || GetCvar("sv_noautomapallies"))
+        terminate;
+
+    if (ACS_NamedExecuteWithResult("uh_IsUnholyTeamMode")) {
+        if (!ACS_NamedExecuteWithResult("uh_AM_CanSee", cpn, pln))
+            terminate;
+    } else {
+        if(
+            teamGame
+            && GetPlayerInfo(cpn, PLAYERINFO_TEAM) != GetPlayerInfo(pln, PLAYERINFO_TEAM)
+            && PlayerIsSpectator(cpn) != 1
+        ) {
+            terminate;
+        }
+
+        if(!teamgame && !cooperative && cpn != pln && PlayerIsSpectator(cpn) != 1)
+            terminate;
+
+    }
+
+    int u = UniqueTID();
+    if(!SpawnForced(StrParam(s:GetActorClass(0), s:"_Death_MapMarker"), GetActorX(0), GetActorY(0), GetActorZ(0), u, GetActorAngle(0)))
+        SpawnForced("PlayerPawn_Death_MapMarker", GetActorX(0), GetActorY(0), GetActorZ(0), u, GetActorAngle(0));
+
+    ACS_NamedExecuteWithResult("core_setTIDsPointerToThis", u, AAPTR_TARGET);
+
+    Thing_SetTranslation(u, -1);
+    Thing_ChangeTID(u, 0);
+}
+
+script "core_automap_weapon" (void)
+{
+    ACS_NamedExecuteWithResult("core_automap_pickup", "core_automap_weapon_c");
+}
+
+script "core_automap_giftbox" (void)
+{
+    ACS_NamedExecuteWithResult("core_automap_pickup", "core_automap_giftbox_c");
+}
+
+script "core_automap_item" (void)
+{
+    if(CheckForVar("user_RemoveAsBusterUpgrade")) {
+        ACS_NamedExecuteWithResult("core_automap_pickup", "core_automap_busters_c");
+    } else if(CheckForVar("user_RemoveAsAssistItem")) {
+        ACS_NamedExecuteWithResult("core_automap_pickup", "core_automap_assists_c");
+    } else if(CheckForVar("user_RemoveAsSmallHealth")) {
+        ACS_NamedExecuteWithResult("core_automap_pickup", "core_automap_small_health_c");
+    } else if(CheckForVar("user_RemoveAsSmallAmmo")) {
+        ACS_NamedExecuteWithResult("core_automap_pickup", "core_automap_small_ammo_c");
+    } else if(CheckForVar("user_RemoveAsSmallArmor")) {
+        ACS_NamedExecuteWithResult("core_automap_pickup", "core_automap_small_armor_c");
+    } else if(CheckForVar("user_RemoveAsAmmo")) {
+        ACS_NamedExecuteWithResult("core_automap_pickup", "core_automap_ammo_c");
+    } else if(CheckForVar("user_RemoveAsHealth")) {
+        ACS_NamedExecuteWithResult("core_automap_pickup", "core_automap_health_c");
+    } else if(CheckForVar("user_RemoveAsArmor")) {
+        ACS_NamedExecuteWithResult("core_automap_pickup", "core_automap_armor_c");
+    } else {
+        ACS_NamedExecuteWithResult("core_automap_pickup", "core_automap_misc_c");
+    }
+}
+
+function bool CheckForVar(str theVar) {
+	return CheckForActorVar(0, theVar);
+}
+
+function bool CheckForActorVar(int tid, str theVar) {
+	SetUserVariable(tid,theVar,1);
+	return (GetUserVariable(tid,theVar)==1);
+}
+
+script "core_automap_pickup" (int scriptName)
+{
+    if(CheckInventory("AutomapScriptRunning"))
+        terminate;
+
+    GiveInventory("AutomapScriptRunning", 1);
+
+    int start = Timer();
+    while(!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+        if((Timer() - start) % 35 == 0)
+            ACS_NamedExecuteWithResult(scriptName);
+        Delay(1);
+    }
+}
+
+script "core_automap_weapon_c" (void) CLIENTSIDE
+{
+    ACS_NamedExecuteWithResult("core_automap_pickup_c", "BaseMM8BDMWep_MapMarker", "mm8bdm_automap_weapons", 1);
+}
+
+script "core_automap_busters_c" (void) CLIENTSIDE
+{
+    ACS_NamedExecuteWithResult("core_automap_pickup_c", "BaseMM8BDMBusterUpgrade_MapMarker", "mm8bdm_automap_busters", 1);
+}
+
+script "core_automap_assists_c" (void) CLIENTSIDE
+{
+    ACS_NamedExecuteWithResult("core_automap_pickup_c", "BaseMM8BDMUseItem_MapMarker", "mm8bdm_automap_assists", 1);
+}
+
+script "core_automap_health_c" (void) CLIENTSIDE
+{
+    ACS_NamedExecuteWithResult("core_automap_pickup_c", "BigHealth_MapMarker", "mm8bdm_automap_health", 1);
+}
+
+script "core_automap_small_health_c" (void) CLIENTSIDE
+{
+    ACS_NamedExecuteWithResult("core_automap_pickup_c", "SmallHealth_MapMarker", "mm8bdm_automap_health", 2);
+}
+
+script "core_automap_ammo_c" (void) CLIENTSIDE
+{
+    ACS_NamedExecuteWithResult("core_automap_pickup_c", "WeaponEnergy_MapMarker", "mm8bdm_automap_ammo", 1);
+}
+
+script "core_automap_small_ammo_c" (void) CLIENTSIDE
+{
+    ACS_NamedExecuteWithResult("core_automap_pickup_c", "SmallWeaponEnergy_MapMarker", "mm8bdm_automap_ammo", 2);
+}
+
+script "core_automap_armor_c" (void) CLIENTSIDE
+{
+    ACS_NamedExecuteWithResult("core_automap_pickup_c", "", "mm8bdm_automap_armor", 1);
+}
+
+script "core_automap_small_armor_c" (void) CLIENTSIDE
+{
+    ACS_NamedExecuteWithResult("core_automap_pickup_c", "", "mm8bdm_automap_armor", 2);
+}
+
+script "core_automap_misc_c" (void) CLIENTSIDE
+{
+    ACS_NamedExecuteWithResult("core_automap_pickup_c", "", "mm8bdm_automap_misc", 1);
+}
+
+script "core_automap_giftbox_c" (void) CLIENTSIDE
+{
+    if(CheckInventory("AutomapScriptRunning_Client"))
+        terminate;
+
+    GiveInventory("AutomapScriptRunning_Client", 1);
+
+    str fallback = "BaseMM8BDMUseItem_MapMarker";
+    str cvar = "mm8bdm_automap_assists";
+    int value = 1;
+
+    int cpn = ConsolePlayerNumber();
+    while(!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+        if(CheckAutomap() == AUTOMAP_OFF) {
+            Delay(1);
+            continue;
+
+        }
+
+        if(GetUserCvar(cpn, cvar) < value) {
+            Delay(1);
+            continue;
+
+        }
+
+        if(!GetCvar("mm8bdm_sv_automap_pickups")) {
+            Delay(1);
+            continue;
+
+        }
+
+        if(!GetUserCvar(cpn, "mm8bdm_automap_pickups")) {
+            Delay(1);
+            continue;
+
+        }
+
+        int velx = GetActorVelX(0);
+        int vely = GetActorVelY(0);
+
+        int u = UniqueTID();
+        if(!SpawnForced(StrParam(s:GetActorClass(0), s:"_MapMarker"), GetActorX(0) - velx, GetActorY(0) - vely, GetActorZ(0), u, GetActorAngle(0))) {
+            if(StrICmp("", fallback) != 0)
+                SpawnForced(fallback, GetActorX(0) - velx, GetActorY(0) - vely, GetActorZ(0), u, GetActorAngle(0));
+        }
+        SetActorVelocity(u, velx, vely, 0.0, false, false);
+
+        Thing_SetTranslation(u, -1);
+        Thing_ChangeTID(u, 0);
+
+        Delay(1);
+    }
+}
+
+script "core_automap_pickup_c" (int fallback, int cvar, int value) CLIENTSIDE
+{
+    if(CheckInventory("AutomapScriptRunning_Client"))
+        terminate;
+
+    GiveInventory("AutomapScriptRunning_Client", 1);
+
+    int cpn = ConsolePlayerNumber();
+    while(!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+        if(CheckAutomap() == AUTOMAP_OFF) {
+            Delay(1);
+            continue;
+        }
+
+        if(GetUserCvar(cpn, cvar) < value) {
+            Delay(1);
+            continue;
+        }
+
+        if(!GetCvar("mm8bdm_sv_automap_pickups")) {
+            Delay(1);
+            continue;
+        }
+
+        if(!GetUserCvar(cpn, "mm8bdm_automap_pickups")) {
+            Delay(1);
+            continue;
+        }
+
+        if(CheckFlag(0, "DROPPED")) {
+            if(!GetCvar("mm8bdm_sv_automap_dropped_pickups")) {
+                Delay(1);
+                continue;
+            }
+        }
+
+        if(!CheckFlag(0, "SPECIAL")) {
+            // ALWAYSRESPAWN and NEVERRESPAWN are the wrong flags to check here, but they're clientside synced
+            // unlike the correct ones. This gives us a means to set these flags and have them disappear from automap.
+            if(!CheckFlag(0, "INVENTORY.ALWAYSRESPAWN") && !CheckFlag(0, "ALWAYSRESPAWN")) {
+                if(!GetCvar("sv_itemrespawn") || CheckFlag(0, "INVENTORY.NEVERRESPAWN") || CheckFlag(0, "NEVERRESPAWN")) {
+                    break;
+                }
+            }
+        }
+
+        int velx = GetActorVelX(0);
+        int vely = GetActorVelY(0);
+
+        int u = UniqueTID();
+        if(!SpawnForced(StrParam(s:GetActorClass(0), s:"_MapMarker"), GetActorX(0) - velx, GetActorY(0) - vely, GetActorZ(0), u, GetActorAngle(0))) {
+            if(StrICmp("", fallback) != 0)
+                SpawnForced(fallback, GetActorX(0) - velx, GetActorY(0) - vely, GetActorZ(0), u, GetActorAngle(0));
+        }
+        SetActorVelocity(u, velx, vely, 0.0, false, false);
+
+        Thing_SetTranslation(u, -1);
+        Thing_ChangeTID(u, 0);
+
+        Delay(1);
+    }
+}
+
+script "core_automap_flag" (int scriptName, int value)
+{
+    if(CheckInventory("AutomapScriptRunning"))
+        terminate;
+
+    GiveInventory("AutomapScriptRunning", 1);
+
+    int start = Timer();
+    while(!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+        if((Timer() - start) % 35 == 0)
+            ACS_NamedExecuteWithResult("core_automap_flag_c");
+        Delay(1);
+    }
+}
+
+script "core_automap_flag_c" (void) CLIENTSIDE
+{
+    if(CheckInventory("AutomapScriptRunning_Client"))
+        terminate;
+
+    GiveInventory("AutomapScriptRunning_Client", 1);
+
+    int cpn = ConsolePlayerNumber();
+    while(!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+        if(CheckAutomap() == AUTOMAP_OFF) {
+            Delay(1);
+            continue;
+        }
+
+        if(GetCvar("mm8bdm_sv_noobjectiveradar")) {
+            Delay(1);
+            continue;
+        }
+
+        if(!GetUserCvar(cpn, "mm8bdm_automap_objectives") || !GetCvar("mm8bdm_sv_automap_objectives")) {
+            Delay(1);
+            continue;
+        }
+
+        int velx = GetActorVelX(0);
+        int vely = GetActorVelY(0);
+
+        int u = UniqueTID();
+        if(SpawnForced(StrParam(s:GetActorClass(0), s:"_MapMarker"), GetActorX(0) - velx, GetActorY(0) - vely, GetActorZ(0), u, GetActorAngle(0))) {
+            SetActorVelocity(u, velx, vely, 0.0, false, false);
+            Thing_ChangeTID(u, 0);
+        }
+
+        Delay(1);
+    }
+}
+
+
+script "core_automap_artifact" (int scriptName, int value)
+{
+    if(CheckInventory("AutomapScriptRunning"))
+        terminate;
+
+    GiveInventory("AutomapScriptRunning", 1);
+
+    int start = Timer();
+    while(!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+        if((Timer() - start) % 35 == 0)
+            ACS_NamedExecuteWithResult("core_automap_artifact_c");
+        Delay(1);
+    }
+}
+
+script "core_automap_artifact_c" (void) CLIENTSIDE
+{
+    if(CheckInventory("AutomapScriptRunning_Client"))
+        terminate;
+
+    GiveInventory("AutomapScriptRunning_Client", 1);
+
+    int cpn = ConsolePlayerNumber();
+    while(!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+        if(CheckAutomap() == AUTOMAP_OFF) {
+            Delay(1);
+            continue;
+        }
+
+        if(GetCvar("mm8bdm_sv_noobjectiveradar") || !(GetCvar("mm8bdm_sv_exactartifactposition") & RADAR_EXACT_MODE_OBJECTIVES || !PlayerInGame(cpn))) {
+            Delay(1);
+            continue;
+        }
+
+        if(!GetUserCvar(cpn, "mm8bdm_automap_objectives") || !GetCvar("mm8bdm_sv_automap_objectives")) {
+            Delay(1);
+            continue;
+        }
+
+        int velx = GetActorVelX(0);
+        int vely = GetActorVelY(0);
+
+        int u = UniqueTID();
+        if(SpawnForced(StrParam(s:GetActorClass(0), s:"_MapMarker"), GetActorX(0) - velx, GetActorY(0) - vely, GetActorZ(0), u, GetActorAngle(0))) {
+            SetActorVelocity(u, velx, vely, 0.0, false, false);
+            Thing_ChangeTID(u, 0);
+        }
+
+        Delay(1);
+    }
+}
+
+script "core_automap_pillar" (int scriptName, int value)
+{
+    if(CheckInventory("AutomapScriptRunning"))
+        terminate;
+
+    GiveInventory("AutomapScriptRunning", 1);
+
+    int arg = ACS_NamedExecuteWithResult("core_getArg", 1);
+
+    int start = Timer();
+    while(!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+        if((Timer() - start) % 35 == 0)
+            ACS_NamedExecuteWithResult("core_automap_pillar_c", arg);
+        Delay(1);
+    }
+}
+
+script "core_automap_pillar_c" (int arg) CLIENTSIDE
+{
+    if(CheckInventory("AutomapScriptRunning_Client"))
+        terminate;
+
+    GiveInventory("AutomapScriptRunning_Client", 1);
+
+    if(arg < 0)
+        terminate;
+
+    if(arg <= 3) {
+        str marker = StrParam(s:"MegaAnyScorePillar_", i:arg, s:"_MapMarker");
+    } else {
+        marker = "MegaAnyScorePillar_Any_MapMarker";
+    }
+
+    int cpn = ConsolePlayerNumber();
+    while(!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+        if(CheckAutomap() == AUTOMAP_OFF) {
+            Delay(1);
+            continue;
+        }
+
+        if(GetCvar("mm8bdm_sv_noobjectiveradar")) {
+            Delay(1);
+            continue;
+        }
+
+        if(!GetUserCvar(cpn, "mm8bdm_automap_objectives") || !GetCvar("mm8bdm_sv_automap_objectives")) {
+            Delay(1);
+            continue;
+        }
+
+        int velx = GetActorVelX(0);
+        int vely = GetActorVelY(0);
+
+        int u = UniqueTID();
+        if(SpawnForced(marker, GetActorX(0) - velx, GetActorY(0) - vely, GetActorZ(0), u, GetActorAngle(0))) {
+            SetActorVelocity(u, velx, vely, 0.0, false, false);
+            Thing_SetTranslation(u, -1);
+            Thing_ChangeTID(u, 0);
+        }
+
+        Delay(1);
+    }
+}
+
+script "core_automap_domination_vertex" (void)
+{
+    // Don't run this for children vertexes
+    if(!IsPointerEqual(AAPTR_TARGET, AAPTR_NULL))
+        terminate;
+
+    if(CheckInventory("AutomapScriptRunning"))
+        terminate;
+
+    GiveInventory("AutomapScriptRunning", 1);
+
+    int next_vertex = ACS_NamedExecuteWithResult("core_getArg", 0);
+
+    int start = Timer();
+    while(!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+        if((Timer() - start) % 35 == 0)
+            ACS_NamedExecuteWithResult("core_automap_domination_vertex_c", next_vertex);
+        Delay(1);
+    }
+}
+
+script "core_automap_domination_vertex_c" (int next_vertex) CLIENTSIDE
+{
+    if(CheckInventory("AutomapScriptRunning_Client"))
+        terminate;
+
+    GiveInventory("AutomapScriptRunning_Client", 1);
+
+    int x1 = GetActorX(0);
+    int y1 = GetActorY(0);
+    int z1 = GetActorZ(0);
+
+    int cpn = ConsolePlayerNumber();
+    while(!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+        if(CheckAutomap() == AUTOMAP_OFF) {
+            Delay(1);
+            continue;
+        }
+
+        if(GetCvar("mm8bdm_sv_noobjectiveradar")) {
+            Delay(1);
+            continue;
+        }
+
+        if(!GetUserCvar(cpn, "mm8bdm_automap_objectives") || !GetCvar("mm8bdm_sv_automap_objectives")) {
+            Delay(1);
+            continue;
+        }
+
+        int owner = GetUserVariable(0, "user_owner");
+        if(owner > 255) {
+            Delay(1);
+            continue;
+        }
+
+        int x2 = GetActorX(next_vertex);
+        int y2 = GetActorY(next_vertex);
+        int z2 = GetActorZ(next_vertex);
+
+        int edge_length = VectorLength(VectorLength(x2 - x1, y2 - y1), z2 - z1);
+        int num_actors = (edge_length / 18) >> 16;
+
+        int u = UniqueTID();
+        for (int actor = 0; actor <= num_actors; actor++) {
+            int t = (actor << 16) / (num_actors + 1);
+            if(SpawnForced("DominationPointVertex_MapMarker", x1 + FixedMul(t, (x2 - x1)), y1 + FixedMul(t, (y2 - y1)), z1 + FixedMul(t, (z2 - z1)), u, 0)) {
+                Thing_SetTranslation(u, -1);
+                Thing_ChangeTID(u, 0);
+            }
+        }
+
+        Delay(1);
+    }
+}
+
+script "core_automap_domination_center" (void)
+{
+    if(CheckInventory("AutomapScriptRunning"))
+        terminate;
+
+    GiveInventory("AutomapScriptRunning", 1);
+
+    int start = Timer();
+    while(!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+        if((Timer() - start) % 35 == 0)
+            ACS_NamedExecuteWithResult("core_automap_domination_center_c");
+        Delay(1);
+    }
+}
+
+script "core_automap_domination_center_c" (int next_vertex) CLIENTSIDE
+{
+    if(CheckInventory("AutomapScriptRunning_Client"))
+        terminate;
+
+    GiveInventory("AutomapScriptRunning_Client", 1);
+
+    int cpn = ConsolePlayerNumber();
+    while(!(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP")) {
+        if(CheckAutomap() == AUTOMAP_OFF) {
+            Delay(1);
+            continue;
+        }
+
+        if(GetCvar("mm8bdm_sv_noobjectiveradar")) {
+            Delay(1);
+            continue;
+        }
+
+        if(!GetUserCvar(cpn, "mm8bdm_automap_objectives") || !GetCvar("mm8bdm_sv_automap_objectives")) {
+            Delay(1);
+            continue;
+        }
+
+        int owner = GetUserVariable(0, "user_owner");
+        if(owner > 255) {
+            Delay(1);
+            continue;
+        }
+
+        int index = ACS_NamedExecuteWithResult("core_find_domination_point_by_tag", ActivatorTID());
+        if(index < 0) {
+            Delay(1);
+            continue;
+        }
+
+        int u = UniqueTID();
+        if(SpawnForced("DominationPoint_MapMarker", GetActorX(0), GetActorY(0), GetActorZ(0), u, 0)) {
+            Thing_SetTranslation(u, -1);
+            Thing_ChangeTID(u, 0);
+        }
+
+        int captureProgress = ACS_NamedExecuteWithResult("core_domination_get_contesting_progress", index);
+        int contestingTeam = ACS_NamedExecuteWithResult("core_domination_get_contesting_team", index);
+        if(captureProgress > 0) {
+            SpawnForced("DominationPoint_Progress_MapMarker", GetActorX(0), GetActorY(0), GetActorZ(0), u, 0);
+            SetActorState(u, StrParam(s:"Spawn", i:((captureProgress * 7) >> 16)));
+            Thing_SetTranslation(u, TCLR_DEFAULT + contestingTeam);
+            Thing_ChangeTID(u, 0);
+        }
+
+        SpawnForced("DominationPoint_Letter_MapMarker", GetActorX(0), GetActorY(0), GetActorZ(0), u, 0);
+        SetActorState(u, StrParam(s:"Spawn", c:index+65));
+        Thing_ChangeTID(u, 0);
+
+        Delay(1);
+    }
+}

@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261105
 
+- Player automap markers now use v6c's native arrows with the Unholy S/B/E icons. Removed the dotted direction rays that could cover player icons; markers follow the native automap display options.
 - Fixed F-Beast failing to gain rage when taking damage, preventing Primal Beast-Over from charging.
 - Golden Killer Box Demoneye now uses its own gold-and-red-eyed icon in the item wheel and inventory.
 - Fixed Killer Box Demoneye showing the ordinary Box Demoneye icon in the item wheel; its red-eyed icon now displays correctly.

@@ -130,18 +130,17 @@ that Boss also has no other Boss rows. Ask specifically whether solo Boss play
 has the same slowdown. Server work continues when one player changes role;
 Eye FPS recovering does not by itself prove a server bottleneck.
 
-### 2. Player automap markers update even with the automap closed
+### 2. Player automap markers now follow the native v6c lifecycle
 
-`src/acs_source/hud/automap_markers.acs`, `uh_AutomapMarkers`, has no automap-open
-gate. After its 70-tic startup delay it visits all 64 slots every tic. For each
-visible living player it keeps one icon and 20 direction-dot actors, and calls
-`Warp` for every dot every tic. Visibility uses the teammate policy above.
+The 261105 automap migration removed `uh_AutomapMarkers` and its 20 direction
+actors per player. Player markers now use the v6c `MAUTOMAP` implementation,
+with Unholy visibility and S/B/E artwork adapters. The native loop skips marker
+work while the automap is closed or player markers are disabled. It draws one
+native directional arrow per visible player, including native rotation handling.
 
-That is 700 dot warps per second per visible player: 22,400 for 32 visible
-living players. An Eye normally has only its own markers; a lone Boss likewise
-normally has only its own. These are source-derived work counts, not measured
-frame-time costs. Closing the automap does not disable this work. The item
-marker option is a separate feature and does not disable these player dots.
+The former 700 dot warps per second per visible player no longer occur. This
+removes a source-identified workload; its effect on the reported FPS difference
+has not been measured and does not establish the cause of that report.
 
 ### 3. Common HUD inventory work
 
