@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261105
 
+- Restored the centered position of the recolored S/B/E automap icons.
 - Automap S/B/E icons now follow each player's colors, making Boss colors visible on the map.
 - Player automap markers now use v6c's native arrows with the Unholy S/B/E icons. Removed the dotted direction rays that could cover player icons; markers follow the native automap display options.
 - Fixed F-Beast failing to gain rage when taking damage, preventing Primal Beast-Over from charging.
