@@ -4,8 +4,8 @@
 Checks one-pass stops, stale timers, screen holds for short/long themes and the
 ownership guard on delayed restores (a finished round or a newer selection must
 keep playback). Delay injects replacement playback, including selecting the same
-lump again. Startup stubs model v6b OPEN resets and its native two-player music
-trigger. This does not emulate network or audio-device timing.
+lump again. Startup stubs model native OPEN resets, two-player music, and v6c's
+timer-handler result tail. This does not emulate network or audio-device timing.
 """
 from pathlib import Path
 import subprocess
@@ -115,7 +115,7 @@ typedef int bool;
 int uh_musicstate[2], duration, emulated, selections, stops, scheduled, waitticks;
 int gameover;
 int scheduledticks, scheduledgeneration, replacement;
-int startup, native_state, native_pending, native_changes;
+int startup, native_state, native_pending, native_timer_pending, native_changes;
 int connected[4], spectator[4], health[4], tick;
 int isbonuseventactive, versusfightevent, watch_active, watch_deadline, watch_initial;
 int watch_running, death_tick1, death_tick2, boss_tick, victory_tick;
@@ -168,6 +168,7 @@ void ACS_NamedTerminate(str name, int map) {
     assert(map == 0);
     if (!strcmp(name, "uh_WatchResultMapMusic")) { watch_active = 0; return; }
     if (!strcmp(name, "uh_StopResultMusic")) return;
+    if (!strcmp(name, "core_timer_musichandler")) { native_timer_pending = 0; return; }
     assert(!strcmp(name, "core_musichandler") && map == 0);
     native_pending = 0;
 }
@@ -190,6 +191,12 @@ void NativeDeathMusic(int living) {
         native_changes++;
         SetMusic("MAPBOSS");
     }
+}
+/* v6c core_timer_musichandler keeps its cached currentState when timelimit=0,
+   then runs this tail on entering results without checking disabled state. */
+void NativeTimerResults(int timelimit, int cachedstate) {
+    if (native_timer_pending && cachedstate < 2 && tick >= timelimit * 60 * 35)
+        ACS_NamedExecuteWithResult("core_bossmusicstate", 2, 2);
 }
 void Delay(int ticks) {
     waitticks = ticks;
@@ -328,14 +335,26 @@ int main(void) {
 
     /* Even if UH initially disabled native music, OPEN resets used to undo it.
        The deferred production claim also cancels a pending native restore. */
-    startup = 1; native_state = 100; native_pending = 1;
+    /* v6c regression: timelimit=0 skips the timer loop's state read. Its
+       cached state stays 0 and forces MAPVICTORY, even with state disabled. */
+    native_timer_pending = 1; native_state = 100;
+    UH_PlayResultMusic(0);
+    NativeTimerResults(0, 0);
+    assert(!strcmp(playing, "MAPVICTORY"));
+
+    startup = 1; native_state = 100; native_pending = 1; native_timer_pending = 1;
     FinishStartup();
     startup = 0;
-    assert(native_state > 2 && native_pending == 0);
+    assert(native_state > 2 && native_pending == 0 && native_timer_pending == 0);
     int previous_changes = native_changes;
     UH_PlayResultMusic(0);
     NativeDeathMusic(2);
     NativeDeathMusic(1);
+    NativeTimerResults(0, 0);
+    int previous_tick = tick;
+    tick = 5 * 60 * 35;
+    NativeTimerResults(5, 0);
+    tick = previous_tick;
     assert(native_changes == previous_changes && !strcmp(playing, "RESULT"));
     previous_stops = stops;
     StopResultMusic(scheduledticks, scheduledgeneration);
