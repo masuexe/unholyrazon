@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261105
+
+- Fixed Dickhead revival turning players into ordinary Demoneyes during the MLG eye minigame. All-eye minigames now preserve their selected eye type and event effects after revival.
+
 ## 4.0.0-beta.261104
 
 - Fixed Oil Slider showing two assist HUD icons while riding; only one fuel indicator is now shown.

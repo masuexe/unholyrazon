@@ -76,7 +76,12 @@ function void DickheadDoRevive(int selftid, int revived_tid, int isbossrevival, 
 
   // Both revival paths snapshot the thrower's role before respawning anyone:
   // respawn can destroy the old pawn referenced by the Dickhead's target.
-  if (owner_is_an_eye && !isbossrevival && !CheckActorInventory(revived_tid, "Is_UH_BossNum")) {
+  // All-eye events have already restored their selected eye and event powers.
+  // MoneyBait must not unmorph that body and replace it with a random eye.
+  if (owner_is_an_eye && !isbossrevival
+      && !(isbonuseventactive
+           && (GetBonusEventFlags(eventdataarr[EVENTDATA_MAINEVENT]) & UHBE_FLAG_ALL_EYE))
+      && !CheckActorInventory(revived_tid, "Is_UH_BossNum")) {
     eyegiver = PickEyeMorphActorCore("MoneyBait", UHEM_MODE_GIVER);
     if (StrCmp(eyegiver, "") != 0 && SetActivator(revived_tid)) {
       // A bonus-event RESPAWN callback may already have morphed this player.
