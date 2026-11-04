@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261101
 
+- Fixed Oil Slider showing two assist HUD icons while riding; only one fuel indicator is now shown.
 - Void Walker survives its first lethal hit to enter phase two, restoring all four elemental orbs and unlocking the core weapon in Slot 5.
 - Void Walker's Wind Orb Lightning Orb now fires a single high-speed projectile using Spark Shock visuals. On hitting a target, it envelops them in a persistent electric cage that warps with their movement for ~1.5 seconds, dealing periodic shock damage ticks.
 - Void Walker's Wind Orb Light Beam is now a large translucent bubble that floats forward a short distance and bursts. Every enemy survivor caught in the burst takes 30 damage and is sealed inside a Bubble for 2.5 seconds: the player cannot move, attack, or turn the camera until the bubble breaks or expires.
