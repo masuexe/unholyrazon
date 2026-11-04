@@ -764,42 +764,40 @@ actor VWBoltColumn : BasicGraphicEffect {
 }
 
 // M2 Stage 2 (Charge): Light Beam (60 ammo)
-actor VWLightBeam : VWProjectile {
-  +BRIGHT
+// SMRPG: a large bubble floats forward and bursts. The burst traps every enemy
+// survivor it catches in the shared Bubble status. NOINTERACTION keeps the
+// bubble out of geometry collision, so the burst point is the travel endpoint,
+// not an impact point. Eleven intact frames at four tics each and Speed 20
+// give an 880-unit flight.
+actor VWLightBubble : VWProjectile {
+  +NOINTERACTION
   +DONTBLAST
-  +RIPPER
-  Radius 10
-  Height 10
-  Speed 70
-  Damage (45)
+  +FORCEXYBILLBOARD
+  +NOTIMEFREEZE
+  Damage (0)
   DamageType "LightBeam"
-  Obituary "%o was pierced by %k's \cdLight Beam\c-."
-  RenderStyle "Add"
-  Scale 1.8
+  Obituary "%o was sealed inside %k's \cdLight Beam\c-."
+  Radius 20
+  Height 40
+  Speed 20
+  Scale 3.0
+  RenderStyle "Translucent"
+  Alpha 0.75
   States {
    Spawn:
-    LASH A 0
-   SpawnLoop:
-    LASH AB 1 A_SpawnItemEx("VWLightBeamTrail", 0, 0, 0, 0, 0, 0, 0, SXF_CLIENTSIDE)
-    loop
+    TNT1 A 0
+   Travel:
+    UBBL AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKK 4
+    goto Burst
+   Burst:
+    TNT1 A 0 nodelay A_PlaySound("MMBN6/BubbleRelease", 1)
+    // The shooter stays on the target pointer, so the burst script can resolve
+    // the boss and its morph generation.
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_VWLightBubbleBurst")
+    UBBL LMN 4
+    stop
    Death:
-   Crash:
-    TNT1 A 0 A_PlaySound("MarioRPG/BowserLightning", 1)
-    TNT1 A 0 A_Explode(30, 80, 0, 0, 40)
-    TNT1 A 0 A_SpawnItemEx("ElectrifyEffect")
-    stop
-  }
-}
-
-actor VWLightBeamTrail : BasicGraphicEffect {
-  +BRIGHT
-  +CLIENTSIDEONLY
-  RenderStyle "Add"
-  Scale 1.6
-  States {
-   SpawnFrame:
-    LASH AB 1 A_FadeOut(0.3)
-    stop
+    goto Burst
   }
 }
 

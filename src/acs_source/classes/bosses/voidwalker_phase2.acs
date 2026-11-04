@@ -247,6 +247,28 @@ script "uh_VWCast" (int spell) {
   }
 }
 
+// Light Beam burst: the travelling bubble calls this when it pops. Every enemy
+// survivor near the burst takes a direct LightBeam hit. That type is an alias
+// in the shared Bubble damage event, so the hit also applies the Bubble status
+// and traps the target. A direct hit is deliberate: the event refuses a hit
+// that is not effective, and radius damage would lose the damage type on its
+// visibility path.
+script "uh_VWLightBubbleBurst" (void) {
+  int x = GetActorX(0);
+  int y = GetActorY(0);
+  int z = GetActorZ(0);
+  if (!SetActivator(0, AAPTR_TARGET) || !UH_VWIsOwner()) terminate;
+  int boss = ActivatorTID();
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    if (!UH_VWEnemy(boss, p, 192.0, false)) continue;
+    int struck = p + 1000;
+    if (VectorLength(GetActorX(struck) - x, GetActorY(struck) - y) > 160.0) continue;
+    if (abs(GetActorZ(struck) + GetActorProperty(struck, APROP_Height) / 2 - z) > 128.0) continue;
+    SetActivator(boss);
+    Thing_Damage2(struck, 30, "LightBeam");
+  }
+}
+
 // The projectile's target is the shooter. Use ordinary radius damage with a
 // modest value; the late damage event caps health loss after every modifier.
 script "uh_VWMeteorImpact" (void) {

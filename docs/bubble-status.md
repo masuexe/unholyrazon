@@ -134,6 +134,11 @@ None of these checks writes the gameplay status or freeze stack.
 A weapon or projectile opts in by using the damage type `UH_Bubble`. For
 example:
 
+`LightBeam` is a second opt-in type, listed in
+`UH_BUBBLE_ALIAS_DAMAGETYPE`. Use it when an attack must keep its own damage
+type and obituary but still apply Bubble, as Void Walker's Light Bubble does.
+Both types go through the same eligibility, break, and no-reapply rules.
+
 ```decorate
 Actor ExampleBubbleShot : BasicProjectile
 {
