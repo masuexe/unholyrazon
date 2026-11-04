@@ -260,7 +260,11 @@ script "uh_VWLightBubbleBurst" (void) {
   if (!SetActivator(0, AAPTR_TARGET) || !UH_VWIsOwner()) terminate;
   int boss = ActivatorTID();
   for (int p = 0; p < MAX_PLAYERS; p++) {
-    if (!UH_VWEnemy(boss, p, 192.0, false)) continue;
+    // The range argument only answers "is this an eligible enemy". The burst
+    // geometry is the local check below, so this must not be a short distance:
+    // a tight range here would reject every victim of a burst that lands away
+    // from the boss. uh_VWMeteorImpact uses the same split.
+    if (!UH_VWEnemy(boss, p, 4096.0, false)) continue;
     int struck = p + 1000;
     if (VectorLength(GetActorX(struck) - x, GetActorY(struck) - y) > 160.0) continue;
     if (abs(GetActorZ(struck) + GetActorProperty(struck, APROP_Height) / 2 - z) > 128.0) continue;

@@ -114,16 +114,20 @@ cutting damage with the engine's normal radius-damage visibility rules.
 
 Light Beam is the Wind orb's 60-ammo stage, and it now matches the source
 spell, which the remake calls Light Bubble. `VWLightBubble` is a
-`NOINTERACTION` actor: it ignores geometry, travels 880 units over eleven
-four-tic frames at Speed 20, then bursts. The burst runs
-`uh_VWLightBubbleBurst`, which gives every enemy survivor within 160 units a
-direct 30-damage `LightBeam` hit. That type is an alias in the shared Bubble
+`NOINTERACTION` actor: it ignores geometry, travels 144 units over four
+two-tic frames at Speed 18, then bursts. The flight is short on purpose,
+because the burst is the attack: a long flight only moves the damage away from
+the target. The burst runs `uh_VWLightBubbleBurst`, which gives every enemy
+survivor within 160 units a direct 30-damage `LightBeam` hit. That type is an alias in the shared Bubble
 damage event (`UH_BUBBLE_ALIAS_DAMAGETYPE`), so the hit also applies the Bubble
 status and traps the target for its normal 88 tics. The direct hit is
 deliberate: the event refuses a hit that is not effective, and radius damage
-would lose the damage type on its visibility path. `VWLightBubble` itself deals
-no damage, so its `DamageType` only supplies the obituary and the protection
-entry.
+would lose the damage type on its visibility path. The range argument passed to
+`UH_VWEnemy` is only the eligibility filter, so it is 4096: the burst geometry
+is the separate 160-unit check around the burst point. A short range there would
+reject every victim of a burst that lands away from the boss.
+`VWLightBubble` itself deals no damage, so its `DamageType` only supplies the
+obituary and the protection entry.
 
 Static E! is the Wind orb's 90-ammo stage. It is not a projectile: the weapon
 hands the cast to `uh_VWCast` spell 9, which damages every enemy survivor
