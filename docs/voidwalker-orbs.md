@@ -112,6 +112,15 @@ target point and converges on it. Without a valid target the anchor lies
 provides movement through geometry; repeated native `A_Explode` calls supply
 cutting damage with the engine's normal radius-damage visibility rules.
 
+Static E! is the Wind orb's 90-ammo stage. It is not a projectile: the weapon
+hands the cast to `uh_VWCast` spell 9, which damages every enemy survivor
+within 4096 units three times for 18 damage. It never checks line of sight, so
+walls and cover cannot stop it, matching the source spell, which hits the whole
+screen and cannot be blocked. The three pulses are six tics apart, and the cast
+stops early when the boss morph is no longer alive. `VWStaticEDischarge` is the
+server-visible flash at the boss, and `VWStaticESparkFX` marks each victim.
+Both actors carry no damage of their own.
+
 The fire orb's Drain and Mega Drain implement Hot Shot and Flame Saber;
 neither heals. Shredder deals no direct damage and removes only the listed
 temporary shield/combat effects. It preserves team protection and permanent

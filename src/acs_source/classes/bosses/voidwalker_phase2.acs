@@ -127,6 +127,25 @@ script "uh_VWCast" (int spell) {
     terminate;
   }
 
+  if (spell == 9) { // Static E!: screen-wide discharge. SMRPG hits every target
+    // and cannot be blocked or dodged, so this ignores sight and cover.
+    for (i = 0; i < 3; i++) {
+      if (!UH_VWPhaseAlive(boss, generation)) terminate;
+      SetActivator(boss);
+      UH_VWSpawn("VWStaticEDischarge", boss, bx, by, bz, yaw);
+      for (p = 0; p < MAX_PLAYERS; p++) {
+        if (!UH_VWEnemy(boss, p, 4096.0, false)) continue;
+        int struck = p + 1000;
+        SetActivator(boss);
+        Thing_Damage2(struck, 18, "StaticE");
+        UH_VWSpawn("VWStaticESparkFX", boss, GetActorX(struck),
+          GetActorY(struck), GetActorZ(struck) + 24.0, yaw);
+      }
+      Delay(6);
+    }
+    terminate;
+  }
+
   if (spell == 4) { // Diamond Saw: two outward, then two converging blades.
     int axis = VectorAngle(px - bx, py - by);
     for (i = -1; i <= 1; i += 2) {
