@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261105
 
+- Fixed Killer Box Demoneye showing the ordinary Box Demoneye icon in the item wheel; its red-eyed icon now displays correctly.
 - Fixed map victory music overriding Unholy's result jingle after the v6c migration, including games with no time limit. Later map-music switches still follow the remaining-player and time rules.
 - Fixed spectators continuing to twitch and spin in place after Morshu's ultimate ended.
 - Fixed Dickhead revival turning players into ordinary Demoneyes during the MLG eye minigame. All-eye minigames now preserve their selected eye type and event effects after revival.

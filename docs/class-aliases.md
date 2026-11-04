@@ -165,6 +165,7 @@
 | 发育眼 | Business Eye | `BusinessDemoneye` | demoneye | [Actor](../src/actors/classes/eyes/Business.dec); ID 8 | 用户确认；不是 Rich Demoneye。 |
 | 几把头 | Dickhead | `Dickhead` / `DickheadItem` | item | [Actor](../src/actors/items/tow/Dickhead.dec) | “吃了”指地上的 `Dickhead`，吃下获得额外生命；`DickheadItem` 是背包里可投掷的道具。 |
 | 尿瓶 | Urine Bottle | `UrineBottleItem` | item | [Actor](../src/actors/items/tow/UrineBottle.dec) | Projectile: `UrineBottleShot`; Boss variant: `UrineBottleShotB`. |
+| 杀人眼、killer box demoneye | Killer Box Demoneye | `KillerBoxDEItem` / `KillerBoxDE` | item | [Actor](../src/actors/items/pandora/KillerBoxDE.dec) | Inventory item / summoned attacker; distinct from `BoxDEItem` / `FriendlyBoxDE`. |
 | 圣水 | Unholy Water | `UnholyWaterItem` | item | [Actor](../src/actors/items/pandora/UnholyWater.dec) | Speed boost: `UnholyWaterSpeed`; projectile: `UnholyWaterShot`. |
 | mountaindew、Mountain Dew | Mountain Dew | `MountainDewItem` | item | [Actor](../src/actors/items/tow/MountainDew.dec) | Reverse speed boost: `UnholyWaterGSpeed`; projectile: `MountainDewShot`. |
 
