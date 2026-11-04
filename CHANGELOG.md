@@ -4,7 +4,7 @@
 
 ---
 
-## 4.0.0-beta.261101
+## 4.0.0-beta.261104
 
 - Fixed Oil Slider showing two assist HUD icons while riding; only one fuel indicator is now shown.
 - Urine Bottle now deals half damage to Survivor teammates and applies its damage vulnerability effect. Bottles thrown by Bosses deal full damage to Survivors.
