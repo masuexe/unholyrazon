@@ -6,7 +6,7 @@
 
 ## 4.0.0-beta.261105
 
-- Fixed spectator camera twitching during Morshu's ultimate by keeping spectators' view aligned with his actual movement and turning.
+- Fixed spectators continuing to twitch and spin in place after Morshu's ultimate ended.
 - Fixed Dickhead revival turning players into ordinary Demoneyes during the MLG eye minigame. All-eye minigames now preserve their selected eye type and event effects after revival.
 
 ## 4.0.0-beta.261104
