@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261105
 
+- Golden Killer Box Demoneye now uses its own gold-and-red-eyed icon in the item wheel and inventory.
 - Fixed Killer Box Demoneye showing the ordinary Box Demoneye icon in the item wheel; its red-eyed icon now displays correctly.
 - Fixed map victory music overriding Unholy's result jingle after the v6c migration, including games with no time limit. Later map-music switches still follow the remaining-player and time rules.
 - Fixed spectators continuing to twitch and spin in place after Morshu's ultimate ended.
