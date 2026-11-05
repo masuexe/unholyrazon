@@ -36,6 +36,12 @@ def main():
     receiver = team.replace('script "uh_ti_sync_policy" (int policy, int revision) CLIENTSIDE',
                             'function void ReceivePolicy(int policy, int revision)')
     functions += function(receiver, "ReceivePolicy").replace("terminate;", "return;")
+    # TLMS bottom counters: the counts must use the same relation as the bar,
+    # exclude the viewer, and ignore dead or freed slots.
+    tlms = (ROOT / "src/acs_source/hud/tlms_display.acs").read_text()
+    functions += "".join(function(tlms, name) for name in (
+        "UH_Tlms_IsAlive", "UH_Tlms_Viewer", "UH_Tlms_CountAllies",
+        "UH_Tlms_CountEnemies"))
     code = STUBS + constants + "\n" + functions + function(automap, "UH_AM_CanSee") + TESTS
     with tempfile.TemporaryDirectory(prefix="uh-team-visibility-") as directory:
         path = Path(directory)
@@ -145,6 +151,47 @@ int main(void) {
     assert(UH_AM_CanSee(0, 1) == (roles[a] == roles[b] && roles[a] != PLS_EYE));
     checks++;
   }
+  // TLMS counters: the viewer is excluded, dead/freed slots are excluded, and
+  // the relation is exactly the teammate-bar relation.
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    uhtilife[i] = PLS_NULL; uhtirole[i] = PLS_NULL; spectator[i] = 0;
+  }
+  uhtiscorepolicy = UH_SCOREPOLICY_NORMAL;
+  uhtiova = 0; uhtiovatarget = -1;
+  uhtirole[0] = uhtilife[0] = PLS_SURVIVOR;  // viewer
+  uhtirole[1] = uhtilife[1] = PLS_SURVIVOR;  // ally
+  uhtirole[2] = uhtilife[2] = PLS_SURVIVOR;  // ally
+  uhtirole[3] = uhtilife[3] = PLS_BOSS;      // enemy
+  uhtirole[4] = PLS_SURVIVOR; uhtilife[4] = PLS_DEAD;  // dead: never counted
+  uhtirole[5] = uhtilife[5] = PLS_EYE;       // Eye never forms a display team
+  assert(UH_Tlms_IsAlive(0) && !UH_Tlms_IsAlive(4));
+  assert(UH_Tlms_CountAllies(0) == 2);
+  assert(UH_Tlms_CountEnemies(0) == 2);
+  // FFA: nobody is a teammate.
+  uhtiscorepolicy = UH_SCOREPOLICY_FFA;
+  assert(UH_Tlms_CountAllies(0) == 0);
+  assert(UH_Tlms_CountEnemies(0) == 4);
+  // 1-vs-all: the frozen target is alone; everyone else shares one side.
+  uhtiscorepolicy = UH_SCOREPOLICY_ONEVSALL; uhtiova = 1; uhtiovatarget = 3;
+  assert(UH_Tlms_CountAllies(0) == 3);
+  assert(UH_Tlms_CountEnemies(0) == 1);
+  assert(UH_Tlms_CountAllies(3) == 0);
+  assert(UH_Tlms_CountEnemies(3) == 4);
+  // Viewer resolution: a living camera is the viewer, a dead or spectating one
+  // has no side, and the camera player wins over the console player.
+  uhtiscorepolicy = UH_SCOREPOLICY_NORMAL; uhtiova = 0; uhtiovatarget = -1;
+  assert(UH_Tlms_Viewer(1000, 0) == 0);
+  assert(UH_Tlms_Viewer(1001, 0) == 1);
+  assert(UH_Tlms_Viewer(-1, 0) == 0);
+  assert(UH_Tlms_Viewer(-1, -1) == -1);
+  spectator[0] = 1;
+  assert(UH_Tlms_Viewer(1000, 0) == -1);
+  assert(UH_Tlms_Viewer(-1, 0) == -1);
+  spectator[0] = 0;
+  uhtilife[0] = PLS_DEAD;
+  assert(UH_Tlms_Viewer(1000, 0) == -1);
+  uhtilife[0] = PLS_SURVIVOR;
+  checks++;
   printf("team visibility: %d policy/split/role cases passed\n", checks);
   return 0;
 }

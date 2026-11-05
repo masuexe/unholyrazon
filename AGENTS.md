@@ -235,6 +235,14 @@ Deliver **every** CLIENTSIDE team-info receiver (`uh_ti_sync_status`,
 connected client: a plain `ACS_NamedExecuteAlways` call to a CLIENTSIDE script
 is not delivered to remote clients on a dedicated server, so role/policy sync
 silently never arrives.
+TLMS-style bottom counters and the client-local ALLY markers live in
+`hud/tlms_display.acs` (included by `unholy.acs` after `uh_teaminfo.acs`). The
+`GAMEMODE` lump sets `DONTPRINTPLAYERSLEFT` for `LastManStanding` because the
+engine would count Unholy teammates as enemies; both displays use
+`UH_AreDisplayTeammates`, so the bar, the counters and the markers agree. The
+markers are client-only `UH_AllyMarker` actors (`actors/player/AllyMarker.dec`)
+kept above the head with ACS `Warp`. Do not add map variables to the `unholy`
+library without freeing a slot: it sits at ACC's 128-variable limit.
 The weapon display tag/ammo types come from `systems/tools/weapon_display.acs`
 in UH_TOOLS — the only UH library that may import 8BDT; do not add that bridge
 to `unholy`. `debug/rz_debug.acs` also includes `uh_def` and

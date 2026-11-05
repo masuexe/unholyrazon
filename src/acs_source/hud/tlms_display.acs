@@ -1,0 +1,216 @@
+// tlms_display.acs — TLMS-style bottom counters and client-local ALLY markers.
+//
+// Fragment of the single "unholy" library; #include'd by unholy/unholy.acs
+// after uh_teaminfo.acs.  It is NOT a library and must not be added to LOADACS.
+//
+// Why this exists:
+//   Unholy runs ordinary LMS and keeps its own side model (uhtirole/uhtilife).
+//   The engine's bottom line and its medal icons follow ENGINE team membership,
+//   which ordinary LMS does not use: the engine calls every other player an
+//   enemy and never draws an ALLY icon.  GAMEMODE therefore sets
+//   GMF_DONTPRINTPLAYERSLEFT for LastManStanding and this fragment draws both
+//   displays from the same relation the teammate bar uses, so the bar, the
+//   counters and the markers can never disagree.
+//
+// Authority:
+//   Everything here is CLIENT-side and reads only the synchronized display
+//   cache (uhtilife/uhtirole), never a server runtime array.
+
+// One message id for the bottom line; it stays clear of the teammate-bar ids.
+#define UH_TLMS_COUNT_ID -19760000
+// One client-local marker actor per player slot.  The range stays clear of the
+// player TIDs (1000..1063) and of the automap UniqueTID() allocations.
+#define UH_TLMS_ALLY_TID 26000
+// One SmallFont row, in the same canvas the engine's bottom string uses.
+#define UH_TLMS_LINE 13
+
+// Slots whose ALLY marker was shown on the previous frame.  Keeping the state
+// lets a slot that stops qualifying hide its marker instead of leaving it.
+bool uhtlmsallyshown[MAX_PLAYERS];
+
+// A role value in the synchronized life cache means "in the round and alive".
+// PLS_DEAD and PLS_NULL are the only non-alive states, so a corpse, a dead
+// spectator and a freed slot never contribute to either count.
+function bool UH_Tlms_IsAlive(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) {return false;}
+  int status = uhtilife[pn];
+  return (status == PLS_SURVIVOR || status == PLS_BOSS || status == PLS_EYE);
+}
+
+// The player whose side the counters describe.  A living camera is the viewer;
+// a dead or true spectator that follows somebody uses the followed player's
+// side, exactly like the native HUD.  -1 means "this view has no side".
+function int UH_Tlms_Viewer(int cam, int cpn) {
+  int pn = -1;
+  if (cam >= 1000 && cam <= 1063) {pn = cam - 1000;}
+  else if (cpn >= 0 && cpn < MAX_PLAYERS) {pn = cpn;}
+  if (pn < 0) {return -1;}
+  if (PlayerIsSpectator(pn) != 0) {return -1;}
+  if (!UH_Tlms_IsAlive(pn)) {return -1;}
+  return pn;
+}
+
+// Live teammates of the viewer, excluding the viewer.  The teammate bar uses
+// the same relation, so the bar, the counters and the markers always agree.
+function int UH_Tlms_CountAllies(int viewer) {
+  int count = 0;
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (i == viewer) {continue;}
+    if (!UH_Tlms_IsAlive(i)) {continue;}
+    if (UH_AreDisplayTeammates(viewer, i)) {count++;}
+  }
+  return count;
+}
+
+// Live players on the other side, excluding the viewer.  FFA and an unknown
+// policy report every other living player, which is what the engine's own LMS
+// count would do until the authoritative policy arrives.
+function int UH_Tlms_CountEnemies(int viewer) {
+  int count = 0;
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (i == viewer) {continue;}
+    if (!UH_Tlms_IsAlive(i)) {continue;}
+    if (!UH_AreDisplayTeammates(viewer, i)) {count++;}
+  }
+  return count;
+}
+
+function void UH_Tlms_ClearCount(void) {
+  HudMessage(s:""; HUDMSG_PLAIN | HUDMSG_LAYER_UNDERHUD, UH_TLMS_COUNT_ID, 0,
+    0.0, 0.0, 0.0);
+}
+
+// Draw the TLMS line the engine no longer draws.  The format and colours are
+// the engine's: "N enemies M allies left", "allies dead" when none survive.
+function void UH_Tlms_DrawCounts(int cam, int cpn) {
+  int viewer = UH_Tlms_Viewer(cam, cpn);
+  if (viewer < 0) {UH_Tlms_ClearCount(); return;}
+  int state = GetGamemodeState();
+  if (state != GAMESTATE_INPROGRESS && state != GAMESTATE_WAITFORPLAYERS) {
+    UH_Tlms_ClearCount();
+    return;
+  }
+
+  // Mirror HUD_DrawBottomString's canvas: the engine draws through the console
+  // virtual canvas when con_scaletext is on, and in real screen pixels
+  // otherwise.  Matching that canvas keeps the line where the engine had it.
+  int realw = GetScreenWidth();
+  int realh = GetScreenHeight();
+  int basew = realw;
+  int baseh = realh;
+  int virtw = GetCVar("con_virtualwidth");
+  int virth = GetCVar("con_virtualheight");
+  if (GetCVar("con_scaletext") != 0 && virtw > 0 && virth > 0
+      && (virtw != realw || virth != realh)) {
+    basew = virtw;
+    baseh = virth;
+  }
+  if (basew <= 0) {basew = 640;}
+  if (baseh <= 0) {baseh = 480;}
+
+  // The engine still prints "Following - <name>" on the bottom row while the
+  // camera follows another player; keep the counters on the row above it.
+  int y = baseh;
+  if (cam >= 1000 && cam <= 1063 && (cam - 1000) != cpn) {y -= UH_TLMS_LINE;}
+  if (y < UH_TLMS_LINE) {y = UH_TLMS_LINE;}
+
+  SetHudSize(basew, baseh, 0);
+  SetFont("SMALLFONT");
+  // The engine centres the bottom string: .0 = centre, .2 = bottom edge.
+  int fx = (basew / 2) * 1.0;
+  int fy = (y * 1.0) + 0.2;
+
+  if (state == GAMESTATE_WAITFORPLAYERS) {
+    HudMessageBold(s:"\c[Red]Waiting for players";
+      HUDMSG_PLAIN | HUDMSG_LAYER_UNDERHUD, UH_TLMS_COUNT_ID, CR_RED,
+      fx, fy, 0.05);
+    return;
+  }
+
+  int allies = UH_Tlms_CountAllies(viewer);
+  int enemies = UH_Tlms_CountEnemies(viewer);
+
+  str enemyword = "enemies";
+  if (enemies == 1) {enemyword = "enemy";}
+  str allyword = "allies";
+  if (allies == 1) {allyword = "ally";}
+
+  if (allies < 1) {
+    HudMessageBold(s:"\c[Gray]", i:enemies, s:" \c[DarkRed]", s:enemyword,
+      s:"\c[Gray] left", s:"\c[Gray] - ", s:"\c[DarkGreen] allies dead";
+      HUDMSG_PLAIN | HUDMSG_LAYER_UNDERHUD, UH_TLMS_COUNT_ID, CR_GREY,
+      fx, fy, 0.05);
+  } else {
+    HudMessageBold(s:"\c[Gray]", i:enemies, s:" \c[DarkRed]", s:enemyword,
+      s:"\c[Gray] ", i:allies, s:" \c[DarkGreen]", s:allyword, s:" left";
+      HUDMSG_PLAIN | HUDMSG_LAYER_UNDERHUD, UH_TLMS_COUNT_ID, CR_GREY,
+      fx, fy, 0.05);
+  }
+}
+
+// --- Client-local ALLY markers ----------------------------------------------
+// The engine's medal icons key on AActor::IsTeammate, which ordinary LMS leaves
+// false for every pair, so the native ALLY icon never appears.  Mirror the
+// native floaty icon instead: one client-only sprite actor per displayed
+// teammate, kept above the head with ACS Warp every frame.
+
+// Remove, never deactivate: Thing_Deactivate only affects monsters, so a plain
+// sprite actor would stay visible.  Removal happens only on a state transition.
+function void UH_Tlms_HideAlly(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) {return;}
+  if (!uhtlmsallyshown[pn]) {return;}
+  uhtlmsallyshown[pn] = false;
+  Thing_Remove(UH_TLMS_ALLY_TID + pn);
+}
+
+function void UH_Tlms_ShowAlly(int pn) {
+  int tid = UH_TLMS_ALLY_TID + pn;
+  int headz = GetActorProperty(pn + 1000, APROP_Height) + 4.0;
+  if (!uhtlmsallyshown[pn]) {
+    if (!SpawnForced("UH_AllyMarker", GetActorX(pn + 1000),
+        GetActorY(pn + 1000), GetActorZ(pn + 1000) + headz, tid, 0)) {
+      return;
+    }
+    uhtlmsallyshown[pn] = true;
+  }
+  // Follow the head exactly like AFloatyIcon::Tick.  WARPF_NOCHECKPOSITION
+  // keeps the icon usable when a raised head sits inside a low ceiling.
+  SetActivator(tid);
+  Warp(pn + 1000, 0, 0, headz, 0, 8);
+  SetActivator(0, AAPTR_NULL);
+}
+
+function void UH_Tlms_AllyTick(int cam, int cpn) {
+  bool enabled = GetUserCVar(cpn, "uh_cl_TlmsAllyIcons") != 0;
+  if (enabled) {
+    // cl_icons is the global icon switch; cl_showallyicon 0 means "never".
+    enabled = GetCVar("cl_icons") != 0 && GetCVar("cl_showallyicon") != 0;
+  }
+  int viewer = UH_Tlms_Viewer(cam, cpn);
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    bool show = enabled && viewer >= 0 && i != viewer
+      && UH_Tlms_IsAlive(i) && UH_AreDisplayTeammates(viewer, i);
+    if (show) {UH_Tlms_ShowAlly(i);}
+    else {UH_Tlms_HideAlly(i);}
+  }
+}
+
+// Called from uh_assist_teaminfo once per tic with the current camera TID.
+function void UH_Tlms_Tick(int cam, int cpn) {
+  if (!UH_IsUnholyTeamMode()) {
+    UH_Tlms_ClearCount();
+    for (int i = 0; i < MAX_PLAYERS; i++) {UH_Tlms_HideAlly(i);}
+    return;
+  }
+  if (GetUserCVar(cpn, "uh_cl_TlmsCounters") != 0) {
+    UH_Tlms_DrawCounts(cam, cpn);
+  } else {
+    UH_Tlms_ClearCount();
+  }
+  UH_Tlms_AllyTick(cam, cpn);
+}
+
+// A fresh map must not inherit marker state from the previous level.
+script "uh_tlms_clientinit_cs" OPEN CLIENTSIDE {
+  for (int i = 0; i < MAX_PLAYERS; i++) {uhtlmsallyshown[i] = false;}
+}

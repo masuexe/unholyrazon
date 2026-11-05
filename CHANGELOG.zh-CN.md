@@ -6,6 +6,9 @@
 
 ## 4.0.0-beta.261105
 
+- 底部 HUD 现在按 TLMS 风格显示敌我人数，例如“3 enemies 7 allies left”。Unholy 的队友不再被算作敌人；没有存活的队友时显示“allies dead”。死亡玩家、观战者和空位都不计入。
+- 队友头顶现在显示 ALLY 图标，与 TLMS 一致。图标跟随头部移动，在死亡或阵营变化时消失，并遵循引擎的图标设置。
+- 两处显示与队友栏使用同一套阵营判定。用户选项菜单的“Teammate Bar”页面新增“TLMS Counters”和“ALLY Icons”两项，且两者都不依赖队友栏开关。
 - 支持 addon 将普通生还者加入每日职业友伤池。配套 Rebellion Patch 可让普通版 Mirrorman 和 Richter Belmont 参与抽选，truepower 版仍保持免伤。
 
 - 普通版 Qwant、Nega Man、Decoy Bot 现在每天各抽取 6～10 把可友伤武器，其余普通生还者每天抽取 3 个可友伤机体。服主可以调整数量或分别关闭两类抽选，伤害遵循 `teamdamage`；原有队友无伤抓取、投掷和滑铲继续保持无伤。

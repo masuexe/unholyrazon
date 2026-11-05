@@ -6,6 +6,9 @@
 
 ## 4.0.0-beta.261105
 
+- The bottom HUD now shows TLMS-style ally and enemy counters, for example "3 enemies 7 allies left". Unholy teammates no longer count as enemies, and the line shows "allies dead" when no teammate remains. Dead players, spectators and free slots do not count.
+- Teammates now show the ALLY icon above their heads, like TLMS. The icon follows the head, disappears on death or role change, and obeys the engine icon settings.
+- Both displays use the same side relation as the teammate bar. New user options "TLMS Counters" and "ALLY Icons" are in the Teammate Bar menu, and each one works without the bar.
 - Addon creators can opt ordinary Survivor classes into the daily class friendly-fire pool. Compatible Rebellion Patch versions include normal Mirrorman and Richter Belmont; truepower forms remain protected.
 
 - Standard Qwant, Nega Man, and Decoy Bot now each have 6–10 daily friendly-fire weapons. Three other standard Survivor classes are selected for friendly fire each day. Hosts can adjust the counts or disable either pool; damage follows `teamdamage`. Existing harmless grabs, throws, and slide kicks remain harmless to teammates.
