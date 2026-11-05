@@ -8,6 +8,7 @@
 
 - Temporarily disabled Void Walker's extra life and phase-two transition in normal matches while second-phase spells are being tuned.
 - Void Walker's Blast now locks the aimed impact point and explodes there three times, instead of firing a visible projectile. Turning after casting does not move the explosions.
+- Reworked Void Walker's Storm into a light-blue whirlwind projectile (`EVFL`) that erupts into a multi-hit spinning tornado column on impact, replacing the placeholder Bolt lightning visuals and audio while keeping the chill slow effect.
 
 ## 4.0.0-beta.261105
 

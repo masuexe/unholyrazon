@@ -46,6 +46,46 @@ script "rz_debug_MorphMe" (int type, int num) {
   }
 }
 
+// One-step shortcut: morph into Void Walker and immediately enter Phase 2.
+// Usage: `pukename vw2` (instant Phase 2 + full ammo/rage) or `pukename vw2 1` (play 1s transition anim).
+script "vw2" (int playTransition) {
+  ACS_NamedExecuteAlways("rz_debug_VW2", 0, playTransition);
+}
+
+script "rz_debug_VW2" (int playTransition) {
+  int playernum = PlayerNumber();
+  if (playernum < 0) {
+    playernum = ConsolePlayerNumber();
+    if (playernum < 0) playernum = 0;
+    if (!SetActivatorToPlayer(playernum)) terminate;
+  }
+  ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false);
+  UnMorphActor(0, 1);
+  if (!MorphMeToBoss(0, 54)) {
+    UH_Log(UH_LOG_DEBUG, "rz_debug_VW2: MorphMeToBoss(0, 54) failed");
+    terminate;
+  }
+  int tid = PlayerNumber() + 1000;
+  if (!SetActivator(tid)) terminate;
+  if (playTransition) {
+    GiveInventory("VWPhase2TransitionFlag", 1);
+    GiveInventory("UnholyBossAmmo200", 200);
+    GiveInventory("UnholyPower1000", 1000);
+    terminate;
+  }
+  // Wait 2 tics so the Phase 1 orbs spawned by uh_BossMorphSetup_VoidWalker
+  // run uh_VWOrbInit on tic 1 before uh_VWOrbsPhase2Reset replaces them.
+  Delay(2);
+  if (!SetActivator(tid)) terminate;
+  ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, false, 0);  // ELP_NATIVE
+  ACS_NamedExecuteWithResult("uh_BossPhaseHealth", 4750, 385);
+  ACS_NamedExecuteAlways("ub_BossEnrageMusic", 0, 54, 0);
+  ACS_NamedExecuteWithResult("uh_VWOrbsPhase2Reset");
+  GiveInventory("UnholyBossAmmo200", 200);
+  GiveInventory("UnholyPower1000", 1000);
+  UH_Log(UH_LOG_DEBUG, "Void Walker Phase 2 ready!");
+}
+
 // Real, non-extreme player death for testing class death effects.
 // SetActorProperty(APROP_Health, 0) calls AActor::Die, so this preserves the
 // engine's player-death bookkeeping while avoiding `kill`'s gib health.
