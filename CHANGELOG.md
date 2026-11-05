@@ -4,9 +4,13 @@
 
 ---
 
+## 4.0.0-beta.261106
+
+- Temporarily disabled Void Walker's extra life and phase-two transition in normal matches while second-phase spells are being tuned.
+- Void Walker's Blast now locks the aimed impact point and explodes there three times, instead of firing a visible projectile. Turning after casting does not move the explosions.
+
 ## 4.0.0-beta.261105
 
-- Void Walker's Blast now locks the aimed impact point and explodes there three times, instead of firing a visible projectile. Turning after casting does not move the explosions.
 - Added the Mihato picture and infinite Rubber Band, Football, and Rocket to the item wheel. Selecting another item now works when one of these is selected in the inventory.
 - The bottom HUD now shows TLMS-style ally and enemy counters, for example "3 enemies 7 allies left". Unholy teammates no longer count as enemies, and the line shows "allies dead" when no teammate remains. Dead players, spectators and free slots do not count.
 - Teammates now show the ALLY icon above their heads, like TLMS. The icon follows the head, disappears on death or role change, and obeys the engine icon settings.
