@@ -116,10 +116,10 @@ python3 tools/relay.py init --title "..." --acceptance "..." --scope "src/...,to
 python3 tools/relay.py verify --gate smoke
 python3 tools/relay.py checkpoint --phase CODE --summary "..." --next "..." [--gate fast|smoke|full|none]
 python3 tools/relay.py status
-python3 tools/relay.py clear                      # archive to .agents/relay/archive/
+python3 tools/relay.py clear                      # archive to .relay/archive/
 ```
 
-State lives in `.agents/relay/` (gitignored): `current_task.json`,
+State lives in `.relay/` (gitignored): `current_task.json`,
 `handoff.json`, generated `handoff.md`, the last `test_report.json` and an
 `archive/` directory. `checkpoint` runs the fast gate by default and returns
 non-zero if it fails, but still records the state so the next agent sees the

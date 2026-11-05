@@ -5,7 +5,7 @@ resume gives any agent harness the same compact brief: active task, last
 checkpoint, what changed since, the gate result and the next actions.
 checkpoint writes that state; verify runs tools/gate.py and records what was
 actually verified.  The protocol is tracked (AGENTS.md, docs/agent-relay.md);
-the runtime state lives in .agents/relay/ and is deliberately machine-local.
+the runtime state lives in .relay/ and is deliberately machine-local.
 
 Commands:
   init        start a task (alias hints from docs/class-aliases.md)
@@ -73,7 +73,7 @@ def alias_hit(alias: str, title: str) -> bool:
 class Relay:
     def __init__(self, state_dir: Path | None = None, harness: str | None = None,
                  model: str | None = None):
-        self.root = state_dir or (REPO / ".agents" / "relay")
+        self.root = state_dir or (REPO / ".relay")
         self.task_file = self.root / "current_task.json"
         self.handoff_file = self.root / "handoff.json"
         self.brief_file = self.root / "handoff.md"

@@ -2,8 +2,15 @@
 
 Cross-harness, human-in-the-loop task handoff for this repository. The
 **protocol is tracked** (this file, `AGENTS.md`, `tools/relay.py`); the
-**runtime state is machine-local** under `.agents/relay/` (gitignored), because
+**runtime state is machine-local** under `.relay/` (gitignored), because
 it changes every few minutes and must never pollute the git tree.
+
+Keep writable runtime state outside `.agents/`: Codex protects that directory
+recursively as read-only in its workspace sandbox. For an existing checkout,
+copy `.agents/relay/` to `.relay/` once before resuming. Preserve all state files
+and the archive directory, and do not overwrite an existing `.relay/`. The old
+directory is no longer used by default; `--state-dir` still selects an explicit
+location.
 
 ## Why it exists
 
@@ -47,7 +54,7 @@ INGEST -> CODE -> VERIFY -> RELEASE -> DONE
 
 ## State files
 
-All paths are relative to `.agents/relay/` (override with `--state-dir`,
+All paths are relative to `.relay/` (override with `--state-dir`,
 intended for tests). Writes are atomic (temp file + rename) and serialized with
 an advisory `fcntl` lock on `.lock`.
 
@@ -91,7 +98,7 @@ not run. Use `--allow-skip` only when the missing toolchain is understood.
 ## Concurrency (reserved, not enabled)
 
 The relay is deliberately single-task: one active task per state directory.
-`.agents/` is not shared between `git worktree` checkouts, so parallel workers
+`.relay/` is not shared between `git worktree` checkouts, so parallel workers
 would each need their own state and a merge step. File-level locks,
 `manifests/` and worktrees are reserved for a later swarm mode; `write_scopes`
 are advisory today.
