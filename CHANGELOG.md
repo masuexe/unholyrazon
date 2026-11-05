@@ -10,6 +10,7 @@
 - Void Walker's Blast now locks the aimed impact point and explodes there three times, instead of firing a visible projectile. Turning after casting does not move the explosions.
 - Reworked Void Walker's Storm into a light-blue whirlwind projectile (`EVFL`) that erupts into a multi-hit spinning tornado column on impact, replacing the placeholder Bolt lightning visuals and audio while keeping the chill slow effect.
 - Reworked Void Walker's Water Blast into an immediate W-Blast-style area eruption around the caster, triggering 16 accelerating water blast waves and rising water sprays within a 512-unit radius.
+- Moved Void Walker's 3-wave overhead crystal drop and 4-shard shatter to Crystal, and reworked Boulder into a wide-area rockslide of falling boulders that bounce and roll forward across the field.
 
 ## 4.0.0-beta.261105
 

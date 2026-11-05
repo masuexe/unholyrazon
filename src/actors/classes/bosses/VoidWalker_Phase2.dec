@@ -48,55 +48,68 @@ actor VWBlast : BasicExplosion {
 }
 
 actor VWBoulderSlam : VWProjectile {
-  Damage (70)
+  var int user_NoTranslation;
+  Translation "192:192=164:164", "198:198=166:166"
+  Damage (60)
   DamageType "Boulder"
-  Obituary "%o was struck by %k's Boulder."
-  Speed 24
+  Obituary "%o was crushed by %k's Boulder."
+  Speed 20
   Radius 20
-  Height 40
-  Scale 3.0
+  Height 32
+  Scale 2.5
   +DONTBLAST
   -NOGRAVITY
+  +USEBOUNCESTATE
+  +BOUNCEONFLOORS
+  +BOUNCEONWALLS
+  +CANBOUNCEWATER
+  +DONTSPLASH
+  BounceFactor 0.7
+  WallBounceFactor 0.75
+  BounceCount 4
   Gravity 1.0
+  ReactionTime 70
   States {
    Spawn:
-    X_5C D 0
+    6P1M M 0
    SpawnLoop:
-    X_5C D 2
+    6P1M MONP 2 A_CountDown
     loop
+   Bounce:
+    6P1M M 0 A_PlaySound("weapon/superarmhit", 1, 0.65)
+    6P1M M 0 A_Explode(45, 112, 0, 0, 48)
+    6P1M M 0 A_ChangeVelocity(22, 0, velz, CVF_RELATIVE | CVF_REPLACE)
+    6P1M MM 0 A_SpawnItemEx("VWBoulderShard", 0, 0, 8, random(6, 12), 0, random(4, 10), random(0, 359), SXF_TRANSFERTRANSLATION)
+    goto SpawnLoop
    Death:
     TNT1 A 0
-    TNT1 A 0 A_PlaySound("MarioRPG/CrystalCrush", 1)
+    TNT1 A 0 A_PlaySound("weapon/superarmhit", 1)
     TNT1 A 0 A_Explode(65, 144, 0, 0, 64)
-    TNT1 A 0 A_SpawnItemEx("VWBoulderShard", 0, 0, 8, 12, 0, 8, 45, 1)
-    TNT1 A 0 A_SpawnItemEx("VWBoulderShard", 0, 0, 8, 12, 0, 8, 135, 1)
-    TNT1 A 0 A_SpawnItemEx("VWBoulderShard", 0, 0, 8, 12, 0, 8, 225, 1)
-    TNT1 A 0 A_SpawnItemEx("VWBoulderShard", 0, 0, 8, 12, 0, 8, 315, 1)
+    TNT1 AAAA 0 A_SpawnItemEx("VWBoulderShard", 0, 0, 8, random(8, 16), 0, random(6, 12), random(0, 359), SXF_TRANSFERTRANSLATION)
+    X_5C FGHI 2
     stop
   }
 }
 
-actor VWBoulderShard : VWProjectile {
-  Damage (18)
-  DamageType "Boulder"
-  Obituary "%o was struck by %k's Boulder."
-  Speed 12
-  Radius 5
-  Height 10
-  Scale 1.2
-  +DONTBLAST
+actor VWBoulderShard : BasicGraphicEffect {
+  var int user_NoTranslation;
+  Translation "192:192=164:164", "198:198=166:166"
+  -NOINTERACTION
   -NOGRAVITY
-  Gravity 0.8
-  ReactionTime 35
+  +THRUACTORS
+  +DONTSPLASH
+  Gravity 0.9
+  Radius 4
+  Height 4
+  Scale 1.5
   States {
    Spawn:
-    X_5C D 0
+    6P1M Q 0
    SpawnLoop:
-    X_5C D 2
+    6P1M QRST 2 A_CheckFloor("Death")
     loop
    Death:
     TNT1 A 0
-
     stop
   }
 }
@@ -200,25 +213,57 @@ actor VWWaterBlastBurst : BasicGraphicEffect {
 }
 
 actor VWCrystal : VWProjectile {
-  Damage (35)
+  var int user_NoTranslation;
+  Damage (70)
   DamageType "VWCrystal"
   Obituary "%o was struck by %k's Crystal."
-  Speed 42
-  Radius 8
-  Height 16
-  Scale 1.6
+  Speed 24
+  Radius 20
+  Height 40
+  Scale 3.0
   +DONTBLAST
-
+  -NOGRAVITY
+  Gravity 1.0
   States {
    Spawn:
-    X_7A E 0
+    X_5C D 0
    SpawnLoop:
-    X_7A E 2
+    X_5C D 2
     loop
    Death:
     TNT1 A 0
-    TNT1 A 0 A_PlaySound("MarioRPG/EnemyCrystal", 1)
+    TNT1 A 0 A_PlaySound("MarioRPG/CrystalCrush", 1)
+    TNT1 A 0 A_Explode(65, 144, 0, 0, 64)
     TNT1 A 0 A_SpawnItemEx("IcePitFreeze")
+    TNT1 A 0 A_SpawnItemEx("VWCrystalShard", 0, 0, 8, 12, 0, 8, 45, 1)
+    TNT1 A 0 A_SpawnItemEx("VWCrystalShard", 0, 0, 8, 12, 0, 8, 135, 1)
+    TNT1 A 0 A_SpawnItemEx("VWCrystalShard", 0, 0, 8, 12, 0, 8, 225, 1)
+    TNT1 A 0 A_SpawnItemEx("VWCrystalShard", 0, 0, 8, 12, 0, 8, 315, 1)
+    stop
+  }
+}
+
+actor VWCrystalShard : VWProjectile {
+  var int user_NoTranslation;
+  Damage (18)
+  DamageType "VWCrystal"
+  Obituary "%o was struck by %k's Crystal."
+  Speed 12
+  Radius 5
+  Height 10
+  Scale 1.2
+  +DONTBLAST
+  -NOGRAVITY
+  Gravity 0.8
+  ReactionTime 35
+  States {
+   Spawn:
+    X_5C D 0
+   SpawnLoop:
+    X_5C D 2
+    loop
+   Death:
+    TNT1 A 0
     stop
   }
 }
@@ -244,10 +289,10 @@ actor VWIceRock : VWProjectile {
     TNT1 A 0
     TNT1 A 0 A_Explode(35, 96, 0, 0, 48)
     TNT1 A 0 A_SpawnItemEx("IcePitFreeze")
-    TNT1 A 0 A_SpawnItemEx("VWCrystal", 0, 0, 8, 14, 0, 5, 0, 1)
-    TNT1 A 0 A_SpawnItemEx("VWCrystal", 0, 0, 8, 14, 0, 5, 90, 1)
-    TNT1 A 0 A_SpawnItemEx("VWCrystal", 0, 0, 8, 14, 0, 5, 180, 1)
-    TNT1 A 0 A_SpawnItemEx("VWCrystal", 0, 0, 8, 14, 0, 5, 270, 1)
+    TNT1 A 0 A_SpawnItemEx("VWCrystalShard", 0, 0, 8, 14, 0, 5, 0, 1)
+    TNT1 A 0 A_SpawnItemEx("VWCrystalShard", 0, 0, 8, 14, 0, 5, 90, 1)
+    TNT1 A 0 A_SpawnItemEx("VWCrystalShard", 0, 0, 8, 14, 0, 5, 180, 1)
+    TNT1 A 0 A_SpawnItemEx("VWCrystalShard", 0, 0, 8, 14, 0, 5, 270, 1)
     stop
   }
 }

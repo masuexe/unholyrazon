@@ -166,8 +166,31 @@ script "uh_VWCast" (int spell) {
     terminate;
   }
 
-  if (spell == 0 || spell == 8) { // Boulder rain / lethal Meteor Blast.
-    str rain = "VWBoulderSlam";
+  if (spell == 0) { // Boulder: AstroCrush / RainFlush-style wide-area falling & forward-rolling boulders.
+    for (i = 0; i < 6; i++) {
+      if (!UH_VWPhaseAlive(boss, generation)) terminate;
+      for (int b = 0; b < 3; b++) {
+        int fwd = (i == 0 && b == 0) ? 128.0 : Random(-192, 384) * 1.0;
+        int side = (i == 0 && b == 0) ? 0 : Random(-320, 320) * 1.0;
+        int rx = bx + FixedMul(fwd, cos(yaw)) + FixedMul(side, cos(yaw + 0.25));
+        int ry = by + FixedMul(fwd, sin(yaw)) + FixedMul(side, sin(yaw + 0.25));
+        tid = UH_VWSpawn("VWBoulderSlam", boss, rx, ry, bz, yaw);
+        if (tid) {
+          int fz = GetActorFloorZ(tid);
+          int cz = GetActorCeilingZ(tid);
+          z = min(max(bz, fz) + 320.0, cz - 48.0);
+          if (z < fz + 24.0) z = fz + 24.0;
+          SetActorPosition(tid, rx, ry, z, false);
+          SetActorVelocity(tid, FixedMul(20.0, cos(yaw)), FixedMul(20.0, sin(yaw)), -22.0, false, false);
+        }
+      }
+      if (i < 5) Delay(5);
+    }
+    terminate;
+  }
+
+  if (spell == 11 || spell == 8) { // Crystal rain / lethal Meteor Blast.
+    str rain = "VWCrystal";
     if (spell == 8) rain = "VWMeteorBlast";
     for (i = 0; i < 3; i++) {
       if (!UH_VWPhaseAlive(boss, generation)) terminate;
