@@ -11,6 +11,7 @@
 - 重做 Void Walker 的 Storm，改为发射浅蓝色旋风弹幕（`EVFL`）并在命中点升起多段伤害的旋转龙卷风柱，替换原先复用的 Bolt 落雷特效与音效，并保留命中减速效果。
 - 重做 Void Walker 的 Water Blast，改为以施法者为中心立即爆发 W-Blast 风格的 512 半径范围水柱喷发与 16 波持续加速的水爆冲击。
 - 将 Void Walker 原先从敌人头顶连续三波坠落并分裂为四向碎晶的招式移至 Crystal，并将 Boulder 重做为类似 Astro Crush / Rain Flush 的大范围从天而降向前翻滚弹跳的落石雨。
+- 重做 Void Walker 的 Solidify，引入 Cold Man 的 `CLDW` 贴图：以地面 `CLDW EFG` 冰刺圈表示作用范围，并在范围内敌人身上直接生成 `CLDW JKL ABCD` 冰封柱造成持续伤害与冰碎爆发。
 
 ## 4.0.0-beta.261105
 

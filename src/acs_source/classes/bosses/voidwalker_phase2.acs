@@ -316,3 +316,49 @@ script "uh_VWMeteorImpact" (void) {
     Thing_Damage2(vt, 110, "VWMeteor");
   }
 }
+
+// Solidify ground field: any enemy inside the CLDW EFG zone gets encased in
+// CLDW JKL ABCD on their position and takes continuous VWSolidify damage.
+script "uh_VWSolidifyField" (void) {
+  int fx = GetActorX(0);
+  int fy = GetActorY(0);
+  int fz = GetActorZ(0);
+  if (!SetActivator(0, AAPTR_TARGET) || !UH_VWIsOwner()) terminate;
+  int boss = ActivatorTID();
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    if (!UH_VWEnemy(boss, p, 4096.0, false)) continue;
+    int vt = p + 1000;
+    if (VectorLength(GetActorX(vt) - fx, GetActorY(vt) - fy) > 192.0) continue;
+    if (abs(GetActorZ(vt) - fz) > 160.0) continue;
+    if (CheckActorInventory(vt, "VWSolidifyEncaseFlag") > 0) continue;
+    GiveActorInventory(vt, "VWSolidifyEncaseFlag", 1);
+    SetActivator(boss);
+    Thing_Damage2(vt, 20, "VWSolidify");
+    int cage = UH_VWSpawn("VWSolidifyEncase", boss, GetActorX(vt), GetActorY(vt), GetActorZ(vt), GetActorAngle(vt));
+    if (cage) {
+      SetActivator(cage);
+      SetPointer(AAPTR_TRACER, vt);
+      SetActivator(boss);
+    }
+  }
+}
+
+script "uh_VWSolidifyTick" (int dmg) {
+  int encase = UniqueTID();
+  Thing_ChangeTID(0, encase);
+  if (!SetActivator(encase, AAPTR_TRACER)) {
+    Thing_ChangeTID(encase, 0);
+    terminate;
+  }
+  int vt = ActivatorTID();
+  if (!SetActivator(encase, AAPTR_TARGET) || !UH_VWIsOwner()) {
+    Thing_ChangeTID(encase, 0);
+    terminate;
+  }
+  int boss = ActivatorTID();
+  Thing_ChangeTID(encase, 0);
+  if (vt < 1000 || vt >= 1000 + MAX_PLAYERS) terminate;
+  if (!UH_VWEnemy(boss, vt - 1000, 4096.0, false)) terminate;
+  SetActivator(boss);
+  Thing_Damage2(vt, dmg, "VWSolidify");
+}
