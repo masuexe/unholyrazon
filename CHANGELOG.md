@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261105
 
+- Unholy LMS friendly-fire damage now follows Zandronum's `teamdamage` multiplier, including daily friendly-fire weapons. Use `0` to disable damage, `0.5` for half damage, or `1` for normal damage; the engine default is `0`. Daily eligibility and harmless teammate interactions still apply.
 - Restored the centered position of the recolored S/B/E automap icons.
 - Automap S/B/E icons now follow each player's colors, making Boss colors visible on the map.
 - Player automap markers now use v6c's native arrows with the Unholy S/B/E icons. Removed the dotted direction rays that could cover player icons; markers follow the native automap display options.

@@ -1,0 +1,27 @@
+// Native teamdamage only sees engine teams. Ordinary LMS uses UH round roles,
+// so apply the same server CVar to logical teammates before armor instead.
+// Native team modes/co-op already scale damage in P_DamageMobj: leave them alone.
+script "uh_LogicalTeamDamage" (int evt, int dmg, int dmgtype) EVENT {
+  if (evt != GAMEEVENT_ACTOR_DAMAGED_PREMOD || !GetCVar("lastmanstanding"))
+    terminate;
+
+  // Event handlers share a result; never restore a hit cancelled by another
+  // handler. Like native teamdamage, exempt telefrag-sized damage.
+  int effective = GetEventResult();
+  if (effective <= 0 || effective >= 1000000)
+    terminate;
+  if (!SetActivator(0, AAPTR_DAMAGE_TARGET))
+    terminate;
+  int victim = PlayerNumber();
+  if (victim < 0 || !SetActivator(0, AAPTR_DAMAGE_SOURCE))
+    terminate;
+  int source = PlayerNumber();
+  if (source < 0 || source == victim)
+    terminate;
+  if (!ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", source, victim))
+    terminate;
+
+  // Float CVars are returned as fixed point by GetCVar. effective is an int,
+  // so FixedMul returns integer damage, with fractional damage truncated.
+  SetResultValue(FixedMul(effective, max(0, GetCVar("teamdamage"))));
+}
