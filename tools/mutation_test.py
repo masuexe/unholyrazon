@@ -51,6 +51,28 @@ COPIED = ("src", "tools", "examples", "docs")
 
 MUTATIONS = [
     {
+        "name": "daily-ff-selection-ignored",
+        "checker": "tools/test_daily_team_ff.py",
+        "why": "unselected weapons hurt protected teammates",
+        "file": "src/acs_source/classes/shared/copy_weapons/daily_team_ff.acs",
+        "replace": ("&& UH_DailyFFAllowed(token)) terminate;", ") terminate;"),
+    },
+    {
+        "name": "daily-ff-baseline-stale",
+        "checker": "tools/test_daily_team_ff.py",
+        "why": "the generated baseline immunity no longer matches its source",
+        "file": "src/actors/player/TeamProtection.dec",
+        "replace": ('damagefactor "Buster", 0.0', 'damagefactor "Buster", 1.0'),
+    },
+    {
+        "name": "teamdamage-scale-ignored",
+        "checker": "tools/test_teamdamage.py",
+        "why": "logical teammates ignore the native teamdamage setting",
+        "file": "src/acs_source/unholy/uh_teamdamage.acs",
+        "replace": ('SetResultValue(FixedMul(effective, max(0, GetCVar("teamdamage"))));',
+                    'SetResultValue(effective);'),
+    },
+    {
         "name": "native-buster-restriction-removed",
         "checker": "tools/check_native_buster_policy.py",
         "why": "native buster weapons become usable by every UH class",

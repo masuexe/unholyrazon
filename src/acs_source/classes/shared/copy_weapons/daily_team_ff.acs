@@ -1,0 +1,356 @@
+// Server-only policy for standard survivors. No client-side random rolls.
+#include "daily_ff_data.acs"
+#include "uh_teamff_defs.acs"
+#define UH_DAILY_FF_MAX 256
+// Pools: 0 = ordinary classes, 1 = Qwant, 2 = NegaMan, 3 = DecoyBot.
+int uh_dailyffselected[4][UH_DAILY_FF_MAX];
+int uh_dailyffsize[4];
+int uh_dailyffwant[4];
+int uh_dailyffscratch[UH_DAILY_FF_MAX];
+int uh_dailyffdate;
+int uh_dailyffmin;
+int uh_dailyffmax;
+int uh_dailyffclasses;
+int uh_dailyfforigindepth;
+// Explicit opt-in only. Slots 128..254 are server-local addon origins.
+str uh_dailyffaddonactor[128];
+int uh_dailyffaddoncount;
+str uh_dailyffaddontype[128];
+int uh_dailyffaddontypecount;
+
+script "uh_RegisterDailyFFClass" (int actor) {
+  SetResultValue(0);
+  int id = FindSurvivorByActor(actor);
+  if (id >= 0 || !IsSurvivorDefined(id)) terminate;
+  for (int i = 0; i < uh_dailyffaddoncount; i++) {
+    if (!StrICmp(actor, uh_dailyffaddonactor[i])) {
+      SetResultValue(UH_MAX_VANILLA_SURV + i + 1);
+      terminate;
+    }
+  }
+  if (uh_dailyffaddoncount >= 127) terminate;
+  uh_dailyffaddonactor[uh_dailyffaddoncount++] = actor;
+  SetResultValue(UH_MAX_VANILLA_SURV + uh_dailyffaddoncount);
+}
+
+script "uh_RegisterDailyFFDamageType" (int dtype) {
+  SetResultValue(0);
+  if (!StrLen(dtype)) terminate;
+  for (int i = 0; i < uh_dailyffaddontypecount; i++) {
+    if (!StrICmp(dtype, uh_dailyffaddontype[i])) {SetResultValue(1); terminate;}
+  }
+  if (uh_dailyffaddontypecount >= 128) terminate;
+  uh_dailyffaddontype[uh_dailyffaddontypecount++] = dtype;
+  SetResultValue(1);
+}
+
+function bool UH_DailyFFMulti(int id) {
+  return id == 0 || id == 1 || id == 2 || id == 50;
+}
+
+function str UH_DailyFFWeapon(int pool, int index) {
+  if (pool == 3) {
+    if (index < 0 || index >= CountDecoyBotSlots()) return "";
+    return uh_decoymovewep[index][0];
+  }
+  return GetCopyWepActorByKindIndex(pool == 1 ? UHCOPY_QWANT : UHCOPY_NEGA, index);
+}
+
+function void UH_DailyFFEnsure(void) {
+  int date = UH_DateToInt();
+  int lo = min(256, max(0, GetCVar("rz_sv_copy_ff_count_min")));
+  int hi = min(256, max(lo, GetCVar("rz_sv_copy_ff_count_max")));
+  int classes = min(256, max(0, GetCVar("rz_sv_class_ff_count")));
+  int count = uh_dailyffaddoncount;
+  int p;
+  int i;
+  int n;
+  int want;
+  int j;
+  int temp;
+  for (i = 0; i < UH_MAX_VANILLA_SURV; i++) {
+    if (IsSurvivorDefined(i) && !UH_DailyFFMulti(i)) count++;
+  }
+  if (date == uh_dailyffdate && lo == uh_dailyffmin && hi == uh_dailyffmax
+      && classes == uh_dailyffclasses && count == uh_dailyffsize[0]
+      && CountCopyWepByKind(UHCOPY_QWANT) == uh_dailyffsize[1]
+      && CountCopyWepByKind(UHCOPY_NEGA) == uh_dailyffsize[2]
+      && CountDecoyBotSlots() == uh_dailyffsize[3]) return;
+  uh_dailyffdate = date;
+  uh_dailyffmin = lo;
+  uh_dailyffmax = hi;
+  uh_dailyffclasses = classes;
+  uh_dailyffsize[0] = count;
+  uh_dailyffsize[1] = min(256, CountCopyWepByKind(UHCOPY_QWANT));
+  uh_dailyffsize[2] = min(256, CountCopyWepByKind(UHCOPY_NEGA));
+  uh_dailyffsize[3] = min(256, CountDecoyBotSlots());
+  for (p = 0; p < 4; p++) {
+    for (i = 0; i < 256; i++) uh_dailyffselected[p][i] = 0;
+    n = 0;
+    if (p == 0) {
+      for (i = 0; i < UH_MAX_VANILLA_SURV; i++) {
+        if (IsSurvivorDefined(i) && !UH_DailyFFMulti(i)) uh_dailyffscratch[n++] = i;
+      }
+      for (i = 0; i < uh_dailyffaddoncount; i++)
+        uh_dailyffscratch[n++] = UH_MAX_VANILLA_SURV + i;
+    } else {
+      n = uh_dailyffsize[p];
+      for (i = 0; i < n; i++) uh_dailyffscratch[i] = i;
+    }
+    want = p == 0 ? classes : UH_MegaDailyRandom((date + p * 104729 + 87011) & 0x7FFFFFFF, lo, hi);
+    want = min(n, want);
+    uh_dailyffwant[p] = want;
+    for (i = 0; i < want; i++) {
+      j = UH_MegaDailyRandom((date + p * 104729 + (i + 1) * 97 + 510011) & 0x7FFFFFFF, i, n - 1);
+      temp = uh_dailyffscratch[i];
+      uh_dailyffscratch[i] = uh_dailyffscratch[j];
+      uh_dailyffscratch[j] = temp;
+      uh_dailyffselected[p][uh_dailyffscratch[i]] = 1;
+    }
+  }
+}
+
+function bool UH_DailyFFIsAddonType(str dtype) {
+  for (int i = 0; i < uh_dailyffaddontypecount; i++) {
+    if (!StrICmp(dtype, uh_dailyffaddontype[i])) return true;
+  }
+  return false;
+}
+
+function bool UH_DailyFFBaselineBlocks(str dtype) {
+  if (UH_DailyFFIsAddonType(dtype)) return true;
+  int lo = 0;
+  int hi = UH_FFBLOCKED_COUNT - 1;
+  while (lo <= hi) {
+    int mid = (lo + hi) / 2;
+    int cmp = StrICmp(dtype, uh_ffblocked[mid]);
+    if (cmp == 0) return true;
+    if (cmp < 0) hi = mid - 1;
+    else lo = mid + 1;
+  }
+  return false;
+}
+
+// Static ownership also identifies fragments created after the owner switches
+// weapons. Ambiguous/unregistered attacks are deliberately not guessed.
+function str UH_DailyFFAttackWeapon(str actor, int id) {
+  if (id == 50 && StrLen(actor) >= 10 && !StrICmp(StrLeft(actor, 8), "Decoy_F_")) {
+    int a = GetChar(actor, 8) - '0';
+    int b = GetChar(actor, 9) - '0';
+    if (a >= 0 && a <= 9 && b >= 0 && b <= 9) {
+      return StrParam(s:"DecoyCopy_", c:GetChar(actor, 8), c:GetChar(actor, 9));
+    }
+    return "";
+  }
+  int lo = 0;
+  int hi = UH_FFATTACK_COUNT - 1;
+  while (lo <= hi) {
+    int mid = (lo + hi) / 2;
+    int cmp = StrICmp(actor, uh_ffattack[mid]);
+    if (cmp == 0) return uh_ffattackwep[mid];
+    if (cmp < 0) hi = mid - 1;
+    else lo = mid + 1;
+  }
+  return "";
+}
+
+function int UH_DailyFFMakeOrigin(str pawn, str weapon) {
+  int id = FindSurvivorByActor(pawn);
+  int i;
+  if (id < 0) {
+    for (i = 0; i < uh_dailyffaddoncount; i++) {
+      if (!StrICmp(pawn, uh_dailyffaddonactor[i]))
+        return (UH_MAX_VANILLA_SURV + i + 1) * UH_DAILY_FF_TOKEN;
+    }
+    return 0;
+  }
+  if (id >= UH_MAX_VANILLA_SURV || id == 0) return 0;
+  if (!UH_DailyFFMulti(id)) return (id + 1) * UH_DAILY_FF_TOKEN;
+  int pool = id == 50 ? 3 : id;
+  int n = pool == 3 ? CountDecoyBotSlots() : CountCopyWepByKind(pool == 1 ? UHCOPY_QWANT : UHCOPY_NEGA);
+  if (pool == 3) weapon = UH_DecoyMoveStem(weapon);
+  for (i = 0; i < min(n, 256); i++) {
+    if (!StrICmp(weapon, UH_DailyFFWeapon(pool, i)))
+      return (id + 1) * UH_DAILY_FF_TOKEN + i + 1;
+  }
+  return 0;
+}
+
+function bool UH_DailyFFInstantPuff(str actor) {
+  int lo = 0;
+  int hi = UH_FFPUFF_COUNT - 1;
+  while (lo <= hi) {
+    int mid = (lo + hi) / 2;
+    int cmp = StrICmp(actor, uh_ffpuff[mid]);
+    if (cmp == 0) return true;
+    if (cmp < 0) hi = mid - 1;
+    else lo = mid + 1;
+  }
+  return false;
+}
+
+// Nested invocation preserves the caller's activator, including TID-zero shots.
+script "uh_DailyFFPointerOrigin" (int ptr, int attack) {
+  SetResultValue(0);
+  if (!SetActivator(0, ptr)) terminate;
+  int token = CheckInventory("UH_DailyFFOrigin");
+  if (token > 0) {SetResultValue(token); terminate;}
+  if (PlayerNumber() < 0) {
+    // Summons retain their creator through master/target. Bound recursion so
+    // malformed pointer cycles cannot stall a tic; never borrow a victim's kit.
+    if (uh_dailyfforigindepth >= 4) terminate;
+    uh_dailyfforigindepth++;
+    token = ACS_NamedExecuteWithResult("uh_DailyFFPointerOrigin", AAPTR_MASTER, GetActorClass(0));
+    uh_dailyfforigindepth--;
+    SetResultValue(token);
+    terminate;
+  }
+  str pawn = GetActorClass(0);
+  int id = FindSurvivorByActor(pawn);
+  token = UH_DailyFFMakeOrigin(pawn, UH_DailyFFAttackWeapon(attack, id));
+  if (token > 0) token += (PlayerNumber() + 1) * UH_DAILY_FF_OWNER;
+  SetResultValue(token);
+}
+
+script "uh_DailyFFStamp" (void) {
+  if (CheckInventory("UH_DailyFFOrigin")) terminate;
+  str actor = GetActorClass(0);
+  int token = ACS_NamedExecuteWithResult("uh_DailyFFPointerOrigin", AAPTR_TARGET, actor);
+  if (!token) token = ACS_NamedExecuteWithResult("uh_DailyFFPointerOrigin", AAPTR_MASTER, actor);
+  if (token > 0) GiveInventory("UH_DailyFFOrigin", token);
+}
+
+function bool UH_DailyFFAllowed(int token) {
+  token %= UH_DAILY_FF_OWNER;
+  int id = token / UH_DAILY_FF_TOKEN - 1;
+  int slot = token % UH_DAILY_FF_TOKEN - 1;
+  if (id < 0 || id >= UH_MAX_VANILLA_SURV + uh_dailyffaddoncount || id == 0) return false;
+  UH_DailyFFEnsure();
+  if (!UH_DailyFFMulti(id))
+    return GetCVar("rz_sv_randclassteamkill") && uh_dailyffselected[0][id];
+  int pool = id == 50 ? 3 : id;
+  return GetCVar("rz_sv_randcopywepteamkill") && slot >= 0 && slot < uh_dailyffsize[pool]
+    && uh_dailyffselected[pool][slot];
+}
+
+// Synchronous server-side addon API. Origins are local integers, never IDs to
+// send to a client. A missing API returns zero, so older hosts stay harmless.
+script "uh_DailyFFAddonOrigin" (void) {
+  SetResultValue(0);
+  if (PlayerNumber() < 0) terminate;
+  int token = UH_DailyFFMakeOrigin(GetActorClass(0), "");
+  if (token / UH_DAILY_FF_TOKEN <= UH_MAX_VANILLA_SURV) terminate;
+  SetResultValue(token + (PlayerNumber() + 1) * UH_DAILY_FF_OWNER);
+}
+
+script "uh_DailyFFAddonAllowed" (int token) {
+  SetResultValue(GetCVar("lastmanstanding") && UH_DailyFFAllowed(token));
+}
+
+// Replaces only the baseline zero factors, never personal defensive powers.
+// Zero results compose with the existing MegaMan selection and teamdamage hook.
+script "uh_DailySurvivorTeamFF" (int evt, int dmg, int dtype) EVENT {
+  if (evt != GAMEEVENT_ACTOR_DAMAGED_PREMOD || GetEventResult() <= 0) terminate;
+  if (!SetActivator(0, AAPTR_DAMAGE_TARGET)) terminate;
+  bool teamprotected = CheckInventory("PowerProtectSurvivor") > 0;
+  if (!UH_DailyFFBaselineBlocks(dtype)) terminate;
+  int victim = PlayerNumber();
+  int token = 0;
+  bool instant = false;
+  if (SetActivator(0, AAPTR_DAMAGE_INFLICTOR)) {
+    instant = UH_DailyFFInstantPuff(GetActorClass(0));
+    token = CheckInventory("UH_DailyFFOrigin");
+    if (!token && PlayerNumber() < 0) {
+      str attack = GetActorClass(0);
+      token = ACS_NamedExecuteWithResult("uh_DailyFFPointerOrigin", AAPTR_TARGET, attack);
+      if (!token) token = ACS_NamedExecuteWithResult("uh_DailyFFPointerOrigin", AAPTR_MASTER, attack);
+    }
+    // Player-inflictor hits are instant too. Ownerless rail/bullet puffs are
+    // recognized separately from the actual weapon calls in the generated data.
+    if (PlayerNumber() >= 0 && IsPointerEqual(AAPTR_DAMAGE_INFLICTOR, AAPTR_DAMAGE_SOURCE)) instant = true;
+  }
+  if (GetCVar("lastmanstanding") && victim >= 0) {
+    int source = -1;
+    if (SetActivator(0, AAPTR_DAMAGE_SOURCE)) {
+      source = PlayerNumber();
+      if (!token) token = CheckInventory("UH_DailyFFOrigin");
+      if (!token && instant && source >= 0)
+        token = UH_DailyFFMakeOrigin(GetActorClass(0), GetWeapon());
+    }
+    // A summon can be the native source. Only a stamped creator may stand in
+    // for it; an unowned monster/environmental hit keeps baseline immunity.
+    int creator = token / UH_DAILY_FF_OWNER - 1;
+    if (source < 0 && creator >= 0 && creator < 64 && PlayerInGame(creator)) source = creator;
+    if (source >= 0 && source != victim && token > 0
+        && ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", source, victim)) {
+      // A logical teammate may be a Boss in one-versus-all and therefore have
+      // no Survivor protection marker. Daily eligibility still applies there.
+      if (!teamprotected && ACS_NamedExecuteWithResult("uh_IsPostRoundFriendlyFire")) terminate;
+      if (StrICmp(dtype, "Suplex") && StrICmp(dtype, "FlySuplex")
+          && StrICmp(dtype, "KickChamp_SlideKick") && StrICmp(dtype, "NegaSuperArm")
+          && UH_DailyFFAllowed(token)) terminate;
+      SetResultValue(0);
+      terminate;
+    }
+  }
+  // Addon families have no historical zero factor. Only their explicit
+  // logical teammate hits above join this policy; hostile/self/unknown hits
+  // retain the addon's rules instead of inheriting vanilla blanket immunity.
+  if (teamprotected && !UH_DailyFFIsAddonType(dtype)) SetResultValue(0);
+}
+
+// Acquisition checks (poison, siphon, lock-on) happen before damage events.
+// Keep their old protection rule unless this particular daily origin is allowed.
+script "uh_DailyFFProtectedPointer" (int ptr) {
+  SetResultValue(-1);
+  if (!SetActivator(0, ptr)) terminate;
+  if (!CheckInventory("PowerProtectSurvivor")) {SetResultValue(0); terminate;}
+  if (ActivatorTID() > 0) SetResultValue(ActivatorTID());
+}
+
+script "uh_DailyFFCanTarget" (int target, int owner, int ptr) {
+  SetResultValue(0);
+  if (ptr) {
+    // Non-player targets often have no TID. Query the real pointer rather than
+    // turning TID zero into the caller and accidentally rejecting enemies.
+    target = ACS_NamedExecuteWithResult("uh_DailyFFProtectedPointer", ptr);
+    if (target == 0) {SetResultValue(1); terminate;}
+    if (target < 0) terminate;
+  } else {
+    if (target <= 0) terminate;
+    if (!CheckActorInventory(target, "PowerProtectSurvivor")) {
+      SetResultValue(1);
+      terminate;
+    }
+  }
+  if (!GetCVar("lastmanstanding") || GetCVar("teamdamage") <= 0) terminate;
+  int token;
+  if (owner > 0) {
+    if (!SetActivator(owner, 0)) terminate;
+    token = UH_DailyFFMakeOrigin(GetActorClass(0), GetWeapon());
+  } else {
+    ACS_NamedExecuteWithResult("uh_DailyFFStamp");
+    token = CheckInventory("UH_DailyFFOrigin");
+    owner = 1000 + token / UH_DAILY_FF_OWNER - 1;
+  }
+  if (owner < 1000 || owner >= 1064 || target < 1000 || target >= 1064 || owner == target) terminate;
+  if (!ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", owner - 1000, target - 1000)) terminate;
+  SetResultValue(UH_DailyFFAllowed(token));
+}
+
+script "uh_debug_ShowDailyTeamFF" (void) {
+  UH_DailyFFEnsure();
+  UH_Log(UH_LOG_INFO, StrParam(s:"Daily FF date=", i:uh_dailyffdate, s:" teamdamage=", f:GetCVar("teamdamage")));
+  for (int p = 0; p < 4; p++) {
+    UH_Log(UH_LOG_INFO, StrParam(s:"Pool ", i:p, s:" selected=", i:uh_dailyffwant[p]));
+    for (int i = 0; i < 256; i++) {
+      if (!uh_dailyffselected[p][i]) continue;
+      str name;
+      if (p == 0) {
+        str actor = i < UH_MAX_VANILLA_SURV ? GetSurvivorActor(i) : uh_dailyffaddonactor[i - UH_MAX_VANILLA_SURV];
+        name = UH_PlayerDisplayName(actor);
+      } else name = UH_DailyFFWeapon(p, i);
+      UH_Log(UH_LOG_INFO, StrParam(s:"  ", s:name));
+    }
+  }
+}

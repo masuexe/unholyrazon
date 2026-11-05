@@ -16,6 +16,8 @@ class TeamDamageTests(unittest.TestCase):
         cls.scratch = tempfile.TemporaryDirectory(prefix="uh-teamdamage-")
         directory = Path(cls.scratch.name)
         handler = (ROOT / "src/acs_source/unholy/uh_teamdamage.acs").read_text()
+        handler = handler.replace('#include "uh_teamff_defs.acs"',
+            (ROOT / 'src/acs_source/_includes/mod_api/uh_teamff_defs.acs').read_text())
         handler, count = re.subn(
             r'script "uh_LogicalTeamDamage" \(int evt, int dmg, int dmgtype\) EVENT',
             "void handler(int evt, int dmg, int dmgtype)", handler,
@@ -28,12 +30,16 @@ class TeamDamageTests(unittest.TestCase):
 #define GAMEEVENT_ACTOR_DAMAGED_PREMOD 12
 #define AAPTR_DAMAGE_TARGET 1
 #define AAPTR_DAMAGE_SOURCE 2
+#define AAPTR_DAMAGE_INFLICTOR 4
 static int lms, scale, victim, shooter, friends, result, pointer;
+static int origin;
 int GetCVar(const char *name) { return !strcmp(name, "lastmanstanding") ? lms : scale; }
 int GetEventResult(void) { return result; }
 int SetActivator(int tid, int ptr) { pointer = ptr; return 1; }
 int PlayerNumber(void) { return pointer == AAPTR_DAMAGE_TARGET ? victim : shooter; }
-int ACS_NamedExecuteWithResult(const char *name, int src, int dst) { return friends; }
+int ACS_NamedExecuteWithResult(const char *name, ...) { return !strcmp(name, "uh_DailyFFStamp") ? 0 : friends; }
+int CheckInventory(const char *name) { return origin; }
+int PlayerInGame(int pn) { return pn>=0 && pn<64; }
 int max(int a, int b) { return a > b ? a : b; }
 int FixedMul(int a, int b) { return (int)(((int64_t)a * b) >> 16); }
 void SetResultValue(int value) { result = value; }
@@ -45,6 +51,12 @@ int probe(int mode, int multiplier, int src, int dst, int ally, int current, int
     friends = ally; result = current; pointer = 0;
     handler(event, 100, 0); /* Raw damage deliberately differs from current. */
     return result;
+}
+int probe_origin(int metadata, int multiplier, int ally) {
+    origin=metadata;
+    int value=probe(1,multiplier,-1,1,ally,80,12);
+    origin=0;
+    return value;
 }
 '''
         (directory / "probe.c").write_text(source)
@@ -67,6 +79,17 @@ int probe(int mode, int multiplier, int src, int dst, int ally, int current, int
 
     def test_cancelled_hits_stay_cancelled(self):
         self.assertEqual(self.probe(1, 2 * 65536, 0, 1, 1, 0, 12), 0)
+
+    def test_recorded_summon_creator(self):
+        probe = self.library.probe_origin
+        probe.argtypes = [ctypes.c_int] * 3
+        probe.restype = ctypes.c_int
+        # Creator slot 0, standard class 1, weapon index 0.
+        metadata = 262144 + 2048 + 1
+        self.assertEqual(probe(metadata, 32768, 1), 40)
+        self.assertEqual(probe(metadata, 0, 1), 0)
+        self.assertEqual(probe(metadata, 32768, 0), 80)
+        self.assertEqual(probe(0, 32768, 1), 80)
 
     def test_unrelated_hits_are_unchanged(self):
         # Native TLMS/co-op already applied teamdamage; do not multiply again.

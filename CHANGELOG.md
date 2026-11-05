@@ -6,6 +6,9 @@
 
 ## 4.0.0-beta.261105
 
+- Addon creators can opt ordinary Survivor classes into the daily class friendly-fire pool. Compatible Rebellion Patch versions include normal Mirrorman and Richter Belmont; truepower forms remain protected.
+
+- Standard Qwant, Nega Man, and Decoy Bot now each have 6–10 daily friendly-fire weapons. Three other standard Survivor classes are selected for friendly fire each day. Hosts can adjust the counts or disable either pool; damage follows `teamdamage`. Existing harmless grabs, throws, and slide kicks remain harmless to teammates.
 - Unholy LMS friendly-fire damage now follows Zandronum's `teamdamage` multiplier, including daily friendly-fire weapons. Use `0` to disable damage, `0.5` for half damage, or `1` for normal damage; the engine default is `0`. Daily eligibility and harmless teammate interactions still apply.
 - Restored the centered position of the recolored S/B/E automap icons.
 - Automap S/B/E icons now follow each player's colors, making Boss colors visible on the map.
