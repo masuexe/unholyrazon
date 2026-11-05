@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Orb lifecycle; --phase2 tests spells, --hud tests remote orb health display."""
+"""Orb lifecycle; --phase2 tests spells, --hud tests HUD, --blast tests bursts."""
 import json
 import os
 from pathlib import Path
@@ -186,9 +186,10 @@ def main():
             bridge.command("screenshot " + str(OUT / "phase2-core-hud.png"))
             # Restore all elements for the common cleanup contract.
             run("VWO_Remorph", "0", "VWO_REMORPH_DONE")
-        elif "--phase2" in sys.argv:
+        elif "--phase2" in sys.argv or "--blast" in sys.argv:
             run("VWO_P2Begin", "", "VWO_P2_BEGIN")
-            run("VWO_P2Damage", "", "VWO_P2_DAMAGE")
+            if "--blast" not in sys.argv:
+                run("VWO_P2Damage", "", "VWO_P2_DAMAGE")
             # slot, input, hold seconds, spawned actor row, boss-ammo cost
             cases = [(2, "attack", .12, 0, 0), (2, "attack", 2.2, 1, 0),
                      (2, "altattack", .12, 2, 30), (2, "altattack", .85, 3, 60),
@@ -201,6 +202,8 @@ def main():
                      (4, "reload", .12, 14, 0),
                      (5, "attack", .12, 15, 0), (5, "attack", 1.2, 16, 0),
                      (5, "altattack", .85, 17, 60), (5, "reload", .12, 18, 0)]
+            if "--blast" in sys.argv:
+                cases = cases[:1]
             for slot, button, hold, actor, cost in cases:
                 run("VWO_P2Prepare", f"{slot} 1000", "VWO_P2_READY")
                 bridge.command("+" + button)
@@ -211,6 +214,8 @@ def main():
                 if button == "reload":
                     remaining_rage = 0 if slot == 5 else 500
                 run("VWO_P2Check", f"{actor} {cost} {remaining_rage}", "VWO_P2_CHECK")
+            if "--blast" in sys.argv:
+                run("VWO_BlastCheck", "", "VWO_BLAST_DONE")
         else:
             time.sleep(4)
             ids = box_ids()

@@ -37,6 +37,35 @@ str p2types[19] = {"VWBlast", "VWBoulderSlam", "VWStormMissile", "VWWaterBlast",
   "VWSandStormHit", "VWCrystal", "VWIceRock", "VWSolidify", "VWDiamondSaw",
   "VWBlizzardHit", "VWDrain", "VWMegaDrainBeam", "VWFlame", "VWFlameWallPillar",
   "VWCoronaFirePillar", "VWFlameStone", "VWDarkStar", "VWMeteorBlast", "VWFinalClawSlash"};
+script "VWO_BlastCheck" (void) {
+  SetActivatorToPlayer(0);
+  int yaw = GetActorAngle(0);
+  int x = GetActorX(0) + FixedMul(96.0, cos(yaw));
+  int y = GetActorY(0) + FixedMul(96.0, sin(yaw));
+  int z = GetActorZ(0) + 32.0;
+  int victim = UniqueTID();
+  SpawnForced("VWOBlastTarget", x, y, z, victim);
+  int burst = UniqueTID();
+  SpawnForced("VWBlast", x, y, z, burst);
+  SetActivator(burst);
+  SetPointer(AAPTR_TARGET, 1000);
+  Delay(2);
+  Expect(GetActorProperty(victim, APROP_Health) == 99975, "Blast first pulse deals 25 damage");
+  SetActorAngle(1000, yaw + 0.5);
+  Delay(6);
+  Expect(GetActorProperty(victim, APROP_Health) == 99950, "Blast second pulse deals 25 damage");
+  Expect(GetActorX(burst) == x && GetActorY(burst) == y && GetActorZ(burst) == z,
+    "Blast anchor stays fixed after the caster turns");
+  SetActivator(burst);
+  Expect(ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET) == 1000,
+    "Blast retains shooter attribution");
+  Delay(6);
+  Expect(GetActorProperty(victim, APROP_Health) == 99925, "Blast deals exactly three pulses");
+  Expect(ThingCountName("VWBlast", burst) == 0, "Blast expires after its three pulses");
+  Thing_Remove(victim);
+  SetActorAngle(1000, yaw);
+  Log(s:"VWO_BLAST_DONE failures=", i:failures);
+}
 int p2spawned[19];
 int p2minimum;
 int p2minpower;

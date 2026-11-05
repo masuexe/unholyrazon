@@ -881,6 +881,7 @@ the combined local and array count below 65535.
 python3 tools/mcp/voidwalker-orbs-test.py
 python3 tools/mcp/voidwalker-orbs-test.py --phase2
 python3 tools/mcp/voidwalker-orbs-test.py --hud
+python3 tools/mcp/voidwalker-orbs-test.py --blast
 ```
 
 Requires the bridge engine (`ZANDRONUM_EXE`), native ACC and the current

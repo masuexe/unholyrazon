@@ -97,6 +97,14 @@ has a networked announcement. The green orb retains its existing controls.
 | 4, Fire | Drain / Mega Drain (35 tics) | Flame (30) / Flame Wall (60) | Corona (500 rage) |
 | 5, Core | Flame Stone / Dark Star (35 tics) | Shredder (30) / Meteor Blast (60) | Final Claw (1000 rage) |
 
+Blast uses an invisible fast targeting probe with the same orb collision bypass
+as the aiming marker. Its impact point stays fixed while three explosions deal
+25 damage each, six tics apart, within 64 units (full damage within 32 units).
+There is no separate projectile-impact damage. Each explosion retains the
+caster's attribution and ordinary radius-damage visibility rules.
+Run `python3 tools/mcp/voidwalker-orbs-test.py --blast` for the focused native
+input, fixed-anchor, three-pulse damage and lifetime regression.
+
 Two-stage secondary attacks charge for 24 tics. If less than 60 ammo remains,
 release falls back to the 30-ammo spell. Rage Rune accelerates the new charge
 counters. Weapon destruction and deselection clear the shared charge counter.
