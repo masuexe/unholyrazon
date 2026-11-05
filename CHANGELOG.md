@@ -9,16 +9,14 @@
 - The bottom HUD now shows TLMS-style ally and enemy counters, for example "3 enemies 7 allies left". Unholy teammates no longer count as enemies, and the line shows "allies dead" when no teammate remains. Dead players, spectators and free slots do not count.
 - Teammates now show the ALLY icon above their heads, like TLMS. The icon follows the head, disappears on death or role change, and obeys the engine icon settings.
 - Both displays use the same side relation as the teammate bar. New user options "TLMS Counters" and "ALLY Icons" are in the Teammate Bar menu, and each one works without the bar.
-- Addon creators can opt ordinary Survivor classes into the daily class friendly-fire pool. Compatible Rebellion Patch versions include normal Mirrorman and Richter Belmont; truepower forms remain protected.
+- Addon creators can opt ordinary Survivor classes into the daily class friendly-fire pool; truepower/shitpower forms remain protected.
 
 - Standard Qwant, Nega Man, and Decoy Bot now each have 6–10 daily friendly-fire weapons. Three other standard Survivor classes are selected for friendly fire each day. Hosts can adjust the counts or disable either pool; damage follows `teamdamage`. Existing harmless grabs, throws, and slide kicks remain harmless to teammates.
 - Unholy LMS friendly-fire damage now follows Zandronum's `teamdamage` multiplier, including daily friendly-fire weapons. Use `0` to disable damage, `0.5` for half damage, or `1` for normal damage; the engine default is `0`. Daily eligibility and harmless teammate interactions still apply.
-- Restored the centered position of the recolored S/B/E automap icons.
 - Automap S/B/E icons now follow each player's colors, making Boss colors visible on the map.
 - Player automap markers now use v6c's native arrows with the Unholy S/B/E icons. Removed the dotted direction rays that could cover player icons; markers follow the native automap display options.
 - Fixed F-Beast failing to gain rage when taking damage, preventing Primal Beast-Over from charging.
-- Golden Killer Box Demoneye now uses its own gold-and-red-eyed icon in the item wheel and inventory.
-- Fixed Killer Box Demoneye showing the ordinary Box Demoneye icon in the item wheel; its red-eyed icon now displays correctly.
+- Killer Box Demoneye and Golden Killer Box Demoneye now display their own distinct red-eyed icons in the item wheel and inventory instead of falling back to the ordinary Box Demoneye icon.
 - Fixed map victory music overriding Unholy's result jingle after the v6c migration, including games with no time limit. Later map-music switches still follow the remaining-player and time rules.
 - Fixed spectators continuing to twitch and spin in place after Morshu's ultimate ended.
 - Fixed Dickhead revival turning players into ordinary Demoneyes during the MLG eye minigame. All-eye minigames now preserve their selected eye type and event effects after revival.
