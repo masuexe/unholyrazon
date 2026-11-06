@@ -15,6 +15,15 @@ function bool UH_VWEnemy(int boss, int p, int range, bool sight) {
   return !sight || CheckSight(boss, tid, CSF_NOBLOCKALL);
 }
 
+// Non-Demoneye enemy check that works both in LMS rounds (PLS_SURVIVOR == 1)
+// and in TRAINING / pre-round debug testing (where life status is 0).
+function bool UH_VWTargetableEnemy(int boss, int p, int range, bool sight) {
+  if (!UH_VWEnemy(boss, p, range, sight)) return false;
+  if (ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", p) == 6) return false;
+  if (CheckActorInventory(p + 1000, "IsADemoneye")) return false;
+  return true;
+}
+
 // Aim cone is +/-45 degrees. Reservoir selection gives every eligible player
 // equal probability. A target behind the boss is never eligible.
 function int UH_VWFrontTarget(int boss) {
@@ -22,9 +31,8 @@ function int UH_VWFrontTarget(int boss) {
   int count = 0;
   int yaw = GetActorAngle(boss);
   for (int p = 0; p < MAX_PLAYERS; p++) {
-    // PLS_SURVIVOR is the round-core role; Demoneyes are not saw anchors.
-    if (ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", p) != 1) continue;
-    if (!UH_VWEnemy(boss, p, 1800.0, true)) continue;
+    // Demoneyes are not saw anchors.
+    if (!UH_VWTargetableEnemy(boss, p, 1800.0, true)) continue;
     int tid = p + 1000;
     int angle = VectorAngle(GetActorX(tid) - GetActorX(boss), GetActorY(tid) - GetActorY(boss));
     int delta = WrapAround(angle - yaw, -0.5, 0.5);
@@ -40,8 +48,7 @@ function int UH_VWClosestTarget(int boss, int range) {
   int bestTid = 0;
   int bestDist = range + 1.0;
   for (int p = 0; p < MAX_PLAYERS; p++) {
-    if (ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", p) != 1) continue;
-    if (!UH_VWEnemy(boss, p, range, true)) continue;
+    if (!UH_VWTargetableEnemy(boss, p, range, true)) continue;
     int tid = p + 1000;
     int d = XYZDistance(boss, tid);
     if (d < bestDist) {
@@ -50,6 +57,65 @@ function int UH_VWClosestTarget(int boss, int range) {
     }
   }
   return bestTid;
+}
+
+// Pick an aimed / closest enemy for Ice Rock:
+// 1. Prefer visible enemies inside the forward aim cone (+/-60 deg), picking
+//    the one closest to the aim direction (or closest distance within cone).
+// 2. Otherwise reservoir-sample among the closest visible enemies within
+//    minDist + 256.0, falling back to non-LOS enemies within range.
+function int UH_VWIceRockTarget(int boss, int range) {
+  int yaw = GetActorAngle(boss);
+  int bx = GetActorX(boss);
+  int by = GetActorY(boss);
+  int bestAimTid = 0;
+  int bestAimScore = 0x7fffffff;
+  int p;
+  int tid;
+  int d;
+  for (p = 0; p < MAX_PLAYERS; p++) {
+    if (!UH_VWTargetableEnemy(boss, p, range, true)) continue;
+    tid = p + 1000;
+    int angle = VectorAngle(GetActorX(tid) - bx, GetActorY(tid) - by);
+    int delta = abs(WrapAround(angle - yaw, -0.5, 0.5));
+    if (delta > 0.1667) continue;
+    d = XYZDistance(boss, tid);
+    // Weight angular accuracy and distance together so aiming at an enemy locks onto them.
+    int score = d + FixedMul(delta, 1024.0);
+    if (score < bestAimScore) {
+      bestAimScore = score;
+      bestAimTid = tid;
+    }
+  }
+  if (bestAimTid) return bestAimTid;
+
+  int minDist = range + 1.0;
+  for (p = 0; p < MAX_PLAYERS; p++) {
+    if (!UH_VWTargetableEnemy(boss, p, range, true)) continue;
+    d = XYZDistance(boss, p + 1000);
+    if (d < minDist) minDist = d;
+  }
+  bool useSight = (minDist <= range);
+  if (!useSight) {
+    for (p = 0; p < MAX_PLAYERS; p++) {
+      if (!UH_VWTargetableEnemy(boss, p, range, false)) continue;
+      d = XYZDistance(boss, p + 1000);
+      if (d < minDist) minDist = d;
+    }
+    if (minDist > range) return 0;
+  }
+  int result = 0;
+  int count = 0;
+  int threshold = minDist + 256.0;
+  for (p = 0; p < MAX_PLAYERS; p++) {
+    if (!UH_VWTargetableEnemy(boss, p, range, useSight)) continue;
+    tid = p + 1000;
+    if (XYZDistance(boss, tid) <= threshold) {
+      count++;
+      if (Random(1, count) == 1) result = tid;
+    }
+  }
+  return result;
 }
 
 // Spawn with exact shooter pointer, so native missiles / A_Explode preserve
@@ -211,6 +277,67 @@ script "uh_VWCast" (int spell) {
       }
       Delay(10);
     }
+    terminate;
+  }
+
+  if (spell == 13) { // Ice Rock: lock onto aimed/closest enemy with Warp, slowly oscillating down onto their head.
+    int rockTarget = UH_VWIceRockTarget(boss, 2048.0);
+    int rtx, rty, rtz;
+    if (rockTarget) {
+      rtx = GetActorX(rockTarget);
+      rty = GetActorY(rockTarget);
+      rtz = GetActorZ(rockTarget);
+    } else {
+      rtx = bx + FixedMul(224.0, cos(yaw));
+      rty = by + FixedMul(224.0, sin(yaw));
+      rtz = GetActorZ(boss);
+    }
+    tid = UH_VWSpawn("VWIceRock", boss, rtx, rty, rtz + 192.0, yaw);
+    if (!tid) terminate;
+    if (rockTarget) {
+      SetActivator(tid);
+      SetPointer(AAPTR_TRACER, rockTarget);
+      SetActivator(boss);
+    }
+    int perpX = cos(yaw + 0.25);
+    int perpY = sin(yaw + 0.25);
+    for (i = 0; i < 48; i++) {
+      if (!UH_VWPhaseAlive(boss, generation)) {
+        Thing_Remove(tid);
+        terminate;
+      }
+      int zOff = 192.0 - (144.0 * i) / 48;
+      int amp = 64.0 - (64.0 * i) / 48;
+      int sway = FixedMul(amp, sin((i * 0.0625) & 0xFFFF));
+      if (rockTarget && GetActorProperty(rockTarget, APROP_Health) > 0) {
+        SetActivator(tid);
+        Warp(rockTarget, 0, sway, zOff, 0, WARPF_NOCHECKPOSITION | WARPF_USECALLERANGLE | WARPF_INTERPOLATE);
+        SetActivator(boss);
+        rtx = GetActorX(rockTarget);
+        rty = GetActorY(rockTarget);
+        rtz = GetActorZ(rockTarget);
+      } else {
+        int rx2 = rtx + FixedMul(sway, perpX);
+        int ry2 = rty + FixedMul(sway, perpY);
+        int rz2 = min(rtz + zOff, GetActorCeilingZ(tid) - 32.0);
+        SetActorPosition(tid, rx2, ry2, rz2, false);
+      }
+      Delay(1);
+    }
+    if (!UH_VWPhaseAlive(boss, generation)) {
+      Thing_Remove(tid);
+      terminate;
+    }
+    if (rockTarget && GetActorProperty(rockTarget, APROP_Health) > 0) {
+      SetActivator(tid);
+      Warp(rockTarget, 0, 0, 48.0, 0, WARPF_NOCHECKPOSITION | WARPF_USECALLERANGLE | WARPF_INTERPOLATE);
+      SetActivator(boss);
+      if (UH_VWEnemy(boss, rockTarget - 1000, 4096.0, false)) {
+        SetActivator(boss);
+        Thing_Damage2(rockTarget, 120, "VWIceRock");
+      }
+    }
+    SetActorState(tid, "Impact");
     terminate;
   }
 
