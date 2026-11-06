@@ -356,22 +356,53 @@ script "uh_VWCast" (int spell) {
     terminate;
   }
 
-  if (spell == 6) { // Flame Saber sweeps the forward field over 18 tics.
-    for (i = -3; i <= 3; i++) {
+  if (spell == 6) { // Mega Drain: SMRPG-style short backward wind-up sweep, then wide forward sweep.
+    int d;
+    int va;
+    // Phase 1: Small backward wind-up sweep behind the caster.
+    for (i = -2; i <= 2; i++) {
       if (!UH_VWPhaseAlive(boss, generation)) terminate;
-      angle = yaw + i * 0.04;
-      for (int d = 1; d <= 8; d++)
-        UH_VWSpawn("VWMegaDrainBeam", boss, bx + FixedMul(d * 96.0, cos(angle)),
-          by + FixedMul(d * 96.0, sin(angle)), bz, angle);
+      bx = GetActorX(boss);
+      by = GetActorY(boss);
+      bz = GetActorZ(boss) + 32.0;
+      yaw = GetActorAngle(boss);
+      angle = yaw + 0.5 + i * 0.03;
+      for (d = 1; d <= 5; d++)
+        UH_VWSpawn("VWMegaDrainBeam", boss, bx + FixedMul(d * 64.0, cos(angle)),
+          by + FixedMul(d * 64.0, sin(angle)), bz, angle);
       for (p = 0; p < MAX_PLAYERS; p++) {
-        if (!UH_VWEnemy(boss, p, 900.0, true)) continue;
-        int va = VectorAngle(GetActorX(p + 1000) - bx, GetActorY(p + 1000) - by);
-        if (abs(WrapAround(va - angle, -0.5, 0.5)) <= 0.025) {
+        if (!UH_VWEnemy(boss, p, 360.0, true)) continue;
+        va = VectorAngle(GetActorX(p + 1000) - bx, GetActorY(p + 1000) - by);
+        if (abs(WrapAround(va - angle, -0.5, 0.5)) <= 0.03) {
           SetActivator(boss);
-          Thing_Damage2(p + 1000, 55, "VWMegaDrain");
+          Thing_Damage2(p + 1000, 35, "VWMegaDrain");
         }
       }
-      Delay(3);
+      Delay(2);
+    }
+    Delay(4);
+    if (!UH_VWPhaseAlive(boss, generation)) terminate;
+    PlaySound(boss, "MarioRPG/Corona", CHAN_BODY, 1.0, false, ATTN_NORM);
+    // Phase 2: Turn around and unleash a wide (~164 deg) long-range forward sweep.
+    for (i = -6; i <= 6; i++) {
+      if (!UH_VWPhaseAlive(boss, generation)) terminate;
+      bx = GetActorX(boss);
+      by = GetActorY(boss);
+      bz = GetActorZ(boss) + 32.0;
+      yaw = GetActorAngle(boss);
+      angle = yaw + i * 0.038;
+      for (d = 1; d <= 11; d++)
+        UH_VWSpawn("VWMegaDrainBeam", boss, bx + FixedMul(d * 88.0, cos(angle)),
+          by + FixedMul(d * 88.0, sin(angle)), bz, angle);
+      for (p = 0; p < MAX_PLAYERS; p++) {
+        if (!UH_VWEnemy(boss, p, 1024.0, true)) continue;
+        va = VectorAngle(GetActorX(p + 1000) - bx, GetActorY(p + 1000) - by);
+        if (abs(WrapAround(va - angle, -0.5, 0.5)) <= 0.035) {
+          SetActivator(boss);
+          Thing_Damage2(p + 1000, 75, "VWMegaDrain");
+        }
+      }
+      if (i < 6) Delay(2);
     }
     terminate;
   }

@@ -14,6 +14,7 @@
 - Reworked Void Walker's Solidify using Cold Man's `CLDW` sprites: marks the ground area of effect with `CLDW EFG` ice spikes and encases enemies inside the zone in `CLDW JKL ABCD` ice pillars that deal continuous damage before shattering.
 - Reworked Void Walker's Ice Rock to randomly target one of the closest enemies, slowly oscillating back and forth above their head while descending before crashing down onto their head to deal damage and shatter into ice shards.
 - Enhanced Void Walker's Drain fireball visuals with an additive glowing core, double-helix ember trails, drifting fire sparks, and a radial flame burst on impact.
+- Reworked Void Walker's Mega Drain to perform a short backward wind-up sweep before turning around for a wide forward flame-beam sweep, matching Super Mario RPG.
 
 ## 4.0.0-beta.261105
 
