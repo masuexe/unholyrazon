@@ -13,6 +13,7 @@
 - Moved Void Walker's 3-wave overhead crystal drop and 4-shard shatter to Crystal, and reworked Boulder into a wide-area rockslide of falling boulders that bounce and roll forward across the field.
 - Reworked Void Walker's Solidify using Cold Man's `CLDW` sprites: marks the ground area of effect with `CLDW EFG` ice spikes and encases enemies inside the zone in `CLDW JKL ABCD` ice pillars that deal continuous damage before shattering.
 - Reworked Void Walker's Ice Rock to randomly target one of the closest enemies, slowly oscillating back and forth above their head while descending before crashing down onto their head to deal damage and shatter into ice shards.
+- Enhanced Void Walker's Drain fireball visuals with an additive glowing core, double-helix ember trails, drifting fire sparks, and a radial flame burst on impact.
 
 ## 4.0.0-beta.261105
 

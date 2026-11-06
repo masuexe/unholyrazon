@@ -13,6 +13,7 @@
 - 将 Void Walker 原先从敌人头顶连续三波坠落并分裂为四向碎晶的招式移至 Crystal，并将 Boulder 重做为类似 Astro Crush / Rain Flush 的大范围从天而降向前翻滚弹跳的落石雨。
 - 重做 Void Walker 的 Solidify，引入 Cold Man 的 `CLDW` 贴图：以地面 `CLDW EFG` 冰刺圈表示作用范围，并在范围内敌人身上直接生成 `CLDW JKL ABCD` 冰封柱造成持续伤害与冰碎爆发。
 - 重做 Void Walker 的 Ice Rock，改为随机锁定最近的一名敌人，在其头顶缓慢往复摆动并逐渐下落，最终砸落到头顶时才造成伤害并分裂为四向碎晶。
+- 优化 Void Walker 的 Drain 火焰弹视觉特效，加入高亮熔岩核心、双螺旋火星尾迹、飘散火苗粒子以及命中时的环形烈焰爆发。
 
 ## 4.0.0-beta.261105
 
