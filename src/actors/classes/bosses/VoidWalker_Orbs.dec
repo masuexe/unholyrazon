@@ -1049,6 +1049,7 @@ actor VWStaticESparkFX : BasicGraphicEffect {
 }
 
 actor VWPetalBlastMissile : BasicMorphProjectile {
+  var int user_NoTranslation;
   MorphProjectile.PlayerClass "PetalMushroomPlayer"
   MorphProjectile.Duration 105
   MorphProjectile.MorphStyle MRF_UNDOBYDEATH | MRF_UNDOBYDEATHFORCED | MRF_NEWTIDBEHAVIOUR
@@ -1057,16 +1058,25 @@ actor VWPetalBlastMissile : BasicMorphProjectile {
   Species "Culex"
   +THRUSPECIES
   +BRIGHT
-  Radius 8
-  Height 8
-  Speed 32
+  Radius 10
+  Height 10
+  Speed 30
   Damage (45)
   DamageType "PetalBlast"
   Obituary "%o was turned into a mushroom by %k's \cdPetal Blast\c-."
-  Scale 1.8
+  Scale 2.5
   States {
    Spawn:
-    PLAN ABCD 2
+    CPE1 D 2 nodelay A_Weave(2, 2, 2.0, 1.5)
+    CPE1 B 2 A_Weave(2, 2, 2.0, 1.5)
+    CPE1 C 2 A_Weave(2, 2, 2.0, 1.5)
+    TNT1 A 0 A_SpawnItemEx("VWPetalTrailSpawner", random(-8, 8), random(-12, 12), random(-8, 8), random(-2, 4), random(-4, 4), random(-3, 1), 0, 1)
+    CPE1 B 2 A_Weave(2, 2, 2.0, 1.5)
+    CPE1 D 2 A_Weave(2, 2, 2.0, 1.5)
+    CPE1 F 2 A_Weave(2, 2, 2.0, 1.5)
+    CPE1 E 2 A_Weave(2, 2, 2.0, 1.5)
+    TNT1 A 0 A_SpawnItemEx("VWPetalTrailSpawner", random(-8, 8), random(-12, 12), random(-8, 8), random(-2, 4), random(-4, 4), random(-3, 1), 0, 1)
+    CPE1 F 2 A_Weave(2, 2, 2.0, 1.5)
     loop
    Death:
     TNT1 A 0 A_PlaySound("MarioRPG/Mushroom", 1)
@@ -1075,14 +1085,144 @@ actor VWPetalBlastMissile : BasicMorphProjectile {
   }
 }
 
+actor VWPetalBlastMissilePurple : VWPetalBlastMissile {
+  Translation "219:219=237:237", "221:221=251:251", "39:39=237:237", "40:40=251:251"
+}
+
+actor VWPetalBlastMissileYellow : VWPetalBlastMissile {
+  Translation "219:219=248:248", "221:221=230:230", "39:39=248:248", "40:40=230:230"
+}
+
+actor VWPetalBlastMissileLeaf : VWPetalBlastMissile {
+  States {
+   Spawn:
+    WLE1 A 2 nodelay A_Weave(2, 2, 2.0, 1.5)
+    WLE1 B 2 A_Weave(2, 2, 2.0, 1.5)
+    WLE1 C 2 A_Weave(2, 2, 2.0, 1.5)
+    TNT1 A 0 A_SpawnItemEx("VWPetalTrailSpawner", random(-8, 8), random(-12, 12), random(-8, 8), random(-2, 4), random(-4, 4), random(-3, 1), 0, 1)
+    WLE1 B 2 A_Weave(2, 2, 2.0, 1.5)
+    loop
+  }
+}
+
+// MMCTF26 (Seasonal Shrines) SpringLeaf & FallLeaf petals/leaves inheriting Leaf1 (for A_LeafThrust & A_LeafCheck)
+actor VWPetalSpringPink : Leaf1 {
+  var int user_NoTranslation;
+  +CLIENTSIDEONLY
+  +BRIGHT
+  Scale 2.5
+  Gravity 0.22
+  States {
+   Spawn:
+    CPE1 DBC 3
+    CPE1 B 3 A_LeafThrust
+    CPE1 DFE 3
+    CPE1 F 3 A_LeafThrust
+    CPE1 DBC 3
+    CPE1 B 3 A_LeafThrust
+    CPE1 DFE 3
+    CPE1 F 3 A_LeafThrust
+    CPE1 DBC 3 A_FadeOut(0.18)
+    stop
+   Death:
+    CPE1 D 6 A_LeafCheck
+    CPE1 D 3 A_FadeOut(0.16)
+    wait
+  }
+}
+
+actor VWPetalSpringPurple : VWPetalSpringPink {
+  Translation "219:219=237:237", "221:221=251:251", "39:39=237:237", "40:40=251:251"
+}
+
+actor VWPetalSpringYellow : VWPetalSpringPink {
+  Translation "219:219=248:248", "221:221=230:230", "39:39=248:248", "40:40=230:230"
+}
+
+actor VWPetalFallLeaf : Leaf1 {
+  var int user_NoTranslation;
+  +CLIENTSIDEONLY
+  +BRIGHT
+  Scale 2.5
+  Gravity 0.22
+  States {
+   Spawn:
+    WLE1 ABC 3
+    WLE1 B 3 A_LeafThrust
+    WLE1 ABC 3
+    WLE1 B 3 A_LeafThrust
+    WLE1 ABC 3
+    WLE1 B 3 A_LeafThrust
+    WLE1 ABC 3 A_FadeOut(0.18)
+    stop
+   Death:
+    WLE1 D 6 A_LeafCheck
+    WLE1 D 3 A_FadeOut(0.16)
+    wait
+  }
+}
+
+actor VWPetalTrailSpawner : BasicGraphicEffect {
+  States {
+   SpawnFrame:
+    TNT1 A 0 A_Jump(64, "SpawnLeaf")
+    TNT1 A 0 A_Jump(85, "SpawnYellow")
+    TNT1 A 0 A_Jump(128, "SpawnPurple")
+    TNT1 A 0 A_SpawnItemEx("VWPetalSpringPink", 0, 0, 0, momx, momy, momz, 0, SXF_CLIENTSIDE)
+    stop
+   SpawnPurple:
+    TNT1 A 0 A_SpawnItemEx("VWPetalSpringPurple", 0, 0, 0, momx, momy, momz, 0, SXF_CLIENTSIDE)
+    stop
+   SpawnYellow:
+    TNT1 A 0 A_SpawnItemEx("VWPetalSpringYellow", 0, 0, 0, momx, momy, momz, 0, SXF_CLIENTSIDE)
+    stop
+   SpawnLeaf:
+    TNT1 A 0 A_SpawnItemEx("VWPetalFallLeaf", 0, 0, 0, momx, momy, momz, 0, SXF_CLIENTSIDE)
+    stop
+  }
+}
+
+// Wide MMCTF26 petal & leaf storm spawner across the caster and forward battlefield
+actor VWPetalBlastStormSpawner {
+  +NOBLOCKMAP
+  +NOINTERACTION
+  +NOGRAVITY
+  +DONTBLAST
+  ReactionTime 14
+  States {
+   Spawn:
+    TNT1 A 0 nodelay
+   SpawnLoop:
+    // Forward sweeping gust of petals from the caster
+    TNT1 AA 0 A_SpawnItemEx("VWPetalSpringPink", random(16, 96), random(-160, 160), random(-16, 96), random(14, 28), random(-8, 8), random(-4, 3), random(-25, 25), SXF_CLIENTSIDE)
+    TNT1 A 0 A_SpawnItemEx("VWPetalSpringPurple", random(16, 96), random(-160, 160), random(-16, 96), random(14, 28), random(-8, 8), random(-4, 3), random(-25, 25), SXF_CLIENTSIDE)
+    TNT1 A 0 A_SpawnItemEx("VWPetalSpringYellow", random(16, 96), random(-160, 160), random(-16, 96), random(14, 28), random(-8, 8), random(-4, 3), random(-25, 25), SXF_CLIENTSIDE)
+    TNT1 A 0 A_SpawnItemEx("VWPetalFallLeaf", random(16, 96), random(-160, 160), random(-16, 96), random(14, 28), random(-8, 8), random(-4, 3), random(-25, 25), SXF_CLIENTSIDE)
+    // Overhead MMCTF26 falling petal & leaf rain across the arena ahead
+    TNT1 AA 0 A_SpawnItemEx("VWPetalSpringPink", random(-128, 640), random(-320, 320), random(96, 240), random(6, 16), random(-6, 6), random(-3, -7), 0, SXF_CLIENTSIDE)
+    TNT1 A 0 A_SpawnItemEx("VWPetalSpringPurple", random(-128, 640), random(-320, 320), random(96, 240), random(6, 16), random(-6, 6), random(-3, -7), 0, SXF_CLIENTSIDE)
+    TNT1 A 0 A_SpawnItemEx("VWPetalSpringYellow", random(-128, 640), random(-320, 320), random(96, 240), random(6, 16), random(-6, 6), random(-3, -7), 0, SXF_CLIENTSIDE)
+    TNT1 A 0 A_SpawnItemEx("VWPetalFallLeaf", random(-128, 640), random(-320, 320), random(96, 240), random(6, 16), random(-6, 6), random(-3, -7), 0, SXF_CLIENTSIDE)
+    TNT1 A 3 A_CountDown
+    loop
+   Death:
+    TNT1 A 0
+    stop
+  }
+}
+
 actor PetalMorphFlash : BasicGraphicEffect {
   +BRIGHT
   RenderStyle "Add"
-  Scale 1.5
+  Scale 1.8
   States {
    SpawnFrame:
     TNT1 A 0 A_PlaySound("MarioRPG/Mushroom", 1)
-    PLAN ABCD 2 A_FadeOut(0.2)
+    TNT1 A 0 A_SpawnItemEx("VWPetalSpringPink", random(-12, 12), random(-12, 12), random(8, 40), random(4, 12), random(-6, 6), random(2, 8), random(0, 359), SXF_CLIENTSIDE)
+    TNT1 A 0 A_SpawnItemEx("VWPetalSpringPurple", random(-12, 12), random(-12, 12), random(8, 40), random(4, 12), random(-6, 6), random(2, 8), random(0, 359), SXF_CLIENTSIDE)
+    TNT1 A 0 A_SpawnItemEx("VWPetalSpringYellow", random(-12, 12), random(-12, 12), random(8, 40), random(4, 12), random(-6, 6), random(2, 8), random(0, 359), SXF_CLIENTSIDE)
+    TNT1 A 0 A_SpawnItemEx("VWPetalFallLeaf", random(-12, 12), random(-12, 12), random(8, 40), random(4, 12), random(-6, 6), random(2, 8), random(0, 359), SXF_CLIENTSIDE)
+    TMFX ABCDE 2 A_FadeOut(0.18)
     stop
   }
 }
@@ -1093,23 +1233,28 @@ actor PetalUnMorphFlash : BasicGraphicEffect {
   Scale 1.5
   States {
    SpawnFrame:
+    TNT1 AAA 0 A_SpawnItemEx("VWPetalSpringPink", random(-10, 10), random(-10, 10), random(8, 36), random(3, 9), random(-5, 5), random(1, 6), random(0, 359), SXF_CLIENTSIDE)
+    TNT1 AA 0 A_SpawnItemEx("VWPetalSpringPurple", random(-10, 10), random(-10, 10), random(8, 36), random(3, 9), random(-5, 5), random(1, 6), random(0, 359), SXF_CLIENTSIDE)
+    TNT1 AA 0 A_SpawnItemEx("VWPetalFallLeaf", random(-10, 10), random(-10, 10), random(8, 36), random(3, 9), random(-5, 5), random(1, 6), random(0, 359), SXF_CLIENTSIDE)
     TMFX ABCDE 2 A_FadeOut(0.2)
     stop
   }
 }
 
-actor PetalMushroomPlayer : ClassBaseUH00 {
+actor PetalMushroomPlayer : CustWepClassBase {
+  +NOSKIN
+  -NOGRAVITY
   Player.DisplayName "$TAG_PetalMushroomPlayer"
   Player.SoundClass "Megaman"
   Player.ScoreIcon "MUSHMUG"
-  Player.ForwardMove 0.65, 0.65
-  Player.SideMove 0.65, 0.65
-  Player.JumpZ 7
+  Player.ForwardMove 0, 0
+  Player.SideMove 0, 0
+  Player.JumpZ 0
   Player.MorphWeapon "PetalMushroom_W"
   Player.ViewHeight 20
   Radius 16
   Height 28
-  Scale 1.8
+  Scale 2.5
   States {
    Spawn:
     IR00 A -1
@@ -1121,10 +1266,10 @@ actor PetalMushroomPlayer : ClassBaseUH00 {
     IR00 A 1
     loop
    ClassPain:
-    IR00 A 0
+    IR00 H 0
     goto MegamanPain
    ClassDeath:
-    IR00 A 0
+    IR00 H 0
     goto MegamanDeath
   }
 }
@@ -1141,11 +1286,12 @@ actor PetalMushroom_W : BaseMM8BDMWep_UH {
     TNT1 A 0
     goto SelectSwap
    Ready:
+    TNT1 A 0 A_ChangeVelocity(0, 0, momz, CVF_REPLACE)
     TNT1 A 1 A_WeaponReady(WRF_NOSWITCH)
     loop
    Fire:
     TNT1 A 0 A_PlaySoundEx("MarioRPG/Mushroom", "Weapon")
-    TNT1 A 8
+    TNT1 AAAAAAAA 1 A_ChangeVelocity(0, 0, momz, CVF_REPLACE)
     goto Ready
    AltFire:
     goto Fire

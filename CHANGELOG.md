@@ -25,6 +25,7 @@
 - Enhanced Void Walker's Blizzard with Blizzard Attack (`BLIZ ABC` snowflakes and map hail weather), MM4COS (`COSS B` blowing snow particles), and (Soviet) Frostbite (`6P09` cold mist & sparkles, `X_7A` falling hail chunks, and `X_8B` frost bursts), sweeping a wide blizzard across the arena and attaching a blizzard follower to chilled targets.
 - Reworked Void Walker's Corona to drop a giant blazing solar fireball (`PHAS JK` with `X_4D` halo) from the sky in front of the caster that stops above the ground and spins a full 360-degree circle spraying a continuous stream of solar fire (`VWCoronaFireJet`) and erupting fire pillars (`VWCoronaFirePillar`).
 - Reworked Void Walker's Final Claw into a Slash Claw-style close-range melee slash with a long wind-up (`VWFinalClawChargeFX` / `VWFinalClawGlintFX`) that deals guaranteed instant-kill damage on hit.
+- Enhanced Void Walker's Petal Blast with MMCTF26 (Seasonal Shrines) cherry-blossom petals (`CPE1` in pink, purple, and yellow) and falling leaves (`WLE1`) using `Leaf1` (`A_LeafThrust` / `A_LeafCheck`), firing three weaving petal-storm volleys accompanied by a wide falling petal shower, and updated the Mushroom morph (`PetalMushroomPlayer`) to display the updated `IR00` mushroom sprite (`+NOSKIN`) while completely immobilizing morphed targets.
 
 ## 4.0.0-beta.261105
 
