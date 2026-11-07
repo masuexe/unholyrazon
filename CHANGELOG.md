@@ -6,6 +6,7 @@
 
 ## 4.0.0-beta.261106
 
+- Permanent-flight bosses (Purple/Blue/Red Destron, Higlur) and Mosquito Demoneye now drain hover stamina over damaging pits like Misery: stamina depletes while hovering above a pit, flight cuts out when it runs out so they fall in, and stamina refills after leaving the pit. Unlimited flight height is unchanged.
 - Temporarily disabled Void Walker's extra life and phase-two transition in normal matches while second-phase spells are being tuned.
 - Void Walker's Blast now locks the aimed impact point and explodes there three times, instead of firing a visible projectile. Turning after casting does not move the explosions.
 - Reworked Void Walker's Storm into a light-blue whirlwind projectile (`EVFL`) that erupts into a multi-hit spinning tornado column on impact, replacing the placeholder Bolt lightning visuals and audio while keeping the chill slow effect.

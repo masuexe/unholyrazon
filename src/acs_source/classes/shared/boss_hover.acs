@@ -1,5 +1,8 @@
-// Permanent, floor-relative flight, following Alien / XGond's 160-unit limit.
-// A small hysteresis avoids toggling the flight stack at the height boundary.
+// Permanent floor-relative flight with Alien-style damaging-pit stamina.
+// uh_BossHover: 160/152 ceiling (Misery / CXAirMan).
+// uh_BossFlightPit: unlimited altitude (Destron / Higlur / Mosquito eye).
+// ACS_NamedExecuteAlways only accepts three script args, so the two modes
+// are separate named scripts. Delay must stay in the script body.
 #define UH_BOSS_HOVER_LIMIT 160.0
 #define UH_BOSS_HOVER_RESUME 152.0
 #define UH_BOSS_HOVER_PIT_COST 10
@@ -13,6 +16,52 @@ function void UH_BossHoverRelease(str activeflag) {
   TakeInventory(activeflag, 1);
 }
 
+// One watcher tic. Returns false when the watcher must stop.
+// limited is an in/out hysteresis latch for the height ceiling.
+function bool UH_BossHoverTick(str actor, str activeflag, str staminaflag,
+    bool heightcap, int player, int mygen, int limited) {
+  if (!UH_WatcherStillOwnsBoss(mygen, player))
+    return false;
+  if (GetActorProperty(0, APROP_Health) <= 0 || CheckInventory("IsDead") ||
+      StrICmp(GetActorClass(0), actor)) {
+    UH_BossHoverRelease(activeflag);
+    return false;
+  }
+
+  int altitude = GetActorZ(0) - GetActorFloorZ(0);
+  if (heightcap) {
+    if (altitude >= UH_BOSS_HOVER_LIMIT)
+      limited = true;
+    else if (altitude <= UH_BOSS_HOVER_RESUME)
+      limited = false;
+  }
+
+  // Match CBM Alien: only the eligible-flight branch over a damaging pit
+  // drains stamina. Over-height ticks neither drain nor recharge in a pit.
+  bool damagingpit = ACS_NamedExecuteWithResult("uh_CheckDamagingPit", 0);
+  bool exhausted = false;
+  if (damagingpit) {
+    if (!limited) {
+      GiveInventory("PowerStaminaFlagDeplete", 1);
+      TakeInventory(staminaflag, UH_BOSS_HOVER_PIT_COST);
+      exhausted = !CheckInventory(staminaflag);
+    }
+  }
+  else {
+    GiveInventory(staminaflag, altitude == 0 ?
+      UH_BOSS_HOVER_GROUND_RECHARGE : UH_BOSS_HOVER_AIR_RECHARGE);
+  }
+
+  if (limited || exhausted)
+    UH_BossHoverRelease(activeflag);
+  else if (!CheckInventory(activeflag)) {
+    // Toggle 2 preserves momentum; normal flight respects grounded effects.
+    ACS_NamedExecuteWithResult("uh_flyplayer", 0, 2, false);
+    GiveInventory(activeflag, 1);
+  }
+  return true;
+}
+
 // Local server calls only: actor and inventory arguments are ACS strings.
 // Setup fills the class stamina (max 500); pre-unmorph cleanup must call
 // UH_BossHoverRelease for its active flag before changing morph generation.
@@ -21,48 +70,33 @@ script "uh_BossHover" (int actor, int activeflag, int staminaflag) {
   if (player < 0)
     terminate;
   int mygen = GetPlayerMorphGen(player);
-  bool limited = false;
+  int limited = false;
 
   while (PlayerInGame(player)) {
     // The pre-unmorph hook releases our stack before the generation changes.
     // Never release from an old watcher: its activator may now be a new body.
-    if (!UH_WatcherStillOwnsBoss(mygen, player))
+    if (!UH_BossHoverTick(actor, activeflag, staminaflag, true, player, mygen,
+        limited))
       terminate;
-    if (GetActorProperty(0, APROP_Health) <= 0 || CheckInventory("IsDead") ||
-        StrICmp(GetActorClass(0), actor)) {
-      UH_BossHoverRelease(activeflag);
-      terminate;
-    }
-
-    int altitude = GetActorZ(0) - GetActorFloorZ(0);
-    if (altitude >= UH_BOSS_HOVER_LIMIT)
+    // Re-read hysteresis after the tick so the next pass keeps the latch.
+    if (GetActorZ(0) - GetActorFloorZ(0) >= UH_BOSS_HOVER_LIMIT)
       limited = true;
-    else if (altitude <= UH_BOSS_HOVER_RESUME)
+    else if (GetActorZ(0) - GetActorFloorZ(0) <= UH_BOSS_HOVER_RESUME)
       limited = false;
+    Delay(1);
+  }
+}
 
-    // Match CBM Alien: only the eligible-flight branch over a damaging pit
-    // drains stamina. Over-height ticks neither drain nor recharge in a pit.
-    bool damagingpit = ACS_NamedExecuteWithResult("uh_CheckDamagingPit", 0);
-    bool exhausted = false;
-    if (damagingpit) {
-      if (!limited) {
-        GiveInventory("PowerStaminaFlagDeplete", 1);
-        TakeInventory(staminaflag, UH_BOSS_HOVER_PIT_COST);
-        exhausted = !CheckInventory(staminaflag);
-      }
-    }
-    else {
-      GiveInventory(staminaflag, altitude == 0 ?
-        UH_BOSS_HOVER_GROUND_RECHARGE : UH_BOSS_HOVER_AIR_RECHARGE);
-    }
+script "uh_BossFlightPit" (int actor, int activeflag, int staminaflag) {
+  int player = PlayerNumber();
+  if (player < 0)
+    terminate;
+  int mygen = GetPlayerMorphGen(player);
 
-    if (limited || exhausted)
-      UH_BossHoverRelease(activeflag);
-    else if (!CheckInventory(activeflag)) {
-      // Toggle 2 preserves momentum; normal flight respects grounded effects.
-      ACS_NamedExecuteWithResult("uh_flyplayer", 0, 2, false);
-      GiveInventory(activeflag, 1);
-    }
+  while (PlayerInGame(player)) {
+    if (!UH_BossHoverTick(actor, activeflag, staminaflag, false, player, mygen,
+        false))
+      terminate;
     Delay(1);
   }
 }
