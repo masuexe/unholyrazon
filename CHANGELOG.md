@@ -16,6 +16,7 @@
 - Enhanced Void Walker's Drain fireball visuals with an additive glowing core, double-helix ember trails, drifting fire sparks, and a radial flame burst on impact.
 - Reworked Void Walker's Mega Drain to perform a short backward wind-up sweep before turning around for a wide forward flame-beam sweep, matching Super Mario RPG.
 - Reworked Void Walker's Flame to toss a fireball upward that hovers in mid-air before launching at the target and erupting into burning flame pillars on impact.
+- Reworked Void Walker's Flame Wall into a wide 9-column ground-hugging wave of towering `FWVE` fire pillars that surges across the battlefield leaving burning wakes and embers.
 
 ## 4.0.0-beta.261105
 
