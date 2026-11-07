@@ -306,44 +306,63 @@ actor VoidWalker_W5 : BaseUnholyBossWep {
 // ==========================================
 
 actor VWDarkStar : VWProjectile {
-  +RIPPER
+  var int user_NoTranslation;
+  -NOGRAVITY
+  Gravity 1.25
+  +DOOMBOUNCE
+  +BOUNCEONFLOORS
+  +BOUNCEONWALLS
+  +BOUNCEONCEILINGS
+  +CANBOUNCEWATER
+  +USEBOUNCESTATE
+  BounceFactor 0.9
+  WallBounceFactor 0.9
+  BounceCount 5
   +THRUGHOST
   +DONTBLAST
   +SKYEXPLODE
   +BRIGHT
-  Radius 14
-  Height 14
-  Speed 30
+  Radius 24
+  Height 48
+  Speed 28
   Damage (95)
   DamageType "DarkStar"
-  Obituary "%o was consumed by %k's \cmDark Star\c-."
-  RenderStyle "Translucent"
-  Alpha 0.9
-  Scale 2.5
-  Translation "0:255=112:127"
+  Obituary "%o was crushed by %k's \cmDark Star\c-."
+  Scale 6.0
   States {
    Spawn:
-    STAR E 0
+    I_BP Y 0 nodelay ThrustThingZ(0, 18, 0, 1)
    SpawnLoop:
-    STAR EFGH 2 A_SpawnItemEx("VWDarkStarTrail", random(-8, 8), random(-8, 8), random(-8, 8), 0, 0, 0, 0, 1)
+    I_BY ABCD 2 A_SpawnItemEx("VWDarkStarTrail", random(-12, 12), random(-12, 12), random(0, 24), 0, 0, 0, 0, 1)
+    I_BY EFGH 2 A_SpawnItemEx("VWDarkStarTrail", random(-12, 12), random(-12, 12), random(0, 24), 0, 0, 0, 0, 1)
     loop
+   Bounce.Floor:
+   Bounce.Wall:
+   Bounce.Ceiling:
+    I_BY A 0 A_PlaySound("MarioRPG/StarGunDone", 2)
+    I_BY A 0 Radius_Quake(2, 10, 0, 18, 0)
+    I_BY A 0 A_Explode(65, 144, 0, 0, 72)
+    I_BY A 0 A_SpawnItemEx("VWDarkStarExplosion", 0, 0, 16)
+    goto SpawnLoop
    Death:
     TNT1 A 0 A_PlaySound("MarioRPG/DeathStar", 1)
-    TNT1 A 0 A_Explode(120, 160, 0, 0, 64)
-    TNT1 A 0 A_SpawnItemEx("VWDarkStarExplosion")
+    TNT1 A 0 Radius_Quake(4, 18, 0, 24, 0)
+    TNT1 A 0 A_Explode(120, 176, 0, 0, 88)
+    TNT1 A 0 A_SpawnItemEx("VWDarkStarExplosion", 0, 0, 16)
     stop
   }
 }
 
 actor VWDarkStarTrail : BasicGraphicEffect {
+  var int user_NoTranslation;
   +BRIGHT
-  RenderStyle "Add"
-  Scale 1.8
-  Translation "0:255=112:127"
+  RenderStyle "Translucent"
+  Alpha 0.65
+  Scale 4.8
   States {
    SpawnFrame:
-    TMFX ABCDE 2 A_FadeOut(0.15)
-    stop
+    I_BP Y 1 A_FadeOut(0.14)
+    loop
   }
 }
 
