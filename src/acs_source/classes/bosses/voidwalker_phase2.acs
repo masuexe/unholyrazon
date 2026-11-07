@@ -520,3 +520,49 @@ script "uh_VWSolidifyTick" (int dmg) {
   SetActivator(boss);
   Thing_Damage2(vt, dmg, "VWSolidify");
 }
+
+// Flame mid-air launch: after rising and hovering in the air, VWFlame aims and
+// streaks toward the aimed/closest enemy (or along the boss's current aim ray).
+script "uh_VWFlameLaunch" (void) {
+  int proj = ActivatorTID();
+  bool tempTid = false;
+  if (!proj) {
+    proj = UniqueTID();
+    Thing_ChangeTID(0, proj);
+    tempTid = true;
+  }
+  int fx = GetActorX(proj);
+  int fy = GetActorY(proj);
+  int fz = GetActorZ(proj);
+  if (!SetActivator(proj, AAPTR_TARGET) || !UH_VWIsOwner()) {
+    if (tempTid) Thing_ChangeTID(proj, 0);
+    terminate;
+  }
+  int boss = ActivatorTID();
+  int enemy = UH_VWIceRockTarget(boss, 2048.0);
+  int tx, ty, tz;
+  if (enemy) {
+    tx = GetActorX(enemy);
+    ty = GetActorY(enemy);
+    tz = GetActorZ(enemy) + GetActorProperty(enemy, APROP_Height) / 2;
+  } else {
+    int byaw = GetActorAngle(boss);
+    int bpitch = GetActorPitch(boss);
+    tx = GetActorX(boss) + FixedMul(512.0, FixedMul(cos(byaw), cos(bpitch)));
+    ty = GetActorY(boss) + FixedMul(512.0, FixedMul(sin(byaw), cos(bpitch)));
+    tz = GetActorZ(boss) + 32.0 - FixedMul(512.0, sin(bpitch));
+  }
+  int dx = tx - fx;
+  int dy = ty - fy;
+  int dz = tz - fz;
+  int ang = VectorAngle(dx, dy);
+  int hdist = VectorLength(dx, dy);
+  int vpitch = VectorAngle(hdist, dz);
+  int speed = 52.0;
+  int vx = FixedMul(speed, FixedMul(cos(ang), cos(vpitch)));
+  int vy = FixedMul(speed, FixedMul(sin(ang), cos(vpitch)));
+  int vz = FixedMul(speed, sin(vpitch));
+  SetActorAngle(proj, ang);
+  SetActorVelocity(proj, vx, vy, vz, false, false);
+  if (tempTid) Thing_ChangeTID(proj, 0);
+}
