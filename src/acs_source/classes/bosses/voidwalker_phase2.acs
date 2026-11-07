@@ -255,9 +255,7 @@ script "uh_VWCast" (int spell) {
     terminate;
   }
 
-  if (spell == 11 || spell == 8) { // Crystal rain / lethal Meteor Blast.
-    str rain = "VWCrystal";
-    if (spell == 8) rain = "VWMeteorBlast";
+  if (spell == 11) { // Crystal: 3-wave overhead crystal drop onto enemies.
     for (i = 0; i < 3; i++) {
       if (!UH_VWPhaseAlive(boss, generation)) terminate;
       int victims = 0;
@@ -266,16 +264,42 @@ script "uh_VWCast" (int spell) {
         victims++;
         int victim = p + 1000;
         z = min(GetActorZ(victim) + 384.0, GetActorCeilingZ(victim) - 48.0);
-        tid = UH_VWSpawn(rain, boss, GetActorX(victim) + Random(-64, 64) * 1.0,
+        tid = UH_VWSpawn("VWCrystal", boss, GetActorX(victim) + Random(-64, 64) * 1.0,
           GetActorY(victim) + Random(-64, 64) * 1.0, z, yaw);
         if (tid) SetActorVelocity(tid, 0, 0, -24.0, false, false);
       }
       if (!victims) {
-        tid = UH_VWSpawn(rain, boss, bx + FixedMul(160.0, cos(yaw)),
+        tid = UH_VWSpawn("VWCrystal", boss, bx + FixedMul(160.0, cos(yaw)),
           by + FixedMul(160.0, sin(yaw)), min(GetActorCeilingZ(boss) - 48.0, bz + 256.0), yaw);
         if (tid) SetActorVelocity(tid, 0, 0, -24.0, false, false);
       }
       Delay(10);
+    }
+    terminate;
+  }
+
+  if (spell == 8) { // Meteor Blast: CBM Astroman-style wide-radius Kirby NES star shower around the caster.
+    for (i = 0; i < 10; i++) {
+      if (!UH_VWPhaseAlive(boss, generation)) terminate;
+      bx = GetActorX(boss);
+      by = GetActorY(boss);
+      bz = GetActorZ(boss);
+      for (int s = 0; s < 3; s++) {
+        int mAng = ((i * 25 + s * 85 + Random(-18, 18)) & 255) << 8;
+        int mDist = Random(48, 540) * 1.0;
+        int mx = bx + FixedMul(mDist, cos(mAng));
+        int my = by + FixedMul(mDist, sin(mAng));
+        tid = UH_VWSpawn("VWMeteorBlast", boss, mx, my, bz, mAng);
+        if (tid) {
+          int mfz = GetActorFloorZ(tid);
+          int mcz = GetActorCeilingZ(tid);
+          z = min(max(bz, mfz) + 360.0, mcz - 48.0);
+          if (z < mfz + 24.0) z = mfz + 24.0;
+          SetActorPosition(tid, mx, my, z, false);
+          SetActorVelocity(tid, 0, 0, Random(-26, -22) * 1.0, false, false);
+        }
+      }
+      if (i < 9) Delay(3);
     }
     terminate;
   }
@@ -434,10 +458,43 @@ script "uh_VWCast" (int spell) {
     terminate;
   }
 
+  if (spell == 7) { // Corona: descending solar fireball relative to caster that stops above the floor and spins 360 degrees spraying fire.
+    int corX = bx + FixedMul(112.0, cos(yaw));
+    int corY = by + FixedMul(112.0, sin(yaw));
+    int corBaseZ = GetActorZ(boss) + 80.0;
+    tid = UH_VWSpawn("VWCoronaSun", boss, corX, corY, corBaseZ, yaw);
+    if (tid) {
+      int corFloorZ = GetActorFloorZ(tid);
+      if (corFloorZ + 80.0 > corBaseZ) corBaseZ = corFloorZ + 80.0;
+      int corCeilZ = GetActorCeilingZ(tid) - 48.0;
+      int corStartZ = corBaseZ + 216.0;
+      if (corStartZ > corCeilZ) corStartZ = corCeilZ;
+      if (corStartZ < corBaseZ + 36.0) corStartZ = corBaseZ + 36.0;
+      SetActorPosition(tid, corX, corY, corStartZ, false);
+    }
+    terminate;
+  }
+
   // Rage casts use bounded pulses, checking the exact morph before
   // each pulse. Gameplay effects are only applied to eligible enemies.
+  if (spell == 3) {
+    tid = UH_VWSpawn("VWSandStormField", boss, GetActorX(boss), GetActorY(boss), GetActorZ(boss), yaw);
+    if (tid) {
+      SetActivator(tid);
+      SetPointer(AAPTR_TRACER, boss);
+      SetActivator(boss);
+    }
+  } else if (spell == 5) {
+    ACS_NamedExecuteAlways("rz_SetHailWeather", 0);
+    tid = UH_VWSpawn("VWBlizzardField", boss, GetActorX(boss), GetActorY(boss), GetActorZ(boss), yaw);
+    if (tid) {
+      SetActivator(tid);
+      SetPointer(AAPTR_TRACER, boss);
+      SetActivator(boss);
+    }
+  }
   int pulses = 1;
-  if (spell == 3 || spell == 5 || spell == 7) pulses = 4;
+  if (spell == 3 || spell == 5) pulses = 4;
   for (i = 0; i < pulses; i++) {
     if (!UH_VWPhaseAlive(boss, generation)) terminate;
     for (p = 0; p < MAX_PLAYERS; p++) {
@@ -447,11 +504,27 @@ script "uh_VWCast" (int spell) {
       if (spell == 3) {
         UH_VWSpawn("VWSandStormFX", boss, GetActorX(vt), GetActorY(vt), GetActorZ(vt) + 24.0, yaw);
         UH_VWSpawn("VWSandStormHit", boss, GetActorX(vt), GetActorY(vt), GetActorZ(vt) + 24.0, yaw);
+        if (!CheckActorInventory(vt, "VWSandStormFollow_F")) {
+          GiveActorInventory(vt, "VWSandStormFollow_F", 1);
+          int sfollow = UH_VWSpawn("VWSandStormFollow", boss, GetActorX(vt), GetActorY(vt), GetActorZ(vt), yaw);
+          if (sfollow) {
+            SetActivator(sfollow);
+            SetPointer(AAPTR_TRACER, vt);
+            SetActivator(boss);
+          }
+        }
       } else if (spell == 5) {
         UH_VWSpawn("VWBlizzardFX", boss, GetActorX(vt), GetActorY(vt), GetActorZ(vt) + 24.0, yaw);
         UH_VWSpawn("VWBlizzardHit", boss, GetActorX(vt), GetActorY(vt), GetActorZ(vt) + 24.0, yaw);
-      } else if (spell == 7) {
-        UH_VWSpawn("VWCoronaFirePillar", boss, GetActorX(vt), GetActorY(vt), GetActorZ(vt), yaw);
+        if (!CheckActorInventory(vt, "VWBlizzardFollow_F")) {
+          GiveActorInventory(vt, "VWBlizzardFollow_F", 1);
+          int bfollow = UH_VWSpawn("VWBlizzardFollow", boss, GetActorX(vt), GetActorY(vt), GetActorZ(vt), yaw);
+          if (bfollow) {
+            SetActivator(bfollow);
+            SetPointer(AAPTR_TRACER, vt);
+            SetActivator(boss);
+          }
+        }
       }
     }
     if (pulses > 1) Delay(8);

@@ -77,7 +77,7 @@ BASE_GAME_SOUNDS = frozenset("""
     *critdeth *icedeath *icefreze assists/reggaecandrop assists/wirecling assists/wirefinish
     assists/wirefire item/buy item/eddiecry item/energyup item/energyup/large item/protoreflect
     item/refill item/reggae item/tango misc/alarmlong misc/astroplatformappear misc/bombcount
-    misc/catcherdrop misc/devildeath misc/devilfire misc/devilpain misc/dragonbreath misc/eclipsegravitywellpain
+    misc/catcherdrop misc/commandosandstorm misc/devildeath misc/devilfire misc/devilpain misc/dragonbreath misc/eclipsegravitywellpain
     misc/eclipsegravitywellsummon misc/fakeshot misc/freeze misc/galaxyteleport misc/gib misc/gravitywarn
     misc/gutsgboost misc/hsloop misc/hugequake misc/hugequake2 misc/itemthrow misc/kingchop
     misc/magmaflamestart misc/mm3explosion misc/mwsburst misc/partyball misc/piratebubble misc/pumpsplash

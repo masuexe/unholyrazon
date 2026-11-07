@@ -6,7 +6,6 @@
 
 ## 4.0.0-beta.261106
 
-- Temporarily disabled Void Walker's extra life and phase-two transition in normal matches while second-phase spells are being tuned.
 - Void Walker's Blast now locks the aimed impact point and explodes there three times, instead of firing a visible projectile. Turning after casting does not move the explosions.
 - Reworked Void Walker's Storm into a light-blue whirlwind projectile (`EVFL`) that erupts into a multi-hit spinning tornado column on impact, replacing the placeholder Bolt lightning visuals and audio while keeping the chill slow effect.
 - Reworked Void Walker's Water Blast into an immediate W-Blast-style area eruption around the caster, triggering 16 accelerating water blast waves and rising water sprays within a 512-unit radius.
@@ -19,6 +18,12 @@
 - Reworked Void Walker's Flame Wall into a wide 9-column ground-hugging wave of towering `FWVE` fire pillars that surges across the battlefield leaving burning wakes and embers.
 - Reworked Void Walker's Flame Stone to drop a giant burning meteor rock from the sky onto the target, erupting into flame pillars and molten rock shards on impact.
 - Reworked Void Walker's Dark Star into a giant bouncing dark star (`I_BPY`) that slams the ground with shockwaves on each bounce before exploding.
+- Enhanced Void Walker's Shredder visuals by spawning an attached scanline shredder sphere (`8P18`), star-crest barrier shatter bursts (`6P0K IJK`/`NLPM`), and rising star particles (`6P0K EFGH`) on dispelled targets.
+- Fixed missing sprite frames on Void Walker's Meteor Blast (and Meteor) and reworked Meteor Blast into a wide-radius CBM Astroman-style Kirby NES shooting-star shower around the caster (`8Q15` rotating stars, afterimage trails, `6Q0K` star-cloud explosions, and bouncing `6P0K` star bits).
+- Enhanced Void Walker's Sand Storm with MM10COM sandstorm visuals and audio (`CMSP` horizontal sand streaks, swirling desert dust clouds, and `misc/commandosandstorm`), sweeping a wide sandstorm curtain across the battlefield and attaching a personal sandstorm follower to hit targets.
+- Enhanced Void Walker's Blizzard with Blizzard Attack (`BLIZ ABC` snowflakes and map hail weather), MM4COS (`COSS B` blowing snow particles), and (Soviet) Frostbite (`6P09` cold mist & sparkles, `X_7A` falling hail chunks, and `X_8B` frost bursts), sweeping a wide blizzard across the arena and attaching a blizzard follower to chilled targets.
+- Reworked Void Walker's Corona to drop a giant blazing solar fireball (`PHAS JK` with `X_4D` halo) from the sky in front of the caster that stops above the ground and spins a full 360-degree circle spraying a continuous stream of solar fire (`VWCoronaFireJet`) and erupting fire pillars (`VWCoronaFirePillar`).
+- Reworked Void Walker's Final Claw into a Slash Claw-style close-range melee slash with a long wind-up (`VWFinalClawChargeFX` / `VWFinalClawGlintFX`) that deals guaranteed instant-kill damage on hit.
 
 ## 4.0.0-beta.261105
 

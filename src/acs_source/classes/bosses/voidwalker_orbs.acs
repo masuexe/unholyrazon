@@ -277,6 +277,8 @@ script "uh_VWShredderCast" (void) {
     if (p == owner || !PlayerInGame(p) || PlayerIsSpectator(p)) continue;
     int targettid = p + 1000;
     if (GetActorProperty(targettid, APROP_Health) <= 0) continue;
+    if (ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", p) == 6) continue;
+    if (CheckActorInventory(targettid, "IsADemoneye") > 0) continue;
 
     if (ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", owner, p)) continue;
 
@@ -297,9 +299,16 @@ script "uh_VWShredderCast" (void) {
     TakeActorInventory(targettid, "WaterShieldAmmo", 100);
     TakeActorInventory(targettid, "MirrorBusterReflector", 1);
 
+    int fxtid = UniqueTID();
+    if (SpawnForced("VWShredderTargetFX", GetActorX(targettid), GetActorY(targettid),
+                    GetActorZ(targettid) + 28.0, fxtid, GetActorAngle(targettid) >> 8)) {
+      SetActivator(fxtid);
+      SetPointer(AAPTR_TRACER, targettid);
+      Thing_ChangeTID(fxtid, 0);
+      SetActivator(ownertid);
+    }
+
     // Shredder dispels buffs; it never deals direct damage.
-
-
   }
 }
 

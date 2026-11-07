@@ -6,7 +6,6 @@
 
 ## 4.0.0-beta.261106
 
-- 在二阶段招式持续调优期间，暂时关闭正常对局中 Void Walker 的续命与二阶段转阶段。
 - Void Walker 的 Blast 改为锁定瞄准落点并原地连续爆炸三次，取代原本的可见弹丸；施放后转动视角不会改变爆炸位置。
 - 重做 Void Walker 的 Storm，改为发射浅蓝色旋风弹幕（`EVFL`）并在命中点升起多段伤害的旋转龙卷风柱，替换原先复用的 Bolt 落雷特效与音效，并保留命中减速效果。
 - 重做 Void Walker 的 Water Blast，改为以施法者为中心立即爆发 W-Blast 风格的 512 半径范围水柱喷发与 16 波持续加速的水爆冲击。
@@ -19,6 +18,12 @@
 - 重做 Void Walker 的 Flame Wall，参考重制版效果改为宽达 9 列、贴地席卷推进的高大烈焰火墙（`FWVE`），推进途中留下燃烧尾浪与漫天火星。
 - 重做 Void Walker 的 Flame Stone，还原《超级马力欧 RPG》中从天而降砸向目标的巨型燃烧火球/陨石，落地时引发震屏爆燃、火柱喷发与四溅熔岩碎块。
 - 重做 Void Walker 的 Dark Star，还原《超级马力欧 RPG》中抛出的巨型弹跳黑星（`I_BPY`），每次弹地均会触发震屏与范围冲击波，最终爆炸。
+- 优化 Void Walker 的 Shredder 视觉效果，在被驱散目标身上生成跟随目标的扫描切碎力场球（`8P18`）、星芒结界碎裂波纹（`6P0K IJK`/`NLPM`）以及向上飘散的星屑粒子（`6P0K EFGH`）。
+- 修复 Void Walker 的 Meteor Blast（及 Meteor）缺失贴图帧导致隐形的问题，并将 Meteor Blast 重做为类似 CBM Astroman 在自身周围大范围降下的《星之卡比 梦之泉物语》流星雨（`8Q15` 旋转大星与残影尾迹、`6Q0K` 星云爆裂以及弹跳飞溅的 `6P0K` 星屑粒子）。
+- 优化 Void Walker 的 Sand Storm 视觉与音效演出，引入地图 MM10COM 的沙尘暴特效与狂风音效（`CMSP` 高速飞掠沙粒、沙尘团与 `misc/commandosandstorm`），施放时向正前方战场掀起大范围沙暴风墙，并在受击敌人身上附加持续跟随的近身沙尘暴。
+- 优化 Void Walker 的 Blizzard 视觉与音效演出，融合 Blizzard Attack（`BLIZ ABC` 大雪花结晶与全图飘雪天气）、地图 MM4COS（`COSS B` 飞雪粒子）以及 (Soviet) Frostbite（`6P09` 翻滚寒雾与冰晶碎星、`X_7A` 坠落冰雹块及 `X_8B` 寒冰爆裂），施放时掀起全场立体暴风雪并在受击减速目标身边附加持续跟随的近身暴雪。
+- 重做 Void Walker 的 Corona，参考重制版效果改为在施法者前方从天而降一颗巨型日冕火球（`PHAS JK` 配合 `X_4D` 烈日外冕），下落至离地固定高度后停止并旋转 360 度向四周连续喷射烈焰洪流（`VWCoronaFireJet`）并掀起环形火柱（`VWCoronaFirePillar`）。
+- 重做 Void Walker 的 Final Claw，移除隐身突进，改为具有明显长前摇蓄力闪光演出（`VWFinalClawChargeFX` / `VWFinalClawGlintFX`）、类似 Slash Claw 的近战利爪挥砍，命中必定秒杀。
 
 ## 4.0.0-beta.261105
 
