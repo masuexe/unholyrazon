@@ -7,7 +7,7 @@
 ## 4.0.0-beta.261106
 
 - 可持续飞行的 Boss（紫/蓝/红 Destron、Higlur）以及 Mosquito Demoneye 现在会像 Misery 一样在危险坑上消耗悬浮耐力：悬停在坑上时耐力下降，耗尽后关闭飞行并掉落；离开坑后耐力恢复。不限制飞行高度。
-- Void Walker 的 Blast 改为锁定瞄准落点并原地连续爆炸三次，取代原本的可见弹丸；施放后转动视角不会改变爆炸位置。
+- Void Walker 的 Blast 改为锁定瞄准落点，并以该落点为中心在较小随机偏移范围内连续触发三次洛克人原版大爆炸（`ExplosionEffect2` / `MXP2`），取代原本的可见弹丸；施放后转动视角不会改变爆炸中心位置。
 - 重做 Void Walker 的 Storm，改为发射浅蓝色旋风弹幕（`EVFL`）并在命中点升起多段伤害的旋转龙卷风柱，替换原先复用的 Bolt 落雷特效与音效，并保留命中减速效果。
 - 重做 Void Walker 的 Water Blast，改为以施法者为中心立即爆发 W-Blast 风格的 512 半径范围水柱喷发与 16 波持续加速的水爆冲击。
 - 将 Void Walker 原先从敌人头顶连续三波坠落并分裂为四向碎晶的招式移至 Crystal，并将 Boulder 重做为类似 Astro Crush / Rain Flush 的大范围从天而降向前翻滚弹跳的落石雨。

@@ -35,8 +35,10 @@ actor VWBlastTracer : VWTargetTracer {
   }
 }
 
-// A stationary, server-owned three-hit burst: 25 damage every six tics.
-actor VWBlast : BasicExplosion {
+// A stationary, server-owned three-hit burst around the locked impact point:
+// each hit spawns at a small random offset using Mega Man's ExplosionEffect2 (MXP2).
+actor VWBlastHit : BasicExplosion {
+  Species "Culex"
   DamageType "VWBlast"
   Obituary "%o was struck by %k's Blast."
   States {
@@ -44,13 +46,20 @@ actor VWBlast : BasicExplosion {
     TNT1 A 0
     TNT1 A 0 A_PlaySound("MarioRPG/StarGunDone", 1)
     TNT1 A 0 A_Explode(25, 64, 0, 0, 32)
-    TNT1 A 6 A_SpawnItemEx("VWDarkStarExplosion")
-    TNT1 A 0 A_PlaySound("MarioRPG/StarGunDone", 1)
-    TNT1 A 0 A_Explode(25, 64, 0, 0, 32)
-    TNT1 A 6 A_SpawnItemEx("VWDarkStarExplosion")
-    TNT1 A 0 A_PlaySound("MarioRPG/StarGunDone", 1)
-    TNT1 A 0 A_Explode(25, 64, 0, 0, 32)
-    TNT1 A 1 A_SpawnItemEx("VWDarkStarExplosion")
+    TNT1 A 1 A_SpawnItemEx("ExplosionEffect2", 0, 0, 0, 0, 0, 0, 0, SXF_WEPFXCOLOR)
+    stop
+  }
+}
+
+actor VWBlast : BasicExplosion {
+  DamageType "VWBlast"
+  Obituary "%o was struck by %k's Blast."
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 6 A_SpawnItemEx("VWBlastHit", random(-32, 32), random(-32, 32), random(-8, 24), 0, 0, 0, 0, SXF_TRANSFERPOINTERS | SXF_NOCHECKPOSITION)
+    TNT1 A 6 A_SpawnItemEx("VWBlastHit", random(-32, 32), random(-32, 32), random(-8, 24), 0, 0, 0, 0, SXF_TRANSFERPOINTERS | SXF_NOCHECKPOSITION)
+    TNT1 A 1 A_SpawnItemEx("VWBlastHit", random(-32, 32), random(-32, 32), random(-8, 24), 0, 0, 0, 0, SXF_TRANSFERPOINTERS | SXF_NOCHECKPOSITION)
     stop
   }
 }
