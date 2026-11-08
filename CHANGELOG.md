@@ -27,6 +27,7 @@
 - Reworked Void Walker's Final Claw into a Slash Claw-style close-range melee slash with a long wind-up (`VWFinalClawChargeFX` / `VWFinalClawGlintFX`) that deals guaranteed instant-kill damage on hit.
 - Reworked Void Walker's Petal Blast into a 360-degree AoE petal storm around the caster with MMCTF26 (Seasonal Shrines) cherry-blossom petals (`CPE1` in pink, purple, and yellow) and falling leaves (`WLE1`) using `Leaf1` (`A_LeafThrust` / `A_LeafCheck`), turning nearby enemies into Mushrooms (`VWPetalBlastAoEHit`), and updated the Mushroom morph (`PetalMushroomPlayer`) to display the updated `IR00` mushroom sprite (`+NOSKIN`) while completely immobilizing morphed targets.
 - Added Super Mario RPG Remake Culex 3D crystal death buffs in Void Walker Phase 2: destroying Wind Orb triggers `Nimble Force` (`VWNimbleForceSpeed` 1.3x speed boost + 60 ammo), Earth Orb triggers `Valor Force` (`VWValorForceProtection` 0.75x damage taken on both Void Walker and remaining Orbs), Water Orb triggers `Magic Force` (`VWMagicForceArmor_P` +1000 Armor on Void Walker and +1000 HP restored to remaining Orbs), and Fire Orb triggers `Vigor Force` (`VWVigorForceDamage` 1.3x damage dealt); Void Walker's elemental Orbs now also play a pain sound (`misc/monkeybutt`) when taking damage.
+- Updated Void Walker Phase 2 skill banner names and obituaries to match the *Super Mario RPG* Switch Remake localization (`Drain` → `Hot Shot`, `Mega Drain` → `Fire Saber`, `Corona` → `Flare`, `Light Beam` → `Light Bubble`, `Static E!` → `Static Electricity`).
 
 ## 4.0.0-beta.261105
 
