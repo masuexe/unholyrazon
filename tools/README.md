@@ -896,3 +896,19 @@ through orbs and hitting targets behind them, hidden-orb protection, active/inac
 revocation, fallback firing, remote weapon ownership, fresh morphs, stale orb
 death and normal cleanup/unmorphing. Logs remain in
 `out/voidwalker-orbs-test/`; the addon is never packed into the release PK3.
+
+## Void Walker phase-two voxels
+
+`gen_voidwalker_voxels.py /path/to/mm8bdm-v6c.pk3` regenerates the eight
+`ASTV` KVX frames, `TEXTURES.voidwalker` fallback sprites, and the OpenGL
+model/skin binding. It requires Pillow.
+The source art is the base game's Astro Man skin; source PNG palette indices
+are local and must be matched by exact RGB to the game palette, including the
+192/198 dye slots. Opaque black uses index 247, because index 0 is transparent
+in translated GL textures. `MODELDEF.voidwalker` binds an ordinary opaque PNG
+palette atlas to the KVX geometry in OpenGL; this bypasses the built-in voxel
+atlas row/column transpose under translation. The original Void Walker dye
+remains active. The model faces KVX +X. `VOXELDEF` uses `AngleOffset = 270`
+to cancel Zandronum's implicit 90-degree rotation and `OverridePalette` to keep
+player translations exact. Each frame retains its original sprite ground offset.
+Run `python3 tools/test_voidwalker_voxels.py` after changing the encoder.

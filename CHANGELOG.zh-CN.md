@@ -28,6 +28,7 @@
 - 重做 Void Walker 的 Petal Blast 为以自身为中心的 360 度大范围 AoE 花吹雪风暴，引入地图 MMCTF26（Seasonal Shrines）的三色樱花瓣（粉、紫、黄 `CPE1`）与秋叶（`WLE1`）落叶特效（基于 `Leaf1` 的 `A_LeafThrust` / `A_LeafCheck` 随风摇曳飘落），将范围内的敌人变为蘑菇（`VWPetalBlastAoEHit`）；同时修复变蘑菇状态（`PetalMushroomPlayer`）的贴图显示（更新 `IR00` 贴图并添加 `+NOSKIN`）并使变蘑菇期间无法移动。
 - 新增《超级马力欧 RPG 重制版》Culex 3D 二阶段四色水晶被击破时的临终强化机制：风球被击破时触发 `Nimble Force`（本体获得 `VWNimbleForceSpeed` 1.3 倍移速加成并回复 60 点弹药），地球被击破时触发 `Valor Force`（本体与剩余水晶均获得 `VWValorForceProtection` 0.75 倍受伤减免），水球被击破时触发 `Magic Force`（本体获得 `VWMagicForceArmor_P` 1000 点护甲、剩余存活水晶各回复 1000 点生命值），火球被击破时触发 `Vigor Force`（本体与剩余水晶攻击获得 `VWVigorForceDamage` 1.3 倍伤害加成）；同时为四色水晶增加受击时的受伤音效（`misc/monkeybutt`）。
 - 将 Void Walker 二阶段的技能播报横幅与击杀讣告名称更新为《超级马力欧 RPG 重制版》的官方译名（`Drain` → `Hot Shot`、`Mega Drain` → `Fire Saber`、`Corona` → `Flare`、`Light Beam` → `Light Bubble`、`Static E!` → `Static Electricity`）。
+- Void Walker 二阶段改用致敬 Culex 3D 的立体体素外观，统一朝向、配色和动画对齐；保留 Void Walker 原有染色，黑色区域正常显示为不透明；关闭 3D 渲染时保留原有精灵外观。
 
 ## 4.0.0-beta.261105
 
