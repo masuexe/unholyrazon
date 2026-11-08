@@ -477,6 +477,27 @@ script "uh_VWCast" (int spell) {
 
   // Rage casts use bounded pulses, checking the exact morph before
   // each pulse. Gameplay effects are only applied to eligible enemies.
+  if (spell == 15) { // Petal Blast: 360-degree AoE petal storm around the caster that turns nearby enemies into Mushrooms.
+    tid = UH_VWSpawn("VWPetalBlastStormSpawner", boss, GetActorX(boss), GetActorY(boss), GetActorZ(boss) + 28.0, yaw);
+    if (tid) {
+      SetActivator(tid);
+      SetPointer(AAPTR_TRACER, boss);
+      SetActivator(boss);
+    }
+    for (i = 0; i < 3; i++) {
+      if (!UH_VWPhaseAlive(boss, generation)) terminate;
+      for (p = 0; p < MAX_PLAYERS; p++) {
+        if (!UH_VWTargetableEnemy(boss, p, 640.0, true)) continue;
+        int pvt = p + 1000;
+        if (CheckActorClass(pvt, "PetalMushroomPlayer")) continue;
+        SetActivator(boss);
+        UH_VWSpawn("VWPetalBlastAoEHit", boss, GetActorX(pvt), GetActorY(pvt), GetActorZ(pvt) + 16.0, yaw);
+      }
+      if (i < 2) Delay(10);
+    }
+    terminate;
+  }
+
   if (spell == 3) {
     tid = UH_VWSpawn("VWSandStormField", boss, GetActorX(boss), GetActorY(boss), GetActorZ(boss), yaw);
     if (tid) {

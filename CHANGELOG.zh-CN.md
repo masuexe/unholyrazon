@@ -25,7 +25,8 @@
 - 优化 Void Walker 的 Blizzard 视觉与音效演出，融合 Blizzard Attack（`BLIZ ABC` 大雪花结晶与全图飘雪天气）、地图 MM4COS（`COSS B` 飞雪粒子）以及 (Soviet) Frostbite（`6P09` 翻滚寒雾与冰晶碎星、`X_7A` 坠落冰雹块及 `X_8B` 寒冰爆裂），施放时掀起全场立体暴风雪并在受击减速目标身边附加持续跟随的近身暴雪。
 - 重做 Void Walker 的 Corona，参考重制版效果改为在施法者前方从天而降一颗巨型日冕火球（`PHAS JK` 配合 `X_4D` 烈日外冕），下落至离地固定高度后停止并旋转 360 度向四周连续喷射烈焰洪流（`VWCoronaFireJet`）并掀起环形火柱（`VWCoronaFirePillar`）。
 - 重做 Void Walker 的 Final Claw，移除隐身突进，改为具有明显长前摇蓄力闪光演出（`VWFinalClawChargeFX` / `VWFinalClawGlintFX`）、类似 Slash Claw 的近战利爪挥砍，命中必定秒杀。
-- 优化 Void Walker 的 Petal Blast 视觉与弹幕演出，引入地图 MMCTF26（Seasonal Shrines）的三色樱花瓣（粉、紫、黄 `CPE1`）与秋叶（`WLE1`）落叶特效（基于 `Leaf1` 的 `A_LeafThrust` / `A_LeafCheck` 随风摇曳飘落），施放时射出三波上下摇曳的花瓣风暴并在前方战场降下漫天花叶雨；同时修复变蘑菇状态（`PetalMushroomPlayer`）的贴图显示（更新 `IR00` 贴图并添加 `+NOSKIN`）并使变蘑菇期间无法移动。
+- 重做 Void Walker 的 Petal Blast 为以自身为中心的 360 度大范围 AoE 花吹雪风暴，引入地图 MMCTF26（Seasonal Shrines）的三色樱花瓣（粉、紫、黄 `CPE1`）与秋叶（`WLE1`）落叶特效（基于 `Leaf1` 的 `A_LeafThrust` / `A_LeafCheck` 随风摇曳飘落），将范围内的敌人变为蘑菇（`VWPetalBlastAoEHit`）；同时修复变蘑菇状态（`PetalMushroomPlayer`）的贴图显示（更新 `IR00` 贴图并添加 `+NOSKIN`）并使变蘑菇期间无法移动。
+- 新增《超级马力欧 RPG 重制版》Culex 3D 二阶段四色水晶被击破时的临终强化机制：风球被击破时触发 `Nimble Force`（本体获得 `VWNimbleForceSpeed` 1.3 倍移速加成并回复 60 点弹药），地球被击破时触发 `Valor Force`（本体与剩余水晶均获得 `VWValorForceProtection` 0.75 倍受伤减免），水球被击破时触发 `Magic Force`（本体获得 `VWMagicForceArmor_P` 1000 点护甲、剩余存活水晶各回复 1000 点生命值），火球被击破时触发 `Vigor Force`（本体与剩余水晶攻击获得 `VWVigorForceDamage` 1.3 倍伤害加成）；同时为四色水晶增加受击时的受伤音效（`misc/monkeybutt`）。
 
 ## 4.0.0-beta.261105
 

@@ -107,7 +107,11 @@ script "uh_VWOrbValid" (void) {
     terminate;
   }
 
-  if (hp != GetUserVariable(hitbox, "user_vwLastSyncedHP")) {
+  int prevhp = GetUserVariable(hitbox, "user_vwLastSyncedHP");
+  if (hp != prevhp) {
+    if (hp > 0 && hp < prevhp) {
+      PlaySound(hitbox, "misc/monkeybutt", CHAN_VOICE, 1.0, false, ATTN_NORM);
+    }
     SetUserVariable(hitbox, "user_vwLastSyncedHP", hp);
     SetInventory(StrParam(s:"VWOrbHP", i:index), hp);
     SetInventory("VWOrbMaxHP", GetUserVariable(hitbox, "user_vwMaxHealth"));
@@ -158,6 +162,62 @@ script "uh_VWOrbDestroyed" (void) {
   }
   TakeInventory(uh_vworbdata[index][0], 0x7fffffff);
 
+  // SMRPG Remake Culex 3D crystal death buffs (Phase 2 only):
+  // Wind  (0) -> Nimble Force (Speed Up)
+  // Earth (1) -> Valor Force  (Defense Up / 0.75x damage taken on Boss & remaining Orbs)
+  // Water (2) -> Magic Force  (+1000 Armor on Boss & +1000 HP shield on remaining Orbs)
+  // Fire  (3) -> Vigor Force  (Attack Up / 1.3x damage dealt on Boss & remaining Orbs)
+  if (CheckInventory("VoidWalkerPhase2_F") > 0) {
+    int ownerp = PlayerNumber();
+    int ownertid = ActivatorTID();
+    if (ownertid == 0) ownertid = ownerp + 1000;
+    str burstfx = "VWForceBuffBurstGreen";
+
+    if (index == 0) {
+      GiveInventory("VWNimbleForceSpeed", 1);
+      GiveInventory("UnholyBossAmmo200", 60);
+      ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5438); // UH_SKILL_VW_NIMBLEFORCE
+      burstfx = "VWForceBuffBurstGreen";
+    } else if (index == 1) {
+      GiveInventory("VWValorForceProtection", 1);
+      ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5439); // UH_SKILL_VW_VALORFORCE
+      burstfx = "VWForceBuffBurstYellow";
+    } else if (index == 2) {
+      GiveInventory("VWMagicForceArmor_P", 1);
+      ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5440); // UH_SKILL_VW_MAGICFORCE
+      burstfx = "VWForceBuffBurstBlue";
+      if (ownerp >= 0 && ownerp < MAX_PLAYERS) {
+        for (int k = 0; k < UH_VW_ORB_COUNT; k++) {
+          if (k == index || !CheckInventory(uh_vworbdata[k][0])) continue;
+          int hbox = uh_vw_hitboxes[ownerp][k];
+          if (hbox > 0 && GetActorProperty(hbox, APROP_Health) > 0) {
+            int maxhp = GetUserVariable(hbox, "user_vwMaxHealth");
+            int curhp = GetActorProperty(hbox, APROP_Health) + 1000;
+            if (curhp > maxhp) curhp = maxhp;
+            SetActorProperty(hbox, APROP_Health, curhp);
+            SetUserVariable(hbox, "user_vwLastSyncedHP", curhp);
+            SetInventory(StrParam(s:"VWOrbHP", i:k), curhp);
+          }
+        }
+      }
+    } else if (index == 3) {
+      GiveInventory("VWVigorForceDamage", 1);
+      ACS_NamedExecuteAlways("uh_AnnounceBossSkill", 0, 5441); // UH_SKILL_VW_VIGORFORCE
+      burstfx = "VWForceBuffBurstRed";
+    }
+
+    SpawnForced(burstfx, GetActorX(ownertid), GetActorY(ownertid), GetActorZ(ownertid) + 24.0, 0, 0);
+    if (ownerp >= 0 && ownerp < MAX_PLAYERS) {
+      for (int m = 0; m < UH_VW_ORB_COUNT; m++) {
+        if (m == index || !CheckInventory(uh_vworbdata[m][0])) continue;
+        int remorb = uh_vw_orbs[ownerp][m];
+        if (remorb > 0) {
+          SpawnForced(burstfx, GetActorX(remorb), GetActorY(remorb), GetActorZ(remorb), 0, 0);
+        }
+      }
+    }
+  }
+
   str next = "";
   for (int i = 0; i < UH_VW_ORB_COUNT; i++) {
     if (CheckInventory(uh_vworbdata[i][0])) {
@@ -191,6 +251,9 @@ script "uh_VWOrbsReset" (void) {
   }
   TakeInventory("VoidWalkerPhase2_F", 0x7fffffff);
   TakeInventory("VWPhase2TransitionFlag", 0x7fffffff);
+  TakeInventory("VWNimbleForceSpeed", 0x7fffffff);
+  TakeInventory("VWValorForceProtection", 0x7fffffff);
+  TakeInventory("VWVigorForceDamage", 0x7fffffff);
   TakeInventory("VoidWalker_W5", 0x7fffffff);
   TakeInventory("VWOrbMaxHP", 0x7fffffff);
   for (int i = 0; i < UH_VW_ORB_COUNT; i++) {
@@ -331,13 +394,23 @@ script "uh_VWOrbDamage" (int evt, int damage, int damageType) EVENT {
     terminate;
   }
   int owner = PlayerNumber();
-  if (source < 0) terminate;
-  bool friendly = owner == source;
-  if (GetCVar("lastmanstanding") == 1)
-    friendly |= ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", owner, source);
-  else if (IsTeamGame)
-    friendly |= GetPlayerInfo(owner, PLAYERINFO_TEAM) == GetPlayerInfo(source, PLAYERINFO_TEAM);
-  else if (GameType() == GAME_NET_COOPERATIVE)
-    friendly = true;
-  if (friendly) SetResultValue(0);
+  if (source >= 0) {
+    bool friendly = owner == source;
+    if (GetCVar("lastmanstanding") == 1)
+      friendly |= ACS_NamedExecuteWithResult("uh_AreGameplayTeammates", owner, source);
+    else if (IsTeamGame)
+      friendly |= GetPlayerInfo(owner, PLAYERINFO_TEAM) == GetPlayerInfo(source, PLAYERINFO_TEAM);
+    else if (GameType() == GAME_NET_COOPERATIVE)
+      friendly = true;
+    if (friendly) {
+      SetResultValue(0);
+      terminate;
+    }
+  }
+  // Valor Force (Earth Crystal 3D death buff): 0.75x incoming damage on remaining Orbs
+  if (damage > 0 && CheckInventory("VWValorForceProtection") > 0) {
+    int reduced = (damage * 3) / 4;
+    if (reduced < 1) reduced = 1;
+    SetResultValue(reduced);
+  }
 }
