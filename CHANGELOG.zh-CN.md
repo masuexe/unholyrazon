@@ -8,12 +8,12 @@
 
 - 修复旁观时剩余敌我人数与跟随玩家提示重叠的问题。
 - 可持续飞行的 Boss（紫/蓝/红 Destron、Higlur）以及 Mosquito Demoneye 现在会像 Misery 一样在危险坑上消耗悬浮耐力：悬停在坑上时耐力下降，耗尽后关闭飞行并掉落；离开坑后耐力恢复。不限制飞行高度。
-- Void Walker 的 Blast 改为锁定瞄准落点，并以该落点为中心在较小随机偏移范围内连续触发三次洛克人原版大爆炸（`ExplosionEffect2` / `MXP2`），取代原本的可见弹丸；施放后转动视角不会改变爆炸中心位置。
+- Void Walker 的 Blast 改为锁定瞄准落点，播放一次 `battle_012.wav` 音效，并以该落点为中心在较小随机偏移范围内连续触发三次洛克人原版大爆炸（`ExplosionEffect2` / `MXP2`），取代原本的可见弹丸；施放后转动视角不会改变爆炸中心位置。
 - 重做 Void Walker 的 Storm，改为发射浅蓝色旋风弹幕（`EVFL`）并在命中点升起多段伤害的旋转龙卷风柱，替换原先复用的 Bolt 落雷特效与音效，并保留命中减速效果。
 - 重做 Void Walker 的 Water Blast，改为以施法者为中心立即爆发 W-Blast 风格的 512 半径范围水柱喷发与 16 波持续加速的水爆冲击。
-- 将 Void Walker 原先从敌人头顶连续三波坠落并分裂为四向碎晶的招式移至 Crystal，并将 Boulder 重做为类似 Astro Crush / Rain Flush 的大范围从天而降向前翻滚弹跳的落石雨。
+- 将 Void Walker 原先从敌人头顶连续三波坠落并分裂为四向碎晶的招式移至 Crystal（施放生成时不播放音效，水晶落地或命中玩家时播放 `smrpg_enemy_crystal.wav`），并将 Boulder 重做为类似 Astro Crush / Rain Flush 的大范围从天而降向前翻滚弹跳的落石雨。
 - 重做 Void Walker 的 Solidify，引入 Cold Man 的 `CLDW` 贴图：以地面 `CLDW EFG` 冰刺圈表示作用范围，并在范围内敌人身上直接生成 `CLDW JKL ABCD` 冰封柱造成持续伤害与冰碎爆发。
-- 重做 Void Walker 的 Ice Rock，改为随机锁定最近的一名敌人，在其头顶缓慢往复摆动并逐渐下落，最终砸落到头顶时才造成伤害并分裂为四向碎晶。
+- 重做 Void Walker 的 Ice Rock，改为随机锁定最近的一名敌人，释放生成时播放 `smrpg_enemy_crystalcrusher.wav` 并在其头顶缓慢往复摆动下落，最终砸中头顶时播放 `smrpg_enemy_crystal.wav` 造成伤害并分裂为四向碎晶。
 - 优化 Void Walker 的 Drain 火焰弹视觉特效，加入高亮熔岩核心、双螺旋火星尾迹、飘散火苗粒子以及命中时的环形烈焰爆发。
 - 重做 Void Walker 的 Mega Drain，还原《超级马力欧 RPG》中先向后小幅度扫射蓄力前摇、随后转身向前进行大范围烈焰光束扫射的演出与判定。
 - 重做 Void Walker 的 Flame，还原《超级马力欧 RPG》中先将火球抛向空中短暂悬停蓄势、随后高速飞向目标并在命中处燃起多层烈焰火柱的攻击方式。

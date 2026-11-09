@@ -8,12 +8,12 @@
 
 - Fixed the remaining enemy/ally counts overlapping the follow-player text while spectating.
 - Permanent-flight bosses (Purple/Blue/Red Destron, Higlur) and Mosquito Demoneye now drain hover stamina over damaging pits like Misery: stamina depletes while hovering above a pit, flight cuts out when it runs out so they fall in, and stamina refills after leaving the pit. Unlimited flight height is unchanged.
-- Void Walker's Blast now locks the aimed impact point and triggers three Mega Man explosions (`ExplosionEffect2` / `MXP2`) at small random offsets around that point, instead of firing a visible projectile. Turning after casting does not move the explosions.
+- Void Walker's Blast now locks the aimed impact point, plays `battle_012.wav` once, and triggers three Mega Man explosions (`ExplosionEffect2` / `MXP2`) at small random offsets around that point, instead of firing a visible projectile. Turning after casting does not move the explosions.
 - Reworked Void Walker's Storm into a light-blue whirlwind projectile (`EVFL`) that erupts into a multi-hit spinning tornado column on impact, replacing the placeholder Bolt lightning visuals and audio while keeping the chill slow effect.
 - Reworked Void Walker's Water Blast into an immediate W-Blast-style area eruption around the caster, triggering 16 accelerating water blast waves and rising water sprays within a 512-unit radius.
-- Moved Void Walker's 3-wave overhead crystal drop and 4-shard shatter to Crystal, and reworked Boulder into a wide-area rockslide of falling boulders that bounce and roll forward across the field.
+- Moved Void Walker's 3-wave overhead crystal drop and 4-shard shatter to Crystal (playing `smrpg_enemy_crystal.wav` on crystal impact rather than when spawning), and reworked Boulder into a wide-area rockslide of falling boulders that bounce and roll forward across the field.
 - Reworked Void Walker's Solidify using Cold Man's `CLDW` sprites: marks the ground area of effect with `CLDW EFG` ice spikes and encases enemies inside the zone in `CLDW JKL ABCD` ice pillars that deal continuous damage before shattering.
-- Reworked Void Walker's Ice Rock to randomly target one of the closest enemies, slowly oscillating back and forth above their head while descending before crashing down onto their head to deal damage and shatter into ice shards.
+- Reworked Void Walker's Ice Rock to randomly target one of the closest enemies, playing `smrpg_enemy_crystalcrusher.wav` while slowly oscillating back and forth above their head as it descends, and playing `smrpg_enemy_crystal.wav` when crashing down onto their head to deal damage and shatter into ice shards.
 - Enhanced Void Walker's Drain fireball visuals with an additive glowing core, double-helix ember trails, drifting fire sparks, and a radial flame burst on impact.
 - Reworked Void Walker's Mega Drain to perform a short backward wind-up sweep before turning around for a wide forward flame-beam sweep, matching Super Mario RPG.
 - Reworked Void Walker's Flame to toss a fireball upward that hovers in mid-air before launching at the target and erupting into burning flame pillars on impact.
