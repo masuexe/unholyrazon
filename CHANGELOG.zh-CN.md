@@ -4,32 +4,11 @@
 
 ---
 
-## 4.0.0-beta.261106
+## 4.0.0-beta.261109
 
 - 修复旁观时剩余敌我人数与跟随玩家提示重叠的问题。
 - 可持续飞行的 Boss（紫/蓝/红 Destron、Higlur）以及 Mosquito Demoneye 现在会像 Misery 一样在危险坑上消耗悬浮耐力：悬停在坑上时耐力下降，耗尽后关闭飞行并掉落；离开坑后耐力恢复。不限制飞行高度。
-- Void Walker 的 Blast 改为锁定瞄准落点，播放一次 `battle_012.wav` 音效，并以该落点为中心在较小随机偏移范围内连续触发三次洛克人原版大爆炸（`ExplosionEffect2` / `MXP2`），取代原本的可见弹丸；施放后转动视角不会改变爆炸中心位置。
-- 重做 Void Walker 的 Storm，改为发射浅蓝色旋风弹幕（`EVFL`）并在命中点升起多段伤害的旋转龙卷风柱，替换原先复用的 Bolt 落雷特效与音效，并保留命中减速效果。
-- 重做 Void Walker 的 Water Blast，改为以施法者为中心立即爆发 W-Blast 风格的 512 半径范围水柱喷发与 16 波持续加速的水爆冲击。
-- 将 Void Walker 原先从敌人头顶连续三波坠落并分裂为四向碎晶的招式移至 Crystal（施放生成时不播放音效，水晶落地或命中玩家时播放 `smrpg_enemy_crystal.wav`），并将 Boulder 重做为类似 Astro Crush / Rain Flush 的大范围从天而降向前翻滚弹跳的落石雨。
-- 重做 Void Walker 的 Solidify，引入 Cold Man 的 `CLDW` 贴图：以地面 `CLDW EFG` 冰刺圈表示作用范围，并在范围内敌人身上直接生成 `CLDW JKL ABCD` 冰封柱造成持续伤害与冰碎爆发。
-- 重做 Void Walker 的 Ice Rock，改为随机锁定最近的一名敌人，释放生成时播放 `smrpg_enemy_crystalcrusher.wav` 并在其头顶缓慢往复摆动下落，最终砸中头顶时播放 `smrpg_enemy_crystal.wav` 造成伤害并分裂为四向碎晶。
-- 优化 Void Walker 的 Drain 火焰弹视觉特效，加入高亮熔岩核心、双螺旋火星尾迹、飘散火苗粒子以及命中时的环形烈焰爆发。
-- 重做 Void Walker 的 Mega Drain，还原《超级马力欧 RPG》中先向后小幅度扫射蓄力前摇、随后转身向前进行大范围烈焰光束扫射的演出与判定。
-- 重做 Void Walker 的 Flame，还原《超级马力欧 RPG》中先将火球抛向空中短暂悬停蓄势、随后高速飞向目标并在命中处燃起多层烈焰火柱的攻击方式。
-- 重做 Void Walker 的 Flame Wall，参考重制版效果改为宽达 9 列、贴地席卷推进的高大烈焰火墙（`FWVE`），推进途中留下燃烧尾浪与漫天火星，并播放 `battle_026.wav` 音效。
-- 重做 Void Walker 的 Flame Stone，还原《超级马力欧 RPG》中从天而降砸向目标的巨型燃烧火球/陨石，落地时引发震屏爆燃、火柱喷发与四溅熔岩碎块。
-- 重做 Void Walker 的 Dark Star，还原《超级马力欧 RPG》中抛出的巨型弹跳黑星（`I_BPY`），每次弹地均会触发震屏与范围冲击波，最终爆炸。
-- 优化 Void Walker 的 Shredder 视觉效果，在被驱散目标身上生成跟随目标的扫描切碎力场球（`8P18`）、星芒结界碎裂波纹（`6P0K IJK`/`NLPM`）以及向上飘散的星屑粒子（`6P0K EFGH`）。
-- 修复 Void Walker 的 Meteor Blast（及 Meteor）缺失贴图帧导致隐形的问题，并将 Meteor Blast 重做为类似 CBM Astroman 在自身周围大范围降下的《星之卡比 梦之泉物语》流星雨（`8Q15` 旋转大星与残影尾迹、`6Q0K` 星云爆裂以及弹跳飞溅的 `6P0K` 星屑粒子）。
-- 优化 Void Walker 的 Sand Storm 视觉与音效演出，引入地图 MM10COM 的沙尘暴特效与狂风音效（`CMSP` 高速飞掠沙粒、沙尘团与 `misc/commandosandstorm`），施放时向正前方战场掀起大范围沙暴风墙，并在受击敌人身上附加持续跟随的近身沙尘暴。
-- 优化 Void Walker 的 Blizzard 视觉与音效演出，融合 Blizzard Attack（`BLIZ ABC` 大雪花结晶与全图飘雪天气）、地图 MM4COS（`COSS B` 飞雪粒子）以及 (Soviet) Frostbite（`6P09` 翻滚寒雾与冰晶碎星、`X_7A` 坠落冰雹块及 `X_8B` 寒冰爆裂），施放时掀起全场立体暴风雪并在受击减速目标身边附加持续跟随的近身暴雪。
-- 重做 Void Walker 的 Corona，参考重制版效果改为在施法者前方从天而降一颗巨型日冕火球（`PHAS JK` 配合 `X_4D` 烈日外冕），下落至离地固定高度后停止并旋转 360 度向四周连续喷射烈焰洪流（`VWCoronaFireJet`）并掀起环形火柱（`VWCoronaFirePillar`）。
-- 重做 Void Walker 的 Final Claw，移除隐身突进，改为具有明显长前摇蓄力闪光演出（`VWFinalClawChargeFX` / `VWFinalClawGlintFX`）、类似 Slash Claw 的近战利爪挥砍，命中必定秒杀。
-- 重做 Void Walker 的 Petal Blast 为以自身为中心的 360 度大范围 AoE 花吹雪风暴，引入地图 MMCTF26（Seasonal Shrines）的三色樱花瓣（粉、紫、黄 `CPE1`）与秋叶（`WLE1`）落叶特效（基于 `Leaf1` 的 `A_LeafThrust` / `A_LeafCheck` 随风摇曳飘落），将范围内的敌人变为蘑菇（`VWPetalBlastAoEHit`）；同时修复变蘑菇状态（`PetalMushroomPlayer`）的贴图显示（更新 `IR00` 贴图并添加 `+NOSKIN`）并使变蘑菇期间无法移动。
-- 新增《超级马力欧 RPG 重制版》Culex 3D 二阶段四色水晶被击破时的临终强化机制：风球被击破时触发 `Nimble Force`（本体获得 `VWNimbleForceSpeed` 1.3 倍移速加成并回复 60 点弹药），地球被击破时触发 `Valor Force`（本体与剩余水晶均获得 `VWValorForceProtection` 0.75 倍受伤减免），水球被击破时触发 `Magic Force`（本体获得 `VWMagicForceArmor_P` 1000 点护甲、剩余存活水晶各回复 1000 点生命值），火球被击破时触发 `Vigor Force`（本体与剩余水晶攻击获得 `VWVigorForceDamage` 1.3 倍伤害加成）；同时为四色水晶增加受击时的受伤音效（`misc/monkeybutt`）。
-- 将 Void Walker 二阶段的技能播报横幅与击杀讣告名称更新为《超级马力欧 RPG 重制版》的官方译名（`Drain` → `Hot Shot`、`Mega Drain` → `Fire Saber`、`Corona` → `Flare`、`Light Beam` → `Light Bubble`、`Static E!` → `Static Electricity`）。
-- Void Walker 二阶段改用致敬 Culex 3D 的立体体素外观，统一朝向、配色和动画对齐；保留 Void Walker 原有染色，黑色区域正常显示为不透明；关闭 3D 渲染时保留原有精灵外观。
+- 全面重做与优化 Void Walker 二阶段（致敬《超级马力欧 RPG》及 Switch 重制版 Culex 3D）：二阶段本体切换为 3D 立体体素外观，招式播报与击杀提示更新为重制版译名（`Hot Shot`、`Fire Saber`、`Flare`、`Light Bubble`、`Static Electricity`），新增四色水晶被击破时的临终强化机制（`Nimble Force`、`Valor Force`、`Magic Force`、`Vigor Force`）与水晶受击音效，并全面重做及优化了二阶段各招式（`Blast`、`Boulder`、`Storm`、`Water Blast`、`Sand Storm`、`Crystal`、`Ice Rock`、`Solidify`、`Blizzard`、`Petal Blast` 与蘑菇形态、`Hot Shot`、`Fire Saber`、`Flame`、`Flame Wall`、`Flare`、`Flame Stone`、`Dark Star`、`Shredder`、`Meteor Blast`、`Final Claw`）的攻击机制、视觉特效与音效。
 
 ## 4.0.0-beta.261105
 
