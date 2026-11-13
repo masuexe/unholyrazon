@@ -2541,6 +2541,7 @@ actor MagmaCannonSplitFX : BasicGraphicEffect {
 const int RAZINGRAY_RANGE = 48;
 
 // Somewhat shamelessly "borrowed" from Pegg's Utsuho concept, look I really love the laser
+// Single moving ray per shot (up to RAZINGRAY_RANGE * 10 = 480 steps of 10 units); keeps VWProjectile + custom Obituary (no +SERVERSIDEONLY).
 actor RazingRayPinpoint : VWProjectile {
   Translation "192:192=174:174", "198:198=176:176", "4:4=229:229", "208:208=229:229", "0:0=175:175"
   DamageType "RazingRay"
@@ -2556,14 +2557,16 @@ actor RazingRayPinpoint : VWProjectile {
   Damage (0)
   ReactionTime 25
   Scale 1.0
+  var int user_steps;
   States {
    Spawn:
-    X_3C A 0
-    X_3C A 0 A_SetPitch(pitch + 0.1)
-    X_3C A 0 A_JumpIf(pitch > RAZINGRAY_RANGE, "Death2")
-    X_3C A 0 A_SpawnItemEx("RazingRayPinpoint", 0, 0, 0, velx, vely, velz, 0, 553)
-    X_3C A 1 A_Stop
-    stop
+    TNT1 A 0
+   Step:
+    TNT1 A 0 A_SetUserVar("user_steps", user_steps + 1)
+    TNT1 A 0 A_JumpIf(user_steps > RAZINGRAY_RANGE * 10, "Death2")
+    TNT1 A 0 A_SpawnItemEx("RazingRayPinpointFX", 0, 0, 0, 0, 0, 0, 0, 33)
+    TNT1 A 1
+    loop
    Death:
     TNT1 A 5 A_SetScale(1.5)
     6PMS L 0 A_PlaySoundEx("weapon/electricshock", "Voice")
@@ -2572,6 +2575,20 @@ actor RazingRayPinpoint : VWProjectile {
     stop
    Death2:
     TNT1 A 0
+    stop
+  }
+}
+
+actor RazingRayPinpointFX {
+  +CLIENTSIDEONLY
+  +NOINTERACTION
+  +NOGRAVITY
+  +FORCEXYBILLBOARD
+  -SOLID
+  Scale 1.0
+  States {
+   Spawn:
+    X_3C A 1
     stop
   }
 }

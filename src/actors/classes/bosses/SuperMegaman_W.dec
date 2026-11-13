@@ -318,11 +318,14 @@ actor SuperMegaFlightBoosterSmoke : BasicProjectile {
 }
 
 // 545 = SXF_TRANSFERTRANSLATION|SXF_NOCHECKPOSITION|SXF_TRANSFERPITCH
+// Speed 1 + NOCLIP/THRUACTORS carries aim vector in velx/vely/velz on clients immediately via SpawnMissileExact.
 actor SuperMegaEndlessBeamSpawn : BasicProjectile {
   Translation "248:248=160:160", "227:227=66:66", "183:183=202:202"
   Obituary "Thanks to Endless Beam Launcher, %o finally realized they shouldn't challenge \cnSuper Megaman\c- (%k) at the expense of %p horse!"
   DamageType "EndlessBeamLauncher"
   +THRUGHOST
+  +THRUACTORS
+  +NOCLIP
   +BRIGHT
   +DONTBLAST
   +FORCEXYBILLBOARD
@@ -330,7 +333,7 @@ actor SuperMegaEndlessBeamSpawn : BasicProjectile {
   Damage (0)
   Radius 8
   Height 8
-  Speed 0
+  Speed 1
   RenderStyle "Add"
   Alpha 0.05
   States {
@@ -339,8 +342,8 @@ actor SuperMegaEndlessBeamSpawn : BasicProjectile {
     S_UN M 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", 2, 0)
     S_UN M 0 A_PlaySoundEx("misc/sunstarbeamloop", "SoundSlot6")
     S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeamWallHit", 0, 0, 0, 1000 * cos(pitch), 0, 1000 * sin(-pitch), 0, 545)
-    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeamDamager", 32 * cos(pitch), 0, 32 * sin(-pitch), 0, 0, 0, 0, 545)
-    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeam", 10 * cos(pitch), 0, 10 * sin(-pitch), 0, 0, 0, 0, 545)
+    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeamDamager", 0, 0, 0, 32 * cos(pitch), 0, 32 * sin(-pitch), 0, 544)
+    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeam", 9 * sqrt(velx * velx + vely * vely), 0, 9 * velz, velx, vely, velz, 0, 41)
     S_UN M 0 A_Stop
     S_UN MN 1
     stop
@@ -350,15 +353,50 @@ actor SuperMegaEndlessBeamSpawn : BasicProjectile {
   }
 }
 
-actor SuperMegaEndlessBeam : SuperMegaEndlessBeamSpawn {
+// Pure visual client-side beam segment; omits BasicProjectile (-USESPAWNEVENTSCRIPT) and uses +MISSILE so A_JumpIfCloser tracks firing player.
+actor SuperMegaEndlessBeam {
+  Translation "248:248=160:160", "227:227=66:66", "183:183=202:202"
+  +CLIENTSIDEONLY
+  +MISSILE
+  +NOGRAVITY
+  +NOINTERACTION
+  +NOBLOCKMAP
+  +THRUGHOST
+  +BRIGHT
+  +DONTBLAST
+  +FORCEXYBILLBOARD
+  +DONTREFLECT
+  -SOLID
+  Radius 8
+  Height 8
+  Speed 0
+  RenderStyle "Add"
+  Alpha 0.05
   States {
    Spawn:
     S_UN M 0
     S_UN M 0 A_JumpIfCloser(1200, "Appear")
     stop
    Appear:
-    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeam", 10 * cos(pitch), 0, 10 * sin(-pitch), 0, 0, 0, 0, 545)
+    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeam", 9 * sqrt(velx * velx + vely * vely), 0, 9 * velz, velx, vely, velz, 0, 41)
+    S_UN M 0 A_Stop
     S_UN OP 1
+    stop
+  }
+}
+
+actor SuperMegaEndlessBeamEndFX {
+  +CLIENTSIDEONLY
+  +NOINTERACTION
+  +NOGRAVITY
+  -SOLID
+  +MISSILE
+  Scale 1.5
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_Jump(128, 3)
+    S_UN JIHGFE 3 A_FadeOut(0.02)
     stop
   }
 }
@@ -377,37 +415,39 @@ actor SuperMegaEndlessBeamEndFXSpawn {
     S_UN M 0 A_JumpIfCloser(1200, "Appear")
     stop
    Appear:
-    S_UN MM 0 A_SpawnItemEx("SunstarNovaBeamEndFX", 0, random(-48, 48), random(-48, 52), random(5, 10), 0, 0, 0, 1, 128)
+    S_UN MM 0 A_SpawnItemEx("SuperMegaEndlessBeamEndFX", 0, random(-48, 48), random(-48, 52), random(5, 10), 0, 0, 0, 1, 128)
     S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeamEndFXSpawn", 10 * cos(pitch), 0, 10 * sin(-pitch), 0, 0, 0, 0, 544)
     S_UN OP 1
     stop
   }
 }
 
+// Single stepping damager per beam pulse (37 steps of 32 units = 32..1184); keeps BasicProjectile + custom Obituary (no +SERVERSIDEONLY).
 actor SuperMegaEndlessBeamDamager : BasicProjectile {
-  Translation "248:248=160:160", "227:227=66:66", "183:183=202:202"
-
   Obituary "Thanks to Endless Beam Launcher, %o finally realized they shouldn't challenge \cnSuper Megaman\c- (%k) at the expense of their mom!"
   DamageType "EndlessBeamLauncher"
   +RIPPER
   +THRUGHOST
   +THRUACTORS
+  +NOCLIP
+  +NOINTERACTION
   +DONTBLAST
   +DONTREFLECT
   Damage (0)
   Height 40
   Radius 18
+  Speed 32
+  ReactionTime 37
   Renderstyle "None"
   States {
    Spawn:
-    S_UN M 0
-    S_UN M 0 A_JumpIfCloser(1200, "Appear")
-    stop
-   Appear:
-    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeamDamager", 32 * cos(pitch), 0, 32 * sin(-pitch), 0, 0, 0, 0, 545)
-    S_UN M 0 A_SpawnItemEx("IcePitFreeze")
-    S_UN MN 1 A_Explode(60 * (1 + 0.01 * CallACS("rz_CountInv_HorseBountyStack", 2)), 40, 0, 0, 40)
-    stop
+    TNT1 A 0
+   Step:
+    TNT1 A 0 A_SpawnItemEx("IcePitFreeze")
+    TNT1 A 0 A_Explode(60 * (1 + 0.01 * CallACS("rz_CountInv_HorseBountyStack", 2)), 40, 0, 0, 40)
+    TNT1 A 1 A_Explode(60 * (1 + 0.01 * CallACS("rz_CountInv_HorseBountyStack", 2)), 40, 0, 0, 40)
+    TNT1 A 0 A_CountDown
+    loop
    Death:
     TNT1 A 0 A_SpawnItemEx("IcePitFreeze")
     stop
