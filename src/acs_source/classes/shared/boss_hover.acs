@@ -34,7 +34,9 @@ function bool UH_HoverStillOwnsBody(int ownermode, int player, int mybossgen,
       return false;
     if (myeyegen != uh_eyehovergen[player])
       return false;
-    return CheckInventory("IsAnEye") > 0 && CheckInventory("MorphedFlag") > 0;
+    // IsAnEye is a non-persistent powerup stripped by the engine on death; keep
+    // ownership alive while MorphedFlag remains so UH_BossHoverTick releases flight.
+    return CheckInventory("MorphedFlag") > 0;
   }
   return false;
 }
@@ -47,7 +49,8 @@ function bool UH_BossHoverTick(str actor, str activeflag, str staminaflag,
   if (!UH_HoverStillOwnsBody(ownermode, player, mybossgen, myeyegen))
     return false;
   if (GetActorProperty(0, APROP_Health) <= 0 || CheckInventory("IsDead") ||
-      StrICmp(GetActorClass(0), actor)) {
+      StrICmp(GetActorClass(0), actor) ||
+      (ownermode == UH_HOVER_OWNER_EYE && CheckInventory("IsAnEye") <= 0)) {
     UH_BossHoverRelease(activeflag);
     return false;
   }
