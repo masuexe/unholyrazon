@@ -188,3 +188,117 @@ script "uh_knockback" (int force, int forcez, int flags, int ptr) {
     ThrustThing(yaw, force, 1, 0);
   }
 }
+
+#define UH_NODELIST_PROJ_TID -9997
+
+int uh_staticDamageFactorTmp = 0;
+
+function bool UH_CheckForVar(str thevar) {
+  SetUserVariable(0, thevar, 1);
+  return (GetUserVariable(0, thevar) == 1);
+}
+
+// Helper for uh_handleStaticDamageFactor_Proj: runs on AAPTR_TARGET so the
+// projectile stays the caller's activator and never changes TID.
+script "uh_QueryTargetStaticDamageFactor" (void) {
+  if (!SetActivator(0, AAPTR_TARGET)) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (!ACS_NamedExecuteWithResult("core_canuseaproppowerups")) {
+    SetResultValue(0);
+    terminate;
+  }
+  uh_staticDamageFactorTmp = ACS_NamedExecuteWithResult("core_caprop", 0, CAPROP_StaticDamageFactor);
+  SetResultValue(1);
+}
+
+// Zero-Thing_ChangeTID replacement for core_handleStaticDamageFactor_Proj.
+script "uh_handleStaticDamageFactor_Proj" (void) {
+  if (UH_CheckForVar("user_ignoreStaticDamageFactor"))
+    terminate;
+
+  if (ACS_NamedExecuteWithResult("uh_QueryTargetStaticDamageFactor")) {
+    int factor = uh_staticDamageFactorTmp;
+    GiveInventory("StaticDamageFactorApplied", 1);
+    if (factor != 0.0) {
+      GiveInventory("StaticDamageFactorAmount", factor);
+    }
+  }
+}
+
+// Helper for uh_handleCounterAttacker_Proj: inspects AAPTR_TARGET without
+// changing the projectile's TID. Returns bitmask: bit 0 = active, bit 1 = play sound.
+script "uh_CheckTargetCounterAttacker" (void) {
+  if (!SetActivator(0, AAPTR_TARGET)) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (CheckInventory("CounterAttackerActive_F") <= 0) {
+    SetResultValue(0);
+    terminate;
+  }
+
+  int flags = 1;
+  if (CheckInventory("CounterAttackerSoundDelay_P") == 0) {
+    GiveInventory("CounterAttackerSoundDelay_P", 1);
+    flags |= 2;
+  }
+  SetResultValue(flags);
+}
+
+// Zero-Thing_ChangeTID replacement for core_handleCounterAttacker_Proj.
+script "uh_handleCounterAttacker_Proj" (void) {
+  if (UH_CheckForVar("user_ignoreStaticDamageFactor"))
+    terminate;
+  if (UH_CheckForVar("user_noProjectileTrails"))
+    terminate;
+
+  int flags = ACS_NamedExecuteWithResult("uh_CheckTargetCounterAttacker");
+  if (flags <= 0)
+    terminate;
+
+  if (CheckInventory("CounterAttackerActive_F") == 0) {
+    GiveInventory("CounterAttackerActive_F", 1);
+    GiveInventory("CounterAttackerTrailer_CI", 1);
+  }
+  if (flags & 2) {
+    GiveInventory("CounterAttackerSound_CI", 1);
+  }
+}
+
+script "uh_LinkProjNode" (int node_list_tid, int new_node_tid) {
+  SetActivator(node_list_tid);
+
+  if (SetActivator(0, AAPTR_TRACER)) {
+    ACS_NamedExecuteWithResult("core_setTIDsPointerToThis", new_node_tid, AAPTR_TRACER);
+    SetPointer(AAPTR_MASTER, new_node_tid);
+  }
+
+  SetActivator(node_list_tid);
+  SetPointer(AAPTR_TRACER, new_node_tid);
+
+  SetActivator(new_node_tid);
+  SetPointer(AAPTR_MASTER, node_list_tid);
+  Thing_ChangeTID(new_node_tid, 0);
+}
+
+// Zero-Thing_ChangeTID replacement for core_projnodelist.
+// SpawnProjectile(0, ...) sets NodeList_Node->target = activator directly
+// without modifying the projectile's TID; NodeList_Node is +SERVERSIDEONLY +NOCLIP.
+script "uh_projnodelist" (void) {
+  int cls = ClassifyActor(0);
+  if (cls == ACTOR_NONE || (cls & ACTOR_WORLD))
+    terminate;
+
+  if (ThingCount(T_NONE, UH_NODELIST_PROJ_TID) <= 0) {
+    SpawnForced("NodeList_Node", GetActorX(0), GetActorY(0), GetActorZ(0), UH_NODELIST_PROJ_TID, 0);
+  }
+
+  int new_node_temp = UniqueTID();
+  SpawnProjectile(0, "NodeList_Node", 0, 0, 0, 0, new_node_temp);
+  if (ThingCount(T_NONE, new_node_temp) <= 0)
+    terminate;
+
+  ACS_NamedExecuteWithResult("uh_LinkProjNode", UH_NODELIST_PROJ_TID, new_node_temp);
+}
