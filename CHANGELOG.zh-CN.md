@@ -8,6 +8,7 @@
 
 - 修复 Mosquito Demoneye 变身后无法获得飞行能力的问题（通过 `uh_EyeFlightPit` 将 Demoneye 悬停监控与 Boss 监控分离），并确保悬停飞行与耐力状态在死亡、解除变身及复活时正确清理。
 - 优化 v6c 下 Boss 终极技能与高频弹幕生成时的联机 UDP 流量峰值：在 `DTADDR` / `uh_corereplace` 中将 v6c `HF_PROJ` 生成钩子的 `Thing_ChangeTID` 调用替换为无 TID 的指针/投射物判定，将 `SuperMegaman`（无尽光束）、`ShinHellBot`（熔岩火球/火浪）及 `ColonelKachidonga`（蓄力枪/炮）大招的纯视觉/淡出特效改为客户端生成（`+CLIENTSIDEONLY`），并将 `VoidWalker` 的 `Razing Ray` 逐格服务端生成链重做为客户端光束配合单发高速射线弹。
+- 普通洛克人（`MegaManU`）现在可通过 M2 和 Reload 抽取 MM8BDM v6c 精选 `+INVBAR` 辅助道具：M2 在抽取复制武器的同时附加抽取辅助道具（默认 1 个，通过 `rz_sv_mega_m2_item_count` / `Assists Per M2` 配置），Reload 在保留当前复制武器的前提下单独重抽辅助道具（默认 2 个，通过 `rz_sv_mega_reload_item_count` / `Assists Per Reload` 配置）；道具按机动/脱身（14 种）与战斗/召唤/防御（6 种）双桶水桶均衡分配、优先未持有项，设为 `0` 可关闭对应抽取或 Reload 动作。当 `rz_sv_mega_reload_item_count > 0` 时 `MegaManU_W` 会显示 Reload HUD 图标（设为 `0` 时隐藏），同时 7 个具伤害的 v6c 辅助弹丸（`BeatSupportProjectile`、`EddieBomberBomb` 直击与爆炸、`ReggaeCan`、`TrebleShot`、`TangoAttack`、`SuperArrow`、`WireAdaptorHook`）已按 Unholy 1000 HP 基准进行了 10 倍伤害缩放。
 
 ## 4.0.0-beta.261109
 

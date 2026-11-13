@@ -26,6 +26,30 @@ within each slot, with previous weapons reused only when needed to meet its
 quota. Pharaoh Roulette recognizes the full owned loadout, including multiple
 weapons in one slot. Nonpositive input is treated as one weapon at runtime.
 
+`Assists Per M2` (`rz_sv_mega_m2_item_count`, default **1**) and
+`Assists Per Reload` (`rz_sv_mega_reload_item_count`, default **2**) control how
+many curated MM8BDM v6c `+INVBAR` assist items standard MegaMan draws:
+
+- **M2 (`Altfire`)** replaces both the copy-weapon loadout and previously drawn
+  assist items, drawing `rz_sv_mega_m2_item_count` assists alongside the new
+  copy weapons. Setting `rz_sv_mega_m2_item_count` to `0` disables the M2
+  assist draw while still clearing previously held MegaMan assist items.
+- **Reload** uses the same `RockNRollAmmo` charge and cooldown as M2, keeps the
+  current copy-weapon loadout untouched, and replaces only the assist items with
+  `rz_sv_mega_reload_item_count` newly drawn assists. `MegaManU_W` displays a
+  Reload HUD icon whenever `rz_sv_mega_reload_item_count > 0` (hidden at `0`).
+  Setting `rz_sv_mega_reload_item_count` to `0` disables Reload.
+- **Pool & selection**: The 20 curated assists are partitioned into two buckets
+  (14 mobility/escape items and 6 combat/summon/defense items) and distributed
+  with water-filling across both buckets (e.g., 2 draws guarantee one item from
+  each bucket), preferring unowned items before repeating previously held
+  assists, and granting each item's standard v6c charge count. Clamped to `0–20`.
+- **Assist damage scaling**: Damaging MM8BDM v6c assist projectiles are scaled
+  10x via `replaces` for Unholy's 1000 HP baseline: `BeatSupportProjectile`
+  (240), `EddieBomberBomb` (10 direct, `A_Explode(170, 185, 0)` explosion),
+  `ReggaeCan` (330), `TrebleShot` (80), `TangoAttack` (200), `SuperArrow` (120),
+  and `WireAdaptorHook` (50).
+
 ## Daily randomization
 
 | Category | Daily count defaults | Multiplier defaults |

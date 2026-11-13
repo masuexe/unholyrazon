@@ -98,8 +98,144 @@ function void UH_MegaRollLoadout(void) {
   }
 }
 
+// Curated v6c +INVBAR Assist items for MegaManU M2 & Reload draws.
+// Bucket 0 (0..13): Mobility & Escape; Bucket 1 (14..19): Combat, Summon & Defense.
+#define UH_MEGA_ASSIST_BUCKETS 2
+#define UH_MEGA_ASSIST_MOBILITY_COUNT 14
+#define UH_MEGA_ASSIST_TOTAL 20
+str uh_megaassistactors[UH_MEGA_ASSIST_TOTAL] = {
+  "MagnetBeamItem", "Item1", "Item2", "Item3", "CarryItem",
+  "RushCoil", "RushJet", "RushMarine", "RushPogoItem", "WireAdaptor",
+  "BalloonAdaptorItem", "SuperArrowItem", "BeatBoostItem", "ExitUnitItem",
+  "EddieBomber", "BeatSupport", "ReggaeCall", "TrebleSentry",
+  "TangoSummon", "SuperGuardItem"
+};
+int uh_megaassistamounts[UH_MEGA_ASSIST_TOTAL] = {
+  2, 3, 2, 2, 1,
+  1, 1, 1, 1, 2,
+  1, 5, 1, 1,
+  1, 1, 1, 1,
+  1, 1
+};
+
+function void UH_MegaStripAssists(void) {
+  int i;
+  for (i = 0; i < UH_MEGA_ASSIST_TOTAL; i++)
+    TakeInventory(uh_megaassistactors[i], 999);
+}
+
+script "uh_StripMegaAssists" (void) {
+  UH_MegaStripAssists();
+  TakeInventory("MegaReloadEnabled_F", 1);
+}
+
+// Reuses UH_MegaRollLoadout's synchronous scratch arrays (no Delay).
+function void UH_MegaRollAssists(int requested) {
+  int total = 0;
+  int bucket;
+  int start;
+  int n;
+  int i;
+  int j;
+  int pass;
+  int want;
+  int lowest;
+  int ties;
+  int pick;
+  int offset;
+  int temp;
+  int idx;
+
+  want = min(max(0, requested), UH_MEGA_ASSIST_TOTAL);
+
+  // Partition each bucket into unowned and previously held candidates before
+  // stripping so rerolls prefer fresh assist items.
+  for (bucket = 0; bucket < UH_MEGA_ASSIST_BUCKETS; bucket++) {
+    if (bucket == 0) {
+      start = 0;
+      n = UH_MEGA_ASSIST_MOBILITY_COUNT;
+    }
+    else {
+      start = UH_MEGA_ASSIST_MOBILITY_COUNT;
+      n = UH_MEGA_ASSIST_TOTAL - UH_MEGA_ASSIST_MOBILITY_COUNT;
+    }
+    uh_megaloadoutcount[bucket] = n;
+    uh_megaloadoutquota[bucket] = 0;
+    uh_megaloadoutoffset[bucket] = total;
+    for (pass = 0; pass < 2; pass++) {
+      for (i = 0; i < n; i++) {
+        idx = start + i;
+        if ((CheckInventory(uh_megaassistactors[idx]) > 0) == pass) {
+          uh_megaloadoutindices[total] = idx;
+          total++;
+        }
+      }
+      if (pass == 0)
+        uh_megaloadoutfresh[bucket] = total - uh_megaloadoutoffset[bucket];
+    }
+  }
+
+  // Always strip previous assists so setting the count to 0 clears held items.
+  UH_MegaStripAssists();
+  if (want <= 0)
+    return;
+
+  // Water-fill across the two buckets with random tie-breaking.
+  for (i = 0; i < want; i++) {
+    lowest = UH_MEGA_ASSIST_TOTAL + 1;
+    ties = 0;
+    pick = -1;
+    for (bucket = 0; bucket < UH_MEGA_ASSIST_BUCKETS; bucket++) {
+      n = uh_megaloadoutquota[bucket];
+      if (n >= uh_megaloadoutcount[bucket])
+        continue;
+      if (n < lowest) {
+        lowest = n;
+        ties = 1;
+        pick = bucket;
+      }
+      else if (n == lowest) {
+        ties++;
+        if (random(1, ties) == 1)
+          pick = bucket;
+      }
+    }
+    if (pick >= 0)
+      uh_megaloadoutquota[pick]++;
+  }
+
+  for (bucket = 0; bucket < UH_MEGA_ASSIST_BUCKETS; bucket++) {
+    offset = uh_megaloadoutoffset[bucket];
+    for (i = 0; i < uh_megaloadoutquota[bucket]; i++) {
+      n = uh_megaloadoutfresh[bucket];
+      if (i >= n)
+        n = uh_megaloadoutcount[bucket];
+      j = random(i, n - 1);
+      temp = uh_megaloadoutindices[offset + i];
+      uh_megaloadoutindices[offset + i] = uh_megaloadoutindices[offset + j];
+      uh_megaloadoutindices[offset + j] = temp;
+      idx = uh_megaloadoutindices[offset + i];
+      GiveInventory(uh_megaassistactors[idx], uh_megaassistamounts[idx]);
+    }
+  }
+}
+
 script "uh_MegamanWeapons" (int check) {
+  if (check == 2) {
+    bool allow = GetCVar("rz_sv_mega_reload_item_count") > 0;
+    if (allow && !CheckInventory("MegaReloadEnabled_F"))
+      GiveInventory("MegaReloadEnabled_F", 1);
+    else if (!allow && CheckInventory("MegaReloadEnabled_F"))
+      TakeInventory("MegaReloadEnabled_F", 1);
+    SetResultValue(allow);
+    terminate;
+  }
+  if (check == 1) {
+    UH_MegaRollAssists(GetCVar("rz_sv_mega_reload_item_count"));
+    terminate;
+  }
   UH_MegaRollLoadout();
+  UH_MegaRollAssists(GetCVar("rz_sv_mega_m2_item_count"));
 }
 
 // The inventory is authoritative; legacy MoveMem keeps only a compatibility
