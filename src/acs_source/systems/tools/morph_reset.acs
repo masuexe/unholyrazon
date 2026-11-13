@@ -573,6 +573,14 @@ script "uh_MorphDemorphReset" (int ownedfams) {
     terminate;
   // Shiny attacks and shared weapon states can also be interrupted by unmorph.
   UH_ClearSurvivorMorphState();
+  // Demoneye hover does not run uh_MorphPreReset (no baseline snapshot), so
+  // its active flight stack and stamina state must be released explicitly.
+  if (CheckInventory("MosquitoDemoneye_HoverActive_F")) {
+    ACS_NamedExecuteWithResult("uh_flyplayer", 0, 0, false);
+    TakeInventory("MosquitoDemoneye_HoverActive_F", 999);
+  }
+  TakeInventory("MosquitoDemoneye_HoverStamina_F", 999);
+  TakeInventory("PowerStaminaFlagDeplete", 1);
   // A Bubble that survived the morph must not keep the survivor body frozen.
   ACS_NamedExecuteWithResult("uh_BubbleClearLifecycle");
   ACS_NamedExecuteWithResult("uh_OilSliderReset");
@@ -590,6 +598,7 @@ script "uh_MorphDemorphReset" (int ownedfams) {
   TakeInventory("UHShinyMugshot_F", 1);
   TakeInventory("MorphedFlag", 1);
   TakeInventory("IsAnEye", 1);
+  TakeInventory("ThisIsMyMagicEyeNumber", 999);
   TakeInventory("TruePowerItemFlag", 1);
   SetUserVariable(0, "user_uh_morph_pipeline_done", 0);
   SetUserVariable(0, "user_uh_eye_setup_identity", 0);

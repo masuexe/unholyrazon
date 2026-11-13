@@ -1,13 +1,18 @@
 // Permanent floor-relative flight with Alien-style damaging-pit stamina.
 // uh_BossHover: 160/152 ceiling (Misery / CXAirMan).
-// uh_BossFlightPit: unlimited altitude (Destron / Higlur / Mosquito eye).
-// ACS_NamedExecuteAlways only accepts three script args, so the two modes
+// uh_BossFlightPit: unlimited altitude for bosses (Destron / Higlur).
+// uh_EyeFlightPit: unlimited altitude for demoneyes (Mosquito eye).
+// ACS_NamedExecuteAlways only accepts three script args, so the modes
 // are separate named scripts. Delay must stay in the script body.
 #define UH_BOSS_HOVER_LIMIT 160.0
 #define UH_BOSS_HOVER_RESUME 152.0
 #define UH_BOSS_HOVER_PIT_COST 10
 #define UH_BOSS_HOVER_AIR_RECHARGE 1
 #define UH_BOSS_HOVER_GROUND_RECHARGE 4
+#define UH_HOVER_OWNER_BOSS 0
+#define UH_HOVER_OWNER_EYE 1
+
+int uh_eyehovergen[MAX_PLAYERS];
 
 function void UH_BossHoverRelease(str activeflag) {
   if (!CheckInventory(activeflag))
@@ -16,11 +21,30 @@ function void UH_BossHoverRelease(str activeflag) {
   TakeInventory(activeflag, 1);
 }
 
+function bool UH_HoverStillOwnsBody(int ownermode, int player, int mybossgen,
+    int myeyegen) {
+  if (ownermode == UH_HOVER_OWNER_BOSS)
+    return UH_WatcherStillOwnsBoss(mybossgen, player);
+  if (ownermode == UH_HOVER_OWNER_EYE) {
+    if (player < 0 || player >= MAX_PLAYERS)
+      return false;
+    if (PlayerIsSpectator(player))
+      return false;
+    if (mybossgen != GetPlayerMorphGen(player))
+      return false;
+    if (myeyegen != uh_eyehovergen[player])
+      return false;
+    return CheckInventory("IsAnEye") > 0 && CheckInventory("MorphedFlag") > 0;
+  }
+  return false;
+}
+
 // One watcher tic. Returns false when the watcher must stop.
 // limited is an in/out hysteresis latch for the height ceiling.
 function bool UH_BossHoverTick(str actor, str activeflag, str staminaflag,
-    bool heightcap, int player, int mygen, int limited) {
-  if (!UH_WatcherStillOwnsBoss(mygen, player))
+    bool heightcap, int ownermode, int player, int mybossgen, int myeyegen,
+    int limited) {
+  if (!UH_HoverStillOwnsBody(ownermode, player, mybossgen, myeyegen))
     return false;
   if (GetActorProperty(0, APROP_Health) <= 0 || CheckInventory("IsDead") ||
       StrICmp(GetActorClass(0), actor)) {
@@ -75,8 +99,8 @@ script "uh_BossHover" (int actor, int activeflag, int staminaflag) {
   while (PlayerInGame(player)) {
     // The pre-unmorph hook releases our stack before the generation changes.
     // Never release from an old watcher: its activator may now be a new body.
-    if (!UH_BossHoverTick(actor, activeflag, staminaflag, true, player, mygen,
-        limited))
+    if (!UH_BossHoverTick(actor, activeflag, staminaflag, true,
+        UH_HOVER_OWNER_BOSS, player, mygen, 0, limited))
       terminate;
     // Re-read hysteresis after the tick so the next pass keeps the latch.
     if (GetActorZ(0) - GetActorFloorZ(0) >= UH_BOSS_HOVER_LIMIT)
@@ -94,8 +118,23 @@ script "uh_BossFlightPit" (int actor, int activeflag, int staminaflag) {
   int mygen = GetPlayerMorphGen(player);
 
   while (PlayerInGame(player)) {
-    if (!UH_BossHoverTick(actor, activeflag, staminaflag, false, player, mygen,
-        false))
+    if (!UH_BossHoverTick(actor, activeflag, staminaflag, false,
+        UH_HOVER_OWNER_BOSS, player, mygen, 0, false))
+      terminate;
+    Delay(1);
+  }
+}
+
+script "uh_EyeFlightPit" (int actor, int activeflag, int staminaflag) {
+  int player = PlayerNumber();
+  if (player < 0 || player >= MAX_PLAYERS)
+    terminate;
+  int mybossgen = GetPlayerMorphGen(player);
+  int myeyegen = ++uh_eyehovergen[player];
+
+  while (PlayerInGame(player)) {
+    if (!UH_BossHoverTick(actor, activeflag, staminaflag, false,
+        UH_HOVER_OWNER_EYE, player, mybossgen, myeyegen, false))
       terminate;
     Delay(1);
   }
