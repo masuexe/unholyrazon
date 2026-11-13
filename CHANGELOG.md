@@ -4,6 +4,11 @@
 
 ---
 
+## 4.0.0-beta.261113
+
+- Fixed Mosquito Demoneye failing to activate flight after spawning (`uh_EyeFlightPit` now tracks Demoneye ownership separately from Boss watchers) and ensured hover flight and stamina state clean up properly on death, unmorph, and Dickhead revival.
+- Reduced online UDP traffic spikes on v6c during Boss ultimates and heavy projectile spawns: replaced v6c `HF_PROJ` spawn-hook `Thing_ChangeTID` calls in `DTADDR`/`uh_corereplace` with TID-free pointer checks, moved Boss ultimate visual/fader effects (`SuperMegaman` Endless Beam, `ShinHellBot` Molten Fireball/Waves, `ColonelKachidonga` Charged Blunderbuss/Cannon) to client-side actors, and replaced `VoidWalker`'s Razing Ray pinpoint spawn loop with a client-side beam plus a single fast ray projectile.
+
 ## 4.0.0-beta.261109
 
 - Fixed the remaining enemy/ally counts overlapping the follow-player text while spectating.

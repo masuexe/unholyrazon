@@ -4,6 +4,11 @@
 
 ---
 
+## 4.0.0-beta.261113
+
+- 修复 Mosquito Demoneye 变身后无法获得飞行能力的问题（通过 `uh_EyeFlightPit` 将 Demoneye 悬停监控与 Boss 监控分离），并确保悬停飞行与耐力状态在死亡、解除变身及复活时正确清理。
+- 优化 v6c 下 Boss 终极技能与高频弹幕生成时的联机 UDP 流量峰值：在 `DTADDR` / `uh_corereplace` 中将 v6c `HF_PROJ` 生成钩子的 `Thing_ChangeTID` 调用替换为无 TID 的指针/投射物判定，将 `SuperMegaman`（无尽光束）、`ShinHellBot`（熔岩火球/火浪）及 `ColonelKachidonga`（蓄力枪/炮）大招的纯视觉/淡出特效改为客户端生成（`+CLIENTSIDEONLY`），并将 `VoidWalker` 的 `Razing Ray` 逐格服务端生成链重做为客户端光束配合单发高速射线弹。
+
 ## 4.0.0-beta.261109
 
 - 修复旁观时剩余敌我人数与跟随玩家提示重叠的问题。
