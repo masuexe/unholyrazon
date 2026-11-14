@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261114
+
+- Breaking a Zako Box now bursts bouncing energy orbs that transform into enemies upon landing, bouncing out of tight corners or crowded spots (and falling back to smaller enemies in cramped spaces when needed) so all five enemies reliably appear instead of failing to spawn near walls or when multiple boxes or enemies stack together.
+
 ## 4.0.0-beta.261113
 
 - Fixed Mosquito Demoneye failing to activate flight after spawning (`uh_EyeFlightPit` now tracks Demoneye ownership separately from Boss watchers) and ensured hover flight and stamina state clean up properly on death, unmorph, and Dickhead revival.
