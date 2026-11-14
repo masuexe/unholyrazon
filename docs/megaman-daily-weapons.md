@@ -27,23 +27,29 @@ quota. Pharaoh Roulette recognizes the full owned loadout, including multiple
 weapons in one slot. Nonpositive input is treated as one weapon at runtime.
 
 `Assists Per Reload` (`rz_sv_mega_reload_item_count`, default **2**) controls how
-many curated MM8BDM v6c `+INVBAR` assist items standard MegaMan draws on Reload,
-separated from M2's copy-weapon draw:
+many curated MM8BDM v6c `+INVBAR` assist items standard MegaMan tosses onto the
+ground on Reload, separated from M2's copy-weapon draw:
 
 - **M2 (`Altfire`)** replaces only the copy-weapon loadout (`Weapons Per M2` /
   `rz_sv_mega_m2_weapon_count`, default **3**) and leaves any held assist items
   untouched.
 - **Reload** (`Assists Per Reload` / `rz_sv_mega_reload_item_count`,
   default **2**) uses the same `RockNRollAmmo` charge and cooldown as M2, keeps
-  the current copy-weapon loadout untouched, and replaces only the assist items
-  with `rz_sv_mega_reload_item_count` newly drawn assists (`MegaManU_W` shows the
-  Reload HUD icon whenever `rz_sv_mega_reload_item_count > 0` and hides it at
-  `0`; `0` disables Reload).
+  the current copy-weapon loadout and any already-held assist items untouched,
+  and tosses `rz_sv_mega_reload_item_count` newly drawn assists onto the ground
+  in front of MegaMan (`MegaManU_W` shows the Reload HUD icon whenever
+  `rz_sv_mega_reload_item_count > 0` and hides it at `0`; `0` disables Reload).
+- **Ground pickup & despawn**: Tossed assists are real v6c `BaseMM8BDMUseItem`
+  pickups with standard charge counts and can be collected after a 10-tic toss
+  grace window by any player not already at item capacity (including Survivors,
+  Shiny Survivors, Bosses, and Demoneyes). Uncollected items blink during the
+  final 3 seconds and despawn at 30 seconds (`1050` tics).
 - **Pool & selection**: The 20 curated assists are partitioned into two buckets
   (14 mobility/escape items and 6 combat/summon/defense items) and distributed
   with water-filling across both buckets (e.g., 2 draws guarantee one item from
-  each bucket), preferring unowned items before repeating previously held
-  assists, and granting each item's standard v6c charge count. Clamped to `0–20`.
+  each bucket), preferring items MegaMan does not currently hold before
+  repeating held assists, then shuffling the fan order across left/right toss
+  angles. Clamped to `0–20`.
 - **Assist damage scaling**: Damaging MM8BDM v6c assist projectiles are scaled
   10x via `replaces` for Unholy's 1000 HP baseline: `BeatSupportProjectile`
   (240), `EddieBomberBomb` (10 direct, `A_Explode(170, 185, 0)` explosion),

@@ -103,19 +103,16 @@ function void UH_MegaRollLoadout(void) {
 #define UH_MEGA_ASSIST_BUCKETS 2
 #define UH_MEGA_ASSIST_MOBILITY_COUNT 14
 #define UH_MEGA_ASSIST_TOTAL 20
+#define UH_MEGA_ASSIST_TOSS_GRACE_TICS 10
+#define UH_MEGA_ASSIST_POLL_TICS 5
+#define UH_MEGA_ASSIST_STEADY_STEPS 187
+#define UH_MEGA_ASSIST_BLINK_STEPS 21
 str uh_megaassistactors[UH_MEGA_ASSIST_TOTAL] = {
   "MagnetBeamItem", "Item1", "Item2", "Item3", "CarryItem",
   "RushCoil", "RushJet", "RushMarine", "RushPogoItem", "WireAdaptor",
   "BalloonAdaptorItem", "SuperArrowItem", "BeatBoostItem", "ExitUnitItem",
   "EddieBomber", "BeatSupport", "ReggaeCall", "TrebleSentry",
   "TangoSummon", "SuperGuardItem"
-};
-int uh_megaassistamounts[UH_MEGA_ASSIST_TOTAL] = {
-  2, 3, 2, 2, 1,
-  1, 1, 1, 1, 2,
-  1, 5, 1, 1,
-  1, 1, 1, 1,
-  1, 1
 };
 
 function void UH_MegaStripAssists(void) {
@@ -127,6 +124,50 @@ function void UH_MegaStripAssists(void) {
 script "uh_StripMegaAssists" (void) {
   UH_MegaStripAssists();
   TakeInventory("MegaReloadEnabled_F", 1);
+}
+
+function bool UH_IsDroppedAssistStillInWorld(void) {
+  if ((ClassifyActor(0) & ACTOR_WORLD) || CheckFlag(0, "NOBLOCKMAP") || !CheckFlag(0, "SPECIAL"))
+    return false;
+  return true;
+}
+
+script "uh_MegaDroppedAssistWatch" (int dropTid) {
+  int t;
+  if (dropTid == 0 || !SetActivator(dropTid))
+    terminate;
+  Thing_ChangeTID(0, 0);
+
+  for (t = 0; t < UH_MEGA_ASSIST_TOSS_GRACE_TICS; t++) {
+    Delay(1);
+    if (!UH_IsDroppedAssistStillInWorld())
+      terminate;
+    GiveInventory("8BDM_CF_THRUACTORS_1", 1);
+  }
+
+  if (!UH_IsDroppedAssistStillInWorld())
+    terminate;
+  GiveInventory("8BDM_CF_THRUACTORS_0", 1);
+
+  for (t = 0; t < UH_MEGA_ASSIST_STEADY_STEPS; t++) {
+    Delay(UH_MEGA_ASSIST_POLL_TICS);
+    if (!UH_IsDroppedAssistStillInWorld())
+      terminate;
+  }
+
+  for (t = 0; t < UH_MEGA_ASSIST_BLINK_STEPS; t++) {
+    SetActorProperty(0, APROP_RenderStyle, (t & 1) ? STYLE_Normal : STYLE_None);
+    Delay(UH_MEGA_ASSIST_POLL_TICS);
+    if (!UH_IsDroppedAssistStillInWorld()) {
+      SetActorProperty(0, APROP_RenderStyle, STYLE_Normal);
+      terminate;
+    }
+  }
+
+  SetActorProperty(0, APROP_RenderStyle, STYLE_Normal);
+  if (!UH_IsDroppedAssistStillInWorld())
+    terminate;
+  Thing_Remove(0);
 }
 
 // Reuses UH_MegaRollLoadout's synchronous scratch arrays (no Delay).
@@ -145,11 +186,27 @@ function void UH_MegaRollAssists(int requested) {
   int offset;
   int temp;
   int idx;
+  int selectedCount = 0;
+  int spawnX;
+  int spawnY;
+  int spawnZ;
+  int baseAngle;
+  int velX;
+  int velY;
+  int spreadStep;
+  int angle;
+  int dirX;
+  int dirY;
+  int playerFwd;
+  int throwSpeed;
+  int dropTid;
 
   want = min(max(0, requested), UH_MEGA_ASSIST_TOTAL);
+  if (want <= 0)
+    return;
 
-  // Partition each bucket into unowned and previously held candidates before
-  // stripping so rerolls prefer fresh assist items.
+  // Partition each bucket into unowned and previously held candidates so
+  // Reload draws prefer fresh assist items while keeping held assists.
   for (bucket = 0; bucket < UH_MEGA_ASSIST_BUCKETS; bucket++) {
     if (bucket == 0) {
       start = 0;
@@ -174,11 +231,6 @@ function void UH_MegaRollAssists(int requested) {
         uh_megaloadoutfresh[bucket] = total - uh_megaloadoutoffset[bucket];
     }
   }
-
-  // Always strip previous assists so setting the count to 0 clears held items.
-  UH_MegaStripAssists();
-  if (want <= 0)
-    return;
 
   // Water-fill across the two buckets with random tie-breaking.
   for (i = 0; i < want; i++) {
@@ -214,8 +266,40 @@ function void UH_MegaRollAssists(int requested) {
       temp = uh_megaloadoutindices[offset + i];
       uh_megaloadoutindices[offset + i] = uh_megaloadoutindices[offset + j];
       uh_megaloadoutindices[offset + j] = temp;
-      idx = uh_megaloadoutindices[offset + i];
-      GiveInventory(uh_megaassistactors[idx], uh_megaassistamounts[idx]);
+      uh_megaloadoutindices[UH_MEGA_ASSIST_TOTAL + selectedCount] = uh_megaloadoutindices[offset + i];
+      selectedCount++;
+    }
+  }
+
+  // Shuffle selected items across buckets so left/right fan angles randomize.
+  for (i = 0; i < selectedCount; i++) {
+    j = random(i, selectedCount - 1);
+    temp = uh_megaloadoutindices[UH_MEGA_ASSIST_TOTAL + i];
+    uh_megaloadoutindices[UH_MEGA_ASSIST_TOTAL + i] = uh_megaloadoutindices[UH_MEGA_ASSIST_TOTAL + j];
+    uh_megaloadoutindices[UH_MEGA_ASSIST_TOTAL + j] = temp;
+  }
+
+  spawnX = GetActorX(0);
+  spawnY = GetActorY(0);
+  spawnZ = GetActorZ(0) + 24.0;
+  baseAngle = GetActorAngle(0);
+  velX = GetActorVelX(0);
+  velY = GetActorVelY(0);
+  spreadStep = 0.05;
+  if (selectedCount > 6)
+    spreadStep = 0.28 / (selectedCount - 1);
+
+  for (i = 0; i < selectedCount; i++) {
+    idx = uh_megaloadoutindices[UH_MEGA_ASSIST_TOTAL + i];
+    angle = baseAngle + (((2 * i - (selectedCount - 1)) * spreadStep) / 2);
+    dirX = cos(angle);
+    dirY = sin(angle);
+    playerFwd = max(0, FixedMul(velX, dirX) + FixedMul(velY, dirY));
+    throwSpeed = 9.0 + FixedMul(playerFwd, 0.65);
+    dropTid = UniqueTID();
+    if (SpawnForced(uh_megaassistactors[idx], spawnX, spawnY, spawnZ, dropTid, 0) > 0) {
+      SetActorVelocity(dropTid, FixedMul(dirX, throwSpeed), FixedMul(dirY, throwSpeed), 5.0, false, false);
+      ACS_NamedExecuteAlways("uh_MegaDroppedAssistWatch", 0, dropTid);
     }
   }
 }

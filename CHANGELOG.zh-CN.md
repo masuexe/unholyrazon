@@ -7,7 +7,7 @@
 ## 4.0.0-beta.261114
 
 - 击破 Zako Box 后现在会迸发出弹跳能量球，并在落地后化为敌人；能量球可从狭窄墙角或拥挤位置弹开（空间局促时必要时会改出体型较小的敌人），确保全部 5 名敌人稳定出现，不再在贴墙处或多箱子／敌人堆叠时漏刷。
-- 将普通洛克人（`MegaManU`）的复制武器抽取与辅助道具抽取分离：现在 M2 仅重抽复制武器并保留当前已持有的辅助道具（移除 `Assists Per M2` / `rz_sv_mega_m2_item_count`），Reload 仅重抽 v6c `+INVBAR` 辅助道具并保留当前已持有的复制武器（通过 `Assists Per Reload` / `rz_sv_mega_reload_item_count` 配置）。
+- 将普通洛克人（`MegaManU`）的复制武器抽取与辅助道具抽取分离：现在 M2 仅重抽复制武器并保留当前已持有的辅助道具（移除 `Assists Per M2` / `rz_sv_mega_m2_item_count`）；Reload 则播放手抛动画将抽出的 v6c `+INVBAR` 辅助道具抛投至前方地面（通过 `Assists Per Reload` / `rz_sv_mega_reload_item_count` 配置），同时保留已持有的复制武器与辅助道具。所有未达携带上限的玩家（包括生还者、强化生还者、Boss 与恶魔眼）均可拾取，未被拾取的道具将在最后 3 秒闪烁并于 30 秒（`1050` tics）后消失。
 
 ## 4.0.0-beta.261113
 
