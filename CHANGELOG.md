@@ -7,6 +7,7 @@
 ## 4.0.0-beta.261114
 
 - Breaking a Zako Box now bursts bouncing energy orbs that transform into enemies upon landing, bouncing out of tight corners or crowded spots (and falling back to smaller enemies in cramped spaces when needed) so all five enemies reliably appear instead of failing to spawn near walls or when multiple boxes or enemies stack together.
+- Separated Standard MegaMan's (`MegaManU`) weapon and assist draws: M2 now rerolls copy weapons only while keeping held assist items (`Assists Per M2` / `rz_sv_mega_m2_item_count` removed), and Reload rerolls curated v6c `+INVBAR` assist items only while keeping held copy weapons (`Assists Per Reload` / `rz_sv_mega_reload_item_count`).
 
 ## 4.0.0-beta.261113
 
