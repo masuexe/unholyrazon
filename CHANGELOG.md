@@ -10,9 +10,6 @@
 - Remapped the wrist-divider color index (`8`) on unified-color v6c hand and held-weapon HUD kits (`89` `TEXTURES` composites) to the cuff highlight (`192`) target for seamless wrist highlights while preserving independent seam coloring on two-tone glove/cuff kits.
 - Updated all 31 v6c hand, held-weapon, and sword base sprites (`16` `BasicHandV6C` `W_HV*`/`V_HV*` + `15` `BasicSword` `U_HDA0..O0`) to MM8BDM v6c's two-tone `195`/`204` wrist connector ring shading in place of flat `195` (keeping `TEXTURES` translations untouched so unremapped `204` renders directly).
 - Synchronized Qwant's copy-weapon HUD frames with MM8BDM v6c: switched `Bullet Seed`'s `Select`/`Deselect` states to `6H1E A`, updated `Rapid Spin`'s startup animation to `TOPH BBCCD 1` / `TOPH E 1` frames, and aligned `Flame Tackle` (`FTAT*`) to `SCLA*` dimensions and offsets.
-
-## 4.0.0-beta.261114
-
 - Breaking a Zako Box now bursts bouncing energy orbs that transform into enemies upon landing, bouncing out of tight corners or crowded spots (and falling back to smaller enemies in cramped spaces when needed) so all five enemies reliably appear instead of failing to spawn near walls or when multiple boxes or enemies stack together.
 - Separated Standard MegaMan's (`MegaManU`) weapon and assist draws: M2 now rerolls copy weapons only while keeping held assist items (`Assists Per M2` / `rz_sv_mega_m2_item_count` removed), and Reload plays a hand-throw animation to toss drawn curated v6c `+INVBAR` assist items onto the ground in front of MegaMan (`Assists Per Reload` / `rz_sv_mega_reload_item_count`) without stripping held copy weapons or assists; any player below capacity (including Survivors, Shiny Survivors, Bosses, and Demoneyes) can pick them up, while uncollected drops blink in the final 3 seconds and despawn after 30 seconds (`1050` tics).
 
