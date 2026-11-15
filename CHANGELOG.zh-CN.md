@@ -8,6 +8,7 @@
 
 - 将第一人称武器 HUD 手部、脚踢鞋部、手持武器及剑系贴图全面同步至 MM8BDM v6c 规格：新增 18 张适配 v6c 比例的基础手部、鞋部与手持武器贴图（`BasicHandV6C` 的 12 张 `W_HV*` 手型 + `6V00W0`/`6V00X0` 鞋部 + 4 张手持武器贴图 `V_HVV0`/`V_HVX0`/`V_HVY0`/`V_HVZ0`（分别基于 v6c 规格的 Rolling Cutter `BUSHS0`、Metal Blade `BUINA0`/`BUSHJ0`、Shadow Blade `BUSHA0` 与 Screw Crusher `SCRHA0`），以及双持合成帧 `W_HYA0..J0`）、更新 `BasicSword`（`U_HDA0..O0`）剑系贴图，并对全部适配的生还者、强化生还者与 Boss 职业套件完成整套对齐（共新增 15 条、更新 849 条 `TEXTURES` 合成，现已包含 `Kate_W`/`KateShiny_W`、`CaptainBlitzkrieg_W` 与 `JoeOfDuty_W`，含 Zangief 解耦的 `6G51`/`7G50`（保留 `6G50D0`/`E0` 供 `TEXTURES.bars` 使用）与 [Eden_W.dec](src/actors/classes/survivors/Eden_W.dec) 张臂攻击分帧 `6H59 Q/R/S`）；同时将包含自定义手势或不可兼容原版手型的套件（`PartyBomber_W*`、`Raider_W*`、`Electrician_W*`、`Rogue_W*`、`MegaMan`/`megaman_copyweps`、`FinalSampi` `8L02`、`ScrotoStuntDouble` `9I13`）完整保留在原版套件。
 - 将统一配色的 v6c 手部与手持武器 HUD 套件（共 `89` 条 `TEXTURES` 合成）中的腕部接缝色号 `8` 重映射至各套件袖口高光色号（`192`）目标，以获得自然连贯的腕部高光过渡，同时保留双色手套/袖口套件的独立接缝着色。
+- 将全部 31 张 v6c 手部、手持武器与剑系基础贴图（`16` 张 `BasicHandV6C` 的 `W_HV*`/`V_HV*` + `15` 张 `BasicSword` 的 `U_HDA0..O0`）的腕环接缝从单色 `195` 更新为 MM8BDM v6c 的双阶 `195`/`204` 过渡着色（保留现有 `TEXTURES` `Translation` 不变，使未重映射的 `204` 直接呈现高光环细节）。
 - 同步 Qwant 复制武器的 v6c HUD 动画帧：将 `Bullet Seed` 的 `Select`/`Deselect` 状态帧切换为 `6H1E A`，将 `Rapid Spin` 的起手旋转动画更新为 `TOPH BBCCD 1` / `TOPH E 1` 帧序列，并将 `Flame Tackle`（`FTAT*`）对齐至 `SCLA*` 的尺寸与偏移。
 
 ## 4.0.0-beta.261114
