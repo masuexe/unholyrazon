@@ -110,7 +110,7 @@ CHECKS = [
     check("daily-friendly-fire", "fast", "static", [PY, "tools/test_daily_team_ff.py"],
           "Daily pools, baseline immunity, attack origins and harmless interactions", ["python", "cc"]),
     check("teamdamage-multiplier", "fast", "static", [PY, "tools/test_teamdamage.py"],
-          "Native teamdamage bridge, cancellation and recorded summon creators", ["python", "cc"]),
+          "Unholy LMS uh_sv_teamdamage scaling, cancellation and recorded summon creators", ["python", "cc"]),
     check("ammo-capacity-math", "fast", "static", [PY, "tools/check_ammo_capacity_math.py"],
           "Full-integer native ammo factor scaling against a big-integer oracle", ["python", "cc"]),
     check("native-buster-policy", "fast", "static", [PY, "tools/check_native_buster_policy.py"],

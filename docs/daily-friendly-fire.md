@@ -7,7 +7,7 @@ Demoneyes, and addon Survivor classes without explicit opt-in do not enter the n
 
 | Setting | Default | Meaning |
 |---|---:|---|
-| `teamdamage` | Engine default `0` | Damage multiplier for eligible friendly hits: `0` disables damage, `0.5` halves it, `1` keeps normal damage. |
+| `uh_sv_teamdamage` | `1.0` | Damage multiplier for Unholy LMS friendly hits (in-round and post-round): `0` disables damage, `0.5` halves it, `1` keeps normal damage. Zandronum's native `teamdamage` is left untouched for native team modes. |
 | `rz_sv_randcopywepteamkill` | `true` | Enable the new Qwant/Nega Man/Decoy Bot weapon pools. |
 | `rz_sv_copy_ff_count_min` | `6` | Minimum daily selection per weapon pool. |
 | `rz_sv_copy_ff_count_max` | `10` | Maximum daily selection per weapon pool. |
@@ -25,7 +25,7 @@ next policy query. This follows the existing Mega Man daily schedule; it does
 not wait for the current round to end.
 
 Run the named server script `uh_debug_ShowDailyTeamFF` to log the date,
-`teamdamage`, and the selected entries. Pool 0 contains classes; pools 1, 2,
+`uh_sv_teamdamage`, and the selected entries. Pool 0 contains classes; pools 1, 2,
 and 3 contain Qwant, Nega Man, and Decoy Bot weapons respectively. The output
 uses the normal INFO log level.
 
@@ -102,7 +102,7 @@ owned; do not send returned slot numbers or tokens to clients.
 `uh_DailyFFAddonOrigin` returns the current player activator's registered addon
 origin, including creator slot, or zero for an excluded/unregistered body.
 `uh_DailyFFAddonAllowed(token)` returns whether that origin is currently selected
-in ordinary LMS with the class pool enabled. It does not apply `teamdamage`.
+in ordinary LMS with the class pool enabled. It does not apply `uh_sv_teamdamage`.
 The shared main-mod damage handler applies the multiplier once, including
 recorded non-player creators, regardless of event-handler order.
 

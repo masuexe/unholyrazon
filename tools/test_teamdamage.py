@@ -25,15 +25,22 @@ class TeamDamageTests(unittest.TestCase):
         assert count == 1
         handler = re.sub(r"\bterminate\s*;", "return;", handler)
         source = r'''
+#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 #define GAMEEVENT_ACTOR_DAMAGED_PREMOD 12
 #define AAPTR_DAMAGE_TARGET 1
 #define AAPTR_DAMAGE_SOURCE 2
 #define AAPTR_DAMAGE_INFLICTOR 4
-static int lms, scale, victim, shooter, friends, result, pointer;
+static int lms, scale, native_scale, victim, shooter, friends, result, pointer;
 static int origin;
-int GetCVar(const char *name) { return !strcmp(name, "lastmanstanding") ? lms : scale; }
+int GetCVar(const char *name) {
+    if (!strcmp(name, "lastmanstanding")) return lms;
+    if (!strcmp(name, "uh_sv_teamdamage")) return scale;
+    if (!strcmp(name, "teamdamage")) return native_scale;
+    assert(0);
+    return 0;
+}
 int GetEventResult(void) { return result; }
 int SetActivator(int tid, int ptr) { pointer = ptr; return 1; }
 int PlayerNumber(void) { return pointer == AAPTR_DAMAGE_TARGET ? victim : shooter; }
@@ -56,6 +63,12 @@ int probe_origin(int metadata, int multiplier, int ally) {
     origin=metadata;
     int value=probe(1,multiplier,-1,1,ally,80,12);
     origin=0;
+    return value;
+}
+int probe_native(int uh_multiplier, int native_multiplier, int current) {
+    native_scale = native_multiplier;
+    int value = probe(1, uh_multiplier, 0, 1, 1, current, 12);
+    native_scale = 0;
     return value;
 }
 '''
@@ -100,6 +113,19 @@ int probe_origin(int metadata, int multiplier, int ally) {
         for mode, src, dst, ally, damage, event in cases:
             with self.subTest(case=(mode, src, dst, ally, damage, event)):
                 self.assertEqual(self.probe(mode, 32768, src, dst, ally, damage, event), damage)
+
+    def test_ignores_native_teamdamage(self):
+        probe_native = self.library.probe_native
+        probe_native.argtypes = [ctypes.c_int] * 3
+        probe_native.restype = ctypes.c_int
+        self.assertEqual(probe_native(65536, 0, 80), 80)
+        self.assertEqual(probe_native(0, 2 * 65536, 80), 0)
+
+    def test_cvar_and_menu_contract(self):
+        cvarinfo = (ROOT / "src/CVARINFO.server").read_text()
+        self.assertRegex(cvarinfo, r"(?m)^\s*server\s+float\s+uh_sv_teamdamage\s*=\s*1\.0\s*;")
+        menudef = (ROOT / "src/MENUDEF").read_text()
+        self.assertIn('"uh_sv_teamdamage"', menudef)
 
 
 if __name__ == "__main__":

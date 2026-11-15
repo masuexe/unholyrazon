@@ -52,7 +52,7 @@ int UH_DateToInt(void) {return date;}
 int UH_MegaDailyRandom(int seed, int lo, int hi) {return lo+(seed & 0x7fffffff)%(hi-lo+1);}
 int GetCVar(str name) {
     if(!strcmp(name,"lastmanstanding")) return lms;
-    if(!strcmp(name,"teamdamage")) return scale;
+    if(!strcmp(name,"uh_sv_teamdamage")) return scale;
     if(!strcmp(name,"rz_sv_copy_ff_count_min")) return cfglo;
     if(!strcmp(name,"rz_sv_copy_ff_count_max")) return cfghi;
     if(!strcmp(name,"rz_sv_class_ff_count")) return cfgclasses;

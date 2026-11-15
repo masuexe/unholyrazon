@@ -67,9 +67,9 @@ MUTATIONS = [
     {
         "name": "teamdamage-scale-ignored",
         "checker": "tools/test_teamdamage.py",
-        "why": "logical teammates ignore the native teamdamage setting",
+        "why": "logical teammates ignore the uh_sv_teamdamage setting",
         "file": "src/acs_source/unholy/uh_teamdamage.acs",
-        "replace": ('SetResultValue(FixedMul(effective, max(0, GetCVar("teamdamage"))));',
+        "replace": ('SetResultValue(FixedMul(effective, max(0, GetCVar("uh_sv_teamdamage"))));',
                     'SetResultValue(effective);'),
     },
     {

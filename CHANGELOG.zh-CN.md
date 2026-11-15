@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261116
+
+- 修复在未手动修改 Zandronum 原生 `teamdamage`（引擎默认为 `0`）的服务器上，Unholy LMS 赛前、局内（包括每日友伤池与无队友免伤的道具攻击）及赛后结算均无法造成友伤的问题：Unholy LMS 的友伤倍率现改由独立的服务器设置 `uh_sv_teamdamage`（菜单 **Unholy Server Options → Game Rules → Friendly Fire Scalar**）控制，默认值为 `1.0`（设为 `0` 关闭 Unholy 友伤伤害、`0.5` 为半额、`1.0` 为正常伤害，同时作用于局内与赛后结算），且不再影响原生团队模式的 `teamdamage` 设置。
+
 ## 4.0.0-beta.261115
 
 - 将第一人称武器 HUD 手部、脚踢鞋部、手持武器及剑系贴图全面同步至 MM8BDM v6c 规格：新增 18 张适配 v6c 比例的基础手部、鞋部与手持武器贴图（`BasicHandV6C` 的 12 张 `W_HV*` 手型 + `6V00W0`/`6V00X0` 鞋部 + 4 张手持武器贴图 `V_HVV0`/`V_HVX0`/`V_HVY0`/`V_HVZ0`（分别基于 v6c 规格的 Rolling Cutter `BUSHS0`、Metal Blade `BUINA0`/`BUSHJ0`、Shadow Blade `BUSHA0` 与 Screw Crusher `SCRHA0`），以及双持合成帧 `W_HYA0..J0`）、更新 `BasicSword`（`U_HDA0..O0`）剑系贴图，并对全部适配的生还者、强化生还者与 Boss 职业套件完成整套对齐（共新增 15 条、更新 849 条 `TEXTURES` 合成，现已包含 `Kate_W`/`KateShiny_W`、`CaptainBlitzkrieg_W` 与 `JoeOfDuty_W`，含 Zangief 解耦的 `6G51`/`7G50`（保留 `6G50D0`/`E0` 供 `TEXTURES.bars` 使用）与 [Eden_W.dec](src/actors/classes/survivors/Eden_W.dec) 张臂攻击分帧 `6H59 Q/R/S`）；同时将包含自定义手势或不可兼容原版手型的套件（`PartyBomber_W*`、`Raider_W*`、`Electrician_W*`、`Rogue_W*`、`MegaMan`/`megaman_copyweps`、`FinalSampi` `8L02`、`ScrotoStuntDouble` `9I13`）完整保留在原版套件。

@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261116
+
+- Fixed Unholy LMS friendly fire dealing zero damage before, during, and after rounds on servers where Zandronum's native `teamdamage` remained at its `0` default: Unholy LMS friendly-fire scaling (including daily friendly-fire pools, unprotected teammate item hits, and post-round settlement) now uses its own `uh_sv_teamdamage` server setting (`Friendly Fire Scalar` under **Unholy Server Options → Game Rules**), defaulting to `1.0` (`0` disables Unholy friendly-fire damage, `0.5` halves it, `1.0` deals normal damage) while leaving native `teamdamage` untouched for native team modes.
+
 ## 4.0.0-beta.261115
 
 - Synchronized first-person weapon HUD hands, boots, and sword graphics with MM8BDM v6c: added 18 v6c-proportioned base hand, kick/boot, and held-weapon sprites (`BasicHandV6C`: 12 `W_HV*` poses + `6V00W0`/`6V00X0` boots + 4 held-weapon poses `V_HVV0`/`V_HVX0`/`V_HVY0`/`V_HVZ0` derived from v6c `BUSHS0` Rolling Cutter, `BUINA0`/`BUSHJ0` Metal Blade, `BUSHA0` Shadow Blade, and `SCRHA0` Screw Crusher, plus `W_HYA0..J0` duo-hand composites), updated `BasicSword` (`U_HDA0..O0`) sprites, and realigned all eligible Survivor, Shiny Survivor, and Boss kits (including `849` updated and `15` added `TEXTURES` composites across whole-kit sword/hand/boot/held-weapon families including `Kate_W`/`KateShiny_W`, `CaptainBlitzkrieg_W`, and `JoeOfDuty_W`, decoupled `6G51`/`7G50` Zangief entries preserving `6G50D0`/`E0` for `TEXTURES.bars`, and Eden's split wide-arm fire frames `6H59 Q/R/S` in [Eden_W.dec](src/actors/classes/survivors/Eden_W.dec)), while preserving non-v6c custom-gesture kits (`PartyBomber_W*`, `Raider_W*`, `Electrician_W*`, `Rogue_W*`, `MegaMan`/`megaman_copyweps`, `FinalSampi` `8L02`, `ScrotoStuntDouble` `9I13`) on their original kits.
