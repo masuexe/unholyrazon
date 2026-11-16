@@ -221,6 +221,12 @@ BASE_GAME_ACTORS = frozenset(
 """.split()
 )
 
+REQUIRED_ACTOR_PARENTS = (
+    ("PartyBallU_MapMarker", "PartyBall_MapMarker"),
+    ("PartyBallU_Respawn", "PartyBallRespawner_Respawn"),
+    ("PartyBallU_RespawnShadow", "PartyBallRespawner_RespawnShadow"),
+)
+
 
 # A block comment that never closes (it happens: see TheDentistShiny_W.dec)
 # must still be stripped, so the pattern accepts end-of-file as its terminator.
@@ -493,6 +499,24 @@ def main(argv) -> int:
             f"'{decl.name}' is declared but never referenced"
         )
     checks["orphans"] = len(orphans)
+
+    # --- rule 5: required companion actors and base parents ---------------
+    companion_findings = 0
+    for actor_name, expected_parent in REQUIRED_ACTOR_PARENTS:
+        decl = decls.get(actor_name.lower())
+        actual_parent = (decl.parent or "") if decl is not None else ""
+        if decl is None:
+            companion_findings += 1
+            findings += 1
+            print(f"missing required companion actor '{actor_name}' (: {expected_parent})")
+        elif actual_parent.lower() != expected_parent.lower():
+            companion_findings += 1
+            findings += 1
+            print(
+                f"{decl.path.relative_to(root)}:{decl.line}: '{actor_name}' "
+                f"inherits '{actual_parent or '<none>'}', expected '{expected_parent}'"
+            )
+    checks["companions"] = len(REQUIRED_ACTOR_PARENTS) - companion_findings
 
     print(
         "actor contracts: "

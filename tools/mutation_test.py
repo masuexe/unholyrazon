@@ -225,6 +225,13 @@ MUTATIONS = [
             "actor ShinyMega_UHExShot_P : ShinyMegaBase_P {",
         ),
     },
+    {
+        "name": "partyball-companion-actors",
+        "checker": "tools/check_actor_contracts.py",
+        "why": "PartyBallU falls back to the generic assist automap marker or loses respawn actors",
+        "file": "src/actors/unepic/CoreItemReplace.dec",
+        "replace": ("actor PartyBallU_MapMarker : PartyBall_MapMarker {}\n", ""),
+    },
 ]
 
 
