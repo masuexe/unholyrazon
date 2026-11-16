@@ -24,13 +24,50 @@ def function(source, name):
     return source[match.start():end].replace("function ", "") + "\n"
 
 
+def check_automap_xray_wiring(xray: str, mautomap: str) -> None:
+    """Verify ACS wiring between X-Ray state, renderer gating and MAUTOMAP."""
+    xray_requirements = (
+        ('script "uh_HasXRayVision"', "missing uh_HasXRayVision script"),
+        ('script "uh_CanXRayRevealTarget"', "missing uh_CanXRayRevealTarget script"),
+        ('ACS_NamedExecute("core_automap_player_markers", 0)',
+         "UH_EnsureXRayRenderer does not ensure core_automap_player_markers"),
+        ('CheckAutomap() == AUTOMAP_OFF',
+         "UH_XRayVisionManager does not suppress 3D labels while automap is open"),
+    )
+    for snippet, message in xray_requirements:
+        if snippet not in xray:
+            raise SystemExit(f"error: {message} in projectile_and_xray.acs")
+
+    mautomap_requirements = (
+        ('ACS_NamedExecuteWithResult("uh_HasXRayVision", cpn)',
+         "MAUTOMAP does not query uh_HasXRayVision"),
+        ('else if (viewerHasXRay && ACS_NamedExecuteWithResult("uh_CanXRayRevealTarget", cpn, pln))',
+         "MAUTOMAP Unholy branch does not reveal X-Ray targets via uh_CanXRayRevealTarget"),
+        ('if (should_reveal || (viewerHasXRay && ACS_NamedExecuteWithResult("uh_CanXRayRevealTarget", cpn, pln)))',
+         "MAUTOMAP non-Unholy branch does not reveal X-Ray targets via uh_CanXRayRevealTarget"),
+        ('SpawnForced("PlayerPawn_Revealed_MapMarker"',
+         "MAUTOMAP no longer spawns PlayerPawn_Revealed_MapMarker for revealed players"),
+    )
+    for snippet, message in mautomap_requirements:
+        if snippet not in mautomap:
+            raise SystemExit(f"error: {message} in MAUTOMAP.acs")
+
+
 def main():
     team = (ROOT / "src/acs_source/unholy/uh_teaminfo.acs").read_text()
     automap = (ROOT / "src/acs_source/hud/automap_markers.acs").read_text()
+    xray = (ROOT / "src/acs_source/systems/shared/projectile_and_xray.acs").read_text()
+    mautomap = (ROOT / "src/acs_source/v6b_overrides/corescripts/systems/MAUTOMAP.acs").read_text()
+    check_automap_xray_wiring(xray, mautomap)
     definitions = (ROOT / "src/acs_source/unholy/uh_def.acs").read_text()
     constants = "\n".join(re.findall(
         r"^#define (?:PLS_\w+|UH_SCOREPOLICY_\w+|UH_TI_REV_\w+|UH_TI_POLICY_REV_SLOT)\s+.*$",
         definitions, re.M))
+    xray_constants = "\n".join(re.findall(
+        r"^#define (?:UH_XRAY_STEALTH_ALPHA_MAX|UH_XRAY_DIRECT_SIGHT_ALPHA_MIN)\s+.*$",
+        xray, re.M))
+    assert xray_constants.count("#define") == 2, "missing X-Ray threshold constants"
+    constants = constants + "\n" + xray_constants
     functions = "".join(function(team, name) for name in (
         "UH_AreDisplayTeammates", "UH_Ti_ServerTeammatesForSplit", "UH_Ti_AcceptRevision"))
     receiver = team.replace('script "uh_ti_sync_policy" (int policy, int revision) CLIENTSIDE',
@@ -42,6 +79,9 @@ def main():
     functions += "".join(function(tlms, name) for name in (
         "UH_Tlms_IsAlive", "UH_Tlms_Viewer", "UH_Tlms_CountAllies",
         "UH_Tlms_CountEnemies"))
+    functions += "".join(function(xray, name) for name in (
+        "UH_IsXRayTargetStealthed", "UH_IsActorXRayStealthed",
+        "UH_ShouldShowXRay3D", "UH_HasXRayVision", "UH_CanXRayRevealTarget"))
     code = STUBS + constants + "\n" + functions + function(automap, "UH_AM_CanSee") + TESTS
     with tempfile.TemporaryDirectory(prefix="uh-team-visibility-") as directory:
         path = Path(directory)
@@ -55,19 +95,59 @@ STUBS = r'''
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #define MAX_PLAYERS 64
 #define UH_AM_PLAYER_TID 1000
 #define APROP_Health 0
+#define APROP_Alpha 3
+#define APROP_RenderStyle 16
+#define STYLE_None 0
+#define STYLE_Normal 1
+#define STYLE_Fuzzy 2
+#define STYLE_Translucent 3
 int uhtirole[MAX_PLAYERS], uhsrvrole[MAX_PLAYERS], uhtilife[MAX_PLAYERS * 2 + 1];
 int uhtiscorepolicy, uhtiova, uhtiovatarget;
 int spectator[MAX_PLAYERS];
+int in_game[MAX_PLAYERS];
 int health[MAX_PLAYERS];
+int alpha[MAX_PLAYERS];
+int render_style[MAX_PLAYERS];
+int invisible_flag[MAX_PLAYERS];
+int xray_on[MAX_PLAYERS];
+int two_xray_on[MAX_PLAYERS];
+int active_tid = -1;
 bool stats[MAX_PLAYERS];
 int clears;
 void UH_Ti_EnsureClientInitialized(void) {}
 void UH_Ti_ClearStats(int pn) { stats[pn] = false; clears++; }
 int PlayerIsSpectator(int pn) { return spectator[pn]; }
-int GetActorProperty(int tid, int prop) { (void)prop; return health[tid - 1000]; }
+int PlayerInGame(int pn) { return (pn >= 0 && pn < MAX_PLAYERS) ? in_game[pn] : 0; }
+int SetActivatorToPlayer(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS || !in_game[pn]) return 0;
+  active_tid = UH_AM_PLAYER_TID + pn;
+  return 1;
+}
+int GetActorProperty(int tid, int prop) {
+  int p = (tid == 0 ? active_tid : tid) - UH_AM_PLAYER_TID;
+  if (p < 0 || p >= MAX_PLAYERS) return 0;
+  if (prop == APROP_Health) return health[p];
+  if (prop == APROP_Alpha) return alpha[p];
+  if (prop == APROP_RenderStyle) return render_style[p];
+  return 0;
+}
+int CheckFlag(int tid, const char *flag) {
+  int p = (tid == 0 ? active_tid : tid) - UH_AM_PLAYER_TID;
+  if (p < 0 || p >= MAX_PLAYERS) return 0;
+  if (strcmp(flag, "INVISIBLE") == 0) return invisible_flag[p];
+  return 0;
+}
+int CheckInventory(const char *item) {
+  int p = active_tid - UH_AM_PLAYER_TID;
+  if (p < 0 || p >= MAX_PLAYERS) return 0;
+  if (strcmp(item, "UH_XRayVisionOn_F") == 0) return xray_on[p];
+  if (strcmp(item, "UH_TwoPlayerXRayOn_F") == 0) return two_xray_on[p];
+  return 0;
+}
 '''
 
 TESTS = r'''
@@ -192,6 +272,112 @@ int main(void) {
   assert(UH_Tlms_Viewer(1000, 0) == -1);
   uhtilife[0] = PLS_SURVIVOR;
   checks++;
+
+  // X-Ray stealth suppression and automap reveal eligibility.
+  assert(UH_IsXRayTargetStealthed(STYLE_None, 65536, false));
+  assert(UH_IsXRayTargetStealthed(STYLE_Translucent, 0, false));
+  assert(UH_IsXRayTargetStealthed(STYLE_Translucent, 6554, false));  // 0.1 Ghost Eye / fade
+  assert(UH_IsXRayTargetStealthed(STYLE_Normal, 65536, true));       // +INVISIBLE
+  assert(!UH_IsXRayTargetStealthed(STYLE_Translucent, 16384, false));  // 0.25 ALPHA_MIN
+  assert(!UH_IsXRayTargetStealthed(STYLE_Translucent, 32768, false));  // 0.5 xray probe
+  assert(!UH_IsXRayTargetStealthed(STYLE_Fuzzy, 52428, false));        // 0.8 spawn protection
+  assert(!UH_IsXRayTargetStealthed(STYLE_Normal, 65536, false));
+
+  // Stealthed targets hide 3D X-Ray both behind walls and in direct sight.
+  assert(!UH_ShouldShowXRay3D(STYLE_None, 65536, false, false));
+  assert(!UH_ShouldShowXRay3D(STYLE_None, 65536, false, true));
+  assert(!UH_ShouldShowXRay3D(STYLE_Translucent, 0, false, false));
+  assert(!UH_ShouldShowXRay3D(STYLE_Translucent, 6554, false, true));
+  assert(!UH_ShouldShowXRay3D(STYLE_Normal, 65536, true, false));
+  assert(!UH_ShouldShowXRay3D(STYLE_Normal, 65536, true, true));
+  assert(UH_ShouldShowXRay3D(STYLE_Normal, 65536, false, false));
+  assert(!UH_ShouldShowXRay3D(STYLE_Normal, 65536, false, true));
+  assert(UH_ShouldShowXRay3D(STYLE_Translucent, 32768, false, false));
+  assert(UH_ShouldShowXRay3D(STYLE_Translucent, 32768, false, true));
+  checks++;
+
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    in_game[i] = 1;
+    health[i] = 100;
+    alpha[i] = 65536;
+    render_style[i] = STYLE_Normal;
+    invisible_flag[i] = 0;
+    spectator[i] = 0;
+    xray_on[i] = 0;
+    two_xray_on[i] = 0;
+  }
+
+  // UH_HasXRayVision requires living non-spectator viewer with an X-Ray token.
+  assert(!UH_HasXRayVision(-1));
+  assert(!UH_HasXRayVision(0));
+  xray_on[0] = 1;
+  assert(UH_HasXRayVision(0));
+  xray_on[0] = 0;
+  two_xray_on[0] = 1;
+  assert(UH_HasXRayVision(0));
+  spectator[0] = 1;
+  assert(!UH_HasXRayVision(0));
+  spectator[0] = 0;
+  health[0] = 0;
+  assert(!UH_HasXRayVision(0));
+  health[0] = 100;
+  in_game[0] = 0;
+  assert(!UH_HasXRayVision(0));
+  in_game[0] = 1;
+
+  // UH_CanXRayRevealTarget requires living distinct target not stealthed.
+  assert(!UH_CanXRayRevealTarget(0, 0));
+  assert(UH_CanXRayRevealTarget(0, 1));
+  SetActivatorToPlayer(1);
+  assert(!UH_IsActorXRayStealthed(0));
+  alpha[1] = 0;
+  assert(UH_IsActorXRayStealthed(0));
+  assert(!UH_CanXRayRevealTarget(0, 1));
+  alpha[1] = 6554;
+  assert(!UH_CanXRayRevealTarget(0, 1));
+  alpha[1] = 16384;
+  assert(UH_CanXRayRevealTarget(0, 1));
+  render_style[1] = STYLE_None;
+  assert(!UH_CanXRayRevealTarget(0, 1));
+  render_style[1] = STYLE_Normal;
+  invisible_flag[1] = 1;
+  assert(!UH_CanXRayRevealTarget(0, 1));
+  invisible_flag[1] = 0;
+  health[1] = 0;
+  assert(!UH_CanXRayRevealTarget(0, 1));
+  health[1] = 100;
+  in_game[1] = 0;
+  assert(!UH_CanXRayRevealTarget(0, 1));
+  in_game[1] = 1;
+
+  // Policy matrix: teammates remain visible when stealthed; X-Ray reveals
+  // non-allies only when viewer has X-Ray and target is not stealthed.
+  int xpolicies[] = {UH_SCOREPOLICY_NORMAL, UH_SCOREPOLICY_FFA, UH_SCOREPOLICY_ONEVSALL};
+  uhtiova = 0; uhtiovatarget = -1;
+  uhtirole[0] = uhtilife[0] = PLS_SURVIVOR;
+  uhtirole[1] = uhtilife[1] = PLS_SURVIVOR;  // teammate in NORMAL
+  uhtirole[2] = uhtilife[2] = PLS_BOSS;      // opponent in NORMAL
+  for (int pi = 0; pi < 3; pi++) {
+    uhtiscorepolicy = xpolicies[pi];
+    if (xpolicies[pi] == UH_SCOREPOLICY_ONEVSALL) {
+      uhtiova = 1; uhtiovatarget = 2;
+    } else {
+      uhtiova = 0; uhtiovatarget = -1;
+    }
+    alpha[1] = 0;  // stealthed player 1: teammate stays visible in NORMAL, hidden to X-Ray otherwise
+    alpha[2] = 65536;
+    bool ally_visible = UH_AM_CanSee(0, 1);
+    bool ally_xray = !ally_visible && UH_HasXRayVision(0) && UH_CanXRayRevealTarget(0, 1);
+    assert(ally_visible == (xpolicies[pi] == UH_SCOREPOLICY_NORMAL));
+    assert(!ally_xray);
+    bool foe_xray_visible = !UH_AM_CanSee(0, 2) && UH_HasXRayVision(0) && UH_CanXRayRevealTarget(0, 2);
+    assert(foe_xray_visible);
+    alpha[2] = 6554;  // stealthed opponent disappears
+    bool foe_xray_hidden = !UH_AM_CanSee(0, 2) && UH_HasXRayVision(0) && UH_CanXRayRevealTarget(0, 2);
+    assert(!foe_xray_hidden);
+    checks++;
+  }
+
   printf("team visibility: %d policy/split/role cases passed\n", checks);
   return 0;
 }

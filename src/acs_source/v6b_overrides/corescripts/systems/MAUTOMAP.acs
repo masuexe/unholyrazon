@@ -34,13 +34,21 @@ script "core_automap_player_markers" OPEN CLIENTSIDE
     int cpn = ConsolePlayerNumber();
 
     while(true) {
+        cpn = ConsolePlayerNumber();
+        if(cpn < 0) {
+            Delay(1);
+            continue;
+        }
+
         int autoMapStatus = CheckAutomap();
         if(autoMapStatus == AUTOMAP_OFF) {
             Delay(1);
             continue;
         }
 
-        if(!GetUserCvar(cpn, "mm8bdm_automap_players") || GetCvar("sv_noautomapallies")) {
+        bool showAllies = GetUserCvar(cpn, "mm8bdm_automap_players") && !GetCvar("sv_noautomapallies");
+        bool viewerHasXRay = ACS_NamedExecuteWithResult("uh_HasXRayVision", cpn);
+        if(!showAllies && !viewerHasXRay) {
             Delay(1);
             continue;
         }
@@ -139,27 +147,31 @@ script "core_automap_player_markers" OPEN CLIENTSIDE
             bool revealed = false;
 
             if (ACS_NamedExecuteWithResult("uh_IsUnholyTeamMode")) {
-                if (!ACS_NamedExecuteWithResult("uh_AM_CanSee", cpn, pln))
+                if (ACS_NamedExecuteWithResult("uh_AM_CanSee", cpn, pln)) {
+                    if (!showAllies)
+                        continue;
+                } else if (viewerHasXRay && ACS_NamedExecuteWithResult("uh_CanXRayRevealTarget", cpn, pln)) {
+                    revealed = true;
+                } else {
                     continue;
+                }
             } else {
-                if(
+                bool isNonAlly = (
                     teamGame
                     && GetPlayerInfo(cpn, PLAYERINFO_TEAM) != GetPlayerInfo(pln, PLAYERINFO_TEAM)
                     && PlayerIsSpectator(cpn) != 1
-                ) {
-                    if(!should_reveal)
-                        continue;
-                    else
-                        revealed = true;
-                }
+                ) || (
+                    !teamgame && !cooperative && cpn != pln && PlayerIsSpectator(cpn) != 1
+                );
 
-                if(!teamgame && !cooperative && cpn != pln && PlayerIsSpectator(cpn) != 1) {
-                    if(!should_reveal)
-                        continue;
-                    else
+                if (isNonAlly) {
+                    if (should_reveal || (viewerHasXRay && ACS_NamedExecuteWithResult("uh_CanXRayRevealTarget", cpn, pln)))
                         revealed = true;
+                    else
+                        continue;
+                } else if (!showAllies) {
+                    continue;
                 }
-
             }
 
             int velx = GetActorVelX(0);

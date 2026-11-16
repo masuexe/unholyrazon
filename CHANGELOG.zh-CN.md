@@ -8,6 +8,7 @@
 
 - 修复在未手动修改 Zandronum 原生 `teamdamage`（引擎默认为 `0`）的服务器上，Unholy LMS 赛前、局内（包括每日友伤池与无队友免伤的道具攻击）及赛后结算均无法造成友伤的问题：Unholy LMS 的友伤倍率现改由独立的服务器设置 `uh_sv_teamdamage`（菜单 **Unholy Server Options → Game Rules → Friendly Fire Scalar**）控制，默认值为 `1.0`（设为 `0` 关闭 Unholy 友伤伤害、`0.5` 为半额、`1.0` 为正常伤害，同时作用于局内与赛后结算），且不再影响原生团队模式的 `teamdamage` 设置。
 - 修复小地图（Automap）中派对球（Party Ball）错误显示为通用辅助道具图标而非派对球专属图标的问题，并补全派对球的刷新冷却指示（Respawn / Shadow）定义。
+- 拥有透视（X-Ray，如残局双人透视、Lin 或特殊回合透视）时，打开小地图（Automap）现在会自动在地图上标出目标位置；当目标处于隐身状态时，X-Ray 透视标记与小地图上的透视标记均会自动消失。
 
 ## 4.0.0-beta.261115
 

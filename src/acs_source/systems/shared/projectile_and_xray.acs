@@ -75,11 +75,68 @@ script "UH_BeginLimitedXRayVision" (void) {
   NamedExecuteClientScript("UH_EnsureXRayRenderer", PlayerNumber());
 }
 
+// 0.15 in 16.16 fixed-point (9830): covers 0.0 full invisibility/cloak/
+// PowerInvisibility and 0.1 Ghost Demoneye / 9-step alpha fades (6553..6555),
+// while staying below 0.25 ALPHA_MIN (16384), 0.3+ visual fades, 0.5 probe
+// alpha, and 0.8 respawn protection.
+#define UH_XRAY_STEALTH_ALPHA_MAX 9830
+#define UH_XRAY_DIRECT_SIGHT_ALPHA_MIN 58982
+
+function bool UH_IsXRayTargetStealthed(int targetStyle, int targetAlpha, bool invisibleFlag) {
+  return targetStyle == STYLE_None || targetAlpha <= UH_XRAY_STEALTH_ALPHA_MAX || invisibleFlag;
+}
+
+function bool UH_IsActorXRayStealthed(int tid) {
+  return UH_IsXRayTargetStealthed(
+    GetActorProperty(tid, APROP_RenderStyle),
+    GetActorProperty(tid, APROP_Alpha),
+    CheckFlag(tid, "INVISIBLE"));
+}
+
+function bool UH_ShouldShowXRay3D(int targetStyle, int targetAlpha, bool invisibleFlag, bool inSight) {
+  if (UH_IsXRayTargetStealthed(targetStyle, targetAlpha, invisibleFlag)) {
+    return false;
+  }
+  // When the enemy is directly in line of sight and clearly visible, hide
+  // 3D X-Ray to avoid obstructing crosshair and target silhouette in combat.
+  if (inSight && targetAlpha >= UH_XRAY_DIRECT_SIGHT_ALPHA_MIN) {
+    return false;
+  }
+  return true;
+}
+
+function bool UH_HasXRayVision(int viewer) {
+  if (viewer < 0 || viewer >= MAX_PLAYERS) {return false;}
+  if (!PlayerInGame(viewer) || PlayerIsSpectator(viewer) == 1) {return false;}
+  if (!SetActivatorToPlayer(viewer)) {return false;}
+  if (GetActorProperty(0, APROP_Health) <= 0) {return false;}
+  return CheckInventory("UH_XRayVisionOn_F") > 0
+    || CheckInventory("UH_TwoPlayerXRayOn_F") > 0;
+}
+
+function bool UH_CanXRayRevealTarget(int viewer, int subject) {
+  if (viewer < 0 || viewer >= MAX_PLAYERS) {return false;}
+  if (subject < 0 || subject >= MAX_PLAYERS || viewer == subject) {return false;}
+  if (!PlayerInGame(subject) || !SetActivatorToPlayer(subject)) {return false;}
+  if (GetActorProperty(0, APROP_Health) <= 0) {return false;}
+  return !UH_IsActorXRayStealthed(0);
+}
+
+// Client queries for the MAUTOMAP shadow when automap mode is active.
+script "uh_HasXRayVision" (int viewer) CLIENTSIDE {
+  SetResultValue(UH_HasXRayVision(viewer));
+}
+
+script "uh_CanXRayRevealTarget" (int viewer, int subject) CLIENTSIDE {
+  SetResultValue(UH_CanXRayRevealTarget(viewer, subject));
+}
+
 // OPEN CLIENTSIDE can be missed when joining/resetting a network map. The
 // server also requests this when enabling X-Ray. Do not use ExecuteAlways for
-// the renderer: repeated delivery must keep one loop owning the HUD ids.
+// either loop: repeated delivery must keep one instance owning the markers/ids.
 script "UH_EnsureXRayRenderer" (void) CLIENTSIDE {
   ACS_NamedExecute("UH_XRayVisionManager", 0);
+  ACS_NamedExecute("core_automap_player_markers", 0);
 }
 
 function void ClearXRayTarget(int tid) {
@@ -108,11 +165,7 @@ function void UpdateXRayTargets(int viewer) {
 
     int targetAlpha = GetActorProperty(i, APROP_Alpha);
     int targetStyle = GetActorProperty(i, APROP_RenderStyle);
-    int isTargetVisible = (targetStyle != STYLE_None && targetAlpha >= 0.9 && !CheckFlag(i, "INVISIBLE"));
-
-    // When the enemy is directly in line of sight and visible, hide X-Ray
-    // to avoid obstructing crosshair and target silhouette during combat.
-    if (CheckSight(0, i, 1) && isTargetVisible) {
+    if (!UH_ShouldShowXRay3D(targetStyle, targetAlpha, CheckFlag(i, "INVISIBLE"), CheckSight(0, i, 1))) {
       ClearXRayTarget(i);
       continue;
     }
@@ -123,25 +176,23 @@ function void UpdateXRayTargets(int viewer) {
 }
 
 // One renderer owns all X-Ray HUD ids. Ending either source cannot clear
-// labels still required by the other; there is no finite display timer.
+// labels still required by the other; while automap is open, MAUTOMAP renders
+// PlayerPawn_Revealed_MapMarker instead of 3D projected labels.
 script "UH_XRayVisionManager" OPEN CLIENTSIDE {
   int viewer;
   bool wasActive = false;
-  bool active;
+  bool draw3D;
   while (true) {
     viewer = ConsolePlayerNumber();
-    active = false;
-    if (viewer >= 0 && PlayerInGame(viewer) && SetActivatorToPlayer(viewer)
-        && GetActorProperty(0, APROP_Health) > 0) {
-      active = CheckInventory("UH_XRayVisionOn_F") > 0
-        || CheckInventory("UH_TwoPlayerXRayOn_F") > 0;
-    }
-    if (active) {
+    // Note: UH_HasXRayVision sets activator 0 to viewer when returning true,
+    // which UpdateXRayTargets requires for CheckSight and HudMessageOnActor.
+    draw3D = UH_HasXRayVision(viewer) && CheckAutomap() == AUTOMAP_OFF;
+    if (draw3D) {
       UpdateXRayTargets(viewer);
     } else if (wasActive) {
       ClearAllXRayTargets();
     }
-    wasActive = active;
+    wasActive = draw3D;
     Delay(1);
   }
 }

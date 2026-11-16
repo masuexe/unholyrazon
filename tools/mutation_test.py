@@ -232,6 +232,26 @@ MUTATIONS = [
         "file": "src/actors/unepic/CoreItemReplace.dec",
         "replace": ("actor PartyBallU_MapMarker : PartyBall_MapMarker {}\n", ""),
     },
+    {
+        "name": "xray-stealth-hides-target",
+        "checker": "tools/check_team_visibility.py",
+        "why": "stealthed or invisible targets remain visible to 3D X-Ray or X-Ray automap markers",
+        "file": "src/acs_source/systems/shared/projectile_and_xray.acs",
+        "replace": (
+            "return targetStyle == STYLE_None || targetAlpha <= UH_XRAY_STEALTH_ALPHA_MAX || invisibleFlag;",
+            "return false;",
+        ),
+    },
+    {
+        "name": "automap-xray-reveal-wired",
+        "checker": "tools/check_team_visibility.py",
+        "why": "opening the automap with X-Ray active fails to mark non-ally targets on the map",
+        "file": "src/acs_source/v6b_overrides/corescripts/systems/MAUTOMAP.acs",
+        "replace": (
+            'else if (viewerHasXRay && ACS_NamedExecuteWithResult("uh_CanXRayRevealTarget", cpn, pln)) {\n                    revealed = true;',
+            'else if (false) {\n                    revealed = true;',
+        ),
+    },
 ]
 
 
