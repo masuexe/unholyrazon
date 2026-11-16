@@ -234,6 +234,10 @@ script "ub_ValidateBossCombosDeferred" (void) {
 //  GiveMeTheFunc("BasicSoundFollowDisable",0,0);
 // }
 
+function int UH_PrepareBannerColor(void) {
+  return mercygiven ? CR_LIGHTBLUE : CR_YELLOW;
+}
+
 // Scripts related to boss morphing
 script "ub_CountdownStartup" OPEN {
   if (GetCVar("lastmanstanding") == 0) {
@@ -276,7 +280,7 @@ script "ub_CountdownStartup" OPEN {
         HudMessageBold(s:"\c[MenuYellow]The ", s:GetBonusEventName(eventdataarr[EVENTDATA_MAINEVENT]), s:"\c[MenuYellow] event is about to happen!"; HUDMSG_FADEOUT, 66, CR_RED, 240.4, 36.0, 20.0, 2.0);
       }
       else {
-        HudMessageBold(s:"Prepare yourselves!"; HUDMSG_FADEOUT, 66, CR_YELLOW, 240.4, 36.0, 20.0, 2.0);
+        HudMessageBold(s:"Prepare yourselves!"; HUDMSG_FADEOUT, 66, UH_PrepareBannerColor(), 240.4, 36.0, 20.0, 2.0);
       }
     }
     else if (strongmancheck[0] >= 0) {
@@ -284,17 +288,22 @@ script "ub_CountdownStartup" OPEN {
       HudMessageBold(s:"A powerful foe approaches!"; HUDMSG_FADEOUT, 66, CR_DARKRED, 240.4, 36.0, 20.0, 2.0);
     }
     else {
-      HudMessageBold(s:"Prepare yourselves!"; HUDMSG_FADEOUT, 66, CR_YELLOW, 240.4, 36.0, 20.0, 2.0);
+      HudMessageBold(s:"Prepare yourselves!"; HUDMSG_FADEOUT, 66, UH_PrepareBannerColor(), 240.4, 36.0, 20.0, 2.0);
     }
 
     Delay(20);
     // Countdown HUD messages are not replayed in a joining client's snapshot.
-    // Refresh the queued Strongman notice without replaying its sound or setup.
+    // Refresh the queued Strongman or Mercy notice without replaying its sound or setup.
     while (GetGameModeState() == GAMESTATE_WAITFORPLAYERS
         || GetGameModeState() == GAMESTATE_COUNTDOWN) {
-      if (PlayerCount() > 1 && strongmancheck[0] >= 0
+      if (PlayerCount() > 1
           && eventdataarr[EVENTDATA_DELAY] < GetClampedCVar("uh_sv_bonuseventlimit", 1, 100)) {
-        HudMessageBold(s:"A powerful foe approaches!"; HUDMSG_FADEOUT, 66, CR_DARKRED, 240.4, 36.0, 20.0, 2.0);
+        if (strongmancheck[0] >= 0) {
+          HudMessageBold(s:"A powerful foe approaches!"; HUDMSG_FADEOUT, 66, CR_DARKRED, 240.4, 36.0, 20.0, 2.0);
+        }
+        else if (mercygiven) {
+          HudMessageBold(s:"Prepare yourselves!"; HUDMSG_FADEOUT, 66, UH_PrepareBannerColor(), 240.4, 36.0, 20.0, 2.0);
+        }
       }
       Delay(35);
     }
@@ -309,7 +318,7 @@ script "ub_CountdownStartup" OPEN {
     HudMessageBold(s:"A powerful foe approaches!"; HUDMSG_FADEOUT, 66, CR_DARKRED, 240.4, 36.0, 0.5, 2.0);
   }
   else {
-    HudMessageBold(s:"Prepare yourselves!"; HUDMSG_FADEOUT, 66, CR_YELLOW, 240.4, 36.0, 0.5, 2.0);
+    HudMessageBold(s:"Prepare yourselves!"; HUDMSG_FADEOUT, 66, UH_PrepareBannerColor(), 240.4, 36.0, 0.5, 2.0);
   }
 
   SetPlayerProperty(1, 1, 4);

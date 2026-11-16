@@ -259,6 +259,41 @@ MUTATIONS = [
         "file": "src/TEXTURES.items",
         "replace": ("Patch I_EVD0, 0, 0}", "Patch I_BAR0, 0, 0}"),
     },
+    {
+        "name": "mercy-prepare-banner-color",
+        "checker": "tools/check_razon3_parity_contracts.py",
+        "why": "Mercy rounds fail to recolor Prepare yourselves! to light blue",
+        "file": "src/acs_source/unholy/uh_lifecycle.acs",
+        "replace": (
+            "return mercygiven ? CR_LIGHTBLUE : CR_YELLOW;",
+            "return CR_YELLOW;",
+        ),
+    },
+    {
+        "name": "airstrike-spread-postdeath",
+        "checker": "tools/check_razon3_parity_contracts.py",
+        "why": "Spread AirStrike reverts to simultaneous meteors or stops on owner death",
+        "file": "src/actors/items/pandora/AirStrike.dec",
+        "replace": (
+            '    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "UseX_Spread")',
+            '    TNT1 A 0',
+        ),
+    },
+    {
+        "name": "eden-damocles-death-drop",
+        "checker": "tools/check_razon3_parity_contracts.py",
+        "why": "EdenDamocles cleans up instead of dropping on Eden death",
+        "file": "src/acs_source/classes/survivors/eden/eden_runtime.acs",
+        "replace": (
+            '    if ((CheckActorClass(0, "Eden") || CheckActorClass(0, "EdenShiny")) &&\n'
+            '        CheckInventory("C577Flag") && CheckInventory("EdenDamoclesActive_F")) {\n'
+            '      TakeInventory("EdenDamoclesActive_F", 1);\n'
+            '      GiveInventory("EdenDamoclesSpent_F", 1);\n'
+            '      return EDEN_DAMOCLES_DROP;\n'
+            '    }',
+            '    return EDEN_DAMOCLES_CLEANUP;',
+        ),
+    },
 ]
 
 

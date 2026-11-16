@@ -76,3 +76,84 @@ script "uh_CanContinueBossWeaponFlash" (int pointer) {
   }
   SetResultValue(1);
 }
+
+function bool UH_IsConnectedCombatSlot(int pn) {
+  if (pn < 0 || pn >= 64)
+    return false;
+  return PlayerInGame(pn) || PlayerIsSpectator(pn) == 2;
+}
+
+script "uh_GetTargetOwnerSlot" (void) {
+  if (!SetActivator(0, AAPTR_TARGET)) {
+    SetResultValue(0);
+    terminate;
+  }
+  int pn = PlayerNumber();
+  SetResultValue(pn >= 0 && pn < 64 ? pn + 1 : 0);
+}
+
+script "uh_TargetHasProsperity" (void) {
+  if (!SetActivator(0, AAPTR_TARGET)) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(CheckInventory("PlayerPropertyProsperity") > 0);
+}
+
+script "uh_CheckTargetMatchesSlot" (int ownerSlot) {
+  if (ownerSlot <= 0 || ownerSlot > 64 || !SetActivator(0, AAPTR_TARGET)) {
+    SetResultValue(0);
+    terminate;
+  }
+  SetResultValue(PlayerNumber() == ownerSlot - 1);
+}
+
+// Rebind AAPTR_TARGET to players[pn].mo when an LMS corpse was destroyed on
+// dead-spectator transition, leaving zero permanent TIDs on either actor.
+function int UH_RefreshTargetOwnerCore(int ownerSlot) {
+  int pn = ownerSlot - 1;
+  int selftid;
+  int selftemp = 0;
+  int ptid;
+  int ptemp = 0;
+
+  if (ownerSlot <= 0 || ownerSlot > 64)
+    return 0;
+  if (ACS_NamedExecuteWithResult("uh_CheckTargetMatchesSlot", ownerSlot))
+    return 1;
+  if (!UH_IsConnectedCombatSlot(pn))
+    return 0;
+
+  selftid = ActivatorTID();
+  if (selftid == 0) {
+    selftemp = UniqueTID();
+    Thing_ChangeTID(0, selftemp);
+    selftid = selftemp;
+  }
+
+  if (!SetActivatorToPlayer(pn)) {
+    if (selftemp != 0)
+      Thing_ChangeTID(selftid, 0);
+    return 0;
+  }
+
+  ptid = ActivatorTID();
+  if (ptid == 0) {
+    ptemp = UniqueTID();
+    Thing_ChangeTID(0, ptemp);
+    ptid = ptemp;
+  }
+
+  SetActivator(selftid);
+  SetPointer(AAPTR_TARGET, ptid);
+
+  if (ptemp != 0)
+    Thing_ChangeTID(ptid, 0);
+  if (selftemp != 0)
+    Thing_ChangeTID(selftid, 0);
+  return 1;
+}
+
+script "uh_RefreshTargetOwnerBySlot" (int ownerSlot) {
+  SetResultValue(UH_RefreshTargetOwnerCore(ownerSlot));
+}

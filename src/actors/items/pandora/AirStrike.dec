@@ -10,10 +10,19 @@ actor AirStrikeItem : UnholyItem {
     I_BA W 6
     loop
    UseX:
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "UseX_Spread")
     TNT1 A 0 A_SpawnItemEx("AirStrikeSound")
-   UseX_Silent:
-    // TNT1 A 0 A_FireCustomMissile("AirStrikeTarget",0,0,0,0)
+   UseX_Single:
     TNT1 A 0 A_GiveInventory("AirStrikeSpawnRNG_P")
+    goto End
+   UseX_Spread:
+    TNT1 A 0 A_SpawnItemEx("AirStrikeSpread_H", 0, 0, 0, 0, 0, 0, 0, 32)
+    goto End
+   UseX_Silent:
+    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, "UseX_SilentSpread")
+    goto UseX_Single
+   UseX_SilentSpread:
+    TNT1 A 0 A_SpawnItemEx("AirStrikeSpreadSilent_H", 0, 0, 0, 0, 0, 0, 0, 32)
     goto End
   }
 }
@@ -40,6 +49,66 @@ actor AirStrikeItemFX : UnholyItemFX {
   }
 }
 
+actor AirStrikeSpread_H : BasicWatcher {
+  // Args[0] == 1 suppresses AirStrikeSound (AutoAirStrikeItemSilent).
+  Args 0
+  var int user_owner;
+  var int user_prosperity;
+  var int user_dead;
+  var int user_tics;
+  var int user_wave;
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_SetUserVar("user_owner", CallACS("uh_GetTargetOwnerSlot"))
+    TNT1 A 0 A_SetUserVar("user_prosperity", CallACS("uh_TargetHasProsperity"))
+    TNT1 A 0 A_SetUserVar("user_wave", 0)
+    goto DropWave
+   DropWave:
+    // Refresh ownership before each wave so kill credit and uh_sv_teamdamage
+    // stay bound even after an LMS corpse detaches into dead-spectator mode.
+    TNT1 A 0 ACS_NamedExecuteWithResult("uh_RefreshTargetOwnerBySlot", user_owner)
+    TNT1 A 0 A_JumpIf(args[0] != 0, "DropTarget")
+    TNT1 A 0 A_SpawnItemEx("AirStrikeSound", 0, 0, 0, 0, 0, 0, 0, 32)
+   DropTarget:
+    TNT1 A 0 A_JumpIf(user_prosperity > 0, "RollProsperity")
+    TNT1 A 0 A_Jump(13, "DropMajora")
+    goto DropMeteor
+   RollProsperity:
+    TNT1 A 0 A_Jump(128, "DropMajora")
+   DropMeteor:
+    TNT1 A 0 A_SpawnItemEx("AirStrikeTarget", 0, 0, 32, 0, 0, 0, 0, 32)
+    goto AfterDrop
+   DropMajora:
+    TNT1 A 0 A_SpawnItemEx("AirStrikeTarget2", 0, 0, 32, 0, 0, 0, 0, 32)
+   AfterDrop:
+    TNT1 A 0 A_SetUserVar("user_wave", user_wave + 1)
+    TNT1 A 0 A_JumpIf(user_wave >= 3, "Finish")
+    TNT1 A 0 A_SetUserVar("user_tics", 70)
+    goto WaitNextWave
+   WaitNextWave:
+    TNT1 A 0 A_JumpIf(user_dead != 0, "WaitStep")
+    TNT1 A 0 A_JumpIf(CallACS("uh_PointerExists", AAPTR_TARGET), "WarpFollow")
+    // Stop following on death so remaining meteors strike the death spot.
+    TNT1 A 0 A_SetUserVar("user_dead", 1)
+    goto WaitStep
+   WarpFollow:
+    TNT1 A 0 A_SetUserVar("user_prosperity", CallACS("uh_TargetHasProsperity"))
+    TNT1 A 0 A_Warp(AAPTR_TARGET, 0, 0, 0, 0, WARPF_NOCHECKPOSITION)
+   WaitStep:
+    TNT1 A 1 A_SetUserVar("user_tics", user_tics - 1)
+    TNT1 A 0 A_JumpIf(user_tics > 0, "WaitNextWave")
+    goto DropWave
+   Finish:
+    TNT1 A 1
+    stop
+  }
+}
+
+actor AirStrikeSpreadSilent_H : AirStrikeSpread_H {
+  Args 1
+}
+
 actor AirStrikeSpawnRNG_P : CustomInventory {
   States {
    Pickup:
@@ -51,17 +120,9 @@ actor AirStrikeSpawnRNG_P : CustomInventory {
    Meteor:
     // TNT1 A 0 A_FireCustomMissile("AirStrikeTarget",0,0,0,0)
     TNT1 A 0 A_SpawnItemEx("AirStrikeTarget", 0, 0, 32, 0, 0, 0, 0, 32)
-    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, 1)
-    stop
-    TNT1 A 0 A_SpawnItemEx("AirStrikeTarget_Spread", 0, 0, 80, 0, 0, 0, 15, 32)
-    TNT1 A 0 A_SpawnItemEx("AirStrikeTarget_Spread", 0, 0, 128, 0, 0, 0, -15, 32)
     stop
    Majora:
     TNT1 A 0 A_SpawnItemEx("AirStrikeTarget2", 0, 0, 32, 0, 0, 0, 0, 32)
-    TNT1 A 0 A_JumpIfInventory("PlayerPropertySpread", 1, 1)
-    stop
-    TNT1 A 0 A_SpawnItemEx("AirStrikeTarget2_Spread", 0, 0, 80, 0, 0, 0, 15, 32)
-    TNT1 A 0 A_SpawnItemEx("AirStrikeTarget2_Spread", 0, 0, 128, 0, 0, 0, -15, 32)
     stop
   }
 }
@@ -69,6 +130,29 @@ actor AirStrikeSpawnRNG_P : CustomInventory {
 actor AirStrikeSound : BasicSoundFollow {
   PainSound "items/AMETEOR"
   ReactionTime 70
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_RearrangePointers(AAPTR_DEFAULT, AAPTR_DEFAULT, AAPTR_TARGET)
+    TNT1 A 0 A_Pain
+    goto Spawn2
+   Spawn2:
+    TNT1 A 0 A_JumpIf(!CallACS("uh_PointerExists", 2), "HoldPos")
+    TNT1 A 1 A_Fire
+    TNT1 A 0 A_JumpIfInTargetInventory("BasicSoundFollowDisable", 1, "Stopper")
+    TNT1 A 0 A_CountDown
+    loop
+   HoldPos:
+    // Keep playing the warning siren at the death spot instead of cutting off.
+    TNT1 A 1
+    TNT1 A 0 A_CountDown
+    loop
+   Stopper:
+    TNT1 A 0
+    TNT1 AA 1 A_StopSound(2)
+    TNT1 A 1
+    stop
+  }
 }
 
 actor AirStrikeTarget : BasicExplosion {
@@ -77,9 +161,11 @@ actor AirStrikeTarget : BasicExplosion {
   +FORCEXYBILLBOARD
   ReactionTime 1
   Scale 4.0
+  var int user_owner;
   States {
    Spawn:
     EVFL R 0
+    EVFL R 0 A_SetUserVar("user_owner", CallACS("uh_GetTargetOwnerSlot"))
     EVFL RST 4
     EVFL R 0 A_Scream
     EVFL RST 4
@@ -93,6 +179,7 @@ actor AirStrikeTarget : BasicExplosion {
     EVFL R 1 A_CountDown
     wait
    Death:
+    EVFL R 0 ACS_NamedExecuteWithResult("uh_RefreshTargetOwnerBySlot", user_owner)
     EVFL R 0 A_PlaySoundEx("items/AMETEORT", "Weapon", 0, 2)
     EVFL R 0 A_SpawnItemEx("AirStrikeMeteor", 0, 0, 580, 0, 0, -20)
     EVFL RST 4
@@ -102,6 +189,7 @@ actor AirStrikeTarget : BasicExplosion {
 actor AirStrikeTarget2 : AirStrikeTarget {
   States {
    Death:
+    EVFL R 0 ACS_NamedExecuteWithResult("uh_RefreshTargetOwnerBySlot", user_owner)
     EVFL R 0 A_PlaySoundEx("items/AMETEOR_Moon", "Weapon", 0, 2)
     EVFL R 0 A_SpawnItemEx("AirStrikeMeteor2", 0, 0, 580, 0, 0, -20)
     EVFL RST 4
@@ -109,6 +197,7 @@ actor AirStrikeTarget2 : AirStrikeTarget {
   }
 }
 
+// Legacy spread target variants retained for addon compatibility.
 actor AirStrikeTarget_Spread : AirStrikeTarget {
   States {
    Spawn:

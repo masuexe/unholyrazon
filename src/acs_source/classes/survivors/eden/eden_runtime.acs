@@ -383,18 +383,58 @@ script "rz_EdenDamoclesShouldFall" (void) {
     SetResultValue(0);
 }
 
-// The sword's common state must fall through on remote clients. Validate its
-// owner on the server and reserve DECORATE jumps for terminal transitions.
-script "rz_EdenDamoclesVisualValid" (void) {
+#define EDEN_DAMOCLES_CLEANUP 0
+#define EDEN_DAMOCLES_HANG 1
+#define EDEN_DAMOCLES_DROP 2
+
+// Decide the server-authoritative transition for a hanging EdenDamocles sword:
+//   - EDEN_DAMOCLES_HANG (1): live Eden/EdenShiny still holds active C577.
+//   - EDEN_DAMOCLES_DROP (2): risk roll spent Damocles OR Eden died while C577
+//     was active (including same-tic LMS dead-spectator corpse detachment).
+//   - EDEN_DAMOCLES_CLEANUP (0): live morph/conversion/strip, voluntary
+//     spectate, or disconnect.
+function int EdenDamoclesHangStateCore(int ownerSlot) {
+  int pn;
   if (!SetActivator(0, AAPTR_TARGET)) {
-    SetResultValue(0);
-    terminate;
+    if (ownerSlot > 0 && ownerSlot <= 64 && PlayerIsSpectator(ownerSlot - 1) == 2)
+      return EDEN_DAMOCLES_DROP;
+    return EDEN_DAMOCLES_CLEANUP;
   }
-  SetResultValue(PlayerNumber() >= 0 && PlayerInGame(PlayerNumber()) &&
-    !CheckInventory("IsDead") && GetActorProperty(0, APROP_Health) > 0 &&
-    (CheckActorClass(0, "Eden") || CheckActorClass(0, "EdenShiny")) &&
-    CheckInventory("C577Flag") &&
-    (CheckInventory("EdenDamoclesActive_F") || CheckInventory("EdenDamoclesSpent_F")));
+
+  if (CheckInventory("EdenDamoclesSpent_F"))
+    return EDEN_DAMOCLES_DROP;
+
+  if (CheckInventory("IsDead") || GetActorProperty(0, APROP_Health) <= 0) {
+    if ((CheckActorClass(0, "Eden") || CheckActorClass(0, "EdenShiny")) &&
+        CheckInventory("C577Flag") && CheckInventory("EdenDamoclesActive_F")) {
+      TakeInventory("EdenDamoclesActive_F", 1);
+      GiveInventory("EdenDamoclesSpent_F", 1);
+      return EDEN_DAMOCLES_DROP;
+    }
+    if (PlayerNumber() < 0 && ownerSlot > 0 && ownerSlot <= 64 &&
+        PlayerIsSpectator(ownerSlot - 1) == 2)
+      return EDEN_DAMOCLES_DROP;
+    return EDEN_DAMOCLES_CLEANUP;
+  }
+
+  pn = PlayerNumber();
+  if (pn < 0 || !PlayerInGame(pn))
+    return EDEN_DAMOCLES_CLEANUP;
+
+  if ((CheckActorClass(0, "Eden") || CheckActorClass(0, "EdenShiny")) &&
+      CheckInventory("C577Flag") && CheckInventory("EdenDamoclesActive_F"))
+    return EDEN_DAMOCLES_HANG;
+
+  return EDEN_DAMOCLES_CLEANUP;
+}
+
+script "rz_EdenDamoclesHangState" (int ownerSlot) {
+  SetResultValue(EdenDamoclesHangStateCore(ownerSlot));
+}
+
+// Keep legacy compatibility if any external caller queries rz_EdenDamoclesVisualValid.
+script "rz_EdenDamoclesVisualValid" (void) {
+  SetResultValue(EdenDamoclesHangStateCore(0) != EDEN_DAMOCLES_CLEANUP);
 }
 
 script "rz_EdenDamoclesKill" (void) {

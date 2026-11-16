@@ -11,6 +11,9 @@
 - Players with X-Ray Vision (such as two-player X-Ray, Lin, or bonus-round X-Ray) now see revealed targets marked on the automap while viewing the map, and both X-Ray nametags and X-Ray automap markers now automatically disappear while a target is cloaked or invisible.
 - Fixed Infinite Rocket, Infinite Rubber Band, and Infinite Football missing their red item frames: their inventory icons, item-wheel icons, world pickups, and automap markers now use dedicated red-bordered sprites.
 - Fixed Killer Box Demoneye and Golden Killer Box Demoneye icons appearing shifted off-center in the item wheel.
+- During loss-streak Mercy rounds, the `"Prepare yourselves!"` banner now appears in light blue instead of yellow.
+- Using Air Strike Beacon with a Spread Rune now drops three meteors sequentially instead of all at once, and any remaining meteors continue dropping at the user's death spot even if the user dies mid-sequence.
+- Fixed Eden's Damocles sword vanishing instead of falling when Eden dies while holding Damocles: the sword now drops to the ground on death and remains planted as a continuous area hazard.
 
 ## 4.0.0-beta.261115
 

@@ -11,6 +11,9 @@
 - 拥有透视（X-Ray，如残局双人透视、Lin 或特殊回合透视）时，打开小地图（Automap）现在会自动在地图上标出目标位置；当目标处于隐身状态时，X-Ray 透视标记与小地图上的透视标记均会自动消失。
 - 修复无限火箭（Infinite Rocket）、无限橡皮筋（Infinite Rubber Band）和无限橄榄球（Infinite Football）缺少红色边框的问题：其物品栏图标、道具轮盘图标、地面掉落物及小地图标记现均改为独立的红框贴图。
 - 修复杀人眼（Killer Box Demoneye）与金色杀人眼（Golden Killer Box Demoneye）图标在道具轮盘中显示偏移的问题。
+- 连败触发怜悯（Mercy）加成局时，开局 `"Prepare yourselves!"` 提示文本的颜色现由黄色改为浅蓝色。
+- 持有散射符文（Spread Rune）时使用空袭信标（Air Strike Beacon），三发陨石现改为依次延迟落下而非同时砸下；若使用者在中途阵亡，剩余陨石仍会在其阵亡位置继续落下。
+- 修复伊甸（Eden）在持有达摩克利斯之剑（Damocles）期间阵亡时达摩剑直接消失的问题：现在阵亡时达摩剑会正常落下插在地面并持续造成范围伤害。
 
 ## 4.0.0-beta.261115
 

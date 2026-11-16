@@ -141,6 +141,10 @@ CHECKS = [
     check("asset-references", "fast", "static",
           [PY, "tools/check_asset_references.py"],
           "Sound, LANGUAGE and HUD texture references resolve"),
+    check("razon3-parity-contracts", "fast", "static",
+          [PY, "tools/check_razon3_parity_contracts.py"],
+          "Mercy prepare banner color, post-death Spread AirStrike, and Eden Damocles death drop",
+          ["python", "cc"]),
 
     # -- meta: prove the static layer is not a no-op -----------------------
     # Each case injects one known defect into a hardlink copy of the repo and
