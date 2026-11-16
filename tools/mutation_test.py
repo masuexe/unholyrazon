@@ -252,6 +252,13 @@ MUTATIONS = [
             'else if (false) {\n                    revealed = true;',
         ),
     },
+    {
+        "name": "infinite-item-icon-contract",
+        "checker": "tools/check_asset_references.py",
+        "why": "infinite LMS items lose their dedicated red-bordered sprite icons or wheel grAb offsets",
+        "file": "src/TEXTURES.items",
+        "replace": ("Patch I_EVD0, 0, 0}", "Patch I_BAR0, 0, 0}"),
+    },
 ]
 
 

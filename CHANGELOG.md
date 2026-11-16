@@ -9,6 +9,8 @@
 - Fixed Unholy LMS friendly fire dealing zero damage before, during, and after rounds on servers where Zandronum's native `teamdamage` remained at its `0` default: Unholy LMS friendly-fire scaling (including daily friendly-fire pools, unprotected teammate item hits, and post-round settlement) now uses its own `uh_sv_teamdamage` server setting (`Friendly Fire Scalar` under **Unholy Server Options → Game Rules**), defaulting to `1.0` (`0` disables Unholy friendly-fire damage, `0.5` halves it, `1.0` deals normal damage) while leaving native `teamdamage` untouched for native team modes.
 - Fixed Party Balls showing the generic assist item icon instead of the Party Ball icon on the automap, and added missing Party Ball respawn indicator definitions.
 - Players with X-Ray Vision (such as two-player X-Ray, Lin, or bonus-round X-Ray) now see revealed targets marked on the automap while viewing the map, and both X-Ray nametags and X-Ray automap markers now automatically disappear while a target is cloaked or invisible.
+- Fixed Infinite Rocket, Infinite Rubber Band, and Infinite Football missing their red item frames: their inventory icons, item-wheel icons, world pickups, and automap markers now use dedicated red-bordered sprites.
+- Fixed Killer Box Demoneye and Golden Killer Box Demoneye icons appearing shifted off-center in the item wheel.
 
 ## 4.0.0-beta.261115
 

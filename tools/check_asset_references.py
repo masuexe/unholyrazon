@@ -44,7 +44,9 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import struct
 import sys
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -433,6 +435,129 @@ def report(problems, warnings, kind, name, sites, external, known):
             " and {} more site(s)".format(len(sites) - 1)))
 
 
+def _unfilter_png_rows(width: int, height: int, raw: bytes) -> list[bytes]:
+    stride = width + 1
+    rows: list[bytes] = []
+    prev = bytes(width)
+    for y in range(height):
+        ftype = raw[y * stride]
+        row = bytearray(raw[y * stride + 1 : (y + 1) * stride])
+        for x in range(width):
+            a = row[x - 1] if x > 0 else 0
+            b = prev[x]
+            c = prev[x - 1] if x > 0 else 0
+            if ftype == 1:
+                row[x] = (row[x] + a) & 0xFF
+            elif ftype == 2:
+                row[x] = (row[x] + b) & 0xFF
+            elif ftype == 3:
+                row[x] = (row[x] + ((a + b) >> 1)) & 0xFF
+            elif ftype == 4:
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                pr = a if pa <= pb and pa <= pc else (b if pb <= pc else c)
+                row[x] = (row[x] + pr) & 0xFF
+        rows.append(bytes(row))
+        prev = rows[-1]
+    return rows
+
+
+def check_item_icon_assets(problems: list[str]) -> None:
+    """Validate event/Killer Box item PNG headers, grAb offsets and red borders."""
+    grab_targets = (
+        "src/graphics/icons/items/KBOXICO.png",
+        "src/graphics/icons/items/GKBOXICO.png",
+        "src/sprites/items/events/I_EVA0.png",
+        "src/sprites/items/events/I_EVB0.png",
+        "src/sprites/items/events/I_EVC0.png",
+        "src/sprites/items/events/I_EVD0.png",
+    )
+    red_border_targets = {
+        "src/sprites/items/events/I_EVB0.png",
+        "src/sprites/items/events/I_EVC0.png",
+        "src/sprites/items/events/I_EVD0.png",
+    }
+
+    for rel in grab_targets:
+        path = ROOT / rel
+        if not path.is_file():
+            problems.append(f"missing item icon PNG: {rel}")
+            continue
+        data = path.read_bytes()
+        if data[:8] != b"\x89PNG\r\n\x1a\n":
+            problems.append(f"invalid PNG signature: {rel}")
+            continue
+        pos = 8
+        chunks: list[tuple[bytes, bytes]] = []
+        idat = bytearray()
+        crc_bad = False
+        while pos + 12 <= len(data):
+            length, ctype = struct.unpack(">I4s", data[pos:pos + 8])
+            end = pos + 12 + length
+            if end > len(data):
+                crc_bad = True
+                break
+            cdata = data[pos + 8:pos + 8 + length]
+            crc, = struct.unpack(">I", data[pos + 8 + length:end])
+            if crc != (zlib.crc32(ctype + cdata) & 0xFFFFFFFF):
+                crc_bad = True
+                break
+            chunks.append((ctype, cdata))
+            if ctype == b"IDAT":
+                idat.extend(cdata)
+            pos = end
+        if crc_bad or pos != len(data):
+            problems.append(f"corrupt PNG chunk/CRC: {rel}")
+            continue
+
+        chunk_names = [ct for ct, _ in chunks]
+        chunk_map = {ct: cd for ct, cd in chunks}
+        if b"IHDR" not in chunk_map or len(chunk_map[b"IHDR"]) < 13:
+            problems.append(f"missing IHDR in {rel}")
+            continue
+        w, h, depth, ctype_png, *_ = struct.unpack(">IIBBBBB", chunk_map[b"IHDR"])
+        if (w, h) != (16, 16):
+            problems.append(f"expected 16x16 size in {rel}, got {w}x{h}")
+        if b"grAb" not in chunk_map or b"IDAT" not in chunk_names:
+            problems.append(f"missing grAb or IDAT chunk in {rel}")
+            continue
+        if chunk_names.index(b"grAb") > chunk_names.index(b"IDAT"):
+            problems.append(f"grAb appears after IDAT in {rel} (ignored by engine)")
+        if len(chunk_map[b"grAb"]) != 8 or struct.unpack(">ii", chunk_map[b"grAb"]) != (8, 16):
+            problems.append(f"expected grAb (8, 16) in {rel}")
+
+        if rel in red_border_targets:
+            if ctype_png != 3 or depth != 8 or b"PLTE" not in chunk_map:
+                problems.append(f"expected 8-bit indexed PNG palette in {rel}")
+                continue
+            plte_raw = chunk_map[b"PLTE"]
+            plte = [tuple(plte_raw[i:i + 3]) for i in range(0, len(plte_raw), 3)]
+            rows = _unfilter_png_rows(w, h, zlib.decompress(bytes(idat)))
+            if plte[rows[0][1]] != (127, 0, 0) or plte[rows[0][2]] != (255, 31, 31):
+                problems.append(
+                    f"expected red border RGB (127,0,0)/(255,31,31) in {rel}, "
+                    f"got {plte[rows[0][1]]}/{plte[rows[0][2]]}")
+
+    textures_text = (SRC / "TEXTURES.items").read_text(encoding="utf-8", errors="replace")
+    for graphic, patch in (("RUBB_00", "I_EVD0"), ("MISL_00", "I_EVC0"), ("FTBL_00", "I_EVB0")):
+        expected = f"graphic {graphic}, 32, 32 {{XScale 2.0 YScale 2.0 Patch {patch}, 0, 0}}"
+        if expected not in textures_text:
+            problems.append(f"TEXTURES.items missing untranslated {graphic} -> {patch}")
+
+    itemdefs_text = (SRC / "acs_source/items/definitions/uh_itemdefs.acs").read_text(
+        encoding="utf-8", errors="replace")
+    for actor, sprite in (
+        ("InfiniteRocketItem", "I_EVC0"),
+        ("InfiniteRubberBandItem", "I_EVD0"),
+        ("TheFootBallItemX", "I_EVB0"),
+    ):
+        if not re.search(
+            rf'DefineUnholyItem\(\d+,\s*"{actor}",\s*"[^"]+",\s*"{sprite}"',
+            itemdefs_text,
+        ):
+            problems.append(f"uh_itemdefs.acs missing {actor} -> {sprite}")
+
+
 def main(argv):
     parser = argparse.ArgumentParser(
         description="Verify sound, language and HUD texture references.",
@@ -450,6 +575,8 @@ def main(argv):
 
     problems = []
     warnings = []
+
+    check_item_icon_assets(problems)
 
     sound_defs = sound_definitions()
     sound_refs = sound_references()
