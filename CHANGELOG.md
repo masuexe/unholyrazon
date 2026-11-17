@@ -4,6 +4,12 @@
 
 ---
 
+## 4.0.0-beta.261117
+
+- Reduced online network traffic and server/client CPU stalls during Qwant's `Ice Beam` (`IceBeamWep` / `QwantShiny_IceBeam_W`) and Morshu's ultimate (`Morshu_W`):
+  - Converted pure-visual `Ice Beam` trails (`ICELAZORTrail1`, `ICELAZORTrail2`, `S_IceBeamTrail1`, `S_IceBeamTrail2`) to client-side (`BasicClientSide`) actors with spawn-time velocity scaling, and restored `Ice Beam`'s own kill obituary (`ICEBEAM` / `S_IceBeam`) instead of falling back to `BasicFastProjectile`'s missing-obituary message.
+  - Moved Morshu ultimate bomb/debris explosion visuals and sounds (`MorshuBombLiteExplosionFX`, `MorshuBombDebrisExplodeFX`) plus `MorshuBombDebrisFX` back to `BasicClientSide`, removed unneeded `+USESPAWNEVENTSCRIPT` hooks, unused `Scale 5.5` on `ForcedNegotiationHitbox`, and per-death `ThrustThingZ`/`A_ChangeFlag("NOGRAVITY", 1)` network broadcasts on ultimate-only projectiles while preserving damage, timing, and custom obituaries.
+
 ## 4.0.0-beta.261116
 
 - Fixed Unholy LMS friendly fire dealing zero damage before, during, and after rounds on servers where Zandronum's native `teamdamage` remained at its `0` default: Unholy LMS friendly-fire scaling (including daily friendly-fire pools, unprotected teammate item hits, and post-round settlement) now uses its own `uh_sv_teamdamage` server setting (`Friendly Fire Scalar` under **Unholy Server Options → Game Rules**), defaulting to `1.0` (`0` disables Unholy friendly-fire damage, `0.5` halves it, `1.0` deals normal damage) while leaving native `teamdamage` untouched for native team modes.

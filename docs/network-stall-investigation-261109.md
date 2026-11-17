@@ -380,3 +380,78 @@ connected clients (`out/verify-runtime/run.py`):
   - `RazingRayPinpointRay`: `VictimClient was eradicated completely by MosqClient's Razing Ray.`
   - `KachidongaBlunderShotX2`: `VictimClient had perished from Colonel Kachidonga (MosqClient)'s Charged Kangogias-Blunderbuss.`
 
+## Follow-up: Morshu ultimate and Qwant Ice Beam stalls (261117)
+
+Following the 261113 `HF_PROJ` fix, two additional attacks still caused server/client
+stalls in live multiplayer sessions (`rlSWRI` update in the Tencent Docs tracker):
+Qwant's `Ice Beam` (`IceBeamWep` / `QwantShiny_IceBeam_W`) and Morshu's ultimate
+(`Morshu_W` `YOULITTLE` / `MMMMMM`).
+
+### Root causes
+
+1. **Qwant / QwantShiny `IceBeam` (`src/actors/classes/survivors/qwant_copyweps/IceBeam.dec`)**:
+   - Pure-visual `+NOINTERACTION` trail actors (`ICELAZORTrail1`, `ICELAZORTrail2`,
+     `S_IceBeamTrail1`, `S_IceBeamTrail2`) inherited `BasicProjectile`
+     (networked + `+USESPAWNEVENTSCRIPT`) and called `A_ScaleVelocity(0.8)` / `0.6`
+     on the server. Over an 8 s burst (140 `ICEBEAM`s in `NETLAB`), they spawned
+     3,568 networked trail actors, each emitting `SpawnThing` + `MoveThingExact` +
+     `SetThingTranslation` + `SetThingTarget` + a second `MoveThingExact` from
+     `A_ScaleVelocity`, plus 8 server `HF_PROJ`/`SFT_PROJ` hooks (including
+     `NodeList_Node` watchers and `uh_DailyFFStamp`) and 3 client `SPAWNEV` ACS scripts.
+   - Because `ICEBEAM` inherited `BasicFastProjectile` without its own `Obituary`,
+     kills by `IceBeamWep` / `S_IceBeam` also fell back to `BasicFastProjectile`'s
+     generic missing-obituary string instead of `IceBeamWep`'s obituary.
+2. **Morshu's ultimate (`src/actors/classes/bosses/Morshu_W.dec`)**:
+   - Over 420 tics (12 s), `MMMMMM`/`MMMMMMX` spawns 420 `MorshuBombProjectileLITE`,
+     1,680 `MorshuBombDebris`, and 420 `ForcedNegotiationHitbox` actors (`2,520`
+     networked `BasicProjectile`s with `+USESPAWNEVENTSCRIPT`).
+   - Razon 4 also switched `MorshuBombDebrisFX` from `BasicClientSide` to
+     `BasicGraphicEffect` (running `MM8BDMProjSpawnFuncClient` on every debris trail
+     particle every 2 tics), ran `ThrustThingZ(0, 10, 0, 1)` on `MorshuBombProjectileLITE`
+     spawn (`MoveThingExact`), synced unused `Scale 5.5` on invisible
+     `ForcedNegotiationHitbox` spawns (`UpdateThingScaleNotAtDefault`), and executed
+     server-side `A_PlaySound` + `A_ChangeFlag("NOGRAVITY", 1)` on bomb/debris deaths
+     (double-synced `SERVERCOMMANDS_SetThingFlags` + `SoundActor`).
+
+### Implemented fixes
+
+1. **`src/actors/classes/survivors/qwant_copyweps/IceBeam.dec`**:
+   - Converted `ICELAZORTrail1`, `ICELAZORTrail2`, `S_IceBeamTrail1`, and
+     `S_IceBeamTrail2` to `BasicClientSide` (`+CLIENTSIDEONLY +MISSILE +DONTSPLASH +FORCEXYBILLBOARD +BRIGHT`)
+     spawned with scaled velocity `0.8 * vel*` / `0.6 * vel*` and flags
+     `41` (`SIXF_TRANSFERTRANSLATION | SIXF_ABSOLUTEVELOCITY | SIXF_NOCHECKPOSITION`),
+     eliminating 100% of server trail actors, `A_ScaleVelocity` packets, and
+     server/client spawn-event ACS calls on trails.
+   - Added `Obituary "%o was frozen by %k's \cnIce Beam\c-."` to `ICEBEAM` (inherited
+     by `S_IceBeam`).
+2. **`src/actors/classes/bosses/Morshu_W.dec`**:
+   - Removed unused `Scale 5.5` and added `-USESPAWNEVENTSCRIPT` + `RenderStyle "None"`
+     on `ForcedNegotiationHitbox`.
+   - Added `-USESPAWNEVENTSCRIPT` to `MorshuBombProjectileLITE` and `MorshuBombDebris`
+     (retaining `+USESPAWNEVENTSCRIPT` on `MorshuBombProjectile` so M1/Rope bombs keep
+     `rz_projflipgrav`), folded initial `+2.5` Z velocity into the `MorshuBombProjectileLITE`
+     spawn call in `MMMMMM`/`MMMMMMX` (removing `ThrustThingZ`), moved explosion visuals/sounds
+     to `BasicClientSide` actors (`MorshuBombLiteExplosionFX` and
+     `MorshuBombDebrisExplodeFX`), restored `MorshuBombDebrisFX` to `BasicClientSide`,
+     and replaced `A_ChangeFlag("NOGRAVITY", 1)` in `MorshuBombDebris::Death` with
+     tic-exact `A_Stop` waits (zero network flag packets while preserving the 4 explosion
+     ticks at `0/9/18/27`).
+   - Kept `ForcedNegotiationHitbox`, `MorshuBombProjectileLITE`, and `MorshuBombDebris`
+     networked without `+SERVERSIDEONLY` to preserve custom obituaries.
+
+### Benchmark & runtime verification (280 tics, loopback `NETLAB` & Deathmatch obituaries)
+
+Measured against `out/build.pk3` on `mm8bdm-v6c` (1 server + 1 client loopback UDP proxy):
+
+| Probe (`NETLAB`, 280 tics) | Pre-fix (B) | Post-fix (B) | Pre-fix Peak | Post-fix Peak | Server CPU | UDP Delta |
+|---|---:|---:|---:|---:|---:|---:|
+| Idle | 6,461 | 6,440 | 1.0 KB/s | 1.0 KB/s | 0.47s → 0.28s | -0.3% |
+| Qwant `IceBeam` (`140` shots) | 88,681 | 13,757 | 12.3 KB/s | 1.9 KB/s | 2.30s → 0.38s (-83.5%) | -84.5% |
+| Morshu Rage (`~280` bombs/hitboxes, `+1,112` debris) | ~87,382 (comb.) / 88,128 (`TRAINING`) | 53,699 | 12.0–12.6 KB/s | 7.9 KB/s | 1.36s → 0.36s (-73.5%) | -38.5% to -39.1% |
+
+Deathmatch 2-client runtime check confirmed identical custom obituaries on server and remote client:
+- `ICEBEAM` & `S_IceBeam`: `VictimClient was frozen by KillerClient's Ice Beam.`
+- `ForcedNegotiationHitbox`: `VictimClient had buyer's remorse because of Morshu (KillerClient)'s forced sales.`
+- `MorshuBombProjectileLITE`: `Morshu (KillerClient) sold a bomb to VictimClient.`
+- `MorshuBombDebris`: `VictimClient was caught by Morshu (KillerClient)'s bomb debris.`
+

@@ -4,6 +4,12 @@
 
 ---
 
+## 4.0.0-beta.261117
+
+- 优化 Qwant 的 `Ice Beam`（`IceBeamWep` / `QwantShiny_IceBeam_W`）与 Morshu（南蛮大布）大招（`Morshu_W`）联机时的网络流量与服务端/客户端 CPU 占用，缓解多人卡顿：
+  - 将 `Ice Beam` 的纯视觉尾迹（`ICELAZORTrail1`、`ICELAZORTrail2`、`S_IceBeamTrail1`、`S_IceBeamTrail2`）改为客户端生成（`BasicClientSide`）并在生成时直接计算缩放速度，同时为 `ICEBEAM` / `S_IceBeam` 补回专属击杀播报（Obituary），修复此前回退显示 `BasicFastProjectile` 缺省提示的问题。
+  - 将南蛮大布大招炸弹/碎片的爆炸特效与音效（`MorshuBombLiteExplosionFX`、`MorshuBombDebrisExplodeFX`）及拖尾粒子 `MorshuBombDebrisFX` 改为 `BasicClientSide` 客户端生成，剥离大招弹幕不需要的 `+USESPAWNEVENTSCRIPT` 钩子、隐形 `ForcedNegotiationHitbox` 上多余的 `Scale 5.5` 同步及死亡帧冗余的 `ThrustThingZ`/`A_ChangeFlag("NOGRAVITY", 1)` 网络广播，同时完整保留伤害、节奏与各伤害体专属击杀播报。
+
 ## 4.0.0-beta.261116
 
 - 修复在未手动修改 Zandronum 原生 `teamdamage`（引擎默认为 `0`）的服务器上，Unholy LMS 赛前、局内（包括每日友伤池与无队友免伤的道具攻击）及赛后结算均无法造成友伤的问题：Unholy LMS 的友伤倍率现改由独立的服务器设置 `uh_sv_teamdamage`（菜单 **Unholy Server Options → Game Rules → Friendly Fire Scalar**）控制，默认值为 `1.0`（设为 `0` 关闭 Unholy 友伤伤害、`0.5` 为半额、`1.0` 为正常伤害，同时作用于局内与赛后结算），且不再影响原生团队模式的 `teamdamage` 设置。
