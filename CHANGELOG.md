@@ -4,6 +4,10 @@
 
 ---
 
+## Unreleased
+
+- Standard MegaMan's Reload pool now covers all 55 registered MM8BDM v6c items, including tanks, passive assists, campaign assists, and Buster upgrades. Original pickup and class restrictions still apply.
+
 ## 4.0.0-beta.261117
 
 - Reduced online network traffic and server/client CPU stalls during Qwant's `Ice Beam` (`IceBeamWep` / `QwantShiny_IceBeam_W`) and Morshu's ultimate (`Morshu_W`):

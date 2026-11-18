@@ -4,6 +4,10 @@
 
 ---
 
+## 未发布
+
+- 普通洛克人的 Reload 道具池现已收录 MM8BDM v6c 原版注册的全部 55 种道具，包括补给罐、被动辅助、战役辅助和 Buster 升级。道具仍遵循原有的拾取条件和职业限制。
+
 ## 4.0.0-beta.261117
 
 - 优化 Qwant 的 `Ice Beam`（`IceBeamWep` / `QwantShiny_IceBeam_W`）与 Morshu（南蛮大布）大招（`Morshu_W`）联机时的网络流量与服务端/客户端 CPU 占用，缓解多人卡顿：

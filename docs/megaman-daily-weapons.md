@@ -27,7 +27,7 @@ quota. Pharaoh Roulette recognizes the full owned loadout, including multiple
 weapons in one slot. Nonpositive input is treated as one weapon at runtime.
 
 `Assists Per Reload` (`rz_sv_mega_reload_item_count`, default **2**) controls how
-many curated MM8BDM v6c `+INVBAR` assist items standard MegaMan tosses onto the
+many stock MM8BDM v6c items standard MegaMan tosses onto the
 ground on Reload, separated from M2's copy-weapon draw:
 
 - **M2 (`Altfire`)** replaces only the copy-weapon loadout (`Weapons Per M2` /
@@ -39,17 +39,15 @@ ground on Reload, separated from M2's copy-weapon draw:
   and tosses `rz_sv_mega_reload_item_count` newly drawn assists onto the ground
   in front of MegaMan (`MegaManU_W` shows the Reload HUD icon whenever
   `rz_sv_mega_reload_item_count > 0` and hides it at `0`; `0` disables Reload).
-- **Ground pickup & despawn**: Tossed assists are real v6c `BaseMM8BDMUseItem`
-  pickups with standard charge counts and can be collected after a 10-tic toss
-  grace window by any player not already at item capacity (including Survivors,
-  Shiny Survivors, Bosses, and Demoneyes). Uncollected items blink during the
-  final 3 seconds and despawn at 30 seconds (`1050` tics).
-- **Pool & selection**: The 20 curated assists are partitioned into two buckets
-  (14 mobility/escape items and 6 combat/summon/defense items) and distributed
-  with water-filling across both buckets (e.g., 2 draws guarantee one item from
-  each bucket), preferring items MegaMan does not currently hold before
-  repeating held assists, then shuffling the fan order across left/right toss
-  angles. Clamped to `0–20`.
+- Tossed items use the stock pickup rules, charge counts, and class restrictions.
+  Native Buster upgrades still require an eligible player class. Uncollected items
+  blink during the final 3 seconds and despawn at 30 seconds (`1050` tics).
+- The pool contains all 55 stock entries from the v6c assist and Buster upgrade
+  tables, including 38 standard assists, 4 campaign assists, and 13 Buster upgrades.
+  The default two draws toss one mobility or escape assist and one item from the
+  remaining assists and upgrades. Within each group, MegaMan draws items he does
+  not currently hold first. The setting is clamped to `0–55`, with no duplicates
+  in a single throw.
 - **Assist damage scaling**: Damaging MM8BDM v6c assist projectiles are scaled
   10x via `replaces` for Unholy's 1000 HP baseline: `BeatSupportProjectile`
   (240), `EddieBomberBomb` (10 direct, `A_Explode(170, 185, 0)` explosion),
