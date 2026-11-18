@@ -136,7 +136,6 @@ function void UH_MegaStripAssists(void) {
 
 script "uh_StripMegaAssists" (void) {
   UH_MegaStripAssists();
-  TakeInventory("MegaReloadEnabled_F", 1);
 }
 
 function bool UH_IsDroppedAssistStillInWorld(void) {
@@ -181,6 +180,19 @@ script "uh_MegaDroppedAssistWatch" (int dropTid) {
   if (!UH_IsDroppedAssistStillInWorld())
     terminate;
   Thing_Remove(0);
+}
+
+function str UH_MegaAssistDropActor(str item) {
+  if (item != "PowerGeneratorItem" && item != "DamageAbsorberItem" &&
+      item != "ExchangerItem" && item != "EnergyBalancerNeoItem")
+    return item;
+
+  // Spawn the stock actor when its name is needed by the native server hooks.
+  if (ACS_NamedExecuteWithResult("core_checkPickupServerBanned", item) ||
+      StrICmp(ACS_NamedExecuteWithResult("core_getPickupServerReplacement", item), item) != 0)
+    return item;
+
+  return StrParam(s:"UH_MegaDrop", s:item);
 }
 
 // Reuses UH_MegaRollLoadout's synchronous scratch arrays (no Delay).
@@ -310,7 +322,7 @@ function void UH_MegaRollAssists(int requested) {
     playerFwd = max(0, FixedMul(velX, dirX) + FixedMul(velY, dirY));
     throwSpeed = 9.0 + FixedMul(playerFwd, 0.65);
     dropTid = UniqueTID();
-    if (SpawnForced(uh_megaassistactors[idx], spawnX, spawnY, spawnZ, dropTid, 0) > 0) {
+    if (SpawnForced(UH_MegaAssistDropActor(uh_megaassistactors[idx]), spawnX, spawnY, spawnZ, dropTid, 0) > 0) {
       SetActorVelocity(dropTid, FixedMul(dirX, throwSpeed), FixedMul(dirY, throwSpeed), 5.0, false, false);
       ACS_NamedExecuteAlways("uh_MegaDroppedAssistWatch", 0, dropTid);
     }
@@ -318,15 +330,6 @@ function void UH_MegaRollAssists(int requested) {
 }
 
 script "uh_MegamanWeapons" (int check) {
-  if (check == 2) {
-    bool allow = GetCVar("rz_sv_mega_reload_item_count") > 0;
-    if (allow && !CheckInventory("MegaReloadEnabled_F"))
-      GiveInventory("MegaReloadEnabled_F", 1);
-    else if (!allow && CheckInventory("MegaReloadEnabled_F"))
-      TakeInventory("MegaReloadEnabled_F", 1);
-    SetResultValue(allow);
-    terminate;
-  }
   if (check == 1) {
     UH_MegaRollAssists(GetCVar("rz_sv_mega_reload_item_count"));
     terminate;

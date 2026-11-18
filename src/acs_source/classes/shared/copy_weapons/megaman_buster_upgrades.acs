@@ -1,0 +1,153 @@
+// IDs match the Use states in actors/inventory/assists/busterupgrade.txt.
+#define UH_MEGA_BUSTER_UPGRADES 13
+#define UH_MEGA_BUSTER_CHARGE 28
+#define UH_MEGA_M2_RELEASED 0
+#define UH_MEGA_M2_ATTACK 1
+#define UH_MEGA_M2_REROLL 2
+#define UH_MEGA_M2_SPENT 3
+
+int uh_megaM2Press[MAX_PLAYERS];
+
+function void UH_MegaSampleM2(int player) {
+  if (!CheckActorClass(0, "MegaManU") || GetActorProperty(0, APROP_Health) <= 0 ||
+      !(GetPlayerInput(-1, INPUT_BUTTONS) & BT_ALTATTACK)) {
+    uh_megaM2Press[player] = UH_MEGA_M2_RELEASED;
+  } else if (uh_megaM2Press[player] == UH_MEGA_M2_RELEASED) {
+    uh_megaM2Press[player] = CheckInventory("RockNRollAmmo") >= UH_MEGA_BUSTER_CHARGE
+      ? UH_MEGA_M2_REROLL : UH_MEGA_M2_ATTACK;
+  }
+}
+
+// A press can begin or end during a burst or while a weapon is being raised.
+// Both the server and the local prediction sample it independently of psprites.
+script "uh_MegaSampleM2Server" ENTER {
+  int player = PlayerNumber();
+  uh_megaM2Press[player] = UH_MEGA_M2_RELEASED;
+  while (PlayerInGame(player)) {
+    if (SetActivatorToPlayer(player))
+      UH_MegaSampleM2(player);
+    Delay(1);
+  }
+}
+
+script "uh_MegaSampleM2Client" ENTER CLIENTSIDE {
+  int player = PlayerNumber();
+  if (player != ConsolePlayerNumber())
+    terminate;
+  while (PlayerInGame(player)) {
+    if (SetActivatorToPlayer(player))
+      UH_MegaSampleM2(player);
+    Delay(1);
+  }
+}
+
+str uh_megabusters[UH_MEGA_BUSTER_UPGRADES + 1] = {
+  "MegaManU_W", "RockKick", "RollSwing", "JetAdaptorWep", "PowerAdaptorWep",
+  "SuperAdaptorWep", "BassBuster", "ProtoBuster", "DuoFist", "LaserBuster",
+  "ArrowBuster", "RushBikeWep", "TrebleBoost", "MegaArm"
+};
+
+function str UH_MegaHeldBuster(void) {
+  for (int i = 0; i <= UH_MEGA_BUSTER_UPGRADES; i++)
+    if (CheckInventory(uh_megabusters[i]))
+      return uh_megabusters[i];
+  return "";
+}
+
+function void UH_MegaStripBusters(str keep) {
+  for (int i = 0; i <= UH_MEGA_BUSTER_UPGRADES; i++)
+    if (StrICmp(uh_megabusters[i], keep) != 0)
+      TakeInventory(uh_megabusters[i], 1);
+  TakeInventory("MegaBusterPending_F", UH_MEGA_BUSTER_UPGRADES);
+}
+
+script "uh_MegaInstallBuster" (int index) {
+  SetResultValue(false);
+  if (index < 1 || index > UH_MEGA_BUSTER_UPGRADES ||
+      !CheckActorClass(0, "MegaManU") || GetActorProperty(0, APROP_Health) <= 0 ||
+      CheckInventory("MegaBusterPending_F"))
+    terminate;
+
+  str weapon = uh_megabusters[index];
+  if (CheckInventory(weapon))
+    terminate;
+
+  GiveInventory(weapon, 1);
+  if (!CheckInventory(weapon))
+    terminate;
+  if (!SetWeapon(weapon)) {
+    TakeInventory(weapon, 1);
+    terminate;
+  }
+  // Let the old weapon finish lowering and run its native deselect actions
+  // before removing it. Rock Kick, for example, removes its wall jump there.
+  GiveInventory("MegaBusterPending_F", index);
+  SetResultValue(true);
+}
+
+script "uh_MegaCommitBuster" (void) {
+  int pending = CheckInventory("MegaBusterPending_F");
+  if (pending < 1 || pending > UH_MEGA_BUSTER_UPGRADES ||
+      !CheckActorClass(0, "MegaManU") || !CheckWeapon(uh_megabusters[pending]))
+    terminate;
+
+  if (CheckWeapon("TrebleBoost"))
+    GiveInventory("TrebleFlightCounter", 28);
+  UH_MegaStripBusters(uh_megabusters[pending]);
+}
+
+script "uh_MegaStripBusters" (void) {
+  // Morphs can transfer the inventory before survivor weapons are stripped.
+  UH_MegaStripBusters("");
+}
+
+script "uh_MegaBusterCanReload" (void) {
+  SetResultValue(CheckInventory("RockNRollAmmo") >= UH_MEGA_BUSTER_CHARGE &&
+    GetCVar("rz_sv_mega_reload_item_count") > 0);
+}
+
+function bool UH_MegaBusterRerollPending(int player) {
+  if (player < 0)
+    return false;
+  UH_MegaSampleM2(player);
+  return uh_megaM2Press[player] == UH_MEGA_M2_REROLL &&
+    CheckInventory("RockNRollAmmo") >= UH_MEGA_BUSTER_CHARGE;
+}
+
+script "uh_MegaBusterRerollPending" (void) {
+  SetResultValue(UH_MegaBusterRerollPending(PlayerNumber()));
+}
+
+script "uh_MegaBusterTryReroll" (void) {
+  int player = PlayerNumber();
+  bool reroll = UH_MegaBusterRerollPending(player);
+  if (reroll)
+    uh_megaM2Press[player] = UH_MEGA_M2_SPENT;
+  SetResultValue(reroll);
+}
+
+script "uh_MegaBusterReadyFlags" (int noSecondary, int allowReload) {
+  int player = PlayerNumber();
+  if (player < 0) {
+    SetResultValue(0);
+    terminate;
+  }
+  UH_MegaSampleM2(player);
+  int flags = 0;
+  if (uh_megaM2Press[player] == UH_MEGA_M2_SPENT)
+    flags |= noSecondary;
+  if (CheckInventory("RockNRollAmmo") >= UH_MEGA_BUSTER_CHARGE &&
+      GetCVar("rz_sv_mega_reload_item_count") > 0)
+    flags |= allowReload;
+  SetResultValue(flags);
+}
+
+script "uh_IsMegaUpgradeBuster" (int weapon) {
+  for (int i = 1; i <= UH_MEGA_BUSTER_UPGRADES; i++) {
+    if (StrICmp(weapon, uh_megabusters[i]) == 0) {
+      SetResultValue(true);
+      terminate;
+    }
+  }
+  SetResultValue(false);
+}

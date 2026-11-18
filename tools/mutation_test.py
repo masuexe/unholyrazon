@@ -80,6 +80,13 @@ MUTATIONS = [
         "replace": ("  +INVENTORY.RESTRICTABSOLUTELY\n", ""),
     },
     {
+        "name": "mega-buster-installer-mismatch",
+        "checker": "tools/check_native_buster_policy.py",
+        "why": "a Buster upgrade installs the wrong weapon",
+        "file": "src/actors/inventory/assists/busterupgrade.txt",
+        "replace": ('CallACS("uh_MegaInstallBuster", 6)', 'CallACS("uh_MegaInstallBuster", 2)'),
+    },
+    {
         "name": "ammo-saturation-lost",
         "checker": "tools/check_ammo_capacity_math.py",
         "why": "large ammo values wrap or disappear when the carry factor increases",

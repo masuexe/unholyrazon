@@ -1,0 +1,346 @@
+// MM8BDM v6c stock definition with MegaManU input and upgrade support.
+actor ProtoBuster_ScriptBar : ScriptBar {}
+
+actor ProtoBuster : MegaManUBuster
+{
+Weapon.AmmoUse 1
+Weapon.AmmoGive 3
+Weapon.SlotNumber 1
+Inventory.Pickupmessage "$PU_PROTOBUSTER"
+Obituary "$OB_PROTOBUSTER"
+Tag "$TAG_PROTOBUSTER"
+weapon.ammotype "BusterAmmo"
+inventory.icon "NULLICON"
+Dropitem ""
+States
+{
+SpawnLoop:
+WEA2 Q 1
+stop
+Ready:
+    PROC J 0 ACS_NamedExecuteWithResult("uh_MegaCommitBuster")
+PROC J 0 A_TakeInventory("StopShield",1)
+PROC B 0 A_JumpIfInventory("BusterGiven",1,"TakeBusters")
+Goto Ready2
+TakeBusters:
+TNT1 Q 0 A_GiveInventory("TakeBuster", 1)
+Goto Ready2
+Ready2:
+PROC J 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_PROTOBUSTER)
+PROC J 0 A_TakeInventory("WeaponCharge",999)
+PROC J 0 A_TakeInventory("StopShield",1)
+PROC J 0 A_GunFlash
+PROC LKJ 1 A_WeaponReady(CheckClass("MegaManU") ? CallACS("uh_MegaBusterReadyFlags", WRF_NOSECONDARY, WRF_ALLOWRELOAD) : 0)
+Goto Ready2+6
+Deselect:
+PROC J 0 A_GiveInventory("StopShield",1)
+PROC JJKL 1
+PROC J 0
+goto DeselectSwap
+Select:
+PROC J 0
+goto SelectSwap
+Altfire:
+    PROC J 0 A_JumpIf(CheckClass("MegaManU") && CallACS("uh_MegaBusterTryReroll"), "MegaReroll")
+PROC D 0 A_JumpIfNoAmmo("Hold")
+PROC D 0 A_GiveInventory("StopShield",1)
+PROC KLD 1 A_TakeInventory("WeaponCharge",999)
+Altfire.a:
+    PROC D 0 A_JumpIf(CheckClass("MegaManU") && CallACS("uh_MegaBusterTryReroll"), "MegaReroll")
+PROC D 0 A_PlaySoundEx("weapons/busters/protobusterfire","Weapon")
+PROC D 0 A_FireCustomMissile("ProtoShot",0,0,8,0)
+PROC EFD 3
+PROC D 3 A_Refire("Altfire.a")
+goto Ready2+2
+Fire:
+PROC D 0 A_JumpIfNoAmmo("Hold")
+PROC D 0 A_GiveInventory("StopShield",1)
+PROC KLD 1 A_TakeInventory("WeaponCharge",999)
+PROC D 0 A_PlaySoundEx("weapons/busters/protobusterfire","Weapon")
+PROC D 0 A_FireCustomMissile("ProtoShot",0,0,8,0)
+PROC EF 3
+PROC D 3 A_Refire
+goto Ready2+2
+Fire2:
+PROC J 0 ACS_NamedExecuteWithResult("core_chargecolor",CLR_PROTOBUSTER,TCLR_NONE)
+PROC D 0 A_TakeInventory("WeaponCharge",999)
+PROC D 0 A_GiveInventory("StopShield",1)
+PROC F 0 A_PlaySoundEx("weapons/busters/protobusterfire2","Weapon")
+PROC F 3 A_FireCustomMissile("ProtoShot2",0,0,8,0)
+PROC EDD 3
+PROC D 0 A_Refire
+goto Ready2+2
+Fire3:
+PROC J 0 ACS_NamedExecuteWithResult("core_chargecolor",CLR_PROTOBUSTER,TCLR_NONE)
+PROC D 0 A_TakeInventory("WeaponCharge",999)
+PROC D 0 A_GiveInventory("StopShield",1)
+PROC D 0 A_PlaySoundEx("weapons/busters/protobusterfire2","Weapon")
+//PROC F 0 A_FireCustomMissile("ProtoShotFX",0,0,8,0)
+PROC F 6 A_FireCustomMissile("ProtoShot3",0,0,8,0)
+PROC ED 3
+PROC D 9
+PROC D 0 A_Refire
+goto Ready2+1
+Hold:
+PROC J 0 A_TakeInventory("StopShield",1)
+PROC D 0 A_JumpIfInventory("WeaponCharge",36,"Charge2")
+PROC D 0 A_JumpIfInventory("WeaponCharge",10,"Charge")
+PROC D 1 A_GiveInventory("WeaponCharge", 1 + CallACS("core_checkrune", RUNE_RAGE))
+PROC D 0 A_Refire
+Goto Ready2+1
+Charge:
+PROC D 0 A_JumpIfInventory("WeaponCharge",36,"Charge2")
+PROC D 0 A_JumpIfInventory("WeaponCharge",11,"Charge1")
+PROC D 0 A_PlaySoundEx("weapons/busters/protobustercharge","Weapon")
+Goto Charge1
+Charge1:
+PROC H 0 A_JumpIfInventory("WeaponCharge",36,"Charge2")
+PROC H 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_PROTOCHARGE1,TCLR_PROTO_CHARGE1)
+PROC H 0 A_Refire("Charge1.a")
+Goto Fire2
+Charge1.a:
+PROC H 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_PROTOCHARGE1,TCLR_PROTO_CHARGE1)
+PROC H 0 A_Refire("Charge1.b")
+Goto Fire2
+Charge1.b:
+PROC D 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_PROTOBUSTER,TCLR_NONE)
+PROC D 0 A_Refire("Charge1.c")
+Goto Fire2
+Charge1.c:
+PROC D 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_PROTOBUSTER,TCLR_NONE)
+PROC D 0 A_GiveInventory("WeaponCharge", 2 + (2 * CallACS("core_checkrune", RUNE_RAGE))) // gives 2 or 4 WeaponCharge
+PROC D 0 A_Refire("Charge1")
+Goto Fire2
+Charge2:
+PROC D 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_PROTOBUSTER,TCLR_NONE)
+PROC D 0 A_Refire("Charge2.a")
+Goto Fire3
+Charge2.a:
+PROC I 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_PROTOCHARGE2,TCLR_PROTO_CHARGE2)
+PROC I 0 A_JumpIfInventory("IsBot", 1, "BotFire")
+PROC I 0 A_Refire("Charge2.b")
+Goto Fire3
+Charge2.b:
+PROC D 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_PROTOBUSTER,TCLR_NONE)
+PROC D 0 A_Refire("Charge2.c")
+Goto Fire3
+Charge2.c:
+PROC H 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_PROTOCHARGE1,TCLR_PROTO_CHARGE1)
+PROC H 0 A_Refire("Charge2")
+Goto Fire3
+BotFire:
+PROC J 0 A_Jump(16, "Fire3")
+PROC H 0 A_Refire
+Goto Fire3
+Flash:
+TNT1 A 0 A_SpawnItemEx("ProtoShieldHitbox1",28,-16,8,0,0,0,0,1)
+TNT1 A 0 A_SpawnItemEx("ProtoShieldHitbox2",28,-8,8,0,0,0,0,1)
+TNT1 A 0 A_SpawnItemEx("ProtoShieldHitbox3",28,0,8,0,0,0,0,1)
+TNT1 A 0 A_SpawnItemEx("ProtoShieldHitbox4",28,8,8,0,0,0,0,1)
+TNT1 A 0 A_SpawnItemEx("ProtoShieldHitbox5",28,16,8,0,0,0,0,1)
+FlashLoop:
+TNT1 A 0 A_SpawnItemEx("ProtoShieldFX",23,-10,8,momx,momy,momz,0,9,0)
+TNT1 A 1 A_JumpIfInventory("StopShield",1,"NoFlash")
+loop
+NoFlash:
+TNT1 A 0
+Stop
+MegaBusterResume:
+    goto Ready2
+}
+}
+
+actor StopShield : Once {}
+
+actor ProtoShot : MegaShot
+{
++THRUGHOST
+damagetype "ProtoBuster"
+Obituary "$OB_PROTOBUSTER"
+States
+{
+Spawn:
+TNT1 A 2
+BUST A 2
+BUST A 0 A_ChangeFlag("THRUGHOST", 0)
+BUST A 1
+wait
+}
+}
+
+actor ProtoShot2 : BasicProjectile
+{
++THRUGHOST
++BRIGHT
+damagetype "ProtoBuster2"
+Obituary "$OB_PROTOBUSTER"
+Speed 26
+Damage (25 * (CheckClass("MegaManU", AAPTR_TARGET) ? UH_BUSTER_DAMAGE_SCALE : 1))
+radius 20
+height 20
+States
+{
+Spawn:
+TNT1 A 2
+MMFX D 2
+MMFX D 0 A_ChangeFlag("THRUGHOST", 0)
+MMFX D 4
+wait
+}
+}
+
+actor ProtoShot3 : BasicProjectile
+{
++DONTBLAST
++THRUGHOST
++BRIGHT
+Speed 60
+Damage (50 * (CheckClass("MegaManU", AAPTR_TARGET) ? UH_BUSTER_DAMAGE_SCALE : 1))
+radius 20
+height 20
+damagetype "ProtoBuster3"
+Obituary "$OB_PROTOBUSTER"
+States
+{
+Spawn:
+PROC A 2
+PROC B 2 A_ChangeFlag("THRUGHOST", 0)
+PROC C 2
+PROC ABC 2
+Goto Spawn+3
+}
+}
+
+actor ProtoShotFX : BasicGraphicEffect
+{
+States
+{
+SpawnFrame:
+MXP1 ABCD 2
+stop
+}
+}
+
+actor ProtoShieldHitbox1 : BasicShieldHitbox
+{
+Meleerange 28
+Accuracy -16
+Mass 8
+}
+actor ProtoShieldHitbox2 : ProtoShieldHitbox1
+{
+Accuracy -8
+}
+actor ProtoShieldHitbox3 : ProtoShieldHitbox1
+{
+Accuracy 0
+}
+actor ProtoShieldHitbox4 : ProtoShieldHitbox1
+{
+Accuracy 8
+}
+actor ProtoShieldHitbox5 : ProtoShieldHitbox1
+{
+Accuracy 16
+}
+
+actor ProtoShieldDeathFX : BasicGraphicEffect
+{
+alpha 0.9
+renderstyle add
++BRIGHT
+states
+{
+SpawnFrame:
+PROC M 0 A_SetScale(scaleX + 0.1, 2.5)
+PROC M 1 A_FadeOut(0.05)
+loop
+}
+}
+
+actor ProtoShieldFX : BasicGraphicEffect
+{
++FIXMAPTHINGPOS
++NOTIMEFREEZE
+Height 0
+Radius 0
+States
+{
+Spawn:
+TNT1 A 0
+PROS A 2
+stop
+}
+}
+
+// Legacy
+
+actor ProtoShieldHitbox
+{
++MISSILE
+Speed 0
++DONTSPLASH
+Damage 0
+Height 42
+Radius 5
+health 9999
+scale 2.5
+damagefactor "ProtoBuster", 0.0
++SHOOTABLE
++NOTAUTOAIMED
++NOBLOOD
+-SOLID
++NOTIMEFREEZE
++NOGRAVITY
++HEXENBOUNCE
++BOUNCEONACTORS
+painchance 256
+bloodtype ""
++DONTRIP
++GHOST
++NORADIUSDMG
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 2
+stop
+Death:
+TNT1 A 0 //A_PlaySound("item/protoreflect")
+TNT1 A 1
+stop
+Pain:
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("ProtoShieldDeathFX")
+TNT1 A 1 A_PlaySound("item/protoreflect")
+stop
+}
+}
+
+actor ProtoShieldX
+{
++MISSILE
++THRUACTORS
++DONTBLAST
++DONTREFLECT
+-SOLID
+//+NOINTERACTION
+height 1
+radius 1
+states
+{
+Spawn:
+TNT1 A 0
+TNT1 A 0 A_SpawnItemEx("ProtoShieldHitbox", 0, -16, 0, velx, vely, velz, 0, 8)
+TNT1 A 0 A_SpawnItemEx("ProtoShieldHitbox", 0, -8, 0, velx, vely, velz, 0, 8)
+TNT1 A 0 A_SpawnItemEx("ProtoShieldHitbox", 0, 16, 0, velx, vely, velz, 0, 8)
+TNT1 A 0 A_SpawnItemEx("ProtoShieldHitbox", 0, 8, 0, velx, vely, velz, 0, 8)
+TNT1 A 0 A_SpawnItemEx("ProtoShieldHitbox", 0, 0, 0, velx, vely, velz, 0, 8)
+TNT1 A 1
+stop
+}
+}
+
+
+// Scars
+actor ProtoShieldDeahthFX : ProtoShieldDeathFX {}

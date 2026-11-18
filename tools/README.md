@@ -836,13 +836,12 @@ normal morph, reconnect and settlement-cancellation scenario. Both select the
 registered player display name `MegaMan`; `playerclass` does not accept the
 DECORATE actor name `MegaManU` as a substitute.
 
-The diagnostic covers physical pickups for 19 new assists, their custom-class
-opt-in restrictions, active uses, native power factors, Counter Attacker
-transitions, Auto Recover healing and UH icon availability. It also checks all
-ten UH health-capsule variants with Super Recover, native success notifications,
-AntiDamageHealth bookkeeping, full-health Exchanger conversion and full-health
-rejection without Exchanger. It grants capability flags for the test only and
-does not enable those pickups for all UH classes.
+The diagnostic covers physical pickups for 19 assists, including MegaMan's four
+thrown passives. It checks the stock passives' custom-class opt-in rules, active
+uses, native power factors, Counter Attacker transitions, Auto Recover healing
+and UH icon availability. It also checks all ten UH health-capsule variants with
+Super Recover, native success notifications, AntiDamageHealth bookkeeping,
+full-health Exchanger conversion and full-health rejection without Exchanger.
 
 ## Shared ammo capacity
 

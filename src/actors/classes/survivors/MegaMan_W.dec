@@ -3,7 +3,7 @@
 
 actor MegaManU_W_NormalBar : NormalBar {Args 192, 198}
 actor MegaManU_W_ScriptBar : ScriptBar {}
-actor MegaReloadEnabled_F : OnceX {}
+actor MegaBusterPending_F : Inventory { Inventory.MaxAmount 13 }
 
 
 actor MegaManU_W : BaseMM8BDMWep_UH {
@@ -32,19 +32,16 @@ actor MegaManU_W : BaseMM8BDMWep_UH {
     BUST B 0 ACS_NamedExecuteWithResult("core_weaponcolor", 0, true)
     goto Ready2
    Ready2:
-    BUST B 0 A_JumpIfInventory("RockNRollAmmo", 0, "Ready3")
-    BUST B 1 A_WeaponReady(WRF_NOSECONDARY)
+    BUST B 1 A_WeaponReady(CallACS("uh_MegaBusterReadyFlags", WRF_NOSECONDARY, WRF_ALLOWRELOAD))
     loop
-   Ready3:
-    BUST B 0 ACS_NamedExecuteWithResult("uh_MegamanWeapons", 2)
-    BUST B 0 A_JumpIfInventory("MegaReloadEnabled_F", 1, "Ready3Reload")
-    BUST B 7 A_WeaponReady
-    goto Ready3
-   Ready3Reload:
-    BUST B 7 A_WeaponReady(WRF_ALLOWRELOAD)
-    goto Ready3
 
    Altfire:
+    BUST B 0 A_JumpIf(CallACS("uh_MegaBusterTryReroll"), "MegaReroll")
+    BUST C 0 A_GiveInventory("U_Megaman_Fire1_P")
+    BUST CD 2
+    BUST B 0 A_ReFire
+    goto Ready2
+   MegaReroll:
     BUST B 0 A_PlaySoundEx("mmWilyWars/MegaRemoveWep", "Weapon")
     BUST B 0 A_GiveInventory("VivifyDelay3")
     BUST B 0 A_ReFire(1)
@@ -56,8 +53,8 @@ actor MegaManU_W : BaseMM8BDMWep_UH {
     goto RollFinish
 
    Reload:
-    BUST B 0 A_JumpIfInventory("MegaReloadEnabled_F", 1, "ReloadStart")
-    goto Ready3
+    BUST B 0 A_JumpIf(CallACS("uh_MegaBusterCanReload"), "ReloadStart")
+    goto Ready2
    ReloadStart:
     BUST B 0 A_GiveInventory("VivifyDelay3")
     BUST B 1 Offset(5, 44)
@@ -110,7 +107,7 @@ actor MegaManU_W : BaseMM8BDMWep_UH {
     BUST B 0 A_GiveInventory("WeaponCharge", 1)
     BUST B 1 A_JumpIfInventory("WeaponCharge", 18, "Charge1_Snd")
     BUST B 0 A_ReFire("Charge0")
-    goto Ready2+1
+    goto Ready2
 
    Charge1_Snd:
     CHBU H 0 A_PlaySound("weapon/coilstart", 1)

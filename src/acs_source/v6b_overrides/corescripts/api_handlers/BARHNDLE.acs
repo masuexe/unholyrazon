@@ -20,6 +20,7 @@ script "core_DrawBar_Run" (int cam) CLIENTSIDE {
 #define BARSTYLE_NEGAMAN    1<<7  // $UH
 #define BARSTYLE_RELOADICON 1<<8  // $UH
 #define BARSTYLE_MEGAMANU   1<<9  // $UH — RockNRollAmmo reroll bar
+#define BARSTYLE_MEGAUPGRADE 1<<10
 
 #define UH_ROCKNROLL_MAX 28
 #define UH_ROCKNROLL_CYAN 192
@@ -161,9 +162,12 @@ function void DrawBarRun(void) {
     ACS_NamedExecuteWithResult(barScript);
   }
   // $UH — after ScriptBar so SBARDrawBar2 from scripts is visible
-  if (barstyle & BARSTYLE_MEGAMANU) {
+  bool megaUpgrade = (barstyle & BARSTYLE_MEGAUPGRADE) && CheckActorClass(0, "MegaManU");
+  if ((barstyle & BARSTYLE_MEGAMANU) || megaUpgrade) {
     DrawMegaManURerollBar();
   }
+  if (megaUpgrade)
+    ACS_NamedExecuteWithResult("DrawBar_MegaManU_ReloadIcon");
   if (barstyle & BARSTYLE_RELOADICON) {
     ACS_NamedExecuteWithResult("DrawBar_ReloadIcon");
   }
@@ -173,6 +177,8 @@ function int GetWepBarStyle(str wep) {
 
   int u = UniqueTID();
   int ret = BARSTYLE_NONE;
+  if (ACS_NamedExecuteWithResult("uh_IsMegaUpgradeBuster", wep))
+    ret |= BARSTYLE_MEGAUPGRADE;
   // $UH
   if (SpawnForced(StrParam(s:wep, s:"_QwantBar"), 0, 0, 0, u, 0)) {
     ret |= BARSTYLE_QWANT;

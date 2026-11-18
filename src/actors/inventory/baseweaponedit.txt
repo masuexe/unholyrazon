@@ -2,6 +2,9 @@
 // guard; +1 re-enters DeselectDeath recursively when the owner is dead.
 // ...
 
+// The stock Buster attacks use their credited shooter to select a health scale.
+const int UH_BUSTER_DAMAGE_SCALE = 10;
+
 actor BaseMM8BDMWep : BaseMM8BDMWep0 {
   Inventory.ForbiddenTo "CustWepClassBase"  // ,"UH_ClassBase"
   +INVENTORY.RESTRICTABSOLUTELY
@@ -17,6 +20,58 @@ actor BaseMM8BDMWep : BaseMM8BDMWep0 {
     BUST Y 15
     BUST Y 0 ACS_NamedExecuteWithResult("uh_SurvivorProperty", 0, 0, 0)
     BUST Y 1 A_JumpIfInventory("IsBot", 1, "BotAmmo")
+    wait
+  }
+}
+
+// Keep the stock Buster class names used by movement, HUD and pickup scripts.
+// Only the stock player and MegaMan's class family can hold these weapons.
+actor MegaManUBuster : BaseMM8BDMWep {
+  Inventory.RestrictedTo "Megaman", "MegaManU"
+  States {
+   Altfire:
+    "----" "#" 0 A_JumpIf(CheckClass("MegaManU"), "MegaBusterAlt")
+    goto Super::Altfire
+   MegaBusterAlt:
+    "----" "#" 0 A_JumpIf(CallACS("uh_MegaBusterTryReroll"), "MegaReroll")
+    "----" "#" 0 A_Jump(256, "Fire")
+    wait
+   MegaReroll:
+    "----" "#" 0 A_PlaySoundEx("mmWilyWars/MegaRemoveWep", "Weapon")
+    "----" "#" 0 A_GiveInventory("VivifyDelay3")
+    "----" "#" 0 A_GunFlash("NoFlash", GFF_NOEXTCHANGE)
+    6H00 MNOPQRSTU 2
+    TNT1 A 16
+    TNT1 A 0 A_PlaySoundEx("mmWilyWars/MegaGainWep", "Weapon")
+    TNT1 A 0 A_TakeInventory("RockNRollAmmo")
+    TNT1 A 2 ACS_NamedExecuteWithResult("uh_MegamanWeapons", 0)
+    goto MegaActionFinish
+   Reload:
+    "----" "#" 0 A_JumpIf(CheckClass("MegaManU") && CallACS("uh_MegaBusterCanReload"), "MegaThrow")
+    "----" "#" 0 A_Jump(256, "MegaBusterResume")
+    wait
+   MegaThrow:
+    "----" "#" 0 A_GiveInventory("VivifyDelay3")
+    "----" "#" 1 Offset(5, 44)
+    "----" "#" 1 Offset(12, 62)
+    "----" "#" 1 Offset(20, 87)
+    6H00 A 2 Offset(0, 32) A_PlaySoundEx("item/eddiecry", "Voice")
+    6H00 B 2
+    6H00 C 0 A_GunFlash("NoFlash", GFF_NOEXTCHANGE)
+    6H00 C 0 A_PlaySoundEx("misc/itemthrow", "Weapon")
+    6H00 C 0 A_TakeInventory("RockNRollAmmo")
+    6H00 C 2 ACS_NamedExecuteWithResult("uh_MegamanWeapons", 1)
+    6H00 DEFGH 2
+    TNT1 A 2
+    goto MegaActionFinish
+   MegaActionFinish:
+    TNT1 A 4
+    TNT1 A 2 A_SpawnItemEx("UnholyMegaAmmoRestore_H")
+    TNT1 A 4 A_ClearRefire
+    TNT1 A 0 A_Jump(256, "MegaBusterResume")
+    wait
+   MegaBusterResume:
+    TNT1 A 0 A_Jump(256, "Ready")
     wait
   }
 }

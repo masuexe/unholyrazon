@@ -137,6 +137,19 @@ BASE_GAME_SOUNDS = frozenset("""
     weapons/mmv/breakdashcharge weapons/mmv/breakdashfire weapons/mmv/breakdashimpact weapons/mmv/bubblebombexplode weapons/mmv/deepdiggerfire weapons/mmv/deepdiggerload
     weapons/mmv/electricshockfire weapons/mmv/grabbusterfire weapons/mmv/photonmissilecharge weapons/mmv/photonmissileexplode weapons/mmv/photonmissileload weapons/mmv/saltwaterfire
     weapons/mmv/sparkchaserfire
+    assists/rushbikedrift assists/rushbikefire assists/rushbikevroom weapons/busters/arrowbusterfire
+    weapons/busters/arrowbusterfire2 weapons/busters/arrowbusterfire3 weapons/busters/arrowbustersplit weapons/busters/bassbusterfire
+    weapons/busters/duofistcharge weapons/busters/duofistfire weapons/busters/duofistfire2 weapons/busters/duofistfire3
+    weapons/busters/jetadaptordash weapons/busters/jetadaptorfire weapons/busters/laserbustercharge weapons/busters/laserbusterfire
+    weapons/busters/laserbusterfire2 weapons/busters/megaarmcharge weapons/busters/megaarmfire weapons/busters/megaarmfire2
+    weapons/busters/megaarmfire3 weapons/busters/megaarmreturn weapons/busters/poweradaptorblock weapons/busters/poweradaptorcharge
+    weapons/busters/poweradaptorcharge1 weapons/busters/poweradaptorcharge2 weapons/busters/poweradaptorcharge3 weapons/busters/poweradaptorcharge4
+    weapons/busters/poweradaptorjab weapons/busters/poweradaptorsmash weapons/busters/poweradaptorstraight weapons/busters/protobustercharge
+    weapons/busters/protobusterfire weapons/busters/protobusterfire2 weapons/busters/rockkickbounce weapons/busters/rockkickfire
+    weapons/busters/rockkickhit weapons/busters/rockkickslide weapons/busters/rollswingcharge weapons/busters/rollswingfire1
+    weapons/busters/rollswingfire2 weapons/busters/rollswinghit weapons/busters/rollswingsweep weapons/busters/superadaptorcharge
+    weapons/busters/superadaptordash weapons/busters/superadaptorfire weapons/busters/superadaptorfire2 weapons/busters/superadaptorreturn
+    weapons/busters/trebleboostfire
 """.split())
 
 KNOWN_UNRESOLVED_SOUNDS = frozenset("""
@@ -196,6 +209,20 @@ BASE_GAME_LANGUAGE_KEYS = frozenset("""
     TAG_THUNDERCLAW TAG_THUNDERWOOL TAG_TIMESLOW TAG_TIMESTOPPER TAG_TOPSPIN TAG_TORNADOBLOW
     TAG_TORNADOHOLD TAG_TRIPLEBLADE TAG_WATERBALLOON TAG_WATERSHIELD TAG_WATERWAVE TAG_WAVEBURNER
     TAG_WHEELCUTTER TAG_WILDCOIL TAG_WINDSTORM TAG_YAMATOSPEAR
+    OB_ARROWBUSTER OB_BASSBUSTER OB_DUOFIST OB_JETADAPTOR
+    OB_LASERBUSTER OB_MEGAARM OB_MEGABUSTER OB_POWERADAPTOR
+    OB_POWERADAPTOR2 OB_PROTOBUSTER OB_ROCKKICK OB_ROCKKICKSTOMP
+    OB_ROLLSWING OB_RUSHBIKE OB_SUPERADAPTOR OB_TREBLEBOOST
+    PU_ARROWBUSTER PU_BASSBUSTER PU_DUOFIST PU_JETADAPTOR
+    PU_LASERBUSTER PU_MEGAARM PU_MEGABUSTER PU_POWERADAPTOR PU_PROTOBUSTER
+    PU_ROCKKICK PU_ROLLSWING PU_RUSHBIKE PU_SUPERADAPTOR
+    PU_TREBLEBOOST TAG_ADAPTORUPGRADE TAG_ARROWBUSTER TAG_ARROWBUSTERUPGRADE
+    TAG_BASSBUSTER TAG_BASSUPGRADE TAG_DUOFIST TAG_DUOFISTUPGRADE
+    TAG_JETADAPTOR TAG_JETADAPTORUPGRADE TAG_LASERBUSTER TAG_LASERBUSTERUPGRADE
+    TAG_MEGAARM TAG_MEGAARMUPGRADE TAG_MEGABUSTER TAG_POWERADAPTOR TAG_POWERADAPTORUPGRADE
+    TAG_PROTOBUSTER TAG_PROTOUPGRADE TAG_ROCKKICK TAG_ROCKKICKUPGRADE
+    TAG_ROLLSWING TAG_ROLLSWINGUPGRADE TAG_RUSHBIKE TAG_RUSHBIKEUPGRADE
+    TAG_SUPERADAPTOR TAG_TREBLEBOOST TAG_TREBLEBOOSTUPGRADE
 """.split())
 
 # No known unresolved LANGUAGE key at HEAD.

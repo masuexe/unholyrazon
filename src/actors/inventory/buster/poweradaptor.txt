@@ -1,0 +1,519 @@
+// MM8BDM v6c stock definition with MegaManU input and upgrade support.
+actor PowerAdaptorWep_MugshotColor : MugshotColor { args 4, 42 }
+actor PowerAdaptorWep_NormalAmmo : NormalAmmo {}
+actor PowerAdaptorWep_ScriptBar : ScriptBar {}
+
+actor PowerAdaptorWep : MegaManUBuster
+{
+    Weapon.SlotNumber 1
+    Obituary "$OB_POWERADAPTOR"
+    tag "$TAG_POWERADAPTOR"
+    Weapon.AmmoUse 0
+    Weapon.AmmoGive 0
+	weapon.ammotype "PowerMeter"
+	Weapon.AmmoUse2 1
+	Weapon.AmmoGive2 3
+	weapon.ammotype2 "BusterAmmo"
+    inventory.icon "NULLICON"
+    dropitem ""
+    States
+    {
+        SpawnLoop:
+            POWW Z 1
+            stop
+
+        Deselect:
+            POWF A 0 A_TakeInventory("PowerMeter")
+            goto DeselectSwap
+        Select:
+            POWF A 0
+            goto SelectSwap
+
+        Ready:
+            POWF A 0 ACS_NamedExecuteWithResult("uh_MegaCommitBuster")
+            POWF A 0 A_JumpIfInventory("BusterGiven", 1, "TakeBusters")
+            Goto Ready2
+        TakeBusters:
+            POWF A 0 A_GiveInventory("TakeBuster", 1)
+            Goto Ready2
+        Ready2:
+            POWF A 0 ACS_NamedExecuteWithResult("core_weaponcolor", CLR_POWERFLIGHT)
+            POWF A 0 A_SpawnItemEx("PowerShoulderF", 0.1, 0, 30)
+            POWF A 0 A_SpawnItemEx("PowerShoulderB", -0.1, 0, 30)
+        Ready3:
+            POWF A 0 A_TakeInventory("PowerAdaptorScore_P")
+            POWF A 0 A_TakeInventory("PowerAdaptorSwing_P")
+            POWF A 0 A_TakeInventory("PowerAdaptorStrike_P")
+            POWF A 0 A_TakeInventory("PowerAdaptorStrike_P")
+            POWF A 1 A_WeaponReady(CheckClass("MegaManU") ? CallACS("uh_MegaBusterReadyFlags", WRF_NOSECONDARY, WRF_ALLOWRELOAD) : 0)
+            wait
+
+        Fire:
+        WindupA:
+            POWF A 1
+            POWF A 0 A_Refire(1) Goto Fire1
+            POWF A 0 A_GiveInventory("PowerMeter", 1 + CallACS("core_checkrune", RUNE_RAGE))
+            POWF A 0 A_JumpIfInventory("PowerMeter", 5, 1)
+            loop
+
+            POWF B 0 A_PlaySoundEx("weapons/busters/poweradaptorcharge1","Weapon")
+        WindupB:
+            POWF B 1
+            POWF B 0 A_Refire(1) Goto Fire1
+            POWF B 0 A_GiveInventory("PowerMeter", 1 + CallACS("core_checkrune", RUNE_RAGE))
+            POWF B 0 A_JumpIfInventory("PowerMeter", 1*10+5, 1)
+            loop
+
+            POWF C 0 A_PlaySoundEx("weapons/busters/poweradaptorcharge2","Weapon")
+        WindupC:
+            POWF [ 1 ACS_NamedExecuteWithResult("core_chargecolor", CLR_POWERFLIGHT1, TCLR_POWERFLIGHT1)
+            POWF C 0 A_Refire(1) Goto Fire1
+            POWF C 0 A_GiveInventory("PowerMeter", 1 + CallACS("core_checkrune", RUNE_RAGE))
+            POWF C 1 ACS_NamedExecuteWithResult("core_chargecolor", CLR_POWERFLIGHT, TCLR_DEFAULT)
+            POWF C 0 A_Refire(1) Goto Fire1
+            POWF C 0 A_GiveInventory("PowerMeter", 1 + CallACS("core_checkrune", RUNE_RAGE))
+            POWF C 0 A_JumpIfInventory("PowerMeter", 2*10+5, 1)
+            loop
+
+            POWF D 0 A_PlaySoundEx("weapons/busters/poweradaptorcharge3","Weapon")
+        WindupD:
+            POWF ] 1 ACS_NamedExecuteWithResult("core_chargecolor", CLR_POWERFLIGHT2, TCLR_POWERFLIGHT2)
+            POWF D 0 A_Refire(1) Goto Fire1
+            POWF D 0 A_GiveInventory("PowerMeter", 1 + CallACS("core_checkrune", RUNE_RAGE))
+            POWF \ 1 ACS_NamedExecuteWithResult("core_chargecolor", CLR_POWERFLIGHT1, TCLR_POWERFLIGHT1)
+            POWF D 0 A_Refire(1) Goto Fire1
+            POWF D 0 A_GiveInventory("PowerMeter", 1 + CallACS("core_checkrune", RUNE_RAGE))
+            POWF D 0 A_JumpIfInventory("PowerMeter", 3*10+5, 1)
+            loop
+
+        Charge2_Snd:
+            POWF D 0 A_PlaySoundEx("weapons/busters/poweradaptorcharge4","Weapon")
+            TNT1 A 0 A_GunFlash("Flash.Charge", 1)
+        Charge2:
+            TNT1 A 1 ACS_NamedExecuteWithResult("core_chargecolor", CLR_POWERFLIGHT3, TCLR_POWERFLIGHT3)
+            TNT1 A 0 A_Refire(1)
+            Goto Fire2
+            TNT1 A 1 ACS_NamedExecuteWithResult("core_chargecolor", CLR_POWERFLIGHT4, TCLR_POWERFLIGHT4)
+            TNT1 A 0 A_Refire(1)
+            Goto Fire2
+            TNT1 A 1 ACS_NamedExecuteWithResult("core_chargecolor", CLR_POWERFLIGHT, TCLR_DEFAULT)
+            TNT1 A 0 A_JumpIfInventory("IsBot", 1, "BotFire")
+            TNT1 A 0 A_Refire("Charge2")
+            Goto Fire2
+        BotFire:
+            TNT1 A 0 A_Jump(16, "Fire2")
+            TNT1 A 0 A_Refire("Charge2")
+            Goto Fire2
+
+        Altfire:
+        Althold:
+            POWF A 0 A_JumpIf(CheckClass("MegaManU") && CallACS("uh_MegaBusterTryReroll"), "MegaReroll")
+            POWF E 0
+            goto Fire1
+
+        Fire1:
+            POWF E 0 A_JumpIfInventory("PowerAdaptorSwing_P", 1, "RightJabSwing")
+        LeftJabSwing:
+            POWF E 0 A_GiveInventory("PowerAdaptor_FireReset_CI")
+            POWF E 0 A_PlaySoundEx("weapons/busters/poweradaptorjab","Weapon")
+            POWF E 0 A_FireCustomMissile("PowerAdaptorJab",0,0,-8,0)
+            POWF EF 1
+            POWF GGGGG 1 A_JumpIfInventory("PowerAdaptorStrike_P", 1, "LeftJabStrike")
+            POWF HHHIIIJJJ 1 A_JumpIfInventory("PowerAdaptorStrike_P", 1, "LeftJabStrike")
+            POWF J 0 A_GiveInventory("PowerAdaptorSwing_P", 1)
+            goto ReturnNeutral
+        LeftJabStrike:
+            POWF GQGGGG 1
+            POWF HHHIIIJJJ 1
+            POWF J 0 A_GiveInventory("PowerAdaptorSwing_P", 1)
+            goto ReturnNeutral
+
+        RightJabSwing:
+            POWF K 0 A_TakeInventory("PowerAdaptorSwing_P", 1)
+            POWF K 0 A_GiveInventory("PowerAdaptor_FireReset_CI")
+            POWF K 0 A_PlaySoundEx("weapons/busters/poweradaptorjab","Weapon")
+            POWF K 0 A_FireCustomMissile("PowerAdaptorJab",0,0,8,0)
+            POWF KL 1
+            POWF MMMMM 1 A_JumpIfInventory("PowerAdaptorStrike_P", 1, "RightJabStrike")
+            POWF NNNOOOPPP 1 A_JumpIfInventory("PowerAdaptorStrike_P", 1, "RightJabStrike")
+            goto ReturnNeutral
+        RightJabStrike:
+            POWF MRMMMM 1
+            POWF NNNOOOPPP 1
+            goto ReturnNeutral
+        Fire2:
+        RightStraight:
+            POWF S 0 A_GiveInventory("PowerAdaptor_FireReset_CI")
+            POWF S 0 A_PlaySoundEx("weapons/busters/poweradaptorstraight","Weapon")
+            POWF S 0 A_FireCustomMissile("PowerAdaptorStraight",0,0,8,0)
+            PWOF S 0 A_SpawnItemEx("PowerAdaptorReflect",0,8,0+8,0,0,0)
+            PWOF S 0 A_SpawnItemEx("PowerAdaptorReflect2",cos(pitch)*40,8,-sin(pitch)*40+8,0,0,0)
+            PWOF S 0 A_SpawnItemEx("PowerAdaptorReflect3",cos(pitch)*80,8,-sin(pitch)*80+8,0,0,0)
+
+            POWF S 0 A_SetAngle(angle + 1)
+            POWF S 1 A_JumpIfInventory("PowerAdaptorStrike_P", 1, "RightStraightStrike")
+            POWF T 0 A_SetAngle(angle + 1)
+            POWF T 1 A_JumpIfInventory("PowerAdaptorStrike_P", 1, "RightStraightStrike")
+            POWF U 0 A_SetAngle(angle + 1)
+            POWF U 1 A_JumpIfInventory("PowerAdaptorStrike_P", 1, "RightStraightStrike")
+
+            POWF V 1 A_JumpIfInventory("PowerAdaptorStrike_P", 1, "RightStraightStrike")
+            POWF V 1 A_JumpIfInventory("PowerAdaptorStrike_P", 1, "RightStraightStrike")
+            POWF X 1 A_JumpIfInventory("PowerAdaptorStrike_P", 1, "RightStraightStrike")
+            POWF X 1 A_JumpIfInventory("PowerAdaptorStrike_P", 1, "RightStraightStrike")
+            POWF Y 1 A_JumpIfInventory("PowerAdaptorStrike_P", 1, "RightStraightStrike")
+            POWF Y 1 A_JumpIfInventory("PowerAdaptorStrike_P", 1, "RightStraightStrike")
+            POWF Z 1 A_JumpIfInventory("PowerAdaptorStrike_P", 1, "RightStraightStrike")
+            POWF Z 1 A_JumpIfInventory("PowerAdaptorStrike_P", 1, "RightStraightStrike")
+            goto ReturnNeutral
+        RightStraightStrike:
+            POWF V 0 A_GiveInventory("PowerAdaptorTremor_CI", 1)
+            POWF VWVWVVV 1 A_JumpIfInventory("PowerAdaptorScore_P", 1, "RightStraightScore")
+            POWF XYZ 3
+            goto ReturnNeutral
+        RightStraightScore:
+            POWF W 0 A_GiveInventory("PowerAdaptorReflectSound_CI", 1)
+            POWF WVWVWVVVV 1
+            POWF V 0 A_TakeInventory("PowerAdaptorScore_P")
+            POWF XYZ 3
+            goto ReturnNeutral
+
+        ReturnNeutral:
+            TNT1 A 3 A_Refire
+            POWF DCBA 2 A_Refire
+            goto Ready3
+
+
+        Flash.Charge:
+            TNT1 A 0 A_PlaySoundEx("weapons/busters/poweradaptorcharge", "SoundSlot5")
+            TNT1 A 9
+            TNT1 A 0 A_JumpIfInventory("PowerMeter", 1, "Flash.Charge")
+            stop
+        MegaBusterResume:
+            goto Ready3
+    }
+}
+
+actor PowerMeter : Ammo
+{
+    inventory.amount 1
+    inventory.maxamount 35
+    +INVENTORY.IGNORESKILL
+}
+
+// Projectiles and FX
+actor PowerAdaptorJab : BasicFastProjectile
+{
+    seesound "weapons/busters/poweradaptorshock"
+    +THRUSPECIES
+    +BRIGHT
+    +FORCEXYBILLBOARD
+
+    Damage (12 * (CheckClass("MegaManU", AAPTR_TARGET) ? UH_BUSTER_DAMAGE_SCALE : 1))
+    damagetype "PowerJab"
+    Obituary "$OB_POWERADAPTOR"
+
+    radius 10
+    height 10
+    Speed 60
+
+    ReactionTime 9
+
+    States
+    {
+    Spawn:
+        POWW A 0
+        POWW CC 1 A_CountDown
+        MMFX CDE 1 A_CountDown
+        MMFX E 0 A_ChangeFlag("FORCEXYBILLBOARD", false)
+        POWW A 0 A_Jump(256, 1, 2, 3, 4)
+    SpawnL:
+        POWW AABB 1 A_CountDown
+        loop
+    Death:
+        MMFX E 0 A_Explode(15 * (CheckClass("MegaManU", AAPTR_TARGET) ? UH_BUSTER_DAMAGE_SCALE : 1), 60, 0, 0, 20)
+    XDeath:
+        MMFX E 0 A_JumpIf(Reactiontime >= 8, "Melee")
+        MMFX E 0 A_ChangeFlag("FORCEXYBILLBOARD", true)
+        MMFX EDCB 2
+        POWW C 2
+        stop
+    Melee:
+        MMFX E 0 A_GiveToTarget("PowerAdaptorStrike_P", 1)
+        goto XDeath+1
+    }
+}
+
+actor PowerAdaptorStraight : PowerAdaptorJab
+{
+    seesound "weapons/busters/poweradaptorshock2"
+    speed 100
+    mass 30 // launch speed
+    reactiontime 1
+    damagetype "PowerStraight"
+    damage (50 * (CheckClass("MegaManU", AAPTR_TARGET) ? UH_BUSTER_DAMAGE_SCALE : 1))
+
+    +THRUGHOST
+    Obituary "$OB_POWERADAPTOR2"
+    States
+    {
+    Spawn:
+        POWW A 0
+        POWW CC 1 A_CountDown
+        MMFX CDE 1 A_CountDown
+        POWW A 0 A_Jump(256, 1, 2, 3, 4)
+    SpawnL:
+        POWW AABB 1 A_CountDown
+        loop
+    Death:
+        MMFX E 0 A_Explode(50 * (CheckClass("MegaManU", AAPTR_TARGET) ? UH_BUSTER_DAMAGE_SCALE : 1), 60, 0, 0, 20)
+    XDeath:
+        MMFX E 0 A_SpawnItemEx("PropBlowerEffect")
+        MMFX E 0 A_JumpIf(reactiontime > 0, "Melee")
+        MMFX E 0 A_SpawnItemEx("PowerAdaptorStraightFX1")
+        MMFX E 0 A_SpawnItemEx("PowerAdaptorStraightFX2")
+        TNT1 A 3
+        stop
+    Melee:
+        MMFX E 0 A_SpawnItemEx("PowerAdaptorStraightWallFX")
+        MMFX E 0 A_GiveToTarget("PowerAdaptorStrike_P", 1)
+        TNT1 A 3
+        stop
+    }
+}
+
+actor PowerAdaptorStraightFX1 : BasicGraphicEffect
+{
+    +FORCEXYBILLBOARD
+    States
+    {
+    SpawnFrame:
+        MMFX E 0 A_ClientsideACSExecute("core_followpitchyaw_client")
+        MMFX EEDDCCBB 1 A_Warp(AAPTR_TARGET,cos(pitch)*112,8,32-sin(pitch)*112,0,WARPF_INTERPOLATE|WARPF_COPYINTERPOLATION)
+        POWW CC 1 A_Warp(AAPTR_TARGET,cos(pitch)*112,8,32-sin(pitch)*112,0,WARPF_INTERPOLATE|WARPF_COPYINTERPOLATION)
+        stop
+    }
+}
+
+actor PowerAdaptorStraightFX2 : PowerAdaptorStraightFX1
+{
+    States
+    {
+    SpawnFrame:
+        MMFX C 0 A_ClientsideACSExecute("core_followpitchyaw_client")
+        MMFX CCBBCCBBCCBBCC 1 A_Warp(AAPTR_TARGET,cos(pitch)*112,8,32-sin(pitch)*112,0,WARPF_INTERPOLATE|WARPF_COPYINTERPOLATION)
+        stop
+    }
+}
+
+actor PowerAdaptorStraightWallFX : PowerAdaptorStraightFX1
+{
+    States
+    {
+    SpawnFrame:
+        TNT1 A 0
+        TNT1 A 0 A_PlaySoundEx("weapons/busters/poweradaptorsmash", "Voice")
+        TNT1 AAAAAAAA 0 A_SpawnItemEx("PowerAdaptorRubbleFX", frandom(-10, 10), 0, frandom(-10, 10), frandom(-12, 12), 0, frandom(-12, 12), frandom(0, 360), SXF_WEPFXCOLOR)
+        MXP1 CBCBCBA 2
+        TNT1 A 35
+        stop
+    }
+}
+
+actor PowerAdaptorRubbleFX : BasicGraphicEffect
+{
+    -NOINTERACTION
+    -NOGRAVITY
+    +THRUACTORS
+    +DONTSPLASH
+
+    +BOUNCEONWALLS
+    +BOUNCEONFLOORS
+    +BOUNCEONCEILINGS
+    bouncecount 2
+    scale 1.0
+    States
+    {
+    SpawnFrame:
+        TNT1 A 0
+        TNT1 A 0 A_SetScale(random(false, true) ? 1.0 : -1.0, 1.0)
+        TNT1 A 1
+        TNT1 A 0 A_ChangeFlag(BOUNCEONWALLS, false)
+        TNT1 A 0 A_ChangeFlag(BOUNCEONFLOORS, false)
+        TNT1 A 0 A_ChangeFlag(BOUNCEONCEILINGS, false)
+        TNT1 A 0 A_Jump(256,"Debris1","Debris2","Debris3","Debris4")
+    Debris1:
+        TNT1 A 1
+        POWW F -1
+    Debris2:
+        TNT1 A 1
+        POWW G -1
+    Debris3:
+        TNT1 A 1
+        POWW H -1
+    Debris4:
+        POWW I -1
+        stop
+    }
+}
+
+// Some animation management stuff
+actor PowerAdaptorStrike_P : Powerup { powerup.duration 6 }
+actor PowerAdaptorSwing_P : Powerup { powerup.duration 20 }
+
+actor PowerAdaptor_FireReset_CI : CustomInventory
+{
+    States
+    {
+        Pickup:
+            TNT1 A 0 ACS_NamedExecuteWithResult("core_chargecolor", CLR_POWERFLIGHT, TCLR_NONE)
+            TNT1 A 0 A_TakeInventory("PowerMeter")
+            stop
+    }
+}
+
+// Reflection stuff
+actor PowerAdaptorReflect : BasicShieldHitbox
+{
+    reactiontime 5
+    height 40
+    radius 20
+
+    +REFLECTIVE
+    var int user_smartReflective;
+    var int user_scriptedReflect;
+
+    Meleerange 0 // Warp X
+    Accuracy 8 // Warp Y
+    Mass 8 // Warp Z
+    States
+    {
+    Spawn:
+        EBAL W 0
+        EBAL W 0 A_JumpIfTargetInLOS("SpawnFrame", 0)
+        goto Death
+    SpawnFrame:
+        EBAL W 0 ACS_NamedExecuteWithResult("core_followpitchyaw")
+    SpawnLoop:
+        EBAL W 0 A_JumpIf(ACS_NamedExecuteWithResult("core_targetexists")==0,"Death2")
+        EBAL W 0 A_JumpIfInTargetInventory("StopShield",1,"SpawnStop")
+        EBAL W 0 A_Warp(2,Meleerange*cos(pitch),Accuracy,Meleerange*-sin(pitch)+Mass,0,24)
+        EBAL W 1 A_Countdown
+        loop
+    Pain:
+        TNT1 A 0 A_GiveToTarget("PowerAdaptorReflectSound_CI", 1)
+        TNT1 A 0 A_SpawnItemEx("PowerAdaptorReflectFX", 0, -accuracy, 28)
+        goto Spawn
+    }
+}
+
+actor PowerAdaptorReflect2 : PowerAdaptorReflect
+{
+    Meleerange 40 // Warp X
+    Accuracy 8 // Warp Y
+}
+
+actor PowerAdaptorReflect3 : PowerAdaptorReflect
+{
+    Meleerange 80 // Warp X
+    Accuracy 8 // Warp Y
+}
+
+actor PowerAdaptorReflectLockout_F : Once {}
+
+actor PowerAdaptorReflectDelay_P : Powerup { powerup.duration 10 }
+
+actor PowerAdaptorReflectSound_CI : CustomInventory
+{
+    States
+    {
+    Pickup:
+        TNT1 A 0 A_JumpIfInventory("PowerAdaptorReflectDelay_P", 1, "End")
+        TNT1 A 0 A_GiveInventory("PowerAdaptorReflectDelay_P", 1)
+        TNT1 A 0 A_PlaySoundEx("weapons/busters/poweradaptorblock", "Weapon")
+        stop
+    End:
+        TNT1 A 0
+        stop
+    }
+}
+
+actor PowerAdaptorReflectFX : BasicGraphicEffect
+{
+    alpha 0.8
+    renderstyle add
+    +BRIGHT
+    states
+    {
+    SpawnFrame:
+        MXP1 A 0 A_SetScale(scaleX + 0.1, 2.5)
+        MXP1 A 1 A_FadeOut(0.05)
+        loop
+    }
+}
+
+// On-Hit Effect
+actor PowerAdaptorTremor_CI : CustomInventory
+{
+    States
+    {
+    Pickup:
+        TNT1 A 0 A_SpawnItemEx("PowerAdaptorTremor_W")
+        stop
+    }
+}
+
+actor PowerAdaptorTremor_W : BasicWatcher
+{
+    States
+    {
+    Spawn:
+        TNT1 A 0 nodelay A_Quake(2, 14, 0, 8, "none")
+        TNT1 A 10
+        stop
+    }
+}
+
+actor PowerAdaptorScoreGravityGiver_CI : PowerApropGiver {}
+actor PowerAdaptorScoreGravity_P : PowerUp { powerup.duration 0x7FFFFFFD }
+actor PowerAdaptorScore_P : Powerup { powerup.duration 35 }
+
+actor PowerAdaptorEffectGravityGiver_CI : PowerApropGiver {}
+actor PowerAdaptorEffectGravity_P : PowerUp { powerup.duration 0x7FFFFFFD }
+actor PowerAdaptorEffectAfterimage_P : PowerSpeed { powerup.duration 4 speed 1 }
+
+actor PowerShoulder : BasicShieldWarper
+{
+    Translation "192:192=4:4","198:198=42:42"
+    speed 100
+    States
+    {
+        Spawn:
+            TNT1 A 0
+            TNT1 A 0 ACS_NamedExecuteAlways("core_shieldwarper", 0, 1)
+            TNT1 A 0 A_Jump(256, "Shield")
+            Goto Shield
+    }
+}
+
+actor PowerShoulderF : PowerShoulder
+{
+    States
+    {
+        Shield:
+            POWW D 0 ACS_NamedExecuteWithResult("core_copytranslation_client")
+            POWW D 1 A_Warp(AAPTR_TARGET, 0.1, 0, 30, 0, WARPF_NOCHECKPOSITION|WARPF_COPYINTERPOLATION)
+            loop
+    }
+}
+
+actor PowerShoulderB : PowerShoulder
+{
+    States
+    {
+        Shield:
+            POWW E 0 ACS_NamedExecuteWithResult("core_copytranslation_client")
+            POWW E 1 A_Warp(AAPTR_TARGET, -0.1, 0, 30, 0, WARPF_NOCHECKPOSITION|WARPF_COPYINTERPOLATION)
+            loop
+    }
+}

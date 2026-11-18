@@ -1,0 +1,263 @@
+// MM8BDM v6c stock definition with MegaManU input and upgrade support.
+actor RockKick_MugshotColor : MugshotColor { args 225, 235 }
+
+actor RockKick : MegaManUBuster
+{
+    Weapon.AmmoUse 1
+    Weapon.AmmoGive 28
+    Weapon.SlotNumber 1
+    Inventory.Pickupmessage "$PU_ROCKKICK"
+    Obituary "$OB_ROCKKICK"
+    Tag "$TAG_ROCKKICK"
+    weapon.ammotype "BusterAmmo"
+    inventory.icon "NULLICON"
+    Dropitem ""
+    States
+    {
+    SpawnLoop:
+        RCKK A 1
+        stop
+    Ready:
+        RCKK E 0 ACS_NamedExecuteWithResult("uh_MegaCommitBuster")
+        RCKK E 0 A_JumpIfInventory("BusterGiven",1,"TakeBusters")
+        Goto Ready2
+    TakeBusters:
+        TNT1 A 0 A_GiveInventory("TakeBuster",1)
+        Goto Ready2
+    Ready2:
+        RCKK E 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_ROCKKICK)
+    Ready3:
+        RCKK E 0 ACS_NamedExecuteWithResult("core_rockkickstatecontrol")
+        RCKK E 0 A_ClientsideACSExecute("core_rockkickstatecontrol_clientside")
+        RCKK E 0 A_JumpIfInventory("RockKickStateSlide_P", 1, "ReadySpecial")
+        RCKK E 0 A_JumpIfInventory("RockKickStateDive_P", 1, "ReadySpecial")
+        RCKK E 1 A_WeaponReady(CheckClass("MegaManU") ? CallACS("uh_MegaBusterReadyFlags", WRF_NOSECONDARY, WRF_ALLOWRELOAD) : 0)
+        loop
+    ReadySpecial:
+        RCKK F 1 A_WeaponReady(CheckClass("MegaManU") ? CallACS("uh_MegaBusterReadyFlags", WRF_NOSECONDARY, WRF_ALLOWRELOAD) : 0)
+        goto Ready3
+    Deselect:
+        RCKK E 0 ACS_NamedExecuteWithResult("core_walljumpplayer", 0, -3, JUMPP_ADDSUB)
+        goto DeselectSwap
+    Select:
+        RCKK E 0 ACS_NamedExecuteWithResult("core_walljumpplayer", 0, 3, JUMPP_ADDSUB)
+        goto SelectSwap
+    Fire:
+        RCKK E 0 A_JumpIfInventory("RockKickStateSlide_P", 1, "Slide")
+        RCKK E 0 A_JumpIfInventory("RockKickStateDive_P", 1, "DiveKick")
+        goto Kick
+    Altfire:
+        RCKK E 0 A_JumpIf(CheckClass("MegaManU") && CallACS("uh_MegaBusterTryReroll"), "MegaReroll")
+        goto Kick
+    Kick:
+        RCKK E 0 A_PlaySoundEx("weapons/busters/rockkickfire","Weapon")
+        RCKK E 0 A_FireCustomMissile("RockKickShot", 0, 0, -8, 0)
+        RCKK FGH 1
+        goto KickEnd+1
+    Slide:
+        RCKK E 0 A_PlaySoundEx("weapons/busters/rockkickslide","Weapon")
+        RCKK E 0 A_GiveInventory("RockKickTrail_P", 1)
+        RCKK E 0 A_GunFlash("SlideLines")
+        RCKK E 0 A_FireCustomMissile("RockKickShot", 0, 0, -8, 0)
+        RCKK FGHIIIII 1 ACS_NamedExecuteWithResult("core_dashChangeVelocity",22,0,momz,CVFS_REPLACE|CVFS_RELATIVE|CVFS_UNSCALEDZ)
+        goto KickEnd+1
+    DiveKick:
+        RCKK E 0 A_PlaySoundEx("weapons/busters/rockkickslide","Weapon")
+        RCKK E 0 A_GiveInventory("RockKickTrail_P", 1)
+        RCKK E 0 A_GunFlash("SlideLines")
+        // RCKK E 0 A_FireCustomMissile("RockKickShot", 0, 0, -8, 0)
+        RCKK E 0 A_SpawnItemEx("RockKickDiveKickDamager", 0, 0, 28)
+        RCKK E 0 ACS_NamedExecuteWithResult("core_unsolidplayer",0,USP_TOGGLEON)
+        RCKK F 0 A_GiveInventory("RockKickDiveKick_CI", 1)
+        RCKK F 1 A_JumpIfInventory("RockKickStateBounce_P", 1, "Bounce")
+        RCKK G 0 A_GiveInventory("RockKickDiveKick_CI", 1)
+        RCKK G 1 A_JumpIfInventory("RockKickStateBounce_P", 1, "Bounce")
+        RCKK H 0 A_GiveInventory("RockKickDiveKick_CI", 1)
+        RCKK H 1 A_JumpIfInventory("RockKickStateBounce_P", 1, "Bounce")
+        RCKK I 0 A_GiveInventory("RockKickDiveKick_CI", 1)
+        RCKK I 1 A_JumpIfInventory("RockKickStateBounce_P", 1, "Bounce")
+        RCKK I 0 A_GiveInventory("RockKickDiveKick_CI", 1)
+        RCKK I 1 A_JumpIfInventory("RockKickStateBounce_P", 1, "Bounce")
+        RCKK I 0 A_GiveInventory("RockKickDiveKick_CI", 1)
+        RCKK I 1 A_JumpIfInventory("RockKickStateBounce_P", 1, "Bounce")
+        RCKK I 0 A_GiveInventory("RockKickDiveKick_CI", 1)
+        RCKK I 1 A_JumpIfInventory("RockKickStateBounce_P", 1, "Bounce")
+        RCKK I 0 A_GiveInventory("RockKickDiveKick_CI", 1)
+        RCKK I 1 A_JumpIfInventory("RockKickStateBounce_P", 1, "Bounce")
+        RCKK IIIII 1 A_JumpIfInventory("RockKickStateBounce_P", 1, "Bounce")
+        RCKK I 0 A_GiveInventory("RockKickActorHitsFloorNudge_CI", 1)
+        goto KickEnd
+    Bounce:
+        RCKK J 0 A_PlaySoundEx("weapons/busters/rockkickbounce", "Weapon")
+        RCKK J 0 A_GiveInventory("RockKickBounce_CI", 1)
+        RCKK JKGL 1
+        RCKK E 10
+        RCKK E 0 ACS_NamedExecuteWithResult("core_unsolidplayer",0,USP_TOGGLEOFF_DAMAGE,ACS_NamedExecuteWithResult("core_getmaxhealth")/10)
+        goto Ready3
+    KickEnd:
+        RCKK I 0 ACS_NamedExecuteWithResult("core_unsolidplayer",0,USP_TOGGLEOFF_DAMAGE,ACS_NamedExecuteWithResult("core_getmaxhealth")/10)
+        RCKK I 5
+        RCKK JKGL 3
+        goto Ready3
+    SlideLines:
+        RCKK MN 2
+        stop
+    MegaBusterResume:
+        goto Ready3
+    }
+}
+
+actor RockKickShot : BasicProjectile
+{
+    damagetype "RockKick"
+    Obituary "$OB_ROCKKICK"
+    Radius 14
+    Height 25
+    damage (20 * (CheckClass("MegaManU", AAPTR_TARGET) ? UH_BUSTER_DAMAGE_SCALE : 1))
+    speed 50
+    reactiontime 6
+    States
+    {
+    Spawn:
+        RCKK BBCCDD 1 A_Countdown
+    Death:
+        RCKK O 3 A_ScaleVelocity(0.5)
+        stop
+    }
+}
+
+const int WEPC_BRK_DIVESPEED = 35;
+const int WEPC_BRK_BOUNCESPEED = -20;
+
+actor RockKickDiveKick_CI : CustomInventory
+{
+    States
+    {
+    Pickup:
+        TNT1 A 0 A_JumpIfInventory("IsGrounded", 1, "End")
+        TNT1 A 0 A_JumpIfInventory("RockKickStateBounce_P", 1, "End")
+        TNT1 A 0 A_JumpIf(pitch > 35 && pitch < 91, "Aim")
+        TNT1 A 0 ACS_NamedExecuteWithResult("core_dashchangevelocity", cos(35)*WEPC_BRK_DIVESPEED*FIXED, 0, -sin(35)*WEPC_BRK_DIVESPEED*FIXED, CVFS_REPLACE|CVFS_RELATIVE|CVFS_FIXED)
+        stop
+    Aim:
+        TNT1 A 0 ACS_NamedExecuteWithResult("core_dashchangevelocity", cos(pitch)*WEPC_BRK_DIVESPEED*FIXED, 0, -sin(pitch)*WEPC_BRK_DIVESPEED*FIXED, CVFS_REPLACE|CVFS_RELATIVE|CVFS_FIXED)
+        stop
+    End:
+        TNT1 A 0
+        stop
+    }
+}
+
+actor RockKickBounce_CI : CustomInventory
+{
+    States
+    {
+    Pickup:
+        TNT1 A 0 A_JumpIf(pitch > 35 && pitch < 91, "Aim")
+        TNT1 A 0 ACS_NamedExecuteWithResult("core_dashChangeVelocity", velx, vely, -sin(35)*WEPC_BRK_BOUNCESPEED*FIXED, CVFS_REPLACE|CVFS_UNSCALEDX|CVFS_UNSCALEDY|CVFS_FIXEDZ)
+        stop
+    Aim:
+        TNT1 A 0 ACS_NamedExecuteWithResult("core_dashChangeVelocity", velx, vely, -sin(pitch)*WEPC_BRK_BOUNCESPEED*FIXED, CVFS_REPLACE|CVFS_UNSCALEDX|CVFS_UNSCALEDY|CVFS_FIXEDZ)
+        stop
+    }
+}
+
+actor RockKickTrail_P : PowerSpeed { speed 1 powerup.duration 3 }
+actor RockKickStateSlide_P : Powerup { powerup.duration 3 }
+actor RockKickStateDive_P : Powerup { powerup.duration 3 }
+actor RockKickStateBounce_P : Powerup { powerup.duration 3 }
+
+actor RockKickDiveKickDamager : BasicExplosion
+{
+    damagetype "RockKick"
+    Obituary "$OB_ROCKKICKSTOMP"
+    speed 64
+    Damage (35 * (CheckClass("MegaManU", AAPTR_TARGET) ? UH_BUSTER_DAMAGE_SCALE : 1))
+    +FORCEXYBILLBOARD
+    var int user_PierceRipper;
+    var int user_PierceRipperScript;
+    var int user_CompositePierceRipper;
+    reactiontime 13
+    States
+    {
+    Spawn:
+        TNT1 A 0 A_Warp(AAPTR_TARGET, 0, 0, 0, 0, WARPF_ABSOLUTEOFFSET|WARPF_NOCHECKPOSITION)
+        TNT1 A 0 A_JumpIf(CallACS("core_CheckFooting_ThruPlayer"), "End")
+        TNT1 A 0 ACS_NamedExecuteWithResult("core_copyptrmomentum", AAPTR_TARGET)
+        TNT1 A 0 A_JumpIf(velz > 0, "End")
+        TNT1 A 0 A_SpawnItemEx("RockKickMarioStomp", 0, 0, 28, 0, 0, 0, 0, SXF_NOCHECKPOSITION|SXF_ABSOLUTEPOSITION|SXF_TRANSFERPOINTERS)
+        TNT1 A 0 A_Warp(AAPTR_TARGET, velx, vely, 28+velz, 0, WARPF_ABSOLUTEOFFSET|WARPF_NOCHECKPOSITION)
+        TNT1 A 0 A_SpawnItemEx("RockKickMarioStomp", 0, 0, 0, 0, 0, 0, 0, SXF_NOCHECKPOSITION|SXF_ABSOLUTEPOSITION|SXF_TRANSFERPOINTERS)
+
+        TNT1 A 0 A_JumpIf(reactiontime < 8, "FrameD")
+        TNT1 A 0 A_JumpIf((reactiontime % 6 < 3), "FrameC")
+        TNT1 A 0 A_JumpIf(true, "FrameB")
+        TNT1 A 1
+        wait
+    FrameD:
+        RCKK D 0
+        goto End
+    FrameC:
+        RCKK C 0
+        goto End
+    FrameB:
+        RCKK B 0
+        goto End
+    End:
+        "----" "#" 1 A_Countdown
+        goto Spawn
+    }
+}
+
+actor RockKickMarioStomp : BasicFastProjectile
+{
+    damagetype "RockKick"
+    Obituary "$OB_ROCKKICKSTOMP"
+    height 5
+    radius 2
+    speed 64
+    Damage (35 * (CheckClass("MegaManU", AAPTR_TARGET) ? UH_BUSTER_DAMAGE_SCALE : 1))
+    var int user_DamageKill;
+    var int user_PierceRipper;
+    var int user_PierceRipperScript;
+    var int user_CompositePierceRipper;
+    reactiontime 1
+    States
+    {
+    Spawn:
+        TNT1 A 0
+        TNT1 A 0 A_Explode(35 * (CheckClass("MegaManU", AAPTR_TARGET) ? UH_BUSTER_DAMAGE_SCALE : 1), 32, 0, 0, 32)
+        stop
+    XDeath:
+        RCKK B 0 A_GiveToTarget("RockKickStateBounce_P", 1)
+        goto Death+1
+    Death:
+        RCKK B 0 A_JumpIf(reactiontime == 0, "XDeath")
+        RCKK B 0
+        stop
+    }
+}
+
+actor RockKickHit : CustomInventory
+{
+    States
+    {
+    Pickup:
+        TNT1 A 0 A_PlaySoundEx("weapons/busters/rockkickhit", "SoundSlot5")
+        stop
+    }
+}
+
+// Force-triggers actor hits floor sector actions.
+actor RockKickActorHitsFloorNudge_CI : CustomInventory
+{
+    States
+    {
+    Pickup:
+        TNT1 A 0 A_JumpIf(z-floorz <= 0, "Nudge")
+        stop
+    Nudge:
+        TNT1 A 0 A_ChangeVelocity(0, 0, 0.0001)
+        stop
+    }
+}

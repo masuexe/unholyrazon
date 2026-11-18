@@ -6,7 +6,11 @@
 
 ## Unreleased
 
-- Standard MegaMan's Reload pool now covers all 55 registered MM8BDM v6c items, including tanks, passive assists, campaign assists, and Buster upgrades. Original pickup and class restrictions still apply.
+- Players can now collect Power Generator, Damage Absorber, Exchanger, and Energy Balancer Neo when MegaMan throws them with Reload. Their effects activate on pickup.
+- During MegaMan's shared cooldown, M2 fires the equipped Buster's secondary attack. A press started during cooldown can continue attacking as the meter fills. Press M2 again with a full meter to reroll copy weapons.
+- Standard MegaMan can collect and use all 13 v6c Buster upgrades. Using an upgrade replaces the current Buster. M2 still rerolls copy weapons, and Reload still throws items. Switching Busters preserves the shared cooldown.
+- Standard MegaMan's upgraded Buster attacks now deal ten times their original v6c damage for Unholy's 1,000 HP baseline, including charged attacks, fragments, and splash damage.
+- Standard MegaMan's Reload pool now covers all 55 registered MM8BDM v6c items, including tanks, passive assists, campaign assists, and Buster upgrades.
 
 ## 4.0.0-beta.261117
 

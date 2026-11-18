@@ -716,25 +716,20 @@ prevents mobility-assist movement or walking off a spawn ledge from changing
 that check. The updated standalone run passed 108/108; the earlier dedicated
 remote run passed 108/108 plus all 31 lifecycle assertions.
 
-### Native buster-upgrade policy (2026-10-29)
+### Native Buster upgrade eligibility
 
-v6c gives the native buster upgrades (`BaseMM8BDMBusterUpgrade`) and every
-`BaseMM8BDMWep` weapon `Inventory.ForbiddenTo "CustWepClassBase"`. Every UH player
-class descends from `CustWepClassBase`, so those items and weapons must stay
-unusable on UH bodies unless class balance changes on purpose.
+`BaseMM8BDMWep` forbids `CustWepClassBase` with `+INVENTORY.RESTRICTABSOLUTELY`.
+`BaseMM8BDMCustWep` remains restricted to `CustWepClassBase`. The thirteen
+registered Buster weapons opt into `MegaManUBuster`, which allows the stock
+Mega Man and the MegaManU class family. The upgrade item pickup and use paths
+check for the exact standard `MegaManU` class. Rush Bike keeps its stock
+pickup behavior.
 
-The project keeps that policy. The UH `BaseMM8BDMWep` override keeps the
-forbidden class and adds `+INVENTORY.RESTRICTABSOLUTELY`, so even a script-given
-native weapon fails. `BaseMM8BDMCustWep` remains `RestrictedTo CustWepClassBase`.
-No UH source overrides `BaseMM8BDMBusterUpgrade` or gives a native buster upgrade
-to a player. The only UH reference is COREJUMP's stock `JetAdaptorWep` jump
-check, which grants nothing.
-
-`tools/check_native_buster_policy.py` guards these invariants in the fast gate
-and in the `--meta` mutation suite. The five native adaptive upgrades named in
-the migration task (JetAdaptor, PowerAdaptor, RockKick, RollSwing and RushBike)
-stay on stock or otherwise eligible native bodies. A real-client native-body
-diagnostic remains useful before RC, but it must not change the UH roster.
+The weapon definitions keep their stock actor names for v6c's movement and
+weapon helpers. The shadow files under `actors/inventory/buster/` preserve
+the stock primary states and add MegaManU's M2 and Reload dispatch at the
+weapon's own ready states. `tools/check_native_buster_policy.py` guards the
+base restrictions and the explicit Buster exception.
 
 ### High-slot stress (2026-10-29)
 

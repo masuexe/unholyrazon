@@ -125,13 +125,15 @@ EXTERNAL_STATE_LABELS = {
     "end",
 }
 
-# Actor classes referenced by src/actors that live in MM8BDM v6b, the shared
+# Actor classes referenced by src/actors that live in MM8BDM v6c, the shared
 # MM8BDM universal tree, or the engine.  Generated; see the module docstring.
 BASE_GAME_ACTORS = frozenset(
     word.lower()
     for word in """
     AdapterWaitCount AirJumpLimit AirJumpsUsed AliveCheck AliveCheckFlag AtomicFireAmmo
     BallFlag BallKickCounter BaseFlagPack BasicArmor BassBusterRage BassExplode
+    BoostFlag CanBeMegaArmed IsAirborne IsGrounded MegaShot PierceRipperLimit
+    ThunderClawPegHelper TracerAndTargetTeamsMatchCheck TracerAndTargetTeamsMatchFlag
     BeatBoosterHasLanded BeatBoostIsActive BeatCallCheck BeatCallProtection BigHealth BigWeaponEnergy
     BlackHoleAmmo BlackHoleBomb_Ready_P BlackHoleBombAmmo BlackHoleBombCooldown BlackHoleBombExists BlackHoleBombFXSpawner
     BlackHoleBombKill BlackHoleBombTrigger BlackHoleFlag BlackHoleShieldCheck BlackHoleSpawnerSync BlackHoleTrigger

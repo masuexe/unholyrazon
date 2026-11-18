@@ -30,18 +30,22 @@ weapons in one slot. Nonpositive input is treated as one weapon at runtime.
 many stock MM8BDM v6c items standard MegaMan tosses onto the
 ground on Reload, separated from M2's copy-weapon draw:
 
-- **M2 (`Altfire`)** replaces only the copy-weapon loadout (`Weapons Per M2` /
-  `rz_sv_mega_m2_weapon_count`, default **3**) and leaves any held assist items
-  untouched.
+- Press **M2** with a full charge to replace the copy-weapon loadout
+  (`Weapons Per M2` / `rz_sv_mega_m2_weapon_count`, default **3**). With a
+  partial charge, M2 uses the current Buster's secondary attack. Charge Buster
+  fires uncharged shots, and Rock Kick performs its regular kick. Hold M2 to
+  continue the attack according to the weapon's usual timing. Release and press
+  again after the meter fills to reroll.
 - **Reload** (`Assists Per Reload` / `rz_sv_mega_reload_item_count`,
   default **2**) uses the same `RockNRollAmmo` charge and cooldown as M2, keeps
   the current copy-weapon loadout and any already-held assist items untouched,
   and tosses `rz_sv_mega_reload_item_count` newly drawn assists onto the ground
   in front of MegaMan (`MegaManU_W` shows the Reload HUD icon whenever
   `rz_sv_mega_reload_item_count > 0` and hides it at `0`; `0` disables Reload).
-- Tossed items use the stock pickup rules, charge counts, and class restrictions.
-  Native Buster upgrades still require an eligible player class. Uncollected items
-  blink during the final 3 seconds and despawn at 30 seconds (`1050` tics).
+- Players can collect thrown Power Generator, Damage Absorber, Exchanger, and
+  Energy Balancer Neo pickups if their passive effect is not already active.
+  Standard MegaMan can collect and use Buster upgrades. Uncollected items blink
+  during the final 3 seconds and despawn at 30 seconds (`1050` tics).
 - The pool contains all 55 stock entries from the v6c assist and Buster upgrade
   tables, including 38 standard assists, 4 campaign assists, and 13 Buster upgrades.
   The default two draws toss one mobility or escape assist and one item from the
@@ -53,6 +57,20 @@ ground on Reload, separated from M2's copy-weapon draw:
   (240), `EddieBomberBomb` (10 direct, `A_Explode(170, 185, 0)` explosion),
   `ReggaeCan` (330), `TrebleShot` (80), `TangoAttack` (200), `SuperArrow` (120),
   and `WireAdaptorHook` (50).
+
+## Buster upgrades
+
+Collect one of the 13 v6c Buster upgrades and use it from your inventory to
+replace your current slot-1 Buster. The new Buster takes over M1 with its stock
+primary attack and movement abilities. When M2 is pressed during cooldown, the
+Buster uses its stock secondary attack or its primary attack if it has no
+dedicated secondary. Changing Busters preserves the current cooldown and copy
+weapons. One upgrade can be installed at a time. You can keep an unused copy
+of the currently installed upgrade in your inventory.
+
+Standard MegaMan's upgraded Buster attacks deal ten times their original v6c
+damage to match the 1,000 HP baseline. This includes charged shots, fragments,
+periodic damage, and splash.
 
 ## Daily randomization
 

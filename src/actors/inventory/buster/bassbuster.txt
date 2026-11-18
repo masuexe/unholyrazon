@@ -1,0 +1,153 @@
+// MM8BDM v6c stock definition with MegaManU input and upgrade support.
+actor BassBuster_MugshotColor : MugshotColor { args 217, 95 }
+
+actor BassBuster : MegaManUBuster
+{
+Weapon.AmmoUse 1
+Weapon.AmmoGive 3
+Weapon.SlotNumber 1
+Inventory.Pickupmessage "$PU_BASSBUSTER"
+Obituary "$OB_BASSBUSTER"
+Tag "$TAG_BASSBUSTER"
+weapon.ammotype "BusterAmmo"
+inventory.icon "NULLICON"
+Dropitem ""
+States
+{
+SpawnLoop:
+WEA3 A 1
+stop
+Ready:
+    BASB B 0 ACS_NamedExecuteWithResult("uh_MegaCommitBuster")
+BASB B 0 A_JumpIfInventory("BusterGiven",1,"TakeBusters")
+Goto Ready2
+TakeBusters:
+TNT1 Q 0 A_GiveInventory("TakeBuster", 1)
+Goto Ready2
+Ready2:
+BASB B 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_BASSBUSTER)
+BASB B 1 A_WeaponReady(CheckClass("MegaManU") ? CallACS("uh_MegaBusterReadyFlags", WRF_NOSECONDARY, WRF_ALLOWRELOAD) : 0)
+Goto Ready2+1
+Deselect:
+BASB B 0
+goto DeselectSwap
+Select:
+BASB B 0
+goto SelectSwap
+Fire:
+BASB D 0 A_PlaySoundEx("weapons/busters/bassbusterfire","Weapon")
+BASB D 0 A_GiveInventory("BassBuster_Firing_P", 1)
+BASB D 0 A_GiveInventory("BassBuster_Fire_P")
+Anim:
+BASB C 2
+BASB DB 1
+BASB B 0 A_Refire
+Cooldown:
+BASB B 2 A_TakeInventory("BassBuster_Firing_P")
+BASB B 2 A_SpawnItemEx("BassBuster_RageWatcher_H")
+goto Ready2+1
+MegaBusterResume:
+    goto Ready2
+}
+}
+
+actor BassBusterRage : Inventory
+{
+inventory.amount 1
+inventory.maxamount 36
+}
+
+actor BassBuster_Firing_P : Powerup
+{
++INVENTORY.ALWAYSPICKUP
+Powerup.Duration 8
+}
+
+actor BassBuster_Fire_P : CustomInventory
+{
+States
+{
+Pickup:
+TNT1 A 0 A_GiveInventory("BassBusterRage", 1)
+TNT1 A 0 A_JumpIfInventory("BassBusterRage", 4 * 9, "Fire9")
+TNT1 A 0 A_JumpIfInventory("BassBusterRage", 4 * 8, "Fire8")
+TNT1 A 0 A_JumpIfInventory("BassBusterRage", 4 * 7, "Fire7")
+TNT1 A 0 A_JumpIfInventory("BassBusterRage", 4 * 6, "Fire6")
+TNT1 A 0 A_JumpIfInventory("BassBusterRage", 4 * 5, "Fire5")
+TNT1 A 0 A_JumpIfInventory("BassBusterRage", 4 * 4, "Fire4")
+TNT1 A 0 A_JumpIfInventory("BassBusterRage", 4 * 3, "Fire3")
+TNT1 A 0 A_JumpIfInventory("BassBusterRage", 4 * 2, "Fire2")
+TNT1 A 0 A_JumpIfInventory("BassBusterRage", 4 * 1, "Fire1")
+TNT1 A 0 A_FireCustomMissile("BassShot", frandom(-2, 2), 0, 8)
+stop
+Fire1:
+TNT1 A 0 A_FireCustomMissile("BassShot", frandom(-2.5, 2.5), 0, 8, 0, 0, frandom(-0.15, 0.45))
+stop
+Fire2:
+TNT1 A 0 A_FireCustomMissile("BassShot", frandom(-3.0, 3.0), 0, 8, 0, 0, frandom(-0.30, 0.90))
+stop
+Fire3:
+TNT1 A 0 A_FireCustomMissile("BassShot", frandom(-3.5, 3.5), 0, 8, 0, 0, frandom(-0.45, 1.35))
+stop
+Fire4:
+TNT1 A 0 A_FireCustomMissile("BassShot", frandom(-4.0, 4.0), 0, 8, 0, 0, frandom(-0.60, 1.80))
+stop
+Fire5:
+TNT1 A 0 A_FireCustomMissile("BassShot", frandom(-4.5, 4.5), 0, 8, 0, 0, frandom(-0.75, 2.25))
+stop
+Fire6:
+TNT1 A 0 A_FireCustomMissile("BassShot", frandom(-5.0, 5.0), 0, 8, 0, 0, frandom(-0.90, 2.70))
+stop
+Fire7:
+TNT1 A 0 A_FireCustomMissile("BassShot", frandom(-5.5, 5.5), 0, 8, 0, 0, frandom(-1.05, 3.15))
+stop
+Fire8:
+TNT1 A 0 A_FireCustomMissile("BassShot", frandom(-6.0, 6.0), 0, 8, 0, 0, frandom(-1.20, 3.60))
+stop
+Fire9:
+TNT1 A 0 A_FireCustomMissile("BassShot", frandom(-6.5, 6.5), 0, 8, 0, 0, frandom(-1.35, 4.05))
+stop
+}
+}
+
+actor BassBuster_RageWatcher_H : BasicWatcher
+{
++NOTIMEFREEZE
++SERVERSIDEONLY
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1 A_TakeFromTarget("BassBusterRage", 1 + CallACS("core_checkrune", RUNE_RAGE, AAPTR_TARGET))
+TNT1 A 0 A_JumpIf(!CallACS("core_targetexists"), "Death")
+TNT1 A 0 A_JumpIfInTargetInventory("BassBuster_Firing_P", 1, "Cease")
+TNT1 A 0 A_JumpIfInTargetInventory("BassBusterRage", 1, 1)
+stop
+TNT1 A 1 A_JumpIfInTargetInventory("BassBuster_Firing_P", 1, "Cease")
+loop
+Death:
+TNT1 A 0 A_TakeFromTarget("BassBusterRage")
+Cease:
+TNT1 A 0
+stop
+}
+}
+
+actor BassShot : BasicFastProjectile
+{
++FORCEXYBILLBOARD
++BRIGHT
+damagetype "BassBuster"
+Obituary "$OB_BASSBUSTER"
+Speed 64
+Damage (6 * (CheckClass("MegaManU", AAPTR_TARGET) ? UH_BUSTER_DAMAGE_SCALE : 1))
+radius 10
+height 5
+States
+{
+Spawn:
+TNT1 A 1
+BASB A 1
+wait
+}
+}

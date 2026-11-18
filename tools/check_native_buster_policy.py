@@ -1,18 +1,10 @@
 #!/usr/bin/env python3
-"""Guard the native buster-upgrade policy for custom weapon (UH) classes.
+"""Guard the class restrictions for native weapons and MegaMan's upgrades.
 
-v6c marks the native buster-upgrade items and every BaseMM8BDMWep weapon as
-forbidden to CustWepClassBase. All UH player classes descend from
-CustWepClassBase, so those items and weapons must stay unusable on UH bodies
-unless the project changes class balance on purpose.
-
-This checker verifies the parts that a later edit can silently break:
-1. BaseMM8BDMWep keeps Inventory.ForbiddenTo CustWepClassBase and
-   +INVENTORY.RESTRICTABSOLUTELY, so even a script-given native weapon fails.
-2. BaseMM8BDMCustWep stays RestrictedTo CustWepClassBase.
-3. The base buster-upgrade actor is not redefined in src without the same
-   forbidden-to restriction.
-4. No UH source gives a native buster upgrade to a player.
+The thirteen stock Busters use a separate weapon base with an explicit
+allowlist. Their pickup items route standard MegaMan through the upgrade
+installer. The restrictions on the general stock and custom weapon bases
+continue to apply to the rest of the weapon roster.
 
 Run:  python3 tools/check_native_buster_policy.py
 Exit: 0 clean, 1 finding, 2 usage error.
@@ -84,6 +76,28 @@ def main() -> int:
         findings.append("actor BaseMM8BDMCustWep is missing from baseweaponedit.txt")
     elif "inventory.restrictedto" not in normalize(cust) or "custwepclassbase" not in normalize(cust):
         findings.append("BaseMM8BDMCustWep is no longer restricted to CustWepClassBase")
+
+    mega = actor_block(text, "MegaManUBuster")
+    allowlist = re.search(r'(?im)^\s*Inventory\.RestrictedTo\s+([^\r\n]+)', mega or "")
+    if not allowlist or re.findall(r'"([^"]+)"', allowlist[1].lower()) != ["megaman", "megamanu"]:
+        findings.append("MegaManUBuster must keep the stock and UH Mega Man weapon allowlist")
+
+    registry = (SRC / "acs_source/classes/shared/copy_weapons/megaman_buster_upgrades.acs").read_text()
+    registry_row = re.search(r'uh_megabusters\[[^\]]+\]\s*=\s*\{([^}]+)\}', registry)
+    weapons = re.findall(r'"([^"]+)"', registry_row[1]) if registry_row else []
+    upgrades = (SRC / "actors/inventory/assists/busterupgrade.txt").read_text()
+    # Match the installer index to the weapon given by the stock item's Use state.
+    indexed_weapons = {}
+    for match in ACTOR_RE.finditer(upgrades):
+        block = actor_block(upgrades, match[1])
+        install = re.search(r'CallACS\("uh_MegaInstallBuster",\s*(\d+)\)', block)
+        if install:
+            native_use = block.split("NativeUse:", 1)[-1]
+            give = re.search(r'A_GiveInventory\("(?!BusterGiven")([^"]+)"', native_use)
+            indexed_weapons[int(install[1])] = give[1].lower() if give else ""
+    expected = {index: weapon.lower() for index, weapon in enumerate(weapons) if index}
+    if len(expected) != 13 or indexed_weapons != expected:
+        findings.append("Buster upgrade Use states must match all 13 installer indices")
 
     for path in decorate_files():
         body = path.read_text(encoding="utf-8", errors="replace")

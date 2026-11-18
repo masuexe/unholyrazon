@@ -1,0 +1,178 @@
+// MM8BDM v6c stock definition with MegaManU input and upgrade support.
+const float SPEED_SCALAR = 0.01;
+
+actor LaserBuster_ScriptBar : ScriptBar {}
+
+actor LaserBuster : MegaManUBuster
+{
+Weapon.AmmoUse 1
+Weapon.AmmoGive 3
+Weapon.SlotNumber 1
+Inventory.Pickupmessage "$PU_LASERBUSTER"
+Obituary "$OB_LASERBUSTER"
+Tag "$TAG_LASERBUSTER"
+weapon.ammotype "BusterAmmo"
+inventory.icon "NULLICON"
+Dropitem ""
+States
+{
+SpawnLoop:
+WEA4 K 1
+stop
+Ready:
+    LBST B 0 ACS_NamedExecuteWithResult("uh_MegaCommitBuster")
+LBST B 0 A_JumpIfInventory("BusterGiven",1,"TakeBusters")
+Goto Ready2
+TakeBusters:
+TNT1 Q 0 A_GiveInventory("TakeBuster", 1)
+Goto Ready2
+Ready2:
+LBST B 0 ACS_NamedExecuteWithResult("core_weaponcolor",CLR_MEGABUSTER)
+LBST B 0 ACS_NamedExecuteWithResult("core_chargecolor",CLR_MEGABUSTER,TCLR_NONE)
+LBST B 0 A_TakeInventory("WeaponCharge",999)
+LBST B 2 A_WeaponReady(CheckClass("MegaManU") ? CallACS("uh_MegaBusterReadyFlags", WRF_NOSECONDARY, WRF_ALLOWRELOAD) : 0)
+Goto Ready2+2
+Deselect:
+LBST B 0
+goto DeselectSwap
+Select:
+LBST B 0
+goto SelectSwap
+Altfire:
+    LBST B 0 A_JumpIf(CheckClass("MegaManU") && CallACS("uh_MegaBusterTryReroll"), "MegaReroll")
+Fire:
+LBST B 0 A_JumpIfNoAmmo("Hold")
+LBST B 0 A_PlaySoundEx("weapons/busters/laserbusterfire","Weapon")
+LBST B 0 A_FireCustomMissile("MegaShot",0,0,8,0)
+LBST B 1 A_TakeInventory("WeaponCharge",999)
+LBST CD 3
+LBST B 1
+LBST B 0 A_Refire
+goto Ready2+2
+Fire2:
+LBST B 0 A_TakeInventory("WeaponCharge",999)
+LBST C 0 A_PlaySoundEx("weapons/busters/laserbusterfire2","Weapon")
+LBST B 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_MEGABUSTER,TCLR_NONE)
+LBST C 0 A_FireCustomMissile("MidShot",0,0,8,0)
+LBST CD 3
+LBST B 0 A_Refire
+goto Ready2+2
+Fire3:
+LBST B 0 A_TakeInventory("WeaponCharge",999)
+TNT1 A 0 A_StopSoundEx("SoundSlot5")
+LBST B 0 A_PlaySoundEx("weapons/busters/laserbusterfire3","Weapon")
+LBST C 0 ACS_NamedExecuteWithResult("core_chargecolor",CLR_MEGABUSTER,TCLR_NONE)
+LBST C 0 A_FireCustomMissile("LaserShot",0,0,8,0)
+LBST CCD 3
+LBST C 9
+LBST B 0 A_Refire
+goto Ready2+2
+Hold:
+//LBST B 0 A_JumpIfInventory("WeaponCharge",34,"Charge2Start")
+LBST B 0 A_JumpIfInventory("WeaponCharge",18,"Charge")
+LBST B 1 A_GiveInventory("WeaponCharge", 1 + CallACS("core_checkrune", RUNE_RAGE))
+LBST B 0 A_Refire
+Goto Ready2+2
+Charge:
+//LBST B 0 A_JumpIfInventory("WeaponCharge",34,"Charge2Start")
+LBST B 0 A_JumpIfInventory("WeaponCharge",19,"Charge1")
+LBST B 0 A_PlaySoundEx("weapons/busters/laserbustercharge","Weapon")
+Goto Charge1
+Charge1:
+LBST B 0 A_JumpIfInventory("WeaponCharge",35,"Charge2Start")
+LBST E 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_LASERCHARGE1,TCLR_PROTO_CHARGE1)
+CHBU H 0 A_Refire("Charge1.a")
+Goto Fire2
+Charge1.a:
+LBST B 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_MEGABUSTER,TCLR_NONE)
+LBST B 0 A_GiveInventory("WeaponCharge", 1 + CallACS("core_checkrune", RUNE_RAGE))
+CHBU H 0 A_Refire("Charge")
+Goto Fire2
+BotFire:
+LBST B 0 A_Jump(16, "Fire3")
+CHBU H 0 A_Refire("Charge2")
+Goto Fire3
+Charge2Start:
+LBST B 0 A_GunFlash("Sound.BusterCharge", GFF_NOEXTCHANGE)
+Goto Charge2
+Charge2:
+LBST F 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_LASERCHARGE2,TCLR_PROTO_CHARGE2)
+CHBU H 0 A_Refire("Charge2.a")
+Goto Fire3
+Charge2.a:
+LBST B 1 ACS_NamedExecuteWithResult("core_chargecolor",CLR_MEGABUSTER,TCLR_NONE)
+LBST B 0 A_JumpIfInventory("IsBot", 1, "BotFire")
+LBST B 0 A_JumpIfInventory("WeaponCharge", 35, 2)
+LBST B 0 A_GiveInventory("WeaponCharge", 1 + CallACS("core_checkrune", RUNE_RAGE))
+LBST B 0 A_Refire("Charge2")
+Goto Fire3
+MegaBusterResume:
+    goto Ready2
+}
+}
+
+actor LaserShot : BasicProjectile
+{
++DONTREFLECT
++FORCEXYBILLBOARD
++RIPPER
+Speed 50
+Damage (0)
+radius 5
+height 5
+ReactionTime 5
+var int user_CompositePierceRipper;
+var int user_noProjectileTrails;
+States
+{
+Spawn:
+TNT1 A 0 nodelay A_GiveInventory("PierceRipperLimit", reactiontime, AAPTR_MASTER)
+TNT1 A 0 A_ScaleVelocity(SPEED_SCALAR)
+Spawn2:
+TNT1 A 0 A_CountDown
+TNT1 A 0 A_SpawnItemEx("MegaLaser",0,0,0,(momx/SPEED_SCALAR),(momy/SPEED_SCALAR),(momz/SPEED_SCALAR),0,SXF_ABSOLUTEMOMENTUM|SXF_TRANSFERPOINTERS)
+TNT1 A 0 A_SpawnItemEx("LaserTrail",0,0,0,(momx/SPEED_SCALAR),(momy/SPEED_SCALAR),(momz/SPEED_SCALAR),0,SXF_ABSOLUTEMOMENTUM|SXF_WEPFXCOLOR)
+TNT1 A 0 A_SpawnItemEx("LaserTrail",-(momx/SPEED_SCALAR)/3,-(momy/SPEED_SCALAR)/3,-(momz/SPEED_SCALAR)/3,(momx/SPEED_SCALAR),(momy/SPEED_SCALAR),(momz/SPEED_SCALAR),0,SXF_ABSOLUTEPOSITION|SXF_ABSOLUTEMOMENTUM|SXF_WEPFXCOLOR)
+TNT1 A 0 A_SpawnItemEx("LaserTrail",-(momx/SPEED_SCALAR)*2/3,-(momy/SPEED_SCALAR)*2/3,-(momz/SPEED_SCALAR)*2/3,(momx/SPEED_SCALAR),(momy/SPEED_SCALAR),(momz/SPEED_SCALAR),0,SXF_ABSOLUTEPOSITION|SXF_ABSOLUTEMOMENTUM|SXF_WEPFXCOLOR)
+TNT1 A 1
+loop
+Death:
+TNT1 A 0
+stop
+}
+}
+
+actor MegaLaser : BasicProjectile
+{
++DONTREFLECT
++FORCEXYBILLBOARD
++RIPPER
++BRIGHT
+damagetype "LaserBuster"
+Obituary "$OB_LASERBUSTER"
+Damage (10 * (CheckClass("MegaManU", AAPTR_TARGET) ? UH_BUSTER_DAMAGE_SCALE : 1))
+radius 16
+height 10
+renderstyle none
+var int user_CompositePierceRipper;
+States
+{
+Spawn:
+TNT1 A 0
+TNT1 A 1
+Spawn2:
+LASH AB 1
+loop
+Death:
+TNT1 A 0
+stop
+}
+}
+
+actor LaserTrail : MegaLaser
+{
+renderstyle normal
+Damage(0)
++CLIENTSIDEONLY
+var int user_noProjectileTrails;
+}
