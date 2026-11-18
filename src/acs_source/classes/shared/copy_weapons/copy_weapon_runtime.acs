@@ -103,9 +103,9 @@ function void UH_MegaRollLoadout(void) {
 #define UH_MEGA_ASSIST_BUCKETS 2
 #define UH_MEGA_ASSIST_MOBILITY_COUNT 15
 #define UH_MEGA_ASSIST_TOTAL 55
-#define UH_MEGA_ASSIST_TOSS_GRACE_TICS 10
+#define UH_MEGA_ASSIST_LANDING_TICS 8
 #define UH_MEGA_ASSIST_POLL_TICS 5
-#define UH_MEGA_ASSIST_STEADY_STEPS 187
+#define UH_MEGA_ASSIST_STEADY_TICS 945
 #define UH_MEGA_ASSIST_BLINK_STEPS 21
 str uh_megaassistactors[UH_MEGA_ASSIST_TOTAL] = {
   "MagnetBeamItem", "Item1", "Item2", "Item3", "CarryItem",
@@ -138,46 +138,58 @@ script "uh_StripMegaAssists" (void) {
   UH_MegaStripAssists();
 }
 
-function bool UH_IsDroppedAssistStillInWorld(void) {
-  if ((ClassifyActor(0) & ACTOR_WORLD) || CheckFlag(0, "NOBLOCKMAP") || !CheckFlag(0, "SPECIAL"))
-    return false;
-  return true;
+function bool UH_IsDroppedAssistStillInWorld(bool pickupEnabled) {
+  return !(ClassifyActor(0) & ACTOR_WORLD) && !CheckFlag(0, "NOBLOCKMAP") &&
+    (!pickupEnabled || CheckFlag(0, "SPECIAL"));
 }
 
 script "uh_MegaDroppedAssistWatch" (int dropTid) {
+  int age = 0;
+  int groundedTics = 0;
   int t;
+  int waitTics;
+  bool pickupEnabled;
   if (dropTid == 0 || !SetActivator(dropTid))
     terminate;
-  Thing_ChangeTID(0, 0);
 
-  for (t = 0; t < UH_MEGA_ASSIST_TOSS_GRACE_TICS; t++) {
+  while (age < UH_MEGA_ASSIST_STEADY_TICS && groundedTics < UH_MEGA_ASSIST_LANDING_TICS) {
     Delay(1);
-    if (!UH_IsDroppedAssistStillInWorld())
+    age++;
+    // The stock spawn hooks can replace the item and pass its TID to the replacement.
+    if (!SetActivator(dropTid) || !UH_IsDroppedAssistStillInWorld(false))
       terminate;
-    GiveInventory("8BDM_CF_THRUACTORS_1", 1);
+    if (CheckFlag(0, "SPECIAL"))
+      GiveInventory("8BDM_CF_SPECIAL_0", 1);
+    if (GetActorZ(0) <= GetActorFloorZ(0))
+      groundedTics++;
+    else
+      groundedTics = 0;
   }
 
-  if (!UH_IsDroppedAssistStillInWorld())
-    terminate;
-  GiveInventory("8BDM_CF_THRUACTORS_0", 1);
+  Thing_ChangeTID(0, 0);
+  pickupEnabled = groundedTics >= UH_MEGA_ASSIST_LANDING_TICS;
+  if (pickupEnabled)
+    GiveInventory("8BDM_CF_SPECIAL_1", 1);
 
-  for (t = 0; t < UH_MEGA_ASSIST_STEADY_STEPS; t++) {
-    Delay(UH_MEGA_ASSIST_POLL_TICS);
-    if (!UH_IsDroppedAssistStillInWorld())
+  while (age < UH_MEGA_ASSIST_STEADY_TICS) {
+    waitTics = min(UH_MEGA_ASSIST_POLL_TICS, UH_MEGA_ASSIST_STEADY_TICS - age);
+    Delay(waitTics);
+    age += waitTics;
+    if (!UH_IsDroppedAssistStillInWorld(pickupEnabled))
       terminate;
   }
 
   for (t = 0; t < UH_MEGA_ASSIST_BLINK_STEPS; t++) {
     SetActorProperty(0, APROP_RenderStyle, (t & 1) ? STYLE_Normal : STYLE_None);
     Delay(UH_MEGA_ASSIST_POLL_TICS);
-    if (!UH_IsDroppedAssistStillInWorld()) {
+    if (!UH_IsDroppedAssistStillInWorld(pickupEnabled)) {
       SetActorProperty(0, APROP_RenderStyle, STYLE_Normal);
       terminate;
     }
   }
 
   SetActorProperty(0, APROP_RenderStyle, STYLE_Normal);
-  if (!UH_IsDroppedAssistStillInWorld())
+  if (!UH_IsDroppedAssistStillInWorld(pickupEnabled))
     terminate;
   Thing_Remove(0);
 }
@@ -225,6 +237,7 @@ function void UH_MegaRollAssists(int requested) {
   int playerFwd;
   int throwSpeed;
   int dropTid;
+  str pickupActor;
 
   want = min(max(0, requested), UH_MEGA_ASSIST_TOTAL);
   if (want <= 0)
@@ -321,8 +334,13 @@ function void UH_MegaRollAssists(int requested) {
     dirY = sin(angle);
     playerFwd = max(0, FixedMul(velX, dirX) + FixedMul(velY, dirY));
     throwSpeed = 9.0 + FixedMul(playerFwd, 0.65);
+    pickupActor = UH_MegaAssistDropActor(uh_megaassistactors[idx]);
     dropTid = UniqueTID();
-    if (SpawnForced(UH_MegaAssistDropActor(uh_megaassistactors[idx]), spawnX, spawnY, spawnZ, dropTid, 0) > 0) {
+    if (SpawnForced(pickupActor, spawnX, spawnY, spawnZ, dropTid, 0) > 0) {
+      // A banned item is removed by the stock spawn hooks. Its pickup checker
+      // needs SPECIAL during initialization so it can notice that removal.
+      if (!ACS_NamedExecuteWithResult("core_checkPickupServerBanned", pickupActor))
+        GiveActorInventory(dropTid, "8BDM_CF_SPECIAL_0", 1);
       SetActorVelocity(dropTid, FixedMul(dirX, throwSpeed), FixedMul(dirY, throwSpeed), 5.0, false, false);
       ACS_NamedExecuteAlways("uh_MegaDroppedAssistWatch", 0, dropTid);
     }

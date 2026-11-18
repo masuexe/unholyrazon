@@ -50,6 +50,11 @@ Read this file before changing code. It records what recent work in Unholy Razon
 
 ## Verification and benchmarks
 
+**Gate thrown pickup eligibility on ground contact when the throw must land first.**
+- Mega Man's Reload could return items to the thrower during a forward run, especially against a wall. The collision grace expired independently of landing, and the stock pickup checker could release the collision flag.
+- Reproduce with live Reload input and sustained movement. Check that a drop remains visible on the floor before pickup becomes possible, then verify pickup and expiry.
+- Seen 1× (2026-11-18).
+
 **Network traffic and performance benchmarks must lock player aim, disable mouse/joystick input, and run in a deterministic arena.**
 - During the 261109 network stall investigation ([docs/network-stall-investigation-261109.md](docs/network-stall-investigation-261109.md)), an initial Super Megaman beam run showed `870,866` vs `925,621` UDP bytes across two builds whose weapon definitions were byte-identical. The difference came from unlocked aim and normal-map geometry changing beam segment counts.
 - Rerunning in a flat arena with `use_mouse=0`, `use_joystick=0`, `cl_capfps=1`, and per-tic zero-aim assertions produced repeatable equal-work baselines.

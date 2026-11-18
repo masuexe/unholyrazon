@@ -6,6 +6,7 @@
 
 ## 未发布
 
+- 普通洛克人用 Reload 扔出的道具现在会在落地片刻后开放拾取，边跑边扔也会先掉到地上。
 - 玩家现在可以拾取普通洛克人用 Reload 扔出的 Power Generator、Damage Absorber、Exchanger 和 Energy Balancer Neo，拾取后立即获得对应的被动效果。
 - 普通洛克人在共用冷却期间按 M2，会使用当前 Buster 的副攻击。充满前按住 M2 可以继续攻击，充满后松开再按才会重抽复制武器。
 - 普通洛克人现在可以拾取并使用 v6c 原版的 13 种 Buster 升级。使用道具会替换当前 Buster。M2 仍重抽复制武器，Reload 仍扔道具，换炮时沿用两者的剩余冷却。

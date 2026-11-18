@@ -44,7 +44,8 @@ ground on Reload, separated from M2's copy-weapon draw:
   `rz_sv_mega_reload_item_count > 0` and hides it at `0`; `0` disables Reload).
 - Players can collect thrown Power Generator, Damage Absorber, Exchanger, and
   Energy Balancer Neo pickups if their passive effect is not already active.
-  Standard MegaMan can collect and use Buster upgrades. Uncollected items blink
+  Standard MegaMan can collect and use Buster upgrades. Thrown items become
+  collectible after 8 consecutive tics on the ground. Uncollected items blink
   during the final 3 seconds and despawn at 30 seconds (`1050` tics).
 - The pool contains all 55 stock entries from the v6c assist and Buster upgrade
   tables, including 38 standard assists, 4 campaign assists, and 13 Buster upgrades.
