@@ -4,6 +4,10 @@
 
 ---
 
+## Unreleased
+
+- Reduced online network congestion and server/client stuttering during SuperMegaman's, ShinHellbot's, ZankokunaHellbot's, and SovietFrostBite's ultimates, as well as BlueSpeciman's dash ice-shard bursts, while preserving original damage, visual effects, freeze deaths, and kill messages.
+
 ## 4.0.0-beta.261119.hotfix1
 
 - Fixed an online client freeze when Standard MegaMan (`MegaManU`) presses M2 with `Bass Buster`, `Rush Bike`, or `Treble Boost`, or finishes an M2 reroll / Reload throw on any Buster upgrade: `MegaManUBuster` used 0-tic `A_Jump(256, ...) + wait` frames that looped infinitely in `P_SetPsprite` on network clients (where `A_Jump` does not jump), and `BassBuster`, `RushBikeWep`, and `TrebleBoost` now define explicit `Altfire` states for direct M2 prediction.

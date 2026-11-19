@@ -305,6 +305,7 @@ actor SuperMegaFlightBoosterSmoke : BasicProjectile {
   Damage (20)
   DamageType "SuperMegaman"
   Obituary "%o stuck %p head into the chimney for the second time."
+  -USESPAWNEVENTSCRIPT
   +RIPPER
   Radius 20
   Height 20
@@ -317,12 +318,14 @@ actor SuperMegaFlightBoosterSmoke : BasicProjectile {
   }
 }
 
-// 545 = SXF_TRANSFERTRANSLATION|SXF_NOCHECKPOSITION|SXF_TRANSFERPITCH
+// 40 = SXF_ABSOLUTEMOMENTUM | SXF_NOCHECKPOSITION
+// 41 = SXF_TRANSFERTRANSLATION | SXF_ABSOLUTEMOMENTUM | SXF_NOCHECKPOSITION
 // Speed 1 + NOCLIP/THRUACTORS carries aim vector in velx/vely/velz on clients immediately via SpawnMissileExact.
 actor SuperMegaEndlessBeamSpawn : BasicProjectile {
   Translation "248:248=160:160", "227:227=66:66", "183:183=202:202"
   Obituary "Thanks to Endless Beam Launcher, %o finally realized they shouldn't challenge \cnSuper Megaman\c- (%k) at the expense of %p horse!"
   DamageType "EndlessBeamLauncher"
+  -USESPAWNEVENTSCRIPT
   +THRUGHOST
   +THRUACTORS
   +NOCLIP
@@ -339,12 +342,10 @@ actor SuperMegaEndlessBeamSpawn : BasicProjectile {
   States {
    Spawn:
     S_UN M 0
-    S_UN M 0 ACS_NamedExecuteWithResult("uh_CopyPointerAnglePitch", 2, 0)
     S_UN M 0 A_PlaySoundEx("misc/sunstarbeamloop", "SoundSlot6")
-    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeamWallHit", 0, 0, 0, 1000 * cos(pitch), 0, 1000 * sin(-pitch), 0, 545)
-    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeamDamager", 32 * cos(pitch), 0, 32 * sin(-pitch), 0, 0, 0, 0, 544)
-    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeam", 9 * sqrt(velx * velx + vely * vely), 0, 9 * velz, velx, vely, velz, 0, 41)
-    S_UN M 0 A_Stop
+    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeamWallHit", 0, 0, 0, 1000 * velx, 1000 * vely, 1000 * velz, 0, 41)
+    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeamDamager", 0, 0, 0, 300 * velx, 300 * vely, 300 * velz, 0, 40)
+    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeam", 32 * sqrt(velx * velx + vely * vely), 0, 32 * velz, velx, vely, velz, 0, 41)
     S_UN MN 1
     stop
    Death:
@@ -370,15 +371,16 @@ actor SuperMegaEndlessBeam {
   Radius 8
   Height 8
   Speed 0
+  Scale 2.0
   RenderStyle "Add"
-  Alpha 0.05
+  Alpha 0.16
   States {
    Spawn:
     S_UN M 0
     S_UN M 0 A_JumpIfCloser(1200, "Appear")
     stop
    Appear:
-    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeam", 9 * sqrt(velx * velx + vely * vely), 0, 9 * velz, velx, vely, velz, 0, 41)
+    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeam", 32 * sqrt(velx * velx + vely * vely), 0, 32 * velz, velx, vely, velz, 0, 41)
     S_UN M 0 A_Stop
     S_UN OP 1
     stop
@@ -441,36 +443,33 @@ actor SuperMegaEndlessBeamEndFXChain {
     S_UN M 0 A_JumpIfCloser(1200, "Appear")
     stop
    Appear:
-    S_UN MM 0 A_SpawnItemEx("SuperMegaEndlessBeamEndFX", 0, random(-48, 48), random(-48, 52), random(5, 10), 0, 0, 0, 1, 128)
-    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeamEndFXChain", 9 * sqrt(velx * velx + vely * vely), 0, 9 * velz, velx, vely, velz, 0, 41)
+    S_UN MMMM 0 A_SpawnItemEx("SuperMegaEndlessBeamEndFX", 0, random(-48, 48), random(-48, 52), random(5, 10), 0, 0, 0, 1, 128)
+    S_UN M 0 A_SpawnItemEx("SuperMegaEndlessBeamEndFXChain", 32 * sqrt(velx * velx + vely * vely), 0, 32 * velz, velx, vely, velz, 0, 41)
     S_UN M 0 A_Stop
     S_UN OP 1
     stop
   }
 }
 
-// Instant 0-tic damager chain (32-unit steps up to 1200 units); keeps BasicProjectile + custom Obituary (no +SERVERSIDEONLY).
-actor SuperMegaEndlessBeamDamager : BasicProjectile {
+// Single networked FastProjectile ray (4 tics * 300 = 1200u range, z-step <= 37.5u even at +/-89 deg pitch).
+// Stays networked (no +SERVERSIDEONLY) to preserve custom Obituary; omits BasicProjectile (-USESPAWNEVENTSCRIPT).
+actor SuperMegaEndlessBeamDamager : FastProjectile {
   Obituary "Thanks to Endless Beam Launcher, %o finally realized they shouldn't challenge \cnSuper Megaman\c- (%k) at the expense of their mom!"
   DamageType "EndlessBeamLauncher"
+  Projectile
   +RIPPER
   +THRUGHOST
-  +THRUACTORS
   +DONTBLAST
   +DONTREFLECT
-  Damage (0)
+  +SKYEXPLODE
+  Damage (150 * (1 + 0.01 * CallACS("rz_CountInv_HorseBountyStack", 2)))
+  Speed 300
+  Radius 32
   Height 40
-  Radius 18
   Renderstyle "None"
   States {
    Spawn:
-    TNT1 A 0
-    TNT1 A 0 A_JumpIfCloser(1200, "Appear")
-    stop
-   Appear:
-    TNT1 A 0 A_SpawnItemEx("SuperMegaEndlessBeamDamager", 32 * cos(pitch), 0, 32 * sin(-pitch), 0, 0, 0, 0, 544)
-    TNT1 A 0 A_SpawnItemEx("IcePitFreeze")
-    TNT1 AA 1 A_Explode(60 * (1 + 0.01 * CallACS("rz_CountInv_HorseBountyStack", 2)), 40, 0, 0, 40)
+    TNT1 AAAA 1
     stop
    Death:
     TNT1 A 0 A_SpawnItemEx("IcePitFreeze")
@@ -491,7 +490,8 @@ actor SuperMegaEndlessBeamWallHit : FastProjectile {
     stop
    Death:
     TNT1 A 0 A_Quake(3, 5, 0, 1000)
-    TNT1 AAAA 0 A_SpawnItemEx("SuperMegaEndlessBeamShard", random(-2, 2), random(-2, 2), 32, random(-16, 16), random(-16, 16), random(2, 12), 0, 1)
+    TNT1 A 0 A_SpawnItemEx("SuperMegaEndlessBeamShard", random(-2, 2), random(-2, 2), 32, random(-16, 16), random(-16, 16), random(2, 12), 0, 1)
+    TNT1 AAA 0 A_SpawnItemEx("SuperMegaEndlessBeamShardFX", random(-2, 2), random(-2, 2), 32, random(-16, 16), random(-16, 16), random(2, 12), 0, 1)
     TNT1 A 0 A_PlaySoundEx("weapon/ChillBlockCrack", "Voice")
     stop
   }
@@ -499,8 +499,51 @@ actor SuperMegaEndlessBeamWallHit : FastProjectile {
 
 actor SuperMegaEndlessBeamShard : SpecimanBlockShard {
   Translation "192:192=[181,213,241]:[181,213,241]", "198:198=[0,120,255]:[0,120,255]"
+  Damage (35)
   DamageType "SuperMegaman"
   Obituary "%o was frozen by \cnSuper Megaman\c- (%k)'s \cnEndless Beam Launcher\c-."
+}
+
+actor SuperMegaEndlessBeamShardFX {
+  Translation "192:192=[181,213,241]:[181,213,241]", "198:198=[0,120,255]:[0,120,255]"
+  +CLIENTSIDEONLY
+  +MISSILE
+  -SOLID
+  -NOGRAVITY
+  +HEXENBOUNCE
+  +THRUACTORS
+  -ALLOWBOUNCEONACTORS
+  +DONTSPLASH
+  +CANBOUNCEWATER
+  +NOBLOCKMAP
+  BounceCount 4
+  BounceFactor 0.5
+  WallBounceFactor 0.5
+  ReactionTime 2
+  Radius 8
+  Height 8
+  Scale 2.5
+  States {
+   Spawn:
+    TNT1 A 0
+    TNT1 A 0 A_Jump(256, "E", "F", "G", "H")
+    TNT1 A 1
+   E:
+    8P44 E 140 A_CountDown
+    wait
+   F:
+    8P44 F 140 A_CountDown
+    wait
+   G:
+    8P44 G 140 A_CountDown
+    wait
+   H:
+    8P44 H 140 A_CountDown
+    wait
+   Death:
+    "----" "#########" 1 A_FadeOut(0.1)
+    stop
+  }
 }
 
 actor HorseShot : BasicMorphProjectile {

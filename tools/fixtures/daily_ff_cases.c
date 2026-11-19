@@ -118,6 +118,14 @@ int main(void) {
     token=UH_DailyFFMakeOrigin("LastAddon","");
     assert(token==255*1024 && token/UH_DAILY_FF_OWNER==0);
     uh_dailyffaddoncount=2;
+    /* Per-player survivor-ID cache invalidates when the same player slot morphs. */
+    marker[2]=0; sourcepn=0; pointer_owner=1;
+    pawn="SuperMegaman"; attack="SuperMegaEndlessBeamDamager";
+    active=2; uh_DailyFFStamp(); assert(marker[2]==0);
+    pawn="Qwant"; attack="LeafSlash1";
+    active=2; uh_DailyFFStamp(); assert(marker[2]>UH_DAILY_FF_OWNER);
+    marker[2]=0; pawn="SuperMegaman"; attack="SuperMegaEndlessBeamDamager";
+    active=2; uh_DailyFFStamp(); assert(marker[2]==0);
     puts("Daily FF: pool counts, clamping, baseline immunity, provenance, safe interactions and rollover PASS");
     return 0;
 }

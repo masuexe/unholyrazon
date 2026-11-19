@@ -455,3 +455,127 @@ Deathmatch 2-client runtime check confirmed identical custom obituaries on serve
 - `MorshuBombProjectileLITE`: `Morshu (KillerClient) sold a bomb to VictimClient.`
 - `MorshuBombDebris`: `VictimClient was caught by Morshu (KillerClient)'s bomb debris.`
 
+## Follow-up: SuperMegaman, ShinHellbot, and SovietFrostBite ultimates (261119)
+
+Live dedicated-server profiling (`NETLAB` and `MM2DW1`, 2 connected clients behind a
+loopback UDP proxy, `use_mouse=0`, `use_joystick=0`, `cl_capfps=1`) identified
+four remaining causes of multiplayer CPU and network stalls during
+SuperMegaman (`SuperMegaman_W`), ShinHellbot (`ShinHellBot_W`), and
+SovietFrostBite (`SovietFrostBite_W`) ultimates:
+
+### Root causes
+
+1. **Global `DTADD_SFT_PROJ` ACS scan (`src/acs_source/classes/shared/copy_weapons/daily_team_ff.acs`)**:
+   - `uh_DailyFFStamp` ran on every `+USESPAWNEVENTSCRIPT` projectile (including
+     Boss and Demoneye attacks) and called `uh_DailyFFPointerOrigin`, which
+     invoked `FindSurvivorByActor(pawn)` (`_imports/uhdt.acs`) — a linear scan
+     over all `UH_MAX_VANILLA_SURV` (`128`) survivor slots — and then called
+     `UH_DailyFFMakeOrigin` which ran `FindSurvivorByActor` a **second time**
+     without early-returning on `id < 0` (`~10,400` ACS instructions per Boss
+     projectile).
+   - Over a single cast on `NETLAB`, `uh_DailyFFPointerOrigin` executed **47.3M**
+     instructions during SuperMegaman (`4,560` spawns), **26.0M** during
+     ShinHellbot (`2,500` spawns in `3.1 s`), and **27.9M** during
+     SovietFrostBite (`2,682` spawns).
+2. **`+USESPAWNEVENTSCRIPT` bloat on `BasicProjectile` descendants**:
+   - In Razon 3, `HellApocMeteorAttackBoss`, `HellTatoruShockwavePartBoss`,
+     `HailRainShotBoss`, and `SovietColdShotBit` did not trigger core spawn-event
+     hooks. Inheriting `BasicProjectile` in Razon 4 pulled each spawned actor
+     through 20+ server `EVENT` / `HF_PROJ` hooks, 2 networked inventory trackers
+     (`StaticDamageFactorApplied`/`Amount`), and 1 `NodeList_Node` (`38.7k–90.8k`
+     polling script calls per cast), inflating live server actors to `1,416–2,632`.
+3. **Unfixed per-boss network/actor bombs & Zandronum `dumptrafficmeasure` blind spot**:
+   - **SuperMegaman (`SuperMegaman_W.dec` & `BlueSpeciman_W.dec`)**:
+     - `SuperMegaEndlessBeamDamager` spawned `3,800` invisible networked
+       `BasicProjectile` segments (`38` per 2 tics) calling `A_JumpIfCloser(1200, "Appear")`,
+       which emits `SetThingFrame` + `MoveThing` (`CLIENTUPDATE_FRAME | CLIENTUPDATE_POSITION`),
+       plus `3,800` `IcePitFreeze` actors and `7,600` `HorseBountyStack` ACS calls.
+       Because each segment hit `stop` during its spawn tick before reaching the end
+       of `AActor::Tick()`, `NETTRAFFIC_AddActorTraffic` under-reported its bytes
+       in `dumptrafficmeasure` (`0 B` shown despite tens of KB on the wire).
+     - `SuperMegaEndlessBeamWallHit` spawned `4` networked `SuperMegaEndlessBeamShard`
+       (`SpecimanBlockShard`) actors per 2 tics (`400` bouncing `BasicProjectile`s
+       running `A_Jump(256)` + 9-tic server `A_FadeOut` -> `78,400 B` in
+       `dumptrafficmeasure`).
+     - `SuperMegaEndlessBeamSpawn` called `uh_CopyPointerAnglePitch` (`MoveThingExact`)
+       and server `A_Stop` every 2 tics; client `SuperMegaEndlessBeam` overdrew `133`
+       `Alpha 0.05` sprites at 9-unit spacing.
+   - **ShinHellbot (`ShinHellBot_W.dec`) & sibling ZankokunaHellbot (`ZankokunaHellbot_W.dec`)**:
+     - The `261113` fix had only updated `Set5` (`HelltatoruMoltenFireBallFadeFX`),
+       leaving `Set4` (`HellApocMeteorAttackBoss_H` -> `100` `HellApocMeteorAttackBoss`
+       calling redundant `A_ChangeFlag("RIPPER", 0)` -> `2,400` networked
+       `HellTatoruShockwavePartBoss` in `3.1 s` -> `2.38 KB` peak 30ms spikes).
+   - **SovietFrostBite (`SovietFrostBite_W.dec`)**:
+     - `HailRainSpawnerBossHelper` and `HailRainSpawnerBoss` were networked and looped
+       `ThrustThingZ(0, 999, 0, 0)` every tic (`40,174 + 3,324 B` in `dumptrafficmeasure`).
+     - Razon 4 added mid-air `X_7A D 4 A_SpawnItemEx("IcePitFreeze")` to
+       `HailRainShotBoss::Spawn` (`4,000+` `IcePitFreeze` actors, emitting `15,784 B`
+       of `SERVERCOMMANDS_UpdateThingVelocity` packets even when `Factor 0` `Freeze`
+       dealt zero knockback), plus `2,120` networked `SovietColdShotBit` splits (`47,256 B`).
+     - `SovietColdShotFX` inherited `BasicGraphicEffect` instead of `BasicClientSide`.
+
+### Implemented fixes
+
+1. **`src/acs_source/classes/shared/copy_weapons/daily_team_ff.acs` & `tools/fixtures/daily_ff_cases.c`**:
+   - Added a 64-slot per-player pawn-to-survivor-ID cache (`UH_DailyFFFindSurvivorCached`)
+     and single-lookup `UH_DailyFFMakeOriginFromId`, short-circuiting non-survivors
+     in `uh_DailyFFPointerOrigin` and eliminating the duplicate `FindSurvivorByActor` call.
+2. **`src/actors/classes/bosses/BlueSpeciman_W.dec` & `SuperMegaman_W.dec`**:
+   - Stripped `-USESPAWNEVENTSCRIPT` from `SpecimanBlockShard`,
+     `SuperMegaFlightBoosterSmoke`, and `SuperMegaEndlessBeamSpawn`; moved
+     `SpecimanBlockShard`'s 9-tic `A_FadeOut` to `+CLIENTSIDEONLY` `SpecimanBlockShardFadeFX`
+     and removed its spawn-time `A_Jump(256)` frame broadcast.
+   - Removed `uh_CopyPointerAnglePitch` and server `A_Stop` from
+     `SuperMegaEndlessBeamSpawn` (computing child velocities directly from `velx/vely/velz`),
+     and adjusted client `SuperMegaEndlessBeam` / `SuperMegaEndlessBeamEndFXChain` to
+     `Scale 2.0`, `Alpha 0.16`, and 32-unit step (`37` vs `133` sprites).
+   - Collapsed `SuperMegaEndlessBeamDamager`'s 38-segment chain into a single
+     networked `FastProjectile` ray (`Speed 300`, `TNT1 AAAA 1`, `+RIPPER`,
+     `Damage (150 * ...)`, `DamageType "EndlessBeamLauncher"`), retaining its custom
+     `Obituary` and `Death.Ice` handling.
+   - Split `SuperMegaEndlessBeamWallHit::Death` shards into `1` networked
+     `SuperMegaEndlessBeamShard` (`Damage (35)`) + `3` `+CLIENTSIDEONLY` `SuperMegaEndlessBeamShardFX`.
+3. **`src/actors/classes/bosses/ShinHellBot_W.dec` & sibling `ZankokunaHellbot_W.dec`**:
+   - Stripped `-USESPAWNEVENTSCRIPT` and redundant `+RIPPER` / `A_ChangeFlag("RIPPER", 0)`
+     from `HellApocMeteorAttackBoss` (`goto Spawn2+1`) and `HelltatoruMoltenwavePartBoss`;
+     kept `HellApocMeteorAttackBoss_H` networked so `Radius_Quake` still replicates via NetID.
+   - Made `HellTatoruShockwavesBoss` and `HellTatoruShockwavePartBoss` `+SERVERSIDEONLY`
+     (`Renderstyle "None"`, 20-tic lifetime; identical `Obituary` falls back to `ShinHellbot_W`
+     on remote clients) paired with deterministic `+CLIENTSIDEONLY`
+     `HellTatoruShockwavesBossFX` / `HellTatoruShockwavePartBossFX` rings.
+   - Applied the same fix to `ZankokunaHellbot_W.dec` (`HelltatoruMoltenFireBall`,
+     `HelltatoruMoltenFireBallFadeFX_Z`, `HellTatoruMoltenWaves`/`FX`,
+     `HellTatoruMoltenwavePart`/`FX`, `HellApocMeteorAttack`, `HellTatoruShockWaves`/`FX`,
+     `HellTatoruShockwavePart`/`FX`, and `DecoyRapeCrushZ`).
+4. **`src/actors/classes/bosses/SovietFrostBite_W.dec`**:
+   - Marked `HailRainSpawnerBossHelper` and `HailRainSpawnerBoss` `+SERVERSIDEONLY`,
+     passing initial Z velocity (`250`) via `HailRainSpawnerBoss_P` instead of
+     looping `ThrustThingZ`, and spawning `HailRainShotBoss` with flags `17`.
+   - Stripped `-USESPAWNEVENTSCRIPT` from `HailRainShotBoss` and `SovietColdShotBit`,
+     removed mid-air `IcePitFreeze` from `HailRainShotBoss::Spawn`, split its
+     `Death` hail bits into deterministic `(x + y)` 4-way `+SERVERSIDEONLY`
+     `HailRainColdShotBit` + `+CLIENTSIDEONLY` `HailRainColdShotBitFX` (matching
+     `SovietFrostBite_W`'s obituary), and restored `SovietColdShotFX` to `BasicClientSide`.
+
+### Before/after benchmark & remote obituary verification
+
+Measured against `out/build.pk3` with dedicated server + 2 clients (`BossClient` & `ObsClient`)
+over loopback UDP proxy (`cl_capfps=1`, `use_mouse=0`, `use_joystick=0`). Note: baseline
+`NETLAB` used LMS (`Idle` `11,168 B` including `~0.7 KB/s` `uh_ti_serverwatch`);
+post-fix `NETLAB` ran DM (`Idle` `6,857 B`) with clean single-tap ultimate triggers:
+
+| Scenario | Before UDP (B) | After UDP (B) | Peak 1s Before → After | Peak 30ms Before → After | Server CPU | Client NetID | `DailyFF` ACS Instr |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `idle` (6 s, `NETLAB`) | 11,168 (LMS) | 6,857 (DM) | 1.9 KB/s → 1.45 KB/s | 276 B → 93 B | 0.33s → 0.26s | 10 → 10 | 0 |
+| `supermegaman_open` (11.5 s, `NETLAB`) | 163,656 | **47,615** (`-70.9%`) | 26.4 → **6.56 KB/s** | 1,619 B → **426 B** | 2.30s → **0.61s** (`-73.5%`) | 180 → **52** | 47.3M → **not in top 20** |
+| `shinhellbot_open` (9.0 s, `NETLAB`) | 80,238 | **19,285** (`-76.0%`) | 23.2 → **3.91 KB/s** | 2,380 B → **295 B** | 1.92s → **0.50s** (`-74.0%`) | 480 → **49** | 26.0M → **not in top 20** |
+| `sovietfrostbite_open` (12.0 s, `NETLAB`) | 126,970 | **36,283** (`-71.4%`) | 15.6 → **4.15 KB/s** | 1,109 B → **288 B** | 1.91s → **0.64s** (`-66.5%`) | 344 → **124** | 27.9M → **not in top 20** |
+| `supermegaman_mm2dw1` (11.0 s, `MM2DW1`) | 107,923 | **53,396** (`-50.5%`) | 17.5 → **7.26 KB/s** | — → **1,063 B** | 1.38s → **0.77s** (`-44.2%`) | 238+ → **275** | not in top 20 |
+
+Live 2-client Deathmatch runtime checks (`15/15 PASS`, zero engine/ACS warnings) confirmed
+identical obituaries on server and remote client, client FX spawning, and `Death.Ice` (`IceDeathFlag=1`):
+- `SuperMegaEndlessBeamDamager`: `Thanks to Endless Beam Launcher, ObsClient finally realized they shouldn't challenge Super Megaman (BossClient) at the expense of their mom!` (`IceDeathFlag=1`, plus `SuperMegaEndlessBeamShard` & `SuperMegaEndlessBeamShardFX` confirmed on wall hit).
+- `ShinHellbot_W` / `HellApocMeteorAttackBoss` / `HellTatoruShockwavePartBoss`: `ObsClient was KPOW'D by Shin HellBot (BossClient)!` (`HellTatoruShockwavePartBossFX` on client, `0` networked shockwaves on client).
+- `SovietFrostBite_W` / `HailRainShotBoss` / `HailRainColdShotBit`: `ObsClient was now shivering in fear due to Soviet FrostBite (BossClient).` (`HailRainColdShotBitFX` on client, `0` networked hail bits on client).
+- `ZankokunaHellbot`: smoke-tested `HellApocMeteorSpawner` (`0` networked `HellTatoruShockwavePart`/`HellTatoruMoltenwavePart` on client).
+

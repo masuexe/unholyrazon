@@ -415,6 +415,11 @@ Use `tools/mm8bdm-v6c.launch.json` for both Linux MCP and Windows clients. The v
 Commands, profile choices,
 direct-call guidance, and build/runtime traps live in `tools/README.md`.
 
+## Online performance and network hygiene
+
+- **Client-side pure visuals and `-USESPAWNEVENTSCRIPT` on high-count attacks**: Pure-visual trails, beam segments, fades, and explosion FX must inherit `BasicClientSide` (not `BasicGraphicEffect` or `BasicProjectile`) so they generate zero server actors, network packets, or spawn-event ACS calls. High-count boss/spam projectiles that do not need v6c's core `HF_PROJ` hooks (such as static damage-factor scaling or node lists) should strip `-USESPAWNEVENTSCRIPT`. Damage-dealing projectiles retain their explicit `Obituary` (only omit networking via `+SERVERSIDEONLY` when a deterministic `+CLIENTSIDEONLY` visual mirror matches their trajectory and the weapon's own `Obituary` is byte-identical). Sweep sibling classes (such as Boss variants, Shiny variants, and shared base shards) in the same task.
+- **No redundant server-side per-tic state mutations on high-count projectiles**: Fold initial velocities/offsets/translations into `A_SpawnItemEx` rather than calling `ThrustThingZ` or `A_ScaleVelocity` on the server; avoid server-side `A_FadeOut`, random `A_Jump(256, ...)` frame switches, or redundant `A_ChangeFlag` calls (`SetThingFlags`/`SetThingFrame`/`SetThingProperty`); keep `DTADD_HF_PROJ`/`DTADD_SFT_PROJ` ACS hooks O(1).
+
 ## Changelog conventions
 
 When writing release notes, changelogs, or user-facing summaries:

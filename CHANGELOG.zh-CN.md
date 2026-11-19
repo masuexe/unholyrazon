@@ -4,6 +4,10 @@
 
 ---
 
+## 未发布
+
+- 大幅降低了 SuperMegaman、ShinHellbot、ZankokunaHellbot 与 SovietFrostBite 释放终极技，以及 BlueSpeciman 冲刺碎冰齐射时引发的联机网络拥塞与服务端／客户端卡顿，同时完整保留原有伤害、视觉表现、冰冻死亡效果与击杀提示。
+
 ## 4.0.0-beta.261119.hotfix1
 
 - 修复普通洛克人（`MegaManU`）使用 `Bass Buster`、`Rush Bike` 或 `Treble Boost` 按下 M2，或在任意 Buster 升级武器上完成 M2 重抽／Reload 投掷时导致联机客户端无响应的问题：将 `MegaManUBuster` 中会导致客户端 `P_SetPsprite` 无限循环的 0-tic `A_Jump(256, ...) + wait` 帧修正为 1-tic，并为 `BassBuster`、`RushBikeWep` 与 `TrebleBoost` 补充显式 `Altfire` 状态以支持客户端直接预测开火。

@@ -12,6 +12,11 @@ int uh_dailyffmin;
 int uh_dailyffmax;
 int uh_dailyffclasses;
 int uh_dailyfforigindepth;
+// Per-player cache for FindSurvivorByActor(GetActorClass(0)) to avoid O(128)
+// UHDT scans on every projectile fired by bosses, demoneyes, or survivors.
+int uh_dailyffpncachevalid[64];
+str uh_dailyffpnpawn[64];
+int uh_dailyffpnid[64];
 // Explicit opt-in only. Slots 128..254 are server-local addon origins.
 str uh_dailyffaddonactor[128];
 int uh_dailyffaddoncount;
@@ -154,8 +159,19 @@ function str UH_DailyFFAttackWeapon(str actor, int id) {
   return "";
 }
 
-function int UH_DailyFFMakeOrigin(str pawn, str weapon) {
+function int UH_DailyFFFindSurvivorCached(int pn, str pawn) {
+  if (pn >= 0 && pn < 64 && uh_dailyffpncachevalid[pn] && !StrICmp(pawn, uh_dailyffpnpawn[pn]))
+    return uh_dailyffpnid[pn];
   int id = FindSurvivorByActor(pawn);
+  if (pn >= 0 && pn < 64) {
+    uh_dailyffpnpawn[pn] = pawn;
+    uh_dailyffpnid[pn] = id;
+    uh_dailyffpncachevalid[pn] = 1;
+  }
+  return id;
+}
+
+function int UH_DailyFFMakeOriginFromId(str pawn, int id, str weapon) {
   int i;
   if (id < 0) {
     for (i = 0; i < uh_dailyffaddoncount; i++) {
@@ -174,6 +190,10 @@ function int UH_DailyFFMakeOrigin(str pawn, str weapon) {
       return (id + 1) * UH_DAILY_FF_TOKEN + i + 1;
   }
   return 0;
+}
+
+function int UH_DailyFFMakeOrigin(str pawn, str weapon) {
+  return UH_DailyFFMakeOriginFromId(pawn, FindSurvivorByActor(pawn), weapon);
 }
 
 function bool UH_DailyFFInstantPuff(str actor) {
@@ -195,7 +215,8 @@ script "uh_DailyFFPointerOrigin" (int ptr, int attack) {
   if (!SetActivator(0, ptr)) terminate;
   int token = CheckInventory("UH_DailyFFOrigin");
   if (token > 0) {SetResultValue(token); terminate;}
-  if (PlayerNumber() < 0) {
+  int pn = PlayerNumber();
+  if (pn < 0) {
     // Summons retain their creator through master/target. Bound recursion so
     // malformed pointer cycles cannot stall a tic; never borrow a victim's kit.
     if (uh_dailyfforigindepth >= 4) terminate;
@@ -206,9 +227,11 @@ script "uh_DailyFFPointerOrigin" (int ptr, int attack) {
     terminate;
   }
   str pawn = GetActorClass(0);
-  int id = FindSurvivorByActor(pawn);
-  token = UH_DailyFFMakeOrigin(pawn, UH_DailyFFAttackWeapon(attack, id));
-  if (token > 0) token += (PlayerNumber() + 1) * UH_DAILY_FF_OWNER;
+  int id = UH_DailyFFFindSurvivorCached(pn, pawn);
+  if (id < 0 && uh_dailyffaddoncount == 0) terminate;
+  str weapon = (id > 0 && UH_DailyFFMulti(id)) ? UH_DailyFFAttackWeapon(attack, id) : "";
+  token = UH_DailyFFMakeOriginFromId(pawn, id, weapon);
+  if (token > 0) token += (pn + 1) * UH_DAILY_FF_OWNER;
   SetResultValue(token);
 }
 
@@ -274,8 +297,11 @@ script "uh_DailySurvivorTeamFF" (int evt, int dmg, int dtype) EVENT {
     if (SetActivator(0, AAPTR_DAMAGE_SOURCE)) {
       source = PlayerNumber();
       if (!token) token = CheckInventory("UH_DailyFFOrigin");
-      if (!token && instant && source >= 0)
-        token = UH_DailyFFMakeOrigin(GetActorClass(0), GetWeapon());
+      if (!token && instant && source >= 0) {
+        str srcpawn = GetActorClass(0);
+        int srcid = UH_DailyFFFindSurvivorCached(source, srcpawn);
+        token = UH_DailyFFMakeOriginFromId(srcpawn, srcid, (srcid > 0 && UH_DailyFFMulti(srcid)) ? GetWeapon() : "");
+      }
     }
     // A summon can be the native source. Only a stamped creator may stand in
     // for it; an unowned monster/environmental hit keeps baseline immunity.

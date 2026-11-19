@@ -74,6 +74,7 @@ actor HailRainShotBoss : BasicProjectile {
   Translation "192:192=203:203", "198:198=5:5"
   DamageType "SovietCold"
   Obituary "%o was now shivering in fear due to \cmSoviet \cnFrostBite\c- (%k)."
+  -USESPAWNEVENTSCRIPT
   +RIPPER
   Damage (50)
   Radius 10
@@ -81,11 +82,18 @@ actor HailRainShotBoss : BasicProjectile {
   Scale 2.5
   States {
    Spawn:
-    X_7A D 4 A_SpawnItemEx("IcePitFreeze")
+    X_7A D 4
     loop
    Death:
     TNT1 A 0 A_SpawnItemEx("IcePitFreeze")
-    TNT1 AAAA 0 A_SpawnItemEx("SovietColdShotBit", 0, 0, 8, random(-20, 20), random(-20, 20), random(0, 20), 0, 1)
+    TNT1 A 0 A_SpawnItemEx("HailRainColdShotBit", 0, 0, 8, 14, 0, 14, x + y, 1)
+    TNT1 A 0 A_SpawnItemEx("HailRainColdShotBit", 0, 0, 8, 10, 0, 18, x + y + 90, 1)
+    TNT1 A 0 A_SpawnItemEx("HailRainColdShotBit", 0, 0, 8, 16, 0, 10, x + y + 180, 1)
+    TNT1 A 0 A_SpawnItemEx("HailRainColdShotBit", 0, 0, 8, 12, 0, 16, x + y + 270, 1)
+    TNT1 A 0 A_SpawnItemEx("HailRainColdShotBitFX", 0, 0, 8, 14, 0, 14, x + y, 1)
+    TNT1 A 0 A_SpawnItemEx("HailRainColdShotBitFX", 0, 0, 8, 10, 0, 18, x + y + 90, 1)
+    TNT1 A 0 A_SpawnItemEx("HailRainColdShotBitFX", 0, 0, 8, 16, 0, 10, x + y + 180, 1)
+    TNT1 A 0 A_SpawnItemEx("HailRainColdShotBitFX", 0, 0, 8, 12, 0, 16, x + y + 270, 1)
     TMFX ABCD 2
     stop
   }
@@ -117,10 +125,13 @@ actor SovietColdShot : BasicProjectile {
   }
 }
 
-actor SovietColdShotFX : BasicGraphicEffect {
+actor SovietColdShotFX : BasicClientSide {
+  RenderStyle "Translucent"
+  Alpha 1.0
   Scale 2.5
   States {
-   SpawnFrame:
+   Spawn:
+    X_7A D 0
     X_7A DDDDEEEE 1 A_FadeOut
     stop
   }
@@ -129,6 +140,7 @@ actor SovietColdShotFX : BasicGraphicEffect {
 actor SovietColdShotBit : BasicProjectile {
   DamageType "SovietCold"
   Obituary "%o was now shivering in fear due to \cmSoviet \cnFrostBite\c- (%k)."
+  -USESPAWNEVENTSCRIPT
   -NOGRAVITY
   Damage (random(55, 85))
   Radius 6
@@ -141,6 +153,37 @@ actor SovietColdShotBit : BasicProjectile {
    Death:
     TNT1 A 0 A_SetGravity(0.0)
     TNT1 A 0 A_SpawnItemEx("IcePitFreeze")
+    TMFX BCD 2
+    stop
+  }
+}
+
+actor HailRainColdShotBit : SovietColdShotBit {
+  +SERVERSIDEONLY
+  Renderstyle "None"
+  States {
+   Death:
+    TNT1 A 0 A_SetGravity(0.0)
+    stop
+  }
+}
+
+actor HailRainColdShotBitFX {
+  +CLIENTSIDEONLY
+  +MISSILE
+  -SOLID
+  -NOGRAVITY
+  +THRUACTORS
+  +NOBLOCKMAP
+  Radius 6
+  Height 6
+  Scale 2.5
+  States {
+   Spawn:
+    X_7A E 4
+    loop
+   Death:
+    TNT1 A 0 A_SetGravity(0.0)
     TMFX BCD 2
     stop
   }
@@ -318,6 +361,7 @@ actor SovietColdBomberExplosion : BasicExplosion {
 actor HailRainShotBossBit : SovietColdShotBit {+DONTSPLASH}
 
 actor HailRainSpawnerBossHelper : BasicWatcher {
+  +SERVERSIDEONLY
   ReactionTime 53
   States {
    Spawn:
@@ -332,13 +376,14 @@ actor HailRainSpawnerBossHelper : BasicWatcher {
 actor HailRainSpawnerBoss_P : CustomInventory {
   States {
    Pickup:
-    TNT1 A 0 A_SpawnItemEx("HailRainSpawnerBoss", 0, 0, 32)
+    TNT1 A 0 A_SpawnItemEx("HailRainSpawnerBoss", 0, 0, 32, 0, 0, 250)
     stop
   }
 }
 
 actor HailRainSpawnerBoss {
   Translation "192:192=203:203", "198:198=5:5"
+  +SERVERSIDEONLY
   +NOGRAVITY
   +MISSILE
   +THRUACTORS
@@ -350,11 +395,10 @@ actor HailRainSpawnerBoss {
   Scale 2.5
   States {
    Spawn:
-    TNT1 A 0 ThrustThingZ(0, 999, 0, 0)
     TNT1 A 1
     loop
    Death:
-    TNT1 AAAAAAAAAA 3 A_SpawnItemEx("HailRainShotBoss", random(300, -300), random(300, -300), -11, 0, 0, -20, 0, 1)
+    TNT1 AAAAAAAAAA 3 A_SpawnItemEx("HailRainShotBoss", random(300, -300), random(300, -300), -11, 0, 0, -20, 0, 17)
     TNT1 A 1
     stop
   }
