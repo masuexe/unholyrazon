@@ -132,7 +132,7 @@ BASE_GAME_ACTORS = frozenset(
     for word in """
     AdapterWaitCount AirJumpLimit AirJumpsUsed AliveCheck AliveCheckFlag AtomicFireAmmo
     BallFlag BallKickCounter BaseFlagPack BasicArmor BassBusterRage BassExplode
-    BoostFlag CanBeMegaArmed IsAirborne IsGrounded MegaShot PierceRipperLimit
+    BoostFlag CanBeMegaArmed IsAirborne IsGrounded ItemFog MegaShot PierceRipperLimit
     ThunderClawPegHelper TracerAndTargetTeamsMatchCheck TracerAndTargetTeamsMatchFlag
     BeatBoosterHasLanded BeatBoostIsActive BeatCallCheck BeatCallProtection BigHealth BigWeaponEnergy
     BlackHoleAmmo BlackHoleBomb_Ready_P BlackHoleBombAmmo BlackHoleBombCooldown BlackHoleBombExists BlackHoleBombFXSpawner

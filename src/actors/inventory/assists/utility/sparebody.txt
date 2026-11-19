@@ -1,0 +1,70 @@
+actor SpareBodyItem : BaseMM8BDMUseItem 10178
+{
+	//$Category MM8BDM-Assists/Utility
+	//$Title Spare Body
+	//$Sprite PSLDV0
+	inventory.amount 1
+	inventory.maxamount 1
+	inventory.pickupmessage "$PU_SPAREBODY"
+	Tag "$TAG_SPAREBODY"
+	inventory.icon "SPARBODI"
+	Inventory.PickupSound "item/1up"
+	scale 2.0
+	+COUNTITEM
+	+INVBAR
+	States
+	{
+		SpawnLoop:
+			PSLD V -1
+			loop
+		Use:
+			PSLD V 0 A_JumpIf(CallACS("uh_SpareBodyActivate"), "UseSuccess")
+			fail
+		UseSuccess:
+			PSLD V 0 A_PlaySoundEx("item/refill", "Voice")
+			stop
+	}
+}
+
+actor SpareBodyItem_Respawn : 8BDMItemRespawn
+{
+	mass 1050
+}
+actor SpareBodyItem_RespawnShadow : 8BDMItemRespawnShadow
+{
+	mass 1050
+	States
+	{
+		Spawn:
+			PSLD V 0
+			goto Super::Spawn
+	}
+}
+actor SpareBodyItem_MapMarker : BasicMapMarker
+{
+    States
+    {
+        Spawn:
+            MAP7 I 2
+            stop
+    }
+}
+
+actor SpareBodyActive_F : Once {}
+
+actor SpareBodyIndicator : BasicExplosion
+{
+	var int user_noProjectileTrails;
+	States
+	{
+		Spawn:
+			SPRB A 0
+			SPRB A 0 A_SpawnItemEx("ItemFog")
+			SPRB AAABBB 1 ACS_NamedExecuteWithResult("core_handleSpareBodyCheck", args[0])
+			SPRB A 0 A_PlaySoundEx("assists/sparebodycheckpoint", "body")
+			SPRB AAACCCFFF 1 ACS_NamedExecuteWithResult("core_handleSpareBodyCheck", args[0])
+		SpawnLoop:
+			SPRB JJJIIIKKKLLLNNNMMMOOOPPP 1 ACS_NamedExecuteWithResult("core_handleSpareBodyCheck", args[0])
+			loop
+	}
+}

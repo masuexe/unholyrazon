@@ -76,7 +76,7 @@ SND_NAME_FIELD = {
 }
 
 BASE_GAME_SOUNDS = frozenset("""
-    *critdeth *icedeath *icefreze assists/reggaecandrop assists/wirecling assists/wirefinish
+    *critdeth *icedeath *icefreze assists/reggaecandrop assists/sparebodycheckpoint assists/wirecling assists/wirefinish
     assists/wirefire item/buy item/eddiecry item/energyup item/energyup/large item/protoreflect
     item/refill item/reggae item/tango misc/alarmlong misc/astroplatformappear misc/bombcount
     misc/catcherdrop misc/commandosandstorm misc/devildeath misc/devilfire misc/devilpain misc/dragonbreath misc/eclipsegravitywellpain
@@ -173,6 +173,7 @@ BASE_GAME_LANGUAGE_KEYS = frozenset("""
     OB_SOLARBLAZE OB_SPARKCHASER OB_SPARKSHOCK OB_SPREADDRILL OB_STARCRASH OB_SUPERARM
     OB_TENGUBLADE OB_THUNDERBEAM OB_THUNDERBOLT OB_THUNDERCLAW OB_THUNDERWOOL OB_TIMESLOW
     OB_TIMESTOPPER OB_TOPSPIN OB_TORNADOBLOW OB_TORNADOHOLD OB_TRIPLEBLADE OB_WATERBALLOON
+    PU_SPAREBODY TAG_SPAREBODY
     OB_WATERSHIELD OB_WATERWAVE OB_WAVEBURNER OB_WAVEBURNER2 OB_WHEELCUTTER OB_WILDCOIL
     OB_WINDSTORM OB_YAMATOSPEAR PU_AIRSHOOTER PU_ASTROCRUSH PU_ATOMICFIRE PU_BALLADECRACKER
     PU_BLACKHOLE PU_BLACKHOLEBOMB PU_BLIZZARDATTACK PU_BREAKDASH PU_BUBBLEBOMB PU_BUBBLELEAD

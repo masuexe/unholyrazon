@@ -1,0 +1,94 @@
+// Unholy LMS Spare Body adaptation: grants an ExtraLife that revives the
+// player at their last recorded safe position instead of waiting for RESPAWN.
+int uh_SpareBodyActive[64];
+int uh_SpareBodyX[64];
+int uh_SpareBodyY[64];
+int uh_SpareBodyZ[64];
+int uh_SpareBodyYaw[64];
+
+script "uh_SpareBodyActivate" (void) {
+  if (CheckInventory("SpareBodyActive_F") > 0) {
+    SetResultValue(0);
+    terminate;
+  }
+  if (GetCVar("lastmanstanding") == 0) {
+    GiveInventory("SpareBodyActive_F", 1);
+    ACS_NamedExecuteWithResult("core_handleSpareBody");
+    SetResultValue(1);
+    terminate;
+  }
+  if (CheckInventory("PlayerPropertyExtraLife") >= 15) {
+    SetResultValue(0);
+    terminate;
+  }
+  GiveInventory("SpareBodyActive_F", 1);
+  ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, 1, ELP_SPAREBODY);
+  ACS_NamedExecuteAlways("uh_handleSpareBody", 0);
+  SetResultValue(1);
+}
+
+script "uh_handleSpareBody" (void) {
+  int pln = PlayerNumber();
+  if (pln < 0 || pln >= 64) {terminate;}
+  uh_SpareBodyActive[pln] = true;
+  uh_SpareBodyX[pln] = GetActorX(0);
+  uh_SpareBodyY[pln] = GetActorY(0);
+  uh_SpareBodyZ[pln] = GetActorZ(0);
+  uh_SpareBodyYaw[pln] = GetActorAngle(0);
+  while (GetActorProperty(0, APROP_Health) > 0 && PlayerInGame(pln)
+      && CheckInventory("SpareBodyActive_F")
+      && CheckInventory("PlayerPropertyExtraLifeSpareBody")) {
+    uh_SpareBodyX[pln] = ACS_NamedExecuteWithResult("core_getLastSafeX");
+    uh_SpareBodyY[pln] = ACS_NamedExecuteWithResult("core_getLastSafeY");
+    uh_SpareBodyZ[pln] = ACS_NamedExecuteWithResult("core_getLastSafeZ");
+    uh_SpareBodyYaw[pln] = ACS_NamedExecuteWithResult("core_getLastSafeAngle");
+    Delay(1);
+  }
+}
+
+script "uh_SpareBodyInvuln" (void) {
+  int pln = PlayerNumber();
+  if (pln < 0 || pln >= 64) {terminate;}
+  ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, true);
+  Delay(35);
+  if (PlayerInGame(pln) && GetActorProperty(0, APROP_Health) > 0) {
+    ACS_NamedExecuteWithResult("core_invulnerableplayer", 0, false);
+  }
+}
+
+script "uh_SpareBodyRevive" (void) {
+  int pln = PlayerNumber();
+  if (pln < 0 || pln >= 64 || !CheckInventory("PlayerPropertyExtraLifeSpareBody")) {
+    terminate;
+  }
+  TakeInventory("SpareBodyActive_F", 1);
+  ACS_NamedExecuteWithResult("uh_extralifeplayer", 0, false, ELP_SPAREBODY);
+  ACS_NamedExecuteWithResult("uh_Health", 6, 99999);
+  if (uh_SpareBodyActive[pln]) {
+    uh_SpareBodyActive[pln] = false;
+    SpawnForced("TeleportFog", GetActorX(0), GetActorY(0), GetActorZ(0));
+    int u = UniqueTID();
+    SpawnForced("TeleportDest2", uh_SpareBodyX[pln], uh_SpareBodyY[pln], uh_SpareBodyZ[pln], u, 0);
+    Thing_Move(0, u, false);
+    SetActorAngle(0, uh_SpareBodyYaw[pln]);
+    GiveInventory("ResolidWarpResync", 1);
+    Thing_Remove(u);
+    SpawnForced("TeleportFog", uh_SpareBodyX[pln], uh_SpareBodyY[pln], uh_SpareBodyZ[pln]);
+  }
+  PlaySound(0, "assists/sparebodycheckpoint", CHAN_ITEM);
+  ACS_NamedExecuteAlways("uh_SpareBodyInvuln", 0);
+}
+
+script "uh_SpareBodyDeath" DEATH {
+  int pln = PlayerNumber();
+  if (pln < 0 || pln >= 64) {terminate;}
+  uh_SpareBodyActive[pln] = false;
+  TakeInventory("SpareBodyActive_F", 1);
+  TakeInventory("PlayerPropertyExtraLifeSpareBody", 15);
+}
+
+script "uh_SpareBodyDisconnect" (int gone) DISCONNECT {
+  if (gone >= 0 && gone < 64) {
+    uh_SpareBodyActive[gone] = false;
+  }
+}

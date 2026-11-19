@@ -138,6 +138,8 @@ echo "== DTADDR =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/api_handlers/DTADDR.acs" "$OUT/DTADDR.o" || fail=1
 echo "== WEPACS =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/WEPACS.acs" "$OUT/WEPACS.o" || fail=1
+echo "== HELTHACS =="
+"$ACC" $INC "src/acs_source/v6b_overrides/corescripts/systems/HELTHACS.acs" "$OUT/HELTHACS.o" || fail=1
 echo "== BARCLEAR =="
 "$ACC" $INC "src/acs_source/v6b_overrides/corescripts/api_handlers/BARCLEAR.acs" "$OUT/BARCLEAR.o" || fail=1
 echo "== BARHNDLE =="

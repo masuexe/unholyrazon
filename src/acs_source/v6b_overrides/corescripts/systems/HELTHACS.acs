@@ -1,0 +1,169 @@
+#library "HELTHACS"
+#include "zcommon.acs"
+
+#include "8BDMDEFS.acs"
+#include "8BDMMATH.acs"
+#include "8BDMEFCT.acs"
+
+#include "HOOKUTIL.acs"
+
+function void SetInventory2(str inventory_item, int amount, int currentamount)
+{
+	if(amount > currentamount) GiveInventory(inventory_item, amount - currentamount);
+	else if(amount < currentamount) TakeInventory(inventory_item, currentamount - amount);
+}
+
+function void SetInventory(str inventory_item, int amount)
+{
+	SetInventory2(inventory_item, amount, CheckInventory(inventory_item));
+}
+
+script "core_healPickupDeathCheck" (void)
+{
+    if(GetActorProperty(0, APROP_Health) <= 0)
+        HealCheckHook_SetResultValue(false);
+}
+
+script "core_healPickupMaxHealthCheck" (void)
+{
+    if(GetActorProperty(0, APROP_Health) >= GetMaxHealth(0))
+        HealCheckHook_SetResultValue(false);
+}
+
+script "core_healPickup" (int amount, int flags)
+{
+    amount <<= 16;
+
+    if(!ACS_NamedExecuteWithResult("core_run_heal_check_hook", amount, flags & HSF_FLAT)) {
+        SetResultValue(false);
+        terminate;
+    }
+
+    int originalAmount = amount;
+	amount = ACS_NamedExecuteWithResult("core_run_heal_hooks", HF_HEAL_PREMOD, amount, flags & HSF_FLAT);
+	amount = FixedMul(amount, ACS_NamedExecuteWithResult("core_caprop", 0, CAProp_HealFactor));
+	amount = ACS_NamedExecuteWithResult("core_run_heal_hooks", HF_HEAL, amount, flags & HSF_FLAT);
+
+    if(amount <= 0.0) {
+        SetResultValue(false);
+        terminate;
+    }
+
+    SetResultValue(true);
+
+    if(flags & HSF_TESTONLY)
+        terminate;
+
+    if(flags & HSF_FLAT) {
+        AbsoluteHeal(amount >> 16);
+    } else {
+        PercentHeal(amount);
+    }
+
+    ACS_NamedExecuteWithResult("core_run_heal_success_hook", originalAmount, amount, flags & HSF_FLAT);
+}
+
+script "core_healthSync" (void)
+{
+	int pln = PlayerNumber();
+	while(GetActorProperty(0, APROP_Health) > 0 && PlayerInGame(pln)) {
+		SetInventory("SyncedHealthAmount", GetActorProperty(0, APROP_Health));
+        Delay(1);
+	}
+
+	if(PlayerInGame(pln)) {
+		SetInventory("SyncedHealthAmount", 0);
+	}
+}
+
+script "core_healthSyncMonitor" OPEN CLIENTSIDE
+{
+	if(!IsNetworkGame())
+		terminate;
+
+	while(true) {
+		for(int i = 0; i < MAX_PLAYERS; i++) {
+			if(!PlayerInGame(i))
+				continue;
+
+			SetActivatorToPlayer(i);
+
+			if(GetActorProperty(0, APROP_Health) <= 0)
+				continue;
+
+			if(CheckInventory("SyncedHealthAmount") > 0)
+				continue;
+
+			NamedRequestScriptPuke("core_healthSyncCatch", i);
+		}
+
+		SetActivator(0, AAPTR_NULL);
+
+		Delay(35 * 5);
+	}
+}
+
+script "core_healthSyncCatch" (int pln) NET
+{
+	int cpn = PlayerNumber();
+
+	if(!PlayerInGame(pln))
+		terminate;
+
+	SetActivatorToPlayer(pln);
+
+	NamedExecuteClientScript("core_healthSyncCatch_C", cpn, pln, CheckInventory("SyncedHealthAmount"));
+}
+
+script "core_healthSyncCatch_C" (int pln, int value) CLIENTSIDE
+{
+	if(!PlayerInGame(pln))
+		terminate;
+
+	SetActivatorToPlayer(pln);
+
+	SetInventory("SyncedHealthAmount", value);
+}
+
+script "core_regenerationRune" (void)
+{
+	int counter = 0;
+	while(CheckInventory("PowerRegenerationRune") > 0 && GetActorProperty(0, AProp_Health) > 0 && PlayerInGame(PlayerNumber())) {
+		Delay(1);
+		counter = (counter + 1) % 35;
+		if (counter == 0) {
+			ACS_NamedExecuteWithResult("core_healpickup", 5);
+			PlaySound(0, "*regeneration", CHAN_ITEM);
+		}
+	}
+}
+
+function int GetMaxHealth(int tid)
+{
+	int r = GetActorProperty(tid, APROP_SpawnHealth);
+	return (r == 0) ? 100 : r;
+}
+
+function void AbsoluteHeal(int amount)
+{
+	HealThing(amount, GetMaxHealth(0));
+}
+
+function void PercentHeal(int p)
+{
+	int maxHealth = GetMaxHealth(0);
+	int currentRemainder = CheckInventory("HealCent");
+	// Split p / 100 before multiplying by maxHealth so high-HP classes (>= 328)
+	// do not overflow 32-bit signed ints on 100% heals (ETank / MTank).
+	int q = p / 100;
+	int r = p % 100;
+	int remTotal = r * maxHealth + (currentRemainder << 16);
+	int totalFixed = q * maxHealth + (remTotal / 100);
+	int healWhole = totalFixed >> 16;
+
+	if(healWhole > 0)
+		HealThing(healWhole, maxHealth);
+
+	int fracFixed = totalFixed - (healWhole << 16);
+	SetInventory2("HealCent", (fracFixed * 100 + (remTotal % 100)) >> 16, currentRemainder);
+}

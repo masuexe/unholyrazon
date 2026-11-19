@@ -100,6 +100,7 @@ NOT_IN_LOADACS = {
     "core8bdt": "v6b override imported by other libraries (CORE8BDT.o)",
     "dtaddr": "v6b override; the base game LOADACS loads DTADDR",
     "wepacs": "v6c shared ammo-capacity shadow; loaded by the base LOADACS",
+    "helthacs": "v6c PercentHeal overflow shadow; loaded by the base LOADACS",
     "barclear": "v6b override; the base game LOADACS loads BARCLEAR",
     "barhndle": "v6b override; the base game LOADACS loads BARHNDLE",
     "colotrns": "v6b override; the base game LOADACS loads COLOTRNS",
