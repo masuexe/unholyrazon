@@ -6,12 +6,9 @@
 
 ## 未发布
 
-- 普通洛克人用 Reload 扔出的道具现在会在落地片刻后开放拾取，边跑边扔也会先掉到地上。
-- 玩家现在可以拾取普通洛克人用 Reload 扔出的 Power Generator、Damage Absorber、Exchanger 和 Energy Balancer Neo，拾取后立即获得对应的被动效果。
-- 普通洛克人在共用冷却期间按 M2，会使用当前 Buster 的副攻击。充满前按住 M2 可以继续攻击，充满后松开再按才会重抽复制武器。
-- 普通洛克人现在可以拾取并使用 v6c 原版的 13 种 Buster 升级。使用道具会替换当前 Buster。M2 仍重抽复制武器，Reload 仍扔道具，换炮时沿用两者的剩余冷却。
-- 普通洛克人的 Buster 升级攻击现按 v6c 原版伤害的 10 倍计算，以适配 Unholy 的 1000 HP 基准，蓄力攻击、分裂弹和范围伤害也会放大。
-- 普通洛克人的 Reload 道具池现已收录 MM8BDM v6c 原版注册的全部 55 种道具，包括补给罐、被动辅助、战役辅助和 Buster 升级。
+- 普通洛克人现在可以拾取并装备 v6c 原版的全部 13 种 Buster 升级。升级后的攻击按原版伤害的 10 倍计算，以适配 Unholy 的 1000 HP 基准。共用冷却期间，M2 使用当前 Buster 的副攻击，没有副攻击时则使用主攻击。充满后重新按下 M2 会重抽复制武器，按 Reload 会扔出道具。切换 Buster 会保留剩余冷却。
+- 普通洛克人的 Reload 道具池包含 v6c 原版注册的全部 55 种道具。边跑边扔时，道具也会在落地片刻后才开放拾取。Power Generator、Damage Absorber、Exchanger 和 Energy Balancer Neo 在拾取时立即生效。
+- 自爆眼（Kamikaze Demoneye）新增一条备用嘲讽语音。
 
 ## 4.0.0-beta.261117
 

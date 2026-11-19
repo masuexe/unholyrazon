@@ -6,12 +6,9 @@
 
 ## Unreleased
 
-- MegaMan's Reload items land before they can be picked up, even when he runs forward as he throws them.
-- Players can now collect Power Generator, Damage Absorber, Exchanger, and Energy Balancer Neo when MegaMan throws them with Reload. Their effects activate on pickup.
-- During MegaMan's shared cooldown, M2 fires the equipped Buster's secondary attack. A press started during cooldown can continue attacking as the meter fills. Press M2 again with a full meter to reroll copy weapons.
-- Standard MegaMan can collect and use all 13 v6c Buster upgrades. Using an upgrade replaces the current Buster. M2 still rerolls copy weapons, and Reload still throws items. Switching Busters preserves the shared cooldown.
-- Standard MegaMan's upgraded Buster attacks now deal ten times their original v6c damage for Unholy's 1,000 HP baseline, including charged attacks, fragments, and splash damage.
-- Standard MegaMan's Reload pool now covers all 55 registered MM8BDM v6c items, including tanks, passive assists, campaign assists, and Buster upgrades.
+- Standard MegaMan can collect and equip all 13 v6c Buster upgrades. Upgraded attacks deal ten times their stock damage to match Unholy's 1,000 HP baseline. M2 uses the equipped Buster's secondary attack, or its primary attack if it has no secondary, during the shared cooldown. With a full meter, a fresh M2 press rerolls copy weapons and Reload throws items. Switching Busters preserves the cooldown.
+- Standard MegaMan's Reload draws from all 55 registered v6c items. Thrown items become collectible shortly after landing, even during a running throw. Power Generator, Damage Absorber, Exchanger, and Energy Balancer Neo activate on pickup.
+- Kamikaze Demoneye has a new alternate taunt voice line.
 
 ## 4.0.0-beta.261117
 
