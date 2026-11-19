@@ -20,7 +20,7 @@ As a fork, **Unholy Razon** expands this core gameplay with new content, a modul
 ## Requirements and Load Order
 
 Unholy Razon requires the following base files:
-- **Engine**: [Zandronum](https://zandronum.com/) 3.3-alpha-251208-0355 or later.
+- **Engine**: [Zandronum](https://zandronum.com/) 3.3-alpha-r260925-2352 or later.
 - **IWAD**: `megagame.wad`.
 - **Base Mod**: `mm8bdm-v6c.pk3`.
 
