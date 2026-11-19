@@ -9,6 +9,7 @@
 - Standard MegaMan can collect and equip all 13 v6c Buster upgrades. Upgraded attacks deal ten times their stock damage to match Unholy's 1,000 HP baseline. M2 uses the equipped Buster's secondary attack, or its primary attack if it has no secondary, during the shared cooldown. With a full meter, a fresh M2 press rerolls copy weapons and Reload throws items. Switching Busters preserves the cooldown.
 - Standard MegaMan's Reload draws from all 55 registered v6c items. Thrown items become collectible shortly after landing, even during a running throw. Power Generator, Damage Absorber, Exchanger, and Energy Balancer Neo activate on pickup.
 - Kamikaze Demoneye has a new alternate taunt voice line.
+- Added a new death tip to `The Luser` pool.
 
 ## 4.0.0-beta.261117
 

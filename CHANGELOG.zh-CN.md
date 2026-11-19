@@ -9,6 +9,7 @@
 - 普通洛克人现在可以拾取并装备 v6c 原版的全部 13 种 Buster 升级。升级后的攻击按原版伤害的 10 倍计算，以适配 Unholy 的 1000 HP 基准。共用冷却期间，M2 使用当前 Buster 的副攻击，没有副攻击时则使用主攻击。充满后重新按下 M2 会重抽复制武器，按 Reload 会扔出道具。切换 Buster 会保留剩余冷却。
 - 普通洛克人的 Reload 道具池包含 v6c 原版注册的全部 55 种道具。边跑边扔时，道具也会在落地片刻后才开放拾取。Power Generator、Damage Absorber、Exchanger 和 Energy Balancer Neo 在拾取时立即生效。
 - 自爆眼（Kamikaze Demoneye）新增一条备用嘲讽语音。
+- `The Luser` 阵亡提示池新增一条语录。
 
 ## 4.0.0-beta.261117
 
