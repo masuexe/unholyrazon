@@ -145,6 +145,9 @@ CHECKS = [
           [PY, "tools/check_razon3_parity_contracts.py"],
           "Mercy prepare banner color, post-death Spread AirStrike, and Eden Damocles death drop",
           ["python", "cc"]),
+    check("tracker-contract", "fast", "static",
+          [PY, "tools/test_tracker.py"],
+          "SmartSheet tracker schema, safety guards, and dry-run/gate contracts"),
 
     # -- meta: prove the static layer is not a no-op -----------------------
     # Each case injects one known defect into a hardlink copy of the repo and

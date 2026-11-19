@@ -129,6 +129,28 @@ non-zero if it fails, but still records the state so the next agent sees the
 failure; `--gate none` skips verification and is discouraged. `resume` warns
 when HEAD, the working-tree fingerprint or the recorded gate result is stale.
 
+### SmartSheet issue tracker
+
+[`tools/tracker.py`](tracker.py) and [`tools/smartsheet.schema.json`](smartsheet.schema.json)
+bridge `.relay/` tasks with the Tencent Docs SmartSheet (`cEKBFqxnQJoB` / `t00i2h`)
+using a GitHub-Issues-style Open/Closed workflow with zero deletion capability
+and dry-run previews by default (`--apply` required for remote writes):
+
+```bash
+python3 tools/tracker.py sync                               # refresh .relay/smartsheet_cache.json
+python3 tools/tracker.py list [--view open|ready|closed|all] [--offline]
+python3 tools/tracker.py show <record_id_or_#num>           # detail + class-aliases hints
+python3 tools/tracker.py start <id> [--scope "..."] --apply # relay init + mark 开发中
+python3 tools/tracker.py report <id> --summary "..." --apply # requires passing relay gate
+python3 tools/tracker.py close <id> --as completed --version <ver> --apply
+python3 tools/tracker.py reopen <id> --note "..." --apply
+python3 tools/tracker.py audit [--since <git_ref>]          # schema drift + git ref sync
+```
+
+`tools/test_tracker.py` (`tracker-contract` in `gate.py --fast` and paired with
+`tracker-gate-guard-bypassed` in `mutation_test.py`) verifies schema integrity,
+absence of delete tools, dry-run safety, and `.relay/` gate enforcement offline.
+
 ## MCP smoke test
 
 The Linux Zandronum MCP wrapper runs the smallest useful feedback loop:

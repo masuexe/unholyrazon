@@ -301,6 +301,16 @@ MUTATIONS = [
             '    return EDEN_DAMOCLES_CLEANUP;',
         ),
     },
+    {
+        "name": "tracker-gate-guard-bypassed",
+        "checker": "tools/test_tracker.py",
+        "why": "tracker report accepts unverified or failing relay gates",
+        "file": "tools/tracker.py",
+        "replace": (
+            '        if not gate or not gate.get("ok"):',
+            '        if False:',
+        ),
+    },
 ]
 
 
