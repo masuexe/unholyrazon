@@ -20,7 +20,7 @@ python3 tools/relay.py resume
 
 ## Lessons
 
-Before changing code, read [LESSONS.md](LESSONS.md): what recent merged work got wrong, the sibling patterns to sweep, and the rule that would have caught it. When a fix addresses a regression, rework, or escaped defect class, record the lesson in [LESSONS.md](LESSONS.md); promote any lesson seen on 3 or more separate days into this file or `tools/gate.py`.
+Before changing code, read [LESSONS.md](LESSONS.md): what recent merged work got wrong, the sibling patterns to sweep, and the rule that would have caught it. When a fix addresses a regression, rework, or escaped defect class, record the lesson in [LESSONS.md](LESSONS.md); promote any lesson seen on 3 or more separate days into this file or `tools/gate.py`. Periodically review new commits since the `reviewed-through` cursor with `python3 tools/lesson_review.py` (and advance it with `--mark-reviewed`).
 
 ## Documentation language
 
@@ -40,6 +40,8 @@ The canonical project backlog and community proposal tracker is the **Tencent Do
 - **URL**: `https://docs.qq.com/smartsheet/DY0VLQkZxeG5RSm9C`
 - **File ID**: `cEKBFqxnQJoB`
 - When the user mentions "腾讯文档", "在线表格", "智能表格", or "看板", target this document by default.
+- When starting a task from a SmartSheet row, pass `--record <id>` to `tools/relay.py init` so `commit-body` preserves the `smartsheet:cEKBFqxnQJoB#<id>` reference.
+- **Write-back rule**: Only mark a SmartSheet record as fixed/ready-to-test after `python3 tools/relay.py verify` passes at the highest runnable gate layer (explicitly note in the write-back if `--full` engine verification was not run), and include the commit hash, observable behavior change, and what was verified.
 
 Before interpreting Tencent Docs tasks or internal Chinese nicknames, consult
 [docs/class-aliases.md](docs/class-aliases.md) as the authoritative mapping glossary.

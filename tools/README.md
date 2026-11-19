@@ -115,8 +115,11 @@ python3 tools/relay.py resume                     # default command
 python3 tools/relay.py init --title "..." --acceptance "..." --scope "src/...,tools/..."
 python3 tools/relay.py verify --gate smoke
 python3 tools/relay.py checkpoint --phase CODE --summary "..." --next "..." [--gate fast|smoke|full|none]
+python3 tools/relay.py check-scope [--strict]   # verify staged/dirty files stay in write_scopes
+python3 tools/relay.py commit-body              # render commit-body verification snippet
 python3 tools/relay.py status
 python3 tools/relay.py clear                      # archive to .relay/archive/
+python3 tools/lesson_review.py                    # review commits since LESSONS.md cursor
 ```
 
 State lives in `.relay/` (gitignored): `current_task.json`,

@@ -48,7 +48,10 @@ INGEST -> CODE -> VERIFY -> RELEASE -> DONE
   acceptance criteria, write scopes.
 - **CODE** — implement; checkpoint after meaningful steps.
 - **VERIFY** — `python3 tools/relay.py verify --gate fast|smoke|full`; the
-  result is recorded in the handoff with the git HEAD it ran at.
+  result is recorded in the handoff with the git HEAD it ran at. Before
+  committing, run `python3 tools/relay.py check-scope --strict` to catch
+  accidental out-of-scope files and `python3 tools/relay.py commit-body` to
+  copy the verification summary into the commit message.
 - **RELEASE** — changelog per `AGENTS.md` (players/hosts wording, no internals).
 - **DONE** — set only after a passing gate at the recorded layer.
 

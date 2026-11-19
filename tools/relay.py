@@ -13,11 +13,14 @@ Commands:
   status      one-line state summary
   checkpoint  record phase/summary/next steps (runs the fast gate by default)
   verify      run the gate and record its result
+  check-scope check staged or dirty files against task write_scopes
+  commit-body render a commit-body verification snippet from handoff state
   clear       archive the active task
 """
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import hashlib
 import json
 import os
@@ -68,6 +71,19 @@ def alias_hit(alias: str, title: str) -> bool:
             return True
         start = lowered.find(needle, start + 1)
     return False
+
+
+def scope_matches(path: str, pattern: str) -> bool:
+    """Match a repo-relative path against a write_scope entry (exact, dir, or glob)."""
+    norm_path = path.strip().lstrip("./")
+    norm_pat = pattern.strip().lstrip("./")
+    if not norm_pat:
+        return False
+    if any(ch in norm_pat for ch in "*?["):
+        return fnmatch.fnmatch(norm_path, norm_pat)
+    if norm_pat.endswith("/"):
+        return norm_path.startswith(norm_pat)
+    return norm_path == norm_pat or norm_path.startswith(norm_pat + "/")
 
 
 class Relay:
@@ -276,6 +292,10 @@ class Relay:
                 for item in aliases)
             lines.append("aliases: " + rendered)
 
+        records = task.get("records") or []
+        if records:
+            lines.append("record:  " + ", ".join(records))
+
         acceptance = task.get("acceptance") or []
         if acceptance:
             lines += ["", "## Acceptance"]
@@ -353,6 +373,7 @@ class Relay:
                 "phase": "INGEST",
                 "acceptance": args.acceptance or [],
                 "write_scopes": split_csv(args.scope),
+                "records": split_csv(args.record),
                 "aliases": self.match_aliases(title),
                 "notes": args.notes or "",
             }
@@ -515,6 +536,120 @@ class Relay:
             print("relay: archived " + str(task.get("id")) + " to " + str(target))
             return 0
 
+    def git_changed_files(self, mode: str) -> tuple[str, list[str]]:
+        staged_out = self.git("diff", "--cached", "--name-only").stdout
+        staged = [line.strip() for line in staged_out.splitlines() if line.strip()]
+        if mode == "staged":
+            return "staged", staged
+        if mode == "auto" and staged:
+            return "staged", staged
+
+        status_out = self.git("status", "--porcelain", "-uall").stdout
+        dirty = []
+        for raw in status_out.splitlines():
+            if len(raw) < 4:
+                continue
+            entry = raw[3:].strip()
+            if " -> " in entry:
+                entry = entry.split(" -> ", 1)[1].strip()
+            if entry.startswith('"') and entry.endswith('"'):
+                entry = entry[1:-1]
+            if entry:
+                dirty.append(entry)
+        return "dirty", sorted(set(dirty))
+
+    def cmd_check_scope(self, args) -> int:
+        task = self.require_task()
+        scopes = task.get("write_scopes") or []
+        effective_mode, files = self.git_changed_files(args.mode)
+        in_scope = []
+        out_of_scope = []
+        if scopes:
+            for path in files:
+                if any(scope_matches(path, pat) for pat in scopes):
+                    in_scope.append(path)
+                else:
+                    out_of_scope.append(path)
+        else:
+            in_scope = list(files)
+
+        missing_scope = bool(args.require_scope and not scopes)
+        ok = not out_of_scope and not missing_scope
+        if getattr(args, "json", False):
+            payload = {
+                "schema": SCHEMA,
+                "task_id": task.get("id"),
+                "mode": effective_mode,
+                "write_scopes": scopes,
+                "files": files,
+                "in_scope": in_scope,
+                "out_of_scope": out_of_scope,
+                "missing_scope": missing_scope,
+                "ok": ok,
+            }
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+        else:
+            print("relay: scope check (" + effective_mode + ", "
+                  + str(len(files)) + " file(s)) for " + str(task.get("id")))
+            if not scopes:
+                print("  write_scopes: (none configured)")
+            else:
+                print("  in-scope:     " + str(len(in_scope)))
+                print("  out-of-scope: " + str(len(out_of_scope)))
+                for path in out_of_scope:
+                    print("    ! " + path)
+            if missing_scope:
+                print("  ! --require-scope set but task has no write_scopes")
+        if args.strict and not ok:
+            return 1
+        return 0
+
+    def cmd_commit_body(self, args) -> int:
+        task = self.require_task()
+        handoff = self.read_json(self.handoff_file) or {}
+        current = self.git_state()
+        warnings = self.staleness(handoff, current)
+        gate = handoff.get("gate") or {}
+        if gate:
+            counts = gate.get("counts") or {}
+            gate_line = (
+                "gate --" + str(gate.get("layer", "?")) + ": "
+                + ("PASS" if gate.get("ok") else "FAIL")
+                + " (" + str(counts.get("pass", "?")) + " passed, "
+                + str(counts.get("fail", "?")) + " failed, "
+                + str(counts.get("skip", "?")) + " skipped)"
+                + " at " + str(gate.get("git_head") or "?")
+            )
+        else:
+            gate_line = "gate: not recorded yet (run python3 tools/relay.py verify)"
+
+        lines = [
+            "Task: " + str(task.get("id")) + " (" + str(task.get("title", "")) + ")",
+        ]
+        records = task.get("records") or []
+        if records:
+            lines.append("Ref: " + ", ".join("smartsheet:cEKBFqxnQJoB#" + r for r in records))
+        summary = (handoff.get("summary") or "").strip()
+        if summary and summary != "Task created; resolve the requirement before changing code.":
+            lines += ["", summary]
+        lines += ["", "Verified:", "- " + gate_line]
+        if warnings:
+            lines += ["", "Staleness warnings (re-run verify before committing):"]
+            lines += ["- " + w for w in warnings]
+
+        body = "\n".join(lines) + "\n"
+        if getattr(args, "json", False):
+            print(json.dumps({
+                "schema": SCHEMA,
+                "task_id": task.get("id"),
+                "gate": gate or None,
+                "warnings": warnings,
+                "body": body,
+            }, indent=2, ensure_ascii=False))
+        else:
+            print(body, end="")
+        return 0
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -530,6 +665,7 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--acceptance", action="append", default=[],
                       help="testable completion criterion (repeatable)")
     init.add_argument("--scope", default="", help="comma-separated advisory write scopes")
+    init.add_argument("--record", default="", help="comma-separated SmartSheet record IDs (e.g. rlSWRI)")
     init.add_argument("--notes", default="")
     init.add_argument("--force", action="store_true", help="replace an existing active task")
 
@@ -554,6 +690,20 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--gate", choices=GATE_LAYERS[:-1], default="fast")
     verify.add_argument("--allow-skip", action="store_true")
 
+    check_scope = sub.add_parser("check-scope",
+                                 help="check staged or dirty files against write_scopes")
+    check_scope.add_argument("--mode", choices=("auto", "staged", "dirty"), default="auto",
+                             help="auto checks staged if non-empty, else dirty files")
+    check_scope.add_argument("--strict", action="store_true",
+                             help="exit 1 if any file is out of scope")
+    check_scope.add_argument("--require-scope", action="store_true",
+                             help="treat empty write_scopes as failure under --strict")
+    check_scope.add_argument("--json", action="store_true")
+
+    commit_body = sub.add_parser("commit-body",
+                                 help="print a commit-body verification snippet")
+    commit_body.add_argument("--json", action="store_true")
+
     sub.add_parser("clear", help="archive the active task")
     return parser
 
@@ -573,6 +723,10 @@ def main(argv: list | None = None) -> int:
         return relay.cmd_checkpoint(args)
     if command == "verify":
         return relay.cmd_verify(args)
+    if command == "check-scope":
+        return relay.cmd_check_scope(args)
+    if command == "commit-body":
+        return relay.cmd_commit_body(args)
     if command == "clear":
         return relay.cmd_clear(args)
     parser.error("unknown command: " + command)
