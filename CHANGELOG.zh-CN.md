@@ -6,6 +6,13 @@
 
 ## 未发布
 
+- 修复普通洛克人（`MegaManU`）及高血量机体使用 M 罐（`MTank`）、E 罐（`ETank`）与 W 罐（`WTank`）的多项异常：
+  - 修复 [HELTHACS.acs](src/acs_source/v6b_overrides/corescripts/systems/HELTHACS.acs) 中 `PercentHeal` 在最大生命值 `>= 328` 时的 32 位有符号整数溢出问题（此前会导致 `ETank` / `MTank` 的 100% 百分比回血变为 `0`）。
+  - 现无条件将 `MegaManU` 的复制武器（`*WepU`）注册进 `8BDT`（即使在单机或未加载 UIX 的客户端下），使 `MTank`、`WTank` 与能量平衡器能正常识别并回复复制武器弹药。
+  - 为 `MegaManU` 补充 `CustWepCanHoldWTank` 标记，使拾取的 `WTank` 能正常收入道具栏而非立即消耗或在满弹时直接消失。
+- 修复 `MegaManU` 阵亡时不掉落所持 v6c 辅助道具的问题：`UH_DropItemsOnDeath` 现会一并掉落其持有的全部 `uh_megaassistactors` 辅助道具（含 4 个被动道具的 `UH_MegaDrop*` 包装）。
+- 将备用身体（`SpareBodyItem`）重做适配为 Unholy LMS 机制：激活后给予一次 `ELP_SPAREBODY` 额外生命并持续记录最后安全坐标，受到致命伤害时原地保命满血并传送回安全坐标，不再依赖无法在 LMS 中触发的 `RESPAWN`。
+- 将 `TimemanC` 的 `Player.SoundClass` 及对应 `$playersound` 条目重命名为 `UHTimemanC`，避免加载 CBM 嘲讽包时覆盖 Unholy 的 `TimemanC` 嘲讽语音。
 - 大幅降低了 SuperMegaman、ShinHellbot、ZankokunaHellbot 与 SovietFrostBite 释放终极技，以及 BlueSpeciman 冲刺碎冰齐射时引发的联机网络拥塞与服务端／客户端卡顿，同时完整保留原有伤害、视觉表现、冰冻死亡效果与击杀提示。
 
 ## 4.0.0-beta.261119.hotfix1

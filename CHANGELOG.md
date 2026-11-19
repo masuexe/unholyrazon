@@ -6,6 +6,13 @@
 
 ## Unreleased
 
+- Fixed M-Tank (`MTank`), E-Tank (`ETank`), and W-Tank (`WTank`) issues for Standard MegaMan (`MegaManU`) and high-HP classes:
+  - Fixed a 32-bit signed integer overflow in `PercentHeal` ([HELTHACS.acs](src/acs_source/v6b_overrides/corescripts/systems/HELTHACS.acs)) when `maxHealth >= 328`, which previously caused 100% percentage heals (`ETank` / `MTank`) to heal `0` HP.
+  - Unconditionally registered `MegaManU` copy weapons (`*WepU`) into `8BDT` even in singleplayer or when UIX is not loaded, allowing `MTank`, `WTank`, and Energy Balancer to detect and refill copy-weapon ammo.
+  - Granted `CustWepCanHoldWTank` to `MegaManU` so picked-up `WTank` items are stored in the inventory bar instead of being immediately consumed or vanishing at full ammo.
+- Fixed `MegaManU` not dropping held v6c assist items on death: `UH_DropItemsOnDeath` now also drops all held `uh_megaassistactors` items (including `UH_MegaDrop*` wrappers for the four passive assists).
+- Reworked `SpareBodyItem` for Unholy LMS: activating Spare Body now grants an `ELP_SPAREBODY` extra life that records the player's last safe position and revives them at full health back at that safe position on lethal damage instead of waiting for a `RESPAWN` event.
+- Renamed `TimemanC`'s `Player.SoundClass` (and its `$playersound` entries) to `UHTimemanC` so CBM taunt packs targeting `TimemanC` no longer override Unholy's `TimemanC` taunts.
 - Reduced online network congestion and server/client stuttering during SuperMegaman's, ShinHellbot's, ZankokunaHellbot's, and SovietFrostBite's ultimates, as well as BlueSpeciman's dash ice-shard bursts, while preserving original damage, visual effects, freeze deaths, and kill messages.
 
 ## 4.0.0-beta.261119.hotfix1
