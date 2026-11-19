@@ -14,6 +14,12 @@
 - Reworked `SpareBodyItem` for Unholy LMS: activating Spare Body now grants an `ELP_SPAREBODY` extra life that records the player's last safe position and revives them at full health back at that safe position on lethal damage instead of waiting for a `RESPAWN` event.
 - Renamed `TimemanC`'s `Player.SoundClass` (and its `$playersound` entries) to `UHTimemanC` so CBM taunt packs targeting `TimemanC` no longer override Unholy's `TimemanC` taunts.
 - Reduced online network congestion and server/client stuttering during SuperMegaman's, ShinHellbot's, ZankokunaHellbot's, and SovietFrostBite's ultimates, as well as BlueSpeciman's dash ice-shard bursts, while preserving original damage, visual effects, freeze deaths, and kill messages.
+- Fixed online energy/reload meter desyncs where server-side ACS/watchers and client-predicted DECORATE states modified the same ammo meter ([server_power.acs](src/acs_source/classes/shared/server_power.acs)):
+  - **CXAirMan (`UnholyBossAmmo200`)**: Moved Reload bar regeneration in `Fire`, `Altfire2`, and `CXAirMan_Ready0_P` to server-authoritative `uh_CXAirMan_ReloadRegen` to match `uh_CXAirMan_ReloadSpend`, preventing clients from staying stuck at a full bar online.
+  - **Mikamo Neru (`UnholyPower500` / `UnholyPower1500`)**: Moved `Neru_W_Ready_P`, `Neru_W_NotSo_P`, and `WrathManifest_P` meter gains to server-authoritative `uh_Neru_PowerRegen` so they no longer drift against the server-only watcher drains.
+  - **Lim / LimShiny (`DireEnergyAmmo`)**: Unified `Ready` regen, bot `random(...)` regen, and `Lim_AltFlash_P` consumption into `uh_DireEnergy_Give`, `uh_DireEnergy_GiveRandom`, and `uh_DireEnergy_Spend` so DECORATE RNG and `uc_LimHealth` never diverge online.
+  - **PlasmaSpark (`Voltage_Stocker`)**: Moved `Fire` charge-clear calls to server-authoritative `uh_PlasmaSpark_ClearCharge` to match `uh_PlasmaSparkChargeTick`.
+  - **Qwant (`MoveRelearnAmmo`)**: Moved weapon-state `A_GiveInventory("MoveRelearnAmmo", ...)` calls across `Qwant_W` and `qwant_copyweps` to server-authoritative `uh_Qwant_MoveRelearnGive` to match `copy_weapon_regen.acs` and `copy_weapon_runtime.acs`.
 
 ## 4.0.0-beta.261119.hotfix1
 

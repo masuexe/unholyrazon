@@ -14,6 +14,12 @@
 - 将备用身体（`SpareBodyItem`）重做适配为 Unholy LMS 机制：激活后给予一次 `ELP_SPAREBODY` 额外生命并持续记录最后安全坐标，受到致命伤害时原地保命满血并传送回安全坐标，不再依赖无法在 LMS 中触发的 `RESPAWN`。
 - 将 `TimemanC` 的 `Player.SoundClass` 及对应 `$playersound` 条目重命名为 `UHTimemanC`，避免加载 CBM 嘲讽包时覆盖 Unholy 的 `TimemanC` 嘲讽语音。
 - 大幅降低了 SuperMegaman、ShinHellbot、ZankokunaHellbot 与 SovietFrostBite 释放终极技，以及 BlueSpeciman 冲刺碎冰齐射时引发的联机网络拥塞与服务端／客户端卡顿，同时完整保留原有伤害、视觉表现、冰冻死亡效果与击杀提示。
+- 修复了服务端 ACS／Watcher 与客户端预测 DECORATE 状态混改同一弹药能量条导致的联机不同步与卡满条问题（[server_power.acs](src/acs_source/classes/shared/server_power.acs)）：
+  - **CXAirMan（`UnholyBossAmmo200`）**：将 `Fire`、`Altfire2` 与 `CXAirMan_Ready0_P` 中的 Reload 条充能统一收口为服务端权威的 `uh_CXAirMan_ReloadRegen`，与 `uh_CXAirMan_ReloadSpend` 对齐，修复联机时客户端 Reload 条卡死满蓝的问题。
+  - **Neru（`UnholyPower500` / `UnholyPower1500`）**：将 `Neru_W_Ready_P`、`Neru_W_NotSo_P` 与 `WrathManifest_P` 的充能改为服务端权威的 `uh_Neru_PowerRegen`，避免与仅在服务端执行的 Watcher 扣减产生漂移。
+  - **Lim / LimShiny（`DireEnergyAmmo`）**：将 `Ready` 回能、Bot 的 `random(...)` 回能以及 `Lim_AltFlash_P` 消耗统一收口为 `uh_DireEnergy_Give`、`uh_DireEnergy_GiveRandom` 与 `uh_DireEnergy_Spend`，消除 DECORATE 独立随机数及 `uc_LimHealth` 导致的两端偏差。
+  - **PlasmaSpark（`Voltage_Stocker`）**：将 `Fire` 分支中的清零操作改为服务端权威的 `uh_PlasmaSpark_ClearCharge`，与 `uh_PlasmaSparkChargeTick` 保持一致。
+  - **Qwant（`MoveRelearnAmmo`）**：将 `Qwant_W` 及各 `qwant_copyweps` 中的 `A_GiveInventory("MoveRelearnAmmo", ...)` 统一替换为服务端权威的 `uh_Qwant_MoveRelearnGive`，与 `copy_weapon_regen.acs` / `copy_weapon_runtime.acs` 对齐。
 
 ## 4.0.0-beta.261119.hotfix1
 
