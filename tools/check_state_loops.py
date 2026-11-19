@@ -53,6 +53,10 @@ TARGET_ACTION = re.compile(r"^(?:A_Jump\w*|A_CountDownArg|A_Goto)\b", re.I)
 ESCAPE_ACTION = re.compile(
     r"A_CountDown\w*|A_Jump\w*|A_Goto|A_Die\b|A_KillChildren|A_Remove\b", re.I
 )
+CLIENT_ESCAPE_ACTION = re.compile(
+    r"A_CountDown\w*|A_JumpIfInventory|A_JumpIfInTargetInventory|A_JumpIfNoAmmo|A_JumpIfArmorType|A_Die\b|A_KillChildren|A_Remove\b",
+    re.I,
+)
 
 
 def parse_actor_states(path: Path):
@@ -114,6 +118,9 @@ def state_edges(frames, labels):
             if text.lower() == "loop":
                 edges[index].append(labels.get(frame["label"], 0))
                 continue
+            if text.lower() == "wait" and index > 0:
+                edges[index].append(index - 1)
+                continue
             match = GOTO.match(text)
             if match:
                 target, sign, offset = match.group(1), match.group(2), match.group(3)
@@ -153,7 +160,9 @@ def find_bad_cycles(actor, frames, labels):
                 if any(item["dur"] not in (0, None) for item in cycle_frames):
                     continue
                 actions = " ".join(item["act"] for item in cycle_frames)
-                if ESCAPE_ACTION.search(actions):
+                has_wait = any((item["ctrl"] or "").lower() == "wait" for item in cycle_frames)
+                escape_re = CLIENT_ESCAPE_ACTION if has_wait else ESCAPE_ACTION
+                if escape_re.search(actions):
                     continue
                 key = tuple(sorted(item["line"] for item in cycle_frames))
                 if key in seen:

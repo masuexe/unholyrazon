@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261119.hotfix1
+
+- 修复普通洛克人（`MegaManU`）使用 `Bass Buster`、`Rush Bike` 或 `Treble Boost` 按下 M2，或在任意 Buster 升级武器上完成 M2 重抽／Reload 投掷时导致联机客户端无响应的问题：将 `MegaManUBuster` 中会导致客户端 `P_SetPsprite` 无限循环的 0-tic `A_Jump(256, ...) + wait` 帧修正为 1-tic，并为 `BassBuster`、`RushBikeWep` 与 `TrebleBoost` 补充显式 `Altfire` 状态以支持客户端直接预测开火。
+
 ## 4.0.0-beta.261119
 
 - 普通洛克人现在可以拾取并装备 v6c 原版的全部 13 种 Buster 升级。升级后的攻击按原版伤害的 10 倍计算，以适配 Unholy 的 1000 HP 基准。共用冷却期间，M2 使用当前 Buster 的副攻击，没有副攻击时则使用主攻击。充满后重新按下 M2 会重抽复制武器，按 Reload 会扔出道具。切换 Buster 会保留剩余冷却。

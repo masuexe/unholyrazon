@@ -134,6 +134,22 @@ MUTATIONS = [
         ),
     },
     {
+        "name": "state-loop-zero-tic-wait",
+        "checker": "tools/check_state_loops.py",
+        "why": "zero-duration A_Jump + wait freezes online clients in P_SetPsprite",
+        "file": "src/actors/__mutation_probe.dec",
+        "content": (
+            "actor MutationZeroWait : DoomImp\n"
+            "{\n"
+            "  States {\n"
+            "  Altfire:\n"
+            "    TNT1 A 0 A_Jump(256, \"Fire\")\n"
+            "    wait\n"
+            "  }\n"
+            "}\n"
+        ),
+    },
+    {
         "name": "spawn-ref-missing-actor",
         "checker": "tools/check_actor_contracts.py",
         "why": "A_SpawnItemEx names an actor that does not exist",

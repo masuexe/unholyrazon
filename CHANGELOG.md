@@ -4,6 +4,10 @@
 
 ---
 
+## 4.0.0-beta.261119.hotfix1
+
+- Fixed an online client freeze when Standard MegaMan (`MegaManU`) presses M2 with `Bass Buster`, `Rush Bike`, or `Treble Boost`, or finishes an M2 reroll / Reload throw on any Buster upgrade: `MegaManUBuster` used 0-tic `A_Jump(256, ...) + wait` frames that looped infinitely in `P_SetPsprite` on network clients (where `A_Jump` does not jump), and `BassBuster`, `RushBikeWep`, and `TrebleBoost` now define explicit `Altfire` states for direct M2 prediction.
+
 ## 4.0.0-beta.261119
 
 - Standard MegaMan can collect and equip all 13 v6c Buster upgrades. Upgraded attacks deal ten times their stock damage to match Unholy's 1,000 HP baseline. M2 uses the equipped Buster's secondary attack, or its primary attack if it has no secondary, during the shared cooldown. With a full meter, a fresh M2 press rerolls copy weapons and Reload throws items. Switching Busters preserves the cooldown.
