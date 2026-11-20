@@ -4,7 +4,7 @@
 
 ---
 
-## 未发布
+## 4.0.0-beta.261120
 
 - 修复普通洛克人（`MegaManU`）及高血量机体使用 M 罐（`MTank`）、E 罐（`ETank`）与 W 罐（`WTank`）的多项异常：
   - 修复 [HELTHACS.acs](src/acs_source/v6b_overrides/corescripts/systems/HELTHACS.acs) 中 `PercentHeal` 在最大生命值 `>= 328` 时的 32 位有符号整数溢出问题（此前会导致 `ETank` / `MTank` 的 100% 百分比回血变为 `0`）。

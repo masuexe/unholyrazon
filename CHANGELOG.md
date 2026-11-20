@@ -4,7 +4,7 @@
 
 ---
 
-## Unreleased
+## 4.0.0-beta.261120
 
 - Fixed M-Tank (`MTank`), E-Tank (`ETank`), and W-Tank (`WTank`) issues for Standard MegaMan (`MegaManU`) and high-HP classes:
   - Fixed a 32-bit signed integer overflow in `PercentHeal` ([HELTHACS.acs](src/acs_source/v6b_overrides/corescripts/systems/HELTHACS.acs)) when `maxHealth >= 328`, which previously caused 100% percentage heals (`ETank` / `MTank`) to heal `0` HP.
