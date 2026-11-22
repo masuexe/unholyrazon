@@ -100,7 +100,7 @@ def validate_schema_local(schema: dict) -> None:
     fields = schema["fields"]
     required_fields = (
         "number", "title", "type", "media", "status", "priority",
-        "proposer", "description", "commits", "verification", "version", "archived_at",
+        "proposer", "description", "notes", "version", "created_by", "created_at",
     )
     seen_ids: set[str] = set()
     seen_titles: set[str] = set()
@@ -320,11 +320,8 @@ def normalize_record(raw: dict, schema: dict) -> dict:
         "priority": "",
         "proposer": "",
         "description": "",
-        "commits": "",
-        "verification": "",
+        "notes": "",
         "version": "",
-        "archived_at": "",
-        "archived_at_ms": "",
     }
     for fv in raw.get("field_values", []):
         lkey = title_to_key.get(fv.get("field"))
@@ -338,12 +335,7 @@ def normalize_record(raw: dict, schema: dict) -> dict:
         elif "option_value" in fv:
             out[lkey] = ", ".join(it.get("text", "") for it in fv["option_value"].get("items", []))
         elif "string_value" in fv:
-            val = str(fv.get("string_value") or "")
-            if lkey == "archived_at":
-                out["archived_at_ms"] = val
-                out["archived_at"] = ms_to_date_utc8(val)
-            else:
-                out[lkey] = val
+            out[lkey] = str(fv.get("string_value") or "")
         elif "image_value" in fv:
             out[lkey] = [
                 it.get("title") or it.get("image_id") or ""
@@ -390,7 +382,7 @@ def build_update_payload(record_id: str, changes: dict[str, object], schema: dic
 
         ftype = spec["type"]
         ftitle = spec["title"]
-        if ftype in ("autoNumber", "image"):
+        if ftype in ("autoNumber", "image", "createdUser", "createdTime"):
             raise ValueError(f"field {ftitle!r} ({ftype}) is read-only")
         if ftype == "text":
             text_str = "" if value is None else str(value)
@@ -557,7 +549,7 @@ def cmd_list(args, schema: dict, client: TencentDocsMCPClient | None = None) -> 
                 rec.get("record_id", ""),
                 rec.get("title", ""),
                 rec.get("description", ""),
-                rec.get("verification", ""),
+                rec.get("notes", ""),
                 rec.get("proposer", ""),
             ]).lower()
             if args.search.lower() not in hay:
@@ -606,17 +598,15 @@ def cmd_show(args, schema: dict, client: TencentDocsMCPClient | None = None) -> 
     print(f"  类型      : {rec.get('type') or '-'}")
     print(f"  优先级    : {rec.get('priority') or '-'}")
     print(f"  提出者    : {rec.get('proposer') or '-'}")
-    print(f"  关联Commit: {rec.get('commits') or '-'}")
     print(f"  落盘版本  : {rec.get('version') or '-'}")
-    print(f"  归档时间  : {rec.get('archived_at') or '-'}")
     if aliases:
         print("  别名提示  :")
         for item in aliases:
             print(f"    - {item['alias']} -> {item['actor']} ({item['scope']})")
     print("\n--- 详细设计与说明 ---")
     print(rec.get("description") or "(empty)")
-    print("\n--- 验证与结案说明 ---")
-    print(rec.get("verification") or "(empty)")
+    print("\n--- 维护者备注 ---")
+    print(rec.get("notes") or "(empty)")
     return 0
 
 
@@ -712,19 +702,15 @@ def cmd_report(args, schema: dict, client: TencentDocsMCPClient | None = None) -
         header_parts.append(sha)
     entry = f"【修复回写｜{'｜'.join(header_parts)}】\n{args.summary.strip()}\n验证：{gate_desc}"
 
-    existing_verif = (rec.get("verification") or "").strip()
-    new_verif = f"{existing_verif}\n\n{entry}" if existing_verif else entry
+    existing_notes = (rec.get("notes") or "").strip()
+    new_notes = f"{existing_notes}\n\n{entry}" if existing_notes else entry
 
     changes: dict[str, object] = {
         "status": target_status,
-        "verification": new_verif,
+        "notes": new_notes,
     }
-    if sha:
-        changes["commits"] = merge_csv_tokens(rec.get("commits", ""), sha)
     if args.version:
         changes["version"] = merge_csv_tokens(rec.get("version", ""), args.version)
-    if target_status == "已完成" and not rec.get("archived_at"):
-        changes["archived_at"] = today_utc8()
 
     _print_diff(rec, changes, schema)
     if not args.apply:
@@ -766,14 +752,13 @@ def cmd_close(args, schema: dict, client: TencentDocsMCPClient | None = None) ->
 
     changes: dict[str, object] = {
         "status": target_status,
-        "archived_at": close_date,
     }
     if args.version:
         changes["version"] = merged_version
     if args.note:
         entry = f"【结案归档｜{close_date}｜{target_status}】\n{args.note.strip()}"
-        existing_verif = (rec.get("verification") or "").strip()
-        changes["verification"] = f"{existing_verif}\n\n{entry}" if existing_verif else entry
+        existing_notes = (rec.get("notes") or "").strip()
+        changes["notes"] = f"{existing_notes}\n\n{entry}" if existing_notes else entry
 
     _print_diff(rec, changes, schema)
     if not args.apply:
@@ -799,10 +784,10 @@ def cmd_reopen(args, schema: dict, client: TencentDocsMCPClient | None = None) -
         raise SystemExit(f"tracker: {exc}")
 
     entry = f"【回归重开｜{today_utc8()}】\n{args.note.strip()}"
-    existing_verif = (rec.get("verification") or "").strip()
+    existing_notes = (rec.get("notes") or "").strip()
     changes: dict[str, object] = {
         "status": args.status,
-        "verification": f"{existing_verif}\n\n{entry}" if existing_verif else entry,
+        "notes": f"{existing_notes}\n\n{entry}" if existing_notes else entry,
     }
 
     _print_diff(rec, changes, schema)
@@ -857,6 +842,14 @@ def validate_live_fields(live_fields: list[dict], schema: dict) -> list[str]:
             errors.append(f"field {spec['id']} title drift: {lf.get('field_title')!r} != {spec['title']!r}")
         if lf.get("field_type") != spec["type"]:
             errors.append(f"field {spec['id']} type drift: {lf.get('field_type')!r} != {spec['type']!r}")
+        if lkey == "type" and (schema.get("types") or {}).get("options"):
+            live_type_opts = {
+                opt.get("text"): opt.get("id")
+                for opt in (lf.get("property_single_select") or {}).get("options", [])
+            }
+            expected_type_opts = schema["types"]["options"]
+            if live_type_opts != expected_type_opts:
+                errors.append(f"type options drift: live={live_type_opts} != schema={expected_type_opts}")
         if lkey == "status":
             live_opts = {
                 opt.get("text"): opt.get("id")
@@ -892,9 +885,9 @@ def run_audit(schema: dict, records: list[dict], live_fields: list[dict] | None,
         issues = []
         if rec.get("status") in ("待评估", "待开发", "开发中"):
             issues.append(f"status still {rec.get('status')!r}")
-        commits_lower = (rec.get("commits") or "").lower()
-        if sha.lower() not in commits_lower:
-            issues.append(f"commit {sha} missing from 关联 Commit")
+        notes_lower = (rec.get("notes") or "").lower()
+        if sha.lower() not in notes_lower:
+            issues.append(f"commit {sha} missing from 维护者备注")
         if issues:
             git_lag.append({
                 "sha": sha, "subject": subj, "record_id": rid,

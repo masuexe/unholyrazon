@@ -21,9 +21,8 @@ import tracker  # noqa: E402
 
 
 def make_raw_record(record_id: str, number: int, title: str, status: str = "待评估",
-                    rtype: str = "Bug", prio: str = "P1-核心", proposer: str = "tester",
-                    desc: str = "", commits: str = "", verification: str = "",
-                    version: str = "", archived_ms: str = "") -> dict:
+                    rtype: str = "Bug反馈", prio: str = "P1-核心", proposer: str = "tester",
+                    desc: str = "", notes: str = "", version: str = "") -> dict:
     fvals = [
         {"field": "编号", "auto_number_value": {"seq": str(number), "text": str(number)}},
         {"field": "需求名称", "text_value": {"items": [{"text": title, "type": "text"}]}},
@@ -34,14 +33,10 @@ def make_raw_record(record_id: str, number: int, title: str, status: str = "待�
     ]
     if desc:
         fvals.append({"field": "详细设计与说明", "text_value": {"items": [{"text": desc, "type": "text"}]}})
-    if commits:
-        fvals.append({"field": "关联 Commit", "text_value": {"items": [{"text": commits, "type": "text"}]}})
-    if verification:
-        fvals.append({"field": "验证与结案说明", "text_value": {"items": [{"text": verification, "type": "text"}]}})
+    if notes:
+        fvals.append({"field": "维护者备注", "text_value": {"items": [{"text": notes, "type": "text"}]}})
     if version:
         fvals.append({"field": "落盘版本", "text_value": {"items": [{"text": version, "type": "text"}]}})
-    if archived_ms:
-        fvals.append({"field": "归档时间", "string_value": archived_ms})
     return {"record_id": record_id, "field_values": fvals}
 
 
@@ -53,6 +48,13 @@ def make_live_fields(schema: dict) -> list[dict]:
             "field_title": spec["title"],
             "field_type": spec["type"],
         }
+        if lkey == "type" and (schema.get("types") or {}).get("options"):
+            item["property_single_select"] = {
+                "options": [
+                    {"id": opt_id, "text": text}
+                    for text, opt_id in schema["types"]["options"].items()
+                ]
+            }
         if lkey == "status":
             item["property_single_select"] = {
                 "options": [
@@ -154,20 +156,22 @@ class TrackerContractTests(unittest.TestCase):
             "rlSWRI",
             {
                 "status": "已完成",
-                "commits": "349abf5f",
+                "notes": "fixed (349abf5f)",
                 "description": "",
-                "archived_at": "2026-11-19",
+                "version": "4.0.0-beta.261119",
             },
             self.schema,
         )
         fmap = {item["field"]: item for item in payload["field_values"]}
         self.assertEqual(fmap["状态"]["option_value"], {"items": [{"text": "已完成"}]})
-        self.assertEqual(fmap["关联 Commit"]["text_value"], {"items": [{"text": "349abf5f", "type": "text"}]})
+        self.assertEqual(fmap["维护者备注"]["text_value"], {"items": [{"text": "fixed (349abf5f)", "type": "text"}]})
         self.assertEqual(fmap["详细设计与说明"]["text_value"], {"items": []})
-        self.assertEqual(fmap["归档时间"]["string_value"], tracker.date_to_ms_utc8("2026-11-19"))
+        self.assertEqual(fmap["落盘版本"]["text_value"], {"items": [{"text": "4.0.0-beta.261119", "type": "text"}]})
 
         with self.assertRaises(ValueError):
             tracker.build_update_payload("rlSWRI", {"number": 5}, self.schema)
+        with self.assertRaises(ValueError):
+            tracker.build_update_payload("rlSWRI", {"created_by": "someone"}, self.schema)
         with self.assertRaises(ValueError):
             tracker.build_update_payload("rlSWRI", {"status": "不存在状态"}, self.schema)
 
@@ -212,8 +216,8 @@ class TrackerContractTests(unittest.TestCase):
 
     def test_dry_run_and_apply_lifecycle(self) -> None:
         raw = [
-            make_raw_record("rlSWRI", 4, "voidwalker卡顿", status="待开发", commits="d46878d6"),
-            make_raw_record("rKaP54", 7, "zakobox卡墙角", status="开发中", commits="ac80637e", version="4.0.0-beta.261114"),
+            make_raw_record("rlSWRI", 4, "voidwalker卡顿", status="待开发", notes="prev commit d46878d6"),
+            make_raw_record("rKaP54", 7, "zakobox卡墙角", status="开发中", notes="ac80637e", version="4.0.0-beta.261114"),
         ]
         client = FakeClient(self.schema, raw)
         fake_relay = FakeRelay(self.state_dir, head="349abf5f", dirty=False)
@@ -265,11 +269,10 @@ class TrackerContractTests(unittest.TestCase):
             self.assertEqual(len(client.updated_batches), 2)
             sent = {fv["field"]: fv for fv in client.updated_batches[-1][0]["field_values"]}
             self.assertEqual(sent["状态"]["option_value"]["items"][0]["text"], "已完成")
-            self.assertEqual(sent["关联 Commit"]["text_value"]["items"][0]["text"], "d46878d6, 349abf5f")
             self.assertEqual(sent["落盘版本"]["text_value"]["items"][0]["text"], "4.0.0-beta.261117")
-            self.assertIn("归档时间", sent)
-            verif_text = sent["验证与结案说明"]["text_value"]["items"][0]["text"]
-            self.assertIn("未运行 --full", verif_text)
+            notes_text = sent["维护者备注"]["text_value"]["items"][0]["text"]
+            self.assertIn("349abf5f", notes_text)
+            self.assertIn("未运行 --full", notes_text)
 
             # close dry-run vs --apply
             with redirect_stdout(io.StringIO()):
@@ -288,7 +291,7 @@ class TrackerContractTests(unittest.TestCase):
             self.assertEqual(len(client.updated_batches), 3)
             closed_sent = {fv["field"]: fv for fv in client.updated_batches[-1][0]["field_values"]}
             self.assertEqual(closed_sent["状态"]["option_value"]["items"][0]["text"], "已完成")
-            self.assertEqual(closed_sent["归档时间"]["string_value"], tracker.date_to_ms_utc8("2026-11-19"))
+            self.assertIn("Verified in live match.", closed_sent["维护者备注"]["text_value"]["items"][0]["text"])
 
             # reopen --apply
             with redirect_stdout(io.StringIO()):
@@ -302,8 +305,8 @@ class TrackerContractTests(unittest.TestCase):
 
     def test_audit_detects_schema_drift_and_git_lag(self) -> None:
         raw = [
-            make_raw_record("rlSWRI", 4, "voidwalker卡顿", status="待评估", commits=""),
-            make_raw_record("rKaP54", 7, "zakobox", status="已完成", commits="ac80637e", version="4.0.0-beta.261114"),
+            make_raw_record("rlSWRI", 4, "voidwalker卡顿", status="待评估", notes=""),
+            make_raw_record("rKaP54", 7, "zakobox", status="已完成", notes="ac80637e", version="4.0.0-beta.261114"),
         ]
         # Clean live schema, but git ref points to rlSWRI which is still 待评估 and missing commit
         clean_client = FakeClient(self.schema, raw)
@@ -322,9 +325,9 @@ class TrackerContractTests(unittest.TestCase):
                 rc_strict = tracker.main(["--state-dir", str(self.state_dir), "audit", "--strict"], client=clean_client)
             self.assertEqual(rc_strict, 1)
 
-        # Schema drift (drop commits field and rename status option) -> fails audit
+        # Schema drift (drop notes field and rename status option) -> fails audit
         bad_fields = make_live_fields(self.schema)
-        bad_fields = [f for f in bad_fields if f["field_id"] != self.schema["fields"]["commits"]["id"]]
+        bad_fields = [f for f in bad_fields if f["field_id"] != self.schema["fields"]["notes"]["id"]]
         for f in bad_fields:
             if f["field_id"] == self.schema["fields"]["status"]["id"]:
                 f["property_single_select"]["options"][0]["text"] = "已改名"
