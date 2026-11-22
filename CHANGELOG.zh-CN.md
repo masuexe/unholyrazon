@@ -4,6 +4,18 @@
 
 ---
 
+## 4.0.0-beta.261122
+
+- 优化多人 LMS 对局中客户端 HUD、队友栏及状态同步的高频开销，缓解客户端掉帧与卡顿：
+  - **HUD 能量条清零（`UHBar_ClearAll`，[class_bars_generated.acs](src/acs_source/hud/class_bars_generated.acs) / [\_gen\_barpos.py](tools/_gen_barpos.py)）**：将每 tic 无条件遍历 145 个状态物品执行 `SetActorInventory(..., 0)` 改为脏槽位追踪与单次 `SetActivator` 下的 `TakeInventory` 清理。
+  - **自定义 HUD 槽位清理（`core_DrawBar_Clear`，[BARCLEAR.acs](src/acs_source/v6b_overrides/corescripts/api_handlers/BARCLEAR.acs)）**：将旧版 256 个槽位标记名改为一次性静态预构建（消除每 tic 256 次 `StrParam` 拼接），并统一在同一 `SetActivator` 下改用 `TakeInventory` 清理。
+  - **武器栏背包扫描（`updateSlotData`，[UIWEPBAR.acs](src/acs_source/v6b_overrides/corescripts/systems/ui/UIWEPBAR.acs)）**：将每 tic 遍历全部 Buster 与复制武器背包的扫描改为每 5 tic 刷新一次，在玩家、视角目标、当前武器、机体类名或注册数量变化时（以及开启武器轮盘时）立即重扫，并将绘制阶段对 `slotVals[slot][weap]--` 的原地改写替换为局部变量。
+  - **队友信息同步、头像缓存与原生队友栏（[uh_teaminfo.acs](src/acs_source/unholy/uh_teaminfo.acs)、[uhdt.acs](src/acs_source/_imports/uhdt.acs)、[UITEAMIT.acs](src/acs_source/v6b_overrides/corescripts/systems/ui/UITEAMIT.acs)）**：
+    - 为 `UH_PlayerPortraitForTid` 增加客户端按槽位、阶段、皮肤与机体类缓存在内的头像查询缓存（仅在加载 `PBSKINS` 覆盖 `MegaManU` 时回退实时查询）。
+    - 移除 `uh_ti_ammo` 对同一武器重复执行的全表扫描，并为服务端 `uh_ti_serverwatch` 增加血量/护甲/弹药变化增量推送与周期性兜底心跳（约 `3.6s`）。
+    - 修复 `UITEAMIT.acs` 中 `drawLocation` 位置缓存索引写错（`lv[LC_*]` → `lc[LC_*]`）的 bug，并清理队友栏每行重复的生命值/弹药查询。
+  - **计分板头像与 TLMS 计数渲染（[MUGSHOTS.acs](src/acs_source/v6b_overrides/corescripts/systems/MUGSHOTS.acs)、[tlms_display.acs](src/acs_source/hud/tlms_display.acs)）**：LMS 模式下 `core_scoreboard_mugshots` 仅在按住计分板（`BT_SHOWSCORES`）或结算阶段刷新并将轮询间隔调整为 `5` tic；将 `UH_Tlms_Tick` 中的敌友人数统计与友军头顶标记更新合并为单趟遍历。
+
 ## 4.0.0-beta.261120
 
 - 修复普通洛克人（`MegaManU`）及高血量机体使用 M 罐（`MTank`）、E 罐（`ETank`）与 W 罐（`WTank`）的多项异常：

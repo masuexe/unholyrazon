@@ -4,6 +4,18 @@
 
 ---
 
+## 4.0.0-beta.261122
+
+- Reduced client-side HUD, team-display, and network-sync CPU overhead in populated LMS matches:
+  - **Generated HUD bar clearing (`UHBar_ClearAll` in [class_bars_generated.acs](src/acs_source/hud/class_bars_generated.acs) / [\_gen\_barpos.py](tools/_gen_barpos.py))**: Replaced the unconditional per-tic 145-item `SetActorInventory(..., 0)` sweep with dirty-slot tracking and single-activator `TakeInventory` cleanup.
+  - **Custom bar clearing (`core_DrawBar_Clear` in [BARCLEAR.acs](src/acs_source/v6b_overrides/corescripts/api_handlers/BARCLEAR.acs))**: Prebuilt static legacy slot-flag string names once instead of formatting 256 `StrParam` strings every tic, and batched cleanup under one `SetActivator` with `TakeInventory`.
+  - **Weapon bar scanning (`updateSlotData` in [UIWEPBAR.acs](src/acs_source/v6b_overrides/corescripts/systems/ui/UIWEPBAR.acs))**: Throttled the full buster/weapon inventory scan to run once every 5 tics while immediately invalidating on player, camera TID, weapon, class, or table-count changes (and forcing a fresh scan when opening the weapon wheel), and replaced the in-place `slotVals[slot][weap]--` draw mutation with a local index.
+  - **Team-info sync, portraits, and native bar ([uh_teaminfo.acs](src/acs_source/unholy/uh_teaminfo.acs), [uhdt.acs](src/acs_source/_imports/uhdt.acs), [UITEAMIT.acs](src/acs_source/v6b_overrides/corescripts/systems/ui/UITEAMIT.acs))**:
+    - Added client-side per-slot portrait caching in `UH_PlayerPortraitForTid` keyed by presentation state, skin, and actor (retaining live checks when optional `PBSKINS` overrides `MegaManU`).
+    - Eliminated redundant full weapon-table scans in `uh_ti_ammo`, and delta-gated `uh_ti_serverwatch` health/armor/ammo client pushes with a periodic safety heartbeat (`~3.6s`).
+    - Fixed an upstream location-cache bug in `UITEAMIT.acs`'s `drawLocation` (`lv[LC_*]` -> `lc[LC_*]`) and removed duplicate per-row health/ammo queries.
+  - **Scoreboard mugshots & TLMS overlay ([MUGSHOTS.acs](src/acs_source/v6b_overrides/corescripts/systems/MUGSHOTS.acs), [tlms_display.acs](src/acs_source/hud/tlms_display.acs))**: Gated `core_scoreboard_mugshots` in LMS to update only when viewing scores (`BT_SHOWSCORES`) or during intermission at a lighter cadence (`5` tics), and merged `UH_Tlms_Tick` into a single pass over active players.
+
 ## 4.0.0-beta.261120
 
 - Fixed M-Tank (`MTank`), E-Tank (`ETank`), and W-Tank (`WTank`) issues for Standard MegaMan (`MegaManU`) and high-HP classes:

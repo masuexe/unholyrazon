@@ -84,9 +84,13 @@ int uhtistatlives[MAX_PLAYERS];
 #define UH_TI_WCLEAR (MAX_PLAYERS * 6)
 #define UH_TI_WSTATREV (MAX_PLAYERS * 7)
 #define UH_TI_WAMMOREV (MAX_PLAYERS * 8)
+#define UH_TI_WRESOLVED (MAX_PLAYERS * 9)
+#define UH_TI_PORT_ACTOR (MAX_PLAYERS * 10)
+#define UH_TI_PORT_KEY (MAX_PLAYERS * 11)
+#define UH_TI_PORT_TEX (MAX_PLAYERS * 12)
 #define UH_TI_STAT_MASK 32767
 #define UH_TI_STAT_HALF 16384
-str uhtistattag[MAX_PLAYERS * 9];
+str uhtistattag[MAX_PLAYERS * 13];
 int uhtistatammo1[MAX_PLAYERS];
 int uhtistatammo2[MAX_PLAYERS];
 bool uhtistathasammo1[MAX_PLAYERS];
@@ -108,6 +112,7 @@ function void UH_Ti_ClearStats(int pn) {
   // Keep metadata during policy/hello resets: strings and numeric packets may
   // execute in either order. Only the authoritative clear retires the mailbox.
   uhtistattag[UH_TI_WEXPECTED + pn] = 0;
+  uhtistattag[UH_TI_WRESOLVED + pn] = 0;
   uhtistatammo1[pn] = 0;
   uhtistatammo2[pn] = 0;
   uhtistathasammo1[pn] = false;
@@ -116,10 +121,12 @@ function void UH_Ti_ClearStats(int pn) {
 
 function void UH_Ti_ResetClient(void) {
   for (int i = 0; i < MAX_PLAYERS; i++) {
-    for (int field = 1; field < 9; field++) {
+    for (int field = 1; field < 13; field++) {
       uhtistattag[field * MAX_PLAYERS + i] = 0;
     }
     uhtistattag[UH_TI_WACTOR + i] = "";
+    uhtistattag[UH_TI_PORT_ACTOR + i] = "";
+    uhtistattag[UH_TI_PORT_TEX + i] = "";
     uhtilife[i] = PLS_NULL;
     uhtilife[MAX_PLAYERS + i] = 0;
     uhtiphase[i] = 0;
@@ -356,6 +363,7 @@ script "uh_ti_weapon" (int payload) CLIENTSIDE {
   uhtistattag[UH_TI_WMAX1 + pn] = values[3];
   uhtistattag[UH_TI_WMAX2 + pn] = values[4];
   uhtistattag[pn] = ACS_NamedExecuteWithResult("uh_WeaponTagForActor_S", actor);
+  uhtistattag[UH_TI_WRESOLVED + pn] = token;
 }
 
 // Two four-int numeric messages preserve full positive ACS integers. Only
@@ -385,8 +393,10 @@ script "uh_ti_ammo" (int packed_s, int weaponToken, int ammo1, int ammo2) CLIENT
   uhtistathasammo1[pn] = ammo1 >= 0;
   uhtistathasammo2[pn] = ammo2 >= 0;
   uhtistattag[UH_TI_WEXPECTED + pn] = weaponToken;
-  if (weaponToken == uhtistattag[UH_TI_WTOKEN + pn]) {
+  if (weaponToken == uhtistattag[UH_TI_WTOKEN + pn]
+      && uhtistattag[UH_TI_WRESOLVED + pn] != weaponToken) {
     uhtistattag[pn] = ACS_NamedExecuteWithResult("uh_WeaponTagForActor_S", uhtistattag[UH_TI_WACTOR + pn]);
+    uhtistattag[UH_TI_WRESOLVED + pn] = weaponToken;
   }
 }
 
@@ -404,6 +414,7 @@ script "uh_ti_stat_clear" (int packed) CLIENTSIDE {
     uhtistattag[field * MAX_PLAYERS + pn] = 0;
   }
   uhtistattag[UH_TI_WACTOR + pn] = "";
+  uhtistattag[UH_TI_WRESOLVED + pn] = 0;
   uhtistattag[UH_TI_WCLEAR + pn] = uhtistattag[UH_TI_WSTATREV + pn];
 }
 
@@ -564,11 +575,41 @@ function int UH_Ti_PhaseForActor(int pn, str actor) {
 }
 
 function str UH_PlayerPortraitForTid(int tid) {
-  str appearance = UH_PlayerAppearancePortrait(tid);
-  if (StrLen(appearance) != 0)
-    return appearance;
+  int pn = tid - 1000;
   str actor = UH_Ti_ActorClass(tid);
-  return UH_GemBankerPortrait(UH_PlayerPhasePortrait(actor, UH_Ti_PhaseForActor(tid - 1000, actor)));
+  str appearance = "";
+  if (pn < 0 || pn >= MAX_PLAYERS) {
+    appearance = UH_PlayerAppearancePortrait(tid);
+    if (StrLen(appearance) != 0)
+      return appearance;
+    return UH_GemBankerPortrait(UH_PlayerPhasePortrait(actor, 0));
+  }
+  bool isMega = (StrICmp(actor, "MegaManU") == 0 || StrICmp(actor, "MegaManUShiny") == 0);
+  if (isMega && CheckFont("PBOCMG1A")) {
+    appearance = UH_PlayerAppearancePortrait(tid);
+    if (StrLen(appearance) != 0)
+      return appearance;
+    return UH_GemBankerPortrait(UH_PlayerPhasePortrait(actor, UH_Ti_PhaseForActor(pn, actor)));
+  }
+  int phase = UH_Ti_PhaseForActor(pn, actor);
+  int yust = (isMega && CheckActorInventory(tid, "YustManFlag")) ? 1 : 0;
+  int skin = isMega ? GetPlayerSkin(pn, PLAYERSKIN_VISIBLE) : 0;
+  int skinKey = skin + 1;
+  if (skinKey < 0) skinKey = 0;
+  int regCount = GetTeamPresentationCount() + GetTeamPhasePresentationCount();
+  int key = ((regCount & 1023) << 21) | ((phase & 255) << 13) | ((skinKey & 2047) << 2) | (yust << 1) | 1;
+  if (uhtistattag[UH_TI_PORT_KEY + pn] == key
+      && StrCmp(actor, uhtistattag[UH_TI_PORT_ACTOR + pn]) == 0) {
+    return UH_GemBankerPortrait(uhtistattag[UH_TI_PORT_TEX + pn]);
+  }
+  str base = isMega ? UH_PlayerAppearancePortrait(tid) : "";
+  if (StrLen(base) == 0) {
+    base = UH_PlayerPhasePortrait(actor, phase);
+  }
+  uhtistattag[UH_TI_PORT_ACTOR + pn] = actor;
+  uhtistattag[UH_TI_PORT_KEY + pn] = key;
+  uhtistattag[UH_TI_PORT_TEX + pn] = base;
+  return UH_GemBankerPortrait(base);
 }
 
 function str UH_PlayerScoreIconForTid(int tid) {
@@ -817,12 +858,26 @@ script "uh_ZangiefAreTeammates" (int owner, int victim) {
 // Cached 8BDT bridge results, refreshed only when a player's ready weapon
 // changes.  UH_TOOLS owns the 8BDT import; the round core must not import it.
 str uhsrvwepactor[MAX_PLAYERS];
-// Token, capacities, stat revision, then per-viewer last-authorized token.
+// Token, capacities, stat revision, per-viewer weapon token, then delta cache.
 #define UH_TI_SMAX1 MAX_PLAYERS
 #define UH_TI_SMAX2 (MAX_PLAYERS * 2)
 #define UH_TI_SREV (MAX_PLAYERS * 3)
 #define UH_TI_SENT (MAX_PLAYERS * 4)
-int uhsrvwepmeta[MAX_PLAYERS * 4 + MAX_PLAYERS * MAX_PLAYERS];
+#define UH_TI_SBASE (MAX_PLAYERS * 4 + MAX_PLAYERS * MAX_PLAYERS)
+#define UH_TI_SHP UH_TI_SBASE
+#define UH_TI_SMAXHP (UH_TI_SBASE + MAX_PLAYERS)
+#define UH_TI_SARMOR (UH_TI_SBASE + MAX_PLAYERS * 2)
+#define UH_TI_SPACK (UH_TI_SBASE + MAX_PLAYERS * 3)
+#define UH_TI_SA1 (UH_TI_SBASE + MAX_PLAYERS * 4)
+#define UH_TI_SA2 (UH_TI_SBASE + MAX_PLAYERS * 5)
+#define UH_TI_SSTATCHG (UH_TI_SBASE + MAX_PLAYERS * 6)
+#define UH_TI_SAMMOCHG (UH_TI_SBASE + MAX_PLAYERS * 7)
+#define UH_TI_SWEEP (UH_TI_SBASE + MAX_PLAYERS * 8)
+#define UH_TI_MBASE (UH_TI_SWEEP + 1)
+#define UH_TI_SENT_STAT UH_TI_MBASE
+#define UH_TI_SENT_AMMO (UH_TI_MBASE + MAX_PLAYERS * MAX_PLAYERS)
+#define UH_TI_SENT_SPECHP (UH_TI_MBASE + MAX_PLAYERS * MAX_PLAYERS * 2)
+int uhsrvwepmeta[UH_TI_SENT_SPECHP + MAX_PLAYERS * MAX_PLAYERS];
 str uhsrvammo1name[MAX_PLAYERS];
 str uhsrvammo2name[MAX_PLAYERS];
 
@@ -841,6 +896,14 @@ bool uhsrvHelloSeen[MAX_PLAYERS];
 // All 64 slots (including unused-slot clears) are visited every eight tics.
 #define UH_TI_SUBJECT_BATCH 8
 
+function void UH_Ti_ResetViewerMailbox(int vw, int s) {
+  int idx = vw * MAX_PLAYERS + s;
+  uhsrvwepmeta[UH_TI_SENT + idx] = 0;
+  uhsrvwepmeta[UH_TI_SENT_STAT + idx] = 0;
+  uhsrvwepmeta[UH_TI_SENT_AMMO + idx] = 0;
+  uhsrvwepmeta[UH_TI_SENT_SPECHP + idx] = 0;
+}
+
 function void UH_Ti_ServerHelloClients(void) {
   for (int c = 0; c < MAX_PLAYERS; c++) {
     if (!UH_Ti_IsConnectedClient(c)) {
@@ -850,7 +913,7 @@ function void UH_Ti_ServerHelloClients(void) {
     }
     if (!uhsrvHelloSeen[c]) {
       for (int s = 0; s < MAX_PLAYERS; s++) {
-        uhsrvwepmeta[UH_TI_SENT + c * MAX_PLAYERS + s] = 0;
+        UH_Ti_ResetViewerMailbox(c, s);
       }
       uhsrvHelloSeen[c] = true;
       UH_TeamInfo_QueueSnapshot(c, 3);
@@ -866,7 +929,7 @@ function void UH_Ti_ServerHelloClients(void) {
 function void UH_Ti_ServerForgetClient(int pn) {
   if (pn < 0 || pn >= MAX_PLAYERS) {return;}
   for (int s = 0; s < MAX_PLAYERS; s++) {
-    uhsrvwepmeta[UH_TI_SENT + pn * MAX_PLAYERS + s] = 0;
+    UH_Ti_ResetViewerMailbox(pn, s);
   }
   uhsrvHelloSeen[pn] = false;
   uhsrvSnapshotRows[pn] = 0;
@@ -921,26 +984,36 @@ function void UH_Ti_RefreshStats(int first, int end) {
     if (!ingame) {
       if (uhsrvWasingame[s]) {
         uhsrvWasingame[s] = false;
+        uhsrvwepmeta[UH_TI_SSTATCHG + s] = 0;
+        uhsrvwepmeta[UH_TI_SAMMOCHG + s] = 0;
         // Per-client clear: the receiver is CLIENTSIDE, so a plain
         // ACS_NamedExecuteAlways would not reach remote clients.
         for (int cl = 0; cl < MAX_PLAYERS; cl++) {
           if (UH_Ti_IsConnectedClient(cl)) {
             NamedExecuteClientScript("uh_ti_stat_clear", cl, s | (statRevision << 6));
-            uhsrvwepmeta[UH_TI_SENT + cl * MAX_PLAYERS + s] = 0;
           }
+          UH_Ti_ResetViewerMailbox(cl, s);
         }
       }
       continue;
     }
     uhsrvWasingame[s] = true;
     int hp = GetActorProperty(tid, APROP_Health);
+    bool heartbeat = (uhsrvwepmeta[UH_TI_SWEEP] == 0);
     // Native camera HUD health must work with both teammate displays disabled.
     // Both true and dead spectators
     // may follow enemies when lms_spectatorview permits it; playing clients
     // get none. Keep this separate from the teammate-row authorization.
+    int obsHpKey = hp <= 0 ? 1 : (hp + 1);
     for (int observer = 0; observer < MAX_PLAYERS; observer++) {
+      int obsIdx = observer * MAX_PLAYERS + s;
       if (vobserving[observer]) {
-        NamedExecuteClientScript("uh_ti_spectator_health", observer, s, hp);
+        if (heartbeat || uhsrvwepmeta[UH_TI_SENT_SPECHP + obsIdx] != obsHpKey) {
+          NamedExecuteClientScript("uh_ti_spectator_health", observer, s, hp);
+          uhsrvwepmeta[UH_TI_SENT_SPECHP + obsIdx] = obsHpKey;
+        }
+      } else {
+        uhsrvwepmeta[UH_TI_SENT_SPECHP + obsIdx] = 0;
       }
     }
     if (hp < 0) {hp = 0;}
@@ -987,18 +1060,47 @@ function void UH_Ti_RefreshStats(int first, int end) {
       }
     }
 
-    if (!uhsrvwepmeta[s] || StrICmp(wactor, uhsrvwepactor[s])
-        || max1 != uhsrvwepmeta[UH_TI_SMAX1 + s] || max2 != uhsrvwepmeta[UH_TI_SMAX2 + s]) {
+    bool wepChanged = !uhsrvwepmeta[s] || StrICmp(wactor, uhsrvwepactor[s])
+        || max1 != uhsrvwepmeta[UH_TI_SMAX1 + s] || max2 != uhsrvwepmeta[UH_TI_SMAX2 + s];
+    if (wepChanged) {
       uhsrvwepactor[s] = wactor;
       uhsrvwepmeta[UH_TI_SMAX1 + s] = max1;
       uhsrvwepmeta[UH_TI_SMAX2 + s] = max2;
       uhsrvwepmeta[s] = (uhsrvwepmeta[s] + 1) & UH_TI_REV_MASK;
       if (!uhsrvwepmeta[s]) {uhsrvwepmeta[s] = 1;}
     }
+
+    int statPack = (absorbPct & 127) | ((lives & UH_TI_MAX_LIVES) << 7);
+    if (!uhsrvwepmeta[UH_TI_SSTATCHG + s] || hp != uhsrvwepmeta[UH_TI_SHP + s]
+        || maxhp != uhsrvwepmeta[UH_TI_SMAXHP + s] || armor != uhsrvwepmeta[UH_TI_SARMOR + s]
+        || statPack != uhsrvwepmeta[UH_TI_SPACK + s]) {
+      uhsrvwepmeta[UH_TI_SHP + s] = hp;
+      uhsrvwepmeta[UH_TI_SMAXHP + s] = maxhp;
+      uhsrvwepmeta[UH_TI_SARMOR + s] = armor;
+      uhsrvwepmeta[UH_TI_SPACK + s] = statPack;
+      int statChg = (uhsrvwepmeta[UH_TI_SSTATCHG + s] + 1) & 0x7FFFFFFF;
+      if (!statChg) {statChg = 1;}
+      uhsrvwepmeta[UH_TI_SSTATCHG + s] = statChg;
+    }
+
+    int outA1 = has1 ? a1 : -1;
+    int outA2 = has2 ? a2 : -1;
+    if (!uhsrvwepmeta[UH_TI_SAMMOCHG + s] || wepChanged
+        || outA1 != uhsrvwepmeta[UH_TI_SA1 + s] || outA2 != uhsrvwepmeta[UH_TI_SA2 + s]) {
+      uhsrvwepmeta[UH_TI_SA1 + s] = outA1;
+      uhsrvwepmeta[UH_TI_SA2 + s] = outA2;
+      int ammoChg = (uhsrvwepmeta[UH_TI_SAMMOCHG + s] + 1) & 0x7FFFFFFF;
+      if (!ammoChg) {ammoChg = 1;}
+      uhsrvwepmeta[UH_TI_SAMMOCHG + s] = ammoChg;
+    }
+
     int packed_s = (s & 63) | ((absorbPct & 127) << 6) | ((lives & UH_TI_MAX_LIVES) << 13) | (statRevision << 17);
+    int curStatChg = uhsrvwepmeta[UH_TI_SSTATCHG + s];
+    int curAmmoChg = uhsrvwepmeta[UH_TI_SAMMOCHG + s];
 
     for (int vw = 0; vw < MAX_PLAYERS; vw++) {
-      int mailbox = UH_TI_SENT + vw * MAX_PLAYERS + s;
+      int pairIdx = vw * MAX_PLAYERS + s;
+      int mailbox = UH_TI_SENT + pairIdx;
       bool authorized = velig[vw] && ((vspec[vw] && allowSpy) || (!vspec[vw]
         && (s == vw || UH_Ti_ServerTeammatesForSplit(vw, s, onevsall, ovatarget, policy))));
       if (!authorized) {
@@ -1007,6 +1109,8 @@ function void UH_Ti_RefreshStats(int first, int end) {
             NamedExecuteClientScript("uh_ti_stat_clear", vw, s | (statRevision << 6));
           }
           uhsrvwepmeta[mailbox] = 0;
+          uhsrvwepmeta[UH_TI_SENT_STAT + pairIdx] = 0;
+          uhsrvwepmeta[UH_TI_SENT_AMMO + pairIdx] = 0;
         }
         continue;
       }
@@ -1022,8 +1126,14 @@ function void UH_Ti_RefreshStats(int first, int end) {
         NamedSendNetworkString("uh_ti_weapon", payload, vw);
         uhsrvwepmeta[mailbox] = uhsrvwepmeta[s];
       }
-      NamedExecuteClientScript("uh_ti_stat", vw, packed_s, hp, maxhp, armor);
-      NamedExecuteClientScript("uh_ti_ammo", vw, packed_s, uhsrvwepmeta[s], has1 ? a1 : -1, has2 ? a2 : -1);
+      if (heartbeat || uhsrvwepmeta[UH_TI_SENT_STAT + pairIdx] != curStatChg) {
+        NamedExecuteClientScript("uh_ti_stat", vw, packed_s, hp, maxhp, armor);
+        uhsrvwepmeta[UH_TI_SENT_STAT + pairIdx] = curStatChg;
+      }
+      if (heartbeat || uhsrvwepmeta[UH_TI_SENT_AMMO + pairIdx] != curAmmoChg) {
+        NamedExecuteClientScript("uh_ti_ammo", vw, packed_s, uhsrvwepmeta[s], outA1, outA2);
+        uhsrvwepmeta[UH_TI_SENT_AMMO + pairIdx] = curAmmoChg;
+      }
     }
   }
 }
@@ -1044,6 +1154,9 @@ script "uh_ti_serverwatch" (void) {
     // Hello/status snapshots must also drain at gameover, when new spectators
     // can connect. Only live stats stop there, as in the former watch loop.
     UH_Ti_ServerHelloClients();
+    if (cursor == 0) {
+      uhsrvwepmeta[UH_TI_SWEEP] = (uhsrvwepmeta[UH_TI_SWEEP] + 1) & 15;
+    }
     int end = cursor + UH_TI_SUBJECT_BATCH;
     if (end > MAX_PLAYERS) {end = MAX_PLAYERS;}
     if (!gameover) {

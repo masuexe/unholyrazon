@@ -82,8 +82,7 @@ function void UH_Tlms_ClearCount(void) {
 
 // Draw the TLMS line the engine no longer draws.  The format and colours are
 // the engine's: "N enemies M allies left", "allies dead" when none survive.
-function void UH_Tlms_DrawCounts(int cam, int cpn) {
-  int viewer = UH_Tlms_Viewer(cam, cpn);
+function void UH_Tlms_DrawCountsValues(int cam, int cpn, int viewer, int allies, int enemies) {
   if (viewer < 0) {UH_Tlms_ClearCount(); return;}
   int state = GetGamemodeState();
   if (state != GAMESTATE_INPROGRESS && state != GAMESTATE_WAITFORPLAYERS) {
@@ -131,9 +130,6 @@ function void UH_Tlms_DrawCounts(int cam, int cpn) {
     return;
   }
 
-  int allies = UH_Tlms_CountAllies(viewer);
-  int enemies = UH_Tlms_CountEnemies(viewer);
-
   str enemyword = "enemies";
   if (enemies == 1) {enemyword = "enemy";}
   str allyword = "allies";
@@ -150,6 +146,13 @@ function void UH_Tlms_DrawCounts(int cam, int cpn) {
       HUDMSG_PLAIN | HUDMSG_LAYER_UNDERHUD, UH_TLMS_COUNT_ID, CR_GREY,
       fx, fy, 0.05);
   }
+}
+
+function void UH_Tlms_DrawCounts(int cam, int cpn) {
+  int viewer = UH_Tlms_Viewer(cam, cpn);
+  if (viewer < 0) {UH_Tlms_ClearCount(); return;}
+  UH_Tlms_DrawCountsValues(cam, cpn, viewer,
+    UH_Tlms_CountAllies(viewer), UH_Tlms_CountEnemies(viewer));
 }
 
 // --- Client-local ALLY markers ----------------------------------------------
@@ -184,34 +187,46 @@ function void UH_Tlms_ShowAlly(int pn) {
   SetActivator(0, AAPTR_NULL);
 }
 
-function void UH_Tlms_AllyTick(int cam, int cpn) {
-  bool enabled = GetUserCVar(cpn, "uh_cl_TlmsAllyIcons") != 0;
-  if (enabled) {
-    // cl_icons is the global icon switch; cl_showallyicon 0 means "never".
-    enabled = GetCVar("cl_icons") != 0 && GetCVar("cl_showallyicon") != 0;
-  }
-  int viewer = UH_Tlms_Viewer(cam, cpn);
-  for (int i = 0; i < MAX_PLAYERS; i++) {
-    bool show = enabled && viewer >= 0 && i != viewer
-      && UH_Tlms_IsAlive(i) && UH_AreDisplayTeammates(viewer, i);
-    if (show) {UH_Tlms_ShowAlly(i);}
-    else {UH_Tlms_HideAlly(i);}
-  }
-}
-
 // Called from uh_assist_teaminfo once per tic with the current camera TID.
 function void UH_Tlms_Tick(int cam, int cpn) {
+  int i;
   if (!UH_IsUnholyTeamMode()) {
     UH_Tlms_ClearCount();
-    for (int i = 0; i < MAX_PLAYERS; i++) {UH_Tlms_HideAlly(i);}
+    for (i = 0; i < MAX_PLAYERS; i++) {
+      if (uhtlmsallyshown[i]) {UH_Tlms_HideAlly(i);}
+    }
     return;
   }
-  if (GetUserCVar(cpn, "uh_cl_TlmsCounters") != 0) {
-    UH_Tlms_DrawCounts(cam, cpn);
+  int viewer = UH_Tlms_Viewer(cam, cpn);
+  bool showCounts = GetUserCVar(cpn, "uh_cl_TlmsCounters") != 0;
+  bool allyEnabled = GetUserCVar(cpn, "uh_cl_TlmsAllyIcons") != 0
+    && GetCVar("cl_icons") != 0 && GetCVar("cl_showallyicon") != 0;
+  int allies = 0;
+  int enemies = 0;
+  for (i = 0; i < MAX_PLAYERS; i++) {
+    int st = uhtilife[i];
+    if (st != PLS_SURVIVOR && st != PLS_BOSS && st != PLS_EYE) {
+      if (uhtlmsallyshown[i]) {UH_Tlms_HideAlly(i);}
+      continue;
+    }
+    if (viewer < 0 || i == viewer) {
+      if (uhtlmsallyshown[i]) {UH_Tlms_HideAlly(i);}
+      continue;
+    }
+    if (UH_AreDisplayTeammates(viewer, i)) {
+      allies++;
+      if (allyEnabled) {UH_Tlms_ShowAlly(i);}
+      else if (uhtlmsallyshown[i]) {UH_Tlms_HideAlly(i);}
+    } else {
+      enemies++;
+      if (uhtlmsallyshown[i]) {UH_Tlms_HideAlly(i);}
+    }
+  }
+  if (showCounts) {
+    UH_Tlms_DrawCountsValues(cam, cpn, viewer, allies, enemies);
   } else {
     UH_Tlms_ClearCount();
   }
-  UH_Tlms_AllyTick(cam, cpn);
 }
 
 // A fresh map must not inherit marker state from the previous level.

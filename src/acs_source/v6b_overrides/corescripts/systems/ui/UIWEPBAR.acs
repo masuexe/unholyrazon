@@ -181,13 +181,42 @@ int selectedSlot = -1;
 int selectedIdx = 0;
 int lastUpdated = -1;
 int heldCount = 0;
+int lastScanPln = -2;
+int lastScanTid = -1;
+int lastScanCounts = -1;
+str lastScanWep;
+str lastScanCls;
 
-function void updateSlotData(void)
+function void updateSlotData(bool force)
 {
-    if(lastUpdated == Timer())
-        return;
+    int now = Timer();
+    int curPln = PlayerNumber();
+    int curTid = ActivatorTID();
+    int curCounts = (MAX_WEAPONS_GLOBAL << 12) | (MAX_BUSTERUPGRADES & 0xFFF);
+    str curWep = GetWeapon();
+    str curCls = GetActorClass(0);
 
-    lastUpdated = Timer();
+    if (
+        lastUpdated >= 0 &&
+        now >= lastUpdated &&
+        curPln == lastScanPln &&
+        curTid == lastScanTid &&
+        curCounts == lastScanCounts &&
+        StrCmp(curWep, lastScanWep) == 0 &&
+        StrCmp(curCls, lastScanCls) == 0
+    ) {
+        if (now == lastUpdated)
+            return;
+        if (!force && (now - lastUpdated) < 5)
+            return;
+    }
+
+    lastUpdated = now;
+    lastScanPln = curPln;
+    lastScanTid = curTid;
+    lastScanCounts = curCounts;
+    lastScanWep = curWep;
+    lastScanCls = curCls;
 
     selectedWep = -1;
     heldCount = 0;
@@ -342,7 +371,7 @@ script "core_ui_weapbar" (int cam)
     if (UHWeaponBarDispatch())
         terminate;
 
-    updateSlotData();
+    updateSlotData(false);
 
     // Don't draw unless holding two or more weapons
     if(heldCount <= 1)
@@ -391,58 +420,58 @@ script "core_ui_weapbar" (int cam)
             if(slotVals[slot][weap] < 0) {
                 str icon = getBusterIcon(-slotVals[slot][weap]-1);
             } else {
-                slotVals[slot][weap]--;
+                int wepIdx = slotVals[slot][weap] - 1;
 
-                icon = getWeaponIcon(slotVals[slot][weap]);
+                icon = getWeaponIcon(wepIdx);
 
-                if(getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO2_MAX) > 0 && getWeaponBarProperty(slotVals[slot][weap], WBAR_CYAN2) >= 0) {
+                if(getWeaponAmmoInfo(wepIdx, WAMMO_AMMO2_MAX) > 0 && getWeaponBarProperty(wepIdx, WBAR_CYAN2) >= 0) {
                     drawLayeredBarColor(
                         layer,
-                        getWeaponBarProperty(slotVals[slot][weap], WBAR_BAR_H2-cvDir),
-                        getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_CYAN2)),
-                        getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_BLUE2)),
-                        getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_BLACK2)),
+                        getWeaponBarProperty(wepIdx, WBAR_BAR_H2-cvDir),
+                        getFontPalette(getWeaponBarProperty(wepIdx, WBAR_CYAN2)),
+                        getFontPalette(getWeaponBarProperty(wepIdx, WBAR_BLUE2)),
+                        getFontPalette(getWeaponBarProperty(wepIdx, WBAR_BLACK2)),
                         iconX + barX2,
                         iconY + barY2,
                         barWidth, barHeight,
                         barScale, barScale, cvAlpha,
-                        getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO2),
-                        getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO2_MAX),
+                        getWeaponAmmoInfo(wepIdx, WAMMO_AMMO2),
+                        getWeaponAmmoInfo(wepIdx, WAMMO_AMMO2_MAX),
                         !cvDir+1, false, UIXLIB_ALIGN_LEFT, UIXLIB_ALIGN_TOP
                     );
 
                     // Draw the bar1 based on whether the bar2 will be drawn.
                     // Bar2 draws on top of bar1, or to the left of bar1, in all circumstances.
-                    if(getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO1_MAX) > 0 && getWeaponBarProperty(slotVals[slot][weap], WBAR_CYAN1) >= 0) {
+                    if(getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1_MAX) > 0 && getWeaponBarProperty(wepIdx, WBAR_CYAN1) >= 0) {
                         drawLayeredBarColor(
                             layer,
-                            getWeaponBarProperty(slotVals[slot][weap], WBAR_BAR_H1-cvDir),
-                            getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_CYAN1)),
-                            getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_BLUE1)),
-                            getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_BLACK1)),
+                            getWeaponBarProperty(wepIdx, WBAR_BAR_H1-cvDir),
+                            getFontPalette(getWeaponBarProperty(wepIdx, WBAR_CYAN1)),
+                            getFontPalette(getWeaponBarProperty(wepIdx, WBAR_BLUE1)),
+                            getFontPalette(getWeaponBarProperty(wepIdx, WBAR_BLACK1)),
                             iconX + barX1,
                             iconY + barY1,
                             barWidth, barHeight,
                             barScale, barScale, cvAlpha,
-                            getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO1),
-                            getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO1_MAX),
+                            getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1),
+                            getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1_MAX),
                             !cvDir+1, false, UIXLIB_ALIGN_LEFT, UIXLIB_ALIGN_TOP
                         );
                     }
                 } else {
-                    if(getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO1_MAX) > 0 && getWeaponBarProperty(slotVals[slot][weap], WBAR_CYAN1) >= 0) {
+                    if(getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1_MAX) > 0 && getWeaponBarProperty(wepIdx, WBAR_CYAN1) >= 0) {
                         drawLayeredBarColor(
                             layer,
-                            getWeaponBarProperty(slotVals[slot][weap], WBAR_BAR_H1-cvDir),
-                            getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_CYAN1)),
-                            getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_BLUE1)),
-                            getFontPalette(getWeaponBarProperty(slotVals[slot][weap], WBAR_BLACK1)),
+                            getWeaponBarProperty(wepIdx, WBAR_BAR_H1-cvDir),
+                            getFontPalette(getWeaponBarProperty(wepIdx, WBAR_CYAN1)),
+                            getFontPalette(getWeaponBarProperty(wepIdx, WBAR_BLUE1)),
+                            getFontPalette(getWeaponBarProperty(wepIdx, WBAR_BLACK1)),
                             iconX + barX,
                             iconY + barY,
                             barWidth, barHeight,
                             barScale, barScale, cvAlpha,
-                            getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO1),
-                            getWeaponAmmoInfo(slotVals[slot][weap], WAMMO_AMMO1_MAX),
+                            getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1),
+                            getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1_MAX),
                             !cvDir+1, false, UIXLIB_ALIGN_LEFT, UIXLIB_ALIGN_TOP
                         );
                     }
@@ -523,7 +552,7 @@ script "core_weap_wheel_info" (void)
     // so it's easier to wipe always
     ResetWheel();
 
-    updateSlotData();
+    updateSlotData(true);
 
     for(int i = 0; i < MAX_SLOTS; i++) {
         bool shouldDraw = true;

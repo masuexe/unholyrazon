@@ -579,6 +579,43 @@ def gen_generated_acs(config: dict) -> str:
         "// Namespaced SBARINFO bars; do not edit by hand.",
         "",
     ]
+    # One clear callback for every generated namespace: core_DrawBar_RegisterClear
+    # holds at most UH_BAR_CLEAR_MAX entries, and per-namespace registration would
+    # silently overflow it, leaving selectors latched across class/weapon/morph
+    # changes. Track drawn slots in a dirty list so idle tics avoid scanning all
+    # ~140 inventory names through FindInventory.
+    clear_inventories = []
+    seen_clear = set()
+    for bar in config["bars"]:
+        for name in (namespaced_selector(bar),) + (
+            () if "source" in bar else (namespaced_ammo(bar),)
+        ):
+            if name not in seen_clear:
+                seen_clear.add(name)
+                clear_inventories.append(name)
+    clear_index = {name: idx for idx, name in enumerate(clear_inventories)}
+
+    if clear_inventories:
+        lines += [
+            f"#define UHBAR_CLEAR_COUNT {len(clear_inventories)}",
+            "str uhbar_clear_names[UHBAR_CLEAR_COUNT] = {",
+        ]
+        lines += [f'  "{name}",' for name in clear_inventories]
+        lines += [
+            "};",
+            "bool uhbar_dirty[UHBAR_CLEAR_COUNT];",
+            "int uhbar_dirty_list[UHBAR_CLEAR_COUNT];",
+            "int uhbar_dirty_count = 0;",
+            "int uhbar_last_cam = 0;",
+            "",
+            "function void UHBar_MarkDirty(int idx) {",
+            "  if (idx < 0 || idx >= UHBAR_CLEAR_COUNT || uhbar_dirty[idx]) { return; }",
+            "  uhbar_dirty[idx] = true;",
+            "  uhbar_dirty_list[uhbar_dirty_count++] = idx;",
+            "}",
+            "",
+        ]
+
     namespaces = {}
     for bar in config["bars"]:
         namespaces.setdefault(bar["_namespace"].casefold(), []).append(bar)
@@ -606,11 +643,14 @@ def gen_generated_acs(config: dict) -> str:
             lines += [
                 f"    case {bar_constant(bar)}:",
                 f'      SetInventory("{selector}", {layer_selector_id(config, bar)});',
+                f"      UHBar_MarkDirty({clear_index[selector]});",
             ]
             if "source" not in bar:
-                lines.append(
-                    f'      SetAmmoAmountAndCapacity("{namespaced_ammo(bar)}", amount, capacity);'
-                )
+                ammo_name = namespaced_ammo(bar)
+                lines += [
+                    f'      SetAmmoAmountAndCapacity("{ammo_name}", amount, capacity);',
+                    f"      UHBar_MarkDirty({clear_index[ammo_name]});",
+                ]
             lines.append("      break;")
         lines += [
             "    default:",
@@ -620,27 +660,47 @@ def gen_generated_acs(config: dict) -> str:
             "",
         ]
 
-    # One clear callback for every generated namespace: core_DrawBar_RegisterClear
-    # holds at most UH_BAR_CLEAR_MAX entries, and per-namespace registration would
-    # silently overflow it, leaving selectors latched across class/weapon/morph
-    # changes. Latched selectors are reset here by name, deduped in declaration
-    # order (shared banks keep one selector inventory).
-    clear_inventories = []
-    seen_clear = set()
-    for bar in config["bars"]:
-        for name in (namespaced_selector(bar),) + (
-            () if "source" in bar else (namespaced_ammo(bar),)
-        ):
-            if name not in seen_clear:
-                seen_clear.add(name)
-                clear_inventories.append(name)
+    if clear_inventories:
+        lines += [
+            "function void UHBar_ClearCam(int cam) {",
+            "  int i;",
+            "  if (cam != 0) {",
+            "    if (!SetActivator(cam)) { return; }",
+            "    for (i = 0; i < uhbar_dirty_count; i++) {",
+            "      TakeInventory(uhbar_clear_names[uhbar_dirty_list[i]], 0x7FFFFFFF);",
+            "    }",
+            "    SetActivator(0, AAPTR_NULL);",
+            "    return;",
+            "  }",
+            "  for (i = 0; i < uhbar_dirty_count; i++) {",
+            "    SetActorInventory(0, uhbar_clear_names[uhbar_dirty_list[i]], 0);",
+            "  }",
+            "}",
+            "",
+            'script "UHBar_ClearAll" (int cam) CLIENTSIDE {',
+            "  if (uhbar_dirty_count <= 0) {",
+            "    uhbar_last_cam = cam;",
+            "    terminate;",
+            "  }",
+            "  if (uhbar_last_cam != 0 && uhbar_last_cam != cam) {",
+            "    UHBar_ClearCam(uhbar_last_cam);",
+            "  }",
+            "  UHBar_ClearCam(cam);",
+            "  for (int i = 0; i < uhbar_dirty_count; i++) {",
+            "    uhbar_dirty[uhbar_dirty_list[i]] = false;",
+            "  }",
+            "  uhbar_dirty_count = 0;",
+            "  uhbar_last_cam = cam;",
+            "}",
+            "",
+        ]
+    else:
+        lines += [
+            'script "UHBar_ClearAll" (int cam) CLIENTSIDE {',
+            "}",
+            "",
+        ]
     lines += [
-        'script "UHBar_ClearAll" (int cam) CLIENTSIDE {',
-    ]
-    lines += [f'  SetActorInventory(cam, "{name}", 0);' for name in clear_inventories]
-    lines += [
-        "}",
-        "",
         'script "UHBar_ClearAll_Register" OPEN CLIENTSIDE {',
         '  int result = ACS_NamedExecuteWithResult(',
         '      "core_DrawBar_RegisterClear", "UHBar_ClearAll");',

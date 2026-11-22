@@ -188,6 +188,8 @@ int tiWrapOffs;
 #define STATUS_DEAD 1
 #define STATUS_GHOST 2
 
+int rowHp[MAX_PLAYERS];
+
 function int getPlayerAlive(int pln)
 {
     if(PlayerIsSpectator(pln) == 2)
@@ -196,8 +198,10 @@ function int getPlayerAlive(int pln)
     if(!PlayerInGame(pln))
         return STATUS_GONE;
 
-    int hp = GetActorProperty(pln + PLN_TID, APROP_Health);
-    if (uhTeamMode) hp = ACS_NamedExecuteWithResult("uh_GetTeammateHealth", pln);
+    int hp = uhTeamMode
+        ? ACS_NamedExecuteWithResult("uh_GetTeammateHealth", pln)
+        : GetActorProperty(pln + PLN_TID, APROP_Health);
+    rowHp[pln] = hp;
     if(hp <= 0)
         return STATUS_DEAD;
 
@@ -624,16 +628,16 @@ function void drawLocation(int pln, int x, int y, int dead)
         return;
 
     if(
-        lv[LC_SCALE] != cvars[CV_SCALE] ||
-        lv[LC_MIRROR] != cvars[CV_MIRROR] ||
-        lv[LC_DIR] != cvars[CV_DIR] ||
-        lv[LC_NAMESIZE] != cvars[CV_NAMESIZE]
+        lc[LC_SCALE] != cvars[CV_SCALE] ||
+        lc[LC_MIRROR] != cvars[CV_MIRROR] ||
+        lc[LC_DIR] != cvars[CV_DIR] ||
+        lc[LC_NAMESIZE] != cvars[CV_NAMESIZE]
     )
     {
-        lv[LC_SCALE] = cvars[CV_SCALE];
-        lv[LC_MIRROR] = cvars[CV_MIRROR];
-        lv[LC_DIR] = cvars[CV_DIR];
-        lv[LC_NAMESIZE] = cvars[CV_NAMESIZE];
+        lc[LC_SCALE] = cvars[CV_SCALE];
+        lc[LC_MIRROR] = cvars[CV_MIRROR];
+        lc[LC_DIR] = cvars[CV_DIR];
+        lc[LC_NAMESIZE] = cvars[CV_NAMESIZE];
 
         lv[L_X] = FixedMul(cvars[CV_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? LOC_X_00 : LOC_X_01) : (!cvars[CV_MIRROR] ? LOC_X_10 : LOC_X_11)));
         lv[L_Y] = FixedMul(cvars[CV_SCALE], (!cvars[CV_DIR] ? (!cvars[CV_MIRROR] ? LOC_Y_00 : LOC_Y_01) : (!cvars[CV_MIRROR] ? LOC_Y_10 : LOC_Y_11)));
@@ -732,11 +736,14 @@ function void drawHealth(int pln, int x, int y, int dead)
         hv[H_VALIGN] = cvars[CV_DIR] == horizontal ? UIXLIB_ALIGN_CENTER : (!cvars[CV_MIRROR] ? UIXLIB_ALIGN_TOP : UIXLIB_ALIGN_BOTTOM);
     }
 
-    int mhp = GetActorProperty(pln+PLN_TID, AProp_SpawnHealth);
-    int chp = GetActorProperty(pln+PLN_TID, AProp_Health);
+    int mhp;
+    int chp;
     if (uhTeamMode) {
         mhp = ACS_NamedExecuteWithResult("uh_GetTeammateMaxHealth", pln);
-        chp = ACS_NamedExecuteWithResult("uh_GetTeammateHealth", pln);
+        chp = rowHp[pln];
+    } else {
+        mhp = GetActorProperty(pln+PLN_TID, AProp_SpawnHealth);
+        chp = GetActorProperty(pln+PLN_TID, AProp_Health);
     }
     if(mhp == 0) {
         if(chp == 0) {
@@ -944,19 +951,25 @@ function void drawWeapon(int pln, int x, int y, int dead)
             blue1 = playerWeapons[pln][WP_UHBLUE];
             black1 = playerWeapons[pln][WP_UHBLACK];
         }
-        ammo1Max = getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1_MAX);
-        ammo2Max = getWeaponAmmoInfo(wepIdx, WAMMO_AMMO2_MAX);
+        if (!uhTeamMode) {
+            ammo1Max = getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1_MAX);
+            ammo2Max = getWeaponAmmoInfo(wepIdx, WAMMO_AMMO2_MAX);
+        }
     }
 
     int ammo1 = 0;
     int ammo2 = 0;
     if (uhTeamMode) {
-        ammo1 = ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", pln, false, false);
-        ammo2 = ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", pln, true, false);
         ammo1Max = ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", pln, false, true);
         ammo2Max = ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", pln, true, true);
-        if (ammo1Max > 0) {ammo1 = UHNative_Fill(ammo1, ammo1Max); ammo1Max = 1.0;}
-        if (ammo2Max > 0) {ammo2 = UHNative_Fill(ammo2, ammo2Max); ammo2Max = 1.0;}
+        if (ammo1Max > 0) {
+            ammo1 = UHNative_Fill(ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", pln, false, false), ammo1Max);
+            ammo1Max = 1.0;
+        }
+        if (ammo2Max > 0) {
+            ammo2 = UHNative_Fill(ACS_NamedExecuteWithResult("uh_GetTeammateAmmo", pln, true, false), ammo2Max);
+            ammo2Max = 1.0;
+        }
     } else if (wepIdx >= 0) {
         ammo1 = getWeaponAmmoInfo(wepIdx, WAMMO_AMMO1);
         ammo2 = getWeaponAmmoInfo(wepIdx, WAMMO_AMMO2);

@@ -198,7 +198,9 @@ def main():
     source_acs = generator.gen_generated_acs(source_config)
     assert "function void Source_DrawBar(int id)" in source_acs
     assert "SetAmmoAmountAndCapacity" not in source_acs
-    assert 'SetActorInventory(cam, "UHBar_Source_P1L0Selector", 0);' in source_acs
+    assert '"UHBar_Source_P1L0Selector"' in source_acs
+    assert "UHBar_MarkDirty(0);" in source_acs
+    assert 'script "UHBar_ClearAll" (int cam) CLIENTSIDE {' in source_acs
     assert "UHBar_Source_P1L0_BodyAmmo" not in source_acs
 
     # NegaMan's move bar is a direct real-ammo source inside a mixed namespace.
