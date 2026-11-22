@@ -20,7 +20,7 @@ import relay as relay_mod  # noqa: E402
 import tracker  # noqa: E402
 
 
-def make_raw_record(record_id: str, number: int, title: str, status: str = "待处理",
+def make_raw_record(record_id: str, number: int, title: str, status: str = "待评估",
                     rtype: str = "Bug", prio: str = "P1-核心", proposer: str = "tester",
                     desc: str = "", commits: str = "", verification: str = "",
                     version: str = "", archived_ms: str = "") -> dict:
@@ -134,7 +134,7 @@ class TrackerContractTests(unittest.TestCase):
     def test_resolve_merge_date_and_payload(self) -> None:
         records = [
             tracker.normalize_record(make_raw_record("rlSWRI", 4, "voidwalker卡顿"), self.schema),
-            tracker.normalize_record(make_raw_record("rKaP54", 7, "zakobox卡墙角", status="已实装"), self.schema),
+            tracker.normalize_record(make_raw_record("rKaP54", 7, "zakobox卡墙角", status="已完成"), self.schema),
         ]
         self.assertEqual(tracker.resolve_record(records, "rlSWRI")["number"], 4)
         self.assertEqual(tracker.resolve_record(records, "#4")["record_id"], "rlSWRI")
@@ -153,7 +153,7 @@ class TrackerContractTests(unittest.TestCase):
         payload = tracker.build_update_payload(
             "rlSWRI",
             {
-                "status": "待测试",
+                "status": "已完成",
                 "commits": "349abf5f",
                 "description": "",
                 "archived_at": "2026-11-19",
@@ -161,7 +161,7 @@ class TrackerContractTests(unittest.TestCase):
             self.schema,
         )
         fmap = {item["field"]: item for item in payload["field_values"]}
-        self.assertEqual(fmap["状态"]["option_value"], {"items": [{"text": "待测试"}]})
+        self.assertEqual(fmap["状态"]["option_value"], {"items": [{"text": "已完成"}]})
         self.assertEqual(fmap["关联 Commit"]["text_value"], {"items": [{"text": "349abf5f", "type": "text"}]})
         self.assertEqual(fmap["详细设计与说明"]["text_value"], {"items": []})
         self.assertEqual(fmap["归档时间"]["string_value"], tracker.date_to_ms_utc8("2026-11-19"))
@@ -174,7 +174,7 @@ class TrackerContractTests(unittest.TestCase):
     def test_report_guard_blocks_unverified_and_stale(self) -> None:
         # 1. Missing handoff / missing gate with clean git tree
         relay_missing = FakeRelay(self.state_dir / "missing", head="abcd1234", dirty=False)
-        ok, errors, _, _ = tracker.check_report_guard(relay_missing, "待测试", allow_unverified=False)
+        ok, errors, _, _ = tracker.check_report_guard(relay_missing, "已完成", allow_unverified=False)
         self.assertFalse(ok)
         self.assertTrue(errors)
 
@@ -183,7 +183,7 @@ class TrackerContractTests(unittest.TestCase):
         relay_fail.write_json(relay_fail.handoff_file, {
             "gate": {"layer": "fast", "ok": False, "git_head": "abcd1234", "counts": {"pass": 32, "fail": 1, "skip": 0}},
         })
-        ok, _, _, _ = tracker.check_report_guard(relay_fail, "待测试", allow_unverified=False)
+        ok, _, _, _ = tracker.check_report_guard(relay_fail, "已完成", allow_unverified=False)
         self.assertFalse(ok)
 
         # 3. Stale git HEAD
@@ -191,7 +191,7 @@ class TrackerContractTests(unittest.TestCase):
         relay_stale.write_json(relay_stale.handoff_file, {
             "gate": {"layer": "fast", "ok": True, "git_head": "abcd1234", "counts": {"pass": 33, "fail": 0, "skip": 0}},
         })
-        ok, _, _, _ = tracker.check_report_guard(relay_stale, "待测试", allow_unverified=False)
+        ok, _, _, _ = tracker.check_report_guard(relay_stale, "已完成", allow_unverified=False)
         self.assertFalse(ok)
 
         # 4. Dirty working tree
@@ -199,7 +199,7 @@ class TrackerContractTests(unittest.TestCase):
         relay_dirty.write_json(relay_dirty.handoff_file, {
             "gate": {"layer": "fast", "ok": True, "git_head": "abcd1234", "counts": {"pass": 33, "fail": 0, "skip": 0}},
         })
-        ok, _, _, _ = tracker.check_report_guard(relay_dirty, "待测试", allow_unverified=False)
+        ok, _, _, _ = tracker.check_report_guard(relay_dirty, "已完成", allow_unverified=False)
         self.assertFalse(ok)
 
         # 5. Passing clean gate
@@ -207,13 +207,13 @@ class TrackerContractTests(unittest.TestCase):
         relay_pass.write_json(relay_pass.handoff_file, {
             "gate": {"layer": "smoke", "ok": True, "git_head": "abcd1234", "counts": {"pass": 38, "fail": 0, "skip": 0}},
         })
-        ok, errors, _, _ = tracker.check_report_guard(relay_pass, "待测试", allow_unverified=False)
+        ok, errors, _, _ = tracker.check_report_guard(relay_pass, "已完成", allow_unverified=False)
         self.assertTrue(ok, errors)
 
     def test_dry_run_and_apply_lifecycle(self) -> None:
         raw = [
-            make_raw_record("rlSWRI", 4, "voidwalker卡顿", status="待处理", commits="d46878d6"),
-            make_raw_record("rKaP54", 7, "zakobox卡墙角", status="待测试", commits="ac80637e", version="4.0.0-beta.261114"),
+            make_raw_record("rlSWRI", 4, "voidwalker卡顿", status="待开发", commits="d46878d6"),
+            make_raw_record("rKaP54", 7, "zakobox卡墙角", status="开发中", commits="ac80637e", version="4.0.0-beta.261114"),
         ]
         client = FakeClient(self.schema, raw)
         fake_relay = FakeRelay(self.state_dir, head="349abf5f", dirty=False)
@@ -264,9 +264,10 @@ class TrackerContractTests(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertEqual(len(client.updated_batches), 2)
             sent = {fv["field"]: fv for fv in client.updated_batches[-1][0]["field_values"]}
-            self.assertEqual(sent["状态"]["option_value"]["items"][0]["text"], "待测试")
+            self.assertEqual(sent["状态"]["option_value"]["items"][0]["text"], "已完成")
             self.assertEqual(sent["关联 Commit"]["text_value"]["items"][0]["text"], "d46878d6, 349abf5f")
             self.assertEqual(sent["落盘版本"]["text_value"]["items"][0]["text"], "4.0.0-beta.261117")
+            self.assertIn("归档时间", sent)
             verif_text = sent["验证与结案说明"]["text_value"]["items"][0]["text"]
             self.assertIn("未运行 --full", verif_text)
 
@@ -286,7 +287,7 @@ class TrackerContractTests(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertEqual(len(client.updated_batches), 3)
             closed_sent = {fv["field"]: fv for fv in client.updated_batches[-1][0]["field_values"]}
-            self.assertEqual(closed_sent["状态"]["option_value"]["items"][0]["text"], "已实装")
+            self.assertEqual(closed_sent["状态"]["option_value"]["items"][0]["text"], "已完成")
             self.assertEqual(closed_sent["归档时间"]["string_value"], tracker.date_to_ms_utc8("2026-11-19"))
 
             # reopen --apply
@@ -297,14 +298,14 @@ class TrackerContractTests(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertEqual(len(client.updated_batches), 4)
             reopen_sent = {fv["field"]: fv for fv in client.updated_batches[-1][0]["field_values"]}
-            self.assertEqual(reopen_sent["状态"]["option_value"]["items"][0]["text"], "开发中")
+            self.assertEqual(reopen_sent["状态"]["option_value"]["items"][0]["text"], "待开发")
 
     def test_audit_detects_schema_drift_and_git_lag(self) -> None:
         raw = [
-            make_raw_record("rlSWRI", 4, "voidwalker卡顿", status="待处理", commits=""),
-            make_raw_record("rKaP54", 7, "zakobox", status="待测试", commits="ac80637e", version="4.0.0-beta.261114"),
+            make_raw_record("rlSWRI", 4, "voidwalker卡顿", status="待评估", commits=""),
+            make_raw_record("rKaP54", 7, "zakobox", status="已完成", commits="ac80637e", version="4.0.0-beta.261114"),
         ]
-        # Clean live schema, but git ref points to rlSWRI which is still 待处理 and missing commit
+        # Clean live schema, but git ref points to rlSWRI which is still 待评估 and missing commit
         clean_client = FakeClient(self.schema, raw)
         with mock.patch.object(tracker, "scan_git_smartsheet_refs", return_value=[("349abf5f", "fix stalls", "rlSWRI")]):
             out = io.StringIO()
@@ -315,7 +316,6 @@ class TrackerContractTests(unittest.TestCase):
             self.assertTrue(data["ok"])
             self.assertEqual(len(data["git_ref_lag"]), 1)
             self.assertEqual(data["git_ref_lag"][0]["record_id"], "rlSWRI")
-            self.assertEqual(len(data["ready_to_test"]), 1)
 
             # --strict fails on git_ref_lag
             with redirect_stdout(io.StringIO()):

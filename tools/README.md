@@ -138,7 +138,7 @@ and dry-run previews by default (`--apply` required for remote writes):
 
 ```bash
 python3 tools/tracker.py sync                               # refresh .relay/smartsheet_cache.json
-python3 tools/tracker.py list [--view open|ready|closed|all] [--offline]
+python3 tools/tracker.py list [--view open|closed|all] [--offline]
 python3 tools/tracker.py show <record_id_or_#num>           # detail + class-aliases hints
 python3 tools/tracker.py start <id> [--scope "..."] --apply # relay init + mark 开发中
 python3 tools/tracker.py report <id> --summary "..." --apply # requires passing relay gate

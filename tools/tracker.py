@@ -130,7 +130,7 @@ def validate_schema_local(schema: dict) -> None:
         raise ValueError(
             f"statuses.options keys {sorted(options.keys())} do not match open+closed {sorted(declared)}"
         )
-    for res_key in ("completed", "engine-limit", "wontfix"):
+    for res_key in ("completed", "wontfix"):
         target = resolutions.get(res_key)
         if target not in closed_list:
             raise ValueError(f"close_resolution {res_key!r} -> {target!r} is not in statuses.closed")
@@ -421,7 +421,7 @@ def check_report_guard(relay: relay_mod.Relay, target_status: str,
     gate = handoff.get("gate") or {}
     errors: list[str] = []
 
-    if target_status != "当前未复现" and not allow_unverified:
+    if target_status != "待评估" and not allow_unverified:
         if not gate or not gate.get("ok"):
             errors.append(
                 "no passing gate recorded in .relay/handoff.json; "
@@ -542,8 +542,6 @@ def cmd_list(args, schema: dict, client: TencentDocsMCPClient | None = None) -> 
     for rec in records:
         st = rec.get("status", "")
         if args.view == "open" and st in closed_set:
-            continue
-        if args.view == "ready" and st != "待测试":
             continue
         if args.view == "closed" and st not in closed_set:
             continue
@@ -675,8 +673,8 @@ def cmd_start(args, schema: dict, client: TencentDocsMCPClient | None = None) ->
 
 def cmd_report(args, schema: dict, client: TencentDocsMCPClient | None = None) -> int:
     target_status = args.status
-    if target_status not in ("待测试", "当前未复现"):
-        raise SystemExit("tracker: report --status must be 待测试 or 当前未复现")
+    if target_status not in ("已完成", "开发中", "待评估"):
+        raise SystemExit("tracker: report --status must be 已完成, 开发中, or 待评估")
 
     relay = relay_mod.Relay(state_dir=args.state_dir)
     ok, errors, gate, current = check_report_guard(relay, target_status, args.allow_unverified)
@@ -693,7 +691,7 @@ def cmd_report(args, schema: dict, client: TencentDocsMCPClient | None = None) -
         raise SystemExit(f"tracker: {exc}")
 
     sha = (args.commit or "").strip()
-    if not sha and target_status != "当前未复现":
+    if not sha and target_status != "待评估":
         sha = str(current.get("head") or "").strip()
 
     counts = gate.get("counts") or {}
@@ -725,6 +723,8 @@ def cmd_report(args, schema: dict, client: TencentDocsMCPClient | None = None) -
         changes["commits"] = merge_csv_tokens(rec.get("commits", ""), sha)
     if args.version:
         changes["version"] = merge_csv_tokens(rec.get("version", ""), args.version)
+    if target_status == "已完成" and not rec.get("archived_at"):
+        changes["archived_at"] = today_utc8()
 
     _print_diff(rec, changes, schema)
     if not args.apply:
@@ -788,8 +788,8 @@ def cmd_close(args, schema: dict, client: TencentDocsMCPClient | None = None) ->
 
 
 def cmd_reopen(args, schema: dict, client: TencentDocsMCPClient | None = None) -> int:
-    if args.status not in ("开发中", "待处理"):
-        raise SystemExit("tracker: reopen --status must be 开发中 or 待处理")
+    if args.status not in ("待开发", "开发中", "待评估"):
+        raise SystemExit("tracker: reopen --status must be 待开发, 开发中, or 待评估")
 
     cli = None if args.offline else (client or _build_client(schema))
     records = _load_records(cli, schema, args.state_dir, offline=args.offline)
@@ -890,7 +890,7 @@ def run_audit(schema: dict, records: list[dict], live_fields: list[dict] | None,
             })
             continue
         issues = []
-        if rec.get("status") in ("待处理", "开发中"):
+        if rec.get("status") in ("待评估", "待开发", "开发中"):
             issues.append(f"status still {rec.get('status')!r}")
         commits_lower = (rec.get("commits") or "").lower()
         if sha.lower() not in commits_lower:
@@ -902,20 +902,6 @@ def run_audit(schema: dict, records: list[dict], live_fields: list[dict] | None,
                 "reason": "; ".join(issues),
             })
 
-    ready_to_test = [
-        {
-            "record_id": r["record_id"],
-            "number": r.get("number"),
-            "priority": r.get("priority", ""),
-            "title": r.get("title", ""),
-            "commits": r.get("commits", ""),
-            "version": r.get("version", ""),
-        }
-        for r in records
-        if r.get("status") == "待测试"
-    ]
-    ready_to_test.sort(key=lambda r: (0, int(r["number"])) if isinstance(r.get("number"), int) else (1, r["record_id"]))
-
     ok = not schema_errors and not empty_status
     return {
         "schema": 1,
@@ -924,7 +910,6 @@ def run_audit(schema: dict, records: list[dict], live_fields: list[dict] | None,
         "schema_errors": schema_errors,
         "invalid_or_empty_status": empty_status,
         "git_ref_lag": git_lag,
-        "ready_to_test": ready_to_test,
     }
 
 
@@ -944,7 +929,10 @@ def cmd_audit(args, schema: dict, client: TencentDocsMCPClient | None = None) ->
                 for err in report["schema_errors"]:
                     print(f"[FAIL] schema: {err}")
             else:
-                print(f"[PASS] schema matches {DEFAULT_SCHEMA_PATH.name} (12 fields, 7 status options)")
+                print(
+                    f"[PASS] schema matches {DEFAULT_SCHEMA_PATH.name} "
+                    f"({len(schema['fields'])} fields, {len(schema['statuses']['options'])} status options)"
+                )
         if report["invalid_or_empty_status"]:
             for item in report["invalid_or_empty_status"]:
                 print(f"[FAIL] invalid/empty status: {_format_num(item['number'])} ({item['record_id']}) status={item['status']!r}")
@@ -954,12 +942,6 @@ def cmd_audit(args, schema: dict, client: TencentDocsMCPClient | None = None) ->
         print(f"[INFO] git-ref sync lag: {len(report['git_ref_lag'])}")
         for item in report["git_ref_lag"]:
             print(f"  - {item['sha']} -> {_format_num(item.get('number'))} ({item['record_id']}): {item['reason']}")
-
-        print(f"[INFO] 待测试 queue: {len(report['ready_to_test'])} record(s)")
-        for item in report["ready_to_test"]:
-            ver = f" [{item['version']}]" if item.get("version") else ""
-            cm = f" ({item['commits']})" if item.get("commits") else ""
-            print(f"  - {_format_num(item['number']):>5} | {item['record_id']} | {item.get('priority') or '-':6} | {item['title']}{ver}{cm}")
 
     ok = report["ok"] and (not args.strict or not report["git_ref_lag"])
     return 0 if ok else 1
@@ -975,7 +957,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_sync.add_argument("--json", action="store_true")
 
     p_list = sub.add_parser("list", help="list SmartSheet records")
-    p_list.add_argument("--view", choices=("open", "ready", "closed", "all"), default="open")
+    p_list.add_argument("--view", choices=("open", "closed", "all"), default="open")
     p_list.add_argument("--status", default="", help="exact status filter")
     p_list.add_argument("--type", default="", help="exact type filter")
     p_list.add_argument("--prio", default="", help="priority substring filter (e.g. P0, P1)")
@@ -1000,7 +982,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_report = sub.add_parser("report", help="write verified progress/commit back to SmartSheet (dry-run default)")
     p_report.add_argument("record", help="record_id or #number")
     p_report.add_argument("--summary", required=True, help="user-visible behavior & verification summary")
-    p_report.add_argument("--status", default="待测试", choices=("待测试", "当前未复现"))
+    p_report.add_argument("--status", default="已完成", choices=("已完成", "开发中", "待评估"))
     p_report.add_argument("--commit", default="", help="short commit SHA (defaults to current git HEAD)")
     p_report.add_argument("--version", default="", help="optional target version (e.g. 4.0.0-beta.261119)")
     p_report.add_argument("--allow-unverified", action="store_true", help="bypass passing relay gate requirement")
@@ -1009,7 +991,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_close = sub.add_parser("close", help="archive a record as Closed without deleting it (dry-run default)")
     p_close.add_argument("record", help="record_id or #number")
-    p_close.add_argument("--as", dest="resolution", required=True, choices=("completed", "engine-limit", "wontfix"))
+    p_close.add_argument("--as", dest="resolution", required=True, choices=("completed", "wontfix"))
     p_close.add_argument("--version", default="", help="release/landing version")
     p_close.add_argument("--note", default="", help="closing/acceptance note")
     p_close.add_argument("--date", default="", help="YYYY-MM-DD archive date (default today UTC+8)")
@@ -1020,7 +1002,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_reopen = sub.add_parser("reopen", help="reopen a Closed record without losing history (dry-run default)")
     p_reopen.add_argument("record", help="record_id or #number")
     p_reopen.add_argument("--note", required=True, help="reason for reopening")
-    p_reopen.add_argument("--status", default="开发中", choices=("开发中", "待处理"))
+    p_reopen.add_argument("--status", default="待开发", choices=("待开发", "开发中", "待评估"))
     p_reopen.add_argument("--offline", action="store_true", help="preview diff against local cache")
     p_reopen.add_argument("--apply", action="store_true", help="write reopen update to SmartSheet")
 
