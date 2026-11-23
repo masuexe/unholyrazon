@@ -15,7 +15,7 @@
 - DLC Centaurman (`DLCCentaurman`) now marks any hit target with `DLCCentaurHitFlag` (`Pain.DLCCent` / `Pain.DLCCentBomb`) so they drop a Centaur weapon or option pickup upon any subsequent death (RaThor-style), without double-dropping on direct kills.
 - Self-Fire (`OnFire`) now loses 1 `OnFireItemFlag` stack (and clears `SUDDENLYONFIRE` at 0 stacks, with steam FX) whenever the burning player takes positive ice-type damage (`uh_OnFireIceQuench`).
 - Restored the Unholy Unbound animated healing weapon bar overlay (`26_F_BAR` / `26_F_VAR` and Shiny `26_FSBAR` / `26_FSVAR`) for `TreeHugger` and `TreeHuggerShiny` when `PowerTreeHuggerFlag` is active.
-- Made Red Destron's large homing bullet (`DestronShotRed`) shootable by survivors (`UH_ShootableActor` + `+SHOOTABLE` + `-NOBLOCKMAP`, immune to Destron self/ally damage), while keeping the smaller Destron projectiles unshootable.
+- Made the three Destron bosses' red bullets (`DestronShotPurple`, `DestronShotBlue`, `DestronShotRed`) shootable by survivors (`UH_ShootableActor` + `+SHOOTABLE` + `-NOBLOCKMAP`, immune to Destron self/ally damage), while keeping the 2x2 white dot (`DestronVeryVerySmallShot`) unshootable.
 
 ## 4.0.0-beta.261122
 

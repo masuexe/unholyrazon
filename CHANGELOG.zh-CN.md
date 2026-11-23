@@ -15,7 +15,7 @@
 - 马 Boss（`DLCCentaurman`）改为类似 RaThor 的受击标记机制：玩家只要被 `DLCCent`／`DLCCentBomb` 命中即挂上 `DLCCentaurHitFlag`，之后无论以何种方式死亡都会在 `UH_ClassDeath_P` 掉落一次武器或浮游炮补给（直接击杀不重复掉落）。
 - 自燃（`OnFire`）在受到任意冰属性有效伤害时现会减少 1 层 `OnFireItemFlag`（清零时同步解除 `SUDDENLYONFIRE` 并生成蒸汽特效，`uh_OnFireIceQuench`）。
 - 补回 Unholy Unbound 中 `TreeHugger` 与 `TreeHuggerShiny` 在回血状态（`PowerTreeHuggerFlag`）下的动态武器条覆盖动画（`26_F_BAR`／`26_F_VAR` 及 Shiny 版 `26_FSBAR`／`26_FSVAR`）。
-- 为红霸天虎的大型追踪子弹（`DestronShotRed`）加入可被幸存者打掉的特性（`UH_ShootableActor` + `+SHOOTABLE` + `-NOBLOCKMAP`，免疫霸天虎自身与同阵营伤害）；其余小型霸天虎子弹（含 2x2 小白点）保持不可被打掉。
+- 为三色霸天虎的红色主子弹（`DestronShotPurple`、`DestronShotBlue`、`DestronShotRed`）加入可被幸存者打掉的特性（`UH_ShootableActor` + `+SHOOTABLE` + `-NOBLOCKMAP`，免疫霸天虎自身与同阵营伤害）；2x2 小白点子弹（`DestronVeryVerySmallShot`）保持不可被打掉。
 
 ## 4.0.0-beta.261122
 
