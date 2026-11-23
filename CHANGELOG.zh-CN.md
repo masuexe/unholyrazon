@@ -14,9 +14,8 @@
 - 法老（`Pharaohman4MI`）在死亡或解除变身时现会清除全场玩家身上的所有诅咒（若场上仍有其他存活的 `Pharaohman4MI` 则保留）。
 - 马 Boss（`DLCCentaurman`）改为类似 RaThor 的受击标记机制：玩家只要被 `DLCCent`／`DLCCentBomb` 命中即挂上 `DLCCentaurHitFlag`，之后无论以何种方式死亡都会在 `UH_ClassDeath_P` 掉落一次武器或浮游炮补给（直接击杀不重复掉落）。
 - 自燃（`OnFire`）在受到任意冰属性有效伤害时现会减少 1 层 `OnFireItemFlag`（清零时同步解除 `SUDDENLYONFIRE` 并生成蒸汽特效，`uh_OnFireIceQuench`）。
-- 为克劳恩皮丝终符（`Clownpiece_W8`）接入落坑飞行耐力检测（`uh_BossFlightPit`），补齐全部可持续飞行 Boss 的落坑检测覆盖（与 `Misery`、`CXAirMan`、三色霸天虎、`SPOOKYGHOSTHITLER`、`MosquitoDemoneye` 一致）。
 - 补回 Unholy Unbound 中 `TreeHugger` 与 `TreeHuggerShiny` 在回血状态（`PowerTreeHuggerFlag`）下的动态武器条覆盖动画（`26_F_BAR`／`26_F_VAR` 及 Shiny 版 `26_FSBAR`／`26_FSVAR`）。
-- 为霸天虎（`PurpleDestron`、`BlueDestron`、`RedDestron`）的全部子弹（`DestronShotPurple`、`DestronShotBlue`、`DestronShotRed`、`DestronVeryVerySmallShot`）加入可被幸存者打掉的特性（`UH_ShootableActor` + `+SHOOTABLE` + `-NOBLOCKMAP`，免疫霸天虎自身与同阵营伤害）。
+- 为红霸天虎的大型追踪子弹（`DestronShotRed`）加入可被幸存者打掉的特性（`UH_ShootableActor` + `+SHOOTABLE` + `-NOBLOCKMAP`，免疫霸天虎自身与同阵营伤害）；其余小型霸天虎子弹（含 2x2 小白点）保持不可被打掉。
 
 ## 4.0.0-beta.261122
 
