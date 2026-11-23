@@ -36,7 +36,7 @@ def main():
     parser.add_argument("--title", required=True, help="Release title")
     parser.add_argument("--notes-file", required=True, help="Path to markdown release notes file")
     parser.add_argument("--asset", action="append", default=[], help="Path to binary asset(s) to attach")
-    parser.add_argument("--prerelease", action="store_true", default=True, help="Mark as prerelease (default: True)")
+    parser.add_argument("--prerelease", action=argparse.BooleanOptionalAction, default=True, help="Mark as prerelease (default: True; pass --no-prerelease for formal release)")
     parser.add_argument("--token", help="GitHub Personal Access Token")
     args = parser.parse_args()
 
@@ -75,7 +75,8 @@ def main():
         method="POST"
     )
 
-    print(f"Creating pre-release '{args.title}' for tag '{args.tag}'...")
+    kind = "pre-release" if args.prerelease else "release"
+    print(f"Creating {kind} '{args.title}' for tag '{args.tag}'...")
     try:
         with urllib.request.urlopen(req) as resp:
             data = json.loads(resp.read().decode("utf-8"))

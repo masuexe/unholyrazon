@@ -4,7 +4,7 @@
 
 ---
 
-## Unreleased
+## 4.0.0
 
 - 修复洛克人（`MegaManU`）通过 Reload 抽出的 v6c 辅助道具在幸存者使用 `TruePowerItem` 变身 Shiny 后消失的问题：`uh_StripSurvivorWeps` 新增 `keep_assists` 参数，`uh_shinyclassmorpher` 传入 `1` 以保留幸存者持有的辅助道具（Boss 与恶魔眼变身仍正常清理）。
 - 修复未加载独立 UIX/PBSKINS 时触发 `P_StartScript: Unknown script "PBMug_Megaman"` 报错的问题：`PBMug_MegaManU`、`PBMug_MegaManUShiny` 及 `UH_PlayerAppearancePortrait` 现会先通过 `SpawnForced("PBMug_Megaman", ...)` 检查存在性，缺失时回退至统一的 UH 头像解析器／`UMUG_0`。
@@ -19,7 +19,7 @@
 - 为三色霸天虎的红色主子弹（`DestronShotPurple`、`DestronShotBlue`、`DestronShotRed`）加入可被幸存者打掉的特性（`UH_ShootableActor` + `+SHOOTABLE` + `-NOBLOCKMAP`，免疫霸天虎自身与同阵营伤害）；2x2 小白点子弹（`DestronVeryVerySmallShot`）保持不可被打掉。
 - 新增服务端 CVar `uh_sv_dickhead_revive_delay`（0–60 秒，默认 3 秒，已接入 `Unholy Server Options -> Game Rules` 菜单），支持主机自由调整几把头（`Dickhead`）落地生效与后续延迟复活的等待时间。
 - 参照 `gondola-classtalents` 中 GyroMan 天赋（`GyromanRazorwing`）缩小蚊子眼（`MosquitoDemoneye`）的体型与碰撞箱（`Scale 0.6`、`Radius 8`、`Height 16`、`Player.ViewHeight 18`、`Player.AttackZOffset 6`），并同步下调 `MosquitoeyeGrabber`／`MosquitoeyeDamager` 的生成高度。
-- 补全并更新 Unholy 菜单中的 `Class Information`、`Boss Information`、`Demoneye Information` 与 `Item Information` 简介页面（`MENUDEF.CHELP`／`BossHelp`／`EyeHelp`／`ItemHelp`），覆盖 Razon 4.0 新增的幸存者（`Eden`、`Crystrap`）、15 个新增 Boss、4 个新增恶魔眼以及 Pandora／Mystic／Tank of Wonders／符文道具说明。
+- 补全并更新 Unholy 菜单中的 `Class Information`、`Boss Information`、`Demoneye Information` 与图文版 `Item Information` 简介页面（`MENUDEF.CHELP`／`BossHelp`／`EyeHelp`／`ItemHelp`），同步全部新老幸存者／Boss／恶魔眼数值与机制、`BossHelp` Reload 提示、跳转到当前机体快捷方式，以及按 Unbound 顺序整理的 Razon 道具图文页。
 
 ## 4.0.0-beta.261122
 

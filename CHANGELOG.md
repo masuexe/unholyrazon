@@ -4,7 +4,7 @@
 
 ---
 
-## Unreleased
+## 4.0.0
 
 - Fixed v6c assist items drawn via MegaMan's Reload disappearing when a survivor activates `TruePowerItem`: `uh_StripSurvivorWeps` now takes a `keep_assists` flag and `uh_shinyclassmorpher` passes `1` so Shiny survivors retain held assist items (while Boss and Demoneye morphs continue stripping them).
 - Fixed missing-script error `P_StartScript: Unknown script "PBMug_Megaman"` when standalone UIX/PBSKINS is not loaded: `PBMug_MegaManU`, `PBMug_MegaManUShiny`, and `UH_PlayerAppearancePortrait` now guard the `PBMug_Megaman` delegate with `SpawnForced("PBMug_Megaman", ...)` and fall back to the shared UH portrait resolver / `UMUG_0`.
@@ -19,7 +19,7 @@
 - Made the three Destron bosses' red bullets (`DestronShotPurple`, `DestronShotBlue`, `DestronShotRed`) shootable by survivors (`UH_ShootableActor` + `+SHOOTABLE` + `-NOBLOCKMAP`, immune to Destron self/ally damage), while keeping the 2x2 white dot (`DestronVeryVerySmallShot`) unshootable.
 - Added server CVar `uh_sv_dickhead_revive_delay` (0–60s, default 3s; exposed in `Unholy Server Options -> Game Rules`) so hosts can customize the Dickhead revival delay for both initial arming and delayed watch revivals.
 - Shrunk `MosquitoDemoneye` (`Scale 0.6`, `Radius 8`, `Height 16`, `Player.ViewHeight 18`, `Player.AttackZOffset 6`) to match `GyromanRazorwing`-style compact mosquito proportions, and lowered `MosquitoeyeGrabber` / `MosquitoeyeDamager` spawn Z offsets accordingly.
-- Restored and updated the Unholy Menu information pages (`UH_ClassHelpMenu`, `UH_BossHelpMenu`, `UH_EyeHelpMenu`, and `UH_ItemHelpMenu` via `MENUDEF.CHELP`, `MENUDEF.BossHelp`, `MENUDEF.EyeHelp`, `MENUDEF.ItemHelp`), covering all Razon 4.0 survivors (`Eden`, `Crystrap`, etc.), 15 new bosses, 4 new demoneyes, and current Pandora / Mystic / Tank of Wonders / Rune items.
+- Restored and updated the Unholy Menu information pages (`UH_ClassHelpMenu`, `UH_BossHelpMenu`, `UH_EyeHelpMenu`, and illustrated `UH_ItemHelpMenu` via `MENUDEF.CHELP`, `MENUDEF.BossHelp`, `MENUDEF.EyeHelp`, `MENUDEF.ItemHelp`), syncing legacy and new survivor/boss/demoneye stats and mechanics, Reload tips, Jump-to-Current shortcuts, and Unbound-ordered item pages with Razon additions.
 
 ## 4.0.0-beta.261122
 
