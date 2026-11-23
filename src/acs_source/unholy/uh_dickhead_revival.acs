@@ -111,6 +111,15 @@ function void DickheadDoRevive(int selftid, int revived_tid, int isbossrevival, 
   SetActorState(selftid, "UsedUp", 0);
 }
 
+function int UH_DickheadReviveDelayTics(void) {
+  int sec = GetCVar("uh_sv_dickhead_revive_delay");
+  if (sec < 0)
+    sec = 0;
+  else if (sec > 60)
+    sec = 60;
+  return sec * 35;
+}
+
 script "rz_DickheadRevival" (void) {
   int isbossrevival;
   int revived_tid;
@@ -128,6 +137,7 @@ script "rz_DickheadRevival" (void) {
   int selftid;
   int owner_is_a_boss;
   int owner_is_an_eye;
+  int armdelay;
 
   selftid = ActivatorTID();
   if (selftid == 0) {
@@ -142,6 +152,13 @@ script "rz_DickheadRevival" (void) {
     owner_is_an_eye = CheckInventory("IsAnEye");
   }
   SetActivator(selftid);
+
+  armdelay = UH_DickheadReviveDelayTics();
+  if (armdelay > 0)
+    Delay(armdelay);
+  if (ClassifyActor(selftid) == ACTOR_NONE)
+    terminate;
+  ChangeActorFlag(selftid, "SPECIAL", false);
 
   revived_tid = 0;
   isbossrevival = 0;
@@ -260,7 +277,9 @@ script "rz_DickheadRevivalDelayed" (int dead_pn, int selftid) {
   if (SetActivator(selftid, AAPTR_TARGET))
     owner_is_an_eye = CheckInventory("IsAnEye");
   SetActivator(selftid);
-  Delay(DICKHEAD_REVIVE_DELAY);
+  int delaytics = UH_DickheadReviveDelayTics();
+  if (delaytics > 0)
+    Delay(delaytics);
 
   if (ClassifyActor(selftid) == ACTOR_NONE)
     terminate;

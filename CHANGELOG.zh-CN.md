@@ -16,6 +16,9 @@
 - 自燃（`OnFire`）在受到任意冰属性有效伤害时现会减少 1 层 `OnFireItemFlag`（清零时同步解除 `SUDDENLYONFIRE` 并生成蒸汽特效，`uh_OnFireIceQuench`）。
 - 补回 Unholy Unbound 中 `TreeHugger` 与 `TreeHuggerShiny` 在回血状态（`PowerTreeHuggerFlag`）下的动态武器条覆盖动画（`26_F_BAR`／`26_F_VAR` 及 Shiny 版 `26_FSBAR`／`26_FSVAR`）。
 - 为三色霸天虎的红色主子弹（`DestronShotPurple`、`DestronShotBlue`、`DestronShotRed`）加入可被幸存者打掉的特性（`UH_ShootableActor` + `+SHOOTABLE` + `-NOBLOCKMAP`，免疫霸天虎自身与同阵营伤害）；2x2 小白点子弹（`DestronVeryVerySmallShot`）保持不可被打掉。
+- 新增服务端 CVar `uh_sv_dickhead_revive_delay`（0–60 秒，默认 3 秒，已接入 `Unholy Server Options -> Game Rules` 菜单），支持主机自由调整几把头（`Dickhead`）落地生效与后续延迟复活的等待时间。
+- 参照 `gondola-classtalents` 中 GyroMan 天赋（`GyromanRazorwing`）缩小蚊子眼（`MosquitoDemoneye`）的体型与碰撞箱（`Scale 0.6`、`Radius 8`、`Height 16`、`Player.ViewHeight 18`、`Player.AttackZOffset 6`），并同步下调 `MosquitoeyeGrabber`／`MosquitoeyeDamager` 的生成高度。
+- 补全并更新 Unholy 菜单中的 `Class Information`、`Boss Information`、`Demoneye Information` 与 `Item Information` 简介页面（`MENUDEF.CHELP`／`BossHelp`／`EyeHelp`／`ItemHelp`），覆盖 Razon 4.0 新增的幸存者（`Eden`、`Crystrap`）、15 个新增 Boss、4 个新增恶魔眼以及 Pandora／Mystic／Tank of Wonders／符文道具说明。
 
 ## 4.0.0-beta.261122
 

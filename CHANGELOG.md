@@ -16,6 +16,9 @@
 - Self-Fire (`OnFire`) now loses 1 `OnFireItemFlag` stack (and clears `SUDDENLYONFIRE` at 0 stacks, with steam FX) whenever the burning player takes positive ice-type damage (`uh_OnFireIceQuench`).
 - Restored the Unholy Unbound animated healing weapon bar overlay (`26_F_BAR` / `26_F_VAR` and Shiny `26_FSBAR` / `26_FSVAR`) for `TreeHugger` and `TreeHuggerShiny` when `PowerTreeHuggerFlag` is active.
 - Made the three Destron bosses' red bullets (`DestronShotPurple`, `DestronShotBlue`, `DestronShotRed`) shootable by survivors (`UH_ShootableActor` + `+SHOOTABLE` + `-NOBLOCKMAP`, immune to Destron self/ally damage), while keeping the 2x2 white dot (`DestronVeryVerySmallShot`) unshootable.
+- Added server CVar `uh_sv_dickhead_revive_delay` (0–60s, default 3s; exposed in `Unholy Server Options -> Game Rules`) so hosts can customize the Dickhead revival delay for both initial arming and delayed watch revivals.
+- Shrunk `MosquitoDemoneye` (`Scale 0.6`, `Radius 8`, `Height 16`, `Player.ViewHeight 18`, `Player.AttackZOffset 6`) to match `GyromanRazorwing`-style compact mosquito proportions, and lowered `MosquitoeyeGrabber` / `MosquitoeyeDamager` spawn Z offsets accordingly.
+- Restored and updated the Unholy Menu information pages (`UH_ClassHelpMenu`, `UH_BossHelpMenu`, `UH_EyeHelpMenu`, and `UH_ItemHelpMenu` via `MENUDEF.CHELP`, `MENUDEF.BossHelp`, `MENUDEF.EyeHelp`, `MENUDEF.ItemHelp`), covering all Razon 4.0 survivors (`Eden`, `Crystrap`, etc.), 15 new bosses, 4 new demoneyes, and current Pandora / Mystic / Tank of Wonders / Rune items.
 
 ## 4.0.0-beta.261122
 
