@@ -6,6 +6,7 @@
 
 ## Unreleased
 
+- Fixed v6c assist items drawn via MegaMan's Reload disappearing when a survivor activates `TruePowerItem`: `uh_StripSurvivorWeps` now takes a `keep_assists` flag and `uh_shinyclassmorpher` passes `1` so Shiny survivors retain held assist items (while Boss and Demoneye morphs continue stripping them).
 - Fixed missing-script error `P_StartScript: Unknown script "PBMug_Megaman"` when standalone UIX/PBSKINS is not loaded: `PBMug_MegaManU`, `PBMug_MegaManUShiny`, and `UH_PlayerAppearancePortrait` now guard the `PBMug_Megaman` delegate with `SpawnForced("PBMug_Megaman", ...)` and fall back to the shared UH portrait resolver / `UMUG_0`.
 - Fixed v6c Mega Man Buster upgrades always dealing friendly fire to survivor teammates: added the 8 missing v6c Buster `DamageType`s (`RockKick`, `RushBike`, `PowerJab`, `PowerStraight`, `MegaArm`, `MegaArmHand`, `RollSwing`, `RollSwingSweep`) to `PowerProtectSurvivorBaseline` and regenerated `daily_ff_data.acs`.
 - Fixed Meister Wahwee Phase 2 being unable to switch weapons (`Wahwee_W1` ↔ `Wahwee_W2`) online: routed `UnholyBossAmmo300` and `Wahwee_Cooldown` updates through server-authoritative ACS helpers in [server_power.acs](src/acs_source/classes/shared/server_power.acs) so clients mirror the switch-cooldown meter and unlock `WRF_DISABLESWITCH`, and cleared `UH_PhaseResume_F` before removing the Phase 1 weapon.

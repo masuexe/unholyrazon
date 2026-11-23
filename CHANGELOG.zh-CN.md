@@ -6,6 +6,7 @@
 
 ## Unreleased
 
+- 修复洛克人（`MegaManU`）通过 Reload 抽出的 v6c 辅助道具在幸存者使用 `TruePowerItem` 变身 Shiny 后消失的问题：`uh_StripSurvivorWeps` 新增 `keep_assists` 参数，`uh_shinyclassmorpher` 传入 `1` 以保留幸存者持有的辅助道具（Boss 与恶魔眼变身仍正常清理）。
 - 修复未加载独立 UIX/PBSKINS 时触发 `P_StartScript: Unknown script "PBMug_Megaman"` 报错的问题：`PBMug_MegaManU`、`PBMug_MegaManUShiny` 及 `UH_PlayerAppearancePortrait` 现会先通过 `SpawnForced("PBMug_Megaman", ...)` 检查存在性，缺失时回退至统一的 UH 头像解析器／`UMUG_0`。
 - 修复 v6c 洛克人 Buster 升级武器常驻友伤的问题：在 `PowerProtectSurvivorBaseline` 中补齐缺失的 8 个 v6c Buster `DamageType`（`RockKick`、`RushBike`、`PowerJab`、`PowerStraight`、`MegaArm`、`MegaArmHand`、`RollSwing`、`RollSwingSweep`）并重新生成 `daily_ff_data.acs`。
 - 修复威利（`MeisterWahwee`）二形态在联机时无法切换武器（`Wahwee_W1` ↔ `Wahwee_W2`）的问题：将 `UnholyBossAmmo300` 与 `Wahwee_Cooldown` 的增减/清零统一改为服务端权威 ACS（[server_power.acs](src/acs_source/classes/shared/server_power.acs)），使联机客户端能正常同步切枪冷却并解除 `WRF_DISABLESWITCH`；同时在移除一形态武器前清理 `UH_PhaseResume_F`。
