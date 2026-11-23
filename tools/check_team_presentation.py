@@ -193,15 +193,20 @@ def main() -> int:
         print(f"FAIL GemBanker UIX base portrait: {effect_mugs}")
         fails += 1
     mugs.update(effect_mugs)
-    # MegaMan killfeed faces are dynamic: delegate to stock UIX PBSKINS so
-    # visible skins and pbskins_maestromug retain their original behaviour.
+    # MegaMan killfeed faces are dynamic: delegate to stock UIX PBSKINS when
+    # present (guarded by SpawnForced("PBMug_Megaman", ...)) and fall back to
+    # the UH portrait resolver / UMUG_0 when standalone UIX is absent.
+    uixmugs_src = read(UIXMUGS)
     dynamic_re = re.compile(
         r'script\s+"PBMug_([A-Za-z0-9_]+)"\s*\(int tid\)\s*'
-        r'\{SetResultValue\(ACS_NamedExecuteWithResult\("PBMug_Megaman", tid\)\);\}'
+        r'\{SetResultValue\(UH_PBMugMegaManFallback\(tid\)\);\}'
     )
-    dynamic = set(dynamic_re.findall(read(UIXMUGS)))
+    dynamic = set(dynamic_re.findall(uixmugs_src))
     if dynamic != {"MegaManU", "MegaManUShiny"}:
         print(f"FAIL MegaMan UIX skin delegates: {sorted(dynamic)}")
+        fails += 1
+    if 'SpawnForced("PBMug_Megaman"' not in uixmugs_src or 'ACS_NamedExecuteWithResult("PBMug_Megaman", tid)' not in uixmugs_src:
+        print("FAIL MegaMan UIX fallback missing guarded PBMug_Megaman delegate")
         fails += 1
     markers = read(ROOT / "src/actors/compat/uix/MegaManU_Mugshot.dec")
     for cls in dynamic:

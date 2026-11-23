@@ -4,6 +4,14 @@
 
 ---
 
+## Unreleased
+
+- 修复未加载独立 UIX/PBSKINS 时触发 `P_StartScript: Unknown script "PBMug_Megaman"` 报错的问题：`PBMug_MegaManU`、`PBMug_MegaManUShiny` 及 `UH_PlayerAppearancePortrait` 现会先通过 `SpawnForced("PBMug_Megaman", ...)` 检查存在性，缺失时回退至统一的 UH 头像解析器／`UMUG_0`。
+- 修复 v6c 洛克人 Buster 升级武器常驻友伤的问题：在 `PowerProtectSurvivorBaseline` 中补齐缺失的 8 个 v6c Buster `DamageType`（`RockKick`、`RushBike`、`PowerJab`、`PowerStraight`、`MegaArm`、`MegaArmHand`、`RollSwing`、`RollSwingSweep`）并重新生成 `daily_ff_data.acs`。
+- 修复威利（`MeisterWahwee`）二形态在联机时无法切换武器（`Wahwee_W1` ↔ `Wahwee_W2`）的问题：将 `UnholyBossAmmo300` 与 `Wahwee_Cooldown` 的增减/清零统一改为服务端权威 ACS（[server_power.acs](src/acs_source/classes/shared/server_power.acs)），使联机客户端能正常同步切枪冷却并解除 `WRF_DISABLESWITCH`；同时在移除一形态武器前清理 `UH_PhaseResume_F`。
+- 修复异变石（`WonderStone`）与小火人（`Minivile`）击杀缺少击杀／助攻文案并回退到默认文本的问题：修正 `WonderStoneShot1` 的 `DamageType` 拼写（`WanderStone` → `WonderStone`），为 `WonderStoneShot1..X` 补齐 `Obituary` 与 `SelfObituary`，并新增 `HazardTag_WonderStone` 与 `HazardTag_MiniVileFire`。
+- 修复 1UP（`UnholyInsuranceItem`）等基于 `PlayerPropertyBuddha` 的免死保护在边界场景下失效的问题：`BuddhaRestore_P` 与 `BuddhaOff_P` 现会同时检查 `PlayerPropertyBuddha` 避免被旧逻辑清掉 `PROP_BUDDHA`，并在 `ClassBase_UH10_BaseDamageTypes` 补齐 `Pain.EclipsePunch` 适配器以正常进入 `Pain_Buddha`。
+
 ## 4.0.0-beta.261122
 
 - 优化多人 LMS 对局中客户端 HUD、队友栏及状态同步的高频开销，缓解客户端掉帧与卡顿：

@@ -85,3 +85,25 @@ script "uh_PlasmaSpark_ClearCharge" (void) {
 script "uh_Qwant_MoveRelearnGive" (int amount) {
   UH_ServerPowerGive("MoveRelearnAmmo", amount);
 }
+
+// Meister Wahwee Phase 2: weapon-switch cooldown (UnholyBossAmmo300) and
+// Speed Gear cooldown (Wahwee_Cooldown) tick in Flash, which exits on network
+// clients because uh_CanContinueBossWeaponFlash is server-side. Keep both
+// server-authoritative so clients mirror the real values and unlock switching.
+script "uh_Wahwee_ClearSwitchAmmo" (void) {
+  if (!UH_IsNetworkClient())
+    TakeInventory("UnholyBossAmmo300", 0x7fffffff);
+}
+
+script "uh_Wahwee_SwitchAmmoRegen" (int amount) {
+  UH_ServerPowerGive("UnholyBossAmmo300", amount);
+}
+
+script "uh_Wahwee_CooldownGive" (int amount) {
+  UH_ServerPowerGive("Wahwee_Cooldown", amount);
+}
+
+script "uh_Wahwee_CooldownTick" (void) {
+  if (!UH_IsNetworkClient() && CheckInventory("Wahwee_Cooldown") > 0)
+    TakeInventory("Wahwee_Cooldown", 1);
+}

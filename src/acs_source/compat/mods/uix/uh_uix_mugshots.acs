@@ -20,8 +20,22 @@
 // 8x8 logical size its skull effect layer (UXMGSKIE) expects. IDs are
 // the KEYCONF addplayerclass order.
 
-script "PBMug_MegaManU" (int tid) {SetResultValue(ACS_NamedExecuteWithResult("PBMug_Megaman", tid));}
-script "PBMug_MegaManUShiny" (int tid) {SetResultValue(ACS_NamedExecuteWithResult("PBMug_Megaman", tid));}
+function str UH_PBMugMegaManFallback(int tid) {
+  int u = UniqueTID();
+  if (SpawnForced("PBMug_Megaman", 0, 0, 0, u, 0)) {
+    Thing_Remove(u);
+    str pb = ACS_NamedExecuteWithResult("PBMug_Megaman", tid);
+    if (StrLen(pb) != 0)
+      return pb;
+  }
+  str face = ACS_NamedExecuteWithResult("uh_GetTeamPortraitForTid", tid);
+  if (StrLen(face) != 0)
+    return face;
+  return "UMUG_0";
+}
+
+script "PBMug_MegaManU" (int tid) {SetResultValue(UH_PBMugMegaManFallback(tid));}
+script "PBMug_MegaManUShiny" (int tid) {SetResultValue(UH_PBMugMegaManFallback(tid));}
 #include "uh_uix_shiny_mugshots.generated.acs"
 script "PBMug_Qwant" (int tid) {SetResultValue("UMUG_1");}
 script "PBMug_NegaMan" (int tid) {SetResultValue("UMUG_2");}
