@@ -50,13 +50,49 @@ SPECS = [
          "UH_EyeMainfire", "UH_EyeAltfire", "UH_EyeExtra"],
         {"UH_EyeMainfire", "UH_EyeAltfire", "UH_EyeExtra"},
     ),
-    (
-        "src/MENUDEF.ItemHelp",
-        "UH_ItemHelpMenu",
-        ["UH_ItemName", "UH_ItemCategory", "UH_ItemDesc"],
-        {"UH_ItemCategory", "UH_ItemDesc"},
-    ),
 ]
+
+LIST_MENU_RE = re.compile(r'ListMenu\s+"?(\w+)"?\s*\{(.*?)\}', re.S)
+
+
+def check_item_help(errors: list[str]) -> None:
+    rel_path = "src/MENUDEF.ItemHelp"
+    path = ROOT / rel_path
+    if not path.exists():
+        errors.append(f"{rel_path}: file missing")
+        return
+    text = path.read_text(encoding="utf-8", errors="replace")
+    list_menus = {m.group(1): m.group(2) for m in LIST_MENU_RE.finditer(text)}
+    opt_menus = {m.group(1): m.group(2) for m in OPTION_MENU_RE.finditer(text)}
+    if "UH_ItemHelpMenu" not in opt_menus:
+        errors.append(f"{rel_path}: missing OptionMenu UH_ItemHelpMenu")
+        return
+
+    valid_targets = set(list_menus) | set(opt_menus)
+    # Check Submenu targets in TOC
+    for sm in re.finditer(r'Submenu\s+"[^"]+"\s*,\s*"(\w+)"', opt_menus["UH_ItemHelpMenu"]):
+        if sm.group(1) not in valid_targets:
+            errors.append(f"{rel_path}: Submenu target {sm.group(1)!r} not defined")
+
+    # Check every ListMenu has at least one TextItem/PatchItem and valid targets
+    for lname, body in list_menus.items():
+        items = re.findall(r'(?:TextItem|PatchItem)\s+"[^"]*"\s*,\s*"[^"]*"\s*,\s*"(\w+)"', body)
+        if not items:
+            errors.append(f"{rel_path}: ListMenu {lname} has no selectable items")
+        for target in items:
+            if target not in valid_targets:
+                errors.append(f"{rel_path}: ListMenu {lname} targets undefined menu {target!r}")
+        for sm in re.finditer(r'"((?:\\.|[^"\\])*)"', body):
+            for bm in re.finditer(r'\\(.)', sm.group(1)):
+                if bm.group(1) not in ('n', '"', '\\', 'c'):
+                    errors.append(
+                        f"{rel_path}:{lname}: stray backslash escape \\{bm.group(1)} in {sm.group(1)!r}"
+                    )
+        for tm in re.finditer(r'StaticText\s+38,\s*\d+,\s*"([^"]+)"', body):
+            if len(tm.group(1)) > 35:
+                errors.append(
+                    f"{rel_path}:{lname}: StaticText exceeds 35-char width ({len(tm.group(1))}): {tm.group(1)!r}"
+                )
 
 
 def parse_menu_budgets(text: str, menu_name: str) -> dict[str, int]:
@@ -153,6 +189,8 @@ def main() -> int:
                         errors.append(
                             f"{rel_path}:{tname}[{eid}]: stray backslash escape \\{bm.group(1)} in {val!r}"
                         )
+
+    check_item_help(errors)
 
     if errors:
         for err in errors:
