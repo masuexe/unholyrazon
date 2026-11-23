@@ -76,12 +76,16 @@ def check_item_help(errors: list[str]) -> None:
 
     # Check every ListMenu has at least one TextItem/PatchItem and valid targets
     for lname, body in list_menus.items():
-        items = re.findall(r'(?:TextItem|PatchItem)\s+"[^"]*"\s*,\s*"[^"]*"\s*,\s*"(\w+)"', body)
+        items = re.findall(r'(?:TextItem|PatchItem)\s+"[^"]*"\s*,\s*"[^"]*"\s*,\s*"(\w*)"', body)
         if not items:
             errors.append(f"{rel_path}: ListMenu {lname} has no selectable items")
         for target in items:
-            if target not in valid_targets:
+            if target and target not in valid_targets:
                 errors.append(f"{rel_path}: ListMenu {lname} targets undefined menu {target!r}")
+            if target == "UH_ItemHelpMenu":
+                errors.append(
+                    f"{rel_path}: ListMenu {lname} pushes UH_ItemHelpMenu onto menu stack (breaks ESC back)"
+                )
         for sm in re.finditer(r'"((?:\\.|[^"\\])*)"', body):
             for bm in re.finditer(r'\\(.)', sm.group(1)):
                 if bm.group(1) not in ('n', '"', '\\', 'c'):
