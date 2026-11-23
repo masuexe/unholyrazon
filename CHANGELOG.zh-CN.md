@@ -11,6 +11,12 @@
 - 修复威利（`MeisterWahwee`）二形态在联机时无法切换武器（`Wahwee_W1` ↔ `Wahwee_W2`）的问题：将 `UnholyBossAmmo300` 与 `Wahwee_Cooldown` 的增减/清零统一改为服务端权威 ACS（[server_power.acs](src/acs_source/classes/shared/server_power.acs)），使联机客户端能正常同步切枪冷却并解除 `WRF_DISABLESWITCH`；同时在移除一形态武器前清理 `UH_PhaseResume_F`。
 - 修复异变石（`WonderStone`）与小火人（`Minivile`）击杀缺少击杀／助攻文案并回退到默认文本的问题：修正 `WonderStoneShot1` 的 `DamageType` 拼写（`WanderStone` → `WonderStone`），为 `WonderStoneShot1..X` 补齐 `Obituary` 与 `SelfObituary`，并新增 `HazardTag_WonderStone` 与 `HazardTag_MiniVileFire`。
 - 修复 1UP（`UnholyInsuranceItem`）等基于 `PlayerPropertyBuddha` 的免死保护在边界场景下失效的问题：`BuddhaRestore_P` 与 `BuddhaOff_P` 现会同时检查 `PlayerPropertyBuddha` 避免被旧逻辑清掉 `PROP_BUDDHA`，并在 `ClassBase_UH10_BaseDamageTypes` 补齐 `Pain.EclipsePunch` 适配器以正常进入 `Pain_Buddha`。
+- 法老（`Pharaohman4MI`）在死亡或解除变身时现会清除全场玩家身上的所有诅咒（若场上仍有其他存活的 `Pharaohman4MI` 则保留）。
+- 马 Boss（`DLCCentaurman`）改为类似 RaThor 的受击标记机制：玩家只要被 `DLCCent`／`DLCCentBomb` 命中即挂上 `DLCCentaurHitFlag`，之后无论以何种方式死亡都会在 `UH_ClassDeath_P` 掉落一次武器或浮游炮补给（直接击杀不重复掉落）。
+- 自燃（`OnFire`）在受到任意冰属性有效伤害时现会减少 1 层 `OnFireItemFlag`（清零时同步解除 `SUDDENLYONFIRE` 并生成蒸汽特效，`uh_OnFireIceQuench`）。
+- 为克劳恩皮丝终符（`Clownpiece_W8`）接入落坑飞行耐力检测（`uh_BossFlightPit`），补齐全部可持续飞行 Boss 的落坑检测覆盖（与 `Misery`、`CXAirMan`、三色霸天虎、`SPOOKYGHOSTHITLER`、`MosquitoDemoneye` 一致）。
+- 补回 Unholy Unbound 中 `TreeHugger` 与 `TreeHuggerShiny` 在回血状态（`PowerTreeHuggerFlag`）下的动态武器条覆盖动画（`26_F_BAR`／`26_F_VAR` 及 Shiny 版 `26_FSBAR`／`26_FSVAR`）。
+- 为霸天虎（`PurpleDestron`、`BlueDestron`、`RedDestron`）的全部子弹（`DestronShotPurple`、`DestronShotBlue`、`DestronShotRed`、`DestronVeryVerySmallShot`）加入可被幸存者打掉的特性（`UH_ShootableActor` + `+SHOOTABLE` + `-NOBLOCKMAP`，免疫霸天虎自身与同阵营伤害）。
 
 ## 4.0.0-beta.261122
 

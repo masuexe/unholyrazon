@@ -11,6 +11,12 @@
 - Fixed Meister Wahwee Phase 2 being unable to switch weapons (`Wahwee_W1` ↔ `Wahwee_W2`) online: routed `UnholyBossAmmo300` and `Wahwee_Cooldown` updates through server-authoritative ACS helpers in [server_power.acs](src/acs_source/classes/shared/server_power.acs) so clients mirror the switch-cooldown meter and unlock `WRF_DISABLESWITCH`, and cleared `UH_PhaseResume_F` before removing the Phase 1 weapon.
 - Fixed Wonder Stone and Mini-Vile kills falling back to default obituaries: corrected `WonderStoneShot1`'s `DamageType` typo (`WanderStone` -> `WonderStone`), added `Obituary`/`SelfObituary` to `WonderStoneShot1..X` for ownerless `A_SpawnItemEx` shots, and added `HazardTag_WonderStone` and `HazardTag_MiniVileFire` for kill-assist credits.
 - Fixed edge cases where 1UP (`UnholyInsuranceItem`) and other `PlayerPropertyBuddha`-based extra lives could be stripped or bypassed: `BuddhaRestore_P` and `BuddhaOff_P` now respect `PlayerPropertyBuddha`, and `ClassBase_UH10_BaseDamageTypes` adds a `Pain.EclipsePunch` adapter that routes Buddha-protected players into `Pain_Buddha`.
+- PharaohMan 4MI (`Pharaohman4MI`) now clears all active curses across players on death and unmorph (unless another living `Pharaohman4MI` remains in play).
+- DLC Centaurman (`DLCCentaurman`) now marks any hit target with `DLCCentaurHitFlag` (`Pain.DLCCent` / `Pain.DLCCentBomb`) so they drop a Centaur weapon or option pickup upon any subsequent death (RaThor-style), without double-dropping on direct kills.
+- Self-Fire (`OnFire`) now loses 1 `OnFireItemFlag` stack (and clears `SUDDENLYONFIRE` at 0 stacks, with steam FX) whenever the burning player takes positive ice-type damage (`uh_OnFireIceQuench`).
+- Added damaging-pit flight stamina (`uh_BossFlightPit`) to Clownpiece's final survival spell (`Clownpiece_W8`), completing pit-detection coverage across all bosses with continuous flight (alongside `Misery`, `CXAirMan`, `Destron` trio, `SPOOKYGHOSTHITLER`, and `MosquitoDemoneye`).
+- Restored the Unholy Unbound animated healing weapon bar overlay (`26_F_BAR` / `26_F_VAR` and Shiny `26_FSBAR` / `26_FSVAR`) for `TreeHugger` and `TreeHuggerShiny` when `PowerTreeHuggerFlag` is active.
+- Made Destron boss projectiles (`DestronShotPurple`, `DestronShotBlue`, `DestronShotRed`, `DestronVeryVerySmallShot`) shootable by survivors (`UH_ShootableActor` + `+SHOOTABLE` + `-NOBLOCKMAP`, immune to Destron self/ally damage).
 
 ## 4.0.0-beta.261122
 

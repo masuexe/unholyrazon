@@ -101,6 +101,54 @@ script "UB_OnFireFinalBurn" (void) {
   Thing_Damage2(ACS_NamedExecuteWithResult("core_getptrtid", AAPTR_TARGET), 100000, "OnFireB");
 }
 
+function bool UH_IsIceDamageType(str dmgtype) {
+  if (!StrICmp(dmgtype, "Ice") || !StrICmp(dmgtype, "IceSlasher") ||
+      !StrICmp(dmgtype, "BlizzardAttack") || !StrICmp(dmgtype, "FreezeCracker") ||
+      !StrICmp(dmgtype, "FreezeCrackerBit") || !StrICmp(dmgtype, "IceWave") ||
+      !StrICmp(dmgtype, "ChillSpike") || !StrICmp(dmgtype, "ChillShot") ||
+      !StrICmp(dmgtype, "WilyIce") || !StrICmp(dmgtype, "GigaIceWave") ||
+      !StrICmp(dmgtype, "IceWall") || !StrICmp(dmgtype, "IceBlock") ||
+      !StrICmp(dmgtype, "ChillCubeRespawn") || !StrICmp(dmgtype, "FreezeSpikeU") ||
+      !StrICmp(dmgtype, "SnowBoardFinishU"))
+    return true;
+  if (!StrICmp(dmgtype, "ColdShot") || !StrICmp(dmgtype, "ColdMist") ||
+      !StrICmp(dmgtype, "IceBeam") || !StrICmp(dmgtype, "FreezeDry") ||
+      !StrICmp(dmgtype, "IceShard") || !StrICmp(dmgtype, "NegaIceWall") ||
+      !StrICmp(dmgtype, "NegaIceWallBeam") || !StrICmp(dmgtype, "NegaIceWallExplode") ||
+      !StrICmp(dmgtype, "NegaChillSpike") || !StrICmp(dmgtype, "NegaChillShot") ||
+      !StrICmp(dmgtype, "NegaIceWave") || !StrICmp(dmgtype, "LuckyIce") ||
+      !StrICmp(dmgtype, "DemonToyIce") || !StrICmp(dmgtype, "SovietCold") ||
+      !StrICmp(dmgtype, "SovietChill") || !StrICmp(dmgtype, "SueIce") ||
+      !StrICmp(dmgtype, "ElementalIce") || !StrICmp(dmgtype, "ASPIceMagic") ||
+      !StrICmp(dmgtype, "ShinNegaIce") || !StrICmp(dmgtype, "FrigidFreezer") ||
+      !StrICmp(dmgtype, "MGZeroIcicle") || !StrICmp(dmgtype, "VWIceRock") ||
+      !StrICmp(dmgtype, "Blizzard"))
+    return true;
+  return false;
+}
+
+script "uh_OnFireIceQuench" (int evt, int dmg, int dmgtype) EVENT {
+  if (evt != GAMEEVENT_ACTOR_DAMAGED)
+    terminate;
+  if (GetEventResult() <= 0)
+    terminate;
+  if (!SetActivator(0, AAPTR_DAMAGE_TARGET))
+    terminate;
+  if (PlayerNumber() < 0)
+    terminate;
+  if (GetActorProperty(0, APROP_Health) <= 0)
+    terminate;
+  if (!CheckInventory("SUDDENLYONFIRE"))
+    terminate;
+  if (!UH_IsIceDamageType(dmgtype))
+    terminate;
+
+  TakeInventory("OnFireItemFlag", 1);
+  if (!CheckInventory("OnFireItemFlag"))
+    TakeInventory("SUDDENLYONFIRE", 1);
+  SpawnForced("OnFireWaterSteam_U", GetActorX(0), GetActorY(0), GetActorZ(0) + 28.0);
+}
+
 script "UB_WhackSpellRNGCheck" (int high_hp, int low_hp, int user_hp, int bonuschance) {
   if (Timer() <= 100) {SetResultValue(1); terminate;}  // Quick kill lol
 

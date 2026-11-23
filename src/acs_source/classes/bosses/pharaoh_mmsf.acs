@@ -72,6 +72,17 @@ script "rzc_Pharaoh4MICurse" (int toggle) {
     AmbientSound("weapon/upsidedown", 127);
     ACS_NamedExecuteWithResult("uh_GiveEveryoneInventoryExceptBossesACS", "GivePharaoh4MICurse_P", 1);
   } else {
+    // Keep curses active if another living Pharaohman4MI is still in play.
+    int self_tid = ActivatorTID();
+    for (int p = 0; p < ServerMAX; p++) {
+      int ptid = p + 1000;
+      if (ptid == self_tid || !PlayerInGame(p))
+        continue;
+      if (!StrICmp(GetActorClass(ptid), "Pharaohman4MI") &&
+          GetActorProperty(ptid, APROP_Health) > 0 &&
+          !CheckActorInventory(ptid, "IsDead"))
+        terminate;
+    }
     GiveMeTheFunc("RemovePharaoh4MICurse_P", 1);
   }
 }
