@@ -1,0 +1,66 @@
+// Jump-to-current shortcuts for the Unholy info menus (MENUDEF.CHELP / BossHelp / EyeHelp).
+
+function int UH_MenuJumpFindBossOnField(void) {
+  int p;
+  int bid;
+  for (p = 0; p < ServerMAX; p++) {
+    if (!PlayerInGame(p))
+      continue;
+    bid = FindBossByActor(GetActorClass(1000 + p));
+    if (bid >= 0)
+      return bid;
+  }
+  return UHBOSS_FAIL;
+}
+
+function int UH_MenuJumpFindEyeOnField(void) {
+  int p;
+  int eid;
+  for (p = 0; p < ServerMAX; p++) {
+    if (!PlayerInGame(p))
+      continue;
+    eid = FindEyeByActor(GetActorClass(1000 + p));
+    if (eid >= 0)
+      return eid;
+  }
+  return UHEYE_FAIL;
+}
+
+script "UH_SetCH_MenuNum" (void) NET CLIENTSIDE {
+  int cpn = ConsolePlayerNumber();
+  if (cpn < 0 || cpn != PlayerNumber())
+    terminate;
+
+  int id = FindSurvivorByActor(GetActorClass(0));
+  if (id < 0) {
+    int pclass = PlayerClass(cpn);
+    if (pclass >= 0 && IsSurvivorDefined(pclass))
+      id = pclass;
+  }
+  if (id >= 0)
+    SetCVar("_UH_CH_Menu", id);
+}
+
+script "UH_SetBH_MenuNum" (void) NET CLIENTSIDE {
+  int cpn = ConsolePlayerNumber();
+  if (cpn < 0 || cpn != PlayerNumber())
+    terminate;
+
+  int id = FindBossByActor(GetActorClass(0));
+  if (id < 0)
+    id = UH_MenuJumpFindBossOnField();
+  if (id >= 0)
+    SetCVar("_UH_BH_Menu", id);
+}
+
+script "UH_SetEH_MenuNum" (void) NET CLIENTSIDE {
+  int cpn = ConsolePlayerNumber();
+  if (cpn < 0 || cpn != PlayerNumber())
+    terminate;
+
+  int id = FindEyeByActor(GetActorClass(0));
+  if (id < 0)
+    id = UH_MenuJumpFindEyeOnField();
+  if (id >= 0)
+    SetCVar("_UH_EH_Menu", id);
+}

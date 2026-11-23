@@ -148,6 +148,11 @@ def main() -> int:
                     errors.append(
                         f"{rel_path}:{tname}[{eid}]: {line_count} lines exceeds menu budget {max_lines}"
                     )
+                for bm in re.finditer(r'\\(.)', val):
+                    if bm.group(1) not in ('n', '"', '\\', 'c'):
+                        errors.append(
+                            f"{rel_path}:{tname}[{eid}]: stray backslash escape \\{bm.group(1)} in {val!r}"
+                        )
 
     if errors:
         for err in errors:
