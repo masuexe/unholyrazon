@@ -327,6 +327,16 @@ MUTATIONS = [
             '        if False:',
         ),
     },
+    {
+        "name": "info-menu-missing-color-prefix",
+        "checker": "tools/check_info_menus.py",
+        "why": "new info menu description omits Zandronum color code and mismatches vanilla style",
+        "file": "src/MENUDEF.CHELP",
+        "replace": (
+            '60, "\\cdExplodes into crystal shards on death"//Crystrap',
+            '60, "Explodes into crystal shards on death"//Crystrap',
+        ),
+    },
 ]
 
 
