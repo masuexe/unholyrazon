@@ -835,6 +835,7 @@ TAG_DEye12_W = "Assumption Minor";//Alien
 TAG_DEye13_W = "Demoneye Typhoon Hand";
 TAG_DEye14_W = "Demoneye Brick Hand";
 TAG_DEye15_W = "Demoneye Blood Dick";
+TAG_DEye16_W = "Demoneye Horse Ass";
 TAG_DEye30_W = "Demoneye Nothing";//Fox
 TAG_DEye31_W = "Demoneye True Nothing";//Furry
 TAG_Lackey009_W = "Recruited Demoneye Slapping Hand";//PlainDevilDemoneye
