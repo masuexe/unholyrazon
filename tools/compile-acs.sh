@@ -79,8 +79,10 @@ echo "== uh_lmsdefs =="
 "$ACC" $INC "src/acs_source/systems/lms/definitions/uh_lmsdefs.acs" "$OUT/uh_lmsdefs.o" || fail=1
 echo "== uh_musicdefs =="
 "$ACC" $INC "src/acs_source/systems/music/uh_musicdefs.acs" "$OUT/uh_musicdefs.o" || fail=1
-echo "== uh_music =="
-"$ACC" $INC "src/acs_source/_imports/uh_music.acs" "$OUT/uh_music.o" || fail=1
+echo "== uhmusrt =="
+"$ACC" $INC "src/acs_source/_imports/uhmusrt.acs" "$OUT/uhmusrt.o" || fail=1
+echo "== uhteamrt =="
+"$ACC" $INC "src/acs_source/_imports/uhteamrt.acs" "$OUT/uhteamrt.o" || fail=1
 echo "== uh_bonusdefs =="
 "$ACC" $INC "src/acs_source/systems/bonus_events/definitions/uh_bonusdefs.acs" "$OUT/uh_bonusdefs.o" || fail=1
 echo "== uh_shared =="

@@ -13,7 +13,23 @@ script "uh_AreGameplayTeammates" (int owner, int victim) {
     SetResultValue(false);
     terminate;
   }
-  SetResultValue(UH_Ti_ServerAreDisplayTeammates(owner, victim));
+  bool onevsall = UH_TeamInfo_IsOneVsAllActive();
+  int target = onevsall ? UH_TeamInfo_OneVsAllTarget() : -1;
+  SetResultValue(UH_Ti_ServerTeammatesForSplit(owner, victim, onevsall, target,
+    UH_TeamInfo_ScorePolicy()));
+}
+
+// Read-only round split queries used by library uh_teaminfo.
+script "uh_TiIsOneVsAllActive" (void) {
+  SetResultValue(UH_TeamInfo_IsOneVsAllActive());
+}
+
+script "uh_TiOneVsAllTarget" (void) {
+  SetResultValue(UH_TeamInfo_OneVsAllTarget());
+}
+
+script "uh_TiScorePolicy" (void) {
+  SetResultValue(UH_TeamInfo_ScorePolicy());
 }
 
 // Daily eligibility must not reinstate immunity removed for the result window.
@@ -91,8 +107,7 @@ script "uh_SetPlayerLifeStatus" (int player, int status) {
   if (player < 0)
     terminate;
   playerlifestatusarr[player] = status;
-  if (status == PLS_NULL) {uhsrvrole[player] = PLS_NULL;}
-  else if (status != PLS_DEAD) {uhsrvrole[player] = status;}
+  UH_Ti_SetServerStatus(player, status);
   // External setter: keep the client display snapshot in step.
   UH_TeamInfo_BroadcastStatus(player, status);
 }

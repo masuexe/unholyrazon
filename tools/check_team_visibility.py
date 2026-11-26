@@ -54,15 +54,16 @@ def check_automap_xray_wiring(xray: str, mautomap: str) -> None:
 
 
 def main():
-    team = (ROOT / "src/acs_source/unholy/uh_teaminfo.acs").read_text()
+    team = (ROOT / "src/acs_source/_imports/uhteamrt.acs").read_text()
     automap = (ROOT / "src/acs_source/hud/automap_markers.acs").read_text()
     xray = (ROOT / "src/acs_source/systems/shared/projectile_and_xray.acs").read_text()
     mautomap = (ROOT / "src/acs_source/v6b_overrides/corescripts/systems/MAUTOMAP.acs").read_text()
     check_automap_xray_wiring(xray, mautomap)
-    definitions = (ROOT / "src/acs_source/unholy/uh_def.acs").read_text()
-    constants = "\n".join(re.findall(
-        r"^#define (?:PLS_\w+|UH_SCOREPOLICY_\w+|UH_TI_REV_\w+|UH_TI_POLICY_REV_SLOT)\s+.*$",
-        definitions, re.M))
+    constants = "\n".join(
+        re.sub(r"^#libdefine\b", "#define", line)
+        for line in re.findall(
+            r"^#(?:lib)?define (?:PLS_\w+|UH_SCOREPOLICY_\w+|UH_TI_REV_\w+|UH_TI_POLICY_REV_SLOT)\s+.*$",
+            team, re.M))
     xray_constants = "\n".join(re.findall(
         r"^#define (?:UH_XRAY_STEALTH_ALPHA_MAX|UH_XRAY_DIRECT_SIGHT_ALPHA_MIN)\s+.*$",
         xray, re.M))

@@ -1,22 +1,300 @@
-// uh_teaminfo.acs — Unholy client teammate snapshot, display semantics and
-// the native TLMS-style teammate bar.
-//
-// Fragment of the single "unholy" library; #include'd by unholy/unholy.acs
-// after uh_funclib.acs.  It is NOT a library and must not be added to LOADACS.
+// uhteamrt.acs — Unholy client teammate snapshot, display semantics,
+// native TLMS-style teammate bar, scoreboard icon refresh, TLMS display, and
+// automap markers (library "uhteamrt", exact 8-char lump name, listed in
+// LOADACS and #imported by unholy / rz_debug). Consumers must use functions
+// rather than reading map variables directly so importing libraries consume
+// zero map-variable slots.
 //
 // Authority split:
-//   * The server owns playerlifestatusarr, the active bonus event and every
+//   * The server owns player life status, the active bonus event and every
 //     live stat (health, armor, ready weapon, ammo).  In ordinary LMS the
 //     engine classifies Unholy's logical teammates as enemies, so it withholds
 //     their health/armor from clients; the server therefore pushes a
 //     per-viewer snapshot with NamedExecuteClientScript, only for the subjects
 //     UH_Ti_ServerAreDisplayTeammates authorizes that viewer to see.
 //   * Clients own only this display cache.  A pure client never has valid
-//     server runtime arrays, so nothing here may read playerlifestatusarr,
-//     isbonuseventactive, eventdataarr or bossdataarr outside a server script.
+//     server runtime arrays, so nothing here may read server arrays outside a
+//     server script.
 //
 // The same role cache drives the Unholy native bar, the UIXTEAM shadow and the
 // SCORINFO UHPlayerIcon refresh, so the relation rules live here exactly once.
+
+#library "uhteamrt"
+#include "zcommon.acs"
+#import "uh_acsutils.acs"
+#import "uh_log.acs"
+#import "uhdt.acs"
+
+#libdefine PLS_NULL -1
+#libdefine PLS_DEAD 0
+#libdefine PLS_SURVIVOR 1
+#libdefine PLS_BOSS 2
+#libdefine PLS_EYE 6
+
+// Scoreboard portrait-visibility policy, synchronized from the server.  The
+// client cache starts at UH_SCOREPOLICY_INVALID so the scoreboard exposes only
+// self until the authoritative snapshot arrives; an active bonus event whose
+// flags are ambiguous (none or more than one policy flag) is also INVALID
+// rather than a permissive default.  See UH_CanSeeScoreIcon.
+#libdefine UH_SCOREPOLICY_INVALID -1
+#libdefine UH_SCOREPOLICY_NORMAL 0
+#libdefine UH_SCOREPOLICY_FFA 1
+#libdefine UH_SCOREPOLICY_ONEVSALL 2
+#libdefine UH_SCOREPOLICY_ALL_EYE 3
+#libdefine UH_SCOREPOLICY_MULTITEAM 4
+
+// Network ACS scripts may execute in reverse receive order within a tic.
+// Revisions fit above the six-bit player slot without becoming negative.
+#libdefine UH_TI_REV_MASK 0x1ffffff
+#libdefine UH_TI_REV_HALF 0x1000000
+#libdefine UH_TI_POLICY_REV_SLOT (MAX_PLAYERS * 2)
+
+// --- Server-authoritative state cache (pushed by unholy) ---------------------
+// Server-side life status mirror and role cache retained across PLS_DEAD,
+// mirroring the client's uhtilife / uhtirole.
+int uhsrvlife[MAX_PLAYERS] = {PLS_NULL};
+int uhsrvrole[MAX_PLAYERS];
+
+// Definition identity captured server-side, kept across death so a dead player's
+// row can still show the portrait they had while alive (vanilla ids >= 0 only).
+int uhsrvkind[MAX_PLAYERS];
+int uhsrvid[MAX_PLAYERS];
+str uhsrvidentityclass[MAX_PLAYERS];
+bool uhsrvidentityvalid[MAX_PLAYERS];
+// Remaining rows in a per-client snapshot, drained by the server watch in
+// bounded subject batches. Final cell holds the wire revision.
+int uhsrvSnapshotRows[MAX_PLAYERS + 1];
+int uhsrvphase[MAX_PLAYERS];
+str uhsrvphaseclass[MAX_PLAYERS];
+
+// Reset per-round server role cache while preserving dead-spectator life
+// state (PlayerIsSpectator == 2) so a full snapshot keeps dead-row portraits.
+function void UH_Ti_ResetServerRoles(void) {
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    uhsrvrole[c] = PLS_NULL;
+    if (!PlayerInGame(c) && PlayerIsSpectator(c) != 2) {
+      uhsrvlife[c] = PLS_NULL;
+    }
+  }
+}
+
+function void UH_Ti_SetServerStatus(int pn, int status) {
+  if (pn < 0 || pn >= MAX_PLAYERS) {return;}
+  uhsrvlife[pn] = status;
+  if (status == PLS_NULL) {uhsrvrole[pn] = PLS_NULL;}
+  else if (status != PLS_DEAD) {uhsrvrole[pn] = status;}
+}
+
+function bool UH_Ti_QueryOneVsAllActive(void) {
+  return ACS_NamedExecuteWithResult("uh_TiIsOneVsAllActive") != 0;
+}
+
+function int UH_Ti_QueryOneVsAllTarget(void) {
+  return ACS_NamedExecuteWithResult("uh_TiOneVsAllTarget");
+}
+
+function int UH_Ti_QueryScorePolicy(void) {
+  return ACS_NamedExecuteWithResult("uh_TiScorePolicy");
+}
+
+// Stable identity for an actor class, or UH_PLDEF_NONE.  The >= 0 test is what
+// rejects load-order-dependent custom ids.
+function int UH_Ti_KindForClass(str cls) {
+  if (FindSurvivorByActor(cls) >= 0) {return UH_PLDEF_SURVIVOR;}
+  if (FindBossByActor(cls) >= 0) {return UH_PLDEF_BOSS;}
+  if (FindEyeByActor(cls) >= 0) {return UH_PLDEF_EYE;}
+  return UH_PLDEF_NONE;
+}
+
+function int UH_Ti_IdForClass(str cls) {
+  int id = FindSurvivorByActor(cls);
+  if (id >= 0) {return id;}
+  id = FindBossByActor(cls);
+  if (id >= 0) {return id;}
+  id = FindEyeByActor(cls);
+  if (id >= 0) {return id;}
+  return 0;
+}
+
+// Occupies a team-info row: in the game, or a dead spectator.
+function bool UH_Ti_IsConnectedPlayer(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) {return false;}
+  if (PlayerInGame(pn)) {return true;}
+  return PlayerIsSpectator(pn) == 2;
+}
+
+// Engine GetActorClass returns "None" for a missing body, not an empty string.
+function str UH_Ti_ActorClass(int tid) {
+  str actor = GetActorClass(tid);
+  if (!StrICmp(actor, "None")) {return "";}
+  return actor;
+}
+
+// Server-only: reads uhsrvlife, so it must never run on a pure client.
+function void UH_Ti_IdentityForPlayer(int pn) {
+  int kind = UH_PLDEF_NONE;
+  int id = 0;
+  if (pn >= 0 && pn < MAX_PLAYERS) {
+    if (uhsrvlife[pn] != PLS_NULL && UH_Ti_IsConnectedPlayer(pn)) {
+      if (PlayerInGame(pn)) {
+        str cls = UH_Ti_ActorClass(pn + 1000);
+        if (StrCmp(cls, "") != 0) {
+          if (uhsrvidentityvalid[pn] && !StrICmp(cls, uhsrvidentityclass[pn])) {
+            kind = uhsrvkind[pn];
+            id = uhsrvid[pn];
+          } else {
+            kind = UH_Ti_KindForClass(cls);
+            if (kind != UH_PLDEF_NONE) {id = UH_Ti_IdForClass(cls);}
+            uhsrvidentityclass[pn] = cls;
+            uhsrvidentityvalid[pn] = kind != UH_PLDEF_NONE;
+          }
+        } else {
+          uhsrvidentityvalid[pn] = false;
+        }
+      }
+      else {
+        kind = uhsrvkind[pn];
+        id = uhsrvid[pn];
+      }
+    }
+    if (uhsrvlife[pn] == PLS_NULL || !UH_Ti_IsConnectedPlayer(pn)) {
+      uhsrvphase[pn] = 0;
+      uhsrvphaseclass[pn] = "";
+      uhsrvidentityclass[pn] = "";
+      uhsrvidentityvalid[pn] = false;
+    }
+    else if (uhsrvlife[pn] != PLS_DEAD) {
+      str phaseclass = UH_Ti_ActorClass(pn + 1000);
+      if (StrLen(phaseclass)) {
+        uhsrvphaseclass[pn] = phaseclass;
+        uhsrvphase[pn] = UH_PlayerPresentationPhase(pn + 1000);
+      }
+    }
+    uhsrvkind[pn] = kind;
+    uhsrvid[pn] = id;
+  }
+}
+
+function int UH_Ti_CachedKind(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) {return UH_PLDEF_NONE;}
+  return uhsrvkind[pn];
+}
+
+function int UH_Ti_CachedId(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) {return 0;}
+  return uhsrvid[pn];
+}
+
+function bool UH_Ti_IsConnectedClient(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS) {return false;}
+  if (PlayerInGame(pn)) {return true;}
+  return PlayerIsSpectator(pn) != 0;
+}
+
+function void UH_Ti_SendStatusTo(int client, int pn, int status) {
+  if (!UH_Ti_IsConnectedClient(client)) {return;}
+  int revision = (uhsrvSnapshotRows[MAX_PLAYERS] + 1) & UH_TI_REV_MASK;
+  if (!revision) {revision = 1;}
+  uhsrvSnapshotRows[MAX_PLAYERS] = revision;
+  NamedExecuteClientScript("uh_ti_sync_status", client, pn | (revision << 6), status,
+    UH_Ti_CachedKind(pn), UH_Ti_CachedId(pn));
+  NamedExecuteClientScript("uh_ti_sync_phase", client, pn,
+    UH_Ti_CachedKind(pn), UH_Ti_CachedId(pn), uhsrvphase[pn]);
+}
+
+function void UH_Ti_RefreshPhase(int pn) {
+  int oldphase = uhsrvphase[pn];
+  int oldkind = uhsrvkind[pn];
+  int oldid = uhsrvid[pn];
+  str oldclass = uhsrvphaseclass[pn];
+  UH_Ti_IdentityForPlayer(pn);
+  if (oldphase == uhsrvphase[pn] && oldkind == uhsrvkind[pn]
+    && oldid == uhsrvid[pn] && !StrICmp(oldclass, uhsrvphaseclass[pn]))
+    return;
+  int status = UH_Ti_IsConnectedPlayer(pn) ? uhsrvlife[pn] : PLS_NULL;
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    UH_Ti_SendStatusTo(c, pn, status);
+  }
+}
+
+function void UH_Ti_SendOneVsAllTo(int client, int active, int target) {
+  if (!UH_Ti_IsConnectedClient(client)) {return;}
+  NamedExecuteClientScript("uh_ti_sync_ova", client, active, target);
+}
+
+function void UH_Ti_SendScorePolicyTo(int client, int policy) {
+  if (!UH_Ti_IsConnectedClient(client)) {return;}
+  int revision = (uhsrvSnapshotRows[MAX_PLAYERS] + 1) & UH_TI_REV_MASK;
+  if (!revision) {revision = 1;}
+  uhsrvSnapshotRows[MAX_PLAYERS] = revision;
+  NamedExecuteClientScript("uh_ti_sync_policy", client, policy, revision);
+}
+
+function void UH_TeamInfo_BroadcastStatus(int pn, int status) {
+  if (pn < 0 || pn >= MAX_PLAYERS) {return;}
+  UH_Ti_IdentityForPlayer(pn);
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    UH_Ti_SendStatusTo(c, pn, status);
+  }
+}
+
+function void UH_Ti_QueueSnapshotFor(int client, int repeats, int active, int target, int policy) {
+  if (!UH_Ti_IsConnectedClient(client)) {return;}
+  int rows = MAX_PLAYERS * repeats;
+  if (uhsrvSnapshotRows[client] < rows) {uhsrvSnapshotRows[client] = rows;}
+  UH_Ti_SendOneVsAllTo(client, active, target);
+  UH_Ti_SendScorePolicyTo(client, policy);
+}
+
+function void UH_TeamInfo_QueueSnapshot(int client, int repeats) {
+  UH_Ti_QueueSnapshotFor(client, repeats,
+    UH_Ti_QueryOneVsAllActive() ? 1 : 0, UH_Ti_QueryOneVsAllTarget(), UH_Ti_QueryScorePolicy());
+}
+
+function void UH_Ti_SendSnapshotRow(int pn) {
+  int status = UH_Ti_IsConnectedPlayer(pn) ? uhsrvlife[pn] : PLS_NULL;
+  bool queried = false;
+  int active = 0;
+  int target = -1;
+  int policy = UH_SCOREPOLICY_NORMAL;
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    if (uhsrvSnapshotRows[c] <= 0) {continue;}
+    if (!UH_Ti_IsConnectedClient(c)) {
+      uhsrvSnapshotRows[c] = 0;
+      continue;
+    }
+    UH_Ti_SendStatusTo(c, pn, status);
+    uhsrvSnapshotRows[c]--;
+    if (uhsrvSnapshotRows[c] % MAX_PLAYERS == 0) {
+      if (!queried) {
+        active = UH_Ti_QueryOneVsAllActive() ? 1 : 0;
+        target = active ? UH_Ti_QueryOneVsAllTarget() : -1;
+        policy = UH_Ti_QueryScorePolicy();
+        queried = true;
+      }
+      UH_Ti_SendOneVsAllTo(c, active, target);
+      UH_Ti_SendScorePolicyTo(c, policy);
+    }
+  }
+}
+
+function void UH_TeamInfo_SendSnapshotTo(int client) {
+  UH_TeamInfo_QueueSnapshot(client, 1);
+}
+
+function void UH_Ti_BroadcastSplit(int active, int target, int policy) {
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    UH_Ti_SendOneVsAllTo(c, active, target);
+    UH_Ti_SendScorePolicyTo(c, policy);
+  }
+}
+
+function void UH_Ti_FullSnapshotFor(int active, int target, int policy) {
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    uhsrvidentityvalid[c] = false;
+    UH_Ti_QueueSnapshotFor(c, 1, active, target, policy);
+  }
+}
 
 // --- Client display snapshot -------------------------------------------------
 // uhtilife   : last synced PLS_* value (PLS_DEAD = 0, PLS_NULL = -1).
@@ -43,6 +321,14 @@ int uhtirole[MAX_PLAYERS];
 int uhtiova;
 int uhtiovatarget;
 int uhtiscorepolicy;
+
+function int UH_Ti_ClientOneVsAll(void) {
+  return uhtiova;
+}
+
+function int UH_Ti_ClientOneVsAllTarget(void) {
+  return uhtiovatarget;
+}
 // Stage ids are plain integers scoped to the locally resolved actor class.
 int uhtiphase[MAX_PLAYERS];
 str uhtiphaseactor[MAX_PLAYERS];
@@ -802,12 +1088,12 @@ script "uh_ti_ServerSlotsDump" (int probeFrom, int probeTo) {
   for (int i = 0; i < MAX_PLAYERS; i++) {
     bool connected = UH_Ti_IsConnectedPlayer(i);
     bool inProbe = (i >= probeFrom && i < probeTo);
-    if (!inProbe && !connected && playerlifestatusarr[i] == PLS_NULL) {continue;}
+    if (!inProbe && !connected && uhsrvlife[i] == PLS_NULL) {continue;}
     UH_Log(UH_LOG_INFO, StrParam(s:"TeamInfoSlots: slot ", i:i,
       s:" connected=", i:connected,
       s:" ingame=", i:PlayerInGame(i),
       s:" spec=", i:PlayerIsSpectator(i),
-      s:" life=", i:playerlifestatusarr[i],
+      s:" life=", i:uhsrvlife[i],
       s:" kind=", i:uhsrvkind[i],
       s:" id=", i:uhsrvid[i]));
   }
@@ -848,10 +1134,10 @@ function bool UH_Ti_ServerTeammatesForSplit(int viewer, int subject, bool onevsa
 // Public gameplay/API callers resolve the current split on demand; the watch
 // uses the same relation function with its once-per-batch event snapshot.
 function bool UH_Ti_ServerAreDisplayTeammates(int viewer, int subject) {
-  bool onevsall = UH_TeamInfo_IsOneVsAllActive();
-  int target = onevsall ? UH_TeamInfo_OneVsAllTarget() : -1;
+  bool onevsall = UH_Ti_QueryOneVsAllActive();
+  int target = onevsall ? UH_Ti_QueryOneVsAllTarget() : -1;
   return UH_Ti_ServerTeammatesForSplit(viewer, subject, onevsall, target,
-    UH_TeamInfo_ScorePolicy());
+    UH_Ti_QueryScorePolicy());
 }
 
 // Gameplay callers must use server roles, never the client display cache.
@@ -943,9 +1229,9 @@ function void UH_Ti_ServerForgetClient(int pn) {
 function void UH_Ti_RefreshStats(int first, int end) {
   // Re-evaluate authorization for each batch: round/event/connection state may
   // change while the script yields between batches.
-  bool onevsall = UH_TeamInfo_IsOneVsAllActive();
-  int ovatarget = onevsall ? UH_TeamInfo_OneVsAllTarget() : -1;
-  int policy = UH_TeamInfo_ScorePolicy();
+  bool onevsall = UH_Ti_QueryOneVsAllActive();
+  int ovatarget = onevsall ? UH_Ti_QueryOneVsAllTarget() : -1;
+  int policy = UH_Ti_QueryScorePolicy();
 
   // DF_INFINITE_AMMO = 1 << 11.
   bool infinite = (GetCVar("dmflags") & 2048) != 0;
@@ -1163,7 +1449,7 @@ script "uh_ti_serverwatch" (void) {
     }
     int end = cursor + UH_TI_SUBJECT_BATCH;
     if (end > MAX_PLAYERS) {end = MAX_PLAYERS;}
-    if (!gameover) {
+    if (!ACS_NamedExecuteWithResult("uh_GetGameOverState")) {
       UH_Ti_RefreshStats(cursor, end);
     } else {
       for (int s = cursor; s < end; s++) {
@@ -1492,3 +1778,6 @@ script "uh_ti_PhaseCacheDump" (int pn) CLIENTSIDE {
     s:" icon=", s:UH_ClientPortraitTex(pn),
     s:" bossmug=", s:UH_PlayerPhaseBossMug(actor, phase)));
 }
+
+#include "../hud/automap_markers.acs"
+#include "../hud/tlms_display.acs"

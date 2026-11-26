@@ -49,7 +49,7 @@ def check_delayed_restores():
 
 def check_restore_default():
     """The MusicCodeVar-compatible selection code must survive to the restore."""
-    music = (ROOT / "src/acs_source/_imports/uh_music.acs").read_text()
+    music = (ROOT / "src/acs_source/_imports/uhmusrt.acs").read_text()
     assert 'str currentmusiclump = "*";' in music, (
         "music selection code must start as the map's own music, not silence")
     bossselect = (ROOT / "src/acs_source/unholy/uh_bossselect.acs").read_text()
@@ -61,7 +61,7 @@ def check_restore_default():
 
 
 def main():
-    source = (ROOT / "src/acs_source/_imports/uh_music.acs").read_text()
+    source = (ROOT / "src/acs_source/_imports/uhmusrt.acs").read_text()
     genmatch = source[source.index("function bool UH_MusicGenerationMatches("):
                       source.index("// This records whatever")]
     play = source[source.index("function void PlayMusic(str music)"):

@@ -230,17 +230,19 @@ monolithic aggregator), `uh_events` (round event system, ex-`uh_bonus`),
 `uh_boss_stats` (open-to-everyone Boss win-rate counters and query script),
 `uh_display`/`uh_aspect` (boss/round HUD), and `uh_access`
 (named-script API used by other libraries). Music playback runtime and
-result-music watchers live in `_imports/uh_music.acs` (`#library "uh_music"`,
-listed in `LOADACS` and `#import`ed by `unholy` and `uh_bosses` via accessor
-functions so importers consume zero extra map-variable slots; registration
-remains in `systems/music/`). Boss-specific runtime fragments
+result-music watchers live in `_imports/uhmusrt.acs` (`#library "uhmusrt"`,
+<=8-char lump name avoiding WAD 8-char collision with `uh_musicdefs`, listed in
+`LOADACS` and `#import`ed by `unholy` and `uh_bosses` via accessor functions so
+importers consume zero extra map-variable slots; registration remains in
+`systems/music/`). Boss-specific runtime fragments
 such as `classes/bosses/clownpiece_spellcard.acs` (Clownpiece-only spell-card
 flow; sole DECORATE caller `Clownpiece_W.dec`),
 `classes/bosses/higlur_truepower.acs`, and `classes/bosses/sakiko_mujica.acs`
-live in `uh_bosses` and talk to the round core through `uh_access`. `uh_teaminfo` adds the client
-display snapshot, the TLMS-style native teammate bar and the SCORINFO icon
-refresh; it is included by `unholy.acs` only (it defines scripts) and pulls
-`hud/scoreboard_icons.acs`. The server never
+live in `uh_bosses` and talk to the round core through `uh_access`. `uhteamrt`
+(`_imports/uhteamrt.acs`, listed in `LOADACS` and `#import`ed by `unholy` and
+`rz_debug` via accessor functions) owns the client display snapshot, the
+TLMS-style native teammate bar, the SCORINFO icon refresh (`hud/scoreboard_icons.acs`),
+automap markers (`hud/automap_markers.acs`), and the TLMS display (`hud/tlms_display.acs`). The server never
 writes `UHPlayerIcon`; each client computes it locally with
 `SetCustomPlayerValue`. In ordinary LMS the engine classifies the logical
 teammates as enemies and withholds their health, so a server watch
@@ -252,13 +254,14 @@ connected client: a plain `ACS_NamedExecuteAlways` call to a CLIENTSIDE script
 is not delivered to remote clients on a dedicated server, so role/policy sync
 silently never arrives.
 TLMS-style bottom counters and the client-local ALLY markers live in
-`hud/tlms_display.acs` (included by `unholy.acs` after `uh_teaminfo.acs`). The
+`hud/tlms_display.acs` (included by `_imports/uh_teaminfo.acs`). The
 `GAMEMODE` lump sets `DONTPRINTPLAYERSLEFT` for `LastManStanding` because the
 engine would count Unholy teammates as enemies; both displays use
 `UH_AreDisplayTeammates`, so the bar, the counters and the markers agree. The
 markers are client-only `UH_AllyMarker` actors (`actors/player/AllyMarker.dec`)
-kept above the head with ACS `Warp`. Do not add map variables to the `unholy`
-library without freeing a slot: it sits at ACC's 128-variable limit.
+kept above the head with ACS `Warp`. Importers of `uh_teaminfo` / `uh_music`
+must read their state through accessor functions rather than direct map-variable
+references so `unholy` keeps its ACC map-variable headroom.
 The weapon display tag/ammo types come from `systems/tools/weapon_display.acs`
 in UH_TOOLS — the only UH library that may import 8BDT; do not add that bridge
 to `unholy`. `debug/rz_debug.acs` also includes `uh_def` and

@@ -364,16 +364,25 @@ def check_libraries(problems, _warnings):
             problems.append(
                 "LOADACS names {!r} (line {}) but no #library declares it".format(
                     name, lineno))
+    by_wad8 = {}
     for name, sites in sorted(declarations.items()):
         if len(sites) > 1:
             problems.append(
                 "#library {!r} is declared {} times, first at {}:{}".format(
                     name, len(sites), sites[0][0], sites[0][1]))
+        by_wad8.setdefault(name[:8], []).append((name, sites[0]))
         if name in listed or name in NOT_IN_LOADACS:
             continue
         problems.append(
             "#library {!r} ({}:{}) is not in src/LOADACS and has no documented "
             "import-only reason".format(name, sites[0][0], sites[0][1]))
+    for wad8, items in sorted(by_wad8.items()):
+        if len(items) > 1:
+            desc = ", ".join(
+                "{!r} ({}:{})".format(n, site[0], site[1]) for n, site in items)
+            problems.append(
+                "ACS library 8-char WAD lump collision {!r}: {}".format(
+                    wad8, desc))
     return len(entries), len(declarations)
 
 

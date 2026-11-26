@@ -216,6 +216,13 @@ MUTATIONS = [
         "replace": ("uh_colors", "uh_colors\nMUTATION_MISSING_LIB"),
     },
     {
+        "name": "loadacs-8char-collision",
+        "checker": "tools/check_lump_integrity.py",
+        "why": "two ACS libraries collide on their 8-char WAD lump name (silently shadows imports at runtime)",
+        "file": "src/acs_source/_imports/uhmusrt.acs",
+        "replace": ('#library "uhmusrt"', '#library "uh_music"'),
+    },
+    {
         "name": "documented-api-removed",
         "checker": "tools/check_addon_api_contract.py",
         "why": "a documented public entry point disappears from the header",
