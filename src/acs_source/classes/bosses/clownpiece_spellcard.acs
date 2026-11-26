@@ -1,6 +1,6 @@
 // Clownpiece-only spell-card flow: phase timer, capture/fail/break
-// resolution and invuln stripping.  Sole caller:
-// actors/classes/bosses/Clownpiece_W.dec.  Fragment of library unholy.
+// resolution and invuln stripping.  Sole DECORATE caller:
+// actors/classes/bosses/Clownpiece_W.dec.  Fragment of library uh_bosses.
 // Spell card timer + capture bonus (LMS).
 // Normal: clear spell-card phase in time, no survivor deaths → bonus.
 // Active nonspell (1): timer only, no bonus/reward. Phases 3/5 are disabled.
@@ -31,11 +31,13 @@
 #define UH_SC_RESOLVE_DAMAGE 1
 #define UH_SC_RESOLVE_SURVIVAL 2
 
+// Mirror PLS_SURVIVOR from unholy/uh_def.acs for cross-library life-status queries.
+#define UH_SC_PLS_SURVIVOR 1
+
 bool uh_spellcardactive;
 bool uh_spellcardbroken;
 int uh_spellcardtimeleft;
 int uh_spellcardphase;
-// One map-array slot: the round-core is near ACC's map-variable limit.
 int uh_spellcardattack[5]; // remaining tics, initial tics, HP budget, damage, removed tics
 int uh_spellcardtimergen;  // bump on each Start; stale Always timers must not tick
 
@@ -44,6 +46,24 @@ int uh_cl_spellcardhudgen = -1;
 bool uh_cl_spellcardbroken;
 int uh_cl_spellcard_remaining_tics;
 int uh_cl_spellcard_removed_tics;
+
+function bool UH_SC_IsConnectedClient(int pn) {
+  if (pn < 0 || pn >= MAX_PLAYERS)
+    return false;
+  if (PlayerInGame(pn))
+    return true;
+  return PlayerIsSpectator(pn) != 0;
+}
+
+function int UH_SC_GetHudRight(int w) {
+  int ar = getaspectratio();
+  switch (ar) {
+    case ASPECT_16_9: return w + (FixedDiv(w << 16, 6.0) >> 16);
+    case ASPECT_16_10: return w + (FixedDiv(w << 16, 10.0) >> 16);
+    case ASPECT_17_10: return w + (FixedDiv((w << 16) * 11, 80.0) >> 16);
+  }
+  return w;
+}
 
 str uh_spellcardnamelist[UH_SC_PHASE_MAX + 1] = {
   "",
@@ -90,7 +110,8 @@ function int UH_ClownpieceBaseTime(int phaseid, int fallback) {
 
 function int UH_ClownpiecePhaseTime(int phaseid, int fallback) {
   int base = UH_ClownpieceBaseTime(phaseid, fallback);
-  if (!GetCVar("uh_sv_clownpiece_autotime") || uh_roundtimerdeadline < 0)
+  int deadline = ACS_NamedExecuteWithResult("uh_GetRoundTimerDeadline");
+  if (!GetCVar("uh_sv_clownpiece_autotime") || deadline < 0)
     return base;
 
   int weight = 0;
@@ -107,7 +128,7 @@ function int UH_ClownpiecePhaseTime(int phaseid, int fallback) {
   // Floor to whole seconds; leave 10s for the ending and 2s per future swap
   // (heal/weapon selection). This is a budget, not a guarantee for extreme
   // health scaling or a late morph with less than one second per phase left.
-  int remaining = max(0, (uh_roundtimerdeadline - Timer()) / UH_SC_TICRATE);
+  int remaining = max(0, (deadline - Timer()) / UH_SC_TICRATE);
   int budget = max(0, remaining - 10 - 2 * (count - 1));
   return min(base, max(1, budget * base / weight));
 }
@@ -118,14 +139,14 @@ function void UH_SpellCardClearHud(void) {
   ClearHudMessageBold(UH_SC_HUD_BONUS);
   ClearHudMessageBold(UH_SC_HUD_ACCEL);
   for (int c = 0; c < MAX_PLAYERS; c++) {
-    if (UH_Ti_IsConnectedClient(c))
+    if (UH_SC_IsConnectedClient(c))
       NamedExecuteClientScript("uh_SpellCardClientClear", c, uh_spellcardtimergen);
   }
 }
 
 function void UH_SpellCardSyncClients(int remainingtics, int mygen, int phaseid) {
   for (int c = 0; c < MAX_PLAYERS; c++) {
-    if (UH_Ti_IsConnectedClient(c))
+    if (UH_SC_IsConnectedClient(c))
       NamedExecuteClientScript("uh_SpellCardClientSync", c, remainingtics, mygen,
         phaseid, uh_spellcardattack[4] * 2 + uh_spellcardbroken);
   }
@@ -154,7 +175,7 @@ script "uh_ClownpieceTimeDamage" (int evt, int dmg, int dmgtype) EVENT {
   if (!SetActivator(0, AAPTR_DAMAGE_SOURCE))
     terminate;
   int shooter = PlayerNumber();
-  if (shooter < 0 || playerlifestatusarr[shooter] != PLS_SURVIVOR || CheckInventory("IsDead"))
+  if (shooter < 0 || ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", shooter) != UH_SC_PLS_SURVIVOR || CheckInventory("IsDead"))
     terminate;
 
   uh_spellcardattack[3] += min(effective, uh_spellcardattack[2] - uh_spellcardattack[3]);
@@ -176,7 +197,7 @@ function void UH_SpellCardDrawHud(int sec, int centi, int phaseid) {
   str timerstr;
 
   SetHudSize(640, 480, 0);
-  int x_aspect = GetHudRight(640) * 1.0;
+  int x_aspect = UH_SC_GetHudRight(640) * 1.0;
   if (GetScreenWidth() == 640 && GetScreenHeight() == 480) {
     x_aspect = 640.0;
   }
@@ -267,7 +288,7 @@ function void UH_SpellCardGiveSurvivorBoxes(void) {
   for (j = 0; j < MAX_PLAYERS; j++) {
     if (!PlayerInGame(j))
       continue;
-    if (playerlifestatusarr[j] != PLS_SURVIVOR)
+    if (ACS_NamedExecuteWithResult("uh_GetPlayerLifeStatus", j) != UH_SC_PLS_SURVIVOR)
       continue;
     GiveActorInventory(j + 1000, "SurvivorBoxItems_P", 1);
   }
@@ -480,7 +501,7 @@ script "uh_SpellCardBreak" (void) {
   if (uh_spellcardactive) {
     uh_spellcardbroken = true;
     for (int c = 0; c < MAX_PLAYERS; c++) {
-      if (UH_Ti_IsConnectedClient(c))
+      if (UH_SC_IsConnectedClient(c))
         NamedExecuteClientScript("uh_SpellCardClientBreak", c, uh_spellcardtimergen);
     }
   }

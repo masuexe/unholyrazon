@@ -219,17 +219,22 @@ register a tip into the shared `UH_POOL_CUSTOM` pool without a per-tip
 byline.
 
 `unholy/` is the LMS round-core module, compiled as the single `unholy`
-library (its LOADACS entry must stay; do not split it into multiple
-libraries). Fragments map to responsibility clusters: `uh_def` (unit state
+library (its LOADACS entry and round-core lifecycle ownership stay in one
+library; non-core character/boss mechanics and orthogonal subsystems may live
+in dedicated libraries such as `uh_bosses` so they do not consume `unholy`'s
+ACC map-variable budget). Fragments map to responsibility clusters: `uh_def` (unit state
 header), `uh_funclib` (shared function drawer), `uh_lifecycle`,
 `uh_bossselect` and `uh_dickhead_revival` (round flow, split from the former
 monolithic aggregator), `uh_events` (round event system, ex-`uh_bonus`),
 `uh_bosscore` + `uh_arena_fx` (ex-`uh_bspecial`),
 `uh_boss_stats` (open-to-everyone Boss win-rate counters and query script),
-`clownpiece_spellcard.acs` (Clownpiece-only spell-card flow; sole caller
-`Clownpiece_W.dec`), `uh_display`/`uh_aspect` (boss/round HUD), `uh_music`
+`uh_display`/`uh_aspect` (boss/round HUD), `uh_music`
 (music runtime; registration lives in `systems/music/`), and `uh_access`
-(named-script API used by other libraries). `uh_teaminfo` adds the client
+(named-script API used by other libraries). Boss-specific runtime fragments
+such as `classes/bosses/clownpiece_spellcard.acs` (Clownpiece-only spell-card
+flow; sole DECORATE caller `Clownpiece_W.dec`) and
+`classes/bosses/higlur_truepower.acs` live in `uh_bosses` and talk to the round
+core through `uh_access`. `uh_teaminfo` adds the client
 display snapshot, the TLMS-style native teammate bar and the SCORINFO icon
 refresh; it is included by `unholy.acs` only (it defines scripts) and pulls
 `hud/scoreboard_icons.acs`. The server never

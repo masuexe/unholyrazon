@@ -1,5 +1,6 @@
-// Included only by unholy: this transition owns both the pawn and its round
-// slot. Use the normal cleanup/setup path rather than nesting player morphs.
+// Fragment of library uh_bosses: owns the Higlur -> BalladeGB TruePower
+// transition and commits round-slot updates through uh_access rather than
+// living inside the round-core unholy library.
 script "ub_TruePowerHiglur" (void) {
   int player = PlayerNumber();
   if (player < 0 || !CheckActorClass(0, "SPOOKYGHOSTHITLER")
@@ -28,24 +29,22 @@ script "ub_TruePowerHiglur" (void) {
   int health = GetActorProperty(0, APROP_Health);
   int maximum = GetActorProperty(0, APROP_SpawnHealth);
   ACS_NamedExecuteWithResult("ub_UnMorphThisTID", tid, oldboss);
-  if (!MorphActorToBoss(tid, nextboss, "ShinySparkleFlash")) {
+  if (!ACS_NamedExecuteWithResult("uh_MorphActorToBoss", tid, nextboss, "ShinySparkleFlash")) {
     // A blocked morph must not leave the player as an unarmed survivor.
-    if (MorphActorToBoss(tid, oldboss, "")) {
+    if (ACS_NamedExecuteWithResult("uh_MorphActorToBoss", tid, oldboss, "")) {
+      SetActivator(tid);
       SetActorProperty(0, APROP_SpawnHealth, maximum);
       SetActorProperty(0, APROP_Health, health);
       SetInventory("BossSpawnHealthFlag", maximum);
+    } else {
+      SetActivator(tid);
     }
     GiveInventory("TruePowerItem", 1);
   } else {
+    SetActivator(tid);
     GiveInventory("TruePowerItemFlag", 1);
     GiveInventory("ShinySparkleItem", 1);
-    for (int slot = 0; slot < multibosscheck; slot++) {
-      if (bossdataarr[slot][BOSSDATA_TID] == tid) {
-        bossdataarr[slot][BOSSDATA_NUM] = nextboss;
-        refreshhudmessage = true;
-      }
-    }
-    UH_TeamInfo_BroadcastStatus(player, playerlifestatusarr[player]);
+    ACS_NamedExecuteWithResult("uh_CommitBossSlotMorph", tid, nextboss, player);
   }
   if (temporarytid)
     Thing_ChangeTID(0, 0);

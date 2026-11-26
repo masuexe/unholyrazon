@@ -28,6 +28,11 @@ def main():
     assert 'ACS_NamedExecute("ub_TruePowerHiglur", 0)' in route
     cap = (ROOT / 'src/acs_source/_imports/uh_acsutils.acs').read_text()
     assert '#libdefine MAX_HEALTH 30000' in cap
+    access = (ROOT / 'src/acs_source/unholy/uh_access.acs').read_text()
+    assert 'script "uh_MorphActorToBoss"' in access
+    assert 'script "uh_CommitBossSlotMorph"' in access
+    bosses = (ROOT / 'src/acs_source/classes/bosses/uh_bosses.acs').read_text()
+    assert '#include "higlur_truepower.acs"' in bosses
     with tempfile.TemporaryDirectory(prefix='uh-truepower-') as directory:
         path = Path(directory)
         (path / 'test.c').write_text(STUBS + source + TESTS)
@@ -38,6 +43,7 @@ def main():
 
 STUBS = r'''
 #include <assert.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -51,7 +57,7 @@ STUBS = r'''
 #define min(a,b) ((a)<(b)?(a):(b))
 int pn, hp, cap, baws, flag, fake, generation, tid, connected, spectator;
 int interrupted, blocked, missing, cleanups, morphs, refunded, sparkles, syncs;
-int result, spawnflag, activeboss, multibosscheck, bossdataarr[2][2], heals;
+int result, spawnflag, activeboss, multibosscheck, bossdataarr[2][2], heals, rebinds;
 int playerlifestatusarr[1];
 bool refreshhudmessage;
 const char *body;
@@ -68,6 +74,7 @@ int CheckInventory(const char *name) {
 void SetResultValue(int value) { result=value; }
 int CheckActorClass(int who, const char *name) { assert(!who); return !strcmp(body,name); }
 int GetPlayerMorphGen(int player) { assert(!player); return generation; }
+int SetActivator(int who) { assert(who==tid); rebinds++; return 1; }
 int SetActivatorToPlayer(int player) { assert(!player); return connected; }
 int PlayerIsSpectator(int player) { assert(!player); return spectator; }
 void Delay(int tics) {
@@ -85,16 +92,6 @@ int FindBossByActor(const char *name) {
 int ActivatorTID(void) { return tid; }
 int UniqueTID(void) { return 2000; }
 void Thing_ChangeTID(int who, int value) { assert(!who); tid=value; }
-void ACS_NamedExecuteWithResult(const char *name, int who, int boss) {
-  if (!strcmp(name,"uh_Health")) {
-    assert(who==UHEALTH_HEAL && boss==2000);
-    heals++;
-    if (hp>0 && hp<cap) hp=min(hp+boss,cap);
-    return;
-  }
-  assert(!strcmp(name,"ub_UnMorphThisTID") && who==tid && boss==403);
-  cleanups++; body="Survivor"; baws=flag=0; generation++; activeboss=UHBOSS_FAIL;
-}
 int MorphActorToBoss(int who, int boss, const char *flash) {
   assert(who==tid); morphs++;
   if (boss==68) {
@@ -108,6 +105,54 @@ int MorphActorToBoss(int who, int boss, const char *flash) {
   }
   baws=1; activeboss=boss; generation++; return 1;
 }
+void UH_TeamInfo_BroadcastStatus(int player, int status) {
+  assert(!player && status==playerlifestatusarr[0] && activeboss==68); syncs++;
+}
+int ACS_NamedExecuteWithResult(const char *name, ...) {
+  va_list ap;
+  va_start(ap, name);
+  if (!strcmp(name,"uh_Health")) {
+    int mode = va_arg(ap, int);
+    int amt = va_arg(ap, int);
+    va_end(ap);
+    assert(mode==UHEALTH_HEAL && amt==2000);
+    heals++;
+    if (hp>0 && hp<cap) hp=min(hp+amt,cap);
+    return 1;
+  }
+  if (!strcmp(name,"ub_UnMorphThisTID")) {
+    int who = va_arg(ap, int);
+    int boss = va_arg(ap, int);
+    va_end(ap);
+    assert(who==tid && boss==403);
+    cleanups++; body="Survivor"; baws=flag=0; generation++; activeboss=UHBOSS_FAIL;
+    return 1;
+  }
+  if (!strcmp(name,"uh_MorphActorToBoss")) {
+    int who = va_arg(ap, int);
+    int boss = va_arg(ap, int);
+    const char *flash = va_arg(ap, const char *);
+    va_end(ap);
+    return MorphActorToBoss(who, boss, flash);
+  }
+  if (!strcmp(name,"uh_CommitBossSlotMorph")) {
+    int who = va_arg(ap, int);
+    int next = va_arg(ap, int);
+    int p = va_arg(ap, int);
+    va_end(ap);
+    for (int slot = 0; slot < multibosscheck; slot++) {
+      if (bossdataarr[slot][BOSSDATA_TID] == who) {
+        bossdataarr[slot][BOSSDATA_NUM] = next;
+        refreshhudmessage = true;
+      }
+    }
+    UH_TeamInfo_BroadcastStatus(p, playerlifestatusarr[p]);
+    return 1;
+  }
+  va_end(ap);
+  assert(0 && "unexpected ACS_NamedExecuteWithResult");
+  return 0;
+}
 void SetInventory(const char *name, int value) {
   assert(!strcmp(name,"BossSpawnHealthFlag")); spawnflag=value;
 }
@@ -117,16 +162,13 @@ void GiveInventory(const char *name, int amount) {
   else if (!strcmp(name,"TruePowerItemFlag")) flag=1;
   else {assert(!strcmp(name,"ShinySparkleItem")); sparkles++;}
 }
-void UH_TeamInfo_BroadcastStatus(int player, int status) {
-  assert(!player && status==playerlifestatusarr[0] && activeboss==68); syncs++;
-}
 '''
 
 TESTS = r'''
 void Reset(void) {
   pn=0; hp=500; cap=1000; baws=flag=fake=0; generation=7; tid=1000;
   connected=1; spectator=interrupted=blocked=missing=0;
-  cleanups=morphs=refunded=sparkles=syncs=result=spawnflag=heals=0;
+  cleanups=morphs=refunded=sparkles=syncs=result=spawnflag=heals=rebinds=0;
   activeboss=403; multibosscheck=2; refreshhudmessage=false;
   body="SPOOKYGHOSTHITLER";
   bossdataarr[0][0]=1000; bossdataarr[0][1]=403;
@@ -152,11 +194,11 @@ int main(void) {
     Repeat(); assert(!result && cap==1000 && hp==before && !heals);
   }
   Reset(); Transform();
-  assert(cleanups==1 && morphs==1 && activeboss==68 && baws && flag);
+  assert(cleanups==1 && morphs==1 && rebinds==1 && activeboss==68 && baws && flag);
   assert(sparkles==1 && !refunded && syncs==1 && refreshhudmessage);
   assert(bossdataarr[0][1]==68 && bossdataarr[1][1]==403);
   Reset(); blocked=1; Transform();
-  assert(cleanups==1 && morphs==2 && activeboss==403 && hp==500 && cap==1000);
+  assert(cleanups==1 && morphs==2 && rebinds==1 && activeboss==403 && hp==500 && cap==1000);
   assert(spawnflag==1000 && refunded==1 && !sparkles && !syncs);
   assert(bossdataarr[0][1]==403 && !refreshhudmessage);
   for (int mode=1; mode<=5; mode++) {
@@ -171,7 +213,7 @@ int main(void) {
     if (mode==4) missing=1;
     Transform(); assert(!cleanups && !morphs);
   }
-  Reset(); tid=0; Transform(); assert(!tid && activeboss==68 && syncs==1);
+  Reset(); tid=0; Transform(); assert(!tid && rebinds==1 && activeboss==68 && syncs==1);
   assert(bossdataarr[0][1]==403 && bossdataarr[1][1]==403);
   puts("True Power: repeat HP cap/heal, guarded Higlur transaction and rollback PASS");
 }

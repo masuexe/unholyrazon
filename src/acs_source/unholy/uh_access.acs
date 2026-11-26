@@ -23,6 +23,28 @@ script "uh_IsPostRoundFriendlyFire" (void) {
         || GetGameModeState() == GAMESTATE_INRESULTSEQUENCE));
 }
 
+script "uh_GetRoundTimerDeadline" (void) {
+  SetResultValue(uh_roundtimerdeadline);
+}
+
+// Cross-library boss morph transaction helpers (used by uh_bosses, e.g. Higlur TruePower).
+// Note: MorphActorToBoss calls SetActivator(tid) inside this child script; callers
+// must rebind their own activator with SetActivator(tid) after morphing.
+script "uh_MorphActorToBoss" (int tid, int boss, int flash) {
+  SetResultValue(MorphActorToBoss(tid, boss, flash));
+}
+
+script "uh_CommitBossSlotMorph" (int tid, int nextboss, int player) {
+  for (int slot = 0; slot < multibosscheck; slot++) {
+    if (bossdataarr[slot][BOSSDATA_TID] == tid) {
+      bossdataarr[slot][BOSSDATA_NUM] = nextboss;
+      refreshhudmessage = true;
+    }
+  }
+  if (player >= 0 && player < MAX_PLAYERS)
+    UH_TeamInfo_BroadcastStatus(player, playerlifestatusarr[player]);
+}
+
 script "uh_GetPlayerLifeStatus" (int player) {
   if (player < 0)
     player = PlayerNumber();
