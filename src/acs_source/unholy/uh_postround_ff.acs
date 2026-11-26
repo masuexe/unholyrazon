@@ -20,48 +20,47 @@ function void UH_RefreshPostRoundFF(void) {
   bool enabled = GetCVar("uh_sv_postroundfriendlyfire")
     && (gameover || uh_settlementstate[UH_SETTLEMENT_PENDING]
         || GetGameModeState() == GAMESTATE_INRESULTSEQUENCE);
-  int row;
+  int i;
   int count;
   str power;
   str pawnclass;
   for (int p = 0; p < MAX_PLAYERS; p++) {
-    row = UH_POSTFF_BASE + p * UH_POSTFF_ROW_SIZE;
     // Dead/departed slots must never transfer a snapshot to a reused slot.
     if (!PlayerInGame(p) || PlayerIsSpectator(p) != 0
         || GetActorProperty(p + 1000, APROP_HEALTH) <= 0) {
-      uh_settlementstate[row] = false;
+      uh_postff_active[p] = false;
       continue;
     }
     pawnclass = GetActorClass(p + 1000);
-    if (uh_settlementstate[row]
-        && StrICmp(pawnclass, uh_settlementmusic[4 + p]) != 0)
-      uh_settlementstate[row] = false;
+    if (uh_postff_active[p]
+        && StrICmp(pawnclass, uh_postff_class[p]) != 0)
+      uh_postff_active[p] = false;
     if (enabled) {
-      if (!uh_settlementstate[row]) {
-        uh_settlementmusic[4 + p] = pawnclass;
-        for (int i = 0; i < UH_POSTFF_POWER_COUNT; i++)
-          uh_settlementstate[row + 1 + i] = 0;
-        uh_settlementstate[row] = true;
+      if (!uh_postff_active[p]) {
+        uh_postff_class[p] = pawnclass;
+        for (i = 0; i < UH_POSTFF_POWER_COUNT; i++)
+          uh_postff_counts[p][i] = 0;
+        uh_postff_active[p] = true;
       }
       for (i = 0; i < UH_POSTFF_POWER_COUNT; i++) {
         power = UH_PostRoundProtection(i);
         count = CheckActorInventory(p + 1000, power);
         // Capture powers re-granted by a morph/rebuild during settlement too.
-        if (count > uh_settlementstate[row + 1 + i])
-          uh_settlementstate[row + 1 + i] = count;
+        if (count > uh_postff_counts[p][i])
+          uh_postff_counts[p][i] = count;
         if (count > 0) TakeActorInventory(p + 1000, power, count);
       }
     }
-    else if (uh_settlementstate[row]) {
+    else if (uh_postff_active[p]) {
       for (i = 0; i < UH_POSTFF_POWER_COUNT; i++) {
         power = UH_PostRoundProtection(i);
-        count = uh_settlementstate[row + 1 + i];
+        count = uh_postff_counts[p][i];
         // Preserve any newly granted protection; never create absent powers.
         if (count > CheckActorInventory(p + 1000, power))
           GiveActorInventory(p + 1000, power,
             count - CheckActorInventory(p + 1000, power));
       }
-      uh_settlementstate[row] = false;
+      uh_postff_active[p] = false;
     }
   }
 }

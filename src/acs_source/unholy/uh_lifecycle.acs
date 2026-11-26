@@ -18,7 +18,7 @@ script "ub_BasicTLMSEnter" ENTER {
   ACS_NamedExecuteWithResult("uh_BubbleClearLifecycle");
   UH_AFKResetPlayer(PlayerNumber());
   if (PlayerNumber() >= 0)
-    uh_settlementstate[UH_POSTFF_BASE + PlayerNumber() * UH_POSTFF_ROW_SIZE] = false;
+    uh_postff_active[PlayerNumber()] = false;
   BasicTLMSEnterState();
 }
 
@@ -27,7 +27,7 @@ script "ub_BasicTLMSRespawn" RESPAWN {
   ACS_NamedExecuteWithResult("uh_BubbleClearLifecycle");
   UH_AFKResetPlayer(PlayerNumber());
   if (PlayerNumber() >= 0)
-    uh_settlementstate[UH_POSTFF_BASE + PlayerNumber() * UH_POSTFF_ROW_SIZE] = false;
+    uh_postff_active[PlayerNumber()] = false;
   BasicTLMSEnterState();
   int pn = PlayerNumber();
   if (pn >= 0) {
@@ -49,7 +49,7 @@ script "ub_Death_ChangeIsAlive" DEATH {
 
   if (GetCVar("lastmanstanding") == 1) {
     pn = PlayerNumber();
-    uh_settlementstate[UH_POSTFF_BASE + pn * UH_POSTFF_ROW_SIZE] = false;
+    uh_postff_active[pn] = false;
     // Clear synchronously, including deaths exempted by DropItemsOnDeath_P.
     ACS_NamedExecuteWithResult("UH_ClearLeaveDrops", pn);
     oldstatus = playerlifestatusarr[pn];
@@ -79,7 +79,7 @@ script "ub_Disconnect_ChangeIsAlive" (int playernum) DISCONNECT {
   // Zandronum PLAYER_LeavesGame also fires DISCONNECT on voluntary spectate.
   // Latch departure so rejoining during the countdown cannot reclaim a choice.
   UH_AFKResetPlayer(playernum);
-  uh_settlementstate[UH_POSTFF_BASE + playernum * UH_POSTFF_ROW_SIZE] = false;
+  uh_postff_active[playernum] = false;
   if (GetCVar("lastmanstanding") == 1) {
     if (uh_bosschoicewinner == playernum + 1) {uh_bosschoicewinner = 0;}
     uh_vsbetreward[playernum] = 0;

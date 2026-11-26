@@ -23,7 +23,6 @@ def main():
     # All included functions use plain integers/strings, no fixed/latent code.
     ff = (ROOT / "src/acs_source/unholy/uh_postround_ff.acs").read_text()
     ff = ff.split('script "uh_RefreshPostRoundFF"')[0].replace("function ", "")
-    ff = ff.replace("int row;", "int row; int i;").replace("for (int i =", "for (i =")
     helpers = (ROOT / "src/acs_source/unholy/uh_round_helpers.acs").read_text()
     begin = helpers.index("function void MakeAllPlayersInvun(void)")
     end = helpers.index("// Presets a random number", begin)
