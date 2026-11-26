@@ -646,6 +646,39 @@ def main() -> int:
         "special branches must not use the ambiguous legacy BossEvent777 hook",
     )
 
+    bet_watch = script_body(versus, "ub_VersusBetWatcher")
+    bet_grant = script_body(versus, "ub_VersusGrantBetRewards")
+    bet_settle = function_body(versus, "UHVS_SettleBets")
+    bet_higlur = function_body(versus, "UHVS_ResolveHiglurDraw")
+    bet_stop = function_body(versus, "UHVS_StopConflictingScripts")
+    bet_select = script_body(bossselect, "ub_MorphSelectedBosses")
+    lifecycle_text = (ROOT / "src/acs_source/unholy/uh_lifecycle.acs").read_text(encoding="utf-8")
+    disc_match = re.search(
+        r'script\s+"ub_Disconnect_ChangeIsAlive"\s*\([^)]*\)\s*DISCONNECT\s*\{',
+        lifecycle_text,
+    )
+    bet_disc = lifecycle_text[disc_match.start() : disc_match.start() + 1200] if disc_match else ""
+    check(
+        "versus survivor betting contract",
+        "BT_ATTACK" in bet_watch
+        and "BT_ALTATTACK" in bet_watch
+        and "BT_RELOAD" in bet_watch
+        and "UHVS_BET_DOUBLETAP_TICS" in bet_watch
+        and 'ACS_NamedExecute("ub_VersusBetWatcher"' in watch
+        and 'ACS_NamedTerminate("ub_VersusBetWatcher"' in bet_stop
+        and "UHVS_SettleBets(result)" in resolve
+        and "UHVS_SettleBets(UHVS_DRAW)" in bet_higlur
+        and "TankOfWondersItem" in bet_grant
+        and "MysticBoxItem" in bet_grant
+        and "isbonuseventactive" in bet_grant
+        and 'ACS_NamedExecuteWithResult("ub_VersusGrantBetRewards")' in bet_select
+        and "uh_vsbetreward[playernum] = 0;" in bet_disc
+        and "uh_vsbetchoice[playernum] = 0;" in bet_disc
+        and "NamedSendNetworkString" in versus
+        and "NamedExecuteClientScript" in bet_settle,
+        "versus betting must poll double-tap M1/M2/Reload, settle on normal and Higlur draws, grant next non-bonus round rewards (even to bosses), and clean up on disconnect",
+    )
+
     if not args.source_only:
         music = args.music_pk3.resolve()
         music_lumps: set[str] = set()

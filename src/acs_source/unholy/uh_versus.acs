@@ -25,6 +25,24 @@
 #define UHVS_HUD_ICON 8003
 #define UHVS_INTRO_TICS 105
 
+// Survivor betting HUD and rules.
+#define UHVS_HUD_BET_TITLE 8010
+#define UHVS_HUD_BET_OPTS 8011
+#define UHVS_HUD_BET_PICK 8012
+#define UHVS_HUD_BET_RES 8013
+
+#define UHVS_BET_NONE 0
+#define UHVS_BET_SLOT0 1
+#define UHVS_BET_SLOT1 2
+#define UHVS_BET_DRAW 3
+
+#define UHVS_REWARD_NONE 0
+#define UHVS_REWARD_NORMAL 1
+#define UHVS_REWARD_EPIC 2
+
+#define UHVS_BET_WINDOW_TICS (35 * 12)
+#define UHVS_BET_DOUBLETAP_TICS 14
+
 // Outcomes.
 #define UHVS_SLOT0 0
 #define UHVS_SLOT1 1
@@ -88,6 +106,335 @@ script "uh_vs_intro_clear" (void) CLIENTSIDE {
   ClearHudMessage(UHVS_HUD_ICON);
 }
 
+function void UHVS_ClearBetChoices(void) {
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    uh_vsbetchoice[p] = UHVS_BET_NONE;
+  }
+}
+
+function void UHVS_ClearBetHud(void) {
+  for (int c = 0; c < MAX_PLAYERS; c++) {
+    if (UH_Ti_IsConnectedClient(c)) {
+      NamedExecuteClientScript("uh_vs_bet_clear", c);
+    }
+  }
+}
+
+function bool UHVS_CanPlaceBet(int p) {
+  if (p < 0 || p >= MAX_PLAYERS) {return false;}
+  if (!PlayerInGame(p) || PlayerIsSpectator(p) != 0) {return false;}
+  if (playerlifestatusarr[p] != PLS_SURVIVOR) {return false;}
+  int tid = p + 1000;
+  if (tid == bossdataarr[0][BOSSDATA_TID] || tid == bossdataarr[1][BOSSDATA_TID]) {
+    return false;
+  }
+  return GetActorProperty(tid, APROP_Health) > 0;
+}
+
+function void UHVS_SendBetHud(int p, str name1, str name2, int sec, int pick) {
+  if (!UH_Ti_IsConnectedClient(p)) {return;}
+  str payload = StrParam(s:name1, c:31, s:name2, c:31, i:sec, c:31, i:pick);
+  NamedSendNetworkString("uh_vs_bet_hud", payload, p);
+}
+
+function void UHVS_SettleBets(int result) {
+  int winbet = UHVS_BET_NONE;
+  int reward = UHVS_REWARD_NONE;
+  if (result == UHVS_SLOT0) {
+    winbet = UHVS_BET_SLOT0;
+    reward = UHVS_REWARD_NORMAL;
+  }
+  else if (result == UHVS_SLOT1) {
+    winbet = UHVS_BET_SLOT1;
+    reward = UHVS_REWARD_NORMAL;
+  }
+  else if (result == UHVS_DRAW) {
+    winbet = UHVS_BET_DRAW;
+    reward = UHVS_REWARD_EPIC;
+  }
+
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    int pick = uh_vsbetchoice[p];
+    uh_vsbetchoice[p] = UHVS_BET_NONE;
+    if (pick == UHVS_BET_NONE) {continue;}
+    if (!PlayerInGame(p) && !PlayerIsSpectator(p)) {continue;}
+    if (pick == winbet && reward > UHVS_REWARD_NONE) {
+      if (reward > uh_vsbetreward[p]) {
+        uh_vsbetreward[p] = reward;
+      }
+      if (UH_Ti_IsConnectedClient(p)) {
+        NamedExecuteClientScript("uh_vs_bet_result", p, reward);
+      }
+    }
+    else if (UH_Ti_IsConnectedClient(p)) {
+      NamedExecuteClientScript("uh_vs_bet_result", p, 0);
+    }
+  }
+}
+
+function int UHVS_ParseInt(str s) {
+  int len = StrLen(s);
+  if (len <= 0) {return 0;}
+  int i = 0;
+  bool neg = false;
+  if (GetChar(s, 0) == 45) {
+    neg = true;
+    i = 1;
+  }
+  int val = 0;
+  while (i < len) {
+    int ch = GetChar(s, i);
+    if (ch < 48 || ch > 57) {break;}
+    val = val * 10 + (ch - 48);
+    i++;
+  }
+  if (neg) {return -val;}
+  return val;
+}
+
+script "uh_vs_bet_hud" (int payload) CLIENTSIDE {
+  int len = StrLen(payload);
+  int pos = 0;
+  int next = pos;
+  while (next < len && GetChar(payload, next) != 31) {next++;}
+  if (next >= len) {terminate;}
+  str name1 = StrMid(payload, pos, next - pos);
+  pos = next + 1;
+
+  next = pos;
+  while (next < len && GetChar(payload, next) != 31) {next++;}
+  if (next >= len) {terminate;}
+  str name2 = StrMid(payload, pos, next - pos);
+  pos = next + 1;
+
+  next = pos;
+  while (next < len && GetChar(payload, next) != 31) {next++;}
+  if (next >= len) {terminate;}
+  int sec = UHVS_ParseInt(StrMid(payload, pos, next - pos));
+  pos = next + 1;
+
+  int pick = UHVS_ParseInt(StrMid(payload, pos, len - pos));
+
+  str chosen = "";
+  if (pick == UHVS_BET_SLOT0) {chosen = name1;}
+  else if (pick == UHVS_BET_SLOT1) {chosen = name2;}
+  else if (pick == UHVS_BET_DRAW) {chosen = "\cdDraw\c-";}
+
+  SetHudSize(640, 480, 0);
+  SetFont("SMALLFONT");
+
+  if (sec < 0) {
+    ClearHudMessage(UHVS_HUD_BET_OPTS);
+    HudMessage(s:"\ciBOSS DUEL BETS LOCKED!";
+      HUDMSG_FADEOUT, UHVS_HUD_BET_TITLE, CR_ORANGE, 320.4, 92.1, 2.5, 0.5);
+    if (StrLen(chosen) > 0) {
+      HudMessage(s:"\cdLocked bet: ", s:chosen;
+        HUDMSG_FADEOUT, UHVS_HUD_BET_PICK, CR_WHITE, 320.4, 104.1, 2.5, 0.5);
+    }
+    else {
+      ClearHudMessage(UHVS_HUD_BET_PICK);
+    }
+    terminate;
+  }
+
+  HudMessage(s:"\cfBOSS DUEL BETS \c-(", i:sec, s:"s)";
+    HUDMSG_FADEOUT, UHVS_HUD_BET_TITLE, CR_GOLD, 320.4, 92.1, 0.4, 0.1);
+  HudMessage(s:"2x[\ck", k:"+attack", s:"\c-] ", s:name1,
+    s:"   2x[\ck", k:"+altattack", s:"\c-] ", s:name2,
+    s:"   2x[\ck", k:"+reload", s:"\c-] \cdDraw";
+    HUDMSG_FADEOUT, UHVS_HUD_BET_OPTS, CR_WHITE, 320.4, 104.1, 0.4, 0.1);
+  if (StrLen(chosen) > 0) {
+    HudMessage(s:"\cdYour bet: ", s:chosen, s:" \cu(double-tap again to change)";
+      HUDMSG_FADEOUT, UHVS_HUD_BET_PICK, CR_WHITE, 320.4, 116.1, 0.4, 0.1);
+  }
+  else {
+    HudMessage(s:"\cuDouble-tap to bet for a next-round reward (\cdDraw = Epic Prize\cu)";
+      HUDMSG_FADEOUT, UHVS_HUD_BET_PICK, CR_WHITE, 320.4, 116.1, 0.4, 0.1);
+  }
+}
+
+script "uh_vs_bet_clear" (void) CLIENTSIDE {
+  ClearHudMessage(UHVS_HUD_BET_TITLE);
+  ClearHudMessage(UHVS_HUD_BET_OPTS);
+  ClearHudMessage(UHVS_HUD_BET_PICK);
+}
+
+script "uh_vs_bet_confirm" (int pick) CLIENTSIDE {
+  LocalAmbientSound("core/menu/cursor", 127);
+}
+
+script "uh_vs_bet_result" (int reward) CLIENTSIDE {
+  SetHudSize(640, 480, 0);
+  SetFont("SMALLFONT");
+  if (reward == UHVS_REWARD_EPIC) {
+    LocalAmbientSound("misc/teleport", 127);
+    HudMessage(s:"\cfEPIC DRAW BET WON! \c-Next non-bonus round: \ctTank of Wonders \c-+ \cfMystic Box!";
+      HUDMSG_FADEOUT, UHVS_HUD_BET_RES, CR_GOLD, 320.4, 108.1, 5.0, 1.0);
+  }
+  else if (reward == UHVS_REWARD_NORMAL) {
+    LocalAmbientSound("items/UnholyPickup", 127);
+    HudMessage(s:"\cdBET WON! \c-Next non-bonus round: \cfMystic Box!";
+      HUDMSG_FADEOUT, UHVS_HUD_BET_RES, CR_GREEN, 320.4, 108.1, 4.5, 1.0);
+  }
+  else {
+    HudMessage(s:"\cgBET LOST!";
+      HUDMSG_FADEOUT, UHVS_HUD_BET_RES, CR_RED, 320.4, 108.1, 3.0, 1.0);
+  }
+}
+
+script "uh_vs_bet_grant" (int reward) CLIENTSIDE {
+  LocalAmbientSound("items/UnholyPickup", 127);
+  SetHudSize(640, 480, 0);
+  SetFont("SMALLFONT");
+  if (reward == UHVS_REWARD_EPIC) {
+    HudMessage(s:"\cfEpic Duel Bet Reward: \ctTank of Wonders \c-+ \cfMystic Box!";
+      HUDMSG_FADEOUT, UHVS_HUD_BET_RES, CR_GOLD, 320.4, 108.1, 4.0, 1.0);
+  }
+  else {
+    HudMessage(s:"\cdDuel Bet Reward: \cfMystic Box!";
+      HUDMSG_FADEOUT, UHVS_HUD_BET_RES, CR_GREEN, 320.4, 108.1, 3.5, 1.0);
+  }
+}
+
+script "ub_VersusBetWatcher" (void) {
+  SetActivator(0, AAPTR_NULL);
+
+  int boss1 = bossdataarr[0][BOSSDATA_NUM];
+  int boss2 = bossdataarr[1][BOSSDATA_NUM];
+  int tid1 = bossdataarr[0][BOSSDATA_TID];
+  int tid2 = bossdataarr[1][BOSSDATA_TID];
+
+  bool sameboss = (boss1 == boss2);
+  str name1 = UHVS_DisplayName(boss1, tid1, sameboss);
+  str name2 = UHVS_DisplayName(boss2, tid2, sameboss);
+
+  int prevbtn[MAX_PLAYERS];
+  int lasttap0[MAX_PLAYERS];
+  int lasttap1[MAX_PLAYERS];
+  int lasttap2[MAX_PLAYERS];
+  bool hadhud[MAX_PLAYERS];
+
+  int p;
+  for (p = 0; p < MAX_PLAYERS; p++) {
+    lasttap0[p] = -100;
+    lasttap1[p] = -100;
+    lasttap2[p] = -100;
+    hadhud[p] = false;
+    if (PlayerInGame(p) && PlayerIsSpectator(p) == 0) {
+      prevbtn[p] = GetPlayerInput(p, INPUT_BUTTONS);
+    }
+    else {
+      prevbtn[p] = 0;
+    }
+  }
+
+  int timeleft = UHVS_BET_WINDOW_TICS;
+  while (timeleft > 0 && bossslotalive[0] && bossslotalive[1] && !gameover) {
+    int now = Timer();
+    bool periodic = (timeleft == UHVS_BET_WINDOW_TICS) || (timeleft % 7 == 0);
+    int sec = (timeleft + 34) / 35;
+
+    for (p = 0; p < MAX_PLAYERS; p++) {
+      if (!UHVS_CanPlaceBet(p)) {
+        if (hadhud[p]) {
+          if (UH_Ti_IsConnectedClient(p)) {
+            NamedExecuteClientScript("uh_vs_bet_clear", p);
+          }
+          hadhud[p] = false;
+        }
+        prevbtn[p] = 0;
+        continue;
+      }
+
+      int btn = GetPlayerInput(p, INPUT_BUTTONS);
+      int pressed = btn & ~prevbtn[p];
+      prevbtn[p] = btn;
+
+      int newbet = UHVS_BET_NONE;
+      if (pressed & BT_ATTACK) {
+        if (now - lasttap0[p] <= UHVS_BET_DOUBLETAP_TICS) {
+          newbet = UHVS_BET_SLOT0;
+          lasttap0[p] = -100;
+        }
+        else {
+          lasttap0[p] = now;
+        }
+      }
+      if (pressed & BT_ALTATTACK) {
+        if (now - lasttap1[p] <= UHVS_BET_DOUBLETAP_TICS) {
+          newbet = UHVS_BET_SLOT1;
+          lasttap1[p] = -100;
+        }
+        else {
+          lasttap1[p] = now;
+        }
+      }
+      if (pressed & BT_RELOAD) {
+        if (now - lasttap2[p] <= UHVS_BET_DOUBLETAP_TICS) {
+          newbet = UHVS_BET_DRAW;
+          lasttap2[p] = -100;
+        }
+        else {
+          lasttap2[p] = now;
+        }
+      }
+
+      if (newbet != UHVS_BET_NONE) {
+        uh_vsbetchoice[p] = newbet;
+        if (UH_Ti_IsConnectedClient(p)) {
+          NamedExecuteClientScript("uh_vs_bet_confirm", p, newbet);
+        }
+        UHVS_SendBetHud(p, name1, name2, sec, newbet);
+        hadhud[p] = true;
+      }
+      else if (periodic) {
+        UHVS_SendBetHud(p, name1, name2, sec, uh_vsbetchoice[p]);
+        hadhud[p] = true;
+      }
+    }
+
+    Delay(1);
+    timeleft--;
+  }
+
+  if (!gameover) {
+    for (p = 0; p < MAX_PLAYERS; p++) {
+      if (!hadhud[p] || !UH_Ti_IsConnectedClient(p)) {continue;}
+      if (uh_vsbetchoice[p] != UHVS_BET_NONE) {
+        UHVS_SendBetHud(p, name1, name2, -1, uh_vsbetchoice[p]);
+      }
+      else {
+        NamedExecuteClientScript("uh_vs_bet_clear", p);
+      }
+    }
+  }
+}
+
+script "ub_VersusGrantBetRewards" (void) {
+  SetActivator(0, AAPTR_NULL);
+  if (isbonuseventactive) {terminate;}
+
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    int rew = uh_vsbetreward[p];
+    if (rew <= UHVS_REWARD_NONE) {continue;}
+    if (!PlayerInGame(p) || PlayerIsSpectator(p) != 0) {continue;}
+    int tid = p + 1000;
+    if (ThingCount(0, tid) <= 0 || GetActorProperty(tid, APROP_Health) <= 0) {continue;}
+
+    uh_vsbetreward[p] = UHVS_REWARD_NONE;
+    if (rew == UHVS_REWARD_EPIC) {
+      GiveActorInventory(tid, "TankOfWondersItem", 1);
+      GiveActorInventory(tid, "MysticBoxItem", 1);
+    }
+    else {
+      GiveActorInventory(tid, "MysticBoxItem", 1);
+    }
+    if (UH_Ti_IsConnectedClient(p)) {
+      NamedExecuteClientScript("uh_vs_bet_grant", p, rew);
+    }
+  }
+}
+
 function bool UHVS_IsNormalDeathState(int deathstate) {
   return deathstate == 5 || deathstate == 6;
 }
@@ -122,6 +469,7 @@ function void UHVS_StopConflictingScripts(void) {
   ACS_NamedTerminate("uh_ZankokunaRage", 0);
   ACS_NamedTerminate("rz_DickheadRevival", 0);
   ACS_NamedTerminate("rz_DickheadRevivalDelayed", 0);
+  ACS_NamedTerminate("ub_VersusBetWatcher", 0);
 }
 
 // Synchronous half of the resolution: claim the ending, stop conflicting
@@ -133,8 +481,10 @@ function int UHVS_Resolve(int result, int reason) {
   if (!UHVS_ClaimGameover()) {return -1;}
 
   UHVS_ClearIntroHud();
+  UHVS_ClearBetHud();
   UHVS_StopConflictingScripts();
   ResetBossComboState();  // Clears versusfightevent for the next round.
+  UHVS_SettleBets(result);
 
   // Versus rounds deliberately do not touch winstreak / mercygiven /
   // hellmarkfrags / survwinwithlms: this is a boss-vs-boss duel, not a
@@ -180,9 +530,11 @@ function int UHVS_ResolveHiglurDraw(void) {
   if (!UHVS_ClaimGameover()) {return -1;}
 
   UHVS_ClearIntroHud();
+  UHVS_ClearBetHud();
   UHVS_StopConflictingScripts();
   ACS_NamedExecuteAlways("ub_InitiateUltraBoss", 0, 403);
   ResetBossComboState();
+  UHVS_SettleBets(UHVS_DRAW);
 
   SetHudSize(480, 360, 0);
   SetFont("BIGFONT");
@@ -205,6 +557,7 @@ script "ub_ManageBossVsBossEvent" (void) {
   // flag is cleared at the next round selection, not by ResetBossComboState,
   // so a late revival cannot reopen the duel during the result sequence.
   versusblockrevive = true;
+  UHVS_ClearBetChoices();
 
   // The versus watcher owns the ending: stop the X-Ray watcher and the
   // background timer, which could otherwise end the round on its own.  The
@@ -244,6 +597,9 @@ script "ub_ManageBossVsBossEvent" (void) {
     }
     terminate;
   }
+
+  // Open the 12-second survivor betting window now that both bosses morphed.
+  ACS_NamedExecute("ub_VersusBetWatcher", 0);
 
   // Intro countdown, cancelled early if a slot falls or another script ends
   // the round.
