@@ -228,13 +228,16 @@ header), `uh_funclib` (shared function drawer), `uh_lifecycle`,
 monolithic aggregator), `uh_events` (round event system, ex-`uh_bonus`),
 `uh_bosscore` + `uh_arena_fx` (ex-`uh_bspecial`),
 `uh_boss_stats` (open-to-everyone Boss win-rate counters and query script),
-`uh_display`/`uh_aspect` (boss/round HUD), `uh_music`
-(music runtime; registration lives in `systems/music/`), and `uh_access`
-(named-script API used by other libraries). Boss-specific runtime fragments
+`uh_display`/`uh_aspect` (boss/round HUD), and `uh_access`
+(named-script API used by other libraries). Music playback runtime and
+result-music watchers live in `_imports/uh_music.acs` (`#library "uh_music"`,
+listed in `LOADACS` and `#import`ed by `unholy` and `uh_bosses` via accessor
+functions so importers consume zero extra map-variable slots; registration
+remains in `systems/music/`). Boss-specific runtime fragments
 such as `classes/bosses/clownpiece_spellcard.acs` (Clownpiece-only spell-card
-flow; sole DECORATE caller `Clownpiece_W.dec`) and
-`classes/bosses/higlur_truepower.acs` live in `uh_bosses` and talk to the round
-core through `uh_access`. `uh_teaminfo` adds the client
+flow; sole DECORATE caller `Clownpiece_W.dec`),
+`classes/bosses/higlur_truepower.acs`, and `classes/bosses/sakiko_mujica.acs`
+live in `uh_bosses` and talk to the round core through `uh_access`. `uh_teaminfo` adds the client
 display snapshot, the TLMS-style native teammate bar and the SCORINFO icon
 refresh; it is included by `unholy.acs` only (it defines scripts) and pulls
 `hud/scoreboard_icons.acs`. The server never

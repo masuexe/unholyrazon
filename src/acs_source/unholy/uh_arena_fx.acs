@@ -6,6 +6,14 @@
 // The rage darkens the arena with the stepped ramp constants from uh_lighting.acs
 // (UH_ARENA_*): a Light_Fade here would survive an interrupt and overwrite the
 // reset in uh_StopZankokunaRage.
+// A delayed restore may only touch playback it still owns: every newer server
+// selection (result jingle, map music, enrage) bumps the generation, and a
+// finished round keeps its result theme even when that theme already stopped.
+// Capture the generation right after the feature's own last PlayMusic call.
+function bool UH_MusicRestoreOwned(int generation) {
+  return !gameover && UH_MusicGenerationMatches(generation);
+}
+
 // HellBot Script
 script "ub_HellTimerMonitor" (void) {
   SetActivator(0, AAPTR_NULL);
@@ -199,7 +207,7 @@ script "uh_WishingStar" (int star, int extra) {
       Radius_Quake(9, 70, 0, 150, extra);
       AmbientSound("misc/hugequake", 127);
       PlayMusic("*");
-      int wishmusicgen = uh_musicstate[UH_MUSIC_GENERATION];
+      int wishmusicgen = UH_MusicGeneration();
       Delay(35 * 10);
       wishingstarcheck = false;
       // The round may have ended (timeout InstaKill) or a result/enrage/map
@@ -231,7 +239,7 @@ script "uh_WishingStar" (int star, int extra) {
       AmbientSound(StrParam(s:"classes/SONICEXE", i:random(1, 4)), 127);
       Delay(35 * 4);
       PlayMusic("");
-      int exemusicgen = uh_musicstate[UH_MUSIC_GENERATION];
+      int exemusicgen = UH_MusicGeneration();
       AmbientSound("classes/SONICEXE0", 127);
       AmbientSound("sonicEXE/Kefka", 127);
       int exedeath = 1000;

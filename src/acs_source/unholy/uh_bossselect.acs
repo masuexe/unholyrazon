@@ -38,7 +38,7 @@ script "ub_SelectBossAndEvent" (void) {
   }
   // This makes specific bosses/events happen
   survivorstartitem = "SurvivorBoxItems_P";
-  ClearMujicaState();
+  ACS_NamedExecuteWithResult("uh_ClearMujicaState");
   // The spell-card session is map-scoped shared state; a Clownpiece that died
   // mid-spell (rather than being unmorphed) would otherwise leave its phase and
   // timer for the next round on the same map.
@@ -268,6 +268,30 @@ script "ub_MorphFailureFallback" (int jump) {
 //   2. generation invalidate — every watcher started for that boss retires.
 //   3. UnMorphActor + generic demorph reset.
 //   4. boss post-cleanup  — residue that needs the survivor pawn back.
+script "ub_PlayVariantMusic" (int thenum) {
+  int row;
+
+  // D6: combo music wins when defined; empty combo music falls back to the
+  // selected boss's own music below.
+  if (isbosseventactive && UH_ComboAvailable(activebosscombo) && StrCmp(UH_ComboString(activebosscombo, UHC_STR_MUSIC), "") != 0) {
+    UH_PlayTrack(UH_ComboString(activebosscombo, UHC_STR_MUSIC), UH_ComboString(activebosscombo, UHC_STR_TITLE), UH_ComboString(activebosscombo, UHC_STR_ALBUM), UH_ComboString(activebosscombo, UHC_STR_ARTIST), 1, 1);
+    terminate;
+  }
+
+  row = PickBossMusicRow(thenum, UHMUS_KIND_SPAWN, 0);
+  if (row >= 0)
+    UH_PlayBossRow(row, 1, 1);
+  else {
+    // No Unholy track for this boss. Stop the previous tune and drop its card.
+    PlayMusic("*");
+    UH_ClearPublishedMusic(1);
+    // Clearing the card in map-music context must not erase the map-default
+    // selection code: a later wish/rage restore has to return the map music.
+    UH_SetCurrentMusicLump("*");
+    UH_PingRoundMusicMode(1);
+  }
+}
+
 script "ub_UnMorphThisTID" (int w, int bossid) {
   int player;
   str cleanup;

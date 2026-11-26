@@ -38,10 +38,10 @@ def check_delayed_restores():
     # The generation must be captured after the wish's own last PlayMusic call,
     # otherwise the guard could never match.
     case1 = wish[wish.index("    case 1:"):wish.index("    case 6:")]
-    assert case1.index('PlayMusic("*");') < case1.index("int wishmusicgen = uh_musicstate[UH_MUSIC_GENERATION];")
+    assert case1.index('PlayMusic("*");') < case1.index("int wishmusicgen = UH_MusicGeneration();")
     assert case1.index("int wishmusicgen") < case1.index("Delay(35 * 10);")
     case6 = wish[wish.index("    case 6:"):wish.index("    case 7:")]
-    assert case6.index('PlayMusic("");') < case6.index("int exemusicgen = uh_musicstate[UH_MUSIC_GENERATION];")
+    assert case6.index('PlayMusic("");') < case6.index("int exemusicgen = UH_MusicGeneration();")
     assert case6.index("int exemusicgen") < case6.index("UH_MusicRestoreOwned(exemusicgen)")
     rage = arena[arena.index('script "uh_StopZankokunaRage"'):]
     _assert_guarded_restores(rage[:rage.index("\n}\n")], "uh_StopZankokunaRage", 1)
@@ -49,19 +49,21 @@ def check_delayed_restores():
 
 def check_restore_default():
     """The MusicCodeVar-compatible selection code must survive to the restore."""
-    defs = (ROOT / "src/acs_source/unholy/uh_def.acs").read_text()
-    assert 'str currentmusiclump = "*";' in defs, (
+    music = (ROOT / "src/acs_source/_imports/uh_music.acs").read_text()
+    assert 'str currentmusiclump = "*";' in music, (
         "music selection code must start as the map's own music, not silence")
-    music = (ROOT / "src/acs_source/unholy/uh_music.acs").read_text()
-    variant = music[music.index('script "ub_PlayVariantMusic"'):
-                    music.index('script "ub_BossEnrageMusic"')]
+    bossselect = (ROOT / "src/acs_source/unholy/uh_bossselect.acs").read_text()
+    variant = bossselect[bossselect.index('script "ub_PlayVariantMusic"'):
+                         bossselect.index('script "ub_UnMorphThisTID"')]
     clear = variant.index("UH_ClearPublishedMusic(1);")
-    assert 'currentmusiclump = "*"' in variant[clear:], (
+    assert 'UH_SetCurrentMusicLump("*")' in variant[clear:], (
         "clearing the map-music card must keep the map-default selection code")
 
 
 def main():
-    source = (ROOT / "src/acs_source/unholy/uh_music.acs").read_text()
+    source = (ROOT / "src/acs_source/_imports/uh_music.acs").read_text()
+    genmatch = source[source.index("function bool UH_MusicGenerationMatches("):
+                      source.index("// This records whatever")]
     play = source[source.index("function void PlayMusic(str music)"):
                   source.index("function int UH_MusicLumpPublishable")]
     savefunc = source[source.index("function void MusicSaveFunc(void)"):
@@ -69,28 +71,34 @@ def main():
     playtrack = source[source.index("function void UH_PlayTrack("):
                        source.index("function void UH_RestoreMusic")]
     restore = source[source.index("function void UH_RestoreMusic(void)"):
-                     source.index("function bool UH_MusicRestoreOwned")]
+                     source.index("function void UH_PlayBossRow")]
     result = source[source.index("function int UH_PlayResultMusic"):
                     source.index("function int PlayMusic_Winner")]
     result = result.replace('script "uh_StopResultMusic"', 'void StopResultMusic')
-    guard = source[source.index("function bool UH_MusicRestoreOwned"):
-                   source.index("function void UH_PlayBossRow")]
+    arena = (ROOT / "src/acs_source/unholy/uh_arena_fx.acs").read_text()
+    guard = arena[arena.index("function bool UH_MusicRestoreOwned"):
+                  arena.index("// HellBot Script")]
     check_delayed_restores()
     check_restore_default()
-    mapmusic = (ROOT / "src/acs_source/unholy/uh_result_mapmusic.acs").read_text()
+    mapmusic = source[source.index("function int UH_ResultLivingPlayers"):
+                      source.index("function int FindSpace")]
     mapmusic = mapmusic.replace('script "uh_WatchResultMapMusic"', 'void WatchResultMapMusic')
     lifecycle = (ROOT / "src/acs_source/unholy/uh_lifecycle.acs").read_text()
+    mapmusic_wrap = lifecycle[lifecycle.index("function void UH_StartResultMapMusic("):
+                              lifecycle.index('script "ub_Death_ChangeIsAlive"')]
     startup = lifecycle.split('script "ub_StartUpSettings" OPEN {', 1)[1]
     startup = startup.split('script "ub_ValidateBossCombosDeferred"', 1)[0]
     # Execute the production startup tail after its last background-task launch.
     claim = startup.split('ACS_NamedExecute("uh_BackgroundTimer", 0);', 1)[1]
     claim = claim[:claim.index("\n}")]
-    code = (STUBS + play.replace("function ", "")
+    code = (STUBS + genmatch.replace("function ", "")
+            + play.replace("function ", "")
             + savefunc.replace("function ", "") + playtrack.replace("function ", "")
             + restore.replace("function ", "")
             + result.replace("function ", "")
             + guard.replace("function ", "")
             + mapmusic.replace("function ", "")
+            + mapmusic_wrap.replace("function ", "")
             + "void FinishStartup(void) {" + claim + "\n}\n" + TESTS)
     with tempfile.TemporaryDirectory(prefix="uh-result-music-") as directory:
         path = Path(directory)

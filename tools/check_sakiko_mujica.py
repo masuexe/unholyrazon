@@ -13,15 +13,17 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
-    source = (ROOT / "src/acs_source/unholy/sakiko_mujica.acs").read_text()
+    source = (ROOT / "src/acs_source/classes/bosses/sakiko_mujica.acs").read_text()
     source = source[source.index("function void DisbandMujica"):
                     source.index("function void ClearMujicaState")]
     lifecycle = (ROOT / "src/acs_source/unholy/uh_lifecycle.acs").read_text()
     death = lifecycle.split('script "ub_Death_ChangeIsAlive" DEATH {')[1]
     death = death.split('script "ub_Disconnect_ChangeIsAlive"')[0]
     hook = re.search(r'if \(!StrICmp\(GetActorClass\(0\), "SakikoTogawa"\)\)\s+'
-                     r'DisbandMujica\(\);', death)
+                     r'ACS_NamedExecuteWithResult\("uh_DisbandMujica"\);', death)
     assert hook, "Sakiko DEATH hook must disband the group"
+    bosses = (ROOT / "src/acs_source/classes/bosses/uh_bosses.acs").read_text()
+    assert '#include "sakiko_mujica.acs"' in bosses
     code = STUBS + source.replace("function ", "")
     code += "void DeathHook(void) { " + hook.group() + " }\n" + TESTS
     with tempfile.TemporaryDirectory(prefix="uh-mujica-") as directory:
@@ -34,12 +36,14 @@ def main():
 
 STUBS = r'''
 #include <assert.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
 #define APROP_Health 0
 int hp[64], member[64], protected[64], damagecalls[64], cancels;
 const char *actorclass;
+void DisbandMujica(void);
 const char *GetActorClass(int tid) { assert(tid == 0); return actorclass; }
 int StrICmp(const char *a, const char *b) { return strcasecmp(a, b); }
 int slot(int tid) { assert(tid >= 1000 && tid < 1064); return tid - 1000; }
@@ -49,7 +53,16 @@ int GetActorProperty(int tid, int prop) {
 int CheckActorInventory(int tid, const char *name) {
   assert(!strcmp(name, "IsAMujicaMember")); return member[slot(tid)];
 }
-void ACS_NamedExecuteWithResult(const char *name, int mode) {
+void ACS_NamedExecuteWithResult(const char *name, ...) {
+  va_list ap;
+  va_start(ap, name);
+  if (!strcmp(name, "uh_DisbandMujica")) {
+    va_end(ap);
+    DisbandMujica();
+    return;
+  }
+  int mode = va_arg(ap, int);
+  va_end(ap);
   assert(!strcmp(name, "rz_SoraNoMusicaCancel") && mode == 1); cancels++;
 }
 void GiveActorInventory(int tid, const char *name, int count) {

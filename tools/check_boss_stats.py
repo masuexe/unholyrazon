@@ -56,8 +56,10 @@ def static_checks():
     assert lifecycle.count("UH_BossStatsRecordRound(true);") == 1
     arena = (ROOT / "src/acs_source/unholy/uh_arena_fx.acs").read_text()
     assert arena.count("UH_BossStatsRecordRound(false);") == 1
-    mujica = (ROOT / "src/acs_source/unholy/sakiko_mujica.acs").read_text()
-    assert mujica.count("UH_BossStatsRecordRound(false);") == 1
+    access = (ROOT / "src/acs_source/unholy/uh_access.acs").read_text()
+    assert access.count("UH_BossStatsRecordRound(false);") == 1
+    mujica = (ROOT / "src/acs_source/classes/bosses/sakiko_mujica.acs").read_text()
+    assert mujica.count('ACS_NamedExecuteWithResult("uh_ClaimBossSpecialWin");') == 1
 
     selection = (ROOT / "src/acs_source/unholy/uh_bossselect.acs").read_text()
     require(selection, "uh_bossstatsrecorded = false;", "per-round guard reset")

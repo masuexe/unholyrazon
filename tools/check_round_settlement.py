@@ -63,6 +63,11 @@ str currentmusiclump = "BATTLE", currentmusictitle = "Battle";
 str currentmusicalbum = "Album", currentmusicartist = "Artist";
 #define UH_MUSIC_CONTEXT 0
 int uh_musicstate[2] = {2, 0};
+str UH_CurrentMusicLump(void) { return currentmusiclump; }
+str UH_CurrentMusicTitle(void) { return currentmusictitle; }
+str UH_CurrentMusicAlbum(void) { return currentmusicalbum; }
+str UH_CurrentMusicArtist(void) { return currentmusicartist; }
+int UH_CurrentMusicContext(void) { return uh_musicstate[UH_MUSIC_CONTEXT]; }
 int restores, clears, displays, notices;
 int winstreak = 3;
 void UH_ShowSettlementResumed(void) { notices++; }
